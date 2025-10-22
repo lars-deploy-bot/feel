@@ -13,7 +13,7 @@ export function ToolButton({
 	isExpanded = false,
 	hasContent = true,
 	children,
-	variant = 'default'
+	variant = 'default',
 }: ToolButtonProps) {
 	return (
 		<button
@@ -23,11 +23,7 @@ export function ToolButton({
 			}`}
 		>
 			{children}
-			{hasContent && (
-				<span className="ml-1 text-gray-500">
-					{isExpanded ? '−' : '+'}
-				</span>
-			)}
+			{hasContent && <span className="ml-1 text-gray-500">{isExpanded ? '−' : '+'}</span>}
 		</button>
 	)
 }
