@@ -1,0 +1,7 @@
+terminal.goalive.nl {
+  reverse_proxy localhost:8080
+}
+
+:9999 {
+  reverse_proxy localhost:8080
+}

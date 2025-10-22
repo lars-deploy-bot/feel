@@ -1,0 +1,17 @@
+{
+  "name": "claude-bridge-mono",
+  "private": true,
+  "packageManager": "bun@1.2.22",
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "web": "cd apps/web && bun run dev",
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "start": "turbo run start",
+    "see": "pm2 logs claude-bridge --lines 1000",
+    "restart": "pm2 restart claude-bridge"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0"
+  }
+}
