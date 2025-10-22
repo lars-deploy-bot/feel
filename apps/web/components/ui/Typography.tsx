@@ -2,101 +2,78 @@ import { forwardRef, HTMLAttributes } from 'react'
 import { cn } from '@/lib/utils'
 
 interface HeadingProps extends HTMLAttributes<HTMLHeadingElement> {
-  level?: 1 | 2 | 3 | 4 | 5 | 6
-  weight?: 'ultra' | 'light' | 'normal'
-  size?: 'xs' | 'sm' | 'base' | 'lg' | 'xl'
-  transform?: 'uppercase' | 'lowercase' | 'none'
+	level?: 1 | 2 | 3 | 4 | 5 | 6
+	weight?: 'ultra' | 'light' | 'normal'
+	size?: 'xs' | 'sm' | 'base' | 'lg' | 'xl'
+	transform?: 'uppercase' | 'lowercase' | 'none'
 }
 
 const Heading = forwardRef<HTMLHeadingElement, HeadingProps>(
-  ({
-    className,
-    level = 1,
-    weight = 'light',
-    size = 'lg',
-    transform = 'uppercase',
-    ...props
-  }, ref) => {
-    const Component = `h${level}` as keyof JSX.IntrinsicElements
+	({ className, level = 1, weight = 'light', size = 'lg', transform = 'uppercase', ...props }, ref) => {
+		const Component = `h${level}` as keyof JSX.IntrinsicElements
 
-    return (
-      <Component
-        className={cn(
-          `text-${weight}`,
-          `text-${size}`,
-          `text-${transform}`,
-          className
-        )}
-        ref={ref}
-        {...props}
-      />
-    )
-  }
+		return (
+			<Component
+				className={cn(`text-${weight}`, `text-${size}`, `text-${transform}`, className)}
+				ref={ref}
+				{...props}
+			/>
+		)
+	},
 )
 
 Heading.displayName = 'Heading'
 
 interface TextProps extends HTMLAttributes<HTMLParagraphElement> {
-  as?: 'p' | 'span' | 'div'
-  weight?: 'ultra' | 'light' | 'normal'
-  size?: 'xs' | 'sm' | 'base' | 'lg' | 'xl'
-  color?: 'primary' | 'muted' | 'subtle'
-  transform?: 'uppercase' | 'lowercase' | 'none'
+	as?: 'p' | 'span' | 'div'
+	weight?: 'ultra' | 'light' | 'normal'
+	size?: 'xs' | 'sm' | 'base' | 'lg' | 'xl'
+	color?: 'primary' | 'muted' | 'subtle'
+	transform?: 'uppercase' | 'lowercase' | 'none'
 }
 
 const Text = forwardRef<HTMLParagraphElement, TextProps>(
-  ({
-    className,
-    as = 'p',
-    weight = 'light',
-    size = 'base',
-    color = 'primary',
-    transform = 'uppercase',
-    ...props
-  }, ref) => {
-    const Component = as
+	(
+		{ className, as = 'p', weight = 'light', size = 'base', color = 'primary', transform = 'uppercase', ...props },
+		ref,
+	) => {
+		const Component = as
 
-    return (
-      <Component
-        className={cn(
-          `text-${weight}`,
-          `text-${size}`,
-          `text-${color}`,
-          `text-${transform}`,
-          className
-        )}
-        ref={ref}
-        {...props}
-      />
-    )
-  }
+		return (
+			<Component
+				className={cn(`text-${weight}`, `text-${size}`, `text-${color}`, `text-${transform}`, className)}
+				ref={ref}
+				{...props}
+			/>
+		)
+	},
 )
 
 Text.displayName = 'Text'
 
 interface LinkProps extends HTMLAttributes<HTMLAnchorElement> {
-  href: string
-  underline?: boolean
-  external?: boolean
+	href: string
+	underline?: boolean
+	external?: boolean
 }
 
 const Link = forwardRef<HTMLAnchorElement, LinkProps>(
-  ({ className, href, underline = false, external = false, ...props }, ref) => {
-    return (
-      <a
-        className={cn(
-          'text-primary text-light transition-colors hover:text-muted',
-          underline && 'link-underline',
-          className
-        )}
-        href={href}
-        target={external ? '_blank' : undefined}
-        rel={external ? 'noopener noreferrer' : undefined}
-        ref={ref}
-        {...props}
-      />
-    )
-  }
+	({ className, href, underline = false, external = false, ...props }, ref) => {
+		return (
+			<a
+				className={cn(
+					'text-primary text-light transition-colors hover:text-muted',
+					underline && 'link-underline',
+					className,
+				)}
+				href={href}
+				target={external ? '_blank' : undefined}
+				rel={external ? 'noopener noreferrer' : undefined}
+				ref={ref}
+				{...props}
+			/>
+		)
+	},
 )
 
 Link.displayName = 'Link'

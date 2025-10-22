@@ -9,9 +9,11 @@
     "build": "turbo run build",
     "start": "turbo run start",
     "see": "pm2 logs claude-bridge --lines 1000",
-    "restart": "pm2 restart claude-bridge"
+    "restart": "pm2 restart claude-bridge",
+    "format": "biome format apps/web/app apps/web/components apps/web/lib --write"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.2.7",
     "turbo": "^2.0.0"
   }
 }
