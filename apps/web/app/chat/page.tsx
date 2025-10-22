@@ -192,33 +192,28 @@ export default function ChatPage() {
 
       {/* Input */}
       <form onSubmit={sendMessage} className="p-4 border-t">
-        <div className="flex gap-2 mb-2">
-          <input
-            type="text"
+        <div className="relative">
+          <textarea
             value={msg}
             onChange={e => setMsg(e.target.value)}
-            placeholder="Message Claude..."
-            className="flex-1 px-4 py-2 border rounded-lg"
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                sendMessage(e)
+              }
+            }}
+            placeholder="Message Claude... (Enter to send, Shift+Enter for new line)"
+            className="w-full resize-none border-0 bg-transparent text-none"
+            style={{ minHeight: '120px' }}
             disabled={busy}
           />
           <button
             type="submit"
             disabled={busy || !msg.trim()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            className="absolute bottom-4 right-4 btn btn-primary"
           >
-            Send
+            {busy ? 'Sending...' : 'Send'}
           </button>
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="flex items-center gap-2 text-sm text-gray-600">
-            <input
-              type="checkbox"
-              checked={useStreaming}
-              onChange={e => setUseStreaming(e.target.checked)}
-              className="rounded"
-            />
-            Stream responses
-          </label>
         </div>
       </form>
     </div>

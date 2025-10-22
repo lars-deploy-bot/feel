@@ -33,12 +33,12 @@
   --text-xl: 18px;
 
   /* Spacing */
-  --space-xs: 5px;
-  --space-sm: 10px;
-  --space-md: 20px;
-  --space-lg: 40px;
-  --space-xl: 60px;
-  --space-2xl: 80px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 24px;
+  --space-lg: 48px;
+  --space-xl: 72px;
+  --space-2xl: 96px;
 
   /* Grid */
   --grid-gap: 40px;
@@ -62,11 +62,11 @@ body {
   font-family: var(--font-primary);
   background-color: var(--color-background);
   color: var(--color-primary);
-  font-weight: var(--font-weight-ultra);
+  font-weight: var(--font-weight-light);
   font-size: var(--text-base);
-  line-height: 1.2;
+  line-height: 1.4;
   text-transform: uppercase;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.02em;
 }
 
 /* Typography Classes */
@@ -285,13 +285,15 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
-  padding: var(--space-md);
-  margin-bottom: var(--space-md);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-lg);
+  line-height: 1.5;
 }
 
 .message-assistant {
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
+  max-width: 85%;
 }
 
 .message-user {
@@ -302,35 +304,46 @@ body {
 }
 
 .message-system {
-  background-color: transparent;
-  border: 1px solid var(--color-subtle);
-  font-size: var(--text-xs);
-  color: var(--color-subtle);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+  max-width: 90%;
+  margin: 0 auto;
 }
 
 /* Tool Components */
 .tool-call {
-  background-color: var(--color-surface);
+  background-color: var(--color-background);
   border: 1px solid var(--color-border);
-  padding: var(--space-sm);
-  margin-top: var(--space-sm);
+  padding: var(--space-md);
+  margin-top: var(--space-md);
   font-size: var(--text-sm);
 }
 
 .tool-header {
   display: flex;
   align-items: center;
-  gap: var(--space-xs);
-  font-weight: var(--font-weight-light);
-  color: var(--color-muted);
+  gap: var(--space-sm);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-primary);
   cursor: pointer;
+  padding: var(--space-xs);
+  border: none;
+  background: none;
+  text-transform: uppercase;
+  font-size: var(--text-sm);
 }
 
 .tool-content {
-  margin-top: var(--space-sm);
-  font-size: var(--text-xs);
+  margin-top: var(--space-md);
+  font-size: var(--text-sm);
   color: var(--color-muted);
   white-space: pre-wrap;
+  padding: var(--space-md);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  line-height: 1.5;
 }
 
 /* Responsive Design */
@@ -356,6 +369,199 @@ body {
   .message-user {
     max-width: 90%;
   }
+}
+
+/* Input & Form Styling */
+input[type="text"],
+input[type="password"],
+textarea {
+  font-family: var(--font-primary);
+  font-weight: var(--font-weight-light);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  padding: var(--space-md);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-background);
+  color: var(--color-primary);
+  text-transform: none;
+  transition: all var(--transition-base);
+  min-height: 40px;
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  background-color: var(--color-surface);
+}
+
+input[type="text"]::placeholder,
+input[type="password"]::placeholder,
+textarea::placeholder {
+  color: var(--color-muted);
+  font-weight: var(--font-weight-ultra);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* Form Layout */
+form {
+  padding: var(--space-md);
+  border-top: 1px solid var(--color-border);
+  background-color: var(--color-background);
+}
+
+/* Textarea Input Area */
+.relative {
+  position: relative;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-background);
+  transition: border-color var(--transition-base);
+}
+
+.relative:focus-within {
+  border-color: var(--color-primary);
+  background-color: var(--color-surface);
+}
+
+.relative textarea {
+  width: 100%;
+  padding: var(--space-lg);
+  padding-right: calc(var(--space-lg) * 4);
+  font-family: var(--font-primary);
+  font-weight: var(--font-weight-light);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  color: var(--color-primary);
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  text-transform: none;
+}
+
+.relative textarea::placeholder {
+  color: var(--color-muted);
+  font-weight: var(--font-weight-ultra);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-size: var(--text-sm);
+}
+
+.flex.gap-2 {
+  gap: var(--space-md);
+}
+
+.flex.gap-2.mb-2 {
+  margin-bottom: var(--space-md);
+}
+
+/* Enhanced Button Styling */
+button[type="submit"],
+.btn-primary {
+  font-family: var(--font-primary);
+  font-weight: var(--font-weight-light);
+  font-size: var(--text-base);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: var(--space-md) var(--space-lg);
+  min-height: 40px;
+  background-color: var(--color-primary);
+  color: var(--color-background);
+  border: 1px solid var(--color-primary);
+  transition: all var(--transition-base);
+  cursor: pointer;
+}
+
+button[type="submit"]:hover:not(:disabled),
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--color-background);
+  color: var(--color-primary);
+}
+
+button[type="submit"]:disabled,
+.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Header Styling */
+h1 {
+  font-family: var(--font-primary);
+  font-weight: var(--font-weight-light);
+  font-size: var(--text-base);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin: 0;
+  padding: 0;
+}
+
+/* Chat Container */
+.h-screen.flex.flex-col.max-w-4xl.mx-auto {
+  max-width: 1200px;
+}
+
+/* Message Area */
+.flex-1.overflow-y-auto.p-4.space-y-4 {
+  padding: var(--space-md);
+  gap: var(--space-md);
+}
+
+/* Header Bar */
+.flex.items-center.justify-between.p-4.border-b {
+  padding: var(--space-sm);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Change Workspace Button */
+button.px-3.py-1.text-sm,
+.px-3.py-1.text-sm.bg-gray-100 {
+  font-family: var(--font-primary);
+  font-weight: var(--font-weight-light);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: var(--space-sm) var(--space-md);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-primary);
+  transition: all var(--transition-base);
+}
+
+button.px-3.py-1.text-sm:hover,
+.px-3.py-1.text-sm.bg-gray-100:hover {
+  background-color: var(--color-primary);
+  color: var(--color-background);
+}
+
+/* Workspace Info */
+.px-4.py-2.bg-gray-50.border-b.text-sm {
+  padding: var(--space-sm) var(--space-md);
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-light);
+  text-transform: uppercase;
+}
+
+/* Checkbox and Labels */
+label {
+  font-family: var(--font-primary);
+  font-weight: var(--font-weight-light);
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--color-muted);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-primary);
 }
 
 /* Global button styles */

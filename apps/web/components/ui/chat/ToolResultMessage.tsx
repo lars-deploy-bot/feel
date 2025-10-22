@@ -1,14 +1,20 @@
 import { SDKUserMessage } from '@anthropic-ai/claude-agent-sdk'
+import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/messages'
 import { useState } from 'react'
 import { CheckCircle, XCircle, ChevronRight, ChevronDown } from 'lucide-react'
 
-// Based on actual SDK types - tool result content structure
-interface ToolResultContent {
+// Extended tool result type with our added tool_name
+interface ToolResultContent extends ContentBlockParam {
   type: 'tool_result'
   tool_use_id: string
-  content: string
+  content?: string
   is_error?: boolean
   tool_name?: string // Added by our parser
+}
+
+// Type guard to check if a content block is a tool result
+function isToolResult(content: ContentBlockParam): content is ToolResultContent {
+  return content.type === 'tool_result'
 }
 
 interface ToolResultMessageProps {
@@ -19,9 +25,12 @@ export function ToolResultMessage({ content }: ToolResultMessageProps) {
   return (
     <div className="flex justify-start">
       <div className="bg-gray-100 border-l-4 border-gray-400 px-4 py-2 rounded-r-lg max-w-2xl">
-        {content.message.content.map((result, index) => (
-          <ToolResult key={index} result={result} />
-        ))}
+        {content.message.content.map((result, index) => {
+          if (isToolResult(result)) {
+            return <ToolResult key={index} result={result} />
+          }
+          return null
+        })}
       </div>
     </div>
   )
@@ -32,6 +41,20 @@ function ToolResult({ result }: { result: ToolResultContent }) {
 
   // Use the tool name that was attached by the message parser
   const toolName = result.tool_name || "Tool Result"
+
+  // Parse the content to get structured tool output if it's JSON
+  const getDisplayContent = () => {
+    if (typeof result.content === 'string') {
+      try {
+        return JSON.parse(result.content)
+      } catch {
+        return result.content
+      }
+    }
+    return result.content
+  }
+
+  const displayContent = getDisplayContent()
 
   if (result.is_error) {
     return (
@@ -45,7 +68,9 @@ function ToolResult({ result }: { result: ToolResultContent }) {
           {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         </button>
         {isExpanded && (
-          <pre className="whitespace-pre-wrap text-xs mt-1">{result.content}</pre>
+          <pre className="whitespace-pre-wrap text-xs mt-1">
+            {typeof displayContent === 'string' ? displayContent : JSON.stringify(displayContent, null, 2)}
+          </pre>
         )}
       </div>
     )
@@ -63,7 +88,7 @@ function ToolResult({ result }: { result: ToolResultContent }) {
       </button>
       {isExpanded && (
         <pre className="whitespace-pre-wrap text-xs text-gray-700 bg-white p-2 rounded">
-          {result.content}
+          {typeof displayContent === 'string' ? displayContent : JSON.stringify(displayContent, null, 2)}
         </pre>
       )}
     </div>

@@ -103,7 +103,7 @@ export function parseStreamEvent(event: StreamEvent): UIMessage | null {
     if (content.type === 'user' && content.message?.content) {
       content.message.content.forEach((item: any) => {
         if (item.type === 'tool_result' && item.tool_use_id) {
-          item.tool_name = toolUseMap.get(item.tool_use_id) || 'Unknown Tool'
+          item.tool_name = toolUseMap.get(item.tool_use_id) || 'Tool'
         }
       })
     }

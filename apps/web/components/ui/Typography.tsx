@@ -12,7 +12,7 @@ const Heading = forwardRef<HTMLHeadingElement, HeadingProps>(
   ({
     className,
     level = 1,
-    weight = 'ultra',
+    weight = 'light',
     size = 'lg',
     transform = 'uppercase',
     ...props
@@ -48,7 +48,7 @@ const Text = forwardRef<HTMLParagraphElement, TextProps>(
   ({
     className,
     as = 'p',
-    weight = 'ultra',
+    weight = 'light',
     size = 'base',
     color = 'primary',
     transform = 'uppercase',
@@ -85,7 +85,7 @@ const Link = forwardRef<HTMLAnchorElement, LinkProps>(
     return (
       <a
         className={cn(
-          'text-primary text-ultra transition-colors hover:text-muted',
+          'text-primary text-light transition-colors hover:text-muted',
           underline && 'link-underline',
           className
         )}

@@ -1,4 +1,5 @@
 import { SDKAssistantMessage } from '@anthropic-ai/claude-agent-sdk'
+import type { ContentBlock } from '@anthropic-ai/sdk/resources/messages'
 import { useState } from 'react'
 import { Settings, ChevronRight, ChevronDown } from 'lucide-react'
 import { Text } from '../Typography'
@@ -19,10 +20,10 @@ export function AssistantMessage({ content }: AssistantMessageProps) {
   )
 }
 
-function ToolUseItem({ item }: { item: any }) {
+function ToolUseItem({ item }: { item: ContentBlock }) {
   const [isExpanded, setIsExpanded] = useState(false)
 
-  if (item.type === 'text' && item.text) {
+  if (item.type === 'text') {
     return (
       <Text
         as="div"
@@ -35,7 +36,7 @@ function ToolUseItem({ item }: { item: any }) {
   }
 
   if (item.type === 'tool_use') {
-    const hasInput = item.input && Object.keys(item.input).length > 0
+    const hasInput = item.input && typeof item.input === 'object' && Object.keys(item.input).length > 0
 
     return (
       <div className="tool-call">
