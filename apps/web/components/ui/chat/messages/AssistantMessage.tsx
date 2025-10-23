@@ -3,6 +3,8 @@ import { useState } from "react"
 import { ToolInputRouter } from "@/components/ui/chat/tools/ToolInputRouter"
 import type { ContentItem } from "@/types/guards/content"
 import { isTextBlock, isToolUseBlock } from "@/types/guards/content"
+import { MarkdownDisplay } from "@/components/ui/chat/format/MarkdownDisplay"
+import { hasMarkdown } from "@/lib/utils/markdown-utils"
 
 interface AssistantMessageProps {
   content: SDKAssistantMessage
@@ -22,7 +24,14 @@ function ToolUseItem({ item }: { item: ContentItem }): React.ReactNode {
   const [isExpanded, setIsExpanded] = useState(false)
 
   if (isTextBlock(item)) {
-    return <div className="whitespace-pre-wrap text-black font-thin leading-relaxed">{item.text}</div>
+    const text = item.text;
+
+    // Use MarkdownDisplay if the text contains markdown, otherwise render plain text
+    if (hasMarkdown(text)) {
+      return <MarkdownDisplay content={text} />;
+    }
+
+    return <div className="whitespace-pre-wrap text-black font-thin leading-relaxed">{text}</div>;
   }
 
   if (isToolUseBlock(item)) {

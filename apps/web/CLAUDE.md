@@ -2,6 +2,10 @@
 
 Next.js web frontend for Claude Code agentic conversations with workspace-scoped tool execution and streaming SSE responses.
 
+# rules
+
+always use bun!
+
 ## Request → Response Pipeline
 
 **Client POST** → `/api/claude/stream` (message, conversationId, workspace?) → **Auth check** (session cookie) → **Workspace resolve** (terminal.* vs default) → **Conversation lock** (Set<convKey>) → **Resume lookup** (SessionStore.get) → **query()** async iter → **ReadableStream SSE** → **Client SSE parser** → **toolUseMap build** → **UIMessage[]** → **groupMessages()** → **MessageGroup[]** → **renderMessage() switch**

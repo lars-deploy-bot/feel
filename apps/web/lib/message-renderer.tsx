@@ -5,6 +5,8 @@ import { AssistantMessage } from "@/components/ui/chat/messages/AssistantMessage
 import { ToolResultMessage } from "@/components/ui/chat/messages/ToolResultMessage"
 import { ResultMessage } from "@/components/ui/chat/messages/ResultMessage"
 import { CompleteMessage } from "@/components/ui/chat/messages/CompleteMessage"
+import { MarkdownDisplay } from "@/components/ui/chat/format/MarkdownDisplay"
+import { hasMarkdown } from "@/lib/utils/markdown-utils"
 import {
   UIMessage,
   isSDKSystemMessage,
@@ -19,11 +21,16 @@ export function renderMessage(message: UIMessage): React.ReactNode {
 
   switch (componentType) {
     case "user":
+      const userContent = typeof message.content === 'string' ? message.content : JSON.stringify(message.content);
       return (
         <div className="flex justify-end mb-6">
           <div className="max-w-2xl">
             <div className="text-black/60 text-xs mb-2 text-right font-thin">you</div>
-            <div className="whitespace-pre-wrap text-black font-thin leading-relaxed">{message.content}</div>
+            {hasMarkdown(userContent) ? (
+              <MarkdownDisplay content={userContent} />
+            ) : (
+              <div className="whitespace-pre-wrap text-black font-thin leading-relaxed">{userContent}</div>
+            )}
           </div>
         </div>
       )
