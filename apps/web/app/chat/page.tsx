@@ -1,10 +1,10 @@
 "use client"
-import { useRouter } from "next/navigation"
-import { useEffect, useRef, useState } from "react"
 import { ThinkingGroup } from "@/components/ui/chat/ThinkingGroup"
 import { groupMessages } from "@/lib/message-grouper"
-import { parseStreamEvent, type StreamEvent, type UIMessage } from "@/lib/message-parser"
+import { type StreamEvent, type UIMessage, parseStreamEvent } from "@/lib/message-parser"
 import { renderMessage } from "@/lib/message-renderer"
+import { useRouter } from "next/navigation"
+import { useEffect, useRef, useState } from "react"
 
 export default function ChatPage() {
   const [msg, setMsg] = useState("")
@@ -268,13 +268,13 @@ export default function ChatPage() {
                   ))}
                 </div>
               )
-            } else {
-              return <ThinkingGroup key={`group-${index}`} messages={group.messages} isComplete={group.isComplete} />
             }
+            return <ThinkingGroup key={`group-${index}`} messages={group.messages} isComplete={group.isComplete} />
           })}
-          {busy && messages.length > 0 && !messages[messages.length - 1]?.isStreaming && (
-            <div className="py-2 mb-4 text-sm text-gray-600">
-              <div className="normal-case tracking-normal">Thinking...</div>
+          {/* Show thinking indicator only when busy but no assistant response has started yet */}
+          {busy && messages.length > 0 && messages[messages.length - 1]?.type === "user" && (
+            <div className="mb-1">
+              <div className="text-[10px] font-thin text-black/30 animate-pulse">thinking</div>
             </div>
           )}
           <div ref={messagesEndRef} />
