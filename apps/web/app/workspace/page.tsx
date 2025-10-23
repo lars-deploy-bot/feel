@@ -1,22 +1,26 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/Button'
 
 export default function WorkspacePage() {
 	const [workspace, setWorkspace] = useState('webalive/sites/demo.goalive.nl')
 	const [verifying, setVerifying] = useState(false)
 	const [verifyResult, setVerifyResult] = useState<{ verified: boolean; message: string; error?: string } | null>(null)
+	const [isTerminal, setIsTerminal] = useState(false)
+	const [mounted, setMounted] = useState(false)
 	const router = useRouter()
 
-	// Check if we're on terminal hostname
-	const isTerminal = typeof window !== 'undefined' && window.location.hostname.startsWith('terminal.')
-
 	useEffect(() => {
+		setMounted(true)
+		const terminalMode = window.location.hostname.startsWith('terminal.')
+		setIsTerminal(terminalMode)
+
 		// If not terminal mode, redirect to chat
-		if (typeof window !== 'undefined' && !isTerminal) {
+		if (!terminalMode) {
 			router.push('/chat')
 		}
-	}, [isTerminal, router])
+	}, [router])
 
 	async function verifyWorkspace() {
 		setVerifying(true)
@@ -60,93 +64,78 @@ export default function WorkspacePage() {
 		router.push('/chat')
 	}
 
-	if (!isTerminal) {
+	if (!mounted || !isTerminal) {
 		return (
-			<div className="max-w-2xl mx-auto my-20 p-4 text-center">
-				<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-				<p className="mt-4 text-gray-600">Redirecting...</p>
-			</div>
+			<main className="min-h-screen bg-white flex items-center justify-center">
+				<div className="w-80 text-center">
+					<div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+					<p className="text-black/60 text-sm font-thin">{!mounted ? 'loading' : 'redirecting'}</p>
+				</div>
+			</main>
 		)
 	}
 
 	return (
-		<main className="max-w-2xl mx-auto my-10 p-4">
-			<h1 className="text-3xl font-bold mb-6">Workspace Setup - Terminal Mode</h1>
+		<main className="min-h-screen bg-white flex items-center justify-center">
+			<div className="w-96">
+				<h1 className="text-6xl font-thin mb-16 text-black">
+					◯
+				</h1>
 
-			<div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-				<h2 className="font-semibold text-blue-800 mb-2">Terminal Mode Active</h2>
-				<p className="text-blue-700 text-sm">
-					You're using terminal mode which allows you to specify a custom workspace directory. Please verify your
-					workspace before proceeding to chat.
-				</p>
-			</div>
+				<p className="text-black/60 text-sm mb-12 font-thin">workspace setup</p>
 
-			<div className="space-y-6">
-				<div>
-					<label htmlFor="workspace" className="block text-sm font-medium text-gray-700 mb-2">
-						Workspace Directory (must start with webalive/sites/)
-					</label>
-					<div className="flex gap-2">
-						<input
-							id="workspace"
-							type="text"
-							value={workspace}
-							onChange={(e) => {
-								setWorkspace(e.target.value)
-								setVerifyResult(null) // Clear verification when workspace changes
-							}}
-							placeholder="webalive/sites/demo.goalive.nl"
-							className="flex-1 px-4 py-2 border border-gray-300 rounded font-mono"
-							required
-						/>
-						<button
-							type="button"
-							onClick={verifyWorkspace}
-							disabled={verifying || !workspace.trim()}
-							className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 whitespace-nowrap"
-						>
-							{verifying ? 'Verifying...' : 'Verify'}
-						</button>
+				<div className="space-y-8">
+					<div>
+						<p className="text-black/40 text-xs mb-4 font-thin">directory path</p>
+						<div className="flex gap-3">
+							<input
+								id="workspace"
+								type="text"
+								value={workspace}
+								onChange={(e) => {
+									setWorkspace(e.target.value)
+									setVerifyResult(null)
+								}}
+								placeholder="webalive/sites/demo.goalive.nl"
+								className="flex-1 bg-transparent border-0 border-b border-black/20 text-black placeholder-black/40 focus:outline-none focus:border-black pb-3 text-sm font-thin font-mono"
+							/>
+							<Button
+								onClick={verifyWorkspace}
+								disabled={verifying || !workspace.trim()}
+								loading={verifying}
+								variant="ghost"
+								className="!w-auto !px-6 !py-2 !text-xs !font-thin"
+							>
+								{verifying ? 'verifying' : 'verify'}
+							</Button>
+						</div>
+
+						{verifyResult && (
+							<div className="mt-6">
+								<p className={`text-sm font-thin ${verifyResult.verified ? 'text-black' : 'text-black/60'}`}>
+									{verifyResult.verified ? 'verified' : 'failed'}
+								</p>
+								{verifyResult.error && (
+									<p className="text-black/40 text-xs mt-1 font-thin">{verifyResult.error}</p>
+								)}
+
+								{verifyResult.verified && (
+									<Button
+										onClick={continueToChat}
+										className="!mt-6 !font-thin !text-sm"
+										fullWidth
+									>
+										continue
+									</Button>
+								)}
+							</div>
+						)}
 					</div>
 
-					{verifyResult && (
-						<div
-							className={`mt-3 p-4 rounded text-sm ${
-								verifyResult.verified
-									? 'bg-green-50 text-green-800 border border-green-200'
-									: 'bg-red-50 text-red-800 border border-red-200'
-							}`}
-						>
-							<div className="flex items-center gap-2 mb-2">
-								<span>{verifyResult.verified ? '✅' : '❌'}</span>
-								<span className="font-medium">{verifyResult.message}</span>
-							</div>
-							{verifyResult.error && <div className="text-xs opacity-75">Error: {verifyResult.error}</div>}
-
-							{verifyResult.verified && (
-								<div className="mt-4 pt-3 border-t border-green-300">
-									<button
-										onClick={continueToChat}
-										className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-medium"
-									>
-										Continue to Chat →
-									</button>
-								</div>
-							)}
-						</div>
-					)}
-				</div>
-
-				<div className="text-sm text-gray-600 space-y-2">
-					<p>
-						<strong>What happens next?</strong>
-					</p>
-					<ul className="list-disc list-inside space-y-1 ml-4">
-						<li>Verification checks if the directory exists and is accessible</li>
-						<li>Once verified, you'll proceed to the chat interface</li>
-						<li>Claude will work within your specified workspace directory</li>
-						<li>All file operations will be restricted to this workspace</li>
-					</ul>
+					<div className="text-black/40 text-xs space-y-3 font-thin">
+						<p>verification checks directory access</p>
+						<p>claude operates within workspace bounds</p>
+					</div>
 				</div>
 			</div>
 		</main>

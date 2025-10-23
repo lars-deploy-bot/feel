@@ -18,12 +18,12 @@ export function ToolButton({
 	return (
 		<button
 			onClick={onClick}
-			className={`text-sm font-medium normal-case tracking-normal hover:text-black transition-colors ${
-				variant === 'error' ? 'text-red-600' : 'text-gray-600'
+			className={`text-xs font-thin hover:text-black/60 transition-colors ${
+				variant === 'error' ? 'text-red-600' : 'text-black/40'
 			}`}
 		>
 			{children}
-			{hasContent && <span className="ml-1 text-gray-500">{isExpanded ? '−' : '+'}</span>}
+			{hasContent && <span className="ml-1">{isExpanded ? '−' : '+'}</span>}
 		</button>
 	)
 }

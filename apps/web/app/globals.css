@@ -50,12 +50,19 @@
 }
 
 /* Base Typography */
+html, body {
+	height: 100%;
+	overflow-x: hidden;
+}
+
 body {
 	font-family: "Diatype Variable", "Inter", Arial, sans-serif;
 	font-weight: 200;
 	font-size: 14px;
 	line-height: 1.4;
 	letter-spacing: 0.02em;
+	margin: 0;
+	padding: 0;
 }
 
 .font-diatype-mono {

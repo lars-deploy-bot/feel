@@ -123,6 +123,8 @@ export function createSSEResponse(stream: ReadableStream): Response {
 			Connection: 'keep-alive',
 			'Access-Control-Allow-Origin': '*',
 			'Access-Control-Allow-Headers': 'Content-Type',
+			'Access-Control-Allow-Credentials': 'true',
+			'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 		},
 	})
 }

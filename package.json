@@ -5,12 +5,15 @@
   "workspaces": ["apps/*"],
   "scripts": {
     "web": "cd apps/web && bun run dev",
+    "widget": "cd apps/widget-server && ./build.sh && go run main.go",
+    "update-cors": "./scripts/update-cors-domains.sh",
     "dev": "turbo run dev",
     "build": "turbo run build",
     "start": "turbo run start",
     "see": "pm2 logs claude-bridge --lines 1000",
     "restart": "pm2 restart claude-bridge",
-    "format": "biome format apps/web/app apps/web/components apps/web/lib --write"
+    "format": "biome format apps/web/app apps/web/components apps/web/lib --write",
+    "push": "GIT_SSH_COMMAND='ssh -i ~/.ssh/alive_brug_deploy' git push"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.7",

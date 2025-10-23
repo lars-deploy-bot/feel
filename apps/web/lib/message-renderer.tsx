@@ -28,9 +28,10 @@ export function renderMessage(message: UIMessage): React.ReactNode {
 	switch (componentType) {
 		case 'user':
 			return (
-				<div className="flex justify-end">
-					<div className="bg-blue-600 text-white px-4 py-2 rounded-lg max-w-2xl">
-						<div className="whitespace-pre-wrap">{message.content}</div>
+				<div className="flex justify-end mb-6">
+					<div className="max-w-2xl">
+						<div className="text-black/60 text-xs mb-2 text-right font-thin">you</div>
+						<div className="whitespace-pre-wrap text-black font-thin leading-relaxed">{message.content}</div>
 					</div>
 				</div>
 			)

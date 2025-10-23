@@ -2,6 +2,7 @@ import type { SDKUserMessage } from '@anthropic-ai/claude-agent-sdk'
 import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/messages'
 import { CheckCircle, ChevronDown, ChevronRight, XCircle } from 'lucide-react'
 import { useState } from 'react'
+import { ToolOutputRouter } from './tools/ToolOutputRouter'
 
 // Extended tool result type with our added tool_name
 interface ToolResultContent extends ContentBlockParam {
@@ -23,7 +24,7 @@ interface ToolResultMessageProps {
 
 export function ToolResultMessage({ content }: ToolResultMessageProps) {
 	return (
-		<div className="py-2 mb-4">
+		<div className="mb-6">
 			{content.message.content.map((result, index) => {
 				if (isToolResult(result)) {
 					return <ToolResult key={index} result={result} />
@@ -40,6 +41,19 @@ function ToolResult({ result }: { result: ToolResultContent }) {
 	// Use the tool name that was attached by the message parser
 	const toolName = result.tool_name || 'Tool Result'
 
+	const getActionLabel = (toolName: string) => {
+		switch (toolName.toLowerCase()) {
+			case 'read': return 'reading'
+			case 'edit': return 'editing'
+			case 'write': return 'writing'
+			case 'grep': return 'searching'
+			case 'glob': return 'finding'
+			case 'bash': return 'running'
+			case 'task': return 'delegating'
+			default: return toolName.toLowerCase()
+		}
+	}
+
 	// Parse the content to get structured tool output if it's JSON
 	const getDisplayContent = () => {
 		if (typeof result.content === 'string') {
@@ -54,23 +68,60 @@ function ToolResult({ result }: { result: ToolResultContent }) {
 
 	const displayContent = getDisplayContent()
 
+	// Format tool output preview (collapsed state)
+	const formatToolOutputPreview = (toolName: string, content: any): string => {
+		const tool = toolName.toLowerCase()
+
+		try {
+			switch (tool) {
+				case 'read':
+					if (content.total_lines) return `read ${content.lines_returned || content.total_lines} lines`
+					if (content.file_size) return `read image`
+					if (content.total_pages) return `read pdf`
+					if (content.cells) return `read notebook`
+					break
+				case 'write':
+					if (content.bytes_written) return `wrote file`
+					break
+				case 'edit':
+					if (content.replacements !== undefined) return `made ${content.replacements} changes`
+					break
+				case 'grep':
+					if (content.count !== undefined) return `found ${content.count} files`
+					if (content.total_matches !== undefined) return `found ${content.total_matches} matches`
+					if (content.total !== undefined) return `found ${content.total} matches`
+					break
+				case 'glob':
+					if (content.count !== undefined) return `found ${content.count} files`
+					break
+				case 'bash':
+					if (content.exitCode !== undefined) return content.exitCode === 0 ? 'completed' : `failed (${content.exitCode})`
+					break
+				case 'task':
+					return 'completed'
+			}
+		} catch (e) {
+			// Fall through
+		}
+
+		return toolName.toLowerCase()
+	}
+
 	return (
-		<div className="my-1">
+		<div className="mb-2">
 			<button
 				onClick={() => setIsExpanded(!isExpanded)}
-				className={`text-sm font-medium normal-case tracking-normal hover:text-black transition-colors ${
-					result.is_error ? 'text-red-600' : 'text-gray-600'
+				className={`text-xs font-thin hover:text-black/60 transition-colors ${
+					result.is_error ? 'text-red-600' : 'text-black/40'
 				}`}
 			>
-				{toolName}
+				{formatToolOutputPreview(toolName, displayContent)}
 				{result.is_error && ' error'}
-				<span className="ml-1 text-gray-500">{isExpanded ? '−' : '+'}</span>
+				<span className="ml-1">{isExpanded ? '−' : '+'}</span>
 			</button>
 			{isExpanded && (
 				<div className="mt-1 max-w-full overflow-hidden">
-					<pre className="text-xs text-gray-500 font-mono leading-tight overflow-auto max-h-80 p-2 bg-gray-50 border border-gray-200">
-						{typeof displayContent === 'string' ? displayContent : JSON.stringify(displayContent, null, 2)}
-					</pre>
+					<ToolOutputRouter toolName={toolName} content={displayContent} />
 				</div>
 			)}
 		</div>

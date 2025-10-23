@@ -3,6 +3,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { StreamEvent, UIMessage, parseStreamEvent } from '@/lib/message-parser'
 import { renderMessage } from '@/lib/message-renderer'
+import { groupMessages } from '@/lib/message-grouper'
+import { ThinkingGroup } from '@/components/ui/chat/ThinkingGroup'
 
 export default function ChatPage() {
 	const [msg, setMsg] = useState('')
@@ -11,10 +13,12 @@ export default function ChatPage() {
 	const [busy, setBusy] = useState(false)
 	const [useStreaming, setUseStreaming] = useState(true)
 	const [isTerminal, setIsTerminal] = useState(false)
+	const [mounted, setMounted] = useState(false)
 	const messagesEndRef = useRef<HTMLDivElement>(null)
 	const router = useRouter()
 
 	useEffect(() => {
+		setMounted(true)
 		setIsTerminal(window.location.hostname.startsWith('terminal.'))
 	}, [])
 
@@ -31,7 +35,16 @@ export default function ChatPage() {
 	}, [isTerminal, router])
 
 	useEffect(() => {
-		messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+		// Only auto-scroll if user is already near the bottom
+		const messagesContainer = messagesEndRef.current?.parentElement
+		if (messagesContainer) {
+			const { scrollTop, scrollHeight, clientHeight } = messagesContainer
+			const isNearBottom = scrollHeight - scrollTop - clientHeight < 100
+
+			if (isNearBottom) {
+				messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+			}
+		}
 	}, [messages])
 
 	async function sendMessage(e: React.FormEvent) {
@@ -150,29 +163,54 @@ export default function ChatPage() {
 	}
 
 	return (
-		<div className="h-screen flex flex-col max-w-4xl mx-auto">
+		<div className="h-[100dvh] flex flex-col max-w-4xl mx-auto overflow-hidden">
+			<div className="flex-1 min-h-0 flex flex-col">
 			{/* Header */}
-			<div className="flex items-center justify-between p-4 border-b">
-				<h1 className="text-xl font-bold">Claude{isTerminal && ' - Terminal'}</h1>
-				{isTerminal && (
-					<button onClick={changeWorkspace} className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded">
-						Change Workspace
+			<div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-black/10">
+				<h1 className="text-lg font-thin text-black">
+					{mounted && isTerminal ? 'terminal' : '•'}
+				</h1>
+				{mounted && isTerminal && (
+					<button
+						onClick={changeWorkspace}
+						className="inline-flex items-center justify-center px-3 py-2 text-xs font-thin text-black border border-black/20 hover:bg-black hover:text-white transition-colors"
+						type="button"
+					>
+						change
 					</button>
 				)}
 			</div>
 
-			{isTerminal && workspace && (
-				<div className="px-4 py-2 bg-gray-50 border-b text-sm">
-					<span className="font-medium">Workspace:</span>
-					<span className="ml-2 font-diatype-mono">{workspace}</span>
+			{mounted && isTerminal && workspace && (
+				<div className="flex-shrink-0 px-6 py-3 border-b border-black/5 bg-black/[0.02]">
+					<div className="flex items-center text-xs">
+						<span className="text-black/40 font-thin">workspace</span>
+						<span className="ml-3 font-diatype-mono text-black/80 font-thin">{workspace}</span>
+					</div>
 				</div>
 			)}
 
 			{/* Messages */}
-			<div className="flex-1 overflow-y-auto p-4 space-y-4">
-				{messages.map((message) => (
-					<div key={message.id}>{renderMessage(message)}</div>
-				))}
+			<div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
+				{groupMessages(messages).map((group, index) => {
+					if (group.type === 'text') {
+						return (
+							<div key={`group-${index}`}>
+								{group.messages.map((message) => (
+									<div key={message.id}>{renderMessage(message)}</div>
+								))}
+							</div>
+						)
+					} else {
+						return (
+							<ThinkingGroup
+								key={`group-${index}`}
+								messages={group.messages}
+								isComplete={group.isComplete}
+							/>
+						)
+					}
+				})}
 				{busy && messages.length > 0 && !messages[messages.length - 1]?.isStreaming && (
 					<div className="py-2 mb-4 text-sm text-gray-600">
 						<div className="normal-case tracking-normal">Thinking...</div>
@@ -182,8 +220,8 @@ export default function ChatPage() {
 			</div>
 
 			{/* Input */}
-			<form onSubmit={sendMessage} className="p-4 border-t">
-				<div className="relative">
+			<form onSubmit={sendMessage} className="flex-shrink-0 p-4 safe-area-inset-bottom">
+				<div className="relative border border-black/20 focus-within:border-black/40 transition-colors">
 					<textarea
 						value={msg}
 						onChange={(e) => setMsg(e.target.value)}
@@ -194,30 +232,20 @@ export default function ChatPage() {
 							}
 						}}
 						placeholder="Message"
-						className="w-full resize-none border-0 bg-transparent text-none focus:outline-none"
-						style={{ minHeight: '120px' }}
+						className="w-full resize-none border-0 bg-transparent text-base focus:outline-none p-3"
+						style={{ minHeight: '60px' }}
 						disabled={busy}
 					/>
 					<button
 						type="submit"
 						disabled={busy || !msg.trim()}
-						className="absolute bottom-3 right-3 focus:outline-none"
-						style={{
-							padding: '6px 12px',
-							fontSize: '11px',
-							fontFamily: 'var(--font-primary)',
-							fontWeight: 'var(--font-weight-light)',
-							textTransform: 'uppercase',
-							backgroundColor: 'var(--color-primary)',
-							color: 'var(--color-background)',
-							border: '1px solid var(--color-primary)',
-							transition: 'all var(--transition-base)',
-						}}
+						className="absolute bottom-3 right-3 px-3 py-1 text-xs font-thin bg-black text-white hover:bg-gray-800 transition-colors disabled:opacity-50 focus:outline-none"
 					>
-						{busy ? 'Sending...' : 'Send'}
+						{busy ? 'sending' : 'send'}
 					</button>
 				</div>
 			</form>
+			</div>
 		</div>
 	)
 }

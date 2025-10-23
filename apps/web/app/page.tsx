@@ -1,57 +1,88 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/Button'
 
 export default function LoginPage() {
 	const [authed, setAuthed] = useState(false)
 	const [pass, setPass] = useState('')
+	const [isTerminal, setIsTerminal] = useState(false)
+	const [mounted, setMounted] = useState(false)
+	const [loading, setLoading] = useState(false)
+	const [error, setError] = useState('')
 	const router = useRouter()
 
-	// Check if we're on terminal hostname
-	const isTerminal = typeof window !== 'undefined' && window.location.hostname.startsWith('terminal.')
+	useEffect(() => {
+		setMounted(true)
+		setIsTerminal(window.location.hostname.startsWith('terminal.'))
+	}, [])
 
 	useEffect(() => {
 		// If already authenticated, redirect to appropriate page
-		if (authed) {
+		if (authed && mounted) {
 			if (isTerminal) {
 				router.push('/workspace')
 			} else {
 				router.push('/chat')
 			}
 		}
-	}, [authed, isTerminal, router])
+	}, [authed, isTerminal, mounted, router])
 
 	async function login(e: React.FormEvent) {
 		e.preventDefault()
-		const r = await fetch('/api/login', { method: 'POST', body: JSON.stringify({ passcode: pass }) })
-		if (r.ok) setAuthed(true)
-		else alert('Login failed')
+		setLoading(true)
+		setError('')
+
+		try {
+			const r = await fetch('/api/login', { method: 'POST', body: JSON.stringify({ passcode: pass }) })
+			if (r.ok) {
+				setAuthed(true)
+			} else {
+				setError('Invalid passcode')
+			}
+		} catch {
+			setError('Connection failed')
+		} finally {
+			setLoading(false)
+		}
 	}
 
 	return (
-		<main className="max-w-2xl mx-auto my-10 p-4">
-			<h1 className="text-3xl font-bold mb-6">Login{isTerminal && ' - Terminal Mode'}</h1>
+		<main className="min-h-screen bg-black flex items-center justify-center">
+			<div className="w-80">
+				<h1 className="text-6xl font-thin mb-16 text-white">
+					•
+				</h1>
 
-			{isTerminal && (
-				<div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-					<h2 className="font-semibold text-blue-800 mb-2">Terminal Mode</h2>
-					<p className="text-blue-700 text-sm">You'll be able to specify a custom workspace directory after login.</p>
-				</div>
-			)}
+				{mounted && isTerminal && (
+					<p className="text-white/60 text-sm mb-12">terminal</p>
+				)}
 
-			<form onSubmit={login} className="space-y-4">
-				<input
-					type="password"
-					value={pass}
-					onChange={(e) => setPass(e.target.value)}
-					placeholder="Passcode"
-					className="w-full px-4 py-2 border border-gray-300 rounded"
-				/>
-				<button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-					Enter
-				</button>
-				<p className="text-sm text-gray-600 mt-4">If BRIDGE_PASSCODE is unset, any passcode works.</p>
-			</form>
+				<form onSubmit={login} className="space-y-8">
+					<input
+						type="password"
+						value={pass}
+						onChange={(e) => setPass(e.target.value)}
+						placeholder="passcode"
+						disabled={loading}
+						className="w-full bg-transparent border-0 border-b border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-white pb-3 text-lg font-thin"
+					/>
+
+					{error && (
+						<p className="text-white/60 text-sm">{error}</p>
+					)}
+
+					<Button
+						type="submit"
+						fullWidth
+						loading={loading}
+						disabled={!pass.trim()}
+						className="!bg-white !text-black hover:!bg-white/90 !border-0 !font-thin !text-lg !py-4"
+					>
+						enter
+					</Button>
+				</form>
+			</div>
 		</main>
 	)
 }

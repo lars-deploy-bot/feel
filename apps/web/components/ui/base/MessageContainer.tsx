@@ -6,5 +6,9 @@ interface MessageContainerProps {
 }
 
 export function MessageContainer({ children, className = '' }: MessageContainerProps) {
-	return <div className={`py-2 mb-4 ${className}`}>{children}</div>
+	return (
+		<div className={`mb-6 ${className}`}>
+			{children}
+		</div>
+	)
 }

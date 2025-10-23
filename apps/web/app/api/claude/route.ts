@@ -4,11 +4,13 @@ import path from 'node:path'
 import { z } from 'zod'
 import { query, type Options, type PermissionResult } from '@anthropic-ai/claude-agent-sdk'
 import { getWorkspace } from './workspaceRetriever'
+import { addCorsHeaders } from '@/lib/cors-utils'
 
 export const runtime = 'nodejs'
 
 export async function POST(req: Request) {
 	const requestId = Math.random().toString(36).substring(2, 8)
+	const origin = req.headers.get('origin')
 	console.log(`[Claude API ${requestId}] === REQUEST START ===`)
 
 	try {
@@ -17,7 +19,7 @@ export async function POST(req: Request) {
 
 		if (!jar.get('session')) {
 			console.log(`[Claude API ${requestId}] No session cookie found`)
-			return NextResponse.json(
+			const res = NextResponse.json(
 				{
 					ok: false,
 					error: 'no_session',
@@ -25,6 +27,8 @@ export async function POST(req: Request) {
 				},
 				{ status: 401 },
 			)
+			addCorsHeaders(res, origin)
+			return res
 		}
 		console.log(`[Claude API ${requestId}] Session cookie verified`)
 
@@ -160,7 +164,9 @@ export async function POST(req: Request) {
 
 			const response = { ok: true, host, cwd, result: queryResult, requestId }
 			console.log(`[Claude API ${requestId}] === REQUEST SUCCESS ===`)
-			return NextResponse.json(response)
+			const res = NextResponse.json(response)
+			addCorsHeaders(res, origin)
+			return res
 		} catch (error) {
 			console.error(`[Claude API ${requestId}] Query failed:`, error)
 			console.error(`[Claude API ${requestId}] Error stack:`, error instanceof Error ? error.stack : 'No stack trace')
@@ -175,11 +181,13 @@ export async function POST(req: Request) {
 			}
 
 			console.log(`[Claude API ${requestId}] === REQUEST ERROR ===`)
-			return NextResponse.json(errorResponse, { status: 500 })
+			const errorRes = NextResponse.json(errorResponse, { status: 500 })
+			addCorsHeaders(errorRes, origin)
+			return errorRes
 		}
 	} catch (outerError) {
 		console.error(`[Claude API ${requestId}] Outer catch - request processing failed:`, outerError)
-		return NextResponse.json(
+		const outerErrorRes = NextResponse.json(
 			{
 				ok: false,
 				error: 'request_processing_failed',
@@ -189,5 +197,14 @@ export async function POST(req: Request) {
 			},
 			{ status: 500 },
 		)
+		addCorsHeaders(outerErrorRes, origin)
+		return outerErrorRes
 	}
+}
+
+export async function OPTIONS(req: Request) {
+	const origin = req.headers.get('origin')
+	const res = new NextResponse(null, { status: 200 })
+	addCorsHeaders(res, origin)
+	return res
 }
