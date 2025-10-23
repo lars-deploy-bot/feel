@@ -1,6 +1,7 @@
 import { type Options, query } from "@anthropic-ai/claude-agent-sdk"
 import { extractSessionId, getMessageStreamData } from "@/lib/sdk-types"
 import type { SessionStore } from "@/lib/sessionStore"
+import { formatMessage } from "@/app/features/handlers/formatMessage"
 
 export interface StreamEvent {
   type: "start" | "message" | "session" | "complete" | "error"
@@ -88,15 +89,22 @@ export function createClaudeStream({
             }
           }
 
+          // Format/minimize message content if it's a result message
+          let processedMessage = m
+          if (m.type === "result") {
+            console.log(`[Stream ${requestId}] Formatting result message...`)
+            processedMessage = await formatMessage(m)
+          }
+
           // Stream every message to frontend
-          const messageData = getMessageStreamData(m)
+          const messageData = getMessageStreamData(processedMessage)
           sendEvent("message", {
             messageCount,
             ...messageData,
           })
 
-          if (m.type === "result") {
-            queryResult = m
+          if (processedMessage.type === "result") {
+            queryResult = processedMessage
             console.log(`[Stream ${requestId}] Got result message`)
           }
         }
