@@ -2,16 +2,16 @@ import { headers, cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import path from "node:path"
 import { type Options, type PermissionResult } from "@anthropic-ai/claude-agent-sdk"
-import { getWorkspace } from "@/app/features/claude/workspaceRetriever"
 import { getSystemPrompt } from "@/app/features/claude/systemPrompt"
 import { createClaudeStream, createSSEResponse } from "@/app/features/claude/streamHandler"
 import { requireSessionUser } from "@/lib/auth"
 import { SessionStoreMemory, sessionKey, tryLockConversation, unlockConversation } from "@/lib/sessionStore"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { resolveWorkspace } from "@/lib/workspace-utils"
-import { BodySchema, isParseResultError, isToolAllowed, isPasscodeValid } from "@/types/guards/api"
+import { BodySchema, isToolAllowed } from "@/types/guards/api"
 import { isPathWithinWorkspace } from "@/types/guards/workspace"
 import { hasSessionCookie } from "@/types/guards/auth"
+import { ErrorCodes } from "@/lib/error-codes"
 
 export const runtime = "nodejs"
 
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           ok: false,
-          error: "no_session",
+          error: ErrorCodes.NO_SESSION,
           message: "Authentication required - no session cookie found",
         },
         { status: 401 },
@@ -50,9 +50,9 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           ok: false,
-          error: "invalid_json",
+          error: ErrorCodes.INVALID_JSON,
           message: "Request body is not valid JSON",
-          details: jsonError instanceof Error ? jsonError.message : "Unknown JSON parse error",
+          details: { message: jsonError instanceof Error ? jsonError.message : "Unknown JSON parse error" },
         },
         { status: 400 },
       )
@@ -65,10 +65,10 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           ok: false,
-          error: "invalid_request",
+          error: ErrorCodes.INVALID_REQUEST,
           message:
             "Invalid request body. Required: message (string), conversationId (uuid). Optional: workspace (string)",
-          details: parseResult.error.issues,
+          details: { issues: parseResult.error.issues },
         },
         { status: 400 },
       )
@@ -105,7 +105,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           ok: false,
-          error: "conversation_busy",
+          error: ErrorCodes.CONVERSATION_BUSY,
           message: "Another request is already in progress for this conversation",
         },
         { status: 409 },
@@ -196,9 +196,9 @@ export async function POST(req: Request) {
     const errorRes = NextResponse.json(
       {
         ok: false,
-        error: "request_processing_failed",
+        error: ErrorCodes.REQUEST_PROCESSING_FAILED,
         message: "Failed to process streaming request",
-        details: outerError instanceof Error ? outerError.message : "Unknown error",
+        details: { message: outerError instanceof Error ? outerError.message : "Unknown error" },
         requestId,
       },
       { status: 500 },

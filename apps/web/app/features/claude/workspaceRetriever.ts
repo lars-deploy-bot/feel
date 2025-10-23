@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs"
 import path from "node:path"
 import { NextResponse } from "next/server"
+import { ErrorCodes } from "@/lib/error-codes"
 
 export interface WorkspaceRequest {
   host: string
@@ -50,7 +51,7 @@ function getTerminalWorkspace(body: any, requestId: string): WorkspaceResult {
       response: NextResponse.json(
         {
           ok: false,
-          error: "missing_workspace",
+          error: ErrorCodes.WORKSPACE_MISSING,
           message: "Terminal hostname requires workspace parameter in request body (string)",
         },
         { status: 400 },
@@ -66,7 +67,7 @@ function getTerminalWorkspace(body: any, requestId: string): WorkspaceResult {
       response: NextResponse.json(
         {
           ok: false,
-          error: "invalid_workspace",
+          error: ErrorCodes.WORKSPACE_INVALID,
           message: "Workspace must start with webalive/sites/",
         },
         { status: 400 },
@@ -83,7 +84,7 @@ function getTerminalWorkspace(body: any, requestId: string): WorkspaceResult {
       response: NextResponse.json(
         {
           ok: false,
-          error: "invalid_workspace",
+          error: ErrorCodes.WORKSPACE_INVALID,
           message: "Invalid workspace path detected",
         },
         { status: 400 },
@@ -101,8 +102,13 @@ function getTerminalWorkspace(body: any, requestId: string): WorkspaceResult {
       response: NextResponse.json(
         {
           ok: false,
-          error: "workspace_not_found",
+          error: ErrorCodes.WORKSPACE_NOT_FOUND,
           message: `Workspace directory not found: ${normalizedWorkspace}`,
+          details: {
+            workspace: normalizedWorkspace,
+            fullPath,
+            suggestion: `Create the workspace directory at: ${fullPath}`,
+          },
         },
         { status: 404 },
       ),
@@ -128,8 +134,14 @@ function getHostnameWorkspace(host: string, requestId: string): WorkspaceResult 
       response: NextResponse.json(
         {
           ok: false,
-          error: "workspace_not_found",
-          message: `Workspace not found for host: ${host}. Expected: ${workspace}`,
+          error: ErrorCodes.WORKSPACE_NOT_FOUND,
+          message: `Workspace directory not found for hostname '${host}'.`,
+          details: {
+            host,
+            expectedPath: workspace,
+            workspaceBase: base,
+            suggestion: `Create the workspace directory at: ${workspace}`,
+          },
         },
         { status: 404 },
       ),

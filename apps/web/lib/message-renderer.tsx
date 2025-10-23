@@ -4,6 +4,7 @@ import { SystemMessage } from "@/components/ui/chat/messages/SystemMessage"
 import { AssistantMessage } from "@/components/ui/chat/messages/AssistantMessage"
 import { ToolResultMessage } from "@/components/ui/chat/messages/ToolResultMessage"
 import { ResultMessage } from "@/components/ui/chat/messages/ResultMessage"
+import { ErrorResultMessage } from "@/components/ui/chat/messages/ErrorResultMessage"
 import { CompleteMessage } from "@/components/ui/chat/messages/CompleteMessage"
 import { MarkdownDisplay } from "@/components/ui/chat/format/MarkdownDisplay"
 import { hasMarkdown } from "@/lib/utils/markdown-utils"
@@ -13,10 +14,16 @@ import {
   isSDKAssistantMessage,
   isSDKUserMessage,
   isSDKResultMessage,
+  isErrorResultMessage,
   getMessageComponentType,
 } from "@/lib/message-parser"
 
 export function renderMessage(message: UIMessage): React.ReactNode {
+  // Check for error result messages first (before component type routing)
+  if (message.type === "sdk_message" && isErrorResultMessage(message.content)) {
+    return <ErrorResultMessage content={message.content} />
+  }
+
   const componentType = getMessageComponentType(message)
 
   switch (componentType) {

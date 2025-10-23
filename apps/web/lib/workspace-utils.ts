@@ -28,19 +28,12 @@ export function resolveWorkspace(
   const workspaceResult = getWorkspace({ host, body, requestId })
 
   if (!workspaceResult.success) {
-    const res = NextResponse.json(
-      {
-        ok: false,
-        error: "workspace_error",
-        message: "Failed to resolve workspace",
-        requestId,
-      },
-      { status: 400 },
-    )
+    // Pass through the original error response from workspaceRetriever
+    // which contains more detailed error information
     if (origin) {
-      addCorsHeaders(res, origin)
+      addCorsHeaders(workspaceResult.response, origin)
     }
-    return { success: false, response: res }
+    return { success: false, response: workspaceResult.response }
   }
 
   return { success: true, workspace: workspaceResult.workspace }

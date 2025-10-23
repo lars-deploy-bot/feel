@@ -128,8 +128,25 @@ export default function ChatPage() {
         body: JSON.stringify(requestBody),
       })
 
-      if (!response.ok || !response.body) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      if (!response.ok) {
+        // Try to read the JSON error response from backend
+        let errorData
+        try {
+          errorData = await response.json()
+        } catch {
+          errorData = null
+        }
+
+        // If we got structured error data, stringify it for the error message
+        if (errorData) {
+          throw new Error(JSON.stringify(errorData))
+        } else {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        }
+      }
+
+      if (!response.body) {
+        throw new Error("No response body received")
       }
 
       const reader = response.body.getReader()
@@ -258,7 +275,7 @@ export default function ChatPage() {
         )}
 
         {/* Messages */}
-        <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-2">
           {groupMessages(messages).map((group, index) => {
             if (group.type === "text") {
               return (

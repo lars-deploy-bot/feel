@@ -36,6 +36,6 @@ export async function POST(req: NextRequest) {
 export async function OPTIONS(req: NextRequest) {
   const origin = req.headers.get("origin") || req.headers.get("referer")?.split("/").slice(0, 3).join("/")
   const res = new NextResponse(null, { status: 200 })
-  addCorsHeaders(res, origin)
+  addCorsHeaders(res, origin ?? null)
   return res
 }

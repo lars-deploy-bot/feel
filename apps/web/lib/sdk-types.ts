@@ -15,6 +15,7 @@ export {
   isSDKAssistantMessage,
   isSDKUserMessage,
   isSDKResultMessage,
+  isErrorResultMessage,
   extractSessionId,
   getMessageStreamData,
 } from "@/types/guards/sdk"

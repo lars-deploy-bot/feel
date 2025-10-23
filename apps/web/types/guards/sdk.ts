@@ -25,6 +25,11 @@ export function isSDKResultMessage(msg: SDKMessage): msg is SDKResultMessage {
   return msg.type === "result" && "is_error" in msg && "duration_ms" in msg
 }
 
+// Type guard for error result messages (client-side errors without duration_ms)
+export function isErrorResultMessage(msg: any): msg is { type: "result"; is_error: true; result: string } {
+  return msg?.type === "result" && msg?.is_error === true && typeof msg?.result === "string"
+}
+
 // Helper to safely extract session ID from system init message
 export function extractSessionId(msg: SDKMessage): string | null {
   if (isSDKSystemMessage(msg) && msg.subtype === "init") {
