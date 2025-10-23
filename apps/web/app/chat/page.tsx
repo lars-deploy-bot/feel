@@ -312,14 +312,13 @@ export default function ChatPage() {
               placeholder="Message"
               className="w-full resize-none border-0 bg-transparent text-base focus:outline-none p-3"
               style={{ minHeight: "60px" }}
-              disabled={busy}
             />
             <button
               type="submit"
               disabled={busy || !msg.trim()}
-              className="absolute bottom-3 right-3 px-3 py-1 text-xs font-thin bg-black text-white hover:bg-gray-800 transition-colors disabled:opacity-50 focus:outline-none"
+              className="absolute top-3 right-3 bottom-3 w-12 text-xs font-thin bg-black text-white hover:bg-gray-800 transition-colors disabled:opacity-50 focus:outline-none flex items-center justify-center"
             >
-              {busy ? "sending" : "send"}
+              {busy ? "•••" : "→"}
             </button>
           </div>
         </form>
