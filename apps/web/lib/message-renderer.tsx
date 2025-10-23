@@ -21,7 +21,7 @@ export function renderMessage(message: UIMessage): React.ReactNode {
 
   switch (componentType) {
     case "user":
-      const userContent = typeof message.content === 'string' ? message.content : JSON.stringify(message.content);
+      const userContent = typeof message.content === "string" ? message.content : JSON.stringify(message.content)
       return (
         <div className="flex justify-end mb-6">
           <div className="max-w-2xl">

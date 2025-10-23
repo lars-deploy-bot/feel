@@ -1,55 +1,45 @@
-'use client';
+"use client"
 
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import type { Components } from 'react-markdown';
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
+import type { Components } from "react-markdown"
 
 interface MarkdownDisplayProps {
-  content: string;
-  className?: string;
+  content: string
+  className?: string
 }
 
 const components: Components = {
   // Code blocks - wrap in styled container
   pre: ({ children, node }) => {
-    const codeElement = node?.children?.[0];
-    let language: string | null = null;
+    const codeElement = node?.children?.[0]
+    let language: string | null = null
 
-    if (codeElement?.type === 'element' && codeElement.tagName === 'code') {
-      const className = (codeElement.properties?.className as string[])?.join(' ') || '';
-      const match = /language-(\w+)/.exec(className);
-      language = match?.[1] || null;
+    if (codeElement?.type === "element" && codeElement.tagName === "code") {
+      const className = (codeElement.properties?.className as string[])?.join(" ") || ""
+      const match = /language-(\w+)/.exec(className)
+      language = match?.[1] || null
     }
 
     return (
       <div className="my-3 rounded-md bg-black/5 border border-black/10 overflow-hidden">
         {language && (
-          <div className="px-3 py-1 text-[10px] text-black/40 border-b border-black/10 font-mono">
-            {language}
-          </div>
+          <div className="px-3 py-1 text-[10px] text-black/40 border-b border-black/10 font-mono">{language}</div>
         )}
         <pre className="p-3 overflow-x-auto">{children}</pre>
       </div>
-    );
+    )
   },
 
   // Code - inline vs block determined by 'inline' prop from react-markdown
-  code: (props) => {
-    const { children, inline } = props as { children: React.ReactNode; inline?: boolean };
+  code: props => {
+    const { children, inline } = props as { children: React.ReactNode; inline?: boolean }
 
     if (inline) {
-      return (
-        <code className="px-1.5 py-0.5 rounded bg-black/5 text-[13px] font-mono text-black/80">
-          {children}
-        </code>
-      );
+      return <code className="px-1.5 py-0.5 rounded bg-black/5 text-[13px] font-mono text-black/80">{children}</code>
     }
 
-    return (
-      <code className="text-[13px] font-mono text-black/80 leading-relaxed">
-        {children}
-      </code>
-    );
+    return <code className="text-[13px] font-mono text-black/80 leading-relaxed">{children}</code>
   },
 
   // Headings
@@ -67,19 +57,12 @@ const components: Components = {
 
   // Blockquotes
   blockquote: ({ children }) => (
-    <blockquote className="border-l-4 border-black/20 pl-4 my-2 italic text-black/70">
-      {children}
-    </blockquote>
+    <blockquote className="border-l-4 border-black/20 pl-4 my-2 italic text-black/70">{children}</blockquote>
   ),
 
   // Links
   a: ({ href, children }) => (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-blue-600 hover:text-blue-800 underline"
-    >
+    <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline">
       {children}
     </a>
   ),
@@ -88,15 +71,14 @@ const components: Components = {
   p: ({ children, node }) => {
     const hasBlockChild = node?.children?.some(
       (child: any) =>
-        child.type === 'element' &&
-        ['pre', 'div', 'blockquote', 'ul', 'ol', 'table'].includes(child.tagName)
-    );
+        child.type === "element" && ["pre", "div", "blockquote", "ul", "ol", "table"].includes(child.tagName),
+    )
 
     if (hasBlockChild) {
-      return <>{children}</>;
+      return <>{children}</>
     }
 
-    return <p className="mb-3">{children}</p>;
+    return <p className="mb-3">{children}</p>
   },
 
   // Emphasis
@@ -109,33 +91,27 @@ const components: Components = {
   // Tables (from remark-gfm)
   table: ({ children }) => (
     <div className="overflow-x-auto my-3">
-      <table className="min-w-full border-collapse border border-black/10">
-        {children}
-      </table>
+      <table className="min-w-full border-collapse border border-black/10">{children}</table>
     </div>
   ),
   thead: ({ children }) => <thead className="bg-black/5">{children}</thead>,
   tbody: ({ children }) => <tbody>{children}</tbody>,
   tr: ({ children }) => <tr className="border-b border-black/10">{children}</tr>,
   th: ({ children }) => (
-    <th className="px-3 py-2 text-left text-xs font-semibold border border-black/10">
-      {children}
-    </th>
+    <th className="px-3 py-2 text-left text-xs font-semibold border border-black/10">{children}</th>
   ),
-  td: ({ children }) => (
-    <td className="px-3 py-2 text-sm border border-black/10">{children}</td>
-  ),
-};
+  td: ({ children }) => <td className="px-3 py-2 text-sm border border-black/10">{children}</td>,
+}
 
 /**
  * MarkdownDisplay component - renders markdown text using react-markdown
  */
-export function MarkdownDisplay({ content, className = '' }: MarkdownDisplayProps) {
+export function MarkdownDisplay({ content, className = "" }: MarkdownDisplayProps) {
   return (
     <div className={`text-black font-thin leading-relaxed ${className}`}>
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
         {content}
       </ReactMarkdown>
     </div>
-  );
+  )
 }

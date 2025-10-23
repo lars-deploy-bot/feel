@@ -24,14 +24,14 @@ function ToolUseItem({ item }: { item: ContentItem }): React.ReactNode {
   const [isExpanded, setIsExpanded] = useState(false)
 
   if (isTextBlock(item)) {
-    const text = item.text;
+    const text = item.text
 
     // Use MarkdownDisplay if the text contains markdown, otherwise render plain text
     if (hasMarkdown(text)) {
-      return <MarkdownDisplay content={text} />;
+      return <MarkdownDisplay content={text} />
     }
 
-    return <div className="whitespace-pre-wrap text-black font-thin leading-relaxed">{text}</div>;
+    return <div className="whitespace-pre-wrap text-black font-thin leading-relaxed">{text}</div>
   }
 
   if (isToolUseBlock(item)) {

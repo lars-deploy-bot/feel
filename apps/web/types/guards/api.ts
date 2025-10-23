@@ -57,9 +57,7 @@ export function validateLoginRequest(body: unknown) {
 /**
  * Check if request body parsed successfully
  */
-export function isParseResultSuccess<T>(
-  result: z.ZodSafeParseResult<T>,
-): result is z.ZodSafeParseSuccess<T> {
+export function isParseResultSuccess<T>(result: z.ZodSafeParseResult<T>): result is z.ZodSafeParseSuccess<T> {
   return result.success
 }
 
