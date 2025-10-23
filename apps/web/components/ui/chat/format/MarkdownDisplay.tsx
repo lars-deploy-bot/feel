@@ -108,7 +108,7 @@ const components: Components = {
  */
 export function MarkdownDisplay({ content, className = "" }: MarkdownDisplayProps) {
   return (
-    <div className={`text-black font-thin leading-relaxed ${className}`}>
+    <div className={`text-black font-medium leading-relaxed ${className}`}>
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
         {content}
       </ReactMarkdown>

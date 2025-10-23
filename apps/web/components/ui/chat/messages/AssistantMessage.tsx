@@ -31,7 +31,7 @@ function ToolUseItem({ item }: { item: ContentItem }): React.ReactNode {
       return <MarkdownDisplay content={text} />
     }
 
-    return <div className="whitespace-pre-wrap text-black font-thin leading-relaxed">{text}</div>
+    return <div className="whitespace-pre-wrap text-black font-medium leading-relaxed">{text}</div>
   }
 
   if (isToolUseBlock(item)) {

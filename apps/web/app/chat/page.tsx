@@ -15,7 +15,10 @@ export default function ChatPage() {
   const [isTerminal, setIsTerminal] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [conversationId, setConversationId] = useState<string>(() => crypto.randomUUID())
+  const [shouldForceScroll, setShouldForceScroll] = useState(false)
+  const [userHasManuallyScrolled, setUserHasManuallyScrolled] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const isAutoScrolling = useRef(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -35,18 +38,51 @@ export default function ChatPage() {
     }
   }, [isTerminal, router])
 
+  // Track manual scrolling
   useEffect(() => {
-    // Only auto-scroll if user is already near the bottom
     const messagesContainer = messagesEndRef.current?.parentElement
-    if (messagesContainer) {
-      const { scrollTop, scrollHeight, clientHeight } = messagesContainer
-      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100
+    if (!messagesContainer) return
 
-      if (isNearBottom) {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    const handleScroll = () => {
+      if (!isAutoScrolling.current) {
+        setUserHasManuallyScrolled(true)
       }
     }
-  })
+
+    messagesContainer.addEventListener('scroll', handleScroll)
+    return () => messagesContainer.removeEventListener('scroll', handleScroll)
+  }, [mounted])
+
+  useEffect(() => {
+    const messagesContainer = messagesEndRef.current?.parentElement
+    if (messagesContainer) {
+      // Force scroll if we just sent a message
+      if (shouldForceScroll) {
+        isAutoScrolling.current = true
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+        setShouldForceScroll(false)
+        setUserHasManuallyScrolled(false)
+        setTimeout(() => { isAutoScrolling.current = false }, 300)
+      }
+      // Auto-scroll if user hasn't manually scrolled
+      else if (!userHasManuallyScrolled) {
+        isAutoScrolling.current = true
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+        setTimeout(() => { isAutoScrolling.current = false }, 300)
+      }
+      // Only scroll if near bottom when user has manually scrolled
+      else {
+        const { scrollTop, scrollHeight, clientHeight } = messagesContainer
+        const isNearBottom = scrollHeight - scrollTop - clientHeight < 100
+
+        if (isNearBottom) {
+          isAutoScrolling.current = true
+          messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+          setTimeout(() => { isAutoScrolling.current = false }, 300)
+        }
+      }
+    }
+  }, [messages, shouldForceScroll, userHasManuallyScrolled])
 
   async function sendMessage(e: React.FormEvent) {
     e.preventDefault()
@@ -63,6 +99,7 @@ export default function ChatPage() {
     }
     setMessages(prev => [...prev, userMessage])
     setMsg("")
+    setShouldForceScroll(true)
 
     if (useStreaming) {
       await sendStreaming(userMessage)
