@@ -49,8 +49,8 @@ export default function ChatPage() {
       }
     }
 
-    messagesContainer.addEventListener('scroll', handleScroll)
-    return () => messagesContainer.removeEventListener('scroll', handleScroll)
+    messagesContainer.addEventListener("scroll", handleScroll)
+    return () => messagesContainer.removeEventListener("scroll", handleScroll)
   }, [mounted])
 
   useEffect(() => {
@@ -62,13 +62,17 @@ export default function ChatPage() {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
         setShouldForceScroll(false)
         setUserHasManuallyScrolled(false)
-        setTimeout(() => { isAutoScrolling.current = false }, 300)
+        setTimeout(() => {
+          isAutoScrolling.current = false
+        }, 300)
       }
       // Auto-scroll if user hasn't manually scrolled
       else if (!userHasManuallyScrolled) {
         isAutoScrolling.current = true
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-        setTimeout(() => { isAutoScrolling.current = false }, 300)
+        setTimeout(() => {
+          isAutoScrolling.current = false
+        }, 300)
       }
       // Only scroll if near bottom when user has manually scrolled
       else {
@@ -78,7 +82,9 @@ export default function ChatPage() {
         if (isNearBottom) {
           isAutoScrolling.current = true
           messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-          setTimeout(() => { isAutoScrolling.current = false }, 300)
+          setTimeout(() => {
+            isAutoScrolling.current = false
+          }, 300)
         }
       }
     }
