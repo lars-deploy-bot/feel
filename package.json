@@ -19,5 +19,9 @@
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
     "turbo": "^2.0.0"
+  },
+  "dependencies": {
+    "groq-sdk": "^0.34.0",
+    "react-markdown": "^10.1.0"
   }
 }
