@@ -9,7 +9,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   const jar = await cookies()
   const sessionCookie = jar.get("session")
 
-  if (!hasSessionCookie(sessionCookie)) {
+  if (!sessionCookie || !hasSessionCookie(sessionCookie)) {
     return null
   }
 

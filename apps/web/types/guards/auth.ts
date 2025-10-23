@@ -8,7 +8,7 @@ import { join } from "node:path"
 /**
  * Check if a session cookie exists
  */
-export function hasSessionCookie(cookie: any): boolean {
+export function hasSessionCookie(cookie: any): cookie is { value: string } {
   return cookie !== undefined && cookie !== null
 }
 

@@ -10,45 +10,43 @@ interface MarkdownDisplayProps {
 }
 
 const components: Components = {
-  // Code blocks
-  pre: ({ children }) => (
-    <div className="my-3 rounded-md bg-black/5 border border-black/10 overflow-hidden">
-      {children}
-    </div>
-  ),
-  code: (props) => {
-    const { children, className, node } = props;
-    const match = /language-(\w+)/.exec(className || '');
-    const language = match ? match[1] : null;
-    const isInline = !node?.position;
+  // Code blocks - wrap in styled container
+  pre: ({ children, node }) => {
+    const codeElement = node?.children?.[0];
+    let language: string | null = null;
 
-    if (!isInline && language) {
-      return (
-        <>
+    if (codeElement?.type === 'element' && codeElement.tagName === 'code') {
+      const className = (codeElement.properties?.className as string[])?.join(' ') || '';
+      const match = /language-(\w+)/.exec(className);
+      language = match?.[1] || null;
+    }
+
+    return (
+      <div className="my-3 rounded-md bg-black/5 border border-black/10 overflow-hidden">
+        {language && (
           <div className="px-3 py-1 text-[10px] text-black/40 border-b border-black/10 font-mono">
             {language}
           </div>
-          <pre className="p-3 overflow-x-auto">
-            <code className="text-[13px] font-mono text-black/80 leading-relaxed">
-              {children}
-            </code>
-          </pre>
-        </>
-      );
-    }
+        )}
+        <pre className="p-3 overflow-x-auto">{children}</pre>
+      </div>
+    );
+  },
 
-    if (!isInline) {
+  // Code - inline vs block determined by 'inline' prop from react-markdown
+  code: (props) => {
+    const { children, inline } = props as { children: React.ReactNode; inline?: boolean };
+
+    if (inline) {
       return (
-        <pre className="p-3 overflow-x-auto">
-          <code className="text-[13px] font-mono text-black/80 leading-relaxed">
-            {children}
-          </code>
-        </pre>
+        <code className="px-1.5 py-0.5 rounded bg-black/5 text-[13px] font-mono text-black/80">
+          {children}
+        </code>
       );
     }
 
     return (
-      <code className="px-1.5 py-0.5 rounded bg-black/5 text-[13px] font-mono text-black/80">
+      <code className="text-[13px] font-mono text-black/80 leading-relaxed">
         {children}
       </code>
     );
@@ -86,8 +84,20 @@ const components: Components = {
     </a>
   ),
 
-  // Paragraphs
-  p: ({ children }) => <p className="mb-3">{children}</p>,
+  // Paragraphs - avoid wrapping block elements in <p>
+  p: ({ children, node }) => {
+    const hasBlockChild = node?.children?.some(
+      (child: any) =>
+        child.type === 'element' &&
+        ['pre', 'div', 'blockquote', 'ul', 'ol', 'table'].includes(child.tagName)
+    );
+
+    if (hasBlockChild) {
+      return <>{children}</>;
+    }
+
+    return <p className="mb-3">{children}</p>;
+  },
 
   // Emphasis
   strong: ({ children }) => <strong className="font-semibold">{children}</strong>,

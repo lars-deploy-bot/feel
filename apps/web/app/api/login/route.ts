@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}))
   const result = LoginSchema.safeParse(body)
 
-  if (isParseResultError(result)) {
+  if (!result.success) {
     const res = NextResponse.json({ ok: false, error: "invalid_request" }, { status: 400 })
     addCorsHeaders(res, origin)
     return res

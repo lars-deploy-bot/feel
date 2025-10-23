@@ -60,7 +60,7 @@ export async function POST(req: Request) {
 
     // Validate request body
     const parseResult = BodySchema.safeParse(body)
-    if (isParseResultError(parseResult)) {
+    if (!parseResult.success) {
       console.error(`[Claude Stream ${requestId}] Schema validation failed:`, parseResult.error.issues)
       return NextResponse.json(
         {
