@@ -1,7 +1,7 @@
 'use client'
-import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/Button'
+import { useEffect, useState } from 'react'
+import { Button } from '@/components/ui/primitives/Button'
 
 export default function LoginPage() {
 	const [authed, setAuthed] = useState(false)
@@ -50,13 +50,9 @@ export default function LoginPage() {
 	return (
 		<main className="min-h-screen bg-black flex items-center justify-center">
 			<div className="w-80">
-				<h1 className="text-6xl font-thin mb-16 text-white">
-					•
-				</h1>
+				<h1 className="text-6xl font-thin mb-16 text-white">•</h1>
 
-				{mounted && isTerminal && (
-					<p className="text-white/60 text-sm mb-12">terminal</p>
-				)}
+				{mounted && isTerminal && <p className="text-white/60 text-sm mb-12">terminal</p>}
 
 				<form onSubmit={login} className="space-y-8">
 					<input
@@ -68,9 +64,7 @@ export default function LoginPage() {
 						className="w-full bg-transparent border-0 border-b border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-white pb-3 text-lg font-thin"
 					/>
 
-					{error && (
-						<p className="text-white/60 text-sm">{error}</p>
-					)}
+					{error && <p className="text-white/60 text-sm">{error}</p>}
 
 					<Button
 						type="submit"

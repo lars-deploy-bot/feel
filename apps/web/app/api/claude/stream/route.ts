@@ -3,9 +3,9 @@ import { NextResponse } from 'next/server'
 import path from 'node:path'
 import { z } from 'zod'
 import { type Options, type PermissionResult } from '@anthropic-ai/claude-agent-sdk'
-import { getWorkspace } from '../workspaceRetriever'
-import { getSystemPrompt } from '../systemPrompt'
-import { createClaudeStream, createSSEResponse } from '../streamHandler'
+import { getWorkspace } from '@/app/features/claude/workspaceRetriever'
+import { getSystemPrompt } from '@/app/features/claude/systemPrompt'
+import { createClaudeStream, createSSEResponse } from '@/app/features/claude/streamHandler'
 import { requireSessionUser } from '@/lib/auth'
 import { SessionStoreMemory, sessionKey, tryLockConversation, unlockConversation } from '@/lib/sessionStore'
 import { addCorsHeaders } from '@/lib/cors-utils'
@@ -70,7 +70,8 @@ export async function POST(req: Request) {
 				{
 					ok: false,
 					error: 'invalid_request',
-					message: 'Invalid request body. Required: message (string), conversationId (uuid). Optional: workspace (string)',
+					message:
+						'Invalid request body. Required: message (string), conversationId (uuid). Optional: workspace (string)',
 					details: parseResult.error.issues,
 				},
 				{ status: 400 },
@@ -88,12 +89,7 @@ export async function POST(req: Request) {
 		console.log(`[Claude Stream ${requestId}] Host: ${host}`)
 
 		// Get workspace using utility
-		const workspaceResult = resolveWorkspace(
-			host,
-			{ ...body, workspace: requestWorkspace },
-			requestId,
-			origin
-		)
+		const workspaceResult = resolveWorkspace(host, { ...body, workspace: requestWorkspace }, requestId, origin)
 		if (!workspaceResult.success) {
 			return workspaceResult.response
 		}
@@ -167,7 +163,7 @@ export async function POST(req: Request) {
 				projectId: body.projectId,
 				userId: body.userId,
 				workspaceFolder: cwd,
-				additionalContext: body.additionalContext
+				additionalContext: body.additionalContext,
 			}),
 			settingSources: [],
 			model: process.env.CLAUDE_MODEL,

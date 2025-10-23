@@ -1,6 +1,6 @@
 import { headers, cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import { getWorkspace } from '../claude/workspaceRetriever'
+import { getWorkspace } from '@/app/features/claude/workspaceRetriever'
 
 export async function POST(req: Request) {
 	const requestId = Math.random().toString(36).substring(2, 8)

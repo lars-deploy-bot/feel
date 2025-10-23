@@ -43,4 +43,3 @@ export async function OPTIONS(req: NextRequest) {
 	addCorsHeaders(res, origin)
 	return res
 }
-

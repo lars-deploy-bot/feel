@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { ToolButton } from '../../base/ToolButton'
-import { ScrollableCode } from '../../base/ScrollableCode'
+import { ScrollableCode } from '@/components/ui/primitives/ScrollableCode'
+import { ToolButton } from '@/components/ui/primitives/ToolButton'
 
 interface ToolResultProps {
 	toolName: string

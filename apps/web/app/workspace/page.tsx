@@ -1,7 +1,7 @@
 'use client'
-import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/Button'
+import { useEffect, useState } from 'react'
+import { Button } from '@/components/ui/primitives/Button'
 
 export default function WorkspacePage() {
 	const [workspace, setWorkspace] = useState('webalive/sites/demo.goalive.nl')
@@ -78,9 +78,7 @@ export default function WorkspacePage() {
 	return (
 		<main className="min-h-screen bg-white flex items-center justify-center">
 			<div className="w-96">
-				<h1 className="text-6xl font-thin mb-16 text-black">
-					◯
-				</h1>
+				<h1 className="text-6xl font-thin mb-16 text-black">◯</h1>
 
 				<p className="text-black/60 text-sm mb-12 font-thin">workspace setup</p>
 
@@ -89,7 +87,7 @@ export default function WorkspacePage() {
 						<p className="text-black/40 text-xs mb-4 font-thin">directory path</p>
 						<div className="flex gap-3">
 							<input
-								id="workspace"
+								id={`workspace-input-${Math.random().toString(36).substring(2, 15)}`}
 								type="text"
 								value={workspace}
 								onChange={(e) => {
@@ -115,16 +113,10 @@ export default function WorkspacePage() {
 								<p className={`text-sm font-thin ${verifyResult.verified ? 'text-black' : 'text-black/60'}`}>
 									{verifyResult.verified ? 'verified' : 'failed'}
 								</p>
-								{verifyResult.error && (
-									<p className="text-black/40 text-xs mt-1 font-thin">{verifyResult.error}</p>
-								)}
+								{verifyResult.error && <p className="text-black/40 text-xs mt-1 font-thin">{verifyResult.error}</p>}
 
 								{verifyResult.verified && (
-									<Button
-										onClick={continueToChat}
-										className="!mt-6 !font-thin !text-sm"
-										fullWidth
-									>
+									<Button onClick={continueToChat} className="!mt-6 !font-thin !text-sm" fullWidth>
 										continue
 									</Button>
 								)}

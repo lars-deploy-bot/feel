@@ -1,17 +1,10 @@
-import type {
-	SDKSystemMessage,
-	SDKAssistantMessage,
-	SDKUserMessage,
-	SDKResultMessage,
-} from '@/lib/sdk-types'
-import {
-	StartMessage,
-	SystemMessage,
-	AssistantMessage,
-	ToolResultMessage,
-	ResultMessage,
-	CompleteMessage,
-} from '@/components/ui/chat'
+import type { SDKSystemMessage, SDKAssistantMessage, SDKUserMessage, SDKResultMessage } from '@/lib/sdk-types'
+import { StartMessage } from '@/components/ui/chat/messages/StartMessage'
+import { SystemMessage } from '@/components/ui/chat/messages/SystemMessage'
+import { AssistantMessage } from '@/components/ui/chat/messages/AssistantMessage'
+import { ToolResultMessage } from '@/components/ui/chat/messages/ToolResultMessage'
+import { ResultMessage } from '@/components/ui/chat/messages/ResultMessage'
+import { CompleteMessage } from '@/components/ui/chat/messages/CompleteMessage'
 import {
 	UIMessage,
 	isSDKSystemMessage,
@@ -19,7 +12,7 @@ import {
 	isSDKUserMessage,
 	isSDKResultMessage,
 	getMessageComponentType,
-} from './message-parser'
+} from '@/lib/message-parser'
 
 export function renderMessage(message: UIMessage): React.ReactNode {
 	const componentType = getMessageComponentType(message)

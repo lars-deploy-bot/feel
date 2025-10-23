@@ -1,0 +1,48 @@
+{
+	// File patterns configuration
+	// NOTE: In Biome 2.2.7, the "files" section does NOT support "ignore" key
+	// Use "includes" to specify which files to process
+	"files": {
+		"includes": ["apps/**/*.{ts,tsx}"]
+	},
+
+	// Formatter configuration
+	// NOTE: Both "formatter" and "linter" sections support "includes" but NOT "ignore"
+	// Only include TypeScript files (.ts, .tsx), exclude JavaScript (.js, .jsx) and widget files
+	"formatter": {
+		"enabled": true,
+		"formatWithErrors": false,
+		"indentStyle": "tab",
+		"indentWidth": 2,
+		"lineWidth": 120,
+		"lineEnding": "lf",
+		"includes": ["apps/**/*.{ts,tsx}"]
+	},
+
+	// JavaScript-specific formatter options
+	"javascript": {
+		"formatter": {
+			"semicolons": "asNeeded",
+			"quoteStyle": "single"
+		}
+	},
+
+	// Linter configuration
+	// NOTE: Like formatter, use "includes" not "ignore"
+	// Known keys: enabled, rules, includes, domains
+	"linter": {
+		"enabled": true,
+		"includes": ["apps/**/*.{ts,tsx}"],
+		"rules": {
+			"correctness": {
+				"noUnusedFunctionParameters": "off"
+			},
+			"suspicious": {
+				"noArrayIndexKey": "off"
+			},
+			"a11y": {
+				"useButtonType": "off"
+			}
+		}
+	}
+}

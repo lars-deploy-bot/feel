@@ -1,8 +1,8 @@
-import { BashOutput } from './bash/output/BashOutput'
-import { ReadOutput } from './read/output/ReadOutput'
-import { GrepOutput } from './grep/output/GrepOutput'
-import { GlobOutput } from './glob/output/GlobOutput'
-import { TaskOutput } from './task/output/TaskOutput'
+import { BashOutput } from '@/components/ui/chat/tools/bash/BashOutput'
+import { ReadOutput } from '@/components/ui/chat/tools/read/ReadOutput'
+import { GrepOutput } from '@/components/ui/chat/tools/grep/GrepOutput'
+import { GlobOutput } from '@/components/ui/chat/tools/glob/GlobOutput'
+import { TaskOutput } from '@/components/ui/chat/tools/task/TaskOutput'
 
 interface ToolOutputRouterProps {
 	toolName: string

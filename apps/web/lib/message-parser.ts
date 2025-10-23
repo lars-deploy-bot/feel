@@ -1,23 +1,24 @@
 import type {
-	SDKMessage,
-	SDKSystemMessage,
 	SDKAssistantMessage,
-	SDKUserMessage,
+	SDKMessage,
 	SDKResultMessage,
+	SDKSystemMessage,
+	SDKUserMessage,
 } from '@/lib/sdk-types'
-import {
-	isSDKSystemMessage,
-	isSDKAssistantMessage,
-	isSDKUserMessage,
-	isSDKResultMessage,
-} from '@/lib/sdk-types'
+import { isSDKAssistantMessage, isSDKResultMessage, isSDKSystemMessage, isSDKUserMessage } from '@/lib/sdk-types'
+import { isStartEvent, isSessionEvent, isMessageEvent, isResultEvent, isCompleteEvent } from '@/types/guards/stream'
 
 // Stream event types
 export interface StreamEvent {
 	type: 'start' | 'message' | 'session' | 'result' | 'complete' | 'error'
 	requestId: string
 	timestamp: string
-	data: StartEventData | MessageEventData | SessionEventData | CompleteEventData | { error: string; message: string; details?: string }
+	data:
+		| StartEventData
+		| MessageEventData
+		| SessionEventData
+		| CompleteEventData
+		| { error: string; message: string; details?: string }
 }
 
 export interface StartEventData {
@@ -41,27 +42,6 @@ export interface MessageEventData {
 export interface CompleteEventData {
 	totalMessages: number
 	result: SDKResultMessage | null
-}
-
-// Type guards for stream events
-export function isStartEvent(event: StreamEvent): event is StreamEvent & { data: StartEventData } {
-	return event.type === 'start' && 'cwd' in event.data
-}
-
-export function isSessionEvent(event: StreamEvent): event is StreamEvent & { data: SessionEventData } {
-	return event.type === 'session' && 'sessionId' in event.data
-}
-
-export function isMessageEvent(event: StreamEvent): event is StreamEvent & { data: MessageEventData } {
-	return event.type === 'message' && 'messageType' in event.data && 'content' in event.data
-}
-
-export function isResultEvent(event: StreamEvent): event is StreamEvent & { data: SDKResultMessage } {
-	return event.type === 'result' && 'subtype' in event.data
-}
-
-export function isCompleteEvent(event: StreamEvent): event is StreamEvent & { data: CompleteEventData } {
-	return event.type === 'complete' && 'totalMessages' in event.data
 }
 
 // Message types for UI
@@ -151,12 +131,8 @@ export function parseStreamEvent(event: StreamEvent): UIMessage | null {
 }
 
 // Re-export the type guard functions for use in other modules
-export {
-	isSDKSystemMessage,
-	isSDKAssistantMessage,
-	isSDKUserMessage,
-	isSDKResultMessage,
-}
+export { isSDKSystemMessage, isSDKAssistantMessage, isSDKUserMessage, isSDKResultMessage }
+export { isStartEvent, isSessionEvent, isMessageEvent, isResultEvent, isCompleteEvent }
 
 // Get message component type for routing
 export function getMessageComponentType(message: UIMessage): string {

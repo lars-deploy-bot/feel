@@ -19,7 +19,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 	// Simple implementation: use session value as user ID for now
 	// You can enhance this to decode JWT or lookup in database
 	return {
-		id: sessionValue || 'anonymous'
+		id: sessionValue || 'anonymous',
 	}
 }
 

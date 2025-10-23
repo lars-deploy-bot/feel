@@ -1,4 +1,4 @@
-import { UIMessage } from './message-parser'
+import { UIMessage } from '@/lib/message-parser'
 
 export interface MessageGroup {
 	type: 'text' | 'thinking'
@@ -15,7 +15,7 @@ export function groupMessages(messages: UIMessage[]): MessageGroup[] {
 			groups.push({
 				type: 'thinking',
 				messages: [...currentThinkingGroup],
-				isComplete
+				isComplete,
 			})
 			currentThinkingGroup = []
 		}
@@ -49,7 +49,7 @@ export function groupMessages(messages: UIMessage[]): MessageGroup[] {
 			groups.push({
 				type: 'text',
 				messages: [message],
-				isComplete: true
+				isComplete: true,
 			})
 		} else {
 			// Add to thinking group

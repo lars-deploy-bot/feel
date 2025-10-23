@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { readdir, stat } from 'fs/promises'
 import path from 'node:path'
-import { getWorkspace } from '../claude/workspaceRetriever'
+import { getWorkspace } from '@/app/features/claude/workspaceRetriever'
 
 interface FileInfo {
 	name: string

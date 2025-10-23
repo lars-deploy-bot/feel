@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getWorkspace } from '@/app/api/claude/workspaceRetriever'
+import { getWorkspace } from '@/app/features/claude/workspaceRetriever'
 import { addCorsHeaders } from '@/lib/cors-utils'
 
 export interface WorkspaceRequest {
@@ -23,7 +23,7 @@ export function resolveWorkspace(
 	host: string,
 	body: WorkspaceRequest,
 	requestId: string,
-	origin: string | null = null
+	origin: string | null = null,
 ): WorkspaceResult {
 	const workspaceResult = getWorkspace({ host, body, requestId })
 
@@ -35,7 +35,7 @@ export function resolveWorkspace(
 				message: 'Failed to resolve workspace',
 				requestId,
 			},
-			{ status: 400 }
+			{ status: 400 },
 		)
 		if (origin) {
 			addCorsHeaders(res, origin)

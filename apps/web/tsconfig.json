@@ -5,17 +5,22 @@
 		"allowJs": true,
 		"skipLibCheck": true,
 		"strict": true,
+		"forceConsistentCasingInFileNames": true,
 		"noEmit": true,
 		"incremental": true,
 		"module": "ES2020",
 		"esModuleInterop": true,
-		"moduleResolution": "node",
+		"moduleResolution": "bundler",
 		"resolveJsonModule": true,
 		"isolatedModules": true,
 		"jsx": "react-jsx",
 		"baseUrl": ".",
 		"paths": {
-			"@/*": ["./*"]
+			"@/app/*": ["./app/*"],
+			"@/components/*": ["./components/*"],
+			"@/lib/*": ["./lib/*"],
+			"@/types/*": ["./types/*"],
+			"@/hooks/*": ["./hooks/*"]
 		},
 		"plugins": [
 			{
