@@ -1,10 +1,9 @@
-import {
-	SDKMessage,
+import type {
 	SDKSystemMessage,
 	SDKAssistantMessage,
 	SDKUserMessage,
 	SDKResultMessage,
-} from '@anthropic-ai/claude-agent-sdk'
+} from '@/lib/sdk-types'
 import {
 	StartMessage,
 	SystemMessage,

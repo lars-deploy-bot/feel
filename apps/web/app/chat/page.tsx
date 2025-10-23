@@ -14,6 +14,7 @@ export default function ChatPage() {
 	const [useStreaming, setUseStreaming] = useState(true)
 	const [isTerminal, setIsTerminal] = useState(false)
 	const [mounted, setMounted] = useState(false)
+	const [conversationId, setConversationId] = useState<string>(() => crypto.randomUUID())
 	const messagesEndRef = useRef<HTMLDivElement>(null)
 	const router = useRouter()
 
@@ -74,7 +75,9 @@ export default function ChatPage() {
 
 	async function sendStreaming(userMessage: UIMessage) {
 		try {
-			const requestBody = isTerminal ? { message: userMessage.content, workspace } : { message: userMessage.content }
+			const requestBody = isTerminal
+				? { message: userMessage.content, workspace, conversationId }
+				: { message: userMessage.content, conversationId }
 
 			const response = await fetch('/api/claude/stream', {
 				method: 'POST',
@@ -127,7 +130,9 @@ export default function ChatPage() {
 
 	async function sendRegular(userMessage: UIMessage) {
 		try {
-			const requestBody = isTerminal ? { message: userMessage.content, workspace } : { message: userMessage.content }
+			const requestBody = isTerminal
+				? { message: userMessage.content, workspace, conversationId }
+				: { message: userMessage.content, conversationId }
 
 			const r = await fetch('/api/claude', {
 				method: 'POST',
@@ -162,6 +167,11 @@ export default function ChatPage() {
 		}
 	}
 
+	function startNewConversation() {
+		setConversationId(crypto.randomUUID())
+		setMessages([])
+	}
+
 	return (
 		<div className="h-[100dvh] flex flex-col max-w-4xl mx-auto overflow-hidden">
 			<div className="flex-1 min-h-0 flex flex-col">
@@ -170,15 +180,24 @@ export default function ChatPage() {
 				<h1 className="text-lg font-thin text-black">
 					{mounted && isTerminal ? 'terminal' : '•'}
 				</h1>
-				{mounted && isTerminal && (
+				<div className="flex items-center gap-2">
 					<button
-						onClick={changeWorkspace}
+						onClick={startNewConversation}
 						className="inline-flex items-center justify-center px-3 py-2 text-xs font-thin text-black border border-black/20 hover:bg-black hover:text-white transition-colors"
 						type="button"
 					>
-						change
+						new chat
 					</button>
-				)}
+					{mounted && isTerminal && (
+						<button
+							onClick={changeWorkspace}
+							className="inline-flex items-center justify-center px-3 py-2 text-xs font-thin text-black border border-black/20 hover:bg-black hover:text-white transition-colors"
+							type="button"
+						>
+							change
+						</button>
+					)}
+				</div>
 			</div>
 
 			{mounted && isTerminal && workspace && (

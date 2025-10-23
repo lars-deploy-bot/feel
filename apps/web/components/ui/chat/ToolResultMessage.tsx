@@ -1,11 +1,11 @@
-import type { SDKUserMessage } from '@anthropic-ai/claude-agent-sdk'
+import type { SDKUserMessage } from '@/lib/sdk-types'
 import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/messages'
 import { CheckCircle, ChevronDown, ChevronRight, XCircle } from 'lucide-react'
 import { useState } from 'react'
 import { ToolOutputRouter } from './tools/ToolOutputRouter'
 
 // Extended tool result type with our added tool_name
-interface ToolResultContent extends ContentBlockParam {
+interface ToolResultContent {
 	type: 'tool_result'
 	tool_use_id: string
 	content?: string
@@ -14,8 +14,8 @@ interface ToolResultContent extends ContentBlockParam {
 }
 
 // Type guard to check if a content block is a tool result
-function isToolResult(content: ContentBlockParam): content is ToolResultContent {
-	return content.type === 'tool_result'
+function isToolResult(content: any): content is ToolResultContent {
+	return content && content.type === 'tool_result'
 }
 
 interface ToolResultMessageProps {
@@ -23,9 +23,11 @@ interface ToolResultMessageProps {
 }
 
 export function ToolResultMessage({ content }: ToolResultMessageProps) {
+	const messageContent = content.message.content
+
 	return (
 		<div className="mb-6">
-			{content.message.content.map((result, index) => {
+			{Array.isArray(messageContent) && messageContent.map((result: any, index: number) => {
 				if (isToolResult(result)) {
 					return <ToolResult key={index} result={result} />
 				}

@@ -1,40 +1,50 @@
-# Claude Widget Server
+# Claude Widget - Standalone Version
 
-Ultra-fast Go server that serves the minimal Claude Bridge widget.
+This directory contains an **alternative Go-based widget server** for ultra-optimized delivery.
 
-## Features
+## ⚠️ **Current Status: Not In Use**
+
+The widget is currently served directly from the **Next.js app** at `/widget.js` for simplicity. This Go server was built for optimization but isn't needed yet.
+
+## 🚀 **Active Implementation**
+
+The widget currently works like this:
+
+```html
+<!-- ✅ CURRENT: Served from Next.js app -->
+<script src="https://terminal.goalive.nl/widget.js" data-workspace="auto"></script>
+```
+
+**Files in use:**
+- `apps/web/public/widget.js` - The actual widget script
+- `apps/web/lib/cors-utils.ts` - CORS handling for cross-origin requests
+
+## 📁 **What's In This Directory**
+
+This folder contains a **future optimization** - a standalone Go server that could serve the widget with:
 
 - **<3KB gzipped** widget delivery
 - **Sub-50ms** response times
 - **Zero dependencies** (stdlib only)
-- **Docker ready** for any platform
-- **CORS optimized** for cross-origin loading
+- **Independent deployment** from main app
 
-## Quick Start
+## 🔧 **If You Want To Use The Go Server**
 
 ```bash
-# Build widget
+# Build minified widget
 ./build.sh
 
-# Run server
+# Run Go server
 go run main.go
 
-# Or with Docker
-docker build -t claude-widget .
-docker run -p 3001:3001 claude-widget
+# Widget available at: http://localhost:3001/widget.js
 ```
 
-## Usage
-
-Sites can now load the widget from the dedicated server:
-
-```html
-<!-- From widget server -->
-<script src="http://widget-server:3001/widget.js" data-workspace="auto"></script>
-
-<!-- Or from CDN/edge deployment -->
-<script src="https://widgets.yoursite.com/widget.js" data-workspace="auto"></script>
-```
+**Benefits:**
+- Faster loading (Go vs Next.js)
+- Independent scaling
+- CDN-friendly deployment
+- Minimal resource usage
 
 ## Performance
 

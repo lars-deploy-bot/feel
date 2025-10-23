@@ -4,7 +4,12 @@ import path from 'node:path'
 import { z } from 'zod'
 import { type Options, type PermissionResult } from '@anthropic-ai/claude-agent-sdk'
 import { getWorkspace } from '../workspaceRetriever'
+import { getSystemPrompt } from '../systemPrompt'
 import { createClaudeStream, createSSEResponse } from '../streamHandler'
+import { requireSessionUser } from '@/lib/auth'
+import { SessionStoreMemory, sessionKey, tryLockConversation, unlockConversation } from '@/lib/sessionStore'
+import { addCorsHeaders } from '@/lib/cors-utils'
+import { resolveWorkspace } from '@/lib/workspace-utils'
 
 export const runtime = 'nodejs'
 
@@ -29,6 +34,10 @@ export async function POST(req: Request) {
 		}
 		console.log(`[Claude Stream ${requestId}] Session cookie verified`)
 
+		// Get user from session
+		const user = await requireSessionUser()
+		console.log(`[Claude Stream ${requestId}] User: ${user.id}`)
+
 		console.log(`[Claude Stream ${requestId}] Parsing request body...`)
 		let body
 		try {
@@ -47,42 +56,76 @@ export async function POST(req: Request) {
 			)
 		}
 
-		const host = (await headers()).get('host') || 'localhost'
-		console.log(`[Claude Stream ${requestId}] Host: ${host}`)
-
-		// Get workspace using dedicated handler
-		const workspaceResult = getWorkspace({ host, body, requestId })
-		if (!workspaceResult.success) {
-			return workspaceResult.response
-		}
-		const cwd = workspaceResult.workspace
-
-		console.log(`[Claude Stream ${requestId}] Working directory: ${cwd}`)
-		console.log(`[Claude Stream ${requestId}] Claude model: ${process.env.CLAUDE_MODEL || 'not set'}`)
-
-		// Validate message field
-		const QuerySchema = z.object({
+		// Validate request body
+		const BodySchema = z.object({
 			message: z.string().min(1),
+			workspace: z.string().optional(),
+			conversationId: z.string().uuid(),
 		})
 
-		const parseResult = QuerySchema.safeParse(body)
+		const parseResult = BodySchema.safeParse(body)
 		if (!parseResult.success) {
-			console.error(`[Claude Stream ${requestId}] Schema validation failed:`, parseResult.error.errors)
+			console.error(`[Claude Stream ${requestId}] Schema validation failed:`, parseResult.error.issues)
 			return NextResponse.json(
 				{
 					ok: false,
-					error: 'invalid_message',
-					message: 'Message field is required and must be a non-empty string',
-					details: parseResult.error.errors,
+					error: 'invalid_request',
+					message: 'Invalid request body. Required: message (string), conversationId (uuid). Optional: workspace (string)',
+					details: parseResult.error.issues,
 				},
 				{ status: 400 },
 			)
 		}
 
-		const { message } = parseResult.data
+		const { message, workspace: requestWorkspace, conversationId } = parseResult.data
+		console.log(`[Claude Stream ${requestId}] Conversation: ${conversationId}`)
 		console.log(
 			`[Claude Stream ${requestId}] Message received (${message.length} chars): ${message.substring(0, 100)}${message.length > 100 ? '...' : ''}`,
 		)
+
+		const host = (await headers()).get('host') || 'localhost'
+		const origin = req.headers.get('origin')
+		console.log(`[Claude Stream ${requestId}] Host: ${host}`)
+
+		// Get workspace using utility
+		const workspaceResult = resolveWorkspace(
+			host,
+			{ ...body, workspace: requestWorkspace },
+			requestId,
+			origin
+		)
+		if (!workspaceResult.success) {
+			return workspaceResult.response
+		}
+		const cwd = workspaceResult.workspace
+
+		// Create session key for this conversation
+		const convKey = sessionKey({
+			userId: user.id,
+			workspace: requestWorkspace,
+			conversationId,
+		})
+		console.log(`[Claude Stream ${requestId}] Session key: ${convKey}`)
+
+		// Try to lock conversation to prevent concurrent requests
+		if (!tryLockConversation(convKey)) {
+			console.log(`[Claude Stream ${requestId}] Conversation already in progress`)
+			return NextResponse.json(
+				{
+					ok: false,
+					error: 'conversation_busy',
+					message: 'Another request is already in progress for this conversation',
+				},
+				{ status: 409 },
+			)
+		}
+
+		// Check for existing session to resume
+		const existingSessionId = await SessionStoreMemory.get(convKey)
+		console.log(`[Claude Stream ${requestId}] Existing session: ${existingSessionId ? 'found' : 'none'}`)
+
+		console.log(`[Claude Stream ${requestId}] Working directory: ${cwd}`)
+		console.log(`[Claude Stream ${requestId}] Claude model: ${process.env.CLAUDE_MODEL || 'not set'}`)
 
 		const canUseTool: Options['canUseTool'] = async (toolName, input) => {
 			console.log(`[Claude Stream ${requestId}] Tool requested: ${toolName}`)
@@ -120,26 +163,44 @@ export async function POST(req: Request) {
 			allowedTools: ['Write', 'Edit', 'Read', 'Glob', 'Grep'],
 			permissionMode: 'acceptEdits',
 			canUseTool,
-			systemPrompt: { type: 'preset', preset: 'claude_code' },
+			systemPrompt: getSystemPrompt({
+				projectId: body.projectId,
+				userId: body.userId,
+				workspaceFolder: cwd,
+				additionalContext: body.additionalContext
+			}),
 			settingSources: [],
 			model: process.env.CLAUDE_MODEL,
-			apiKey: process.env.ANTH_API_SECRET,
+			// Resume existing session if we have one
+			...(existingSessionId ? { resume: existingSessionId } : {}),
 		}
 
 		console.log(`[Claude Stream ${requestId}] Creating stream...`)
 
-		// Create and return SSE stream
-		const stream = createClaudeStream({
-			message,
-			claudeOptions,
-			requestId,
-			host,
-			cwd,
-		})
+		try {
+			// Create and return SSE stream
+			const stream = createClaudeStream({
+				message,
+				claudeOptions,
+				requestId,
+				host,
+				cwd,
+				user,
+				conversation: {
+					key: convKey,
+					store: SessionStoreMemory,
+				},
+			})
 
-		return createSSEResponse(stream)
+			return createSSEResponse(stream)
+		} finally {
+			// Always unlock conversation when stream ends
+			unlockConversation(convKey)
+		}
 	} catch (outerError) {
 		console.error(`[Claude Stream ${requestId}] Outer catch - request processing failed:`, outerError)
+
+		const origin = req.headers.get('origin')
 		const errorRes = NextResponse.json(
 			{
 				ok: false,
@@ -150,21 +211,14 @@ export async function POST(req: Request) {
 			},
 			{ status: 500 },
 		)
-		addCorsHeaders(errorRes)
+		addCorsHeaders(errorRes, origin)
 		return errorRes
 	}
 }
 
 export async function OPTIONS(req: Request) {
+	const origin = req.headers.get('origin')
 	const res = new NextResponse(null, { status: 200 })
-	addCorsHeaders(res)
+	addCorsHeaders(res, origin)
 	return res
-}
-
-function addCorsHeaders(res: NextResponse) {
-	res.headers.set('Access-Control-Allow-Origin', '*')
-	res.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-	res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-	res.headers.set('Access-Control-Allow-Credentials', 'true')
-	res.headers.set('Access-Control-Max-Age', '86400')
 }

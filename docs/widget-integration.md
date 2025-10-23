@@ -4,13 +4,41 @@ Add Claude AI assistance to any website with a simple script injection.
 
 ## Quick Start
 
-Add this script tag to any HTML page under your `/sites` directory:
+Add this script tag to any HTML page:
 
 ```html
-<script src="/claude-widget.js" data-workspace="auto"></script>
+<script src="https://terminal.goalive.nl/widget.js" data-workspace="auto"></script>
 ```
 
 A chat button will appear in the bottom-right corner. Click it to start chatting with Claude!
+
+## ✅ **Working Example**
+
+Here's a complete working example you can test immediately:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Website with Claude</title>
+</head>
+<body>
+    <h1>Welcome to My Site</h1>
+    <p>Look for the chat button in the bottom-right corner!</p>
+
+    <!-- Claude Widget - Works from any domain -->
+    <script src="https://terminal.goalive.nl/widget.js" data-workspace="auto"></script>
+</body>
+</html>
+```
+
+**What happens:**
+1. **💬 Chat button** appears in bottom-right corner
+2. **Click to open** - Login panel appears
+3. **Enter passcode** - Same one you use for Claude Bridge
+4. **Start chatting** - Claude can read/edit files in your workspace!
 
 ## How It Works
 

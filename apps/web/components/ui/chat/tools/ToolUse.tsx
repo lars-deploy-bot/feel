@@ -9,7 +9,7 @@ interface ToolUseProps {
 
 export function ToolUse({ item }: ToolUseProps) {
 	const [isExpanded, setIsExpanded] = useState(false)
-	const hasInput = item.input && typeof item.input === 'object' && Object.keys(item.input).length > 0
+	const hasInput: boolean = Boolean(item.input && typeof item.input === 'object' && Object.keys(item.input).length > 0)
 
 	return (
 		<div className="my-1">

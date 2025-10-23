@@ -1,34 +1,23 @@
-import {
+import type {
 	SDKMessage,
 	SDKSystemMessage,
 	SDKAssistantMessage,
 	SDKUserMessage,
 	SDKResultMessage,
-} from '@anthropic-ai/claude-agent-sdk'
-
-// Type guards for SDK messages
-export function isSDKSystemMessage(msg: SDKMessage): msg is SDKSystemMessage {
-	return msg.type === 'system' && 'subtype' in msg && msg.subtype === 'init'
-}
-
-export function isSDKAssistantMessage(msg: SDKMessage): msg is SDKAssistantMessage {
-	return msg.type === 'assistant' && 'message' in msg
-}
-
-export function isSDKUserMessage(msg: SDKMessage): msg is SDKUserMessage {
-	return msg.type === 'user' && 'message' in msg
-}
-
-export function isSDKResultMessage(msg: SDKMessage): msg is SDKResultMessage {
-	return msg.type === 'result' && 'subtype' in msg
-}
+} from '@/lib/sdk-types'
+import {
+	isSDKSystemMessage,
+	isSDKAssistantMessage,
+	isSDKUserMessage,
+	isSDKResultMessage,
+} from '@/lib/sdk-types'
 
 // Stream event types
 export interface StreamEvent {
-	type: 'start' | 'message' | 'result' | 'complete'
+	type: 'start' | 'message' | 'session' | 'result' | 'complete' | 'error'
 	requestId: string
 	timestamp: string
-	data: any
+	data: StartEventData | MessageEventData | SessionEventData | CompleteEventData | { error: string; message: string; details?: string }
 }
 
 export interface StartEventData {
@@ -36,22 +25,31 @@ export interface StartEventData {
 	cwd: string
 	message: string
 	messageLength: number
+	isResume?: boolean
+}
+
+export interface SessionEventData {
+	sessionId: string
 }
 
 export interface MessageEventData {
 	messageCount: number
-	messageType: 'system' | 'assistant' | 'user'
+	messageType: string
 	content: SDKMessage
 }
 
 export interface CompleteEventData {
 	totalMessages: number
-	result: SDKResultMessage
+	result: SDKResultMessage | null
 }
 
 // Type guards for stream events
 export function isStartEvent(event: StreamEvent): event is StreamEvent & { data: StartEventData } {
 	return event.type === 'start' && 'cwd' in event.data
+}
+
+export function isSessionEvent(event: StreamEvent): event is StreamEvent & { data: SessionEventData } {
+	return event.type === 'session' && 'sessionId' in event.data
 }
 
 export function isMessageEvent(event: StreamEvent): event is StreamEvent & { data: MessageEventData } {
@@ -69,7 +67,7 @@ export function isCompleteEvent(event: StreamEvent): event is StreamEvent & { da
 // Message types for UI
 export type UIMessage = {
 	id: string
-	type: 'user' | 'start' | 'sdk_message' | 'result' | 'complete'
+	type: 'user' | 'start' | 'session' | 'sdk_message' | 'result' | 'complete'
 	content: any
 	timestamp: Date
 	isStreaming?: boolean
@@ -93,11 +91,20 @@ export function parseStreamEvent(event: StreamEvent): UIMessage | null {
 		}
 	}
 
+	if (isSessionEvent(event)) {
+		return {
+			id: event.requestId + '-session',
+			type: 'session',
+			content: event.data,
+			...baseMessage,
+		}
+	}
+
 	if (isMessageEvent(event)) {
 		const content = event.data.content
 
 		// If this is an assistant message with tool_use, store the mapping
-		if (content.type === 'assistant' && content.message?.content) {
+		if (content.type === 'assistant' && content.message?.content && Array.isArray(content.message.content)) {
 			content.message.content.forEach((item: any) => {
 				if (item.type === 'tool_use' && item.id && item.name) {
 					toolUseMap.set(item.id, item.name)
@@ -106,7 +113,7 @@ export function parseStreamEvent(event: StreamEvent): UIMessage | null {
 		}
 
 		// If this is a user message with tool_result, attach tool names
-		if (content.type === 'user' && content.message?.content) {
+		if (content.type === 'user' && content.message?.content && Array.isArray(content.message.content)) {
 			content.message.content.forEach((item: any) => {
 				if (item.type === 'tool_result' && item.tool_use_id) {
 					item.tool_name = toolUseMap.get(item.tool_use_id) || 'Tool'
@@ -131,7 +138,7 @@ export function parseStreamEvent(event: StreamEvent): UIMessage | null {
 		}
 	}
 
-	if (isCompleteEvent(event)) {
+	if (event.type === 'complete') {
 		return {
 			id: event.requestId + '-complete',
 			type: 'complete',
@@ -143,10 +150,19 @@ export function parseStreamEvent(event: StreamEvent): UIMessage | null {
 	return null
 }
 
+// Re-export the type guard functions for use in other modules
+export {
+	isSDKSystemMessage,
+	isSDKAssistantMessage,
+	isSDKUserMessage,
+	isSDKResultMessage,
+}
+
 // Get message component type for routing
 export function getMessageComponentType(message: UIMessage): string {
 	if (message.type === 'user') return 'user'
 	if (message.type === 'start') return 'start'
+	if (message.type === 'session') return 'session'
 	if (message.type === 'complete') return 'complete'
 
 	if (message.type === 'sdk_message') {

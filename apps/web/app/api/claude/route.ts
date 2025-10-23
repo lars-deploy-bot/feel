@@ -4,7 +4,9 @@ import path from 'node:path'
 import { z } from 'zod'
 import { query, type Options, type PermissionResult } from '@anthropic-ai/claude-agent-sdk'
 import { getWorkspace } from './workspaceRetriever'
+import { getSystemPrompt } from './systemPrompt'
 import { addCorsHeaders } from '@/lib/cors-utils'
+import { resolveWorkspace } from '@/lib/workspace-utils'
 
 export const runtime = 'nodejs'
 
@@ -50,11 +52,43 @@ export async function POST(req: Request) {
 			)
 		}
 
+		// Validate request body
+		const BodySchema = z.object({
+			message: z.string().min(1),
+			workspace: z.string().optional(),
+			conversationId: z.string().uuid(),
+		})
+
+		const parseResult = BodySchema.safeParse(body)
+		if (!parseResult.success) {
+			console.error(`[Claude API ${requestId}] Schema validation failed:`, parseResult.error.issues)
+			return NextResponse.json(
+				{
+					ok: false,
+					error: 'invalid_request',
+					message: 'Invalid request body. Required: message (string), conversationId (uuid). Optional: workspace (string)',
+					details: parseResult.error.issues,
+				},
+				{ status: 400 },
+			)
+		}
+
+		const { message, workspace: requestWorkspace, conversationId } = parseResult.data
+		console.log(
+			`[Claude API ${requestId}] Message received (${message.length} chars): ${message.substring(0, 100)}${message.length > 100 ? '...' : ''}`,
+		)
+		console.log(`[Claude API ${requestId}] Starting Claude SDK query...`)
+
 		const host = (await headers()).get('host') || 'localhost'
 		console.log(`[Claude API ${requestId}] Host: ${host}`)
 
-		// Get workspace using dedicated handler
-		const workspaceResult = getWorkspace({ host, body, requestId })
+		// Get workspace using utility
+		const workspaceResult = resolveWorkspace(
+			host,
+			{ ...body, workspace: requestWorkspace },
+			requestId,
+			origin
+		)
 		if (!workspaceResult.success) {
 			return workspaceResult.response
 		}
@@ -62,31 +96,6 @@ export async function POST(req: Request) {
 
 		console.log(`[Claude API ${requestId}] Working directory: ${cwd}`)
 		console.log(`[Claude API ${requestId}] Claude model: ${process.env.CLAUDE_MODEL || 'not set'}`)
-
-		// Validate message field
-		const QuerySchema = z.object({
-			message: z.string().min(1),
-		})
-
-		const parseResult = QuerySchema.safeParse(body)
-		if (!parseResult.success) {
-			console.error(`[Claude API ${requestId}] Schema validation failed:`, parseResult.error.errors)
-			return NextResponse.json(
-				{
-					ok: false,
-					error: 'invalid_message',
-					message: 'Message field is required and must be a non-empty string',
-					details: parseResult.error.errors,
-				},
-				{ status: 400 },
-			)
-		}
-
-		const { message } = parseResult.data
-		console.log(
-			`[Claude API ${requestId}] Message received (${message.length} chars): ${message.substring(0, 100)}${message.length > 100 ? '...' : ''}`,
-		)
-		console.log(`[Claude API ${requestId}] Starting Claude SDK query...`)
 
 		const canUseTool: Options['canUseTool'] = async (toolName, input) => {
 			console.log(`[Claude API ${requestId}] Tool requested: ${toolName}`)
@@ -124,7 +133,12 @@ export async function POST(req: Request) {
 			allowedTools: ['Write', 'Edit', 'Read', 'Glob', 'Grep'],
 			permissionMode: 'acceptEdits',
 			canUseTool,
-			systemPrompt: { type: 'preset', preset: 'claude_code' },
+			systemPrompt: getSystemPrompt({
+				projectId: body.projectId,
+				userId: body.userId,
+				workspaceFolder: cwd,
+				additionalContext: body.additionalContext
+			}),
 			settingSources: [],
 			model: process.env.CLAUDE_MODEL,
 		}

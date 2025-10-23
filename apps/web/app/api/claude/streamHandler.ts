@@ -1,10 +1,12 @@
 import { query, type Options } from '@anthropic-ai/claude-agent-sdk'
+import type { SessionStore } from '@/lib/sessionStore'
+import { extractSessionId, getMessageStreamData } from '@/lib/sdk-types'
 
 export interface StreamEvent {
-	type: 'start' | 'message' | 'complete' | 'error'
+	type: 'start' | 'message' | 'session' | 'complete' | 'error'
 	requestId: string
 	timestamp: string
-	data: any
+	data: unknown
 }
 
 export interface StreamOptions {
@@ -13,17 +15,22 @@ export interface StreamOptions {
 	requestId: string
 	host: string
 	cwd: string
+	user: { id: string }
+	conversation?: {
+		key: string
+		store: SessionStore
+	}
 }
 
 /**
  * Creates a ReadableStream that streams Claude SDK messages via Server-Sent Events
  */
-export function createClaudeStream({ message, claudeOptions, requestId, host, cwd }: StreamOptions): ReadableStream {
+export function createClaudeStream({ message, claudeOptions, requestId, host, cwd, user, conversation }: StreamOptions): ReadableStream {
 	return new ReadableStream({
 		async start(controller) {
 			const encoder = new TextEncoder()
 
-			const sendEvent = (eventType: StreamEvent['type'], data: any) => {
+			const sendEvent = (eventType: StreamEvent['type'], data: unknown) => {
 				const event: StreamEvent = {
 					type: eventType,
 					requestId,
@@ -44,6 +51,7 @@ export function createClaudeStream({ message, claudeOptions, requestId, host, cw
 					cwd,
 					message: 'Starting Claude query...',
 					messageLength: message.length,
+					isResume: !!claudeOptions.resume,
 				})
 
 				const q = query({ prompt: message, options: claudeOptions })
@@ -51,35 +59,37 @@ export function createClaudeStream({ message, claudeOptions, requestId, host, cw
 
 				let queryResult: any = null
 				let messageCount = 0
+				let sessionSaved = !!claudeOptions.resume // Already had one?
 
 				for await (const m of q) {
 					messageCount++
 					console.log(`[Stream ${requestId}] Message ${messageCount}: type=${m.type}`)
 
+					// Capture and persist the session_id as soon as we see system:init
+					if (!sessionSaved) {
+						const sessionId = extractSessionId(m)
+						if (sessionId && conversation) {
+							try {
+								await conversation.store.set(conversation.key, sessionId)
+								console.log(`[Stream ${requestId}] Session saved: ${sessionId}`)
+								sessionSaved = true
+								sendEvent('session', { sessionId })
+							} catch (error) {
+								console.error(`[Stream ${requestId}] Failed to save session:`, error)
+							}
+						}
+					}
+
 					// Stream every message to frontend
+					const messageData = getMessageStreamData(m)
 					sendEvent('message', {
 						messageCount,
-						messageType: m.type,
-						content: m,
-						...(m.type === 'tool_use' && {
-							toolName: (m as any).name,
-							toolInput: (m as any).input,
-						}),
-						...(m.type === 'tool_result' && {
-							toolResult: (m as any).content,
-						}),
-						...(m.type === 'text' && {
-							textContent: (m as any).content,
-						}),
+						...messageData,
 					})
 
 					if (m.type === 'result') {
 						queryResult = m
-						console.log(`[Stream ${requestId}] Got result message:`, {
-							success: !!queryResult,
-							hasContent: !!(queryResult as any)?.content,
-							contentLength: (queryResult as any)?.content?.length || 0,
-						})
+						console.log(`[Stream ${requestId}] Got result message`)
 					}
 				}
 
