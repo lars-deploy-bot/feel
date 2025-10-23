@@ -1,39 +1,39 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from "vite"
 
 export default defineConfig({
   // Development server for testing widget
   server: {
     port: 5173, // Vite default
-    open: true
+    open: true,
   },
 
   // Widget build configuration
   build: {
     lib: {
-      entry: 'src/widget.ts',
-      name: 'ClaudeWidget',
-      fileName: 'claude-widget',
-      formats: ['iife'] // Self-executing function for <script> tag
+      entry: "src/widget.ts",
+      name: "ClaudeWidget",
+      fileName: "claude-widget",
+      formats: ["iife"], // Self-executing function for <script> tag
     },
     rollupOptions: {
       output: {
         // Minimize bundle size
         inlineDynamicImports: true,
-        manualChunks: undefined
-      }
+        manualChunks: undefined,
+      },
     },
-    minify: 'terser',
+    minify: "terser",
     terserOptions: {
       compress: {
         drop_console: true,
-        drop_debugger: true
-      }
-    }
+        drop_debugger: true,
+      },
+    },
   },
 
   // Test configuration
   test: {
-    environment: 'jsdom',
-    globals: true
-  }
+    environment: "jsdom",
+    globals: true,
+  },
 })

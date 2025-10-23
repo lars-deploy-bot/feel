@@ -1,10 +1,10 @@
-import { ReactNode } from 'react'
+import { ReactNode } from "react"
 
 interface MessageContainerProps {
-	children: ReactNode
-	className?: string
+  children: ReactNode
+  className?: string
 }
 
-export function MessageContainer({ children, className = '' }: MessageContainerProps) {
-	return <div className={`mb-6 ${className}`}>{children}</div>
+export function MessageContainer({ children, className = "" }: MessageContainerProps) {
+  return <div className={`mb-6 ${className}`}>{children}</div>
 }
