@@ -121,7 +121,7 @@ function ToolResult({ result }: { result: ToolResultContent }) {
     <div className="mb-2">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className={`text-xs font-thin hover:text-black/60 transition-colors ${
+        className={`text-xs font-thin hover:text-black/60 transition-colors pr-4 ${
           result.is_error ? "text-red-600" : "text-black/40"
         }`}
       >

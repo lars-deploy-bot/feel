@@ -310,8 +310,8 @@ export default function ChatPage() {
                 }
               }}
               placeholder="Message"
-              className="w-full resize-none border-0 bg-transparent text-base focus:outline-none p-3"
-              style={{ minHeight: "60px" }}
+              className="w-full resize-none border-0 bg-transparent text-base focus:outline-none p-3 pr-20"
+              style={{ minHeight: "80px" }}
             />
             <button
               type="submit"
