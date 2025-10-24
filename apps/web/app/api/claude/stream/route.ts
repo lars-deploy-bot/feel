@@ -1,17 +1,17 @@
-import { headers, cookies } from "next/headers"
-import { NextResponse } from "next/server"
 import path from "node:path"
-import { type Options, type PermissionResult } from "@anthropic-ai/claude-agent-sdk"
-import { getSystemPrompt } from "@/app/features/claude/systemPrompt"
 import { createClaudeStream, createSSEResponse } from "@/app/features/claude/streamHandler"
+import { getSystemPrompt } from "@/app/features/claude/systemPrompt"
 import { requireSessionUser } from "@/lib/auth"
-import { SessionStoreMemory, sessionKey, tryLockConversation, unlockConversation } from "@/lib/sessionStore"
 import { addCorsHeaders } from "@/lib/cors-utils"
+import { ErrorCodes } from "@/lib/error-codes"
+import { SessionStoreMemory, sessionKey, tryLockConversation, unlockConversation } from "@/lib/sessionStore"
 import { resolveWorkspace } from "@/lib/workspace-utils"
 import { BodySchema, isToolAllowed } from "@/types/guards/api"
-import { isPathWithinWorkspace } from "@/types/guards/workspace"
 import { hasSessionCookie } from "@/types/guards/auth"
-import { ErrorCodes } from "@/lib/error-codes"
+import { isPathWithinWorkspace } from "@/types/guards/workspace"
+import type { Options, PermissionResult } from "@anthropic-ai/claude-agent-sdk"
+import { cookies, headers } from "next/headers"
+import { NextResponse } from "next/server"
 
 export const runtime = "nodejs"
 
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
     console.log(`[Claude Stream ${requestId}] User: ${user.id}`)
 
     console.log(`[Claude Stream ${requestId}] Parsing request body...`)
-    let body
+    let body: any
     try {
       body = await req.json()
       console.log(`[Claude Stream ${requestId}] Raw body keys:`, Object.keys(body))

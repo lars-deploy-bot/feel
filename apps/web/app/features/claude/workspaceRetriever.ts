@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs"
 import path from "node:path"
-import { NextResponse } from "next/server"
 import { ErrorCodes } from "@/lib/error-codes"
+import { NextResponse } from "next/server"
 
 export interface WorkspaceRequest {
   host: string
@@ -36,9 +36,8 @@ export function getWorkspace({ host, body, requestId }: WorkspaceRequest): Works
 
   if (host.startsWith("terminal.")) {
     return getTerminalWorkspace(body, requestId)
-  } else {
-    return getHostnameWorkspace(host, requestId)
   }
+  return getHostnameWorkspace(host, requestId)
 }
 
 function getTerminalWorkspace(body: any, requestId: string): WorkspaceResult {

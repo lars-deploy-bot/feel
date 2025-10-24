@@ -1,5 +1,6 @@
 "use client"
 import { ThinkingGroup } from "@/components/ui/chat/ThinkingGroup"
+import type { StructuredError } from "@/lib/error-codes"
 import { groupMessages } from "@/lib/message-grouper"
 import { type StreamEvent, type UIMessage, parseStreamEvent } from "@/lib/message-parser"
 import { renderMessage } from "@/lib/message-renderer"
@@ -130,7 +131,7 @@ export default function ChatPage() {
 
       if (!response.ok) {
         // Try to read the JSON error response from backend
-        let errorData
+        let errorData: StructuredError | null = null
         try {
           errorData = await response.json()
         } catch {
@@ -140,9 +141,9 @@ export default function ChatPage() {
         // If we got structured error data, stringify it for the error message
         if (errorData) {
           throw new Error(JSON.stringify(errorData))
-        } else {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
         }
+
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
 
       if (!response.body) {

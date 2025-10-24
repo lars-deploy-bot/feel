@@ -1,14 +1,14 @@
-import { headers, cookies } from "next/headers"
-import { NextResponse } from "next/server"
 import path from "node:path"
-import { query, type Options, type PermissionResult } from "@anthropic-ai/claude-agent-sdk"
-import { getWorkspace } from "@/app/features/claude/workspaceRetriever"
 import { getSystemPrompt } from "@/app/features/claude/systemPrompt"
+import { getWorkspace } from "@/app/features/claude/workspaceRetriever"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { resolveWorkspace } from "@/lib/workspace-utils"
 import { BodySchema, isParseResultError, isToolAllowed } from "@/types/guards/api"
-import { isPathWithinWorkspace } from "@/types/guards/workspace"
 import { hasSessionCookie } from "@/types/guards/auth"
+import { isPathWithinWorkspace } from "@/types/guards/workspace"
+import { type Options, type PermissionResult, query } from "@anthropic-ai/claude-agent-sdk"
+import { cookies, headers } from "next/headers"
+import { NextResponse } from "next/server"
 
 export const runtime = "nodejs"
 
@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     console.log(`[Claude API ${requestId}] Session cookie verified`)
 
     console.log(`[Claude API ${requestId}] Parsing request body...`)
-    let body
+    let body: any
     try {
       body = await req.json()
       console.log(`[Claude API ${requestId}] Raw body keys:`, Object.keys(body))
