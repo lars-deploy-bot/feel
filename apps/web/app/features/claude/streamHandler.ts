@@ -48,7 +48,7 @@ export function createClaudeStream({
     options: {
       ...claudeOptions,
       abortController: sdkAbort,
-      includePartialMessages: true,
+      includePartialMessages: false,
     },
   })
 
@@ -84,7 +84,7 @@ export function createClaudeStream({
             timestamp: new Date().toISOString(),
             data,
           }
-          const eventData = `event: ${eventType}\ndata: ${JSON.stringify(event)}\n\n`
+          const eventData = `event: bridge_${eventType}\ndata: ${JSON.stringify(event)}\n\n`
           controller.enqueue(encoder.encode(eventData))
 
           // Also log for server debugging

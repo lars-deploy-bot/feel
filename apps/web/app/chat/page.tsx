@@ -35,7 +35,8 @@ export default function ChatPage() {
       if (savedWorkspace) {
         setWorkspace(savedWorkspace)
       } else {
-        router.push("/workspace")
+        // Redirect to login instead of workspace setup
+        router.push("/")
         return
       }
     }
@@ -169,24 +170,37 @@ export default function ChatPage() {
         const chunk = decoder.decode(value)
         const lines = chunk.split("\n")
 
+        let currentEvent = ""
         for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            try {
-              const eventData: StreamEvent = JSON.parse(line.slice(6))
+          if (line.startsWith("event: ")) {
+            currentEvent = line.slice(7).trim()
+          } else if (line.startsWith("data: ")) {
+            // Only process events with bridge_ prefix
+            if (currentEvent.startsWith("bridge_")) {
+              try {
+                const rawData = JSON.parse(line.slice(6))
 
-              // Log non-ping events for debugging (with request ID for tracking)
-              if (eventData.type !== "ping") {
-                console.log(`[Client SSE ${eventData.requestId}] Event: ${eventData.type}`, eventData.data)
+                // Check if this is a Claude Bridge StreamEvent (has requestId and timestamp)
+                if (rawData.requestId && rawData.timestamp && rawData.type) {
+                  const eventData: StreamEvent = rawData
+
+                  // Log non-ping events for debugging (with request ID for tracking)
+                  if (eventData.type !== "ping") {
+                    console.log(`[Client SSE ${eventData.requestId}] Event: ${eventData.type}`, eventData.data)
+                  }
+
+                  const message = parseStreamEvent(eventData)
+
+                  if (message) {
+                    setMessages(prev => [...prev, message])
+                  }
+                }
+              } catch (parseError) {
+                console.warn("Failed to parse SSE data:", line)
               }
-
-              const message = parseStreamEvent(eventData)
-
-              if (message) {
-                setMessages(prev => [...prev, message])
-              }
-            } catch (parseError) {
-              console.warn("Failed to parse SSE data:", line)
             }
+            // Silently ignore all other events (raw Claude SDK events)
+            currentEvent = "" // Reset after processing
           }
         }
       }
