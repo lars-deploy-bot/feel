@@ -11,7 +11,7 @@
     "build": "turbo run build",
     "start": "turbo run start",
     "see": "pm2 logs claude-bridge --lines 1000",
-    "restart": "pm2 restart claude-bridge",
+    "restart": "pm2 restart claude-bridge && (systemctl reload caddy 2>/dev/null || true)",
     "format": "biome format . --write",
     "create-site": "./scripts/create-site.sh",
     "deploy-site": "./scripts/deploy-site.sh",

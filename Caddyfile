@@ -18,3 +18,7 @@ homable.nl {
 riggedgpt.com {
     reverse_proxy localhost:3337
 }
+
+hello.nl {
+    reverse_proxy localhost:3337
+}
