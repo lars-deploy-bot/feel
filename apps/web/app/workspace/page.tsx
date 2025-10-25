@@ -53,7 +53,7 @@ export default function WorkspacePage() {
         // Use centralized error handling
         const userMessage = result.error
           ? getErrorMessage(result.error, { host: workspace })
-          : (result.message || "Workspace verification failed")
+          : result.message || "Workspace verification failed"
 
         const helpText = result.error ? getErrorHelp(result.error) : null
 
@@ -108,7 +108,7 @@ export default function WorkspacePage() {
                 type="text"
                 value={workspace}
                 onChange={e => {
-                  const value = e.target.value.replace(/^https?:\/\//, '')
+                  const value = e.target.value.replace(/^https?:\/\//, "")
                   setWorkspace(value)
                   setVerified(false)
                   setVerifyResult(null)
@@ -122,7 +122,9 @@ export default function WorkspacePage() {
                 loading={verifying}
                 variant="ghost"
                 className={`!w-auto !px-6 !py-2 !text-xs !font-thin ${
-                  verified ? "!text-green-700 !border-green-600 !border-2 hover:!text-black hover:!bg-transparent !cursor-default" : ""
+                  verified
+                    ? "!text-green-700 !border-green-600 !border-2 hover:!text-black hover:!bg-transparent !cursor-default"
+                    : ""
                 }`}
               >
                 {verifying ? "verifying" : verified ? "verified" : "verify"}
@@ -144,7 +146,6 @@ export default function WorkspacePage() {
               )}
             </div>
           </div>
-
         </div>
       </div>
     </main>

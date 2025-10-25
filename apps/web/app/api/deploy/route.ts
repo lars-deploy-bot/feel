@@ -61,7 +61,7 @@ async function validateSSLCertificate(domain: string): Promise<{ success: boolea
 
       // Test HTTPS connection
       const response = await fetch(`https://${domain}`, {
-        method: 'HEAD',
+        method: "HEAD",
         signal: AbortSignal.timeout(10000), // 10 second timeout per request
       })
 
@@ -76,9 +76,13 @@ async function validateSSLCertificate(domain: string): Promise<{ success: boolea
     } catch (error: any) {
       console.log(`❌ [SSL CHECK] Attempt ${attempt} failed: ${error.message}`)
 
-      if (error.name === 'TimeoutError' || error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+      if (error.name === "TimeoutError" || error.code === "ECONNREFUSED" || error.code === "ENOTFOUND") {
         // These are expected during certificate provisioning
-      } else if (error.message?.includes('certificate') || error.message?.includes('SSL') || error.message?.includes('TLS')) {
+      } else if (
+        error.message?.includes("certificate") ||
+        error.message?.includes("SSL") ||
+        error.message?.includes("TLS")
+      ) {
         // SSL-related error - certificate likely still being provisioned
       } else {
         // Unexpected error
@@ -87,14 +91,14 @@ async function validateSSLCertificate(domain: string): Promise<{ success: boolea
     }
 
     if (attempt < maxAttempts) {
-      console.log(`⏱️  [SSL CHECK] Waiting ${delayMs/1000}s before next attempt...`)
+      console.log(`⏱️  [SSL CHECK] Waiting ${delayMs / 1000}s before next attempt...`)
       await new Promise(resolve => setTimeout(resolve, delayMs))
     }
   }
 
   return {
     success: false,
-    error: `SSL certificate not ready after ${maxAttempts * delayMs / 1000} seconds. Certificate provisioning may still be in progress.`
+    error: `SSL certificate not ready after ${(maxAttempts * delayMs) / 1000} seconds. Certificate provisioning may still be in progress.`,
   }
 }
 
@@ -109,10 +113,13 @@ export async function POST(request: NextRequest) {
       body = await request.json()
     } catch (parseError) {
       console.error("❌ [DEPLOY API] Failed to parse request JSON:", parseError)
-      return NextResponse.json({
-        success: false,
-        message: "Invalid JSON in request body"
-      } as DeployResponse, { status: 400 })
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Invalid JSON in request body",
+        } as DeployResponse,
+        { status: 400 },
+      )
     }
     const { domain, port: requestedPort } = body
 
@@ -200,7 +207,7 @@ export async function POST(request: NextRequest) {
         message: `Site ${domain} deployed but SSL certificate is still being provisioned. Try again in 30-60 seconds.`,
         domain,
         port,
-        errors: [sslValidation.error]
+        errors: [sslValidation.error],
       } as DeployResponse)
     }
   } catch (error: any) {
@@ -222,7 +229,7 @@ export async function POST(request: NextRequest) {
       statusCode = 500
     } else if (error.code === 10) {
       errorMessage = `Site already exists. Remove it first or use update commands.`
-      statusCode = 409  // Conflict
+      statusCode = 409 // Conflict
     } else if (error.stderr) {
       errorMessage = `Script error: ${error.stderr.substring(0, 500)}`
     } else if (error.message) {
@@ -248,8 +255,8 @@ export async function GET() {
       deploy: "POST /api/deploy",
     },
     documentation: {
-      manual_guide: '/root/webalive/sites/template/DEPLOYMENT.md',
-      web_interface: 'https://terminal.goalive.nl/deploy'
-    }
+      manual_guide: "/root/webalive/sites/template/DEPLOYMENT.md",
+      web_interface: "https://terminal.goalive.nl/deploy",
+    },
   })
 }

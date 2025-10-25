@@ -48,18 +48,31 @@ export function createClaudeStream({
     options: {
       ...claudeOptions,
       abortController: sdkAbort,
-      includePartialMessages: true
-    }
+      includePartialMessages: true,
+    },
   })
 
   // If the HTTP request itself gets aborted, stop the SDK too
-  const onHttpAbort = () => {
-    try { sdkAbort.abort('http_request_aborted') } catch {}
+  const onHttpAbort = async () => {
+    try {
+      sdkAbort.abort("http_request_aborted")
+    } catch {}
     // interrupt() exists on Query; guard in case SDK changes
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(q as any)?.interrupt?.().catch(() => {})
+
+    // CRITICAL: When HTTP request is aborted, invalidate the session to prevent
+    // resuming from a corrupted/interrupted state
+    if (conversation) {
+      try {
+        await conversation.store.delete(conversation.key)
+        console.log(`[Stream ${requestId}] Session invalidated due to HTTP abort`)
+      } catch (error) {
+        console.error(`[Stream ${requestId}] Failed to invalidate session on HTTP abort:`, error)
+      }
+    }
   }
-  requestSignal?.addEventListener('abort', onHttpAbort, { once: true })
+  requestSignal?.addEventListener("abort", onHttpAbort, { once: true })
 
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
@@ -86,7 +99,7 @@ export function createClaudeStream({
         }, 20000)
 
         // Optional runaway protection (2 minutes)
-        const killer = setTimeout(() => sdkAbort.abort('timeout'), 120000)
+        const killer = setTimeout(() => sdkAbort.abort("timeout"), 120000)
 
         try {
           // Send initial status
@@ -156,6 +169,22 @@ export function createClaudeStream({
           console.log(`[Stream ${requestId}] === STREAM SUCCESS ===`)
         } catch (error) {
           console.error(`[Stream ${requestId}] Stream error:`, error)
+
+          // If this is an SDK error that might indicate session corruption, invalidate the session
+          const errorMessage = error instanceof Error ? error.message : String(error)
+          const isSessionError = errorMessage.includes("process exited") ||
+                                  errorMessage.includes("Claude Code") ||
+                                  errorMessage.toLowerCase().includes("session")
+
+          if (isSessionError && conversation) {
+            try {
+              await conversation.store.delete(conversation.key)
+              console.log(`[Stream ${requestId}] Session invalidated due to SDK error: ${errorMessage}`)
+            } catch (sessionError) {
+              console.error(`[Stream ${requestId}] Failed to invalidate session after SDK error:`, sessionError)
+            }
+          }
+
           // If we aborted, include error code for client
           if (!sdkAbort.signal.aborted) {
             const errorCode = sdkAbort.signal.aborted ? "aborted" : "query_failed"
@@ -163,7 +192,7 @@ export function createClaudeStream({
               error: errorCode,
               code: errorCode,
               message: "Claude SDK query failed",
-              details: error instanceof Error ? error.message : "Unknown error",
+              details: errorMessage,
             })
           }
         } finally {
@@ -171,7 +200,7 @@ export function createClaudeStream({
           clearTimeout(killer)
           if (!cancelled) controller.close() // Close only if not already cancelled
           onClose?.() // Unlock conversation here
-          requestSignal?.removeEventListener('abort', onHttpAbort)
+          requestSignal?.removeEventListener("abort", onHttpAbort)
         }
       })()
     },
@@ -179,9 +208,23 @@ export function createClaudeStream({
     async cancel(reason?: unknown) {
       cancelled = true
       console.log(`[Stream ${requestId}] Stream cancelled by client:`, reason)
-      try { sdkAbort.abort('client_cancelled') } catch {}
+      try {
+        sdkAbort.abort("client_cancelled")
+      } catch {}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (q as any)?.interrupt?.().catch(() => {})
+
+      // CRITICAL: When stream is cancelled, invalidate the session to prevent
+      // resuming from a corrupted/interrupted state
+      if (conversation) {
+        try {
+          await conversation.store.delete(conversation.key)
+          console.log(`[Stream ${requestId}] Session invalidated due to cancellation`)
+        } catch (error) {
+          console.error(`[Stream ${requestId}] Failed to invalidate session:`, error)
+        }
+      }
+
       onClose?.() // And unlock here too (idempotent)
     },
   })

@@ -12,7 +12,16 @@ import {
   isSDKUserMessage,
   isErrorResultMessage,
 } from "@/lib/sdk-types"
-import { isStartEvent, isSessionEvent, isMessageEvent, isResultEvent, isCompleteEvent } from "@/types/guards/stream"
+import {
+  isStartEvent,
+  isSessionEvent,
+  isMessageEvent,
+  isResultEvent,
+  isCompleteEvent,
+  isErrorEvent,
+  isPingEvent,
+  isDoneEvent,
+} from "@/types/guards/stream"
 
 // Stream event types
 export interface StreamEvent {
@@ -185,7 +194,16 @@ export function parseStreamEvent(event: StreamEvent): UIMessage | null {
 
 // Re-export the type guard functions for use in other modules
 export { isSDKSystemMessage, isSDKAssistantMessage, isSDKUserMessage, isSDKResultMessage, isErrorResultMessage }
-export { isStartEvent, isSessionEvent, isMessageEvent, isResultEvent, isCompleteEvent }
+export {
+  isStartEvent,
+  isSessionEvent,
+  isMessageEvent,
+  isResultEvent,
+  isCompleteEvent,
+  isErrorEvent,
+  isPingEvent,
+  isDoneEvent,
+}
 
 // Get message component type for routing
 export function getMessageComponentType(message: UIMessage): string {

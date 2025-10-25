@@ -174,8 +174,10 @@ export default function ChatPage() {
             try {
               const eventData: StreamEvent = JSON.parse(line.slice(6))
 
-              // Log all events for debugging (with request ID for tracking)
-              console.log(`[Client SSE ${eventData.requestId}] Event: ${eventData.type}`, eventData.data)
+              // Log non-ping events for debugging (with request ID for tracking)
+              if (eventData.type !== "ping") {
+                console.log(`[Client SSE ${eventData.requestId}] Event: ${eventData.type}`, eventData.data)
+              }
 
               const message = parseStreamEvent(eventData)
 
@@ -190,7 +192,7 @@ export default function ChatPage() {
       }
     } catch (error) {
       // Only show error if not aborted by user
-      if (error instanceof Error && error.name !== 'AbortError') {
+      if (error instanceof Error && error.name !== "AbortError") {
         setMessages(prev => [
           ...prev,
           {

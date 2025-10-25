@@ -1,3 +1,4 @@
+# WebAlive sites managed by Claude Bridge
 demo.goalive.nl {
     reverse_proxy localhost:3333
 }
@@ -5,34 +6,6 @@ demo.goalive.nl {
 crazywebsite.nl {
     reverse_proxy localhost:3334
 }
-
-# Huurmatcher services
-huurmatcher.goalive.nl {
-    reverse_proxy localhost:3000
-    encode gzip
-    header {
-        -Server
-        X-Content-Type-Options nosniff
-        X-Frame-Options DENY
-        X-XSS-Protection "1; mode=block"
-    }
-}
-
-api.huurmatcher.goalive.nl {
-    reverse_proxy localhost:1234
-    header {
-        Access-Control-Allow-Origin *
-        Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-        Access-Control-Allow-Headers "Content-Type, Authorization"
-    }
-    @options method OPTIONS
-    respond @options 204
-}
-
-terminal.goalive.nl {
-    reverse_proxy localhost:8999
-}
-
 
 apple.com {
     reverse_proxy localhost:3335
