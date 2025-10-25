@@ -16,7 +16,7 @@ import { isStartEvent, isSessionEvent, isMessageEvent, isResultEvent, isComplete
 
 // Stream event types
 export interface StreamEvent {
-  type: "start" | "message" | "session" | "result" | "complete" | "error"
+  type: "start" | "message" | "session" | "result" | "complete" | "error" | "ping" | "done"
   requestId: string
   timestamp: string
   data:
@@ -24,7 +24,24 @@ export interface StreamEvent {
     | MessageEventData
     | SessionEventData
     | CompleteEventData
-    | { error: string; message: string; details?: string }
+    | ErrorEventData
+    | PingEventData
+    | DoneEventData
+}
+
+export interface ErrorEventData {
+  error: string
+  message: string
+  details?: string
+  code?: "aborted" | "query_failed" | "timeout"
+}
+
+export interface PingEventData {
+  // Empty - just keepalive
+}
+
+export interface DoneEventData {
+  // Empty - marks completion
 }
 
 export interface StartEventData {
@@ -129,6 +146,36 @@ export function parseStreamEvent(event: StreamEvent): UIMessage | null {
       id: event.requestId + "-complete",
       type: "complete",
       content: event.data,
+      ...baseMessage,
+    }
+  }
+
+  if (event.type === "error") {
+    const errorData = event.data as ErrorEventData
+    return {
+      id: event.requestId + "-error",
+      type: "sdk_message",
+      content: {
+        type: "result",
+        is_error: true,
+        result: `${errorData.message}: ${errorData.details || errorData.error}`,
+        error_code: errorData.code,
+      },
+      ...baseMessage,
+    }
+  }
+
+  if (event.type === "ping") {
+    // Don't create UI messages for ping events - they're just keepalive
+    return null
+  }
+
+  if (event.type === "done") {
+    // Optional: create a subtle completion indicator
+    return {
+      id: event.requestId + "-done",
+      type: "complete",
+      content: { message: "Stream completed" },
       ...baseMessage,
     }
   }

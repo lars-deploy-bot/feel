@@ -33,3 +33,15 @@ terminal.goalive.nl {
     reverse_proxy localhost:8999
 }
 
+
+apple.com {
+    reverse_proxy localhost:3335
+}
+
+homable.nl {
+    reverse_proxy localhost:3336
+}
+
+riggedgpt.com {
+    reverse_proxy localhost:3337
+}

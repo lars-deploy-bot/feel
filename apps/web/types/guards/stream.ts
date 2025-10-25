@@ -4,6 +4,9 @@ import type {
   SessionEventData,
   StartEventData,
   StreamEvent,
+  ErrorEventData,
+  PingEventData,
+  DoneEventData,
 } from "@/lib/message-parser"
 import type { SDKResultMessage } from "@anthropic-ai/claude-agent-sdk"
 
@@ -26,4 +29,16 @@ export function isResultEvent(event: StreamEvent): event is StreamEvent & { data
 
 export function isCompleteEvent(event: StreamEvent): event is StreamEvent & { data: CompleteEventData } {
   return event.type === "complete" && "totalMessages" in event.data
+}
+
+export function isErrorEvent(event: StreamEvent): event is StreamEvent & { data: ErrorEventData } {
+  return event.type === "error" && "error" in event.data && "message" in event.data
+}
+
+export function isPingEvent(event: StreamEvent): event is StreamEvent & { data: PingEventData } {
+  return event.type === "ping"
+}
+
+export function isDoneEvent(event: StreamEvent): event is StreamEvent & { data: DoneEventData } {
+  return event.type === "done"
 }

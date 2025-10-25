@@ -51,12 +51,69 @@ async function findAvailablePort(startPort: number = 3334): Promise<number> {
   throw new Error("No available ports found")
 }
 
+async function validateSSLCertificate(domain: string): Promise<{ success: boolean; error?: string }> {
+  const maxAttempts = 6 // Try for up to 60 seconds
+  const delayMs = 10000 // 10 seconds between attempts
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      console.log(`🔍 [SSL CHECK] Attempt ${attempt}/${maxAttempts} for ${domain}`)
+
+      // Test HTTPS connection
+      const response = await fetch(`https://${domain}`, {
+        method: 'HEAD',
+        signal: AbortSignal.timeout(10000), // 10 second timeout per request
+      })
+
+      if (response.ok || response.status === 404) {
+        // 404 is fine - means we reached the site but it's empty/not found
+        // The important thing is we got a valid SSL connection
+        console.log(`✅ [SSL CHECK] Valid SSL certificate for ${domain} (status: ${response.status})`)
+        return { success: true }
+      }
+
+      console.log(`⚠️  [SSL CHECK] Unexpected status ${response.status} for ${domain}`)
+    } catch (error: any) {
+      console.log(`❌ [SSL CHECK] Attempt ${attempt} failed: ${error.message}`)
+
+      if (error.name === 'TimeoutError' || error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+        // These are expected during certificate provisioning
+      } else if (error.message?.includes('certificate') || error.message?.includes('SSL') || error.message?.includes('TLS')) {
+        // SSL-related error - certificate likely still being provisioned
+      } else {
+        // Unexpected error
+        console.error(`🚨 [SSL CHECK] Unexpected error: ${error}`)
+      }
+    }
+
+    if (attempt < maxAttempts) {
+      console.log(`⏱️  [SSL CHECK] Waiting ${delayMs/1000}s before next attempt...`)
+      await new Promise(resolve => setTimeout(resolve, delayMs))
+    }
+  }
+
+  return {
+    success: false,
+    error: `SSL certificate not ready after ${maxAttempts * delayMs / 1000} seconds. Certificate provisioning may still be in progress.`
+  }
+}
+
 export async function POST(request: NextRequest) {
   const startTime = Date.now()
   console.log("🚀 [DEPLOY API] Request received")
 
   try {
-    const body: DeployRequest = await request.json()
+    // Parse request body
+    let body: DeployRequest
+    try {
+      body = await request.json()
+    } catch (parseError) {
+      console.error("❌ [DEPLOY API] Failed to parse request JSON:", parseError)
+      return NextResponse.json({
+        success: false,
+        message: "Invalid JSON in request body"
+      } as DeployResponse, { status: 400 })
+    }
     const { domain, port: requestedPort } = body
 
     console.log(`📋 [DEPLOY API] Request: domain=${domain}, port=${requestedPort}`)
@@ -121,15 +178,31 @@ export async function POST(request: NextRequest) {
       console.warn(`⚠️  [DEPLOY API] STDERR:\n${stderr}`)
     }
 
-    const duration = Date.now() - startTime
-    console.log(`✅ [DEPLOY API] Deployment completed in ${duration}ms`)
+    // Wait for SSL certificate to be provisioned and validate deployment
+    console.log(`🔒 [DEPLOY API] Validating SSL certificate for ${domain}...`)
 
-    return NextResponse.json({
-      success: true,
-      message: `Site ${domain} deployed successfully`,
-      domain,
-      port,
-    } as DeployResponse)
+    const sslValidation = await validateSSLCertificate(domain)
+
+    const duration = Date.now() - startTime
+
+    if (sslValidation.success) {
+      console.log(`✅ [DEPLOY API] Deployment completed successfully in ${duration}ms`)
+      return NextResponse.json({
+        success: true,
+        message: `Site ${domain} deployed successfully with SSL certificate`,
+        domain,
+        port,
+      } as DeployResponse)
+    } else {
+      console.warn(`⚠️  [DEPLOY API] Deployment completed but SSL validation failed: ${sslValidation.error}`)
+      return NextResponse.json({
+        success: true, // Deployment itself succeeded
+        message: `Site ${domain} deployed but SSL certificate is still being provisioned. Try again in 30-60 seconds.`,
+        domain,
+        port,
+        errors: [sslValidation.error]
+      } as DeployResponse)
+    }
   } catch (error: any) {
     const duration = Date.now() - startTime
     console.error(`💥 [DEPLOY API] Error after ${duration}ms:`, error)
@@ -141,6 +214,15 @@ export async function POST(request: NextRequest) {
     if (error.code === "ETIMEDOUT") {
       errorMessage = "Deployment timed out (5 minutes)"
       statusCode = 408
+    } else if (error.code === 2) {
+      errorMessage = "Invalid arguments provided to deployment script"
+      statusCode = 400
+    } else if (error.code === 3) {
+      errorMessage = "Template directory not found - server configuration issue"
+      statusCode = 500
+    } else if (error.code === 10) {
+      errorMessage = `Site already exists. Remove it first or use update commands.`
+      statusCode = 409  // Conflict
     } else if (error.stderr) {
       errorMessage = `Script error: ${error.stderr.substring(0, 500)}`
     } else if (error.message) {
@@ -165,5 +247,9 @@ export async function GET() {
     endpoints: {
       deploy: "POST /api/deploy",
     },
+    documentation: {
+      manual_guide: '/root/webalive/sites/template/DEPLOYMENT.md',
+      web_interface: 'https://terminal.goalive.nl/deploy'
+    }
   })
 }

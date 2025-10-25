@@ -42,7 +42,23 @@ export default function DeployPage() {
         }),
       })
 
-      const data: DeployResponse = await response.json()
+      // Get response text first
+      const responseText = await response.text()
+
+      // Check if response is JSON
+      const contentType = response.headers.get("content-type")
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error(`Server returned non-JSON response (${response.status}): ${responseText.substring(0, 200)}`)
+      }
+
+      // Parse JSON
+      let data: DeployResponse
+      try {
+        data = JSON.parse(responseText)
+      } catch (jsonError) {
+        throw new Error(`Invalid JSON response: ${responseText.substring(0, 200)}`)
+      }
+
       setResult(data)
     } catch (error) {
       setResult({
@@ -59,7 +75,7 @@ export default function DeployPage() {
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md mx-auto">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-8">🚀 Deploy Website</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-8">Deploy Website</h1>
         </div>
 
         <div className="bg-white py-8 px-6 shadow rounded-lg">
@@ -188,7 +204,7 @@ export default function DeployPage() {
                       <div className="mt-2">
                         <details>
                           <summary className="cursor-pointer font-medium">Error Details</summary>
-                          <pre className="mt-2 text-xs bg-red-100 p-2 rounded overflow-x-auto">
+                          <pre className="mt-2 text-xs bg-red-100 p-3 rounded border max-w-full overflow-auto max-h-40 whitespace-pre-wrap break-words">
                             {result.errors.join("\n")}
                           </pre>
                         </details>
@@ -201,16 +217,6 @@ export default function DeployPage() {
           )}
         </div>
 
-        <div className="mt-8 text-center text-sm text-gray-600">
-          <p>This will automatically:</p>
-          <ul className="mt-2 space-y-1">
-            <li>• Create site from template</li>
-            <li>• Configure domain and port</li>
-            <li>• Update Caddyfile</li>
-            <li>• Start PM2 process</li>
-            <li>• Reload Caddy</li>
-          </ul>
-        </div>
       </div>
     </div>
   )

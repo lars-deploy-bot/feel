@@ -11,11 +11,11 @@ import { hasSessionCookie } from "@/types/guards/auth"
 import { isPathWithinWorkspace } from "@/types/guards/workspace"
 import type { Options, PermissionResult } from "@anthropic-ai/claude-agent-sdk"
 import { cookies, headers } from "next/headers"
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 
 export const runtime = "nodejs"
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   const requestId = Math.random().toString(36).substring(2, 8)
   console.log(`[Claude Stream ${requestId}] === STREAM REQUEST START ===`)
 
@@ -169,26 +169,23 @@ export async function POST(req: Request) {
 
     console.log(`[Claude Stream ${requestId}] Creating stream...`)
 
-    try {
-      // Create and return SSE stream
-      const stream = createClaudeStream({
-        message,
-        claudeOptions,
-        requestId,
-        host,
-        cwd,
-        user,
-        conversation: {
-          key: convKey,
-          store: SessionStoreMemory,
-        },
-      })
+    // Create and return SSE stream
+    const { stream } = createClaudeStream({
+      message,
+      claudeOptions,
+      requestId,
+      host,
+      cwd,
+      user,
+      conversation: {
+        key: convKey,
+        store: SessionStoreMemory,
+      },
+      requestSignal: req.signal,
+      onClose: () => unlockConversation(convKey), // Move unlock here
+    })
 
-      return createSSEResponse(stream)
-    } finally {
-      // Always unlock conversation when stream ends
-      unlockConversation(convKey)
-    }
+    return createSSEResponse(stream)
   } catch (outerError) {
     console.error(`[Claude Stream ${requestId}] Outer catch - request processing failed:`, outerError)
 

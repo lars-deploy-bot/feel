@@ -4,6 +4,7 @@ import type { StructuredError } from "@/lib/error-codes"
 import { groupMessages } from "@/lib/message-grouper"
 import { type StreamEvent, type UIMessage, parseStreamEvent } from "@/lib/message-parser"
 import { renderMessage } from "@/lib/message-renderer"
+import { Square } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 
@@ -20,6 +21,7 @@ export default function ChatPage() {
   const [userHasManuallyScrolled, setUserHasManuallyScrolled] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const isAutoScrolling = useRef(false)
+  const abortControllerRef = useRef<AbortController | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -108,13 +110,15 @@ export default function ChatPage() {
     setMsg("")
     setShouldForceScroll(true)
 
-    if (useStreaming) {
-      await sendStreaming(userMessage)
-    } else {
-      await sendRegular(userMessage)
+    try {
+      if (useStreaming) {
+        await sendStreaming(userMessage)
+      } else {
+        await sendRegular(userMessage)
+      }
+    } finally {
+      setBusy(false)
     }
-
-    setBusy(false)
   }
 
   async function sendStreaming(userMessage: UIMessage) {
@@ -123,10 +127,15 @@ export default function ChatPage() {
         ? { message: userMessage.content, workspace, conversationId }
         : { message: userMessage.content, conversationId }
 
+      // Create AbortController for this request
+      const abortController = new AbortController()
+      abortControllerRef.current = abortController
+
       const response = await fetch("/api/claude/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
+        signal: abortController.signal,
       })
 
       if (!response.ok) {
@@ -164,6 +173,10 @@ export default function ChatPage() {
           if (line.startsWith("data: ")) {
             try {
               const eventData: StreamEvent = JSON.parse(line.slice(6))
+
+              // Log all events for debugging (with request ID for tracking)
+              console.log(`[Client SSE ${eventData.requestId}] Event: ${eventData.type}`, eventData.data)
+
               const message = parseStreamEvent(eventData)
 
               if (message) {
@@ -176,19 +189,24 @@ export default function ChatPage() {
         }
       }
     } catch (error) {
-      setMessages(prev => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          type: "sdk_message",
-          content: {
-            type: "result",
-            is_error: true,
-            result: error instanceof Error ? error.message : "Unknown error",
+      // Only show error if not aborted by user
+      if (error instanceof Error && error.name !== 'AbortError') {
+        setMessages(prev => [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            type: "sdk_message",
+            content: {
+              type: "result",
+              is_error: true,
+              result: error.message,
+            },
+            timestamp: new Date(),
           },
-          timestamp: new Date(),
-        },
-      ])
+        ])
+      }
+    } finally {
+      abortControllerRef.current = null
     }
   }
 
@@ -238,6 +256,13 @@ export default function ChatPage() {
   function startNewConversation() {
     setConversationId(crypto.randomUUID())
     setMessages([])
+  }
+
+  function stopStreaming() {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+      abortControllerRef.current = null
+    }
   }
 
   return (
@@ -314,13 +339,23 @@ export default function ChatPage() {
               className="w-full resize-none border-0 bg-transparent text-base focus:outline-none p-3 pr-20"
               style={{ minHeight: "80px" }}
             />
-            <button
-              type="submit"
-              disabled={busy || !msg.trim()}
-              className="absolute top-3 right-3 bottom-3 w-12 text-xs font-thin bg-black text-white hover:bg-gray-800 transition-colors disabled:opacity-50 focus:outline-none flex items-center justify-center"
-            >
-              {busy ? "•••" : "→"}
-            </button>
+            {busy && abortControllerRef.current ? (
+              <button
+                type="button"
+                onClick={stopStreaming}
+                className="absolute top-3 right-3 bottom-3 w-12 text-xs font-thin bg-black text-white hover:bg-gray-800 transition-colors focus:outline-none flex items-center justify-center"
+              >
+                <Square size={12} fill="white" />
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={busy || !msg.trim()}
+                className="absolute top-3 right-3 bottom-3 w-12 text-xs font-thin bg-black text-white hover:bg-gray-800 transition-colors disabled:opacity-50 focus:outline-none flex items-center justify-center"
+              >
+                {busy ? "•••" : "→"}
+              </button>
+            )}
           </div>
         </form>
       </div>

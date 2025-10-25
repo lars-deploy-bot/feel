@@ -8,7 +8,7 @@ set -e
 if [ $# -eq 0 ]; then
     echo "Usage: $0 domain.com"
     echo "Example: $0 newsite.com"
-    exit 1
+    exit 2  # Invalid arguments
 fi
 
 DOMAIN=$1
@@ -18,34 +18,24 @@ CADDYFILE="/root/webalive/claude-bridge/Caddyfile"
 
 echo "🚀 Deploying $DOMAIN..."
 
-# 1. Check if site directory exists, create from template if not
-if [ ! -d "$SITE_DIR" ]; then
+# 1. Check if site directory exists
+if [ -d "$SITE_DIR" ]; then
+    echo "❌ Site directory already exists at: $SITE_DIR"
+    echo "   To redeploy an existing site, use the update commands instead"
+    echo "   Or remove the directory first: rm -rf $SITE_DIR"
+    exit 10  # Site already exists
+else
     echo "📋 Site directory doesn't exist, creating from template..."
     if [ ! -d "$SITES_DIR/template" ]; then
         echo "❌ Template directory not found at $SITES_DIR/template"
-        exit 1
+        exit 3  # Missing template
     fi
+
     cp -r "$SITES_DIR/template" "$SITE_DIR"
-
-    # Generate configuration files using template script
-    if [ -f "$SITE_DIR/scripts/generate-config.js" ]; then
-        echo "🔧 Generating configuration files..."
-        cd "$SITE_DIR"
-        bun run scripts/generate-config.js "$DOMAIN" "$PORT"
-    else
-        echo "⚠️  No config generator found, using manual updates..."
-        # Fallback to manual updates
-        PACKAGE_JSON="$SITE_DIR/user/package.json"
-        if [ -f "$PACKAGE_JSON" ]; then
-            SAFE_NAME=$(echo "$DOMAIN" | sed 's/\./_/g')
-            sed -i "s/\"name\": \".*\"/\"name\": \"$SAFE_NAME\"/" "$PACKAGE_JSON"
-        fi
-    fi
-
     echo "✅ Site created from template"
 fi
 
-# 2. Find available port (starting from 3334)
+# 3. Find available port (starting from 3334)
 echo "🔍 Finding available port..."
 PORT=3334
 while netstat -tuln | grep -q ":$PORT "; do
@@ -53,7 +43,23 @@ while netstat -tuln | grep -q ":$PORT "; do
 done
 echo "✅ Using port $PORT"
 
-# 3. Update Caddyfile
+# 2. Generate configuration files for new site
+echo "🔧 Configuring site for $DOMAIN on port $PORT..."
+if [ -f "$SITE_DIR/scripts/generate-config.js" ]; then
+    echo "⚙️  Using config generator..."
+    cd "$SITE_DIR"
+    bun run scripts/generate-config.js "$DOMAIN" "$PORT"
+else
+    echo "⚠️  No config generator found, using manual updates..."
+    # Fallback to manual updates
+    PACKAGE_JSON="$SITE_DIR/user/package.json"
+    if [ -f "$PACKAGE_JSON" ]; then
+        SAFE_NAME=$(echo "$DOMAIN" | sed 's/\./_/g')
+        sed -i "s/\"name\": \".*\"/\"name\": \"$SAFE_NAME\"/" "$PACKAGE_JSON"
+    fi
+fi
+
+# 4. Update Caddyfile
 echo "📝 Updating Caddyfile..."
 if grep -q "^$DOMAIN {" "$CADDYFILE"; then
     echo "⚠️  Domain already exists in Caddyfile, updating port..."
