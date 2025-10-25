@@ -8,6 +8,10 @@ set -e
 if [ $# -eq 0 ]; then
     echo "Usage: $0 domain.com"
     echo "Example: $0 newsite.com"
+    echo ""
+    echo "Requirements:"
+    echo "- Domain must have an A record pointing to 138.201.56.93"
+    echo "- Subdomains are supported if they point to our server"
     exit 2  # Invalid arguments
 fi
 
@@ -15,8 +19,29 @@ DOMAIN=$1
 SITES_DIR="/root/webalive/sites"
 SITE_DIR="$SITES_DIR/$DOMAIN"
 CADDYFILE="/root/webalive/claude-bridge/Caddyfile"
+SERVER_IP="138.201.56.93"
 
 echo "🚀 Deploying $DOMAIN..."
+
+# 0. Validate DNS pointing to our server
+echo "🔍 Validating DNS for $DOMAIN..."
+DOMAIN_IP=$(dig +short "$DOMAIN" A | tail -n1)
+
+if [ -z "$DOMAIN_IP" ]; then
+    echo "❌ DNS Error: No A record found for $DOMAIN"
+    echo "   Please ensure $DOMAIN has an A record pointing to $SERVER_IP"
+    exit 11  # DNS validation failed
+fi
+
+if [ "$DOMAIN_IP" != "$SERVER_IP" ]; then
+    echo "❌ DNS Error: $DOMAIN points to $DOMAIN_IP, but should point to $SERVER_IP"
+    echo "   Please update the A record for $DOMAIN to point to $SERVER_IP"
+    echo "   Current DNS: $DOMAIN → $DOMAIN_IP"
+    echo "   Required DNS: $DOMAIN → $SERVER_IP"
+    exit 11  # DNS validation failed
+fi
+
+echo "✅ DNS validation passed: $DOMAIN → $SERVER_IP"
 
 # 1. Check if site directory exists
 if [ -d "$SITE_DIR" ]; then
@@ -38,8 +63,25 @@ fi
 # 3. Find available port (starting from 3334)
 echo "🔍 Finding available port..."
 PORT=3334
-while netstat -tuln | grep -q ":$PORT "; do
-    PORT=$((PORT + 1))
+
+# Get all ports currently assigned in Caddyfile
+ASSIGNED_PORTS=$(grep -o 'localhost:[0-9]*' "$CADDYFILE" | cut -d: -f2 | sort -n)
+
+while true; do
+    # Check if port is actively in use
+    if netstat -tuln | grep -q ":$PORT "; then
+        PORT=$((PORT + 1))
+        continue
+    fi
+
+    # Check if port is assigned in Caddyfile
+    if echo "$ASSIGNED_PORTS" | grep -q "^$PORT$"; then
+        PORT=$((PORT + 1))
+        continue
+    fi
+
+    # Port is available
+    break
 done
 echo "✅ Using port $PORT"
 

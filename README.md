@@ -95,6 +95,28 @@ pm2 start apps/web/next start --name claude-bridge -p 8999
 # See Caddyfile for domain routing
 ```
 
+#### Caddy Configuration & Domain Routing
+
+**Quick Setup:**
+```bash
+# 1. Add to /root/webalive/claude-bridge/Caddyfile
+newsite.com {
+    reverse_proxy localhost:3338
+}
+
+# 2. Reload (zero-downtime)
+systemctl reload caddy
+```
+
+**Architecture:**
+- **Main** (`/etc/caddy/Caddyfile`): System config + `import /root/webalive/claude-bridge/Caddyfile`
+- **Sites** (`/root/webalive/claude-bridge/Caddyfile`): Domain→port mappings
+- **Auto-sync**: Changes applied instantly via import, no file copying
+- **Validation**: `caddy validate --config /etc/caddy/Caddyfile`
+
+**Deployment Scripts:**
+See `claude-bridge/scripts/deploy-site.sh` for automated Caddy reloads
+
 ## Usage Examples
 
 ### Standard Domain Access
