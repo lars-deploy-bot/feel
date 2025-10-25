@@ -62,11 +62,17 @@ This site was created from the webalive template.
 
 ## Quick Deploy
 
-To deploy this site:
+To deploy this site with secure systemd isolation:
 
 \`\`\`bash
-/root/webalive/scripts/deploy-site.sh $DOMAIN
+/root/webalive/claude-bridge/scripts/deploy-site-systemd.sh $DOMAIN
 \`\`\`
+
+This provides:
+- ✅ Process isolation (dedicated user, not root)
+- ✅ File system restrictions
+- ✅ Resource limits and security hardening
+- ✅ systemd sandboxing
 
 ## Development
 
@@ -96,7 +102,7 @@ echo "   Template: $TEMPLATE_DIR"
 echo ""
 echo "🚀 Next steps:"
 echo "   1. Customize your site in: $SITE_DIR/user/src/"
-echo "   2. Deploy with: /root/webalive/claude-bridge/scripts/deploy-site.sh $DOMAIN"
+echo "   2. Deploy securely with: /root/webalive/claude-bridge/scripts/deploy-site-systemd.sh $DOMAIN"
 echo ""
 echo "💡 Quick commands:"
 echo "   Navigate to site: cd $SITE_DIR/user"

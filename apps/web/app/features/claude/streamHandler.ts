@@ -1,6 +1,7 @@
 import { formatMessage } from "@/app/features/handlers/formatMessage"
 import { extractSessionId, getMessageStreamData } from "@/lib/sdk-types"
 import type { SessionStore } from "@/lib/sessionStore"
+import { ErrorCodes } from "@/lib/error-codes"
 import { type Options, query } from "@anthropic-ai/claude-agent-sdk"
 
 export interface StreamEvent {
@@ -23,6 +24,7 @@ export interface StreamOptions {
   }
   requestSignal?: AbortSignal
   onClose?: () => void
+  maxTurns?: number // For better error handling and user feedback
 }
 
 /**
@@ -170,8 +172,12 @@ export function createClaudeStream({
         } catch (error) {
           console.error(`[Stream ${requestId}] Stream error:`, error)
 
-          // If this is an SDK error that might indicate session corruption, invalidate the session
+          // Check if this is a maxTurns limit error
           const errorMessage = error instanceof Error ? error.message : String(error)
+          const isMaxTurnsError = errorMessage.toLowerCase().includes("max") &&
+                                  (errorMessage.toLowerCase().includes("turn") || errorMessage.toLowerCase().includes("message"))
+
+          // If this is an SDK error that might indicate session corruption, invalidate the session
           const isSessionError = errorMessage.includes("process exited") ||
                                   errorMessage.includes("Claude Code") ||
                                   errorMessage.toLowerCase().includes("session")
@@ -185,13 +191,20 @@ export function createClaudeStream({
             }
           }
 
-          // If we aborted, include error code for client
+          // Handle different error types
           if (!sdkAbort.signal.aborted) {
-            const errorCode = sdkAbort.signal.aborted ? "aborted" : "query_failed"
+            let errorCode = ErrorCodes.QUERY_FAILED
+            let userMessage = "Claude SDK query failed"
+
+            if (isMaxTurnsError) {
+              errorCode = ErrorCodes.ERROR_MAX_TURNS
+              userMessage = "Conversation reached maximum turn limit (25). Please start a new conversation to continue."
+            }
+
             sendEvent("error", {
               error: errorCode,
               code: errorCode,
-              message: "Claude SDK query failed",
+              message: userMessage,
               details: errorMessage,
             })
           }

@@ -112,6 +112,9 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Add immediate unlock on HTTP abort
+    req.signal?.addEventListener("abort", () => unlockConversation(convKey), { once: true })
+
     // Check for existing session to resume
     const existingSessionId = await SessionStoreMemory.get(convKey)
     console.log(`[Claude Stream ${requestId}] Existing session: ${existingSessionId ? "found" : "none"}`)
@@ -150,11 +153,21 @@ export async function POST(req: NextRequest) {
       return allow
     }
 
+    // Configure max turns limit (default 25, configurable via env)
+    const maxTurns = parseInt(process.env.CLAUDE_MAX_TURNS || "25", 10)
+    if (isNaN(maxTurns) || maxTurns < 1) {
+      console.warn(`[Claude Stream ${requestId}] Invalid CLAUDE_MAX_TURNS, using default: 25`)
+    }
+    const effectiveMaxTurns = isNaN(maxTurns) || maxTurns < 1 ? 25 : maxTurns
+
+    console.log(`[Claude Stream ${requestId}] Max turns limit: ${effectiveMaxTurns}`)
+
     const claudeOptions: Options = {
       cwd,
       allowedTools: ["Write", "Edit", "Read", "Glob", "Grep"],
       permissionMode: "acceptEdits",
       canUseTool,
+      maxTurns: effectiveMaxTurns,
       systemPrompt: getSystemPrompt({
         projectId: body.projectId,
         userId: body.userId,
@@ -182,7 +195,8 @@ export async function POST(req: NextRequest) {
         store: SessionStoreMemory,
       },
       requestSignal: req.signal,
-      onClose: () => unlockConversation(convKey), // Move unlock here
+      onClose: () => unlockConversation(convKey),
+      maxTurns: effectiveMaxTurns, // Pass max turns for better error handling
     })
 
     return createSSEResponse(stream)

@@ -166,8 +166,8 @@ export async function POST(request: NextRequest) {
     const port = requestedPort || (await findAvailablePort())
     console.log(`🔍 [DEPLOY API] Using port: ${port}`)
 
-    // Execute deployment script
-    const scriptPath = "/root/webalive/claude-bridge/scripts/deploy-site.sh"
+    // Execute deployment script (SECURE: uses systemd isolation)
+    const scriptPath = "/root/webalive/claude-bridge/scripts/deploy-site-systemd.sh"
     const deployCommand = `bash ${scriptPath} ${domain}`
 
     console.log(`⚡ [DEPLOY API] Executing: ${deployCommand}`)

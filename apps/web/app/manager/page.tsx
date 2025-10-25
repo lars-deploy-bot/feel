@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/primitives/Button"
+import toast, { Toaster } from 'react-hot-toast'
 
 interface DomainConfig {
   password: string
@@ -14,6 +15,7 @@ export default function ManagerPage() {
   const [domains, setDomains] = useState<DomainPasswords>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
   const [loggingOut, setLoggingOut] = useState(false)
   const [authenticated, setAuthenticated] = useState(false)
 
@@ -77,12 +79,13 @@ export default function ManagerPage() {
           ...prev,
           [domain]: { ...prev[domain], password: newPassword }
         }))
+        toast.success('Password updated successfully')
       } else {
-        alert("Failed to update password")
+        toast.error('Failed to update password')
       }
     } catch (error) {
       console.error("Failed to update password:", error)
-      alert("Failed to update password")
+      toast.error('Failed to update password')
     } finally {
       setSaving(null)
     }
@@ -98,6 +101,42 @@ export default function ManagerPage() {
   const handleSave = (domain: string) => {
     updatePassword(domain, domains[domain].password)
   }
+
+  const deleteDomain = async (domain: string) => {
+    setDeleting(domain)
+    try {
+      const response = await fetch("/api/manager", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ domain }),
+      })
+
+      if (response.ok) {
+        setDomains(prev => {
+          const newDomains = { ...prev }
+          delete newDomains[domain]
+          return newDomains
+        })
+        toast.success('Domain deleted successfully')
+      } else {
+        toast.error('Failed to delete domain')
+      }
+    } catch (error) {
+      console.error("Failed to delete domain:", error)
+      toast.error('Failed to delete domain')
+    } finally {
+      setDeleting(null)
+    }
+  }
+
+  const handleDelete = (domain: string) => {
+    if (confirm(`Are you sure you want to delete ${domain}? This action cannot be undone.`)) {
+      deleteDomain(domain)
+    }
+  }
+
 
   const handleLogout = async () => {
     setLoggingOut(true)
@@ -115,11 +154,11 @@ export default function ManagerPage() {
         setPass("")
         setLoginError("")
       } else {
-        alert("Failed to logout")
+        toast.error('Failed to logout')
       }
     } catch (error) {
       console.error("Logout failed:", error)
-      alert("Failed to logout")
+      toast.error('Failed to logout')
     } finally {
       setLoggingOut(false)
     }
@@ -254,6 +293,14 @@ export default function ManagerPage() {
                     >
                       {saving === domain ? "Saving..." : "Save"}
                     </button>
+
+                    <button
+                      onClick={() => handleDelete(domain)}
+                      disabled={deleting === domain}
+                      className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {deleting === domain ? "Deleting..." : "Delete"}
+                    </button>
                   </div>
                 </div>
               ))}
@@ -267,6 +314,27 @@ export default function ManagerPage() {
           </div>
         </div>
       </div>
+
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: '#363636',
+            color: '#fff',
+          },
+          success: {
+            style: {
+              background: '#10B981',
+            },
+          },
+          error: {
+            style: {
+              background: '#EF4444',
+            },
+          },
+        }}
+      />
     </div>
   )
 }

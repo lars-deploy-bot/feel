@@ -1,5 +1,19 @@
 #!/bin/bash
 
+# ⚠️ DEPRECATED: INSECURE PM2 DEPLOYMENT SCRIPT
+#
+# This script deploys sites using PM2 running as ROOT, which is a SECURITY RISK.
+#
+# 🔒 USE SECURE ALTERNATIVE: /root/webalive/claude-bridge/scripts/deploy-site-systemd.sh
+#
+# The systemd deployment provides:
+# - Process isolation (dedicated user per site)
+# - File system restrictions
+# - Resource limits and security hardening
+# - systemd sandboxing
+#
+# This PM2 script is maintained for legacy compatibility only.
+#
 # Automated Website Deployment Script
 # Usage: ./deploy-site.sh domain.com
 #
@@ -12,12 +26,17 @@
 set -e
 
 if [ $# -eq 0 ]; then
-    echo "Usage: $0 domain.com"
-    echo "Example: $0 newsite.com"
+    echo "🚨 CRITICAL SECURITY WARNING 🚨"
+    echo "This script is DEPRECATED and INSECURE (runs as root)"
     echo ""
-    echo "Requirements:"
-    echo "- Domain must have an A record pointing to 138.201.56.93"
-    echo "- Subdomains are supported if they point to our server"
+    echo "🔒 MANDATORY: Use secure deployment instead:"
+    echo "   /root/webalive/claude-bridge/scripts/deploy-site-systemd.sh domain.com"
+    echo ""
+    echo "⚠️ This insecure script will be removed in future versions"
+    echo "⚠️ New deployments should NEVER use PM2 as root"
+    echo ""
+    echo "Legacy usage (NOT RECOMMENDED): $0 domain.com"
+    echo ""
     exit 2  # Invalid arguments
 fi
 
@@ -27,7 +46,21 @@ SITE_DIR="$SITES_DIR/$DOMAIN"
 CADDYFILE="/root/webalive/claude-bridge/Caddyfile"
 SERVER_IP="138.201.56.93"
 
-echo "🚀 Deploying $DOMAIN..."
+echo ""
+echo "🚨🚨🚨 CRITICAL SECURITY WARNING 🚨🚨🚨"
+echo "DEPLOYING $DOMAIN WITH INSECURE PM2 (RUNS AS ROOT)"
+echo ""
+echo "🔒 YOU SHOULD STOP AND USE:"
+echo "   /root/webalive/claude-bridge/scripts/deploy-site-systemd.sh $DOMAIN"
+echo ""
+echo "⚠️ This creates MAJOR SECURITY VULNERABILITIES"
+echo "⚠️ Site will have access to ALL server files"
+echo "⚠️ No process isolation or resource limits"
+echo ""
+echo "Press Ctrl+C within 10 seconds to abort..."
+sleep 10
+echo ""
+echo "🚀 Proceeding with INSECURE deployment..."
 
 # 0. Validate DNS pointing to our server
 echo "🔍 Validating DNS for $DOMAIN..."

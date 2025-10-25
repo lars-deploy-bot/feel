@@ -161,3 +161,11 @@ export function updateDomainPassword(domain: string, newPassword: string): void 
     saveDomainPasswords(passwords)
   }
 }
+
+export function deleteDomainPassword(domain: string): void {
+  const passwords = loadDomainPasswords()
+  if (passwords[domain]) {
+    delete passwords[domain]
+    saveDomainPasswords(passwords)
+  }
+}
