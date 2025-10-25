@@ -58,26 +58,20 @@ function getTerminalWorkspace(body: any, requestId: string): WorkspaceResult {
     }
   }
 
-  // Validate workspace path
-  if (!customWorkspace.startsWith("webalive/sites/")) {
-    console.error(`[Workspace ${requestId}] Invalid workspace path: ${customWorkspace}`)
-    return {
-      success: false,
-      response: NextResponse.json(
-        {
-          ok: false,
-          error: ErrorCodes.WORKSPACE_INVALID,
-          message: "Workspace must start with webalive/sites/",
-        },
-        { status: 400 },
-      ),
-    }
+  // Auto-prepend webalive/sites/ if not present, and always append /user
+  let workspacePath = customWorkspace.startsWith("webalive/sites/")
+    ? customWorkspace
+    : `webalive/sites/${customWorkspace}`
+
+  // Always append /user to the workspace path
+  if (!workspacePath.endsWith("/user")) {
+    workspacePath = `${workspacePath}/user`
   }
 
   // Prevent path traversal attacks
-  const normalizedWorkspace = path.normalize(customWorkspace)
-  if (normalizedWorkspace !== customWorkspace || normalizedWorkspace.includes("..")) {
-    console.error(`[Workspace ${requestId}] Potential path traversal in workspace: ${customWorkspace}`)
+  const normalizedWorkspace = path.normalize(workspacePath)
+  if (normalizedWorkspace !== workspacePath || normalizedWorkspace.includes("..")) {
+    console.error(`[Workspace ${requestId}] Potential path traversal in workspace: ${workspacePath}`)
     return {
       success: false,
       response: NextResponse.json(

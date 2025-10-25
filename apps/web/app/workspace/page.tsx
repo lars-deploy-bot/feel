@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/primitives/Button"
 
 export default function WorkspacePage() {
-  const [workspace, setWorkspace] = useState("webalive/sites/demo.goalive.nl")
+  const [workspace, setWorkspace] = useState("demo.goalive.nl")
   const [verifying, setVerifying] = useState(false)
   const [verifyResult, setVerifyResult] = useState<{
     verified: boolean
@@ -98,7 +98,7 @@ export default function WorkspacePage() {
                   setWorkspace(e.target.value)
                   setVerifyResult(null)
                 }}
-                placeholder="webalive/sites/demo.goalive.nl"
+                placeholder="demo.goalive.nl"
                 className="flex-1 bg-transparent border-0 border-b border-black/20 text-black placeholder-black/40 focus:outline-none focus:border-black pb-3 text-sm font-thin font-mono"
               />
               <Button

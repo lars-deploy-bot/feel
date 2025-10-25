@@ -50,10 +50,10 @@ export function fileExists(filePath: string): boolean {
 }
 
 /**
- * Check if path is a valid workspace pattern (e.g., webalive/sites/...)
+ * Check if path is a valid workspace pattern (e.g., webalive/sites/... or just site name)
  */
 export function isValidWorkspacePath(workspace: string): boolean {
-  return workspace.startsWith("webalive/sites/")
+  return workspace.startsWith("webalive/sites/") || !workspace.includes("/")
 }
 
 /**
