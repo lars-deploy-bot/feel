@@ -13,6 +13,8 @@
     "see": "pm2 logs claude-bridge --lines 1000",
     "restart": "pm2 restart claude-bridge",
     "format": "biome format . --write",
+    "create-site": "./scripts/create-site.sh",
+    "deploy-site": "./scripts/deploy-site.sh",
     "push": "GIT_SSH_COMMAND='ssh -i ~/.ssh/alive_brug_deploy' git push",
     "pull": "GIT_SSH_COMMAND='ssh -i ~/.ssh/alive_brug_deploy' git pull"
   },
