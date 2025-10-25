@@ -148,6 +148,9 @@ Claude: [writes new file, follows project conventions]
 
 ### Authentication
 - `POST /api/login` - Authenticate with passcode
+- `POST /api/logout` - Clear session cookies
+- `GET /api/manager` - List domain configurations (requires manager auth)
+- `POST /api/manager` - Update domain passwords (requires manager auth)
 
 ### Claude Integration
 - `POST /api/claude` - Send message to Claude (non-streaming)
@@ -165,6 +168,9 @@ Claude: [writes new file, follows project conventions]
 - No access to system files or other sites
 
 ### Authentication
+- **Domain Manager**: Hidden access via `/manager` URL for password management
+- **Separate Sessions**: Manager uses `manager_session` cookie, isolated from domain sessions
+- **Multi-Mode Authentication**: Manager access ("wachtwoord") + domain-specific passwords (`domain-passwords.json`)
 - Session-based authentication
 - Configurable passcode protection
 - Optional bypass for development (when `BRIDGE_PASSCODE` unset)

@@ -79,6 +79,30 @@ export default function DeployPage() {
         </div>
 
         <div className="bg-white py-8 px-6 shadow rounded-lg">
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-blue-800">DNS Setup Required</h3>
+                <div className="mt-2 text-sm text-blue-700">
+                  <p>Your domain must point to our server before deployment.</p>
+                  <a
+                    href="/docs/dns-setup"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium underline hover:text-blue-600"
+                  >
+                    View DNS setup guide →
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <form onSubmit={handleDeploy} className="space-y-6">
             <div>
               <label htmlFor="domain" className="block text-sm font-medium text-gray-700">
@@ -179,7 +203,24 @@ export default function DeployPage() {
                     {result.success ? "Success!" : "Error"}
                   </h3>
                   <div className={`mt-2 text-sm ${result.success ? "text-green-700" : "text-red-700"}`}>
-                    <p>{result.message}</p>
+                    <p>
+                      {result.message.includes('docs/dns-setup') ? (
+                        <>
+                          {result.message.split('https://terminal.goalive.nl/docs/dns-setup')[0]}
+                          <a
+                            href="/docs/dns-setup"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium underline hover:opacity-80"
+                          >
+                            DNS setup guide
+                          </a>
+                          {result.message.split('https://terminal.goalive.nl/docs/dns-setup')[1]}
+                        </>
+                      ) : (
+                        result.message
+                      )}
+                    </p>
                     {result.success && result.domain && result.port && (
                       <div className="mt-2">
                         <p>

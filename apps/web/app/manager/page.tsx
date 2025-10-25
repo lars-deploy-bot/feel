@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { Button } from "@/components/ui/primitives/Button"
 
 interface DomainConfig {
   password: string
@@ -13,10 +14,38 @@ export default function ManagerPage() {
   const [domains, setDomains] = useState<DomainPasswords>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
+  const [loggingOut, setLoggingOut] = useState(false)
+  const [authenticated, setAuthenticated] = useState(false)
+
+  // Login form state
+  const [showLogin, setShowLogin] = useState(false)
+  const [pass, setPass] = useState("")
+  const [loginLoading, setLoginLoading] = useState(false)
+  const [loginError, setLoginError] = useState("")
 
   useEffect(() => {
-    fetchDomains()
+    checkAuthentication()
   }, [])
+
+  const checkAuthentication = async () => {
+    try {
+      const response = await fetch("/api/manager")
+      if (response.ok) {
+        setAuthenticated(true)
+        setShowLogin(false)
+        fetchDomains()
+      } else {
+        setAuthenticated(false)
+        setShowLogin(true)
+        setLoading(false)
+      }
+    } catch (error) {
+      console.error("Authentication check failed:", error)
+      setAuthenticated(false)
+      setShowLogin(true)
+      setLoading(false)
+    }
+  }
 
   const fetchDomains = async () => {
     try {
@@ -70,6 +99,108 @@ export default function ManagerPage() {
     updatePassword(domain, domains[domain].password)
   }
 
+  const handleLogout = async () => {
+    setLoggingOut(true)
+    try {
+      const response = await fetch("/api/logout", {
+        method: "POST",
+        credentials: "include",
+      })
+
+      if (response.ok) {
+        // Reset state to show login form again
+        setAuthenticated(false)
+        setShowLogin(true)
+        setDomains({})
+        setPass("")
+        setLoginError("")
+      } else {
+        alert("Failed to logout")
+      }
+    } catch (error) {
+      console.error("Logout failed:", error)
+      alert("Failed to logout")
+    } finally {
+      setLoggingOut(false)
+    }
+  }
+
+  const handleManagerLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoginLoading(true)
+    setLoginError("")
+
+    try {
+      const response = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ passcode: pass, workspace: "manager" }),
+      })
+
+      if (response.ok) {
+        setAuthenticated(true)
+        setShowLogin(false)
+        fetchDomains()
+      } else {
+        setLoginError("Invalid manager passcode")
+      }
+    } catch (error) {
+      console.error("Manager login failed:", error)
+      setLoginError("Connection failed")
+    } finally {
+      setLoginLoading(false)
+    }
+  }
+
+  if (!authenticated) {
+    if (loading) {
+      return (
+        <div className="min-h-screen bg-black flex items-center justify-center">
+          <div className="text-xl text-white">Checking authentication...</div>
+        </div>
+      )
+    }
+
+    if (showLogin) {
+      return (
+        <main className="min-h-screen bg-black flex items-center justify-center">
+          <div className="w-80">
+            <h1 className="text-6xl font-thin mb-8 text-white">•</h1>
+            <p className="text-white/60 text-center mb-8">Manager Access</p>
+
+            <form onSubmit={handleManagerLogin} className="space-y-8" autoComplete="off">
+              <input
+                type="password"
+                value={pass}
+                onChange={e => setPass(e.target.value)}
+                placeholder="manager passcode"
+                disabled={loginLoading}
+                autoComplete="new-password"
+                autoSave="off"
+                data-1p-ignore
+                data-lpignore="true"
+                data-form-type="other"
+                className="w-full bg-transparent border-0 border-b border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-white pb-3 text-lg font-thin"
+              />
+
+              {loginError && <p className="text-white/60 text-sm">{loginError}</p>}
+
+              <Button
+                type="submit"
+                fullWidth
+                loading={loginLoading}
+                disabled={!pass.trim()}
+                className="!bg-white !text-black hover:!bg-white/90 !border-0 !font-thin !text-lg !py-4"
+              >
+                enter manager
+              </Button>
+            </form>
+          </div>
+        </main>
+      )
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -81,7 +212,16 @@ export default function ManagerPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Domain Manager</h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Domain Manager</h1>
+          <button
+            onClick={handleLogout}
+            disabled={loggingOut}
+            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loggingOut ? "Logging out..." : "Logout"}
+          </button>
+        </div>
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200">

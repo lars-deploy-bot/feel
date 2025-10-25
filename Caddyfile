@@ -7,9 +7,6 @@ crazywebsite.nl {
     reverse_proxy localhost:3334
 }
 
-apple.com {
-    reverse_proxy localhost:3335
-}
 
 homable.nl {
     reverse_proxy localhost:3336
@@ -21,4 +18,9 @@ riggedgpt.com {
 
 wheelpickername.com {
     reverse_proxy localhost:3338
+}
+
+
+kranazilie.nl {
+    reverse_proxy localhost:3339
 }

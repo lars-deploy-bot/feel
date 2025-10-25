@@ -102,7 +102,22 @@ interface DomainConfig {
 type DomainPasswords = Record<string, DomainConfig>
 
 function getDomainPasswordsPath(): string {
-  return join(process.cwd(), "..", "..", "domain-passwords.json")
+  // Check multiple possible locations for the domain-passwords.json file
+  const possiblePaths = [
+    join(process.cwd(), "..", "..", "domain-passwords.json"),
+    join(process.cwd(), "domain-passwords.json"),
+    "/root/webalive/claude-bridge/domain-passwords.json"
+  ]
+
+  for (const path of possiblePaths) {
+    if (existsSync(path)) {
+      console.log("Found domain passwords at:", path)
+      return path
+    }
+  }
+
+  console.log("Domain passwords file not found, checked:", possiblePaths)
+  return possiblePaths[0] // Return default path for creation
 }
 
 export function loadDomainPasswords(): DomainPasswords {

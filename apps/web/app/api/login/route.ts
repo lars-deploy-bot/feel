@@ -37,12 +37,24 @@ export async function POST(req: NextRequest) {
   }
 
   const res = NextResponse.json({ ok: true })
-  res.cookies.set("session", "1", {
-    httpOnly: true,
-    secure: true,
-    sameSite: "none", // Changed for cross-origin
-    path: "/",
-  })
+
+  if (workspace === "manager") {
+    // Set manager session cookie
+    res.cookies.set("manager_session", "1", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      path: "/",
+    })
+  } else {
+    // Set regular session cookie
+    res.cookies.set("session", "1", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none", // Changed for cross-origin
+      path: "/",
+    })
+  }
   addCorsHeaders(res, origin)
   return res
 }

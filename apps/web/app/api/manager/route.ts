@@ -6,9 +6,9 @@ import { cookies } from "next/headers"
 export async function GET(req: NextRequest) {
   const origin = req.headers.get("origin")
 
-  // Check if user is authenticated
+  // Check if user is authenticated as manager
   const jar = await cookies()
-  if (!jar.get("session")) {
+  if (!jar.get("manager_session")) {
     const res = NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 })
     addCorsHeaders(res, origin)
     return res
@@ -23,9 +23,9 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const origin = req.headers.get("origin")
 
-  // Check if user is authenticated
+  // Check if user is authenticated as manager
   const jar = await cookies()
-  if (!jar.get("session")) {
+  if (!jar.get("manager_session")) {
     const res = NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 })
     addCorsHeaders(res, origin)
     return res

@@ -34,6 +34,7 @@ export default function LoginPage() {
       // First validate the login credentials
       const loginResponse = await fetch("/api/login", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ passcode: pass, workspace: workspace }),
       })
 
@@ -68,7 +69,6 @@ export default function LoginPage() {
     <main className="min-h-screen bg-black flex items-center justify-center">
       <div className="w-80">
         <h1 className="text-6xl font-thin mb-16 text-white">•</h1>
-
 
         <form onSubmit={login} className="space-y-8" autoComplete="off">
           <input

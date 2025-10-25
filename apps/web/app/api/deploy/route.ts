@@ -227,9 +227,33 @@ export async function POST(request: NextRequest) {
     } else if (error.code === 3) {
       errorMessage = "Template directory not found - server configuration issue"
       statusCode = 500
+    } else if (error.code === 4) {
+      errorMessage = "Config generator not found - this site template is missing required scripts"
+      statusCode = 500
+    } else if (error.code === 5) {
+      errorMessage = "Ecosystem config generation failed - deployment incomplete"
+      statusCode = 500
+    } else if (error.code === 6) {
+      errorMessage = "Invalid ecosystem config - would cause PM2 crashes (missing bun script)"
+      statusCode = 500
+    } else if (error.code === 7) {
+      errorMessage = "Dangerous ecosystem config - contains bash references that would crash the system"
+      statusCode = 500
+    } else if (error.code === 8) {
+      errorMessage = "PM2 process failed to start"
+      statusCode = 500
+    } else if (error.code === 9) {
+      errorMessage = "PM2 process not online after startup"
+      statusCode = 500
     } else if (error.code === 10) {
+      errorMessage = "PM2 process using wrong interpreter (bash instead of bun) - deployment blocked for safety"
+      statusCode = 500
+    } else if (error.code === 11) {
       errorMessage = `Site already exists. Remove it first or use update commands.`
       statusCode = 409 // Conflict
+    } else if (error.code === 12) {
+      errorMessage = "DNS validation failed - domain must point to this server (138.201.56.93). See DNS setup guide: https://terminal.goalive.nl/docs/dns-setup"
+      statusCode = 400
     } else if (error.stderr) {
       errorMessage = `Script error: ${error.stderr.substring(0, 500)}`
     } else if (error.message) {
