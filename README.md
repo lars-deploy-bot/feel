@@ -103,15 +103,15 @@ pm2 start apps/web/next start --name claude-bridge -p 8999
 
 #### Caddy Configuration & Domain Routing
 
-**🔒 Secure New Site Deployment:**
+**🔒 Secure Site Deployment (ONLY WAY):**
 ```bash
-# 1. Create site from template
-/root/webalive/claude-bridge/scripts/create-site.sh newsite.com
-
-# 2. Deploy with systemd isolation (SECURE)
+# Deploy with systemd isolation + automatic password
 /root/webalive/claude-bridge/scripts/deploy-site-systemd.sh newsite.com
 
-# Result: systemd service with dedicated user and security hardening
+# Or use package.json script:
+bun run deploy-site newsite.com
+
+# Result: systemd service with dedicated user, security hardening, and automatic password "supersecret"
 ```
 
 **Manual Caddy Setup (if needed):**

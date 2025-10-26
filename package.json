@@ -13,8 +13,7 @@
     "see": "pm2 logs claude-bridge --lines 1000",
     "restart": "pm2 restart claude-bridge && (systemctl reload caddy 2>/dev/null || true)",
     "format": "biome format . --write",
-    "create-site": "./scripts/create-site.sh",
-    "deploy-site": "./scripts/deploy-site.sh",
+    "deploy-site": "./scripts/deploy-site-systemd.sh",
     "push": "GIT_SSH_COMMAND='ssh -i ~/.ssh/alive_brug_deploy' git push",
     "pull": "GIT_SSH_COMMAND='ssh -i ~/.ssh/alive_brug_deploy' git pull",
     "lint": "biome lint"
