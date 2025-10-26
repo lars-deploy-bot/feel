@@ -1,6 +1,7 @@
 import path from "node:path"
 import { createClaudeStream, createSSEResponse } from "@/app/features/claude/streamHandler"
 import { getSystemPrompt } from "@/app/features/claude/systemPrompt"
+import { isInputSafe } from "@/app/features/handlers/formatMessage"
 import { requireSessionUser } from "@/lib/auth"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { ErrorCodes } from "@/lib/error-codes"
@@ -79,6 +80,22 @@ export async function POST(req: NextRequest) {
     console.log(
       `[Claude Stream ${requestId}] Message received (${message.length} chars): ${message.substring(0, 100)}${message.length > 100 ? "..." : ""}`,
     )
+
+    // Check input safety
+    console.log(`[Claude Stream ${requestId}] Checking input safety...`)
+    const safetyCheck = await isInputSafe(message)
+    if (safetyCheck === "unsafe") {
+      console.log(`[Claude Stream ${requestId}] Input flagged as unsafe`)
+      return NextResponse.json(
+        {
+          ok: false,
+          error: ErrorCodes.INVALID_REQUEST,
+          message: "Your message contains inappropriate content. Please keep requests professional and related to coding.",
+        },
+        { status: 400 },
+      )
+    }
+    console.log(`[Claude Stream ${requestId}] Input safety check passed`)
 
     const host = (await headers()).get("host") || "localhost"
     const origin = req.headers.get("origin")
