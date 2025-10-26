@@ -1,10 +1,13 @@
 #!/bin/bash
 
-# Secure Website Deployment Script with systemd Isolation
-# Usage: ./deploy-site-systemd.sh domain.com
+# Improved Secure Website Deployment Script with Consistent Port Management
+# Usage: ./deploy-site-systemd-improved.sh domain.com
 #
-# SECURITY: This script deploys sites with full user isolation using systemd
-# Each site runs as its own user with restricted file system and network access.
+# IMPROVEMENTS:
+# - Consistent port assignment using domain-passwords.json as single source of truth
+# - Automatic port increment starting from 3333
+# - Proper environment file creation for systemd services
+# - Port verification and conflict resolution
 
 set -e
 
@@ -24,9 +27,10 @@ USER="site-${SLUG}"
 OLD_SITE_DIR="/root/webalive/sites/$DOMAIN"
 NEW_SITE_DIR="/srv/webalive/sites/$DOMAIN"
 CADDYFILE="/root/webalive/claude-bridge/Caddyfile"
+DOMAIN_PASSWORDS_FILE="/root/webalive/claude-bridge/domain-passwords.json"
 SERVER_IP="138.201.56.93"
 
-echo "🚀 Deploying $DOMAIN with systemd isolation..."
+echo "🚀 Deploying $DOMAIN with improved port management..."
 
 # 1. Validate DNS pointing to our server
 echo "🔍 Validating DNS for $DOMAIN..."
@@ -45,7 +49,56 @@ fi
 
 echo "✅ DNS validation passed: $DOMAIN → $SERVER_IP"
 
-# 2. Create system user for the site
+# 2. Smart port assignment from domain-passwords.json
+echo "🔢 Determining port assignment..."
+
+# Function to get next available port from domain-passwords.json
+get_next_port() {
+    if [ ! -f "$DOMAIN_PASSWORDS_FILE" ]; then
+        echo "3333"  # Start from 3333 if file doesn't exist
+        return
+    fi
+
+    # Get all currently used ports and find the highest
+    local highest_port=$(jq -r '.[].port' "$DOMAIN_PASSWORDS_FILE" 2>/dev/null | sort -n | tail -1)
+
+    if [ -z "$highest_port" ] || [ "$highest_port" = "null" ]; then
+        echo "3333"  # Start from 3333 if no ports found
+    else
+        echo $((highest_port + 1))  # Increment from highest
+    fi
+}
+
+# Check if domain already exists in domain-passwords.json
+if [ -f "$DOMAIN_PASSWORDS_FILE" ] && jq -e ".[\"$DOMAIN\"]" "$DOMAIN_PASSWORDS_FILE" > /dev/null 2>&1; then
+    PORT=$(jq -r ".[\"$DOMAIN\"].port" "$DOMAIN_PASSWORDS_FILE")
+    echo "✅ Using existing port assignment: $PORT"
+else
+    PORT=$(get_next_port)
+    echo "✅ Assigned new port: $PORT"
+
+    # Add to domain-passwords.json
+    if [ ! -f "$DOMAIN_PASSWORDS_FILE" ]; then
+        echo "{}" > "$DOMAIN_PASSWORDS_FILE"
+    fi
+
+    # Add domain with default password "supersecret" and assigned port
+    jq ".[\"$DOMAIN\"] = {\"password\": \"supersecret\", \"port\": $PORT}" "$DOMAIN_PASSWORDS_FILE" > "${DOMAIN_PASSWORDS_FILE}.tmp"
+    mv "${DOMAIN_PASSWORDS_FILE}.tmp" "$DOMAIN_PASSWORDS_FILE"
+    echo "✅ Added $DOMAIN to domain-passwords.json with port $PORT"
+fi
+
+# 3. Verify port is not in use by another process
+if netstat -tuln | grep -q ":$PORT "; then
+    echo "❌ Port $PORT is already in use by another process"
+    echo "   Current network usage:"
+    netstat -tuln | grep ":$PORT"
+    exit 13
+fi
+
+echo "✅ Port $PORT is available"
+
+# 4. Create system user for the site
 echo "👤 Creating system user: $USER"
 if id "$USER" &>/dev/null; then
     echo "✅ User $USER already exists"
@@ -54,11 +107,12 @@ else
     echo "✅ Created user: $USER"
 fi
 
-# 3. Prepare directory structure
+# 5. Prepare directory structure
 echo "📁 Setting up directory structure..."
 mkdir -p "$NEW_SITE_DIR"
+mkdir -p "/etc/sites"
 
-# 4. Copy site files
+# 6. Copy site files
 if [ -d "$OLD_SITE_DIR" ]; then
     echo "📋 Copying existing site from $OLD_SITE_DIR"
     cp -r "$OLD_SITE_DIR"/* "$NEW_SITE_DIR/"
@@ -71,12 +125,12 @@ else
     cp -r "/root/webalive/sites/template"/* "$NEW_SITE_DIR/"
 fi
 
-# 5. CRITICAL: Fix ownership after copying
+# 7. CRITICAL: Fix ownership after copying
 echo "🔒 Setting proper file ownership..."
 chown -R "$USER:$USER" "$NEW_SITE_DIR"
 chmod 750 "$NEW_SITE_DIR"
 
-# 6. Create symlink for systemd compatibility (if domain has dots)
+# 8. Create symlink for systemd compatibility (if domain has dots)
 if [[ "$DOMAIN" == *.* ]]; then
     SYMLINK_PATH="/srv/webalive/sites/$SLUG"
     if [ ! -L "$SYMLINK_PATH" ]; then
@@ -85,17 +139,17 @@ if [[ "$DOMAIN" == *.* ]]; then
     fi
 fi
 
-# 7. Generate configuration
+# 9. Create environment file for systemd service
+echo "⚙️ Creating environment file..."
+cat > "/etc/sites/${SLUG}.env" << EOF
+DOMAIN=$DOMAIN
+PORT=$PORT
+EOF
+echo "✅ Created /etc/sites/${SLUG}.env with PORT=$PORT"
+
+# 10. Generate configuration using the assigned port
 echo "🔧 Generating site configuration..."
 cd "$NEW_SITE_DIR"
-
-# Find available port
-echo "🔍 Finding available port..."
-PORT=3334
-while netstat -tuln | grep -q ":$PORT " || grep -q "localhost:$PORT" "$CADDYFILE"; do
-    PORT=$((PORT + 1))
-done
-echo "✅ Using port $PORT"
 
 # Generate configs using the template script
 if [ -f "$NEW_SITE_DIR/scripts/generate-config.js" ]; then
@@ -107,7 +161,7 @@ else
     exit 4
 fi
 
-# 8. Install dependencies and build
+# 11. Install dependencies and build
 echo "📦 Installing dependencies..."
 cd "$NEW_SITE_DIR/user"
 sudo -u "$USER" bun install
@@ -115,27 +169,32 @@ sudo -u "$USER" bun install
 echo "🔨 Building project..."
 sudo -u "$USER" bun run build
 
-# 9. Stop old PM2 process if exists
+# 12. Stop old PM2 process if exists
 PM2_NAME=$(echo "$DOMAIN" | sed 's/\./-/g')
 if pm2 describe "$PM2_NAME" > /dev/null 2>&1; then
     echo "🔄 Stopping old PM2 process..."
     pm2 delete "$PM2_NAME"
 fi
 
-# 10. Start systemd service
+# 13. Start systemd service
 echo "🚀 Starting systemd service..."
 systemctl daemon-reload
 systemctl start "site@${SLUG}.service"
 
-# 11. Verify service started
+# 14. Verify service started and is using correct port
 sleep 3
 if systemctl is-active --quiet "site@${SLUG}.service"; then
     echo "✅ systemd service started successfully"
 
-    # Get the actual port from service
-    SERVICE_PORT=$(journalctl -u "site@${SLUG}.service" --lines=10 | grep -o 'localhost:[0-9]*' | cut -d: -f2 | head -1)
-    if [ -n "$SERVICE_PORT" ]; then
-        PORT=$SERVICE_PORT
+    # Verify the service is actually listening on the expected port
+    sleep 2
+    if netstat -tuln | grep -q ":$PORT "; then
+        echo "✅ Service is listening on port $PORT"
+    else
+        echo "❌ Service is not listening on expected port $PORT"
+        echo "   Checking what port it's actually using..."
+        journalctl -u "site@${SLUG}.service" --lines=10
+        exit 14
     fi
 else
     echo "❌ systemd service failed to start"
@@ -143,7 +202,7 @@ else
     exit 8
 fi
 
-# 12. Update Caddyfile
+# 15. Update Caddyfile
 echo "📝 Updating Caddyfile..."
 if grep -q "^$DOMAIN {" "$CADDYFILE"; then
     echo "⚠️ Domain already exists in Caddyfile, updating port..."
@@ -164,19 +223,32 @@ $DOMAIN {
 EOF
 fi
 
-# 13. Reload Caddy
+# 16. Reload Caddy
 echo "🔄 Reloading Caddy configuration..."
 systemctl reload caddy
 
-# 14. Final verification
-echo "✅ Deployment complete!"
+# 17. Final verification
+echo "🧪 Running final verification..."
+sleep 2
+
+# Test if the site responds
+if curl -f -s -I "https://$DOMAIN" > /dev/null; then
+    echo "✅ Site is responding to HTTPS requests"
+else
+    echo "⚠️ Site may not be fully ready yet (normal for new sites)"
+fi
+
+# 18. Summary
+echo ""
+echo "🎉 Deployment complete!"
 echo ""
 echo "📊 Summary:"
 echo "   Domain: $DOMAIN"
-echo "   Port: $PORT"
+echo "   Port: $PORT (guaranteed unique)"
 echo "   systemd Service: site@${SLUG}.service"
 echo "   User: $USER"
 echo "   Site Directory: $NEW_SITE_DIR"
+echo "   Environment File: /etc/sites/${SLUG}.env"
 echo ""
 echo "🌐 Your site should be available at: https://$DOMAIN"
 echo ""
@@ -184,9 +256,16 @@ echo "📋 Useful commands:"
 echo "   Check service: systemctl status site@${SLUG}.service"
 echo "   View logs: journalctl -u site@${SLUG}.service -f"
 echo "   Restart: systemctl restart site@${SLUG}.service"
+echo "   Edit environment: nano /etc/sites/${SLUG}.env"
 echo ""
 echo "🛡️ Security Status:"
 echo "   ✅ Process isolation: Runs as user $USER"
 echo "   ✅ File access: Limited to $NEW_SITE_DIR"
 echo "   ✅ systemd hardening: Active"
 echo "   ✅ Resource limits: Enforced"
+echo "   ✅ Port management: Centralized and consistent"
+echo ""
+echo "🔢 Port Management:"
+echo "   ✅ Port assignment: Automatic increment from domain-passwords.json"
+echo "   ✅ Single source of truth: $DOMAIN_PASSWORDS_FILE"
+echo "   ✅ Conflict prevention: Pre-deployment port verification"

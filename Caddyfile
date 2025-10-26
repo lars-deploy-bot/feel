@@ -81,7 +81,7 @@ kranazilie.nl {
 
 barendbootsma.com {
     import common_headers
-    reverse_proxy localhost:5174 {
+    reverse_proxy localhost:3340 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
         header_up X-Forwarded-For {remote_host}
