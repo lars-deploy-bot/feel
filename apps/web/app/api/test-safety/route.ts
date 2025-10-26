@@ -7,11 +7,8 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const { input } = body
 
-    if (!input || typeof input !== 'string') {
-      return NextResponse.json(
-        { error: 'Input is required and must be a string' },
-        { status: 400 }
-      )
+    if (!input || typeof input !== "string") {
+      return NextResponse.json({ error: "Input is required and must be a string" }, { status: 400 })
     }
 
     console.log(`[Safety Test] Checking input: "${input}"`)
@@ -22,25 +19,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       result: result.result,
       debug: {
-        groqStatus: 'connected',
+        groqStatus: "connected",
         hasGroqSecret: !!process.env.GROQ_API_SECRET,
         rawGroqResponse: result.debug.rawContent || "",
         input: input,
         fullChatCompletion: result.debug.fullResponse,
         error: result.debug.error,
         model: result.debug.model,
-        prompt: result.debug.prompt
-      }
+        prompt: result.debug.prompt,
+      },
     })
   } catch (error) {
-    console.error('[Safety Test] Error:', error)
+    console.error("[Safety Test] Error:", error)
     return NextResponse.json(
       {
-        error: 'Failed to check input safety',
-        result: 'error',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        error: "Failed to check input safety",
+        result: "error",
+        details: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }

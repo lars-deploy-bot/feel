@@ -88,7 +88,7 @@ function WorkspacePageContent() {
     return (
       <main className="min-h-screen bg-white flex items-center justify-center">
         <div className="w-80 text-center">
-          <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-black/60 text-sm font-thin">{!mounted ? "loading" : "redirecting"}</p>
         </div>
       </main>

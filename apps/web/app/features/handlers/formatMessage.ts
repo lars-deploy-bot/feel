@@ -164,8 +164,8 @@ export async function isInputSafeWithDebug(input: string): Promise<{
         rawContent: chatCompletion.choices[0]?.message?.content || null,
         error: null,
         model: "openai/gpt-oss-20b",
-        prompt: SAFETY_CHECK_PROMPT
-      }
+        prompt: SAFETY_CHECK_PROMPT,
+      },
     }
   } catch (error) {
     console.error("[isInputSafe] Groq API error:", error)
@@ -176,8 +176,8 @@ export async function isInputSafeWithDebug(input: string): Promise<{
         rawContent: null,
         error: error,
         model: "openai/gpt-oss-20b",
-        prompt: SAFETY_CHECK_PROMPT
-      }
+        prompt: SAFETY_CHECK_PROMPT,
+      },
     }
   }
 }

@@ -3,34 +3,34 @@
 // Template configuration generator
 // Usage: bun run generate-config.js <domain> <port>
 
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs")
+const path = require("path")
 
-const [domain, port, targetDir] = process.argv.slice(2);
+const [domain, port, targetDir] = process.argv.slice(2)
 
 // Determine working directory
-const workDir = targetDir || process.cwd();
-console.log(`📂 Working in: ${workDir}`);
+const workDir = targetDir || process.cwd()
+console.log(`📂 Working in: ${workDir}`)
 
 // Validation
 if (!domain || !port) {
-    console.error('❌ Usage: bun run generate-config.js <domain> <port> [target-dir]');
-    process.exit(1);
+  console.error("❌ Usage: bun run generate-config.js <domain> <port> [target-dir]")
+  process.exit(1)
 }
 
 if (!/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(domain)) {
-    console.error(`❌ Invalid domain format: ${domain}`);
-    process.exit(1);
+  console.error(`❌ Invalid domain format: ${domain}`)
+  process.exit(1)
 }
 
-const portNum = parseInt(port);
+const portNum = parseInt(port)
 if (isNaN(portNum) || portNum < 1024 || portNum > 65535) {
-    console.error(`❌ Invalid port: ${port} (must be 1024-65535)`);
-    process.exit(1);
+  console.error(`❌ Invalid port: ${port} (must be 1024-65535)`)
+  process.exit(1)
 }
 
-const safeName = domain.replace(/\./g, '-');
-const packageName = domain.replace(/\./g, '_');
+const safeName = domain.replace(/\./g, "-")
+const packageName = domain.replace(/\./g, "_")
 
 // Generate vite.config.ts
 const viteConfig = `import path from "node:path";
@@ -59,7 +59,7 @@ export default defineConfig(({ mode }) => ({
 		},
 	},
 }));
-`;
+`
 
 // Generate systemd-compatible notes (no longer generating PM2 configs)
 const systemdNotes = `# This site uses systemd services for security isolation
@@ -79,49 +79,49 @@ const systemdNotes = `# This site uses systemd services for security isolation
 # - Isolated file access
 # - Resource limits enforced
 # - systemd security hardening active
-`;
+`
 
 // Validate directories exist
-const userDir = path.join(workDir, 'user');
+const userDir = path.join(workDir, "user")
 if (!fs.existsSync(userDir)) {
-    console.error(`❌ user directory not found at: ${userDir}`);
-    process.exit(1);
+  console.error(`❌ user directory not found at: ${userDir}`)
+  process.exit(1)
 }
 
 // Update package.json
-const packageJsonPath = path.join(userDir, 'package.json');
+const packageJsonPath = path.join(userDir, "package.json")
 if (fs.existsSync(packageJsonPath)) {
-    try {
-        const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-        packageJson.name = packageName;
-        fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
-        console.log(`✅ Updated package.json name to: ${packageName}`);
-    } catch (error) {
-        console.error(`❌ Failed to update package.json: ${error.message}`);
-        process.exit(1);
-    }
+  try {
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"))
+    packageJson.name = packageName
+    fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2))
+    console.log(`✅ Updated package.json name to: ${packageName}`)
+  } catch (error) {
+    console.error(`❌ Failed to update package.json: ${error.message}`)
+    process.exit(1)
+  }
 } else {
-    console.warn('⚠️  package.json not found, skipping update');
+  console.warn("⚠️  package.json not found, skipping update")
 }
 
 // Write config files with error handling
-const viteConfigPath = path.join(userDir, 'vite.config.ts');
-const systemdNotesPath = path.join(workDir, 'SYSTEMD_DEPLOYMENT.md');
+const viteConfigPath = path.join(userDir, "vite.config.ts")
+const systemdNotesPath = path.join(workDir, "SYSTEMD_DEPLOYMENT.md")
 
 try {
-    fs.writeFileSync(viteConfigPath, viteConfig);
-    console.log(`✅ Generated vite.config.ts for ${domain}:${portNum}`);
+  fs.writeFileSync(viteConfigPath, viteConfig)
+  console.log(`✅ Generated vite.config.ts for ${domain}:${portNum}`)
 } catch (error) {
-    console.error(`❌ Failed to write vite.config.ts: ${error.message}`);
-    process.exit(1);
+  console.error(`❌ Failed to write vite.config.ts: ${error.message}`)
+  process.exit(1)
 }
 
 try {
-    fs.writeFileSync(systemdNotesPath, systemdNotes);
-    console.log(`✅ Generated systemd deployment notes for ${safeName}`);
+  fs.writeFileSync(systemdNotesPath, systemdNotes)
+  console.log(`✅ Generated systemd deployment notes for ${safeName}`)
 } catch (error) {
-    console.error(`❌ Failed to write systemd notes: ${error.message}`);
-    process.exit(1);
+  console.error(`❌ Failed to write systemd notes: ${error.message}`)
+  process.exit(1)
 }
 
-console.log(`🚀 Configuration generated for ${domain} on port ${portNum}`);
+console.log(`🚀 Configuration generated for ${domain} on port ${portNum}`)
