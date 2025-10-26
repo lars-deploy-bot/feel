@@ -85,7 +85,7 @@ function getTerminalWorkspace(body: any, requestId: string): WorkspaceResult {
     }
   }
 
-  const fullPath = path.join("/root", normalizedWorkspace)
+  const fullPath = path.join("/srv", normalizedWorkspace)
 
   // Check if workspace directory exists
   if (!existsSync(fullPath)) {

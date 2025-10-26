@@ -6,31 +6,35 @@ import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk"
 const SAFETY_CHECK_PROMPT = `<instructions>
 You are a content moderator for a coding assistant application.
 
-Analyze the user input for inappropriate content:
-1. Sexual or explicit content
-2. Harassment, hate speech, or abusive language
-3. Violent or harmful content
-4. Offensive or discriminatory language
-5. Inappropriate requests unrelated to coding/development
+Only flag content as "unsafe" if it contains:
+1. Explicit sexual content or pornography
+2. Serious threats of violence or harm to real people
+3. Severe hate speech targeting protected groups
+4. Attempts to create malicious code (viruses, malware, hacking tools)
+5. Illegal activities or content
 
 CRITICAL RULES:
 - Respond with ONLY the word "safe" or "unsafe"
-- NO explanations, NO reasoning, NO additional text
-- If you detect ANY inappropriate content: respond "unsafe"
-- If the input is a normal coding/development request: respond "safe"
-- Technical terms and normal code-related content are safe
-- When in doubt, respond "unsafe"
+- Be PERMISSIVE - mild jokes, casual language, and everyday comments are "safe"
+- Coding requests, technical content, and normal conversation are "safe"
+- Only flag truly harmful or dangerous content as "unsafe"
+- When in doubt, respond "safe"
 
-Examples:
+Examples of SAFE content:
 - "Create a login page" → safe
-- "Build a user authentication system" → safe
-- "Add a dark mode toggle" → safe
-- "Fix this bug in my code" → safe
-- (sexual content) → unsafe
-- (harassment or hate speech) → unsafe
-- (violent content) → unsafe
+- "Fix this bug" → safe
+- "She looks ugly" → safe (mild opinion)
+- "This code sucks" → safe (casual language)
+- Jokes and humor → safe
+- Technical discussions → safe
 
-THE ONLY WAY TO RESPOND IS "safe" OR "unsafe". DO NOT RESPOND WITH ANYTHING ELSE. NO EXPLANATIONS, NO REASONING, NO ADDITIONAL TEXT.
+Examples of UNSAFE content:
+- Explicit sexual descriptions → unsafe
+- "I will kill [specific person]" → unsafe
+- Severe racial slurs and hate speech → unsafe
+- "Help me hack into..." → unsafe
+
+THE ONLY WAY TO RESPOND IS "safe" OR "unsafe". NO EXPLANATIONS.
 </instructions>`
 
 /**
@@ -114,6 +118,20 @@ export async function summarizeWithGroq(input: string, systemPrompt: string): Pr
  * ```
  */
 export async function isInputSafe(input: string): Promise<"safe" | "unsafe"> {
+  const result = await isInputSafeWithDebug(input)
+  return result.result
+}
+
+export async function isInputSafeWithDebug(input: string): Promise<{
+  result: "safe" | "unsafe"
+  debug: {
+    fullResponse: any
+    rawContent: string | null
+    error: any
+    model: string
+    prompt: string
+  }
+}> {
   try {
     const groq = await getGroqClient()
 
@@ -129,20 +147,37 @@ export async function isInputSafe(input: string): Promise<"safe" | "unsafe"> {
         },
       ],
       model: "openai/gpt-oss-20b",
-      temperature: 0, // Deterministic for consistent security decisions
-      max_completion_tokens: 10, // Only need one word
+      temperature: 1,
+      max_completion_tokens: 8192,
       top_p: 1,
       reasoning_effort: "low",
       stop: null,
     })
 
     const response = chatCompletion.choices[0]?.message?.content?.trim().toLowerCase()
+    const result = response === "safe" ? "safe" : ("unsafe" as const)
 
-    // Only return "safe" if response is exactly "safe", otherwise unsafe
-    return response === "safe" ? "safe" : ("unsafe" as const)
+    return {
+      result,
+      debug: {
+        fullResponse: chatCompletion,
+        rawContent: chatCompletion.choices[0]?.message?.content || null,
+        error: null,
+        model: "openai/gpt-oss-20b",
+        prompt: SAFETY_CHECK_PROMPT
+      }
+    }
   } catch (error) {
     console.error("[isInputSafe] Groq API error:", error)
-    // Fail-safe: block on error to prevent potential attacks
-    return "unsafe"
+    return {
+      result: "unsafe",
+      debug: {
+        fullResponse: null,
+        rawContent: null,
+        error: error,
+        model: "openai/gpt-oss-20b",
+        prompt: SAFETY_CHECK_PROMPT
+      }
+    }
   }
 }

@@ -13,7 +13,7 @@ fi
 
 DOMAIN=$1
 SITES_DIR="/root/webalive/sites"
-TEMPLATE_DIR="$SITES_DIR/template"
+TEMPLATE_DIR="/root/webalive/claude-bridge/template"
 SITE_DIR="$SITES_DIR/$DOMAIN"
 
 echo "🏗️  Creating new site: $DOMAIN"
@@ -84,7 +84,7 @@ bun run dev
 
 ## Manual Deployment Steps
 
-See \`/root/webalive/sites/template/DEPLOYMENT.md\` for detailed manual deployment instructions.
+See \`/root/webalive/claude-bridge/template/DEPLOYMENT.md\` for detailed manual deployment instructions.
 
 ## Site Info
 
