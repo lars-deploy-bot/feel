@@ -2,7 +2,7 @@
   "name": "claude-bridge-mono",
   "private": true,
   "packageManager": "bun@1.2.22",
-  "workspaces": ["apps/*"],
+  "workspaces": ["apps/*", "packages/*"],
   "scripts": {
     "web": "cd apps/web && bun run dev",
     "widget": "cd apps/widget-server && ./build.sh && go run main.go",

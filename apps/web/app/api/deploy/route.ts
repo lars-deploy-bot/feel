@@ -278,7 +278,7 @@ export async function GET() {
       deploy: "POST /api/deploy",
     },
     documentation: {
-      manual_guide: "/root/webalive/claude-bridge/template/DEPLOYMENT.md",
+      manual_guide: "/root/webalive/claude-bridge/packages/template/DEPLOYMENT.md",
       web_interface: "https://terminal.goalive.nl/deploy",
     },
   })

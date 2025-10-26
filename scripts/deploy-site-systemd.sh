@@ -118,11 +118,11 @@ if [ -d "$OLD_SITE_DIR" ]; then
     cp -r "$OLD_SITE_DIR"/* "$NEW_SITE_DIR/"
 else
     echo "📋 Creating new site from template"
-    if [ ! -d "/root/webalive/claude-bridge/template" ]; then
+    if [ ! -d "/root/webalive/claude-bridge/packages/template" ]; then
         echo "❌ Template directory not found"
         exit 3
     fi
-    cp -r "/root/webalive/claude-bridge/template"/* "$NEW_SITE_DIR/"
+    cp -r "/root/webalive/claude-bridge/packages/template"/* "$NEW_SITE_DIR/"
 fi
 
 # 7. CRITICAL: Fix ownership after copying
