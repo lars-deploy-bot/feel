@@ -53,10 +53,7 @@ https://terminal.goalive.nl/deploy
 For faster deployments:
 
 ```bash
-# Create a new site from template
-/root/webalive/claude-bridge/scripts/create-site.sh your-domain.com
-
-# Deploy the site (SECURE with systemd isolation)
+# Deploy site (creates from template + systemd isolation)
 /root/webalive/claude-bridge/scripts/deploy-site-systemd.sh your-domain.com
 ```
 

@@ -133,7 +133,6 @@ systemctl reload caddy
 
 **Deployment Scripts:**
 - **Secure (Recommended)**: `claude-bridge/scripts/deploy-site-systemd.sh` (systemd isolation)
-- **Legacy (Deprecated)**: `claude-bridge/scripts/deploy-site.sh` (insecure PM2)
 
 ## Usage Examples
 
