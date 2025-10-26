@@ -5,6 +5,7 @@ import { isInputSafe } from "@/app/features/handlers/formatMessage"
 import { requireSessionUser } from "@/lib/auth"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { ErrorCodes } from "@/lib/error-codes"
+import { logInput } from "@/lib/input-logger"
 import { SessionStoreMemory, sessionKey, tryLockConversation, unlockConversation } from "@/lib/sessionStore"
 import { resolveWorkspace } from "@/lib/workspace-utils"
 import { BodySchema, isToolAllowed } from "@/types/guards/api"
@@ -90,7 +91,7 @@ export async function POST(req: NextRequest) {
         {
           ok: false,
           error: ErrorCodes.INVALID_REQUEST,
-          message: "Your message contains inappropriate content. Please keep requests professional and related to coding.",
+          message: "Your message contains inappropriate content. Please keep it professional and appropriate.",
         },
         { status: 400 },
       )
@@ -107,6 +108,18 @@ export async function POST(req: NextRequest) {
       return workspaceResult.response
     }
     const cwd = workspaceResult.workspace
+
+    // Log input for analytics (non-blocking)
+    logInput({
+      timestamp: new Date().toISOString(),
+      userId: user.id,
+      conversationId,
+      workspace: requestWorkspace ?? "default",
+      cwd,
+      messageLength: message.length,
+      message,
+      requestId,
+    })
 
     // Create session key for this conversation
     const convKey = sessionKey({
