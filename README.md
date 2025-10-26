@@ -15,11 +15,16 @@ Claude Bridge enables developers to interact with Claude AI in the context of sp
 
 ### Workspace Structure
 ```
+# Secure isolated location (new sites)
+/srv/webalive/sites/
+├── example.com/       # Owned by site-example-com user
+│   └── user/          # Application files
+└── demo.site.com/     # Owned by site-demo-site-com user
+    └── user/          # Application files
+
+# Legacy location (existing sites)
 /root/webalive/sites/
-├── example.com/
-│   └── src/           # Claude works here for example.com
-├── demo.site.com/
-│   └── src/           # Claude works here for demo.site.com
+├── existing-site.com/ # Legacy PM2 (insecure)
 └── custom-project/    # Manual workspace (terminal mode)
 ```
 
@@ -58,8 +63,9 @@ Claude Bridge enables developers to interact with Claude AI in the context of sp
 ### Prerequisites
 - Node.js 18+
 - Bun package manager
-- PM2 (for production)
+- systemd (for secure site isolation)
 - Caddy (for reverse proxy)
+- PM2 (for Claude Bridge only)
 
 ### Environment Variables
 ```bash
@@ -97,7 +103,18 @@ pm2 start apps/web/next start --name claude-bridge -p 8999
 
 #### Caddy Configuration & Domain Routing
 
-**Quick Setup:**
+**🔒 Secure New Site Deployment:**
+```bash
+# 1. Create site from template
+/root/webalive/claude-bridge/scripts/create-site.sh newsite.com
+
+# 2. Deploy with systemd isolation (SECURE)
+/root/webalive/claude-bridge/scripts/deploy-site-systemd.sh newsite.com
+
+# Result: systemd service with dedicated user and security hardening
+```
+
+**Manual Caddy Setup (if needed):**
 ```bash
 # 1. Add to /root/webalive/claude-bridge/Caddyfile
 newsite.com {
@@ -115,7 +132,8 @@ systemctl reload caddy
 - **Validation**: `caddy validate --config /etc/caddy/Caddyfile`
 
 **Deployment Scripts:**
-See `claude-bridge/scripts/deploy-site.sh` for automated Caddy reloads
+- **Secure (Recommended)**: `claude-bridge/scripts/deploy-site-systemd.sh` (systemd isolation)
+- **Legacy (Deprecated)**: `claude-bridge/scripts/deploy-site.sh` (insecure PM2)
 
 ## Usage Examples
 

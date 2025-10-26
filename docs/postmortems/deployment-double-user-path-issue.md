@@ -9,6 +9,8 @@
 
 When deploying new websites using the `deploy-site.sh` script, PM2 processes were starting with incorrect working directories containing double `/user/user` paths instead of the expected `/user` path. This caused services to fail with "connection refused" errors despite appearing as "online" in PM2.
 
+**📝 Note**: This issue has been resolved by migrating to secure systemd deployment (`deploy-site-systemd.sh`) which eliminates PM2 path resolution issues entirely and provides better security isolation.
+
 ## Timeline
 
 1. **Initial Deployment**: `kranazilie.nl` deployed successfully through script
@@ -172,20 +174,25 @@ The fix was validated by:
 
 ## Future Considerations
 
-### Monitoring
+### Migration to Secure Deployment
+- **🔒 Recommended**: Use `deploy-site-systemd.sh` for all new sites
+- Provides process isolation, security hardening, and eliminates PM2 path issues
+- Migrate existing sites from insecure PM2 to systemd when possible
+
+### Monitoring (Legacy PM2 Sites)
 - Add alerts for services showing "online" but not responding
 - Monitor PM2 working directory patterns for anomalies
 - Implement automated health checks post-deployment
 
 ### Deployment Robustness
-- Add more validation steps in deployment script
-- Consider containerization to eliminate path context issues
-- Implement rollback mechanism for failed deployments
+- ✅ **Resolved**: systemd deployment eliminates path context issues
+- ✅ **Improved**: Built-in rollback mechanism with systemd services
+- Add more validation steps in legacy deployment script
 
 ### Documentation
-- Update deployment documentation with directory context notes
-- Add troubleshooting guide for PM2 path issues
-- Document the importance of absolute vs relative paths
+- ✅ **Updated**: Deployment documentation now promotes secure systemd method
+- Add troubleshooting guide for PM2 path issues (legacy sites only)
+- Document the importance of absolute vs relative paths (legacy reference)
 
 ---
 

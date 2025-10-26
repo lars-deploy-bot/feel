@@ -39,6 +39,7 @@ export function createClaudeStream({
   conversation,
   requestSignal,
   onClose,
+  maxTurns = 25,
 }: StreamOptions): { stream: ReadableStream } {
   const encoder = new TextEncoder()
   const sdkAbort = new AbortController()
@@ -116,11 +117,31 @@ export function createClaudeStream({
 
           let queryResult: any = null
           let messageCount = 0
+          let turnCount = 0 // Track conversation turns (assistant responses)
           let sessionSaved = !!claudeOptions.resume // Already had one?
 
           for await (const m of q) {
             messageCount++
-            console.log(`[Stream ${requestId}] Message ${messageCount}: type=${m.type}`)
+
+            // Count turns (assistant messages indicate new turns)
+            if (m.type === "assistant") {
+              turnCount++
+              console.log(`[Stream ${requestId}] Turn ${turnCount}/${maxTurns}: Message ${messageCount}`)
+
+              // Send warning when approaching limit
+              if (turnCount === maxTurns - 2) {
+                sendEvent("message", {
+                  messageCount: messageCount + 0.5, // Insert between messages
+                  messageType: "warning",
+                  content: {
+                    type: "warning",
+                    message: `⚠️ Approaching conversation limit: ${turnCount}/${maxTurns} turns used. Consider starting a new conversation soon.`
+                  }
+                })
+              }
+            } else {
+              console.log(`[Stream ${requestId}] Message ${messageCount}: type=${m.type}`)
+            }
 
             // Capture and persist the session_id as soon as we see system:init
             if (!sessionSaved) {
@@ -162,8 +183,10 @@ export function createClaudeStream({
           // Send completion event
           sendEvent("complete", {
             totalMessages: messageCount,
+            totalTurns: turnCount,
+            maxTurns: maxTurns,
             result: queryResult,
-            message: "Claude query completed successfully",
+            message: `Claude query completed successfully (${turnCount}/${maxTurns} turns used)`,
           })
 
           // Normal end
@@ -172,10 +195,18 @@ export function createClaudeStream({
         } catch (error) {
           console.error(`[Stream ${requestId}] Stream error:`, error)
 
-          // Check if this is a maxTurns limit error
+          // Check if this is a maxTurns limit error with improved detection
           const errorMessage = error instanceof Error ? error.message : String(error)
-          const isMaxTurnsError = errorMessage.toLowerCase().includes("max") &&
-                                  (errorMessage.toLowerCase().includes("turn") || errorMessage.toLowerCase().includes("message"))
+          const errorString = errorMessage.toLowerCase()
+          const isMaxTurnsError = (
+            // Claude SDK specific error patterns
+            errorString.includes("max") && errorString.includes("turn") ||
+            errorString.includes("conversation limit") ||
+            errorString.includes("turn limit") ||
+            errorString.includes("maximum turns") ||
+            // Check if we reached the limit we set
+            turnCount >= maxTurns
+          )
 
           // If this is an SDK error that might indicate session corruption, invalidate the session
           const isSessionError = errorMessage.includes("process exited") ||
@@ -198,7 +229,7 @@ export function createClaudeStream({
 
             if (isMaxTurnsError) {
               errorCode = ErrorCodes.ERROR_MAX_TURNS
-              userMessage = "Conversation reached maximum turn limit (25). Please start a new conversation to continue."
+              userMessage = `Conversation reached maximum turn limit (${turnCount}/${maxTurns} turns). Please start a new conversation to continue working.`
             }
 
             sendEvent("error", {
