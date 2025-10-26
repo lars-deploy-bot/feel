@@ -1,11 +1,14 @@
 "use client"
-import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/primitives/Button"
-import { getErrorMessage, getErrorHelp } from "@/lib/error-codes"
+import { getErrorHelp, getErrorMessage } from "@/lib/error-codes"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Suspense, useEffect, useState } from "react"
 
-export default function WorkspacePage() {
-  const [workspace, setWorkspace] = useState("demo.goalive.nl")
+function WorkspacePageContent() {
+  const searchParams = useSearchParams()
+  const domainParam = searchParams.get("domain")
+
+  const [workspace, setWorkspace] = useState(domainParam || "")
   const [verifying, setVerifying] = useState(false)
   const [verified, setVerified] = useState(false)
   const [verifyResult, setVerifyResult] = useState<{
@@ -132,14 +135,14 @@ export default function WorkspacePage() {
             </div>
 
             <div className="mt-6 min-h-[80px]">
-              {verifyResult && !verifyResult.verified && (
+              {verifyResult?.verified === false && (
                 <>
                   <p className="text-sm font-thin text-black/60">failed</p>
                   {verifyResult.error && <p className="text-black/40 text-xs mt-1 font-thin">{verifyResult.error}</p>}
                 </>
               )}
 
-              {verifyResult && verifyResult.verified && (
+              {verifyResult?.verified && (
                 <Button onClick={continueToChat} className="!mt-6 !font-thin !text-sm" fullWidth>
                   continue
                 </Button>
@@ -149,5 +152,22 @@ export default function WorkspacePage() {
         </div>
       </div>
     </main>
+  )
+}
+
+export default function WorkspacePage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-white flex items-center justify-center">
+          <div className="w-80 text-center">
+            <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-black/60 text-sm font-thin">loading</p>
+          </div>
+        </main>
+      }
+    >
+      <WorkspacePageContent />
+    </Suspense>
   )
 }
