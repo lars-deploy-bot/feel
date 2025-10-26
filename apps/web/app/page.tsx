@@ -1,12 +1,15 @@
 "use client"
-import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Suspense, useEffect, useState } from "react"
 import { Button } from "@/components/ui/primitives/Button"
 
-export default function LoginPage() {
+function LoginPageContent() {
+  const searchParams = useSearchParams()
+  const domainParam = searchParams.get("domain")
+
   const [authed, setAuthed] = useState(false)
   const [pass, setPass] = useState("")
-  const [workspace, setWorkspace] = useState("demo.goalive.nl")
+  const [workspace, setWorkspace] = useState(domainParam || "")
   const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
@@ -113,5 +116,22 @@ export default function LoginPage() {
         </form>
       </div>
     </main>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-black flex items-center justify-center">
+          <div className="w-80">
+            <h1 className="text-6xl font-thin mb-16 text-white">•</h1>
+            <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>
+          </div>
+        </main>
+      }
+    >
+      <LoginPageContent />
+    </Suspense>
   )
 }
