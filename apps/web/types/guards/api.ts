@@ -78,7 +78,6 @@ export function isToolAllowed(toolName: string, allowedTools: Set<string>): bool
   return allowedTools.has(toolName)
 }
 
-
 /**
  * Check if a JSON string is valid
  */
@@ -106,7 +105,7 @@ function getDomainPasswordsPath(): string {
   const possiblePaths = [
     join(process.cwd(), "..", "..", "domain-passwords.json"),
     join(process.cwd(), "domain-passwords.json"),
-    "/root/webalive/claude-bridge/domain-passwords.json"
+    "/root/webalive/claude-bridge/domain-passwords.json",
   ]
 
   for (const path of possiblePaths) {

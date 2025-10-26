@@ -1,8 +1,7 @@
-import { NextRequest, NextResponse } from "next/server"
-import { exec } from "child_process"
-import { promisify } from "util"
-import { existsSync } from "fs"
-import path from "path"
+import { exec } from "node:child_process"
+import { existsSync } from "node:fs"
+import { promisify } from "node:util"
+import { type NextRequest, NextResponse } from "next/server"
 
 const execAsync = promisify(exec)
 
@@ -28,13 +27,13 @@ function validateDomain(domain: string): string | null {
 }
 
 function validatePort(port: number): string | null {
-  if (port && (isNaN(port) || port < 1024 || port > 65535)) {
+  if (port && (Number.isNaN(port) || port < 1024 || port > 65535)) {
     return "Port must be between 1024-65535"
   }
   return null
 }
 
-async function findAvailablePort(startPort: number = 3334): Promise<number> {
+async function findAvailablePort(startPort = 3334): Promise<number> {
   let port = startPort
   while (port <= 65535) {
     try {
@@ -200,16 +199,15 @@ export async function POST(request: NextRequest) {
         domain,
         port,
       } as DeployResponse)
-    } else {
-      console.warn(`⚠️  [DEPLOY API] Deployment completed but SSL validation failed: ${sslValidation.error}`)
-      return NextResponse.json({
-        success: true, // Deployment itself succeeded
-        message: `Site ${domain} deployed but SSL certificate is still being provisioned. Try again in 30-60 seconds.`,
-        domain,
-        port,
-        errors: [sslValidation.error],
-      } as DeployResponse)
     }
+    console.warn(`⚠️  [DEPLOY API] Deployment completed but SSL validation failed: ${sslValidation.error}`)
+    return NextResponse.json({
+      success: true, // Deployment itself succeeded
+      message: `Site ${domain} deployed but SSL certificate is still being provisioned. Try again in 30-60 seconds.`,
+      domain,
+      port,
+      errors: [sslValidation.error],
+    } as DeployResponse)
   } catch (error: any) {
     const duration = Date.now() - startTime
     console.error(`💥 [DEPLOY API] Error after ${duration}ms:`, error)
@@ -249,13 +247,14 @@ export async function POST(request: NextRequest) {
       errorMessage = "PM2 process using wrong interpreter (bash instead of bun) - deployment blocked for safety"
       statusCode = 500
     } else if (error.code === 11) {
-      errorMessage = `Site already exists. Remove it first or use update commands.`
+      errorMessage = "Site already exists. Remove it first or use update commands."
       statusCode = 409 // Conflict
     } else if (error.code === 12) {
-      errorMessage = "DNS validation failed - domain must point to this server (138.201.56.93). See DNS setup guide: https://terminal.goalive.nl/docs/dns-setup"
+      errorMessage =
+        "DNS validation failed - domain must point to this server (138.201.56.93). See DNS setup guide: https://terminal.goalive.nl/docs/dns-setup"
       statusCode = 400
     } else if (error.stderr) {
-      errorMessage = `Script error: ${error.stderr.substring(0, 500)}`
+      errorMessage = `Script error: ${error.stderr.slice(0, 500)}`
     } else if (error.message) {
       errorMessage = error.message
     }

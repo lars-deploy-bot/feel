@@ -16,7 +16,8 @@
     "create-site": "./scripts/create-site.sh",
     "deploy-site": "./scripts/deploy-site.sh",
     "push": "GIT_SSH_COMMAND='ssh -i ~/.ssh/alive_brug_deploy' git push",
-    "pull": "GIT_SSH_COMMAND='ssh -i ~/.ssh/alive_brug_deploy' git pull"
+    "pull": "GIT_SSH_COMMAND='ssh -i ~/.ssh/alive_brug_deploy' git pull",
+    "lint": "biome lint"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",

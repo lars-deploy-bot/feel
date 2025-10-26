@@ -1,7 +1,7 @@
 import { formatMessage } from "@/app/features/handlers/formatMessage"
+import { type ErrorCode, ErrorCodes } from "@/lib/error-codes"
 import { extractSessionId, getMessageStreamData } from "@/lib/sdk-types"
 import type { SessionStore } from "@/lib/sessionStore"
-import { ErrorCodes } from "@/lib/error-codes"
 import { type Options, query } from "@anthropic-ai/claude-agent-sdk"
 
 export interface StreamEvent {
@@ -97,12 +97,18 @@ export function createClaudeStream({
         // Optional heartbeat to keep connection alive (every 20s)
         const tick = setInterval(() => {
           if (!cancelled && !sdkAbort.signal.aborted) {
-            controller.enqueue(encoder.encode(`event: ping\ndata: {}\n\n`))
+            controller.enqueue(encoder.encode("event: ping\ndata: {}\n\n"))
           }
         }, 20000)
 
         // Optional runaway protection (2 minutes)
         const killer = setTimeout(() => sdkAbort.abort("timeout"), 120000)
+
+        // Declare variables outside try block so they're accessible in catch
+        let queryResult: any = null
+        let messageCount = 0
+        let turnCount = 0 // Track conversation turns (assistant responses)
+        let sessionSaved = !!claudeOptions.resume // Already had one?
 
         try {
           // Send initial status
@@ -114,11 +120,6 @@ export function createClaudeStream({
             isResume: !!claudeOptions.resume,
           })
           console.log(`[Stream ${requestId}] Query created, starting iteration...`)
-
-          let queryResult: any = null
-          let messageCount = 0
-          let turnCount = 0 // Track conversation turns (assistant responses)
-          let sessionSaved = !!claudeOptions.resume // Already had one?
 
           for await (const m of q) {
             messageCount++
@@ -135,8 +136,8 @@ export function createClaudeStream({
                   messageType: "warning",
                   content: {
                     type: "warning",
-                    message: `⚠️ Approaching conversation limit: ${turnCount}/${maxTurns} turns used. Consider starting a new conversation soon.`
-                  }
+                    message: `⚠️ Approaching conversation limit: ${turnCount}/${maxTurns} turns used. Consider starting a new conversation soon.`,
+                  },
                 })
               }
             } else {
@@ -190,7 +191,7 @@ export function createClaudeStream({
           })
 
           // Normal end
-          controller.enqueue(encoder.encode(`event: done\ndata: {}\n\n`))
+          controller.enqueue(encoder.encode("event: done\ndata: {}\n\n"))
           console.log(`[Stream ${requestId}] === STREAM SUCCESS ===`)
         } catch (error) {
           console.error(`[Stream ${requestId}] Stream error:`, error)
@@ -198,20 +199,20 @@ export function createClaudeStream({
           // Check if this is a maxTurns limit error with improved detection
           const errorMessage = error instanceof Error ? error.message : String(error)
           const errorString = errorMessage.toLowerCase()
-          const isMaxTurnsError = (
+          const isMaxTurnsError =
             // Claude SDK specific error patterns
-            errorString.includes("max") && errorString.includes("turn") ||
+            (errorString.includes("max") && errorString.includes("turn")) ||
             errorString.includes("conversation limit") ||
             errorString.includes("turn limit") ||
             errorString.includes("maximum turns") ||
             // Check if we reached the limit we set
             turnCount >= maxTurns
-          )
 
           // If this is an SDK error that might indicate session corruption, invalidate the session
-          const isSessionError = errorMessage.includes("process exited") ||
-                                  errorMessage.includes("Claude Code") ||
-                                  errorMessage.toLowerCase().includes("session")
+          const isSessionError =
+            errorMessage.includes("process exited") ||
+            errorMessage.includes("Claude Code") ||
+            errorMessage.toLowerCase().includes("session")
 
           if (isSessionError && conversation) {
             try {
@@ -224,7 +225,7 @@ export function createClaudeStream({
 
           // Handle different error types
           if (!sdkAbort.signal.aborted) {
-            let errorCode = ErrorCodes.QUERY_FAILED
+            let errorCode: ErrorCode = ErrorCodes.QUERY_FAILED
             let userMessage = "Claude SDK query failed"
 
             if (isMaxTurnsError) {

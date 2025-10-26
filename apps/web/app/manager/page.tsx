@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/primitives/Button"
-import toast, { Toaster } from 'react-hot-toast'
+import toast, { Toaster } from "react-hot-toast"
 
 interface DomainConfig {
   password: string
@@ -77,15 +77,15 @@ export default function ManagerPage() {
       if (response.ok) {
         setDomains(prev => ({
           ...prev,
-          [domain]: { ...prev[domain], password: newPassword }
+          [domain]: { ...prev[domain], password: newPassword },
         }))
-        toast.success('Password updated successfully')
+        toast.success("Password updated successfully")
       } else {
-        toast.error('Failed to update password')
+        toast.error("Failed to update password")
       }
     } catch (error) {
       console.error("Failed to update password:", error)
-      toast.error('Failed to update password')
+      toast.error("Failed to update password")
     } finally {
       setSaving(null)
     }
@@ -94,7 +94,7 @@ export default function ManagerPage() {
   const handlePasswordChange = (domain: string, newPassword: string) => {
     setDomains(prev => ({
       ...prev,
-      [domain]: { ...prev[domain], password: newPassword }
+      [domain]: { ...prev[domain], password: newPassword },
     }))
   }
 
@@ -119,13 +119,13 @@ export default function ManagerPage() {
           delete newDomains[domain]
           return newDomains
         })
-        toast.success('Domain deleted successfully')
+        toast.success("Domain deleted successfully")
       } else {
-        toast.error('Failed to delete domain')
+        toast.error("Failed to delete domain")
       }
     } catch (error) {
       console.error("Failed to delete domain:", error)
-      toast.error('Failed to delete domain')
+      toast.error("Failed to delete domain")
     } finally {
       setDeleting(null)
     }
@@ -136,7 +136,6 @@ export default function ManagerPage() {
       deleteDomain(domain)
     }
   }
-
 
   const handleLogout = async () => {
     setLoggingOut(true)
@@ -154,11 +153,11 @@ export default function ManagerPage() {
         setPass("")
         setLoginError("")
       } else {
-        toast.error('Failed to logout')
+        toast.error("Failed to logout")
       }
     } catch (error) {
       console.error("Logout failed:", error)
-      toast.error('Failed to logout')
+      toast.error("Failed to logout")
     } finally {
       setLoggingOut(false)
     }
@@ -281,7 +280,7 @@ export default function ManagerPage() {
                     <input
                       type="text"
                       value={config.password}
-                      onChange={(e) => handlePasswordChange(domain, e.target.value)}
+                      onChange={e => handlePasswordChange(domain, e.target.value)}
                       className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="Password"
                     />
@@ -307,9 +306,7 @@ export default function ManagerPage() {
             </div>
 
             {Object.keys(domains).length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                No domains found
-              </div>
+              <div className="text-center py-8 text-gray-500">No domains found</div>
             )}
           </div>
         </div>
@@ -320,17 +317,17 @@ export default function ManagerPage() {
         toastOptions={{
           duration: 3000,
           style: {
-            background: '#363636',
-            color: '#fff',
+            background: "#363636",
+            color: "#fff",
           },
           success: {
             style: {
-              background: '#10B981',
+              background: "#10B981",
             },
           },
           error: {
             style: {
-              background: '#EF4444',
+              background: "#EF4444",
             },
           },
         }}

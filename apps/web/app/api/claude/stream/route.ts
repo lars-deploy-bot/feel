@@ -11,7 +11,7 @@ import { hasSessionCookie } from "@/types/guards/auth"
 import { isPathWithinWorkspace } from "@/types/guards/workspace"
 import type { Options, PermissionResult } from "@anthropic-ai/claude-agent-sdk"
 import { cookies, headers } from "next/headers"
-import { NextRequest, NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 
 export const runtime = "nodejs"
 
@@ -154,11 +154,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Configure max turns limit (default 25, configurable via env)
-    const maxTurns = parseInt(process.env.CLAUDE_MAX_TURNS || "25", 10)
-    if (isNaN(maxTurns) || maxTurns < 1) {
+    const maxTurns = Number.parseInt(process.env.CLAUDE_MAX_TURNS || "25", 10)
+    if (Number.isNaN(maxTurns) || maxTurns < 1) {
       console.warn(`[Claude Stream ${requestId}] Invalid CLAUDE_MAX_TURNS, using default: 25`)
     }
-    const effectiveMaxTurns = isNaN(maxTurns) || maxTurns < 1 ? 25 : maxTurns
+    const effectiveMaxTurns = Number.isNaN(maxTurns) || maxTurns < 1 ? 25 : maxTurns
 
     console.log(`[Claude Stream ${requestId}] Max turns limit: ${effectiveMaxTurns}`)
 

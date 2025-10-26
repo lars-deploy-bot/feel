@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import { addCorsHeaders } from "@/lib/cors-utils"
-import { loadDomainPasswords, saveDomainPasswords, updateDomainPassword, deleteDomainPassword } from "@/types/guards/api"
+import {
+  loadDomainPasswords,
+  saveDomainPasswords,
+  updateDomainPassword,
+  deleteDomainPassword,
+} from "@/types/guards/api"
 import { cookies } from "next/headers"
 
 export async function GET(req: NextRequest) {

@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server"
 import { addCorsHeaders } from "@/lib/cors-utils"
-import { LoginSchema, isParseResultError, isDomainPasswordValid } from "@/types/guards/api"
+import { LoginSchema, isDomainPasswordValid } from "@/types/guards/api"
+import { type NextRequest, NextResponse } from "next/server"
 
 export async function POST(req: NextRequest) {
   const origin = req.headers.get("origin")
