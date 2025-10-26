@@ -1,6 +1,7 @@
 import { formatMessage } from "@/app/features/handlers/formatMessage"
 import { extractSessionId, getMessageStreamData } from "@/lib/sdk-types"
 import type { SessionStore } from "@/lib/sessionStore"
+import { ErrorCodes } from "@/lib/error-codes"
 import { type Options, query } from "@anthropic-ai/claude-agent-sdk"
 
 export interface StreamEvent {
@@ -23,6 +24,7 @@ export interface StreamOptions {
   }
   requestSignal?: AbortSignal
   onClose?: () => void
+  maxTurns?: number // For better error handling and user feedback
 }
 
 /**
@@ -37,6 +39,7 @@ export function createClaudeStream({
   conversation,
   requestSignal,
   onClose,
+  maxTurns = 25,
 }: StreamOptions): { stream: ReadableStream } {
   const encoder = new TextEncoder()
   const sdkAbort = new AbortController()
@@ -48,7 +51,7 @@ export function createClaudeStream({
     options: {
       ...claudeOptions,
       abortController: sdkAbort,
-      includePartialMessages: true,
+      includePartialMessages: false,
     },
   })
 
@@ -84,7 +87,7 @@ export function createClaudeStream({
             timestamp: new Date().toISOString(),
             data,
           }
-          const eventData = `event: ${eventType}\ndata: ${JSON.stringify(event)}\n\n`
+          const eventData = `event: bridge_${eventType}\ndata: ${JSON.stringify(event)}\n\n`
           controller.enqueue(encoder.encode(eventData))
 
           // Also log for server debugging
@@ -114,11 +117,31 @@ export function createClaudeStream({
 
           let queryResult: any = null
           let messageCount = 0
+          let turnCount = 0 // Track conversation turns (assistant responses)
           let sessionSaved = !!claudeOptions.resume // Already had one?
 
           for await (const m of q) {
             messageCount++
-            console.log(`[Stream ${requestId}] Message ${messageCount}: type=${m.type}`)
+
+            // Count turns (assistant messages indicate new turns)
+            if (m.type === "assistant") {
+              turnCount++
+              console.log(`[Stream ${requestId}] Turn ${turnCount}/${maxTurns}: Message ${messageCount}`)
+
+              // Send warning when approaching limit
+              if (turnCount === maxTurns - 2) {
+                sendEvent("message", {
+                  messageCount: messageCount + 0.5, // Insert between messages
+                  messageType: "warning",
+                  content: {
+                    type: "warning",
+                    message: `⚠️ Approaching conversation limit: ${turnCount}/${maxTurns} turns used. Consider starting a new conversation soon.`
+                  }
+                })
+              }
+            } else {
+              console.log(`[Stream ${requestId}] Message ${messageCount}: type=${m.type}`)
+            }
 
             // Capture and persist the session_id as soon as we see system:init
             if (!sessionSaved) {
@@ -160,8 +183,10 @@ export function createClaudeStream({
           // Send completion event
           sendEvent("complete", {
             totalMessages: messageCount,
+            totalTurns: turnCount,
+            maxTurns: maxTurns,
             result: queryResult,
-            message: "Claude query completed successfully",
+            message: `Claude query completed successfully (${turnCount}/${maxTurns} turns used)`,
           })
 
           // Normal end
@@ -170,8 +195,20 @@ export function createClaudeStream({
         } catch (error) {
           console.error(`[Stream ${requestId}] Stream error:`, error)
 
-          // If this is an SDK error that might indicate session corruption, invalidate the session
+          // Check if this is a maxTurns limit error with improved detection
           const errorMessage = error instanceof Error ? error.message : String(error)
+          const errorString = errorMessage.toLowerCase()
+          const isMaxTurnsError = (
+            // Claude SDK specific error patterns
+            errorString.includes("max") && errorString.includes("turn") ||
+            errorString.includes("conversation limit") ||
+            errorString.includes("turn limit") ||
+            errorString.includes("maximum turns") ||
+            // Check if we reached the limit we set
+            turnCount >= maxTurns
+          )
+
+          // If this is an SDK error that might indicate session corruption, invalidate the session
           const isSessionError = errorMessage.includes("process exited") ||
                                   errorMessage.includes("Claude Code") ||
                                   errorMessage.toLowerCase().includes("session")
@@ -185,13 +222,20 @@ export function createClaudeStream({
             }
           }
 
-          // If we aborted, include error code for client
+          // Handle different error types
           if (!sdkAbort.signal.aborted) {
-            const errorCode = sdkAbort.signal.aborted ? "aborted" : "query_failed"
+            let errorCode = ErrorCodes.QUERY_FAILED
+            let userMessage = "Claude SDK query failed"
+
+            if (isMaxTurnsError) {
+              errorCode = ErrorCodes.ERROR_MAX_TURNS
+              userMessage = `Conversation reached maximum turn limit (${turnCount}/${maxTurns} turns). Please start a new conversation to continue working.`
+            }
+
             sendEvent("error", {
               error: errorCode,
               code: errorCode,
-              message: "Claude SDK query failed",
+              message: userMessage,
               details: errorMessage,
             })
           }

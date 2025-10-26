@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { addCorsHeaders } from "@/lib/cors-utils"
-import { LoginSchema, isParseResultError, isPasscodeValid } from "@/types/guards/api"
+import { LoginSchema, isParseResultError, isDomainPasswordValid } from "@/types/guards/api"
 
 export async function POST(req: NextRequest) {
   const origin = req.headers.get("origin")
@@ -13,22 +13,48 @@ export async function POST(req: NextRequest) {
     return res
   }
 
-  const { passcode } = result.data
-  const need = process.env.BRIDGE_PASSCODE
+  const { passcode, workspace } = result.data
 
-  if (!isPasscodeValid(passcode, need)) {
-    const res = NextResponse.json({ ok: false, error: "bad_passcode" }, { status: 401 })
+  // Check if this is a manager login
+  if (workspace === "manager") {
+    if (passcode !== "wachtwoord") {
+      const res = NextResponse.json({ ok: false, error: "bad_passcode" }, { status: 401 })
+      addCorsHeaders(res, origin)
+      return res
+    }
+  } else if (workspace) {
+    // Domain-specific login
+    if (!passcode || !isDomainPasswordValid(workspace, passcode)) {
+      const res = NextResponse.json({ ok: false, error: "bad_passcode" }, { status: 401 })
+      addCorsHeaders(res, origin)
+      return res
+    }
+  } else {
+    // No workspace provided - invalid request
+    const res = NextResponse.json({ ok: false, error: "workspace_required" }, { status: 400 })
     addCorsHeaders(res, origin)
     return res
   }
 
   const res = NextResponse.json({ ok: true })
-  res.cookies.set("session", "1", {
-    httpOnly: true,
-    secure: true,
-    sameSite: "none", // Changed for cross-origin
-    path: "/",
-  })
+
+  if (workspace === "manager") {
+    // Set manager session cookie
+    res.cookies.set("manager_session", "1", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      path: "/",
+    })
+  } else {
+    // Set regular session cookie
+    res.cookies.set("session", "1", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none", // Changed for cross-origin
+      path: "/",
+    })
+  }
   addCorsHeaders(res, origin)
   return res
 }

@@ -1,4 +1,6 @@
 import { z } from "zod"
+import { existsSync, readFileSync, writeFileSync } from "node:fs"
+import { join } from "node:path"
 
 /**
  * API request validation and schema guards
@@ -20,6 +22,7 @@ export type ValidatedBody = z.infer<typeof BodySchema>
  */
 export const LoginSchema = z.object({
   passcode: z.string().optional(),
+  workspace: z.string().optional(),
 })
 
 export type LoginRequest = z.infer<typeof LoginSchema>
@@ -75,18 +78,6 @@ export function isToolAllowed(toolName: string, allowedTools: Set<string>): bool
   return allowedTools.has(toolName)
 }
 
-/**
- * Check if a passcode matches the required passcode
- * Returns true if no passcode is required or if passcode matches
- */
-export function isPasscodeValid(provided: string | undefined, required: string | undefined): boolean {
-  if (!required) {
-    // No passcode required
-    return true
-  }
-  // Passcode required and must match
-  return provided === required
-}
 
 /**
  * Check if a JSON string is valid
@@ -97,5 +88,84 @@ export function isValidJSON(jsonString: string): boolean {
     return true
   } catch {
     return false
+  }
+}
+
+/**
+ * Domain password management
+ */
+interface DomainConfig {
+  password: string
+  port: number
+}
+
+type DomainPasswords = Record<string, DomainConfig>
+
+function getDomainPasswordsPath(): string {
+  // Check multiple possible locations for the domain-passwords.json file
+  const possiblePaths = [
+    join(process.cwd(), "..", "..", "domain-passwords.json"),
+    join(process.cwd(), "domain-passwords.json"),
+    "/root/webalive/claude-bridge/domain-passwords.json"
+  ]
+
+  for (const path of possiblePaths) {
+    if (existsSync(path)) {
+      console.log("Found domain passwords at:", path)
+      return path
+    }
+  }
+
+  console.log("Domain passwords file not found, checked:", possiblePaths)
+  return possiblePaths[0] // Return default path for creation
+}
+
+export function loadDomainPasswords(): DomainPasswords {
+  try {
+    const filePath = getDomainPasswordsPath()
+    if (existsSync(filePath)) {
+      return JSON.parse(readFileSync(filePath, "utf8"))
+    }
+  } catch (error) {
+    console.warn("Failed to read domain passwords file:", error)
+  }
+  return {}
+}
+
+export function saveDomainPasswords(passwords: DomainPasswords): void {
+  try {
+    const filePath = getDomainPasswordsPath()
+    writeFileSync(filePath, JSON.stringify(passwords, null, 2))
+  } catch (error) {
+    console.error("Failed to save domain passwords file:", error)
+  }
+}
+
+export function getDomainPassword(domain: string): string | null {
+  const passwords = loadDomainPasswords()
+  return passwords[domain]?.password || null
+}
+
+export function isDomainPasswordValid(domain: string, providedPassword: string): boolean {
+  const requiredPassword = getDomainPassword(domain)
+  if (!requiredPassword) {
+    return false
+  }
+  return providedPassword === requiredPassword
+}
+
+export function updateDomainPassword(domain: string, newPassword: string): void {
+  const passwords = loadDomainPasswords()
+  if (passwords[domain]) {
+    passwords[domain].password = newPassword
+    saveDomainPasswords(passwords)
+  }
+}
+
+export function deleteDomainPassword(domain: string): void {
+  const passwords = loadDomainPasswords()
+  if (passwords[domain]) {
+    delete passwords[domain]
+    saveDomainPasswords(passwords)
   }
 }

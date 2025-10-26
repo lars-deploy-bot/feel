@@ -1,24 +1,80 @@
 # WebAlive sites managed by Claude Bridge
+(common_headers) {
+    header {
+        # Security Headers
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+
+        # Remove server identification
+        -Server
+        -X-Powered-By
+    }
+}
+
 demo.goalive.nl {
-    reverse_proxy localhost:3333
+    import common_headers
+    reverse_proxy localhost:3333 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
 }
 
 crazywebsite.nl {
-    reverse_proxy localhost:3334
-}
-
-apple.com {
-    reverse_proxy localhost:3335
+    import common_headers
+    reverse_proxy localhost:3334 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
 }
 
 homable.nl {
-    reverse_proxy localhost:3336
+    import common_headers
+    reverse_proxy localhost:3336 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
 }
 
 riggedgpt.com {
-    reverse_proxy localhost:3337
+    import common_headers
+    reverse_proxy localhost:3337 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
 }
 
-hello.nl {
-    reverse_proxy localhost:3337
+# Isolated systemd site with enhanced security
+wheelpickername.com {
+    import common_headers
+    reverse_proxy localhost:5173 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+
+        # Enhanced isolation headers
+        header_down -X-Powered-By
+        header_down -Server
+    }
+}
+
+kranazilie.nl {
+    import common_headers
+    reverse_proxy localhost:3339 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
 }

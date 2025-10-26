@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/primitives/Button"
 export default function LoginPage() {
   const [authed, setAuthed] = useState(false)
   const [pass, setPass] = useState("")
-  const [isTerminal, setIsTerminal] = useState(false)
+  const [workspace, setWorkspace] = useState("demo.goalive.nl")
   const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
@@ -14,19 +14,16 @@ export default function LoginPage() {
 
   useEffect(() => {
     setMounted(true)
-    setIsTerminal(window.location.hostname.startsWith("terminal."))
   }, [])
 
   useEffect(() => {
-    // If already authenticated, redirect to appropriate page
+    // If already authenticated, redirect to chat
     if (authed && mounted) {
-      if (isTerminal) {
-        router.push("/workspace")
-      } else {
-        router.push("/chat")
-      }
+      // Always store workspace for domain-based access
+      sessionStorage.setItem("workspace", workspace)
+      router.push("/chat")
     }
-  }, [authed, isTerminal, mounted, router])
+  }, [authed, mounted, router, workspace])
 
   async function login(e: React.FormEvent) {
     e.preventDefault()
@@ -34,15 +31,33 @@ export default function LoginPage() {
     setError("")
 
     try {
-      const r = await fetch("/api/login", {
+      // First validate the login credentials
+      const loginResponse = await fetch("/api/login", {
         method: "POST",
-        body: JSON.stringify({ passcode: pass }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ passcode: pass, workspace: workspace }),
       })
-      if (r.ok) {
-        setAuthed(true)
-      } else {
+
+      if (!loginResponse.ok) {
         setError("Invalid passcode")
+        return
       }
+
+      // Then verify the workspace exists
+      const verifyResponse = await fetch("/api/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspace: workspace }),
+      })
+
+      const verifyResult = await verifyResponse.json()
+
+      if (!verifyResult.verified) {
+        setError(`Domain "${workspace}" not found or inaccessible`)
+        return
+      }
+
+      setAuthed(true)
     } catch {
       setError("Connection failed")
     } finally {
@@ -55,15 +70,32 @@ export default function LoginPage() {
       <div className="w-80">
         <h1 className="text-6xl font-thin mb-16 text-white">•</h1>
 
-        {mounted && isTerminal && <p className="text-white/60 text-sm mb-12">terminal</p>}
+        <form onSubmit={login} className="space-y-8" autoComplete="off">
+          <input
+            type="text"
+            value={workspace}
+            onChange={e => setWorkspace(e.target.value)}
+            placeholder="domain (e.g. demo.goalive.nl)"
+            disabled={loading}
+            autoComplete="off"
+            autoSave="off"
+            data-1p-ignore
+            data-lpignore="true"
+            data-form-type="other"
+            className="w-full bg-transparent border-0 border-b border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-white pb-3 text-lg font-thin"
+          />
 
-        <form onSubmit={login} className="space-y-8">
           <input
             type="password"
             value={pass}
             onChange={e => setPass(e.target.value)}
             placeholder="passcode"
             disabled={loading}
+            autoComplete="new-password"
+            autoSave="off"
+            data-1p-ignore
+            data-lpignore="true"
+            data-form-type="other"
             className="w-full bg-transparent border-0 border-b border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-white pb-3 text-lg font-thin"
           />
 
@@ -73,7 +105,7 @@ export default function LoginPage() {
             type="submit"
             fullWidth
             loading={loading}
-            disabled={!pass.trim()}
+            disabled={!pass.trim() || !workspace.trim()}
             className="!bg-white !text-black hover:!bg-white/90 !border-0 !font-thin !text-lg !py-4"
           >
             enter

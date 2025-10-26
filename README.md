@@ -15,11 +15,16 @@ Claude Bridge enables developers to interact with Claude AI in the context of sp
 
 ### Workspace Structure
 ```
+# Secure isolated location (new sites)
+/srv/webalive/sites/
+├── example.com/       # Owned by site-example-com user
+│   └── user/          # Application files
+└── demo.site.com/     # Owned by site-demo-site-com user
+    └── user/          # Application files
+
+# Legacy location (existing sites)
 /root/webalive/sites/
-├── example.com/
-│   └── src/           # Claude works here for example.com
-├── demo.site.com/
-│   └── src/           # Claude works here for demo.site.com
+├── existing-site.com/ # Legacy PM2 (insecure)
 └── custom-project/    # Manual workspace (terminal mode)
 ```
 
@@ -58,8 +63,9 @@ Claude Bridge enables developers to interact with Claude AI in the context of sp
 ### Prerequisites
 - Node.js 18+
 - Bun package manager
-- PM2 (for production)
+- systemd (for secure site isolation)
 - Caddy (for reverse proxy)
+- PM2 (for Claude Bridge only)
 
 ### Environment Variables
 ```bash
@@ -95,6 +101,40 @@ pm2 start apps/web/next start --name claude-bridge -p 8999
 # See Caddyfile for domain routing
 ```
 
+#### Caddy Configuration & Domain Routing
+
+**🔒 Secure New Site Deployment:**
+```bash
+# 1. Create site from template
+/root/webalive/claude-bridge/scripts/create-site.sh newsite.com
+
+# 2. Deploy with systemd isolation (SECURE)
+/root/webalive/claude-bridge/scripts/deploy-site-systemd.sh newsite.com
+
+# Result: systemd service with dedicated user and security hardening
+```
+
+**Manual Caddy Setup (if needed):**
+```bash
+# 1. Add to /root/webalive/claude-bridge/Caddyfile
+newsite.com {
+    reverse_proxy localhost:3338
+}
+
+# 2. Reload (zero-downtime)
+systemctl reload caddy
+```
+
+**Architecture:**
+- **Main** (`/etc/caddy/Caddyfile`): System config + `import /root/webalive/claude-bridge/Caddyfile`
+- **Sites** (`/root/webalive/claude-bridge/Caddyfile`): Domain→port mappings
+- **Auto-sync**: Changes applied instantly via import, no file copying
+- **Validation**: `caddy validate --config /etc/caddy/Caddyfile`
+
+**Deployment Scripts:**
+- **Secure (Recommended)**: `claude-bridge/scripts/deploy-site-systemd.sh` (systemd isolation)
+- **Legacy (Deprecated)**: `claude-bridge/scripts/deploy-site.sh` (insecure PM2)
+
 ## Usage Examples
 
 ### Standard Domain Access
@@ -126,6 +166,9 @@ Claude: [writes new file, follows project conventions]
 
 ### Authentication
 - `POST /api/login` - Authenticate with passcode
+- `POST /api/logout` - Clear session cookies
+- `GET /api/manager` - List domain configurations (requires manager auth)
+- `POST /api/manager` - Update domain passwords (requires manager auth)
 
 ### Claude Integration
 - `POST /api/claude` - Send message to Claude (non-streaming)
@@ -143,6 +186,9 @@ Claude: [writes new file, follows project conventions]
 - No access to system files or other sites
 
 ### Authentication
+- **Domain Manager**: Hidden access via `/manager` URL for password management
+- **Separate Sessions**: Manager uses `manager_session` cookie, isolated from domain sessions
+- **Multi-Mode Authentication**: Manager access ("wachtwoord") + domain-specific passwords (`domain-passwords.json`)
 - Session-based authentication
 - Configurable passcode protection
 - Optional bypass for development (when `BRIDGE_PASSCODE` unset)
