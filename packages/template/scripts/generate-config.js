@@ -65,7 +65,7 @@ export default defineConfig(({ mode }) => ({
 const systemdNotes = `# This site uses systemd services for security isolation
 #
 # To deploy this site with full isolation:
-# 1. Run: /root/webalive/claude-bridge/scripts/deploy-site.sh ${domain}
+# 1. Run: /root/webalive/claude-bridge/scripts/deploy-site-systemd.sh ${domain}
 # 2. The systemd service will be created automatically
 # 3. Service name: site@${safeName}.service
 #

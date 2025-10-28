@@ -52,21 +52,33 @@ echo "✅ DNS validation passed: $DOMAIN → $SERVER_IP"
 # 2. Smart port assignment from domain-passwords.json
 echo "🔢 Determining port assignment..."
 
-# Function to get next available port from domain-passwords.json
+# Function to get next available port from domain-passwords.json AND check actual port usage
 get_next_port() {
-    if [ ! -f "$DOMAIN_PASSWORDS_FILE" ]; then
-        echo "3333"  # Start from 3333 if file doesn't exist
-        return
+    local start_port=3333
+
+    if [ -f "$DOMAIN_PASSWORDS_FILE" ]; then
+        # Get all currently used ports and find the highest
+        local highest_port=$(jq -r '.[].port' "$DOMAIN_PASSWORDS_FILE" 2>/dev/null | sort -n | tail -1)
+
+        if [ -n "$highest_port" ] && [ "$highest_port" != "null" ]; then
+            start_port=$((highest_port + 1))
+        fi
     fi
 
-    # Get all currently used ports and find the highest
-    local highest_port=$(jq -r '.[].port' "$DOMAIN_PASSWORDS_FILE" 2>/dev/null | sort -n | tail -1)
+    # Find first port that's not in use by any process
+    local test_port=$start_port
+    while netstat -tuln | grep -q ":$test_port "; do
+        echo "🔍 Port $test_port is occupied, trying next..." >&2
+        test_port=$((test_port + 1))
 
-    if [ -z "$highest_port" ] || [ "$highest_port" = "null" ]; then
-        echo "3333"  # Start from 3333 if no ports found
-    else
-        echo $((highest_port + 1))  # Increment from highest
-    fi
+        # Safety limit to prevent infinite loop
+        if [ $test_port -gt 4000 ]; then
+            echo "❌ Cannot find available port (reached limit 4000)" >&2
+            exit 15
+        fi
+    done
+
+    echo $test_port
 }
 
 # Check if domain already exists in domain-passwords.json
@@ -88,15 +100,22 @@ else
     echo "✅ Added $DOMAIN to domain-passwords.json with port $PORT"
 fi
 
-# 3. Verify port is not in use by another process
-if netstat -tuln | grep -q ":$PORT "; then
-    echo "❌ Port $PORT is already in use by another process"
-    echo "   Current network usage:"
-    netstat -tuln | grep ":$PORT"
-    exit 13
+# 3. For existing domains, verify their assigned port is still available
+if [ -f "$DOMAIN_PASSWORDS_FILE" ] && jq -e ".[\"$DOMAIN\"]" "$DOMAIN_PASSWORDS_FILE" > /dev/null 2>&1; then
+    if netstat -tuln | grep -q ":$PORT "; then
+        echo "⚠️ Existing domain's port $PORT is now occupied, finding new port..."
+        NEW_PORT=$(get_next_port)
+        echo "🔄 Reassigning $DOMAIN from port $PORT to $NEW_PORT"
+
+        # Update domain-passwords.json with new port
+        jq ".[\"$DOMAIN\"].port = $NEW_PORT" "$DOMAIN_PASSWORDS_FILE" > "${DOMAIN_PASSWORDS_FILE}.tmp"
+        mv "${DOMAIN_PASSWORDS_FILE}.tmp" "$DOMAIN_PASSWORDS_FILE"
+        PORT=$NEW_PORT
+        echo "✅ Updated registry with new port: $PORT"
+    fi
 fi
 
-echo "✅ Port $PORT is available"
+echo "✅ Port $PORT is available and verified"
 
 # 4. Create system user for the site
 echo "👤 Creating system user: $USER"

@@ -57,7 +57,7 @@ riggedgpt.com {
 # Isolated systemd site with enhanced security
 wheelpickername.com {
     import common_headers
-    reverse_proxy localhost:5173 {
+    reverse_proxy localhost:3341 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
         header_up X-Forwarded-For {remote_host}
@@ -82,6 +82,16 @@ kranazilie.nl {
 barendbootsma.com {
     import common_headers
     reverse_proxy localhost:3340 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+larsvandeneeden.com {
+    import common_headers
+    reverse_proxy localhost:3342 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
         header_up X-Forwarded-For {remote_host}
