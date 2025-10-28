@@ -121,6 +121,96 @@ function getTerminalWorkspace(body: any, requestId: string): WorkspaceResult {
 }
 
 function getHostnameWorkspace(host: string, requestId: string): WorkspaceResult {
+  // Check for local development mode using template seed repo
+  if (process.env.BRIDGE_ENV === "local") {
+    const templateWorkspace = process.env.LOCAL_TEMPLATE_PATH
+
+    if (!templateWorkspace) {
+      console.error(`[Workspace ${requestId}] BRIDGE_ENV=local but LOCAL_TEMPLATE_PATH not set`)
+      return {
+        success: false,
+        response: NextResponse.json(
+          {
+            ok: false,
+            error: ErrorCodes.WORKSPACE_NOT_FOUND,
+            message: "LOCAL_TEMPLATE_PATH environment variable required when BRIDGE_ENV=local",
+            details: {
+              suggestion: `Run 'bun run setup' and add LOCAL_TEMPLATE_PATH to apps/web/.env.local`,
+            },
+          },
+          { status: 500 },
+        ),
+      }
+    }
+
+    // Validate that the path is absolute
+    if (!path.isAbsolute(templateWorkspace)) {
+      console.error(`[Workspace ${requestId}] LOCAL_TEMPLATE_PATH must be absolute: ${templateWorkspace}`)
+      return {
+        success: false,
+        response: NextResponse.json(
+          {
+            ok: false,
+            error: ErrorCodes.WORKSPACE_INVALID,
+            message: "LOCAL_TEMPLATE_PATH must be an absolute path",
+            details: {
+              providedPath: templateWorkspace,
+              suggestion: `Use an absolute path like: /Users/you/alive-brug/.alive/template`,
+            },
+          },
+          { status: 500 },
+        ),
+      }
+    }
+
+    // Check if the workspace exists
+    if (!existsSync(templateWorkspace)) {
+      console.error(`[Workspace ${requestId}] Local template workspace does not exist: ${templateWorkspace}`)
+      return {
+        success: false,
+        response: NextResponse.json(
+          {
+            ok: false,
+            error: ErrorCodes.WORKSPACE_NOT_FOUND,
+            message: "Local template workspace not found",
+            details: {
+              expectedPath: templateWorkspace,
+              suggestion: `Run 'bun run setup' to create the workspace`,
+            },
+          },
+          { status: 404 },
+        ),
+      }
+    }
+
+    // Check if it's actually a directory (not a file)
+    const stat = require("node:fs").statSync(templateWorkspace)
+    if (!stat.isDirectory()) {
+      console.error(`[Workspace ${requestId}] LOCAL_TEMPLATE_PATH exists but is not a directory: ${templateWorkspace}`)
+      return {
+        success: false,
+        response: NextResponse.json(
+          {
+            ok: false,
+            error: ErrorCodes.WORKSPACE_INVALID,
+            message: "LOCAL_TEMPLATE_PATH exists but is not a directory",
+            details: {
+              path: templateWorkspace,
+              suggestion: `Remove the file and run 'bun run setup'`,
+            },
+          },
+          { status: 500 },
+        ),
+      }
+    }
+
+    console.log(`[Workspace ${requestId}] Using local template workspace: ${templateWorkspace}`)
+    return {
+      success: true,
+      workspace: templateWorkspace,
+    }
+  }
+
   const base = process.env.WORKSPACE_BASE || "/claude-bridge/sites"
   const workspace = path.join(base, host, "src")
 

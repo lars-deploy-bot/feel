@@ -76,18 +76,40 @@ ANTHROPIC_API_KEY=your_claude_api_key
 BRIDGE_PASSCODE=your_secure_passcode  # If unset, any passcode works
 CLAUDE_MODEL=claude-3-5-sonnet-20241022  # Default model
 WORKSPACE_BASE=/claude-bridge/sites     # Base directory for workspaces
+
+# Local development (requires both)
+BRIDGE_ENV=local                        # Enables local template mode + test user (test/test)
+LOCAL_TEMPLATE_PATH=/absolute/path/to/packages/template/user  # Absolute path to template workspace
 ```
 
+### Local Development Login
+When `BRIDGE_ENV=local` is set, you can use the test credentials:
+- **Workspace**: `test`
+- **Passcode**: `test`
+
 ### Development
+
+#### Local Setup (First Time)
 ```bash
 # Install dependencies
 bun install
 
+# Set up local development workspace
+bun run setup
+
+# Add environment variables to apps/web/.env.local
+# (The setup script will show you the exact values)
+```
+
+#### Start Development Server
+```bash
 # Start development server
 bun run dev
 # or
 bun run web
 ```
+
+See [docs/setup/README.md](./docs/setup/README.md) for detailed local development setup instructions.
 
 ### Production Deployment
 ```bash

@@ -87,6 +87,10 @@ const isTextMessage = (msg: UIMessage): boolean => {
 - Login: POST `/api/login` with passcode → sets httpOnly cookie
 - All API routes check `jar.get('session')` before proceeding
 
+### Local Development Test User
+- When `BRIDGE_ENV=local`: test user `workspace=test`, `passcode=test` bypasses domain password validation
+- Sets session cookie with value `test-user`
+
 ## Workspace Enforcement
 
 ### Validation (canUseTool callback, route.ts)
@@ -104,6 +108,7 @@ return { behavior: 'allow', updatedInput: input, updatedPermissions: [] }
 - Fails deny case early; SDK skips tool invocation
 
 ### Workspace Resolution (workspace-utils.ts + workspaceRetriever.ts)
+- **Local dev mode** (`BRIDGE_ENV=local` + `LOCAL_TEMPLATE_PATH`): uses explicit template path (monorepo seed repo)
 - **Terminal mode** (`terminal.*` hostname): use `body.workspace` or fail (required)
 - **Chat mode** (default): use `body.workspace` or fallback to system default
 - Validated in `/api/verify` via `getWorkspace()` → checks dir exists + readable

@@ -4,6 +4,7 @@
   "packageManager": "bun@1.2.22",
   "workspaces": ["apps/*", "packages/*"],
   "scripts": {
+    "setup": "./scripts/setup/copy-template.sh",
     "web": "cd apps/web && bun run dev",
     "widget": "cd apps/widget-server && ./build.sh && go run main.go",
     "update-cors": "./scripts/update-cors-domains.sh",

@@ -15,6 +15,19 @@ export async function POST(req: NextRequest) {
 
   const { passcode, workspace } = result.data
 
+  // Check for local development test user
+  if (process.env.BRIDGE_ENV === "local" && workspace === "test" && passcode === "test") {
+    const res = NextResponse.json({ ok: true })
+    res.cookies.set("session", "test-user", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      path: "/",
+    })
+    addCorsHeaders(res, origin)
+    return res
+  }
+
   // Check if this is a manager login
   if (workspace === "manager") {
     if (passcode !== "wachtwoord") {
