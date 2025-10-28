@@ -13,7 +13,7 @@ export default function ChatPage() {
   const [workspace, setWorkspace] = useState("")
   const [messages, setMessages] = useState<UIMessage[]>([])
   const [busy, setBusy] = useState(false)
-  const [useStreaming, setUseStreaming] = useState(true)
+  const [useStreaming, _setUseStreaming] = useState(true)
   const [isTerminal, setIsTerminal] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [conversationId, setConversationId] = useState<string>(() => crypto.randomUUID())
@@ -195,7 +195,7 @@ export default function ChatPage() {
                     setMessages(prev => [...prev, message])
                   }
                 }
-              } catch (parseError) {
+              } catch (_parseError) {
                 console.warn("Failed to parse SSE data:", line)
               }
             }

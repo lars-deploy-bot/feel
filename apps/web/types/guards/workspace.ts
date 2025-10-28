@@ -1,4 +1,4 @@
-import { existsSync } from "fs"
+import { existsSync } from "node:fs"
 
 /**
  * Workspace and path validation guards

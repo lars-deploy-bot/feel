@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import {
   loadDomainPasswords,
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     const res = NextResponse.json({ ok: true })
     addCorsHeaders(res, origin)
     return res
-  } catch (error) {
+  } catch (_error) {
     const res = NextResponse.json({ ok: false, error: "invalid_json" }, { status: 400 })
     addCorsHeaders(res, origin)
     return res
@@ -82,7 +82,7 @@ export async function DELETE(req: NextRequest) {
     const res = NextResponse.json({ ok: true })
     addCorsHeaders(res, origin)
     return res
-  } catch (error) {
+  } catch (_error) {
     const res = NextResponse.json({ ok: false, error: "invalid_json" }, { status: 400 })
     addCorsHeaders(res, origin)
     return res

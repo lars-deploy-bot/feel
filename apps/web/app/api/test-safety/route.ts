@@ -1,6 +1,6 @@
 import { isInputSafeWithDebug } from "@/app/features/handlers/formatMessage"
 import { getGroqClient } from "@/lib/clients/groq"
-import { NextRequest, NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 
 export async function POST(req: NextRequest) {
   try {

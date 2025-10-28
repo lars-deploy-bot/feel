@@ -1,10 +1,10 @@
-import type { SDKAssistantMessage } from "@anthropic-ai/claude-agent-sdk"
-import { useState } from "react"
+import { MarkdownDisplay } from "@/components/ui/chat/format/MarkdownDisplay"
 import { ToolInputRouter } from "@/components/ui/chat/tools/ToolInputRouter"
+import { hasMarkdown } from "@/lib/utils/markdown-utils"
 import type { ContentItem } from "@/types/guards/content"
 import { isTextBlock, isToolUseBlock } from "@/types/guards/content"
-import { MarkdownDisplay } from "@/components/ui/chat/format/MarkdownDisplay"
-import { hasMarkdown } from "@/lib/utils/markdown-utils"
+import type { SDKAssistantMessage } from "@anthropic-ai/claude-agent-sdk"
+import { useState } from "react"
 
 interface AssistantMessageProps {
   content: SDKAssistantMessage
@@ -35,8 +35,7 @@ function ToolUseItem({ item }: { item: ContentItem }): React.ReactNode {
   }
 
   if (isToolUseBlock(item)) {
-    // biome-ignore lint/suspicious/noExplicitAny: Type guard narrowing
-    const toolItem = item as any
+    const toolItem = item as { name: string; input: Record<string, unknown> }
     const hasInput = toolItem.input && typeof toolItem.input === "object" && Object.keys(toolItem.input).length > 0
 
     const getActionLabel = (toolName: string) => {
@@ -63,6 +62,7 @@ function ToolUseItem({ item }: { item: ContentItem }): React.ReactNode {
     return (
       <div className="mb-2">
         <button
+          type="button"
           onClick={() => setIsExpanded(!isExpanded)}
           className="text-xs text-black/40 font-thin hover:text-black/60 transition-colors pr-4"
         >

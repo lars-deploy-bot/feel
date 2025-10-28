@@ -1,5 +1,5 @@
 import type { ErrorCode, StructuredError } from "@/lib/error-codes"
-import { getErrorMessage, getErrorHelp, isWorkspaceError } from "@/lib/error-codes"
+import { getErrorHelp, getErrorMessage, isWorkspaceError } from "@/lib/error-codes"
 
 interface ErrorResultMessageProps {
   content: {

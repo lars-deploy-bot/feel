@@ -42,27 +42,6 @@ function ToolResult({ result }: { result: ToolResultContent }) {
   // Use the tool name that was attached by the message parser
   const toolName = result.tool_name || "Tool Result"
 
-  const getActionLabel = (toolName: string) => {
-    switch (toolName.toLowerCase()) {
-      case "read":
-        return "reading"
-      case "edit":
-        return "editing"
-      case "write":
-        return "writing"
-      case "grep":
-        return "searching"
-      case "glob":
-        return "finding"
-      case "bash":
-        return "running"
-      case "task":
-        return "delegating"
-      default:
-        return toolName.toLowerCase()
-    }
-  }
-
   // Parse the content to get structured tool output if it's JSON
   const getDisplayContent = () => {
     if (typeof result.content === "string") {
@@ -85,12 +64,12 @@ function ToolResult({ result }: { result: ToolResultContent }) {
       switch (tool) {
         case "read":
           if (content.total_lines) return `read ${content.lines_returned || content.total_lines} lines`
-          if (content.file_size) return `read image`
-          if (content.total_pages) return `read pdf`
-          if (content.cells) return `read notebook`
+          if (content.file_size) return "read image"
+          if (content.total_pages) return "read pdf"
+          if (content.cells) return "read notebook"
           break
         case "write":
-          if (content.bytes_written) return `wrote file`
+          if (content.bytes_written) return "wrote file"
           break
         case "edit":
           if (content.replacements !== undefined) return `made ${content.replacements} changes`
@@ -110,7 +89,7 @@ function ToolResult({ result }: { result: ToolResultContent }) {
         case "task":
           return "completed"
       }
-    } catch (e) {
+    } catch (_e) {
       // Fall through
     }
 
@@ -120,6 +99,7 @@ function ToolResult({ result }: { result: ToolResultContent }) {
   return (
     <div className="mb-2">
       <button
+        type="button"
         onClick={() => setIsExpanded(!isExpanded)}
         className={`text-xs font-thin hover:text-black/60 transition-colors pr-4 ${
           result.is_error ? "text-red-600" : "text-black/40"

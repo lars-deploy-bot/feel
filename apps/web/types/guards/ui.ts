@@ -1,5 +1,4 @@
 import type { UIMessage } from "@/lib/message-parser"
-import type { SDKAssistantMessage } from "@anthropic-ai/claude-agent-sdk"
 
 /**
  * Check if a message is primarily a text message (user message or assistant with only text)

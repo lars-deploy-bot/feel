@@ -1,21 +1,21 @@
 import type {
-  SDKMessage,
-  SDKSystemMessage,
   SDKAssistantMessage,
-  SDKUserMessage,
+  SDKMessage,
   SDKResultMessage,
+  SDKSystemMessage,
+  SDKUserMessage,
 } from "@anthropic-ai/claude-agent-sdk"
 
 // Re-export types for use in other modules
-export type { SDKMessage, SDKSystemMessage, SDKAssistantMessage, SDKUserMessage, SDKResultMessage }
+export type { SDKAssistantMessage, SDKMessage, SDKResultMessage, SDKSystemMessage, SDKUserMessage }
 
 // Re-export guards and helpers from new location
 export {
-  isSDKSystemMessage,
-  isSDKAssistantMessage,
-  isSDKUserMessage,
-  isSDKResultMessage,
-  isErrorResultMessage,
   extractSessionId,
   getMessageStreamData,
+  isErrorResultMessage,
+  isSDKAssistantMessage,
+  isSDKResultMessage,
+  isSDKSystemMessage,
+  isSDKUserMessage,
 } from "@/types/guards/sdk"

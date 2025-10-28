@@ -1,6 +1,6 @@
-import { useState } from "react"
-import { UIMessage } from "@/lib/message-parser"
+import type { UIMessage } from "@/lib/message-parser"
 import { renderMessage } from "@/lib/message-renderer"
+import { useState } from "react"
 
 interface ThinkingGroupProps {
   messages: UIMessage[]
@@ -23,6 +23,7 @@ export function ThinkingGroup({ messages, isComplete }: ThinkingGroupProps) {
   return (
     <div className="mb-1">
       <button
+        type="button"
         onClick={() => setIsExpanded(!isExpanded)}
         className={`text-[10px] font-thin text-black/30 hover:text-black/50 transition-colors ${getShimmerClass()}`}
       >

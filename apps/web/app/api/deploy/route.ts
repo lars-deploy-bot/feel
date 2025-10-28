@@ -17,8 +17,6 @@ interface DeployResponse {
   errors?: string[]
 }
 
-
-
 async function validateSSLCertificate(domain: string): Promise<{ success: boolean; error?: string }> {
   const maxAttempts = 6 // Try for up to 60 seconds
   const delayMs = 10000 // 10 seconds between attempts
@@ -108,7 +106,6 @@ export async function POST(request: NextRequest) {
 
     console.log(`📋 [DEPLOY API] Request: domain=${body.domain} → normalized: ${domain}`)
 
-
     // Check if site already exists
     const sitePath = `/root/webalive/sites/${domain}`
     const siteExists = existsSync(sitePath)
@@ -118,7 +115,6 @@ export async function POST(request: NextRequest) {
     } else {
       console.log(`📁 [DEPLOY API] Creating new site at: ${sitePath}`)
     }
-
 
     // Execute deployment script (SECURE: uses systemd isolation)
     const scriptPath = "/root/webalive/claude-bridge/scripts/deploy-site-systemd.sh"
@@ -205,7 +201,8 @@ export async function POST(request: NextRequest) {
     } else if (error.code === 12) {
       // Check if the error message contains Cloudflare proxy detection
       if (error.stderr && error.stderr.includes("CLOUDFLARE PROXY DETECTED")) {
-        errorMessage = "🚨 Cloudflare proxy detected! You must disable the orange cloud (proxy) in your Cloudflare DNS settings. Make the cloud icon GRAY (not orange) next to your A record, then try again. See DNS setup guide: https://terminal.goalive.nl/docs/dns-setup"
+        errorMessage =
+          "🚨 Cloudflare proxy detected! You must disable the orange cloud (proxy) in your Cloudflare DNS settings. Make the cloud icon GRAY (not orange) next to your A record, then try again. See DNS setup guide: https://terminal.goalive.nl/docs/dns-setup"
       } else if (error.stderr && error.stderr.includes("No A record found")) {
         errorMessage = `DNS Error: No A record found for ${domain}. You must create an A record with these settings: Type=A, Name/Host=@ (or ${domain}), Value/Points to=138.201.56.93, TTL=300. ALSO: Remove any AAAA records (IPv6) for ${domain}. See DNS setup guide: https://terminal.goalive.nl/docs/dns-setup`
       } else {

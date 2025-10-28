@@ -5,14 +5,11 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-white">
       <div className="px-8 py-24 max-w-4xl mx-auto">
-
         <div className="space-y-16">
           <div className="space-y-8">
-            <h1 className="text-7xl font-light tracking-tight text-gray-900 leading-none">
-              Hello.
-            </h1>
+            <h1 className="text-7xl font-light tracking-tight text-gray-900 leading-none">Hello.</h1>
 
-            <div className="w-32 h-1 bg-gray-900"></div>
+            <div className="w-32 h-1 bg-gray-900" />
 
             <p className="text-2xl font-light text-gray-700 leading-relaxed max-w-2xl">
               This space belongs to you now.
@@ -22,9 +19,7 @@ const Index = () => {
           </div>
 
           <div className="space-y-6">
-            <p className="text-lg text-gray-600 font-light">
-              When you're ready:
-            </p>
+            <p className="text-lg text-gray-600 font-light">When you're ready:</p>
 
             <a
               href={terminalUrl}
@@ -37,12 +32,9 @@ const Index = () => {
           </div>
 
           <div className="pt-24">
-            <p className="text-sm text-gray-400 font-light tracking-wider">
-              {currentDomain}
-            </p>
+            <p className="text-sm text-gray-400 font-light tracking-wider">{currentDomain}</p>
           </div>
         </div>
-
       </div>
     </div>
   )

@@ -1,26 +1,20 @@
-import type {
-  SDKAssistantMessage,
-  SDKMessage,
-  SDKResultMessage,
-  SDKSystemMessage,
-  SDKUserMessage,
-} from "@/lib/sdk-types"
+import type { SDKMessage, SDKResultMessage } from "@/lib/sdk-types"
 import {
+  isErrorResultMessage,
   isSDKAssistantMessage,
   isSDKResultMessage,
   isSDKSystemMessage,
   isSDKUserMessage,
-  isErrorResultMessage,
 } from "@/lib/sdk-types"
 import {
-  isStartEvent,
-  isSessionEvent,
-  isMessageEvent,
-  isResultEvent,
   isCompleteEvent,
-  isErrorEvent,
-  isPingEvent,
   isDoneEvent,
+  isErrorEvent,
+  isMessageEvent,
+  isPingEvent,
+  isResultEvent,
+  isSessionEvent,
+  isStartEvent,
 } from "@/types/guards/stream"
 
 // Stream event types
@@ -45,13 +39,9 @@ export interface ErrorEventData {
   code?: "aborted" | "query_failed" | "timeout"
 }
 
-export interface PingEventData {
-  // Empty - just keepalive
-}
+export type PingEventData = Record<string, never>
 
-export interface DoneEventData {
-  // Empty - marks completion
-}
+export type DoneEventData = Record<string, never>
 
 export interface StartEventData {
   host: string
@@ -96,7 +86,7 @@ export function parseStreamEvent(event: StreamEvent): UIMessage | null {
 
   if (isStartEvent(event)) {
     return {
-      id: event.requestId + "-start",
+      id: `${event.requestId}-start`,
       type: "start",
       content: event.data,
       ...baseMessage,
@@ -105,7 +95,7 @@ export function parseStreamEvent(event: StreamEvent): UIMessage | null {
 
   if (isSessionEvent(event)) {
     return {
-      id: event.requestId + "-session",
+      id: `${event.requestId}-session`,
       type: "session",
       content: event.data,
       ...baseMessage,
@@ -134,7 +124,7 @@ export function parseStreamEvent(event: StreamEvent): UIMessage | null {
     }
 
     return {
-      id: event.requestId + "-" + event.data.messageCount,
+      id: `${event.requestId}-${event.data.messageCount}`,
       type: "sdk_message",
       content: content,
       ...baseMessage,
@@ -143,7 +133,7 @@ export function parseStreamEvent(event: StreamEvent): UIMessage | null {
 
   if (isResultEvent(event)) {
     return {
-      id: event.requestId + "-result",
+      id: `${event.requestId}-result`,
       type: "result",
       content: event.data,
       ...baseMessage,
@@ -152,7 +142,7 @@ export function parseStreamEvent(event: StreamEvent): UIMessage | null {
 
   if (event.type === "complete") {
     return {
-      id: event.requestId + "-complete",
+      id: `${event.requestId}-complete`,
       type: "complete",
       content: event.data,
       ...baseMessage,
@@ -162,7 +152,7 @@ export function parseStreamEvent(event: StreamEvent): UIMessage | null {
   if (event.type === "error") {
     const errorData = event.data as ErrorEventData
     return {
-      id: event.requestId + "-error",
+      id: `${event.requestId}-error`,
       type: "sdk_message",
       content: {
         type: "result",
@@ -182,7 +172,7 @@ export function parseStreamEvent(event: StreamEvent): UIMessage | null {
   if (event.type === "done") {
     // Optional: create a subtle completion indicator
     return {
-      id: event.requestId + "-done",
+      id: `${event.requestId}-done`,
       type: "complete",
       content: { message: "Stream completed" },
       ...baseMessage,
@@ -193,16 +183,20 @@ export function parseStreamEvent(event: StreamEvent): UIMessage | null {
 }
 
 // Re-export the type guard functions for use in other modules
-export { isSDKSystemMessage, isSDKAssistantMessage, isSDKUserMessage, isSDKResultMessage, isErrorResultMessage }
 export {
-  isStartEvent,
-  isSessionEvent,
-  isMessageEvent,
-  isResultEvent,
   isCompleteEvent,
-  isErrorEvent,
-  isPingEvent,
   isDoneEvent,
+  isErrorEvent,
+  isErrorResultMessage,
+  isMessageEvent,
+  isPingEvent,
+  isResultEvent,
+  isSDKAssistantMessage,
+  isSDKResultMessage,
+  isSDKSystemMessage,
+  isSDKUserMessage,
+  isSessionEvent,
+  isStartEvent,
 }
 
 // Get message component type for routing

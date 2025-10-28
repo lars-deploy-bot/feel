@@ -4,7 +4,7 @@ import { useState } from "react"
 
 export default function DNSSetupPage() {
   const [provider, setProvider] = useState("")
-  const [showGeneral, setShowGeneral] = useState(false)
+  const [_showGeneral, _setShowGeneral] = useState(false)
 
   const providers = [
     { id: "cloudflare", name: "Cloudflare" },
@@ -25,15 +25,23 @@ export default function DNSSetupPage() {
             <div className="bg-red-50 border border-red-200 p-4 rounded-lg mb-4">
               <h4 className="font-bold text-red-900 mb-2">🚨 IMPORTANT: DISABLE CLOUDFLARE PROXY</h4>
               <p className="text-red-800 font-semibold">
-                You MUST turn off Cloudflare's proxy (orange cloud) for deployment to work.
-                The cloud icon next to your DNS record must be GRAY, not orange.
+                You MUST turn off Cloudflare's proxy (orange cloud) for deployment to work. The cloud icon next to your
+                DNS record must be GRAY, not orange.
               </p>
               <p className="text-red-700 text-sm mt-2">
                 You can re-enable the proxy after your site is deployed and working.
               </p>
             </div>
             <p>
-              <strong>1.</strong> Go directly to: <a href="https://dash.cloudflare.com" target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 underline hover:text-blue-500">Cloudflare Dashboard →</a>
+              <strong>1.</strong> Go directly to:{" "}
+              <a
+                href="https://dash.cloudflare.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-blue-600 underline hover:text-blue-500"
+              >
+                Cloudflare Dashboard →
+              </a>
             </p>
             <p>
               <strong>2.</strong> Select your domain
@@ -48,7 +56,8 @@ export default function DNSSetupPage() {
               <strong>5.</strong> Set: Type = <code>A</code>, Name = <code>@</code>, IPv4 = <code>138.201.56.93</code>
             </p>
             <p>
-              <strong>6.</strong> <span className="font-bold text-red-600">IMPORTANT:</span> Make sure the cloud icon is <strong>GRAY</strong> (proxy disabled), not orange
+              <strong>6.</strong> <span className="font-bold text-red-600">IMPORTANT:</span> Make sure the cloud icon is{" "}
+              <strong>GRAY</strong> (proxy disabled), not orange
             </p>
             <p>
               <strong>7.</strong> Click <strong>Save</strong>
@@ -59,7 +68,15 @@ export default function DNSSetupPage() {
         return (
           <div className="space-y-3">
             <p>
-              <strong>1.</strong> Go directly to: <a href="https://dcc.godaddy.com/manage" target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 underline hover:text-blue-500">GoDaddy Domain Manager →</a>
+              <strong>1.</strong> Go directly to:{" "}
+              <a
+                href="https://dcc.godaddy.com/manage"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-blue-600 underline hover:text-blue-500"
+              >
+                GoDaddy Domain Manager →
+              </a>
             </p>
             <p>
               <strong>2.</strong> Find your domain and click <strong>DNS</strong>
@@ -79,7 +96,15 @@ export default function DNSSetupPage() {
         return (
           <div className="space-y-3">
             <p>
-              <strong>1.</strong> Go directly to: <a href="https://ap.www.namecheap.com/domains/domaincontrolpanel" target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 underline hover:text-blue-500">Namecheap Domain List →</a>
+              <strong>1.</strong> Go directly to:{" "}
+              <a
+                href="https://ap.www.namecheap.com/domains/domaincontrolpanel"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-blue-600 underline hover:text-blue-500"
+              >
+                Namecheap Domain List →
+              </a>
             </p>
             <p>
               <strong>2.</strong> Find your domain and click <strong>Manage</strong>
@@ -102,7 +127,15 @@ export default function DNSSetupPage() {
         return (
           <div className="space-y-3">
             <p>
-              <strong>1.</strong> Go directly to: <a href="https://www.transip.nl/cp/domein-hosting" target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 underline hover:text-blue-500">TransIP Domain Management →</a>
+              <strong>1.</strong> Go directly to:{" "}
+              <a
+                href="https://www.transip.nl/cp/domein-hosting"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-blue-600 underline hover:text-blue-500"
+              >
+                TransIP Domain Management →
+              </a>
             </p>
             <p>
               <strong>2.</strong> Select your domain from the list
@@ -125,7 +158,15 @@ export default function DNSSetupPage() {
         return (
           <div className="space-y-3">
             <p>
-              <strong>1.</strong> Go directly to: <a href="https://www.strato.nl/apps/CustomerService#/skl" target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 underline hover:text-blue-500">Strato Customer Center →</a>
+              <strong>1.</strong> Go directly to:{" "}
+              <a
+                href="https://www.strato.nl/apps/CustomerService#/skl"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-blue-600 underline hover:text-blue-500"
+              >
+                Strato Customer Center →
+              </a>
             </p>
             <p>
               <strong>2.</strong> Go to <strong>Domains & SSL</strong>
@@ -144,7 +185,15 @@ export default function DNSSetupPage() {
             </p>
             <div className="mt-4 p-3 bg-blue-50 rounded border">
               <p className="text-blue-800 text-sm">
-                💡 <strong>Need help?</strong> Check Strato's guide: <a href="https://www.strato.nl/faq/domeinnaam/welke-dns-items-kun-je-bij-STRATO-configureren/#A-record" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-600">How to configure A records →</a>
+                💡 <strong>Need help?</strong> Check Strato's guide:{" "}
+                <a
+                  href="https://www.strato.nl/faq/domeinnaam/welke-dns-items-kun-je-bij-STRATO-configureren/#A-record"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-blue-600"
+                >
+                  How to configure A records →
+                </a>
               </p>
             </div>
           </div>
@@ -153,7 +202,15 @@ export default function DNSSetupPage() {
         return (
           <div className="space-y-3">
             <p>
-              <strong>1.</strong> Go directly to: <a href="https://mijn.mijndomein.nl" target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 underline hover:text-blue-500">Mijndomein.nl Control Panel →</a>
+              <strong>1.</strong> Go directly to:{" "}
+              <a
+                href="https://mijn.mijndomein.nl"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-blue-600 underline hover:text-blue-500"
+              >
+                Mijndomein.nl Control Panel →
+              </a>
             </p>
             <p>
               <strong>2.</strong> Go to <strong>Mijn Domeinen</strong>
@@ -176,7 +233,15 @@ export default function DNSSetupPage() {
         return (
           <div className="space-y-3">
             <p>
-              <strong>1.</strong> Go directly to: <a href="https://www.hostnet.nl/mijn/domeinen" target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 underline hover:text-blue-500">Hostnet Domain Management →</a>
+              <strong>1.</strong> Go directly to:{" "}
+              <a
+                href="https://www.hostnet.nl/mijn/domeinen"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-blue-600 underline hover:text-blue-500"
+              >
+                Hostnet Domain Management →
+              </a>
             </p>
             <p>
               <strong>2.</strong> Go to <strong>Domeinen</strong>
@@ -240,9 +305,11 @@ export default function DNSSetupPage() {
               <strong>Create an A record</strong> that points your domain to our server IP address:
             </p>
             <div className="bg-white p-3 rounded border font-mono text-sm">
-              <strong>Type:</strong> A<br/>
-              <strong>Name/Host:</strong> @ <span className="text-gray-600">(this represents your root domain)</span><br/>
-              <strong>Value/Points to:</strong> <span className="font-bold text-blue-900">138.201.56.93</span><br/>
+              <strong>Type:</strong> A<br />
+              <strong>Name/Host:</strong> @ <span className="text-gray-600">(this represents your root domain)</span>
+              <br />
+              <strong>Value/Points to:</strong> <span className="font-bold text-blue-900">138.201.56.93</span>
+              <br />
               <strong>TTL:</strong> 300 <span className="text-gray-600">(or Auto/Default)</span>
             </div>
             <div className="bg-red-50 border border-red-200 p-4 rounded-lg mt-4">
@@ -251,7 +318,8 @@ export default function DNSSetupPage() {
                 You MUST also delete any existing AAAA records (IPv6) for your domain.
               </p>
               <p className="text-red-700 text-sm">
-                AAAA records can interfere with deployment. Look for records with Type "AAAA" and Name "@" or your domain name, and delete them.
+                AAAA records can interfere with deployment. Look for records with Type "AAAA" and Name "@" or your
+                domain name, and delete them.
               </p>
             </div>
           </div>
@@ -261,6 +329,7 @@ export default function DNSSetupPage() {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {providers.map(p => (
                 <button
+                  type="button"
                   key={p.id}
                   onClick={() => setProvider(p.id)}
                   className={`p-3 border rounded-lg text-left hover:bg-gray-50 cursor-pointer transition-colors ${
@@ -306,7 +375,11 @@ export default function DNSSetupPage() {
           )}
 
           <div className="text-center pt-4">
-            <button onClick={() => window.close()} className="text-gray-600 hover:text-gray-800 underline">
+            <button
+              type="button"
+              onClick={() => window.close()}
+              className="text-gray-600 hover:text-gray-800 underline"
+            >
               ← Back to deployment
             </button>
           </div>

@@ -21,7 +21,7 @@ export async function POST(req: Request) {
       )
     }
 
-    let body
+    let body: unknown
     try {
       body = await req.json()
       console.log(`[Verify API ${requestId}] Raw body:`, body)

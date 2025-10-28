@@ -53,7 +53,7 @@ export default function DeployPage() {
       let data: DeployResponse
       try {
         data = JSON.parse(responseText)
-      } catch (jsonError) {
+      } catch (_jsonError) {
         throw new Error(`Invalid JSON response: ${responseText.substring(0, 200)}`)
       }
 
@@ -120,7 +120,6 @@ export default function DeployPage() {
                 disabled={isDeploying}
               />
             </div>
-
 
             <button
               type="submit"

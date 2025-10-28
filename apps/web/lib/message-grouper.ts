@@ -1,5 +1,5 @@
-import { UIMessage } from "@/lib/message-parser"
-import { isTextMessage, isCompletionMessage } from "@/types/guards/ui"
+import type { UIMessage } from "@/lib/message-parser"
+import { isCompletionMessage, isTextMessage } from "@/types/guards/ui"
 
 export interface MessageGroup {
   type: "text" | "thinking"
@@ -11,7 +11,7 @@ export function groupMessages(messages: UIMessage[]): MessageGroup[] {
   const groups: MessageGroup[] = []
   let currentThinkingGroup: UIMessage[] = []
 
-  const flushThinkingGroup = (isComplete: boolean = false) => {
+  const flushThinkingGroup = (isComplete = false) => {
     if (currentThinkingGroup.length > 0) {
       groups.push({
         type: "thinking",

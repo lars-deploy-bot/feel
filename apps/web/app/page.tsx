@@ -126,7 +126,7 @@ export default function LoginPage() {
         <main className="min-h-screen bg-black flex items-center justify-center">
           <div className="w-80">
             <h1 className="text-6xl font-thin mb-16 text-white">•</h1>
-            <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" />
           </div>
         </main>
       }

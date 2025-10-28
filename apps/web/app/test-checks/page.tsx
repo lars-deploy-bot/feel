@@ -24,7 +24,7 @@ export default function TestChecks() {
 
       const data = await response.json()
       setResult(data)
-    } catch (error) {
+    } catch (_error) {
       setResult("Network error")
     } finally {
       setLoading(false)
@@ -53,6 +53,7 @@ export default function TestChecks() {
               />
 
               <button
+                type="button"
                 onClick={checkInput}
                 disabled={!input.trim() || loading}
                 className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"

@@ -3,8 +3,8 @@
 // Template configuration generator
 // Usage: bun run generate-config.js <domain> <port>
 
-const fs = require("fs")
-const path = require("path")
+const fs = require("node:fs")
+const path = require("node:path")
 
 const [domain, port, targetDir] = process.argv.slice(2)
 
@@ -23,8 +23,8 @@ if (!/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(domain)) {
   process.exit(1)
 }
 
-const portNum = parseInt(port)
-if (isNaN(portNum) || portNum < 1024 || portNum > 65535) {
+const portNum = Number.parseInt(port)
+if (Number.isNaN(portNum) || portNum < 1024 || portNum > 65535) {
   console.error(`❌ Invalid port: ${port} (must be 1024-65535)`)
   process.exit(1)
 }

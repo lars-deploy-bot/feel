@@ -1,4 +1,4 @@
-import { ReactNode } from "react"
+import type { ReactNode } from "react"
 
 interface ToolButtonProps {
   onClick: () => void
@@ -17,6 +17,7 @@ export function ToolButton({
 }: ToolButtonProps) {
   return (
     <button
+      type="button"
       onClick={onClick}
       className={`text-xs font-thin hover:text-black/60 transition-colors ${
         variant === "error" ? "text-red-600" : "text-black/40"

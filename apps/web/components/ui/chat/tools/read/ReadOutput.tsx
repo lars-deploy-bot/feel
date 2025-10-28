@@ -79,7 +79,7 @@ export function ReadOutput(props: ReadOutputProps) {
                 <img
                   key={imgIndex}
                   src={`data:${img.mime_type};base64,${img.image}`}
-                  alt={`Page ${page.page_number} image ${imgIndex + 1}`}
+                  alt={`Page ${page.page_number} content ${imgIndex + 1}`}
                   className="max-w-full h-auto mt-2"
                 />
               ))}

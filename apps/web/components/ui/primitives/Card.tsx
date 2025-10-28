@@ -1,4 +1,4 @@
-import { forwardRef, HTMLAttributes, AnchorHTMLAttributes } from "react"
+import { forwardRef, type HTMLAttributes, AnchorHTMLAttributes } from "react"
 import { cn } from "@/lib/utils"
 
 interface CardProps extends HTMLAttributes<HTMLDivElement> {

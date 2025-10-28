@@ -1,22 +1,14 @@
-import type { SDKSystemMessage, SDKAssistantMessage, SDKUserMessage, SDKResultMessage } from "@/lib/sdk-types"
+import { MarkdownDisplay } from "@/components/ui/chat/format/MarkdownDisplay"
+import { AssistantMessage } from "@/components/ui/chat/messages/AssistantMessage"
+import { CompleteMessage } from "@/components/ui/chat/messages/CompleteMessage"
+import { ErrorResultMessage } from "@/components/ui/chat/messages/ErrorResultMessage"
+import { ResultMessage } from "@/components/ui/chat/messages/ResultMessage"
 import { StartMessage } from "@/components/ui/chat/messages/StartMessage"
 import { SystemMessage } from "@/components/ui/chat/messages/SystemMessage"
-import { AssistantMessage } from "@/components/ui/chat/messages/AssistantMessage"
 import { ToolResultMessage } from "@/components/ui/chat/messages/ToolResultMessage"
-import { ResultMessage } from "@/components/ui/chat/messages/ResultMessage"
-import { ErrorResultMessage } from "@/components/ui/chat/messages/ErrorResultMessage"
-import { CompleteMessage } from "@/components/ui/chat/messages/CompleteMessage"
-import { MarkdownDisplay } from "@/components/ui/chat/format/MarkdownDisplay"
+import { type UIMessage, getMessageComponentType, isErrorResultMessage } from "@/lib/message-parser"
+import type { SDKAssistantMessage, SDKResultMessage, SDKSystemMessage, SDKUserMessage } from "@/lib/sdk-types"
 import { hasMarkdown } from "@/lib/utils/markdown-utils"
-import {
-  UIMessage,
-  isSDKSystemMessage,
-  isSDKAssistantMessage,
-  isSDKUserMessage,
-  isSDKResultMessage,
-  isErrorResultMessage,
-  getMessageComponentType,
-} from "@/lib/message-parser"
 
 export function renderMessage(message: UIMessage): React.ReactNode {
   // Check for error result messages first (before component type routing)
@@ -27,7 +19,7 @@ export function renderMessage(message: UIMessage): React.ReactNode {
   const componentType = getMessageComponentType(message)
 
   switch (componentType) {
-    case "user":
+    case "user": {
       const userContent = typeof message.content === "string" ? message.content : JSON.stringify(message.content)
       return (
         <div className="flex justify-end mb-6">
@@ -41,6 +33,7 @@ export function renderMessage(message: UIMessage): React.ReactNode {
           </div>
         </div>
       )
+    }
 
     case "start":
       return <StartMessage data={message.content} timestamp={message.timestamp.toISOString()} />

@@ -70,6 +70,9 @@
     "lineEnding": "lf",
     "lineWidth": 120
   },
+  "organizeImports": {
+    "enabled": true
+  },
   "javascript": {
     "formatter": {
       "semicolons": "asNeeded",

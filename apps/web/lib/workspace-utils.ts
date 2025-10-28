@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server"
+import type { NextResponse } from "next/server"
 import { getWorkspace } from "@/app/features/claude/workspaceRetriever"
 import { addCorsHeaders } from "@/lib/cors-utils"
 

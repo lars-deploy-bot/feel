@@ -70,7 +70,7 @@ export async function POST(req: Request) {
       )
     }
 
-    const { message, workspace: requestWorkspace, conversationId } = parseResult.data
+    const { message, workspace: requestWorkspace } = parseResult.data
     console.log(
       `[Claude API ${requestId}] Message received (${message.length} chars): ${message.substring(0, 100)}${message.length > 100 ? "..." : ""}`,
     )

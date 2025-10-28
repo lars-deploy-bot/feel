@@ -8,7 +8,7 @@ interface StartMessageProps {
   timestamp: string
 }
 
-export function StartMessage({ data, timestamp }: StartMessageProps) {
+export function StartMessage({ data }: StartMessageProps) {
   return (
     <div className="py-2 mb-4 text-sm text-gray-600">
       <div className="mb-1 normal-case tracking-normal underline">Session Initialized</div>

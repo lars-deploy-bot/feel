@@ -12,23 +12,23 @@
  * - Trimming whitespace
  */
 export function normalizeDomain(input: string): string {
-  if (!input || typeof input !== 'string') {
-    return ''
+  if (!input || typeof input !== "string") {
+    return ""
   }
 
   let domain = input.trim()
 
   // Remove protocol (http://, https://, ftp://, etc.)
-  domain = domain.replace(/^[a-zA-Z][a-zA-Z\d+.-]*:\/\//, '')
+  domain = domain.replace(/^[a-zA-Z][a-zA-Z\d+.-]*:\/\//, "")
 
   // Remove www. prefix (case insensitive)
-  domain = domain.replace(/^www\./i, '')
+  domain = domain.replace(/^www\./i, "")
 
   // Remove trailing slashes and everything after
-  domain = domain.replace(/\/.*$/, '')
+  domain = domain.replace(/\/.*$/, "")
 
   // Remove port numbers
-  domain = domain.replace(/:\d+$/, '')
+  domain = domain.replace(/:\d+$/, "")
 
   // Convert to lowercase
   domain = domain.toLowerCase()
@@ -47,7 +47,8 @@ export function isValidDomain(domain: string): boolean {
 
   // Basic domain regex - allows letters, numbers, hyphens, and dots
   // Must have at least one dot and valid TLD
-  const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/
+  const domainRegex =
+    /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/
 
   return domainRegex.test(domain)
 }
@@ -59,11 +60,11 @@ export function normalizeAndValidateDomain(input: string): { domain: string; isV
   const normalized = normalizeDomain(input)
 
   if (!normalized) {
-    return { domain: '', isValid: false, error: 'Domain is required' }
+    return { domain: "", isValid: false, error: "Domain is required" }
   }
 
   if (!isValidDomain(normalized)) {
-    return { domain: normalized, isValid: false, error: 'Invalid domain format (e.g., example.com)' }
+    return { domain: normalized, isValid: false, error: "Invalid domain format (e.g., example.com)" }
   }
 
   return { domain: normalized, isValid: true }

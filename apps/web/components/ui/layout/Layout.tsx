@@ -1,5 +1,5 @@
-import { forwardRef, type HTMLAttributes } from "react"
 import { cn } from "@/lib/utils"
+import { type HTMLAttributes, forwardRef } from "react"
 
 interface ContainerProps extends HTMLAttributes<HTMLDivElement> {
   variant?: "default" | "wide"
@@ -72,4 +72,4 @@ const NavLinks = forwardRef<HTMLDivElement, NavLinksProps>(({ className, ...prop
 
 NavLinks.displayName = "NavLinks"
 
-export { Container, Grid, Navbar, NavSection, NavLinks }
+export { Container, Grid, NavLinks, NavSection, Navbar }
