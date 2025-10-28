@@ -10,8 +10,8 @@ export default function DNSSetupPage() {
     { id: "cloudflare", name: "Cloudflare" },
     { id: "transip", name: "TransIP" },
     { id: "strato", name: "Strato" },
-    { id: "versio", name: "Versio" },
-    { id: "one", name: "ONE.com" },
+    { id: "mijndomein", name: "Mijndomein.nl" },
+    { id: "hostnet", name: "Hostnet" },
     { id: "godaddy", name: "GoDaddy" },
     { id: "namecheap", name: "Namecheap" },
     { id: "general", name: "Other / I don't know" },
@@ -22,8 +22,18 @@ export default function DNSSetupPage() {
       case "cloudflare":
         return (
           <div className="space-y-3">
+            <div className="bg-red-50 border border-red-200 p-4 rounded-lg mb-4">
+              <h4 className="font-bold text-red-900 mb-2">🚨 IMPORTANT: DISABLE CLOUDFLARE PROXY</h4>
+              <p className="text-red-800 font-semibold">
+                You MUST turn off Cloudflare's proxy (orange cloud) for deployment to work.
+                The cloud icon next to your DNS record must be GRAY, not orange.
+              </p>
+              <p className="text-red-700 text-sm mt-2">
+                You can re-enable the proxy after your site is deployed and working.
+              </p>
+            </div>
             <p>
-              <strong>1.</strong> Log in to Cloudflare dashboard
+              <strong>1.</strong> Go directly to: <a href="https://dash.cloudflare.com" target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 underline hover:text-blue-500">Cloudflare Dashboard →</a>
             </p>
             <p>
               <strong>2.</strong> Select your domain
@@ -38,7 +48,10 @@ export default function DNSSetupPage() {
               <strong>5.</strong> Set: Type = <code>A</code>, Name = <code>@</code>, IPv4 = <code>138.201.56.93</code>
             </p>
             <p>
-              <strong>6.</strong> Click <strong>Save</strong>
+              <strong>6.</strong> <span className="font-bold text-red-600">IMPORTANT:</span> Make sure the cloud icon is <strong>GRAY</strong> (proxy disabled), not orange
+            </p>
+            <p>
+              <strong>7.</strong> Click <strong>Save</strong>
             </p>
           </div>
         )
@@ -46,22 +59,19 @@ export default function DNSSetupPage() {
         return (
           <div className="space-y-3">
             <p>
-              <strong>1.</strong> Log in to GoDaddy account
+              <strong>1.</strong> Go directly to: <a href="https://dcc.godaddy.com/manage" target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 underline hover:text-blue-500">GoDaddy Domain Manager →</a>
             </p>
             <p>
-              <strong>2.</strong> Go to <strong>My Products → Domains</strong>
+              <strong>2.</strong> Find your domain and click <strong>DNS</strong>
             </p>
             <p>
-              <strong>3.</strong> Click <strong>DNS</strong> next to your domain
+              <strong>3.</strong> Find the A record with Name <code>@</code>
             </p>
             <p>
-              <strong>4.</strong> Find the A record with Name <code>@</code>
+              <strong>4.</strong> Click edit, change Value to <code>138.201.56.93</code>
             </p>
             <p>
-              <strong>5.</strong> Click edit, change Value to <code>138.201.56.93</code>
-            </p>
-            <p>
-              <strong>6.</strong> Click <strong>Save</strong>
+              <strong>5.</strong> Click <strong>Save</strong>
             </p>
           </div>
         )
@@ -69,10 +79,10 @@ export default function DNSSetupPage() {
         return (
           <div className="space-y-3">
             <p>
-              <strong>1.</strong> Log in to Namecheap account
+              <strong>1.</strong> Go directly to: <a href="https://ap.www.namecheap.com/domains/domaincontrolpanel" target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 underline hover:text-blue-500">Namecheap Domain List →</a>
             </p>
             <p>
-              <strong>2.</strong> Go to <strong>Domain List → Manage</strong>
+              <strong>2.</strong> Find your domain and click <strong>Manage</strong>
             </p>
             <p>
               <strong>3.</strong> Click <strong>Advanced DNS</strong>
@@ -92,13 +102,13 @@ export default function DNSSetupPage() {
         return (
           <div className="space-y-3">
             <p>
-              <strong>1.</strong> Log in to TransIP control panel
+              <strong>1.</strong> Go directly to: <a href="https://www.transip.nl/cp/domein-hosting" target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 underline hover:text-blue-500">TransIP Domain Management →</a>
             </p>
             <p>
-              <strong>2.</strong> Go to <strong>Domains → DNS</strong>
+              <strong>2.</strong> Select your domain from the list
             </p>
             <p>
-              <strong>3.</strong> Select your domain
+              <strong>3.</strong> Go to <strong>DNS</strong> tab
             </p>
             <p>
               <strong>4.</strong> Find the A record with Name <code>@</code> (or add new)
@@ -115,7 +125,7 @@ export default function DNSSetupPage() {
         return (
           <div className="space-y-3">
             <p>
-              <strong>1.</strong> Log in to Strato customer center
+              <strong>1.</strong> Go directly to: <a href="https://www.strato.nl/apps/CustomerService#/skl" target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 underline hover:text-blue-500">Strato Customer Center →</a>
             </p>
             <p>
               <strong>2.</strong> Go to <strong>Domains & SSL</strong>
@@ -132,51 +142,56 @@ export default function DNSSetupPage() {
             <p>
               <strong>6.</strong> Click <strong>Save</strong>
             </p>
+            <div className="mt-4 p-3 bg-blue-50 rounded border">
+              <p className="text-blue-800 text-sm">
+                💡 <strong>Need help?</strong> Check Strato's guide: <a href="https://www.strato.nl/faq/domeinnaam/welke-dns-items-kun-je-bij-STRATO-configureren/#A-record" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-600">How to configure A records →</a>
+              </p>
+            </div>
           </div>
         )
-      case "versio":
+      case "mijndomein":
         return (
           <div className="space-y-3">
             <p>
-              <strong>1.</strong> Log in to Versio control panel
+              <strong>1.</strong> Go directly to: <a href="https://mijn.mijndomein.nl" target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 underline hover:text-blue-500">Mijndomein.nl Control Panel →</a>
             </p>
             <p>
-              <strong>2.</strong> Go to <strong>My Domains</strong>
+              <strong>2.</strong> Go to <strong>Mijn Domeinen</strong>
+            </p>
+            <p>
+              <strong>3.</strong> Click <strong>Beheren</strong> next to your domain
+            </p>
+            <p>
+              <strong>4.</strong> Go to <strong>DNS Beheer</strong>
+            </p>
+            <p>
+              <strong>5.</strong> Edit A record: Naam <code>@</code>, Waarde <code>138.201.56.93</code>
+            </p>
+            <p>
+              <strong>6.</strong> Click <strong>Opslaan</strong>
+            </p>
+          </div>
+        )
+      case "hostnet":
+        return (
+          <div className="space-y-3">
+            <p>
+              <strong>1.</strong> Go directly to: <a href="https://www.hostnet.nl/mijn/domeinen" target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 underline hover:text-blue-500">Hostnet Domain Management →</a>
+            </p>
+            <p>
+              <strong>2.</strong> Go to <strong>Domeinen</strong>
             </p>
             <p>
               <strong>3.</strong> Click on your domain
             </p>
             <p>
-              <strong>4.</strong> Go to <strong>DNS Records</strong>
+              <strong>4.</strong> Go to <strong>DNS Management</strong>
             </p>
             <p>
-              <strong>5.</strong> Edit A record: Name <code>@</code>, Content <code>138.201.56.93</code>
+              <strong>5.</strong> Edit A record: Host <code>@</code>, IP Address <code>138.201.56.93</code>
             </p>
             <p>
               <strong>6.</strong> Click <strong>Update</strong>
-            </p>
-          </div>
-        )
-      case "one":
-        return (
-          <div className="space-y-3">
-            <p>
-              <strong>1.</strong> Log in to ONE.com control panel
-            </p>
-            <p>
-              <strong>2.</strong> Go to <strong>DNS</strong> in the sidebar
-            </p>
-            <p>
-              <strong>3.</strong> Select your domain
-            </p>
-            <p>
-              <strong>4.</strong> Find A record with Host <code>@</code> (or add new)
-            </p>
-            <p>
-              <strong>5.</strong> Set Points to: <code>138.201.56.93</code>
-            </p>
-            <p>
-              <strong>6.</strong> Click <strong>Save</strong>
             </p>
           </div>
         )
@@ -221,9 +236,24 @@ export default function DNSSetupPage() {
         <div className="space-y-6">
           <div className="bg-blue-50 p-4 rounded-lg">
             <h2 className="font-semibold text-blue-900 mb-2">What you need to do:</h2>
-            <p className="text-blue-800">
-              Point your domain to our server IP: <code className="bg-white px-2 py-1 rounded">138.201.56.93</code>
+            <p className="text-blue-800 mb-2">
+              <strong>Create an A record</strong> that points your domain to our server IP address:
             </p>
+            <div className="bg-white p-3 rounded border font-mono text-sm">
+              <strong>Type:</strong> A<br/>
+              <strong>Name/Host:</strong> @ <span className="text-gray-600">(this represents your root domain)</span><br/>
+              <strong>Value/Points to:</strong> <span className="font-bold text-blue-900">138.201.56.93</span><br/>
+              <strong>TTL:</strong> 300 <span className="text-gray-600">(or Auto/Default)</span>
+            </div>
+            <div className="bg-red-50 border border-red-200 p-4 rounded-lg mt-4">
+              <h4 className="font-bold text-red-900 mb-2">⚠️ IMPORTANT: Remove AAAA Records</h4>
+              <p className="text-red-800 font-semibold mb-2">
+                You MUST also delete any existing AAAA records (IPv6) for your domain.
+              </p>
+              <p className="text-red-700 text-sm">
+                AAAA records can interfere with deployment. Look for records with Type "AAAA" and Name "@" or your domain name, and delete them.
+              </p>
+            </div>
           </div>
 
           <div>
@@ -233,7 +263,7 @@ export default function DNSSetupPage() {
                 <button
                   key={p.id}
                   onClick={() => setProvider(p.id)}
-                  className={`p-3 border rounded-lg text-left hover:bg-gray-50 ${
+                  className={`p-3 border rounded-lg text-left hover:bg-gray-50 cursor-pointer transition-colors ${
                     provider === p.id ? "border-blue-500 bg-blue-50" : "border-gray-300"
                   }`}
                 >

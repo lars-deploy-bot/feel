@@ -12,7 +12,6 @@ interface DeployResponse {
 
 export default function DeployPage() {
   const [domain, setDomain] = useState("")
-  const [port, setPort] = useState("")
   const [isDeploying, setIsDeploying] = useState(false)
   const [result, setResult] = useState<DeployResponse | null>(null)
 
@@ -38,7 +37,6 @@ export default function DeployPage() {
         },
         body: JSON.stringify({
           domain,
-          port: port ? Number.parseInt(port) : undefined,
         }),
       })
 
@@ -123,23 +121,6 @@ export default function DeployPage() {
               />
             </div>
 
-            <div>
-              <label htmlFor="port" className="block text-sm font-medium text-gray-700">
-                Port (optional)
-              </label>
-              <input
-                type="number"
-                id="port"
-                value={port}
-                onChange={e => setPort(e.target.value)}
-                placeholder="Auto-detect"
-                min="1024"
-                max="65535"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                disabled={isDeploying}
-              />
-              <p className="mt-1 text-sm text-gray-500">Leave empty to auto-detect available port</p>
-            </div>
 
             <button
               type="submit"
@@ -218,13 +199,10 @@ export default function DeployPage() {
                         result.message
                       )}
                     </p>
-                    {result.success && result.domain && result.port && (
+                    {result.success && result.domain && (
                       <div className="mt-2">
                         <p>
                           <strong>Domain:</strong> {result.domain}
-                        </p>
-                        <p>
-                          <strong>Port:</strong> {result.port}
                         </p>
                         <p className="mt-2">
                           <a

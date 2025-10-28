@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs"
 import path from "node:path"
 import { ErrorCodes } from "@/lib/error-codes"
+import { normalizeDomain } from "@/lib/domain-utils"
 import { NextResponse } from "next/server"
 
 export interface WorkspaceRequest {
@@ -58,10 +59,14 @@ function getTerminalWorkspace(body: any, requestId: string): WorkspaceResult {
     }
   }
 
+  // Normalize domain name to handle protocols, www, uppercase, etc.
+  const normalizedDomain = normalizeDomain(customWorkspace)
+  console.log(`[Workspace ${requestId}] Normalized workspace: ${customWorkspace} → ${normalizedDomain}`)
+
   // Auto-prepend webalive/sites/ if not present, and always append /user
-  let workspacePath = customWorkspace.startsWith("webalive/sites/")
-    ? customWorkspace
-    : `webalive/sites/${customWorkspace}`
+  let workspacePath = normalizedDomain.startsWith("webalive/sites/")
+    ? normalizedDomain
+    : `webalive/sites/${normalizedDomain}`
 
   // Always append /user to the workspace path
   if (!workspacePath.endsWith("/user")) {

@@ -38,16 +38,50 @@ DOMAIN_IP=$(dig +short "$DOMAIN" A | tail -n1)
 
 if [ -z "$DOMAIN_IP" ]; then
     echo "❌ DNS Error: No A record found for $DOMAIN"
-    echo "   Please ensure $DOMAIN has an A record pointing to $SERVER_IP"
+    echo "   You must create an A record for $DOMAIN with these exact settings:"
+    echo "   Type: A"
+    echo "   Name/Host: @ (or $DOMAIN)"
+    echo "   Value/Points to: $SERVER_IP"
+    echo "   TTL: 300 (or Auto)"
+    echo "   ⚠️  ALSO: Remove any AAAA records (IPv6) for $DOMAIN"
+    echo "   📖 See DNS setup guide: https://terminal.goalive.nl/docs/dns-setup"
     exit 12
 fi
 
 if [ "$DOMAIN_IP" != "$SERVER_IP" ]; then
-    echo "❌ DNS Error: $DOMAIN points to $DOMAIN_IP, but should point to $SERVER_IP"
-    exit 12
+    # Check if it's a Cloudflare proxy IP (common ranges)
+    if [[ "$DOMAIN_IP" =~ ^(104\.1[6-9]\.|104\.2[0-4]\.|172\.6[4-7]\.|172\.7[0-1]\.|173\.245\.|188\.114\.|190\.93\.|197\.234\.|198\.41\.) ]]; then
+        echo "❌ DNS Error: $DOMAIN points to $DOMAIN_IP (Cloudflare proxy IP)"
+        echo "   🚨 CLOUDFLARE PROXY DETECTED: You must disable the orange cloud (proxy) in Cloudflare DNS settings!"
+        echo "   💡 Make the cloud icon GRAY (not orange) next to your A record, then try again."
+        echo "   📖 See DNS setup guide: https://terminal.goalive.nl/docs/dns-setup"
+        exit 12
+    else
+        echo "❌ DNS Error: $DOMAIN currently points to $DOMAIN_IP, but it must point to $SERVER_IP"
+        echo "   You need to update your A record for $DOMAIN with these exact settings:"
+        echo "   Type: A"
+        echo "   Name/Host: @ (or $DOMAIN)"
+        echo "   Value/Points to: $SERVER_IP"
+        echo "   TTL: 300 (or Auto)"
+        echo "   ⚠️  ALSO: Remove any AAAA records (IPv6) for $DOMAIN"
+        echo "   📖 See DNS setup guide: https://terminal.goalive.nl/docs/dns-setup"
+        exit 12
+    fi
 fi
 
 echo "✅ DNS validation passed: $DOMAIN → $SERVER_IP"
+
+# 1.5. Check for AAAA records that might interfere
+echo "🔍 Checking for AAAA records (IPv6)..."
+AAAA_RECORDS=$(dig +short "$DOMAIN" AAAA | grep -v "^$")
+
+if [ -n "$AAAA_RECORDS" ]; then
+    echo "⚠️  WARNING: AAAA records (IPv6) detected for $DOMAIN:"
+    echo "   $AAAA_RECORDS"
+    echo "   💡 RECOMMENDATION: Remove AAAA records to prevent potential deployment issues"
+    echo "   📖 See DNS setup guide: https://terminal.goalive.nl/docs/dns-setup"
+    echo "   🔄 Continuing deployment anyway..."
+fi
 
 # 2. Smart port assignment from domain-passwords.json
 echo "🔢 Determining port assignment..."

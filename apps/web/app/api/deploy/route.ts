@@ -2,53 +2,22 @@ import { exec } from "node:child_process"
 import { existsSync } from "node:fs"
 import { promisify } from "node:util"
 import { type NextRequest, NextResponse } from "next/server"
+import { normalizeAndValidateDomain } from "../../../lib/domain-utils"
 
 const execAsync = promisify(exec)
 
 interface DeployRequest {
   domain: string
-  port?: number
 }
 
 interface DeployResponse {
   success: boolean
   message: string
   domain?: string
-  port?: number
   errors?: string[]
 }
 
-function validateDomain(domain: string): string | null {
-  if (!domain) return "Domain is required"
-  if (!/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(domain)) {
-    return "Invalid domain format (e.g., example.com)"
-  }
-  return null
-}
 
-function validatePort(port: number): string | null {
-  if (port && (Number.isNaN(port) || port < 1024 || port > 65535)) {
-    return "Port must be between 1024-65535"
-  }
-  return null
-}
-
-async function findAvailablePort(startPort = 3334): Promise<number> {
-  let port = startPort
-  while (port <= 65535) {
-    try {
-      const { stdout } = await execAsync(`netstat -tuln | grep :${port}`)
-      if (!stdout.trim()) {
-        return port // Port is available
-      }
-    } catch (error) {
-      // netstat failed or no match found - port is likely available
-      return port
-    }
-    port++
-  }
-  throw new Error("No available ports found")
-}
 
 async function validateSSLCertificate(domain: string): Promise<{ success: boolean; error?: string }> {
   const maxAttempts = 6 // Try for up to 60 seconds
@@ -105,6 +74,8 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now()
   console.log("🚀 [DEPLOY API] Request received")
 
+  let domain = "unknown domain" // Initialize domain outside try block for error handling
+
   try {
     // Parse request body
     let body: DeployRequest
@@ -120,36 +91,23 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       )
     }
-    const { domain, port: requestedPort } = body
-
-    console.log(`📋 [DEPLOY API] Request: domain=${domain}, port=${requestedPort}`)
-
-    // Validation
-    const domainError = validateDomain(domain)
-    if (domainError) {
-      console.error(`❌ [DEPLOY API] Domain validation failed: ${domainError}`)
+    // Normalize and validate domain
+    const domainResult = normalizeAndValidateDomain(body.domain)
+    if (!domainResult.isValid) {
+      console.error(`❌ [DEPLOY API] Domain validation failed: ${domainResult.error}`)
       return NextResponse.json(
         {
           success: false,
-          message: domainError,
+          message: domainResult.error || "Invalid domain",
         } as DeployResponse,
         { status: 400 },
       )
     }
 
-    if (requestedPort) {
-      const portError = validatePort(requestedPort)
-      if (portError) {
-        console.error(`❌ [DEPLOY API] Port validation failed: ${portError}`)
-        return NextResponse.json(
-          {
-            success: false,
-            message: portError,
-          } as DeployResponse,
-          { status: 400 },
-        )
-      }
-    }
+    domain = domainResult.domain // Use normalized domain
+
+    console.log(`📋 [DEPLOY API] Request: domain=${body.domain} → normalized: ${domain}`)
+
 
     // Check if site already exists
     const sitePath = `/root/webalive/sites/${domain}`
@@ -161,9 +119,6 @@ export async function POST(request: NextRequest) {
       console.log(`📁 [DEPLOY API] Creating new site at: ${sitePath}`)
     }
 
-    // Find available port
-    const port = requestedPort || (await findAvailablePort())
-    console.log(`🔍 [DEPLOY API] Using port: ${port}`)
 
     // Execute deployment script (SECURE: uses systemd isolation)
     const scriptPath = "/root/webalive/claude-bridge/scripts/deploy-site-systemd.sh"
@@ -197,7 +152,6 @@ export async function POST(request: NextRequest) {
         success: true,
         message: `Site ${domain} deployed successfully with SSL certificate`,
         domain,
-        port,
       } as DeployResponse)
     }
     console.warn(`⚠️  [DEPLOY API] Deployment completed but SSL validation failed: ${sslValidation.error}`)
@@ -205,7 +159,6 @@ export async function POST(request: NextRequest) {
       success: true, // Deployment itself succeeded
       message: `Site ${domain} deployed but SSL certificate is still being provisioned. Try again in 30-60 seconds.`,
       domain,
-      port,
       errors: [sslValidation.error],
     } as DeployResponse)
   } catch (error: any) {
@@ -250,8 +203,14 @@ export async function POST(request: NextRequest) {
       errorMessage = "Site already exists. Remove it first or use update commands."
       statusCode = 409 // Conflict
     } else if (error.code === 12) {
-      errorMessage =
-        "DNS validation failed - domain must point to this server (138.201.56.93). See DNS setup guide: https://terminal.goalive.nl/docs/dns-setup"
+      // Check if the error message contains Cloudflare proxy detection
+      if (error.stderr && error.stderr.includes("CLOUDFLARE PROXY DETECTED")) {
+        errorMessage = "🚨 Cloudflare proxy detected! You must disable the orange cloud (proxy) in your Cloudflare DNS settings. Make the cloud icon GRAY (not orange) next to your A record, then try again. See DNS setup guide: https://terminal.goalive.nl/docs/dns-setup"
+      } else if (error.stderr && error.stderr.includes("No A record found")) {
+        errorMessage = `DNS Error: No A record found for ${domain}. You must create an A record with these settings: Type=A, Name/Host=@ (or ${domain}), Value/Points to=138.201.56.93, TTL=300. ALSO: Remove any AAAA records (IPv6) for ${domain}. See DNS setup guide: https://terminal.goalive.nl/docs/dns-setup`
+      } else {
+        errorMessage = `DNS Error: ${domain} does not point to our server (138.201.56.93). You need to update your A record with these settings: Type=A, Name/Host=@ (or ${domain}), Value/Points to=138.201.56.93, TTL=300. ALSO: Remove any AAAA records (IPv6) for ${domain}. See DNS setup guide: https://terminal.goalive.nl/docs/dns-setup`
+      }
       statusCode = 400
     } else if (error.stderr) {
       errorMessage = `Script error: ${error.stderr.slice(0, 500)}`
@@ -273,7 +232,7 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   return NextResponse.json({
     message: "Deploy API is running",
-    usage: 'POST with { "domain": "example.com", "port": 3334 }',
+    usage: 'POST with { "domain": "example.com" }',
     endpoints: {
       deploy: "POST /api/deploy",
     },

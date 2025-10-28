@@ -1,6 +1,7 @@
 "use client"
 import { Button } from "@/components/ui/primitives/Button"
 import { getErrorHelp, getErrorMessage } from "@/lib/error-codes"
+import { normalizeDomain } from "@/lib/domain-utils"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Suspense, useEffect, useState } from "react"
 
@@ -111,8 +112,8 @@ function WorkspacePageContent() {
                 type="text"
                 value={workspace}
                 onChange={e => {
-                  const value = e.target.value.replace(/^https?:\/\//, "")
-                  setWorkspace(value)
+                  const normalized = normalizeDomain(e.target.value)
+                  setWorkspace(normalized)
                   setVerified(false)
                   setVerifyResult(null)
                 }}

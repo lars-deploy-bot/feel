@@ -1,0 +1,70 @@
+/**
+ * Domain normalization utilities for consistent domain handling
+ */
+
+/**
+ * Normalizes a domain name by:
+ * - Converting to lowercase
+ * - Removing protocol (http://, https://)
+ * - Removing www. prefix
+ * - Removing trailing slashes and paths
+ * - Removing port numbers
+ * - Trimming whitespace
+ */
+export function normalizeDomain(input: string): string {
+  if (!input || typeof input !== 'string') {
+    return ''
+  }
+
+  let domain = input.trim()
+
+  // Remove protocol (http://, https://, ftp://, etc.)
+  domain = domain.replace(/^[a-zA-Z][a-zA-Z\d+.-]*:\/\//, '')
+
+  // Remove www. prefix (case insensitive)
+  domain = domain.replace(/^www\./i, '')
+
+  // Remove trailing slashes and everything after
+  domain = domain.replace(/\/.*$/, '')
+
+  // Remove port numbers
+  domain = domain.replace(/:\d+$/, '')
+
+  // Convert to lowercase
+  domain = domain.toLowerCase()
+
+  // Final trim
+  domain = domain.trim()
+
+  return domain
+}
+
+/**
+ * Validates if a domain is in a valid format
+ */
+export function isValidDomain(domain: string): boolean {
+  if (!domain) return false
+
+  // Basic domain regex - allows letters, numbers, hyphens, and dots
+  // Must have at least one dot and valid TLD
+  const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/
+
+  return domainRegex.test(domain)
+}
+
+/**
+ * Normalizes and validates a domain in one step
+ */
+export function normalizeAndValidateDomain(input: string): { domain: string; isValid: boolean; error?: string } {
+  const normalized = normalizeDomain(input)
+
+  if (!normalized) {
+    return { domain: '', isValid: false, error: 'Domain is required' }
+  }
+
+  if (!isValidDomain(normalized)) {
+    return { domain: normalized, isValid: false, error: 'Invalid domain format (e.g., example.com)' }
+  }
+
+  return { domain: normalized, isValid: true }
+}

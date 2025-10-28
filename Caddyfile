@@ -99,3 +99,63 @@ larsvandeneeden.com {
         header_up X-Forwarded-Proto {scheme}
     }
 }
+
+two.goalive.nl {
+    import common_headers
+    reverse_proxy localhost:3343 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+three.goalive.nl {
+    import common_headers
+    reverse_proxy localhost:3344 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+four.goalive.nl {
+    import common_headers
+    reverse_proxy localhost:3345 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+one.goalive.nl {
+    import common_headers
+    reverse_proxy localhost:3346 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+five.goalive.nl {
+    import common_headers
+    reverse_proxy localhost:3347 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+six.goalive.nl {
+    import common_headers
+    reverse_proxy localhost:3348 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
