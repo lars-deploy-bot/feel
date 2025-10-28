@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs"
+import { existsSync, statSync } from "node:fs"
 import path from "node:path"
 import { ErrorCodes } from "@/lib/error-codes"
 import { normalizeDomain } from "@/lib/domain-utils"
@@ -184,19 +184,39 @@ function getHostnameWorkspace(host: string, requestId: string): WorkspaceResult 
     }
 
     // Check if it's actually a directory (not a file)
-    const stat = require("node:fs").statSync(templateWorkspace)
-    if (!stat.isDirectory()) {
-      console.error(`[Workspace ${requestId}] LOCAL_TEMPLATE_PATH exists but is not a directory: ${templateWorkspace}`)
+    try {
+      const stat = statSync(templateWorkspace)
+      if (!stat.isDirectory()) {
+        console.error(`[Workspace ${requestId}] LOCAL_TEMPLATE_PATH exists but is not a directory: ${templateWorkspace}`)
+        return {
+          success: false,
+          response: NextResponse.json(
+            {
+              ok: false,
+              error: ErrorCodes.WORKSPACE_INVALID,
+              message: "LOCAL_TEMPLATE_PATH exists but is not a directory",
+              details: {
+                path: templateWorkspace,
+                suggestion: `Remove the file and run 'bun run setup'`,
+              },
+            },
+            { status: 500 },
+          ),
+        }
+      }
+    } catch (error) {
+      console.error(`[Workspace ${requestId}] Failed to stat LOCAL_TEMPLATE_PATH: ${templateWorkspace}`, error)
       return {
         success: false,
         response: NextResponse.json(
           {
             ok: false,
             error: ErrorCodes.WORKSPACE_INVALID,
-            message: "LOCAL_TEMPLATE_PATH exists but is not a directory",
+            message: "Cannot access LOCAL_TEMPLATE_PATH",
             details: {
               path: templateWorkspace,
-              suggestion: `Remove the file and run 'bun run setup'`,
+              error: error instanceof Error ? error.message : String(error),
+              suggestion: `Check permissions and run 'bun run setup'`,
             },
           },
           { status: 500 },
