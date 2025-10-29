@@ -64,16 +64,9 @@ export function createClaudeStream({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(q as any)?.interrupt?.().catch(() => {})
 
-    // CRITICAL: When HTTP request is aborted, invalidate the session to prevent
-    // resuming from a corrupted/interrupted state
-    if (conversation) {
-      try {
-        await conversation.store.delete(conversation.key)
-        console.log(`[Stream ${requestId}] Session invalidated due to HTTP abort`)
-      } catch (error) {
-        console.error(`[Stream ${requestId}] Failed to invalidate session on HTTP abort:`, error)
-      }
-    }
+    // Don't invalidate session on HTTP abort - user may be refreshing or navigating
+    // Session will be cleaned up by conversation unlocking, but preserved for resume
+    console.log(`[Stream ${requestId}] HTTP abort - preserving session for potential resume`)
   }
   requestSignal?.addEventListener("abort", onHttpAbort, { once: true })
 
@@ -208,19 +201,16 @@ export function createClaudeStream({
             // Check if we reached the limit we set
             turnCount >= maxTurns
 
-          // If this is an SDK error that might indicate session corruption, invalidate the session
-          const isSessionError =
-            errorMessage.includes("process exited") ||
-            errorMessage.includes("Claude Code") ||
-            errorMessage.toLowerCase().includes("session")
-
-          if (isSessionError && conversation) {
+          // Only invalidate session on actual process crashes, preserve for recoverable errors
+          if (conversation && errorMessage.includes("process exited unexpectedly")) {
             try {
               await conversation.store.delete(conversation.key)
-              console.log(`[Stream ${requestId}] Session invalidated due to SDK error: ${errorMessage}`)
+              console.log(`[Stream ${requestId}] Session invalidated due to process crash`)
             } catch (sessionError) {
-              console.error(`[Stream ${requestId}] Failed to invalidate session after SDK error:`, sessionError)
+              console.error(`[Stream ${requestId}] Failed to invalidate session after process crash:`, sessionError)
             }
+          } else if (conversation) {
+            console.log(`[Stream ${requestId}] Preserving session - error appears recoverable: ${errorMessage}`)
           }
 
           // Handle different error types
@@ -259,16 +249,8 @@ export function createClaudeStream({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (q as any)?.interrupt?.().catch(() => {})
 
-      // CRITICAL: When stream is cancelled, invalidate the session to prevent
-      // resuming from a corrupted/interrupted state
-      if (conversation) {
-        try {
-          await conversation.store.delete(conversation.key)
-          console.log(`[Stream ${requestId}] Session invalidated due to cancellation`)
-        } catch (error) {
-          console.error(`[Stream ${requestId}] Failed to invalidate session:`, error)
-        }
-      }
+      // Don't invalidate session on user cancellation - allow resume
+      console.log(`[Stream ${requestId}] Stream cancelled - preserving session for potential resume`)
 
       onClose?.() // And unlock here too (idempotent)
     },
