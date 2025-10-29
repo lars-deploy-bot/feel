@@ -23,6 +23,14 @@ export const ErrorCodes = {
   QUERY_FAILED: "QUERY_FAILED",
   ERROR_MAX_TURNS: "ERROR_MAX_TURNS",
 
+  // Image errors (6xxx)
+  TENANT_NOT_CONFIGURED: "TENANT_NOT_CONFIGURED",
+  NO_FILE: "NO_FILE",
+  FILE_TOO_SMALL: "FILE_TOO_SMALL",
+  FILE_TOO_LARGE: "FILE_TOO_LARGE",
+  INVALID_FILE_TYPE: "INVALID_FILE_TYPE",
+  IMAGE_PROCESSING_FAILED: "IMAGE_PROCESSING_FAILED",
+
   // General errors
   REQUEST_PROCESSING_FAILED: "REQUEST_PROCESSING_FAILED",
   UNKNOWN_ERROR: "UNKNOWN_ERROR",
@@ -72,6 +80,24 @@ export function getErrorMessage(code: ErrorCode, details?: Record<string, any>):
 
     case ErrorCodes.ERROR_MAX_TURNS:
       return "Maximum conversation turns exceeded."
+
+    case ErrorCodes.TENANT_NOT_CONFIGURED:
+      return "This domain is not configured for image uploads."
+
+    case ErrorCodes.NO_FILE:
+      return "No file was provided for upload."
+
+    case ErrorCodes.FILE_TOO_SMALL:
+      return "File is too small. Please select a larger image."
+
+    case ErrorCodes.FILE_TOO_LARGE:
+      return "File is too large. Please select a smaller image."
+
+    case ErrorCodes.INVALID_FILE_TYPE:
+      return "Invalid file type. Please select a valid image file."
+
+    case ErrorCodes.IMAGE_PROCESSING_FAILED:
+      return "Failed to process the image. Please try again."
 
     case ErrorCodes.REQUEST_PROCESSING_FAILED:
       return "Failed to process request."

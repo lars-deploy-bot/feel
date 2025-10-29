@@ -14,8 +14,17 @@
     }
 }
 
+(image_serving) {
+    handle_path /_images/* {
+        root * /srv/webalive/storage
+        header Cache-Control "public, max-age=31536000, immutable"
+        file_server
+    }
+}
+
 demo.goalive.nl {
     import common_headers
+    import image_serving
     reverse_proxy localhost:3333 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
@@ -26,6 +35,7 @@ demo.goalive.nl {
 
 crazywebsite.nl {
     import common_headers
+    import image_serving
     reverse_proxy localhost:3334 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
@@ -36,6 +46,7 @@ crazywebsite.nl {
 
 homable.nl {
     import common_headers
+    import image_serving
     reverse_proxy localhost:3336 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
@@ -46,6 +57,7 @@ homable.nl {
 
 riggedgpt.com {
     import common_headers
+    import image_serving
     reverse_proxy localhost:3337 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
@@ -57,6 +69,7 @@ riggedgpt.com {
 # Isolated systemd site with enhanced security
 wheelpickername.com {
     import common_headers
+    import image_serving
     reverse_proxy localhost:3341 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
@@ -71,6 +84,7 @@ wheelpickername.com {
 
 kranazilie.nl {
     import common_headers
+    import image_serving
     reverse_proxy localhost:3339 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
@@ -81,6 +95,7 @@ kranazilie.nl {
 
 barendbootsma.com {
     import common_headers
+    import image_serving
     reverse_proxy localhost:3340 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
@@ -92,6 +107,7 @@ barendbootsma.com {
 
 larsvandeneeden.com {
     import common_headers
+    import image_serving
     reverse_proxy localhost:3342 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
@@ -102,6 +118,7 @@ larsvandeneeden.com {
 
 two.goalive.nl {
     import common_headers
+    import image_serving
     reverse_proxy localhost:3343 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
@@ -112,6 +129,7 @@ two.goalive.nl {
 
 three.goalive.nl {
     import common_headers
+    import image_serving
     reverse_proxy localhost:3344 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
@@ -122,6 +140,7 @@ three.goalive.nl {
 
 four.goalive.nl {
     import common_headers
+    import image_serving
     reverse_proxy localhost:3345 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
@@ -132,6 +151,7 @@ four.goalive.nl {
 
 one.goalive.nl {
     import common_headers
+    import image_serving
     reverse_proxy localhost:3346 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
@@ -142,6 +162,7 @@ one.goalive.nl {
 
 five.goalive.nl {
     import common_headers
+    import image_serving
     reverse_proxy localhost:3347 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
@@ -152,6 +173,7 @@ five.goalive.nl {
 
 six.goalive.nl {
     import common_headers
+    import image_serving
     reverse_proxy localhost:3348 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
@@ -159,3 +181,4 @@ six.goalive.nl {
         header_up X-Forwarded-Proto {scheme}
     }
 }
+

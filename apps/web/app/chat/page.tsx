@@ -263,11 +263,6 @@ export default function ChatPage() {
     }
   }
 
-  function changeWorkspace() {
-    if (isTerminal) {
-      router.push("/workspace")
-    }
-  }
 
   function startNewConversation() {
     setConversationId(crypto.randomUUID())
@@ -289,21 +284,19 @@ export default function ChatPage() {
           <h1 className="text-lg font-thin text-black">{mounted && isTerminal ? "terminal" : "•"}</h1>
           <div className="flex items-center gap-2">
             <button
+              onClick={() => router.push("/photobook")}
+              className="inline-flex items-center justify-center px-3 py-2 text-xs font-thin text-black border border-black/20 hover:bg-black hover:text-white transition-colors cursor-pointer"
+              type="button"
+            >
+              photos
+            </button>
+            <button
               onClick={startNewConversation}
-              className="inline-flex items-center justify-center px-3 py-2 text-xs font-thin text-black border border-black/20 hover:bg-black hover:text-white transition-colors"
+              className="inline-flex items-center justify-center px-3 py-2 text-xs font-thin text-black border border-black/20 hover:bg-black hover:text-white transition-colors cursor-pointer"
               type="button"
             >
               new chat
             </button>
-            {mounted && isTerminal && (
-              <button
-                onClick={changeWorkspace}
-                className="inline-flex items-center justify-center px-3 py-2 text-xs font-thin text-black border border-black/20 hover:bg-black hover:text-white transition-colors"
-                type="button"
-              >
-                change
-              </button>
-            )}
           </div>
         </div>
 

@@ -187,7 +187,9 @@ function getHostnameWorkspace(host: string, requestId: string): WorkspaceResult 
     try {
       const stat = statSync(templateWorkspace)
       if (!stat.isDirectory()) {
-        console.error(`[Workspace ${requestId}] LOCAL_TEMPLATE_PATH exists but is not a directory: ${templateWorkspace}`)
+        console.error(
+          `[Workspace ${requestId}] LOCAL_TEMPLATE_PATH exists but is not a directory: ${templateWorkspace}`,
+        )
         return {
           success: false,
           response: NextResponse.json(
@@ -231,8 +233,8 @@ function getHostnameWorkspace(host: string, requestId: string): WorkspaceResult 
     }
   }
 
-  const base = process.env.WORKSPACE_BASE || "/claude-bridge/sites"
-  const workspace = path.join(base, host, "src")
+  const base = process.env.WORKSPACE_BASE || "/srv/webalive/sites"
+  const workspace = path.join(base, host, "user", "src")
 
   // Check if workspace directory exists
   if (!existsSync(workspace)) {

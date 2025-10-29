@@ -4,6 +4,6 @@ const nextConfig = {
   experimental: {
     serverActions: { bodySizeLimit: "2mb" },
   },
-  serverExternalPackages: ['@napi-rs/image'],
+  serverExternalPackages: ["@napi-rs/image"],
 }
 export default nextConfig

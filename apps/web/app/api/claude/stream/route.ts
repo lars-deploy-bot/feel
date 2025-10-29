@@ -8,6 +8,7 @@ import { ErrorCodes } from "@/lib/error-codes"
 import { logInput } from "@/lib/input-logger"
 import { SessionStoreMemory, sessionKey, tryLockConversation, unlockConversation } from "@/lib/sessionStore"
 import { resolveWorkspace } from "@/lib/workspace-utils"
+import { getWorkspace, ensurePathWithinWorkspace, type Workspace } from "@/lib/workspace-secure"
 import { BodySchema, isToolAllowed } from "@/types/guards/api"
 import { hasSessionCookie } from "@/types/guards/auth"
 import { isPathWithinWorkspace } from "@/types/guards/workspace"
@@ -102,12 +103,38 @@ export async function POST(req: NextRequest) {
     const origin = req.headers.get("origin")
     console.log(`[Claude Stream ${requestId}] Host: ${host}`)
 
-    // Get workspace using utility
-    const workspaceResult = resolveWorkspace(host, { ...body, workspace: requestWorkspace }, requestId, origin)
-    if (!workspaceResult.success) {
-      return workspaceResult.response
+    // Get workspace using new secure resolution
+    let workspace: Workspace
+    let cwd: string
+
+    try {
+      if (host.startsWith("terminal.")) {
+        // Terminal mode: use existing resolver for custom workspace selection
+        const workspaceResult = resolveWorkspace(host, { ...body, workspace: requestWorkspace }, requestId, origin)
+        if (!workspaceResult.success) {
+          return workspaceResult.response
+        }
+        cwd = workspaceResult.workspace
+        // For terminal mode, we still need to get uid/gid info
+        const stats = require("node:fs").statSync(cwd)
+        workspace = { root: cwd, uid: stats.uid, gid: stats.gid, tenantId: host }
+      } else {
+        // Hostname mode: use new secure resolution with canonical tenant mapping
+        workspace = getWorkspace(host)
+        cwd = workspace.root
+      }
+    } catch (workspaceError) {
+      console.error(`[Claude Stream ${requestId}] Workspace resolution failed:`, workspaceError)
+      return NextResponse.json(
+        {
+          ok: false,
+          error: ErrorCodes.WORKSPACE_NOT_FOUND,
+          message: `Workspace resolution failed: ${workspaceError instanceof Error ? workspaceError.message : "Unknown error"}`,
+          details: { host, requestWorkspace },
+        },
+        { status: 404 },
+      )
     }
-    const cwd = workspaceResult.workspace
 
     // Log input for analytics (non-blocking)
     logInput({
@@ -165,18 +192,25 @@ export async function POST(req: NextRequest) {
       const filePath = (input as any).file_path || (input as any).notebook_path || (input as any).path || null
 
       if (filePath) {
-        const norm = path.normalize(filePath)
-        console.log(`[Claude Stream ${requestId}] File path requested: ${norm}`)
-        if (!isPathWithinWorkspace(norm, cwd, path.sep)) {
-          console.log(`[Claude Stream ${requestId}] Path denied - outside workspace: ${norm}`)
+        try {
+          // Use new secure containment check
+          ensurePathWithinWorkspace(filePath, workspace.root)
+          console.log(`[Claude Stream ${requestId}] Path allowed: ${filePath}`)
+        } catch (containmentError) {
+          console.log(`[Claude Stream ${requestId}] Path denied - containment check failed: ${filePath}`)
           return { behavior: "deny", message: "path_outside_workspace" }
         }
-        console.log(`[Claude Stream ${requestId}] Path allowed: ${norm}`)
+      }
+
+      // Add workspace context to the input for tools that need it
+      const updatedInput = {
+        ...input,
+        __workspace: workspace // Internal context for our tools
       }
 
       const allow: PermissionResult = {
         behavior: "allow",
-        updatedInput: input,
+        updatedInput,
         updatedPermissions: [],
       }
       console.log(`[Claude Stream ${requestId}] Tool allowed: ${toolName}`)
