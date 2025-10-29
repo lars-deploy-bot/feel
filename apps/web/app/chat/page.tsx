@@ -1,5 +1,6 @@
 "use client"
 import { ThinkingGroup } from "@/components/ui/chat/ThinkingGroup"
+import { SettingsDropdown } from "@/components/ui/SettingsDropdown"
 import type { StructuredError } from "@/lib/error-codes"
 import { groupMessages } from "@/lib/message-grouper"
 import { type StreamEvent, type UIMessage, parseStreamEvent } from "@/lib/message-parser"
@@ -297,6 +298,7 @@ export default function ChatPage() {
             >
               new chat
             </button>
+            <SettingsDropdown />
           </div>
         </div>
 

@@ -238,7 +238,7 @@ export async function POST(req: NextRequest) {
         workspaceFolder: cwd,
         additionalContext: body.additionalContext,
       }),
-      settingSources: [],
+      settingSources: ['project'],
       model: process.env.CLAUDE_MODEL,
       // Resume existing session if we have one
       ...(existingSessionId ? { resume: existingSessionId } : {}),

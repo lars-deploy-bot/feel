@@ -59,3 +59,13 @@ user/
 - Hot Module Replacement (HMR) provides instant updates
 - TypeScript provides type safety
 - Tailwind CSS for styling (if configured)
+
+## [Claude Planning Mode]
+
+**ALWAYS use this systematic planning approach for any task:**
+
+**Boxes to Tick:** 1,2,3,4 (max 8)...
+**Questions to Answer:** same
+**Proof Strategy:** 1,2,... 8 to get the proof how you fix my prompt
+
+This ensures systematic problem-solving with clear deliverables and verification steps.

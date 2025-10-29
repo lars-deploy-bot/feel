@@ -29,6 +29,7 @@ export default function PhotobookPage() {
   const [workspace, setWorkspace] = useState("")
   const [isTerminal, setIsTerminal] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -204,20 +205,21 @@ export default function PhotobookPage() {
             type="file"
             multiple
             accept="image/*"
+            capture="environment"
             onChange={handleFileSelect}
             className="hidden"
           />
           <div className="relative">
             <label
               htmlFor="file-input"
-              className="px-6 py-2 bg-black text-white text-sm rounded-full hover:bg-gray-800 transition-all cursor-pointer"
+              className="px-8 py-3 md:px-6 md:py-2 bg-black text-white text-sm md:text-sm rounded-full hover:bg-gray-800 transition-all cursor-pointer font-medium"
               onMouseEnter={() => setShowDropHint(true)}
               onMouseLeave={() => setShowDropHint(false)}
             >
-              Add Images
+              Add Photos
             </label>
 
-            {showDropHint && (
+            {showDropHint && !('ontouchstart' in window) && (
               <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap animate-in fade-in-0 zoom-in-95 duration-200">
                 You can also drop pics anywhere!
                 <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
@@ -300,14 +302,15 @@ export default function PhotobookPage() {
                     <img
                       src={`/_images/${image.variants.w640}`}
                       alt=""
-                      className="w-full h-auto"
+                      className="w-full h-auto cursor-pointer"
                       loading="lazy"
+                      onClick={() => setZoomedImage(`/_images/${image.variants.orig}`)}
                     />
                     <button
                       onClick={() => deleteImage(image.key)}
-                      className="absolute top-4 right-4 p-2 bg-white/90 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+                      className="absolute top-4 right-4 p-3 md:p-2 bg-white/90 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 md:group-hover:opacity-100 sm:opacity-100 transition-all cursor-pointer min-w-[44px] min-h-[44px] md:min-w-auto md:min-h-auto flex items-center justify-center"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-5 h-5 md:w-4 md:h-4" />
                     </button>
                   </div>
 
@@ -346,6 +349,29 @@ export default function PhotobookPage() {
             <p className="text-gray-500">Processing your images...</p>
           </div>
         ) : null}
+
+        {/* Image Zoom Modal */}
+        {zoomedImage && (
+          <div
+            className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+            onClick={() => setZoomedImage(null)}
+          >
+            <div className="relative max-w-full max-h-full">
+              <img
+                src={zoomedImage}
+                alt=""
+                className="max-w-full max-h-full object-contain"
+                onClick={(e) => e.stopPropagation()}
+              />
+              <button
+                onClick={() => setZoomedImage(null)}
+                className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/30 text-white rounded-full backdrop-blur-sm transition-all"
+              >
+                <Plus className="w-6 h-6 rotate-45" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
