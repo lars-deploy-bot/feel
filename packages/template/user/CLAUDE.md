@@ -53,12 +53,19 @@ user/
 
 [REPLACE THIS: Describe what this specific website/project does]
 
+## Navigation
+
+Uses React Router's `<Link>` components for client-side navigation:
+- **DO NOT** use `<a href="...">` (causes page reloads)
+- **DO** use `<Link to="...">` for internal navigation
+
 ## Important Notes
 
 - This uses Vite for fast development and building
 - Hot Module Replacement (HMR) provides instant updates
 - TypeScript provides type safety
 - Tailwind CSS for styling (if configured)
+- Client-side routing with react-router-dom prevents page reloads
 
 ## [Claude Planning Mode]
 
