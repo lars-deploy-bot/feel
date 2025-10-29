@@ -29,6 +29,7 @@ NEW_SITE_DIR="/srv/webalive/sites/$DOMAIN"
 CADDYFILE="/root/webalive/claude-bridge/Caddyfile"
 DOMAIN_PASSWORDS_FILE="/root/webalive/claude-bridge/domain-passwords.json"
 SERVER_IP="138.201.56.93"
+PASSWORD="${DEPLOY_PASSWORD:-supersecret}"  # Read from environment, fallback to default
 
 echo "🚀 Deploying $DOMAIN with improved port management..."
 
@@ -128,8 +129,12 @@ else
         echo "{}" > "$DOMAIN_PASSWORDS_FILE"
     fi
 
-    # Add domain with default password "supersecret" and assigned port
-    jq ".[\"$DOMAIN\"] = {\"password\": \"supersecret\", \"port\": $PORT}" "$DOMAIN_PASSWORDS_FILE" > "${DOMAIN_PASSWORDS_FILE}.tmp"
+    # Add domain with password and assigned port (using jq --arg for safe escaping)
+    jq --arg domain "$DOMAIN" \
+       --arg password "$PASSWORD" \
+       --argjson port "$PORT" \
+       '.[$domain] = {password: $password, port: $port}' \
+       "$DOMAIN_PASSWORDS_FILE" > "${DOMAIN_PASSWORDS_FILE}.tmp"
     mv "${DOMAIN_PASSWORDS_FILE}.tmp" "$DOMAIN_PASSWORDS_FILE"
     echo "✅ Added $DOMAIN to domain-passwords.json with port $PORT"
 fi
@@ -141,8 +146,11 @@ if [ -f "$DOMAIN_PASSWORDS_FILE" ] && jq -e ".[\"$DOMAIN\"]" "$DOMAIN_PASSWORDS_
         NEW_PORT=$(get_next_port)
         echo "🔄 Reassigning $DOMAIN from port $PORT to $NEW_PORT"
 
-        # Update domain-passwords.json with new port
-        jq ".[\"$DOMAIN\"].port = $NEW_PORT" "$DOMAIN_PASSWORDS_FILE" > "${DOMAIN_PASSWORDS_FILE}.tmp"
+        # Update domain-passwords.json with new port (preserve existing password)
+        jq --argjson port "$NEW_PORT" \
+           --arg domain "$DOMAIN" \
+           '.[$domain].port = $port' \
+           "$DOMAIN_PASSWORDS_FILE" > "${DOMAIN_PASSWORDS_FILE}.tmp"
         mv "${DOMAIN_PASSWORDS_FILE}.tmp" "$DOMAIN_PASSWORDS_FILE"
         PORT=$NEW_PORT
         echo "✅ Updated registry with new port: $PORT"

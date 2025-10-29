@@ -8,6 +8,7 @@ const execAsync = promisify(exec)
 
 interface DeployRequest {
   domain: string
+  password: string
 }
 
 interface DeployResponse {
@@ -104,6 +105,29 @@ export async function POST(request: NextRequest) {
 
     domain = domainResult.domain // Use normalized domain
 
+    // Validate password
+    if (!body.password) {
+      console.error(`❌ [DEPLOY API] Password is required`)
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Password is required",
+        } as DeployResponse,
+        { status: 400 },
+      )
+    }
+
+    if (body.password.length < 6 || body.password.length > 16) {
+      console.error(`❌ [DEPLOY API] Password length validation failed`)
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Password must be between 6 and 16 characters",
+        } as DeployResponse,
+        { status: 400 },
+      )
+    }
+
     console.log(`📋 [DEPLOY API] Request: domain=${body.domain} → normalized: ${domain}`)
 
     // Check if site already exists
@@ -122,9 +146,14 @@ export async function POST(request: NextRequest) {
 
     console.log(`⚡ [DEPLOY API] Executing: ${deployCommand}`)
 
+    // Pass password via environment variable (safer than command line argument)
     const { stdout, stderr } = await execAsync(deployCommand, {
       timeout: 300000, // 5 minutes timeout
       cwd: "/root/webalive/claude-bridge",
+      env: {
+        ...process.env,
+        DEPLOY_PASSWORD: body.password,
+      },
     })
 
     // Log output

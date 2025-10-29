@@ -12,6 +12,7 @@ interface DeployResponse {
 
 export default function DeployPage() {
   const [domain, setDomain] = useState("")
+  const [password, setPassword] = useState("")
   const [isDeploying, setIsDeploying] = useState(false)
   const [result, setResult] = useState<DeployResponse | null>(null)
 
@@ -22,6 +23,22 @@ export default function DeployPage() {
       setResult({
         success: false,
         message: "Domain is required",
+      })
+      return
+    }
+
+    if (!password) {
+      setResult({
+        success: false,
+        message: "Password is required",
+      })
+      return
+    }
+
+    if (password.length < 6 || password.length > 16) {
+      setResult({
+        success: false,
+        message: "Password must be between 6 and 16 characters",
       })
       return
     }
@@ -37,6 +54,7 @@ export default function DeployPage() {
         },
         body: JSON.stringify({
           domain,
+          password,
         }),
       })
 
@@ -118,6 +136,23 @@ export default function DeployPage() {
                 placeholder="example.com"
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                 disabled={isDeploying}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                Password (6-16 characters)
+              </label>
+              <input
+                type="password"
+                id="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Choose a secure password"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                disabled={isDeploying}
+                minLength={6}
+                maxLength={16}
               />
             </div>
 
