@@ -94,12 +94,8 @@ export function parseStreamEvent(event: StreamEvent): UIMessage | null {
   }
 
   if (isSessionEvent(event)) {
-    return {
-      id: `${event.requestId}-session`,
-      type: "session",
-      content: event.data,
-      ...baseMessage,
-    }
+    // Session events are internal - don't create UI messages for them
+    return null
   }
 
   if (isMessageEvent(event)) {

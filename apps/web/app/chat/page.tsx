@@ -23,6 +23,7 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const isAutoScrolling = useRef(false)
   const abortControllerRef = useRef<AbortController | null>(null)
+  const isSubmitting = useRef<boolean>(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -95,10 +96,12 @@ export default function ChatPage() {
     }
   }, [messages, shouldForceScroll, userHasManuallyScrolled])
 
-  async function sendMessage(e: React.FormEvent) {
-    e.preventDefault()
-    if (!msg.trim() || busy) return
+  async function sendMessage() {
+    // Simple: Block if already submitting or no message
+    if (isSubmitting.current || busy || !msg.trim()) return
 
+    // Lock submission immediately
+    isSubmitting.current = true
     setBusy(true)
 
     // Add user message
@@ -120,6 +123,7 @@ export default function ChatPage() {
       }
     } finally {
       setBusy(false)
+      isSubmitting.current = false
     }
   }
 
@@ -275,6 +279,10 @@ export default function ChatPage() {
       abortControllerRef.current.abort()
       abortControllerRef.current = null
     }
+
+    // Reset state - request is truly stopped
+    setBusy(false)
+    isSubmitting.current = false
   }
 
   return (
@@ -335,7 +343,7 @@ export default function ChatPage() {
         </div>
 
         {/* Input */}
-        <form onSubmit={sendMessage} className="flex-shrink-0 p-4 safe-area-inset-bottom">
+        <div className="flex-shrink-0 p-4 safe-area-inset-bottom">
           <div className="relative border border-black/20 focus-within:border-black/40 transition-colors">
             <textarea
               value={msg}
@@ -343,7 +351,7 @@ export default function ChatPage() {
               onKeyDown={e => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault()
-                  sendMessage(e)
+                  sendMessage()
                 }
               }}
               placeholder="Message"
@@ -360,7 +368,8 @@ export default function ChatPage() {
               </button>
             ) : (
               <button
-                type="submit"
+                type="button"
+                onClick={sendMessage}
                 disabled={busy || !msg.trim()}
                 className="absolute top-3 right-3 bottom-3 w-12 text-xs font-thin bg-black text-white hover:bg-gray-800 transition-colors disabled:opacity-50 focus:outline-none flex items-center justify-center"
               >
@@ -368,7 +377,7 @@ export default function ChatPage() {
               </button>
             )}
           </div>
-        </form>
+        </div>
       </div>
     </div>
   )

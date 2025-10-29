@@ -44,6 +44,7 @@ export function createClaudeStream({
   const encoder = new TextEncoder()
   const sdkAbort = new AbortController()
   let cancelled = false
+  let conversationUnlocked = false
 
   // Build the SDK query with OUR abort controller
   const q = query({
@@ -67,6 +68,12 @@ export function createClaudeStream({
     // Don't invalidate session on HTTP abort - user may be refreshing or navigating
     // Session will be cleaned up by conversation unlocking, but preserved for resume
     console.log(`[Stream ${requestId}] HTTP abort - preserving session for potential resume`)
+
+    // Ensure conversation is unlocked on abort
+    if (!conversationUnlocked) {
+      conversationUnlocked = true
+      onClose?.()
+    }
   }
   requestSignal?.addEventListener("abort", onHttpAbort, { once: true })
 
@@ -234,7 +241,13 @@ export function createClaudeStream({
           clearInterval(tick)
           clearTimeout(killer)
           if (!cancelled) controller.close() // Close only if not already cancelled
-          onClose?.() // Unlock conversation here
+
+          // Ensure conversation is unlocked (only once)
+          if (!conversationUnlocked) {
+            conversationUnlocked = true
+            onClose?.()
+          }
+
           requestSignal?.removeEventListener("abort", onHttpAbort)
         }
       })()
@@ -252,7 +265,11 @@ export function createClaudeStream({
       // Don't invalidate session on user cancellation - allow resume
       console.log(`[Stream ${requestId}] Stream cancelled - preserving session for potential resume`)
 
-      onClose?.() // And unlock here too (idempotent)
+      // Ensure conversation is unlocked (only once)
+      if (!conversationUnlocked) {
+        conversationUnlocked = true
+        onClose?.()
+      }
     },
   })
 
