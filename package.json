@@ -18,7 +18,7 @@
     "setup": "./scripts/setup/copy-template.sh",
     "setup-webhook": "./scripts/setup-webhook.sh",
     "start": "turbo run start",
-    "superclean": "./scripts/superclean.sh",
+    "superclean": "./scripts/superclean.ts",
     "update-cors": "./scripts/update-cors-domains.sh",
     "web": "cd apps/web && bun run dev",
     "widget": "cd apps/widget-server && ./build.sh && go run main.go"
