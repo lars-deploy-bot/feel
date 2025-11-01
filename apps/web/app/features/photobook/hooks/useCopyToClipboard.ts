@@ -18,9 +18,12 @@ export function useCopyToClipboard() {
     }, COPY_FEEDBACK_DURATION)
   }, [])
 
-  const isCopied = useCallback((itemId: string) => {
-    return copiedItems.has(itemId)
-  }, [copiedItems])
+  const isCopied = useCallback(
+    (itemId: string) => {
+      return copiedItems.has(itemId)
+    },
+    [copiedItems],
+  )
 
   return { copyToClipboard, isCopied }
 }

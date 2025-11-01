@@ -19,7 +19,7 @@ export function ImageZoomModal({ imageSrc, onClose }: ImageZoomModalProps) {
           src={imageSrc}
           alt=""
           className="max-w-full max-h-full object-contain"
-          onClick={(e) => e.stopPropagation()}
+          onClick={e => e.stopPropagation()}
         />
         <button
           onClick={onClose}

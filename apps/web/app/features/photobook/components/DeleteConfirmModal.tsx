@@ -16,7 +16,7 @@ export function DeleteConfirmModal({ onConfirm, onCancel }: DeleteConfirmModalPr
     >
       <div
         className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-xl animate-in fade-in-0 zoom-in-95 duration-200"
-        onClick={(e) => e.stopPropagation()}
+        onClick={e => e.stopPropagation()}
       >
         <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
           <Trash2 className="w-8 h-8 text-red-500" />
@@ -24,9 +24,7 @@ export function DeleteConfirmModal({ onConfirm, onCancel }: DeleteConfirmModalPr
         <h3 id="delete-dialog-title" className="text-xl font-light text-gray-800 mb-2 text-center">
           Delete this image?
         </h3>
-        <p className="text-gray-500 text-sm text-center mb-8">
-          This action cannot be undone.
-        </p>
+        <p className="text-gray-500 text-sm text-center mb-8">This action cannot be undone.</p>
         <div className="flex gap-3">
           <button
             onClick={onCancel}

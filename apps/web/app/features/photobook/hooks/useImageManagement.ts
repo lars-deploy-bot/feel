@@ -24,18 +24,13 @@ interface DeleteImageBody {
 }
 
 function sortImagesByDate(images: UploadedImage[]): UploadedImage[] {
-  return images.sort((a, b) =>
-    new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
-  )
+  return images.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())
 }
 
-function addWorkspaceParam(
-  body: Record<string, unknown>,
-  isTerminal: boolean,
-  workspace: string
-): Record<string, unknown> {
+function buildDeleteBody(key: string, isTerminal: boolean, workspace: string): DeleteImageBody {
+  const body: DeleteImageBody = { key }
   if (isTerminal && workspace) {
-    return { ...body, workspace }
+    body.workspace = workspace
   }
   return body
 }
@@ -79,7 +74,7 @@ export function useImageManagement(isTerminal: boolean, workspace: string) {
       clearMessages()
 
       try {
-        const uploadPromises = Array.from(files).map(async (file) => {
+        const uploadPromises = Array.from(files).map(async file => {
           const formData = new FormData()
           formData.append("file", file)
 
@@ -94,9 +89,7 @@ export function useImageManagement(isTerminal: boolean, workspace: string) {
 
           if (!response.ok) {
             const errorData = await response.json()
-            const errorMessage = errorData.error
-              ? getErrorMessage(errorData.error)
-              : "Upload failed"
+            const errorMessage = errorData.error ? getErrorMessage(errorData.error) : "Upload failed"
             throw new Error(errorMessage)
           }
 
@@ -112,23 +105,19 @@ export function useImageManagement(isTerminal: boolean, workspace: string) {
         setUploading(false)
       }
     },
-    [isTerminal, workspace, loadImages, clearMessages]
+    [isTerminal, workspace, loadImages, clearMessages],
   )
 
   const deleteImage = useCallback(
     async (key: string) => {
-      const imageToDelete = images.find((img) => img.key === key)
+      const imageToDelete = images.find(img => img.key === key)
 
       // Optimistically remove
-      setImages((prev) => prev.filter((img) => img.key !== key))
+      setImages(prev => prev.filter(img => img.key !== key))
       clearMessages()
 
       try {
-        const body: DeleteImageBody = addWorkspaceParam(
-          { key },
-          isTerminal,
-          workspace
-        ) as DeleteImageBody
+        const body = buildDeleteBody(key, isTerminal, workspace)
 
         const response = await fetch(API_ENDPOINTS.DELETE, {
           method: "DELETE",
@@ -139,19 +128,19 @@ export function useImageManagement(isTerminal: boolean, workspace: string) {
         if (!response.ok) {
           // Restore on failure
           if (imageToDelete) {
-            setImages((prev) => sortImagesByDate([...prev, imageToDelete]))
+            setImages(prev => sortImagesByDate([...prev, imageToDelete]))
           }
           setError("Failed to delete image. Please try again.")
         }
       } catch (err) {
         // Restore on error
         if (imageToDelete) {
-          setImages((prev) => sortImagesByDate([...prev, imageToDelete]))
+          setImages(prev => sortImagesByDate([...prev, imageToDelete]))
         }
         setError("Failed to delete image. Please try again.")
       }
     },
-    [images, isTerminal, workspace, clearMessages]
+    [images, isTerminal, workspace, clearMessages],
   )
 
   return {

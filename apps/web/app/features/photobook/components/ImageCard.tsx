@@ -19,13 +19,7 @@ interface ImageCardProps {
   isCopied: boolean
 }
 
-export const ImageCard = memo(function ImageCard({
-  image,
-  onDelete,
-  onZoom,
-  onCopy,
-  isCopied,
-}: ImageCardProps) {
+export const ImageCard = memo(function ImageCard({ image, onDelete, onZoom, onCopy, isCopied }: ImageCardProps) {
   const imageUrl = `${IMAGE_PATH_PREFIX}${image.variants.orig}`
   const thumbnailUrl = `${IMAGE_PATH_PREFIX}${image.variants.w640}`
 
@@ -53,9 +47,7 @@ export const ImageCard = memo(function ImageCard({
           <button
             onClick={() => onCopy(imageUrl, image.key)}
             className={`w-full py-3 rounded-2xl transition-all cursor-pointer text-sm font-medium ${
-              isCopied
-                ? "bg-black text-white"
-                : "bg-gray-100 hover:bg-gray-200 text-gray-700"
+              isCopied ? "bg-black text-white" : "bg-gray-100 hover:bg-gray-200 text-gray-700"
             }`}
             aria-label={isCopied ? "Link copied" : "Copy image link"}
           >

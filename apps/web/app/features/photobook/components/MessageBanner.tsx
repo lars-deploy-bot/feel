@@ -11,9 +11,7 @@ export function MessageBanner({ message, type }: MessageBannerProps) {
 
   return (
     <div className="mb-8 text-center" role="alert" aria-live="polite">
-      <p className={`${styles[type]} px-6 py-3 rounded-full inline-block`}>
-        {message}
-      </p>
+      <p className={`${styles[type]} px-6 py-3 rounded-full inline-block`}>{message}</p>
     </div>
   )
 }

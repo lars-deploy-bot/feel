@@ -9,7 +9,7 @@ interface UploadCardProps {
 
 export function UploadCard({ fileCount, uploading, hasExistingImages, onUpload }: UploadCardProps) {
   return (
-    <div className={`text-center ${hasExistingImages ? 'mb-12' : 'py-32'}`}>
+    <div className={`text-center ${hasExistingImages ? "mb-12" : "py-32"}`}>
       <div className="bg-gray-50 rounded-3xl p-12 max-w-md mx-auto">
         <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center mx-auto mb-6">
           <ImageIcon className="w-8 h-8 text-white" />
