@@ -4,8 +4,16 @@
   "type": "module",
   "scripts": {
     "dev": "next dev --turbo -p 8999",
+    "dev:test": "next dev --turbo -p 9547",
     "build": "next build",
-    "start": "next start -p 8999"
+    "start": "next start -p 8999",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "test:ui": "vitest --ui",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug"
   },
   "dependencies": {
     "@alive-brug/images": "workspace:*",
@@ -26,10 +34,15 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.15",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.0",
     "@types/node": "24.9.1",
     "@types/react": "19.2.2",
     "autoprefixer": "^10.4.20",
+    "happy-dom": "^20.0.10",
     "postcss": "^8.4.47",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^4.0.6"
   }
 }

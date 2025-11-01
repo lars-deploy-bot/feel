@@ -23,6 +23,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
+    "@playwright/test": "^1.56.1",
     "turbo": "^2.0.0"
   },
   "dependencies": {
