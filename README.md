@@ -80,6 +80,10 @@ BRIDGE_PASSCODE=your_secure_passcode  # If unset, any passcode works
 CLAUDE_MODEL=claude-3-5-sonnet-20241022  # Default model
 WORKSPACE_BASE=/srv/webalive/sites       # Base directory for workspaces (default: /srv/webalive/sites)
 
+# Auto-deployment (optional)
+GITHUB_WEBHOOK_SECRET=your_webhook_secret  # For GitHub webhook security (run: bun run setup-webhook)
+DEPLOY_BRANCH=main                         # Only deploy on this branch (default: main)
+
 # Local development (requires both)
 BRIDGE_ENV=local                        # Enables local template mode + test user (test/test)
 LOCAL_TEMPLATE_PATH=/absolute/path/to/packages/template/user  # Absolute path to template workspace
@@ -115,6 +119,42 @@ bun run web
 See [docs/setup/README.md](./docs/setup/README.md) for detailed local development setup instructions.
 
 ### Production Deployment
+
+#### Automated Deployment (Recommended)
+
+**One-Command Deploy:**
+```bash
+# Pull latest code, build, and restart PM2 with health checks
+bun run deploy
+```
+
+**GitHub Webhook Auto-Deploy:**
+```bash
+# 1. Setup webhook (generates secret, adds to .env)
+bun run setup-webhook
+
+# 2. Deploy with webhook enabled
+bun run deploy
+
+# 3. Configure GitHub webhook (instructions shown by setup-webhook)
+#    - Payload URL: https://your-domain.com/api/webhook/deploy
+#    - Secret: (copied from setup output)
+#    - Events: Just the push event
+
+# 4. Push to main → auto-deploys!
+git push origin main
+```
+
+**View Deployment Logs:**
+```bash
+# PM2 logs
+pm2 logs claude-bridge
+
+# Webhook deployment logs
+curl https://your-domain.com/api/webhook/deploy/logs/deploy-TIMESTAMP.log
+```
+
+#### Manual Deployment (Legacy)
 ```bash
 # Build application
 bun run build
@@ -244,6 +284,16 @@ Non-streaming endpoint returning full response as JSON.
 - `POST /api/files` - Browse workspace directory
 - `POST /api/verify` - Verify workspace exists and is readable
 
+### Deployment Webhooks
+- `POST /api/webhook/deploy` - GitHub webhook receiver for auto-deployment
+  - **Authentication**: HMAC SHA-256 signature verification
+  - **Headers**: `x-github-event`, `x-hub-signature-256`
+  - **Events**: Push events on configured branch (default: main)
+  - **Response**: Immediate (deployment runs in background)
+  - **Logs**: Stored in `logs/deploy-TIMESTAMP.log`
+- `GET /api/webhook/deploy` - Check webhook status and recent deployments
+- `GET /api/webhook/deploy/logs/[filename]` - View specific deployment log
+
 ## Security Features
 
 ### Workspace Isolation
@@ -276,9 +326,9 @@ bun run widget       # Start widget server (Go-based)
 bun run build        # Build for production
 bun run start        # Start production server
 
-# Process Management
+# Deployment
+bun run deploy       # Pull, build, restart PM2 with health checks
 bun run see          # View PM2 logs
-bun run restart      # Restart PM2 process and reload Caddy
 
 # Site Deployment
 bun run deploy-site  # Deploy new site with systemd isolation

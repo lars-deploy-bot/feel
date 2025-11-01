@@ -59,8 +59,8 @@ export async function POST(request: NextRequest) {
       visibility: "public",
       variants: variants as any,
       compress,
-      maxWidth: 1920,
-      targetSize: 150 * 1024,
+      maxWidth: 2560,
+      targetSize: 500 * 1024,
     })
 
     if (result.error) {

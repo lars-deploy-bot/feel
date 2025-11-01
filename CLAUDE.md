@@ -238,11 +238,11 @@ Before committing changes:
 **Claude Bridge only** (sites use systemd):
 
 ```bash
-# Start
+# Start (manual)
 pm2 start apps/web/next start --name claude-bridge -p 8999
 
-# Restart
-bun run restart  # Also reloads Caddy
+# Deploy (automated: pull + build + restart + reload Caddy)
+bun run deploy
 
 # Logs
 bun run see
