@@ -65,7 +65,7 @@ export default function ChatPage() {
       // Force scroll if we just sent a message
       if (shouldForceScroll) {
         isAutoScrolling.current = true
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+        messagesEndRef.current?.scrollIntoView({ behavior: "auto" })
         setShouldForceScroll(false)
         setUserHasManuallyScrolled(false)
         setTimeout(() => {
@@ -75,7 +75,7 @@ export default function ChatPage() {
       // Auto-scroll if user hasn't manually scrolled
       else if (!userHasManuallyScrolled) {
         isAutoScrolling.current = true
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+        messagesEndRef.current?.scrollIntoView({ behavior: "auto" })
         setTimeout(() => {
           isAutoScrolling.current = false
         }, 300)
@@ -87,7 +87,7 @@ export default function ChatPage() {
 
         if (isNearBottom) {
           isAutoScrolling.current = true
-          messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+          messagesEndRef.current?.scrollIntoView({ behavior: "auto" })
           setTimeout(() => {
             isAutoScrolling.current = false
           }, 300)

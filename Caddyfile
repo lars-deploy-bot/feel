@@ -96,7 +96,7 @@ kranazilie.nl {
 barendbootsma.com {
     import common_headers
     import image_serving
-    reverse_proxy localhost:3340 {
+    reverse_proxy localhost:3341 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
         header_up X-Forwarded-For {remote_host}
