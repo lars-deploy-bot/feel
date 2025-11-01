@@ -94,22 +94,44 @@ ls -la /root/webalive/claude-bridge/packages/template/user
 ### Anthropic API Key Issues
 
 **Symptoms:**
-- Tests hang on sending message
-- 401 Unauthorized from Anthropic
-- Tests run but cost real money!
+- Unit test throws: `🚨 Anthropic SDK query() called in test without mocking!`
+- E2E test hangs or makes real API calls ($$$ cost)
 
-**Dangerous:**
+**How It's Prevented:**
+
+✅ **Unit Tests (Vitest)**: `tests/setup.ts` automatically mocks `@anthropic-ai/claude-agent-sdk` to throw errors
+
+⚠️ **E2E Tests (Playwright)**: **NO automatic blocking** - You MUST call `mockClaudeStream()` in every test
+
+**Why E2E can't auto-block:**
+```
+Browser → Next.js API (/api/claude/stream) → Server-side Anthropic API
+         ↑ Playwright can intercept this
+                                              ↑ Playwright CANNOT intercept this
+```
+
+**What Happens:**
 ```typescript
-// BAD - Will call real Anthropic API and cost money!
-test('can send a message', async ({ page }) => {
-  await textarea.fill('Hello')
-  await textarea.press('Enter')
-  // This ACTUALLY calls Anthropic API!!!
+// Unit test - SDK throws error automatically
+import { query } from '@anthropic-ai/claude-agent-sdk'
+query({ prompt: 'test' }) // 🚨 Error: Would make REAL API call!
+
+// ❌ E2E test WITHOUT mock - MAKES REAL API CALL ($$$)
+test('send message', async ({ page }) => {
+  await page.locator('[data-testid="send-button"]').click()
+  // 💸 Just spent money calling real Anthropic API!
+})
+
+// ✅ E2E test WITH mock - Safe
+test('send message', async ({ page }) => {
+  await mockClaudeStream(page, { message: 'response' })
+  await page.locator('[data-testid="send-button"]').click()
+  // ✅ Safe, uses mock
 })
 ```
 
-**Fix:**
-Either mock the API or use test API key that doesn't charge.
+**Required Fix:**
+Always call `mockClaudeStream()` BEFORE sending messages in E2E tests.
 
 ---
 
@@ -370,35 +392,36 @@ use: {
 
 ### Accidentally Calling Real Anthropic API
 
-**DANGER:** This costs real money!
+**⚠️ PARTIALLY PROTECTED** - Unit tests are safe, E2E tests require manual mocking!
 
-**Symptoms:**
-- Tests are slow (15-30s)
-- Anthropic bill increases
-- Tests fail when offline
+**How Protection Works:**
 
-**How It Happens:**
-```typescript
-// If you don't mock the API, Next.js route will call real Anthropic!
-test('send message', async ({ page }) => {
-  await page.fill('textarea', 'Hello')
-  await page.press('Enter')
-  // 💸 Just spent $0.03 calling real API!
-})
-```
+1. **Unit Tests (✅ AUTOMATIC)**: Global mock in `tests/setup.ts` throws errors
+   ```typescript
+   vi.mock('@anthropic-ai/claude-agent-sdk') // Throws error automatically
+   ```
 
-**Prevention:**
-```typescript
-// ALWAYS mock in tests
-test.beforeEach(async ({ context }) => {
-  await context.route('https://api.anthropic.com/**', route => {
-    route.fulfill({
-      status: 200,
-      body: JSON.stringify({ /* mock response */ })
-    })
-  })
-})
-```
+2. **E2E Tests (⚠️ MANUAL)**: You MUST call `mockClaudeStream()` in every test
+   ```typescript
+   // ❌ WRONG - Will make real API call ($$$)
+   test('send message', async ({ page }) => {
+     await page.locator('[data-testid="send-button"]').click()
+     // 💸 Real Anthropic API call!
+   })
+
+   // ✅ CORRECT - Mock the API first
+   test('send message', async ({ page }) => {
+     await mockClaudeStream(page, { message: 'response' })
+     await page.locator('[data-testid="send-button"]').click()
+     // ✅ Safe
+   })
+   ```
+
+**Why E2E Can't Auto-Block:**
+The Anthropic API is called server-side (Node.js), not from the browser. Playwright can only intercept browser requests.
+
+**Verification:**
+Run `bun run test anthropic-safety` to verify unit test protection is active.
 
 ### DNS/Localhost Issues
 
@@ -554,15 +577,25 @@ Timeout waiting for locator
 
 **Prevention:**
 ```typescript
-// FRAGILE - breaks if text changes
+// ❌ FRAGILE - breaks if text changes
 await page.click('button:has-text("ENTER")')
+await page.getByPlaceholder('Message')
 
-// BETTER - use data attributes
-await page.click('[data-testid="submit-button"]')
+// ✅ STABLE - using data-testid (Mastra's approach)
+await page.locator('[data-testid="submit-button"]').click()
+await page.locator('[data-testid="message-input"]')
 
 // Add to code:
 <button data-testid="submit-button">ENTER</button>
+<textarea data-testid="message-input" placeholder="Message" />
 ```
+
+**Available data-testid attributes:**
+- `message-input` - Chat textarea
+- `send-button` - Send message button
+- `stop-button` - Stop streaming button
+- `new-chat-button` - New conversation button
+- `photos-button` - Photos button
 
 ### Routes Changed
 
@@ -713,16 +746,27 @@ workers: 1,
 
 ## Prevention Strategies
 
-### Use Data Attributes
+### Use Data Attributes (Mastra's Approach)
+
+**✅ IMPLEMENTED** - All critical UI elements now have `data-testid`:
 
 ```tsx
-// In components
+// In components (apps/web/app/chat/page.tsx)
+<textarea data-testid="message-input" placeholder="Message" />
 <button data-testid="send-button">→</button>
-<input data-testid="message-input" placeholder="Message" />
+<button data-testid="stop-button"><Square /></button>
+<button data-testid="new-chat-button">new chat</button>
+<button data-testid="photos-button">photos</button>
 
-// In tests
-await page.getByTestId('send-button').click()
+// In tests (stable selectors)
+await page.locator('[data-testid="message-input"]').fill('Hello')
+await page.locator('[data-testid="send-button"]').click()
 ```
+
+**Why this is better:**
+- Won't break if button text changes from "→" to "Send"
+- Won't break if placeholder text changes
+- Semantic and intentional (clearly marked for testing)
 
 ### Add Retries for Flaky Tests
 

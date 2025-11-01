@@ -1,51 +1,108 @@
-/**
- * E2E Test Setup - Playwright Fixtures
- *
- * SAFETY: Automatically extends Playwright's test fixture to block
- * all real Anthropic API calls by default.
- *
- * Import this at the top of each test file:
- * ```ts
- * import { test, expect } from './setup'
- * ```
- *
- * Inspired by lucky-1's test safety patterns
- */
+import { type Page, test as base, expect } from "@playwright/test"
 
-import { test as base, expect } from '@playwright/test'
-
-/**
- * Extended test fixture that automatically blocks Anthropic API calls
- *
- * Every test that uses this fixture will have API mocking enabled by default.
- * Override in individual tests if you need custom mock responses.
- */
 export const test = base.extend({
-  // Extend the page fixture to add automatic API blocking
-  page: async ({ page, context }, use) => {
-    // Block real Anthropic API calls by default
-    await context.route('https://api.anthropic.com/**', async route => {
-      console.error(
-        '🚨 BLOCKED: Real Anthropic API call in e2e test!\n' +
-        'Mock the response in your test to avoid charges.'
-      )
-
-      await route.fulfill({
-        status: 402,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          error: {
-            type: 'payment_required',
-            message: 'API calls blocked in tests. Mock responses explicitly.',
-          },
-        }),
-      })
-    })
-
-    // Use the page as normal
+  page: async ({ page }, use) => {
     await use(page)
   },
 })
 
-// Re-export expect for convenience
 export { expect }
+
+interface MockStreamOptions {
+  message: string
+  delay?: number
+}
+
+export async function mockClaudeStream(page: Page, options: MockStreamOptions) {
+  await page.route("**/api/claude/stream", async route => {
+    const { message, delay = 100 } = options
+    const requestId = "test-request"
+    const timestamp = new Date().toISOString()
+
+    const events = [
+      `event: bridge_start\ndata: ${JSON.stringify({
+        type: "start",
+        requestId,
+        timestamp,
+        data: {
+          host: "test",
+          cwd: "/test",
+          message: "Starting Claude query...",
+          messageLength: 5,
+          isResume: false,
+        },
+      })}\n\n`,
+      `event: bridge_message\ndata: ${JSON.stringify({
+        type: "message",
+        requestId,
+        timestamp,
+        data: {
+          messageCount: 1,
+          messageType: "assistant",
+          content: {
+            uuid: "test-uuid-123",
+            session_id: "test-session",
+            type: "assistant",
+            message: {
+              role: "assistant",
+              content: [{ type: "text", text: message }],
+              stop_reason: "end_turn",
+            },
+            parent_tool_use_id: null,
+          },
+        },
+      })}\n\n`,
+      `event: bridge_complete\ndata: ${JSON.stringify({
+        type: "complete",
+        requestId,
+        timestamp,
+        data: {
+          totalMessages: 1,
+          totalTurns: 1,
+          maxTurns: 25,
+          result: null,
+          message: "Claude query completed successfully (1/25 turns used)",
+        },
+      })}\n\n`,
+      "event: done\ndata: {}\n\n",
+    ]
+
+    await new Promise(resolve => setTimeout(resolve, delay))
+
+    await route.fulfill({
+      status: 200,
+      contentType: "text/event-stream; charset=utf-8",
+      headers: {
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+        "X-Accel-Buffering": "no",
+      },
+      body: events.join(""),
+    })
+  })
+}
+
+export async function mockClaudeStreamError(page: Page, errorMessage: string) {
+  await page.route("**/api/claude/stream", async route => {
+    const requestId = "test-request"
+    const timestamp = new Date().toISOString()
+
+    const event = `event: bridge_error\ndata: ${JSON.stringify({
+      type: "error",
+      requestId,
+      timestamp,
+      data: {
+        error: "QUERY_FAILED",
+        code: "QUERY_FAILED",
+        message: errorMessage,
+        details: errorMessage,
+      },
+    })}\n\n`
+
+    await route.fulfill({
+      status: 200,
+      contentType: "text/event-stream; charset=utf-8",
+      body: event,
+    })
+  })
+}

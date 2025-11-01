@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, mockClaudeStream } from './setup'
 import { login } from './helpers'
 
 test.beforeEach(async ({ page }) => {
@@ -8,20 +8,26 @@ test.beforeEach(async ({ page }) => {
 test('has chat interface', async ({ page }) => {
   await page.goto('/chat')
 
-  // Check basic elements exist
-  await expect(page.getByPlaceholder('Message')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'new chat' })).toBeVisible()
+  await expect(page.locator('[data-testid="message-input"]')).toBeVisible()
+  await expect(page.locator('[data-testid="new-chat-button"]')).toBeVisible()
+  await expect(page.locator('[data-testid="send-button"]')).toBeVisible()
 })
 
-test('can send a message', async ({ page }) => {
+test('can send a message and receive response', async ({ page }) => {
   await page.goto('/chat')
 
-  const textarea = page.getByPlaceholder('Message')
-  await textarea.fill('Hello')
+  await mockClaudeStream(page, {
+    message: 'Hi there! How can I help you today?'
+  })
 
-  // Send button is the form submit button with arrow icon
-  await textarea.press('Enter')
+  const messageInput = page.locator('[data-testid="message-input"]')
+  const sendButton = page.locator('[data-testid="send-button"]')
 
-  // User message should appear (timeout increased for API call)
-  await expect(page.getByText('Hello')).toBeVisible({ timeout: 10000 })
+  await messageInput.fill('Hello')
+  await sendButton.click()
+
+  await expect(page.getByText('Hello')).toBeVisible()
+  await expect(page.getByText(/Hi there.*help you today/)).toBeVisible({
+    timeout: 5000
+  })
 })
