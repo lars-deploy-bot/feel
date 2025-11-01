@@ -22,6 +22,22 @@ export async function POST(req: NextRequest) {
   const requestId = Math.random().toString(36).substring(2, 8)
   console.log(`[Claude Stream ${requestId}] === STREAM REQUEST START ===`)
 
+  // Defense-in-depth: Block real API calls during E2E tests
+  if (process.env.PLAYWRIGHT_TEST === "true") {
+    console.error(
+      `[Claude Stream ${requestId}] ⛔ BLOCKED: Real API call attempted during E2E test`,
+    )
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "TEST_MODE_BLOCK",
+        message:
+          "Real API calls are blocked during E2E tests. Mock this endpoint in your test.",
+      },
+      { status: 403 },
+    )
+  }
+
   try {
     const jar = await cookies()
     console.log(`[Claude Stream ${requestId}] Checking session cookie...`)
@@ -205,7 +221,7 @@ export async function POST(req: NextRequest) {
       // Add workspace context to the input for tools that need it
       const updatedInput = {
         ...input,
-        __workspace: workspace // Internal context for our tools
+        __workspace: workspace, // Internal context for our tools
       }
 
       const allow: PermissionResult = {
@@ -238,7 +254,7 @@ export async function POST(req: NextRequest) {
         workspaceFolder: cwd,
         additionalContext: body.additionalContext,
       }),
-      settingSources: ['project'],
+      settingSources: ["project"],
       model: process.env.CLAUDE_MODEL,
       // Resume existing session if we have one
       ...(existingSessionId ? { resume: existingSessionId } : {}),

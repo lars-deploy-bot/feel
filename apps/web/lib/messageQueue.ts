@@ -23,7 +23,7 @@ const processingQueues = new Set<string>()
  * Generate conversation key for queuing
  */
 export function getConversationKey(userId: string, workspace: string | undefined, conversationId: string): string {
-  return `${userId}::${workspace ?? 'default'}::${conversationId}`
+  return `${userId}::${workspace ?? "default"}::${conversationId}`
 }
 
 /**
@@ -35,7 +35,7 @@ export async function queueMessage(
   conversationId: string,
   message: string,
   claudeOptions: any,
-  requestId: string
+  requestId: string,
 ): Promise<any> {
   return new Promise((resolve, reject) => {
     const convKey = getConversationKey(userId, workspace, conversationId)
@@ -49,7 +49,7 @@ export async function queueMessage(
       claudeOptions,
       requestId,
       resolve,
-      reject
+      reject,
     }
 
     // Add to queue
@@ -88,7 +88,7 @@ async function processQueue(convKey: string) {
 
       try {
         // Import the actual Claude stream creation here to avoid circular deps
-        const { createClaudeStream } = await import('@/app/features/claude/streamHandler')
+        const { createClaudeStream } = await import("@/app/features/claude/streamHandler")
 
         // Process the message
         const result = await processMessage(queuedMessage, createClaudeStream)
@@ -114,12 +114,12 @@ async function processQueue(convKey: string) {
  * Process individual message (extracted from route handler)
  */
 async function processMessage(queuedMessage: QueuedMessage, createClaudeStream: any): Promise<any> {
-  const { createSSEResponse } = await import('@/app/features/claude/streamHandler')
-  const { SessionStoreMemory } = await import('@/lib/sessionStore')
+  const { createSSEResponse } = await import("@/app/features/claude/streamHandler")
+  const { SessionStoreMemory } = await import("@/lib/sessionStore")
 
   // Get existing session for resumption
   const existingSessionId = await SessionStoreMemory.get(
-    getConversationKey(queuedMessage.userId, queuedMessage.workspace, queuedMessage.conversationId)
+    getConversationKey(queuedMessage.userId, queuedMessage.workspace, queuedMessage.conversationId),
   )
 
   const claudeOptionsWithResume = {
@@ -127,19 +127,21 @@ async function processMessage(queuedMessage: QueuedMessage, createClaudeStream: 
     ...(existingSessionId ? { resume: existingSessionId } : {}),
   }
 
-  console.log(`[Queue ${queuedMessage.requestId}] Creating stream with session: ${existingSessionId ? 'resumed' : 'new'}`)
+  console.log(
+    `[Queue ${queuedMessage.requestId}] Creating stream with session: ${existingSessionId ? "resumed" : "new"}`,
+  )
 
   // Create the stream (no conversation object needed since queuing handles concurrency)
   const { stream } = createClaudeStream({
     message: queuedMessage.message,
     claudeOptions: claudeOptionsWithResume,
     requestId: queuedMessage.requestId,
-    host: 'queued', // Placeholder
+    host: "queued", // Placeholder
     cwd: claudeOptionsWithResume.cwd,
     user: { id: queuedMessage.userId },
     conversation: {
       key: getConversationKey(queuedMessage.userId, queuedMessage.workspace, queuedMessage.conversationId),
-      store: SessionStoreMemory
+      store: SessionStoreMemory,
     },
     onClose: () => {}, // No longer needed with queuing
   })
@@ -156,7 +158,7 @@ export function getQueueStatus() {
   for (const [key, queue] of messageQueues.entries()) {
     status[key] = {
       queueLength: queue.length,
-      processing: processingQueues.has(key)
+      processing: processingQueues.has(key),
     }
   }
 

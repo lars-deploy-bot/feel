@@ -131,7 +131,7 @@ export async function POST(req: Request) {
         workspaceFolder: cwd,
         additionalContext: body.additionalContext,
       }),
-      settingSources: ['project'],
+      settingSources: ["project"],
       model: process.env.CLAUDE_MODEL,
     }
 

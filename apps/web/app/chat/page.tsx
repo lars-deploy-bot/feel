@@ -268,7 +268,6 @@ export default function ChatPage() {
     }
   }
 
-
   function startNewConversation() {
     setConversationId(crypto.randomUUID())
     setMessages([])
@@ -296,6 +295,7 @@ export default function ChatPage() {
               onClick={() => router.push("/photobook")}
               className="inline-flex items-center justify-center px-3 py-2 text-xs font-thin text-black border border-black/20 hover:bg-black hover:text-white transition-colors cursor-pointer"
               type="button"
+              data-testid="photos-button"
             >
               photos
             </button>
@@ -303,6 +303,7 @@ export default function ChatPage() {
               onClick={startNewConversation}
               className="inline-flex items-center justify-center px-3 py-2 text-xs font-thin text-black border border-black/20 hover:bg-black hover:text-white transition-colors cursor-pointer"
               type="button"
+              data-testid="new-chat-button"
             >
               new chat
             </button>
@@ -357,12 +358,14 @@ export default function ChatPage() {
               placeholder="Message"
               className="w-full resize-none border-0 bg-transparent text-base focus:outline-none p-3 pr-20"
               style={{ minHeight: "80px" }}
+              data-testid="message-input"
             />
             {busy && abortControllerRef.current ? (
               <button
                 type="button"
                 onClick={stopStreaming}
                 className="absolute top-3 right-3 bottom-3 w-12 text-xs font-thin bg-black text-white hover:bg-gray-800 transition-colors focus:outline-none flex items-center justify-center"
+                data-testid="stop-button"
               >
                 <Square size={12} fill="white" />
               </button>
@@ -372,6 +375,7 @@ export default function ChatPage() {
                 onClick={sendMessage}
                 disabled={busy || !msg.trim()}
                 className="absolute top-3 right-3 bottom-3 w-12 text-xs font-thin bg-black text-white hover:bg-gray-800 transition-colors disabled:opacity-50 focus:outline-none flex items-center justify-center"
+                data-testid="send-button"
               >
                 {busy ? "•••" : "→"}
               </button>

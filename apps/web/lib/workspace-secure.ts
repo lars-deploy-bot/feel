@@ -59,7 +59,7 @@ export function getWorkspace(host: string): Workspace {
     root,
     uid: st.uid,
     gid: st.gid,
-    tenantId: hostToTenantId(host.toLowerCase())
+    tenantId: hostToTenantId(host.toLowerCase()),
   }
 }
 
@@ -70,7 +70,7 @@ export function getWorkspace(host: string): Workspace {
 export function writeAsWorkspaceOwner(
   filePath: string,
   content: Buffer | string,
-  workspace: { uid: number; gid: number }
+  workspace: { uid: number; gid: number },
 ) {
   const dir = path.dirname(filePath)
   const tmp = path.join(dir, `.tmp-${crypto.randomUUID()}`)
@@ -118,10 +118,10 @@ export function ensurePathWithinWorkspace(filePath: string, workspaceRoot: strin
 export function editAsWorkspaceOwner(
   filePath: string,
   editFn: (content: string) => string,
-  workspace: { uid: number; gid: number }
+  workspace: { uid: number; gid: number },
 ) {
   // Read existing content
-  const existingContent = fs.readFileSync(filePath, 'utf8')
+  const existingContent = fs.readFileSync(filePath, "utf8")
 
   // Apply edit function
   const newContent = editFn(existingContent)
