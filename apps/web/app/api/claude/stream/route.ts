@@ -24,15 +24,12 @@ export async function POST(req: NextRequest) {
 
   // Defense-in-depth: Block real API calls during E2E tests
   if (process.env.PLAYWRIGHT_TEST === "true") {
-    console.error(
-      `[Claude Stream ${requestId}] ⛔ BLOCKED: Real API call attempted during E2E test`,
-    )
+    console.error(`[Claude Stream ${requestId}] ⛔ BLOCKED: Real API call attempted during E2E test`)
     return NextResponse.json(
       {
         ok: false,
         error: "TEST_MODE_BLOCK",
-        message:
-          "Real API calls are blocked during E2E tests. Mock this endpoint in your test.",
+        message: "Real API calls are blocked during E2E tests. Mock this endpoint in your test.",
       },
       { status: 403 },
     )

@@ -7,16 +7,21 @@
  * B) write(path, bytes) runs-as uid:gid of resolveWorkspace(host)
  */
 
-import { getWorkspace, resolveWorkspace, writeAsWorkspaceOwner, ensurePathWithinWorkspace } from '../apps/web/lib/workspace-secure.js'
-import fs from 'node:fs'
-import path from 'node:path'
-import crypto from 'node:crypto'
+import {
+  getWorkspace,
+  resolveWorkspace,
+  writeAsWorkspaceOwner,
+  ensurePathWithinWorkspace,
+} from "../apps/web/lib/workspace-secure.js"
+import fs from "node:fs"
+import path from "node:path"
+import crypto from "node:crypto"
 
-const RED = '\033[0;31m'
-const GREEN = '\033[0;32m'
-const YELLOW = '\033[1;33m'
-const BLUE = '\033[0;34m'
-const NC = '\033[0m'
+const RED = "\033[0;31m"
+const GREEN = "\033[0;32m"
+const YELLOW = "\033[1;33m"
+const BLUE = "\033[0;34m"
+const NC = "\033[0m"
 
 function log(msg) {
   console.log(`${BLUE}[TEST]${NC} ${msg}`)
@@ -35,14 +40,14 @@ function warn(msg) {
 }
 
 // Test configuration
-const TEST_DOMAINS = ['barendbootsma.com', 'homable.nl']
-const EVIL_INPUTS = ['../../../etc/passwd', 'foo/../../etc', '..']
+const TEST_DOMAINS = ["barendbootsma.com", "homable.nl"]
+const EVIL_INPUTS = ["../../../etc/passwd", "foo/../../etc", ".."]
 
 /**
  * Test Invariant A: Workspace Resolution
  */
 function testWorkspaceResolution() {
-  log('Testing Invariant A: Workspace Resolution')
+  log("Testing Invariant A: Workspace Resolution")
 
   let allPassed = true
 
@@ -76,7 +81,6 @@ function testWorkspaceResolution() {
         fail(`✗ ${domain} tenant ID is ${workspace.tenantId}, expected ${domain}`)
         allPassed = false
       }
-
     } catch (error) {
       fail(`✗ ${domain} resolution failed: ${error.message}`)
       allPassed = false
@@ -90,7 +94,7 @@ function testWorkspaceResolution() {
  * Test Containment Protection
  */
 function testContainmentProtection() {
-  log('Testing Containment Protection')
+  log("Testing Containment Protection")
 
   let allPassed = true
 
@@ -111,7 +115,7 @@ function testContainmentProtection() {
     }
 
     // Test valid path
-    const validPath = path.join(workspace.root, 'data', 'test.txt')
+    const validPath = path.join(workspace.root, "data", "test.txt")
     try {
       ensurePathWithinWorkspace(validPath, workspace.root)
       pass(`✓ Valid path ${validPath} correctly allowed`)
@@ -119,7 +123,6 @@ function testContainmentProtection() {
       fail(`✗ Valid path ${validPath} incorrectly blocked: ${error.message}`)
       allPassed = false
     }
-
   } catch (error) {
     fail(`✗ Containment test setup failed: ${error.message}`)
     allPassed = false
@@ -132,10 +135,10 @@ function testContainmentProtection() {
  * Test Invariant B: File Ownership (if running as root)
  */
 function testFileOwnership() {
-  log('Testing Invariant B: File Ownership')
+  log("Testing Invariant B: File Ownership")
 
   if (process.getuid() !== 0) {
-    warn('Skipping ownership tests (not running as root)')
+    warn("Skipping ownership tests (not running as root)")
     return true
   }
 
@@ -146,23 +149,23 @@ function testFileOwnership() {
     const workspace = getWorkspace(testDomain)
 
     // Create test directory if it doesn't exist
-    const testDir = path.join(workspace.root, 'test-ownership')
+    const testDir = path.join(workspace.root, "test-ownership")
     if (!fs.existsSync(testDir)) {
       fs.mkdirSync(testDir, { recursive: true })
     }
 
     // Test file creation with correct ownership
     const testFile = path.join(testDir, `test-${crypto.randomUUID()}.txt`)
-    const testContent = 'Test content for ownership verification'
+    const testContent = "Test content for ownership verification"
 
     log(`Creating test file: ${testFile}`)
     writeAsWorkspaceOwner(testFile, testContent, workspace)
 
     // Verify file was created
     if (fs.existsSync(testFile)) {
-      pass('✓ Test file created successfully')
+      pass("✓ Test file created successfully")
     } else {
-      fail('✗ Test file was not created')
+      fail("✗ Test file was not created")
       allPassed = false
       return allPassed
     }
@@ -177,18 +180,17 @@ function testFileOwnership() {
     }
 
     // Verify content
-    const readContent = fs.readFileSync(testFile, 'utf8')
+    const readContent = fs.readFileSync(testFile, "utf8")
     if (readContent === testContent) {
-      pass('✓ File content is correct')
+      pass("✓ File content is correct")
     } else {
-      fail('✗ File content is incorrect')
+      fail("✗ File content is incorrect")
       allPassed = false
     }
 
     // Clean up
     fs.unlinkSync(testFile)
-    pass('✓ Test file cleaned up')
-
+    pass("✓ Test file cleaned up")
   } catch (error) {
     fail(`✗ File ownership test failed: ${error.message}`)
     allPassed = false
@@ -201,7 +203,7 @@ function testFileOwnership() {
  * Performance test
  */
 function testPerformance() {
-  log('Testing Performance')
+  log("Testing Performance")
 
   const testDomain = TEST_DOMAINS[0]
   const iterations = 10
@@ -223,7 +225,7 @@ function testPerformance() {
     // Test file write performance (if running as root)
     if (process.getuid() === 0) {
       const workspace = getWorkspace(testDomain)
-      const testDir = path.join(workspace.root, 'perf-test')
+      const testDir = path.join(workspace.root, "perf-test")
       if (!fs.existsSync(testDir)) {
         fs.mkdirSync(testDir, { recursive: true })
       }
@@ -233,7 +235,7 @@ function testPerformance() {
 
       for (let i = 0; i < iterations; i++) {
         const testFile = path.join(testDir, `perf-test-${i}.txt`)
-        writeAsWorkspaceOwner(testFile, 'Performance test content', workspace)
+        writeAsWorkspaceOwner(testFile, "Performance test content", workspace)
         testFiles.push(testFile)
       }
 
@@ -260,14 +262,14 @@ function testPerformance() {
  * Main test runner
  */
 function main() {
-  log('Starting workspace invariant tests')
-  log(`Running as user: ${process.getuid() === 0 ? 'root' : 'non-root'}`)
+  log("Starting workspace invariant tests")
+  log(`Running as user: ${process.getuid() === 0 ? "root" : "non-root"}`)
 
   const tests = [
-    { name: 'Workspace Resolution', fn: testWorkspaceResolution },
-    { name: 'Containment Protection', fn: testContainmentProtection },
-    { name: 'File Ownership', fn: testFileOwnership },
-    { name: 'Performance', fn: testPerformance }
+    { name: "Workspace Resolution", fn: testWorkspaceResolution },
+    { name: "Containment Protection", fn: testContainmentProtection },
+    { name: "File Ownership", fn: testFileOwnership },
+    { name: "Performance", fn: testPerformance },
   ]
 
   let allPassed = true
@@ -281,7 +283,7 @@ function main() {
   }
 
   // Summary
-  log('\\n--- SUMMARY ---')
+  log("\\n--- SUMMARY ---")
   for (const result of results) {
     if (result.passed) {
       pass(`${result.name}: PASSED`)
@@ -291,10 +293,10 @@ function main() {
   }
 
   if (allPassed) {
-    pass('\\n🎉 All tests passed! Patrick\\'s invariants are working correctly.')
+    pass("\\n🎉 All tests passed! Patrick's invariants are working correctly.")
     process.exit(0)
   } else {
-    fail('\\n❌ Some tests failed. Check the output above for details.')
+    fail("\\n❌ Some tests failed. Check the output above for details.")
     process.exit(1)
   }
 }
