@@ -11,7 +11,6 @@ const storage = new FilesystemStorage({
   signatureSecret: process.env.IMAGES_SIGNATURE_SECRET,
 })
 
-
 export async function GET(request: NextRequest) {
   try {
     // 1. Auth check
@@ -43,14 +42,16 @@ export async function GET(request: NextRequest) {
     }
 
     // 5. Convert keys to structured format
-    const images = listResult.data.map((key) => {
-      // Parse key: t/{tenantId}/o/{hash}/v/{variant}.webp
-      const match = key.match(/^t\/([^/]+)\/o\/([^/]+)\/v\/([^.]+)\.webp$/)
-      if (!match) return null
+    const images = listResult.data
+      .map(key => {
+        // Parse key: t/{tenantId}/o/{hash}/v/{variant}.webp
+        const match = key.match(/^t\/([^/]+)\/o\/([^/]+)\/v\/([^.]+)\.webp$/)
+        if (!match) return null
 
-      const [, , contentHash, variant] = match
-      return { contentHash, variant, key }
-    }).filter(Boolean)
+        const [, , contentHash, variant] = match
+        return { contentHash, variant, key }
+      })
+      .filter(Boolean)
 
     // 6. Group by content hash and create variant URLs
     const groupedImages: Record<string, any> = {}
@@ -77,9 +78,6 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error("List images error:", error)
-    return Response.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    )
+    return Response.json({ error: "Internal server error" }, { status: 500 })
   }
 }

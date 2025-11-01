@@ -268,7 +268,6 @@ export default function ChatPage() {
     }
   }
 
-
   function startNewConversation() {
     setConversationId(crypto.randomUUID())
     setMessages([])

@@ -12,7 +12,6 @@ const storage = new FilesystemStorage({
   signatureSecret: process.env.IMAGES_SIGNATURE_SECRET,
 })
 
-
 export async function POST(request: NextRequest) {
   try {
     // 1. Auth check
@@ -52,7 +51,9 @@ export async function POST(request: NextRequest) {
     // 5. Get options
     const compress = formData.get("compress") !== "false"
     const variantsParam = formData.get("variants")
-    const variants = variantsParam ? (variantsParam as string).split(",").map(v => v.trim()) : ["orig", "w640", "w1280", "thumb"]
+    const variants = variantsParam
+      ? (variantsParam as string).split(",").map(v => v.trim())
+      : ["orig", "w640", "w1280", "thumb"]
 
     // 6. Upload via storage adapter
     const result = await uploadImage(storage, tenantId, buffer, {

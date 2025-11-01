@@ -11,7 +11,6 @@ const storage = new FilesystemStorage({
   signatureSecret: process.env.IMAGES_SIGNATURE_SECRET,
 })
 
-
 export async function DELETE(request: NextRequest) {
   try {
     // 1. Auth check
@@ -55,7 +54,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // 7. Delete all variants
-    const deletePromises = listResult.data.map(async (variantKey) => {
+    const deletePromises = listResult.data.map(async variantKey => {
       const deleteResult = await storage.delete(variantKey)
       if (deleteResult.error) {
         console.error(`Failed to delete variant ${variantKey}:`, deleteResult.error)
@@ -71,9 +70,6 @@ export async function DELETE(request: NextRequest) {
     })
   } catch (error) {
     console.error("Delete image error:", error)
-    return Response.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    )
+    return Response.json({ error: "Internal server error" }, { status: 500 })
   }
 }

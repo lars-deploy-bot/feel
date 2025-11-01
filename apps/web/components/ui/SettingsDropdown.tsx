@@ -37,9 +37,7 @@ export function SettingsDropdown() {
       {/* Dropdown Menu */}
       <div
         className={`absolute top-full right-0 mt-2 w-48 bg-white border border-black/10 shadow-lg transition-all duration-200 ease-out origin-top-right ${
-          isOpen
-            ? "opacity-100 scale-100 translate-y-0"
-            : "opacity-0 scale-95 -translate-y-2 pointer-events-none"
+          isOpen ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-95 -translate-y-2 pointer-events-none"
         }`}
         style={{
           borderRadius: "2px",
@@ -57,12 +55,7 @@ export function SettingsDropdown() {
       </div>
 
       {/* Invisible overlay to close dropdown when clicking outside */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 z-[-1]"
-          onClick={() => setIsOpen(false)}
-        />
-      )}
+      {isOpen && <div className="fixed inset-0 z-[-1]" onClick={() => setIsOpen(false)} />}
     </div>
   )
 }
