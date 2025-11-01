@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react"
+import { useCallback, useState } from "react"
 import { getErrorMessage } from "@/lib/error-codes"
 
 const API_ENDPOINTS = {
@@ -132,7 +132,7 @@ export function useImageManagement(isTerminal: boolean, workspace: string) {
           }
           setError("Failed to delete image. Please try again.")
         }
-      } catch (err) {
+      } catch (_err) {
         // Restore on error
         if (imageToDelete) {
           setImages(prev => sortImagesByDate([...prev, imageToDelete]))

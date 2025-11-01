@@ -1,7 +1,7 @@
 import type { ContentBlock } from "@anthropic-ai/sdk/resources/messages"
 import { useState } from "react"
-import { ToolButton } from "@/components/ui/primitives/ToolButton"
 import { ScrollableCode } from "@/components/ui/primitives/ScrollableCode"
+import { ToolButton } from "@/components/ui/primitives/ToolButton"
 
 interface ToolUseProps {
   item: ContentBlock & { type: "tool_use" }

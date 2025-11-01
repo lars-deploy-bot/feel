@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/primitives/Button"
+import { useEffect, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
+import { Button } from "@/components/ui/primitives/Button"
 
 interface DomainConfig {
   password: string

@@ -1,6 +1,6 @@
+import { useState } from "react"
 import type { UIMessage } from "@/lib/message-parser"
 import { renderMessage } from "@/lib/message-renderer"
-import { useState } from "react"
 
 interface ThinkingGroupProps {
   messages: UIMessage[]

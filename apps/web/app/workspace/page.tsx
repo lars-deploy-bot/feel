@@ -1,9 +1,9 @@
 "use client"
-import { Button } from "@/components/ui/primitives/Button"
-import { getErrorHelp, getErrorMessage } from "@/lib/error-codes"
-import { normalizeDomain } from "@/lib/domain-utils"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Suspense, useEffect, useState } from "react"
+import { Button } from "@/components/ui/primitives/Button"
+import { normalizeDomain } from "@/lib/domain-utils"
+import { getErrorHelp, getErrorMessage } from "@/lib/error-codes"
 
 function WorkspacePageContent() {
   const searchParams = useSearchParams()

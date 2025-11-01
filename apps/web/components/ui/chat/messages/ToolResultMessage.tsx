@@ -1,6 +1,6 @@
+import { useState } from "react"
 import { ToolOutputRouter } from "@/components/ui/chat/tools/ToolOutputRouter"
 import type { SDKUserMessage } from "@/lib/sdk-types"
-import { useState } from "react"
 
 // Extended tool result type with our added tool_name
 interface ToolResultContent {

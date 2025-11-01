@@ -9,7 +9,7 @@ export function workspaceToTenantId(workspace: string): string {
   // /srv/webalive/sites/homable.nl/user -> homable.nl
 
   const normalized = workspace.replace(/\/+$/, "") // Remove trailing slashes
-  const match = normalized.match(/\/srv\/webalive\/sites\/([^\/]+)/)
+  const match = normalized.match(/\/srv\/webalive\/sites\/([^/]+)/)
 
   if (match) {
     return match[1] // Extract domain from path

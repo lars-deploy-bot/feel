@@ -1,7 +1,7 @@
 import { BashOutput } from "@/components/ui/chat/tools/bash/BashOutput"
-import { ReadOutput } from "@/components/ui/chat/tools/read/ReadOutput"
-import { GrepOutput } from "@/components/ui/chat/tools/grep/GrepOutput"
 import { GlobOutput } from "@/components/ui/chat/tools/glob/GlobOutput"
+import { GrepOutput } from "@/components/ui/chat/tools/grep/GrepOutput"
+import { ReadOutput } from "@/components/ui/chat/tools/read/ReadOutput"
 import { TaskOutput } from "@/components/ui/chat/tools/task/TaskOutput"
 
 interface ToolOutputRouterProps {

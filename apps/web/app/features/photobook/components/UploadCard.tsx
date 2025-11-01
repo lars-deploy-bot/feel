@@ -18,6 +18,7 @@ export function UploadCard({ fileCount, uploading, hasExistingImages, onUpload }
           {fileCount} image{fileCount > 1 ? "s" : ""} ready
         </h3>
         <button
+          type="button"
           onClick={onUpload}
           disabled={uploading}
           className="px-8 py-3 bg-black text-white rounded-full hover:bg-gray-800 disabled:opacity-50 transition-all cursor-pointer font-medium"

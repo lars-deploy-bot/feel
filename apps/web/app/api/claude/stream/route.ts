@@ -1,4 +1,6 @@
-import path from "node:path"
+import type { Options, PermissionResult } from "@anthropic-ai/claude-agent-sdk"
+import { cookies, headers } from "next/headers"
+import { type NextRequest, NextResponse } from "next/server"
 import { createClaudeStream, createSSEResponse } from "@/app/features/claude/streamHandler"
 import { getSystemPrompt } from "@/app/features/claude/systemPrompt"
 import { isInputSafe } from "@/app/features/handlers/formatMessage"
@@ -7,14 +9,10 @@ import { addCorsHeaders } from "@/lib/cors-utils"
 import { ErrorCodes } from "@/lib/error-codes"
 import { logInput } from "@/lib/input-logger"
 import { SessionStoreMemory, sessionKey, tryLockConversation, unlockConversation } from "@/lib/sessionStore"
+import { ensurePathWithinWorkspace, getWorkspace, type Workspace } from "@/lib/workspace-secure"
 import { resolveWorkspace } from "@/lib/workspace-utils"
-import { getWorkspace, ensurePathWithinWorkspace, type Workspace } from "@/lib/workspace-secure"
 import { BodySchema, isToolAllowed } from "@/types/guards/api"
 import { hasSessionCookie } from "@/types/guards/auth"
-import { isPathWithinWorkspace } from "@/types/guards/workspace"
-import type { Options, PermissionResult } from "@anthropic-ai/claude-agent-sdk"
-import { cookies, headers } from "next/headers"
-import { type NextRequest, NextResponse } from "next/server"
 
 export const runtime = "nodejs"
 
@@ -209,7 +207,7 @@ export async function POST(req: NextRequest) {
           // Use new secure containment check
           ensurePathWithinWorkspace(filePath, workspace.root)
           console.log(`[Claude Stream ${requestId}] Path allowed: ${filePath}`)
-        } catch (containmentError) {
+        } catch (_containmentError) {
           console.log(`[Claude Stream ${requestId}] Path denied - containment check failed: ${filePath}`)
           return { behavior: "deny", message: "path_outside_workspace" }
         }

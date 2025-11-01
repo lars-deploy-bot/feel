@@ -1,3 +1,5 @@
+import Image from "next/image"
+
 type ReadOutputProps = TextFileOutputProps | ImageFileOutputProps | PDFFileOutputProps | NotebookFileOutputProps
 
 interface TextFileOutputProps {
@@ -54,11 +56,16 @@ export function ReadOutput(props: ReadOutputProps) {
     return (
       <div className="space-y-2">
         <div className="text-xs text-black/40 font-thin">image • {Math.round(props.file_size / 1024)}KB</div>
-        <img
-          src={`data:${props.mime_type};base64,${props.image}`}
-          alt="File content"
-          className="max-w-full h-auto border border-black/10"
-        />
+        <div className="relative w-full">
+          <Image
+            src={`data:${props.mime_type};base64,${props.image}`}
+            alt="File content"
+            width={800}
+            height={600}
+            className="max-w-full h-auto border border-black/10"
+            unoptimized
+          />
+        </div>
       </div>
     )
   }
@@ -76,12 +83,16 @@ export function ReadOutput(props: ReadOutputProps) {
                 <div className="text-xs text-black/80 font-thin leading-relaxed whitespace-pre-wrap">{page.text}</div>
               )}
               {page.images?.map((img, imgIndex) => (
-                <img
-                  key={imgIndex}
-                  src={`data:${img.mime_type};base64,${img.image}`}
-                  alt={`Page ${page.page_number} content ${imgIndex + 1}`}
-                  className="max-w-full h-auto mt-2"
-                />
+                <div key={imgIndex} className="relative w-full mt-2">
+                  <Image
+                    src={`data:${img.mime_type};base64,${img.image}`}
+                    alt={`Page ${page.page_number} content ${imgIndex + 1}`}
+                    width={800}
+                    height={600}
+                    className="max-w-full h-auto"
+                    unoptimized
+                  />
+                </div>
               ))}
             </div>
           ))}

@@ -1,3 +1,4 @@
+import type { SDKResultMessage } from "@anthropic-ai/claude-agent-sdk"
 import type {
   CompleteEventData,
   DoneEventData,
@@ -8,7 +9,6 @@ import type {
   StartEventData,
   StreamEvent,
 } from "@/lib/message-parser"
-import type { SDKResultMessage } from "@anthropic-ai/claude-agent-sdk"
 
 // Type guards for stream events
 export function isStartEvent(event: StreamEvent): event is StreamEvent & { data: StartEventData } {

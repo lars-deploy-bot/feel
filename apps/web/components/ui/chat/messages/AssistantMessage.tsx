@@ -1,10 +1,10 @@
+import type { SDKAssistantMessage } from "@anthropic-ai/claude-agent-sdk"
+import { useState } from "react"
 import { MarkdownDisplay } from "@/components/ui/chat/format/MarkdownDisplay"
 import { ToolInputRouter } from "@/components/ui/chat/tools/ToolInputRouter"
 import { hasMarkdown } from "@/lib/utils/markdown-utils"
 import type { ContentItem } from "@/types/guards/content"
 import { isTextBlock, isToolUseBlock } from "@/types/guards/content"
-import type { SDKAssistantMessage } from "@anthropic-ai/claude-agent-sdk"
-import { useState } from "react"
 
 interface AssistantMessageProps {
   content: SDKAssistantMessage

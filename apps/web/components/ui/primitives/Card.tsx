@@ -1,4 +1,5 @@
-import { forwardRef, type HTMLAttributes, AnchorHTMLAttributes } from "react"
+import Image from "next/image"
+import { forwardRef, type HTMLAttributes } from "react"
 import { cn } from "@/lib/utils"
 
 interface CardProps extends HTMLAttributes<HTMLDivElement> {
@@ -36,8 +37,8 @@ interface CardImageProps extends HTMLAttributes<HTMLDivElement> {
 
 const CardImage = forwardRef<HTMLDivElement, CardImageProps>(({ className, src, alt, ...props }, ref) => {
   return (
-    <div className={cn("card-image", className)} ref={ref} {...props}>
-      {src && <img src={src} alt={alt || ""} loading="lazy" />}
+    <div className={cn("card-image relative", className)} ref={ref} {...props}>
+      {src && <Image src={src} alt={alt || ""} fill className="object-cover" loading="lazy" unoptimized />}
     </div>
   )
 })

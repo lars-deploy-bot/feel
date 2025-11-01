@@ -1,8 +1,8 @@
 import { existsSync, statSync } from "node:fs"
 import path from "node:path"
-import { ErrorCodes } from "@/lib/error-codes"
-import { normalizeDomain } from "@/lib/domain-utils"
 import { NextResponse } from "next/server"
+import { normalizeDomain } from "@/lib/domain-utils"
+import { ErrorCodes } from "@/lib/error-codes"
 
 export interface WorkspaceRequest {
   host: string
@@ -155,7 +155,7 @@ function getHostnameWorkspace(host: string, requestId: string): WorkspaceResult 
             message: "LOCAL_TEMPLATE_PATH must be an absolute path",
             details: {
               providedPath: templateWorkspace,
-              suggestion: `Use an absolute path like: /Users/you/alive-brug/.alive/template`,
+              suggestion: "Use an absolute path like: /Users/you/alive-brug/.alive/template",
             },
           },
           { status: 500 },

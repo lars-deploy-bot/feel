@@ -1,4 +1,4 @@
-import { test, expect } from "./setup"
+import { expect, test } from "./setup"
 
 test("can login with test credentials", async ({ page }) => {
   await page.goto("/")

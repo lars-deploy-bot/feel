@@ -55,7 +55,20 @@ export function SettingsDropdown() {
       </div>
 
       {/* Invisible overlay to close dropdown when clicking outside */}
-      {isOpen && <div className="fixed inset-0 z-[-1]" onClick={() => setIsOpen(false)} />}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-[-1]"
+          onClick={() => setIsOpen(false)}
+          role="button"
+          tabIndex={0}
+          aria-label="Close settings menu"
+          onKeyDown={e => {
+            if (e.key === "Escape") {
+              setIsOpen(false)
+            }
+          }}
+        />
+      )}
     </div>
   )
 }

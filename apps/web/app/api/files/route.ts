@@ -1,10 +1,10 @@
 import { readdir, stat } from "node:fs/promises"
 import path from "node:path"
+import { cookies } from "next/headers"
+import { type NextRequest, NextResponse } from "next/server"
 import { getWorkspace } from "@/app/features/claude/workspaceRetriever"
 import { hasSessionCookie } from "@/types/guards/auth"
 import { isPathWithinWorkspace } from "@/types/guards/workspace"
-import { cookies } from "next/headers"
-import { type NextRequest, NextResponse } from "next/server"
 
 interface FileInfo {
   name: string

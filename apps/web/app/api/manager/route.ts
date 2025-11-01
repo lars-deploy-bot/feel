@@ -1,12 +1,7 @@
+import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
 import { addCorsHeaders } from "@/lib/cors-utils"
-import {
-  loadDomainPasswords,
-  saveDomainPasswords,
-  updateDomainPassword,
-  deleteDomainPassword,
-} from "@/types/guards/api"
-import { cookies } from "next/headers"
+import { deleteDomainPassword, loadDomainPasswords, updateDomainPassword } from "@/types/guards/api"
 
 export async function GET(req: NextRequest) {
   const origin = req.headers.get("origin")

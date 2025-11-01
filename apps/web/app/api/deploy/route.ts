@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
 
     // Validate password
     if (!body.password) {
-      console.error(`❌ [DEPLOY API] Password is required`)
+      console.error("❌ [DEPLOY API] Password is required")
       return NextResponse.json(
         {
           success: false,
@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (body.password.length < 6 || body.password.length > 16) {
-      console.error(`❌ [DEPLOY API] Password length validation failed`)
+      console.error("❌ [DEPLOY API] Password length validation failed")
       return NextResponse.json(
         {
           success: false,
@@ -229,10 +229,10 @@ export async function POST(request: NextRequest) {
       statusCode = 409 // Conflict
     } else if (error.code === 12) {
       // Check if the error message contains Cloudflare proxy detection
-      if (error.stderr && error.stderr.includes("CLOUDFLARE PROXY DETECTED")) {
+      if (error.stderr?.includes("CLOUDFLARE PROXY DETECTED")) {
         errorMessage =
           "🚨 Cloudflare proxy detected! You must disable the orange cloud (proxy) in your Cloudflare DNS settings. Make the cloud icon GRAY (not orange) next to your A record, then try again. See DNS setup guide: https://terminal.goalive.nl/docs/dns-setup"
-      } else if (error.stderr && error.stderr.includes("No A record found")) {
+      } else if (error.stderr?.includes("No A record found")) {
         errorMessage = `DNS Error: No A record found for ${domain}. You must create an A record with these settings: Type=A, Name/Host=@ (or ${domain}), Value/Points to=138.201.56.93, TTL=300. ALSO: Remove any AAAA records (IPv6) for ${domain}. See DNS setup guide: https://terminal.goalive.nl/docs/dns-setup`
       } else {
         errorMessage = `DNS Error: ${domain} does not point to our server (138.201.56.93). You need to update your A record with these settings: Type=A, Name/Host=@ (or ${domain}), Value/Points to=138.201.56.93, TTL=300. ALSO: Remove any AAAA records (IPv6) for ${domain}. See DNS setup guide: https://terminal.goalive.nl/docs/dns-setup`

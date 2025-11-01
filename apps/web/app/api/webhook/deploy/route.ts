@@ -2,7 +2,7 @@ import { spawn } from "node:child_process"
 import crypto from "node:crypto"
 import fs from "node:fs"
 import path from "node:path"
-import { NextRequest, NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 
 // Configuration
 const WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET || ""
@@ -145,7 +145,7 @@ export async function GET() {
       recentDeployments: logs,
       logDir: LOG_DIR,
     })
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json({
       configured: !!WEBHOOK_SECRET,
       branch: BRANCH,

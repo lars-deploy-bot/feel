@@ -1,7 +1,7 @@
 import { BashInput } from "@/components/ui/chat/tools/bash/BashInput"
-import { ReadInput } from "@/components/ui/chat/tools/read/ReadInput"
-import { GrepInput } from "@/components/ui/chat/tools/grep/GrepInput"
 import { GlobInput } from "@/components/ui/chat/tools/glob/GlobInput"
+import { GrepInput } from "@/components/ui/chat/tools/grep/GrepInput"
+import { ReadInput } from "@/components/ui/chat/tools/read/ReadInput"
 import { TaskInput } from "@/components/ui/chat/tools/task/TaskInput"
 
 interface ToolInputRouterProps {

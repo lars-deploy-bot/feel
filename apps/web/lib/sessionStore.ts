@@ -1,8 +1,8 @@
 import {
+  hasExistingSession,
+  isConversationLocked,
   tryLockConversation,
   unlockConversation,
-  isConversationLocked,
-  hasExistingSession,
 } from "@/types/guards/session"
 
 export interface SessionStore {

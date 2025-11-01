@@ -1,13 +1,13 @@
 "use client"
+import { Square } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useEffect, useRef, useState } from "react"
 import { ThinkingGroup } from "@/components/ui/chat/ThinkingGroup"
 import { SettingsDropdown } from "@/components/ui/SettingsDropdown"
 import type { StructuredError } from "@/lib/error-codes"
 import { groupMessages } from "@/lib/message-grouper"
-import { type StreamEvent, type UIMessage, parseStreamEvent } from "@/lib/message-parser"
+import { parseStreamEvent, type StreamEvent, type UIMessage } from "@/lib/message-parser"
 import { renderMessage } from "@/lib/message-renderer"
-import { Square } from "lucide-react"
-import { useRouter } from "next/navigation"
-import { useEffect, useRef, useState } from "react"
 
 export default function ChatPage() {
   const [msg, setMsg] = useState("")

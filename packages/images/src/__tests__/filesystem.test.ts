@@ -187,7 +187,7 @@ describe("FilesystemStorage", () => {
       // Parse query parameters
       const params = new URLSearchParams(result.data)
       const signature = params.get("sig")!
-      const expiry = Number.parseInt(params.get("exp")!)
+      const expiry = Number.parseInt(params.get("exp")!, 10)
 
       const isValid = storage.verifySignature(key, signature, expiry)
       expect(isValid).toBe(true)
@@ -211,7 +211,7 @@ describe("FilesystemStorage", () => {
 
       const params = new URLSearchParams(result.data)
       const signature = params.get("sig")!
-      const expiry = Number.parseInt(params.get("exp")!)
+      const expiry = Number.parseInt(params.get("exp")!, 10)
 
       const isValid = storage.verifySignature(key, signature, expiry)
       expect(isValid).toBe(false)

@@ -1,7 +1,7 @@
 /**
  * E2E Test Setup - Real Fail-Fast Protection
  */
-import { type Page, test as base, expect } from "@playwright/test"
+import { test as base, expect, type Page } from "@playwright/test"
 
 /**
  * API endpoints that require mocking (expensive external calls)

@@ -4,6 +4,12 @@
       "cache": false
     },
     "build": {},
-    "start": {}
+    "start": {},
+    "lint": {
+      "dependsOn": ["^lint"]
+    },
+    "format": {
+      "dependsOn": ["^format"]
+    }
   }
 }

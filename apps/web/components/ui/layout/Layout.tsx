@@ -1,5 +1,5 @@
+import { forwardRef, type HTMLAttributes } from "react"
 import { cn } from "@/lib/utils"
-import { type HTMLAttributes, forwardRef } from "react"
 
 interface ContainerProps extends HTMLAttributes<HTMLDivElement> {
   variant?: "default" | "wide"

@@ -6,7 +6,7 @@ import { ResultMessage } from "@/components/ui/chat/messages/ResultMessage"
 import { StartMessage } from "@/components/ui/chat/messages/StartMessage"
 import { SystemMessage } from "@/components/ui/chat/messages/SystemMessage"
 import { ToolResultMessage } from "@/components/ui/chat/messages/ToolResultMessage"
-import { type UIMessage, getMessageComponentType, isErrorResultMessage } from "@/lib/message-parser"
+import { getMessageComponentType, isErrorResultMessage, type UIMessage } from "@/lib/message-parser"
 import type { SDKAssistantMessage, SDKResultMessage, SDKSystemMessage, SDKUserMessage } from "@/lib/sdk-types"
 import { hasMarkdown } from "@/lib/utils/markdown-utils"
 

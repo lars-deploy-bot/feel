@@ -1,40 +1,14 @@
 {
-  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
-  "files": {
-    "ignore": [
-      "**/resources/**",
-      "**/node_modules/**",
-      "**/dist/**",
-      "**/.next/**",
-      "**/build/**",
-      "**/coverage/**",
-      "**/.turbo/**",
-      "**/.tmp/**",
-      "**/.cache/**",
-      "**/.bun/**",
-      "**/temp/**",
-      "**/tmp/**",
-      "**/*.log",
-      "**/.DS_Store",
-      "apps/web/src/results/**",
-      "apps/examples/logging_folder/**",
-      "packages/core/logging_folder/**",
-      "packages/experiments/src/experiments-2/**",
-      "apps/web/src/lib/scraping/manual-data-collection/**"
-    ]
+  "$schema": "https://biomejs.dev/schemas/2.3.2/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
   },
-  "overrides": [
-    {
-      "include": ["**/test-setup.ts", "**/integration-setup.ts"],
-      "linter": {
-        "rules": {
-          "suspicious": {
-            "noRedeclare": "off"
-          }
-        }
-      }
-    }
-  ],
+  "files": {
+    "ignoreUnknown": true
+  },
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "linter": {
     "enabled": true,
     "rules": {
@@ -45,10 +19,15 @@
         "useButtonType": "warn",
         "noLabelWithoutControl": "warn",
         "useSemanticElements": "warn",
-        "useFocusableInteractive": "warn"
+        "useFocusableInteractive": "warn",
+        "noStaticElementInteractions": "warn"
       },
       "style": {
-        "noNonNullAssertion": "off"
+        "noNonNullAssertion": "off",
+        "noParameterAssign": "off",
+        "noUnusedTemplateLiteral": "warn",
+        "useSelfClosingElements": "warn",
+        "useImportType": "warn"
       },
       "complexity": {
         "noForEach": "off",
@@ -65,13 +44,11 @@
     }
   },
   "formatter": {
+    "enabled": true,
     "indentStyle": "space",
     "indentWidth": 2,
     "lineEnding": "lf",
     "lineWidth": 120
-  },
-  "organizeImports": {
-    "enabled": true
   },
   "javascript": {
     "formatter": {

@@ -1,14 +1,12 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
-import { useRouter } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
-
-// Feature hooks
-import { useWorkspace, useImageManagement, useCopyToClipboard } from "./hooks"
-
+import { useRouter } from "next/navigation"
+import { useEffect, useRef, useState } from "react"
 // Feature components
-import { ImageCard, UploadCard, DeleteConfirmModal, ImageZoomModal, MessageBanner, LoadingState } from "./components"
+import { DeleteConfirmModal, ImageCard, ImageZoomModal, LoadingState, MessageBanner, UploadCard } from "./components"
+// Feature hooks
+import { useCopyToClipboard, useImageManagement, useWorkspace } from "./hooks"
 
 export default function PhotobookPage() {
   const router = useRouter()
@@ -59,7 +57,7 @@ export default function PhotobookPage() {
     e.stopPropagation()
     setDragActive(false)
 
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+    if (e.dataTransfer.files?.[0]) {
       setSelectedFiles(e.dataTransfer.files)
       clearMessages()
     }
@@ -90,12 +88,14 @@ export default function PhotobookPage() {
       onDragLeave={handleDrag}
       onDragOver={handleDrag}
       onDrop={handleDrop}
+      role="main"
     >
       <div className="max-w-5xl mx-auto p-8">
         {/* Header */}
         <header className="flex items-center justify-between mb-16">
           <div className="flex items-center gap-4">
             <button
+              type="button"
               onClick={() => router.push("/chat")}
               className="p-2 text-black/30 hover:text-black transition-colors cursor-pointer"
               aria-label="Back to chat"
@@ -117,34 +117,28 @@ export default function PhotobookPage() {
           />
 
           <div className="relative">
-            <label
+            <button
+              type="button"
               onClick={() => fileInputRef.current?.click()}
               className="px-8 py-3 md:px-6 md:py-2 bg-black text-white text-sm md:text-sm rounded-full hover:bg-gray-800 transition-all cursor-pointer font-medium"
               onMouseEnter={() => setShowDropHint(true)}
               onMouseLeave={() => setShowDropHint(false)}
-              tabIndex={0}
-              role="button"
-              onKeyDown={e => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault()
-                  fileInputRef.current?.click()
-                }
-              }}
+              aria-label="Add photos"
             >
               Add Photos
-            </label>
+            </button>
 
             {showDropHint && !("ontouchstart" in window) && (
               <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap animate-in fade-in-0 zoom-in-95 duration-200">
                 You can also drop pics anywhere!
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900" />
               </div>
             )}
           </div>
         </header>
 
         {/* Drag overlay */}
-        {dragActive && <div className="fixed inset-0 bg-blue-50/50 z-50"></div>}
+        {dragActive && <div className="fixed inset-0 bg-blue-50/50 z-50" />}
 
         {/* Upload card */}
         {selectedFiles && selectedFiles.length > 0 && (

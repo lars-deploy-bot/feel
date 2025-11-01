@@ -1,4 +1,5 @@
 import { Plus } from "lucide-react"
+import Image from "next/image"
 
 interface ImageZoomModalProps {
   imageSrc: string
@@ -14,14 +15,27 @@ export function ImageZoomModal({ imageSrc, onClose }: ImageZoomModalProps) {
       aria-modal="true"
       aria-label="Zoomed image view"
     >
-      <div className="relative max-w-full max-h-full">
-        <img
+      <div
+        className="relative max-w-full max-h-full"
+        onClick={e => e.stopPropagation()}
+        onKeyDown={e => {
+          if (e.key === "Escape") {
+            onClose()
+          }
+        }}
+        role="button"
+        tabIndex={0}
+      >
+        <Image
           src={imageSrc}
           alt=""
+          width={1920}
+          height={1080}
           className="max-w-full max-h-full object-contain"
-          onClick={e => e.stopPropagation()}
+          unoptimized
         />
         <button
+          type="button"
           onClick={onClose}
           className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/30 text-white rounded-full backdrop-blur-sm transition-all cursor-pointer"
           aria-label="Close zoomed view"
