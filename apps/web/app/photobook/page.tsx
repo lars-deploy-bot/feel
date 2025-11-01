@@ -20,6 +20,7 @@ export default function PhotobookPage() {
   const router = useRouter()
   const [images, setImages] = useState<UploadedImage[]>([])
   const [uploading, setUploading] = useState(false)
+  const [loadingImages, setLoadingImages] = useState(false)
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
@@ -30,6 +31,7 @@ export default function PhotobookPage() {
   const [isTerminal, setIsTerminal] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [zoomedImage, setZoomedImage] = useState<string | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -58,6 +60,7 @@ export default function PhotobookPage() {
 
   async function loadImages() {
     try {
+      setLoadingImages(true)
       const url = new URL("/api/images/list", window.location.origin)
 
       // Add workspace parameter for terminal mode
@@ -72,6 +75,8 @@ export default function PhotobookPage() {
       }
     } catch (err) {
       console.log("Could not load images:", err)
+    } finally {
+      setLoadingImages(false)
     }
   }
 
@@ -152,6 +157,13 @@ export default function PhotobookPage() {
   }
 
   async function deleteImage(key: string) {
+    // Optimistically remove the image
+    const imageToDelete = images.find(img => img.key === key)
+    setImages(prev => prev.filter(img => img.key !== key))
+    setDeleteConfirm(null)
+    setError("")
+    setSuccess("")
+
     try {
       const body: any = { key }
 
@@ -166,14 +178,28 @@ export default function PhotobookPage() {
         body: JSON.stringify(body),
       })
 
-      if (response.ok) {
-        setImages(prev => prev.filter(img => img.key !== key))
-      } else {
-        setError("Failed to delete image")
+      if (!response.ok) {
+        // Restore the image if deletion failed
+        if (imageToDelete) {
+          setImages(prev => [...prev, imageToDelete].sort((a, b) =>
+            new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
+          ))
+        }
+        setError("Failed to delete image. Please try again.")
       }
     } catch (err) {
-      setError("Failed to delete image")
+      // Restore the image if deletion failed
+      if (imageToDelete) {
+        setImages(prev => [...prev, imageToDelete].sort((a, b) =>
+          new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
+        ))
+      }
+      setError("Failed to delete image. Please try again.")
     }
+  }
+
+  function confirmDelete(key: string) {
+    setDeleteConfirm(key)
   }
 
   return (
@@ -205,7 +231,6 @@ export default function PhotobookPage() {
             type="file"
             multiple
             accept="image/*"
-            capture="environment"
             onChange={handleFileSelect}
             className="hidden"
           />
@@ -234,8 +259,8 @@ export default function PhotobookPage() {
         )}
 
         {/* Selected Files State */}
-        {selectedFiles && selectedFiles.length > 0 && images.length === 0 && (
-          <div className="text-center py-32">
+        {selectedFiles && selectedFiles.length > 0 && (
+          <div className={`text-center ${images.length === 0 ? 'py-32' : 'mb-12'}`}>
             <div className="bg-gray-50 rounded-3xl p-12 max-w-md mx-auto">
               <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center mx-auto mb-6">
                 <ImageIcon className="w-8 h-8 text-white" />
@@ -272,10 +297,17 @@ export default function PhotobookPage() {
         )}
 
         {/* Images - No artificial boundaries */}
-        {images.length === 0 && !uploading && !selectedFiles ? (
+        {images.length === 0 && !uploading && !selectedFiles && !loadingImages ? (
           <div className="text-center py-40">
             <h2 className="text-2xl font-light text-gray-600 mb-2">Drop images here</h2>
             <p className="text-gray-400 text-sm">or click Add Images above</p>
+          </div>
+        ) : loadingImages ? (
+          <div className="text-center py-32">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
+              <ImageIcon className="w-8 h-8 text-gray-400" />
+            </div>
+            <p className="text-gray-500">Loading your images...</p>
           </div>
         ) : images.length > 0 ? (
           <div className="masonry-grid">
@@ -307,7 +339,7 @@ export default function PhotobookPage() {
                       onClick={() => setZoomedImage(`/_images/${image.variants.orig}`)}
                     />
                     <button
-                      onClick={() => deleteImage(image.key)}
+                      onClick={() => confirmDelete(image.key)}
                       className="absolute top-4 right-4 p-3 md:p-2 bg-white/90 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 md:group-hover:opacity-100 sm:opacity-100 transition-all cursor-pointer min-w-[44px] min-h-[44px] md:min-w-auto md:min-h-auto flex items-center justify-center"
                     >
                       <Trash2 className="w-5 h-5 md:w-4 md:h-4" />
@@ -365,10 +397,47 @@ export default function PhotobookPage() {
               />
               <button
                 onClick={() => setZoomedImage(null)}
-                className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/30 text-white rounded-full backdrop-blur-sm transition-all"
+                className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/30 text-white rounded-full backdrop-blur-sm transition-all cursor-pointer"
               >
                 <Plus className="w-6 h-6 rotate-45" />
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {deleteConfirm && (
+          <div
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+            onClick={() => setDeleteConfirm(null)}
+          >
+            <div
+              className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-xl animate-in fade-in-0 zoom-in-95 duration-200"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Trash2 className="w-8 h-8 text-red-500" />
+              </div>
+              <h3 className="text-xl font-light text-gray-800 mb-2 text-center">
+                Delete this image?
+              </h3>
+              <p className="text-gray-500 text-sm text-center mb-8">
+                This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeleteConfirm(null)}
+                  className="flex-1 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition-all cursor-pointer font-medium"
+                >
+                  No, keep it
+                </button>
+                <button
+                  onClick={() => deleteImage(deleteConfirm)}
+                  className="flex-1 px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-full transition-all cursor-pointer font-medium"
+                >
+                  Yes, delete
+                </button>
+              </div>
             </div>
           </div>
         )}
