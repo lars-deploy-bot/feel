@@ -8,6 +8,7 @@
 import { spawn } from "node:child_process"
 import { statSync } from "node:fs"
 import { resolve } from "node:path"
+import { env } from "@/lib/env"
 
 interface WorkspaceCredentials {
   uid: number
@@ -70,8 +71,8 @@ export function runAgentChild(
     cwd: workspaceRoot,
     env: {
       PATH: process.env.PATH,
-      ANTHROPIC_API_KEY: process.env.ANTH_API_SECRET || process.env.ANTHROPIC_API_KEY,
-      NODE_ENV: process.env.NODE_ENV || "production",
+      ANTHROPIC_API_KEY: env.ANTH_API_SECRET,
+      NODE_ENV: env.NODE_ENV,
       TARGET_UID: String(uid),
       TARGET_GID: String(gid),
       LANG: "C.UTF-8",

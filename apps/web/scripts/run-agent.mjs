@@ -15,8 +15,6 @@ import { mkdirSync } from "node:fs"
 import process from "node:process"
 import { query } from "@anthropic-ai/claude-agent-sdk"
 
-const DEFAULT_MODEL = "claude-sonnet-4-5"
-
 async function readStdinJson() {
   const chunks = []
   for await (const chunk of process.stdin) {
@@ -57,7 +55,7 @@ async function readStdinJson() {
       prompt: input.message,
       options: {
         cwd: process.cwd(),
-        model: input.model || DEFAULT_MODEL,
+        model: input.model,
         maxTurns: input.maxTurns || 25,
         permissionMode: "acceptEdits",
         allowedTools: ["Write", "Edit", "Read", "Glob", "Grep"],

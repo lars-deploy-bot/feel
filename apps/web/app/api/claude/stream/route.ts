@@ -7,6 +7,7 @@ import { isInputSafe } from "@/app/features/handlers/formatMessage"
 import { runAgentChild, shouldUseChildProcess } from "@/lib/agent-child-runner"
 import { requireSessionUser } from "@/lib/auth"
 import { addCorsHeaders } from "@/lib/cors-utils"
+import { env } from "@/lib/env"
 import { ErrorCodes } from "@/lib/error-codes"
 import { logInput } from "@/lib/input-logger"
 import { SessionStoreMemory, sessionKey, tryLockConversation, unlockConversation } from "@/lib/sessionStore"
@@ -17,8 +18,6 @@ import { hasSessionCookie } from "@/types/guards/auth"
 import { isTerminalMode } from "@/types/guards/workspace"
 
 export const runtime = "nodejs"
-
-const DEFAULT_MODEL = "claude-sonnet-4-5"
 
 export async function POST(req: NextRequest) {
   const requestId = Math.random().toString(36).substring(2, 8)
@@ -183,7 +182,7 @@ export async function POST(req: NextRequest) {
     console.log(`[Claude Stream ${requestId}] Existing session: ${existingSessionId ? "found" : "none"}`)
 
     console.log(`[Claude Stream ${requestId}] Working directory: ${cwd}`)
-    console.log(`[Claude Stream ${requestId}] Claude model: ${process.env.CLAUDE_MODEL || DEFAULT_MODEL}`)
+    console.log(`[Claude Stream ${requestId}] Claude model: ${env.CLAUDE_MODEL}`)
 
     const canUseTool: Options["canUseTool"] = async (toolName, input) => {
       console.log(`[Claude Stream ${requestId}] Tool requested: ${toolName}`)
@@ -221,7 +220,7 @@ export async function POST(req: NextRequest) {
       return allow
     }
 
-    const maxTurns = Number.parseInt(process.env.CLAUDE_MAX_TURNS || "25", 10)
+    const maxTurns = Number.parseInt(env.CLAUDE_MAX_TURNS, 10)
     if (Number.isNaN(maxTurns) || maxTurns < 1) {
       console.warn(`[Claude Stream ${requestId}] Invalid CLAUDE_MAX_TURNS, using default: 25`)
     }
@@ -242,7 +241,7 @@ export async function POST(req: NextRequest) {
         additionalContext: body.additionalContext,
       }),
       settingSources: ["project"],
-      model: process.env.CLAUDE_MODEL || DEFAULT_MODEL,
+      model: env.CLAUDE_MODEL,
       ...(existingSessionId ? { resume: existingSessionId } : {}),
     }
 
@@ -256,7 +255,7 @@ export async function POST(req: NextRequest) {
 
       const childStream = runAgentChild(cwd, {
         message,
-        model: process.env.CLAUDE_MODEL || DEFAULT_MODEL,
+        model: env.CLAUDE_MODEL,
         maxTurns: effectiveMaxTurns,
         resume: existingSessionId || undefined,
         systemPrompt: claudeOptions.systemPrompt
