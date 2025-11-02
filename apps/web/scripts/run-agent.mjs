@@ -27,17 +27,23 @@ async function readStdinJson() {
   try {
     const targetUid = process.env.TARGET_UID && Number(process.env.TARGET_UID)
     const targetGid = process.env.TARGET_GID && Number(process.env.TARGET_GID)
+    const targetCwd = process.env.TARGET_CWD
 
-    if (targetGid && process.setegid) {
-      process.setegid(targetGid)
+    if (targetGid && process.setgid) {
+      process.setgid(targetGid)
       console.error(`[runner] Dropped to GID: ${targetGid}`)
     }
-    if (targetUid && process.seteuid) {
-      process.seteuid(targetUid)
+    if (targetUid && process.setuid) {
+      process.setuid(targetUid)
       console.error(`[runner] Dropped to UID: ${targetUid}`)
     }
 
     process.umask(0o022)
+
+    if (targetCwd) {
+      process.chdir(targetCwd)
+      console.error(`[runner] Changed to workspace: ${targetCwd}`)
+    }
 
     console.error(`[runner] Working directory: ${process.cwd()}`)
 
@@ -45,7 +51,7 @@ async function readStdinJson() {
     mkdirSync(debugHome, { recursive: true, mode: 0o755 })
     process.env.HOME = debugHome
     console.error(`[runner] HOME set to: ${debugHome}`)
-    console.error(`[runner] Running as UID:${process.geteuid?.()} GID:${process.getegid?.()}`)
+    console.error(`[runner] Running as UID:${process.getuid()} GID:${process.getgid()}`)
     console.error(`[runner] API key present: ${process.env.ANTHROPIC_API_KEY ? 'yes' : 'no'}`)
 
     const input = await readStdinJson()

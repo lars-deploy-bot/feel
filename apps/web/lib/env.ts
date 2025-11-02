@@ -33,7 +33,7 @@ function validateEnv(): Env {
   }
 
   return {
-    ANTH_API_SECRET: process.env.ANTH_API_SECRET,
+    ANTH_API_SECRET: process.env.ANTH_API_SECRET!,
     CLAUDE_MODEL: process.env.CLAUDE_MODEL ?? "claude-sonnet-4-5",
     CLAUDE_MAX_TURNS: process.env.CLAUDE_MAX_TURNS ?? "25",
     NODE_ENV: process.env.NODE_ENV ?? "production",

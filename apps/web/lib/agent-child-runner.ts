@@ -20,7 +20,7 @@ interface AgentRequest {
   model?: string
   maxTurns?: number
   resume?: string
-  systemPrompt?: string
+  systemPrompt?: string | { type: "preset"; preset: "claude_code"; append?: string }
   [key: string]: any
 }
 
@@ -68,13 +68,13 @@ export function runAgentChild(
   console.log(`[agent-child] Workspace: ${workspaceRoot}`)
 
   const child = spawn(process.execPath, [runnerPath], {
-    cwd: workspaceRoot,
     env: {
       PATH: process.env.PATH,
       ANTHROPIC_API_KEY: env.ANTH_API_SECRET,
-      NODE_ENV: env.NODE_ENV,
+      NODE_ENV: process.env.NODE_ENV,
       TARGET_UID: String(uid),
       TARGET_GID: String(gid),
+      TARGET_CWD: workspaceRoot,
       LANG: "C.UTF-8",
       LC_CTYPE: "C.UTF-8"
     },

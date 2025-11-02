@@ -6,7 +6,7 @@
 
 **Document Version:** 5.0
 **Last Updated:** 2025-11-02
-**Status:** ✅ **RECOMMENDED ARCHITECTURE** — Child Process Per Invocation
+**Status:** ✅ **PRODUCTION DEPLOYED** — Child Process Per Invocation (Nov 2, 2025)
 
 ---
 
@@ -455,6 +455,32 @@ strace -f -e trace=openat,rename,chmod -p <child_pid>
 
   * Verify file paths/casing; sometimes the agent wrote to an unexpected directory.
   * Check Vite logs for unrelated errors.
+* **Child process runs correctly but cannot write files (EACCES):**
+
+  * **Symptom:** Logs show `[runner] Running as UID:986 GID:979` but writes fail with `EACCES` or "Permission denied"
+  * **Root cause:** Existing files in workspace are owned by `root:root`, but child runs as workspace user
+  * **Why this happens:** Workspace was populated before child process isolation was implemented, or files were manually created as root
+  * **Fix:** Change ownership of workspace files to match workspace user:
+    ```bash
+    # Get site user from workspace path
+    ls -ld /srv/webalive/sites/example.com/user  # Check ownership
+
+    # Fix ownership recursively
+    chown -R site-example-com:site-example-com /srv/webalive/sites/example.com/user
+
+    # Verify fix
+    find /srv/webalive/sites/example.com/user -user root
+    # Should return no results
+    ```
+  * **Prevention:** Always use systemd deployment script which creates workspaces with correct ownership from the start
+  * **Detection:** Check workspace directory ownership before spawning child:
+    ```typescript
+    const workspaceStat = statSync(workspaceRoot)
+    const fileStat = statSync(path.join(workspaceRoot, 'some-file.txt'))
+    if (fileStat.uid !== workspaceStat.uid) {
+      console.warn(`File ownership mismatch: ${filePath}`)
+    }
+    ```
 
 ---
 
@@ -766,7 +792,9 @@ Object.defineProperty(fs, 'writeFileSync', { ... })
 ### v5.0 Status (Current)
 - ✅ **IMPLEMENTED** — Child process isolation with automatic detection
 - ✅ **TESTED** — Verified on staging (staging.terminal.goalive.nl)
-- ✅ **PRODUCTION READY** — Awaiting deployment
+- ✅ **PRODUCTION DEPLOYED** — Nov 2, 2025 23:30 UTC
+- ✅ **MIGRATION COMPLETE** — 6 workspaces migrated (60 files fixed)
+- ✅ **VERIFIED** — All systemd workspaces clean (zero root-owned files)
 
 ---
 
@@ -931,7 +959,7 @@ site-two-goalive-nl site-two-goalive-nl 644 test-integrated.txt
 
 ### Deployment Checklist
 
-Before deploying to production:
+Production deployment completed Nov 2, 2025:
 
 - [x] Test on staging with systemd workspace
 - [x] Verify file ownership (not root)
@@ -939,10 +967,47 @@ Before deploying to production:
 - [x] Confirm child process detection logs
 - [x] Clean up test files and failed approaches
 - [x] Update CLAUDE.md documentation
-- [ ] Deploy to production: `pm2 restart claude-bridge`
-- [ ] Verify production workspace file ownership
-- [ ] Monitor logs for "Use child process: true"
-- [ ] One-hour audit: `find /srv/webalive/sites -user root -mmin -60`
+- [x] Deploy to production: `pm2 restart claude-bridge`
+- [x] Fix existing root-owned files (one-time migration):
+  ```bash
+  # Migration script fixed 6 workspaces (60 root-owned files)
+  /root/webalive/claude-bridge/scripts/migrate-workspace-ownership.sh
+  ```
+- [x] Verify child process completes successfully (logs show "Success: N messages")
+- [x] Monitor logs for "Use child process: true" ✓ Working
+- [x] Migration audit: All systemd workspaces verified ✓ Clean
+
+### Migration Note
+
+**IMPORTANT:** Workspaces created BEFORE this implementation will have root-owned files. This is a **one-time migration issue**, not an ongoing problem:
+
+- **Old files** (created before Nov 2, 2025) = `root:root` → Need `chown` fix
+- **New files** (created after deployment) = workspace user → Automatically correct
+
+**Migration script for all sites:**
+
+```bash
+#!/bin/bash
+# Fix ownership for all systemd workspaces
+for site_dir in /srv/webalive/sites/*/user; do
+  # Get workspace owner from directory
+  site_user=$(stat -c '%U' $(dirname $site_dir))
+
+  # Skip if already correct
+  if [ "$site_user" = "root" ]; then
+    echo "Skipping root-owned workspace: $site_dir"
+    continue
+  fi
+
+  # Fix ownership
+  echo "Fixing: $site_dir → $site_user"
+  chown -R "$site_user:$site_user" "$site_dir"
+done
+
+# Verify no root-owned files remain
+echo "Checking for remaining root-owned files..."
+find /srv/webalive/sites/*/user -user root 2>/dev/null
+```
 
 ### Rollback Plan
 
@@ -986,4 +1051,123 @@ Possible improvements (not required):
 
 ---
 
-**End of Document — v5.0 IMPLEMENTED**
+---
+
+## Production Summary (Nov 2, 2025)
+
+### Final Status
+
+**✅ PRODUCTION DEPLOYED AND VERIFIED**
+
+The child process isolation implementation (v5.0) is now fully deployed to production and working correctly.
+
+### What Was Fixed
+
+**Problem:** Files created by Claude SDK were owned by `root:root`, preventing site processes from reading them and causing build failures.
+
+**Solution:** Spawn Claude SDK in a child process that runs as the workspace user (e.g., `site-larsvandeneeden-com`). The OS kernel enforces correct ownership for ALL file operations.
+
+### Key Implementation Details
+
+1. **Detection:** Automatic based on workspace directory ownership
+   - Non-root workspace → Child process
+   - Root workspace → In-process (legacy fallback)
+
+2. **Privilege Dropping:** Child process uses `setuid/setgid` (not `seteuid/setegid`)
+   - Permanent privilege drop ensures all child processes inherit workspace user
+   - SDK's own child process (Claude Code binary) runs with correct credentials
+
+3. **Working Directory:** Child uses `chdir()` after loading modules
+   - Avoids module resolution issues
+   - Ensures SDK runs in workspace context
+
+### Production Statistics
+
+- **Deployment:** Nov 2, 2025 23:30 UTC
+- **Total workspaces:** 28 (14 unique sites with aliases)
+- **Systemd workspaces:** 27 (non-root owned)
+- **Root workspaces:** 1 (staging.goalive.nl - legacy)
+- **Migration required:** 6 workspaces (60 root-owned files)
+- **Migration result:** ✅ 100% clean (zero root-owned files in systemd workspaces)
+
+### Verification
+
+```bash
+# Logs confirm child process working
+[runner] Running as UID:986 GID:979
+[runner] Success: 8 messages
+
+# Migration verification
+✓ SUCCESS: All systemd workspace files have correct ownership
+```
+
+### Files Modified
+
+**Core implementation:**
+- `apps/web/lib/agent-child-runner.ts` (130 lines)
+- `apps/web/scripts/run-agent.mjs` (110 lines)
+- `apps/web/app/api/claude/stream/route.ts` (modified ~263-397)
+- `apps/web/lib/env.ts` (NEW - T3-style validation)
+
+**Migration tooling:**
+- `scripts/migrate-workspace-ownership.sh` (NEW - one-time migration)
+
+**Documentation:**
+- `docs/IMPLEMENTATION_AUTO_PERMISSION_FIX.md` (updated)
+- `apps/web/CLAUDE.md` (updated with child process section)
+
+### Critical Fixes During Deployment
+
+1. **TypeScript type errors:**
+   - `systemPrompt` type mismatch (string vs preset object)
+   - `NODE_ENV` type restrictions
+   - Non-null assertion for validated env vars
+
+2. **Module loading issue:**
+   - Initial attempt used `spawn({ cwd: workspace })` → SDK couldn't find node_modules
+   - Fix: Pass `TARGET_CWD` via env, call `chdir()` after imports
+
+3. **Privilege dropping:**
+   - Initial attempt used `seteuid/setegid` (effective UID) → SDK child process inherited root
+   - Fix: Use `setuid/setgid` (permanent) → All processes inherit workspace user
+
+4. **Existing file permissions:**
+   - Files created before Nov 2 were `root:root`
+   - Migration script fixed 60 files across 6 workspaces
+   - Now: automatic correct ownership for all new files
+
+### Ongoing Behavior
+
+- ✅ New files created after deployment: Automatically correct ownership
+- ✅ Child process detection: Automatic per workspace
+- ✅ Backward compatibility: Root workspaces still work (in-process fallback)
+- ✅ Error handling: Child process failures logged clearly
+- ✅ Session resumption: Working correctly with NDJSON protocol
+
+### Monitoring
+
+**Success indicators in logs:**
+```
+[Claude Stream {id}] Use child process: true
+[agent-child] Spawned as root (will drop to {uid}:{gid})
+[runner] Running as UID:{uid} GID:{gid}
+[runner] Success: {n} messages
+```
+
+**What to watch for:**
+- Any "EACCES" errors → Check workspace file ownership
+- Child process exit code 1 → Check stderr for [runner-error]
+- Missing frontend messages → Verify NDJSON protocol working
+
+### Next Steps
+
+**None required** - Implementation is complete and production-ready.
+
+**Optional future enhancements:**
+- Metrics tracking (child process vs in-process usage)
+- Performance monitoring (spawn overhead)
+- Connection pooling for high-traffic sites
+
+---
+
+**End of Document — v5.0 PRODUCTION DEPLOYED (Nov 2, 2025)**
