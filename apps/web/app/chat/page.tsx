@@ -8,6 +8,7 @@ import type { StructuredError } from "@/lib/error-codes"
 import { groupMessages } from "@/lib/message-grouper"
 import { parseStreamEvent, type StreamEvent, type UIMessage } from "@/lib/message-parser"
 import { renderMessage } from "@/lib/message-renderer"
+import { isTerminalMode } from "@/types/guards/workspace"
 
 export default function ChatPage() {
   const [msg, setMsg] = useState("")
@@ -28,7 +29,7 @@ export default function ChatPage() {
 
   useEffect(() => {
     setMounted(true)
-    setIsTerminal(window.location.hostname.startsWith("terminal."))
+    setIsTerminal(isTerminalMode(window.location.hostname))
   }, [])
 
   useEffect(() => {

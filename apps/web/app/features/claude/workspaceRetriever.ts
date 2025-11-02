@@ -3,6 +3,7 @@ import path from "node:path"
 import { NextResponse } from "next/server"
 import { normalizeDomain } from "@/lib/domain-utils"
 import { ErrorCodes } from "@/lib/error-codes"
+import { isTerminalMode } from "@/types/guards/workspace"
 
 export interface WorkspaceRequest {
   host: string
@@ -35,7 +36,8 @@ export type WorkspaceResult =
 export function getWorkspace({ host, body, requestId }: WorkspaceRequest): WorkspaceResult {
   console.log(`[Workspace ${requestId}] Resolving workspace for host: ${host}`)
 
-  if (host.startsWith("terminal.")) {
+  // Check for terminal mode using centralized guard function
+  if (isTerminalMode(host)) {
     return getTerminalWorkspace(body, requestId)
   }
   return getHostnameWorkspace(host, requestId)
