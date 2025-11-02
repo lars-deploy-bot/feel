@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react"
 import { Button } from "@/components/ui/primitives/Button"
 import { normalizeDomain } from "@/lib/domain-utils"
 import { getErrorHelp, getErrorMessage } from "@/lib/error-codes"
+import { isTerminalMode } from "@/types/guards/workspace"
 
 function WorkspacePageContent() {
   const searchParams = useSearchParams()
@@ -23,7 +24,7 @@ function WorkspacePageContent() {
 
   useEffect(() => {
     setMounted(true)
-    const terminalMode = window.location.hostname.startsWith("terminal.")
+    const terminalMode = isTerminalMode(window.location.hostname)
     setIsTerminal(terminalMode)
 
     // If not terminal mode, redirect to chat

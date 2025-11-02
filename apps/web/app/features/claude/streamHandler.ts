@@ -24,7 +24,7 @@ export interface StreamOptions {
   }
   requestSignal?: AbortSignal
   onClose?: () => void
-  maxTurns?: number // For better error handling and user feedback
+  maxTurns?: number
 }
 
 /**
@@ -111,7 +111,6 @@ export function createClaudeStream({
         let sessionSaved = !!claudeOptions.resume // Already had one?
 
         try {
-          // Send initial status
           sendEvent("start", {
             host,
             cwd,

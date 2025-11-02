@@ -1,5 +1,6 @@
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
+import { isTerminalMode } from "@/types/guards/workspace"
 
 export function useWorkspace() {
   const router = useRouter()
@@ -9,7 +10,7 @@ export function useWorkspace() {
 
   useEffect(() => {
     setMounted(true)
-    setIsTerminal(window.location.hostname.startsWith("terminal."))
+    setIsTerminal(isTerminalMode(window.location.hostname))
   }, [])
 
   useEffect(() => {

@@ -128,12 +128,62 @@ switch (getMessageComponentType(message)) {
 }
 ```
 
+## Automatic File Ownership (Child Process Isolation)
+
+**Problem**: Files created by Claude SDK are owned by `root:root`, but site processes run as dedicated users (e.g., `site-two-goalive-nl`), causing permission errors.
+
+**Solution**: Automatic child process isolation for systemd-managed workspaces.
+
+### Detection (agent-child-runner.ts)
+
+```typescript
+export function shouldUseChildProcess(workspaceRoot: string): boolean {
+  const st = statSync(workspaceRoot)
+  return st.uid !== 0 && st.gid !== 0  // Non-root owner = systemd site
+}
+```
+
+### Execution Flow
+
+**Route logic** (`/api/claude/stream`):
+```typescript
+if (shouldUseChildProcess(cwd)) {
+  // Systemd workspace: spawn SDK in child process
+  const childStream = runAgentChild(cwd, { message, model, maxTurns })
+  // Convert NDJSON to SSE
+} else {
+  // Root-owned workspace: use in-process SDK (legacy)
+  createClaudeStream({ message, claudeOptions, ... })
+}
+```
+
+**Child runner** (`scripts/run-agent.mjs`):
+1. Spawned as root (can read `/root/` script)
+2. Immediately drops to workspace user:
+   ```javascript
+   process.setegid(targetGid)  // Kernel-level GID switch
+   process.seteuid(targetUid)  // Kernel-level UID switch
+   ```
+3. All file operations inherit process UID/GID
+4. SDK writes (tools + debug logs) owned by workspace user
+
+**Why it works**:
+- **Kernel enforcement**: After `seteuid()`, entire process runs as workspace user
+- **Catches everything**: Built-in SDK tools, debug logs, cache writes
+- **No patching needed**: ES module imports, internal SDK code all inherit process credentials
+- **Automatic**: Detects systemd workspaces by directory ownership
+
+**Locations**:
+- Parent wrapper: `apps/web/lib/agent-child-runner.ts`
+- Child runner: `apps/web/scripts/run-agent.mjs`
+- Route integration: `apps/web/app/api/claude/stream/route.ts` (line ~263)
+
 ## API Routes Summary
 
 | Endpoint | Auth | Async | Purpose |
 |----------|------|-------|---------|
 | POST `/api/claude` | ✓ | Polling | Full response (non-streaming) |
-| POST `/api/claude/stream` | ✓ | SSE | Streaming response (convo locking + session resume) |
+| POST `/api/claude/stream` | ✓ | SSE | Streaming response (convo locking + session resume + auto permissions) |
 | POST `/api/login` | ✗ | – | Passcode → session cookie |
 | POST `/api/verify` | ✓ | – | Check workspace dir exists |
 | POST `/api/files` | ✓ | – | (Likely unused file ops) |

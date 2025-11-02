@@ -1,5 +1,3 @@
-import { existsSync } from "node:fs"
-
 /**
  * Workspace and path validation guards
  * These guards prevent path traversal attacks and validate workspace constraints
@@ -7,10 +5,18 @@ import { existsSync } from "node:fs"
 
 /**
  * Check if a hostname is in terminal mode (requires explicit workspace)
- * Terminal mode hostnames start with "terminal."
+ * Terminal mode hostnames start with "terminal." or contain ".terminal."
+ *
+ * Examples:
+ * - terminal.goalive.nl → true
+ * - staging.terminal.goalive.nl → true
+ * - demo.goalive.nl → false
+ *
+ * TODO: This is not safe if someone creates a domain like bla.staging.terminal.goalive.nl.joost.nl
+ * Should validate that .terminal. is followed by a known domain (e.g., .terminal.goalive.nl)
  */
 export function isTerminalMode(host: string): boolean {
-  return host.startsWith("terminal.")
+  return host.startsWith("terminal.") || host.includes(".terminal.")
 }
 
 /**
@@ -33,20 +39,6 @@ export function isPathWithinWorkspace(normalizedPath: string, workspacePath: str
  */
 export function containsPathTraversal(path: string): boolean {
   return path.includes("..")
-}
-
-/**
- * Check if a workspace directory exists and is accessible
- */
-export function isWorkspaceAccessible(workspacePath: string): boolean {
-  return existsSync(workspacePath)
-}
-
-/**
- * Check if a file exists
- */
-export function fileExists(filePath: string): boolean {
-  return existsSync(filePath)
 }
 
 /**

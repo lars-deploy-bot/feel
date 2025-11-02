@@ -4,8 +4,10 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createClaudeStream, createSSEResponse } from "@/app/features/claude/streamHandler"
 import { getSystemPrompt } from "@/app/features/claude/systemPrompt"
 import { isInputSafe } from "@/app/features/handlers/formatMessage"
+import { runAgentChild, shouldUseChildProcess } from "@/lib/agent-child-runner"
 import { requireSessionUser } from "@/lib/auth"
 import { addCorsHeaders } from "@/lib/cors-utils"
+import { env } from "@/lib/env"
 import { ErrorCodes } from "@/lib/error-codes"
 import { logInput } from "@/lib/input-logger"
 import { SessionStoreMemory, sessionKey, tryLockConversation, unlockConversation } from "@/lib/sessionStore"
@@ -13,6 +15,7 @@ import { ensurePathWithinWorkspace, getWorkspace, type Workspace } from "@/lib/w
 import { resolveWorkspace } from "@/lib/workspace-utils"
 import { BodySchema, isToolAllowed } from "@/types/guards/api"
 import { hasSessionCookie } from "@/types/guards/auth"
+import { isTerminalMode } from "@/types/guards/workspace"
 
 export const runtime = "nodejs"
 
@@ -114,23 +117,19 @@ export async function POST(req: NextRequest) {
     const origin = req.headers.get("origin")
     console.log(`[Claude Stream ${requestId}] Host: ${host}`)
 
-    // Get workspace using new secure resolution
     let workspace: Workspace
     let cwd: string
 
     try {
-      if (host.startsWith("terminal.")) {
-        // Terminal mode: use existing resolver for custom workspace selection
+      if (isTerminalMode(host)) {
         const workspaceResult = resolveWorkspace(host, { ...body, workspace: requestWorkspace }, requestId, origin)
         if (!workspaceResult.success) {
           return workspaceResult.response
         }
         cwd = workspaceResult.workspace
-        // For terminal mode, we still need to get uid/gid info
         const stats = require("node:fs").statSync(cwd)
         workspace = { root: cwd, uid: stats.uid, gid: stats.gid, tenantId: host }
       } else {
-        // Hostname mode: use new secure resolution with canonical tenant mapping
         workspace = getWorkspace(host)
         cwd = workspace.root
       }
@@ -147,7 +146,6 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Log input for analytics (non-blocking)
     logInput({
       timestamp: new Date().toISOString(),
       userId: user.id,
@@ -159,7 +157,6 @@ export async function POST(req: NextRequest) {
       requestId,
     })
 
-    // Create session key for this conversation
     const convKey = sessionKey({
       userId: user.id,
       workspace: requestWorkspace,
@@ -167,7 +164,6 @@ export async function POST(req: NextRequest) {
     })
     console.log(`[Claude Stream ${requestId}] Session key: ${convKey}`)
 
-    // Try to lock conversation to prevent concurrent requests
     if (!tryLockConversation(convKey)) {
       console.log(`[Claude Stream ${requestId}] Conversation already in progress`)
       return NextResponse.json(
@@ -180,15 +176,13 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Add immediate unlock on HTTP abort
     req.signal?.addEventListener("abort", () => unlockConversation(convKey), { once: true })
 
-    // Check for existing session to resume
     const existingSessionId = await SessionStoreMemory.get(convKey)
     console.log(`[Claude Stream ${requestId}] Existing session: ${existingSessionId ? "found" : "none"}`)
 
     console.log(`[Claude Stream ${requestId}] Working directory: ${cwd}`)
-    console.log(`[Claude Stream ${requestId}] Claude model: ${process.env.CLAUDE_MODEL || "not set"}`)
+    console.log(`[Claude Stream ${requestId}] Claude model: ${env.CLAUDE_MODEL}`)
 
     const canUseTool: Options["canUseTool"] = async (toolName, input) => {
       console.log(`[Claude Stream ${requestId}] Tool requested: ${toolName}`)
@@ -204,7 +198,6 @@ export async function POST(req: NextRequest) {
 
       if (filePath) {
         try {
-          // Use new secure containment check
           ensurePathWithinWorkspace(filePath, workspace.root)
           console.log(`[Claude Stream ${requestId}] Path allowed: ${filePath}`)
         } catch (_containmentError) {
@@ -213,10 +206,9 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Add workspace context to the input for tools that need it
       const updatedInput = {
         ...input,
-        __workspace: workspace, // Internal context for our tools
+        __workspace: workspace,
       }
 
       const allow: PermissionResult = {
@@ -228,8 +220,7 @@ export async function POST(req: NextRequest) {
       return allow
     }
 
-    // Configure max turns limit (default 25, configurable via env)
-    const maxTurns = Number.parseInt(process.env.CLAUDE_MAX_TURNS || "25", 10)
+    const maxTurns = Number.parseInt(env.CLAUDE_MAX_TURNS, 10)
     if (Number.isNaN(maxTurns) || maxTurns < 1) {
       console.warn(`[Claude Stream ${requestId}] Invalid CLAUDE_MAX_TURNS, using default: 25`)
     }
@@ -250,31 +241,143 @@ export async function POST(req: NextRequest) {
         additionalContext: body.additionalContext,
       }),
       settingSources: ["project"],
-      model: process.env.CLAUDE_MODEL,
-      // Resume existing session if we have one
+      model: env.CLAUDE_MODEL,
       ...(existingSessionId ? { resume: existingSessionId } : {}),
     }
 
     console.log(`[Claude Stream ${requestId}] Creating stream...`)
 
-    // Create and return SSE stream
-    const { stream } = createClaudeStream({
-      message,
-      claudeOptions,
-      requestId,
-      host,
-      cwd,
-      user,
-      conversation: {
-        key: convKey,
-        store: SessionStoreMemory,
-      },
-      requestSignal: req.signal,
-      onClose: () => unlockConversation(convKey),
-      maxTurns: effectiveMaxTurns, // Pass max turns for better error handling
-    })
+    const useChildProcess = shouldUseChildProcess(cwd)
+    console.log(`[Claude Stream ${requestId}] Use child process: ${useChildProcess}`)
 
-    return createSSEResponse(stream)
+    if (useChildProcess) {
+      console.log(`[Claude Stream ${requestId}] Using child process runner`)
+
+      const childStream = runAgentChild(cwd, {
+        message,
+        model: env.CLAUDE_MODEL,
+        maxTurns: effectiveMaxTurns,
+        resume: existingSessionId || undefined,
+        systemPrompt: claudeOptions.systemPrompt
+      })
+
+      const encoder = new TextEncoder()
+      const decoder = new TextDecoder()
+
+      const sseStream = new ReadableStream({
+        async start(controller) {
+          const reader = childStream.getReader()
+          let buffer = ""
+
+          try {
+            while (true) {
+              const { done, value } = await reader.read()
+              if (done) break
+
+              buffer += decoder.decode(value, { stream: true })
+              const lines = buffer.split("\n")
+              buffer = lines.pop() || ""
+
+              for (const line of lines) {
+                if (!line.trim()) continue
+
+                try {
+                  const childEvent = JSON.parse(line)
+
+                  const streamEvent = {
+                    type: childEvent.type,
+                    requestId,
+                    timestamp: new Date().toISOString(),
+                    data: childEvent.type === "message"
+                      ? { messageCount: childEvent.messageCount, messageType: childEvent.messageType, content: childEvent.content }
+                      : childEvent.type === "session"
+                      ? { sessionId: childEvent.sessionId }
+                      : childEvent.type === "complete"
+                      ? { totalMessages: childEvent.totalMessages, result: childEvent.result }
+                      : childEvent
+                  }
+
+                  const sseData = `event: bridge_${childEvent.type}\ndata: ${JSON.stringify(streamEvent)}\n\n`
+                  controller.enqueue(encoder.encode(sseData))
+
+                  if (childEvent.type === "session" && childEvent.sessionId) {
+                    await SessionStoreMemory.set(convKey, childEvent.sessionId)
+                  }
+                } catch (parseError) {
+                  console.error(`[Claude Stream ${requestId}] Failed to parse child output:`, line)
+                }
+              }
+            }
+
+            if (buffer.trim()) {
+              try {
+                const childEvent = JSON.parse(buffer)
+                const streamEvent = {
+                  type: childEvent.type,
+                  requestId,
+                  timestamp: new Date().toISOString(),
+                  data: childEvent.type === "message"
+                    ? { messageCount: childEvent.messageCount, messageType: childEvent.messageType, content: childEvent.content }
+                    : childEvent.type === "session"
+                    ? { sessionId: childEvent.sessionId }
+                    : childEvent.type === "complete"
+                    ? { totalMessages: childEvent.totalMessages, result: childEvent.result }
+                    : childEvent
+                }
+
+                const sseData = `event: bridge_${childEvent.type}\ndata: ${JSON.stringify(streamEvent)}\n\n`
+                controller.enqueue(encoder.encode(sseData))
+              } catch (parseError) {
+                console.error(`[Claude Stream ${requestId}] Failed to parse final buffer:`, buffer)
+              }
+            }
+
+            console.log(`[Claude Stream ${requestId}] Child process stream complete`)
+          } catch (error) {
+            console.error(`[Claude Stream ${requestId}] Child process stream error:`, error)
+            const errorData = `event: bridge_error\ndata: ${JSON.stringify({
+              type: "error",
+              requestId,
+              timestamp: new Date().toISOString(),
+              data: { error: "STREAM_ERROR", message: String(error) }
+            })}\n\n`
+            controller.enqueue(encoder.encode(errorData))
+          } finally {
+            unlockConversation(convKey)
+            controller.close()
+          }
+        }
+      })
+
+      return new Response(sseStream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache, no-transform",
+          "Connection": "keep-alive",
+          "X-Accel-Buffering": "no"
+        }
+      })
+    } else {
+      console.log(`[Claude Stream ${requestId}] Using standard in-process stream`)
+
+      const { stream } = createClaudeStream({
+        message,
+        claudeOptions,
+        requestId,
+        host,
+        cwd,
+        user,
+        conversation: {
+          key: convKey,
+          store: SessionStoreMemory,
+        },
+        requestSignal: req.signal,
+        onClose: () => unlockConversation(convKey),
+        maxTurns: effectiveMaxTurns,
+      })
+
+      return createSSEResponse(stream)
+    }
   } catch (outerError) {
     console.error(`[Claude Stream ${requestId}] Outer catch - request processing failed:`, outerError)
 
