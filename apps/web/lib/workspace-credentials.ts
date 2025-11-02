@@ -10,7 +10,7 @@
  */
 
 import { statSync, realpathSync, lstatSync, constants, mkdirSync, writeFileSync, chmodSync, existsSync } from 'node:fs';
-import { dirname, join, sep } from 'node:path';
+import { dirname, join, sep, resolve, normalize } from 'node:path';
 
 // ============================================================================
 // Types & Constants
@@ -72,6 +72,17 @@ function verifyPathSecurity(filePath: string, workspacePath: string): void {
   // Get real path of workspace (resolve any symlinks in workspace itself)
   const wsRoot = realpathSync(workspacePath);
 
+  // CRITICAL: Resolve path logically FIRST to catch path traversal attempts early
+  // This catches ../../../etc/evil.txt BEFORE any filesystem operations
+  // normalize() collapses .. and . segments WITHOUT touching filesystem
+  const absolutePath = filePath.startsWith(sep) ? filePath : join(wsRoot, filePath);
+  const normalizedPath = normalize(absolutePath);
+
+  // Check if normalized path is within workspace
+  if (!normalizedPath.startsWith(wsRoot + sep) && normalizedPath !== wsRoot) {
+    throw new Error(`Path escapes workspace: ${filePath} -> ${normalizedPath} not under ${wsRoot}`);
+  }
+
   // Check if parent directory exists (file may not exist yet for write)
   const dir = dirname(filePath);
 
@@ -79,8 +90,8 @@ function verifyPathSecurity(filePath: string, workspacePath: string): void {
   try {
     const realDir = realpathSync(dir);
 
-    // Must be within workspace
-    if (!realDir.startsWith(wsRoot + sep)) {
+    // Must be within workspace (or exactly the workspace root)
+    if (!realDir.startsWith(wsRoot + sep) && realDir !== wsRoot) {
       throw new Error(`Path escapes workspace: ${filePath} -> ${realDir} not under ${wsRoot}`);
     }
 

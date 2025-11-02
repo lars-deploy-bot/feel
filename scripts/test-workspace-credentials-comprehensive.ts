@@ -392,11 +392,13 @@ async function main() {
   }
   logSuccess(`Workspace owned by: UID ${workspaceCreds.uid}, GID ${workspaceCreds.gid}`);
 
-  // Setup test directory
+  // Setup test directory (as workspace user to avoid permission issues)
   const testDir = join(workspace, 'test-comprehensive');
   cleanup(testDir);
-  mkdirSync(testDir, { recursive: true });
-  chmodSync(testDir, 0o755);
+
+  // Create test directory as workspace user, not root
+  const { mkdirSyncAsWorkspaceUser } = await import('../apps/web/lib/workspace-credentials');
+  mkdirSyncAsWorkspaceUser(testDir, workspace);
 
   logInfo(`Test directory: ${testDir}\n`);
 
