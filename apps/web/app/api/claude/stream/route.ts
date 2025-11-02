@@ -327,7 +327,9 @@ export async function POST(req: NextRequest) {
 
                 const sseData = `event: bridge_${childEvent.type}\ndata: ${JSON.stringify(streamEvent)}\n\n`
                 controller.enqueue(encoder.encode(sseData))
-              } catch {}
+              } catch (parseError) {
+                console.error(`[Claude Stream ${requestId}] Failed to parse final buffer:`, buffer)
+              }
             }
 
             console.log(`[Claude Stream ${requestId}] Child process stream complete`)

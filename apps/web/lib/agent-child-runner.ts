@@ -1,8 +1,6 @@
 /**
- * Agent Child Process Runner
- *
- * Spawns Claude Agent SDK in a child process running as the workspace user.
- * This ensures all file operations inherit correct ownership.
+ * Spawns Claude Agent SDK in a child process with workspace user credentials.
+ * Ensures all file operations inherit correct ownership.
  */
 
 import { spawn } from "node:child_process"
@@ -21,12 +19,8 @@ interface AgentRequest {
   maxTurns?: number
   resume?: string
   systemPrompt?: string | { type: "preset"; preset: "claude_code"; append?: string }
-  [key: string]: any
 }
 
-/**
- * Get workspace owner credentials from directory stats
- */
 function getWorkspaceCredentials(workspaceRoot: string): WorkspaceCredentials {
   const st = statSync(workspaceRoot)
 
@@ -37,9 +31,6 @@ function getWorkspaceCredentials(workspaceRoot: string): WorkspaceCredentials {
   return { uid: st.uid, gid: st.gid }
 }
 
-/**
- * Check if workspace should use child process (has dedicated non-root user)
- */
 export function shouldUseChildProcess(workspaceRoot: string): boolean {
   try {
     const st = statSync(workspaceRoot)
@@ -49,13 +40,6 @@ export function shouldUseChildProcess(workspaceRoot: string): boolean {
   }
 }
 
-/**
- * Run Claude Agent in a child process as the workspace user
- *
- * @param workspaceRoot - Absolute path to workspace directory
- * @param payload - Agent request payload
- * @returns ReadableStream of NDJSON events
- */
 export function runAgentChild(
   workspaceRoot: string,
   payload: AgentRequest

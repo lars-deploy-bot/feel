@@ -1,6 +1,6 @@
 /**
- * Environment variable validation
- * T3 OSS-style validation - validates at build/startup time
+ * Environment variable validation (T3 OSS pattern)
+ * Validates required vars at build/startup time
  */
 
 interface Env {

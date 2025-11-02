@@ -2,13 +2,13 @@
 /**
  * Child Process Agent Runner
  *
- * Runs Claude Agent SDK as the workspace user (not root).
- * All file operations inherit the correct UID/GID from the process.
+ * Runs Claude Agent SDK as the workspace user.
+ * Spawned by parent route handler with workspace credentials.
  *
- * Usage: Spawned by parent route with:
- *   - stdin: JSON request
- *   - stdout: NDJSON events
- *   - stderr: errors/logs
+ * Protocol:
+ *   stdin:  JSON request payload
+ *   stdout: NDJSON event stream
+ *   stderr: Diagnostic logs
  */
 
 import { mkdirSync } from "node:fs"
@@ -54,19 +54,19 @@ async function readStdinJson() {
     console.error(`[runner] Running as UID:${process.getuid()} GID:${process.getgid()}`)
     console.error(`[runner] API key present: ${process.env.ANTHROPIC_API_KEY ? 'yes' : 'no'}`)
 
-    const input = await readStdinJson()
-    console.error(`[runner] Received request: ${input.message?.substring(0, 50)}...`)
+    const request = await readStdinJson()
+    console.error(`[runner] Received request: ${request.message?.substring(0, 50)}...`)
 
-    const q = query({
-      prompt: input.message,
+    const agentQuery = query({
+      prompt: request.message,
       options: {
         cwd: process.cwd(),
-        model: input.model,
-        maxTurns: input.maxTurns || 25,
+        model: request.model,
+        maxTurns: request.maxTurns || 25,
         permissionMode: "acceptEdits",
         allowedTools: ["Write", "Edit", "Read", "Glob", "Grep"],
-        systemPrompt: input.systemPrompt,
-        resume: input.resume
+        systemPrompt: request.systemPrompt,
+        resume: request.resume
       }
     })
 
@@ -74,23 +74,23 @@ async function readStdinJson() {
     let sessionId = null
     let queryResult = null
 
-    for await (const m of q) {
+    for await (const message of agentQuery) {
       messageCount++
 
-      if (m.type === 'system' && !sessionId) {
-        const match = JSON.stringify(m).match(/"session_id":"([^"]+)"/)
+      if (message.type === 'system' && !sessionId) {
+        const match = JSON.stringify(message).match(/"session_id":"([^"]+)"/)
         if (match) sessionId = match[1]
       }
 
-      if (m.type === 'result') {
-        queryResult = m
+      if (message.type === 'result') {
+        queryResult = message
       }
 
       process.stdout.write(JSON.stringify({
         type: "message",
         messageCount,
-        messageType: m.type,
-        content: m
+        messageType: message.type,
+        content: message
       }) + "\n")
     }
 
