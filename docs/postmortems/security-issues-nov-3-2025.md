@@ -15,11 +15,13 @@ Two interconnected security issues were discovered and resolved on November 3, 2
 1. **Tool Permission Bypass**: Users had access to 14+ tools (Bash, Task, WebSearch, etc.) instead of the intended 8 safe tools (Write, Edit, Read, Glob, Grep, + 3 MCP tools)
 2. **OAuth Credential Failure**: Claude Bridge child processes couldn't authenticate with Claude Code due to environment variable conflicts and file permission issues
 
-The first issue exposed dangerous tools to users. The second issue occurred during debugging attempts to fix the first. Both issues had the **same root cause**: improper environment variable handling in the child process spawner.
+The first issue exposed dangerous tools to users. The second issue occurred during debugging attempts to fix the first. These were **separate problems with different root causes**: Issue #1 was caused by `settingSources` overriding the `allowedTools` whitelist, while Issue #2 was caused by `ANTHROPIC_API_KEY` environment variable forcing direct API mode and credential access problems after privilege drop.
 
 ---
 
 ## Issue #1: Tool Permission Bypass
+
+**Note**: This issue was caused by `settingSources` overriding the `allowedTools` whitelist. The OAuth authentication failure (Issue #2 below) was a separate problem with different root causes. Fixing `settingSources` alone resolved the tool bypass but did not fix the OAuth issue.
 
 ### The Problem
 

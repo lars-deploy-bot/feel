@@ -89,6 +89,7 @@ async function readStdinJson() {
           "mcp__tools__list_guides",
           "mcp__tools__get_guide",
         ],
+        settingSources: [], // Disabled: prevents SDK from overriding allowedTools whitelist
         mcpServers: {
           "workspace-management": workspaceManagementMcp,
           tools: toolsMcp,

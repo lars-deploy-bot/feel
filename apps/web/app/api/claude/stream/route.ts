@@ -250,7 +250,7 @@ export async function POST(req: NextRequest) {
         workspaceFolder: cwd,
         additionalContext: body.additionalContext,
       }),
-      settingSources: ["project"],
+      settingSources: [], // Disabled: prevents SDK from overriding allowedTools whitelist
       model: env.CLAUDE_MODEL,
       mcpServers: {
         "workspace-management": workspaceManagementMcp,
