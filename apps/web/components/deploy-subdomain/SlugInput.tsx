@@ -1,6 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
+import { useEffect, useState } from "react"
 import type { FieldErrors, UseFormRegister } from "react-hook-form"
 
 const fieldVariants = {
@@ -24,7 +25,34 @@ interface SlugInputProps {
 }
 
 export function SlugInput({ register, errors, watchSlug, isDeploying }: SlugInputProps) {
-  const isValid = watchSlug && /^[a-z0-9]([a-z0-9-]{1,18}[a-z0-9])?$/.test(watchSlug)
+  const [isAvailable, setIsAvailable] = useState<boolean | null>(null)
+  const [isChecking, setIsChecking] = useState(false)
+
+  const isFormatValid = watchSlug && /^[a-z0-9]([a-z0-9-]{1,18}[a-z0-9])?$/.test(watchSlug)
+
+  // Check availability when slug changes
+  useEffect(() => {
+    if (!isFormatValid) {
+      setIsAvailable(null)
+      return
+    }
+
+    setIsChecking(true)
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/sites/check-availability?slug=${encodeURIComponent(watchSlug)}`)
+        const data = await res.json()
+        setIsAvailable(data.available)
+      } catch (error) {
+        console.error("Failed to check availability:", error)
+        setIsAvailable(null)
+      } finally {
+        setIsChecking(false)
+      }
+    }, 1000) // Debounce 1 second
+
+    return () => clearTimeout(timer)
+  }, [watchSlug, isFormatValid])
 
   return (
     <motion.div variants={fieldVariants}>
@@ -49,7 +77,7 @@ export function SlugInput({ register, errors, watchSlug, isDeploying }: SlugInpu
           className={`w-full px-4 py-3 rounded-lg border-2 transition-colors outline-none font-medium pr-32 ${
             errors.slug
               ? "border-red-300 bg-red-50 text-gray-900"
-              : isValid
+              : isAvailable === true
                 ? "border-green-300 bg-green-50 text-gray-900"
                 : "border-gray-200 bg-gray-50 text-gray-900 hover:border-gray-300 focus:border-blue-500 focus:bg-blue-50"
           } disabled:opacity-50 disabled:cursor-not-allowed`}
@@ -77,13 +105,33 @@ export function SlugInput({ register, errors, watchSlug, isDeploying }: SlugInpu
         </motion.p>
       )}
 
-      {isValid && !errors.slug && (
+      {isFormatValid && !errors.slug && isChecking && (
+        <motion.p
+          initial={{ opacity: 0, y: -5 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-1.5 text-gray-500 text-xs font-medium"
+        >
+          Checking availability...
+        </motion.p>
+      )}
+
+      {isFormatValid && !errors.slug && !isChecking && isAvailable === true && (
         <motion.p
           initial={{ opacity: 0, y: -5 }}
           animate={{ opacity: 1, y: 0 }}
           className="mt-1.5 text-green-600 text-xs font-medium"
         >
           ✓ Available
+        </motion.p>
+      )}
+
+      {isFormatValid && !errors.slug && !isChecking && isAvailable === false && (
+        <motion.p
+          initial={{ opacity: 0, y: -5 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-1.5 text-red-600 text-xs font-medium"
+        >
+          ✗ Already taken
         </motion.p>
       )}
     </motion.div>

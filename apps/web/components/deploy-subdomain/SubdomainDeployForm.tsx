@@ -66,6 +66,20 @@ export function SubdomainDeployForm() {
     setDeploymentStatus(null)
 
     try {
+      // Final availability check before deployment
+      const availCheck = await fetch(`/api/sites/check-availability?slug=${encodeURIComponent(data.slug.toLowerCase())}`)
+      const availData = await availCheck.json()
+
+      if (!availData.available) {
+        setDeploymentStatus({
+          ok: false,
+          message: "This subdomain is no longer available",
+          error: "SLUG_TAKEN",
+        })
+        setIsDeploying(false)
+        return
+      }
+
       const response = await fetch("/api/deploy-subdomain", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
