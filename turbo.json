@@ -3,7 +3,9 @@
     "dev": {
       "cache": false
     },
-    "build": {},
+    "build": {
+      "dependsOn": ["^build"]
+    },
     "start": {},
     "lint": {
       "dependsOn": ["^lint"]
