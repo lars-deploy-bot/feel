@@ -51,7 +51,8 @@ export function runAgentChild(workspaceRoot: string, payload: AgentRequest): Rea
   const child = spawn(process.execPath, [runnerPath], {
     env: {
       PATH: process.env.PATH,
-      ANTHROPIC_API_KEY: env.ANTH_API_SECRET,
+      HOME: process.env.HOME,
+      // Don't pass ANTHROPIC_API_KEY - let Claude Code use OAuth credentials
       NODE_ENV: process.env.NODE_ENV,
       TARGET_UID: String(uid),
       TARGET_GID: String(gid),

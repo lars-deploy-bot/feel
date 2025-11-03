@@ -11,7 +11,8 @@
  *   stderr: Diagnostic logs
  */
 
-import { mkdirSync } from "node:fs"
+import { mkdirSync, copyFileSync, existsSync, chownSync } from "node:fs"
+import { join } from "node:path"
 import process from "node:process"
 import { toolsMcp, workspaceManagementMcp } from "@alive-brug/tools"
 import { query } from "@anthropic-ai/claude-agent-sdk"
@@ -30,6 +31,23 @@ async function readStdinJson() {
     const targetGid = process.env.TARGET_GID && Number(process.env.TARGET_GID)
     const targetCwd = process.env.TARGET_CWD
 
+    // Copy Claude credentials to temp location BEFORE dropping privileges
+    const originalHome = process.env.HOME || "/root"
+    const tempHome = `/tmp/claude-home-${targetUid}`
+    const credSource = join(originalHome, ".claude", ".credentials.json")
+    const credDest = join(tempHome, ".claude", ".credentials.json")
+
+    if (existsSync(credSource)) {
+      mkdirSync(join(tempHome, ".claude"), { recursive: true, mode: 0o755 })
+      copyFileSync(credSource, credDest)
+      // Chown the entire temp home directory and all contents
+      chownSync(tempHome, targetUid, targetGid)
+      chownSync(join(tempHome, ".claude"), targetUid, targetGid)
+      chownSync(credDest, targetUid, targetGid)
+      process.env.HOME = tempHome
+      console.error(`[runner] Copied credentials to ${tempHome}`)
+    }
+
     if (targetGid && process.setgid) {
       process.setgid(targetGid)
       console.error(`[runner] Dropped to GID: ${targetGid}`)
@@ -47,13 +65,9 @@ async function readStdinJson() {
     }
 
     console.error(`[runner] Working directory: ${process.cwd()}`)
-
-    const debugHome = `/tmp/claude-debug-${process.getuid()}`
-    mkdirSync(debugHome, { recursive: true, mode: 0o755 })
-    process.env.HOME = debugHome
-    console.error(`[runner] HOME set to: ${debugHome}`)
     console.error(`[runner] Running as UID:${process.getuid()} GID:${process.getgid()}`)
-    console.error(`[runner] API key present: ${process.env.ANTHROPIC_API_KEY ? "yes" : "no"}`)
+    console.error(`[runner] HOME: ${process.env.HOME}`)
+    console.error(`[runner] Using OAuth credentials from ${process.env.HOME}/.claude/.credentials.json`)
 
     const request = await readStdinJson()
     console.error(`[runner] Received request: ${request.message?.substring(0, 50)}...`)
