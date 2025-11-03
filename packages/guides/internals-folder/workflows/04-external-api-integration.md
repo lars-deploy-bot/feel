@@ -27,9 +27,9 @@ START: User wants external API integration
 │   │   ├─→ Public API: Can call from frontend
 │   │   └─→ Webhook-based: Need endpoint setup
 │   │
-│   └─→ Check: Is there a Lovable integration?
+│   └─→ Check: Is there a Alive integration?
 │       ├─→ Stripe: Use stripe--enable_stripe
-│       ├─→ OpenAI + want Lovable AI: Check if should use Lovable AI instead
+│       ├─→ OpenAI + want Alive AI: Check if should use Alive AI instead
 │       └─→ Others: Manual integration
 │
 ├─→ PREREQUISITE SETUP:
@@ -48,10 +48,10 @@ START: User wants external API integration
 │       └─→ WAIT for user to add secret
 │
 ├─→ IMPLEMENTATION STRATEGY:
-│   ├─→ IF Lovable Integration exists:
+│   ├─→ IF Alive Integration exists:
 │   │   └─→ Use integration tool (e.g., stripe--enable_stripe)
 │   │
-│   ├─→ IF Simple API (e.g., OpenAI via Lovable AI):
+│   ├─→ IF Simple API (e.g., OpenAI via Alive AI):
 │   │   ├─→ Create edge function
 │   │   └─→ Create frontend hook
 │   │
@@ -85,9 +85,9 @@ START: User wants external API integration
 Request: "Add AI text generation with OpenAI"
 
 ```
-1. Check: Should use Lovable AI instead?
+1. Check: Should use Alive AI instead?
    ├─→ User wants specific OpenAI features: Use OpenAI
-   └─→ Generic AI needs: Suggest Lovable AI
+   └─→ Generic AI needs: Suggest Alive AI
    
 2. IF OpenAI:
    3. Check: Backend enabled?
@@ -221,7 +221,7 @@ Request: "Integrate with [NewAPI]"
 3. **Secrets before implementation** - Wait for user to add keys
 4. **Search for unknown APIs** - Don't guess implementation
 5. **Parallel creation** - Edge function + frontend code simultaneously
-6. **Check for Lovable integrations** - Use built-in tools when available
+6. **Check for Alive integrations** - Use built-in tools when available
 7. **Webhook functions are public** - Set verify_jwt = false
 8. **Provide webhook URLs** - User needs to configure in external service
 
@@ -230,7 +230,7 @@ Request: "Integrate with [NewAPI]"
 ❌ Exposing API keys in frontend code
 ❌ Not using edge functions for secret API calls
 ❌ Creating implementation before secrets are added
-❌ Not checking for Lovable integrations (Stripe, Lovable AI)
+❌ Not checking for Alive integrations (Stripe, Alive AI)
 ❌ Forgetting to set verify_jwt = false for webhooks
 ❌ Not researching unknown APIs before implementing
 ❌ Sequential writes when parallel is possible

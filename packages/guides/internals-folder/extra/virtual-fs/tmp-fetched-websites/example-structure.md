@@ -8,7 +8,7 @@ Content fetched from websites when AI uses `lov-fetch-website(url, formats)`.
 
 ```
 tmp://fetched-websites/
-├── docs-lovable-dev-20250127-142301/
+├── docs-Alive-dev-20250127-142301/
 │   ├── content.md              [Markdown formatted content]
 │   ├── content.html            [Raw HTML source]
 │   └── screenshot.png          [Visual capture of page]
@@ -30,8 +30,8 @@ tmp://fetched-websites/
 ## How Files Get Here
 
 1. **AI needs web content** (e.g., to answer your question, find code examples)
-2. **AI calls** `lov-fetch-website("https://docs.lovable.dev/features/cloud", "markdown,screenshot")`
-3. **Lovable's fetcher**:
+2. **AI calls** `lov-fetch-website("https://docs.Alive.dev/features/cloud", "markdown,screenshot")`
+3. **Alive's fetcher**:
    - Downloads the webpage
    - Converts to markdown (clean, readable)
    - Optionally saves raw HTML
@@ -52,9 +52,9 @@ Content converted to clean markdown:
 
 **Example:**
 ```markdown
-# Lovable Cloud Documentation
+# Alive Cloud Documentation
 
-Lovable Cloud is a full-stack platform...
+Alive Cloud is a full-stack platform...
 
 ## Features
 
@@ -63,7 +63,7 @@ Lovable Cloud is a full-stack platform...
 - File storage
 - Edge functions
 
-[Learn more](https://docs.lovable.dev)
+[Learn more](https://docs.Alive.dev)
 ```
 
 ### `html` (Raw Source)
@@ -97,19 +97,19 @@ PNG screenshot of page:
 
 ### Fetch Documentation
 ```typescript
-// User asks: "How do I implement Lovable AI?"
+// User asks: "How do I implement Alive AI?"
 
 // AI calls:
 (
-  "https://docs.lovable.dev/features/ai",
+  "https://docs.Alive.dev/features/ai",
   "markdown"
 )
 
 // Results:
-// tmp://fetched-websites/docs-lovable-dev-[timestamp]/content.md
+// tmp://fetched-websites/docs-Alive-dev-[timestamp]/content.md
 
 // AI reads:
-lov-view("tmp://fetched-websites/docs-lovable-dev-[timestamp]/content.md")
+lov-view("tmp://fetched-websites/docs-Alive-dev-[timestamp]/content.md")
 
 // AI responds with implementation guidance
 ```
@@ -169,7 +169,7 @@ lov-fetch-website(
 ```
 1. AI decides web content needed
 2. AI calls: lov-fetch-website(url, formats)
-3. Lovable backend:
+3. Alive backend:
    - Sends HTTP request
    - Downloads page
    - Renders JavaScript if needed
@@ -252,7 +252,7 @@ lov-write("src/hooks/useRealtimeAPI.ts", implementation_based_on_docs)
 
 - ✅ Only public web pages
 - ✅ Respects robots.txt
-- ✅ User-agent identified as Lovable
+- ✅ User-agent identified as Alive
 - ❌ Cannot fetch password-protected pages
 - ❌ Cannot fetch internal networks
 

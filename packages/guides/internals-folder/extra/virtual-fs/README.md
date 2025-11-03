@@ -32,7 +32,7 @@ tmp://fetched-websites/
 │   ├── content.md          → Markdown content
 │   ├── content.html        → Raw HTML
 │   └── screenshot.png      → Visual capture
-├── docs-lovable-dev-20250127-142405/
+├── docs-Alive-dev-20250127-142405/
 │   └── content.md
 └── ...
 ```
@@ -40,10 +40,10 @@ tmp://fetched-websites/
 **Usage:**
 ```typescript
 // AI calls:
-lov-fetch-website("https://docs.lovable.dev/features/cloud", "markdown,screenshot")
+lov-fetch-website("https://docs.Alive.dev/features/cloud", "markdown,screenshot")
 
 // Results stored in:
-// tmp://fetched-websites/docs-lovable-dev-[timestamp]/
+// tmp://fetched-websites/docs-Alive-dev-[timestamp]/
 ```
 
 ### `user-uploads://`
@@ -205,7 +205,7 @@ virtual-fs/
 ## Common Questions
 
 **Q: Where are these files stored?**  
-A: In Lovable's infrastructure, isolated per conversation. Not in your project.
+A: In Alive's infrastructure, isolated per conversation. Not in your project.
 
 **Q: Can I access them after the conversation ends?**  
 A: No, they're automatically cleaned up. Copy important files to your project.

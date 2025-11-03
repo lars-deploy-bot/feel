@@ -1,6 +1,6 @@
 # Execution Model
 
-## How Lovable AI Processes Requests
+## How Alive AI Processes Requests
 
 ### Complete Request Lifecycle
 
@@ -9,7 +9,7 @@
 │                    1. REQUEST INGESTION                          │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
-│  User Message → Lovable Platform → AI Agent Runtime             │
+│  User Message → Alive Platform → AI Agent Runtime             │
 │                                                                  │
 │  Context Injection:                                              │
 │  • <current-code>        → Project files (summary or full)      │

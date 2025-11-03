@@ -2,7 +2,7 @@
 
 ## Overview
 
-Refactoring improves code structure without changing functionality. This guide establishes a systematic approach to refactoring in Lovable projects, ensuring maintainability and preventing regressions.
+Refactoring improves code structure without changing functionality. This guide establishes a systematic approach to refactoring in Alive projects, ensuring maintainability and preventing regressions.
 
 ## When to Refactor
 

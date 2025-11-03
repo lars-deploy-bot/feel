@@ -77,14 +77,14 @@ npx cap init
 
 ### Configuration
 Use these specific values in your Capacitor config:
-- **App ID**: `app.lovable.5adf1230fbca407abaa3bffd7d0b7a01`
+- **App ID**: `app.Alive.5adf1230fbca407abaa3bffd7d0b7a01`
 - **App Name**: `trusted-agent-ops`
 
 ### Hot Reload Setup
 Enable live preview by adding this to your configuration:
 ```json
 "server": {
-  "url": "https://5adf1230-fbca-407a-baa3-bffd7d0b7a01.lovableproject.com?forceHideBadge=true",
+  "url": "https://5adf1230-fbca-407a-baa3-bffd7d0b7a01.Aliveproject.com?forceHideBadge=true",
   "cleartext": true
 }
 ```

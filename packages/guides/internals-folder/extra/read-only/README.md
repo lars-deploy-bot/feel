@@ -2,7 +2,7 @@
 
 ## What Are Read-Only Files?
 
-These are system-managed configuration files that the Lovable AI agent **cannot directly modify**. Instead, the AI uses specialized tools to make changes:
+These are system-managed configuration files that the Alive AI agent **cannot directly modify**. Instead, the AI uses specialized tools to make changes:
 
 - `package.json` → Modified via `lov-add-dependency()` / `lov-remove-dependency()`
 - Other config files → Generally not modified by AI
@@ -27,7 +27,7 @@ public/placeholder.svg → Placeholder image (system-provided)
 ## Why Are They Read-Only?
 
 1. **System Integrity**: These files control build and runtime behavior
-2. **Version Control**: Lovable manages these files across project versions
+2. **Version Control**: Alive manages these files across project versions
 3. **Consistency**: Ensures all projects follow the same patterns
 4. **Tool-Based Modification**: Changes through tools ensure validation
 
@@ -58,7 +58,7 @@ lov-write("tsconfig.json", newConfig)
 
 // ✅ PRE-CONFIGURED
 // TypeScript config is set up optimally
-// If changes needed, contact Lovable support
+// If changes needed, contact Alive support
 ```
 
 ## Writable Alternatives
@@ -101,6 +101,6 @@ A: No. Files like `index.css`, `vite.config.ts`, `tailwind.config.ts` CAN be mod
 
 ## See Also
 
-- **Tool API**: See `.lovable-internals/tool-api/` for all tools
+- **Tool API**: See `.Alive-internals/tool-api/` for all tools
 - **Writable Files**: Everything else in your project
-- **Virtual FS**: See `.lovable-internals/virtual-fs/` for temporary files
+- **Virtual FS**: See `.Alive-internals/virtual-fs/` for temporary files

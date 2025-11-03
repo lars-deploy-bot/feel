@@ -2,7 +2,7 @@
 
 ## Overview
 
-Proper secrets management is critical for application security. This guide covers how to handle API keys, tokens, and other sensitive credentials in Lovable projects.
+Proper secrets management is critical for application security. This guide covers how to handle API keys, tokens, and other sensitive credentials in Alive projects.
 
 ## Understanding Secret Types
 
@@ -29,12 +29,12 @@ const GOOGLE_MAPS_KEY = "AIza..."
 
 **Handling**:
 - Must use backend edge functions
-- Store in Lovable Cloud secrets
+- Store in Alive Cloud secrets
 - Access via environment variables
 
 ## Decision Tree
 
-### Is Lovable Cloud Connected?
+### Is Alive Cloud Connected?
 
 #### NO - Cloud Not Connected
 
@@ -51,16 +51,16 @@ const MAPBOX_PUBLIC_TOKEN = "pk.eyJ1..."
 
 **Action required**:
 1. Explain security risks of storing secrets in frontend
-2. Recommend connecting to Lovable Cloud
+2. Recommend connecting to Alive Cloud
 3. Wait for user confirmation before proceeding
 
 **Important exception**: If the user explicitly confirms they understand the risks and want to proceed anyway, document the security implications clearly.
 
 #### YES - Cloud Connected
 
-Use Lovable Cloud secrets management for all private keys.
+Use Alive Cloud secrets management for all private keys.
 
-## Lovable Cloud Secrets Management
+## Alive Cloud Secrets Management
 
 ### Adding Secrets
 
@@ -266,7 +266,7 @@ serve(async (req) => {
 
 ### Development vs Production
 
-Lovable Cloud automatically handles environment separation:
+Alive Cloud automatically handles environment separation:
 - Development uses preview secrets
 - Production uses production secrets
 - No code changes needed
@@ -288,7 +288,7 @@ const stripeKey = Deno.env.get('STRIPE_SECRET_KEY') // sk_test_... in dev
 
 ### How to Rotate
 1. Generate new secret in service dashboard
-2. Use `secrets--update_secret` to update in Lovable
+2. Use `secrets--update_secret` to update in Alive
 3. Deploy changes
 4. Verify new secret works
 5. Revoke old secret in service dashboard
@@ -348,7 +348,7 @@ const data = await fetch('/api/function')
 **Actions**:
 1. Immediately revoke the secret in service dashboard
 2. Generate new secret
-3. Update in Lovable Cloud
+3. Update in Alive Cloud
 4. Use `git filter-branch` or BFG Repo-Cleaner to remove from history
 5. Force push cleaned history
 6. Notify team members to re-clone
@@ -358,7 +358,7 @@ const data = await fetch('/api/function')
 Before implementing any third-party service:
 
 - [ ] Identify which keys are public vs private
-- [ ] Ensure Lovable Cloud is connected (for private keys)
+- [ ] Ensure Alive Cloud is connected (for private keys)
 - [ ] Add secrets via `secrets--add_secret` tool
 - [ ] Create edge function to access secrets
 - [ ] Implement error handling for missing secrets

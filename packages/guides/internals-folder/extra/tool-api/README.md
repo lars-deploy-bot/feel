@@ -1,6 +1,6 @@
 # Tool API Reference
 
-## 31 Tools Available to Lovable AI
+## 31 Tools Available to Alive AI
 
 ### File Operations (7)
 - `lov-view(file_path, lines?)` - Read file contents
@@ -12,7 +12,7 @@
 - `lov-copy(source, destination)` - Copy file
 
 ### Backend Integration (6)
-<!-- SUPABASE DISABLED: - `supabase--enable()` - Enable Lovable Cloud -->
+<!-- SUPABASE DISABLED: - `supabase--enable()` - Enable Alive Cloud -->
 - `secrets--add_secret(secret_names[])` - Add environment variables
 - `secrets--update_secret(secret_names[])` - Update secrets
 - `secrets--delete_secret(secret_names[])` - Delete secrets

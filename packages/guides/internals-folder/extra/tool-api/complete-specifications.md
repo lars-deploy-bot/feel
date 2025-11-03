@@ -290,7 +290,7 @@ lov-copy("parsed-documents://doc-123/images/diagram.png", "docs/architecture.png
 ## Backend Integration (6 tools)
 
 <!-- SUPABASE DISABLED: ### `supabase--enable` -->
-<!-- SUPABASE DISABLED: Enable Lovable Cloud (provisions Supabase backend). -->
+<!-- SUPABASE DISABLED: Enable Alive Cloud (provisions Supabase backend). -->
 
 **Signature:**
 ```typescript
@@ -806,7 +806,7 @@ websearch--web_search(
 websearch--web_search("React Server Components tutorial")
 
 // Search specific domain
-websearch--web_search("site:docs.lovable.dev authentication")
+websearch--web_search("site:docs.Alive.dev authentication")
 
 // Get more results
 websearch--web_search("TypeScript best practices 2025", 10)
@@ -877,7 +877,7 @@ lov-fetch-website(url: string, formats: string): string[]
 
 **Parameters:**
 - `url` (required): Website URL to fetch
-  - Examples: `"https://docs.lovable.dev/features/cloud"`, `"https://github.com/user/repo"`
+  - Examples: `"https://docs.Alive.dev/features/cloud"`, `"https://github.com/user/repo"`
 - `formats` (required): Comma-separated format list
   - Options: `"markdown"`, `"html"`, `"screenshot"`
   - Examples: `"markdown"`, `"markdown,screenshot"`, `"markdown,html,screenshot"`

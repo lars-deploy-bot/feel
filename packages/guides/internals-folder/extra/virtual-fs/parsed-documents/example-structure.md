@@ -37,7 +37,7 @@ parsed-documents://
 
 1. **User uploads document** → Goes to `user-uploads://`
 2. **AI calls** `document--parse_document("user-uploads://doc.pdf")`
-3. **Lovable's parser**:
+3. **Alive's parser**:
    - Extracts all text (preserves structure)
    - Performs OCR on images/scanned pages
    - Extracts embedded images

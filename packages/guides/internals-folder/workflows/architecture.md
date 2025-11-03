@@ -3,7 +3,7 @@
 ## File System Overview
 
 ```
-lovable-project/
+Alive-project/
 ├── guidance/              # Tactical "How-To" Guides (30 files)
 │   ├── 01-custom-fonts-integration.md
 │   ├── 02-mobile-app-development-options.md
@@ -88,14 +88,14 @@ lovable-project/
 - "Why is the platform architected this way?"
 - Making architectural decisions
 - Understanding system-wide implications
-- Evaluating Lovable for production use
+- Evaluating Alive for production use
 
 ---
 
 ### Layer 3: `/workflows` - AI Agent Instructions
 
 **Purpose**: Executable decision trees for AI agents to follow when handling requests  
-**Audience**: Lovable AI agent (primary), engineers understanding AI behavior (secondary)  
+**Audience**: Alive AI agent (primary), engineers understanding AI behavior (secondary)  
 **Format**: Decision trees, tool sequences, conditional logic, parallel execution patterns
 
 **Characteristics:**
@@ -152,10 +152,10 @@ Anti-patterns to avoid
 ```
 
 **When to Use:**
-- Understanding how Lovable AI makes decisions
+- Understanding how Alive AI makes decisions
 - Debugging why AI chose certain approach
 - Contributing new workflow patterns
-- Training new AI agents on Lovable patterns
+- Training new AI agents on Alive patterns
 
 ---
 
@@ -204,7 +204,7 @@ User Request: "Add authentication to my app"
 → Start with `/guidance/[feature-name].md`  
 → Copy examples, adapt to your needs
 
-### "I need to understand how Lovable works"
+### "I need to understand how Alive works"
 → Start with `/core/01-platform-architecture.md`  
 → Read relevant core docs based on your needs
 
@@ -228,7 +228,7 @@ User Request: "Add authentication to my app"
 ### Guidance Files
 - **Versioning**: Per-file updates via git history
 - **Breaking Changes**: Rare (usually feature additions)
-<!-- SUPABASE DISABLED: - **Updates**: When Lovable/Supabase APIs change -->
+<!-- SUPABASE DISABLED: - **Updates**: When Alive/Supabase APIs change -->
 
 ### Core Files
 - **Versioning**: Per-file semantic versioning in frontmatter
@@ -377,7 +377,7 @@ Implementation guide: guidance/12-row-level-security-fundamentals.md
 - `lov-rename(old, new)` - Rename file
 
 **Backend:**
-<!-- SUPABASE DISABLED: - `supabase--enable()` - Enable Lovable Cloud -->
+<!-- SUPABASE DISABLED: - `supabase--enable()` - Enable Alive Cloud -->
 - `secrets--add_secret([keys])` - Add secure environment variables
 - `secrets--update_secret([keys])` - Update existing secrets
 
@@ -416,4 +416,4 @@ Navigate based on your role:
 - **AI Engineer**: Start with `/workflows`
 - **Debugging AI**: Check `/workflows` decision trees
 
-All three layers work together to provide comprehensive documentation for both human engineers and AI agents working on Lovable projects.
+All three layers work together to provide comprehensive documentation for both human engineers and AI agents working on Alive projects.

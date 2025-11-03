@@ -48,4 +48,4 @@ Use `font-display: swap` in your font loading strategy for improved perceived pe
 
 ---
 
-**Note**: Lovable makes font integration seamless - just describe your typography preferences and the platform handles the technical implementation!
+**Note**: Alive makes font integration seamless - just describe your typography preferences and the platform handles the technical implementation!

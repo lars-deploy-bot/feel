@@ -2,7 +2,7 @@
 
 ## Upload Constraints
 
-Lovable has specific limits for file uploads in the chat interface:
+Alive has specific limits for file uploads in the chat interface:
 
 ### Size and Quantity Limits
 - **Maximum file size**: 20MB per individual file

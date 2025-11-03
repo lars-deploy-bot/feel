@@ -1,8 +1,8 @@
-# SEO Best Practices for Lovable Applications
+# SEO Best Practices for Alive Applications
 
 ## Overview
 
-Search Engine Optimization (SEO) should be implemented automatically in every Lovable application. This guide covers essential SEO practices that must be applied to all pages and components.
+Search Engine Optimization (SEO) should be implemented automatically in every Alive application. This guide covers essential SEO practices that must be applied to all pages and components.
 
 ## Core SEO Requirements
 

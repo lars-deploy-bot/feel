@@ -15,7 +15,7 @@ The `@alive-brug/guides` package is an **MCP server** that gives Claude AI acces
 3. **Tools**: Claude can discover (`list_guides`) and read (`get_guide`) documentation
 4. **Integration**: The web app registers these tools, making them available during Claude conversations
 
-This architecture is inspired by Lovable AI's internal documentation system, adapted for the Claude Bridge multi-tenant platform.
+This architecture is inspired by Alive AI's internal documentation system, adapted for the Claude Bridge multi-tenant platform.
 
 ## Core Concept
 
@@ -293,7 +293,7 @@ packages/guides/
 
 2. **Filesystem-based Knowledge Base**: Guides are markdown files that can be edited without code changes
 
-3. **Category-based Organization**: Mimics Lovable AI's internal structure (30 guides, workflows, design system, knowledge base)
+3. **Category-based Organization**: Mimics Alive AI's internal structure (30 guides, workflows, design system, knowledge base)
 
 4. **Path Safety**: All file operations use Node.js path joining to prevent traversal attacks
 

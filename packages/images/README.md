@@ -216,7 +216,7 @@ bun run dev
 
 Design inspired by:
 - Patrick Collison's advice on scaling simple → complex
-- Lovable's multi-tenant storage patterns
+- Alive's multi-tenant storage patterns
 - Huurmatcher's compression pipeline
 
 ## License

@@ -130,7 +130,7 @@ Full schema: tool-results://table-schema-20250127-144520.json"
 
 3. Results are HUGE (10,000+ lines)
 
-4. Lovable saves to: tool-results://security-scan-[timestamp].json
+4. Alive saves to: tool-results://security-scan-[timestamp].json
 
 5. Chat shows:
    "Security scan complete. Found 12 issues.
@@ -301,7 +301,7 @@ Full results (10,253 lines): tool-results://security-scan-20250127-142301.json
 ```
 1. AI executes tool (e.g., security scan)
 2. Output is large (10,000+ lines)
-3. Lovable saves to tool-results://
+3. Alive saves to tool-results://
 4. Chat shows truncated preview + file path
 5. AI can read full file as needed
 6. Conversation ends → tool-results:// DELETED
@@ -339,6 +339,6 @@ A: No, deleted when conversation ends. Ask AI to save important info to project.
 
 ## See Also
 
-- **Security Scans**: See `.lovable-internals/tool-api/` for tool docs
+- **Security Scans**: See `.Alive-internals/tool-api/` for tool docs
 - **Debugging**: Console logs, network requests captured here
 - **File Search**: Large search results stored here

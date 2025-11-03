@@ -21,7 +21,7 @@
 
 <!-- SUPABASE DISABLED: ### Case 2: User Connected to Supabase or Cloud -->
 
-<!-- SUPABASE DISABLED: 1. Explain that Lovable uses Supabase/Cloud secrets feature -->
+<!-- SUPABASE DISABLED: 1. Explain that Alive uses Supabase/Cloud secrets feature -->
 2. Consider using the tool for adding secrets (displays button → modal for user input)
 <!-- SUPABASE DISABLED: 3. Use env variable from Supabase secrets in edge function or `.env` file (if publishable) -->
 

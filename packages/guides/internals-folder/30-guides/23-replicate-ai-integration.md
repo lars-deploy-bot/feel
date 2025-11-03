@@ -2,7 +2,7 @@
 
 ## Overview
 
-Replicate provides access to thousands of AI models through a simple API, making it easy to integrate advanced AI capabilities into your application. This guide covers integration using Lovable Cloud's edge functions.
+Replicate provides access to thousands of AI models through a simple API, making it easy to integrate advanced AI capabilities into your application. This guide covers integration using Alive Cloud's edge functions.
 
 ## When to Use Replicate
 
@@ -14,18 +14,18 @@ Replicate provides access to thousands of AI models through a simple API, making
 - Custom fine-tuned models
 
 ### Important Note
-**Always prioritize Lovable AI first** when implementing AI features. Lovable AI provides built-in, zero-configuration AI capabilities that are optimized for the platform. Only use Replicate when:
-- You need a specific model not available through Lovable AI
-- You have custom requirements that Lovable AI doesn't cover
+**Always prioritize Alive AI first** when implementing AI features. Alive AI provides built-in, zero-configuration AI capabilities that are optimized for the platform. Only use Replicate when:
+- You need a specific model not available through Alive AI
+- You have custom requirements that Alive AI doesn't cover
 - The user explicitly requests Replicate integration
 
 ## Prerequisites
 
 ### Required Setup
-1. **Lovable Cloud Connection**: Must be enabled before implementing
+1. **Alive Cloud Connection**: Must be enabled before implementing
 2. **Replicate Account**: Sign up at replicate.com
 3. **API Token**: Generate from your Replicate dashboard
-4. **Secrets Storage**: Add `REPLICATE_API_KEY` to Lovable Cloud secrets
+4. **Secrets Storage**: Add `REPLICATE_API_KEY` to Alive Cloud secrets
 
 ## Implementation Pattern
 
@@ -164,7 +164,7 @@ const checkStatus = async (predictionId: string) => {
 
 ### API Key Protection
 - **Never expose API keys in frontend code**
-- Store keys in Lovable Cloud secrets only
+- Store keys in Alive Cloud secrets only
 - Use edge functions as proxy layer
 - Rotate keys periodically
 
@@ -196,7 +196,7 @@ const checkStatus = async (predictionId: string) => {
 ### Common Issues
 
 **API Key Not Found**
-- Verify secret is added to Lovable Cloud
+- Verify secret is added to Alive Cloud
 - Check exact secret name matches code
 - Redeploy edge function after adding secret
 
@@ -210,9 +210,9 @@ const checkStatus = async (predictionId: string) => {
 - Implement client-side throttling
 - Consider upgrading Replicate plan
 
-## Migration from Lovable AI
+## Migration from Alive AI
 
-If migrating specific features from Lovable AI to Replicate:
+If migrating specific features from Alive AI to Replicate:
 1. Document why the migration is necessary
 2. Maintain backward compatibility during transition
 3. A/B test to compare quality and performance
@@ -220,4 +220,4 @@ If migrating specific features from Lovable AI to Replicate:
 
 ---
 
-**Remember**: Lovable AI should always be your first choice for AI features. Use Replicate only when you have specific requirements that demand it.
+**Remember**: Alive AI should always be your first choice for AI features. Use Replicate only when you have specific requirements that demand it.

@@ -2,7 +2,7 @@
 
 ## What Goes Here
 
-Files that YOU upload to the Lovable chat interface.
+Files that YOU upload to the Alive chat interface.
 
 ## Example Structure
 
@@ -19,7 +19,7 @@ user-uploads://
 
 ## How Files Get Here
 
-1. **You click the upload button** in Lovable chat
+1. **You click the upload button** in Alive chat
 2. **Select files** from your computer (max 10 files, 20MB each)
 3. **Files upload** to `user-uploads://`
 4. **AI can now access** them via `lov-view("user-uploads://filename.ext")`

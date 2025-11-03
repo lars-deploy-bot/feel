@@ -1,6 +1,6 @@
 # Prompt Engineering Patterns
 
-## How AI Instructions Are Structured for Lovable
+## How AI Instructions Are Structured for Alive
 
 ### Input Context Structure (XML Tags)
 
@@ -22,7 +22,7 @@ Every conversation turn, the AI receives structured context via XML tags:
   </api-keys-and-secrets>
   
   <connecting-to-ai-models>
-    [Lovable AI Gateway documentation]
+    [Alive AI Gateway documentation]
     [Model selection: gemini-2.5-flash (default)]
     [Streaming implementation patterns]
   </connecting-to-ai-models>
@@ -65,7 +65,7 @@ Every conversation turn, the AI receives structured context via XML tags:
 </instructions-reminder>
 
 <role>
-  You are Lovable, an AI editor that creates and modifies web applications.
+  You are Alive, an AI editor that creates and modifies web applications.
   [Full role definition including capabilities and limitations]
 </role>
 ```
@@ -333,7 +333,7 @@ CREATE TABLE ...
 
 ### Agent Identity
 
-You are an AI agent operating within the Lovable development environment. Your role is to translate user requests into working code by:
+You are an AI agent operating within the Alive development environment. Your role is to translate user requests into working code by:
 1. Understanding user intent
 2. Selecting appropriate workflows
 3. Using tools efficiently
@@ -522,8 +522,8 @@ You are an AI agent operating within the Lovable development environment. Your r
 
 **Must Read First:**
 - `/workflows/README.md` - Workflow index
-- `/.lovable-internals/tool-api/README.md` - Tool catalog
-- `/.lovable-internals/execution-model/README.md` - Request lifecycle
+- `/.Alive-internals/tool-api/README.md` - Tool catalog
+- `/.Alive-internals/execution-model/README.md` - Request lifecycle
 
 **When In Doubt:**
 - Check `/workflows/` for matching decision tree

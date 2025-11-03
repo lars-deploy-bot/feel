@@ -1,10 +1,10 @@
-# Lovable AI Agent Internal Architecture
+# Alive AI Agent Internal Architecture
 
-> **Educational Resource**: This folder demonstrates the internal architecture that the Lovable AI agent uses. These are NOT part of your application code - they're here to help engineers understand how the AI works.
+> **Educational Resource**: This folder demonstrates the internal architecture that the Alive AI agent uses. These are NOT part of your application code - they're here to help engineers understand how the AI works.
 
 ## What is This?
 
-When you interact with Lovable's AI agent, it has access to several layers of infrastructure:
+When you interact with Alive's AI agent, it has access to several layers of infrastructure:
 - **Read-only files**: System files it cannot modify
 - **Virtual file systems**: Temporary storage for tool results
 - **Tool API**: 31+ tools for code manipulation, debugging, security
@@ -16,7 +16,7 @@ This folder visualizes that internal architecture.
 ## Folder Structure
 
 ```
-.lovable-internals/
+.Alive-internals/
 ├── read-only/              → Files the AI cannot modify
 ├── virtual-fs/             → Temporary file systems for tool results
 ├── tool-api/               → Documentation of all 31 tools
@@ -37,14 +37,14 @@ This folder visualizes that internal architecture.
 ## Important Notes
 
 1. **This is NOT executable code** - It's educational documentation
-2. **Don't modify system files** - The files referenced in `read-only/` are managed by Lovable
+2. **Don't modify system files** - The files referenced in `read-only/` are managed by Alive
 3. **Virtual file systems are temporary** - They exist only during AI execution
 4. **Tool calls happen automatically** - You don't invoke tools manually
 
 ## Relationship to Your Project
 
 ```
-Your Project              Lovable AI Internals
+Your Project              Alive AI Internals
 -----------              --------------------
 src/                     → AI can read/write
 components/              → AI can modify

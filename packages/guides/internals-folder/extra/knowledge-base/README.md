@@ -1,10 +1,10 @@
 # Knowledge Base
 
-## Built-in Knowledge Available to Lovable AI
+## Built-in Knowledge Available to Alive AI
 
 ### 1. API Keys & Secrets Management
 <!-- SUPABASE DISABLED: - Supabase edge function patterns -->
-- Lovable AI Gateway integration
+- Alive AI Gateway integration
 - Secrets storage best practices
 
 ### 2. File Operations
@@ -26,7 +26,7 @@
 - RLS infinite recursion fixes
 
 ### 5. Platform Documentation
-- Lovable Cloud features
+- Alive Cloud features
 - Visual Edits
 - Troubleshooting workflows
 - Default AI models (gemini-2.5-flash)

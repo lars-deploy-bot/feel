@@ -1,8 +1,8 @@
-# Stripe Payment Integration in Lovable
+# Stripe Payment Integration in Alive
 
 ## Overview
 
-Lovable provides a custom Stripe integration for seamless payment processing in your applications.
+Alive provides a custom Stripe integration for seamless payment processing in your applications.
 
 ## When to Use Stripe
 
@@ -22,7 +22,7 @@ Lovable provides a custom Stripe integration for seamless payment processing in 
 ## How It Works
 
 ### Integration Mechanism
-Lovable includes specialized tools for Stripe integration that become available after enablement:
+Alive includes specialized tools for Stripe integration that become available after enablement:
 - Product creation and management
 - Price configuration
 - Customer management
@@ -61,7 +61,7 @@ After enablement, comprehensive documentation becomes available for:
 ## Important Notes
 
 ### No Manual Tables Required
-Unlike traditional integrations, Lovable's Stripe integration:
+Unlike traditional integrations, Alive's Stripe integration:
 <!-- SUPABASE DISABLED: - Does not require Supabase table creation -->
 - Automatically manages necessary data structures
 - Handles synchronization with Stripe
@@ -94,4 +94,4 @@ All payment processing:
 
 ---
 
-**Best Practice**: Enable Stripe integration and let Lovable guide you through the specific implementation patterns for your use case.
+**Best Practice**: Enable Stripe integration and let Alive guide you through the specific implementation patterns for your use case.

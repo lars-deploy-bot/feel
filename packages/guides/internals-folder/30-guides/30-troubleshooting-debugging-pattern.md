@@ -2,7 +2,7 @@
 
 ## Overview
 
-Systematic debugging prevents wasted time and ensures accurate problem diagnosis. This guide establishes a methodical approach to troubleshooting issues in Lovable applications.
+Systematic debugging prevents wasted time and ensures accurate problem diagnosis. This guide establishes a methodical approach to troubleshooting issues in Alive applications.
 
 ## Debugging Workflow
 

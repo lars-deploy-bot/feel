@@ -1,10 +1,10 @@
-# Lovable AI Features Guide
+# Alive AI Features Guide
 
 ## Overview
 
-Lovable AI provides built-in artificial intelligence capabilities that require zero configuration and no external API keys. This makes it the fastest and simplest way to add AI features to your application.
+Alive AI provides built-in artificial intelligence capabilities that require zero configuration and no external API keys. This makes it the fastest and simplest way to add AI features to your application.
 
-## Why Lovable AI First
+## Why Alive AI First
 
 ### Advantages Over External APIs
 
@@ -27,22 +27,22 @@ Lovable AI provides built-in artificial intelligence capabilities that require z
 - Built-in error handling
 
 **Integration**:
-- Native Lovable Cloud integration
+- Native Alive Cloud integration
 - Consistent with other platform features
-- Optimized for Lovable applications
+- Optimized for Alive applications
 
 ### When to Consider Alternatives
 
 Only use external AI APIs (OpenAI, Anthropic, Replicate) when:
-- You need a specific model not available in Lovable AI
+- You need a specific model not available in Alive AI
 - You have existing infrastructure with another provider
-- You require features beyond Lovable AI's scope
+- You require features beyond Alive AI's scope
 - User explicitly requests a specific service
 
 ## Prerequisites
 
 **Required**:
-- Lovable Cloud must be enabled
+- Alive Cloud must be enabled
 - That's it! No other setup needed
 
 **To enable**:
@@ -262,8 +262,8 @@ serve(async (req) => {
   try {
     const { prompt } = await req.json()
 
-    // Lovable AI call here
-    const result = await callLovableAI(prompt)
+    // Alive AI call here
+    const result = await callAliveAI(prompt)
 
     return new Response(
       JSON.stringify({ result }),
@@ -378,7 +378,7 @@ function checkRateLimit(userId: string): boolean {
 async function callAIWithRetry(prompt: string, maxRetries = 3) {
   for (let i = 0; i < maxRetries; i++) {
     try {
-      return await callLovableAI(prompt)
+      return await callAliveAI(prompt)
     } catch (error) {
       if (i === maxRetries - 1) throw error
       await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)))
@@ -401,7 +401,7 @@ async function getCachedOrGenerate(prompt: string) {
     return cached.result
   }
   
-  const result = await callLovableAI(prompt)
+  const result = await callAliveAI(prompt)
   cache.set(prompt, { result, timestamp: now })
   return result
 }
@@ -512,14 +512,14 @@ if (prompt.length < 10) {
 
 ## Migration from External APIs
 
-If moving from OpenAI/Anthropic to Lovable AI:
+If moving from OpenAI/Anthropic to Alive AI:
 
-1. **Identify feature equivalents** in Lovable AI
-2. **Update edge function** to use Lovable AI calls
+1. **Identify feature equivalents** in Alive AI
+2. **Update edge function** to use Alive AI calls
 3. **Remove external API secrets** (no longer needed)
 4. **Test thoroughly** to ensure feature parity
 5. **Monitor usage** and costs post-migration
 
 ---
 
-**Key Principle**: Lovable AI should always be your first choice for AI features. It's simpler, faster to implement, and requires zero configuration compared to external APIs.
+**Key Principle**: Alive AI should always be your first choice for AI features. It's simpler, faster to implement, and requires zero configuration compared to external APIs.
