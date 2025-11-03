@@ -322,8 +322,12 @@ export async function POST(req: NextRequest) {
                   if (childEvent.type === "session" && childEvent.sessionId) {
                     await SessionStoreMemory.set(convKey, childEvent.sessionId)
                   }
-                } catch (_parseError) {
-                  console.error(`[Claude Stream ${requestId}] Failed to parse child output:`, line)
+                } catch (parseError) {
+                  console.error(
+                    `[Claude Stream ${requestId}] Failed to parse child output (length: ${line.length}):`,
+                    parseError instanceof Error ? parseError.message : String(parseError),
+                  )
+                  console.error(`[Claude Stream ${requestId}] Line preview:`, line.substring(0, 200))
                 }
               }
             }
