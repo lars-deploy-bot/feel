@@ -136,7 +136,6 @@ async function readStdinJson() {
           "mcp__workspace-management__restart_dev_server",
           "mcp__tools__list_guides",
           "mcp__tools__get_guide",
-          "mcp__tools__read_server_logs",
         ],
         mcpServers: {
           "workspace-management": restartServerMcp,
