@@ -5,8 +5,8 @@ User requests: "Let users upload images/files" or "Add profile picture upload"
 
 ## Agent Capabilities
 <!-- SUPABASE DISABLED: - Backend enablement (supabase--enable) -->
-- Code writing (lov-write, lov-line-replace)
-- Code search (lov-search-files)
+- Code writing (alive-write, alive-line-replace)
+- Code search (alive-search-files)
 
 ## Decision Tree
 
@@ -124,9 +124,9 @@ Request: "Add profile picture upload"
    ```
 
 4. Implementation (parallel):
-   lov-write(src/components/AvatarUpload.tsx) ||
-   lov-write(src/hooks/useAvatarUpload.ts) ||
-   lov-line-replace(src/pages/Profile.tsx, add-avatar-upload)
+   alive-write(src/components/AvatarUpload.tsx) ||
+   alive-write(src/hooks/useAvatarUpload.ts) ||
+   alive-line-replace(src/pages/Profile.tsx, add-avatar-upload)
 ```
 
 ### Sequence 2: Document Upload with Metadata
@@ -181,9 +181,9 @@ Request: "Let users upload PDF documents"
    ```
 
 3. Implementation:
-   lov-write(src/components/DocumentUpload.tsx) ||
-   lov-write(src/hooks/useDocumentUpload.ts) ||
-   lov-write(src/pages/Documents.tsx)
+   alive-write(src/components/DocumentUpload.tsx) ||
+   alive-write(src/hooks/useDocumentUpload.ts) ||
+   alive-write(src/pages/Documents.tsx)
 ```
 
 ### Sequence 3: Image Gallery with Thumbnails
@@ -233,10 +233,10 @@ Request: "Create an image gallery for users"
    ```
 
 3. Implementation with image processing:
-   lov-write(src/components/ImageUpload.tsx) ||
-   lov-write(src/components/ImageGallery.tsx) ||
-   lov-write(src/hooks/useImageUpload.ts) ||
-   lov-write(src/lib/imageProcessing.ts)
+   alive-write(src/components/ImageUpload.tsx) ||
+   alive-write(src/components/ImageGallery.tsx) ||
+   alive-write(src/hooks/useImageUpload.ts) ||
+   alive-write(src/lib/imageProcessing.ts)
 ```
 
 ### Sequence 4: File Upload with Progress
@@ -246,7 +246,7 @@ Request: "Show upload progress for large files"
 1. Bucket setup (via SQL as before)
 
 2. Implementation with progress tracking:
-   lov-write(src/components/FileUploadWithProgress.tsx)
+   alive-write(src/components/FileUploadWithProgress.tsx)
    
    Key features:
    - useState for progress percentage
@@ -263,7 +263,7 @@ Request: "Let users upload multiple files at once"
 1. Bucket setup (via SQL)
 
 2. Implementation with batch upload:
-   lov-write(src/components/MultiFileUpload.tsx)
+   alive-write(src/components/MultiFileUpload.tsx)
    
    Key features:
    - File input with multiple attribute
@@ -281,7 +281,7 @@ Request: "Add drag and drop for file uploads"
 1. Bucket setup (via SQL)
 
 2. Implementation with drag/drop:
-   lov-write(src/components/DragDropUpload.tsx)
+   alive-write(src/components/DragDropUpload.tsx)
    
    Key features:
    - onDragOver, onDragLeave, onDrop handlers
@@ -298,7 +298,7 @@ Request: "Only allow image uploads"
 1. Bucket setup with file type validation
 
 2. Client-side validation:
-   lov-write(src/lib/fileValidation.ts)
+   alive-write(src/lib/fileValidation.ts)
    
    ```typescript
    const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
@@ -316,17 +316,17 @@ Request: "Only allow image uploads"
    ```
 
 3. Integration:
-   lov-line-replace(src/components/ImageUpload.tsx, add-validation)
+   alive-line-replace(src/components/ImageUpload.tsx, add-validation)
 ```
 
 ### Sequence 8: Image Compression Before Upload
 Request: "Compress images before uploading"
 
 ```
-1. lov-add-dependency("browser-image-compression@latest")
+1. alive-add-dependency("browser-image-compression@latest")
 
 2. Implementation:
-   lov-write(src/lib/imageCompression.ts)
+   alive-write(src/lib/imageCompression.ts)
    
    ```typescript
    import imageCompression from 'browser-image-compression';
@@ -349,7 +349,7 @@ Request: "Compress images before uploading"
    ```
 
 3. Integration:
-   lov-line-replace(src/hooks/useImageUpload.ts, add-compression)
+   alive-line-replace(src/hooks/useImageUpload.ts, add-compression)
 ```
 
 ### Sequence 9: Signed URLs for Private Files
@@ -359,7 +359,7 @@ Request: "Let users download their private files"
 1. Storage bucket with private access
 
 2. Edge function for signed URLs:
-<!-- SUPABASE DISABLED:    lov-write(supabase/functions/get-signed-url/index.ts) -->
+<!-- SUPABASE DISABLED:    alive-write(supabase/functions/get-signed-url/index.ts) -->
    
    ```typescript
    serve(async (req) => {
@@ -385,7 +385,7 @@ Request: "Let users download their private files"
    ```
 
 3. Frontend:
-   lov-write(src/hooks/usePrivateFileDownload.ts)
+   alive-write(src/hooks/usePrivateFileDownload.ts)
 ```
 
 ### Sequence 10: File Delete Functionality
@@ -395,7 +395,7 @@ Request: "Let users delete their uploaded files"
 1. Storage policy for deletion already in place
 
 2. Implementation with database cleanup:
-   lov-write(src/hooks/useFileDelete.ts)
+   alive-write(src/hooks/useFileDelete.ts)
    
    ```typescript
    export const useFileDelete = () => {
@@ -421,7 +421,7 @@ Request: "Let users delete their uploaded files"
    ```
 
 3. UI integration:
-   lov-line-replace(src/components/FileList.tsx, add-delete-button)
+   alive-line-replace(src/components/FileList.tsx, add-delete-button)
 ```
 
 ## Critical Rules

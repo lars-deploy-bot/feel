@@ -73,9 +73,9 @@ Output: parsed-documents://meeting-recording-[timestamp]/
 ```
 NOT PARSED via document--parse_document()
 
-Use lov-view() directly:
-lov-view("user-uploads://notes.txt")
-lov-view("user-uploads://code.tsx")
+Use alive-view() directly:
+alive-view("user-uploads://notes.txt")
+alive-view("user-uploads://code.tsx")
 ```
 
 ## Parsing Limits
@@ -144,7 +144,7 @@ Week 7-8: Polish and testing
 ### Read the Content
 ```typescript
 // AI automatically reads content.md
-const content = await lov-view("parsed-documents://requirements-123/content.md")
+const content = await alive-view("parsed-documents://requirements-123/content.md")
 
 // AI can now implement features based on requirements
 ```
@@ -152,19 +152,19 @@ const content = await lov-view("parsed-documents://requirements-123/content.md")
 ### Extract Images to Project
 ```typescript
 // Copy extracted diagrams to project
-lov-copy(
+alive-copy(
   "parsed-documents://requirements-123/images/diagram-architecture.png",
   "docs/architecture.png"
 )
 
 // Use in documentation or UI
-lov-line-replace("README.md", add_architecture_diagram)
+alive-line-replace("README.md", add_architecture_diagram)
 ```
 
 ### Reference Page Screenshots
 ```typescript
 // Look at specific page
-lov-view("parsed-documents://requirements-123/page-5.png")
+alive-view("parsed-documents://requirements-123/page-5.png")
 
 // Implement feature shown on that page
 ```
@@ -191,7 +191,7 @@ lov-view("parsed-documents://requirements-123/page-5.png")
        └── diagram-flow.png
 
 5. AI reads:
-   lov-view("parsed-documents://project-requirements-20250127-142301/content.md")
+   alive-view("parsed-documents://project-requirements-20250127-142301/content.md")
 
 6. AI extracts key requirements:
    - Feature list
@@ -200,12 +200,12 @@ lov-view("parsed-documents://requirements-123/page-5.png")
    - Database schema
 
 7. AI implements features:
-   lov-write("src/pages/Dashboard.tsx", ...)
-   lov-write("src/components/Login.tsx", ...)
+   alive-write("src/pages/Dashboard.tsx", ...)
+   alive-write("src/components/Login.tsx", ...)
    [creates database schema SQL]
 
 8. AI copies mockups for reference:
-   lov-copy("parsed-documents://.../images/mockup-dashboard.png", "docs/mockup-dashboard.png")
+   alive-copy("parsed-documents://.../images/mockup-dashboard.png", "docs/mockup-dashboard.png")
 ```
 
 ## Parsed Content Quality

@@ -12,7 +12,7 @@ When user uploads image (available in `user-uploads://`):
 
 **Step 1**: Copy to public directory
 ```
-lov-copy user-uploads://uploaded-file.png public/favicon.png
+alive-copy user-uploads://uploaded-file.png public/favicon.png
 ```
 
 **Step 2**: Update index.html

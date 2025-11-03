@@ -6,12 +6,12 @@
 
 ## File Operations (7 tools)
 
-### `lov-view`
+### `alive-view`
 Read file contents with optional line range.
 
 **Signature:**
 ```typescript
-lov-view(file_path: string, lines?: string): string
+alive-view(file_path: string, lines?: string): string
 ```
 
 **Parameters:**
@@ -26,14 +26,14 @@ lov-view(file_path: string, lines?: string): string
 **Usage:**
 ```typescript
 // Read entire file (first 500 lines)
-lov-view("src/components/Header.tsx")
+alive-view("src/components/Header.tsx")
 
 // Read specific lines
-lov-view("src/App.tsx", "1-50, 100-150")
+alive-view("src/App.tsx", "1-50, 100-150")
 
 // Read from virtual filesystem
-lov-view("user-uploads://design.png")
-lov-view("parsed-documents://doc-123/content.md")
+alive-view("user-uploads://design.png")
+alive-view("parsed-documents://doc-123/content.md")
 ```
 
 **Rules:**
@@ -43,12 +43,12 @@ lov-view("parsed-documents://doc-123/content.md")
 
 ---
 
-### `lov-write`
+### `alive-write`
 Create new file or completely overwrite existing file.
 
 **Signature:**
 ```typescript
-lov-write(file_path: string, content: string): void
+alive-write(file_path: string, content: string): void
 ```
 
 **Parameters:**
@@ -62,7 +62,7 @@ lov-write(file_path: string, content: string): void
 **Usage:**
 ```typescript
 // Create new component
-lov-write("src/components/Button.tsx", `
+alive-write("src/components/Button.tsx", `
 import React from 'react';
 
 export const Button = ({ children }) => {
@@ -71,7 +71,7 @@ export const Button = ({ children }) => {
 `)
 
 // Create edge function
-<!-- SUPABASE DISABLED: lov-write("supabase/functions/hello/index.ts", ` -->
+<!-- SUPABASE DISABLED: alive-write("supabase/functions/hello/index.ts", ` -->
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 serve(async (req) => {
@@ -81,19 +81,19 @@ serve(async (req) => {
 ```
 
 **Rules:**
-- ⚠️ PREFER `lov-line-replace` for modifications to existing files
+- ⚠️ PREFER `alive-line-replace` for modifications to existing files
 - ✅ Use for new files or complete rewrites
 - ❌ NEVER use on read-only files (package.json, tsconfig.json, etc.)
 - ✅ Use `// ... keep existing code` for large unchanged sections
 
 ---
 
-### `lov-line-replace`
+### `alive-line-replace`
 Modify specific lines in an existing file (PREFERRED for edits).
 
 **Signature:**
 ```typescript
-lov-line-replace(
+alive-line-replace(
   file_path: string,
   search: string,
   first_replaced_line: number,
@@ -114,7 +114,7 @@ lov-line-replace(
 **Usage:**
 ```typescript
 // Small replacement
-lov-line-replace(
+alive-line-replace(
   "src/App.tsx",
   "const [count, setCount] = useState(0);",
   15,
@@ -123,7 +123,7 @@ lov-line-replace(
 )
 
 // Large replacement with ellipsis
-lov-line-replace(
+alive-line-replace(
   "src/components/UserCard.tsx",
   `<div className="user-card">
   <img src={user.avatar} />
@@ -146,12 +146,12 @@ lov-line-replace(
 
 ---
 
-### `lov-search-files`
+### `alive-search-files`
 Regex-based search across project files.
 
 **Signature:**
 ```typescript
-lov-search-files(
+alive-search-files(
   query: string,
   include_pattern: string,
   exclude_pattern?: string,
@@ -173,16 +173,16 @@ lov-search-files(
 **Usage:**
 ```typescript
 // Find all useState calls
-lov-search-files("useState\\(", "src/**")
+alive-search-files("useState\\(", "src/**")
 
 // Find TODO comments in TypeScript files
-lov-search-files("TODO|FIXME", "src/**/*.ts")
+alive-search-files("TODO|FIXME", "src/**/*.ts")
 
 // Find API_KEY references, exclude tests
-lov-search-files("API_KEY", "src/**", "**/*.test.*")
+alive-search-files("API_KEY", "src/**", "**/*.test.*")
 
 // Case-sensitive search
-lov-search-files("UserProfile", "src/**", undefined, true)
+alive-search-files("UserProfile", "src/**", undefined, true)
 ```
 
 **Rules:**
@@ -192,12 +192,12 @@ lov-search-files("UserProfile", "src/**", undefined, true)
 
 ---
 
-### `lov-delete`
+### `alive-delete`
 Delete a file from the project.
 
 **Signature:**
 ```typescript
-lov-delete(file_path: string): void
+alive-delete(file_path: string): void
 ```
 
 **Parameters:**
@@ -208,10 +208,10 @@ lov-delete(file_path: string): void
 **Usage:**
 ```typescript
 // Delete old component
-lov-delete("src/components/OldComponent.tsx")
+alive-delete("src/components/OldComponent.tsx")
 
 // Delete unused utility
-lov-delete("src/utils/deprecated.ts")
+alive-delete("src/utils/deprecated.ts")
 ```
 
 **Rules:**
@@ -221,12 +221,12 @@ lov-delete("src/utils/deprecated.ts")
 
 ---
 
-### `lov-rename`
+### `alive-rename`
 Rename or move a file (REQUIRED for renaming - don't create new + delete old).
 
 **Signature:**
 ```typescript
-lov-rename(original_file_path: string, new_file_path: string): void
+alive-rename(original_file_path: string, new_file_path: string): void
 ```
 
 **Parameters:**
@@ -238,13 +238,13 @@ lov-rename(original_file_path: string, new_file_path: string): void
 **Usage:**
 ```typescript
 // Rename file
-lov-rename("src/components/Button.tsx", "src/components/PrimaryButton.tsx")
+alive-rename("src/components/Button.tsx", "src/components/PrimaryButton.tsx")
 
 // Move file
-lov-rename("src/utils/helper.ts", "src/lib/helper.ts")
+alive-rename("src/utils/helper.ts", "src/lib/helper.ts")
 
 // Rename and move
-lov-rename("src/components/old/Button.tsx", "src/components/new/ActionButton.tsx")
+alive-rename("src/components/old/Button.tsx", "src/components/new/ActionButton.tsx")
 ```
 
 **Rules:**
@@ -254,12 +254,12 @@ lov-rename("src/components/old/Button.tsx", "src/components/new/ActionButton.tsx
 
 ---
 
-### `lov-copy`
+### `alive-copy`
 Copy a file to a new location.
 
 **Signature:**
 ```typescript
-lov-copy(source_file_path: string, destination_file_path: string): void
+alive-copy(source_file_path: string, destination_file_path: string): void
 ```
 
 **Parameters:**
@@ -271,13 +271,13 @@ lov-copy(source_file_path: string, destination_file_path: string): void
 **Usage:**
 ```typescript
 // Copy component for variation
-lov-copy("src/components/Button.tsx", "src/components/IconButton.tsx")
+alive-copy("src/components/Button.tsx", "src/components/IconButton.tsx")
 
 // Copy from user uploads to project
-lov-copy("user-uploads://logo.png", "public/images/logo.png")
+alive-copy("user-uploads://logo.png", "public/images/logo.png")
 
 // Copy parsed document images
-lov-copy("parsed-documents://doc-123/images/diagram.png", "docs/architecture.png")
+alive-copy("parsed-documents://doc-123/images/diagram.png", "docs/architecture.png")
 ```
 
 **Rules:**
@@ -475,12 +475,12 @@ shopify--enable_shopify()
 
 ## Debugging Tools (4 tools)
 
-### `lov-read-console-logs`
+### `alive-read-console-logs`
 Read browser console output (logs, warnings, errors).
 
 **Signature:**
 ```typescript
-lov-read-console-logs(search?: string): string
+alive-read-console-logs(search?: string): string
 ```
 
 **Parameters:**
@@ -492,13 +492,13 @@ lov-read-console-logs(search?: string): string
 **Usage:**
 ```typescript
 // Get all console logs
-lov-read-console-logs()
+alive-read-console-logs()
 
 // Filter for errors only
-lov-read-console-logs("error")
+alive-read-console-logs("error")
 
 // Filter for specific component
-lov-read-console-logs("UserProfile")
+alive-read-console-logs("UserProfile")
 ```
 
 **Rules:**
@@ -509,12 +509,12 @@ lov-read-console-logs("UserProfile")
 
 ---
 
-### `lov-read-network-requests`
+### `alive-read-network-requests`
 Read all network activity (API calls, responses, timing).
 
 **Signature:**
 ```typescript
-lov-read-network-requests(search?: string): NetworkRequest[]
+alive-read-network-requests(search?: string): NetworkRequest[]
 ```
 
 **Parameters:**
@@ -526,13 +526,13 @@ lov-read-network-requests(search?: string): NetworkRequest[]
 **Usage:**
 ```typescript
 // Get all network requests
-lov-read-network-requests()
+alive-read-network-requests()
 
 // Filter for API calls only
-lov-read-network-requests("api")
+alive-read-network-requests("api")
 
 // Filter for failed requests
-lov-read-network-requests("error")
+alive-read-network-requests("error")
 ```
 
 **Rules:**
@@ -867,12 +867,12 @@ websearch--web_code_search("Next.js 14 app router data fetching", "1000")
 
 ---
 
-### `lov-fetch-website`
+### `alive-fetch-website`
 Download webpage content (markdown, HTML, screenshot).
 
 **Signature:**
 ```typescript
-lov-fetch-website(url: string, formats: string): string[]
+alive-fetch-website(url: string, formats: string): string[]
 ```
 
 **Parameters:**
@@ -887,13 +887,13 @@ lov-fetch-website(url: string, formats: string): string[]
 **Usage:**
 ```typescript
 // Fetch documentation
-lov-fetch-website("https://docs.stripe.com/api/payment_intents", "markdown")
+alive-fetch-website("https://docs.stripe.com/api/payment_intents", "markdown")
 
 // Fetch with screenshot for design reference
-lov-fetch-website("https://stripe.com/pricing", "markdown,screenshot")
+alive-fetch-website("https://stripe.com/pricing", "markdown,screenshot")
 
 // Get raw HTML
-lov-fetch-website("https://example.com", "html")
+alive-fetch-website("https://example.com", "html")
 ```
 
 **Rules:**
@@ -905,12 +905,12 @@ lov-fetch-website("https://example.com", "html")
 
 ---
 
-### `lov-download-to-repo`
+### `alive-download-to-repo`
 Download file from URL directly to project.
 
 **Signature:**
 ```typescript
-lov-download-to-repo(source_url: string, target_path: string): void
+alive-download-to-repo(source_url: string, target_path: string): void
 ```
 
 **Parameters:**
@@ -924,13 +924,13 @@ lov-download-to-repo(source_url: string, target_path: string): void
 **Usage:**
 ```typescript
 // Download image asset
-lov-download-to-repo(
+alive-download-to-repo(
   "https://example.com/logo.png",
   "src/assets/logo.png"
 )
 
 // Download to public folder
-lov-download-to-repo(
+alive-download-to-repo(
   "https://example.com/hero.jpg",
   "public/images/hero.jpg"
 )
@@ -945,12 +945,12 @@ lov-download-to-repo(
 
 ## Dependencies (2 tools)
 
-### `lov-add-dependency`
+### `alive-add-dependency`
 Install npm package.
 
 **Signature:**
 ```typescript
-lov-add-dependency(package: string): void
+alive-add-dependency(package: string): void
 ```
 
 **Parameters:**
@@ -962,13 +962,13 @@ lov-add-dependency(package: string): void
 **Usage:**
 ```typescript
 // Add latest version
-lov-add-dependency("axios@latest")
+alive-add-dependency("axios@latest")
 
 // Add specific version
-lov-add-dependency("react-hook-form@^7.0.0")
+alive-add-dependency("react-hook-form@^7.0.0")
 
 // Add scoped package
-lov-add-dependency("@radix-ui/react-dialog@latest")
+alive-add-dependency("@radix-ui/react-dialog@latest")
 ```
 
 **Rules:**
@@ -978,12 +978,12 @@ lov-add-dependency("@radix-ui/react-dialog@latest")
 
 ---
 
-### `lov-remove-dependency`
+### `alive-remove-dependency`
 Uninstall npm package.
 
 **Signature:**
 ```typescript
-lov-remove-dependency(package: string): void
+alive-remove-dependency(package: string): void
 ```
 
 **Parameters:**
@@ -995,10 +995,10 @@ lov-remove-dependency(package: string): void
 **Usage:**
 ```typescript
 // Remove package
-lov-remove-dependency("moment")
+alive-remove-dependency("moment")
 
 // Remove type definitions
-lov-remove-dependency("@types/lodash")
+alive-remove-dependency("@types/lodash")
 ```
 
 **Rules:**
@@ -1163,8 +1163,8 @@ document--parse_document("user-uploads://meeting-recording.mp3")
 - ✅ Performs OCR on scanned pages
 - ✅ Extracts all embedded images
 - ✅ Takes 30-60 seconds for large documents
-- ❌ DON'T use for plain text files (use lov-view directly)
-- ❌ DON'T use for source code files (use lov-view directly)
+- ❌ DON'T use for plain text files (use alive-view directly)
+- ❌ DON'T use for source code files (use alive-view directly)
 - ✅ Results stored in parsed-documents://
 
 ---

@@ -5,8 +5,8 @@ User requests: "Add a database table for [entity]" or "Store [data] in database"
 
 ## Agent Capabilities
 <!-- SUPABASE DISABLED: - Backend enablement (supabase--enable) -->
-- Code search (lov-search-files)
-- Code writing (lov-write, lov-line-replace)
+- Code search (alive-search-files)
+- Code writing (alive-write, alive-line-replace)
 - Security scan (security--run_security_scan, security--get_security_scan_results)
 
 ## Decision Tree
@@ -123,13 +123,13 @@ Request: "Add a notes table so users can save notes"
    ```
 
 3. Implementation (parallel):
-   lov-write(src/types/database.ts) ||
-   lov-write(src/hooks/useNotes.ts) ||
-   lov-write(src/components/NotesList.tsx) ||
-   lov-write(src/components/NoteEditor.tsx)
+   alive-write(src/types/database.ts) ||
+   alive-write(src/hooks/useNotes.ts) ||
+   alive-write(src/components/NotesList.tsx) ||
+   alive-write(src/components/NoteEditor.tsx)
 
 4. Routes:
-   lov-line-replace(src/App.tsx, add-notes-route)
+   alive-line-replace(src/App.tsx, add-notes-route)
 ```
 
 ### Sequence 2: Public Read, Private Write
@@ -171,9 +171,9 @@ Request: "Add a blog posts table"
    ```
 
 3. Implementation:
-   lov-write(src/hooks/usePosts.ts) ||
-   lov-write(src/pages/Blog.tsx) ||
-   lov-write(src/components/PostCard.tsx)
+   alive-write(src/hooks/usePosts.ts) ||
+   alive-write(src/pages/Blog.tsx) ||
+   alive-write(src/components/PostCard.tsx)
 ```
 
 ### Sequence 3: Role-Based Access Table
@@ -183,7 +183,7 @@ Request: "Add an admin-only settings table"
 <!-- SUPABASE DISABLED: 1. supabase--enable() if needed -->
 
 2. Check: user_roles table exists?
-   ├─→ lov-search-files("user_roles", "**/*.sql")
+   ├─→ alive-search-files("user_roles", "**/*.sql")
    └─→ IF NOT: Provide user_roles setup first
 
 3. SQL with role-based RLS:
@@ -208,8 +208,8 @@ Request: "Add an admin-only settings table"
    ```
 
 4. Implementation:
-   lov-write(src/hooks/useSettings.ts) ||
-   lov-write(src/pages/AdminSettings.tsx)
+   alive-write(src/hooks/useSettings.ts) ||
+   alive-write(src/pages/AdminSettings.tsx)
 ```
 
 ### Sequence 4: Many-to-Many Relationship
@@ -255,9 +255,9 @@ Request: "Let users tag their posts"
    ```
 
 3. Implementation:
-   lov-write(src/hooks/useTags.ts) ||
-   lov-write(src/components/TagSelector.tsx) ||
-   lov-line-replace(src/hooks/usePosts.ts, include-tags-in-query)
+   alive-write(src/hooks/useTags.ts) ||
+   alive-write(src/components/TagSelector.tsx) ||
+   alive-line-replace(src/hooks/usePosts.ts, include-tags-in-query)
 ```
 
 ### Sequence 5: Trigger-Based Auto-Population
@@ -308,8 +308,8 @@ Request: "Create user profiles automatically on signup"
    ```
 
 2. Implementation:
-   lov-write(src/hooks/useProfile.ts) ||
-   lov-write(src/pages/Profile.tsx)
+   alive-write(src/hooks/useProfile.ts) ||
+   alive-write(src/pages/Profile.tsx)
 ```
 
 ### Sequence 6: Soft Delete Pattern
@@ -335,7 +335,7 @@ Request: "Let users archive posts instead of deleting them"
    ```
 
 2. Update frontend:
-   lov-line-replace(src/hooks/usePosts.ts, add-soft-delete-logic)
+   alive-line-replace(src/hooks/usePosts.ts, add-soft-delete-logic)
 ```
 
 ### Sequence 7: Complex Query Requirements
@@ -365,8 +365,8 @@ Request: "Add full-text search to posts"
    ```
 
 2. Implementation:
-   lov-line-replace(src/hooks/usePosts.ts, add-search-method)
-   lov-write(src/components/PostSearch.tsx)
+   alive-line-replace(src/hooks/usePosts.ts, add-search-method)
+   alive-write(src/components/PostSearch.tsx)
 ```
 
 ### Sequence 8: JSON Column Usage
@@ -384,8 +384,8 @@ Request: "Store flexible metadata for posts"
    ```
 
 2. Implementation:
-   lov-line-replace(src/types/database.ts, add-metadata-type)
-   lov-line-replace(src/hooks/usePosts.ts, handle-metadata)
+   alive-line-replace(src/types/database.ts, add-metadata-type)
+   alive-line-replace(src/hooks/usePosts.ts, handle-metadata)
 ```
 
 ### Sequence 9: Security Audit After Creation
@@ -407,7 +407,7 @@ Request: "Make sure my database is secure"
 Request: "Add a 'priority' column to my existing tasks table"
 
 ```
-1. lov-search-files("tasks", "src/**")
+1. alive-search-files("tasks", "src/**")
 2. Determine: What exists already?
 3. SQL for migration:
    ```sql
@@ -423,8 +423,8 @@ Request: "Add a 'priority' column to my existing tasks table"
    ```
 
 4. Update types and hooks:
-   lov-line-replace(src/types/database.ts, add-priority-field) ||
-   lov-line-replace(src/hooks/useTasks.ts, handle-priority)
+   alive-line-replace(src/types/database.ts, add-priority-field) ||
+   alive-line-replace(src/hooks/useTasks.ts, handle-priority)
 ```
 
 ## Critical Rules

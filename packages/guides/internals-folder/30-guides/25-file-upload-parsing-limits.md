@@ -15,7 +15,7 @@ These limits ensure optimal performance and prevent system overload.
 
 Different file types require different handling approaches. Using the correct method is crucial for efficiency and accuracy.
 
-### Text-Based Files: Use `lov-view` Directly
+### Text-Based Files: Use `alive-view` Directly
 
 **When to use**: Any file you can open and read in a standard text editor.
 
@@ -27,7 +27,7 @@ Different file types require different handling approaches. Using the correct me
 - Build files: `Dockerfile`, `.gitignore`, `Makefile`
 
 **Why this matters**: 
-- Text files load instantly with `lov-view`
+- Text files load instantly with `alive-view`
 - No parsing overhead required
 - Content is immediately available
 - **Never use `document--parse_document` for text files** - it's wasteful and slow
@@ -35,7 +35,7 @@ Different file types require different handling approaches. Using the correct me
 **Example**:
 ```typescript
 // ✅ Correct for text files
-lov-view("src/components/Header.tsx")
+alive-view("src/components/Header.tsx")
 
 // ❌ Wrong - don't parse text files
 document--parse_document("src/components/Header.tsx")
@@ -66,14 +66,14 @@ document--parse_document("reports/quarterly-analysis.pdf")
 document--parse_document("audio/meeting-recording.mp3")
 ```
 
-### Images: Use `lov-view` to Display
+### Images: Use `alive-view` to Display
 
 **Supported formats**: `.jpg`, `.jpeg`, `.png`, `.webp`, `.gif`, `.svg`
 
 **Example**:
 ```typescript
 // ✅ Display images
-lov-view("designs/mockup.png")
+alive-view("designs/mockup.png")
 ```
 
 **Special case - HEIC format**:
@@ -151,10 +151,10 @@ When working with parsed content:
 const result = document--parse_document("large-file.pdf")
 
 // 2. If display is truncated, view full results
-lov-view("tool-results://parse-result-xyz.txt")
+alive-view("tool-results://parse-result-xyz.txt")
 
 // 3. Search for specific content
-lov-search("specific keyword", "tool-results://parse-result-xyz.txt")
+alive-search("specific keyword", "tool-results://parse-result-xyz.txt")
 ```
 
 **Important**: Never re-run `parse_document` in the same conversation turn. The result is already available - just access the saved file.
@@ -167,12 +167,12 @@ lov-search("specific keyword", "tool-results://parse-result-xyz.txt")
 // User uploads: config.json, App.tsx, utils.ts
 
 // ✅ Correct approach - view all text files
-lov-view("user-uploads://config.json")
-lov-view("user-uploads://App.tsx") 
-lov-view("user-uploads://utils.ts")
+alive-view("user-uploads://config.json")
+alive-view("user-uploads://App.tsx") 
+alive-view("user-uploads://utils.ts")
 
 // Then copy to project
-lov-copy("user-uploads://config.json", "src/config.json")
+alive-copy("user-uploads://config.json", "src/config.json")
 ```
 
 ### Scenario 2: Requirements Document
@@ -184,10 +184,10 @@ lov-copy("user-uploads://config.json", "src/config.json")
 document--parse_document("user-uploads://requirements.pdf")
 
 // View full results
-lov-view("tool-results://requirements-parsed.txt")
+alive-view("tool-results://requirements-parsed.txt")
 
 // Extract key sections
-lov-search("authentication", "tool-results://requirements-parsed.txt")
+alive-search("authentication", "tool-results://requirements-parsed.txt")
 ```
 
 ### Scenario 3: Design Assets
@@ -196,11 +196,11 @@ lov-search("authentication", "tool-results://requirements-parsed.txt")
 // User uploads: logo.svg, hero.png, icon.webp
 
 // ✅ View images
-lov-view("user-uploads://logo.svg")
-lov-view("user-uploads://hero.png")
+alive-view("user-uploads://logo.svg")
+alive-view("user-uploads://hero.png")
 
 // Copy to project assets
-lov-copy("user-uploads://logo.svg", "src/assets/logo.svg")
+alive-copy("user-uploads://logo.svg", "src/assets/logo.svg")
 ```
 
 ### Scenario 4: Meeting Recording
@@ -212,7 +212,7 @@ lov-copy("user-uploads://logo.svg", "src/assets/logo.svg")
 document--parse_document("user-uploads://team-meeting.mp3")
 
 // Access transcription
-lov-view("tool-results://meeting-transcription.txt")
+alive-view("tool-results://meeting-transcription.txt")
 ```
 
 ## Error Handling
@@ -263,4 +263,4 @@ Solution: Try with smaller file or fewer pages
 
 ---
 
-**Key Principle**: Choose the simplest tool that works. Text files need `lov-view`, complex documents need parsing, and everything else should be handled transparently with users.
+**Key Principle**: Choose the simplest tool that works. Text files need `alive-view`, complex documents need parsing, and everything else should be handled transparently with users.

@@ -6,8 +6,8 @@ User requests: "Integrate [external API service]" (e.g., OpenAI, Stripe, SendGri
 ## Agent Capabilities
 <!-- SUPABASE DISABLED: - Backend enablement (supabase--enable) -->
 - Secret management (secrets--add_secret)
-- Code writing (lov-write, lov-line-replace)
-- Dependency management (lov-add-dependency)
+- Code writing (alive-write, alive-line-replace)
+- Dependency management (alive-add-dependency)
 - Web search (websearch--web_code_search)
 
 ## Decision Tree
@@ -41,7 +41,7 @@ START: User wants external API integration
 │   │
 │   ├─→ Dependencies needed?
 │   │   └─→ websearch--web_code_search("API_NAME npm package")
-│   │       └─→ lov-add-dependency("package-name@version")
+│   │       └─→ alive-add-dependency("package-name@version")
 │   │
 │   └─→ Secrets needed?
 │       ├─→ secrets--add_secret(["API_KEY_NAME"])
@@ -68,12 +68,12 @@ START: User wants external API integration
 │
 └─→ EXECUTION PHASE:
     ├─→ CREATE EDGE FUNCTION(S):
-<!-- SUPABASE DISABLED:     │   └─→ lov-write(supabase/functions/api-name/index.ts) -->
+<!-- SUPABASE DISABLED:     │   └─→ alive-write(supabase/functions/api-name/index.ts) -->
     │
     ├─→ CREATE FRONTEND INTEGRATION:
-    │   ├─→ lov-write(src/hooks/useApiName.ts) ||
-    │   ├─→ lov-write(src/lib/apiClient.ts) ||
-    │   └─→ lov-write(src/components/ApiComponent.tsx)
+    │   ├─→ alive-write(src/hooks/useApiName.ts) ||
+    │   ├─→ alive-write(src/lib/apiClient.ts) ||
+    │   └─→ alive-write(src/components/ApiComponent.tsx)
     │
     └─→ UPDATE CONFIGURATION:
 <!-- SUPABASE DISABLED:         └─→ Ensure supabase/config.toml includes function -->
@@ -96,9 +96,9 @@ Request: "Add AI text generation with OpenAI"
    4. secrets--add_secret(["OPENAI_API_KEY"])
    5. WAIT for user confirmation
    6. websearch--web_code_search("OpenAI API node.js latest") IF needed
-<!-- SUPABASE DISABLED:    7. lov-write(supabase/functions/generate-text/index.ts) || -->
-      lov-write(src/hooks/useTextGeneration.ts) ||
-      lov-write(src/components/TextGenerator.tsx)
+<!-- SUPABASE DISABLED:    7. alive-write(supabase/functions/generate-text/index.ts) || -->
+      alive-write(src/hooks/useTextGeneration.ts) ||
+      alive-write(src/components/TextGenerator.tsx)
 ```
 
 ### Type 2: Integrated Service (Stripe)
@@ -111,8 +111,8 @@ Request: "Add payment processing with Stripe"
 2. stripe--enable_stripe()
 3. WAIT for Stripe integration complete
 4. Follow Stripe-specific implementation from context
-5. lov-write(src/components/PricingTable.tsx) ||
-   lov-write(src/hooks/useSubscription.ts)
+5. alive-write(src/components/PricingTable.tsx) ||
+   alive-write(src/hooks/useSubscription.ts)
 ```
 
 ### Type 3: OAuth Flow (Google Auth)
@@ -125,8 +125,8 @@ Request: "Add Google sign-in"
 <!-- SUPABASE DISABLED:    - Enable Google provider in Supabase dashboard -->
    - Get credentials from Google Console
    - Add redirect URLs
-4. lov-line-replace(src/contexts/AuthContext.tsx, add-google-signin)
-5. lov-line-replace(src/pages/Login.tsx, add-google-button)
+4. alive-line-replace(src/contexts/AuthContext.tsx, add-google-signin)
+5. alive-line-replace(src/pages/Login.tsx, add-google-button)
 ```
 
 ### Type 4: Webhook Receiver (Stripe webhooks)
@@ -134,11 +134,11 @@ Request: "Handle Stripe webhook events"
 
 ```
 1. secrets--add_secret(["STRIPE_WEBHOOK_SECRET"])
-<!-- SUPABASE DISABLED: 2. lov-write(supabase/functions/stripe-webhook/index.ts) -->
+<!-- SUPABASE DISABLED: 2. alive-write(supabase/functions/stripe-webhook/index.ts) -->
 3. Set verify_jwt = false in config
 4. Provide webhook URL to user:
 <!-- SUPABASE DISABLED:    https://PROJECT_REF.supabase.co/functions/v1/stripe-webhook -->
-5. lov-write(src/lib/webhookHandlers.ts) IF complex logic needed
+5. alive-write(src/lib/webhookHandlers.ts) IF complex logic needed
 ```
 
 ### Type 5: Complex API (Twilio SMS)
@@ -147,12 +147,12 @@ Request: "Send SMS notifications with Twilio"
 ```
 <!-- SUPABASE DISABLED: 1. supabase--enable() if needed -->
 2. websearch--web_code_search("Twilio SMS API Node.js")
-3. lov-add-dependency("twilio@latest")
+3. alive-add-dependency("twilio@latest")
 4. secrets--add_secret(["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_PHONE_NUMBER"])
 5. WAIT for secrets
-<!-- SUPABASE DISABLED: 6. lov-write(supabase/functions/send-sms/index.ts) || -->
-   lov-write(src/hooks/useSMS.ts) ||
-   lov-write(src/components/SMSNotificationSettings.tsx)
+<!-- SUPABASE DISABLED: 6. alive-write(supabase/functions/send-sms/index.ts) || -->
+   alive-write(src/hooks/useSMS.ts) ||
+   alive-write(src/components/SMSNotificationSettings.tsx)
 ```
 
 ### Type 6: Public API (Weather data)
@@ -163,12 +163,12 @@ Request: "Show weather data from OpenWeather"
    ├─→ YES: Need edge function
 <!-- SUPABASE DISABLED:    │   2a. supabase--enable() -->
    │   2b. secrets--add_secret(["OPENWEATHER_API_KEY"])
-<!-- SUPABASE DISABLED:    │   2c. lov-write(supabase/functions/weather/index.ts) -->
+<!-- SUPABASE DISABLED:    │   2c. alive-write(supabase/functions/weather/index.ts) -->
    └─→ NO: Can call from frontend
-       2a. lov-write(src/lib/weatherAPI.ts)
+       2a. alive-write(src/lib/weatherAPI.ts)
        
-3. lov-write(src/hooks/useWeather.ts) ||
-   lov-write(src/components/WeatherWidget.tsx)
+3. alive-write(src/hooks/useWeather.ts) ||
+   alive-write(src/components/WeatherWidget.tsx)
 ```
 
 ### Type 7: AI Service (Replicate)
@@ -178,10 +178,10 @@ Request: "Generate images with Replicate AI"
 <!-- SUPABASE DISABLED: 1. supabase--enable() if needed -->
 2. websearch--web_code_search("Replicate API image generation")
 3. secrets--add_secret(["REPLICATE_API_KEY"])
-4. lov-add-dependency("replicate@latest")
-<!-- SUPABASE DISABLED: 5. lov-write(supabase/functions/generate-image/index.ts) || -->
-   lov-write(src/hooks/useImageGeneration.ts) ||
-   lov-write(src/components/ImageGenerator.tsx)
+4. alive-add-dependency("replicate@latest")
+<!-- SUPABASE DISABLED: 5. alive-write(supabase/functions/generate-image/index.ts) || -->
+   alive-write(src/hooks/useImageGeneration.ts) ||
+   alive-write(src/components/ImageGenerator.tsx)
 ```
 
 ### Type 8: Email Service (Resend)
@@ -191,9 +191,9 @@ Request: "Send transactional emails"
 <!-- SUPABASE DISABLED: 1. supabase--enable() if needed -->
 2. secrets--add_secret(["RESEND_API_KEY"])
 3. Inform user: Must verify domain at resend.com/domains
-4. lov-add-dependency("resend@latest")
-<!-- SUPABASE DISABLED: 5. lov-write(supabase/functions/send-email/index.ts) || -->
-   lov-write(src/components/EmailForm.tsx)
+4. alive-add-dependency("resend@latest")
+<!-- SUPABASE DISABLED: 5. alive-write(supabase/functions/send-email/index.ts) || -->
+   alive-write(src/components/EmailForm.tsx)
 ```
 
 ### Type 9: Unknown API
@@ -209,9 +209,9 @@ Request: "Integrate with [NewAPI]"
 4. Follow appropriate pattern from above
 <!-- SUPABASE DISABLED: 5. supabase--enable() if backend needed -->
 6. secrets--add_secret([required secrets])
-7. lov-add-dependency if package found
-8. lov-write(edge function) based on examples
-9. lov-write(frontend integration)
+7. alive-add-dependency if package found
+8. alive-write(edge function) based on examples
+9. alive-write(frontend integration)
 ```
 
 ## Critical Rules

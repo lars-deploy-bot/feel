@@ -30,8 +30,8 @@
   
   The AI cannot directly modify this file.
   Instead, it uses:
-  - lov-add-dependency("package-name@version")
-  - lov-remove-dependency("package-name")
+  - alive-add-dependency("package-name@version")
+  - alive-remove-dependency("package-name")
   
   These tools:
   1. Validate the package exists

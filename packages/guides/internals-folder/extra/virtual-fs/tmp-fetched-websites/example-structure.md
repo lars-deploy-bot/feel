@@ -2,7 +2,7 @@
 
 ## What Goes Here
 
-Content fetched from websites when AI uses `lov-fetch-website(url, formats)`.
+Content fetched from websites when AI uses `alive-fetch-website(url, formats)`.
 
 ## Example Structure
 
@@ -30,7 +30,7 @@ tmp://fetched-websites/
 ## How Files Get Here
 
 1. **AI needs web content** (e.g., to answer your question, find code examples)
-2. **AI calls** `lov-fetch-website("https://docs.Alive.dev/features/cloud", "markdown,screenshot")`
+2. **AI calls** `alive-fetch-website("https://docs.Alive.dev/features/cloud", "markdown,screenshot")`
 3. **Alive's fetcher**:
    - Downloads the webpage
    - Converts to markdown (clean, readable)
@@ -109,7 +109,7 @@ PNG screenshot of page:
 // tmp://fetched-websites/docs-Alive-dev-[timestamp]/content.md
 
 // AI reads:
-lov-view("tmp://fetched-websites/docs-Alive-dev-[timestamp]/content.md")
+alive-view("tmp://fetched-websites/docs-Alive-dev-[timestamp]/content.md")
 
 // AI responds with implementation guidance
 ```
@@ -119,7 +119,7 @@ lov-view("tmp://fetched-websites/docs-Alive-dev-[timestamp]/content.md")
 // User asks: "How do others implement X?"
 
 // AI calls:
-lov-fetch-website(
+alive-fetch-website(
   "https://github.com/username/repo/blob/main/example.tsx",
   "markdown,html"
 )
@@ -137,7 +137,7 @@ lov-fetch-website(
 // User asks: "Make it look like Stripe's pricing page"
 
 // AI calls:
-lov-fetch-website(
+alive-fetch-website(
   "https://stripe.com/pricing",
   "markdown,screenshot"
 )
@@ -161,14 +161,14 @@ lov-fetch-website(
 
 ### Not Used For:
 - General knowledge questions (AI uses built-in knowledge)
-- Code in user's project (AI uses `lov-view` directly)
+- Code in user's project (AI uses `alive-view` directly)
 - User-uploaded files (those are in `user-uploads://`)
 
 ## Fetching Process
 
 ```
 1. AI decides web content needed
-2. AI calls: lov-fetch-website(url, formats)
+2. AI calls: alive-fetch-website(url, formats)
 3. Alive backend:
    - Sends HTTP request
    - Downloads page
@@ -190,7 +190,7 @@ User: "Implement the new OpenAI Realtime API"
 AI thinks: "This is recent, may not be in my training data"
 
 AI calls:
-lov-fetch-website(
+alive-fetch-website(
   "https://platform.openai.com/docs/guides/realtime",
   "markdown"
 )
@@ -199,7 +199,7 @@ Results:
 tmp://fetched-websites/platform-openai-[timestamp]/content.md
 
 AI reads:
-lov-view("tmp://fetched-websites/platform-openai-[timestamp]/content.md")
+alive-view("tmp://fetched-websites/platform-openai-[timestamp]/content.md")
 
 AI learns:
 - WebSocket connection pattern
@@ -208,7 +208,7 @@ AI learns:
 - Code examples
 
 AI implements:
-lov-write("src/hooks/useRealtimeAPI.ts", implementation_based_on_docs)
+alive-write("src/hooks/useRealtimeAPI.ts", implementation_based_on_docs)
 ```
 
 ## Limitations
@@ -271,7 +271,7 @@ A: Ask AI: "What websites did you fetch?" and it can tell you.
 A: Yes, AI can fetch multiple URLs in one conversation.
 
 **Q: Why not just search the web?**  
-A: `lov-fetch-website` is for specific URLs. For search, AI uses `websearch--web_search()`.
+A: `alive-fetch-website` is for specific URLs. For search, AI uses `websearch--web_search()`.
 
 ## See Also
 

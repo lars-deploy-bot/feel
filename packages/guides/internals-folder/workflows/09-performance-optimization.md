@@ -4,13 +4,13 @@
 User requests: "My app is slow" or "Optimize performance" or "Reduce load time" or "Why is this lagging?"
 
 ## Agent Capabilities
-- Code search (lov-search-files)
-- File viewing (lov-view)
-- Code modification (lov-line-replace, lov-write)
-- Console log analysis (lov-read-console-logs)
-- Network request analysis (lov-read-network-requests)
+- Code search (alive-search-files)
+- File viewing (alive-view)
+- Code modification (alive-line-replace, alive-write)
+- Console log analysis (alive-read-console-logs)
+- Network request analysis (alive-read-network-requests)
 - Screenshot capture (project_debug--sandbox-screenshot)
-- Dependency management (lov-add-dependency)
+- Dependency management (alive-add-dependency)
 - Web search (websearch--web_code_search)
 
 ## Decision Tree
@@ -20,8 +20,8 @@ START: User reports performance issue
 │
 ├─→ DIAGNOSIS PHASE:
 │   ├─→ Gather performance data:
-│   │   ├─→ lov-read-console-logs(search="slow|performance|warning")
-│   │   ├─→ lov-read-network-requests(search="") // All requests
+│   │   ├─→ alive-read-console-logs(search="slow|performance|warning")
+│   │   ├─→ alive-read-network-requests(search="") // All requests
 │   │   └─→ project_debug--sandbox-screenshot(path="/slow-page")
 │   │
 │   ├─→ Analyze console logs:
@@ -49,7 +49,7 @@ START: User reports performance issue
 │   ├─→ IF FRONTEND RENDERING ISSUE:
 │   │   │
 │   │   ├─→ Search for performance anti-patterns:
-│   │   │   └─→ lov-search-files(query="useEffect\\(|useState\\(|useContext\\(", include_pattern="src/**/*.tsx")
+│   │   │   └─→ alive-search-files(query="useEffect\\(|useState\\(|useContext\\(", include_pattern="src/**/*.tsx")
 │   │   │
 │   │   ├─→ Common issues to fix:
 │   │   │   ├─→ Missing React.memo for expensive components
@@ -68,7 +68,7 @@ START: User reports performance issue
 │   ├─→ IF NETWORK/API ISSUE:
 │   │   │
 │   │   ├─→ Analyze query patterns:
-<!-- SUPABASE DISABLED: │   │   │   └─→ lov-search-files(query="supabase\\.from|supabase\\.rpc", include_pattern="src/**") -->
+<!-- SUPABASE DISABLED: │   │   │   └─→ alive-search-files(query="supabase\\.from|supabase\\.rpc", include_pattern="src/**") -->
 │   │   │
 │   │   ├─→ Common issues to fix:
 │   │   │   ├─→ N+1 queries (fetching in loops)
@@ -87,7 +87,7 @@ START: User reports performance issue
 │   ├─→ IF BUNDLE SIZE ISSUE:
 │   │   │
 │   │   ├─→ Identify heavy dependencies:
-│   │   │   └─→ lov-search-files(query="^import .* from", include_pattern="src/**")
+│   │   │   └─→ alive-search-files(query="^import .* from", include_pattern="src/**")
 │   │   │
 │   │   ├─→ Common issues to fix:
 │   │   │   ├─→ No code splitting (all code in one bundle)
@@ -104,7 +104,7 @@ START: User reports performance issue
 │   ├─→ IF IMAGES/ASSETS ISSUE:
 │   │   │
 │   │   ├─→ Find all image usage:
-│   │   │   └─→ lov-search-files(query="<img|<Image|backgroundImage", include_pattern="src/**")
+│   │   │   └─→ alive-search-files(query="<img|<Image|backgroundImage", include_pattern="src/**")
 │   │   │
 │   │   ├─→ Common issues to fix:
 │   │   │   ├─→ Large unoptimized images (PNGs instead of WebP)
@@ -123,7 +123,7 @@ START: User reports performance issue
 │   └─→ IF STATE MANAGEMENT ISSUE:
 │       │
 │       ├─→ Find context usage:
-│       │   └─→ lov-search-files(query="createContext|useContext", include_pattern="src/**")
+│       │   └─→ alive-search-files(query="createContext|useContext", include_pattern="src/**")
 │       │
 │       ├─→ Common issues to fix:
 │       │   ├─→ Single large context causing global re-renders
@@ -139,8 +139,8 @@ START: User reports performance issue
 │
 └─→ VERIFICATION:
     ├─→ Test changes with debugging tools:
-    │   ├─→ lov-read-console-logs() // Check for new warnings
-    │   ├─→ lov-read-network-requests() // Verify reduced payload
+    │   ├─→ alive-read-console-logs() // Check for new warnings
+    │   ├─→ alive-read-network-requests() // Verify reduced payload
     │   └─→ project_debug--sandbox-screenshot() // Visual check
     │
     └─→ Provide performance report:
@@ -157,10 +157,10 @@ Request: "My component re-renders too much"
 
 ```
 1. Identify the component:
-   lov-view(src/components/SlowComponent.tsx)
+   alive-view(src/components/SlowComponent.tsx)
 
 2. Search for performance anti-patterns:
-   lov-search-files(query="useContext|props\\.", include_pattern="src/components/SlowComponent.tsx")
+   alive-search-files(query="useContext|props\\.", include_pattern="src/components/SlowComponent.tsx")
 
 3. Analyze issues:
    - Functions recreated on every render (not useCallback)
@@ -169,9 +169,9 @@ Request: "My component re-renders too much"
    - Missing React.memo for pure components
 
 4. Apply optimizations (parallel):
-   lov-line-replace(src/components/SlowComponent.tsx, add_memo) ||
-   lov-line-replace(src/components/SlowComponent.tsx, add_useCallback) ||
-   lov-line-replace(src/components/SlowComponent.tsx, add_useMemo)
+   alive-line-replace(src/components/SlowComponent.tsx, add_memo) ||
+   alive-line-replace(src/components/SlowComponent.tsx, add_useCallback) ||
+   alive-line-replace(src/components/SlowComponent.tsx, add_useMemo)
 
    Example fixes:
    ```typescript
@@ -200,7 +200,7 @@ Request: "My component re-renders too much"
    ```
 
 5. Verify with console logs:
-   lov-read-console-logs()
+   alive-read-console-logs()
 ```
 
 ### Sequence 2: Database Query Optimization
@@ -208,7 +208,7 @@ Request: "Database queries are slow"
 
 ```
 1. Analyze network requests:
-   lov-read-network-requests()
+   alive-read-network-requests()
    
 2. Identify slow queries (>500ms):
    - Note which tables are being queried
@@ -216,7 +216,7 @@ Request: "Database queries are slow"
    - Check if selecting unnecessary columns
 
 3. Search for query patterns:
-<!-- SUPABASE DISABLED:    lov-search-files(query="supabase\\.from|.select\\(", include_pattern="src/**") -->
+<!-- SUPABASE DISABLED:    alive-search-files(query="supabase\\.from|.select\\(", include_pattern="src/**") -->
 
 4. Optimize queries:
    a. N+1 problem fix:
@@ -256,7 +256,7 @@ Request: "Database queries are slow"
       ```
 
 5. Update code:
-   lov-line-replace(src/hooks/usePosts.ts, optimize_query)
+   alive-line-replace(src/hooks/usePosts.ts, optimize_query)
 
 6. Provide SQL for indexes:
    ```sql
@@ -269,7 +269,7 @@ Request: "Database queries are slow"
    ```
 
 7. Verify improvement:
-   lov-read-network-requests() // Check response times
+   alive-read-network-requests() // Check response times
 ```
 
 ### Sequence 3: Bundle Size Reduction
@@ -277,7 +277,7 @@ Request: "App loads slowly on first visit"
 
 ```
 1. Analyze imports:
-   lov-search-files(query="^import", include_pattern="src/**/*.tsx")
+   alive-search-files(query="^import", include_pattern="src/**/*.tsx")
 
 2. Identify heavy dependencies:
    - Large UI libraries (moment.js → date-fns)
@@ -285,7 +285,7 @@ Request: "App loads slowly on first visit"
    - No code splitting for routes
 
 3. Implement code splitting:
-   lov-line-replace(src/App.tsx, add_lazy_loading)
+   alive-line-replace(src/App.tsx, add_lazy_loading)
    
    ```typescript
    // ❌ BEFORE - All routes loaded upfront
@@ -315,8 +315,8 @@ Request: "App loads slowly on first visit"
    - moment.js → date-fns (search and replace)
    - lodash → lodash-es (tree-shakeable)
    
-   lov-search-files(query="from ['\"]moment['\"]", include_pattern="src/**")
-   lov-line-replace(src/utils/dateHelpers.ts, replace_moment_with_date_fns)
+   alive-search-files(query="from ['\"]moment['\"]", include_pattern="src/**")
+   alive-line-replace(src/utils/dateHelpers.ts, replace_moment_with_date_fns)
 
 5. Optimize imports:
    ```typescript
@@ -330,9 +330,9 @@ Request: "App loads slowly on first visit"
    ```
 
 6. Remove unused dependencies:
-   lov-search-files(query="package_name", include_pattern="src/**")
+   alive-search-files(query="package_name", include_pattern="src/**")
    // If no results, remove dependency:
-   lov-remove-dependency("package_name")
+   alive-remove-dependency("package_name")
 ```
 
 ### Sequence 4: Image Optimization
@@ -340,7 +340,7 @@ Request: "Images load slowly"
 
 ```
 1. Find all images:
-   lov-search-files(query="<img|src=|backgroundImage", include_pattern="src/**")
+   alive-search-files(query="<img|src=|backgroundImage", include_pattern="src/**")
 
 2. Analyze image usage:
    - Large file sizes (check network tab)
@@ -349,7 +349,7 @@ Request: "Images load slowly"
    - No responsive images
 
 3. Add lazy loading:
-   lov-line-replace(src/components/Gallery.tsx, add_lazy_loading)
+   alive-line-replace(src/components/Gallery.tsx, add_lazy_loading)
    
    ```typescript
    // ❌ BEFORE
@@ -403,8 +403,8 @@ Request: "Images load slowly"
    Tools: Squoosh.app, ImageOptim, or build-time optimization."
 
 7. Update all images:
-   lov-line-replace(src/components/ImageGallery.tsx, optimize_images) ||
-   lov-line-replace(src/pages/Home.tsx, optimize_hero_image)
+   alive-line-replace(src/components/ImageGallery.tsx, optimize_images) ||
+   alive-line-replace(src/pages/Home.tsx, optimize_hero_image)
 ```
 
 ### Sequence 5: React Query Caching
@@ -412,13 +412,13 @@ Request: "API calls happen on every navigation"
 
 ```
 1. Check if React Query is installed:
-   lov-search-files(query="useQuery|QueryClient", include_pattern="src/**")
+   alive-search-files(query="useQuery|QueryClient", include_pattern="src/**")
 
 2. If NOT using React Query:
-   lov-add-dependency("@tanstack/react-query")
+   alive-add-dependency("@tanstack/react-query")
    
 3. Set up React Query provider:
-   lov-line-replace(src/main.tsx, add_query_client)
+   alive-line-replace(src/main.tsx, add_query_client)
    
    ```typescript
    import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -441,7 +441,7 @@ Request: "API calls happen on every navigation"
    ```
 
 4. Convert fetch hooks to React Query:
-   lov-line-replace(src/hooks/usePosts.ts, convert_to_react_query)
+   alive-line-replace(src/hooks/usePosts.ts, convert_to_react_query)
    
    ```typescript
    // ❌ BEFORE - No caching

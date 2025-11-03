@@ -101,7 +101,7 @@ Alive-project/
 **Characteristics:**
 - NOT code to execute, but instructions for AI to interpret
 - Heavy use of decision trees and branching logic
-<!-- SUPABASE DISABLED: - Tool calling sequences (lov-*, supabase--, security--, etc.) -->
+<!-- SUPABASE DISABLED: - Tool calling sequences (alive-*, supabase--, security--, etc.) -->
 - Parallel execution notation (`tool_a() || tool_b()`)
 - Version controlled (currently v1.0.0)
 
@@ -369,12 +369,12 @@ Implementation guide: guidance/12-row-level-security-fundamentals.md
 ## Tools Reference for Workflows
 
 **File Operations:**
-- `lov-view(file)` - Read file contents
-- `lov-write(file, content)` - Create/overwrite file
-- `lov-line-replace(file, search, replace)` - Edit specific lines
-- `lov-search-files(query, pattern)` - Regex search across files
-- `lov-delete(file)` - Remove file
-- `lov-rename(old, new)` - Rename file
+- `alive-view(file)` - Read file contents
+- `alive-write(file, content)` - Create/overwrite file
+- `alive-line-replace(file, search, replace)` - Edit specific lines
+- `alive-search-files(query, pattern)` - Regex search across files
+- `alive-delete(file)` - Remove file
+- `alive-rename(old, new)` - Rename file
 
 **Backend:**
 <!-- SUPABASE DISABLED: - `supabase--enable()` - Enable Alive Cloud -->
@@ -382,8 +382,8 @@ Implementation guide: guidance/12-row-level-security-fundamentals.md
 - `secrets--update_secret([keys])` - Update existing secrets
 
 **Debugging:**
-- `lov-read-console-logs(search)` - Get browser console output
-- `lov-read-network-requests(search)` - Get network activity
+- `alive-read-console-logs(search)` - Get browser console output
+- `alive-read-network-requests(search)` - Get network activity
 - `project_debug--sandbox-screenshot(path)` - Capture UI screenshot
 
 **Security:**
@@ -394,11 +394,11 @@ Implementation guide: guidance/12-row-level-security-fundamentals.md
 **External:**
 - `websearch--web_search(query)` - General web search
 - `websearch--web_code_search(query)` - Technical documentation search
-- `lov-download-to-repo(url, path)` - Download external files
+- `alive-download-to-repo(url, path)` - Download external files
 
 **Dependencies:**
-- `lov-add-dependency(package)` - Install npm package
-- `lov-remove-dependency(package)` - Uninstall package
+- `alive-add-dependency(package)` - Install npm package
+- `alive-remove-dependency(package)` - Uninstall package
 
 ---
 

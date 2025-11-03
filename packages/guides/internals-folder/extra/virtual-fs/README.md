@@ -24,7 +24,7 @@ tool-results://            → Output from tool executions
 
 ### `tmp://fetched-websites/`
 
-When AI uses `lov-fetch-website(url, formats)`:
+When AI uses `alive-fetch-website(url, formats)`:
 
 ```
 tmp://fetched-websites/
@@ -40,7 +40,7 @@ tmp://fetched-websites/
 **Usage:**
 ```typescript
 // AI calls:
-lov-fetch-website("https://docs.Alive.dev/features/cloud", "markdown,screenshot")
+alive-fetch-website("https://docs.Alive.dev/features/cloud", "markdown,screenshot")
 
 // Results stored in:
 // tmp://fetched-websites/docs-Alive-dev-[timestamp]/
@@ -63,10 +63,10 @@ user-uploads://
 // You upload design-mockup.png in chat
 
 // AI can access:
-lov-view("user-uploads://design-mockup.png")
+alive-view("user-uploads://design-mockup.png")
 
 // AI can copy to project:
-lov-copy("user-uploads://design-mockup.png", "src/assets/mockup.png")
+alive-copy("user-uploads://design-mockup.png", "src/assets/mockup.png")
 ```
 
 **Limits:**
@@ -108,8 +108,8 @@ document--parse_document("user-uploads://requirements.pdf")
 - ✅ PDF (complex formatting, images, tables)
 - ✅ DOCX, PPTX, XLSX (Microsoft Office)
 - ✅ MP3, WAV, M4A (audio transcription)
-- ❌ Plain text (use `lov-view` directly)
-- ❌ Source code (use `lov-view` directly)
+- ❌ Plain text (use `alive-view` directly)
+- ❌ Source code (use `alive-view` directly)
 
 ### `tool-results://`
 
@@ -132,7 +132,7 @@ security--run_security_scan()
 // tool-results://security-scan-[timestamp].json
 
 // AI can read full content:
-lov-view("tool-results://security-scan-[timestamp].json")
+alive-view("tool-results://security-scan-[timestamp].json")
 
 // User sees: "Result truncated in chat. Full output in tool-results://..."
 ```
@@ -154,16 +154,16 @@ lov-view("tool-results://security-scan-[timestamp].json")
 
 ```typescript
 // AI can read:
-lov-view("user-uploads://design.png")
-lov-view("parsed-documents://doc-123/content.md")
-lov-view("tool-results://scan-456.json")
+alive-view("user-uploads://design.png")
+alive-view("parsed-documents://doc-123/content.md")
+alive-view("tool-results://scan-456.json")
 
 // AI can copy to project:
-lov-copy("user-uploads://logo.png", "public/images/logo.png")
-lov-copy("parsed-documents://doc-123/images/diagram.png", "src/assets/diagram.png")
+alive-copy("user-uploads://logo.png", "public/images/logo.png")
+alive-copy("parsed-documents://doc-123/images/diagram.png", "src/assets/diagram.png")
 
 // AI can search:
-lov-search-files(query="error", include_pattern="tool-results://**")
+alive-search-files(query="error", include_pattern="tool-results://**")
 ```
 
 ### In Your Project

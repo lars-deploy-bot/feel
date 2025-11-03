@@ -4,14 +4,14 @@
 
 These are system-managed configuration files that the Alive AI agent **cannot directly modify**. Instead, the AI uses specialized tools to make changes:
 
-- `package.json` → Modified via `lov-add-dependency()` / `lov-remove-dependency()`
+- `package.json` → Modified via `alive-add-dependency()` / `alive-remove-dependency()`
 - Other config files → Generally not modified by AI
 
 ## Complete List of Read-Only Files
 
 ```
 .gitignore              → Git ignore patterns (system-managed)
-package.json            → Dependencies (use lov-add-dependency tool)
+package.json            → Dependencies (use alive-add-dependency tool)
 package-lock.json       → Lock file (auto-generated)
 bun.lockb              → Bun lock file (auto-generated)
 tsconfig.json          → TypeScript config (pre-configured)
@@ -37,10 +37,10 @@ public/placeholder.svg → Placeholder image (system-provided)
 
 ```typescript
 // ❌ CANNOT DO THIS
-lov-write("package.json", updatedContent)
+alive-write("package.json", updatedContent)
 
 // ✅ CORRECT APPROACH
-lov-add-dependency("lodash@latest")
+alive-add-dependency("lodash@latest")
 ```
 
 The tool:
@@ -54,7 +54,7 @@ The tool:
 
 ```typescript
 // ❌ CANNOT MODIFY
-lov-write("tsconfig.json", newConfig)
+alive-write("tsconfig.json", newConfig)
 
 // ✅ PRE-CONFIGURED
 // TypeScript config is set up optimally
@@ -67,7 +67,7 @@ If you need custom configuration:
 
 | Read-Only File | Writable Alternative |
 |---------------|---------------------|
-| `tailwind.config.js` | Can modify with care via lov-line-replace |
+| `tailwind.config.js` | Can modify with care via alive-line-replace |
 | `tsconfig.json` | Pre-configured, rarely needs changes |
 | `components.json` | Managed by Shadcn, use their CLI |
 

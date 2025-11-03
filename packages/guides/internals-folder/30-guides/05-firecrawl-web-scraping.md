@@ -4,7 +4,7 @@
 
 This guide is for implementing the Firecrawl API in your project to enable **users of your application** to scrape websites.
 
-**Important**: If you only need to collect information from a website for yourself, use the `lov-fetch-website` tool instead - do not implement Firecrawl.
+**Important**: If you only need to collect information from a website for yourself, use the `alive-fetch-website` tool instead - do not implement Firecrawl.
 
 ## API Key Management
 

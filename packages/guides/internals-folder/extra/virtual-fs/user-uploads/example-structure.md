@@ -22,28 +22,28 @@ user-uploads://
 1. **You click the upload button** in Alive chat
 2. **Select files** from your computer (max 10 files, 20MB each)
 3. **Files upload** to `user-uploads://`
-4. **AI can now access** them via `lov-view("user-uploads://filename.ext")`
+4. **AI can now access** them via `alive-view("user-uploads://filename.ext")`
 
 ## What AI Can Do With These Files
 
 ### Text Files (TXT, MD, JSON, CSV, etc.)
 ```typescript
 // Read directly
-lov-view("user-uploads://requirements.txt")
-lov-view("user-uploads://config.json")
+alive-view("user-uploads://requirements.txt")
+alive-view("user-uploads://config.json")
 
 // Copy to project
-lov-copy("user-uploads://config.json", "src/config/default.json")
+alive-copy("user-uploads://config.json", "src/config/default.json")
 ```
 
 ### Images (PNG, JPG, SVG, WEBP)
 ```typescript
 // View (displays in chat)
-lov-view("user-uploads://logo.png")
+alive-view("user-uploads://logo.png")
 
 // Copy to project
-lov-copy("user-uploads://logo.png", "public/images/logo.png")
-lov-copy("user-uploads://hero.jpg", "src/assets/hero.jpg")
+alive-copy("user-uploads://logo.png", "public/images/logo.png")
+alive-copy("user-uploads://hero.jpg", "src/assets/hero.jpg")
 ```
 
 ### Documents (PDF, DOCX, PPTX, XLSX)
@@ -69,10 +69,10 @@ document--parse_document("user-uploads://meeting-recording.mp3")
 ### Source Code Files
 ```typescript
 // Read directly (no parsing needed)
-lov-view("user-uploads://legacy-component.tsx")
+alive-view("user-uploads://legacy-component.tsx")
 
 // Copy to project
-lov-copy("user-uploads://legacy-component.tsx", "src/components/Legacy.tsx")
+alive-copy("user-uploads://legacy-component.tsx", "src/components/Legacy.tsx")
 ```
 
 ## Example Workflow
@@ -88,13 +88,13 @@ lov-copy("user-uploads://legacy-component.tsx", "src/components/Legacy.tsx")
 3. User asks: "Implement this design"
 
 4. AI reads:
-   lov-view("user-uploads://design-mockup.png")
+   alive-view("user-uploads://design-mockup.png")
 
 5. AI sees the image and implements:
-   lov-write("src/pages/Landing.tsx", component_matching_design)
+   alive-write("src/pages/Landing.tsx", component_matching_design)
 
 6. AI optionally copies image to project:
-   lov-copy("user-uploads://design-mockup.png", "docs/design-reference.png")
+   alive-copy("user-uploads://design-mockup.png", "docs/design-reference.png")
 ```
 
 ## Limits
@@ -115,8 +115,8 @@ lov-copy("user-uploads://legacy-component.tsx", "src/components/Legacy.tsx")
 User: [uploads logo.png]
 User: "Add this logo to the header"
 
-AI: lov-copy("user-uploads://logo.png", "src/assets/logo.png")
-AI: lov-line-replace("src/components/Header.tsx", add_logo_import)
+AI: alive-copy("user-uploads://logo.png", "src/assets/logo.png")
+AI: alive-line-replace("src/components/Header.tsx", add_logo_import)
 ```
 
 ### Upload → Parse → Implement Pattern
@@ -134,8 +134,8 @@ AI: [implements features based on requirements]
 User: [uploads api-schema.json]
 User: "Generate TypeScript types for this API"
 
-AI: lov-view("user-uploads://api-schema.json")
-AI: lov-write("src/types/api.ts", generated_types)
+AI: alive-view("user-uploads://api-schema.json")
+AI: alive-write("src/types/api.ts", generated_types)
 ```
 
 ## Cleanup

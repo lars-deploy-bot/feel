@@ -14,12 +14,12 @@ Follow this sequence for every issue:
 
 ```typescript
 // Debugging tool sequence
-1. Read console logs → lov-read-console-logs
-2. Check network requests → lov-read-network-requests  
+1. Read console logs → alive-read-console-logs
+2. Check network requests → alive-read-network-requests  
 3. Take screenshots → project_debug--sandbox-screenshot
 4. Review context → Check useful-context section
-5. Search codebase → lov-search-files
-6. Read relevant files → lov-view
+5. Search codebase → alive-search-files
+6. Read relevant files → alive-view
 ```
 
 **Why this order matters**:
@@ -247,7 +247,7 @@ const { mutate } = useMutation(updateProfile, {
 
 ```typescript
 // 1. Check network tab
-lov-read-network-requests("error")
+alive-read-network-requests("error")
 
 // 2. Log full request
 const response = await fetch(url, {
@@ -419,24 +419,24 @@ items.map(item => ...)
 
 ```typescript
 // Read all recent logs
-lov-read-console-logs("")
+alive-read-console-logs("")
 
 // Search for specific errors
-lov-read-console-logs("error")
-lov-read-console-logs("undefined")
-lov-read-console-logs("failed")
+alive-read-console-logs("error")
+alive-read-console-logs("undefined")
+alive-read-console-logs("failed")
 ```
 
 ### Network Requests
 
 ```typescript
 // Read all network activity
-lov-read-network-requests("")
+alive-read-network-requests("")
 
 // Search for specific requests
-lov-read-network-requests("api/profile")
-lov-read-network-requests("error")
-lov-read-network-requests("500")
+alive-read-network-requests("api/profile")
+alive-read-network-requests("error")
+alive-read-network-requests("500")
 ```
 
 ### Screenshots

@@ -56,7 +56,7 @@ User sees in chat:
 Full results: tool-results://security-scan-20250127-142301.json"
 ```
 
-### `lov-read-network-requests()`
+### `alive-read-network-requests()`
 ```
 Output: 5,000+ lines of JSON
 - Every HTTP request
@@ -72,7 +72,7 @@ User sees in chat:
 Full details: tool-results://network-requests-20250127-142405.json"
 ```
 
-### `lov-read-console-logs()`
+### `alive-read-console-logs()`
 ```
 Output: 8,000+ lines of text
 - Every console.log()
@@ -87,7 +87,7 @@ User sees in chat:
 Full logs: tool-results://console-logs-20250127-142510.txt"
 ```
 
-### `lov-search-files()`
+### `alive-search-files()`
 ```
 Output: 3,000+ lines of matches
 - Every file with matching pattern
@@ -137,13 +137,13 @@ Full schema: tool-results://table-schema-20250127-144520.json"
    Full results: tool-results://security-scan-[timestamp].json"
 
 6. AI reads full results:
-   lov-view("tool-results://security-scan-[timestamp].json")
+   alive-view("tool-results://security-scan-[timestamp].json")
 
 7. AI analyzes all findings
 
 8. AI fixes issues:
-   lov-line-replace(file1, fix1)
-   lov-line-replace(file2, fix2)
+   alive-line-replace(file1, fix1)
+   alive-line-replace(file2, fix2)
    [provides SQL for user to run]
 
 9. AI summarizes:
@@ -250,11 +250,11 @@ Full schema: tool-results://table-schema-20250127-144520.json"
 ### AI Can Read Them
 ```typescript
 // Full access
-lov-view("tool-results://security-scan-20250127-142301.json")
-lov-view("tool-results://console-logs-20250127-142510.txt", "1-1000")
+alive-view("tool-results://security-scan-20250127-142301.json")
+alive-view("tool-results://console-logs-20250127-142510.txt", "1-1000")
 
 // Search within them
-lov-search-files(
+alive-search-files(
   query="error",
   include_pattern="tool-results://console-logs-*.txt"
 )

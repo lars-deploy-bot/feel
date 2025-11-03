@@ -90,11 +90,11 @@
 │  └─→ YES: Continue                                               │
 │                                                                  │
 │  Check: Dependencies installed?                                  │
-│  ├─→ NO + needed: Call lov-add-dependency() in parallel          │
+│  ├─→ NO + needed: Call alive-add-dependency() in parallel          │
 │  └─→ YES: Continue                                               │
 │                                                                  │
 │  Check: Files in context?                                        │
-│  ├─→ NO: Plan lov-view() calls                                  │
+│  ├─→ NO: Plan alive-view() calls                                  │
 │  └─→ YES: Skip reading                                           │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
@@ -105,16 +105,16 @@
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │  Parallel file reading (when possible):                          │
-│  lov-view(src/App.tsx) ||                                        │
-│  lov-view(src/components/Header.tsx) ||                          │
-│  lov-view(src/hooks/useAuth.ts)                                  │
+│  alive-view(src/App.tsx) ||                                        │
+│  alive-view(src/components/Header.tsx) ||                          │
+│  alive-view(src/hooks/useAuth.ts)                                  │
 │                                                                  │
 │  Code search (if needed):                                        │
-│  lov-search-files(query="useState", include_pattern="src/**")    │
+│  alive-search-files(query="useState", include_pattern="src/**")    │
 │                                                                  │
 │  Debugging data (if bug):                                        │
-│  lov-read-console-logs() ||                                      │
-│  lov-read-network-requests() ||                                  │
+│  alive-read-console-logs() ||                                      │
+│  alive-read-network-requests() ||                                  │
 │  project_debug--sandbox-screenshot("/page")                      │
 │                                                                  │
 │  Web search (if needed):                                         │
@@ -140,9 +140,9 @@
 │  └─→ What's the minimal change to achieve goal?                 │
 │                                                                  │
 │  Tool Selection:                                                 │
-│  ├─→ Small changes: lov-line-replace (preferred)                │
-│  ├─→ New files: lov-write                                        │
-│  ├─→ Complete rewrites: lov-write (rare)                        │
+│  ├─→ Small changes: alive-line-replace (preferred)                │
+│  ├─→ New files: alive-write                                        │
+│  ├─→ Complete rewrites: alive-write (rare)                        │
 │  └─→ Refactoring: Create new files + update imports             │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
@@ -153,19 +153,19 @@
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │  Parallel Tool Execution (when independent):                     │
-│  lov-write(src/components/NewComponent.tsx, content) ||          │
-│  lov-line-replace(src/App.tsx, add_import) ||                    │
-│  lov-line-replace(src/routes.tsx, add_route)                     │
+│  alive-write(src/components/NewComponent.tsx, content) ||          │
+│  alive-line-replace(src/App.tsx, add_import) ||                    │
+│  alive-line-replace(src/routes.tsx, add_route)                     │
 │                                                                  │
 │  Sequential Tool Execution (when dependent):                     │
-│  1. lov-write(src/hooks/useAPI.ts, hook_code)                   │
+│  1. alive-write(src/hooks/useAPI.ts, hook_code)                   │
 │  2. WAIT for result                                              │
-│  3. lov-line-replace(src/components/Dashboard.tsx, use_hook)     │
+│  3. alive-line-replace(src/components/Dashboard.tsx, use_hook)     │
 │                                                                  │
 │  Tool Execution Rules:                                           │
-│  • Always check useful-context before lov-view                  │
+│  • Always check useful-context before alive-view                  │
 │  • Never read files already in context                          │
-│  • Prefer lov-line-replace over lov-write                       │
+│  • Prefer alive-line-replace over alive-write                       │
 │  • Create focused files (components, hooks, utils)              │
 │  • Never modify read-only files directly                        │
 │                                                                  │
@@ -178,8 +178,8 @@
 │                                                                  │
 │  Receive tool results:                                           │
 │  • Success messages                                              │
-│  • File contents (from lov-view)                                │
-│  • Search results (from lov-search-files)                       │
+│  • File contents (from alive-view)                                │
+│  • Search results (from alive-search-files)                       │
 │  • Error messages (if any)                                       │
 │  • Large outputs → tool-results:// files                         │
 │                                                                  │
@@ -229,7 +229,7 @@
 │  For Backend Changes:                                            │
 │  • Provide SQL for user to execute                              │
 │  • Explain what SQL does                                         │
-<!-- SUPABASE DISABLED: │  • Provide lov-link to Supabase dashboard                       │ -->
+<!-- SUPABASE DISABLED: │  • Provide alive-link to Supabase dashboard                       │ -->
 │                                                                  │
 │  For Bug Fixes:                                                  │
 │  • Re-run debugging tools                                        │
@@ -257,7 +257,7 @@
 │  1. Brief intro (1-2 lines max)                                 │
 │  2. Changes made (bulleted list)                                │
 │  3. SQL to execute (if applicable, in code block)               │
-│  4. lov-actions (links to docs, dashboard, etc.)                │
+│  4. alive-actions (links to docs, dashboard, etc.)                │
 │  5. Concise conclusion (1 line)                                 │
 │                                                                  │
 │  Response Rules:                                                 │
@@ -265,7 +265,7 @@
 │  • Super concise (unless user asks for detail)                  │
 │  • Focus on what changed, not how                               │
 │  • Provide actionable next steps if needed                      │
-│  • Use lov-actions for external links                           │
+│  • Use alive-actions for external links                           │
 │                                                                  │
 │  Example Response:                                               │
 │  "I'll add authentication with email/password.                   │
@@ -280,9 +280,9 @@
 │  CREATE TABLE profiles...                                        │
 │  ```                                                             │
 │                                                                  │
-│  <lov-actions>                                                   │
-<!-- SUPABASE DISABLED: │    <lov-link url='...'>Supabase Dashboard</lov-link>            │ -->
-│  </lov-actions>                                                  │
+│  <alive-actions>                                                   │
+<!-- SUPABASE DISABLED: │    <alive-link url='...'>Supabase Dashboard</alive-link>            │ -->
+│  </alive-actions>                                                  │
 │                                                                  │
 │  Authentication is now set up."                                  │
 │                                                                  │
@@ -297,16 +297,16 @@
 
 ```typescript
 // ✅ CORRECT: Parallel execution
-lov-write(src/components/A.tsx, contentA) ||
-lov-write(src/components/B.tsx, contentB) ||
-lov-write(src/components/C.tsx, contentC)
+alive-write(src/components/A.tsx, contentA) ||
+alive-write(src/components/B.tsx, contentB) ||
+alive-write(src/components/C.tsx, contentC)
 
 // ❌ WRONG: Sequential when parallel is possible
-lov-write(src/components/A.tsx, contentA)
+alive-write(src/components/A.tsx, contentA)
 // wait
-lov-write(src/components/B.tsx, contentB)
+alive-write(src/components/B.tsx, contentB)
 // wait
-lov-write(src/components/C.tsx, contentC)
+alive-write(src/components/C.tsx, contentC)
 ```
 
 **Benefits:**
@@ -321,14 +321,14 @@ lov-write(src/components/C.tsx, contentC)
 
 ```typescript
 // File B depends on File A existing
-1. lov-write(src/hooks/useAPI.ts, hook_code)
+1. alive-write(src/hooks/useAPI.ts, hook_code)
 2. WAIT for success
-3. lov-line-replace(src/components/Dashboard.tsx, import_and_use_hook)
+3. alive-line-replace(src/components/Dashboard.tsx, import_and_use_hook)
 
 // Need to read before modifying
-1. lov-view(src/App.tsx)
+1. alive-view(src/App.tsx)
 2. WAIT for content
-3. lov-line-replace(src/App.tsx, add_route)
+3. alive-line-replace(src/App.tsx, add_route)
 ```
 
 ### Context-First Optimization
@@ -344,10 +344,10 @@ lov-write(src/components/C.tsx, contentC)
 </current-code>
 
 // User asks: "Update App.tsx"
-lov-view(src/App.tsx) // WASTEFUL! Already in context
+alive-view(src/App.tsx) // WASTEFUL! Already in context
 
 // ✅ CORRECT: Use context directly
-lov-line-replace(src/App.tsx, make_change)
+alive-line-replace(src/App.tsx, make_change)
 ```
 
 ## State Management
@@ -401,7 +401,7 @@ Tool fails → Analyze error → Determine cause → Choose strategy:
    - Invalid parameter → Correct and retry
 
 2. Alternative approach:
-   - lov-write failed → Try lov-line-replace
+   - alive-write failed → Try alive-line-replace
    - Search failed → Try different pattern
    - Tool not available → Use different tool
 
@@ -469,19 +469,19 @@ Tell users about Visual Edits for simple changes.
 ### Tool Call Batching
 ```typescript
 // Instead of 5 sequential calls:
-lov-view(file1) → lov-view(file2) → lov-view(file3)...
+alive-view(file1) → alive-view(file2) → alive-view(file3)...
 
 // Batch in parallel:
-lov-view(file1) || lov-view(file2) || lov-view(file3) || lov-view(file4) || lov-view(file5)
+alive-view(file1) || alive-view(file2) || alive-view(file3) || alive-view(file4) || alive-view(file5)
 ```
 
 ### Smart Context Loading
 ```typescript
 // Don't load entire file if only need specific section:
-lov-view(src/App.tsx, lines="1-100")  // First 100 lines only
+alive-view(src/App.tsx, lines="1-100")  // First 100 lines only
 
 // Use search instead of reading all files:
-lov-search-files(query="useState", include_pattern="src/**")
+alive-search-files(query="useState", include_pattern="src/**")
 ```
 
 ### Result Caching
