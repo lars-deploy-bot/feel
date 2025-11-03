@@ -60,14 +60,14 @@ export function validateLoginRequest(body: unknown) {
 /**
  * Check if request body parsed successfully
  */
-export function isParseResultSuccess<T>(result: z.ZodSafeParseResult<T>): result is z.ZodSafeParseSuccess<T> {
+export function isParseResultSuccess<T>(result: z.SafeParseReturnType<T, T>): result is z.SafeParseSuccess<T> {
   return result.success
 }
 
 /**
  * Check if request body parsing failed
  */
-export function isParseResultError<T>(result: z.ZodSafeParseResult<T>): result is z.ZodSafeParseError<T> {
+export function isParseResultError<T>(result: z.SafeParseReturnType<T, T>): result is z.SafeParseError<T> {
   return !result.success
 }
 

@@ -6,6 +6,53 @@ Next.js web frontend for Claude Code agentic conversations with workspace-scoped
 
 always use bun!
 
+## Deployment & Ports
+
+### Production (terminal.goalive.nl)
+- **Domain:** `terminal.goalive.nl`
+- **Caddy Config:** `/etc/caddy/Caddyfile` (main config)
+- **Port:** `8999` (localhost only)
+- **PM2 Process:** `claude-bridge`
+- **Command:** `bun next start -p 8999`
+- **Serves:** Built `.next` folder (production optimized)
+- **Deploy:** `bun run deploy` (runs `./scripts/build-and-serve.sh`)
+  - Pulls latest from git
+  - Runs `bun install` + `bun run build`
+  - Stops old PM2 process
+  - Starts new process with `next start`
+  - Reloads Caddy
+
+### Staging (staging.terminal.goalive.nl)
+- **Domain:** `staging.terminal.goalive.nl`
+- **Caddy Config:** `/root/webalive/claude-bridge/Caddyfile` (imported)
+- **Port:** `8998` (localhost only)
+- **PM2 Process:** `claude-bridge-staging`
+- **Command:** `bunx next dev --turbo -p 8998`
+- **Serves:** Dev server with hot reload
+- **Purpose:** Testing changes before production deploy
+
+### Port Flow
+```
+Internet → Caddy (ports 80/443)
+  ↓
+terminal.goalive.nl → localhost:8999 (production build)
+staging.terminal.goalive.nl → localhost:8998 (dev server)
+```
+
+### PM2 Commands
+```bash
+# Production
+pm2 logs claude-bridge
+pm2 restart claude-bridge
+
+# Staging
+pm2 logs claude-bridge-staging
+pm2 restart claude-bridge-staging
+
+# Both
+pm2 list
+```
+
 ## Request → Response Pipeline
 
 **Client POST** → `/api/claude/stream` (message, conversationId, workspace?) → **Auth check** (session cookie) → **Workspace resolve** (terminal.* vs default) → **Conversation lock** (Set<convKey>) → **Resume lookup** (SessionStore.get) → **query()** async iter → **ReadableStream SSE** → **Client SSE parser** → **toolUseMap build** → **UIMessage[]** → **groupMessages()** → **MessageGroup[]** → **renderMessage() switch**
