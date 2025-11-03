@@ -1,4 +1,4 @@
-import { toolsMcp } from "@alive-brug/tools"
+import { toolsMcp, workspaceManagementMcp } from "@alive-brug/tools"
 import type { Options, PermissionResult } from "@anthropic-ai/claude-agent-sdk"
 import { cookies, headers } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
@@ -14,7 +14,6 @@ import { logInput } from "@/lib/input-logger"
 import { SessionStoreMemory, sessionKey, tryLockConversation, unlockConversation } from "@/lib/sessionStore"
 import { ensurePathWithinWorkspace, getWorkspace, type Workspace } from "@/lib/workspace-secure"
 import { resolveWorkspace } from "@/lib/workspace-utils"
-import { restartServerMcp } from "@/tools/restart-server"
 import { BodySchema, isToolAllowed } from "@/types/guards/api"
 import { hasSessionCookie } from "@/types/guards/auth"
 import { isTerminalMode } from "@/types/guards/workspace"
@@ -254,7 +253,7 @@ export async function POST(req: NextRequest) {
       settingSources: ["project"],
       model: env.CLAUDE_MODEL,
       mcpServers: {
-        "workspace-management": restartServerMcp,
+        "workspace-management": workspaceManagementMcp,
         tools: toolsMcp,
       },
       ...(existingSessionId ? { resume: existingSessionId } : {}),

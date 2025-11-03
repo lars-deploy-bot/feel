@@ -1,46 +1,26 @@
-# @alive-brug/guides
+# @alive-brug/tools
 
-MCP (Model Context Protocol) server providing access to Alive Brug development guides and documentation.
+MCP (Model Context Protocol) server providing development guides, documentation, and debugging tools for the Claude Bridge application.
 
 ## Overview
 
-This package exposes internal development guides, best practices, and implementation patterns through an MCP server that can be used by Claude in the Claude Bridge application.
+This package exposes an integrated suite of tools through an MCP server that can be used by Claude during conversations:
 
-### How It Works
-
-The `@alive-brug/guides` package is an **MCP server** that gives Claude AI access to a curated knowledge base during conversations. Think of it as a library system:
-
-1. **Storage**: Development guides are stored as markdown files in `internals-folder/`
-2. **Server**: An MCP server (`guidesMcp`) exposes these guides through two tools
-3. **Tools**: Claude can discover (`list_guides`) and read (`get_guide`) documentation
-4. **Integration**: The web app registers these tools, making them available during Claude conversations
-
-This architecture is inspired by Alive AI's internal documentation system, adapted for the Claude Bridge multi-tenant platform.
-
-## Core Concept
-
-This package is an **MCP (Model Context Protocol) server** that gives Claude AI access to development documentation during conversations. Instead of embedding guides in prompts, Claude can query for specific documentation when needed.
-
-**The mechanism:**
-```
-User asks question → Claude recognizes need → Calls tool → Reads guide → Applies knowledge
-```
+- **Guides & Documentation**: Development best practices and implementation patterns
+- **Debugging Tools**: Server log inspection from systemd journals (work in progress)
 
 ## Features
+
+### Guides & Documentation
 
 - **list_guides**: Discover available guides across different categories
 - **get_guide**: Retrieve specific guide content by category and topic
 
-## Benefits
+### Debug Tools
 
-- **Token efficiency**: Guides loaded only when needed, not upfront
-- **Maintainability**: Update guides by editing markdown files
-- **Discoverability**: Claude can explore what documentation exists
-- **Separation of concerns**: Knowledge base separate from application code
+- **read_server_logs**: Read systemd journal logs from workspace dev servers (currently disabled in main terminal)
 
 ## Installation
-
-This is an internal package in the Alive Brug monorepo. To use it:
 
 ```bash
 # Install dependencies
@@ -52,79 +32,30 @@ bun run build
 
 ## Usage in Claude Bridge
 
-### 1. Add to web app dependencies
-
-In `apps/web/package.json`:
-
-```json
-{
-  "dependencies": {
-    "@alive-brug/guides": "workspace:*"
-  }
-}
-```
-
-### 2. Import and register the MCP server
+### Import and Register
 
 In `apps/web/app/api/claude/stream/route.ts`:
 
 ```typescript
-import { guidesMcp } from "@alive-brug/guides"
+import { toolsMcp } from "@alive-brug/tools"
 
 const claudeOptions: Options = {
-  // ... other options
   mcpServers: {
     "workspace-management": restartServerMcp,
-    "guides": guidesMcp  // Add guides MCP server
+    "tools": toolsMcp
   },
   allowedTools: [
     "Write", "Edit", "Read", "Glob", "Grep",
     "mcp__workspace-management__restart_dev_server",
-    "mcp__guides__list_guides",    // Add guides tools
-    "mcp__guides__get_guide"
+    "mcp__tools__list_guides",
+    "mcp__tools__get_guide"
   ]
 }
 ```
 
-### 3. Update tool allowlist
+## Tool Reference
 
-In the `canUseTool` callback, add guides tools to the ALLOWED set:
-
-```typescript
-const ALLOWED = new Set([
-  "Write", "Edit", "Read", "Glob", "Grep",
-  "mcp__guides__list_guides",
-  "mcp__guides__get_guide"
-])
-```
-
-## How Claude Uses These Tools
-
-During a conversation in Claude Bridge, Claude can autonomously use these tools to access documentation:
-
-### Example Conversation Flow
-
-```
-User: "Help me implement authentication"
-
-Claude (thinking):
-  1. I need best practices for authentication
-  2. Uses: list_guides to discover available categories
-  3. Uses: get_guide with relevant category and topic
-  4. Reads the guide content
-  5. Implements auth following documented patterns
-
-User: "Now add security policies"
-
-Claude (thinking):
-  1. Uses: get_guide to fetch security documentation
-  2. Applies the patterns from the guide
-  3. Implements policies following best practices
-```
-
-### Tool Reference
-
-#### list_guides
+### list_guides
 
 Lists all available guides in a category or shows all categories.
 
@@ -133,16 +64,14 @@ Lists all available guides in a category or shows all categories.
 
 **Examples:**
 ```typescript
-// List all categories
-{ tool: "mcp__guides__list_guides" }
-// Returns: Available categories with guide counts
+// List all categories with guide counts
+{ tool: "mcp__tools__list_guides" }
 
 // List guides in specific category
-{ tool: "mcp__guides__list_guides", category: "workflows" }
-// Returns: List of guides in that category with titles
+{ tool: "mcp__tools__list_guides", category: "workflows" }
 ```
 
-#### get_guide
+### get_guide
 
 Retrieves guide content by category and optional topic search.
 
@@ -152,22 +81,19 @@ Retrieves guide content by category and optional topic search.
 
 **Examples:**
 ```typescript
-// Get authentication guide
-{
-  tool: "mcp__guides__get_guide",
-  category: "workflows",
-  topic: "authentication"
-}
-// Returns: Full markdown content of matching guide
-
-// Get design patterns
-{
-  tool: "mcp__guides__get_guide",
-  category: "design-system",
-  topic: "color"
-}
-// Returns: Guide content about color systems
+{ tool: "mcp__tools__get_guide", category: "workflows", topic: "authentication" }
+{ tool: "mcp__tools__get_guide", category: "design-system", topic: "color" }
 ```
+
+### read_server_logs
+
+Reads systemd journal logs from a workspace's dev server. Currently disabled in the main terminal.
+
+**Parameters:**
+- `workspace` (required): Workspace domain (e.g., "two.goalive.nl")
+- `search` (optional): Filter logs by search term
+- `lines` (optional): Number of log lines (default: 100, max: 1000)
+- `since` (optional): Time range (e.g., "5 minutes ago")
 
 ## Development
 
@@ -193,135 +119,47 @@ bun run format
 ### Directory Structure
 
 ```
-packages/guides/
-├── src/                      # TypeScript source code
-│   ├── index.ts              # Main export: guidesMcp
-│   ├── mcp-server.ts         # MCP server definition
-│   └── tools/                # Tool implementations
-│       ├── list-guides.ts    # List available guides in categories
-│       └── get-guide.ts      # Retrieve guide content
-├── internals-folder/         # Markdown knowledge base
-│   └── [categories]/         # Organized by category (structure may vary)
-├── test/                     # Unit tests with fixtures
-├── dist/                     # Compiled output (generated)
+packages/tools/
+├── src/
+│   ├── index.ts                    # Main export
+│   ├── mcp-server.ts               # MCP server definition
+│   ├── tools/
+│   │   ├── guides/
+│   │   │   ├── list-guides.ts     # List available guides
+│   │   │   └── get-guide.ts       # Retrieve guide content
+│   │   └── debug/
+│   │       └── read-server-logs.ts # Read systemd journal logs
+│   └── internals-folder/           # Markdown knowledge base
+├── dist/                           # Compiled output (generated)
 ├── package.json
 ├── tsconfig.json
-└── vitest.config.ts
+└── README.md
 ```
 
-### Component Flow
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│ Claude Bridge (apps/web)                                    │
-│                                                               │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │ /api/claude/stream/route.ts                         │   │
-│  │                                                       │   │
-│  │  import { guidesMcp } from "@alive-brug/guides"     │   │
-│  │                                                       │   │
-│  │  claudeOptions = {                                   │   │
-│  │    mcpServers: { "guides": guidesMcp },             │   │
-│  │    allowedTools: [                                   │   │
-│  │      "mcp__guides__list_guides",                     │   │
-│  │      "mcp__guides__get_guide"                        │   │
-│  │    ]                                                  │   │
-│  │  }                                                    │   │
-│  └──────────────────┬───────────────────────────────────┘   │
-│                     │                                         │
-│                     │ Claude SDK query()                      │
-│                     │ with mcpServers                         │
-│                     ▼                                         │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │ Claude AI (Anthropic API)                           │   │
-│  │                                                       │   │
-│  │ During conversation, Claude decides:                 │   │
-│  │ "I need documentation about [topic]"                 │   │
-│  │                                                       │   │
-│  │ Calls: mcp__guides__get_guide({                      │   │
-│  │   category: "[relevant-category]",                   │   │
-│  │   topic: "[search-term]"                             │   │
-│  │ })                                                    │   │
-│  └──────────────────┬───────────────────────────────────┘   │
-└────────────────────┼─────────────────────────────────────────┘
-                     │
-                     │ Tool execution routed to MCP server
-                     │
-┌────────────────────▼─────────────────────────────────────────┐
-│ @alive-brug/guides package                                   │
-│                                                               │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │ src/mcp-server.ts                                    │   │
-│  │                                                       │   │
-│  │  export const guidesMcp = createSdkMcpServer({      │   │
-│  │    name: "guides",                                   │   │
-│  │    tools: [listGuidesTool, getGuideTool]            │   │
-│  │  })                                                   │   │
-│  └──────────────────┬───────────────────────────────────┘   │
-│                     │                                         │
-│                     ▼                                         │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │ src/tools/get-guide.ts                               │   │
-│  │                                                       │   │
-│  │  1. Parse params (category, topic)                  │   │
-│  │  2. Scan: internals-folder/[category]/*.md          │   │
-│  │  3. Filter: files matching topic keyword            │   │
-│  │  4. Read: first matching markdown file               │   │
-│  │  5. Return: Full markdown content                    │   │
-│  └──────────────────┬───────────────────────────────────┘   │
-│                     │                                         │
-│                     │ File I/O                                │
-│                     ▼                                         │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │ internals-folder/                                    │   │
-│  │   [category]/[matching-guide].md                     │   │
-│  │                                                       │   │
-│  │ # Guide Title                                        │   │
-│  │ [Full markdown content with best practices]          │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                                                               │
-│  Result flows back through Claude SDK to web app             │
-└───────────────────────────────────────────────────────────────┘
-```
-
-### Key Design Decisions
-
-1. **Separation of Logic and Registration**: Each tool file (`get-guide.ts`, `list-guides.ts`) contains:
-   - Pure business logic function (testable)
-   - Zod schema for parameter validation
-   - MCP tool registration with SDK
-
-2. **Filesystem-based Knowledge Base**: Guides are markdown files that can be edited without code changes
-
-3. **Category-based Organization**: Mimics Alive AI's internal structure (30 guides, workflows, design system, knowledge base)
-
-4. **Path Safety**: All file operations use Node.js path joining to prevent traversal attacks
-
-5. **TypeScript Strict Mode**: Full type safety with Zod schemas and TypeScript 5.x
-
-## Tool Naming Convention
+### Tool Naming Convention
 
 MCP tools follow the pattern: `mcp__[serverName]__[toolName]`
 
 For this server:
-- Server name: `guides`
-- Tools: `list_guides`, `get_guide`
-- Full names: `mcp__guides__list_guides`, `mcp__guides__get_guide`
+- Server name: `tools`
+- Tools: `list_guides`, `get_guide`, `read_server_logs`
+- Full names: `mcp__tools__list_guides`, `mcp__tools__get_guide`, `mcp__tools__read_server_logs`
 
 ## Security
 
-- Tools only read from the `internals-folder` directory
+- Guide tools only read from the `internals-folder` directory
 - No file write operations
 - Path traversal is prevented by design
 - Only markdown files are accessible
+- Server log tool validates workspace domains before querying systemd
 
 ## Extending the System
 
 ### Adding New Guides
 
-1. Add markdown files to appropriate category folder
-2. Rebuild the package: `bun run build`
-3. Tools automatically discover new guides (no code changes needed)
+1. Add markdown files to appropriate category folder in `internals-folder/`
+2. Rebuild: `bun run build`
+3. Tools automatically discover new guides
 
 ### Adding New Tools
 
@@ -331,12 +169,8 @@ For this server:
    - MCP tool registration
 2. Import and register in `src/mcp-server.ts`
 3. Export from `src/index.ts`
-4. Update `allowedTools` in web app
+4. Update `allowedTools` in web app if needed
 5. Rebuild: `bun run build`
-
-### Adding New Categories
-
-Update the `GUIDE_CATEGORIES` array in `src/tools/get-guide.ts` to include new category paths.
 
 ## License
 
