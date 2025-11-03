@@ -47,6 +47,20 @@
         "vitest": "^4.0.6",
       },
     },
+    "packages/guides": {
+      "name": "@alive-brug/guides",
+      "version": "1.0.0",
+      "dependencies": {
+        "@anthropic-ai/claude-agent-sdk": "^0.1.25",
+        "zod": "^3.25.0",
+      },
+      "devDependencies": {
+        "@types/node": "^22.5.2",
+        "@vitest/coverage-v8": "^2.1.8",
+        "typescript": "^5.9.3",
+        "vitest": "^2.1.8",
+      },
+    },
     "packages/images": {
       "name": "@alive-brug/images",
       "version": "1.0.0",
@@ -66,6 +80,8 @@
     },
   },
   "packages": {
+    "@alive-brug/guides": ["@alive-brug/guides@workspace:packages/guides"],
+
     "@alive-brug/images": ["@alive-brug/images@workspace:packages/images"],
 
     "@alive-brug/template": ["@alive-brug/template@workspace:packages/template"],

@@ -1,0 +1,42 @@
+{
+  "name": "lovable-project",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^3.10.0",
+    "@radix-ui/react-accordion": "^1.2.11",
+    "@tanstack/react-query": "^5.83.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.30.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.2.1",
+    "typescript": "^5.2.2",
+    "vite": "^5.0.8"
+  }
+}
+
+<!-- 
+  NOTE: This is a READ-ONLY file in actual projects.
+  
+  The AI cannot directly modify this file.
+  Instead, it uses:
+  - lov-add-dependency("package-name@version")
+  - lov-remove-dependency("package-name")
+  
+  These tools:
+  1. Validate the package exists
+  2. Check for conflicts
+  3. Update package.json
+  4. Run npm/bun install
+  5. Update lock files
+-->
