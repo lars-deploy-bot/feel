@@ -40,10 +40,7 @@ export function shouldUseChildProcess(workspaceRoot: string): boolean {
   }
 }
 
-export function runAgentChild(
-  workspaceRoot: string,
-  payload: AgentRequest
-): ReadableStream<Uint8Array> {
+export function runAgentChild(workspaceRoot: string, payload: AgentRequest): ReadableStream<Uint8Array> {
   const { uid, gid } = getWorkspaceCredentials(workspaceRoot)
   const runnerPath = resolve(process.cwd(), "scripts/run-agent.mjs")
 
@@ -60,9 +57,9 @@ export function runAgentChild(
       TARGET_GID: String(gid),
       TARGET_CWD: workspaceRoot,
       LANG: "C.UTF-8",
-      LC_CTYPE: "C.UTF-8"
+      LC_CTYPE: "C.UTF-8",
     },
-    stdio: ["pipe", "pipe", "pipe"]
+    stdio: ["pipe", "pipe", "pipe"],
   })
 
   console.log(`[agent-child] Spawned as root (will drop to ${uid}:${gid}): PID ${child.pid}`)
@@ -75,18 +72,17 @@ export function runAgentChild(
 
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
-
       child.stdout.on("data", (chunk: Buffer) => {
         controller.enqueue(new Uint8Array(chunk))
       })
 
       child.stdout.on("end", () => {
-        console.log(`[agent-child] stdout ended`)
+        console.log("[agent-child] stdout ended")
         controller.close()
       })
 
-      child.on("error", (error) => {
-        console.error(`[agent-child] Process error:`, error)
+      child.on("error", error => {
+        console.error("[agent-child] Process error:", error)
         controller.error(error)
       })
 
@@ -94,19 +90,19 @@ export function runAgentChild(
         if (code !== 0) {
           console.error(`[agent-child] Exited with code ${code}, signal ${signal}`)
         } else {
-          console.log(`[agent-child] Exited successfully`)
+          console.log("[agent-child] Exited successfully")
         }
       })
     },
 
     cancel() {
-      console.log(`[agent-child] Stream cancelled, killing child`)
+      console.log("[agent-child] Stream cancelled, killing child")
       child.kill("SIGTERM")
-    }
+    },
   })
 
   child.stderr.on("data", (data: Buffer) => {
-    console.error(`[agent-child stderr]`, data.toString().trim())
+    console.error("[agent-child stderr]", data.toString().trim())
   })
 
   return stream

@@ -5,16 +5,16 @@ const restartServerTool = tool(
   "restart_dev_server",
   "Restarts the systemd dev server for the current workspace. Use this after making structural changes that require a server restart (e.g., changing from localStorage to server-side state, adding new dependencies, modifying server configuration).",
   {
-    workspaceRoot: z.string().describe("The root path of the workspace (e.g., /srv/webalive/sites/example.com/user)")
+    workspaceRoot: z.string().describe("The root path of the workspace (e.g., /srv/webalive/sites/example.com/user)"),
   },
-  async (args) => {
+  async args => {
     const { workspaceRoot } = args
 
     try {
-      const response = await fetch('http://localhost:8998/api/restart-workspace', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workspaceRoot })
+      const response = await fetch("http://localhost:8998/api/restart-workspace", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceRoot }),
       })
 
       const result = await response.json()
@@ -24,20 +24,20 @@ const restartServerTool = tool(
           content: [
             {
               type: "text" as const,
-              text: `✓ ${result.message}\n\nThe server has been restarted and should now reflect your changes.`
-            }
+              text: `✓ ${result.message}\n\nThe server has been restarted and should now reflect your changes.`,
+            },
           ],
-          isError: false
+          isError: false,
         }
       } else {
         return {
           content: [
             {
               type: "text" as const,
-              text: `✗ ${result.message}`
-            }
+              text: `✗ ${result.message}`,
+            },
           ],
-          isError: true
+          isError: true,
         }
       }
     } catch (error) {
@@ -47,17 +47,17 @@ const restartServerTool = tool(
         content: [
           {
             type: "text" as const,
-            text: `✗ Failed to call restart API\n\nError: ${errorMessage}`
-          }
+            text: `✗ Failed to call restart API\n\nError: ${errorMessage}`,
+          },
         ],
-        isError: true
+        isError: true,
       }
     }
-  }
+  },
 )
 
 export const restartServerMcp = createSdkMcpServer({
   name: "workspace-management",
   version: "1.0.0",
-  tools: [restartServerTool]
+  tools: [restartServerTool],
 })
