@@ -1,9 +1,5 @@
 import { createSdkMcpServer } from "@anthropic-ai/claude-agent-sdk"
-// Debug tools
-import { readConsoleLogsTool } from "./tools/debug/read-console-logs.js"
-import { readNetworkRequestsTool } from "./tools/debug/read-network-requests.js"
-import { sandboxScreenshotTool } from "./tools/debug/sandbox-screenshot.js"
-// Guide tools
+import { readServerLogsTool } from "./tools/debug/read-server-logs.js"
 import { getGuideTool } from "./tools/guides/get-guide.js"
 import { listGuidesTool } from "./tools/guides/list-guides.js"
 
@@ -12,35 +8,19 @@ import { listGuidesTool } from "./tools/guides/list-guides.js"
  *
  * Comprehensive tool suite for Claude Bridge development platform.
  *
- * Available tools:
- *
  * **Guides & Documentation:**
  * - list_guides: Discover available guides across different categories
  * - get_guide: Retrieve specific guide content by category and topic
  *
  * **Debugging & Diagnostics:**
- * - read_console_logs: Capture browser console output (logs, errors, warnings)
- * - read_network_requests: Capture all network activity (API calls, responses, timing)
- * - sandbox_screenshot: Take screenshots of deployed websites
+ * - read_server_logs: Read systemd journal logs from workspace dev servers (Vite build errors, server crashes, etc.)
  *
- * Usage in Claude Bridge:
- * - Tool names: mcp__tools__<tool_name> (e.g., mcp__tools__read_console_logs)
- * - Register in mcpServers config
- * - Add to allowedTools whitelist
+ * Tool names follow MCP pattern: mcp__tools__<tool_name>
  */
 export const toolsMcp = createSdkMcpServer({
-  name: "tools",
-  version: "1.0.0",
-  tools: [
-    // Guides
-    listGuidesTool,
-    getGuideTool,
-    // Debug
-    readConsoleLogsTool,
-    readNetworkRequestsTool,
-    sandboxScreenshotTool,
-  ],
+	name: "tools",
+	version: "1.0.0",
+	tools: [listGuidesTool, getGuideTool, readServerLogsTool],
 })
 
-// Export legacy name for backward compatibility
 export const guidesMcp = toolsMcp
