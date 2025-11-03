@@ -3,6 +3,12 @@
 import { motion } from "framer-motion"
 import type { FieldErrors, UseFormRegister } from "react-hook-form"
 
+interface DeploySubdomainForm {
+  slug: string
+  siteIdeas: string
+  password: string
+}
+
 const fieldVariants = {
   hidden: { opacity: 0, x: -10 },
   visible: {
@@ -17,15 +23,15 @@ const fieldVariants = {
 }
 
 interface SiteIdeasTextareaProps {
-  register: UseFormRegister<any>
-  errors: FieldErrors<any>
+  register: UseFormRegister<DeploySubdomainForm>
+  errors: FieldErrors<DeploySubdomainForm>
   watchIdeas: string
   isDeploying: boolean
 }
 
 export function SiteIdeasTextarea({ register, errors, watchIdeas, isDeploying }: SiteIdeasTextareaProps) {
   const charCount = watchIdeas?.length || 0
-  const isValid = charCount >= 10 && charCount <= 5000
+  const isLengthValid = charCount >= 10 && charCount <= 5000
 
   return (
     <motion.div variants={fieldVariants}>
@@ -47,7 +53,7 @@ export function SiteIdeasTextarea({ register, errors, watchIdeas, isDeploying }:
           className={`w-full px-4 py-3 rounded-lg border-2 transition-colors outline-none font-medium resize-none ${
             errors.siteIdeas
               ? "border-red-300 bg-red-50 text-gray-900"
-              : isValid
+              : isLengthValid
                 ? "border-green-300 bg-green-50 text-gray-900"
                 : "border-gray-200 bg-gray-50 text-gray-900 hover:border-gray-300 focus:border-blue-500 focus:bg-blue-50"
           } disabled:opacity-50 disabled:cursor-not-allowed`}
@@ -65,13 +71,13 @@ export function SiteIdeasTextarea({ register, errors, watchIdeas, isDeploying }:
         </motion.div>
       </motion.div>
 
-      {errors.siteIdeas && typeof errors.siteIdeas === "object" && "message" in errors.siteIdeas && (
+      {errors.siteIdeas && (
         <motion.p
           initial={{ opacity: 0, y: -5 }}
           animate={{ opacity: 1, y: 0 }}
           className="mt-1.5 text-red-600 text-xs font-medium"
         >
-          {errors.siteIdeas.message as string}
+          {errors.siteIdeas.message}
         </motion.p>
       )}
 

@@ -150,16 +150,20 @@ export function DeployForm() {
   useEffect(() => {
     setIsClient(true)
 
+    const isValidMode = (mode: string | null): mode is DeploymentMode => {
+      return mode === "deploy-only" || mode === "deploy-with-domain"
+    }
+
     // Set initial mode from URL
-    const modeParam = searchParams.get("mode") as DeploymentMode | null
-    if (modeParam && (modeParam === "deploy-only" || modeParam === "deploy-with-domain")) {
+    const modeParam = searchParams.get("mode")
+    if (isValidMode(modeParam)) {
       setDeploymentModeState(modeParam)
     }
 
     // Listen for browser back button
     const handlePopState = () => {
-      const newModeParam = new URLSearchParams(window.location.search).get("mode") as DeploymentMode | null
-      if (newModeParam && (newModeParam === "deploy-only" || newModeParam === "deploy-with-domain")) {
+      const newModeParam = new URLSearchParams(window.location.search).get("mode")
+      if (isValidMode(newModeParam)) {
         setDeploymentModeState(newModeParam)
       } else {
         setDeploymentModeState("choose")

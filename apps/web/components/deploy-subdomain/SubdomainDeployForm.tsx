@@ -102,8 +102,9 @@ export function SubdomainDeployForm() {
 
       // Auto-redirect on success
       if (result.ok && result.chatUrl) {
+        const chatUrl = result.chatUrl
         setTimeout(() => {
-          router.push(result.chatUrl!)
+          router.push(chatUrl)
         }, 2000)
       }
     } catch (error) {

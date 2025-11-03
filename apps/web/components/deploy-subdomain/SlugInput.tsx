@@ -4,6 +4,12 @@ import { motion } from "framer-motion"
 import { useEffect, useState } from "react"
 import type { FieldErrors, UseFormRegister } from "react-hook-form"
 
+interface DeploySubdomainForm {
+  slug: string
+  siteIdeas: string
+  password: string
+}
+
 const fieldVariants = {
   hidden: { opacity: 0, x: -10 },
   visible: {
@@ -18,8 +24,8 @@ const fieldVariants = {
 }
 
 interface SlugInputProps {
-  register: UseFormRegister<any>
-  errors: FieldErrors<any>
+  register: UseFormRegister<DeploySubdomainForm>
+  errors: FieldErrors<DeploySubdomainForm>
   watchSlug: string
   isDeploying: boolean
 }
@@ -95,13 +101,13 @@ export function SlugInput({ register, errors, watchSlug, isDeploying }: SlugInpu
         )}
       </motion.div>
 
-      {errors.slug && typeof errors.slug === "object" && "message" in errors.slug && (
+      {errors.slug && (
         <motion.p
           initial={{ opacity: 0, y: -5 }}
           animate={{ opacity: 1, y: 0 }}
           className="mt-1.5 text-red-600 text-xs font-medium"
         >
-          {errors.slug.message as string}
+          {errors.slug.message}
         </motion.p>
       )}
 
