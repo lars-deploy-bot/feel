@@ -8,6 +8,7 @@ import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { useDeployFormStore, useDeploymentStatusStore } from "@/lib/stores/deployStore"
+import { SubdomainDeployForm } from "@/components/deploy-subdomain/SubdomainDeployForm"
 import { DeploymentStatus } from "./DeploymentStatus"
 import { ModeOption } from "./ModeOption"
 import { PasswordField } from "./PasswordField"
@@ -352,29 +353,9 @@ export function DeployForm() {
             </motion.div>
           </form>
         ) : (
-          <form
-            onSubmit={deployOnlyForm.handleSubmit(onSubmitDeployOnly)}
-            className="p-8 space-y-5"
-          >
-            {/* Password Field */}
-            <PasswordField
-              register={deployOnlyForm.register}
-              errors={deployOnlyForm.formState.errors}
-              watchPassword={watchPassword}
-              isDeploying={isDeploying}
-              showPassword={showPassword}
-              onTogglePassword={() => setShowPassword(!showPassword)}
-            />
-
-            {/* Submit Button */}
-            <motion.div variants={fieldVariants} className="pt-3">
-              <SubmitButton
-                isDeploying={isDeploying}
-                isValid={deployOnlyForm.formState.isValid}
-                label="Deploy Now"
-              />
-            </motion.div>
-          </form>
+          <motion.div variants={itemVariants}>
+            <SubdomainDeployForm />
+          </motion.div>
         )}
       </motion.div>
 
