@@ -11,7 +11,7 @@
     "e2e": "cd apps/web && bun run test:e2e",
     "format": "turbo run format",
     "lint": "turbo run lint",
-    "postinstall": "cd packages/template/user && bun install && ./scripts/link-workspace-deps.sh",
+    "postinstall": "cd packages/template/user && bun install && cd ../../.. && ./scripts/link-workspace-deps.sh",
     "pull": "GIT_SSH_COMMAND='ssh -i ~/.ssh/alive_brug_deploy' git pull",
     "push": "GIT_SSH_COMMAND='ssh -i ~/.ssh/alive_brug_deploy' git push",
     "see": "pm2 logs claude-bridge --lines 1000",
