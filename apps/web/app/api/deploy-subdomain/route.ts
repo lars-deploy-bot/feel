@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
     const duration = Date.now() - startTime
     console.log(`[Deploy-Subdomain] Deployment completed successfully in ${duration}ms`)
 
-    return NextResponse.json(
+    const res = NextResponse.json(
       {
         ok: true,
         message: `Site ${fullDomain} deployed successfully! Initializing Claude assistant...`,
@@ -203,6 +203,16 @@ export async function POST(request: NextRequest) {
       } as DeploySubdomainResponse,
       { status: 200 },
     )
+
+    // Set session cookie so user is authenticated when redirected to chat
+    res.cookies.set("session", "1", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      path: "/",
+    })
+
+    return res
   } catch (error: any) {
     const duration = Date.now() - startTime
     console.error(`[Deploy-Subdomain] Error after ${duration}ms:`, error)
