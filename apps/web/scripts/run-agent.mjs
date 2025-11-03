@@ -15,6 +15,7 @@ import { mkdirSync } from "node:fs"
 import process from "node:process"
 import { query, createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk"
 import { z } from "zod"
+import { guidesMcp } from "@alive-brug/guides"
 
 const restartServerTool = tool(
   "restart_dev_server",
@@ -126,9 +127,19 @@ async function readStdinJson() {
         model: request.model,
         maxTurns: request.maxTurns || 25,
         permissionMode: "acceptEdits",
-        allowedTools: ["Write", "Edit", "Read", "Glob", "Grep", "mcp__workspace-management__restart_dev_server"],
+        allowedTools: [
+          "Write",
+          "Edit",
+          "Read",
+          "Glob",
+          "Grep",
+          "mcp__workspace-management__restart_dev_server",
+          "mcp__guides__list_guides",
+          "mcp__guides__get_guide",
+        ],
         mcpServers: {
-          "workspace-management": restartServerMcp
+          "workspace-management": restartServerMcp,
+          guides: guidesMcp,
         },
         systemPrompt: request.systemPrompt,
         resume: request.resume

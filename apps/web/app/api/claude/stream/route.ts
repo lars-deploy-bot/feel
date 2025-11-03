@@ -11,6 +11,7 @@ import { env } from "@/lib/env"
 import { ErrorCodes } from "@/lib/error-codes"
 import { logInput } from "@/lib/input-logger"
 import { restartServerMcp } from "@/tools/restart-server"
+import { guidesMcp } from "@alive-brug/guides"
 import { SessionStoreMemory, sessionKey, tryLockConversation, unlockConversation } from "@/lib/sessionStore"
 import { ensurePathWithinWorkspace, getWorkspace, type Workspace } from "@/lib/workspace-secure"
 import { resolveWorkspace } from "@/lib/workspace-utils"
@@ -231,7 +232,16 @@ export async function POST(req: NextRequest) {
 
     const claudeOptions: Options = {
       cwd,
-      allowedTools: ["Write", "Edit", "Read", "Glob", "Grep", "mcp__workspace-management__restart_dev_server"],
+      allowedTools: [
+        "Write",
+        "Edit",
+        "Read",
+        "Glob",
+        "Grep",
+        "mcp__workspace-management__restart_dev_server",
+        "mcp__guides__list_guides",
+        "mcp__guides__get_guide",
+      ],
       permissionMode: "acceptEdits",
       canUseTool,
       maxTurns: effectiveMaxTurns,
@@ -244,7 +254,8 @@ export async function POST(req: NextRequest) {
       settingSources: ["project"],
       model: env.CLAUDE_MODEL,
       mcpServers: {
-        "workspace-management": restartServerMcp
+        "workspace-management": restartServerMcp,
+        guides: guidesMcp,
       },
       ...(existingSessionId ? { resume: existingSessionId } : {}),
     }
