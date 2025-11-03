@@ -129,6 +129,9 @@ export default function ChatPage() {
   }
 
   async function sendStreaming(userMessage: UIMessage) {
+    let receivedAnyMessage = false
+    let timeoutId: NodeJS.Timeout | null = null
+
     try {
       const requestBody = isTerminal
         ? { message: userMessage.content, workspace, conversationId }
@@ -137,6 +140,14 @@ export default function ChatPage() {
       // Create AbortController for this request
       const abortController = new AbortController()
       abortControllerRef.current = abortController
+
+      // Set a timeout to detect hanging requests (60 seconds)
+      timeoutId = setTimeout(() => {
+        if (!receivedAnyMessage) {
+          console.error("[Chat] Request timeout - no response received in 60s")
+          abortController.abort()
+        }
+      }, 60000)
 
       const response = await fetch("/api/claude/stream", {
         method: "POST",
@@ -163,71 +174,84 @@ export default function ChatPage() {
       }
 
       if (!response.body) {
-        throw new Error("No response body received")
+        throw new Error("No response body received from server")
       }
 
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
 
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
 
-        const chunk = decoder.decode(value)
-        const lines = chunk.split("\n")
+          const chunk = decoder.decode(value)
+          const lines = chunk.split("\n")
 
-        let currentEvent = ""
-        for (const line of lines) {
-          if (line.startsWith("event: ")) {
-            currentEvent = line.slice(7).trim()
-          } else if (line.startsWith("data: ")) {
-            // Only process events with bridge_ prefix
-            if (currentEvent.startsWith("bridge_")) {
-              try {
-                const rawData = JSON.parse(line.slice(6))
+          let currentEvent = ""
+          for (const line of lines) {
+            if (line.startsWith("event: ")) {
+              currentEvent = line.slice(7).trim()
+            } else if (line.startsWith("data: ")) {
+              // Only process events with bridge_ prefix
+              if (currentEvent.startsWith("bridge_")) {
+                try {
+                  const rawData = JSON.parse(line.slice(6))
 
-                // Check if this is a Claude Bridge StreamEvent (has requestId and timestamp)
-                if (rawData.requestId && rawData.timestamp && rawData.type) {
-                  const eventData: StreamEvent = rawData
+                  // Check if this is a Claude Bridge StreamEvent (has requestId and timestamp)
+                  if (rawData.requestId && rawData.timestamp && rawData.type) {
+                    const eventData: StreamEvent = rawData
 
-                  // Log non-ping events for debugging (with request ID for tracking)
-                  if (eventData.type !== "ping") {
-                    console.log(`[Client SSE ${eventData.requestId}] Event: ${eventData.type}`, eventData.data)
+                    // Mark that we received at least one message
+                    receivedAnyMessage = true
+
+                    const message = parseStreamEvent(eventData)
+
+                    if (message) {
+                      setMessages(prev => [...prev, message])
+                    }
                   }
-
-                  const message = parseStreamEvent(eventData)
-
-                  if (message) {
-                    setMessages(prev => [...prev, message])
-                  }
+                } catch (parseError) {
+                  console.warn("[Chat] Failed to parse SSE data:", line.slice(0, 100))
                 }
-              } catch (_parseError) {
-                console.warn("Failed to parse SSE data:", line)
               }
+              // Silently ignore all other events (raw Claude SDK events)
+              currentEvent = "" // Reset after processing
             }
-            // Silently ignore all other events (raw Claude SDK events)
-            currentEvent = "" // Reset after processing
           }
         }
+      } catch (readerError) {
+        // Connection interrupted while reading stream
+        if (!receivedAnyMessage) {
+          throw new Error("Connection lost before receiving any response")
+        }
+        // If we got some messages, just log it and continue
+        console.warn("[Chat] Stream interrupted after receiving some messages:", readerError)
+      }
+
+      // Check if we received any response at all
+      if (!receivedAnyMessage) {
+        throw new Error("Server closed connection without sending any response")
       }
     } catch (error) {
       // Only show error if not aborted by user
       if (error instanceof Error && error.name !== "AbortError") {
-        setMessages(prev => [
-          ...prev,
-          {
-            id: Date.now().toString(),
-            type: "sdk_message",
-            content: {
-              type: "result",
-              is_error: true,
-              result: error.message,
-            },
-            timestamp: new Date(),
+        const errorMessage: UIMessage = {
+          id: Date.now().toString(),
+          type: "sdk_message",
+          content: {
+            type: "result",
+            is_error: true,
+            result: error.message,
           },
-        ])
+          timestamp: new Date(),
+        }
+        setMessages(prev => [...prev, errorMessage])
       }
     } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+      }
       abortControllerRef.current = null
     }
   }
