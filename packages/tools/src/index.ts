@@ -19,7 +19,8 @@
  * ```
  */
 
-export { guidesMcp, toolsMcp } from "./mcp-server.js"
+export { guidesMcp, toolsMcp, workspaceManagementMcp } from "./mcp-server.js"
 export { readServerLogsTool } from "./tools/debug/read-server-logs.js"
 export { getGuideTool } from "./tools/guides/get-guide.js"
 export { listGuidesTool } from "./tools/guides/list-guides.js"
+export { restartServerTool } from "./tools/workspace/restart-server.js"

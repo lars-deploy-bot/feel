@@ -13,70 +13,8 @@
 
 import { mkdirSync } from "node:fs"
 import process from "node:process"
-import { toolsMcp } from "@alive-brug/tools"
-import { createSdkMcpServer, query, tool } from "@anthropic-ai/claude-agent-sdk"
-import { z } from "zod"
-
-const restartServerTool = tool(
-  "restart_dev_server",
-  "Restarts the systemd dev server for the current workspace. Use this after making structural changes that require a server restart (e.g., changing from localStorage to server-side state, adding new dependencies, modifying server configuration).",
-  {
-    workspaceRoot: z.string().describe("The root path of the workspace (e.g., /srv/webalive/sites/example.com/user)"),
-  },
-  async args => {
-    const { workspaceRoot } = args
-
-    try {
-      const response = await fetch("http://localhost:8998/api/restart-workspace", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workspaceRoot }),
-      })
-
-      const result = await response.json()
-
-      if (result.success) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `✓ ${result.message}\n\nThe server has been restarted and should now reflect your changes.`,
-            },
-          ],
-          isError: false,
-        }
-      } else {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `✗ ${result.message}`,
-            },
-          ],
-          isError: true,
-        }
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error)
-
-      return {
-        content: [
-          {
-            type: "text",
-            text: `✗ Failed to call restart API\n\nError: ${errorMessage}`,
-          },
-        ],
-        isError: true,
-      }
-    }
-  },
-)
-
-const restartServerMcp = createSdkMcpServer({
-  name: "workspace-management",
-  version: "1.0.0",
-  tools: [restartServerTool],
-})
+import { toolsMcp, workspaceManagementMcp } from "@alive-brug/tools"
+import { query } from "@anthropic-ai/claude-agent-sdk"
 
 async function readStdinJson() {
   const chunks = []
@@ -138,7 +76,7 @@ async function readStdinJson() {
           "mcp__tools__get_guide",
         ],
         mcpServers: {
-          "workspace-management": restartServerMcp,
+          "workspace-management": workspaceManagementMcp,
           tools: toolsMcp,
         },
         systemPrompt: request.systemPrompt,
