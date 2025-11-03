@@ -44,6 +44,8 @@ export function SlugInput({ register, errors, watchSlug, isDeploying }: SlugInpu
           type="text"
           placeholder="my-website"
           autoComplete="off"
+          data-1p-ignore
+          data-lpignore
           className={`w-full px-4 py-3 rounded-lg border-2 transition-colors outline-none font-medium pr-32 ${
             errors.slug
               ? "border-red-300 bg-red-50 text-gray-900"

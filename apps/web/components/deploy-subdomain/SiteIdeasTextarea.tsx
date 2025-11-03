@@ -42,6 +42,8 @@ export function SiteIdeasTextarea({ register, errors, watchIdeas, isDeploying }:
           disabled={isDeploying}
           placeholder="e.g., Build a dark-themed portfolio website with a smooth scroll animation and a contact form..."
           rows={4}
+          data-1p-ignore
+          data-lpignore
           className={`w-full px-4 py-3 rounded-lg border-2 transition-colors outline-none font-medium resize-none ${
             errors.siteIdeas
               ? "border-red-300 bg-red-50 text-gray-900"

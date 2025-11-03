@@ -227,6 +227,8 @@ export function DeployForm() {
     <AnimatePresence mode="wait">
       {deploymentMode === "choose" ? (
         <ModeSelectionScreen key="mode-selection" onSelect={setDeploymentMode} />
+      ) : deploymentMode === "deploy-only" ? (
+        <SubdomainDeployForm key="subdomain-form" />
       ) : (
         <motion.div
           key="form"
@@ -254,109 +256,99 @@ export function DeployForm() {
         </motion.button>
         <div>
           <h1 className="text-5xl font-light tracking-tight text-gray-900 mb-3">
-            {isWithDomain ? "Custom domain" : "Quick deploy"}
+            Custom domain
           </h1>
           <p className="text-lg text-gray-500 font-light max-w-md mx-auto leading-relaxed">
-            {isWithDomain
-              ? "Point your DNS to our server and deploy immediately"
-              : "Get your site live in under a minute"}
+            Point your DNS to our server and deploy immediately
           </p>
         </div>
       </motion.div>
 
-      {/* DNS Info Banner (only show for with-domain mode) */}
-      {isWithDomain && (
-        <motion.div
-          variants={itemVariants}
-          className="mb-6 p-4 rounded-lg bg-blue-50 border border-blue-200"
-        >
-          <div className="flex gap-3">
-            <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <h3 className="font-semibold text-blue-900 text-sm mb-1">Quick DNS setup</h3>
-              <p className="text-blue-800 text-xs mb-2">We'll guide you through pointing your domain to us. Just takes a minute.</p>
-              <a
-                href="/docs/dns-setup"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:text-blue-700 font-medium text-xs underline"
-              >
-                Show me how →
-              </a>
-            </div>
+      {/* DNS Info Banner */}
+      <motion.div
+        variants={itemVariants}
+        className="mb-6 p-4 rounded-lg bg-blue-50 border border-blue-200"
+      >
+        <div className="flex gap-3">
+          <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="font-semibold text-blue-900 text-sm mb-1">Quick DNS setup</h3>
+            <p className="text-blue-800 text-xs mb-2">We'll guide you through pointing your domain to us. Just takes a minute.</p>
+            <a
+              href="/docs/dns-setup"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-700 font-medium text-xs underline"
+            >
+              Show me how →
+            </a>
           </div>
-        </motion.div>
-      )}
+        </div>
+      </motion.div>
 
       {/* Form Card */}
       <motion.div
         variants={itemVariants}
         className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
       >
-        {isWithDomain ? (
-          <form
-            onSubmit={deployWithDomainForm.handleSubmit(onSubmitWithDomain)}
-            className="p-8 space-y-5"
-          >
-            {/* Domain Field */}
-            <motion.div variants={fieldVariants}>
-              <label htmlFor="domain" className="block text-sm font-semibold text-gray-900 mb-2">
-                Your domain
-              </label>
-              <p className="text-xs text-gray-500 mb-3">e.g., mysite.com or app.example.com</p>
-              <div className="relative">
-                <motion.input
-                  whileFocus="focus"
-                  variants={fieldVariants}
-                  {...deployWithDomainForm.register("domain")}
-                  disabled={isDeploying}
-                  type="text"
-                  autoComplete="off"
-                  data-1p-ignore
-                  data-lpignore
-                  placeholder="mysite.com"
-                  className={`w-full px-4 py-3 rounded-lg border-2 transition-colors outline-none font-medium ${
-                    deployWithDomainForm.formState.errors.domain
-                      ? "border-red-300 bg-red-50 text-gray-900"
-                      : "border-gray-200 bg-gray-50 text-gray-900 hover:border-gray-300 focus:border-blue-500 focus:bg-blue-50"
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-                />
-              </div>
-              {deployWithDomainForm.formState.errors.domain && (
-                <motion.p
-                  initial={{ opacity: 0, y: -5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-1.5 text-red-600 text-xs font-medium"
-                >
-                  {deployWithDomainForm.formState.errors.domain.message}
-                </motion.p>
-              )}
-            </motion.div>
-
-            {/* Password Field */}
-            <PasswordField
-              register={deployWithDomainForm.register}
-              errors={deployWithDomainForm.formState.errors}
-              watchPassword={watchPassword}
-              isDeploying={isDeploying}
-              showPassword={showPassword}
-              onTogglePassword={() => setShowPassword(!showPassword)}
-            />
-
-            {/* Submit Button */}
-            <motion.div variants={fieldVariants} className="pt-3">
-              <SubmitButton
-                isDeploying={isDeploying}
-                isValid={deployWithDomainForm.formState.isValid}
-                label="Deploy Site"
+        <form
+          onSubmit={deployWithDomainForm.handleSubmit(onSubmitWithDomain)}
+          className="p-8 space-y-5"
+        >
+          {/* Domain Field */}
+          <motion.div variants={fieldVariants}>
+            <label htmlFor="domain" className="block text-sm font-semibold text-gray-900 mb-2">
+              Your domain
+            </label>
+            <p className="text-xs text-gray-500 mb-3">e.g., mysite.com or app.example.com</p>
+            <div className="relative">
+              <motion.input
+                whileFocus="focus"
+                variants={fieldVariants}
+                {...deployWithDomainForm.register("domain")}
+                disabled={isDeploying}
+                type="text"
+                autoComplete="off"
+                data-1p-ignore
+                data-lpignore
+                placeholder="mysite.com"
+                className={`w-full px-4 py-3 rounded-lg border-2 transition-colors outline-none font-medium ${
+                  deployWithDomainForm.formState.errors.domain
+                    ? "border-red-300 bg-red-50 text-gray-900"
+                    : "border-gray-200 bg-gray-50 text-gray-900 hover:border-gray-300 focus:border-blue-500 focus:bg-blue-50"
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
               />
-            </motion.div>
-          </form>
-        ) : (
-          <motion.div variants={itemVariants}>
-            <SubdomainDeployForm />
+            </div>
+            {deployWithDomainForm.formState.errors.domain && (
+              <motion.p
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-1.5 text-red-600 text-xs font-medium"
+              >
+                {deployWithDomainForm.formState.errors.domain.message}
+              </motion.p>
+            )}
           </motion.div>
-        )}
+
+          {/* Password Field */}
+          <PasswordField
+            register={deployWithDomainForm.register}
+            errors={deployWithDomainForm.formState.errors}
+            watchPassword={watchPassword}
+            isDeploying={isDeploying}
+            showPassword={showPassword}
+            onTogglePassword={() => setShowPassword(!showPassword)}
+          />
+
+          {/* Submit Button */}
+          <motion.div variants={fieldVariants} className="pt-3">
+            <SubmitButton
+              isDeploying={isDeploying}
+              isValid={deployWithDomainForm.formState.isValid}
+              label="Deploy Site"
+            />
+          </motion.div>
+        </form>
       </motion.div>
 
       {/* Status Messages */}
