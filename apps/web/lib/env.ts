@@ -27,8 +27,7 @@ function validateEnv(): Env {
   if (errors.length > 0) {
     const errorList = errors.map(e => `  - ${e}`).join("\n")
     throw new Error(
-      `❌ Invalid environment variables:\n${errorList}\n\n` +
-      `Check your .env file. See .env.example for reference.`
+      `❌ Invalid environment variables:\n${errorList}\n\n` + "Check your .env file. See .env.example for reference.",
     )
   }
 

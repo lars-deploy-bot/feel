@@ -58,5 +58,17 @@
       "arrowParentheses": "asNeeded",
       "bracketSpacing": true
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["**/internals-folder/design-system/examples/index.css"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noUnknownAtRules": "off"
+          }
+        }
+      }
+    }
+  ]
 }

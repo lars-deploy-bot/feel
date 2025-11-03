@@ -1,3 +1,4 @@
+import { toolsMcp, workspaceManagementMcp } from "@alive-brug/tools"
 import type { Options, PermissionResult } from "@anthropic-ai/claude-agent-sdk"
 import { cookies, headers } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
@@ -10,7 +11,6 @@ import { addCorsHeaders } from "@/lib/cors-utils"
 import { env } from "@/lib/env"
 import { ErrorCodes } from "@/lib/error-codes"
 import { logInput } from "@/lib/input-logger"
-import { restartServerMcp } from "@/tools/restart-server"
 import { SessionStoreMemory, sessionKey, tryLockConversation, unlockConversation } from "@/lib/sessionStore"
 import { ensurePathWithinWorkspace, getWorkspace, type Workspace } from "@/lib/workspace-secure"
 import { resolveWorkspace } from "@/lib/workspace-utils"
@@ -231,7 +231,16 @@ export async function POST(req: NextRequest) {
 
     const claudeOptions: Options = {
       cwd,
-      allowedTools: ["Write", "Edit", "Read", "Glob", "Grep", "mcp__workspace-management__restart_dev_server"],
+      allowedTools: [
+        "Write",
+        "Edit",
+        "Read",
+        "Glob",
+        "Grep",
+        "mcp__workspace-management__restart_dev_server",
+        "mcp__tools__list_guides",
+        "mcp__tools__get_guide",
+      ],
       permissionMode: "acceptEdits",
       canUseTool,
       maxTurns: effectiveMaxTurns,
@@ -244,7 +253,8 @@ export async function POST(req: NextRequest) {
       settingSources: ["project"],
       model: env.CLAUDE_MODEL,
       mcpServers: {
-        "workspace-management": restartServerMcp
+        "workspace-management": workspaceManagementMcp,
+        tools: toolsMcp,
       },
       ...(existingSessionId ? { resume: existingSessionId } : {}),
     }
@@ -262,7 +272,7 @@ export async function POST(req: NextRequest) {
         model: env.CLAUDE_MODEL,
         maxTurns: effectiveMaxTurns,
         resume: existingSessionId || undefined,
-        systemPrompt: claudeOptions.systemPrompt
+        systemPrompt: claudeOptions.systemPrompt,
       })
 
       const encoder = new TextEncoder()
@@ -292,13 +302,18 @@ export async function POST(req: NextRequest) {
                     type: childEvent.type,
                     requestId,
                     timestamp: new Date().toISOString(),
-                    data: childEvent.type === "message"
-                      ? { messageCount: childEvent.messageCount, messageType: childEvent.messageType, content: childEvent.content }
-                      : childEvent.type === "session"
-                      ? { sessionId: childEvent.sessionId }
-                      : childEvent.type === "complete"
-                      ? { totalMessages: childEvent.totalMessages, result: childEvent.result }
-                      : childEvent
+                    data:
+                      childEvent.type === "message"
+                        ? {
+                            messageCount: childEvent.messageCount,
+                            messageType: childEvent.messageType,
+                            content: childEvent.content,
+                          }
+                        : childEvent.type === "session"
+                          ? { sessionId: childEvent.sessionId }
+                          : childEvent.type === "complete"
+                            ? { totalMessages: childEvent.totalMessages, result: childEvent.result }
+                            : childEvent,
                   }
 
                   const sseData = `event: bridge_${childEvent.type}\ndata: ${JSON.stringify(streamEvent)}\n\n`
@@ -307,7 +322,7 @@ export async function POST(req: NextRequest) {
                   if (childEvent.type === "session" && childEvent.sessionId) {
                     await SessionStoreMemory.set(convKey, childEvent.sessionId)
                   }
-                } catch (parseError) {
+                } catch (_parseError) {
                   console.error(`[Claude Stream ${requestId}] Failed to parse child output:`, line)
                 }
               }
@@ -320,18 +335,23 @@ export async function POST(req: NextRequest) {
                   type: childEvent.type,
                   requestId,
                   timestamp: new Date().toISOString(),
-                  data: childEvent.type === "message"
-                    ? { messageCount: childEvent.messageCount, messageType: childEvent.messageType, content: childEvent.content }
-                    : childEvent.type === "session"
-                    ? { sessionId: childEvent.sessionId }
-                    : childEvent.type === "complete"
-                    ? { totalMessages: childEvent.totalMessages, result: childEvent.result }
-                    : childEvent
+                  data:
+                    childEvent.type === "message"
+                      ? {
+                          messageCount: childEvent.messageCount,
+                          messageType: childEvent.messageType,
+                          content: childEvent.content,
+                        }
+                      : childEvent.type === "session"
+                        ? { sessionId: childEvent.sessionId }
+                        : childEvent.type === "complete"
+                          ? { totalMessages: childEvent.totalMessages, result: childEvent.result }
+                          : childEvent,
                 }
 
                 const sseData = `event: bridge_${childEvent.type}\ndata: ${JSON.stringify(streamEvent)}\n\n`
                 controller.enqueue(encoder.encode(sseData))
-              } catch (parseError) {
+              } catch (_parseError) {
                 console.error(`[Claude Stream ${requestId}] Failed to parse final buffer:`, buffer)
               }
             }
@@ -343,23 +363,23 @@ export async function POST(req: NextRequest) {
               type: "error",
               requestId,
               timestamp: new Date().toISOString(),
-              data: { error: "STREAM_ERROR", message: String(error) }
+              data: { error: "STREAM_ERROR", message: String(error) },
             })}\n\n`
             controller.enqueue(encoder.encode(errorData))
           } finally {
             unlockConversation(convKey)
             controller.close()
           }
-        }
+        },
       })
 
       return new Response(sseStream, {
         headers: {
           "Content-Type": "text/event-stream",
           "Cache-Control": "no-cache, no-transform",
-          "Connection": "keep-alive",
-          "X-Accel-Buffering": "no"
-        }
+          Connection: "keep-alive",
+          "X-Accel-Buffering": "no",
+        },
       })
     } else {
       console.log(`[Claude Stream ${requestId}] Using standard in-process stream`)

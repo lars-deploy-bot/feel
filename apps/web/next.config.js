@@ -5,5 +5,6 @@ const nextConfig = {
     serverActions: { bodySizeLimit: "2mb" },
   },
   serverExternalPackages: ["@napi-rs/image"],
+  transpilePackages: ["@alive-brug/guides", "@alive-brug/images", "@alive-brug/tools"],
 }
 export default nextConfig
