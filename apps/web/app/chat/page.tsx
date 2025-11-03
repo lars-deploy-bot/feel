@@ -1,6 +1,6 @@
 "use client"
 import { Square } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import { ThinkingGroup } from "@/components/ui/chat/ThinkingGroup"
 import { SettingsDropdown } from "@/components/ui/SettingsDropdown"
@@ -21,11 +21,13 @@ export default function ChatPage() {
   const [conversationId, setConversationId] = useState<string>(() => crypto.randomUUID())
   const [shouldForceScroll, setShouldForceScroll] = useState(false)
   const [userHasManuallyScrolled, setUserHasManuallyScrolled] = useState(false)
+  const [subdomainInitialized, setSubdomainInitialized] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const isAutoScrolling = useRef(false)
   const abortControllerRef = useRef<AbortController | null>(null)
   const isSubmitting = useRef<boolean>(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   useEffect(() => {
     setMounted(true)
@@ -44,6 +46,44 @@ export default function ChatPage() {
       }
     }
   }, [isTerminal, router])
+
+  // Handle subdomain auto-initialization from deploy-subdomain
+  useEffect(() => {
+    const slug = searchParams.get("slug")
+    const autoStart = searchParams.get("autoStart") === "true"
+
+    if (!slug || !autoStart || subdomainInitialized || !mounted) return
+
+    const initializeSubdomain = async () => {
+      try {
+        // Fetch metadata for this slug
+        const metadataResponse = await fetch(`/api/sites/metadata?slug=${encodeURIComponent(slug)}`)
+        if (!metadataResponse.ok) {
+          console.error("Failed to fetch site metadata")
+          return
+        }
+
+        const data = await metadataResponse.json()
+        const metadata = data.metadata
+
+        // Set workspace from metadata
+        if (metadata.workspace) {
+          setWorkspace(metadata.workspace)
+        }
+
+        // Pre-fill message with site ideas
+        const initialMessage = `I want to build a website with these ideas:\n\n${metadata.siteIdeas}\n\nCan you help me get started?`
+        setMsg(initialMessage)
+
+        // Mark as initialized
+        setSubdomainInitialized(true)
+      } catch (error) {
+        console.error("Failed to initialize subdomain context:", error)
+      }
+    }
+
+    initializeSubdomain()
+  }, [searchParams, mounted, subdomainInitialized])
 
   // Track manual scrolling
   useEffect(() => {
