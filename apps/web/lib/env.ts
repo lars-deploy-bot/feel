@@ -20,8 +20,11 @@ interface Env {
 function validateEnv(): Env {
   const errors: string[] = []
 
-  if (!process.env.ANTH_API_SECRET) {
-    errors.push("ANTH_API_SECRET is required")
+  // Use ANTHROPIC_API_KEY (from Claude Code) or ANTH_API_SECRET (from .env)
+  const apiKey = process.env.ANTHROPIC_API_KEY || process.env.ANTH_API_SECRET
+
+  if (!apiKey) {
+    errors.push("ANTHROPIC_API_KEY or ANTH_API_SECRET is required")
   }
 
   if (errors.length > 0) {
@@ -32,7 +35,7 @@ function validateEnv(): Env {
   }
 
   return {
-    ANTH_API_SECRET: process.env.ANTH_API_SECRET!,
+    ANTH_API_SECRET: apiKey!,
     CLAUDE_MODEL: process.env.CLAUDE_MODEL ?? "claude-sonnet-4-5",
     CLAUDE_MAX_TURNS: process.env.CLAUDE_MAX_TURNS ?? "25",
     NODE_ENV: process.env.NODE_ENV ?? "production",
