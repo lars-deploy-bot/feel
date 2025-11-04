@@ -12,7 +12,7 @@ export async function askAI(prompt: string, schema?: string): Promise<string> {
         content: fullPrompt,
       },
     ],
-    model: "mixtral-8x7b-32768",
+    model: "openai/gpt-oss-20b",
     temperature: 1,
     max_tokens: 2048,
     response_format: { type: "json_object" },

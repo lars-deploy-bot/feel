@@ -18,7 +18,7 @@
     "see:staging": "pm2 logs claude-bridge-staging --lines 1000",
     "setup": "./scripts/setup/copy-template.sh",
     "setup-webhook": "./scripts/setup-webhook.sh",
-    "staging": "pm2 restart claude-bridge-staging && pm2 describe claude-bridge-staging",
+    "staging": "cd packages/tools && bun run build && cd ../.. && pm2 restart claude-bridge-staging && pm2 describe claude-bridge-staging",
     "start": "turbo run start",
     "superclean": "./scripts/superclean.ts",
     "update-cors": "./scripts/update-cors-domains.sh",

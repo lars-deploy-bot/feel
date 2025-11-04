@@ -77,7 +77,7 @@ Format the response as Markdown with these sections:
         content: prompt,
       },
     ],
-    model: "mixtral-8x7b-32768",
+    model: "openai/gpt-oss-20b",
     temperature: 1,
     max_tokens: 2048,
   })

@@ -53,6 +53,7 @@ export function runAgentChild(workspaceRoot: string, payload: AgentRequest): Rea
       HOME: process.env.HOME,
       // Don't pass ANTHROPIC_API_KEY - let Claude Code use OAuth credentials
       NODE_ENV: process.env.NODE_ENV,
+      GROQ_API_SECRET: process.env.GROQ_API_SECRET,
       TARGET_UID: String(uid),
       TARGET_GID: String(gid),
       TARGET_CWD: workspaceRoot,
