@@ -3,6 +3,7 @@ import { ExternalLink, Square } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Suspense, useEffect, useRef, useState } from "react"
 import { ThinkingGroup } from "@/components/ui/chat/ThinkingGroup"
+import { ThinkingSpinner } from "@/components/ui/chat/ThinkingSpinner"
 import { SettingsDropdown } from "@/components/ui/SettingsDropdown"
 import { SubdomainInitializer } from "@/features/chat/components/SubdomainInitializer"
 import { groupMessages } from "@/features/chat/lib/message-grouper"
@@ -389,7 +390,10 @@ export default function ChatPage() {
           {/* Show thinking indicator only when busy but no assistant response has started yet */}
           {busy && messages.length > 0 && messages[messages.length - 1]?.type === "user" && (
             <div className="mb-2">
-              <div className="text-xs font-medium text-black/50 animate-pulse">thinking</div>
+              <div className="text-xs font-medium text-black/50 flex items-center gap-1">
+                <ThinkingSpinner />
+                <span>thinking</span>
+              </div>
             </div>
           )}
           <div ref={messagesEndRef} />

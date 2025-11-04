@@ -26,8 +26,8 @@ export function groupMessages(messages: UIMessage[]): MessageGroup[] {
     const message = messages[i]
 
     if (isTextMessage(message)) {
-      // Flush any pending thinking group as incomplete
-      flushThinkingGroup(false)
+      // Flush any pending thinking group as complete (thinking finished)
+      flushThinkingGroup(true)
 
       // Add text message as standalone
       groups.push({

@@ -87,3 +87,25 @@ button {
 button:disabled {
   cursor: not-allowed;
 }
+
+/* Thinking Spinner Animation */
+@keyframes thinkingSpinnerSpin {
+  0.00% { transform: translateY(-0em); }
+  10.00% { transform: translateY(-2em); }
+  20.00% { transform: translateY(-4em); }
+  30.00% { transform: translateY(-6em); }
+  40.00% { transform: translateY(-8em); }
+  50.00% { transform: translateY(-8em); }
+  60.00% { transform: translateY(-6em); }
+  70.00% { transform: translateY(-4em); }
+  80.00% { transform: translateY(-2em); }
+  90.00% { transform: translateY(-0em); }
+}
+
+.thinking-spinner-animate {
+  animation: thinkingSpinnerSpin 1200ms step-start infinite;
+}
+
+.thinking-spinner-stopped {
+  animation-play-state: paused;
+}

@@ -1,6 +1,7 @@
 import { useState } from "react"
 import type { UIMessage } from "@/lib/message-parser"
 import { renderMessage } from "@/lib/message-renderer"
+import { ThinkingSpinner } from "./ThinkingSpinner"
 
 interface ThinkingGroupProps {
   messages: UIMessage[]
@@ -10,25 +11,15 @@ interface ThinkingGroupProps {
 export function ThinkingGroup({ messages, isComplete }: ThinkingGroupProps) {
   const [isExpanded, setIsExpanded] = useState(false)
 
-  const getStatusText = () => {
-    if (isComplete) return "completed"
-    return "thinking"
-  }
-
-  const getShimmerClass = () => {
-    if (isComplete) return ""
-    return "animate-pulse"
-  }
-
   return (
     <div className="mb-2">
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
-        className={`text-xs font-medium text-black/50 hover:text-black/70 transition-colors ${getShimmerClass()}`}
+        className="text-xs font-medium text-black/50 hover:text-black/70 transition-colors flex items-center gap-1"
       >
-        {getStatusText()}
-        <span className="ml-1.5 text-xs">{isExpanded ? "−" : "+"}</span>
+        {!isComplete && <ThinkingSpinner />}
+        <span>{isComplete ? "completed" : "thinking"}</span>
       </button>
 
       {isExpanded && (

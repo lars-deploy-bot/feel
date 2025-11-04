@@ -5,6 +5,11 @@ interface SystemMessageProps {
 }
 
 export function SystemMessage({ content }: SystemMessageProps) {
+  // Only show on staging (development mode)
+  if (process.env.NODE_ENV !== "development") {
+    return null
+  }
+
   return (
     <div className="py-2 mb-4 text-sm text-black/60">
       <div className="mb-1.5 font-medium normal-case tracking-normal">System Initialized</div>

@@ -7,7 +7,8 @@ import { useEffect, useRef, useState } from "react"
 import { useCopyToClipboard, useImageManagement, useWorkspace } from "../hooks"
 // Feature components
 import { ImageCard, LoadingState } from "./"
-import { DeleteConfirmModal, ImageZoomModal, MessageBanner } from "./modals"
+import { ImageZoomModal, MessageBanner } from "./modals"
+import { DeleteModal } from "@/components/modals/DeleteModal"
 
 export default function PhotobookPage() {
   const router = useRouter()
@@ -214,7 +215,14 @@ export default function PhotobookPage() {
         {zoomedImage && <ImageZoomModal imageSrc={zoomedImage} onClose={() => setZoomedImage(null)} />}
 
         {deleteConfirm && (
-          <DeleteConfirmModal onConfirm={handleDeleteConfirm} onCancel={() => setDeleteConfirm(null)} />
+          <DeleteModal
+            title="Delete this image?"
+            message="This action cannot be undone."
+            confirmText="Yes, delete"
+            cancelText="No, keep it"
+            onConfirm={handleDeleteConfirm}
+            onCancel={() => setDeleteConfirm(null)}
+          />
         )}
       </div>
     </div>

@@ -167,11 +167,3 @@ export async function updateDomainPassword(domain: string, newPlaintextPassword:
     saveDomainPasswords(passwords)
   }
 }
-
-export function deleteDomainPassword(domain: string): void {
-  const passwords = loadDomainPasswords()
-  if (passwords[domain]) {
-    delete passwords[domain]
-    saveDomainPasswords(passwords)
-  }
-}
