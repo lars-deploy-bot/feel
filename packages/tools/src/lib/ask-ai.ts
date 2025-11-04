@@ -1,11 +1,5 @@
 import { getGroqClient } from "./groq-client"
 
-/**
- * Simple wrapper to ask AI and get structured JSON response
- * @param prompt The prompt to send to the AI
- * @param schema Optional JSON schema for response structure (included in prompt)
- * @returns The parsed JSON response
- */
 export async function askAI(prompt: string, schema?: string): Promise<string> {
   const groq = await getGroqClient()
 
