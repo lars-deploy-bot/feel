@@ -42,13 +42,12 @@ export function EmailField<T extends FieldValues>({
           variants={fieldVariants}
           {...rest}
           ref={ref}
-          onFocus={(e) => {
+          onFocus={() => {
             setIsFocused(true)
-            rest.onFocus?.(e)
           }}
           onBlur={(e) => {
             setIsFocused(false)
-            rest.onBlur?.(e)
+            rest.onBlur(e)
           }}
           disabled={isDeploying}
           type="email"
