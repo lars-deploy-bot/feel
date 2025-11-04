@@ -55,23 +55,24 @@ function ModeSelectionScreen({ onSelect }: ModeSelectionScreenProps) {
       variants={containerVariants}
       className="w-full max-w-lg mx-auto"
     >
-      <motion.div variants={itemVariants} className="text-center mb-16">
-        <h1 className="text-5xl font-light tracking-tight text-gray-900 mb-3">Deploy your site</h1>
-        <p className="text-base text-gray-500 font-light">Choose how you want to get started</p>
+      <motion.div variants={itemVariants} className="text-center mb-12">
+        <h1 className="text-4xl font-bold tracking-tight text-gray-900 mb-4">Launch your site</h1>
+        <p className="text-lg text-gray-600 font-medium">Pick one to start:</p>
       </motion.div>
 
       <motion.div variants={itemVariants} className="space-y-3">
         <ModeOption
           icon={Zap}
-          title="Quick Deploy"
-          description="We give you a temporary domain. You can add your own domain later."
+          title="Quick Launch"
+          description="Start building now. We give you a free subdomain."
           time="~1 min"
+          badge="Start here"
           onClick={() => onSelect("deploy-only")}
         />
         <ModeOption
           icon={Globe}
           title="Custom Domain"
-          description="Use your own domain. We'll guide you through the DNS setup."
+          description="Connect your own domain."
           time="~2 min"
           onClick={() => onSelect("deploy-with-domain")}
         />
@@ -216,7 +217,7 @@ export function DeployForm() {
             <div>
               <h1 className="text-5xl font-light tracking-tight text-gray-900 mb-3">Custom domain</h1>
               <p className="text-lg text-gray-500 font-light max-w-md mx-auto leading-relaxed">
-                Point your DNS to our server and deploy immediately
+                Point your DNS to our server and launch immediately
               </p>
             </div>
           </motion.div>
@@ -298,7 +299,7 @@ export function DeployForm() {
                 <SubmitButton
                   isDeploying={isDeploying}
                   isValid={deployWithDomainForm.formState.isValid}
-                  label="Deploy Site"
+                  label="Launch Site"
                 />
               </motion.div>
             </form>

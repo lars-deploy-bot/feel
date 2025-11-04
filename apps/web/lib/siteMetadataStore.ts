@@ -6,6 +6,7 @@ export interface SiteMetadata {
   slug: string
   domain: string
   workspace: string
+  email?: string // Optional for backward compatibility with old sites
   siteIdeas: string
   createdAt: number
   port?: number
@@ -33,7 +34,7 @@ export const siteMetadataStore: SiteMetadataStore = {
       const content = await fs.readFile(metadataPath, "utf-8")
       const metadata = JSON.parse(content) as SiteMetadata
 
-      if (!metadata.slug || !metadata.domain || !metadata.workspace || !metadata.siteIdeas) {
+      if (!metadata.slug || !metadata.domain || !metadata.workspace) {
         console.error(`[Metadata] Invalid metadata structure for slug: ${slug}`)
         return null
       }

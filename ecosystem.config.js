@@ -6,7 +6,8 @@ module.exports = {
       script: 'bun',
       args: 'next start -p 8999',
       env: {
-        NODE_ENV: 'production'
+        NODE_ENV: 'production',
+        WORKSPACE_BASE: '/srv/webalive/sites'
       }
     },
     {
@@ -15,7 +16,8 @@ module.exports = {
       script: 'bunx',
       args: 'next dev --turbo -p 8998',
       env: {
-        NODE_ENV: 'development'
+        NODE_ENV: 'development',
+        WORKSPACE_BASE: '/srv/webalive/sites'
       }
     }
   ]
