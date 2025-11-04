@@ -1,4 +1,4 @@
-import { getGroqClient } from "./groq-client"
+import { getGroqClient } from "./groq-client.js"
 
 export async function askAI(prompt: string, schema?: string): Promise<string> {
   const groq = await getGroqClient()

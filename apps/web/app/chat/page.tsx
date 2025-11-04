@@ -335,39 +335,24 @@ export default function ChatPage() {
       <div className="flex-1 min-h-0 flex flex-col">
         {/* Header */}
         <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-black/10">
-          <h1 className="text-lg font-thin text-black">{mounted && isTerminal ? "terminal" : "•"}</h1>
+          <h1 className="text-lg font-medium text-black">{mounted && isTerminal ? "Chat" : "Chat"}</h1>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => router.push("/photobook")}
-              className="inline-flex items-center justify-center px-3 py-2 text-xs font-thin text-black border border-black/20 hover:bg-black hover:text-white transition-colors cursor-pointer"
-              type="button"
-              data-testid="photos-button"
-            >
-              photos
-            </button>
-            <button
-              onClick={startNewConversation}
-              className="inline-flex items-center justify-center px-3 py-2 text-xs font-thin text-black border border-black/20 hover:bg-black hover:text-white transition-colors cursor-pointer"
-              type="button"
-              data-testid="new-chat-button"
-            >
-              new chat
-            </button>
-            <SettingsDropdown />
+            <SettingsDropdown onNewChat={startNewConversation} onPhotos={() => router.push("/photobook")} />
           </div>
         </div>
 
         {mounted && isTerminal && workspace && (
           <div className="flex-shrink-0 px-6 py-3 border-b border-black/5 bg-black/[0.02]">
             <div className="flex items-center text-xs">
-              <span className="text-black/40 font-thin">workspace</span>
+              <span className="text-black/50 font-medium">site</span>
               <a
                 href={`https://${workspace}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="ml-3 font-diatype-mono text-black/80 font-thin hover:underline hover:text-black"
+                className="ml-3 font-diatype-mono text-black/80 font-medium hover:text-black underline decoration-black/30 hover:decoration-black flex items-center gap-1.5 transition-colors"
               >
                 {workspace}
+                <ExternalLink size={12} className="opacity-60" />
               </a>
             </div>
           </div>
@@ -375,6 +360,20 @@ export default function ChatPage() {
 
         {/* Messages */}
         <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-2">
+          {/* Empty state - only show when no messages */}
+          {messages.length === 0 && !busy && (
+            <div className="flex items-center justify-center h-full">
+              <div className="max-w-md text-center space-y-4 pb-20">
+                <p className="text-base text-black/80 font-medium">Tell me what to build and I'll update your site</p>
+                <div className="text-sm text-black/50 font-normal space-y-1.5">
+                  <p>"Add a contact form"</p>
+                  <p>"Change the background to blue"</p>
+                  <p>"Make the text bigger"</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {groupMessages(messages).map((group, index) => {
             if (group.type === "text") {
               return (
@@ -390,7 +389,7 @@ export default function ChatPage() {
           {/* Show thinking indicator only when busy but no assistant response has started yet */}
           {busy && messages.length > 0 && messages[messages.length - 1]?.type === "user" && (
             <div className="mb-1">
-              <div className="text-[10px] font-thin text-black/30 animate-pulse">thinking</div>
+              <div className="text-[10px] font-medium text-black/40 animate-pulse">thinking</div>
             </div>
           )}
           <div ref={messagesEndRef} />
@@ -408,8 +407,8 @@ export default function ChatPage() {
                   sendMessage()
                 }
               }}
-              placeholder="Message"
-              className="w-full resize-none border-0 bg-transparent text-base focus:outline-none p-3 pr-20"
+              placeholder="Tell me what to change..."
+              className="w-full resize-none border-0 bg-transparent text-base font-normal focus:outline-none p-3 pr-20"
               style={{ minHeight: "80px" }}
               data-testid="message-input"
             />
@@ -417,17 +416,17 @@ export default function ChatPage() {
               <button
                 type="button"
                 onClick={stopStreaming}
-                className="absolute top-3 right-3 bottom-3 w-12 text-xs font-thin bg-black text-white hover:bg-gray-800 transition-colors focus:outline-none flex items-center justify-center"
+                className="absolute top-3 right-3 bottom-3 w-12 text-xs font-medium bg-black text-white hover:bg-gray-800 transition-colors focus:outline-none flex items-center justify-center"
                 data-testid="stop-button"
               >
-                <Square size={12} fill="white" />
+                <Square size={14} fill="white" />
               </button>
             ) : (
               <button
                 type="button"
                 onClick={sendMessage}
                 disabled={busy || !msg.trim()}
-                className="absolute top-3 right-3 bottom-3 w-12 text-xs font-thin bg-black text-white hover:bg-gray-800 transition-colors disabled:opacity-50 focus:outline-none flex items-center justify-center"
+                className="absolute top-3 right-3 bottom-3 w-12 text-lg font-medium bg-black text-white hover:bg-gray-800 transition-colors disabled:opacity-50 focus:outline-none flex items-center justify-center"
                 data-testid="send-button"
               >
                 {busy ? "•••" : "→"}

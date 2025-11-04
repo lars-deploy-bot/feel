@@ -1,12 +1,12 @@
 import { tool } from "@anthropic-ai/claude-agent-sdk"
 import { z } from "zod"
 
-import { getGroqClient } from "../../lib/groq-client"
+import { getGroqClient } from "../../lib/groq-client.js"
 
 async function getPersonaMarkdown(
   query: string,
   stylePreferences: string,
-  extraContext: string | undefined
+  extraContext: string | undefined,
 ): Promise<string> {
   const groq = await getGroqClient()
 
@@ -112,7 +112,7 @@ export async function generatePersona(params: GeneratePersonaParams): Promise<Ge
     const personaMarkdown = await getPersonaMarkdown(
       params.query,
       params.style_preferences,
-      params.extra_things_to_know
+      params.extra_things_to_know,
     )
 
     return {
@@ -157,5 +157,5 @@ export const generatePersonaTool = tool(
   generatePersonaParamsSchema,
   async args => {
     return generatePersona(args)
-  }
+  },
 )
