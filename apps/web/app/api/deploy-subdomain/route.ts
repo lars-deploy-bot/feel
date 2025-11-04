@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { slug, siteIdeas, password } = parseResult.data
+    const { slug, email, siteIdeas, password } = parseResult.data
 
     // Build full domain from slug
     const fullDomain = buildSubdomain(slug)
@@ -180,6 +180,7 @@ export async function POST(request: NextRequest) {
       slug,
       domain: fullDomain,
       workspace: fullDomain, // Display-friendly workspace name (just the domain)
+      email,
       siteIdeas,
       createdAt: Date.now(),
     })
@@ -258,7 +259,7 @@ export async function GET() {
     {
       ok: true,
       message: "Deploy Subdomain API is running",
-      usage: 'POST with { "slug": "mysite", "siteIdeas": "...", "password": "..." }',
+      usage: 'POST with { "slug": "mysite", "email": "you@example.com", "siteIdeas": "...", "password": "..." }',
       endpoints: {
         deploy: "POST /api/deploy-subdomain",
         getMetadata: "GET /api/sites/metadata?slug=mysite",
