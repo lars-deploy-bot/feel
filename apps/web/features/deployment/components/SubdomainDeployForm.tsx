@@ -1,14 +1,31 @@
 "use client"
 
+import { zodResolver } from "@hookform/resolvers/zod"
 import { motion } from "framer-motion"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
+import { z } from "zod"
+import { EmailField } from "@/components/ui/primitives/EmailField"
 import { PasswordField } from "@/components/ui/primitives/PasswordField"
 import type { DeploySubdomainForm } from "@/features/deployment/types/deploy-subdomain"
 import { WILDCARD_DOMAIN } from "@/lib/config"
 import { DeploymentStatus } from "./DeploymentStatus"
 import { SlugInput } from "./SlugInput"
 import { SubmitButton } from "./SubmitButton"
+
+const deploySubdomainSchema = z.object({
+  slug: z
+    .string()
+    .min(3, "Must be at least 3 characters")
+    .max(20, "Must be 20 characters or less")
+    .regex(/^[a-z0-9-]+$/, "Only lowercase letters, numbers, and dashes"),
+  email: z.string().email("Please enter a valid email address"),
+  siteIdeas: z.string().optional(),
+  password: z
+    .string()
+    .min(6, "Password must be at least 6 characters")
+    .max(16, "Password must be at most 16 characters"),
+})
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -42,15 +59,18 @@ export function SubdomainDeployForm() {
     watch,
     formState: { errors, isValid },
   } = useForm<DeploySubdomainForm>({
+    resolver: zodResolver(deploySubdomainSchema),
     mode: "onChange",
     defaultValues: {
       slug: "",
+      email: "",
       siteIdeas: "",
       password: "",
     },
   })
 
   const watchSlug = watch("slug")
+  const watchEmail = watch("email")
   const watchPassword = watch("password")
 
   const onSubmit = async (data: DeploySubdomainForm) => {
@@ -79,6 +99,7 @@ export function SubdomainDeployForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           slug: data.slug.toLowerCase(),
+          email: data.email,
           siteIdeas: data.siteIdeas,
           password: data.password,
         }),
@@ -108,19 +129,22 @@ export function SubdomainDeployForm() {
     <motion.div className="w-full max-w-md" variants={containerVariants} initial="hidden" animate="visible">
       {/* Header */}
       <motion.div variants={itemVariants} className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Deploy to {WILDCARD_DOMAIN}</h1>
-        <p className="text-gray-600">Get your site live in 30 seconds</p>
+        <h1 className="text-4xl font-bold text-gray-900 mb-3">Launch Your Site</h1>
+        <p className="text-lg text-gray-700 font-medium">Get online in 30 seconds</p>
       </motion.div>
 
       {/* Info Box */}
-      <motion.div variants={itemVariants} className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
-        <p className="text-sm text-blue-900">
-          Your site will be deployed to <span className="font-semibold">{watchSlug.toLowerCase() || "your-slug"}</span>
+      <motion.div variants={itemVariants} className="bg-blue-50 border-2 border-blue-200 rounded-lg p-5 mb-8">
+        <p className="text-base text-blue-900 mb-4 font-semibold">
+          Your site will be at:{" "}
+          <span className="font-bold">{watchSlug.toLowerCase() || "your-name"}</span>
           <span className="text-blue-700">.{WILDCARD_DOMAIN}</span>
         </p>
-        <p className="text-xs text-blue-700 mt-2">
-          No domain setup needed. Just describe what you want, and Claude will start building.
-        </p>
+        <div className="space-y-2 text-sm text-blue-900 font-medium">
+          <p>✓ No domain setup needed</p>
+          <p>✓ Start building now</p>
+          <p>✓ Add your own domain later</p>
+        </div>
       </motion.div>
 
       {/* Form */}
@@ -128,6 +152,15 @@ export function SubdomainDeployForm() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <motion.div variants={itemVariants}>
             <SlugInput register={register} errors={errors} watchSlug={watchSlug} isDeploying={isDeploying} />
+          </motion.div>
+
+          <motion.div variants={itemVariants}>
+            <EmailField
+              register={register}
+              errors={errors}
+              watchEmail={watchEmail}
+              isDeploying={isDeploying}
+            />
           </motion.div>
 
           {/* Hidden field for siteIdeas */}
@@ -144,11 +177,14 @@ export function SubdomainDeployForm() {
             />
           </motion.div>
 
-          <motion.div variants={itemVariants}>
+          <motion.div variants={itemVariants} className="space-y-3">
+            <p className="text-center text-sm text-gray-500 font-medium">
+              You'll be able to start building immediately
+            </p>
             <SubmitButton
               isDeploying={isDeploying}
-              isValid={isValid && !errors.slug && !errors.siteIdeas && !errors.password}
-              label="Deploy Now"
+              isValid={isValid && !errors.slug && !errors.email && !errors.password}
+              label="Launch Site"
             />
           </motion.div>
         </form>

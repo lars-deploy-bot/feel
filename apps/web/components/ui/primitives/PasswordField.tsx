@@ -25,7 +25,7 @@ export function PasswordField<T extends FieldValues>({
   showPassword,
   onTogglePassword,
   label = "Site password",
-  helperText = "6–16 characters. You'll use this to access the admin panel.",
+  helperText = "6–16 characters. You'll need this to edit your site later.",
   fieldName = "password" as Path<T>,
 }: PasswordFieldProps<T>) {
   const fieldError = errors[fieldName]
@@ -34,10 +34,10 @@ export function PasswordField<T extends FieldValues>({
 
   return (
     <motion.div variants={fieldVariants}>
-      <label htmlFor={String(fieldName)} className="block text-sm font-semibold text-gray-900 mb-2">
+      <label htmlFor={String(fieldName)} className="block text-base font-bold text-gray-900 mb-2">
         {label}
       </label>
-      <p className="text-xs text-gray-500 mb-3">{helperText}</p>
+      <p className="text-sm text-gray-600 mb-3 font-medium">{helperText}</p>
       <div className="relative">
         <motion.input
           whileFocus="focus"
@@ -82,7 +82,7 @@ export function PasswordField<T extends FieldValues>({
         <motion.p
           initial={{ opacity: 0, y: -5 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-1.5 text-red-600 text-xs font-medium"
+          className="mt-2 text-red-600 text-sm font-bold"
         >
           {String(errorMessage)}
         </motion.p>

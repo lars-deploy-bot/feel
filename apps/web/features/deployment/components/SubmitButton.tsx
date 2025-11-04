@@ -12,20 +12,32 @@ interface SubmitButtonProps {
 export function SubmitButton({ isDeploying, isValid, label }: SubmitButtonProps) {
   return (
     <motion.button
-      whileHover={!isDeploying && isValid ? { scale: 1.01 } : {}}
-      whileTap={!isDeploying && isValid ? { scale: 0.99 } : {}}
+      whileHover={!isDeploying && isValid ? { scale: 1.02 } : {}}
+      whileTap={!isDeploying && isValid ? { scale: 0.98 } : {}}
+      animate={
+        !isDeploying && isValid
+          ? {
+              boxShadow: [
+                "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+                "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+              ],
+            }
+          : {}
+      }
+      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
       type="submit"
       disabled={isDeploying || !isValid}
-      className={`w-full py-3 px-4 rounded-lg font-medium text-sm transition-all duration-300 flex items-center justify-center gap-2 ${
+      className={`w-full py-4 px-6 rounded-xl font-bold text-base transition-all duration-300 flex items-center justify-center gap-2 ${
         isDeploying || !isValid
-          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+          ? "bg-gray-200 text-gray-400 cursor-not-allowed"
           : "bg-gray-900 text-white hover:bg-black"
       }`}
     >
       {isDeploying ? (
         <>
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span>Deploying...</span>
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span>Launching...</span>
         </>
       ) : (
         <span>{label}</span>

@@ -9,27 +9,41 @@ interface ModeOptionProps {
   description: string
   time: string
   onClick: () => void
+  badge?: string
 }
 
-export function ModeOption({ icon: Icon, title, description, time, onClick }: ModeOptionProps) {
+export function ModeOption({ icon: Icon, title, description, time, onClick, badge }: ModeOptionProps) {
   return (
     <motion.button
       whileHover={{ scale: 1.01 }}
       whileTap={{ scale: 0.99 }}
       onClick={onClick}
-      className="w-full p-6 rounded-2xl border border-gray-200 hover:border-gray-300 hover:bg-gray-50/50 transition-all text-left group"
+      className={`w-full p-6 rounded-2xl border transition-all text-left group relative ${
+        badge
+          ? "border-blue-300 bg-blue-50/30 hover:bg-blue-50/50 hover:border-blue-400"
+          : "border-gray-200 hover:border-gray-300 hover:bg-gray-50/50"
+      }`}
     >
+      {badge && (
+        <div className="absolute -top-2.5 left-4 px-3 py-1 bg-blue-500 text-white text-sm font-bold rounded-full shadow-sm">
+          {badge}
+        </div>
+      )}
       <div className="flex items-start gap-4">
-        <div className="p-2.5 rounded-lg bg-gray-100 group-hover:bg-gray-200 transition-colors">
-          <Icon className="h-5 w-5 text-gray-700" />
+        <div
+          className={`p-2.5 rounded-lg transition-colors ${
+            badge ? "bg-blue-100 group-hover:bg-blue-200" : "bg-gray-100 group-hover:bg-gray-200"
+          }`}
+        >
+          <Icon className={`h-5 w-5 ${badge ? "text-blue-700" : "text-gray-700"}`} />
         </div>
         <div className="flex-1">
-          <h3 className="font-semibold text-gray-900 text-base mb-1">{title}</h3>
-          <p className="text-gray-600 text-sm leading-relaxed">{description}</p>
+          <h3 className="font-bold text-gray-900 text-lg mb-2">{title}</h3>
+          <p className="text-gray-700 text-base font-medium leading-relaxed">{description}</p>
         </div>
-        <div className="text-right">
-          <div className="text-xs text-gray-400 font-medium">{time}</div>
-          <div className="text-xs text-gray-300 mt-0.5">Free</div>
+        <div className="text-right flex flex-col gap-1">
+          <div className="text-sm text-gray-500 font-semibold">{time}</div>
+          <div className="text-xs text-green-600 font-semibold">Free</div>
         </div>
       </div>
     </motion.button>

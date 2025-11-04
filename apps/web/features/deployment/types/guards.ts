@@ -6,6 +6,7 @@ export const DeploySubdomainSchema = z.object({
     .min(3, "Slug must be at least 3 characters")
     .max(20, "Slug must be no more than 20 characters")
     .regex(/^[a-z0-9]([a-z0-9-]{1,18}[a-z0-9])?$/, "Slug must be lowercase letters, numbers, and hyphens only"),
+  email: z.string().email("Please enter a valid email address"),
   siteIdeas: z.string().max(5000, "Site ideas must be less than 5000 characters").optional().default(""),
   password: z
     .string()

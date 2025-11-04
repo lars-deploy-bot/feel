@@ -222,6 +222,17 @@ blabla.alive.best {
     }
 }
 
+lars.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3356 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
 larss.alive.best {
     import common_headers
     import image_serving
@@ -237,6 +248,28 @@ template1.alive.best {
     import common_headers
     import image_serving
     reverse_proxy localhost:3352 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+dreammachinetest.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3354 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+lkasddddd.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3355 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
         header_up X-Forwarded-For {remote_host}
