@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
     await siteMetadataStore.setSite(slug, {
       slug,
       domain: fullDomain,
-      workspace: workspacePath,
+      workspace: fullDomain, // Display-friendly workspace name (just the domain)
       siteIdeas,
       createdAt: Date.now(),
     })

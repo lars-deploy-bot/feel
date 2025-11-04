@@ -100,23 +100,24 @@ get_next_port() {
     local start_port=3333
 
     if [ -f "$DOMAIN_PASSWORDS_FILE" ]; then
-        # Get all currently used ports and find the highest
-        local highest_port=$(jq -r '.[].port' "$DOMAIN_PASSWORDS_FILE" 2>/dev/null | sort -n | tail -1)
+        # Get all currently used ports in the site port range (3333-3999) and find the highest
+        # Exclude special service ports like 8998, 8999 (staging, terminal)
+        local highest_port=$(jq -r '.[].port' "$DOMAIN_PASSWORDS_FILE" 2>/dev/null | awk '$1 >= 3333 && $1 < 4000' | sort -n | tail -1)
 
         if [ -n "$highest_port" ] && [ "$highest_port" != "null" ]; then
             start_port=$((highest_port + 1))
         fi
     fi
 
-    # Find first port that's not in use by any process
+    # Find first port that's not in use by any process (stay within site port range)
     local test_port=$start_port
     while netstat -tuln | grep -q ":$test_port "; do
         echo "🔍 Port $test_port is occupied, trying next..." >&2
         test_port=$((test_port + 1))
 
         # Safety limit to prevent infinite loop
-        if [ $test_port -gt 4000 ]; then
-            echo "❌ Cannot find available port (reached limit 4000)" >&2
+        if [ $test_port -gt 3999 ]; then
+            echo "❌ Cannot find available port in range 3333-3999 (all occupied)" >&2
             exit 15
         fi
     done
@@ -282,6 +283,7 @@ else
 
 $DOMAIN {
     import common_headers
+    import image_serving
     reverse_proxy localhost:$PORT {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
