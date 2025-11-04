@@ -2,6 +2,7 @@ import { createSdkMcpServer } from "@anthropic-ai/claude-agent-sdk"
 import { readServerLogsTool } from "./tools/debug/read-server-logs.js"
 import { getGuideTool } from "./tools/guides/get-guide.js"
 import { listGuidesTool } from "./tools/guides/list-guides.js"
+import { generatePersonaTool } from "./tools/personas/generate-persona.js"
 import { restartServerTool } from "./tools/workspace/restart-server.js"
 
 /**
@@ -21,7 +22,7 @@ import { restartServerTool } from "./tools/workspace/restart-server.js"
 export const toolsMcp = createSdkMcpServer({
   name: "tools",
   version: "1.0.0",
-  tools: [listGuidesTool, getGuideTool, readServerLogsTool],
+  tools: [listGuidesTool, getGuideTool, readServerLogsTool, generatePersonaTool],
 })
 
 /**
