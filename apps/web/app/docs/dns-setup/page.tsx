@@ -1,10 +1,10 @@
 "use client"
 
+import { CheckCircle2, Clock, Globe, Zap } from "lucide-react"
 import { useState } from "react"
 
 export default function DNSSetupPage() {
   const [provider, setProvider] = useState("")
-  const [_showGeneral, _setShowGeneral] = useState(false)
 
   const providers = [
     { id: "cloudflare", name: "Cloudflare" },
@@ -21,271 +21,296 @@ export default function DNSSetupPage() {
     switch (provider) {
       case "cloudflare":
         return (
-          <div className="space-y-3">
-            <div className="bg-red-50 border border-red-200 p-4 rounded-lg mb-4">
-              <h4 className="font-bold text-red-900 mb-2">🚨 IMPORTANT: DISABLE CLOUDFLARE PROXY</h4>
-              <p className="text-red-800 font-semibold">
-                You MUST turn off Cloudflare's proxy (orange cloud) for deployment to work. The cloud icon next to your
-                DNS record must be GRAY, not orange.
-              </p>
-              <p className="text-red-700 text-sm mt-2">
-                You can re-enable the proxy after your site is deployed and working.
-              </p>
-            </div>
-            <p>
-              <strong>1.</strong> Go directly to:{" "}
+          <div className="space-y-4">
+            <Step number={1} title="Go to Cloudflare">
+              Open your{" "}
               <a
                 href="https://dash.cloudflare.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-medium text-blue-600 underline hover:text-blue-500"
+                className="font-medium text-blue-600 hover:text-blue-700 underline"
               >
                 Cloudflare Dashboard →
               </a>
-            </p>
-            <p>
-              <strong>2.</strong> Select your domain
-            </p>
-            <p>
-              <strong>3.</strong> Go to <strong>DNS → Records</strong>
-            </p>
-            <p>
-              <strong>4.</strong> Click <strong>Add record</strong>
-            </p>
-            <p>
-              <strong>5.</strong> Set: Type = <code>A</code>, Name = <code>@</code>, IPv4 = <code>138.201.56.93</code>
-            </p>
-            <p>
-              <strong>6.</strong> <span className="font-bold text-red-600">IMPORTANT:</span> Make sure the cloud icon is{" "}
-              <strong>GRAY</strong> (proxy disabled), not orange
-            </p>
-            <p>
-              <strong>7.</strong> Click <strong>Save</strong>
-            </p>
+            </Step>
+            <Step number={2} title="Select your domain">
+              Click on the domain you want to connect.
+            </Step>
+            <Step number={3} title="Go to DNS Records">
+              Navigate to <code className="bg-gray-100 px-2 py-1 rounded text-sm">DNS → Records</code>
+            </Step>
+            <Step number={4} title="Create the connection">
+              <div className="space-y-2">
+                <p>
+                  Click <strong>Add record</strong> and fill in:
+                </p>
+                <div className="bg-blue-50 p-3 rounded-lg space-y-2 text-sm font-mono border border-blue-200">
+                  <div>
+                    <span className="text-gray-600">Type:</span> <strong>A</strong>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Name:</span> <strong>@</strong>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">IPv4:</span> <strong>138.201.56.93</strong>
+                  </div>
+                </div>
+              </div>
+            </Step>
+            <Step number={5} title="One quick thing">
+              Make sure the cloud icon is <strong>gray</strong> (not orange). This just means DNS-only mode, which is
+              what we need.
+            </Step>
+            <Step number={6} title="Save">
+              Click <strong>Save</strong> and you're done!
+            </Step>
           </div>
         )
       case "godaddy":
         return (
-          <div className="space-y-3">
-            <p>
-              <strong>1.</strong> Go directly to:{" "}
+          <div className="space-y-4">
+            <Step number={1} title="Open GoDaddy">
+              Go to your{" "}
               <a
                 href="https://dcc.godaddy.com/manage"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-medium text-blue-600 underline hover:text-blue-500"
+                className="font-medium text-blue-600 hover:text-blue-700 underline"
               >
-                GoDaddy Domain Manager →
+                Domain Manager →
               </a>
-            </p>
-            <p>
-              <strong>2.</strong> Find your domain and click <strong>DNS</strong>
-            </p>
-            <p>
-              <strong>3.</strong> Find the A record with Name <code>@</code>
-            </p>
-            <p>
-              <strong>4.</strong> Click edit, change Value to <code>138.201.56.93</code>
-            </p>
-            <p>
-              <strong>5.</strong> Click <strong>Save</strong>
-            </p>
+            </Step>
+            <Step number={2} title="Find your domain">
+              Click on the domain you want to connect.
+            </Step>
+            <Step number={3} title="Edit DNS">
+              Click <strong>DNS</strong> tab.
+            </Step>
+            <Step number={4} title="Find the A record">
+              Look for the A record with Name <code className="bg-gray-100 px-2 py-1 rounded text-sm">@</code>
+            </Step>
+            <Step number={5} title="Update the value">
+              Click edit and change the value to{" "}
+              <code className="bg-gray-100 px-2 py-1 rounded text-sm font-bold">138.201.56.93</code>
+            </Step>
+            <Step number={6} title="Save">
+              Click <strong>Save</strong> and you're all set!
+            </Step>
           </div>
         )
       case "namecheap":
         return (
-          <div className="space-y-3">
-            <p>
-              <strong>1.</strong> Go directly to:{" "}
+          <div className="space-y-4">
+            <Step number={1} title="Open Namecheap">
+              Go to your{" "}
               <a
                 href="https://ap.www.namecheap.com/domains/domaincontrolpanel"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-medium text-blue-600 underline hover:text-blue-500"
+                className="font-medium text-blue-600 hover:text-blue-700 underline"
               >
-                Namecheap Domain List →
+                Domain List →
               </a>
-            </p>
-            <p>
-              <strong>2.</strong> Find your domain and click <strong>Manage</strong>
-            </p>
-            <p>
-              <strong>3.</strong> Click <strong>Advanced DNS</strong>
-            </p>
-            <p>
-              <strong>4.</strong> Find A Record with Host <code>@</code>
-            </p>
-            <p>
-              <strong>5.</strong> Change Value to <code>138.201.56.93</code>
-            </p>
-            <p>
-              <strong>6.</strong> Click save checkmark
-            </p>
+            </Step>
+            <Step number={2} title="Find your domain">
+              Click <strong>Manage</strong> next to your domain.
+            </Step>
+            <Step number={3} title="Go to Advanced DNS">
+              Click on the <strong>Advanced DNS</strong> tab.
+            </Step>
+            <Step number={4} title="Find the A record">
+              Look for the A record with Host <code className="bg-gray-100 px-2 py-1 rounded text-sm">@</code>
+            </Step>
+            <Step number={5} title="Update the value">
+              Change the value to <code className="bg-gray-100 px-2 py-1 rounded text-sm font-bold">138.201.56.93</code>
+            </Step>
+            <Step number={6} title="Save">
+              Click the checkmark to save.
+            </Step>
           </div>
         )
       case "transip":
         return (
-          <div className="space-y-3">
-            <p>
-              <strong>1.</strong> Go directly to:{" "}
+          <div className="space-y-4">
+            <Step number={1} title="Open TransIP">
+              Go to{" "}
               <a
                 href="https://www.transip.nl/cp/domein-hosting"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-medium text-blue-600 underline hover:text-blue-500"
+                className="font-medium text-blue-600 hover:text-blue-700 underline"
               >
                 TransIP Domain Management →
               </a>
-            </p>
-            <p>
-              <strong>2.</strong> Select your domain from the list
-            </p>
-            <p>
-              <strong>3.</strong> Go to <strong>DNS</strong> tab
-            </p>
-            <p>
-              <strong>4.</strong> Find the A record with Name <code>@</code> (or add new)
-            </p>
-            <p>
-              <strong>5.</strong> Set Value to <code>138.201.56.93</code>
-            </p>
-            <p>
-              <strong>6.</strong> Click <strong>Save</strong>
-            </p>
+            </Step>
+            <Step number={2} title="Select your domain">
+              Click on your domain from the list.
+            </Step>
+            <Step number={3} title="Go to DNS">
+              Click the <strong>DNS</strong> tab.
+            </Step>
+            <Step number={4} title="Find the A record">
+              Look for the A record with Name <code className="bg-gray-100 px-2 py-1 rounded text-sm">@</code>
+            </Step>
+            <Step number={5} title="Update the value">
+              Set the value to <code className="bg-gray-100 px-2 py-1 rounded text-sm font-bold">138.201.56.93</code>
+            </Step>
+            <Step number={6} title="Save">
+              Click <strong>Save</strong> and you're done!
+            </Step>
           </div>
         )
       case "strato":
         return (
-          <div className="space-y-3">
-            <p>
-              <strong>1.</strong> Go directly to:{" "}
+          <div className="space-y-4">
+            <Step number={1} title="Open Strato">
+              Go to your{" "}
               <a
                 href="https://www.strato.nl/apps/CustomerService#/skl"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-medium text-blue-600 underline hover:text-blue-500"
+                className="font-medium text-blue-600 hover:text-blue-700 underline"
               >
-                Strato Customer Center →
+                Customer Center →
               </a>
-            </p>
-            <p>
-              <strong>2.</strong> Go to <strong>Domains & SSL</strong>
-            </p>
-            <p>
-              <strong>3.</strong> Click <strong>Manage</strong> next to your domain
-            </p>
-            <p>
-              <strong>4.</strong> Go to <strong>DNS Settings</strong>
-            </p>
-            <p>
-              <strong>5.</strong> Edit A record: Host <code>@</code>, Value <code>138.201.56.93</code>
-            </p>
-            <p>
-              <strong>6.</strong> Click <strong>Save</strong>
-            </p>
-            <div className="mt-4 p-3 bg-blue-50 rounded border">
-              <p className="text-blue-800 text-sm">
-                💡 <strong>Need help?</strong> Check Strato's guide:{" "}
-                <a
-                  href="https://www.strato.nl/faq/domeinnaam/welke-dns-items-kun-je-bij-STRATO-configureren/#A-record"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline hover:text-blue-600"
-                >
-                  How to configure A records →
-                </a>
-              </p>
-            </div>
+            </Step>
+            <Step number={2} title="Find Domains & SSL">
+              Go to <strong>Domains & SSL</strong>.
+            </Step>
+            <Step number={3} title="Manage your domain">
+              Click <strong>Manage</strong> next to your domain.
+            </Step>
+            <Step number={4} title="Go to DNS Settings">
+              Click <strong>DNS Settings</strong>.
+            </Step>
+            <Step number={5} title="Edit the A record">
+              <div className="space-y-2">
+                <p>Find the A record and set:</p>
+                <div className="bg-blue-50 p-3 rounded-lg space-y-2 text-sm font-mono border border-blue-200">
+                  <div>
+                    <span className="text-gray-600">Host:</span> <strong>@</strong>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Value:</span> <strong>138.201.56.93</strong>
+                  </div>
+                </div>
+              </div>
+            </Step>
+            <Step number={6} title="Save">
+              Click <strong>Save</strong>.
+            </Step>
           </div>
         )
       case "mijndomein":
         return (
-          <div className="space-y-3">
-            <p>
-              <strong>1.</strong> Go directly to:{" "}
+          <div className="space-y-4">
+            <Step number={1} title="Open Mijndomein.nl">
+              Go to{" "}
               <a
                 href="https://mijn.mijndomein.nl"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-medium text-blue-600 underline hover:text-blue-500"
+                className="font-medium text-blue-600 hover:text-blue-700 underline"
               >
-                Mijndomein.nl Control Panel →
+                Control Panel →
               </a>
-            </p>
-            <p>
-              <strong>2.</strong> Go to <strong>Mijn Domeinen</strong>
-            </p>
-            <p>
-              <strong>3.</strong> Click <strong>Beheren</strong> next to your domain
-            </p>
-            <p>
-              <strong>4.</strong> Go to <strong>DNS Beheer</strong>
-            </p>
-            <p>
-              <strong>5.</strong> Edit A record: Naam <code>@</code>, Waarde <code>138.201.56.93</code>
-            </p>
-            <p>
-              <strong>6.</strong> Click <strong>Opslaan</strong>
-            </p>
+            </Step>
+            <Step number={2} title="Go to Mijn Domeinen">
+              Click <strong>Mijn Domeinen</strong>.
+            </Step>
+            <Step number={3} title="Manage your domain">
+              Click <strong>Beheren</strong> next to your domain.
+            </Step>
+            <Step number={4} title="Go to DNS Beheer">
+              Click <strong>DNS Beheer</strong>.
+            </Step>
+            <Step number={5} title="Edit the A record">
+              <div className="space-y-2">
+                <p>Find the A record and set:</p>
+                <div className="bg-blue-50 p-3 rounded-lg space-y-2 text-sm font-mono border border-blue-200">
+                  <div>
+                    <span className="text-gray-600">Naam:</span> <strong>@</strong>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Waarde:</span> <strong>138.201.56.93</strong>
+                  </div>
+                </div>
+              </div>
+            </Step>
+            <Step number={6} title="Save">
+              Click <strong>Opslaan</strong>.
+            </Step>
           </div>
         )
       case "hostnet":
         return (
-          <div className="space-y-3">
-            <p>
-              <strong>1.</strong> Go directly to:{" "}
+          <div className="space-y-4">
+            <Step number={1} title="Open Hostnet">
+              Go to{" "}
               <a
                 href="https://www.hostnet.nl/mijn/domeinen"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-medium text-blue-600 underline hover:text-blue-500"
+                className="font-medium text-blue-600 hover:text-blue-700 underline"
               >
-                Hostnet Domain Management →
+                Domain Management →
               </a>
-            </p>
-            <p>
-              <strong>2.</strong> Go to <strong>Domeinen</strong>
-            </p>
-            <p>
-              <strong>3.</strong> Click on your domain
-            </p>
-            <p>
-              <strong>4.</strong> Go to <strong>DNS Management</strong>
-            </p>
-            <p>
-              <strong>5.</strong> Edit A record: Host <code>@</code>, IP Address <code>138.201.56.93</code>
-            </p>
-            <p>
-              <strong>6.</strong> Click <strong>Update</strong>
-            </p>
+            </Step>
+            <Step number={2} title="Go to Domeinen">
+              Click <strong>Domeinen</strong>.
+            </Step>
+            <Step number={3} title="Click your domain">
+              Click on the domain you want to connect.
+            </Step>
+            <Step number={4} title="Go to DNS Management">
+              Click <strong>DNS Management</strong>.
+            </Step>
+            <Step number={5} title="Edit the A record">
+              <div className="space-y-2">
+                <p>Find the A record and set:</p>
+                <div className="bg-blue-50 p-3 rounded-lg space-y-2 text-sm font-mono border border-blue-200">
+                  <div>
+                    <span className="text-gray-600">Host:</span> <strong>@</strong>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">IP Address:</span> <strong>138.201.56.93</strong>
+                  </div>
+                </div>
+              </div>
+            </Step>
+            <Step number={6} title="Update">
+              Click <strong>Update</strong>.
+            </Step>
           </div>
         )
       case "general":
         return (
-          <div className="space-y-3">
-            <p>
-              <strong>1.</strong> Log in to your domain registrar (where you bought the domain)
-            </p>
-            <p>
-              <strong>2.</strong> Look for "DNS", "DNS Records", or "Domain Management"
-            </p>
-            <p>
-              <strong>3.</strong> Find the A record (or add new one)
-            </p>
-            <p>
-              <strong>4.</strong> Set these values:
-            </p>
-            <div className="bg-gray-100 p-3 rounded font-mono text-sm">
-              Type: A<br />
-              Name/Host: @ <span className="text-gray-600">(or your domain)</span>
-              <br />
-              Value/Points to: 138.201.56.93
-              <br />
-              TTL: 300 <span className="text-gray-600">(or Auto)</span>
-            </div>
-            <p>
-              <strong>5.</strong> Save the changes
-            </p>
+          <div className="space-y-4">
+            <Step number={1} title="Log in to your registrar">
+              Go to where you bought your domain.
+            </Step>
+            <Step number={2} title="Find DNS settings">
+              Look for "DNS", "DNS Records", or "Domain Management".
+            </Step>
+            <Step number={3} title="Find the A record">
+              Look for a record with Name <code className="bg-gray-100 px-2 py-1 rounded text-sm">@</code>
+            </Step>
+            <Step number={4} title="Set the values">
+              <div className="bg-blue-50 p-3 rounded-lg space-y-2 text-sm font-mono border border-blue-200">
+                <div>
+                  <span className="text-gray-600">Type:</span> <strong>A</strong>
+                </div>
+                <div>
+                  <span className="text-gray-600">Name/Host:</span> <strong>@</strong>
+                </div>
+                <div>
+                  <span className="text-gray-600">Value/Points to:</span> <strong>138.201.56.93</strong>
+                </div>
+              </div>
+            </Step>
+            <Step number={5} title="Save">
+              Save the changes.
+            </Step>
           </div>
         )
       default:
@@ -294,97 +319,163 @@ export default function DNSSetupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white py-8 px-4">
+    <div className="min-h-screen bg-white py-12 px-4">
       <div className="max-w-2xl mx-auto">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">DNS Setup Guide</h1>
+        {/* Header */}
+        <div className="mb-12">
+          <h1 className="text-4xl font-light tracking-tight text-gray-900 mb-4">Connect your domain</h1>
+          <p className="text-lg text-gray-500 font-light">Just a few quick steps to point your domain to us.</p>
+        </div>
 
-        <div className="space-y-6">
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <h2 className="font-semibold text-blue-900 mb-2">What you need to do:</h2>
-            <p className="text-blue-800 mb-2">
-              <strong>Create an A record</strong> that points your domain to our server IP address:
-            </p>
-            <div className="bg-white p-3 rounded border font-mono text-sm">
-              <strong>Type:</strong> A<br />
-              <strong>Name/Host:</strong> @ <span className="text-gray-600">(this represents your root domain)</span>
-              <br />
-              <strong>Value/Points to:</strong> <span className="font-bold text-blue-900">138.201.56.93</span>
-              <br />
-              <strong>TTL:</strong> 300 <span className="text-gray-600">(or Auto/Default)</span>
-            </div>
-            <div className="bg-red-50 border border-red-200 p-4 rounded-lg mt-4">
-              <h4 className="font-bold text-red-900 mb-2">⚠️ IMPORTANT: Remove AAAA Records</h4>
-              <p className="text-red-800 font-semibold mb-2">
-                You MUST also delete any existing AAAA records (IPv6) for your domain.
-              </p>
-              <p className="text-red-700 text-sm">
-                AAAA records can interfere with deployment. Look for records with Type "AAAA" and Name "@" or your
-                domain name, and delete them.
-              </p>
-            </div>
-          </div>
+        {/* Progress */}
+        <div className="mb-12 grid grid-cols-3 gap-4">
+          <ProgressCard
+            icon={<Globe className="h-6 w-6" />}
+            title="1. Choose provider"
+            description="Where your domain lives"
+            active
+            done={!!provider}
+          />
+          <ProgressCard
+            icon={<Zap className="h-6 w-6" />}
+            title="2. Update DNS"
+            description="One quick change"
+            active={!!provider}
+            done={false}
+          />
+          <ProgressCard
+            icon={<CheckCircle2 className="h-6 w-6" />}
+            title="3. Wait & deploy"
+            description="A few minutes"
+            active={false}
+            done={false}
+          />
+        </div>
 
-          <div>
-            <h3 className="text-lg font-semibold mb-3">Where did you buy your domain?</h3>
+        {/* Provider Selection */}
+        {!provider && (
+          <div className="mb-12">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Where did you register your domain?</h2>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {providers.map(p => (
                 <button
                   type="button"
                   key={p.id}
                   onClick={() => setProvider(p.id)}
-                  className={`p-3 border rounded-lg text-left hover:bg-gray-50 cursor-pointer transition-colors ${
-                    provider === p.id ? "border-blue-500 bg-blue-50" : "border-gray-300"
-                  }`}
+                  className="p-4 border border-gray-200 rounded-xl hover:border-blue-300 hover:bg-blue-50 transition-all cursor-pointer text-left"
                 >
-                  {p.name}
+                  <span className="font-medium text-gray-900 text-sm">{p.name}</span>
                 </button>
               ))}
             </div>
           </div>
+        )}
 
-          {provider && (
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
-              <h3 className="text-lg font-semibold mb-4">
-                Instructions for {providers.find(p => p.id === provider)?.name}
-              </h3>
+        {/* Instructions */}
+        {provider && (
+          <div className="space-y-8">
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-8">
+              <h2 className="text-xl font-semibold text-gray-900 mb-6">
+                {providers.find(p => p.id === provider)?.name}
+              </h2>
               {getInstructions()}
             </div>
-          )}
 
-          {provider && (
+            {/* Timeline */}
             <div className="space-y-4">
-              <div className="bg-yellow-50 p-4 rounded-lg">
-                <h4 className="font-semibold text-yellow-900 mb-2">⏱️ Wait Time</h4>
-                <p className="text-yellow-800">Changes take 5-60 minutes to take effect worldwide.</p>
-              </div>
-
-              <div className="bg-green-50 p-4 rounded-lg">
-                <h4 className="font-semibold text-green-900 mb-2">✅ Test Your Setup</h4>
-                <p className="text-green-800 mb-2">Check if it's working:</p>
-                <a
-                  href="https://dnschecker.org"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-green-700 underline hover:text-green-600"
-                >
-                  dnschecker.org →
-                </a>
-                <p className="text-green-800 text-sm mt-2">Enter your domain and verify it shows: 138.201.56.93</p>
+              <div className="flex gap-4">
+                <div className="flex-shrink-0">
+                  <Clock className="h-6 w-6 text-amber-500" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900">Takes a few minutes</h3>
+                  <p className="text-gray-600 text-sm mt-1">
+                    DNS changes usually take 5–60 minutes to propagate worldwide. Sometimes it's instant!
+                  </p>
+                </div>
               </div>
             </div>
-          )}
 
-          <div className="text-center pt-4">
-            <button
-              type="button"
-              onClick={() => window.close()}
-              className="text-gray-600 hover:text-gray-800 underline"
-            >
-              ← Back to deployment
-            </button>
+            {/* Test Instructions */}
+            <div className="bg-green-50 border border-green-200 rounded-2xl p-8">
+              <div className="flex gap-4 items-start mb-4">
+                <CheckCircle2 className="h-6 w-6 text-green-600 flex-shrink-0 mt-1" />
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900">Want to verify it worked?</h3>
+                  <p className="text-gray-600 text-sm mt-2">
+                    Use{" "}
+                    <a
+                      href="https://dnschecker.org"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-green-700 hover:text-green-800 underline"
+                    >
+                      dnschecker.org →
+                    </a>{" "}
+                    to check your domain shows{" "}
+                    <code className="bg-white px-2 py-1 rounded text-sm font-mono">138.201.56.93</code>
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Back Button */}
+            <div className="text-center pt-4">
+              <button
+                type="button"
+                onClick={() => window.history.back()}
+                className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 font-medium"
+              >
+                ← Back to deployment
+              </button>
+            </div>
           </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function Step({ number, title, children }: { number: number; title: string; children: React.ReactNode }) {
+  return (
+    <div className="flex gap-4">
+      <div className="flex-shrink-0">
+        <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-semibold flex items-center justify-center text-sm">
+          {number}
         </div>
       </div>
+      <div className="flex-1 pt-0.5">
+        <h3 className="font-semibold text-gray-900 mb-2">{title}</h3>
+        <p className="text-gray-700 text-sm">{children}</p>
+      </div>
+    </div>
+  )
+}
+
+function ProgressCard({
+  icon,
+  title,
+  description,
+  active,
+  done,
+}: {
+  icon: React.ReactNode
+  title: string
+  description: string
+  active: boolean
+  done: boolean
+}) {
+  return (
+    <div
+      className={`p-4 rounded-xl border transition-all ${
+        done ? "border-green-300 bg-green-50" : active ? "border-blue-300 bg-blue-50" : "border-gray-200 bg-gray-50"
+      }`}
+    >
+      <div className={`mb-2 ${done ? "text-green-600" : active ? "text-blue-600" : "text-gray-400"}`}>
+        {done ? <CheckCircle2 className="h-5 w-5" /> : icon}
+      </div>
+      <h3 className={`font-semibold text-sm ${done || active ? "text-gray-900" : "text-gray-600"}`}>{title}</h3>
+      <p className={`text-xs mt-1 ${done || active ? "text-gray-700" : "text-gray-500"}`}>{description}</p>
     </div>
   )
 }

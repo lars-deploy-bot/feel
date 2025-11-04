@@ -1,7 +1,9 @@
 "use client"
+import { Suspense } from "react"
 import { Square } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
+import { SubdomainInitializer } from "@/components/chat/SubdomainInitializer"
 import { ThinkingGroup } from "@/components/ui/chat/ThinkingGroup"
 import { SettingsDropdown } from "@/components/ui/SettingsDropdown"
 import type { StructuredError } from "@/lib/error-codes"
@@ -21,6 +23,7 @@ export default function ChatPage() {
   const [conversationId, setConversationId] = useState<string>(() => crypto.randomUUID())
   const [shouldForceScroll, setShouldForceScroll] = useState(false)
   const [userHasManuallyScrolled, setUserHasManuallyScrolled] = useState(false)
+  const [subdomainInitialized, setSubdomainInitialized] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const isAutoScrolling = useRef(false)
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -96,6 +99,17 @@ export default function ChatPage() {
       }
     }
   }, [messages, shouldForceScroll, userHasManuallyScrolled])
+
+  const handleSubdomainInitialize = (initialMessage: string, initialWorkspace: string) => {
+    setMsg(initialMessage)
+    if (initialWorkspace) {
+      setWorkspace(initialWorkspace)
+    }
+  }
+
+  const handleSubdomainInitialized = () => {
+    setSubdomainInitialized(true)
+  }
 
   async function sendMessage() {
     // Simple: Block if already submitting or no message
@@ -211,7 +225,7 @@ export default function ChatPage() {
                       setMessages(prev => [...prev, message])
                     }
                   }
-                } catch (parseError) {
+                } catch (_parseError) {
                   console.warn("[Chat] Failed to parse SSE data:", line.slice(0, 100))
                 }
               }
@@ -311,6 +325,14 @@ export default function ChatPage() {
 
   return (
     <div className="h-[100dvh] flex flex-col max-w-4xl mx-auto overflow-hidden">
+      <Suspense fallback={null}>
+        <SubdomainInitializer
+          onInitialize={handleSubdomainInitialize}
+          onInitialized={handleSubdomainInitialized}
+          isInitialized={subdomainInitialized}
+          isMounted={mounted}
+        />
+      </Suspense>
       <div className="flex-1 min-h-0 flex flex-col">
         {/* Header */}
         <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-black/10">

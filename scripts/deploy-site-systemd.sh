@@ -33,33 +33,20 @@ PASSWORD="${DEPLOY_PASSWORD:-supersecret}"  # Read from environment, fallback to
 
 echo "🚀 Deploying $DOMAIN with improved port management..."
 
-# 1. Validate DNS pointing to our server
-echo "🔍 Validating DNS for $DOMAIN..."
-DOMAIN_IP=$(dig +short "$DOMAIN" A | tail -n1)
+# 1. Validate DNS pointing to our server (skip for wildcard domains)
+WILDCARD_DOMAIN="alive.best"
 
-if [ -z "$DOMAIN_IP" ]; then
-    echo "❌ DNS Error: No A record found for $DOMAIN"
-    echo "   You must create an A record for $DOMAIN with these exact settings:"
-    echo "   Type: A"
-    echo "   Name/Host: @ (or $DOMAIN)"
-    echo "   Value/Points to: $SERVER_IP"
-    echo "   TTL: 300 (or Auto)"
-    echo "   ⚠️  ALSO: Remove any AAAA records (IPv6) for $DOMAIN"
-    echo "   📖 See DNS setup guide: https://terminal.goalive.nl/docs/dns-setup"
-    exit 12
-fi
+if [[ "$DOMAIN" == *".$WILDCARD_DOMAIN" ]]; then
+    # Skip DNS validation for wildcard subdomains (already trusted)
+    echo "✅ Wildcard domain detected ($DOMAIN) - skipping DNS validation (pre-verified wildcard)"
+else
+    # Standard DNS validation for custom domains
+    echo "🔍 Validating DNS for $DOMAIN..."
+    DOMAIN_IP=$(dig +short "$DOMAIN" A | tail -n1)
 
-if [ "$DOMAIN_IP" != "$SERVER_IP" ]; then
-    # Check if it's a Cloudflare proxy IP (common ranges)
-    if [[ "$DOMAIN_IP" =~ ^(104\.1[6-9]\.|104\.2[0-4]\.|172\.6[4-7]\.|172\.7[0-1]\.|173\.245\.|188\.114\.|190\.93\.|197\.234\.|198\.41\.) ]]; then
-        echo "❌ DNS Error: $DOMAIN points to $DOMAIN_IP (Cloudflare proxy IP)"
-        echo "   🚨 CLOUDFLARE PROXY DETECTED: You must disable the orange cloud (proxy) in Cloudflare DNS settings!"
-        echo "   💡 Make the cloud icon GRAY (not orange) next to your A record, then try again."
-        echo "   📖 See DNS setup guide: https://terminal.goalive.nl/docs/dns-setup"
-        exit 12
-    else
-        echo "❌ DNS Error: $DOMAIN currently points to $DOMAIN_IP, but it must point to $SERVER_IP"
-        echo "   You need to update your A record for $DOMAIN with these exact settings:"
+    if [ -z "$DOMAIN_IP" ]; then
+        echo "❌ DNS Error: No A record found for $DOMAIN"
+        echo "   You must create an A record for $DOMAIN with these exact settings:"
         echo "   Type: A"
         echo "   Name/Host: @ (or $DOMAIN)"
         echo "   Value/Points to: $SERVER_IP"
@@ -68,20 +55,41 @@ if [ "$DOMAIN_IP" != "$SERVER_IP" ]; then
         echo "   📖 See DNS setup guide: https://terminal.goalive.nl/docs/dns-setup"
         exit 12
     fi
-fi
 
-echo "✅ DNS validation passed: $DOMAIN → $SERVER_IP"
+    if [ "$DOMAIN_IP" != "$SERVER_IP" ]; then
+        # Check if it's a Cloudflare proxy IP (common ranges)
+        if [[ "$DOMAIN_IP" =~ ^(104\.1[6-9]\.|104\.2[0-4]\.|172\.6[4-7]\.|172\.7[0-1]\.|173\.245\.|188\.114\.|190\.93\.|197\.234\.|198\.41\.) ]]; then
+            echo "❌ DNS Error: $DOMAIN points to $DOMAIN_IP (Cloudflare proxy IP)"
+            echo "   🚨 CLOUDFLARE PROXY DETECTED: You must disable the orange cloud (proxy) in Cloudflare DNS settings!"
+            echo "   💡 Make the cloud icon GRAY (not orange) next to your A record, then try again."
+            echo "   📖 See DNS setup guide: https://terminal.goalive.nl/docs/dns-setup"
+            exit 12
+        else
+            echo "❌ DNS Error: $DOMAIN currently points to $DOMAIN_IP, but it must point to $SERVER_IP"
+            echo "   You need to update your A record for $DOMAIN with these exact settings:"
+            echo "   Type: A"
+            echo "   Name/Host: @ (or $DOMAIN)"
+            echo "   Value/Points to: $SERVER_IP"
+            echo "   TTL: 300 (or Auto)"
+            echo "   ⚠️  ALSO: Remove any AAAA records (IPv6) for $DOMAIN"
+            echo "   📖 See DNS setup guide: https://terminal.goalive.nl/docs/dns-setup"
+            exit 12
+        fi
+    fi
 
-# 1.5. Check for AAAA records that might interfere
-echo "🔍 Checking for AAAA records (IPv6)..."
-AAAA_RECORDS=$(dig +short "$DOMAIN" AAAA | grep -v "^$")
+    echo "✅ DNS validation passed: $DOMAIN → $SERVER_IP"
 
-if [ -n "$AAAA_RECORDS" ]; then
-    echo "⚠️  WARNING: AAAA records (IPv6) detected for $DOMAIN:"
-    echo "   $AAAA_RECORDS"
-    echo "   💡 RECOMMENDATION: Remove AAAA records to prevent potential deployment issues"
-    echo "   📖 See DNS setup guide: https://terminal.goalive.nl/docs/dns-setup"
-    echo "   🔄 Continuing deployment anyway..."
+    # 1.5. Check for AAAA records that might interfere
+    echo "🔍 Checking for AAAA records (IPv6)..."
+    AAAA_RECORDS=$(dig +short "$DOMAIN" AAAA | grep -v "^$")
+
+    if [ -n "$AAAA_RECORDS" ]; then
+        echo "⚠️  WARNING: AAAA records (IPv6) detected for $DOMAIN:"
+        echo "   $AAAA_RECORDS"
+        echo "   💡 RECOMMENDATION: Remove AAAA records to prevent potential deployment issues"
+        echo "   📖 See DNS setup guide: https://terminal.goalive.nl/docs/dns-setup"
+        echo "   🔄 Continuing deployment anyway..."
+    fi
 fi
 
 # 2. Smart port assignment from domain-passwords.json
@@ -92,23 +100,24 @@ get_next_port() {
     local start_port=3333
 
     if [ -f "$DOMAIN_PASSWORDS_FILE" ]; then
-        # Get all currently used ports and find the highest
-        local highest_port=$(jq -r '.[].port' "$DOMAIN_PASSWORDS_FILE" 2>/dev/null | sort -n | tail -1)
+        # Get all currently used ports in the site port range (3333-3999) and find the highest
+        # Exclude special service ports like 8998, 8999 (staging, terminal)
+        local highest_port=$(jq -r '.[].port' "$DOMAIN_PASSWORDS_FILE" 2>/dev/null | awk '$1 >= 3333 && $1 < 4000' | sort -n | tail -1)
 
         if [ -n "$highest_port" ] && [ "$highest_port" != "null" ]; then
             start_port=$((highest_port + 1))
         fi
     fi
 
-    # Find first port that's not in use by any process
+    # Find first port that's not in use by any process (stay within site port range)
     local test_port=$start_port
     while netstat -tuln | grep -q ":$test_port "; do
         echo "🔍 Port $test_port is occupied, trying next..." >&2
         test_port=$((test_port + 1))
 
         # Safety limit to prevent infinite loop
-        if [ $test_port -gt 4000 ]; then
-            echo "❌ Cannot find available port (reached limit 4000)" >&2
+        if [ $test_port -gt 3999 ]; then
+            echo "❌ Cannot find available port in range 3333-3999 (all occupied)" >&2
             exit 15
         fi
     done
@@ -274,6 +283,7 @@ else
 
 $DOMAIN {
     import common_headers
+    import image_serving
     reverse_proxy localhost:$PORT {
         header_up Host {host}
         header_up X-Real-IP {remote_host}

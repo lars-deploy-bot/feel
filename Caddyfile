@@ -193,3 +193,31 @@ staging.goalive.nl, staging.terminal.goalive.nl {
     }
 }
 
+# NOTE: alive.best subdomain entries are added dynamically by deploy-site-systemd.sh
+# When a new subdomain is deployed, the script adds an entry like:
+# alice.alive.best {
+#     import common_headers
+#     reverse_proxy localhost:3349 { ... }
+# }
+
+joost.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3349 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+blabla.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3350 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
