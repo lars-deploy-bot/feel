@@ -15,7 +15,6 @@ export async function POST(req: NextRequest) {
 
   const { passcode, workspace } = result.data
 
-  // Check for local development test user
   if (process.env.BRIDGE_ENV === "local" && workspace === "test" && passcode === "test") {
     const res = NextResponse.json({ ok: true })
     res.cookies.set("session", "test-user", {
@@ -28,7 +27,6 @@ export async function POST(req: NextRequest) {
     return res
   }
 
-  // Check if this is a manager login
   if (workspace === "manager") {
     if (passcode !== "wachtwoord") {
       const res = NextResponse.json({ ok: false, error: "bad_passcode" }, { status: 401 })
@@ -36,14 +34,12 @@ export async function POST(req: NextRequest) {
       return res
     }
   } else if (workspace) {
-    // Domain-specific login
-    if (!passcode || !isDomainPasswordValid(workspace, passcode)) {
+    if (!passcode || !(await isDomainPasswordValid(workspace, passcode))) {
       const res = NextResponse.json({ ok: false, error: "bad_passcode" }, { status: 401 })
       addCorsHeaders(res, origin)
       return res
     }
   } else {
-    // No workspace provided - invalid request
     const res = NextResponse.json({ ok: false, error: "workspace_required" }, { status: 400 })
     addCorsHeaders(res, origin)
     return res
@@ -52,7 +48,6 @@ export async function POST(req: NextRequest) {
   const res = NextResponse.json({ ok: true })
 
   if (workspace === "manager") {
-    // Set manager session cookie
     res.cookies.set("manager_session", "1", {
       httpOnly: true,
       secure: true,
@@ -60,11 +55,10 @@ export async function POST(req: NextRequest) {
       path: "/",
     })
   } else {
-    // Set regular session cookie
     res.cookies.set("session", "1", {
       httpOnly: true,
       secure: true,
-      sameSite: "none", // Changed for cross-origin
+      sameSite: "none",
       path: "/",
     })
   }

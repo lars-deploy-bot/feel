@@ -32,6 +32,17 @@ SERVER_IP="138.201.56.93"
 PASSWORD="${DEPLOY_PASSWORD:-supersecret}"  # Read from environment, fallback to default
 
 echo "🚀 Deploying $DOMAIN with improved port management..."
+echo "🔐 Hashing password with bcrypt..."
+
+# Hash the password using dedicated script
+PASSWORD_HASH=$(cd /root/webalive/claude-bridge && bun scripts/hash-password.mjs "$PASSWORD")
+
+if [ -z "$PASSWORD_HASH" ]; then
+    echo "❌ Failed to hash password"
+    exit 16
+fi
+
+echo "✅ Password hashed successfully"
 
 # 1. Validate DNS pointing to our server (skip for wildcard domains)
 WILDCARD_DOMAIN="alive.best"
@@ -138,14 +149,14 @@ else
         echo "{}" > "$DOMAIN_PASSWORDS_FILE"
     fi
 
-    # Add domain with password and assigned port (using jq --arg for safe escaping)
+    # Add domain with hashed password and assigned port (using jq --arg for safe escaping)
     jq --arg domain "$DOMAIN" \
-       --arg password "$PASSWORD" \
+       --arg passwordHash "$PASSWORD_HASH" \
        --argjson port "$PORT" \
-       '.[$domain] = {password: $password, port: $port}' \
+       '.[$domain] = {passwordHash: $passwordHash, port: $port}' \
        "$DOMAIN_PASSWORDS_FILE" > "${DOMAIN_PASSWORDS_FILE}.tmp"
     mv "${DOMAIN_PASSWORDS_FILE}.tmp" "$DOMAIN_PASSWORDS_FILE"
-    echo "✅ Added $DOMAIN to domain-passwords.json with port $PORT"
+    echo "✅ Added $DOMAIN to domain-passwords.json with hashed password and port $PORT"
 fi
 
 # 3. For existing domains, verify their assigned port is still available

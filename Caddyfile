@@ -185,6 +185,7 @@ six.goalive.nl {
 # Staging environment for testing Claude Bridge permission fixes (dev server)
 staging.goalive.nl, staging.terminal.goalive.nl {
     import common_headers
+    import image_serving
     reverse_proxy localhost:8998 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
