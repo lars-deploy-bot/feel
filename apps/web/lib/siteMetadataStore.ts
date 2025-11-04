@@ -51,7 +51,7 @@ export const siteMetadataStore: SiteMetadataStore = {
 
   async setSite(slug: string, metadata: SiteMetadata): Promise<void> {
     try {
-      const workspacePath = metadata.workspace
+      const workspacePath = path.join(WORKSPACE_BASE, metadata.domain, "user")
       const metadataPath = getMetadataPath(workspacePath)
 
       const dir = path.dirname(metadataPath)
