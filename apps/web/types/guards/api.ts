@@ -102,8 +102,8 @@ export async function verifyPassword(plaintext: string, hash: string): Promise<b
 }
 
 interface DomainConfig {
-  password?: string // Legacy plaintext (for backwards compatibility)
-  passwordHash?: string // Bcrypt hash (preferred)
+  tenantId?: string
+  passwordHash: string
   port: number
 }
 
@@ -149,32 +149,21 @@ export function saveDomainPasswords(passwords: DomainPasswords): void {
   }
 }
 
-// Validates password against passwordHash (bcrypt) or falls back to plaintext password
 export async function isDomainPasswordValid(domain: string, providedPassword: string): Promise<boolean> {
   const passwords = loadDomainPasswords()
   const domainConfig = passwords[domain]
 
-  if (!domainConfig) {
+  if (!domainConfig?.passwordHash) {
     return false
   }
 
-  if (domainConfig.passwordHash) {
-    return verifyPassword(providedPassword, domainConfig.passwordHash)
-  }
-
-  if (domainConfig.password) {
-    return providedPassword === domainConfig.password
-  }
-
-  return false
+  return verifyPassword(providedPassword, domainConfig.passwordHash)
 }
 
-// Updates domain password (hashed with bcrypt), removes legacy plaintext field
 export async function updateDomainPassword(domain: string, newPlaintextPassword: string): Promise<void> {
   const passwords = loadDomainPasswords()
   if (passwords[domain]) {
     passwords[domain].passwordHash = await hashPassword(newPlaintextPassword)
-    delete passwords[domain].password
     saveDomainPasswords(passwords)
   }
 }
