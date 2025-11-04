@@ -14,14 +14,14 @@ async function getPersonaMarkdown(
 
 **The Task:** ${query}
 
-**What Makes It Lovable:** ${stylePreferences}
+**Style Preferences:** ${stylePreferences}
 
 ${extraContext ? `**Project Context:** ${extraContext}` : ""}
 
 Choose a famous person (real, known to history or current times) who:
 - Would approach this task exactly as needed
 - Has a proven track record of creating/building excellently
-- Embodies the qualities in "What Makes It Lovable"
+- Embodies the desired style and qualities
 
 This can be anyone from any field - designers, engineers (backend, frontend, full-stack), artists, writers, executives, scientists, entrepreneurs, craftspeople, etc. Don't be biased towards specific people - pick whoever actually fits best.
 
@@ -92,7 +92,7 @@ Format the response as Markdown with these sections:
 
 export const generatePersonaParamsSchema = {
   query: z.string().describe("What would the best person in this world do? (the task or role you need)"),
-  style_preferences: z.string().describe("What makes it lovable to you? What qualities should it have?"),
+  style_preferences: z.string().describe("What style and qualities should the approach have?"),
   extra_things_to_know: z.string().optional().describe("Extra context about the website or project"),
 }
 

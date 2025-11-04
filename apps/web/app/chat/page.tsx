@@ -1,5 +1,5 @@
 "use client"
-import { Square } from "lucide-react"
+import { ExternalLink, Square } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Suspense, useEffect, useRef, useState } from "react"
 import { ThinkingGroup } from "@/components/ui/chat/ThinkingGroup"
@@ -361,7 +361,14 @@ export default function ChatPage() {
           <div className="flex-shrink-0 px-6 py-3 border-b border-black/5 bg-black/[0.02]">
             <div className="flex items-center text-xs">
               <span className="text-black/40 font-thin">workspace</span>
-              <span className="ml-3 font-diatype-mono text-black/80 font-thin">{workspace}</span>
+              <a
+                href={`https://${workspace}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-3 font-diatype-mono text-black/80 font-thin hover:underline hover:text-black"
+              >
+                {workspace}
+              </a>
             </div>
           </div>
         )}
