@@ -15,6 +15,7 @@ import { ModeOption } from "./ModeOption"
 import { PasswordField } from "./PasswordField"
 import { SubmitButton } from "./SubmitButton"
 import { useDeployment } from "./useDeployment"
+import { containerVariants, itemVariants, fieldVariants } from "@/lib/animations"
 
 const deployWithDomainSchema = z.object({
   domain: z
@@ -38,43 +39,6 @@ const deployOnlySchema = z.object({
 
 type DeployWithDomainInput = z.infer<typeof deployWithDomainSchema>
 type DeployOnlyInput = z.infer<typeof deployOnlySchema>
-
-const containerVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.6,
-      ease: "easeOut",
-      staggerChildren: 0.1,
-      delayChildren: 0.1,
-    },
-  },
-}
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 10 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.5, ease: "easeOut" },
-  },
-}
-
-const fieldVariants = {
-  hidden: { opacity: 0, x: -10 },
-  visible: {
-    opacity: 1,
-    x: 0,
-    transition: { duration: 0.4 },
-  },
-  focus: {
-    scale: 1.02,
-    transition: { duration: 0.2 },
-  },
-}
-
 type DeploymentMode = "deploy-only" | "deploy-with-domain"
 
 interface ModeSelectionScreenProps {

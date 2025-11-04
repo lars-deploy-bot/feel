@@ -2,8 +2,9 @@ import { exec } from "node:child_process"
 import { existsSync } from "node:fs"
 import { promisify } from "node:util"
 import { type NextRequest, NextResponse } from "next/server"
-import { siteMetadataStore } from "@/features/deployment/lib/siteMetadataStore"
+import { siteMetadataStore } from "@/lib/siteMetadataStore"
 import { validateDeploySubdomainRequest } from "@/features/deployment/types/guards"
+import { buildSubdomain } from "@/lib/config"
 
 const execAsync = promisify(exec)
 
@@ -104,8 +105,7 @@ export async function POST(request: NextRequest) {
     const { slug, siteIdeas, password } = parseResult.data
 
     // Build full domain from slug
-    const WILDCARD_TLD = process.env.WILDCARD_TLD || "alive.best"
-    const fullDomain = `${slug}.${WILDCARD_TLD}`
+    const fullDomain = buildSubdomain(slug)
     const workspacePath = `/srv/webalive/sites/${fullDomain}/user`
 
     console.log(`[Deploy-Subdomain] Full domain: ${fullDomain}`)
@@ -187,9 +187,9 @@ export async function POST(request: NextRequest) {
     const res = NextResponse.json(
       {
         ok: true,
-        message: `Site ${fullDomain} deployed successfully! Initializing Claude assistant...`,
+        message: `Site ${fullDomain} deployed successfully!`,
         domain: fullDomain,
-        chatUrl: `/chat?slug=${slug}&autoStart=true`,
+        chatUrl: `/chat?slug=${slug}`,
       } as DeploySubdomainResponse,
       { status: 200 },
     )

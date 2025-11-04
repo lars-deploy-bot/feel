@@ -6,6 +6,7 @@
 
 import { promises as fs } from "node:fs"
 import path from "node:path"
+import { buildSubdomain, WORKSPACE_BASE } from "./config"
 
 export interface SiteMetadata {
   slug: string
@@ -30,18 +31,13 @@ function getMetadataPath(workspace: string): string {
   return path.join(workspace, METADATA_FILENAME)
 }
 
-// Get wildcard TLD from environment
-function getWildcardTld(): string {
-  return process.env.WILDCARD_TLD || "alive.best"
-}
-
 // File-based implementation
 export const siteMetadataStore: SiteMetadataStore = {
   async getSite(slug: string): Promise<SiteMetadata | null> {
     try {
-      // Construct path: workspace is /srv/webalive/sites/{slug}.alive.best/user
-      const tld = getWildcardTld()
-      const workspacePath = `/srv/webalive/sites/${slug}.${tld}/user`
+      // Construct path: workspace is /srv/webalive/sites/{slug}.{WILDCARD_DOMAIN}/user
+      const domain = buildSubdomain(slug)
+      const workspacePath = path.join(WORKSPACE_BASE, domain, "user")
       const metadataPath = getMetadataPath(workspacePath)
 
       const content = await fs.readFile(metadataPath, "utf-8")

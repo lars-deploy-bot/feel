@@ -3,19 +3,7 @@
 import { motion } from "framer-motion"
 import { Eye, EyeOff } from "lucide-react"
 import type { FieldErrors, UseFormRegister } from "react-hook-form"
-
-const fieldVariants = {
-  hidden: { opacity: 0, x: -10 },
-  visible: {
-    opacity: 1,
-    x: 0,
-    transition: { duration: 0.4 },
-  },
-  focus: {
-    scale: 1.02,
-    transition: { duration: 0.2 },
-  },
-}
+import { fieldVariants } from "@/lib/animations"
 
 // PasswordField is reused across multiple form types (DeployForm, SubdomainDeployForm)
 // Using 'any' here is intentional for component reusability across different form shapes

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/primitives/Button"
 import { normalizeDomain } from "@/lib/domain-utils"
 import { getErrorHelp, getErrorMessage } from "@/lib/error-codes"
 import { isTerminalMode } from "@/types/guards/workspace"
+import { WILDCARD_DOMAIN } from "@/lib/config"
 
 function WorkspacePageContent() {
   const searchParams = useSearchParams()
@@ -118,7 +119,7 @@ function WorkspacePageContent() {
                   setVerified(false)
                   setVerifyResult(null)
                 }}
-                placeholder="demo.goalive.nl"
+                placeholder={`myapp.${WILDCARD_DOMAIN}`}
                 className="flex-1 bg-transparent border-0 border-b border-black/20 text-black placeholder-black/40 focus:outline-none focus:border-black pb-3 text-sm font-thin font-mono"
               />
               <Button
