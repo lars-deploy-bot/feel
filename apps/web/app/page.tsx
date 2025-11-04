@@ -1,11 +1,11 @@
 "use client"
+import { Clock, X } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Suspense, useEffect, useState } from "react"
 import { Button } from "@/components/ui/primitives/Button"
 import { Input } from "@/components/ui/primitives/Input"
 import { WILDCARD_DOMAIN } from "@/lib/config"
 import { useRecentSitesStore } from "@/lib/stores/recentSitesStore"
-import { Clock, X } from "lucide-react"
 
 function LoginPageContent() {
   const searchParams = useSearchParams()
@@ -96,7 +96,7 @@ function LoginPageContent() {
               <p className="text-sm font-medium text-black/70">Recent sites</p>
             </div>
             <div className="space-y-2">
-              {recentSites.map((site) => (
+              {recentSites.map(site => (
                 <button
                   key={site.domain}
                   type="button"
@@ -109,7 +109,7 @@ function LoginPageContent() {
                   <span className="text-sm font-medium text-black">{site.domain}</span>
                   <button
                     type="button"
-                    onClick={(e) => {
+                    onClick={e => {
                       e.stopPropagation()
                       removeSite(site.domain)
                     }}

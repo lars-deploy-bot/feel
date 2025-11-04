@@ -1,12 +1,13 @@
 "use client"
 
+import type { HTMLMotionProps } from "framer-motion"
 import { motion } from "framer-motion"
 import { forwardRef } from "react"
 import { fieldVariants } from "@/lib/animations"
 
 export type InputState = "error" | "success" | "loading" | "default"
 
-interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "className"> {
+interface InputProps extends Omit<HTMLMotionProps<"input">, "className"> {
   label?: string
   helperText?: string
   errorMessage?: string

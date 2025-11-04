@@ -6,9 +6,14 @@ import { ResultMessage } from "@/features/chat/components/message-renderers/Resu
 import { StartMessage } from "@/features/chat/components/message-renderers/StartMessage"
 import { SystemMessage } from "@/features/chat/components/message-renderers/SystemMessage"
 import { ToolResultMessage } from "@/features/chat/components/message-renderers/ToolResultMessage"
-import { getMessageComponentType, isErrorResultMessage, type UIMessage } from "./message-parser"
-import type { SDKAssistantMessage, SDKResultMessage, SDKSystemMessage, SDKUserMessage } from "@/features/chat/types/sdk-types"
+import type {
+  SDKAssistantMessage,
+  SDKResultMessage,
+  SDKSystemMessage,
+  SDKUserMessage,
+} from "@/features/chat/types/sdk-types"
 import { hasMarkdown } from "@/lib/utils/markdown-utils"
+import { getMessageComponentType, isErrorResultMessage, type UIMessage } from "./message-parser"
 
 export function renderMessage(message: UIMessage): React.ReactNode {
   // Check for error result messages first (before component type routing)

@@ -2,8 +2,8 @@
 
 import { motion } from "framer-motion"
 import type { FieldErrors, UseFormRegister } from "react-hook-form"
-import type { DeploySubdomainForm } from "@/lib/types/deploy-subdomain"
 import { fieldVariants } from "@/lib/animations"
+import type { DeploySubdomainForm } from "../types/deploy-subdomain"
 
 interface SiteIdeasTextareaProps {
   register: UseFormRegister<DeploySubdomainForm>

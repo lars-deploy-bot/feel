@@ -1,14 +1,5 @@
-/**
- * Shared animation variants for framer-motion
- * Centralizes animation definitions to ensure consistency across components
- */
-
 import type { Variants } from "framer-motion"
 
-/**
- * Standard field animation variants
- * Used for form inputs, textareas, and interactive fields
- */
 export const fieldVariants: Variants = {
   hidden: { opacity: 0, x: -10 },
   visible: {
@@ -22,10 +13,6 @@ export const fieldVariants: Variants = {
   },
 }
 
-/**
- * Container animation variants
- * Used for wrapping multiple animated elements
- */
 export const containerVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: {
@@ -40,10 +27,6 @@ export const containerVariants: Variants = {
   },
 }
 
-/**
- * Item animation variants
- * Used for individual items within an animated container
- */
 export const itemVariants: Variants = {
   hidden: { opacity: 0, y: 10 },
   visible: {

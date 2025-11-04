@@ -2,10 +2,10 @@
 import { useRouter, useSearchParams } from "next/navigation"
 import { Suspense, useEffect, useState } from "react"
 import { Button } from "@/components/ui/primitives/Button"
+import { WILDCARD_DOMAIN } from "@/lib/config"
 import { normalizeDomain } from "@/lib/domain-utils"
 import { getErrorHelp, getErrorMessage } from "@/lib/error-codes"
 import { isTerminalMode } from "@/types/guards/workspace"
-import { WILDCARD_DOMAIN } from "@/lib/config"
 
 function WorkspacePageContent() {
   const searchParams = useSearchParams()

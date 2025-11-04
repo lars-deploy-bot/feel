@@ -7,15 +7,15 @@ import { useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-import { SubdomainDeployForm } from "./SubdomainDeployForm"
+import { PasswordField } from "@/components/ui/primitives/PasswordField"
+import { containerVariants, fieldVariants, itemVariants } from "@/lib/animations"
 import { useDeployFormStore, useDeploymentStatusStore } from "@/lib/stores/deployStore"
 import { DeploymentStatus } from "./DeploymentStatus"
 import { generateRandomDomain } from "./formUtils"
 import { ModeOption } from "./ModeOption"
-import { PasswordField } from "./PasswordField"
+import { SubdomainDeployForm } from "./SubdomainDeployForm"
 import { SubmitButton } from "./SubmitButton"
 import { useDeployment } from "./useDeployment"
-import { containerVariants, itemVariants, fieldVariants } from "@/lib/animations"
 
 const deployWithDomainSchema = z.object({
   domain: z

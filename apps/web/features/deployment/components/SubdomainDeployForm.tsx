@@ -1,16 +1,14 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
-import { DeploymentStatus } from "./DeploymentStatus"
-import { PasswordField } from "./PasswordField"
-import { SubmitButton } from "./SubmitButton"
+import { PasswordField } from "@/components/ui/primitives/PasswordField"
 import type { DeploySubdomainForm } from "@/features/deployment/types/deploy-subdomain"
-import { SiteIdeasTextarea } from "./SiteIdeasTextarea"
-import { SlugInput } from "./SlugInput"
 import { WILDCARD_DOMAIN } from "@/lib/config"
+import { DeploymentStatus } from "./DeploymentStatus"
+import { SlugInput } from "./SlugInput"
+import { SubmitButton } from "./SubmitButton"
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -34,7 +32,6 @@ interface DeploymentResult {
 }
 
 export function SubdomainDeployForm() {
-  const router = useRouter()
   const [isDeploying, setIsDeploying] = useState(false)
   const [deploymentStatus, setDeploymentStatus] = useState<DeploymentResult | null>(null)
   const [showPassword, setShowPassword] = useState(false)
@@ -54,7 +51,6 @@ export function SubdomainDeployForm() {
   })
 
   const watchSlug = watch("slug")
-  const watchIdeas = watch("siteIdeas")
   const watchPassword = watch("password")
 
   const onSubmit = async (data: DeploySubdomainForm) => {

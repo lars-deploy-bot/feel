@@ -1,9 +1,5 @@
 import { z } from "zod"
 
-/**
- * Subdomain deployment request validation
- */
-
 export const DeploySubdomainSchema = z.object({
   slug: z
     .string()
