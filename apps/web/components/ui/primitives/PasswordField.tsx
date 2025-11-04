@@ -2,52 +2,47 @@
 
 import { motion } from "framer-motion"
 import { Eye, EyeOff } from "lucide-react"
-import type { FieldErrors, UseFormRegister } from "react-hook-form"
+import type { FieldErrors, UseFormRegister, Path, FieldValues } from "react-hook-form"
+import { fieldVariants } from "@/lib/animations"
 
-const fieldVariants = {
-  hidden: { opacity: 0, x: -10 },
-  visible: {
-    opacity: 1,
-    x: 0,
-    transition: { duration: 0.4 },
-  },
-  focus: {
-    scale: 1.02,
-    transition: { duration: 0.2 },
-  },
-}
-
-// PasswordField is reused across multiple form types (DeployForm, SubdomainDeployForm)
-// Using 'any' here is intentional for component reusability across different form shapes
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-interface PasswordFieldProps {
-  register: UseFormRegister<any>
-  errors: FieldErrors<any>
+interface PasswordFieldProps<T extends FieldValues> {
+  register: UseFormRegister<T>
+  errors: FieldErrors<T>
   watchPassword: string
   isDeploying: boolean
   showPassword: boolean
   onTogglePassword: () => void
+  label?: string
+  helperText?: string
+  fieldName?: Path<T>
 }
 
-export function PasswordField({
+export function PasswordField<T extends FieldValues>({
   register,
   errors,
   watchPassword,
   isDeploying,
   showPassword,
   onTogglePassword,
-}: PasswordFieldProps) {
+  label = "Site password",
+  helperText = "6–16 characters. You'll use this to access the admin panel.",
+  fieldName = "password" as Path<T>,
+}: PasswordFieldProps<T>) {
+  const fieldError = errors[fieldName]
+  const errorMessage =
+    fieldError && typeof fieldError === "object" && "message" in fieldError ? fieldError.message : undefined
+
   return (
     <motion.div variants={fieldVariants}>
-      <label htmlFor="password" className="block text-sm font-semibold text-gray-900 mb-2">
-        Site password
+      <label htmlFor={String(fieldName)} className="block text-sm font-semibold text-gray-900 mb-2">
+        {label}
       </label>
-      <p className="text-xs text-gray-500 mb-3">6–16 characters. You'll use this to access the admin panel.</p>
+      <p className="text-xs text-gray-500 mb-3">{helperText}</p>
       <div className="relative">
         <motion.input
           whileFocus="focus"
           variants={fieldVariants}
-          {...register("password")}
+          {...register(fieldName)}
           disabled={isDeploying}
           type={showPassword ? "text" : "password"}
           autoComplete="off"
@@ -55,7 +50,7 @@ export function PasswordField({
           data-lpignore
           placeholder="••••••••"
           className={`w-full px-4 py-3 rounded-lg border-2 transition-colors outline-none font-medium pr-12 ${
-            errors.password
+            fieldError
               ? "border-red-300 bg-red-50 text-gray-900"
               : "border-gray-200 bg-gray-50 text-gray-900 hover:border-gray-300 focus:border-blue-500 focus:bg-blue-50"
           } disabled:opacity-50 disabled:cursor-not-allowed`}
@@ -83,13 +78,13 @@ export function PasswordField({
           ))}
         </motion.div>
       )}
-      {errors.password && typeof errors.password === "object" && "message" in errors.password && (
+      {errorMessage && (
         <motion.p
           initial={{ opacity: 0, y: -5 }}
           animate={{ opacity: 1, y: 0 }}
           className="mt-1.5 text-red-600 text-xs font-medium"
         >
-          {errors.password.message as string}
+          {String(errorMessage)}
         </motion.p>
       )}
     </motion.div>

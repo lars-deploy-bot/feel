@@ -1,15 +1,14 @@
 "use client"
-import { Suspense } from "react"
 import { Square } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useEffect, useRef, useState } from "react"
-import { SubdomainInitializer } from "@/features/chat/components/SubdomainInitializer"
+import { Suspense, useEffect, useRef, useState } from "react"
 import { ThinkingGroup } from "@/components/ui/chat/ThinkingGroup"
 import { SettingsDropdown } from "@/components/ui/SettingsDropdown"
-import type { StructuredError } from "@/lib/error-codes"
+import { SubdomainInitializer } from "@/features/chat/components/SubdomainInitializer"
 import { groupMessages } from "@/features/chat/lib/message-grouper"
 import { parseStreamEvent, type StreamEvent, type UIMessage } from "@/features/chat/lib/message-parser"
 import { renderMessage } from "@/features/chat/lib/message-renderer"
+import type { StructuredError } from "@/lib/error-codes"
 import { isTerminalMode } from "@/types/guards/workspace"
 
 export default function ChatPage() {

@@ -2,20 +2,8 @@
 
 import { motion } from "framer-motion"
 import type { FieldErrors, UseFormRegister } from "react-hook-form"
-import type { DeploySubdomainForm } from "@/lib/types/deploy-subdomain"
-
-const fieldVariants = {
-  hidden: { opacity: 0, x: -10 },
-  visible: {
-    opacity: 1,
-    x: 0,
-    transition: { duration: 0.4 },
-  },
-  focus: {
-    scale: 1.01,
-    transition: { duration: 0.2 },
-  },
-}
+import { fieldVariants } from "@/lib/animations"
+import type { DeploySubdomainForm } from "../types/deploy-subdomain"
 
 interface SiteIdeasTextareaProps {
   register: UseFormRegister<DeploySubdomainForm>

@@ -10,9 +10,10 @@ interface DeploymentStatusProps {
   domain?: string | null
   error?: string | null
   errorDetails?: string[] | null
+  chatUrl?: string | null
 }
 
-export function DeploymentStatus({ status, domain, error, errorDetails }: DeploymentStatusProps) {
+export function DeploymentStatus({ status, domain, error, errorDetails, chatUrl }: DeploymentStatusProps) {
   if (!status) return null
 
   if (status === "success") {
@@ -24,17 +25,27 @@ export function DeploymentStatus({ status, domain, error, errorDetails }: Deploy
       >
         <div className="flex gap-3">
           <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-          <div>
+          <div className="w-full">
             <h3 className="font-semibold text-green-900 mb-1">Deployment Successful!</h3>
             <p className="text-green-700 text-sm mb-3">{domain} is now live</p>
-            <a
-              href={`https://${domain}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-green-600 hover:text-green-800 font-medium text-sm underline inline-block"
-            >
-              Visit your site →
-            </a>
+            <div className="flex gap-2">
+              <a
+                href={`https://${domain}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-green-600 hover:text-green-800 font-medium text-sm underline inline-block"
+              >
+                Visit your site →
+              </a>
+              {chatUrl && (
+                <a
+                  href={chatUrl}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm inline-block"
+                >
+                  Continue to Terminal →
+                </a>
+              )}
+            </div>
           </div>
         </div>
       </motion.div>

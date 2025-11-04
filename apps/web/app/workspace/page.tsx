@@ -2,6 +2,7 @@
 import { useRouter, useSearchParams } from "next/navigation"
 import { Suspense, useEffect, useState } from "react"
 import { Button } from "@/components/ui/primitives/Button"
+import { WILDCARD_DOMAIN } from "@/lib/config"
 import { normalizeDomain } from "@/lib/domain-utils"
 import { getErrorHelp, getErrorMessage } from "@/lib/error-codes"
 import { isTerminalMode } from "@/types/guards/workspace"
@@ -118,7 +119,7 @@ function WorkspacePageContent() {
                   setVerified(false)
                   setVerifyResult(null)
                 }}
-                placeholder="demo.goalive.nl"
+                placeholder={`myapp.${WILDCARD_DOMAIN}`}
                 className="flex-1 bg-transparent border-0 border-b border-black/20 text-black placeholder-black/40 focus:outline-none focus:border-black pb-3 text-sm font-thin font-mono"
               />
               <Button

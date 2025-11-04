@@ -1,7 +1,7 @@
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk"
-import { gatePrompt } from "./gateResult/gateResult.p"
-import { getGroqClient } from "@/lib/clients/groq"
 import { isSDKResultMessage } from "@/features/chat/types/sdk"
+import { getGroqClient } from "@/lib/clients/groq"
+import { gatePrompt } from "./gateResult/gateResult.p"
 
 const SAFETY_CHECK_PROMPT = `<instructions>
 You are a content moderator for a coding assistant application.

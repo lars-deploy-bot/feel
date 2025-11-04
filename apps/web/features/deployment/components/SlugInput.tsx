@@ -3,21 +3,10 @@
 import { motion } from "framer-motion"
 import { useEffect, useState } from "react"
 import type { FieldErrors, UseFormRegister } from "react-hook-form"
+import { fieldVariants } from "@/lib/animations"
+import { WILDCARD_DOMAIN } from "@/lib/config"
 import { isValidSlug } from "@/lib/slug-utils"
-import type { DeploySubdomainForm } from "@/lib/types/deploy-subdomain"
-
-const fieldVariants = {
-  hidden: { opacity: 0, x: -10 },
-  visible: {
-    opacity: 1,
-    x: 0,
-    transition: { duration: 0.4 },
-  },
-  focus: {
-    scale: 1.01,
-    transition: { duration: 0.2 },
-  },
-}
+import type { DeploySubdomainForm } from "../types/deploy-subdomain"
 
 interface SlugInputProps {
   register: UseFormRegister<DeploySubdomainForm>
@@ -90,7 +79,7 @@ export function SlugInput({ register, errors, watchSlug, isDeploying }: SlugInpu
             className="absolute right-4 top-3 text-xs text-gray-600 whitespace-nowrap"
           >
             <span className="text-gray-900 font-medium">{watchSlug}</span>
-            <span className="text-gray-500">.alive.best</span>
+            <span className="text-gray-500">.{WILDCARD_DOMAIN}</span>
           </motion.div>
         )}
       </motion.div>

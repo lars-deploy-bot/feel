@@ -3,11 +3,11 @@
 import { ArrowLeft } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
+// Feature hooks
+import { useCopyToClipboard, useImageManagement, useWorkspace } from "../hooks"
 // Feature components
 import { ImageCard, LoadingState, UploadCard } from "./"
 import { DeleteConfirmModal, ImageZoomModal, MessageBanner } from "./modals"
-// Feature hooks
-import { useCopyToClipboard, useImageManagement, useWorkspace } from "../hooks"
 
 export default function PhotobookPage() {
   const router = useRouter()

@@ -1,15 +1,14 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
-import { DeploymentStatus } from "./DeploymentStatus"
-import { PasswordField } from "./PasswordField"
-import { SubmitButton } from "./SubmitButton"
+import { PasswordField } from "@/components/ui/primitives/PasswordField"
 import type { DeploySubdomainForm } from "@/features/deployment/types/deploy-subdomain"
-import { SiteIdeasTextarea } from "./SiteIdeasTextarea"
+import { WILDCARD_DOMAIN } from "@/lib/config"
+import { DeploymentStatus } from "./DeploymentStatus"
 import { SlugInput } from "./SlugInput"
+import { SubmitButton } from "./SubmitButton"
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -33,7 +32,6 @@ interface DeploymentResult {
 }
 
 export function SubdomainDeployForm() {
-  const router = useRouter()
   const [isDeploying, setIsDeploying] = useState(false)
   const [deploymentStatus, setDeploymentStatus] = useState<DeploymentResult | null>(null)
   const [showPassword, setShowPassword] = useState(false)
@@ -53,7 +51,6 @@ export function SubdomainDeployForm() {
   })
 
   const watchSlug = watch("slug")
-  const watchIdeas = watch("siteIdeas")
   const watchPassword = watch("password")
 
   const onSubmit = async (data: DeploySubdomainForm) => {
@@ -96,14 +93,6 @@ export function SubdomainDeployForm() {
 
       const result: DeploymentResult = JSON.parse(responseText)
       setDeploymentStatus(result)
-
-      // Auto-redirect on success
-      if (result.ok && result.chatUrl) {
-        const chatUrl = result.chatUrl
-        setTimeout(() => {
-          router.push(chatUrl)
-        }, 2000)
-      }
     } catch (error) {
       setDeploymentStatus({
         ok: false,
@@ -119,7 +108,7 @@ export function SubdomainDeployForm() {
     <motion.div className="w-full max-w-md" variants={containerVariants} initial="hidden" animate="visible">
       {/* Header */}
       <motion.div variants={itemVariants} className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Deploy to alive.best</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Deploy to {WILDCARD_DOMAIN}</h1>
         <p className="text-gray-600">Get your site live in 30 seconds</p>
       </motion.div>
 
@@ -127,7 +116,7 @@ export function SubdomainDeployForm() {
       <motion.div variants={itemVariants} className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
         <p className="text-sm text-blue-900">
           Your site will be deployed to <span className="font-semibold">{watchSlug.toLowerCase() || "your-slug"}</span>
-          <span className="text-blue-700">.alive.best</span>
+          <span className="text-blue-700">.{WILDCARD_DOMAIN}</span>
         </p>
         <p className="text-xs text-blue-700 mt-2">
           No domain setup needed. Just describe what you want, and Claude will start building.
@@ -141,9 +130,8 @@ export function SubdomainDeployForm() {
             <SlugInput register={register} errors={errors} watchSlug={watchSlug} isDeploying={isDeploying} />
           </motion.div>
 
-          <motion.div variants={itemVariants}>
-            <SiteIdeasTextarea register={register} errors={errors} watchIdeas={watchIdeas} isDeploying={isDeploying} />
-          </motion.div>
+          {/* Hidden field for siteIdeas */}
+          <input type="hidden" {...register("siteIdeas")} value="" />
 
           <motion.div variants={itemVariants}>
             <PasswordField
@@ -172,6 +160,7 @@ export function SubdomainDeployForm() {
           status={deploymentStatus.ok ? "success" : "error"}
           domain={deploymentStatus.domain}
           error={deploymentStatus.error}
+          chatUrl={deploymentStatus.chatUrl}
         />
       )}
     </motion.div>

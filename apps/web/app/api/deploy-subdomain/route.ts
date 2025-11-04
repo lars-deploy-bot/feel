@@ -2,8 +2,9 @@ import { exec } from "node:child_process"
 import { existsSync } from "node:fs"
 import { promisify } from "node:util"
 import { type NextRequest, NextResponse } from "next/server"
-import { siteMetadataStore } from "@/features/deployment/lib/siteMetadataStore"
 import { validateDeploySubdomainRequest } from "@/features/deployment/types/guards"
+import { buildSubdomain } from "@/lib/config"
+import { siteMetadataStore } from "@/lib/siteMetadataStore"
 
 const execAsync = promisify(exec)
 
@@ -35,18 +36,21 @@ async function validateSSLCertificate(domain: string): Promise<{ success: boolea
       }
 
       console.log(`[Deploy-Subdomain] Unexpected status ${response.status}`)
-    } catch (error: any) {
-      console.log(`[Deploy-Subdomain] SSL check attempt ${attempt} failed: ${error.message}`)
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      console.log(`[Deploy-Subdomain] SSL check attempt ${attempt} failed: ${errorMessage}`)
 
-      if (error.name === "TimeoutError" || error.code === "ECONNREFUSED" || error.code === "ENOTFOUND") {
-        // Expected during certificate provisioning
-      } else if (
-        error.message?.includes("certificate") ||
-        error.message?.includes("SSL") ||
-        error.message?.includes("TLS")
-      ) {
-        // SSL-related error
-      } else {
+      const isNodeError = error instanceof Error && "code" in error
+      const errorCode = isNodeError ? (error as Error & { code?: string }).code : undefined
+      const isExpectedError =
+        (error instanceof Error && error.name === "TimeoutError") ||
+        errorCode === "ECONNREFUSED" ||
+        errorCode === "ENOTFOUND" ||
+        errorMessage.includes("certificate") ||
+        errorMessage.includes("SSL") ||
+        errorMessage.includes("TLS")
+
+      if (!isExpectedError) {
         console.error(`[Deploy-Subdomain] Unexpected error: ${error}`)
       }
     }
@@ -69,7 +73,7 @@ export async function POST(request: NextRequest) {
 
   try {
     // Parse and validate request body
-    let body: any
+    let body: unknown
     try {
       body = await request.json()
       console.log("[Deploy-Subdomain] Request parsed")
@@ -104,8 +108,7 @@ export async function POST(request: NextRequest) {
     const { slug, siteIdeas, password } = parseResult.data
 
     // Build full domain from slug
-    const WILDCARD_TLD = process.env.WILDCARD_TLD || "alive.best"
-    const fullDomain = `${slug}.${WILDCARD_TLD}`
+    const fullDomain = buildSubdomain(slug)
     const workspacePath = `/srv/webalive/sites/${fullDomain}/user`
 
     console.log(`[Deploy-Subdomain] Full domain: ${fullDomain}`)
@@ -187,9 +190,9 @@ export async function POST(request: NextRequest) {
     const res = NextResponse.json(
       {
         ok: true,
-        message: `Site ${fullDomain} deployed successfully! Initializing Claude assistant...`,
+        message: `Site ${fullDomain} deployed successfully!`,
         domain: fullDomain,
-        chatUrl: `/chat?slug=${slug}&autoStart=true`,
+        chatUrl: `/chat?slug=${slug}`,
       } as DeploySubdomainResponse,
       { status: 200 },
     )
@@ -203,30 +206,33 @@ export async function POST(request: NextRequest) {
     })
 
     return res
-  } catch (error: any) {
+  } catch (error: unknown) {
     const duration = Date.now() - startTime
     console.error(`[Deploy-Subdomain] Error after ${duration}ms:`, error)
 
     let errorMessage = "Deployment failed"
     let statusCode = 500
 
-    if (error.code === "ETIMEDOUT") {
+    const isNodeError = error instanceof Error && "code" in error
+    const errorCode = isNodeError ? (error as Error & { code?: string | number }).code : undefined
+    const stderr = isNodeError && "stderr" in error ? (error as Error & { stderr?: string }).stderr : undefined
+
+    if (errorCode === "ETIMEDOUT") {
       errorMessage = "Deployment timed out (5 minutes). Please try again."
       statusCode = 408
-    } else if (error.code === 12) {
+    } else if (errorCode === 12) {
       errorMessage = "DNS validation failed. Please check your wildcard DNS setup."
       statusCode = 400
-    } else if (error.stderr) {
-      // Try to extract meaningful error from stderr
-      if (error.stderr.includes("User.*already exists")) {
+    } else if (stderr) {
+      if (stderr.includes("User.*already exists")) {
         errorMessage = "System user conflict. Slug might be partially deployed. Please try a different slug."
-      } else if (error.stderr.includes("exists in Caddyfile")) {
+      } else if (stderr.includes("exists in Caddyfile")) {
         errorMessage = "Domain already exists in configuration. Please try a different slug."
       } else {
-        errorMessage = `Deployment error: ${error.stderr.substring(0, 200)}`
+        errorMessage = `Deployment error: ${stderr.substring(0, 200)}`
       }
       statusCode = 400
-    } else if (error.message) {
+    } else if (error instanceof Error && error.message) {
       errorMessage = error.message
     }
 
@@ -235,7 +241,12 @@ export async function POST(request: NextRequest) {
         ok: false,
         message: errorMessage,
         error: "DEPLOYMENT_FAILED",
-        details: process.env.NODE_ENV === "development" ? error.toString() : undefined,
+        details:
+          process.env.NODE_ENV === "development"
+            ? error instanceof Error
+              ? error.toString()
+              : String(error)
+            : undefined,
       } as DeploySubdomainResponse,
       { status: statusCode },
     )

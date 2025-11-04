@@ -1,8 +1,8 @@
 import { type Options, query } from "@anthropic-ai/claude-agent-sdk"
-import { formatMessage } from "./formatMessage"
+import type { SessionStore } from "@/features/auth/lib/sessionStore"
 import { type ErrorCode, ErrorCodes } from "@/lib/error-codes"
 import { extractSessionId, getMessageStreamData } from "@/lib/sdk-types"
-import type { SessionStore } from "@/features/auth/lib/sessionStore"
+import { formatMessage } from "./formatMessage"
 
 export interface StreamEvent {
   type: "start" | "message" | "session" | "complete" | "error"

@@ -2,20 +2,25 @@ import { toolsMcp, workspaceManagementMcp } from "@alive-brug/tools"
 import type { Options, PermissionResult } from "@anthropic-ai/claude-agent-sdk"
 import { cookies, headers } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
+import { requireSessionUser } from "@/features/auth/lib/auth"
+import {
+  SessionStoreMemory,
+  sessionKey,
+  tryLockConversation,
+  unlockConversation,
+} from "@/features/auth/lib/sessionStore"
+import { hasSessionCookie } from "@/features/auth/types/guards"
+import { isInputSafe } from "@/features/chat/lib/formatMessage"
 import { createClaudeStream, createSSEResponse } from "@/features/chat/lib/streamHandler"
 import { getSystemPrompt } from "@/features/chat/lib/systemPrompt"
-import { isInputSafe } from "@/features/chat/lib/formatMessage"
+import { ensurePathWithinWorkspace, getWorkspace, type Workspace } from "@/features/workspace/lib/workspace-secure"
+import { resolveWorkspace } from "@/features/workspace/lib/workspace-utils"
 import { runAgentChild, shouldUseChildProcess } from "@/lib/agent-child-runner"
-import { requireSessionUser } from "@/features/auth/lib/auth"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { env } from "@/lib/env"
 import { ErrorCodes } from "@/lib/error-codes"
 import { logInput } from "@/lib/input-logger"
-import { SessionStoreMemory, sessionKey, tryLockConversation, unlockConversation } from "@/features/auth/lib/sessionStore"
-import { ensurePathWithinWorkspace, getWorkspace, type Workspace } from "@/features/workspace/lib/workspace-secure"
-import { resolveWorkspace } from "@/features/workspace/lib/workspace-utils"
 import { BodySchema, isToolAllowed } from "@/types/guards/api"
-import { hasSessionCookie } from "@/features/auth/types/guards"
 import { isTerminalMode } from "@/types/guards/workspace"
 
 export const runtime = "nodejs"
