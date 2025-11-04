@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { isInputSafeWithDebug } from "@/app/features/handlers/formatMessage"
+import { isInputSafeWithDebug } from "@/features/chat/lib/formatMessage"
 
 export async function POST(req: NextRequest) {
   try {

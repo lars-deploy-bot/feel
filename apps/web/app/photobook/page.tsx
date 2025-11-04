@@ -1,4 +1,4 @@
 // Route: /photobook
-import PhotobookFeature from "../features/photobook/PhotobookFeature"
+import { PhotobookPage } from "@/features/photobook/components"
 
-export default PhotobookFeature
+export default PhotobookPage

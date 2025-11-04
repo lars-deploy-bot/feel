@@ -1,4 +1,4 @@
-import { DeployFormWrapper } from "@/components/deploy-form/DeployFormWrapper"
+import { DeployFormWrapper } from "@/features/deployment/components/DeployFormWrapper"
 
 export default function DeployPage() {
   return (

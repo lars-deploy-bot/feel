@@ -1,6 +1,6 @@
 import { cookies, headers } from "next/headers"
 import { NextResponse } from "next/server"
-import { getWorkspace } from "@/app/features/claude/workspaceRetriever"
+import { getWorkspace } from "@/features/chat/lib/workspaceRetriever"
 import { ErrorCodes } from "@/lib/error-codes"
 
 export async function POST(req: Request) {

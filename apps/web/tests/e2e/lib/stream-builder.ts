@@ -4,7 +4,7 @@
  * Uses actual StreamEvent types from production code to ensure
  * mocks stay in sync with reality.
  */
-import type { StreamEvent } from "@/app/features/claude/streamHandler"
+import type { StreamEvent } from "@/features/chat/lib/streamHandler"
 
 const FIXED_TIMESTAMP = "2025-01-01T00:00:00.000Z"
 const FIXED_REQUEST_ID = "test-req-123"

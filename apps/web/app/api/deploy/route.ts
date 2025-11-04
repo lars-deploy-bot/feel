@@ -2,7 +2,7 @@ import { exec } from "node:child_process"
 import { existsSync } from "node:fs"
 import { promisify } from "node:util"
 import { type NextRequest, NextResponse } from "next/server"
-import { normalizeAndValidateDomain } from "../../../lib/domain-utils"
+import { normalizeAndValidateDomain } from "@/features/manager/lib/domain-utils"
 
 const execAsync = promisify(exec)
 

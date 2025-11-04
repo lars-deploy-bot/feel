@@ -88,7 +88,7 @@ async function processQueue(convKey: string) {
 
       try {
         // Import the actual Claude stream creation here to avoid circular deps
-        const { createClaudeStream } = await import("@/app/features/claude/streamHandler")
+        const { createClaudeStream } = await import("@/features/chat/lib/streamHandler")
 
         // Process the message
         const result = await processMessage(queuedMessage, createClaudeStream)
@@ -114,8 +114,8 @@ async function processQueue(convKey: string) {
  * Process individual message (extracted from route handler)
  */
 async function processMessage(queuedMessage: QueuedMessage, createClaudeStream: any): Promise<any> {
-  const { createSSEResponse } = await import("@/app/features/claude/streamHandler")
-  const { SessionStoreMemory } = await import("@/lib/sessionStore")
+  const { createSSEResponse } = await import("@/features/chat/lib/streamHandler")
+  const { SessionStoreMemory } = await import("@/features/auth/lib/sessionStore")
 
   // Get existing session for resumption
   const existingSessionId = await SessionStoreMemory.get(

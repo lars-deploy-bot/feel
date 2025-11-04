@@ -2,8 +2,8 @@ import { exec } from "node:child_process"
 import { existsSync } from "node:fs"
 import { promisify } from "node:util"
 import { type NextRequest, NextResponse } from "next/server"
-import { siteMetadataStore } from "@/lib/siteMetadataStore"
-import { validateDeploySubdomainRequest } from "@/types/guards/deploy-subdomain"
+import { siteMetadataStore } from "@/features/deployment/lib/siteMetadataStore"
+import { validateDeploySubdomainRequest } from "@/features/deployment/types/guards"
 
 const execAsync = promisify(exec)
 
