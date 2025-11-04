@@ -97,14 +97,13 @@ function LoginPageContent() {
             </div>
             <div className="space-y-2">
               {recentSites.map(site => (
-                <button
+                <div
                   key={site.domain}
-                  type="button"
                   onClick={() => {
                     setWorkspace(site.domain)
                     setWorkspaceTouched(false)
                   }}
-                  className="w-full group flex items-center justify-between px-4 py-3 rounded-lg border border-black/10 hover:border-black/30 hover:bg-black/5 transition-all text-left"
+                  className="w-full group flex items-center justify-between px-4 py-3 rounded-lg border border-black/10 hover:border-black/30 hover:bg-black/5 transition-all text-left cursor-pointer"
                 >
                   <span className="text-sm font-medium text-black">{site.domain}</span>
                   <button
@@ -117,7 +116,7 @@ function LoginPageContent() {
                   >
                     <X className="h-3 w-3 text-black/50" />
                   </button>
-                </button>
+                </div>
               ))}
             </div>
           </div>
