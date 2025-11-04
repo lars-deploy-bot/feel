@@ -75,10 +75,7 @@ export const siteMetadataStore: SiteMetadataStore = {
         await fs.mkdir(dir, { recursive: true })
       } catch (mkdirError) {
         // Directory might already exist, that's fine
-        if (
-          !(mkdirError instanceof Error) ||
-          !mkdirError.message.includes("EEXIST")
-        ) {
+        if (!(mkdirError instanceof Error) || !mkdirError.message.includes("EEXIST")) {
           throw mkdirError
         }
       }

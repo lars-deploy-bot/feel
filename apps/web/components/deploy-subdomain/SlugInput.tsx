@@ -3,12 +3,8 @@
 import { motion } from "framer-motion"
 import { useEffect, useState } from "react"
 import type { FieldErrors, UseFormRegister } from "react-hook-form"
-
-interface DeploySubdomainForm {
-  slug: string
-  siteIdeas: string
-  password: string
-}
+import { isValidSlug } from "@/lib/slug-utils"
+import type { DeploySubdomainForm } from "@/lib/types/deploy-subdomain"
 
 const fieldVariants = {
   hidden: { opacity: 0, x: -10 },
@@ -34,7 +30,7 @@ export function SlugInput({ register, errors, watchSlug, isDeploying }: SlugInpu
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null)
   const [isChecking, setIsChecking] = useState(false)
 
-  const isFormatValid = watchSlug && /^[a-z0-9]([a-z0-9-]{1,18}[a-z0-9])?$/.test(watchSlug)
+  const isFormatValid = watchSlug && isValidSlug(watchSlug)
 
   // Check availability when slug changes
   useEffect(() => {
@@ -65,9 +61,7 @@ export function SlugInput({ register, errors, watchSlug, isDeploying }: SlugInpu
       <label htmlFor="slug" className="block text-sm font-semibold text-gray-900 mb-2">
         Your subdomain name
       </label>
-      <p className="text-xs text-gray-500 mb-3">
-        3–20 characters. Lowercase letters, numbers, and hyphens only.
-      </p>
+      <p className="text-xs text-gray-500 mb-3">3–20 characters. Lowercase letters, numbers, and hyphens only.</p>
 
       <motion.div className="relative">
         <motion.input

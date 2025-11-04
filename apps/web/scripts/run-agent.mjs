@@ -11,7 +11,7 @@
  *   stderr: Diagnostic logs
  */
 
-import { mkdirSync, copyFileSync, existsSync, chownSync } from "node:fs"
+import { chownSync, copyFileSync, existsSync, mkdirSync } from "node:fs"
 import { join } from "node:path"
 import process from "node:process"
 import { toolsMcp, workspaceManagementMcp } from "@alive-brug/tools"

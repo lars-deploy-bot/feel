@@ -17,6 +17,9 @@ const fieldVariants = {
   },
 }
 
+// PasswordField is reused across multiple form types (DeployForm, SubdomainDeployForm)
+// Using 'any' here is intentional for component reusability across different form shapes
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 interface PasswordFieldProps {
   register: UseFormRegister<any>
   errors: FieldErrors<any>
@@ -69,11 +72,7 @@ export function PasswordField({
         </motion.button>
       </div>
       {watchPassword && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="mt-2 flex gap-1"
-        >
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-2 flex gap-1">
           {[...Array(3)].map((_, i) => (
             <div
               key={i}

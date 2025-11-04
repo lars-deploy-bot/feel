@@ -4,11 +4,12 @@ import { motion } from "framer-motion"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
-import { SubmitButton } from "@/components/deploy-form/SubmitButton"
 import { DeploymentStatus } from "@/components/deploy-form/DeploymentStatus"
 import { PasswordField } from "@/components/deploy-form/PasswordField"
-import { SlugInput } from "./SlugInput"
+import { SubmitButton } from "@/components/deploy-form/SubmitButton"
+import type { DeploySubdomainForm } from "@/lib/types/deploy-subdomain"
 import { SiteIdeasTextarea } from "./SiteIdeasTextarea"
+import { SlugInput } from "./SlugInput"
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -21,12 +22,6 @@ const containerVariants = {
 const itemVariants = {
   hidden: { opacity: 0, y: 10 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
-}
-
-interface DeploySubdomainFormData {
-  slug: string
-  siteIdeas: string
-  password: string
 }
 
 interface DeploymentResult {
@@ -48,7 +43,7 @@ export function SubdomainDeployForm() {
     handleSubmit,
     watch,
     formState: { errors, isValid },
-  } = useForm<DeploySubdomainFormData>({
+  } = useForm<DeploySubdomainForm>({
     mode: "onChange",
     defaultValues: {
       slug: "",
@@ -61,13 +56,15 @@ export function SubdomainDeployForm() {
   const watchIdeas = watch("siteIdeas")
   const watchPassword = watch("password")
 
-  const onSubmit = async (data: DeploySubdomainFormData) => {
+  const onSubmit = async (data: DeploySubdomainForm) => {
     setIsDeploying(true)
     setDeploymentStatus(null)
 
     try {
       // Final availability check before deployment
-      const availCheck = await fetch(`/api/sites/check-availability?slug=${encodeURIComponent(data.slug.toLowerCase())}`)
+      const availCheck = await fetch(
+        `/api/sites/check-availability?slug=${encodeURIComponent(data.slug.toLowerCase())}`,
+      )
       const availData = await availCheck.json()
 
       if (!availData.available) {
@@ -119,12 +116,7 @@ export function SubdomainDeployForm() {
   }
 
   return (
-    <motion.div
-      className="w-full max-w-md"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-    >
+    <motion.div className="w-full max-w-md" variants={containerVariants} initial="hidden" animate="visible">
       {/* Header */}
       <motion.div variants={itemVariants} className="text-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Deploy to alive.best</h1>
@@ -134,10 +126,7 @@ export function SubdomainDeployForm() {
       {/* Info Box */}
       <motion.div variants={itemVariants} className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
         <p className="text-sm text-blue-900">
-          Your site will be deployed to{" "}
-          <span className="font-semibold">
-            {watchSlug.toLowerCase() || "your-slug"}
-          </span>
+          Your site will be deployed to <span className="font-semibold">{watchSlug.toLowerCase() || "your-slug"}</span>
           <span className="text-blue-700">.alive.best</span>
         </p>
         <p className="text-xs text-blue-700 mt-2">
@@ -149,21 +138,11 @@ export function SubdomainDeployForm() {
       {!deploymentStatus || !deploymentStatus.ok ? (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <motion.div variants={itemVariants}>
-            <SlugInput
-              register={register}
-              errors={errors}
-              watchSlug={watchSlug}
-              isDeploying={isDeploying}
-            />
+            <SlugInput register={register} errors={errors} watchSlug={watchSlug} isDeploying={isDeploying} />
           </motion.div>
 
           <motion.div variants={itemVariants}>
-            <SiteIdeasTextarea
-              register={register}
-              errors={errors}
-              watchIdeas={watchIdeas}
-              isDeploying={isDeploying}
-            />
+            <SiteIdeasTextarea register={register} errors={errors} watchIdeas={watchIdeas} isDeploying={isDeploying} />
           </motion.div>
 
           <motion.div variants={itemVariants}>
@@ -190,13 +169,9 @@ export function SubdomainDeployForm() {
       {/* Status */}
       {deploymentStatus && (
         <DeploymentStatus
-          result={{
-            success: deploymentStatus.ok,
-            message: deploymentStatus.message,
-            domain: deploymentStatus.domain,
-            errors: deploymentStatus.error ? [deploymentStatus.error] : undefined,
-          }}
-          onClose={() => setDeploymentStatus(null)}
+          status={deploymentStatus.ok ? "success" : "error"}
+          domain={deploymentStatus.domain}
+          error={deploymentStatus.error}
         />
       )}
     </motion.div>

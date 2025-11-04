@@ -1,10 +1,6 @@
 import { useCallback } from "react"
 import toast from "react-hot-toast"
-import {
-  useDeployFormStore,
-  useDeploymentHistoryStore,
-  useDeploymentStatusStore,
-} from "@/lib/stores/deployStore"
+import { useDeployFormStore, useDeploymentHistoryStore, useDeploymentStatusStore } from "@/lib/stores/deployStore"
 
 interface DeployResponse {
   success: boolean
@@ -93,7 +89,15 @@ export function useDeployment() {
         setIsDeploying(false)
       }
     },
-    [setIsDeploying, setDeploymentStatus, setDeploymentError, setDeploymentDomain, setDeploymentErrors, addToHistory, resetForm],
+    [
+      setIsDeploying,
+      setDeploymentStatus,
+      setDeploymentError,
+      setDeploymentDomain,
+      setDeploymentErrors,
+      addToHistory,
+      resetForm,
+    ],
   )
 
   return {

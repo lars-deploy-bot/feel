@@ -7,12 +7,6 @@ import { validateDeploySubdomainRequest } from "@/types/guards/deploy-subdomain"
 
 const execAsync = promisify(exec)
 
-interface DeploySubdomainRequest {
-  slug: string
-  siteIdeas: string
-  password: string
-}
-
 interface DeploySubdomainResponse {
   ok: boolean
   message: string
@@ -44,11 +38,7 @@ async function validateSSLCertificate(domain: string): Promise<{ success: boolea
     } catch (error: any) {
       console.log(`[Deploy-Subdomain] SSL check attempt ${attempt} failed: ${error.message}`)
 
-      if (
-        error.name === "TimeoutError" ||
-        error.code === "ECONNREFUSED" ||
-        error.code === "ENOTFOUND"
-      ) {
+      if (error.name === "TimeoutError" || error.code === "ECONNREFUSED" || error.code === "ENOTFOUND") {
         // Expected during certificate provisioning
       } else if (
         error.message?.includes("certificate") ||
@@ -63,7 +53,7 @@ async function validateSSLCertificate(domain: string): Promise<{ success: boolea
 
     if (attempt < maxAttempts) {
       console.log(`[Deploy-Subdomain] Waiting ${delayMs / 1000}s before next attempt...`)
-      await new Promise((resolve) => setTimeout(resolve, delayMs))
+      await new Promise(resolve => setTimeout(resolve, delayMs))
     }
   }
 
@@ -142,7 +132,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           ok: false,
-          message: `Site directory already exists. Choose a different slug.`,
+          message: "Site directory already exists. Choose a different slug.",
           error: "SLUG_TAKEN",
         } as DeploySubdomainResponse,
         { status: 409 },
@@ -160,11 +150,11 @@ export async function POST(request: NextRequest) {
       cwd: "/root/webalive/claude-bridge",
       env: {
         ...process.env,
-        DEPLOY_PASSWORD: body.password,
+        DEPLOY_PASSWORD: password,
       },
     })
 
-    console.log(`[Deploy-Subdomain] Deploy script completed`)
+    console.log("[Deploy-Subdomain] Deploy script completed")
     if (stdout) {
       console.log(`[Deploy-Subdomain] STDOUT:\n${stdout.substring(0, 500)}`)
     }
@@ -173,7 +163,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate SSL certificate
-    console.log(`[Deploy-Subdomain] Validating SSL certificate...`)
+    console.log("[Deploy-Subdomain] Validating SSL certificate...")
     const sslValidation = await validateSSLCertificate(fullDomain)
 
     if (!sslValidation.success) {
@@ -182,7 +172,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Save metadata
-    console.log(`[Deploy-Subdomain] Saving metadata...`)
+    console.log("[Deploy-Subdomain] Saving metadata...")
     await siteMetadataStore.setSite(slug, {
       slug,
       domain: fullDomain,

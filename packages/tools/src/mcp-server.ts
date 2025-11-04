@@ -19,9 +19,9 @@ import { restartServerTool } from "./tools/workspace/restart-server.js"
  * Tool names follow MCP pattern: mcp__tools__<tool_name>
  */
 export const toolsMcp = createSdkMcpServer({
-	name: "tools",
-	version: "1.0.0",
-	tools: [listGuidesTool, getGuideTool, readServerLogsTool],
+  name: "tools",
+  version: "1.0.0",
+  tools: [listGuidesTool, getGuideTool, readServerLogsTool],
 })
 
 /**
@@ -35,9 +35,9 @@ export const toolsMcp = createSdkMcpServer({
  * Tool names follow MCP pattern: mcp__workspace-management__<tool_name>
  */
 export const workspaceManagementMcp = createSdkMcpServer({
-	name: "workspace-management",
-	version: "1.0.0",
-	tools: [restartServerTool],
+  name: "workspace-management",
+  version: "1.0.0",
+  tools: [restartServerTool],
 })
 
 export const guidesMcp = toolsMcp

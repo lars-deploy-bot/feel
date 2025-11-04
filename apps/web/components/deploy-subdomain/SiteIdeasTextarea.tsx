@@ -2,12 +2,7 @@
 
 import { motion } from "framer-motion"
 import type { FieldErrors, UseFormRegister } from "react-hook-form"
-
-interface DeploySubdomainForm {
-  slug: string
-  siteIdeas: string
-  password: string
-}
+import type { DeploySubdomainForm } from "@/lib/types/deploy-subdomain"
 
 const fieldVariants = {
   hidden: { opacity: 0, x: -10 },

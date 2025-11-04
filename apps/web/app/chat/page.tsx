@@ -1,7 +1,9 @@
 "use client"
+import { Suspense } from "react"
 import { Square } from "lucide-react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
+import { SubdomainInitializer } from "@/components/chat/SubdomainInitializer"
 import { ThinkingGroup } from "@/components/ui/chat/ThinkingGroup"
 import { SettingsDropdown } from "@/components/ui/SettingsDropdown"
 import type { StructuredError } from "@/lib/error-codes"
@@ -27,7 +29,6 @@ export default function ChatPage() {
   const abortControllerRef = useRef<AbortController | null>(null)
   const isSubmitting = useRef<boolean>(false)
   const router = useRouter()
-  const searchParams = useSearchParams()
 
   useEffect(() => {
     setMounted(true)
@@ -46,44 +47,6 @@ export default function ChatPage() {
       }
     }
   }, [isTerminal, router])
-
-  // Handle subdomain auto-initialization from deploy-subdomain
-  useEffect(() => {
-    const slug = searchParams.get("slug")
-    const autoStart = searchParams.get("autoStart") === "true"
-
-    if (!slug || !autoStart || subdomainInitialized || !mounted) return
-
-    const initializeSubdomain = async () => {
-      try {
-        // Fetch metadata for this slug
-        const metadataResponse = await fetch(`/api/sites/metadata?slug=${encodeURIComponent(slug)}`)
-        if (!metadataResponse.ok) {
-          console.error("Failed to fetch site metadata")
-          return
-        }
-
-        const data = await metadataResponse.json()
-        const metadata = data.metadata
-
-        // Set workspace from metadata
-        if (metadata.workspace) {
-          setWorkspace(metadata.workspace)
-        }
-
-        // Pre-fill message with site ideas
-        const initialMessage = `I want to build a website with these ideas:\n\n${metadata.siteIdeas}\n\nCan you help me get started?`
-        setMsg(initialMessage)
-
-        // Mark as initialized
-        setSubdomainInitialized(true)
-      } catch (error) {
-        console.error("Failed to initialize subdomain context:", error)
-      }
-    }
-
-    initializeSubdomain()
-  }, [searchParams, mounted, subdomainInitialized])
 
   // Track manual scrolling
   useEffect(() => {
@@ -136,6 +99,17 @@ export default function ChatPage() {
       }
     }
   }, [messages, shouldForceScroll, userHasManuallyScrolled])
+
+  const handleSubdomainInitialize = (initialMessage: string, initialWorkspace: string) => {
+    setMsg(initialMessage)
+    if (initialWorkspace) {
+      setWorkspace(initialWorkspace)
+    }
+  }
+
+  const handleSubdomainInitialized = () => {
+    setSubdomainInitialized(true)
+  }
 
   async function sendMessage() {
     // Simple: Block if already submitting or no message
@@ -251,7 +225,7 @@ export default function ChatPage() {
                       setMessages(prev => [...prev, message])
                     }
                   }
-                } catch (parseError) {
+                } catch (_parseError) {
                   console.warn("[Chat] Failed to parse SSE data:", line.slice(0, 100))
                 }
               }
@@ -351,6 +325,14 @@ export default function ChatPage() {
 
   return (
     <div className="h-[100dvh] flex flex-col max-w-4xl mx-auto overflow-hidden">
+      <Suspense fallback={null}>
+        <SubdomainInitializer
+          onInitialize={handleSubdomainInitialize}
+          onInitialized={handleSubdomainInitialized}
+          isInitialized={subdomainInitialized}
+          isMounted={mounted}
+        />
+      </Suspense>
       <div className="flex-1 min-h-0 flex flex-col">
         {/* Header */}
         <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-black/10">

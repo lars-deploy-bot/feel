@@ -9,112 +9,112 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
 export const listGuidesParamsSchema = {
-	category: z
-		.enum(GUIDE_CATEGORIES)
-		.optional()
-		.describe(
-			"The category to list guides from (e.g., '30-guides', 'workflows', 'extra/knowledge-base'). If omitted, lists all categories with their guide counts.",
-		),
+  category: z
+    .enum(GUIDE_CATEGORIES)
+    .optional()
+    .describe(
+      "The category to list guides from (e.g., '30-guides', 'workflows', 'extra/knowledge-base'). If omitted, lists all categories with their guide counts.",
+    ),
 }
 
 export type ListGuidesParams = {
-	category?: GuideCategory
+  category?: GuideCategory
 }
 
 export type ListGuidesResult = {
-	content: Array<{ type: "text"; text: string }>
-	isError: boolean
+  content: Array<{ type: "text"; text: string }>
+  isError: boolean
 }
 
 export async function listGuides(params: ListGuidesParams, guidesBasePath: string): Promise<ListGuidesResult> {
-	try {
-		const { category } = params
+  try {
+    const { category } = params
 
-		if (!category) {
-			const categorySummaries: string[] = []
+    if (!category) {
+      const categorySummaries: string[] = []
 
-			for (const cat of GUIDE_CATEGORIES) {
-				try {
-					const pathParts = cat.split("/")
-					const guidesRoot = join(guidesBasePath, ...pathParts)
-					const files = await readdir(guidesRoot)
-					const mdFiles = files.filter((f) => f.endsWith(".md"))
-					categorySummaries.push(`- **${cat}**: ${mdFiles.length} guide(s)`)
-				} catch {
-					categorySummaries.push(`- **${cat}**: (not accessible)`)
-				}
-			}
+      for (const cat of GUIDE_CATEGORIES) {
+        try {
+          const pathParts = cat.split("/")
+          const guidesRoot = join(guidesBasePath, ...pathParts)
+          const files = await readdir(guidesRoot)
+          const mdFiles = files.filter(f => f.endsWith(".md"))
+          categorySummaries.push(`- **${cat}**: ${mdFiles.length} guide(s)`)
+        } catch {
+          categorySummaries.push(`- **${cat}**: (not accessible)`)
+        }
+      }
 
-			return {
-				content: [
-					{
-						type: "text" as const,
-						text: `# Available Guide Categories\n\n${categorySummaries.join("\n")}\n\nUse the get_guide tool with a specific category to view guides.`,
-					},
-				],
-				isError: false,
-			}
-		}
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `# Available Guide Categories\n\n${categorySummaries.join("\n")}\n\nUse the get_guide tool with a specific category to view guides.`,
+          },
+        ],
+        isError: false,
+      }
+    }
 
-		const pathParts = category.split("/")
-		const guidesRoot = join(guidesBasePath, ...pathParts)
-		const files = await readdir(guidesRoot)
-		const mdFiles = files.filter((f) => f.endsWith(".md"))
+    const pathParts = category.split("/")
+    const guidesRoot = join(guidesBasePath, ...pathParts)
+    const files = await readdir(guidesRoot)
+    const mdFiles = files.filter(f => f.endsWith(".md"))
 
-		if (mdFiles.length === 0) {
-			return {
-				content: [
-					{
-						type: "text" as const,
-						text: `No guides found in category "${category}"`,
-					},
-				],
-				isError: false,
-			}
-		}
+    if (mdFiles.length === 0) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `No guides found in category "${category}"`,
+          },
+        ],
+        isError: false,
+      }
+    }
 
-		const guideSummaries: string[] = []
-		for (const file of mdFiles) {
-			try {
-				const filePath = join(guidesRoot, file)
-				const content = await readFile(filePath, "utf-8")
-				const firstLine = content.split("\n")[0].replace(/^#\s*/, "")
-				guideSummaries.push(`- **${file}**: ${firstLine}`)
-			} catch {
-				guideSummaries.push(`- **${file}**`)
-			}
-		}
+    const guideSummaries: string[] = []
+    for (const file of mdFiles) {
+      try {
+        const filePath = join(guidesRoot, file)
+        const content = await readFile(filePath, "utf-8")
+        const firstLine = content.split("\n")[0].replace(/^#\s*/, "")
+        guideSummaries.push(`- **${file}**: ${firstLine}`)
+      } catch {
+        guideSummaries.push(`- **${file}**`)
+      }
+    }
 
-		return {
-			content: [
-				{
-					type: "text" as const,
-					text: `# Guides in "${category}" (${mdFiles.length})\n\n${guideSummaries.join("\n")}\n\nUse the get_guide tool to read a specific guide.`,
-				},
-			],
-			isError: false,
-		}
-	} catch (error) {
-		const errorMessage = error instanceof Error ? error.message : String(error)
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `# Guides in "${category}" (${mdFiles.length})\n\n${guideSummaries.join("\n")}\n\nUse the get_guide tool to read a specific guide.`,
+        },
+      ],
+      isError: false,
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
 
-		return {
-			content: [
-				{
-					type: "text" as const,
-					text: `Failed to list guides\n\nError: ${errorMessage}`,
-				},
-			],
-			isError: true,
-		}
-	}
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `Failed to list guides\n\nError: ${errorMessage}`,
+        },
+      ],
+      isError: true,
+    }
+  }
 }
 
 export const listGuidesTool = tool(
-	"list_guides",
-	"Lists all available development guides in a specific category. Use this to discover what documentation and guides are available before retrieving specific content.",
-	listGuidesParamsSchema,
-	async (args) => {
-		const guidesBasePath = join(__dirname, "../../internals-folder")
-		return listGuides(args, guidesBasePath)
-	},
+  "list_guides",
+  "Lists all available development guides in a specific category. Use this to discover what documentation and guides are available before retrieving specific content.",
+  listGuidesParamsSchema,
+  async args => {
+    const guidesBasePath = join(__dirname, "../../internals-folder")
+    return listGuides(args, guidesBasePath)
+  },
 )

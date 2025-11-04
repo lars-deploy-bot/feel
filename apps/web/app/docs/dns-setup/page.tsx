@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
 import { CheckCircle2, Clock, Globe, Zap } from "lucide-react"
+import { useState } from "react"
 
 export default function DNSSetupPage() {
   const [provider, setProvider] = useState("")
@@ -41,16 +41,25 @@ export default function DNSSetupPage() {
             </Step>
             <Step number={4} title="Create the connection">
               <div className="space-y-2">
-                <p>Click <strong>Add record</strong> and fill in:</p>
+                <p>
+                  Click <strong>Add record</strong> and fill in:
+                </p>
                 <div className="bg-blue-50 p-3 rounded-lg space-y-2 text-sm font-mono border border-blue-200">
-                  <div><span className="text-gray-600">Type:</span> <strong>A</strong></div>
-                  <div><span className="text-gray-600">Name:</span> <strong>@</strong></div>
-                  <div><span className="text-gray-600">IPv4:</span> <strong>138.201.56.93</strong></div>
+                  <div>
+                    <span className="text-gray-600">Type:</span> <strong>A</strong>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Name:</span> <strong>@</strong>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">IPv4:</span> <strong>138.201.56.93</strong>
+                  </div>
                 </div>
               </div>
             </Step>
             <Step number={5} title="One quick thing">
-              Make sure the cloud icon is <strong>gray</strong> (not orange). This just means DNS-only mode, which is what we need.
+              Make sure the cloud icon is <strong>gray</strong> (not orange). This just means DNS-only mode, which is
+              what we need.
             </Step>
             <Step number={6} title="Save">
               Click <strong>Save</strong> and you're done!
@@ -81,7 +90,8 @@ export default function DNSSetupPage() {
               Look for the A record with Name <code className="bg-gray-100 px-2 py-1 rounded text-sm">@</code>
             </Step>
             <Step number={5} title="Update the value">
-              Click edit and change the value to <code className="bg-gray-100 px-2 py-1 rounded text-sm font-bold">138.201.56.93</code>
+              Click edit and change the value to{" "}
+              <code className="bg-gray-100 px-2 py-1 rounded text-sm font-bold">138.201.56.93</code>
             </Step>
             <Step number={6} title="Save">
               Click <strong>Save</strong> and you're all set!
@@ -177,8 +187,12 @@ export default function DNSSetupPage() {
               <div className="space-y-2">
                 <p>Find the A record and set:</p>
                 <div className="bg-blue-50 p-3 rounded-lg space-y-2 text-sm font-mono border border-blue-200">
-                  <div><span className="text-gray-600">Host:</span> <strong>@</strong></div>
-                  <div><span className="text-gray-600">Value:</span> <strong>138.201.56.93</strong></div>
+                  <div>
+                    <span className="text-gray-600">Host:</span> <strong>@</strong>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Value:</span> <strong>138.201.56.93</strong>
+                  </div>
                 </div>
               </div>
             </Step>
@@ -214,8 +228,12 @@ export default function DNSSetupPage() {
               <div className="space-y-2">
                 <p>Find the A record and set:</p>
                 <div className="bg-blue-50 p-3 rounded-lg space-y-2 text-sm font-mono border border-blue-200">
-                  <div><span className="text-gray-600">Naam:</span> <strong>@</strong></div>
-                  <div><span className="text-gray-600">Waarde:</span> <strong>138.201.56.93</strong></div>
+                  <div>
+                    <span className="text-gray-600">Naam:</span> <strong>@</strong>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Waarde:</span> <strong>138.201.56.93</strong>
+                  </div>
                 </div>
               </div>
             </Step>
@@ -251,8 +269,12 @@ export default function DNSSetupPage() {
               <div className="space-y-2">
                 <p>Find the A record and set:</p>
                 <div className="bg-blue-50 p-3 rounded-lg space-y-2 text-sm font-mono border border-blue-200">
-                  <div><span className="text-gray-600">Host:</span> <strong>@</strong></div>
-                  <div><span className="text-gray-600">IP Address:</span> <strong>138.201.56.93</strong></div>
+                  <div>
+                    <span className="text-gray-600">Host:</span> <strong>@</strong>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">IP Address:</span> <strong>138.201.56.93</strong>
+                  </div>
                 </div>
               </div>
             </Step>
@@ -275,9 +297,15 @@ export default function DNSSetupPage() {
             </Step>
             <Step number={4} title="Set the values">
               <div className="bg-blue-50 p-3 rounded-lg space-y-2 text-sm font-mono border border-blue-200">
-                <div><span className="text-gray-600">Type:</span> <strong>A</strong></div>
-                <div><span className="text-gray-600">Name/Host:</span> <strong>@</strong></div>
-                <div><span className="text-gray-600">Value/Points to:</span> <strong>138.201.56.93</strong></div>
+                <div>
+                  <span className="text-gray-600">Type:</span> <strong>A</strong>
+                </div>
+                <div>
+                  <span className="text-gray-600">Name/Host:</span> <strong>@</strong>
+                </div>
+                <div>
+                  <span className="text-gray-600">Value/Points to:</span> <strong>138.201.56.93</strong>
+                </div>
               </div>
             </Step>
             <Step number={5} title="Save">
@@ -295,12 +323,8 @@ export default function DNSSetupPage() {
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="mb-12">
-          <h1 className="text-4xl font-light tracking-tight text-gray-900 mb-4">
-            Connect your domain
-          </h1>
-          <p className="text-lg text-gray-500 font-light">
-            Just a few quick steps to point your domain to us.
-          </p>
+          <h1 className="text-4xl font-light tracking-tight text-gray-900 mb-4">Connect your domain</h1>
+          <p className="text-lg text-gray-500 font-light">Just a few quick steps to point your domain to us.</p>
         </div>
 
         {/* Progress */}
@@ -388,7 +412,8 @@ export default function DNSSetupPage() {
                     >
                       dnschecker.org →
                     </a>{" "}
-                    to check your domain shows <code className="bg-white px-2 py-1 rounded text-sm font-mono">138.201.56.93</code>
+                    to check your domain shows{" "}
+                    <code className="bg-white px-2 py-1 rounded text-sm font-mono">138.201.56.93</code>
                   </p>
                 </div>
               </div>
@@ -411,15 +436,7 @@ export default function DNSSetupPage() {
   )
 }
 
-function Step({
-  number,
-  title,
-  children,
-}: {
-  number: number
-  title: string
-  children: React.ReactNode
-}) {
+function Step({ number, title, children }: { number: number; title: string; children: React.ReactNode }) {
   return (
     <div className="flex gap-4">
       <div className="flex-shrink-0">
@@ -451,22 +468,14 @@ function ProgressCard({
   return (
     <div
       className={`p-4 rounded-xl border transition-all ${
-        done
-          ? "border-green-300 bg-green-50"
-          : active
-            ? "border-blue-300 bg-blue-50"
-            : "border-gray-200 bg-gray-50"
+        done ? "border-green-300 bg-green-50" : active ? "border-blue-300 bg-blue-50" : "border-gray-200 bg-gray-50"
       }`}
     >
       <div className={`mb-2 ${done ? "text-green-600" : active ? "text-blue-600" : "text-gray-400"}`}>
         {done ? <CheckCircle2 className="h-5 w-5" /> : icon}
       </div>
-      <h3 className={`font-semibold text-sm ${done || active ? "text-gray-900" : "text-gray-600"}`}>
-        {title}
-      </h3>
-      <p className={`text-xs mt-1 ${done || active ? "text-gray-700" : "text-gray-500"}`}>
-        {description}
-      </p>
+      <h3 className={`font-semibold text-sm ${done || active ? "text-gray-900" : "text-gray-600"}`}>{title}</h3>
+      <p className={`text-xs mt-1 ${done || active ? "text-gray-700" : "text-gray-500"}`}>{description}</p>
     </div>
   )
 }

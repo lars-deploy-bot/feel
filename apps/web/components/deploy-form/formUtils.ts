@@ -3,7 +3,7 @@
  * Uses crypto.randomUUID for secure randomness
  */
 export function generateRandomDomain(): string {
-  const randomId = crypto.randomUUID().split('-')[0]
+  const randomId = crypto.randomUUID().split("-")[0]
   return `${randomId}.goalive.nl`
 }
 
@@ -22,7 +22,7 @@ export function createFormResetHandler(
   return () => {
     onModeChange("choose")
     onStatusReset("idle")
-    forms.forEach((form) => {
+    forms.forEach(form => {
       form.reset()
     })
   }

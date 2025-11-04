@@ -50,7 +50,8 @@ export function validateSlug(slug: string): { valid: boolean; error?: string } {
   if (!isValidSlug(trimmed)) {
     return {
       valid: false,
-      error: "Slug must be 3-20 characters: lowercase letters, numbers, and hyphens only (cannot start/end with hyphen)",
+      error:
+        "Slug must be 3-20 characters: lowercase letters, numbers, and hyphens only (cannot start/end with hyphen)",
     }
   }
 
