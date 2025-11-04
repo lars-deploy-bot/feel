@@ -121,7 +121,7 @@ export async function POST(req: Request) {
 
     const opts: Options = {
       cwd,
-      allowedTools: ["Write", "Edit", "Read", "Glob", "Grep"],
+      allowedTools: ["Write", "Edit", "Read", "Glob", "Grep", "mcp__tools__generate_persona"],
       permissionMode: "acceptEdits",
       canUseTool,
       systemPrompt: getSystemPrompt({

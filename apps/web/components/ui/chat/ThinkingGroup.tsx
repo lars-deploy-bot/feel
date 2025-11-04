@@ -21,20 +21,20 @@ export function ThinkingGroup({ messages, isComplete }: ThinkingGroupProps) {
   }
 
   return (
-    <div className="mb-1">
+    <div className="mb-2">
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
-        className={`text-[10px] font-thin text-black/30 hover:text-black/50 transition-colors ${getShimmerClass()}`}
+        className={`text-xs font-medium text-black/50 hover:text-black/70 transition-colors ${getShimmerClass()}`}
       >
         {getStatusText()}
-        <span className="ml-1 text-[9px]">{isExpanded ? "−" : "+"}</span>
+        <span className="ml-1.5 text-xs">{isExpanded ? "−" : "+"}</span>
       </button>
 
       {isExpanded && (
-        <div className="mt-1.5 space-y-1 pl-3 border-l border-black/5">
+        <div className="mt-2 space-y-1.5 pl-4 border-l-2 border-black/10">
           {messages.map(message => (
-            <div key={message.id} className="text-xs">
+            <div key={message.id} className="text-sm">
               {renderMessage(message)}
             </div>
           ))}

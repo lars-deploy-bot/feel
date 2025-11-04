@@ -64,7 +64,7 @@ function ToolUseItem({ item }: { item: ContentItem }): React.ReactNode {
         <button
           type="button"
           onClick={() => setIsExpanded(!isExpanded)}
-          className="text-xs text-black/40 font-thin hover:text-black/60 transition-colors pr-4"
+          className="text-xs text-black/50 font-medium hover:text-black/70 transition-colors pr-4"
         >
           {getActionLabel(toolItem.name)}
           {hasInput && <span className="ml-1">{isExpanded ? "−" : "+"}</span>}

@@ -2,6 +2,9 @@
 
 This document provides instructions and guidelines for AI assistants (Claude) working on the Claude Bridge codebase.
 
+1. NEVER COMMIT
+2. ALWAYS USE BUN
+
 ## Project Overview
 
 Claude Bridge is a **multi-tenant development platform** that enables Claude AI to assist with website development through controlled file system access. Key characteristics:

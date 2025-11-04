@@ -43,7 +43,7 @@ export function SlugInput({ register, errors, watchSlug, isDeploying }: SlugInpu
         console.log(`[Frontend] Checking availability for: "${lowercaseSlug}"`)
         const res = await fetch(`/api/sites/check-availability?slug=${encodeURIComponent(lowercaseSlug)}`)
         const data = await res.json()
-        console.log(`[Frontend] Availability result:`, data)
+        console.log("[Frontend] Availability result:", data)
         setIsAvailable(data.available)
       } catch (error) {
         console.error("Failed to check availability:", error)
@@ -79,9 +79,9 @@ export function SlugInput({ register, errors, watchSlug, isDeploying }: SlugInpu
           whileFocus="focus"
           variants={fieldVariants}
           {...register("slug", {
-            setValueAs: (value) => value.toLowerCase(),
+            setValueAs: value => value.toLowerCase(),
           })}
-          ref={(e) => {
+          ref={e => {
             register("slug").ref(e)
             inputRef.current = e
           }}

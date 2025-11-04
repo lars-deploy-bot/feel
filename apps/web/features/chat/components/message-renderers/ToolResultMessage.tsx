@@ -101,8 +101,8 @@ function ToolResult({ result }: { result: ToolResultContent }) {
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
-        className={`text-xs font-thin hover:text-black/60 transition-colors pr-4 ${
-          result.is_error ? "text-red-600" : "text-black/40"
+        className={`text-xs font-medium hover:text-black/70 transition-colors pr-4 ${
+          result.is_error ? "text-red-600" : "text-black/50"
         }`}
       >
         {formatToolOutputPreview(toolName, displayContent)}

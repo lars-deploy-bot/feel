@@ -6,24 +6,24 @@ interface SystemMessageProps {
 
 export function SystemMessage({ content }: SystemMessageProps) {
   return (
-    <div className="py-2 mb-4 text-sm text-gray-600">
-      <div className="mb-1 normal-case tracking-normal">System Initialized</div>
-      <div className="space-y-1 text-xs normal-case tracking-normal">
+    <div className="py-2 mb-4 text-sm text-black/60">
+      <div className="mb-1.5 font-medium normal-case tracking-normal">System Initialized</div>
+      <div className="space-y-1 text-xs font-normal normal-case tracking-normal">
         <div>
-          <span>Model:</span>
+          <span className="font-medium">Model:</span>
           <span className="ml-1">{content.model}</span>
         </div>
         <div>
-          <span>Directory:</span>
+          <span className="font-medium">Directory:</span>
           <span className="ml-1">{content.cwd}</span>
         </div>
         <div>
-          <span>Tools:</span>
+          <span className="font-medium">Tools:</span>
           <span className="ml-1">{content.tools?.length || 0} available</span>
         </div>
         {content.claude_code_version && (
           <div>
-            <span>Version:</span>
+            <span className="font-medium">Version:</span>
             <span className="ml-1">{content.claude_code_version}</span>
           </div>
         )}

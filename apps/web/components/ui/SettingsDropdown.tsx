@@ -1,10 +1,14 @@
 "use client"
 
-import { Settings } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 
-export function SettingsDropdown() {
+interface SettingsDropdownProps {
+  onNewChat?: () => void
+  onPhotos?: () => void
+}
+
+export function SettingsDropdown({ onNewChat, onPhotos }: SettingsDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
   const router = useRouter()
 
@@ -23,15 +27,20 @@ export function SettingsDropdown() {
     }
   }
 
+  const handleAction = (action: () => void) => {
+    setIsOpen(false)
+    action()
+  }
+
   return (
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="inline-flex items-center justify-center w-8 h-8 text-black/60 hover:text-black transition-colors"
+        className="inline-flex items-center justify-center px-3 py-2 text-xs font-medium text-black border border-black/20 hover:bg-black hover:text-white transition-colors"
         type="button"
-        aria-label="Settings"
+        aria-label="Menu"
       >
-        <Settings size={16} />
+        Menu
       </button>
 
       {/* Dropdown Menu */}
@@ -44,9 +53,28 @@ export function SettingsDropdown() {
         }}
       >
         <div className="py-1">
+          {onNewChat && (
+            <button
+              onClick={() => handleAction(onNewChat)}
+              className="w-full px-4 py-2.5 text-left text-sm text-black hover:bg-black/5 transition-colors font-medium"
+              type="button"
+            >
+              Start new chat
+            </button>
+          )}
+          {onPhotos && (
+            <button
+              onClick={() => handleAction(onPhotos)}
+              className="w-full px-4 py-2.5 text-left text-sm text-black hover:bg-black/5 transition-colors font-medium"
+              type="button"
+            >
+              Photos
+            </button>
+          )}
+          <div className="border-t border-black/10 my-1" />
           <button
             onClick={handleLogout}
-            className="w-full px-4 py-2 text-left text-sm text-black/80 hover:bg-black/5 transition-colors font-thin"
+            className="w-full px-4 py-2.5 text-left text-sm text-black/60 hover:bg-black/5 transition-colors font-medium"
             type="button"
           >
             Logout
@@ -61,7 +89,7 @@ export function SettingsDropdown() {
           onClick={() => setIsOpen(false)}
           role="button"
           tabIndex={0}
-          aria-label="Close settings menu"
+          aria-label="Close menu"
           onKeyDown={e => {
             if (e.key === "Escape") {
               setIsOpen(false)
