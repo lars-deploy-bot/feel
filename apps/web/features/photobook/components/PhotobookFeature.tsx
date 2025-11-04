@@ -1,12 +1,12 @@
 "use client"
 
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Upload } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 // Feature hooks
 import { useCopyToClipboard, useImageManagement, useWorkspace } from "../hooks"
 // Feature components
-import { ImageCard, LoadingState, UploadCard } from "./"
+import { ImageCard, LoadingState } from "./"
 import { DeleteConfirmModal, ImageZoomModal, MessageBanner } from "./modals"
 
 export default function PhotobookPage() {
@@ -24,8 +24,6 @@ export default function PhotobookPage() {
   const { copyToClipboard, isCopied } = useCopyToClipboard()
 
   // Local UI state
-  const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null)
-  const [showDropHint, setShowDropHint] = useState(false)
   const [dragActive, setDragActive] = useState(false)
   const [zoomedImage, setZoomedImage] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
@@ -38,9 +36,16 @@ export default function PhotobookPage() {
   }, [mounted, isTerminal, workspace, loadImages])
 
   // Handlers
-  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    setSelectedFiles(e.target.files)
-    clearMessages()
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files
+    if (files && files.length > 0) {
+      clearMessages()
+      await uploadImages(files)
+      // Reset file input so same files can be selected again
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""
+      }
+    }
   }
 
   function handleDrag(e: React.DragEvent) {
@@ -53,25 +58,15 @@ export default function PhotobookPage() {
     }
   }
 
-  function handleDrop(e: React.DragEvent) {
+  async function handleDrop(e: React.DragEvent) {
     e.preventDefault()
     e.stopPropagation()
     setDragActive(false)
 
-    if (e.dataTransfer.files?.[0]) {
-      setSelectedFiles(e.dataTransfer.files)
+    const files = e.dataTransfer.files
+    if (files && files.length > 0) {
       clearMessages()
-    }
-  }
-
-  async function handleUpload() {
-    if (!selectedFiles) return
-
-    await uploadImages(selectedFiles)
-    setSelectedFiles(null)
-
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ""
+      await uploadImages(files)
     }
   }
 
@@ -93,8 +88,8 @@ export default function PhotobookPage() {
     >
       <div className="max-w-5xl mx-auto p-8">
         {/* Header */}
-        <header className="flex items-center justify-between mb-16">
-          <div className="flex items-center gap-4">
+        <header className="mb-12">
+          <div className="flex items-center gap-4 mb-3">
             <button
               type="button"
               onClick={() => router.push("/chat")}
@@ -103,52 +98,36 @@ export default function PhotobookPage() {
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <h1 className="text-2xl font-light">Photos</h1>
+            <h1 className="text-2xl font-semibold">Photos</h1>
           </div>
-
-          {/* Hidden file input */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept="image/*"
-            onChange={handleFileSelect}
-            className="hidden"
-            aria-label="Select images to upload"
-          />
-
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="px-8 py-3 md:px-6 md:py-2 bg-black text-white text-sm md:text-sm rounded-full hover:bg-gray-800 transition-all cursor-pointer font-medium"
-              onMouseEnter={() => setShowDropHint(true)}
-              onMouseLeave={() => setShowDropHint(false)}
-              aria-label="Add photos"
-            >
-              Add Photos
-            </button>
-
-            {showDropHint && !("ontouchstart" in window) && (
-              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap animate-in fade-in-0 zoom-in-95 duration-200">
-                You can also drop pics anywhere!
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900" />
-              </div>
-            )}
-          </div>
+          <p className="text-base text-gray-700 font-medium">
+            Copy photo links and paste them in chat
+          </p>
         </header>
 
-        {/* Drag overlay */}
-        {dragActive && <div className="fixed inset-0 bg-blue-50/50 z-50" />}
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept="image/*"
+          onChange={handleFileSelect}
+          className="hidden"
+          aria-label="Select images to upload"
+        />
 
-        {/* Upload card */}
-        {selectedFiles && selectedFiles.length > 0 && (
-          <UploadCard
-            fileCount={selectedFiles.length}
-            uploading={uploading}
-            hasExistingImages={images.length > 0}
-            onUpload={handleUpload}
-          />
+        {/* Drag overlay */}
+        {dragActive && (
+          <div className="fixed inset-0 bg-blue-500/10 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div className="bg-white rounded-xl shadow-xl p-10 border-4 border-dashed border-blue-500">
+              <div className="flex flex-col items-center">
+                <div className="w-16 h-16 rounded-full bg-blue-500 flex items-center justify-center mb-3">
+                  <Upload className="w-8 h-8 text-white" />
+                </div>
+                <p className="text-xl font-semibold text-gray-900">Drop to upload</p>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Messages */}
@@ -156,10 +135,22 @@ export default function PhotobookPage() {
         {success && <MessageBanner message={success} type="success" />}
 
         {/* Image gallery or empty states */}
-        {images.length === 0 && !uploading && !selectedFiles && !loadingImages ? (
-          <div className="text-center py-40">
-            <h2 className="text-2xl font-light text-gray-600 mb-2">Drop images here</h2>
-            <p className="text-gray-400 text-sm">or click Add Images above</p>
+        {images.length === 0 && !uploading && !loadingImages ? (
+          <div className="text-center py-24">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="inline-flex flex-col items-center cursor-pointer group"
+            >
+              <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-blue-100 mb-6 group-hover:bg-blue-200 transition-colors">
+                <Upload className="w-12 h-12 text-blue-600" />
+              </div>
+              <h2 className="text-3xl font-semibold text-gray-900 mb-3">
+                Drop photos here
+              </h2>
+              <p className="text-lg text-gray-600 mb-2">Drag files from your computer</p>
+              <p className="text-base text-blue-600">or click to browse</p>
+            </button>
           </div>
         ) : loadingImages ? (
           <LoadingState message="Loading your images..." />
@@ -185,6 +176,25 @@ export default function PhotobookPage() {
                 margin-bottom: 2rem;
               }
             `}</style>
+
+            {/* Add photos block - always first in grid */}
+            <div className="masonry-item group">
+              <div className="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full aspect-square border-3 border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 hover:border-gray-400 transition-all cursor-pointer flex flex-col items-center justify-center gap-3"
+                >
+                  <div className="w-16 h-16 rounded-full bg-gray-200 group-hover:bg-gray-300 flex items-center justify-center transition-all">
+                    <Upload className="w-8 h-8 text-gray-600" />
+                  </div>
+                  <span className="text-base font-semibold text-gray-700 group-hover:text-gray-900 transition-all">
+                    Add Photos
+                  </span>
+                </button>
+              </div>
+            </div>
+
             {images.map(image => (
               <ImageCard
                 key={image.key}

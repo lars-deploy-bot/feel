@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
+import bcrypt from "bcrypt"
 import { z } from "zod"
 
 /**
@@ -90,11 +91,19 @@ export function isValidJSON(jsonString: string): boolean {
   }
 }
 
-/**
- * Domain password management
- */
+const SALT_ROUNDS = 12
+
+export async function hashPassword(plaintext: string): Promise<string> {
+  return bcrypt.hash(plaintext, SALT_ROUNDS)
+}
+
+export async function verifyPassword(plaintext: string, hash: string): Promise<boolean> {
+  return bcrypt.compare(plaintext, hash)
+}
+
 interface DomainConfig {
-  password: string
+  password?: string // Legacy plaintext (for backwards compatibility)
+  passwordHash?: string // Bcrypt hash (preferred)
   port: number
 }
 
@@ -140,23 +149,32 @@ export function saveDomainPasswords(passwords: DomainPasswords): void {
   }
 }
 
-export function getDomainPassword(domain: string): string | null {
+// Validates password against passwordHash (bcrypt) or falls back to plaintext password
+export async function isDomainPasswordValid(domain: string, providedPassword: string): Promise<boolean> {
   const passwords = loadDomainPasswords()
-  return passwords[domain]?.password || null
-}
+  const domainConfig = passwords[domain]
 
-export function isDomainPasswordValid(domain: string, providedPassword: string): boolean {
-  const requiredPassword = getDomainPassword(domain)
-  if (!requiredPassword) {
+  if (!domainConfig) {
     return false
   }
-  return providedPassword === requiredPassword
+
+  if (domainConfig.passwordHash) {
+    return verifyPassword(providedPassword, domainConfig.passwordHash)
+  }
+
+  if (domainConfig.password) {
+    return providedPassword === domainConfig.password
+  }
+
+  return false
 }
 
-export function updateDomainPassword(domain: string, newPassword: string): void {
+// Updates domain password (hashed with bcrypt), removes legacy plaintext field
+export async function updateDomainPassword(domain: string, newPlaintextPassword: string): Promise<void> {
   const passwords = loadDomainPasswords()
   if (passwords[domain]) {
-    passwords[domain].password = newPassword
+    passwords[domain].passwordHash = await hashPassword(newPlaintextPassword)
+    delete passwords[domain].password
     saveDomainPasswords(passwords)
   }
 }

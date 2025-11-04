@@ -5,9 +5,8 @@ import { deleteDomainPassword, loadDomainPasswords, updateDomainPassword } from 
 
 export async function GET(req: NextRequest) {
   const origin = req.headers.get("origin")
-
-  // Check if user is authenticated as manager
   const jar = await cookies()
+
   if (!jar.get("manager_session")) {
     const res = NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 })
     addCorsHeaders(res, origin)
@@ -22,9 +21,8 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const origin = req.headers.get("origin")
-
-  // Check if user is authenticated as manager
   const jar = await cookies()
+
   if (!jar.get("manager_session")) {
     const res = NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 })
     addCorsHeaders(res, origin)
@@ -41,7 +39,7 @@ export async function POST(req: NextRequest) {
       return res
     }
 
-    updateDomainPassword(domain, password)
+    await updateDomainPassword(domain, password)
     const res = NextResponse.json({ ok: true })
     addCorsHeaders(res, origin)
     return res
@@ -54,9 +52,8 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   const origin = req.headers.get("origin")
-
-  // Check if user is authenticated as manager
   const jar = await cookies()
+
   if (!jar.get("manager_session")) {
     const res = NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 })
     addCorsHeaders(res, origin)
