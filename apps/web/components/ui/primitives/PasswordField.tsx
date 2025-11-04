@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion"
 import { Eye, EyeOff } from "lucide-react"
-import type { FieldErrors, UseFormRegister, Path, FieldValues } from "react-hook-form"
+import type { FieldErrors, FieldValues, Path, UseFormRegister } from "react-hook-form"
 import { fieldVariants } from "@/lib/animations"
 
 interface PasswordFieldProps<T extends FieldValues> {

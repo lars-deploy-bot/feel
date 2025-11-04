@@ -136,8 +136,7 @@ export function SubdomainDeployForm() {
       {/* Info Box */}
       <motion.div variants={itemVariants} className="bg-blue-50 border-2 border-blue-200 rounded-lg p-5 mb-8">
         <p className="text-base text-blue-900 mb-4 font-semibold">
-          Your site will be at:{" "}
-          <span className="font-bold">{watchSlug.toLowerCase() || "your-name"}</span>
+          Your site will be at: <span className="font-bold">{watchSlug.toLowerCase() || "your-name"}</span>
           <span className="text-blue-700">.{WILDCARD_DOMAIN}</span>
         </p>
         <div className="space-y-2 text-sm text-blue-900 font-medium">
@@ -155,12 +154,7 @@ export function SubdomainDeployForm() {
           </motion.div>
 
           <motion.div variants={itemVariants}>
-            <EmailField
-              register={register}
-              errors={errors}
-              watchEmail={watchEmail}
-              isDeploying={isDeploying}
-            />
+            <EmailField register={register} errors={errors} watchEmail={watchEmail} isDeploying={isDeploying} />
           </motion.div>
 
           {/* Hidden field for siteIdeas */}

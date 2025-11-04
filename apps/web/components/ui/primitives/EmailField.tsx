@@ -3,7 +3,7 @@
 import { motion } from "framer-motion"
 import { Mail } from "lucide-react"
 import { useState } from "react"
-import type { FieldErrors, UseFormRegister, Path, FieldValues } from "react-hook-form"
+import type { FieldErrors, FieldValues, Path, UseFormRegister } from "react-hook-form"
 import { fieldVariants } from "@/lib/animations"
 
 interface EmailFieldProps<T extends FieldValues> {
@@ -33,9 +33,7 @@ export function EmailField<T extends FieldValues>({
       <label htmlFor={String(fieldName)} className="block text-base font-bold text-gray-900 mb-2">
         Email address
       </label>
-      <p className="text-sm text-gray-600 mb-3 font-medium">
-        We'll use this to help you recover your site if needed.
-      </p>
+      <p className="text-sm text-gray-600 mb-3 font-medium">We'll use this to help you recover your site if needed.</p>
       <div className="relative">
         <motion.input
           whileFocus="focus"
@@ -45,7 +43,7 @@ export function EmailField<T extends FieldValues>({
           onFocus={() => {
             setIsFocused(true)
           }}
-          onBlur={(e) => {
+          onBlur={e => {
             setIsFocused(false)
             rest.onBlur(e)
           }}

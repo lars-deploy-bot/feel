@@ -27,7 +27,9 @@ export async function GET(req: NextRequest) {
   const sitePath = path.join(WORKSPACE_BASE, fullDomain)
   const exists = existsSync(sitePath)
 
-  console.log(`[Availability] Checking slug "${slug}" -> domain "${fullDomain}" -> path "${sitePath}" -> exists: ${exists}`)
+  console.log(
+    `[Availability] Checking slug "${slug}" -> domain "${fullDomain}" -> path "${sitePath}" -> exists: ${exists}`,
+  )
 
   return NextResponse.json({ available: !exists, slug } as AvailabilityResponse, { status: 200 })
 }

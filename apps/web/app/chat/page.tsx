@@ -388,8 +388,8 @@ export default function ChatPage() {
           })}
           {/* Show thinking indicator only when busy but no assistant response has started yet */}
           {busy && messages.length > 0 && messages[messages.length - 1]?.type === "user" && (
-            <div className="mb-1">
-              <div className="text-[10px] font-medium text-black/40 animate-pulse">thinking</div>
+            <div className="mb-2">
+              <div className="text-xs font-medium text-black/50 animate-pulse">thinking</div>
             </div>
           )}
           <div ref={messagesEndRef} />

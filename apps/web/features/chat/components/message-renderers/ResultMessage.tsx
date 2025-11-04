@@ -62,9 +62,9 @@ export function ResultMessage({ content }: ResultMessageProps) {
 
   return (
     <div className="py-2 mb-4">
-      <div className="text-sm font-medium text-gray-600 normal-case tracking-normal">
+      <div className="text-sm font-medium text-black/60 normal-case tracking-normal">
         Completed
-        <span className="ml-2 text-xs text-gray-400">
+        <span className="ml-2 text-xs text-black/50 font-normal">
           {(content.duration_ms / 1000).toFixed(1)}s • ${content.total_cost_usd.toFixed(4)}
         </span>
       </div>
