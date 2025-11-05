@@ -147,14 +147,59 @@ readlink apps/web/dist
 
 ```javascript
 const nextConfig = {
-  distDir: "dist",
+  // Production: use "dist" for atomic builds
+  // Development: use ".next" to avoid conflicts with staging dev server
+  distDir: process.env.NODE_ENV === "production" ? "dist" : ".next",
   output: "standalone",
   // ... other config
 }
 ```
 
-- `distDir: "dist"` tells Next.js to build to the `dist/` directory
+**Why Environment-Based distDir?**
+
+- **Production** (`NODE_ENV=production`): Uses `dist/` for atomic builds
+  - Enables zero-downtime deployments via timestamped directories and symlinks
+  - PM2 production process serves from `dist/` symlink
+
+- **Development** (`NODE_ENV=development`): Uses `.next/` for dev server cache
+  - Staging dev server (port 8998) uses standard Next.js dev cache location
+  - Prevents conflicts: production builds temporarily remove the `dist/` symlink during atomic builds (see `build-atomic.sh:40-44`), which would corrupt the dev server cache if both used the same directory
+  - Ensures staging always reflects current code state with hot reload
+
+**Important:** Without this separation, running a production build while the staging dev server is running would cause missing build manifest errors in the dev server, requiring a restart to recover.
+
 - `output: "standalone"` creates self-contained builds (required for Hetzner deployment)
+
+### PM2 Ecosystem Config
+
+`ecosystem.config.js`:
+
+```javascript
+module.exports = {
+  apps: [
+    {
+      name: 'claude-bridge',
+      script: 'bun',
+      args: 'next start -p 8999',
+      env: {
+        NODE_ENV: 'production',  // Uses dist/ for atomic builds
+        // ... other env vars
+      }
+    },
+    {
+      name: 'claude-bridge-staging',
+      script: 'bunx',
+      args: 'next dev --turbo -p 8998',
+      env: {
+        NODE_ENV: 'development',  // Uses .next/ for dev cache
+        // ... other env vars
+      }
+    }
+  ]
+}
+```
+
+The `NODE_ENV` setting in each PM2 app config determines which `distDir` is used, ensuring production and staging don't interfere with each other.
 
 ### Package Scripts
 
@@ -251,6 +296,27 @@ rm -rf dist dist.* .next
 cd ../..
 ./scripts/build-atomic.sh
 ```
+
+### Staging Dev Server: Missing Build Manifest Errors
+
+**Symptom:** Staging dev server logs show repeated errors like:
+```
+Error: ENOENT: no such file or directory, open '.../dist/dev/server/app/page/build-manifest.json'
+```
+
+**Cause:** Production build ran while staging dev server was using the same `dist/` directory. The atomic build temporarily removes the `dist/` symlink (see `build-atomic.sh:40-44`), corrupting the dev server cache.
+
+**Solution:**
+1. Ensure `next.config.js` uses environment-based `distDir`:
+   ```javascript
+   distDir: process.env.NODE_ENV === "production" ? "dist" : ".next"
+   ```
+2. Restart staging dev server:
+   ```bash
+   pm2 restart claude-bridge-staging
+   ```
+
+**Prevention:** The environment-based `distDir` configuration ensures staging uses `.next/` while production uses `dist/`, preventing conflicts entirely.
 
 ## Production Considerations
 
