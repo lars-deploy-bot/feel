@@ -314,6 +314,27 @@ Non-streaming endpoint returning full response as JSON.
 - No shell access or dangerous operations
 - All tool usage logged and monitored
 
+## Testing
+
+```bash
+# Run unit tests
+cd apps/web && bun test
+
+# Run E2E tests (requires setup)
+bun run test:e2e
+
+# Run with coverage
+cd apps/web && bun test --coverage
+```
+
+**First time setup for E2E tests:**
+```bash
+bunx playwright install chromium
+bun run setup
+```
+
+See [Testing Guide](./docs/testing/TESTING_GUIDE.md) for detailed testing instructions, examples, and best practices.
+
 ## Development Scripts
 
 ```bash
@@ -321,6 +342,10 @@ Non-streaming endpoint returning full response as JSON.
 bun run dev          # Start dev server with Turbo
 bun run web          # Start web app only
 bun run widget       # Start widget server (Go-based)
+
+# Testing
+bun test             # Run unit tests (from apps/web)
+bun run test:e2e     # Run E2E tests
 
 # Production
 bun run build        # Build for production

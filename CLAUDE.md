@@ -197,6 +197,48 @@ systemctl status caddy
 
 ## Testing Guidelines
 
+**Documentation**: See [docs/testing/TESTING_GUIDE.md](./docs/testing/TESTING_GUIDE.md) for complete testing guide.
+
+### When to Write Tests (STRICT - This is MVP)
+
+**✅ MUST write tests for:**
+1. **Security-critical functions** (100% coverage required)
+   - Path traversal protection (`isPathWithinWorkspace`)
+   - Session validation (`getSessionUser`, `hasSessionCookie`)
+   - Workspace boundary checks (`getWorkspace`)
+   - Shell command sanitization (if executing shell commands)
+   - Authentication logic
+
+2. **New API routes** (at minimum: happy path + one error case)
+   - Any new endpoint in `app/api/`
+   - Focus on authentication, validation, error handling
+
+**⚠️ SHOULD write tests for:**
+3. **Complex business logic**
+   - Workspace resolution (multiple branches, edge cases)
+   - Stream handling (if modifying SSE logic)
+   - File operations with validation
+
+**❌ DON'T write tests for:**
+- Simple formatters/transforms
+- Type guards (unless security-critical)
+- UI components (unless fixing a bug)
+- Third-party library wrappers
+- Configuration files
+
+### Quick Commands
+
+```bash
+# Run unit tests
+cd apps/web && bun test
+
+# Run E2E tests (first time: bunx playwright install chromium)
+bun run test:e2e
+
+# Run specific test
+bun test security.test.ts
+```
+
 ### Local Development Setup
 
 ```bash
@@ -209,30 +251,28 @@ bun run setup
 # 3. Add .env.local (as shown by setup script)
 # ANTHROPIC_API_KEY=your_key
 # BRIDGE_ENV=local
-# LOCAL_TEMPLATE_PATH=/root/webalive/claude-bridge/packages/template/user
+# LOCAL_TEMPLATE_PATH=/path/to/packages/template/user
 
 # 4. Start dev server
 bun run dev
 ```
 
-### Test Credentials (Local Only)
-
-When `BRIDGE_ENV=local`:
+**Test Credentials** (when `BRIDGE_ENV=local`):
 - Workspace: `test`
 - Passcode: `test`
 
-### Testing Checklist
+### Before Committing
 
-Before committing changes:
+**Automated checks:**
+- [ ] Tests pass: `bun test && bun run test:e2e` (if you wrote tests)
+- [ ] Format: `bun run format`
+- [ ] Lint: `bun run lint`
 
-- [ ] Test standard domain mode (workspace auto-detection)
-- [ ] Test terminal mode (custom workspace selection)
-- [ ] Verify workspace isolation (path traversal attacks fail)
-- [ ] Test session resumption with conversation IDs
-- [ ] Check SSE streaming works (no buffering issues)
-- [ ] Verify tool tracking (tool results render correctly)
-- [ ] Test conversation locking (concurrent requests blocked)
-- [ ] Run `bun run format` and `bun run lint`
+**Manual verification (if applicable):**
+- [ ] Tested security functions manually (path traversal, auth)
+- [ ] Tested both standard domain mode and terminal mode
+- [ ] Verified workspace isolation works
+- [ ] No real Anthropic API calls in tests (check logs)
 
 ## Production Deployment
 
