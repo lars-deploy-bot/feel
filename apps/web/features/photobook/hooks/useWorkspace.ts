@@ -1,6 +1,6 @@
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import { isTerminalMode } from "@/types/guards/workspace"
+import { isTerminalMode } from "@/features/workspace/types/workspace"
 
 export function useWorkspace() {
   const router = useRouter()

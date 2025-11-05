@@ -28,8 +28,9 @@ export const ImageCard = memo(function ImageCard({ image, onDelete, onZoom, onCo
     <div className="masonry-item group">
       <div className="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
         <div className="relative">
-          <div
-            className="cursor-pointer"
+          <button
+            type="button"
+            className="cursor-pointer w-full"
             onClick={() => onZoom(imageUrl)}
             onKeyDown={e => {
               if (e.key === "Enter" || e.key === " ") {
@@ -37,8 +38,6 @@ export const ImageCard = memo(function ImageCard({ image, onDelete, onZoom, onCo
                 onZoom(imageUrl)
               }
             }}
-            role="button"
-            tabIndex={0}
           >
             <Image
               src={thumbnailUrl}
@@ -49,7 +48,7 @@ export const ImageCard = memo(function ImageCard({ image, onDelete, onZoom, onCo
               loading="lazy"
               unoptimized
             />
-          </div>
+          </button>
           <button
             type="button"
             onClick={() => onDelete(image.key)}

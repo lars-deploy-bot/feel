@@ -1,8 +1,10 @@
 import { BashInput } from "@/components/ui/chat/tools/bash/BashInput"
+import { EditInput } from "@/components/ui/chat/tools/edit/EditInput"
 import { GlobInput } from "@/components/ui/chat/tools/glob/GlobInput"
 import { GrepInput } from "@/components/ui/chat/tools/grep/GrepInput"
 import { ReadInput } from "@/components/ui/chat/tools/read/ReadInput"
 import { TaskInput } from "@/components/ui/chat/tools/task/TaskInput"
+import { WriteInput } from "@/components/ui/chat/tools/write/WriteInput"
 
 interface ToolInputRouterProps {
   toolName: string
@@ -22,6 +24,18 @@ export function ToolInputRouter({ toolName, input }: ToolInputRouterProps) {
     case "read":
       if (input.file_path) {
         return <ReadInput {...input} />
+      }
+      break
+
+    case "edit":
+      if (input.file_path && input.old_string && input.new_string) {
+        return <EditInput {...input} />
+      }
+      break
+
+    case "write":
+      if (input.file_path && input.content) {
+        return <WriteInput {...input} />
       }
       break
 
@@ -47,7 +61,7 @@ export function ToolInputRouter({ toolName, input }: ToolInputRouterProps) {
     default:
       // Fallback to JSON for unknown tools
       return (
-        <pre className="text-xs text-black/60 font-diatype-mono leading-relaxed overflow-auto max-h-80 p-3 bg-black/[0.02] border border-black/10">
+        <pre className="text-xs text-black/60 dark:text-white/60 font-diatype-mono leading-relaxed overflow-auto max-h-80 p-3 bg-black/[0.02] dark:bg-white/[0.02] border border-black/10 dark:border-white/10">
           {typeof input === "string" ? input : JSON.stringify(input, null, 2)}
         </pre>
       )
@@ -55,7 +69,7 @@ export function ToolInputRouter({ toolName, input }: ToolInputRouterProps) {
 
   // Fallback if tool is recognized but input doesn't match expected schema
   return (
-    <pre className="text-xs text-black/60 font-diatype-mono leading-relaxed overflow-auto max-h-80 p-3 bg-black/[0.02] border border-black/10">
+    <pre className="text-xs text-black/60 dark:text-white/60 font-diatype-mono leading-relaxed overflow-auto max-h-80 p-3 bg-black/[0.02] dark:bg-white/[0.02] border border-black/10 dark:border-white/10">
       {typeof input === "string" ? input : JSON.stringify(input, null, 2)}
     </pre>
   )

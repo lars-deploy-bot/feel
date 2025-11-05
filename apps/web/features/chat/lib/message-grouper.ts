@@ -1,4 +1,4 @@
-import type { UIMessage } from "@/lib/message-parser"
+import type { UIMessage } from "@/features/chat/lib/message-parser"
 import { isCompletionMessage, isTextMessage } from "@/types/guards/ui"
 
 export interface MessageGroup {

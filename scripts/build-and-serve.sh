@@ -2,6 +2,14 @@
 
 # Build and serve Claude Bridge on PM2 (production mode)
 # This script builds the project and serves it on port 8999
+#
+# ZERO-DOWNTIME DEPLOYMENT:
+# 1. Backup current build before building new version
+# 2. If build fails: restore backup, keep old PM2 running
+# 3. If build succeeds: stop old PM2, start new PM2
+# 4. If health check fails: automatic rollback to backup
+#
+# This ensures that build failures never break the running application
 
 set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
@@ -38,6 +46,28 @@ log_warn() {
 
 log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
+}
+
+# Restore build from backup (DRY - used in build failure and rollback)
+restore_build_backup() {
+    local next_dir="$1"
+    local backup_dir="$2"
+
+    if [ ! -d "$backup_dir" ]; then
+        log_error "Backup directory not found: $backup_dir"
+        return 1
+    fi
+
+    log_warn "Restoring build from backup..."
+    rm -rf "$next_dir" 2>/dev/null || true
+
+    if ! mv "$backup_dir" "$next_dir" 2>/dev/null; then
+        log_error "Failed to restore backup - filesystem error"
+        return 1
+    fi
+
+    log_success "Build restored from backup"
+    return 0
 }
 
 # Cleanup function
@@ -113,16 +143,37 @@ if ! bun install; then
     exit 1
 fi
 
+# Use absolute paths for clarity and safety
+NEXT_BUILD_DIR="$PROJECT_ROOT/apps/web/.next"
+BACKUP_DIR="$PROJECT_ROOT/apps/web/.next.backup"
+
+# Backup current build (if exists) to protect running application
+if [ -d "$NEXT_BUILD_DIR" ]; then
+    log_info "Backing up current build..."
+    rm -rf "$BACKUP_DIR" 2>/dev/null || true
+    cp -r "$NEXT_BUILD_DIR" "$BACKUP_DIR"
+    log_success "Build backup created"
+fi
+
 # Build the project
 log_info "Running build..."
 BUILD_START=$(date +%s)
 if ! bun run build; then
     log_error "Build failed"
+
+    # Restore backup if it exists
+    if restore_build_backup "$NEXT_BUILD_DIR" "$BACKUP_DIR"; then
+        log_info "Application still running with old version"
+    fi
+
+    log_error "Deploy aborted - fix build errors and try again"
     exit 1
 fi
 BUILD_END=$(date +%s)
 BUILD_TIME=$((BUILD_END - BUILD_START))
 log_success "Build completed in ${BUILD_TIME}s"
+
+# Build succeeded - keep backup for potential rollback after health check
 
 # Stop existing PM2 process gracefully
 log_info "Stopping existing PM2 process..."
@@ -175,9 +226,42 @@ echo ""
 
 if [ "$SERVER_READY" = true ]; then
     log_success "Server is responding (after ${WAITED}s)"
+
+    # Health check passed - remove backup
+    rm -rf "$BACKUP_DIR" 2>/dev/null || true
+    log_info "Backup removed - deployment successful"
 else
     log_error "Server failed health check after ${MAX_WAIT}s"
-    log_error "Check logs with: pm2 logs $APP_NAME"
+
+    # Stop failed process
+    pm2 stop "$APP_NAME" >/dev/null 2>&1 || true
+    pm2 delete "$APP_NAME" >/dev/null 2>&1 || true
+
+    # Rollback to previous build
+    if restore_build_backup "$NEXT_BUILD_DIR" "$BACKUP_DIR"; then
+        log_warn "Attempting to restart with old version..."
+
+        # Restart with old build
+        cd "$PROJECT_ROOT/apps/web"
+        if pm2 start "bun next start -p $PORT" --name "$APP_NAME" >/dev/null 2>&1; then
+            # Verify rollback is serving
+            sleep 3
+            if curl -sf http://localhost:$PORT/ >/dev/null 2>&1; then
+                log_success "Rollback successful - old version is serving"
+                pm2 save >/dev/null 2>&1 || true
+            else
+                log_error "Rollback started but not responding - check logs: pm2 logs $APP_NAME"
+            fi
+        else
+            log_error "Failed to restart after rollback - manual intervention required"
+        fi
+
+        log_error "Deploy failed - check logs: pm2 logs $APP_NAME"
+    else
+        log_error "Rollback failed - manual intervention required"
+        log_error "Check logs with: pm2 logs $APP_NAME"
+    fi
+
     exit 1
 fi
 

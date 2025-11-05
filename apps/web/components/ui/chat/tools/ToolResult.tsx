@@ -27,11 +27,7 @@ export function ToolResult({ toolName, content, isError = false }: ToolResultPro
 
   return (
     <div className="my-1">
-      <ToolButton
-        onClick={() => setIsExpanded(!isExpanded)}
-        isExpanded={isExpanded}
-        variant={isError ? "error" : "default"}
-      >
+      <ToolButton onClick={() => setIsExpanded(!isExpanded)} variant={isError ? "error" : "default"}>
         {toolName}
         {isError && " error"}
       </ToolButton>

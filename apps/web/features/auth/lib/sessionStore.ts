@@ -3,7 +3,7 @@ import {
   isConversationLocked,
   tryLockConversation,
   unlockConversation,
-} from "@/types/guards/session"
+} from "@/features/auth/types/session"
 
 export interface SessionStore {
   get(key: string): Promise<string | null>

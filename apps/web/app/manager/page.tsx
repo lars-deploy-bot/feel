@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
-import { Button } from "@/components/ui/primitives/Button"
 import { DeleteModal } from "@/components/modals/DeleteModal"
+import { Button } from "@/components/ui/primitives/Button"
 
 interface DomainConfig {
   tenantId?: string
@@ -109,13 +109,10 @@ export default function ManagerPage() {
       const response = await fetch("/api/manager/status")
       const data = await response.json()
       if (data.ok) {
-        const statusMap = data.statuses.reduce(
-          (acc: Record<string, DomainStatus>, status: DomainStatus) => {
-            acc[status.domain] = status
-            return acc
-          },
-          {}
-        )
+        const statusMap = data.statuses.reduce((acc: Record<string, DomainStatus>, status: DomainStatus) => {
+          acc[status.domain] = status
+          return acc
+        }, {})
         setStatuses(statusMap)
       }
     } catch (error) {
@@ -354,8 +351,16 @@ export default function ManagerPage() {
     if (!status) return null
 
     return [
-      { label: "Systemd", pass: status.systemdServiceExists && status.systemdServiceRunning, detail: status.systemdServiceExists ? (status.systemdServiceRunning ? "running" : "stopped") : "missing" },
-      { label: "Caddy", pass: status.caddyConfigured, detail: status.caddyConfigured ? "configured" : "not configured" },
+      {
+        label: "Systemd",
+        pass: status.systemdServiceExists && status.systemdServiceRunning,
+        detail: status.systemdServiceExists ? (status.systemdServiceRunning ? "running" : "stopped") : "missing",
+      },
+      {
+        label: "Caddy",
+        pass: status.caddyConfigured,
+        detail: status.caddyConfigured ? "configured" : "not configured",
+      },
       { label: "Files", pass: status.siteDirectoryExists, detail: status.siteDirectoryExists ? "exists" : "missing" },
     ]
   }
@@ -485,7 +490,10 @@ export default function ManagerPage() {
                     <div key={domain} className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg">
                       <div className="flex items-center gap-3 flex-1">
                         <div className="flex flex-col items-center gap-1 min-w-[80px]">
-                          <div className={`w-3 h-3 rounded-full ${getStatusColor(domain)}`} title={getStatusDetails(domain)} />
+                          <div
+                            className={`w-3 h-3 rounded-full ${getStatusColor(domain)}`}
+                            title={getStatusDetails(domain)}
+                          />
                           <div className="text-xs text-gray-500 font-medium">{getStatusText(domain)}</div>
                         </div>
                         <div className="flex-1">
@@ -497,9 +505,7 @@ export default function ManagerPage() {
                               </span>
                             )}
                           </div>
-                          <div className="text-sm text-gray-500">
-                            {getStatusDetails(domain)}
-                          </div>
+                          <div className="text-sm text-gray-500">{getStatusDetails(domain)}</div>
                           <div className="text-xs text-gray-400 mt-1">
                             {config.orphaned ? (
                               <span className="text-yellow-600">Infrastructure exists but not in registry</span>
@@ -519,9 +525,7 @@ export default function ManagerPage() {
                                   <div
                                     key={i}
                                     className={`text-xs px-2 py-1 rounded ${
-                                      check.pass
-                                        ? "bg-green-100 text-green-700"
-                                        : "bg-red-100 text-red-700"
+                                      check.pass ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
                                     }`}
                                     title={check.detail}
                                   >

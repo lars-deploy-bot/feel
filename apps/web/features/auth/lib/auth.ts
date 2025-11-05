@@ -1,5 +1,5 @@
 import { cookies } from "next/headers"
-import { hasSessionCookie, hasValidUser } from "@/types/guards/auth"
+import { hasSessionCookie, hasValidUser } from "@/features/auth/types/guards"
 
 export interface SessionUser {
   id: string

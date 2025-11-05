@@ -1,6 +1,6 @@
-import { cookies } from "next/headers"
 import { exec } from "node:child_process"
 import { promisify } from "node:util"
+import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
 import { addCorsHeaders } from "@/lib/cors-utils"
 
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
       } catch (error) {
         const res = NextResponse.json(
           { ok: false, error: error instanceof Error ? error.message : "Failed to reload Caddy" },
-          { status: 500 }
+          { status: 500 },
         )
         addCorsHeaders(res, origin)
         return res
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
       } catch (error) {
         const res = NextResponse.json(
           { ok: false, error: error instanceof Error ? error.message : "Failed to restart bridge" },
-          { status: 500 }
+          { status: 500 },
         )
         addCorsHeaders(res, origin)
         return res

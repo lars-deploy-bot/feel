@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { siteMetadataStore } from "@/lib/siteMetadataStore"
-import { isValidSlug } from "@/lib/slug-utils"
+import { isValidSlug } from "@/features/deployment/lib/slug-utils"
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url)

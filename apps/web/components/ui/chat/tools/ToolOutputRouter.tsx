@@ -1,8 +1,10 @@
 import { BashOutput } from "@/components/ui/chat/tools/bash/BashOutput"
+import { EditOutput } from "@/components/ui/chat/tools/edit/EditOutput"
 import { GlobOutput } from "@/components/ui/chat/tools/glob/GlobOutput"
 import { GrepOutput } from "@/components/ui/chat/tools/grep/GrepOutput"
 import { ReadOutput } from "@/components/ui/chat/tools/read/ReadOutput"
 import { TaskOutput } from "@/components/ui/chat/tools/task/TaskOutput"
+import { WriteOutput } from "@/components/ui/chat/tools/write/WriteOutput"
 
 interface ToolOutputRouterProps {
   toolName: string
@@ -38,6 +40,18 @@ export function ToolOutputRouter({ toolName, content }: ToolOutputRouterProps) {
       }
       break
 
+    case "edit":
+      if (content.replacements !== undefined) {
+        return <EditOutput {...content} />
+      }
+      break
+
+    case "write":
+      if (content.bytes_written !== undefined) {
+        return <WriteOutput {...content} />
+      }
+      break
+
     case "grep":
       // GrepFilesOutput
       if (content.files && content.count !== undefined) {
@@ -69,7 +83,7 @@ export function ToolOutputRouter({ toolName, content }: ToolOutputRouterProps) {
     default:
       // Fallback to JSON for unknown tools
       return (
-        <pre className="text-xs text-black/60 font-diatype-mono leading-relaxed overflow-auto max-h-80 p-3 bg-black/[0.02] border border-black/10">
+        <pre className="text-xs text-black/60 dark:text-white/60 font-diatype-mono leading-relaxed overflow-auto max-h-80 p-3 bg-black/[0.02] dark:bg-white/[0.02] border border-black/10 dark:border-white/10">
           {typeof content === "string" ? content : JSON.stringify(content, null, 2)}
         </pre>
       )
@@ -77,7 +91,7 @@ export function ToolOutputRouter({ toolName, content }: ToolOutputRouterProps) {
 
   // Fallback if tool is recognized but content doesn't match expected schema
   return (
-    <pre className="text-xs text-black/60 font-diatype-mono leading-relaxed overflow-auto max-h-80 p-3 bg-black/[0.02] border border-black/10">
+    <pre className="text-xs text-black/60 dark:text-white/60 font-diatype-mono leading-relaxed overflow-auto max-h-80 p-3 bg-black/[0.02] dark:bg-white/[0.02] border border-black/10 dark:border-white/10">
       {typeof content === "string" ? content : JSON.stringify(content, null, 2)}
     </pre>
   )

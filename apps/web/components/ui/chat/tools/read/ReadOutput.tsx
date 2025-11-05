@@ -1,5 +1,3 @@
-import Image from "next/image"
-
 type ReadOutputProps = TextFileOutputProps | ImageFileOutputProps | PDFFileOutputProps | NotebookFileOutputProps
 
 interface TextFileOutputProps {
@@ -40,13 +38,8 @@ export function ReadOutput(props: ReadOutputProps) {
   // Text file
   if ("content" in props && "total_lines" in props) {
     return (
-      <div className="space-y-2">
-        <div className="text-xs text-black/40 font-thin">
-          {props.lines_returned} of {props.total_lines} lines
-        </div>
-        <div className="text-xs text-black/80 font-diatype-mono leading-relaxed whitespace-pre-wrap bg-black/[0.02] p-3 border border-black/10 max-h-80 overflow-auto">
-          {props.content}
-        </div>
+      <div className="text-xs text-black/40 dark:text-white/40 font-normal">
+        {props.lines_returned} of {props.total_lines} lines
       </div>
     )
   }
@@ -54,76 +47,21 @@ export function ReadOutput(props: ReadOutputProps) {
   // Image file
   if ("image" in props && "file_size" in props) {
     return (
-      <div className="space-y-2">
-        <div className="text-xs text-black/40 font-thin">image • {Math.round(props.file_size / 1024)}KB</div>
-        <div className="relative w-full">
-          <Image
-            src={`data:${props.mime_type};base64,${props.image}`}
-            alt="File content"
-            width={800}
-            height={600}
-            className="max-w-full h-auto border border-black/10"
-            unoptimized
-          />
-        </div>
+      <div className="text-xs text-black/40 dark:text-white/40 font-normal">
+        image • {Math.round(props.file_size / 1024)}KB
       </div>
     )
   }
 
   // PDF file
   if ("pages" in props && "total_pages" in props) {
-    return (
-      <div className="space-y-2">
-        <div className="text-xs text-black/40 font-thin">pdf • {props.total_pages} pages</div>
-        <div className="space-y-4 max-h-80 overflow-auto">
-          {props.pages.map((page, index) => (
-            <div key={index} className="border border-black/10 p-3">
-              <div className="text-xs text-black/40 font-thin mb-2">page {page.page_number}</div>
-              {page.text && (
-                <div className="text-xs text-black/80 font-thin leading-relaxed whitespace-pre-wrap">{page.text}</div>
-              )}
-              {page.images?.map((img, imgIndex) => (
-                <div key={imgIndex} className="relative w-full mt-2">
-                  <Image
-                    src={`data:${img.mime_type};base64,${img.image}`}
-                    alt={`Page ${page.page_number} content ${imgIndex + 1}`}
-                    width={800}
-                    height={600}
-                    className="max-w-full h-auto"
-                    unoptimized
-                  />
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      </div>
-    )
+    return <div className="text-xs text-black/40 dark:text-white/40 font-normal">pdf • {props.total_pages} pages</div>
   }
 
   // Notebook file
   if ("cells" in props) {
     return (
-      <div className="space-y-2">
-        <div className="text-xs text-black/40 font-thin">notebook • {props.cells.length} cells</div>
-        <div className="space-y-3 max-h-80 overflow-auto">
-          {props.cells.map((cell, index) => (
-            <div key={index} className="border border-black/10 p-3">
-              <div className="text-xs text-black/40 font-thin mb-2">
-                {cell.cell_type} {cell.execution_count && `[${cell.execution_count}]`}
-              </div>
-              <div className="text-xs text-black/80 font-diatype-mono leading-relaxed whitespace-pre-wrap">
-                {cell.source}
-              </div>
-              {cell.outputs && cell.outputs.length > 0 && (
-                <div className="mt-2 pt-2 border-t border-black/5">
-                  <pre className="text-xs text-black/60 font-diatype-mono">{JSON.stringify(cell.outputs, null, 2)}</pre>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
+      <div className="text-xs text-black/40 dark:text-white/40 font-normal">notebook • {props.cells.length} cells</div>
     )
   }
 

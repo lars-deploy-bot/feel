@@ -1,6 +1,6 @@
-import { cookies } from "next/headers"
 import { exec } from "node:child_process"
 import { promisify } from "node:util"
+import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { loadDomainPasswords } from "@/types/guards/api"
@@ -66,7 +66,9 @@ async function checkSystemdService(domain: string): Promise<{ exists: boolean; r
   const serviceName = `site@${domain.replace(/\./g, "-")}.service`
 
   try {
-    const { stdout: statusOutput } = await execAsync(`systemctl is-active ${serviceName} 2>/dev/null || echo "inactive"`)
+    const { stdout: statusOutput } = await execAsync(
+      `systemctl is-active ${serviceName} 2>/dev/null || echo "inactive"`,
+    )
     const running = statusOutput.trim() === "active"
 
     try {

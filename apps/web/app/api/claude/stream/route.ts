@@ -21,7 +21,7 @@ import { env } from "@/lib/env"
 import { ErrorCodes } from "@/lib/error-codes"
 import { logInput } from "@/lib/input-logger"
 import { BodySchema, isToolAllowed } from "@/types/guards/api"
-import { isTerminalMode } from "@/types/guards/workspace"
+import { isTerminalMode } from "@/features/workspace/types/workspace"
 
 export const runtime = "nodejs"
 

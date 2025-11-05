@@ -9,9 +9,9 @@ export function ReadInput({ file_path, offset, limit }: ReadInputProps) {
 
   return (
     <div className="space-y-1">
-      <div className="text-xs text-black/60 font-diatype-mono">{fileName}</div>
+      <div className="text-xs text-black/60 dark:text-white/60 font-diatype-mono">{fileName}</div>
       {(offset || limit) && (
-        <div className="text-xs text-black/40 font-thin">
+        <div className="text-xs text-black/40 dark:text-white/40 font-thin">
           {offset && `from line ${offset}`} {limit && `• ${limit} lines`}
         </div>
       )}

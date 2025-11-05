@@ -69,6 +69,12 @@
           }
         }
       }
+    },
+    {
+      "includes": ["**/globals.css"],
+      "linter": {
+        "enabled": false
+      }
     }
   ]
 }

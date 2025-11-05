@@ -9,7 +9,6 @@ import { fieldVariants } from "@/lib/animations"
 interface EmailFieldProps<T extends FieldValues> {
   register: UseFormRegister<T>
   errors: FieldErrors<T>
-  watchEmail: string
   isDeploying: boolean
   fieldName?: Path<T>
 }
@@ -17,7 +16,6 @@ interface EmailFieldProps<T extends FieldValues> {
 export function EmailField<T extends FieldValues>({
   register,
   errors,
-  watchEmail,
   isDeploying,
   fieldName = "email" as Path<T>,
 }: EmailFieldProps<T>) {

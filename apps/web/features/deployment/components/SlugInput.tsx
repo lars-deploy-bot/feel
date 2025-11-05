@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react"
 import type { FieldErrors, UseFormRegister } from "react-hook-form"
 import { fieldVariants } from "@/lib/animations"
 import { WILDCARD_DOMAIN } from "@/lib/config"
-import { isValidSlug } from "@/lib/slug-utils"
+import { isValidSlug } from "@/features/deployment/lib/slug-utils"
 import type { DeploySubdomainForm } from "../types/deploy-subdomain"
 
 interface SlugInputProps {

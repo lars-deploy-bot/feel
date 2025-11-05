@@ -18,4 +18,4 @@ export {
   isSDKResultMessage,
   isSDKSystemMessage,
   isSDKUserMessage,
-} from "@/types/guards/sdk"
+} from "@/features/chat/types/sdk"
