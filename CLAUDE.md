@@ -276,20 +276,22 @@ bun run dev
 
 ## Production Deployment
 
-### PM2 Process Management
+**CRITICAL**: Before doing any Claude Bridge deployment work (building and deploying the bridge itself, not deploying websites), you MUST read `docs/deployment.md` first. All details about atomic builds, rollback, and troubleshooting are there.
 
-**Claude Bridge only** (sites use systemd):
+### Commands
 
 ```bash
-# Start (manual)
-pm2 start apps/web/next start --name claude-bridge -p 8999
-
-# Deploy (automated: pull + build + restart + reload Caddy)
+# Full deploy (recommended)
 bun run deploy
+
+# Build only
+./scripts/build-atomic.sh
 
 # Logs
 bun run see
 ```
+
+For deployment questions, see `docs/deployment.md`.
 
 ### Environment Variables (Production)
 
@@ -407,6 +409,7 @@ bun run pull
 
 - **README.md**: User-facing documentation
 - **CLAUDE.md**: This file (AI assistant guidelines)
+- **docs/deployment.md**: Atomic build system and deployment guide
 - **docs/setup/**: Local development setup
 - **IMPLEMENTATION_STATUS.md**: Feature completion tracking
 - **PHASE1_IMPLEMENTATION.md**: Initial implementation notes

@@ -48,25 +48,22 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Restore build from backup (DRY - used in build failure and rollback)
-restore_build_backup() {
-    local next_dir="$1"
-    local backup_dir="$2"
+# Rollback to previous build by switching symlink
+rollback_build() {
+    local symlink="$1"
+    local previous_build="$2"
 
-    if [ ! -d "$backup_dir" ]; then
-        log_error "Backup directory not found: $backup_dir"
+    if [ -z "$previous_build" ] || [ ! -d "apps/web/$previous_build" ]; then
+        log_error "Previous build not found: $previous_build"
         return 1
     fi
 
-    log_warn "Restoring build from backup..."
-    rm -rf "$next_dir" 2>/dev/null || true
+    log_warn "Rolling back to previous build: $previous_build"
+    cd apps/web
+    ln -sfn "$previous_build" "dist"
+    cd "$PROJECT_ROOT"
 
-    if ! mv "$backup_dir" "$next_dir" 2>/dev/null; then
-        log_error "Failed to restore backup - filesystem error"
-        return 1
-    fi
-
-    log_success "Build restored from backup"
+    log_success "Symlink rolled back to: $previous_build"
     return 0
 }
 
@@ -143,37 +140,33 @@ if ! bun install; then
     exit 1
 fi
 
-# Use absolute paths for clarity and safety
-NEXT_BUILD_DIR="$PROJECT_ROOT/apps/web/.next"
-BACKUP_DIR="$PROJECT_ROOT/apps/web/.next.backup"
-
-# Backup current build (if exists) to protect running application
-if [ -d "$NEXT_BUILD_DIR" ]; then
-    log_info "Backing up current build..."
-    rm -rf "$BACKUP_DIR" 2>/dev/null || true
-    cp -r "$NEXT_BUILD_DIR" "$BACKUP_DIR"
-    log_success "Build backup created"
+# Capture current build for potential rollback
+DIST_SYMLINK="$PROJECT_ROOT/apps/web/dist"
+PREVIOUS_BUILD=""
+if [ -L "$DIST_SYMLINK" ]; then
+    PREVIOUS_BUILD=$(readlink "$DIST_SYMLINK")
+    log_info "Current active build: $PREVIOUS_BUILD"
 fi
 
-# Build the project
-log_info "Running build..."
-BUILD_START=$(date +%s)
-if ! bun run build; then
-    log_error "Build failed"
-
-    # Restore backup if it exists
-    if restore_build_backup "$NEXT_BUILD_DIR" "$BACKUP_DIR"; then
-        log_info "Application still running with old version"
-    fi
-
+# Run atomic build (builds to timestamped dir, atomically updates symlink)
+log_info "Running atomic build..."
+if ! ./scripts/build-atomic.sh; then
+    log_error "Atomic build failed"
+    log_info "Previous build still active - no changes made"
     log_error "Deploy aborted - fix build errors and try again"
     exit 1
 fi
-BUILD_END=$(date +%s)
-BUILD_TIME=$((BUILD_END - BUILD_START))
-log_success "Build completed in ${BUILD_TIME}s"
 
-# Build succeeded - keep backup for potential rollback after health check
+log_success "Atomic build completed successfully"
+
+# Verify symlink exists
+if [ ! -L "$DIST_SYMLINK" ]; then
+    log_error "Build succeeded but dist symlink not found"
+    exit 1
+fi
+
+NEW_BUILD=$(readlink "$DIST_SYMLINK")
+log_success "New build active: $NEW_BUILD"
 
 # Stop existing PM2 process gracefully
 log_info "Stopping existing PM2 process..."
@@ -195,7 +188,8 @@ if [ -n "$NEXT_PIDS" ]; then
 fi
 
 # Remove lock files
-rm -f apps/web/.next/dev/lock 2>/dev/null || true
+rm -f apps/web/dist/dev/lock 2>/dev/null || true
+rm -f apps/web/.next/dev/lock 2>/dev/null || true  # Legacy cleanup
 
 # Start the production server
 log_info "Starting production server on port $PORT..."
@@ -226,10 +220,7 @@ echo ""
 
 if [ "$SERVER_READY" = true ]; then
     log_success "Server is responding (after ${WAITED}s)"
-
-    # Health check passed - remove backup
-    rm -rf "$BACKUP_DIR" 2>/dev/null || true
-    log_info "Backup removed - deployment successful"
+    log_success "Deployment successful - build $NEW_BUILD is active"
 else
     log_error "Server failed health check after ${MAX_WAIT}s"
 
@@ -237,29 +228,34 @@ else
     pm2 stop "$APP_NAME" >/dev/null 2>&1 || true
     pm2 delete "$APP_NAME" >/dev/null 2>&1 || true
 
-    # Rollback to previous build
-    if restore_build_backup "$NEXT_BUILD_DIR" "$BACKUP_DIR"; then
-        log_warn "Attempting to restart with old version..."
+    # Rollback to previous build if it exists
+    if [ -n "$PREVIOUS_BUILD" ]; then
+        if rollback_build "$DIST_SYMLINK" "$PREVIOUS_BUILD"; then
+            log_warn "Attempting to restart with previous build..."
 
-        # Restart with old build
-        cd "$PROJECT_ROOT/apps/web"
-        if pm2 start "bun next start -p $PORT" --name "$APP_NAME" >/dev/null 2>&1; then
-            # Verify rollback is serving
-            sleep 3
-            if curl -sf http://localhost:$PORT/ >/dev/null 2>&1; then
-                log_success "Rollback successful - old version is serving"
-                pm2 save >/dev/null 2>&1 || true
+            # Restart with old build
+            cd "$PROJECT_ROOT/apps/web"
+            if pm2 start "bun next start -p $PORT" --name "$APP_NAME" >/dev/null 2>&1; then
+                # Verify rollback is serving
+                sleep 3
+                if curl -sf http://localhost:$PORT/ >/dev/null 2>&1; then
+                    log_success "Rollback successful - previous build is serving"
+                    pm2 save >/dev/null 2>&1 || true
+                else
+                    log_error "Rollback started but not responding - check logs: pm2 logs $APP_NAME"
+                fi
             else
-                log_error "Rollback started but not responding - check logs: pm2 logs $APP_NAME"
+                log_error "Failed to restart after rollback - manual intervention required"
             fi
-        else
-            log_error "Failed to restart after rollback - manual intervention required"
-        fi
 
-        log_error "Deploy failed - check logs: pm2 logs $APP_NAME"
+            log_error "Deploy failed - check logs: pm2 logs $APP_NAME"
+        else
+            log_error "Rollback failed - manual intervention required"
+            log_error "Check logs with: pm2 logs $APP_NAME"
+        fi
     else
-        log_error "Rollback failed - manual intervention required"
-        log_error "Check logs with: pm2 logs $APP_NAME"
+        log_error "No previous build to rollback to"
+        log_error "This was the first deployment - check logs: pm2 logs $APP_NAME"
     fi
 
     exit 1

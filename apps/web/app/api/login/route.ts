@@ -1,14 +1,26 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { addCorsHeaders } from "@/lib/cors-utils"
+import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
+import { generateRequestId } from "@/lib/utils"
 import { isDomainPasswordValid, LoginSchema } from "@/types/guards/api"
 
 export async function POST(req: NextRequest) {
+  const requestId = generateRequestId()
   const origin = req.headers.get("origin")
   const body = await req.json().catch(() => ({}))
   const result = LoginSchema.safeParse(body)
 
   if (!result.success) {
-    const res = NextResponse.json({ ok: false, error: "invalid_request" }, { status: 400 })
+    const res = NextResponse.json(
+      {
+        ok: false,
+        error: ErrorCodes.INVALID_REQUEST,
+        message: getErrorMessage(ErrorCodes.INVALID_REQUEST),
+        details: { issues: result.error.issues },
+        requestId,
+      },
+      { status: 400 },
+    )
     addCorsHeaders(res, origin)
     return res
   }
@@ -29,18 +41,42 @@ export async function POST(req: NextRequest) {
 
   if (workspace === "manager") {
     if (passcode !== "wachtwoord") {
-      const res = NextResponse.json({ ok: false, error: "bad_passcode" }, { status: 401 })
+      const res = NextResponse.json(
+        {
+          ok: false,
+          error: ErrorCodes.INVALID_CREDENTIALS,
+          message: getErrorMessage(ErrorCodes.INVALID_CREDENTIALS),
+          requestId,
+        },
+        { status: 401 },
+      )
       addCorsHeaders(res, origin)
       return res
     }
   } else if (workspace) {
     if (!passcode || !(await isDomainPasswordValid(workspace, passcode))) {
-      const res = NextResponse.json({ ok: false, error: "bad_passcode" }, { status: 401 })
+      const res = NextResponse.json(
+        {
+          ok: false,
+          error: ErrorCodes.INVALID_CREDENTIALS,
+          message: getErrorMessage(ErrorCodes.INVALID_CREDENTIALS),
+          requestId,
+        },
+        { status: 401 },
+      )
       addCorsHeaders(res, origin)
       return res
     }
   } else {
-    const res = NextResponse.json({ ok: false, error: "workspace_required" }, { status: 400 })
+    const res = NextResponse.json(
+      {
+        ok: false,
+        error: ErrorCodes.WORKSPACE_MISSING,
+        message: getErrorMessage(ErrorCodes.WORKSPACE_MISSING),
+        requestId,
+      },
+      { status: 400 },
+    )
     addCorsHeaders(res, origin)
     return res
   }

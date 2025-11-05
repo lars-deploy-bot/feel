@@ -3,6 +3,7 @@ import { promisify } from "node:util"
 import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
 import { addCorsHeaders } from "@/lib/cors-utils"
+import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 import { loadDomainPasswords } from "@/types/guards/api"
 
 const execAsync = promisify(exec)
@@ -118,7 +119,16 @@ export async function GET(req: NextRequest) {
   const jar = await cookies()
 
   if (!jar.get("manager_session")) {
-    const res = NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 })
+    const requestId = crypto.randomUUID()
+    const res = NextResponse.json(
+      {
+        ok: false,
+        error: ErrorCodes.UNAUTHORIZED,
+        message: getErrorMessage(ErrorCodes.UNAUTHORIZED),
+        requestId,
+      },
+      { status: 401 },
+    )
     addCorsHeaders(res, origin)
     return res
   }

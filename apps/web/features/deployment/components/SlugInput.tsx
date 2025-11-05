@@ -3,10 +3,10 @@
 import { motion } from "framer-motion"
 import { useEffect, useRef, useState } from "react"
 import type { FieldErrors, UseFormRegister } from "react-hook-form"
-import { fieldVariants } from "@/lib/animations"
-import { WILDCARD_DOMAIN } from "@/lib/config"
 import { checkSlugAvailability } from "@/features/deployment/lib/slug-api"
 import { isValidSlug } from "@/features/deployment/lib/slug-utils"
+import { fieldVariants } from "@/lib/animations"
+import { WILDCARD_DOMAIN } from "@/lib/config"
 import type { DeploySubdomainForm } from "../types/deploy-subdomain"
 
 interface SlugInputProps {

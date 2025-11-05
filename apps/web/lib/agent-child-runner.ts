@@ -71,34 +71,82 @@ export function runAgentChild(workspaceRoot: string, payload: AgentRequest): Rea
 
   console.log(`[agent-child] Request sent to child (${requestJson.length} bytes)`)
 
+  // Track cleanup state to ensure it only happens once
+  // Necessary because multiple events (error + exit) can both trigger cleanup
+  let cleaned = false
+  let killTimeoutId: NodeJS.Timeout | null = null
+
+  // Store listener references for precise cleanup
+  const dataHandler = (chunk: Buffer) => {
+    controller.enqueue(new Uint8Array(chunk))
+  }
+
+  const endHandler = () => {
+    console.log("[agent-child] stdout ended")
+    controller.close()
+  }
+
+  const errorHandler = (error: Error) => {
+    console.error("[agent-child] Process error:", error)
+    cleanup()
+    controller.error(error)
+  }
+
+  const exitHandler = (code: number | null, signal: NodeJS.Signals | null) => {
+    if (code !== 0) {
+      console.error(`[agent-child] Exited with code ${code}, signal ${signal}`)
+    } else {
+      console.log("[agent-child] Exited successfully")
+    }
+    cleanup()
+  }
+
+  let controller: ReadableStreamDefaultController<Uint8Array>
+
+  const cleanup = () => {
+    if (!cleaned) {
+      cleaned = true
+      console.log(`[agent-child] Cleanup: PID ${child.pid}`)
+
+      // Clear any pending kill timeout
+      if (killTimeoutId) {
+        clearTimeout(killTimeoutId)
+        killTimeoutId = null
+      }
+
+      // Remove only the specific listeners we added
+      child.stdout.off("data", dataHandler)
+      child.stdout.off("end", endHandler)
+      child.off("error", errorHandler)
+      child.off("exit", exitHandler)
+    }
+  }
+
   const stream = new ReadableStream<Uint8Array>({
-    start(controller) {
-      child.stdout.on("data", (chunk: Buffer) => {
-        controller.enqueue(new Uint8Array(chunk))
-      })
+    start(ctrl) {
+      controller = ctrl
 
-      child.stdout.on("end", () => {
-        console.log("[agent-child] stdout ended")
-        controller.close()
-      })
-
-      child.on("error", error => {
-        console.error("[agent-child] Process error:", error)
-        controller.error(error)
-      })
-
-      child.on("exit", (code, signal) => {
-        if (code !== 0) {
-          console.error(`[agent-child] Exited with code ${code}, signal ${signal}`)
-        } else {
-          console.log("[agent-child] Exited successfully")
-        }
-      })
+      // Attach listeners
+      child.stdout.on("data", dataHandler)
+      child.stdout.on("end", endHandler)
+      child.on("error", errorHandler)
+      child.on("exit", exitHandler)
     },
 
     cancel() {
       console.log("[agent-child] Stream cancelled, killing child")
+      cleanup()
+
+      // Try graceful termination first
       child.kill("SIGTERM")
+
+      // If process doesn't exit within 5 seconds, force kill
+      killTimeoutId = setTimeout(() => {
+        if (!child.killed) {
+          console.warn(`[agent-child] SIGTERM timeout, sending SIGKILL to PID ${child.pid}`)
+          child.kill("SIGKILL")
+        }
+      }, 5000)
     },
   })
 

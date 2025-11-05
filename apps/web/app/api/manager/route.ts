@@ -3,6 +3,7 @@ import { promisify } from "node:util"
 import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
 import { addCorsHeaders } from "@/lib/cors-utils"
+import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 import { loadDomainPasswords, updateDomainPassword } from "@/types/guards/api"
 
 const execAsync = promisify(exec)
@@ -39,9 +40,18 @@ async function detectOrphanedDomains(): Promise<string[]> {
 export async function GET(req: NextRequest) {
   const origin = req.headers.get("origin")
   const jar = await cookies()
+  const requestId = crypto.randomUUID()
 
   if (!jar.get("manager_session")) {
-    const res = NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 })
+    const res = NextResponse.json(
+      {
+        ok: false,
+        error: ErrorCodes.UNAUTHORIZED,
+        message: getErrorMessage(ErrorCodes.UNAUTHORIZED),
+        requestId,
+      },
+      { status: 401 },
+    )
     addCorsHeaders(res, origin)
     return res
   }
@@ -74,9 +84,18 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const origin = req.headers.get("origin")
   const jar = await cookies()
+  const requestId = crypto.randomUUID()
 
   if (!jar.get("manager_session")) {
-    const res = NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 })
+    const res = NextResponse.json(
+      {
+        ok: false,
+        error: ErrorCodes.UNAUTHORIZED,
+        message: getErrorMessage(ErrorCodes.UNAUTHORIZED),
+        requestId,
+      },
+      { status: 401 },
+    )
     addCorsHeaders(res, origin)
     return res
   }
@@ -86,17 +105,33 @@ export async function POST(req: NextRequest) {
     const { domain, password } = body
 
     if (!domain || !password) {
-      const res = NextResponse.json({ ok: false, error: "invalid_request" }, { status: 400 })
+      const res = NextResponse.json(
+        {
+          ok: false,
+          error: ErrorCodes.INVALID_REQUEST,
+          message: getErrorMessage(ErrorCodes.INVALID_REQUEST),
+          requestId,
+        },
+        { status: 400 },
+      )
       addCorsHeaders(res, origin)
       return res
     }
 
     await updateDomainPassword(domain, password)
-    const res = NextResponse.json({ ok: true })
+    const res = NextResponse.json({ ok: true, requestId })
     addCorsHeaders(res, origin)
     return res
   } catch (_error) {
-    const res = NextResponse.json({ ok: false, error: "invalid_json" }, { status: 400 })
+    const res = NextResponse.json(
+      {
+        ok: false,
+        error: ErrorCodes.INVALID_JSON,
+        message: getErrorMessage(ErrorCodes.INVALID_JSON),
+        requestId,
+      },
+      { status: 400 },
+    )
     addCorsHeaders(res, origin)
     return res
   }
@@ -105,9 +140,18 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const origin = req.headers.get("origin")
   const jar = await cookies()
+  const requestId = crypto.randomUUID()
 
   if (!jar.get("manager_session")) {
-    const res = NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 })
+    const res = NextResponse.json(
+      {
+        ok: false,
+        error: ErrorCodes.UNAUTHORIZED,
+        message: getErrorMessage(ErrorCodes.UNAUTHORIZED),
+        requestId,
+      },
+      { status: 401 },
+    )
     addCorsHeaders(res, origin)
     return res
   }
@@ -117,7 +161,15 @@ export async function DELETE(req: NextRequest) {
     const { domain } = body
 
     if (!domain) {
-      const res = NextResponse.json({ ok: false, error: "invalid_request" }, { status: 400 })
+      const res = NextResponse.json(
+        {
+          ok: false,
+          error: ErrorCodes.INVALID_REQUEST,
+          message: getErrorMessage(ErrorCodes.INVALID_REQUEST, { field: "domain" }),
+          requestId,
+        },
+        { status: 400 },
+      )
       addCorsHeaders(res, origin)
       return res
     }
@@ -126,14 +178,19 @@ export async function DELETE(req: NextRequest) {
       const { stdout, stderr } = await execAsync(
         `/root/webalive/claude-bridge/scripts/delete-site-systemd.sh ${domain}`,
       )
-      const res = NextResponse.json({ ok: true, output: stdout, error: stderr || null })
+      const res = NextResponse.json({ ok: true, output: stdout, error: stderr || null, requestId })
       addCorsHeaders(res, origin)
       return res
     } catch (error) {
       const res = NextResponse.json(
         {
           ok: false,
-          error: error instanceof Error ? error.message : "Failed to delete site",
+          error: ErrorCodes.INTERNAL_ERROR,
+          message: getErrorMessage(ErrorCodes.INTERNAL_ERROR),
+          details: {
+            error: error instanceof Error ? error.message : String(error),
+          },
+          requestId,
         },
         { status: 500 },
       )
@@ -141,7 +198,15 @@ export async function DELETE(req: NextRequest) {
       return res
     }
   } catch (_error) {
-    const res = NextResponse.json({ ok: false, error: "invalid_json" }, { status: 400 })
+    const res = NextResponse.json(
+      {
+        ok: false,
+        error: ErrorCodes.INVALID_JSON,
+        message: getErrorMessage(ErrorCodes.INVALID_JSON),
+        requestId,
+      },
+      { status: 400 },
+    )
     addCorsHeaders(res, origin)
     return res
   }

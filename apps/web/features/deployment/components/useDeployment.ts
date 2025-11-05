@@ -1,7 +1,7 @@
 import { useCallback } from "react"
 import toast from "react-hot-toast"
-import { useDeployFormStore, useDeploymentHistoryStore, useDeploymentStatusStore } from "@/lib/stores/deployStore"
 import type { DeployResponse } from "@/features/deployment/types/deploy-subdomain"
+import { useDeployFormStore, useDeploymentHistoryStore, useDeploymentStatusStore } from "@/lib/stores/deployStore"
 
 export function useDeployment() {
   const { reset: resetForm } = useDeployFormStore()

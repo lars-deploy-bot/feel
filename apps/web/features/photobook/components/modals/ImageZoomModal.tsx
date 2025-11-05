@@ -21,10 +21,7 @@ export function ImageZoomModal({ imageSrc, onClose }: ImageZoomModalProps) {
       aria-label="Zoomed image view"
     >
       {/* biome-ignore lint/a11y/noStaticElementInteractions: onClick is only for preventing event bubbling, not user interaction */}
-      <div
-        className="relative max-w-full max-h-full"
-        onClick={e => e.stopPropagation()}
-      >
+      <div className="relative max-w-full max-h-full" onClick={e => e.stopPropagation()}>
         <Image
           src={imageSrc}
           alt=""

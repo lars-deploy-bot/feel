@@ -4,13 +4,6 @@ import { isToolAllowed } from "@/types/guards/api"
 
 export const ALLOWED_TOOLS = new Set(["Write", "Edit", "Read", "Glob", "Grep"])
 
-interface ToolInput {
-  file_path?: string
-  path?: string
-  notebook_path?: string
-  [key: string]: unknown
-}
-
 function extractFilePath(input: Record<string, unknown>): string | null {
   const filePathValue = input.file_path ?? input.path ?? input.notebook_path
   return typeof filePathValue === "string" ? filePathValue : null

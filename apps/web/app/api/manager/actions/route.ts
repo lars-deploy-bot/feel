@@ -3,15 +3,25 @@ import { promisify } from "node:util"
 import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
 import { addCorsHeaders } from "@/lib/cors-utils"
+import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 
 const execAsync = promisify(exec)
 
 export async function POST(req: NextRequest) {
   const origin = req.headers.get("origin")
   const jar = await cookies()
+  const requestId = crypto.randomUUID()
 
   if (!jar.get("manager_session")) {
-    const res = NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 })
+    const res = NextResponse.json(
+      {
+        ok: false,
+        error: ErrorCodes.UNAUTHORIZED,
+        message: getErrorMessage(ErrorCodes.UNAUTHORIZED),
+        requestId,
+      },
+      { status: 401 },
+    )
     addCorsHeaders(res, origin)
     return res
   }
@@ -21,7 +31,15 @@ export async function POST(req: NextRequest) {
     const { action } = body
 
     if (!action) {
-      const res = NextResponse.json({ ok: false, error: "invalid_request" }, { status: 400 })
+      const res = NextResponse.json(
+        {
+          ok: false,
+          error: ErrorCodes.INVALID_REQUEST,
+          message: getErrorMessage(ErrorCodes.INVALID_REQUEST, { field: "action" }),
+          requestId,
+        },
+        { status: 400 },
+      )
       addCorsHeaders(res, origin)
       return res
     }
@@ -58,11 +76,28 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const res = NextResponse.json({ ok: false, error: "unknown_action" }, { status: 400 })
+    const res = NextResponse.json(
+      {
+        ok: false,
+        error: ErrorCodes.UNKNOWN_ACTION,
+        message: getErrorMessage(ErrorCodes.UNKNOWN_ACTION, { action }),
+        details: { action },
+        requestId,
+      },
+      { status: 400 },
+    )
     addCorsHeaders(res, origin)
     return res
   } catch (_error) {
-    const res = NextResponse.json({ ok: false, error: "invalid_json" }, { status: 400 })
+    const res = NextResponse.json(
+      {
+        ok: false,
+        error: ErrorCodes.INVALID_JSON,
+        message: getErrorMessage(ErrorCodes.INVALID_JSON),
+        requestId,
+      },
+      { status: 400 },
+    )
     addCorsHeaders(res, origin)
     return res
   }

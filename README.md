@@ -124,9 +124,19 @@ See [docs/setup/README.md](./docs/setup/README.md) for detailed local developmen
 
 **One-Command Deploy:**
 ```bash
-# Pull latest code, build, and restart PM2 with health checks
+# Pull latest code, atomic build, restart PM2 with health checks
 bun run deploy
 ```
+
+**What it does:**
+- Pulls latest code from git
+- Installs dependencies
+- Runs atomic build (timestamped directories + symlink)
+- Restarts PM2 process
+- Performs health check
+- Rolls back automatically if health check fails
+
+See `docs/deployment.md` for detailed atomic build system documentation.
 
 **GitHub Webhook Auto-Deploy:**
 ```bash
@@ -154,16 +164,31 @@ pm2 logs claude-bridge
 curl https://your-domain.com/api/webhook/deploy/logs/deploy-TIMESTAMP.log
 ```
 
-#### Manual Deployment (Legacy)
+#### Manual Deployment
+
+**Atomic Build System:**
 ```bash
-# Build application
-bun run build
+# Build only (creates timestamped directory + symlink)
+./scripts/build-atomic.sh
 
-# Start with PM2
-pm2 start apps/web/next start --name claude-bridge -p 8999
+# Restart PM2 to serve new build
+pm2 restart claude-bridge
 
-# Configure Caddy reverse proxy
-# See Caddyfile for domain routing
+# Or combine both steps
+./scripts/build-atomic.sh && pm2 restart claude-bridge
+```
+
+The atomic build system prevents race conditions by:
+- Building to isolated `dist.TIMESTAMP/` directories
+- Using symlinks for atomic swaps (kernel-level operation)
+- Keeping last 3 builds for instant rollback
+- Never serving incomplete builds to PM2
+
+**First-time PM2 setup:**
+```bash
+cd apps/web
+pm2 start "bun next start -p 8999" --name claude-bridge
+pm2 save
 ```
 
 #### Caddy Configuration & Domain Routing
@@ -348,11 +373,11 @@ bun test             # Run unit tests (from apps/web)
 bun run test:e2e     # Run E2E tests
 
 # Production
-bun run build        # Build for production
-bun run start        # Start production server
+./scripts/build-atomic.sh  # Atomic build (timestamped + symlink)
+bun run start                # Start production server
 
 # Deployment
-bun run deploy       # Pull, build, restart PM2 with health checks
+bun run deploy       # Full deploy: pull, atomic build, PM2 restart, health check
 bun run see          # View PM2 logs
 
 # Site Deployment
@@ -386,9 +411,14 @@ claude-bridge/
 │   │   └── globals.css       # Global styles
 │   ├── components/           # React components
 │   ├── lib/                  # Utility libraries
+│   ├── dist → dist.TIMESTAMP # Symlink to active build (gitignored)
+│   ├── dist.20251105-155847/ # Timestamped build (gitignored)
 │   └── package.json
 ├── scripts/                  # Deployment scripts
+│   ├── build-atomic.sh       # Atomic build with symlinks
+│   └── build-and-serve.sh    # Full deployment script
 ├── docs/                     # Documentation
+│   └── deployment.md         # Atomic build system guide
 ├── Caddyfile                 # Reverse proxy config
 └── package.json              # Monorepo configuration
 ```

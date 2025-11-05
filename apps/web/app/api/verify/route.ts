@@ -1,7 +1,7 @@
 import { cookies, headers } from "next/headers"
 import { NextResponse } from "next/server"
 import { getWorkspace } from "@/features/chat/lib/workspaceRetriever"
-import { ErrorCodes } from "@/lib/error-codes"
+import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 import { generateRequestId } from "@/lib/utils"
 
 export async function POST(req: Request) {
@@ -16,7 +16,7 @@ export async function POST(req: Request) {
         {
           ok: false,
           error: ErrorCodes.NO_SESSION,
-          message: "Authentication required - no session cookie found",
+          message: getErrorMessage(ErrorCodes.NO_SESSION),
         },
         { status: 401 },
       )
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
         {
           ok: false,
           error: ErrorCodes.INVALID_JSON,
-          message: "Request body is not valid JSON",
+          message: getErrorMessage(ErrorCodes.INVALID_JSON),
         },
         { status: 400 },
       )
@@ -73,7 +73,7 @@ export async function POST(req: Request) {
         ok: false,
         verified: false,
         error: ErrorCodes.REQUEST_PROCESSING_FAILED,
-        message: "Failed to verify workspace",
+        message: getErrorMessage(ErrorCodes.REQUEST_PROCESSING_FAILED),
         details: error instanceof Error ? error.message : "Unknown error",
         requestId,
       },

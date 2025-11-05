@@ -71,10 +71,13 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error("Upload error:", error)
+    const requestId = Math.random().toString(36).substring(7)
     return NextResponse.json(
       {
-        error: "server_error",
-        message: error instanceof Error ? error.message : "Internal server error",
+        ok: false,
+        error: ErrorCodes.IMAGE_UPLOAD_FAILED,
+        message: error instanceof Error ? error.message : "Failed to upload image",
+        requestId,
       },
       { status: 500 },
     )

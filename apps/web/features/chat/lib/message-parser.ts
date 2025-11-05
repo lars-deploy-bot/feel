@@ -16,6 +16,7 @@ import {
   isSessionEvent,
   isStartEvent,
 } from "@/features/chat/types/stream"
+import { type ErrorCode, getErrorHelp, getErrorMessage } from "@/lib/error-codes"
 
 // Stream event types
 export interface StreamEvent {
@@ -33,10 +34,10 @@ export interface StreamEvent {
 }
 
 export interface ErrorEventData {
-  error: string
+  error: ErrorCode
   message: string
-  details?: string
-  code?: "aborted" | "query_failed" | "timeout"
+  details?: Record<string, any> | string // Structured error details or string message
+  code?: ErrorCode // Same as error field, matches ErrorCodes
 }
 
 export type PingEventData = Record<string, never>
@@ -105,7 +106,9 @@ export function parseStreamEvent(event: StreamEvent): UIMessage | null {
     // See: apps/web/features/chat/lib/unknown-message-types.json for documentation
     if (content.type === "system" && content.subtype === "compact_boundary") {
       // This is an internal SDK message about context compaction - show visual indicator
-      console.log(`[MessageParser] Context compaction triggered at ${content.compact_metadata?.pre_tokens || 'unknown'} tokens`)
+      console.log(
+        `[MessageParser] Context compaction triggered at ${content.compact_metadata?.pre_tokens || "unknown"} tokens`,
+      )
       return {
         id: `${event.requestId}-compact-${content.uuid}`,
         type: "compact_boundary",
@@ -160,14 +163,38 @@ export function parseStreamEvent(event: StreamEvent): UIMessage | null {
 
   if (event.type === "error") {
     const errorData = event.data as ErrorEventData
+    const errorCode = errorData.code || errorData.error
+
+    // Use error registry for user-friendly messages
+    const details = typeof errorData.details === "object" ? errorData.details : undefined
+    const userMessage = getErrorMessage(errorCode, details) || errorData.message
+    const helpText = getErrorHelp(errorCode, details)
+
+    // Format details if it's an object
+    let detailsText = ""
+    if (errorData.details && typeof errorData.details === "object") {
+      detailsText = JSON.stringify(errorData.details, null, 2)
+    } else if (errorData.details) {
+      detailsText = String(errorData.details)
+    }
+
+    // Build full error message with help text if available
+    let fullMessage = userMessage
+    if (helpText) {
+      fullMessage += `\n\n${helpText}`
+    }
+    if (detailsText && process.env.NODE_ENV === "development") {
+      fullMessage += `\n\nDetails: ${detailsText}`
+    }
+
     return {
       id: `${event.requestId}-error`,
       type: "sdk_message",
       content: {
         type: "result",
         is_error: true,
-        result: `${errorData.message}: ${errorData.details || errorData.error}`,
-        error_code: errorData.code,
+        result: fullMessage,
+        error_code: errorCode,
       },
       ...baseMessage,
     }

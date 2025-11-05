@@ -9,9 +9,10 @@ import { ThinkingSpinner } from "@/features/chat/components/ThinkingSpinner"
 import { groupMessages } from "@/features/chat/lib/message-grouper"
 import { parseStreamEvent, type StreamEvent, type UIMessage } from "@/features/chat/lib/message-parser"
 import { renderMessage } from "@/features/chat/lib/message-renderer"
+import { isTerminalMode } from "@/features/workspace/types/workspace"
 import { DevModeProvider, useDevMode } from "@/lib/dev-mode-context"
 import type { StructuredError } from "@/lib/error-codes"
-import { isTerminalMode } from "@/features/workspace/types/workspace"
+import { getErrorHelp, getErrorMessage } from "@/lib/error-codes"
 
 function ChatPageContent() {
   const [msg, setMsg] = useState("")
@@ -181,9 +182,21 @@ function ChatPageContent() {
           errorData = null
         }
 
-        // If we got structured error data, stringify it for the error message
-        if (errorData) {
-          throw new Error(JSON.stringify(errorData))
+        // If we got structured error data, use error registry for user-friendly message
+        if (errorData?.error) {
+          const userMessage = getErrorMessage(errorData.error, errorData.details) || errorData.message
+          const helpText = getErrorHelp(errorData.error, errorData.details)
+
+          let fullMessage = userMessage
+          if (helpText) {
+            fullMessage += `\n\n${helpText}`
+          }
+          // Show details in development only
+          if (errorData.details && process.env.NODE_ENV === "development") {
+            fullMessage += `\n\nDetails: ${JSON.stringify(errorData.details, null, 2)}`
+          }
+
+          throw new Error(fullMessage)
         }
 
         throw new Error(`HTTP ${response.status}: ${response.statusText}`)
@@ -195,6 +208,10 @@ function ChatPageContent() {
 
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
+
+      // Track parse errors to detect stream corruption
+      let consecutiveParseErrors = 0
+      const MAX_CONSECUTIVE_PARSE_ERRORS = 3
 
       try {
         while (true) {
@@ -226,9 +243,43 @@ function ChatPageContent() {
                     if (message) {
                       setMessages(prev => [...prev, message])
                     }
+
+                    // Reset consecutive error count on successful parse
+                    consecutiveParseErrors = 0
+                  } else {
+                    // Invalid structure (missing required fields)
+                    console.error("[Chat] Invalid SSE event structure:", rawData)
+                    consecutiveParseErrors++
+                    // Don't show individual error - only show summary if circuit breaker triggers
                   }
-                } catch (_parseError) {
-                  console.warn("[Chat] Failed to parse SSE data:", line.slice(0, 100))
+                } catch (parseError) {
+                  console.error("[Chat] Failed to parse SSE data:", {
+                    line: line.slice(0, 200),
+                    error: parseError,
+                  })
+                  consecutiveParseErrors++
+                  // Don't show individual error - only show summary if circuit breaker triggers
+
+                  // Stop stream if too many consecutive errors
+                  if (consecutiveParseErrors >= MAX_CONSECUTIVE_PARSE_ERRORS) {
+                    console.error("[Chat] Too many consecutive parse errors, stopping stream", consecutiveParseErrors)
+                    setMessages(prev => [
+                      ...prev,
+                      {
+                        id: Date.now().toString(),
+                        type: "sdk_message",
+                        content: {
+                          type: "result",
+                          is_error: true,
+                          result:
+                            "Connection unstable: Multiple parse errors detected. Please try again or refresh the page.",
+                        },
+                        timestamp: new Date(),
+                      },
+                    ])
+                    reader.cancel()
+                    break
+                  }
                 }
               }
               // Silently ignore all other events (raw Claude SDK events)
@@ -283,6 +334,30 @@ function ChatPageContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
       })
+
+      // Check for HTTP errors
+      if (!r.ok) {
+        let errorData: StructuredError | null = null
+        try {
+          errorData = await r.json()
+        } catch {
+          errorData = null
+        }
+
+        if (errorData?.error) {
+          const userMessage = getErrorMessage(errorData.error, errorData.details) || errorData.message
+          const helpText = getErrorHelp(errorData.error, errorData.details)
+
+          let fullMessage = userMessage
+          if (helpText) {
+            fullMessage += `\n\n${helpText}`
+          }
+
+          throw new Error(fullMessage)
+        }
+
+        throw new Error(`HTTP ${r.status}: ${r.statusText}`)
+      }
 
       const response = await r.json()
 

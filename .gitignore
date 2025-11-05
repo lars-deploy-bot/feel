@@ -21,6 +21,7 @@ bun.lockb
 out/
 build/
 dist/
+dist.*/
 
 # Turborepo
 .turbo/

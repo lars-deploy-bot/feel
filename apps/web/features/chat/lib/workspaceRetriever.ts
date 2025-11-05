@@ -2,8 +2,8 @@ import { existsSync, statSync } from "node:fs"
 import path from "node:path"
 import { NextResponse } from "next/server"
 import { normalizeDomain } from "@/features/manager/lib/domain-utils"
-import { ErrorCodes } from "@/lib/error-codes"
 import { isTerminalMode } from "@/features/workspace/types/workspace"
+import { ErrorCodes } from "@/lib/error-codes"
 
 export interface WorkspaceRequest {
   host: string

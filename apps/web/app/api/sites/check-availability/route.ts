@@ -1,8 +1,8 @@
 import { existsSync } from "node:fs"
 import path from "node:path"
 import { type NextRequest, NextResponse } from "next/server"
-import { buildSubdomain, WORKSPACE_BASE } from "@/lib/config"
 import { validateSlug } from "@/features/deployment/lib/slug-utils"
+import { buildSubdomain, WORKSPACE_BASE } from "@/lib/config"
 
 interface AvailabilityResponse {
   available: boolean

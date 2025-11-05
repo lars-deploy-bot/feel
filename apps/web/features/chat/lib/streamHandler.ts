@@ -213,7 +213,7 @@ export function createClaudeStream({
                 isAuthError = true
               }
             }
-          } catch (parseError) {
+          } catch (_parseError) {
             // Fallback to string matching if parsing fails
             isAuthError = errorString.includes("authentication_error")
           }
@@ -246,7 +246,8 @@ export function createClaudeStream({
 
             if (isAuthError) {
               errorCode = ErrorCodes.API_AUTH_FAILED
-              userMessage = "API authentication failed. The API key may be expired or invalid. Please contact the system administrator to update the API key."
+              userMessage =
+                "API authentication failed. The API key may be expired or invalid. Please contact the system administrator to update the API key."
             } else if (isMaxTurnsError) {
               errorCode = ErrorCodes.ERROR_MAX_TURNS
               userMessage = `Conversation reached maximum turn limit (${turnCount}/${maxTurns} turns). Please start a new conversation to continue working.`

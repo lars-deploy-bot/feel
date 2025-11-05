@@ -1,4 +1,5 @@
 import { MarkdownDisplay } from "@/components/ui/chat/format/MarkdownDisplay"
+import { MessageErrorBoundary } from "@/features/chat/components/MessageErrorBoundary"
 import { AssistantMessage } from "@/features/chat/components/message-renderers/AssistantMessage"
 import { CompactBoundaryMessage } from "@/features/chat/components/message-renderers/CompactBoundaryMessage"
 import { CompleteMessage } from "@/features/chat/components/message-renderers/CompleteMessage"
@@ -17,6 +18,10 @@ import { hasMarkdown } from "@/lib/utils/markdown-utils"
 import { getMessageComponentType, isErrorResultMessage, type UIMessage } from "./message-parser"
 
 export function renderMessage(message: UIMessage): React.ReactNode {
+  return <MessageErrorBoundary messageId={message.id}>{renderMessageContent(message)}</MessageErrorBoundary>
+}
+
+function renderMessageContent(message: UIMessage): React.ReactNode {
   // Check for error result messages first (before component type routing)
   if (message.type === "sdk_message" && isErrorResultMessage(message.content)) {
     return <ErrorResultMessage content={message.content} />

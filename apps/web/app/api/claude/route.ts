@@ -8,6 +8,7 @@ import { resolveWorkspace } from "@/features/workspace/lib/workspace-utils"
 import { isTerminalMode } from "@/features/workspace/types/workspace"
 import { createToolPermissionHandler } from "@/lib/claude/tool-permissions"
 import { addCorsHeaders } from "@/lib/cors-utils"
+import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 import { generateRequestId } from "@/lib/utils"
 import { BodySchema } from "@/types/guards/api"
 
@@ -27,8 +28,9 @@ export async function POST(req: Request) {
       const res = NextResponse.json(
         {
           ok: false,
-          error: "no_session",
-          message: "Authentication required - no session cookie found",
+          error: ErrorCodes.NO_SESSION,
+          message: getErrorMessage(ErrorCodes.NO_SESSION),
+          requestId,
         },
         { status: 401 },
       )
@@ -47,9 +49,10 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           ok: false,
-          error: "invalid_json",
-          message: "Request body is not valid JSON",
-          details: jsonError instanceof Error ? jsonError.message : "Unknown JSON parse error",
+          error: ErrorCodes.INVALID_JSON,
+          message: getErrorMessage(ErrorCodes.INVALID_JSON),
+          details: { error: jsonError instanceof Error ? jsonError.message : "Unknown JSON parse error" },
+          requestId,
         },
         { status: 400 },
       )
@@ -62,10 +65,10 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           ok: false,
-          error: "invalid_request",
-          message:
-            "Invalid request body. Required: message (string), conversationId (uuid). Optional: workspace (string)",
-          details: parseResult.error.issues,
+          error: ErrorCodes.INVALID_REQUEST,
+          message: getErrorMessage(ErrorCodes.INVALID_REQUEST),
+          details: { issues: parseResult.error.issues },
+          requestId,
         },
         { status: 400 },
       )
@@ -102,8 +105,10 @@ export async function POST(req: Request) {
       const errorRes = NextResponse.json(
         {
           ok: false,
-          error: "workspace_not_found",
-          message: `Workspace resolution failed: ${workspaceError instanceof Error ? workspaceError.message : "Unknown error"}`,
+          error: ErrorCodes.WORKSPACE_NOT_FOUND,
+          message: getErrorMessage(ErrorCodes.WORKSPACE_NOT_FOUND),
+          details: { error: workspaceError instanceof Error ? workspaceError.message : "Unknown error" },
+          requestId,
         },
         { status: 404 },
       )
@@ -176,10 +181,12 @@ export async function POST(req: Request) {
 
       const errorResponse = {
         ok: false,
-        error: "query_failed",
-        message: "Claude SDK query failed",
-        details: error instanceof Error ? error.message : "Unknown error",
-        stack: error instanceof Error ? error.stack : undefined,
+        error: ErrorCodes.QUERY_FAILED,
+        message: getErrorMessage(ErrorCodes.QUERY_FAILED),
+        details: {
+          error: error instanceof Error ? error.message : "Unknown error",
+          stack: error instanceof Error ? error.stack : undefined,
+        },
         requestId,
       }
 
@@ -193,9 +200,9 @@ export async function POST(req: Request) {
     const outerErrorRes = NextResponse.json(
       {
         ok: false,
-        error: "request_processing_failed",
-        message: "Failed to process request",
-        details: outerError instanceof Error ? outerError.message : "Unknown error",
+        error: ErrorCodes.REQUEST_PROCESSING_FAILED,
+        message: getErrorMessage(ErrorCodes.REQUEST_PROCESSING_FAILED),
+        details: { error: outerError instanceof Error ? outerError.message : "Unknown error" },
         requestId,
       },
       { status: 500 },

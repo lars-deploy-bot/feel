@@ -6,15 +6,38 @@
 // Concurrency guard to prevent overlapping sessions
 const activeConversations = new Set<string>()
 
+// Track when each conversation was locked (for timeout detection)
+const conversationLockTimestamps = new Map<string, number>()
+
+// Lock timeout: 5 minutes (in milliseconds)
+const LOCK_TIMEOUT_MS = 5 * 60 * 1000
+
 /**
  * Attempt to lock a conversation to prevent concurrent requests
  * Returns true if lock was acquired, false if conversation is already in progress
+ * Automatically unlocks stale locks that have been held for more than LOCK_TIMEOUT_MS
  */
 export function tryLockConversation(key: string): boolean {
   if (activeConversations.has(key)) {
-    return false
+    // Check if lock is stale (held for more than timeout period)
+    const lockTime = conversationLockTimestamps.get(key)
+    if (lockTime && Date.now() - lockTime > LOCK_TIMEOUT_MS) {
+      console.warn(`[Session] Force unlocking stale conversation lock: ${key}`)
+      console.warn(
+        `[Session] Lock was held for ${Math.round((Date.now() - lockTime) / 1000)}s (timeout: ${LOCK_TIMEOUT_MS / 1000}s)`,
+      )
+      activeConversations.delete(key)
+      conversationLockTimestamps.delete(key)
+      // Continue to acquire lock below
+    } else {
+      // Lock is still valid
+      return false
+    }
   }
+
+  // Acquire lock and record timestamp
   activeConversations.add(key)
+  conversationLockTimestamps.set(key, Date.now())
   return true
 }
 
@@ -24,6 +47,7 @@ export function tryLockConversation(key: string): boolean {
  */
 export function unlockConversation(key: string): void {
   activeConversations.delete(key)
+  conversationLockTimestamps.delete(key)
 }
 
 /**
@@ -45,4 +69,39 @@ export function isValidSessionId(value: unknown): value is string {
  */
 export function hasExistingSession(sessionId: string | null): sessionId is string {
   return sessionId !== null && sessionId.length > 0
+}
+
+/**
+ * Periodic cleanup of stale conversation locks
+ * Runs every minute to prevent memory leaks from abandoned locks
+ *
+ * Note: This runs in Node.js runtime (not edge), so setInterval is safe.
+ * Each server instance maintains its own lock state.
+ */
+function cleanupStaleLocks() {
+  const now = Date.now()
+  let cleanedCount = 0
+
+  for (const [key, timestamp] of conversationLockTimestamps.entries()) {
+    if (now - timestamp > LOCK_TIMEOUT_MS) {
+      console.warn(`[Session] Auto-unlocking stale conversation lock: ${key}`)
+      console.warn(
+        `[Session] Lock was held for ${Math.round((now - timestamp) / 1000)}s (timeout: ${LOCK_TIMEOUT_MS / 1000}s)`,
+      )
+      activeConversations.delete(key)
+      conversationLockTimestamps.delete(key)
+      cleanedCount++
+    }
+  }
+
+  if (cleanedCount > 0) {
+    console.log(`[Session] Cleaned up ${cleanedCount} stale lock(s)`)
+  }
+}
+
+// Start periodic cleanup in Node.js runtime
+// This prevents unbounded memory growth from abandoned locks
+if (typeof setInterval !== "undefined") {
+  setInterval(cleanupStaleLocks, 60 * 1000)
+  console.log("[Session] Started periodic lock cleanup (every 60s)")
 }

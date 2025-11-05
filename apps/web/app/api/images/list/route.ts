@@ -2,6 +2,7 @@ import { cookies } from "next/headers"
 import type { NextRequest } from "next/server"
 import { hasSessionCookie } from "@/features/auth/types/guards"
 import { resolveWorkspace } from "@/features/workspace/lib/workspace-utils"
+import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 import { imageStorage } from "@/lib/storage"
 import { workspaceToTenantId } from "@/lib/tenant-utils"
 import { generateRequestId } from "@/lib/utils"
@@ -10,15 +11,23 @@ export async function GET(request: NextRequest) {
   try {
     // 1. Auth check
     const jar = await cookies()
+    const requestId = generateRequestId()
     if (!hasSessionCookie(jar)) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 })
+      return Response.json(
+        {
+          ok: false,
+          error: ErrorCodes.UNAUTHORIZED,
+          message: getErrorMessage(ErrorCodes.UNAUTHORIZED),
+          requestId,
+        },
+        { status: 401 },
+      )
     }
 
     // 2. Resolve workspace (same logic as upload)
     const host = request.headers.get("host") || ""
     const searchParams = request.nextUrl.searchParams
     const workspaceParam = searchParams.get("workspace")
-    const requestId = generateRequestId()
 
     const body = workspaceParam ? { workspace: workspaceParam } : {}
 
@@ -33,7 +42,15 @@ export async function GET(request: NextRequest) {
     // 4. List images for this tenant
     const listResult = await imageStorage.list(tenantId)
     if (listResult.error) {
-      return Response.json({ error: "Failed to list images" }, { status: 500 })
+      return Response.json(
+        {
+          ok: false,
+          error: ErrorCodes.IMAGE_LIST_FAILED,
+          message: getErrorMessage(ErrorCodes.IMAGE_LIST_FAILED),
+          requestId,
+        },
+        { status: 500 },
+      )
     }
 
     // 5. Convert keys to structured format
@@ -73,6 +90,15 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error("List images error:", error)
-    return Response.json({ error: "Internal server error" }, { status: 500 })
+    const requestId = Math.random().toString(36).substring(7)
+    return Response.json(
+      {
+        ok: false,
+        error: ErrorCodes.IMAGE_LIST_FAILED,
+        message: error instanceof Error ? error.message : getErrorMessage(ErrorCodes.IMAGE_LIST_FAILED),
+        requestId,
+      },
+      { status: 500 },
+    )
   }
 }

@@ -5,6 +5,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { hasSessionCookie } from "@/features/auth/types/guards"
 import { getWorkspace } from "@/features/chat/lib/workspaceRetriever"
 import { isPathWithinWorkspace } from "@/features/workspace/types/workspace"
+import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 import { generateRequestId } from "@/lib/utils"
 
 interface FileInfo {
@@ -16,15 +17,24 @@ interface FileInfo {
 }
 
 export async function POST(request: NextRequest) {
+  const requestId = generateRequestId()
+
   try {
     const jar = await cookies()
     if (!hasSessionCookie(jar.get("session"))) {
-      return NextResponse.json({ error: "no_session" }, { status: 401 })
+      return NextResponse.json(
+        {
+          ok: false,
+          error: ErrorCodes.NO_SESSION,
+          message: getErrorMessage(ErrorCodes.NO_SESSION),
+          requestId,
+        },
+        { status: 401 },
+      )
     }
 
     const body = await request.json()
     const host = request.headers.get("host") || "localhost"
-    const requestId = generateRequestId()
 
     const workspaceResult = getWorkspace({ host, body, requestId })
     if (!workspaceResult.success) {
@@ -38,7 +48,22 @@ export async function POST(request: NextRequest) {
     const resolvedPath = path.resolve(fullPath)
     const resolvedWorkspace = path.resolve(workspaceResult.workspace)
     if (!isPathWithinWorkspace(resolvedPath, resolvedWorkspace, path.sep)) {
-      return NextResponse.json({ error: "path_outside_workspace" }, { status: 403 })
+      return NextResponse.json(
+        {
+          ok: false,
+          error: ErrorCodes.PATH_OUTSIDE_WORKSPACE,
+          message: getErrorMessage(ErrorCodes.PATH_OUTSIDE_WORKSPACE, {
+            attemptedPath: resolvedPath,
+            workspacePath: resolvedWorkspace,
+          }),
+          details: {
+            attemptedPath: resolvedPath,
+            workspacePath: resolvedWorkspace,
+          },
+          requestId,
+        },
+        { status: 403 },
+      )
     }
 
     try {
@@ -76,8 +101,16 @@ export async function POST(request: NextRequest) {
       console.error(`[Files ${requestId}] Error reading directory:`, fsError)
       return NextResponse.json(
         {
-          error: "read_error",
-          message: "Unable to read directory",
+          ok: false,
+          error: ErrorCodes.FILE_READ_ERROR,
+          message: getErrorMessage(ErrorCodes.FILE_READ_ERROR, {
+            filePath: targetPath,
+          }),
+          details: {
+            path: targetPath,
+            error: fsError instanceof Error ? fsError.message : "Unknown error",
+          },
+          requestId,
         },
         { status: 500 },
       )
@@ -86,8 +119,13 @@ export async function POST(request: NextRequest) {
     console.error("Files API error:", error)
     return NextResponse.json(
       {
-        error: "server_error",
-        message: "Internal server error",
+        ok: false,
+        error: ErrorCodes.REQUEST_PROCESSING_FAILED,
+        message: getErrorMessage(ErrorCodes.REQUEST_PROCESSING_FAILED),
+        details: {
+          error: error instanceof Error ? error.message : "Unknown error",
+        },
+        requestId,
       },
       { status: 500 },
     )

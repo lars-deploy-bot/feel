@@ -20,7 +20,7 @@ import { runAgentChild, shouldUseChildProcess } from "@/lib/agent-child-runner"
 import { createToolPermissionHandler } from "@/lib/claude/tool-permissions"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { env } from "@/lib/env"
-import { ErrorCodes } from "@/lib/error-codes"
+import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 import { logInput } from "@/lib/input-logger"
 import { generateRequestId } from "@/lib/utils"
 import { BodySchema } from "@/types/guards/api"
@@ -37,8 +37,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         ok: false,
-        error: "TEST_MODE_BLOCK",
-        message: "Real API calls are blocked during E2E tests. Mock this endpoint in your test.",
+        error: ErrorCodes.TEST_MODE_BLOCK,
+        message: getErrorMessage(ErrorCodes.TEST_MODE_BLOCK),
+        requestId,
       },
       { status: 403 },
     )
@@ -54,7 +55,8 @@ export async function POST(req: NextRequest) {
         {
           ok: false,
           error: ErrorCodes.NO_SESSION,
-          message: "Authentication required - no session cookie found",
+          message: getErrorMessage(ErrorCodes.NO_SESSION),
+          requestId,
         },
         { status: 401 },
       )
@@ -76,8 +78,9 @@ export async function POST(req: NextRequest) {
         {
           ok: false,
           error: ErrorCodes.INVALID_JSON,
-          message: "Request body is not valid JSON",
-          details: { message: jsonError instanceof Error ? jsonError.message : "Unknown JSON parse error" },
+          message: getErrorMessage(ErrorCodes.INVALID_JSON),
+          details: { error: jsonError instanceof Error ? jsonError.message : "Unknown JSON parse error" },
+          requestId,
         },
         { status: 400 },
       )
@@ -91,9 +94,9 @@ export async function POST(req: NextRequest) {
         {
           ok: false,
           error: ErrorCodes.INVALID_REQUEST,
-          message:
-            "Invalid request body. Required: message (string), conversationId (uuid). Optional: workspace (string)",
+          message: getErrorMessage(ErrorCodes.INVALID_REQUEST),
           details: { issues: parseResult.error.issues },
+          requestId,
         },
         { status: 400 },
       )
@@ -115,6 +118,7 @@ export async function POST(req: NextRequest) {
           ok: false,
           error: ErrorCodes.INVALID_REQUEST,
           message: "Your message contains inappropriate content. Please keep it professional and appropriate.",
+          requestId,
         },
         { status: 400 },
       )
@@ -147,8 +151,13 @@ export async function POST(req: NextRequest) {
         {
           ok: false,
           error: ErrorCodes.WORKSPACE_NOT_FOUND,
-          message: `Workspace resolution failed: ${workspaceError instanceof Error ? workspaceError.message : "Unknown error"}`,
-          details: { host, requestWorkspace },
+          message: getErrorMessage(ErrorCodes.WORKSPACE_NOT_FOUND, { host }),
+          details: {
+            host,
+            requestWorkspace,
+            error: workspaceError instanceof Error ? workspaceError.message : "Unknown error",
+          },
+          requestId,
         },
         { status: 404 },
       )
@@ -178,7 +187,8 @@ export async function POST(req: NextRequest) {
         {
           ok: false,
           error: ErrorCodes.CONVERSATION_BUSY,
-          message: "Another request is already in progress for this conversation",
+          message: getErrorMessage(ErrorCodes.CONVERSATION_BUSY),
+          requestId,
         },
         { status: 409 },
       )
@@ -342,7 +352,12 @@ export async function POST(req: NextRequest) {
               type: "error",
               requestId,
               timestamp: new Date().toISOString(),
-              data: { error: "STREAM_ERROR", message: String(error) },
+              data: {
+                error: ErrorCodes.STREAM_ERROR,
+                code: ErrorCodes.STREAM_ERROR,
+                message: getErrorMessage(ErrorCodes.STREAM_ERROR),
+                details: { error: String(error) },
+              },
             })}\n\n`
             controller.enqueue(encoder.encode(errorData))
           } finally {
