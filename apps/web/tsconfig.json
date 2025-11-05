@@ -54,16 +54,9 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts",
     "**/*.ts",
-    "**/*.tsx",
-    "../../.builds/current/types/**/*.ts",
-    "../../.builds/current/dev/types/**/*.ts",
-    "../../.builds/dist/types/**/*.ts",
-    "../../.builds/dist/dev/types/**/*.ts",
-    "dist/types/**/*.ts",
-    "dist/dev/types/**/*.ts"
+    "**/*.tsx"
   ],
   "exclude": [
-    "node_modules",
-    "../../.builds"
+    "node_modules"
   ]
 }

@@ -136,11 +136,12 @@ done
 # Check if port is available (excluding our own PM2 process)
 log_info "Checking port $PORT availability..."
 if lsof -Pi :$PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
-    PORT_PROC=$(lsof -Pi :$PORT -sTCP:LISTEN | grep -v "PID" || true)
-    if echo "$PORT_PROC" | grep -q "PM2"; then
+    # Check if this is our PM2-managed process
+    if pm2 list | grep -q "claude-bridge.*online"; then
         log_warn "Port $PORT is in use by PM2 (will be replaced)"
     else
-        log_error "Port $PORT is in use by another process:"
+        PORT_PROC=$(lsof -Pi :$PORT -sTCP:LISTEN | grep -v "PID" || true)
+        log_error "Port $PORT is in use by non-PM2 process:"
         echo "$PORT_PROC"
         exit 1
     fi

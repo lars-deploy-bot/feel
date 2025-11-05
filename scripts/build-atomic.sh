@@ -27,21 +27,36 @@ TEMP_BUILD_DIR=".builds/dist"
 TIMESTAMPED_DIR=".builds/dist.${TIMESTAMP}"
 SYMLINK=".builds/current"
 WEB_DIR="apps/web"
+WEB_NEXT_DIR="$WEB_DIR/.next"
 BUILDS_DIR=".builds"
 
 log_info "Starting atomic build to dist.${TIMESTAMP}..."
 
-# Remove existing temp build if it exists and is NOT a symlink
-if [ -e "$TEMP_BUILD_DIR" ] && [ ! -L "$TEMP_BUILD_DIR" ]; then
-    log_warn "Found non-symlink $TEMP_BUILD_DIR directory - moving to backup..."
-    mv "$TEMP_BUILD_DIR" "${TEMP_BUILD_DIR}.backup.$(date +%s)"
+# Check available disk space (require 250MB: ~127MB build + buffer)
+REQUIRED_MB=250
+AVAILABLE_MB=$(df -BM "$PROJECT_ROOT" | tail -1 | awk '{print $4}' | sed 's/M//')
+if [ "$AVAILABLE_MB" -lt "$REQUIRED_MB" ]; then
+    log_error "Insufficient disk space: ${AVAILABLE_MB}MB available, ${REQUIRED_MB}MB required"
+    log_error "Clean up old builds or free disk space before building"
+    exit 1
+fi
+log_info "Disk space check: ${AVAILABLE_MB}MB available (${REQUIRED_MB}MB required)"
+
+# Ensure .builds directory exists
+mkdir -p "$BUILDS_DIR"
+
+# Preserve dev server files if they exist
+DEV_BACKUP=""
+if [ -d "$WEB_NEXT_DIR/dev" ]; then
+    log_info "Backing up dev server files..."
+    DEV_BACKUP="$WEB_NEXT_DIR.dev-backup"
+    mv "$WEB_NEXT_DIR/dev" "$DEV_BACKUP"
 fi
 
-# If dist is a symlink, remove it temporarily for build
-if [ -L "$TEMP_BUILD_DIR" ]; then
-    OLD_TARGET=$(readlink "$TEMP_BUILD_DIR")
-    log_info "Removing symlink (will restore after build)"
-    rm "$TEMP_BUILD_DIR"
+# Clean up any existing production .next build
+if [ -d "$WEB_NEXT_DIR" ]; then
+    log_info "Removing existing production .next build..."
+    rm -rf "$WEB_NEXT_DIR"
 fi
 
 # Build dependencies first (tools package)
@@ -55,13 +70,7 @@ BUILD_START=$(date +%s)
 cd "$WEB_DIR"
 if ! bun run build; then
     log_error "Build failed"
-
     cd "$PROJECT_ROOT"
-    # Restore symlink if it existed
-    if [ -n "${OLD_TARGET:-}" ]; then
-        ln -sfn "$OLD_TARGET" "$SYMLINK"
-        log_info "Restored previous symlink"
-    fi
     exit 1
 fi
 
@@ -70,10 +79,40 @@ BUILD_END=$(date +%s)
 BUILD_TIME=$((BUILD_END - BUILD_START))
 log_success "Build completed in ${BUILD_TIME}s"
 
-# Verify build output
-if [ ! -d "$TEMP_BUILD_DIR" ]; then
-    log_error "Build directory not found: $TEMP_BUILD_DIR"
+# Verify .next build output exists
+if [ ! -d "$WEB_NEXT_DIR" ]; then
+    log_error "Build directory not found: $WEB_NEXT_DIR"
     exit 1
+fi
+
+# Move .next to .builds/dist
+log_info "Moving build to .builds/dist..."
+mv "$WEB_NEXT_DIR" "$TEMP_BUILD_DIR"
+log_success "Build moved to temporary location"
+
+# Restore dev server files if they were backed up
+if [ -n "$DEV_BACKUP" ] && [ -d "$DEV_BACKUP" ]; then
+    log_info "Restoring dev server files..."
+    mkdir -p "$WEB_NEXT_DIR"
+    mv "$DEV_BACKUP" "$WEB_NEXT_DIR/dev"
+    log_success "Dev server files restored"
+fi
+
+# Copy static assets into standalone directory for Next.js standalone mode
+log_info "Copying static assets to standalone directory..."
+STANDALONE_DIR="$TEMP_BUILD_DIR/standalone/apps/web"
+
+# Copy entire .next/static to standalone
+if [ -d "$TEMP_BUILD_DIR/static" ]; then
+    mkdir -p "$STANDALONE_DIR/.next"
+    cp -r "$TEMP_BUILD_DIR/static" "$STANDALONE_DIR/.next/static"
+    log_success "Copied .next/static to standalone"
+fi
+
+# Copy public directory if it exists
+if [ -d "$WEB_DIR/public" ]; then
+    cp -r "$WEB_DIR/public" "$STANDALONE_DIR/public"
+    log_success "Copied public directory to standalone"
 fi
 
 # Move build to timestamped directory
