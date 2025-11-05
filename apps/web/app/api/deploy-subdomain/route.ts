@@ -79,14 +79,12 @@ export async function POST(request: NextRequest) {
       console.log("[Deploy-Subdomain] Request parsed")
     } catch (parseError) {
       console.error("[Deploy-Subdomain] Failed to parse JSON:", parseError)
-      return NextResponse.json(
-        {
-          ok: false,
-          message: "Invalid JSON in request body",
-          error: "INVALID_JSON",
-        } as DeploySubdomainResponse,
-        { status: 400 },
-      )
+      const errorResponse: DeploySubdomainResponse = {
+        ok: false,
+        message: "Invalid JSON in request body",
+        error: "INVALID_JSON",
+      }
+      return NextResponse.json(errorResponse, { status: 400 })
     }
 
     // Validate using Zod schema
@@ -95,14 +93,12 @@ export async function POST(request: NextRequest) {
       console.error("[Deploy-Subdomain] Schema validation failed:", parseResult.error.issues)
       const firstError = parseResult.error.issues[0]
       const errorMessage = firstError ? `${firstError.path.join(".")}: ${firstError.message}` : "Invalid request"
-      return NextResponse.json(
-        {
-          ok: false,
-          message: errorMessage,
-          error: "VALIDATION_ERROR",
-        } as DeploySubdomainResponse,
-        { status: 400 },
-      )
+      const validationError: DeploySubdomainResponse = {
+        ok: false,
+        message: errorMessage,
+        error: "VALIDATION_ERROR",
+      }
+      return NextResponse.json(validationError, { status: 400 })
     }
 
     const { slug, email, siteIdeas, password } = parseResult.data
@@ -118,28 +114,24 @@ export async function POST(request: NextRequest) {
     const slugExists = await siteMetadataStore.exists(slug)
     if (slugExists) {
       console.error(`[Deploy-Subdomain] Slug already exists: ${slug}`)
-      return NextResponse.json(
-        {
-          ok: false,
-          message: `Subdomain "${slug}" is already taken. Choose a different name.`,
-          error: "SLUG_TAKEN",
-        } as DeploySubdomainResponse,
-        { status: 409 },
-      )
+      const slugTakenError: DeploySubdomainResponse = {
+        ok: false,
+        message: `Subdomain "${slug}" is already taken. Choose a different name.`,
+        error: "SLUG_TAKEN",
+      }
+      return NextResponse.json(slugTakenError, { status: 409 })
     }
 
     // Also check if directory exists (extra safety)
     const siteDir = `/srv/webalive/sites/${fullDomain}`
     if (existsSync(siteDir)) {
       console.error(`[Deploy-Subdomain] Site directory already exists: ${siteDir}`)
-      return NextResponse.json(
-        {
-          ok: false,
-          message: "Site directory already exists. Choose a different slug.",
-          error: "SLUG_TAKEN",
-        } as DeploySubdomainResponse,
-        { status: 409 },
-      )
+      const directoryExistsError: DeploySubdomainResponse = {
+        ok: false,
+        message: "Site directory already exists. Choose a different slug.",
+        error: "SLUG_TAKEN",
+      }
+      return NextResponse.json(directoryExistsError, { status: 409 })
     }
 
     // Execute deployment script
@@ -165,6 +157,18 @@ export async function POST(request: NextRequest) {
       console.warn(`[Deploy-Subdomain] STDERR:\n${stderr.substring(0, 500)}`)
     }
 
+    // Save metadata immediately after deployment completes
+    console.log("[Deploy-Subdomain] Saving metadata...")
+    await siteMetadataStore.setSite(slug, {
+      slug,
+      domain: fullDomain,
+      workspace: fullDomain,
+      email,
+      siteIdeas,
+      createdAt: Date.now(),
+    })
+    console.log("[Deploy-Subdomain] Metadata saved successfully")
+
     // Validate SSL certificate
     console.log("[Deploy-Subdomain] Validating SSL certificate...")
     const sslValidation = await validateSSLCertificate(fullDomain)
@@ -174,32 +178,21 @@ export async function POST(request: NextRequest) {
       // Still continue - deployment succeeded, cert might just be slow
     }
 
-    // Save metadata
-    console.log("[Deploy-Subdomain] Saving metadata...")
-    await siteMetadataStore.setSite(slug, {
-      slug,
-      domain: fullDomain,
-      workspace: fullDomain, // Display-friendly workspace name (just the domain)
-      email,
-      siteIdeas,
-      createdAt: Date.now(),
-    })
-
     const duration = Date.now() - startTime
     console.log(`[Deploy-Subdomain] Deployment completed successfully in ${duration}ms`)
 
-    const res = NextResponse.json(
-      {
-        ok: true,
-        message: `Site ${fullDomain} deployed successfully!`,
-        domain: fullDomain,
-        chatUrl: `/chat?slug=${slug}`,
-      } as DeploySubdomainResponse,
-      { status: 200 },
-    )
+    const sessionId = crypto.randomUUID()
 
-    // Set session cookie so user is authenticated when redirected to chat
-    res.cookies.set("session", "1", {
+    const response: DeploySubdomainResponse = {
+      ok: true,
+      message: `Site ${fullDomain} deployed successfully!`,
+      domain: fullDomain,
+      chatUrl: `/chat?slug=${slug}`,
+    }
+
+    const res = NextResponse.json(response, { status: 200 })
+
+    res.cookies.set("session", sessionId, {
       httpOnly: true,
       secure: true,
       sameSite: "none",
@@ -237,20 +230,18 @@ export async function POST(request: NextRequest) {
       errorMessage = error.message
     }
 
-    return NextResponse.json(
-      {
-        ok: false,
-        message: errorMessage,
-        error: "DEPLOYMENT_FAILED",
-        details:
-          process.env.NODE_ENV === "development"
-            ? error instanceof Error
-              ? error.toString()
-              : String(error)
-            : undefined,
-      } as DeploySubdomainResponse,
-      { status: statusCode },
-    )
+    const deploymentError: DeploySubdomainResponse = {
+      ok: false,
+      message: errorMessage,
+      error: "DEPLOYMENT_FAILED",
+      details:
+        process.env.NODE_ENV === "development"
+          ? error instanceof Error
+            ? error.toString()
+            : String(error)
+          : undefined,
+    }
+    return NextResponse.json(deploymentError, { status: statusCode })
   }
 }
 

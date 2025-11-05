@@ -1,13 +1,7 @@
 import { useCallback } from "react"
 import toast from "react-hot-toast"
 import { useDeployFormStore, useDeploymentHistoryStore, useDeploymentStatusStore } from "@/lib/stores/deployStore"
-
-interface DeployResponse {
-  success: boolean
-  message: string
-  domain?: string
-  errors?: string[]
-}
+import type { DeployResponse } from "@/features/deployment/types/deploy-subdomain"
 
 export function useDeployment() {
   const { reset: resetForm } = useDeployFormStore()
@@ -47,7 +41,12 @@ export function useDeployment() {
           throw new Error(`Server error: ${responseText.substring(0, 200)}`)
         }
 
-        const result: DeployResponse = JSON.parse(responseText)
+        let result: DeployResponse
+        try {
+          result = JSON.parse(responseText)
+        } catch {
+          throw new Error(`Invalid JSON response: ${responseText.substring(0, 200)}`)
+        }
 
         if (result.success) {
           setDeploymentStatus("success")

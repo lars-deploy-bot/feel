@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react"
 import type { FieldErrors, UseFormRegister } from "react-hook-form"
 import { fieldVariants } from "@/lib/animations"
 import { WILDCARD_DOMAIN } from "@/lib/config"
+import { checkSlugAvailability } from "@/features/deployment/lib/slug-api"
 import { isValidSlug } from "@/features/deployment/lib/slug-utils"
 import type { DeploySubdomainForm } from "../types/deploy-subdomain"
 
@@ -38,19 +39,9 @@ export function SlugInput({ register, errors, watchSlug, isDeploying }: SlugInpu
 
     setIsChecking(true)
     const timer = setTimeout(async () => {
-      try {
-        const lowercaseSlug = watchSlug.toLowerCase()
-        console.log(`[Frontend] Checking availability for: "${lowercaseSlug}"`)
-        const res = await fetch(`/api/sites/check-availability?slug=${encodeURIComponent(lowercaseSlug)}`)
-        const data = await res.json()
-        console.log("[Frontend] Availability result:", data)
-        setIsAvailable(data.available)
-      } catch (error) {
-        console.error("Failed to check availability:", error)
-        setIsAvailable(null)
-      } finally {
-        setIsChecking(false)
-      }
+      const result = await checkSlugAvailability(watchSlug)
+      setIsAvailable(result.available)
+      setIsChecking(false)
     }, 1000) // Debounce 1 second
 
     return () => clearTimeout(timer)

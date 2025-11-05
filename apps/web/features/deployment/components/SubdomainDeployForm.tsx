@@ -7,7 +7,8 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { EmailField } from "@/components/ui/primitives/EmailField"
 import { PasswordField } from "@/components/ui/primitives/PasswordField"
-import type { DeploySubdomainForm } from "@/features/deployment/types/deploy-subdomain"
+import { checkSlugAvailability } from "@/features/deployment/lib/slug-api"
+import type { DeploySubdomainForm, DeploySubdomainResponse } from "@/features/deployment/types/deploy-subdomain"
 import { WILDCARD_DOMAIN } from "@/lib/config"
 import { DeploymentStatus } from "./DeploymentStatus"
 import { SlugInput } from "./SlugInput"
@@ -40,17 +41,9 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
 }
 
-interface DeploymentResult {
-  ok: boolean
-  message: string
-  domain?: string
-  chatUrl?: string
-  error?: string
-}
-
 export function SubdomainDeployForm() {
   const [isDeploying, setIsDeploying] = useState(false)
-  const [deploymentStatus, setDeploymentStatus] = useState<DeploymentResult | null>(null)
+  const [deploymentStatus, setDeploymentStatus] = useState<DeploySubdomainResponse | null>(null)
   const [showPassword, setShowPassword] = useState(false)
 
   const {
@@ -78,12 +71,19 @@ export function SubdomainDeployForm() {
 
     try {
       // Final availability check before deployment
-      const availCheck = await fetch(
-        `/api/sites/check-availability?slug=${encodeURIComponent(data.slug.toLowerCase())}`,
-      )
-      const availData = await availCheck.json()
+      const availCheck = await checkSlugAvailability(data.slug)
 
-      if (!availData.available) {
+      if (availCheck.error || availCheck.available === null) {
+        setDeploymentStatus({
+          ok: false,
+          message: availCheck.error || "Failed to check availability",
+          error: "AVAILABILITY_CHECK_FAILED",
+        })
+        setIsDeploying(false)
+        return
+      }
+
+      if (!availCheck.available) {
         setDeploymentStatus({
           ok: false,
           message: "This subdomain is no longer available",
@@ -111,7 +111,7 @@ export function SubdomainDeployForm() {
         throw new Error(`Server error (${response.status}): ${responseText.substring(0, 200)}`)
       }
 
-      const result: DeploymentResult = JSON.parse(responseText)
+      const result: DeploySubdomainResponse = JSON.parse(responseText)
       setDeploymentStatus(result)
     } catch (error) {
       setDeploymentStatus({
