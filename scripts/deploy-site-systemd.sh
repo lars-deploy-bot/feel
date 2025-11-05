@@ -27,7 +27,7 @@ USER="site-${SLUG}"
 OLD_SITE_DIR="/root/webalive/sites/$DOMAIN"
 NEW_SITE_DIR="/srv/webalive/sites/$DOMAIN"
 CADDYFILE="/root/webalive/claude-bridge/Caddyfile"
-DOMAIN_PASSWORDS_FILE="/root/webalive/claude-bridge/domain-passwords.json"
+DOMAIN_PASSWORDS_FILE="/var/lib/claude-bridge/domain-passwords.json"
 SERVER_IP="138.201.56.93"
 PASSWORD="${DEPLOY_PASSWORD:-supersecret}"  # Read from environment, fallback to default
 

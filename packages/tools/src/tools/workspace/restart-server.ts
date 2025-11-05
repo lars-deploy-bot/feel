@@ -1,5 +1,6 @@
 import { tool } from "@anthropic-ai/claude-agent-sdk"
 import { z } from "zod"
+import { callBridgeApi, type ToolResult } from "../../lib/bridge-api-client.js"
 
 export const restartServerParamsSchema = {
   workspaceRoot: z.string().describe("The root path of the workspace (e.g., /srv/webalive/sites/example.com/user)"),
@@ -9,57 +10,13 @@ export type RestartServerParams = {
   workspaceRoot: string
 }
 
-export type RestartServerResult = {
-  content: Array<{ type: "text"; text: string }>
-  isError: boolean
-}
-
-export async function restartServer(params: RestartServerParams): Promise<RestartServerResult> {
+export async function restartServer(params: RestartServerParams): Promise<ToolResult> {
   const { workspaceRoot } = params
 
-  try {
-    const response = await fetch("http://localhost:8998/api/restart-workspace", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workspaceRoot }),
-    })
-
-    const result = (await response.json()) as { success?: boolean; message?: string }
-
-    if (result.success) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `✓ ${result.message}\n\nThe server has been restarted and should now reflect your changes.`,
-          },
-        ],
-        isError: false,
-      }
-    }
-
-    return {
-      content: [
-        {
-          type: "text" as const,
-          text: `✗ ${result.message}`,
-        },
-      ],
-      isError: true,
-    }
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error)
-
-    return {
-      content: [
-        {
-          type: "text" as const,
-          text: `✗ Failed to call restart API\n\nError: ${errorMessage}`,
-        },
-      ],
-      isError: true,
-    }
-  }
+  return callBridgeApi({
+    endpoint: "/api/restart-workspace",
+    body: { workspaceRoot },
+  })
 }
 
 export const restartServerTool = tool(

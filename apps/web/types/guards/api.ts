@@ -110,22 +110,30 @@ interface DomainConfig {
 type DomainPasswords = Record<string, DomainConfig>
 
 function getDomainPasswordsPath(): string {
-  // Check multiple possible locations for the domain-passwords.json file
-  const possiblePaths = [
-    join(process.cwd(), "..", "..", "domain-passwords.json"),
+  // PRODUCTION: Use persistent location outside of git and build process
+  // This ensures the file survives deployments and doesn't require rebuilds
+  const persistentPath = "/var/lib/claude-bridge/domain-passwords.json"
+
+  // Always prefer persistent location if it exists
+  if (existsSync(persistentPath)) {
+    return persistentPath
+  }
+
+  // Fallback paths for development/testing
+  const devPaths = [
     join(process.cwd(), "domain-passwords.json"),
     "/root/webalive/claude-bridge/domain-passwords.json",
   ]
 
-  for (const path of possiblePaths) {
+  for (const path of devPaths) {
     if (existsSync(path)) {
       console.log("Found domain passwords at:", path)
       return path
     }
   }
 
-  console.log("Domain passwords file not found, checked:", possiblePaths)
-  return possiblePaths[0] // Return default path for creation
+  console.log("Domain passwords file not found, using persistent path:", persistentPath)
+  return persistentPath // Return persistent path for creation
 }
 
 export function loadDomainPasswords(): DomainPasswords {

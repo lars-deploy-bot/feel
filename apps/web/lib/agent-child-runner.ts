@@ -49,16 +49,13 @@ export function runAgentChild(workspaceRoot: string, payload: AgentRequest): Rea
 
   const child = spawn(process.execPath, [runnerPath], {
     env: {
-      PATH: process.env.PATH,
-      HOME: process.env.HOME,
-      // Don't pass ANTHROPIC_API_KEY - let Claude Code use OAuth credentials
-      NODE_ENV: process.env.NODE_ENV,
-      GROQ_API_SECRET: process.env.GROQ_API_SECRET,
+      ...process.env, // Inherit all environment variables
+      // Override specific values for child process
       TARGET_UID: String(uid),
       TARGET_GID: String(gid),
       TARGET_CWD: workspaceRoot,
-      LANG: "C.UTF-8",
-      LC_CTYPE: "C.UTF-8",
+      // Don't pass ANTHROPIC_API_KEY - let Claude Code use OAuth credentials
+      ANTHROPIC_API_KEY: undefined,
     },
     stdio: ["pipe", "pipe", "pipe"],
   })

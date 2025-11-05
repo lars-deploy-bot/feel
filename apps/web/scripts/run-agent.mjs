@@ -16,6 +16,8 @@ import { join } from "node:path"
 import process from "node:process"
 import { toolsMcp, workspaceManagementMcp } from "@alive-brug/tools"
 import { query } from "@anthropic-ai/claude-agent-sdk"
+// Workspace helpers available if needed (currently unused)
+// import { createWorkspaceContext, createWorkspacePermissionHandler } from "../lib/agent-workspace-helpers.mjs"
 
 async function readStdinJson() {
   const chunks = []
@@ -72,6 +74,8 @@ async function readStdinJson() {
     const request = await readStdinJson()
     console.error(`[runner] Received request: ${request.message?.substring(0, 50)}...`)
 
+    // MCP tools use process.cwd() which is set by process.chdir() above
+    // No workspace injection needed - tools default to process.cwd()
     const agentQuery = query({
       prompt: request.message,
       options: {

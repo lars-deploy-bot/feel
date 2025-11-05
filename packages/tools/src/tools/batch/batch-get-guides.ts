@@ -98,7 +98,7 @@ export async function batchGetGuides(params: BatchGetGuidesParams): Promise<Batc
         })
 
         if (include_separator && i > 0) {
-          output += "\n\n" + "=".repeat(80) + "\n\n"
+          output += `\n\n${"=".repeat(80)}\n\n`
         }
 
         output += `## Guide ${i + 1}/${requests.length}: ${req.category}${req.topic ? ` (topic: "${req.topic}")` : ""}\n\n`
@@ -119,7 +119,7 @@ export async function batchGetGuides(params: BatchGetGuidesParams): Promise<Batc
     const successCount = results.filter(r => r.success).length
     const failCount = results.length - successCount
 
-    output += "\n\n" + "=".repeat(80) + "\n\n"
+    output += `\n\n${"=".repeat(80)}\n\n`
     output += "## Batch Summary\n\n"
     output += `- **Total requests:** ${requests.length}\n`
     output += `- **Successful:** ${successCount}\n`

@@ -3,7 +3,7 @@
 import { Moon, Sun } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 interface SettingsDropdownProps {
   onNewChat?: () => void
@@ -11,8 +11,13 @@ interface SettingsDropdownProps {
 
 export function SettingsDropdown({ onNewChat }: SettingsDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const router = useRouter()
   const { theme, setTheme } = useTheme()
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const handleLogout = async () => {
     try {
@@ -69,8 +74,17 @@ export function SettingsDropdown({ onNewChat }: SettingsDropdownProps) {
             className="w-full px-4 py-2.5 text-left text-sm text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors font-medium flex items-center gap-2"
             type="button"
           >
-            {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-            {theme === "dark" ? "Light mode" : "Dark mode"}
+            {mounted ? (
+              <>
+                {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+                {theme === "dark" ? "Light mode" : "Dark mode"}
+              </>
+            ) : (
+              <>
+                <Moon size={16} />
+                Toggle theme
+              </>
+            )}
           </button>
           <div className="border-t border-black/10 dark:border-white/10 my-1" />
           <button

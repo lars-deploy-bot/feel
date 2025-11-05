@@ -20,16 +20,18 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Configuration
-PORT=8999
-APP_NAME="claude-bridge"
+# Load configuration from single source of truth
+SCRIPT_DIR="$(dirname "$0")"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+CONFIG_FILE="$PROJECT_ROOT/bridge.config.js"
+
+# Extract port and app name from config file
+PORT=$(node -p "require('$CONFIG_FILE').ports.production")
+APP_NAME=$(node -p "require('$CONFIG_FILE').appName.production")
 LOCK_FILE="/tmp/${APP_NAME}-deploy.lock"
 MAX_WAIT=30  # Max seconds to wait for health check
 STANDALONE_SERVER_PATH=".builds/current/standalone/apps/web/server.js"
 
-# Navigate to project root
-SCRIPT_DIR="$(dirname "$0")"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_ROOT"
 
 # Logging function
@@ -54,7 +56,7 @@ start_pm2_server() {
     local port="$1"
     local app_name="$2"
 
-    PORT="$port" pm2 start "$PROJECT_ROOT/$STANDALONE_SERVER_PATH" \
+    PORT="$port" BRIDGE_API_PORT="$port" NODE_ENV="production" pm2 start "$PROJECT_ROOT/$STANDALONE_SERVER_PATH" \
         --name "$app_name" \
         --interpreter bun \
         --cwd "$PROJECT_ROOT" \

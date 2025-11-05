@@ -3,10 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev --turbo -p 8999",
+    "dev": "next dev --turbo -p $(node -p require('../../bridge.config.js').ports.dev)",
     "dev:test": "next dev --turbo -p 9547",
     "build": "next build",
-    "start": "next start -p 8999",
+    "start": "next start -p $(node -p require('../../bridge.config.js').ports.production)",
     "lint": "biome lint .",
     "format": "biome check --write --unsafe .",
     "test": "vitest run",

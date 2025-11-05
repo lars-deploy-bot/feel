@@ -25,7 +25,7 @@ SLUG=${DOMAIN//[^a-zA-Z0-9]/-}  # Convert domain to systemd-safe name
 USER="site-${SLUG}"
 SITE_DIR="/srv/webalive/sites/$DOMAIN"
 CADDYFILE="/root/webalive/claude-bridge/Caddyfile"
-DOMAIN_PASSWORDS_FILE="/root/webalive/claude-bridge/domain-passwords.json"
+DOMAIN_PASSWORDS_FILE="/var/lib/claude-bridge/domain-passwords.json"
 ENV_FILE="/etc/sites/${SLUG}.env"
 
 echo "🗑️  Removing $DOMAIN from WebAlive infrastructure..."

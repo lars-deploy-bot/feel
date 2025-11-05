@@ -1,19 +1,40 @@
 import type { Options } from "@anthropic-ai/claude-agent-sdk"
 import { ensurePathWithinWorkspace, type Workspace } from "@/features/workspace/lib/workspace-secure"
-import { isToolAllowed } from "@/types/guards/api"
 
-export const ALLOWED_TOOLS = new Set(["Write", "Edit", "Read", "Glob", "Grep"])
+// SDK built-in tools that operate on files (path validation required)
+export const ALLOWED_SDK_TOOLS = new Set(["Write", "Edit", "Read", "Glob", "Grep"])
+
+// MCP tools allowed (no path validation needed - handled by child process)
+export const ALLOWED_MCP_TOOLS = new Set([
+  "mcp__workspace-management__restart_dev_server",
+  "mcp__workspace-management__install_package",
+  "mcp__tools__list_guides",
+  "mcp__tools__get_guide",
+  "mcp__tools__generate_persona",
+])
 
 function extractFilePath(input: Record<string, unknown>): string | null {
   const filePathValue = input.file_path ?? input.path ?? input.notebook_path
   return typeof filePathValue === "string" ? filePathValue : null
 }
 
+function isToolPermitted(toolName: string): boolean {
+  return ALLOWED_SDK_TOOLS.has(toolName) || ALLOWED_MCP_TOOLS.has(toolName)
+}
+
+/**
+ * Permission handler for SDK tools
+ *
+ * Note: This handler is ONLY used for non-child-process workspaces (legacy root-owned sites).
+ * All current systemd sites use child process isolation where:
+ * - SDK tools (Write, Edit, Read, Glob, Grep) validate paths here
+ * - MCP tools bypass this entirely (handled in child process with process.cwd())
+ */
 export function createToolPermissionHandler(workspace: Workspace, requestId: string): Options["canUseTool"] {
-  return async (toolName, input) => {
+  return async (toolName, input, _options) => {
     console.log(`[Request ${requestId}] Tool requested: ${toolName}`)
 
-    if (!isToolAllowed(toolName, ALLOWED_TOOLS)) {
+    if (!isToolPermitted(toolName)) {
       console.log(`[Request ${requestId}] Tool denied: ${toolName}`)
       return {
         behavior: "deny",
@@ -21,17 +42,20 @@ export function createToolPermissionHandler(workspace: Workspace, requestId: str
       }
     }
 
-    const filePath = extractFilePath(input)
+    // Validate file paths for SDK tools to prevent directory traversal
+    if (ALLOWED_SDK_TOOLS.has(toolName)) {
+      const filePath = extractFilePath(input)
 
-    if (filePath) {
-      try {
-        ensurePathWithinWorkspace(filePath, workspace.root)
-        console.log(`[Request ${requestId}] Path allowed: ${filePath}`)
-      } catch {
-        console.log(`[Request ${requestId}] Path outside workspace: ${filePath}`)
-        return {
-          behavior: "deny",
-          message: "path_outside_workspace",
+      if (filePath) {
+        try {
+          ensurePathWithinWorkspace(filePath, workspace.root)
+          console.log(`[Request ${requestId}] Path allowed: ${filePath}`)
+        } catch {
+          console.log(`[Request ${requestId}] Path outside workspace: ${filePath}`)
+          return {
+            behavior: "deny",
+            message: "path_outside_workspace",
+          }
         }
       }
     }
@@ -39,10 +63,7 @@ export function createToolPermissionHandler(workspace: Workspace, requestId: str
     console.log(`[Request ${requestId}] Tool allowed: ${toolName}`)
     return {
       behavior: "allow",
-      updatedInput: {
-        ...input,
-        __workspace: workspace,
-      },
+      updatedInput: input, // No modifications needed - child process handles workspace context
       updatedPermissions: [],
     }
   }

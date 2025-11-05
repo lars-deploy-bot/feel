@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { Workspace } from "@/features/workspace/lib/workspace-secure"
-import { ALLOWED_TOOLS, createToolPermissionHandler } from "@/lib/claude/tool-permissions"
+import { ALLOWED_SDK_TOOLS, createToolPermissionHandler } from "@/lib/claude/tool-permissions"
 
 describe("Tool Permission System", () => {
   const mockWorkspace: Workspace = {
@@ -11,10 +11,11 @@ describe("Tool Permission System", () => {
   }
 
   const requestId = "test-request-123"
+  const mockOptions = { signal: new AbortController().signal }
 
-  describe("ALLOWED_TOOLS whitelist", () => {
+  describe("ALLOWED_SDK_TOOLS whitelist", () => {
     it("should only include safe file operation tools", () => {
-      const allowedArray = Array.from(ALLOWED_TOOLS)
+      const allowedArray = Array.from(ALLOWED_SDK_TOOLS)
 
       // Must include these safe tools
       expect(allowedArray).toContain("Read")
@@ -25,7 +26,7 @@ describe("Tool Permission System", () => {
     })
 
     it("should NOT include dangerous tools", () => {
-      const allowedArray = Array.from(ALLOWED_TOOLS)
+      const allowedArray = Array.from(ALLOWED_SDK_TOOLS)
 
       // Must NOT include dangerous operations
       const dangerousTools = ["Bash", "Exec", "Command", "Shell", "Delete", "Remove", "Rm"]
@@ -37,7 +38,7 @@ describe("Tool Permission System", () => {
 
     it("should have a reasonable number of tools (not too permissive)", () => {
       // Should be a small, controlled set of tools
-      expect(ALLOWED_TOOLS.size).toBeLessThanOrEqual(10)
+      expect(ALLOWED_SDK_TOOLS.size).toBeLessThanOrEqual(10)
     })
   })
 
@@ -45,29 +46,33 @@ describe("Tool Permission System", () => {
     it("should allow whitelisted tools", async () => {
       const canUseTool = createToolPermissionHandler(mockWorkspace, requestId)
 
-      const readResult = await canUseTool("Read", { file_path: `${mockWorkspace.root}/test.txt` })
+      const readResult = await canUseTool("Read", { file_path: `${mockWorkspace.root}/test.txt` }, mockOptions)
       expect(readResult.behavior).toBe("allow")
 
-      const writeResult = await canUseTool("Write", { file_path: `${mockWorkspace.root}/test.txt` })
+      const writeResult = await canUseTool("Write", { file_path: `${mockWorkspace.root}/test.txt` }, mockOptions)
       expect(writeResult.behavior).toBe("allow")
     })
 
     it("should deny non-whitelisted tools", async () => {
       const canUseTool = createToolPermissionHandler(mockWorkspace, requestId)
 
-      const bashResult = await canUseTool("Bash", { command: "ls -la" })
+      const bashResult = await canUseTool("Bash", { command: "ls -la" }, mockOptions)
       expect(bashResult.behavior).toBe("deny")
-      expect(bashResult.message).toContain("tool_not_allowed")
+      if (bashResult.behavior === "deny") {
+        expect(bashResult.message).toContain("tool_not_allowed")
+      }
     })
 
-    it("should inject workspace context into allowed tools", async () => {
+    it("should preserve input without modifications", async () => {
       const canUseTool = createToolPermissionHandler(mockWorkspace, requestId)
 
-      const result = await canUseTool("Read", { file_path: `${mockWorkspace.root}/test.txt` })
+      const input = { file_path: `${mockWorkspace.root}/test.txt` }
+      const result = await canUseTool("Read", input, mockOptions)
 
       expect(result.behavior).toBe("allow")
-      expect(result.updatedInput).toHaveProperty("__workspace")
-      expect(result.updatedInput?.__workspace).toEqual(mockWorkspace)
+      if (result.behavior === "allow") {
+        expect(result.updatedInput).toEqual(input)
+      }
     })
 
     it("should validate file paths are within workspace", async () => {
@@ -76,15 +81,17 @@ describe("Tool Permission System", () => {
       // Valid path inside workspace
       const validResult = await canUseTool("Read", {
         file_path: `${mockWorkspace.root}/valid-file.txt`,
-      })
+      }, mockOptions)
       expect(validResult.behavior).toBe("allow")
 
       // Path traversal attack
       const attackResult = await canUseTool("Read", {
         file_path: `${mockWorkspace.root}/../../../etc/passwd`,
-      })
+      }, mockOptions)
       expect(attackResult.behavior).toBe("deny")
-      expect(attackResult.message).toContain("path_outside_workspace")
+      if (attackResult.behavior === "deny") {
+        expect(attackResult.message).toContain("path_outside_workspace")
+      }
     })
 
     it("should check multiple path parameter names", async () => {
@@ -93,27 +100,21 @@ describe("Tool Permission System", () => {
       // Test file_path
       const filePathResult = await canUseTool("Read", {
         file_path: "/etc/passwd",
-      })
+      }, mockOptions)
       expect(filePathResult.behavior).toBe("deny")
 
       // Test path
       const pathResult = await canUseTool("Glob", {
         path: "/etc/passwd",
-      })
+      }, mockOptions)
       expect(pathResult.behavior).toBe("deny")
-
-      // Test notebook_path
-      const notebookResult = await canUseTool("NotebookEdit", {
-        notebook_path: "/etc/passwd",
-      })
-      expect(notebookResult.behavior).toBe("deny")
     })
 
     it("should allow tools without file paths", async () => {
       const canUseTool = createToolPermissionHandler(mockWorkspace, requestId)
 
       // Some tools might not have file paths (e.g., search queries)
-      const result = await canUseTool("Grep", { pattern: "search-term" })
+      const result = await canUseTool("Grep", { pattern: "search-term" }, mockOptions)
       expect(result.behavior).toBe("allow")
     })
 
@@ -123,9 +124,11 @@ describe("Tool Permission System", () => {
       const attacks = ["/etc/passwd", "/root/.ssh/id_rsa", "/srv/webalive/sites/other-site/secret.txt"]
 
       for (const attack of attacks) {
-        const result = await canUseTool("Read", { file_path: attack })
+        const result = await canUseTool("Read", { file_path: attack }, mockOptions)
         expect(result.behavior, `Should deny: ${attack}`).toBe("deny")
-        expect(result.message).toContain("path_outside_workspace")
+        if (result.behavior === "deny") {
+          expect(result.message).toContain("path_outside_workspace")
+        }
       }
     })
 
@@ -135,7 +138,7 @@ describe("Tool Permission System", () => {
       const attacks = [`${mockWorkspace.root}/../../../etc/passwd`, `${mockWorkspace.root}/../../root/.bashrc`]
 
       for (const attack of attacks) {
-        const result = await canUseTool("Read", { file_path: attack })
+        const result = await canUseTool("Read", { file_path: attack }, mockOptions)
         expect(result.behavior, `Should deny: ${attack}`).toBe("deny")
       }
     })
@@ -149,15 +152,16 @@ describe("Tool Permission System", () => {
         encoding: "utf-8",
       }
 
-      const result = await canUseTool("Write", input)
+      const result = await canUseTool("Write", input, mockOptions)
 
       expect(result.behavior).toBe("allow")
-      expect(result.updatedInput).toMatchObject({
-        file_path: input.file_path,
-        content: input.content,
-        encoding: input.encoding,
-        __workspace: mockWorkspace,
-      })
+      if (result.behavior === "allow") {
+        expect(result.updatedInput).toMatchObject({
+          file_path: input.file_path,
+          content: input.content,
+          encoding: input.encoding,
+        })
+      }
     })
   })
 
@@ -165,7 +169,7 @@ describe("Tool Permission System", () => {
     it("should deny empty tool names", async () => {
       const canUseTool = createToolPermissionHandler(mockWorkspace, requestId)
 
-      const result = await canUseTool("", { file_path: `${mockWorkspace.root}/test.txt` })
+      const result = await canUseTool("", { file_path: `${mockWorkspace.root}/test.txt` }, mockOptions)
       expect(result.behavior).toBe("deny")
     })
 
@@ -178,7 +182,7 @@ describe("Tool Permission System", () => {
       for (const tool of similarTools) {
         if (tool === "Read") continue // Skip the actual allowed tool
 
-        const result = await canUseTool(tool, { file_path: `${mockWorkspace.root}/test.txt` })
+        const result = await canUseTool(tool, { file_path: `${mockWorkspace.root}/test.txt` }, mockOptions)
         expect(result.behavior, `Should deny: "${tool}"`).toBe("deny")
       }
     })
@@ -186,7 +190,7 @@ describe("Tool Permission System", () => {
     it("should handle empty input objects", async () => {
       const canUseTool = createToolPermissionHandler(mockWorkspace, requestId)
 
-      const result = await canUseTool("Read", {})
+      const result = await canUseTool("Read", {}, mockOptions)
       expect(["allow", "deny"]).toContain(result.behavior)
     })
 
@@ -201,11 +205,11 @@ describe("Tool Permission System", () => {
       const canUseTool = createToolPermissionHandler(rootWorkspace, requestId)
 
       // Should allow within workspace
-      const validResult = await canUseTool("Read", { file_path: "/srv/webalive/test.txt" })
+      const validResult = await canUseTool("Read", { file_path: "/srv/webalive/test.txt" }, mockOptions)
       expect(validResult.behavior).toBe("allow")
 
       // Should deny outside
-      const invalidResult = await canUseTool("Read", { file_path: "/etc/passwd" })
+      const invalidResult = await canUseTool("Read", { file_path: "/etc/passwd" }, mockOptions)
       expect(invalidResult.behavior).toBe("deny")
     })
   })
@@ -217,7 +221,7 @@ describe("Tool Permission System", () => {
       const sensitiveFiles = ["/etc/passwd", "/etc/shadow", "/root/.ssh/id_rsa", "/root/.bashrc", "/proc/self/environ"]
 
       for (const file of sensitiveFiles) {
-        const result = await canUseTool("Read", { file_path: file })
+        const result = await canUseTool("Read", { file_path: file }, mockOptions)
         expect(result.behavior, `Should block: ${file}`).toBe("deny")
       }
     })
@@ -228,7 +232,7 @@ describe("Tool Permission System", () => {
       const attacks = ["/srv/webalive/sites/other-site/user/.env", "/srv/webalive/sites/competitor/user/config.json"]
 
       for (const attack of attacks) {
-        const result = await canUseTool("Read", { file_path: attack })
+        const result = await canUseTool("Read", { file_path: attack }, mockOptions)
         expect(result.behavior, `Should block: ${attack}`).toBe("deny")
       }
     })
@@ -238,12 +242,12 @@ describe("Tool Permission System", () => {
 
       const attacks = [
         "/root/webalive/claude-bridge/.env",
-        "/root/webalive/claude-bridge/domain-passwords.json",
+        "/var/lib/claude-bridge/domain-passwords.json",
         "/root/webalive/claude-bridge/apps/web/.env.local",
       ]
 
       for (const attack of attacks) {
-        const result = await canUseTool("Read", { file_path: attack })
+        const result = await canUseTool("Read", { file_path: attack }, mockOptions)
         expect(result.behavior, `Should block: ${attack}`).toBe("deny")
       }
     })
