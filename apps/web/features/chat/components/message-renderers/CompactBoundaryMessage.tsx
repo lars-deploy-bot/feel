@@ -1,4 +1,4 @@
-import { useDebugVisible } from "@/lib/dev-mode-context"
+import { useDebugVisible } from "@/lib/stores/debug-store"
 
 interface CompactBoundaryMessageProps {
   data: {

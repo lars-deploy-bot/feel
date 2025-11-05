@@ -1,6 +1,6 @@
 import type { SDKAssistantMessage } from "@anthropic-ai/claude-agent-sdk"
 import { MarkdownDisplay } from "@/components/ui/chat/format/MarkdownDisplay"
-import { useDebugVisible } from "@/lib/dev-mode-context"
+import { useDebugVisible } from "@/lib/stores/debug-store"
 import { getToolIcon } from "@/lib/tool-icons"
 import { hasMarkdown } from "@/lib/utils/markdown-utils"
 import type { ContentItem } from "@/types/guards/content"

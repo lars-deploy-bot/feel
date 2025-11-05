@@ -1,3 +1,4 @@
+import { isDevelopment } from "@/lib/stores/debug-store"
 import type { DevSSEEvent } from "./dev-terminal-context"
 
 export type ClientErrorType =
@@ -24,7 +25,7 @@ export function sendClientError(params: {
   addDevEvent: (event: DevSSEEvent) => void
 }): void {
   // Only log in development
-  if (process.env.NODE_ENV !== "development") return
+  if (!isDevelopment()) return
 
   const { conversationId, errorType, data, addDevEvent } = params
 

@@ -303,7 +303,7 @@ BRIDGE_PASSCODE=your_secure_passcode
 
 **Optional:**
 ```bash
-CLAUDE_MODEL=claude-3-5-sonnet-20241022
+CLAUDE_MODEL=claude-3-5-haiku-20241022
 WORKSPACE_BASE=/srv/webalive/sites
 ```
 

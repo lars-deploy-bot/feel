@@ -15,10 +15,18 @@ export const listGuidesParamsSchema = {
     .describe(
       "The category to list guides from (e.g., '30-guides', 'workflows', 'extra/knowledge-base'). If omitted, lists all categories with their guide counts.",
     ),
+  detail_level: z
+    .enum(["brief", "full"])
+    .optional()
+    .default("brief")
+    .describe(
+      "'brief' (titles only, context-efficient) or 'full' (titles + first line descriptions). Default: 'brief'",
+    ),
 }
 
 export type ListGuidesParams = {
   category?: GuideCategory
+  detail_level?: "brief" | "full"
 }
 
 export type ListGuidesResult = {
@@ -28,7 +36,7 @@ export type ListGuidesResult = {
 
 export async function listGuides(params: ListGuidesParams, guidesBasePath: string): Promise<ListGuidesResult> {
   try {
-    const { category } = params
+    const { category, detail_level = "brief" } = params
 
     if (!category) {
       const categorySummaries: string[] = []
@@ -74,22 +82,44 @@ export async function listGuides(params: ListGuidesParams, guidesBasePath: strin
     }
 
     const guideSummaries: string[] = []
-    for (const file of mdFiles) {
-      try {
-        const filePath = join(guidesRoot, file)
-        const content = await readFile(filePath, "utf-8")
-        const firstLine = content.split("\n")[0].replace(/^#\s*/, "")
-        guideSummaries.push(`- **${file}**: ${firstLine}`)
-      } catch {
-        guideSummaries.push(`- **${file}**`)
+
+    if (detail_level === "brief") {
+      // Brief mode: just filenames (context-efficient)
+      for (const file of mdFiles) {
+        guideSummaries.push(`- ${file}`)
       }
+    } else {
+      // Full mode: filenames + first line descriptions
+      for (const file of mdFiles) {
+        try {
+          const filePath = join(guidesRoot, file)
+          const content = await readFile(filePath, "utf-8")
+          const firstLine = content.split("\n")[0].replace(/^#\s*/, "")
+          guideSummaries.push(`- **${file}**: ${firstLine}`)
+        } catch {
+          guideSummaries.push(`- **${file}**`)
+        }
+      }
+    }
+
+    const modeNote =
+      detail_level === "brief"
+        ? "\n\n*Brief mode (context-efficient). Use `detail_level: 'full'` for descriptions.*"
+        : ""
+
+    // Result hints: suggest next actions
+    let hints = "\n\n### Quick Actions\n"
+    hints += `- **Read a guide:** \`mcp__tools__get_guide({ category: "${category}", topic: "your-topic" })\`\n`
+    hints += `- **Search across all categories:** \`mcp__tools__find_guide({ query: "your-search" })\`\n`
+    if (detail_level === "brief") {
+      hints += `- **See descriptions:** \`mcp__tools__list_guides({ category: "${category}", detail_level: "full" })\`\n`
     }
 
     return {
       content: [
         {
           type: "text" as const,
-          text: `# Guides in "${category}" (${mdFiles.length})\n\n${guideSummaries.join("\n")}\n\nUse the get_guide tool to read a specific guide.`,
+          text: `# Guides in "${category}" (${mdFiles.length})\n\n${guideSummaries.join("\n")}${modeNote}${hints}`,
         },
       ],
       isError: false,
@@ -111,7 +141,13 @@ export async function listGuides(params: ListGuidesParams, guidesBasePath: strin
 
 export const listGuidesTool = tool(
   "list_guides",
-  "Lists all available development guides in a specific category. Use this to discover what documentation and guides are available before retrieving specific content.",
+  `Lists all available development guides in a specific category. Use this to discover what documentation and guides are available before retrieving specific content.
+
+Context-efficient mode: Use detail_level: 'brief' (default) to see only guide filenames, reducing token usage. Use 'full' when you need descriptions.
+
+Examples:
+- list_guides({ category: "workflows" }) - Brief list (context-efficient)
+- list_guides({ category: "30-guides", detail_level: "full" }) - With descriptions`,
   listGuidesParamsSchema,
   async args => {
     const guidesBasePath = join(__dirname, "../../internals-folder")

@@ -77,7 +77,7 @@ ANTHROPIC_API_KEY=your_claude_api_key
 
 # Optional
 BRIDGE_PASSCODE=your_secure_passcode  # If unset, any passcode works
-CLAUDE_MODEL=claude-3-5-sonnet-20241022  # Default model
+CLAUDE_MODEL=claude-3-5-haiku-20241022  # Default model
 WORKSPACE_BASE=/srv/webalive/sites       # Base directory for workspaces (default: /srv/webalive/sites)
 
 # Auto-deployment (optional)

@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { useDebugVisible } from "@/lib/dev-mode-context"
+import { useDebugVisible } from "@/lib/stores/debug-store"
 import type { UIMessage } from "../lib/message-parser"
 import { renderMessage } from "../lib/message-renderer"
 import { ThinkingSpinner } from "./ThinkingSpinner"

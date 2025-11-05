@@ -39,15 +39,15 @@ terminal.goalive.nl → localhost:8999 (standalone production server)
 staging.terminal.goalive.nl → localhost:8998 (dev server with hot reload)
 ```
 
-### PM2 Commands
+### Management Commands
 ```bash
 # Production
-pm2 logs claude-bridge
+bun run see            # View logs (last 1000 lines)
 pm2 restart claude-bridge
 
 # Staging
-pm2 logs claude-bridge-staging
-pm2 restart claude-bridge-staging
+bun run staging        # Build tools + restart staging + show status
+bun run see:staging    # View staging logs (last 1000 lines)
 
 # Both
 pm2 list

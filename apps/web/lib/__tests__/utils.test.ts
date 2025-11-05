@@ -158,7 +158,7 @@ describe("Utility Functions", () => {
     it("truncates long strings", () => {
       const input = "a".repeat(300)
       const result = truncateDeep(input, 200)
-      expect(result).toBe("a".repeat(200) + "...[truncated 100 chars]")
+      expect(result).toBe(`${"a".repeat(200)}...[truncated 100 chars]`)
     })
 
     it("preserves short strings", () => {
@@ -201,15 +201,15 @@ describe("Utility Functions", () => {
         },
       }
       const result = truncateDeep(input, 200) as any
-      expect(result.level1.level2.level3.message).toBe("a".repeat(200) + "...[truncated 100 chars]")
+      expect(result.level1.level2.level3.message).toBe(`${"a".repeat(200)}...[truncated 100 chars]`)
     })
 
     it("handles arrays", () => {
       const input = ["short", "a".repeat(300), { message: "b".repeat(300) }]
       const result = truncateDeep(input, 200) as any
       expect(result[0]).toBe("short")
-      expect(result[1]).toBe("a".repeat(200) + "...[truncated 100 chars]")
-      expect(result[2].message).toBe("b".repeat(200) + "...[truncated 100 chars]")
+      expect(result[1]).toBe(`${"a".repeat(200)}...[truncated 100 chars]`)
+      expect(result[2].message).toBe(`${"b".repeat(200)}...[truncated 100 chars]`)
     })
 
     it("handles circular references", () => {
@@ -277,7 +277,7 @@ describe("Utility Functions", () => {
 
       const result = truncateDeep(input, 200) as any
       expect(result.users[0].name).toBe("Alice")
-      expect(result.users[0].bio).toBe("a".repeat(200) + "...[truncated 100 chars]")
+      expect(result.users[0].bio).toBe(`${"a".repeat(200)}...[truncated 100 chars]`)
       expect(result.users[0].createdAt).toBe("2025-01-01T00:00:00.000Z")
       expect(result.users[1].regex).toBe("/test/i")
       expect(result.users[1].error.name).toBe("Error")

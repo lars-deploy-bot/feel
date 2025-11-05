@@ -1,5 +1,5 @@
 import type { SDKResultMessage } from "@anthropic-ai/claude-agent-sdk"
-import { useDebugVisible } from "@/lib/dev-mode-context"
+import { useDebugVisible } from "@/lib/stores/debug-store"
 import { ErrorCodes, getErrorHelp, getErrorMessage } from "@/lib/error-codes"
 
 interface ResultMessageProps {

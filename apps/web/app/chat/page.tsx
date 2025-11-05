@@ -1,8 +1,10 @@
 "use client"
-import { ExternalLink, Eye, EyeOff, Image, Square } from "lucide-react"
+import { ExternalLink, Eye, EyeOff, Image, Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Suspense, useEffect, useRef, useState } from "react"
+import { Toaster } from "react-hot-toast"
 import { SettingsDropdown } from "@/components/ui/SettingsDropdown"
+import { ChatInput } from "@/features/chat/components/ChatInput"
 import { DevTerminal } from "@/features/chat/components/DevTerminal"
 import { SubdomainInitializer } from "@/features/chat/components/SubdomainInitializer"
 import { ThinkingGroup } from "@/features/chat/components/ThinkingGroup"
@@ -12,48 +14,46 @@ import { DevTerminalProvider, useDevTerminal } from "@/features/chat/lib/dev-ter
 import { groupMessages } from "@/features/chat/lib/message-grouper"
 import { parseStreamEvent, type StreamEvent, type UIMessage } from "@/features/chat/lib/message-parser"
 import { renderMessage } from "@/features/chat/lib/message-renderer"
-import { isTerminalMode } from "@/features/workspace/types/workspace"
-import { DevModeProvider, useDevMode } from "@/lib/dev-mode-context"
+import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
+import { isDevelopment, useDebugStore, useDebugVisible } from "@/lib/stores/debug-store"
 import type { StructuredError } from "@/lib/error-codes"
 import { getErrorHelp, getErrorMessage } from "@/lib/error-codes"
 
+const SUGGESTIONS = [
+  '"Add a contact form"',
+  '"Change the background to blue"',
+  '"Make the text bigger"',
+  '"Add a navigation menu"',
+  '"Create a hero section"',
+  '"Add a footer"',
+]
+
 function ChatPageContent() {
   const [msg, setMsg] = useState("")
-  const [workspace, setWorkspace] = useState("")
   const [messages, setMessages] = useState<UIMessage[]>([])
   const [busy, setBusy] = useState(false)
   const [useStreaming, _setUseStreaming] = useState(true)
-  const [isTerminal, setIsTerminal] = useState(false)
-  const [mounted, setMounted] = useState(false)
   const [conversationId, setConversationId] = useState<string>(() => crypto.randomUUID())
   const [shouldForceScroll, setShouldForceScroll] = useState(false)
   const [userHasManuallyScrolled, setUserHasManuallyScrolled] = useState(false)
   const [subdomainInitialized, setSubdomainInitialized] = useState(false)
+  const [randomSuggestion, setRandomSuggestion] = useState(SUGGESTIONS[0])
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const isAutoScrolling = useRef(false)
   const abortControllerRef = useRef<AbortController | null>(null)
   const isSubmitting = useRef<boolean>(false)
   const router = useRouter()
-  const { showDevContent, toggleDevContent } = useDevMode()
+  const toggleView = useDebugStore((state) => state.toggleView)
+  const toggleSSETerminal = useDebugStore((state) => state.toggleSSETerminal)
+  const isDebugView = useDebugVisible()
+  const showSSETerminal = useDebugStore((state) => state.showSSETerminal)
   const { addEvent: addDevEvent } = useDevTerminal()
+  const { workspace, isTerminal, mounted, setWorkspace } = useWorkspace({ redirectOnMissing: "/" })
 
+  // Pick random suggestion on mount (client-side only)
   useEffect(() => {
-    setMounted(true)
-    setIsTerminal(isTerminalMode(window.location.hostname))
+    setRandomSuggestion(SUGGESTIONS[Math.floor(Math.random() * SUGGESTIONS.length)])
   }, [])
-
-  useEffect(() => {
-    if (isTerminal) {
-      const savedWorkspace = sessionStorage.getItem("workspace")
-      if (savedWorkspace) {
-        setWorkspace(savedWorkspace)
-      } else {
-        // Redirect to login instead of workspace setup
-        router.push("/")
-        return
-      }
-    }
-  }, [isTerminal, router])
 
   // Track manual scrolling
   useEffect(() => {
@@ -182,7 +182,7 @@ function ChatPageContent() {
       }, 60000)
 
       // Log outgoing request to dev terminal (dev mode only)
-      if (process.env.NODE_ENV === "development") {
+      if (isDevelopment()) {
         addDevEvent({
           eventName: "outgoing_request",
           event: {
@@ -284,7 +284,7 @@ function ChatPageContent() {
                 const rawData = JSON.parse(dataLine)
 
                 // Capture to dev terminal (dev mode only)
-                if (process.env.NODE_ENV === "development") {
+                if (isDevelopment()) {
                   if (currentEvent.startsWith("bridge_") && rawData.requestId && rawData.timestamp && rawData.type) {
                     addDevEvent({
                       eventName: currentEvent,
@@ -517,7 +517,7 @@ function ChatPageContent() {
 
   function stopStreaming() {
     // Log interrupt to dev terminal before aborting (dev mode only)
-    if (process.env.NODE_ENV === "development") {
+    if (isDevelopment()) {
       addDevEvent({
         eventName: "bridge_interrupt",
         event: {
@@ -551,11 +551,11 @@ function ChatPageContent() {
     isSubmitting.current = false
   }
 
-  const showTerminal = process.env.NODE_ENV === "development" && showDevContent
+  // SSE terminal visibility is separate from debug view
 
   return (
     <div className="h-[100dvh] flex flex-row overflow-hidden dark:bg-[#1a1a1a] dark:text-white">
-      <div className={`flex-1 flex flex-col mx-auto overflow-hidden transition-all ${showTerminal ? "" : "max-w-4xl"}`}>
+      <div className="flex-1 flex flex-col overflow-hidden transition-all">
         <Suspense fallback={null}>
           <SubdomainInitializer
             onInitialize={handleSubdomainInitialize}
@@ -565,147 +565,150 @@ function ChatPageContent() {
           />
         </Suspense>
         <div className="flex-1 min-h-0 flex flex-col">
-        {/* Header */}
-        <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-black/10 dark:border-white/10">
-          <h1 className="text-lg font-medium text-black dark:text-white">{mounted && isTerminal ? "Chat" : "Chat"}</h1>
-          <div className="flex items-center gap-2">
-            {process.env.NODE_ENV === "development" && (
+          {/* Header */}
+          <div className="flex-shrink-0 border-b border-black/10 dark:border-white/10">
+            <div className="flex items-center justify-between px-6 py-4 mx-auto w-full md:max-w-2xl">
+              <h1 className="text-lg font-medium text-black dark:text-white">
+                {mounted && isTerminal ? "Chat" : "Chat"}
+              </h1>
+              <div className="flex items-center gap-2">
+              {isDevelopment() && (
+                <button
+                  type="button"
+                  onClick={toggleView}
+                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium border transition-colors text-black/60 hover:text-black/80 border-black/20 hover:border-black/40 dark:text-white/60 dark:hover:text-white/80 dark:border-white/20 dark:hover:border-white/40"
+                  title={isDebugView ? "Hide debug details" : "Show debug details"}
+                >
+                  {isDebugView ? <Eye size={14} /> : <EyeOff size={14} />}
+                  <span>{isDebugView ? "Debug" : "Live"}</span>
+                </button>
+              )}
               <button
                 type="button"
-                onClick={toggleDevContent}
-                className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium border transition-colors text-black/60 hover:text-black/80 border-black/20 hover:border-black/40 dark:text-white/60 dark:hover:text-white/80 dark:border-white/20 dark:hover:border-white/40"
-                title={showDevContent ? "Hide dev info (production view)" : "Show dev info (development view)"}
+                onClick={() => router.push("/photobook")}
+                className="inline-flex items-center justify-center px-3 py-2 text-xs font-medium text-black dark:text-white border border-black/20 dark:border-white/20 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors"
+                aria-label="Photos"
+                title="Photos"
               >
-                {showDevContent ? <Eye size={14} /> : <EyeOff size={14} />}
-                <span>{showDevContent ? "Dev" : "Prod"}</span>
+                <Image size={14} />
               </button>
-            )}
-            <button
-              type="button"
-              onClick={() => router.push("/photobook")}
-              className="inline-flex items-center justify-center px-3 py-2 text-xs font-medium text-black dark:text-white border border-black/20 dark:border-white/20 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors"
-              aria-label="Photos"
-              title="Photos"
-            >
-              <Image size={14} />
-            </button>
-            <SettingsDropdown onNewChat={startNewConversation} />
-          </div>
-        </div>
-
-        {mounted && isTerminal && workspace && (
-          <div className="flex-shrink-0 px-6 py-3 border-b border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02]">
-            <div className="flex items-center text-xs">
-              <span className="text-black/50 dark:text-white/50 font-medium">site</span>
-              <a
-                href={`https://${workspace}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="ml-3 font-diatype-mono text-black/80 dark:text-white/80 font-medium hover:text-black dark:hover:text-white underline decoration-black/30 dark:decoration-white/30 hover:decoration-black dark:hover:decoration-white flex items-center gap-1.5 transition-colors"
-              >
-                {workspace}
-                <ExternalLink size={12} className="opacity-60" />
-              </a>
+              <SettingsDropdown onNewChat={startNewConversation} />
+              </div>
             </div>
           </div>
-        )}
 
-        {/* Messages */}
-        <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-2">
-          {/* Empty state - only show when no messages */}
-          {messages.length === 0 && !busy && (
-            <div className="flex items-center justify-center h-full">
-              <div className="max-w-md text-center space-y-4 pb-20">
-                <p className="text-base text-black/80 dark:text-white/80 font-medium">
-                  Tell me what to build and I'll update your site
-                </p>
-                <div className="text-sm text-black/50 dark:text-white/50 font-normal space-y-1.5">
-                  <p>"Add a contact form"</p>
-                  <p>"Change the background to blue"</p>
-                  <p>"Make the text bigger"</p>
+          {mounted && isTerminal && workspace && (
+            <div className="flex-shrink-0 border-b border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02]">
+              <div className="px-6 py-3 mx-auto w-full md:max-w-2xl">
+                <div className="flex items-center text-xs">
+                  <span className="text-black/50 dark:text-white/50 font-medium">site</span>
+                  <a
+                    href={`https://${workspace}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ml-3 font-diatype-mono text-black/80 dark:text-white/80 font-medium hover:text-black dark:hover:text-white underline decoration-black/30 dark:decoration-white/30 hover:decoration-black dark:hover:decoration-white flex items-center gap-1.5 transition-colors"
+                  >
+                    {workspace}
+                    <ExternalLink size={12} className="opacity-60" />
+                  </a>
                 </div>
               </div>
             </div>
           )}
 
-          {groupMessages(messages).map((group, index) => {
-            if (group.type === "text") {
-              return (
-                <div key={`group-${index}`}>
-                  {group.messages.map(message => (
-                    <div key={message.id}>{renderMessage(message)}</div>
-                  ))}
+          {/* Messages */}
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <div className="p-4 space-y-2 mx-auto w-full md:max-w-2xl">
+              {/* Empty state - only show when no messages */}
+              {messages.length === 0 && !busy && (
+                <div className="flex items-start justify-center h-full pt-32">
+                  <div className="max-w-md text-center space-y-4">
+                    <p className="text-base text-black/80 dark:text-white/80 font-medium">
+                      Tell me what to build and I'll update your site
+                    </p>
+                    <div className="text-sm text-black/50 dark:text-white/50 font-normal">
+                      <p>{randomSuggestion}</p>
+                    </div>
+                  </div>
                 </div>
-              )
-            }
-            return <ThinkingGroup key={`group-${index}`} messages={group.messages} isComplete={group.isComplete} />
-          })}
-          {/* Show thinking indicator only when busy but no assistant response has started yet */}
-          {busy && messages.length > 0 && messages[messages.length - 1]?.type === "user" && (
-            <div className="my-4">
-              <div className="text-xs font-normal text-black/35 dark:text-white/35 flex items-center gap-1">
-                <ThinkingSpinner />
-                <span>thinking</span>
-              </div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
+              )}
 
-        {/* Input */}
-        <div className="flex-shrink-0 p-4 safe-area-inset-bottom">
-          <div className="relative border border-black/20 dark:border-white/20 focus-within:border-black/40 dark:focus-within:border-white/40 transition-colors">
-            <textarea
-              value={msg}
-              onChange={e => setMsg(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault()
-                  sendMessage()
+              {groupMessages(messages).map((group, index) => {
+                if (group.type === "text") {
+                  return (
+                    <div key={`group-${index}`}>
+                      {group.messages.map(message => (
+                        <div key={message.id}>{renderMessage(message)}</div>
+                      ))}
+                    </div>
+                  )
                 }
+                return <ThinkingGroup key={`group-${index}`} messages={group.messages} isComplete={group.isComplete} />
+              })}
+              {/* Show thinking indicator only when busy but no assistant response has started yet */}
+              {busy && messages.length > 0 && messages[messages.length - 1]?.type === "user" && (
+                <div className="my-4">
+                  <div className="text-xs font-normal text-black/35 dark:text-white/35 flex items-center gap-1">
+                    <ThinkingSpinner />
+                    <span>thinking</span>
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+          </div>
+
+          {/* Input */}
+          <div className="mx-auto w-full md:max-w-2xl">
+            <ChatInput
+              message={msg}
+              setMessage={setMsg}
+              busy={busy}
+              abortControllerRef={abortControllerRef}
+              onSubmit={sendMessage}
+              onStop={stopStreaming}
+              config={{
+                enableAttachments: true,
+                enableCamera: true,
+                maxAttachments: 5,
+                maxFileSize: 20 * 1024 * 1024, // 20MB
+                placeholder: "Tell me what to change...",
               }}
-              placeholder="Tell me what to change..."
-              className="w-full resize-none border-0 bg-transparent text-base font-normal focus:outline-none p-3 pr-20 text-black dark:text-white placeholder:text-black/40 dark:placeholder:text-white/40"
-              style={{ minHeight: "80px" }}
-              data-testid="message-input"
             />
-            {busy && abortControllerRef.current ? (
-              <button
-                type="button"
-                onClick={stopStreaming}
-                className="absolute top-3 right-3 bottom-3 w-12 text-xs font-medium bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors focus:outline-none flex items-center justify-center"
-                data-testid="stop-button"
-              >
-                <Square size={14} fill="currentColor" />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={sendMessage}
-                disabled={busy || !msg.trim()}
-                className="absolute top-3 right-3 bottom-3 w-12 text-lg font-medium bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors disabled:opacity-50 focus:outline-none flex items-center justify-center"
-                data-testid="send-button"
-              >
-                {busy ? "•••" : "→"}
-              </button>
-            )}
           </div>
         </div>
       </div>
-      </div>
 
-      {/* Dev Terminal - only show in development mode */}
-      {showTerminal && <DevTerminal />}
+      {showSSETerminal && <DevTerminal />}
     </div>
+  )
+}
+
+function ChatPageWrapper() {
+  return (
+    <DevTerminalProvider>
+      <ChatPageContent />
+    </DevTerminalProvider>
   )
 }
 
 export default function ChatPage() {
   return (
-    <DevModeProvider>
-      <DevTerminalProvider>
-        <ChatPageContent />
-      </DevTerminalProvider>
-    </DevModeProvider>
+    <>
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          duration: 5000,
+          error: {
+            className: "!bg-red-50 !text-red-900 !border !border-red-200 dark:!bg-red-950/90 dark:!text-red-100 dark:!border-red-800/50",
+            iconTheme: {
+              primary: "#dc2626",
+              secondary: "#fff",
+            },
+          },
+        }}
+      />
+      <ChatPageWrapper />
+    </>
   )
 }

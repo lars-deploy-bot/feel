@@ -125,10 +125,18 @@ export function DevTerminal() {
       )}
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-green-700/30 bg-black/90">
-        <span className="text-green-500 font-semibold">{isMinimized ? "SSE" : "SSE Events (Dev)"}</span>
-        <div className="flex items-center gap-2">
-          {!isMinimized && (
-            <>
+        {isMinimized ? (
+          <button
+            type="button"
+            onClick={() => setIsMinimized(false)}
+            className="text-green-500 font-semibold hover:text-green-400 transition-colors w-full text-center"
+          >
+            +
+          </button>
+        ) : (
+          <>
+            <span className="text-green-500 font-semibold">SSE Events (Dev)</span>
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={copyAllMessages}
@@ -144,16 +152,16 @@ export function DevTerminal() {
               >
                 clear
               </button>
-            </>
-          )}
-          <button
-            type="button"
-            onClick={() => setIsMinimized(!isMinimized)}
-            className="text-green-600 hover:text-green-400 transition-colors"
-          >
-            {isMinimized ? "+" : "−"}
-          </button>
-        </div>
+              <button
+                type="button"
+                onClick={() => setIsMinimized(true)}
+                className="text-green-600 hover:text-green-400 transition-colors text-xs px-2 py-1 border border-green-700/30 rounded"
+              >
+                −
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Content */}
@@ -165,51 +173,56 @@ export function DevTerminal() {
             events
               .filter(devEvent => devEvent.eventName !== "ping")
               .map((devEvent, index) => {
-              // Try to beautify the parsed data
-              let displayContent: string
-              try {
-                displayContent = JSON.stringify(devEvent.event, null, 2)
-              } catch {
-                // Parsing failed, fall back to raw SSE
-                displayContent = devEvent.rawSSE
-              }
+                // Try to beautify the parsed data
+                let displayContent: string
+                try {
+                  displayContent = JSON.stringify(devEvent.event, null, 2)
+                } catch {
+                  // Parsing failed, fall back to raw SSE
+                  displayContent = devEvent.rawSSE
+                }
 
-              const isCollapsed = collapsedMessages.has(index)
-              const isCopied = copiedIndex === index
+                const isCollapsed = collapsedMessages.has(index)
+                const isCopied = copiedIndex === index
 
-              return (
-                <div key={`${devEvent.event.requestId}-${index}`} className="space-y-1 pb-3 border-b border-green-900/30">
-                  {/* Header with timestamp, event type, and controls */}
-                  <div className="flex items-center justify-between gap-2">
-                    <button
-                      type="button"
-                      onClick={() => toggleMessageCollapse(index)}
-                      className="flex items-center gap-2 flex-1 text-left hover:opacity-80 transition-opacity"
-                    >
-                      <span className="text-green-700">[{new Date(devEvent.event.timestamp).toLocaleTimeString()}]</span>
-                      <span className={getEventColor(devEvent.eventName)}>{devEvent.eventName}</span>
-                      <span className="text-green-700 text-[10px]">{isCollapsed ? "▶" : "▼"}</span>
-                    </button>
+                return (
+                  <div
+                    key={`${devEvent.event.requestId}-${index}`}
+                    className="space-y-1 pb-3 border-b border-green-900/30"
+                  >
+                    {/* Header with timestamp, event type, and controls */}
+                    <div className="flex items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() => toggleMessageCollapse(index)}
+                        className="flex items-center gap-2 flex-1 text-left hover:opacity-80 transition-opacity"
+                      >
+                        <span className="text-green-700">
+                          [{new Date(devEvent.event.timestamp).toLocaleTimeString()}]
+                        </span>
+                        <span className={getEventColor(devEvent.eventName)}>{devEvent.eventName}</span>
+                        <span className="text-green-700 text-[10px]">{isCollapsed ? "▶" : "▼"}</span>
+                      </button>
 
-                    <button
-                      type="button"
-                      onClick={() => copyMessage(displayContent, index)}
-                      className="text-green-600 hover:text-green-400 transition-colors text-[10px] px-2 py-0.5"
-                      title="Copy to clipboard"
-                    >
-                      {isCopied ? "✓ copied" : "copy"}
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => copyMessage(displayContent, index)}
+                        className="text-green-600 hover:text-green-400 transition-colors text-[10px] px-2 py-0.5"
+                        title="Copy to clipboard"
+                      >
+                        {isCopied ? "✓ copied" : "copy"}
+                      </button>
+                    </div>
+
+                    {/* Beautified JSON or raw SSE fallback */}
+                    {!isCollapsed && (
+                      <pre className="text-green-500 whitespace-pre-wrap break-all leading-relaxed text-[10px]">
+                        {displayContent}
+                      </pre>
+                    )}
                   </div>
-
-                  {/* Beautified JSON or raw SSE fallback */}
-                  {!isCollapsed && (
-                    <pre className="text-green-500 whitespace-pre-wrap break-all leading-relaxed text-[10px]">
-                      {displayContent}
-                    </pre>
-                  )}
-                </div>
-              )
-            })
+                )
+              })
           )}
         </div>
       )}

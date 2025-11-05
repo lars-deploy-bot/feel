@@ -3,6 +3,7 @@ const nextConfig = {
   // Always use ".next" - build script moves it to .builds/dist and copies to standalone
   distDir: ".next",
   output: "standalone",
+  devIndicators: false,
   experimental: {
     serverActions: { bodySizeLimit: "2mb" },
   },

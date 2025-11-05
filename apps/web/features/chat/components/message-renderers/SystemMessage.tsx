@@ -1,5 +1,5 @@
 import type { SDKSystemMessage } from "@anthropic-ai/claude-agent-sdk"
-import { useDebugVisible } from "@/lib/dev-mode-context"
+import { useDebugVisible } from "@/lib/stores/debug-store"
 
 interface SystemMessageProps {
   content: SDKSystemMessage

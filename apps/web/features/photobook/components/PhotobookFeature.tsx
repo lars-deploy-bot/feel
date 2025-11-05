@@ -4,8 +4,9 @@ import { ArrowLeft, Upload } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import { DeleteModal } from "@/components/modals/DeleteModal"
+import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
 // Feature hooks
-import { useCopyToClipboard, useImageManagement, useWorkspace } from "../hooks"
+import { useCopyToClipboard, useImageManagement } from "../hooks"
 // Feature components
 import { ImageCard, LoadingState } from "./"
 import { ImageZoomModal, MessageBanner } from "./modals"

@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { ToolOutputRouter } from "@/components/ui/chat/tools/ToolOutputRouter"
 import type { SDKUserMessage } from "@/features/chat/types/sdk-types"
-import { useDebugVisible } from "@/lib/dev-mode-context"
+import { useDebugVisible } from "@/lib/stores/debug-store"
 import { getToolIcon } from "@/lib/tool-icons"
 
 // Extended tool result type with our added tool_name
