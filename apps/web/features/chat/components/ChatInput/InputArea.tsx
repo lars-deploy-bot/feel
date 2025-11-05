@@ -9,8 +9,8 @@ export function InputArea() {
 
   useEffect(() => {
     if (textareaRef.current) {
-      const minHeightPx = parseInt(config.minHeight, 10)
-      const maxHeightPx = parseInt(config.maxHeight, 10)
+      const minHeightPx = parseInt(config.minHeight ?? "80px", 10)
+      const maxHeightPx = parseInt(config.maxHeight ?? "100px", 10)
 
       // Reset to min height
       textareaRef.current.style.height = `${minHeightPx}px`
