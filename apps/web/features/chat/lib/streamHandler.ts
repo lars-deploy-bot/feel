@@ -1,7 +1,7 @@
 import { type Options, query } from "@anthropic-ai/claude-agent-sdk"
 import type { SessionStore } from "@/features/auth/lib/sessionStore"
+import { extractSessionId, getMessageStreamData } from "@/features/chat/types/sdk-types"
 import { type ErrorCode, ErrorCodes } from "@/lib/error-codes"
-import { extractSessionId, getMessageStreamData } from "@/lib/sdk-types"
 import { formatMessage } from "./formatMessage"
 
 export interface StreamEvent {

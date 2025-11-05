@@ -38,7 +38,7 @@ export function ReadOutput(props: ReadOutputProps) {
   // Text file
   if ("content" in props && "total_lines" in props) {
     return (
-      <div className="text-xs text-black/40 font-normal">
+      <div className="text-xs text-black/40 dark:text-white/40 font-normal">
         {props.lines_returned} of {props.total_lines} lines
       </div>
     )
@@ -46,17 +46,23 @@ export function ReadOutput(props: ReadOutputProps) {
 
   // Image file
   if ("image" in props && "file_size" in props) {
-    return <div className="text-xs text-black/40 font-normal">image • {Math.round(props.file_size / 1024)}KB</div>
+    return (
+      <div className="text-xs text-black/40 dark:text-white/40 font-normal">
+        image • {Math.round(props.file_size / 1024)}KB
+      </div>
+    )
   }
 
   // PDF file
   if ("pages" in props && "total_pages" in props) {
-    return <div className="text-xs text-black/40 font-normal">pdf • {props.total_pages} pages</div>
+    return <div className="text-xs text-black/40 dark:text-white/40 font-normal">pdf • {props.total_pages} pages</div>
   }
 
   // Notebook file
   if ("cells" in props) {
-    return <div className="text-xs text-black/40 font-normal">notebook • {props.cells.length} cells</div>
+    return (
+      <div className="text-xs text-black/40 dark:text-white/40 font-normal">notebook • {props.cells.length} cells</div>
+    )
   }
 
   return null

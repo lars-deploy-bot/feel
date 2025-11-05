@@ -61,7 +61,7 @@ export function ToolInputRouter({ toolName, input }: ToolInputRouterProps) {
     default:
       // Fallback to JSON for unknown tools
       return (
-        <pre className="text-xs text-black/60 font-diatype-mono leading-relaxed overflow-auto max-h-80 p-3 bg-black/[0.02] border border-black/10">
+        <pre className="text-xs text-black/60 dark:text-white/60 font-diatype-mono leading-relaxed overflow-auto max-h-80 p-3 bg-black/[0.02] dark:bg-white/[0.02] border border-black/10 dark:border-white/10">
           {typeof input === "string" ? input : JSON.stringify(input, null, 2)}
         </pre>
       )
@@ -69,7 +69,7 @@ export function ToolInputRouter({ toolName, input }: ToolInputRouterProps) {
 
   // Fallback if tool is recognized but input doesn't match expected schema
   return (
-    <pre className="text-xs text-black/60 font-diatype-mono leading-relaxed overflow-auto max-h-80 p-3 bg-black/[0.02] border border-black/10">
+    <pre className="text-xs text-black/60 dark:text-white/60 font-diatype-mono leading-relaxed overflow-auto max-h-80 p-3 bg-black/[0.02] dark:bg-white/[0.02] border border-black/10 dark:border-white/10">
       {typeof input === "string" ? input : JSON.stringify(input, null, 2)}
     </pre>
   )

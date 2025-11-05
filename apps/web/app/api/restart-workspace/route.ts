@@ -2,7 +2,7 @@ import { execSync } from "node:child_process"
 import { basename, dirname } from "node:path"
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { requireSessionUser } from "@/lib/auth"
+import { requireSessionUser } from "@/features/auth/lib/auth"
 
 const RestartSchema = z.object({
   workspaceRoot: z.string(),

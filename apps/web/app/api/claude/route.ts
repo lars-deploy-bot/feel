@@ -7,7 +7,7 @@ import { getSystemPrompt } from "@/features/chat/lib/systemPrompt"
 import { resolveWorkspace } from "@/features/workspace/lib/workspace-utils"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { BodySchema, isToolAllowed } from "@/types/guards/api"
-import { isPathWithinWorkspace } from "@/types/guards/workspace"
+import { isPathWithinWorkspace } from "@/features/workspace/types/workspace"
 
 export const runtime = "nodejs"
 

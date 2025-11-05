@@ -23,8 +23,8 @@ export function GrepInput({
 }: GrepInputProps) {
   return (
     <div className="space-y-1">
-      <div className="text-xs text-black/60 font-diatype-mono">{pattern}</div>
-      <div className="text-xs text-black/40 font-thin space-x-2">
+      <div className="text-xs text-black/60 dark:text-white/60 font-diatype-mono">{pattern}</div>
+      <div className="text-xs text-black/40 dark:text-white/40 font-thin space-x-2">
         {glob && <span>in {glob}</span>}
         {type && <span>• {type} files</span>}
         {output_mode !== "files_with_matches" && <span>• {output_mode}</span>}

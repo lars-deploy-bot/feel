@@ -1,5 +1,5 @@
 import type { NextResponse } from "next/server"
-import { getAllowedOrigin, hasOrigin } from "@/types/guards/auth"
+import { getAllowedOrigin, hasOrigin } from "@/features/auth/types/guards"
 
 export function addCorsHeaders(res: NextResponse, origin: string | null) {
   const allowedOrigin = origin ? (hasOrigin(origin) ? getAllowedOrigin(origin) : getAllowedOrigin(null)) : null

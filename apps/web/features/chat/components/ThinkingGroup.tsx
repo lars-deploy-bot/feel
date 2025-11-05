@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useDebugVisible } from "@/lib/dev-mode-context"
-import type { UIMessage } from "@/lib/message-parser"
-import { renderMessage } from "@/lib/message-renderer"
+import type { UIMessage } from "../lib/message-parser"
+import { renderMessage } from "../lib/message-renderer"
 import { ThinkingSpinner } from "./ThinkingSpinner"
 
 interface ThinkingGroupProps {
@@ -30,14 +30,14 @@ export function ThinkingGroup({ messages, isComplete }: ThinkingGroupProps) {
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
-        className="text-xs font-normal text-black/35 hover:text-black/50 transition-colors flex items-center gap-1"
+        className="text-xs font-normal text-black/35 dark:text-white/35 hover:text-black/50 dark:hover:text-white/50 transition-colors flex items-center gap-1"
       >
         {!isComplete && <ThinkingSpinner />}
         <span>{isComplete ? "doing some work" : "thinking"}</span>
       </button>
 
       {isExpanded && (
-        <div className="mt-2 space-y-1.5 pl-4 border-l-2 border-black/10">
+        <div className="mt-2 space-y-1.5 pl-4 border-l-2 border-black/10 dark:border-white/10">
           {messages.map(message => (
             <div key={message.id} className="text-sm">
               {renderMessage(message)}

@@ -8,7 +8,7 @@ import type {
   SessionEventData,
   StartEventData,
   StreamEvent,
-} from "@/lib/message-parser"
+} from "@/features/chat/lib/message-parser"
 
 // Type guards for stream events
 export function isStartEvent(event: StreamEvent): event is StreamEvent & { data: StartEventData } {

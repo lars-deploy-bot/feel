@@ -2,16 +2,16 @@
 import { ExternalLink, Eye, EyeOff, Square } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Suspense, useEffect, useRef, useState } from "react"
-import { ThinkingGroup } from "@/components/ui/chat/ThinkingGroup"
-import { ThinkingSpinner } from "@/components/ui/chat/ThinkingSpinner"
 import { SettingsDropdown } from "@/components/ui/SettingsDropdown"
 import { SubdomainInitializer } from "@/features/chat/components/SubdomainInitializer"
+import { ThinkingGroup } from "@/features/chat/components/ThinkingGroup"
+import { ThinkingSpinner } from "@/features/chat/components/ThinkingSpinner"
 import { groupMessages } from "@/features/chat/lib/message-grouper"
 import { parseStreamEvent, type StreamEvent, type UIMessage } from "@/features/chat/lib/message-parser"
 import { renderMessage } from "@/features/chat/lib/message-renderer"
 import { DevModeProvider, useDevMode } from "@/lib/dev-mode-context"
 import type { StructuredError } from "@/lib/error-codes"
-import { isTerminalMode } from "@/types/guards/workspace"
+import { isTerminalMode } from "@/features/workspace/types/workspace"
 
 function ChatPageContent() {
   const [msg, setMsg] = useState("")

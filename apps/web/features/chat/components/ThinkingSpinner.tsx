@@ -1,7 +1,7 @@
 export function ThinkingSpinner() {
   return (
     <span
-      className="font-mono inline-block overflow-hidden text-center align-middle relative text-black/35"
+      className="font-mono inline-block overflow-hidden text-center align-middle relative text-black/35 dark:text-white/35"
       aria-hidden="true"
     >
       <span className="invisible">✽</span>

@@ -12,8 +12,8 @@ export function EditInput({ file_path, old_string, new_string, replace_all }: Ed
 
   return (
     <div className="space-y-1">
-      <div className="text-xs text-black/60 font-diatype-mono">{fileName}</div>
-      <div className="text-xs text-black/40 font-normal">
+      <div className="text-xs text-black/60 dark:text-white/60 font-diatype-mono">{fileName}</div>
+      <div className="text-xs text-black/40 dark:text-white/40 font-normal">
         {oldLines} → {newLines} {newLines === 1 ? "line" : "lines"}
         {replace_all && " • replace all"}
       </div>

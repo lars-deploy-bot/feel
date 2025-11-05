@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@variant dark (.dark &);
+
 /* Diatype Variable Font */
 @font-face {
   font-display: block;
@@ -64,6 +66,12 @@ body {
   letter-spacing: 0.02em;
   margin: 0;
   padding: 0;
+}
+
+/* Dark mode background */
+.dark {
+  background-color: #1a1a1a;
+  color: white;
 }
 
 .font-diatype-mono {

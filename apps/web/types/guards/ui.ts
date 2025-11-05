@@ -1,4 +1,4 @@
-import type { UIMessage } from "@/lib/message-parser"
+import type { UIMessage } from "@/features/chat/lib/message-parser"
 
 /**
  * Check if a message is primarily a text message (user message or assistant with only text)

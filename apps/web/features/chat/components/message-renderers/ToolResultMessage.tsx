@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { ToolOutputRouter } from "@/components/ui/chat/tools/ToolOutputRouter"
+import type { SDKUserMessage } from "@/features/chat/types/sdk-types"
 import { useDebugVisible } from "@/lib/dev-mode-context"
-import type { SDKUserMessage } from "@/lib/sdk-types"
 import { getToolIcon } from "@/lib/tool-icons"
 
 // Extended tool result type with our added tool_name
@@ -116,8 +116,10 @@ function ToolResult({ result }: { result: ToolResultContent }) {
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
-        className={`text-xs font-normal hover:text-black/50 transition-colors flex items-center gap-1.5 ${
-          result.is_error ? "text-red-600" : "text-black/35"
+        className={`text-xs font-normal transition-colors flex items-center gap-1.5 ${
+          result.is_error
+            ? "text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+            : "text-black/35 dark:text-white/35 hover:text-black/50 dark:hover:text-white/50"
         }`}
       >
         <Icon size={12} className="opacity-60" />

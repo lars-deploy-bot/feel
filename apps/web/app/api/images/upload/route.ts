@@ -1,10 +1,10 @@
 import { FilesystemStorage, uploadImage } from "@alive-brug/images"
 import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
+import { resolveWorkspace } from "@/features/workspace/lib/workspace-utils"
 import { ErrorCodes } from "@/lib/error-codes"
 import { workspaceToTenantId } from "@/lib/tenant-utils"
-import { resolveWorkspace } from "@/lib/workspace-utils"
-import { hasSessionCookie } from "@/types/guards/auth"
+import { hasSessionCookie } from "@/features/auth/types/guards"
 
 // Initialize storage
 const storage = new FilesystemStorage({

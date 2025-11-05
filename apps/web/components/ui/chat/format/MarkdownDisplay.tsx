@@ -22,9 +22,11 @@ const components: Components = {
     }
 
     return (
-      <div className="my-3 rounded-md bg-black/5 border border-black/10 overflow-hidden">
+      <div className="my-3 rounded-md bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 overflow-hidden">
         {language && (
-          <div className="px-3 py-1 text-[10px] text-black/40 border-b border-black/10 font-mono">{language}</div>
+          <div className="px-3 py-1 text-[10px] text-black/40 dark:text-white/40 border-b border-black/10 dark:border-white/10 font-mono">
+            {language}
+          </div>
         )}
         <pre className="p-3 overflow-x-auto">{children}</pre>
       </div>
@@ -36,10 +38,14 @@ const components: Components = {
     const { children, inline } = props as { children: React.ReactNode; inline?: boolean }
 
     if (inline) {
-      return <code className="px-1.5 py-0.5 rounded bg-black/5 text-[13px] font-mono text-black/80">{children}</code>
+      return (
+        <code className="px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/5 text-[13px] font-mono text-black/80 dark:text-white/80">
+          {children}
+        </code>
+      )
     }
 
-    return <code className="text-[13px] font-mono text-black/80 leading-relaxed">{children}</code>
+    return <code className="text-[13px] font-mono text-black/80 dark:text-white/80 leading-relaxed">{children}</code>
   },
 
   // Headings
@@ -57,12 +63,19 @@ const components: Components = {
 
   // Blockquotes
   blockquote: ({ children }) => (
-    <blockquote className="border-l-4 border-black/20 pl-4 my-2 italic text-black/70">{children}</blockquote>
+    <blockquote className="border-l-4 border-black/20 dark:border-white/20 pl-4 my-2 italic text-black/70 dark:text-white/70">
+      {children}
+    </blockquote>
   ),
 
   // Links
   a: ({ href, children }) => (
-    <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline">
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline"
+    >
       {children}
     </a>
   ),
@@ -86,21 +99,23 @@ const components: Components = {
   em: ({ children }) => <em className="italic">{children}</em>,
 
   // Horizontal rule
-  hr: () => <hr className="my-4 border-black/10" />,
+  hr: () => <hr className="my-4 border-black/10 dark:border-white/10" />,
 
   // Tables (from remark-gfm)
   table: ({ children }) => (
     <div className="overflow-x-auto my-3">
-      <table className="min-w-full border-collapse border border-black/10">{children}</table>
+      <table className="min-w-full border-collapse border border-black/10 dark:border-white/10">{children}</table>
     </div>
   ),
-  thead: ({ children }) => <thead className="bg-black/5">{children}</thead>,
+  thead: ({ children }) => <thead className="bg-black/5 dark:bg-white/5">{children}</thead>,
   tbody: ({ children }) => <tbody>{children}</tbody>,
-  tr: ({ children }) => <tr className="border-b border-black/10">{children}</tr>,
+  tr: ({ children }) => <tr className="border-b border-black/10 dark:border-white/10">{children}</tr>,
   th: ({ children }) => (
-    <th className="px-3 py-2 text-left text-xs font-semibold border border-black/10">{children}</th>
+    <th className="px-3 py-2 text-left text-xs font-semibold border border-black/10 dark:border-white/10">
+      {children}
+    </th>
   ),
-  td: ({ children }) => <td className="px-3 py-2 text-sm border border-black/10">{children}</td>,
+  td: ({ children }) => <td className="px-3 py-2 text-sm border border-black/10 dark:border-white/10">{children}</td>,
 }
 
 /**
@@ -108,7 +123,7 @@ const components: Components = {
  */
 export function MarkdownDisplay({ content, className = "" }: MarkdownDisplayProps) {
   return (
-    <div className={`text-black font-medium leading-relaxed ${className}`}>
+    <div className={`text-black dark:text-white font-medium leading-relaxed ${className}`}>
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
         {content}
       </ReactMarkdown>

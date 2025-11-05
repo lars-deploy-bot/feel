@@ -1,11 +1,11 @@
-import type { SDKMessage, SDKResultMessage } from "@/lib/sdk-types"
+import type { SDKMessage, SDKResultMessage } from "@/features/chat/types/sdk-types"
 import {
   isErrorResultMessage,
   isSDKAssistantMessage,
   isSDKResultMessage,
   isSDKSystemMessage,
   isSDKUserMessage,
-} from "@/lib/sdk-types"
+} from "@/features/chat/types/sdk-types"
 import {
   isCompleteEvent,
   isDoneEvent,
@@ -15,7 +15,7 @@ import {
   isResultEvent,
   isSessionEvent,
   isStartEvent,
-} from "@/types/guards/stream"
+} from "@/features/chat/types/stream"
 
 // Stream event types
 export interface StreamEvent {

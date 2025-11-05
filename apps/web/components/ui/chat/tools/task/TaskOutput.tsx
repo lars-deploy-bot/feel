@@ -17,17 +17,17 @@ export function TaskOutput({ result, usage, total_cost_usd, duration_ms }: TaskO
   return (
     <div className="space-y-2">
       {(usage || total_cost_usd || duration_ms) && (
-        <div className="text-xs text-black/40 font-thin">
+        <div className="text-xs text-black/40 dark:text-white/40 font-thin">
           {duration_ms && `${duration_ms}ms`}
           {total_cost_usd && ` • $${total_cost_usd.toFixed(4)}`}
           {usage && ` • ${usage.input_tokens + usage.output_tokens} tokens`}
         </div>
       )}
-      <div className="text-xs bg-black/[0.02] p-3 border border-black/10 max-h-80 overflow-auto">
+      <div className="text-xs bg-black/[0.02] dark:bg-white/[0.02] p-3 border border-black/10 dark:border-white/10 max-h-80 overflow-auto">
         {hasMarkdown(result) ? (
-          <MarkdownDisplay content={result} className="text-black/80" />
+          <MarkdownDisplay content={result} className="text-black/80 dark:text-white/80" />
         ) : (
-          <div className="text-black/80 font-thin leading-relaxed whitespace-pre-wrap">{result}</div>
+          <div className="text-black/80 dark:text-white/80 font-thin leading-relaxed whitespace-pre-wrap">{result}</div>
         )}
       </div>
     </div>

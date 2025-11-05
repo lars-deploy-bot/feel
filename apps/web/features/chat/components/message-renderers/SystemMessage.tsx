@@ -10,7 +10,7 @@ export function SystemMessage({ content }: SystemMessageProps) {
   if (!isDebugMode) return null
 
   return (
-    <div className="py-2 mb-4 text-sm text-black/60">
+    <div className="py-2 mb-4 text-sm text-black/60 dark:text-white/60">
       <div className="mb-1.5 font-medium normal-case tracking-normal">System Initialized</div>
       <div className="space-y-1 text-xs font-normal normal-case tracking-normal">
         <div>

@@ -30,7 +30,7 @@ function ToolUseItem({ item }: { item: ContentItem }): React.ReactNode {
       return <MarkdownDisplay content={text} />
     }
 
-    return <div className="whitespace-pre-wrap text-black font-medium leading-relaxed">{text}</div>
+    return <div className="whitespace-pre-wrap text-black dark:text-white font-medium leading-relaxed">{text}</div>
   }
 
   if (isToolUseBlock(item)) {
@@ -82,15 +82,15 @@ function ToolUseItem({ item }: { item: ContentItem }): React.ReactNode {
     const inlineDetail = getInlineDetail(toolItem.name, toolItem.input)
 
     return (
-      <div className="my-1 text-xs font-normal text-black/35 flex items-center gap-1.5">
+      <div className="my-1 text-xs font-normal text-black/35 dark:text-white/35 flex items-center gap-1.5">
         <Icon size={12} className="opacity-60" />
         <span>{getActionLabel(toolItem.name)}</span>
-        {inlineDetail && <span className="font-diatype-mono text-black/50">{inlineDetail}</span>}
+        {inlineDetail && <span className="font-diatype-mono text-black/50 dark:text-white/50">{inlineDetail}</span>}
       </div>
     )
   }
 
   // Unhandled content type
   const unhandledItem = item as unknown as { type: string }
-  return <div className="text-xs text-red-600">Unhandled content type: {unhandledItem.type}</div>
+  return <div className="text-xs text-red-600 dark:text-red-400">Unhandled content type: {unhandledItem.type}</div>
 }

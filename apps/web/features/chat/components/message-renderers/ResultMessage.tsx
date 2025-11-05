@@ -37,10 +37,15 @@ export function ResultMessage({ content }: ResultMessageProps) {
   if (content.is_error) {
     return (
       <div className="py-3 mb-4">
-        <div className="border border-red-200 bg-red-50/50 p-4 rounded">
+        <div className="border border-red-200 dark:border-red-900 bg-red-50/50 dark:bg-red-950/30 p-4 rounded">
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0 mt-0.5">
-              <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg
+                className="w-5 h-5 text-red-500 dark:text-red-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -50,10 +55,12 @@ export function ResultMessage({ content }: ResultMessageProps) {
               </svg>
             </div>
             <div className="flex-1">
-              <h3 className="text-sm font-medium text-red-900 mb-1">Execution Error</h3>
-              <p className="text-sm text-red-700 leading-relaxed">{getDisplayMessage()}</p>
-              {getDisplayHelp() && <p className="text-xs text-red-600 mt-2 leading-relaxed">{getDisplayHelp()}</p>}
-              <div className="mt-2 text-xs text-red-500/70">
+              <h3 className="text-sm font-medium text-red-900 dark:text-red-300 mb-1">Execution Error</h3>
+              <p className="text-sm text-red-700 dark:text-red-400 leading-relaxed">{getDisplayMessage()}</p>
+              {getDisplayHelp() && (
+                <p className="text-xs text-red-600 dark:text-red-500 mt-2 leading-relaxed">{getDisplayHelp()}</p>
+              )}
+              <div className="mt-2 text-xs text-red-500/70 dark:text-red-400/70">
                 Duration: {(content.duration_ms / 1000).toFixed(1)}s • Cost: ${content.total_cost_usd.toFixed(4)}
                 {errorCode && <span className="ml-2 font-mono">• {errorCode}</span>}
               </div>
@@ -69,9 +76,9 @@ export function ResultMessage({ content }: ResultMessageProps) {
 
   return (
     <div className="py-2 mb-4">
-      <div className="text-sm font-medium text-black/60 normal-case tracking-normal">
+      <div className="text-sm font-medium text-black/60 dark:text-white/60 normal-case tracking-normal">
         Completed
-        <span className="ml-2 text-xs text-black/50 font-normal">
+        <span className="ml-2 text-xs text-black/50 dark:text-white/50 font-normal">
           {(content.duration_ms / 1000).toFixed(1)}s • ${content.total_cost_usd.toFixed(4)}
         </span>
       </div>
