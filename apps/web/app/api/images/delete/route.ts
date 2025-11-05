@@ -1,15 +1,10 @@
-import { FilesystemStorage } from "@alive-brug/images"
 import { cookies } from "next/headers"
 import type { NextRequest } from "next/server"
-import { resolveWorkspace } from "@/features/workspace/lib/workspace-utils"
-import { workspaceToTenantId } from "@/lib/tenant-utils"
 import { hasSessionCookie } from "@/features/auth/types/guards"
-
-// Initialize storage
-const storage = new FilesystemStorage({
-  basePath: process.env.IMAGES_STORAGE_PATH || "/srv/webalive/storage",
-  signatureSecret: process.env.IMAGES_SIGNATURE_SECRET,
-})
+import { resolveWorkspace } from "@/features/workspace/lib/workspace-utils"
+import { imageStorage } from "@/lib/storage"
+import { workspaceToTenantId } from "@/lib/tenant-utils"
+import { generateRequestId } from "@/lib/utils"
 
 export async function DELETE(request: NextRequest) {
   try {
@@ -29,7 +24,7 @@ export async function DELETE(request: NextRequest) {
 
     // 3. Resolve workspace (same logic as upload/list)
     const host = request.headers.get("host") || ""
-    const requestId = Math.random().toString(36).substring(7)
+    const requestId = generateRequestId()
 
     const workspaceResult = resolveWorkspace(host, body, requestId)
     if (!workspaceResult.success) {
@@ -48,14 +43,14 @@ export async function DELETE(request: NextRequest) {
     const contentHash = key.replace(`${tenantId}/`, "")
 
     // 6. List all variants for this content hash
-    const listResult = await storage.list(tenantId, contentHash)
+    const listResult = await imageStorage.list(tenantId, contentHash)
     if (listResult.error) {
       return Response.json({ error: "Failed to find image" }, { status: 404 })
     }
 
     // 7. Delete all variants
     const deletePromises = listResult.data.map(async variantKey => {
-      const deleteResult = await storage.delete(variantKey)
+      const deleteResult = await imageStorage.delete(variantKey)
       if (deleteResult.error) {
         console.error(`Failed to delete variant ${variantKey}:`, deleteResult.error)
       }

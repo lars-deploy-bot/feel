@@ -2,9 +2,10 @@ import { cookies, headers } from "next/headers"
 import { NextResponse } from "next/server"
 import { getWorkspace } from "@/features/chat/lib/workspaceRetriever"
 import { ErrorCodes } from "@/lib/error-codes"
+import { generateRequestId } from "@/lib/utils"
 
 export async function POST(req: Request) {
-  const requestId = Math.random().toString(36).substring(2, 8)
+  const requestId = generateRequestId()
   console.log(`[Verify API ${requestId}] === VERIFICATION START ===`)
 
   try {

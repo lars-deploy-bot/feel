@@ -1,18 +1,20 @@
-import path from "node:path"
-import { type Options, type PermissionResult, query } from "@anthropic-ai/claude-agent-sdk"
+import { type Options, query } from "@anthropic-ai/claude-agent-sdk"
 import { cookies, headers } from "next/headers"
 import { NextResponse } from "next/server"
 import { hasSessionCookie } from "@/features/auth/types/guards"
 import { getSystemPrompt } from "@/features/chat/lib/systemPrompt"
+import { getWorkspace, type Workspace } from "@/features/workspace/lib/workspace-secure"
 import { resolveWorkspace } from "@/features/workspace/lib/workspace-utils"
+import { isTerminalMode } from "@/features/workspace/types/workspace"
+import { createToolPermissionHandler } from "@/lib/claude/tool-permissions"
 import { addCorsHeaders } from "@/lib/cors-utils"
-import { BodySchema, isToolAllowed } from "@/types/guards/api"
-import { isPathWithinWorkspace } from "@/features/workspace/types/workspace"
+import { generateRequestId } from "@/lib/utils"
+import { BodySchema } from "@/types/guards/api"
 
 export const runtime = "nodejs"
 
 export async function POST(req: Request) {
-  const requestId = Math.random().toString(36).substring(2, 8)
+  const requestId = generateRequestId()
   const origin = req.headers.get("origin")
   console.log(`[Claude API ${requestId}] === REQUEST START ===`)
 
@@ -78,46 +80,42 @@ export async function POST(req: Request) {
     const host = (await headers()).get("host") || "localhost"
     console.log(`[Claude API ${requestId}] Host: ${host}`)
 
-    // Get workspace using utility
-    const workspaceResult = resolveWorkspace(host, { ...body, workspace: requestWorkspace }, requestId, origin)
-    if (!workspaceResult.success) {
-      return workspaceResult.response
+    // Resolve workspace with ownership info
+    let workspace: Workspace
+    let cwd: string
+
+    try {
+      if (isTerminalMode(host)) {
+        const workspaceResult = resolveWorkspace(host, { ...body, workspace: requestWorkspace }, requestId, origin)
+        if (!workspaceResult.success) {
+          return workspaceResult.response
+        }
+        cwd = workspaceResult.workspace
+        const stats = require("node:fs").statSync(cwd)
+        workspace = { root: cwd, uid: stats.uid, gid: stats.gid, tenantId: host }
+      } else {
+        workspace = getWorkspace(host)
+        cwd = workspace.root
+      }
+    } catch (workspaceError) {
+      console.error(`[Claude API ${requestId}] Workspace resolution failed:`, workspaceError)
+      const errorRes = NextResponse.json(
+        {
+          ok: false,
+          error: "workspace_not_found",
+          message: `Workspace resolution failed: ${workspaceError instanceof Error ? workspaceError.message : "Unknown error"}`,
+        },
+        { status: 404 },
+      )
+      addCorsHeaders(errorRes, origin)
+      return errorRes
     }
-    const cwd = workspaceResult.workspace
 
     console.log(`[Claude API ${requestId}] Working directory: ${cwd}`)
     console.log(`[Claude API ${requestId}] Claude model: ${process.env.CLAUDE_MODEL || "not set"}`)
 
-    const canUseTool: Options["canUseTool"] = async (toolName, input) => {
-      console.log(`[Claude API ${requestId}] Tool requested: ${toolName}`)
-      console.log(`[Claude API ${requestId}] Tool input:`, JSON.stringify(input, null, 2))
-
-      const ALLOWED = new Set(["Write", "Edit", "Read", "Glob", "Grep"])
-      if (!isToolAllowed(toolName, ALLOWED)) {
-        console.log(`[Claude API ${requestId}] Tool denied: ${toolName}`)
-        return { behavior: "deny", message: `tool_not_allowed: ${toolName}` }
-      }
-
-      const filePath = (input as any).file_path || (input as any).notebook_path || (input as any).path || null
-
-      if (filePath) {
-        const norm = path.normalize(filePath)
-        console.log(`[Claude API ${requestId}] File path requested: ${norm}`)
-        if (!isPathWithinWorkspace(norm, cwd, path.sep)) {
-          console.log(`[Claude API ${requestId}] Path denied - outside workspace: ${norm}`)
-          return { behavior: "deny", message: "path_outside_workspace" }
-        }
-        console.log(`[Claude API ${requestId}] Path allowed: ${norm}`)
-      }
-
-      const allow: PermissionResult = {
-        behavior: "allow",
-        updatedInput: input,
-        updatedPermissions: [],
-      }
-      console.log(`[Claude API ${requestId}] Tool allowed: ${toolName}`)
-      return allow
-    }
+    // Use shared tool permission handler
+    const canUseTool = createToolPermissionHandler(workspace, requestId)
 
     const opts: Options = {
       cwd,

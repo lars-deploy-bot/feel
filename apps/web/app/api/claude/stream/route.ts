@@ -1,5 +1,5 @@
 import { toolsMcp, workspaceManagementMcp } from "@alive-brug/tools"
-import type { Options, PermissionResult } from "@anthropic-ai/claude-agent-sdk"
+import type { Options } from "@anthropic-ai/claude-agent-sdk"
 import { cookies, headers } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
 import { requireSessionUser } from "@/features/auth/lib/auth"
@@ -13,20 +13,22 @@ import { hasSessionCookie } from "@/features/auth/types/guards"
 import { isInputSafe } from "@/features/chat/lib/formatMessage"
 import { createClaudeStream, createSSEResponse } from "@/features/chat/lib/streamHandler"
 import { getSystemPrompt } from "@/features/chat/lib/systemPrompt"
-import { ensurePathWithinWorkspace, getWorkspace, type Workspace } from "@/features/workspace/lib/workspace-secure"
+import { getWorkspace, type Workspace } from "@/features/workspace/lib/workspace-secure"
 import { resolveWorkspace } from "@/features/workspace/lib/workspace-utils"
+import { isTerminalMode } from "@/features/workspace/types/workspace"
 import { runAgentChild, shouldUseChildProcess } from "@/lib/agent-child-runner"
+import { createToolPermissionHandler } from "@/lib/claude/tool-permissions"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { env } from "@/lib/env"
 import { ErrorCodes } from "@/lib/error-codes"
 import { logInput } from "@/lib/input-logger"
-import { BodySchema, isToolAllowed } from "@/types/guards/api"
-import { isTerminalMode } from "@/features/workspace/types/workspace"
+import { generateRequestId } from "@/lib/utils"
+import { BodySchema } from "@/types/guards/api"
 
 export const runtime = "nodejs"
 
 export async function POST(req: NextRequest) {
-  const requestId = Math.random().toString(36).substring(2, 8)
+  const requestId = generateRequestId()
   console.log(`[Claude Stream ${requestId}] === STREAM REQUEST START ===`)
 
   // Defense-in-depth: Block real API calls during E2E tests
@@ -190,41 +192,8 @@ export async function POST(req: NextRequest) {
     console.log(`[Claude Stream ${requestId}] Working directory: ${cwd}`)
     console.log(`[Claude Stream ${requestId}] Claude model: ${env.CLAUDE_MODEL}`)
 
-    const canUseTool: Options["canUseTool"] = async (toolName, input) => {
-      console.log(`[Claude Stream ${requestId}] Tool requested: ${toolName}`)
-      console.log(`[Claude Stream ${requestId}] Tool input:`, JSON.stringify(input, null, 2))
-
-      const ALLOWED = new Set(["Write", "Edit", "Read", "Glob", "Grep"])
-      if (!isToolAllowed(toolName, ALLOWED)) {
-        console.log(`[Claude Stream ${requestId}] Tool denied: ${toolName}`)
-        return { behavior: "deny", message: `tool_not_allowed: ${toolName}` }
-      }
-
-      const filePath = (input as any).file_path || (input as any).notebook_path || (input as any).path || null
-
-      if (filePath) {
-        try {
-          ensurePathWithinWorkspace(filePath, workspace.root)
-          console.log(`[Claude Stream ${requestId}] Path allowed: ${filePath}`)
-        } catch (_containmentError) {
-          console.log(`[Claude Stream ${requestId}] Path denied - containment check failed: ${filePath}`)
-          return { behavior: "deny", message: "path_outside_workspace" }
-        }
-      }
-
-      const updatedInput = {
-        ...input,
-        __workspace: workspace,
-      }
-
-      const allow: PermissionResult = {
-        behavior: "allow",
-        updatedInput,
-        updatedPermissions: [],
-      }
-      console.log(`[Claude Stream ${requestId}] Tool allowed: ${toolName}`)
-      return allow
-    }
+    // Use shared tool permission handler
+    const canUseTool = createToolPermissionHandler(workspace, requestId)
 
     const maxTurns = Number.parseInt(env.CLAUDE_MAX_TURNS, 10)
     if (Number.isNaN(maxTurns) || maxTurns < 1) {

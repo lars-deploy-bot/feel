@@ -1,15 +1,10 @@
-import { FilesystemStorage } from "@alive-brug/images"
 import { cookies } from "next/headers"
 import type { NextRequest } from "next/server"
-import { resolveWorkspace } from "@/features/workspace/lib/workspace-utils"
-import { workspaceToTenantId } from "@/lib/tenant-utils"
 import { hasSessionCookie } from "@/features/auth/types/guards"
-
-// Initialize storage
-const storage = new FilesystemStorage({
-  basePath: process.env.IMAGES_STORAGE_PATH || "/srv/webalive/storage",
-  signatureSecret: process.env.IMAGES_SIGNATURE_SECRET,
-})
+import { resolveWorkspace } from "@/features/workspace/lib/workspace-utils"
+import { imageStorage } from "@/lib/storage"
+import { workspaceToTenantId } from "@/lib/tenant-utils"
+import { generateRequestId } from "@/lib/utils"
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,7 +18,7 @@ export async function GET(request: NextRequest) {
     const host = request.headers.get("host") || ""
     const searchParams = request.nextUrl.searchParams
     const workspaceParam = searchParams.get("workspace")
-    const requestId = Math.random().toString(36).substring(7)
+    const requestId = generateRequestId()
 
     const body = workspaceParam ? { workspace: workspaceParam } : {}
 
@@ -36,7 +31,7 @@ export async function GET(request: NextRequest) {
     const tenantId = workspaceToTenantId(workspaceResult.workspace)
 
     // 4. List images for this tenant
-    const listResult = await storage.list(tenantId)
+    const listResult = await imageStorage.list(tenantId)
     if (listResult.error) {
       return Response.json({ error: "Failed to list images" }, { status: 500 })
     }

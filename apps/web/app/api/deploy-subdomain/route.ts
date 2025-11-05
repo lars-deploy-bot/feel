@@ -1,12 +1,10 @@
-import { exec } from "node:child_process"
 import { existsSync } from "node:fs"
-import { promisify } from "node:util"
 import { type NextRequest, NextResponse } from "next/server"
 import { validateDeploySubdomainRequest } from "@/features/deployment/types/guards"
 import { buildSubdomain } from "@/lib/config"
+import { deploySite } from "@/lib/deployment/deploy-site"
+import { validateSSLCertificate } from "@/lib/deployment/ssl-validation"
 import { siteMetadataStore } from "@/lib/siteMetadataStore"
-
-const execAsync = promisify(exec)
 
 interface DeploySubdomainResponse {
   ok: boolean
@@ -15,56 +13,6 @@ interface DeploySubdomainResponse {
   chatUrl?: string
   error?: string
   details?: unknown
-}
-
-async function validateSSLCertificate(domain: string): Promise<{ success: boolean; error?: string }> {
-  const maxAttempts = 6
-  const delayMs = 10000
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      console.log(`[Deploy-Subdomain] SSL Check attempt ${attempt}/${maxAttempts} for ${domain}`)
-
-      const response = await fetch(`https://${domain}`, {
-        method: "HEAD",
-        signal: AbortSignal.timeout(10000),
-      })
-
-      if (response.ok || response.status === 404) {
-        console.log(`[Deploy-Subdomain] SSL certificate valid for ${domain}`)
-        return { success: true }
-      }
-
-      console.log(`[Deploy-Subdomain] Unexpected status ${response.status}`)
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error)
-      console.log(`[Deploy-Subdomain] SSL check attempt ${attempt} failed: ${errorMessage}`)
-
-      const isNodeError = error instanceof Error && "code" in error
-      const errorCode = isNodeError ? (error as Error & { code?: string }).code : undefined
-      const isExpectedError =
-        (error instanceof Error && error.name === "TimeoutError") ||
-        errorCode === "ECONNREFUSED" ||
-        errorCode === "ENOTFOUND" ||
-        errorMessage.includes("certificate") ||
-        errorMessage.includes("SSL") ||
-        errorMessage.includes("TLS")
-
-      if (!isExpectedError) {
-        console.error(`[Deploy-Subdomain] Unexpected error: ${error}`)
-      }
-    }
-
-    if (attempt < maxAttempts) {
-      console.log(`[Deploy-Subdomain] Waiting ${delayMs / 1000}s before next attempt...`)
-      await new Promise(resolve => setTimeout(resolve, delayMs))
-    }
-  }
-
-  return {
-    success: false,
-    error: `SSL certificate not ready after ${(maxAttempts * delayMs) / 1000} seconds`,
-  }
 }
 
 export async function POST(request: NextRequest) {
@@ -135,27 +83,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Execute deployment script
-    const scriptPath = "/root/webalive/claude-bridge/scripts/deploy-site-systemd.sh"
-    const deployCommand = `bash ${scriptPath} ${fullDomain}`
-
-    console.log(`[Deploy-Subdomain] Executing: ${deployCommand}`)
-
-    const { stdout, stderr } = await execAsync(deployCommand, {
-      timeout: 300000, // 5 minutes
-      cwd: "/root/webalive/claude-bridge",
-      env: {
-        ...process.env,
-        DEPLOY_PASSWORD: password,
-      },
+    console.log("[Deploy-Subdomain] Starting deployment...")
+    await deploySite({
+      domain: fullDomain,
+      password,
     })
-
     console.log("[Deploy-Subdomain] Deploy script completed")
-    if (stdout) {
-      console.log(`[Deploy-Subdomain] STDOUT:\n${stdout.substring(0, 500)}`)
-    }
-    if (stderr) {
-      console.warn(`[Deploy-Subdomain] STDERR:\n${stderr.substring(0, 500)}`)
-    }
 
     // Save metadata immediately after deployment completes
     console.log("[Deploy-Subdomain] Saving metadata...")

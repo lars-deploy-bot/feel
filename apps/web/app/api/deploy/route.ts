@@ -1,10 +1,8 @@
-import { exec } from "node:child_process"
 import { existsSync } from "node:fs"
-import { promisify } from "node:util"
 import { type NextRequest, NextResponse } from "next/server"
 import { normalizeAndValidateDomain } from "@/features/manager/lib/domain-utils"
-
-const execAsync = promisify(exec)
+import { deploySite } from "@/lib/deployment/deploy-site"
+import { validateSSLCertificate } from "@/lib/deployment/ssl-validation"
 
 interface DeployRequest {
   domain: string
@@ -16,57 +14,6 @@ interface DeployResponse {
   message: string
   domain?: string
   errors?: string[]
-}
-
-async function validateSSLCertificate(domain: string): Promise<{ success: boolean; error?: string }> {
-  const maxAttempts = 6 // Try for up to 60 seconds
-  const delayMs = 10000 // 10 seconds between attempts
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      console.log(`🔍 [SSL CHECK] Attempt ${attempt}/${maxAttempts} for ${domain}`)
-
-      // Test HTTPS connection
-      const response = await fetch(`https://${domain}`, {
-        method: "HEAD",
-        signal: AbortSignal.timeout(10000), // 10 second timeout per request
-      })
-
-      if (response.ok || response.status === 404) {
-        // 404 is fine - means we reached the site but it's empty/not found
-        // The important thing is we got a valid SSL connection
-        console.log(`✅ [SSL CHECK] Valid SSL certificate for ${domain} (status: ${response.status})`)
-        return { success: true }
-      }
-
-      console.log(`⚠️  [SSL CHECK] Unexpected status ${response.status} for ${domain}`)
-    } catch (error: any) {
-      console.log(`❌ [SSL CHECK] Attempt ${attempt} failed: ${error.message}`)
-
-      if (error.name === "TimeoutError" || error.code === "ECONNREFUSED" || error.code === "ENOTFOUND") {
-        // These are expected during certificate provisioning
-      } else if (
-        error.message?.includes("certificate") ||
-        error.message?.includes("SSL") ||
-        error.message?.includes("TLS")
-      ) {
-        // SSL-related error - certificate likely still being provisioned
-      } else {
-        // Unexpected error
-        console.error(`🚨 [SSL CHECK] Unexpected error: ${error}`)
-      }
-    }
-
-    if (attempt < maxAttempts) {
-      console.log(`⏱️  [SSL CHECK] Waiting ${delayMs / 1000}s before next attempt...`)
-      await new Promise(resolve => setTimeout(resolve, delayMs))
-    }
-  }
-
-  return {
-    success: false,
-    error: `SSL certificate not ready after ${(maxAttempts * delayMs) / 1000} seconds. Certificate provisioning may still be in progress.`,
-  }
 }
 
 export async function POST(request: NextRequest) {
@@ -141,28 +88,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Execute deployment script (SECURE: uses systemd isolation)
-    const scriptPath = "/root/webalive/claude-bridge/scripts/deploy-site-systemd.sh"
-    const deployCommand = `bash ${scriptPath} ${domain}`
-
-    console.log(`⚡ [DEPLOY API] Executing: ${deployCommand}`)
-
-    // Pass password via environment variable (safer than command line argument)
-    const { stdout, stderr } = await execAsync(deployCommand, {
-      timeout: 300000, // 5 minutes timeout
-      cwd: "/root/webalive/claude-bridge",
-      env: {
-        ...process.env,
-        DEPLOY_PASSWORD: body.password,
-      },
+    await deploySite({
+      domain,
+      password: body.password,
     })
-
-    // Log output
-    if (stdout) {
-      console.log(`📤 [DEPLOY API] STDOUT:\n${stdout}`)
-    }
-    if (stderr) {
-      console.warn(`⚠️  [DEPLOY API] STDERR:\n${stderr}`)
-    }
 
     // Wait for SSL certificate to be provisioned and validate deployment
     console.log(`🔒 [DEPLOY API] Validating SSL certificate for ${domain}...`)

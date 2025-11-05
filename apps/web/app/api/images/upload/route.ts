@@ -1,16 +1,12 @@
-import { FilesystemStorage, uploadImage } from "@alive-brug/images"
+import { uploadImage } from "@alive-brug/images"
 import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
+import { hasSessionCookie } from "@/features/auth/types/guards"
 import { resolveWorkspace } from "@/features/workspace/lib/workspace-utils"
 import { ErrorCodes } from "@/lib/error-codes"
+import { imageStorage } from "@/lib/storage"
 import { workspaceToTenantId } from "@/lib/tenant-utils"
-import { hasSessionCookie } from "@/features/auth/types/guards"
-
-// Initialize storage
-const storage = new FilesystemStorage({
-  basePath: process.env.IMAGES_STORAGE_PATH || "/srv/webalive/storage",
-  signatureSecret: process.env.IMAGES_SIGNATURE_SECRET,
-})
+import { generateRequestId } from "@/lib/utils"
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,7 +19,7 @@ export async function POST(request: NextRequest) {
     // 2. Parse form data first
     const formData = await request.formData()
     const host = request.headers.get("host") || "localhost"
-    const requestId = Math.random().toString(36).substring(7)
+    const requestId = generateRequestId()
 
     // 3. Resolve workspace (same logic as chat)
     const workspaceParam = formData.get("workspace") as string | null
@@ -56,7 +52,7 @@ export async function POST(request: NextRequest) {
       : ["orig", "w640", "w1280", "thumb"]
 
     // 6. Upload via storage adapter
-    const result = await uploadImage(storage, tenantId, buffer, {
+    const result = await uploadImage(imageStorage, tenantId, buffer, {
       visibility: "public",
       variants: variants as any,
       compress,
