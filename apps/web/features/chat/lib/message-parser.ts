@@ -10,6 +10,7 @@ import {
   isCompleteEvent,
   isDoneEvent,
   isErrorEvent,
+  isInterruptEvent,
   isMessageEvent,
   isPingEvent,
   isResultEvent,
@@ -20,7 +21,7 @@ import { type ErrorCode, getErrorHelp, getErrorMessage } from "@/lib/error-codes
 
 // Stream event types
 export interface StreamEvent {
-  type: "start" | "message" | "session" | "result" | "complete" | "error" | "ping" | "done"
+  type: "start" | "message" | "session" | "result" | "complete" | "error" | "ping" | "done" | "interrupt"
   requestId: string
   timestamp: string
   data:
@@ -31,6 +32,7 @@ export interface StreamEvent {
     | ErrorEventData
     | PingEventData
     | DoneEventData
+    | InterruptEventData
 }
 
 export interface ErrorEventData {
@@ -43,6 +45,11 @@ export interface ErrorEventData {
 export type PingEventData = Record<string, never>
 
 export type DoneEventData = Record<string, never>
+
+export interface InterruptEventData {
+  message: string
+  source: "http_abort" | "client_cancel"
+}
 
 export interface StartEventData {
   host: string
@@ -70,7 +77,7 @@ export interface CompleteEventData {
 // Message types for UI
 export type UIMessage = {
   id: string
-  type: "user" | "start" | "session" | "sdk_message" | "result" | "complete" | "compact_boundary"
+  type: "user" | "start" | "session" | "sdk_message" | "result" | "complete" | "compact_boundary" | "interrupt"
   content: any
   timestamp: Date
   isStreaming?: boolean
@@ -215,6 +222,15 @@ export function parseStreamEvent(event: StreamEvent): UIMessage | null {
     }
   }
 
+  if (isInterruptEvent(event)) {
+    return {
+      id: `${event.requestId}-interrupt`,
+      type: "interrupt",
+      content: event.data,
+      ...baseMessage,
+    }
+  }
+
   return null
 }
 
@@ -224,6 +240,7 @@ export {
   isDoneEvent,
   isErrorEvent,
   isErrorResultMessage,
+  isInterruptEvent,
   isMessageEvent,
   isPingEvent,
   isResultEvent,
@@ -242,6 +259,7 @@ export function getMessageComponentType(message: UIMessage): string {
   if (message.type === "session") return "session"
   if (message.type === "complete") return "complete"
   if (message.type === "compact_boundary") return "compact_boundary"
+  if (message.type === "interrupt") return "interrupt"
 
   if (message.type === "sdk_message") {
     const sdkMsg = message.content as SDKMessage

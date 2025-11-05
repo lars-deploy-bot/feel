@@ -5,7 +5,7 @@ import { type ErrorCode, ErrorCodes } from "@/lib/error-codes"
 import { formatMessage } from "./formatMessage"
 
 export interface StreamEvent {
-  type: "start" | "message" | "session" | "complete" | "error"
+  type: "start" | "message" | "session" | "complete" | "error" | "interrupt"
   requestId: string
   timestamp: string
   data: unknown
@@ -56,8 +56,16 @@ export function createClaudeStream({
     },
   })
 
+  // Store controller reference for cancel/abort methods
+  let streamController: ReadableStreamDefaultController<Uint8Array> | null = null
+
   // If the HTTP request itself gets aborted, stop the SDK too
   const onHttpAbort = async () => {
+    // Send interrupt event if stream is still active
+    if (streamController) {
+      sendInterruptEvent(streamController, "http_abort")
+    }
+
     try {
       sdkAbort.abort("http_request_aborted")
     } catch {}
@@ -77,8 +85,33 @@ export function createClaudeStream({
   }
   requestSignal?.addEventListener("abort", onHttpAbort, { once: true })
 
+  // Helper to send interrupt event
+  let interruptSent = false
+  const sendInterruptEvent = (controller: ReadableStreamDefaultController<Uint8Array>, source: "http_abort" | "client_cancel") => {
+    if (interruptSent) return // Only send once
+    interruptSent = true
+
+    const event: StreamEvent = {
+      type: "interrupt",
+      requestId,
+      timestamp: new Date().toISOString(),
+      data: {
+        message: "Response interrupted by user",
+        source,
+      },
+    }
+    const eventData = `event: bridge_interrupt\ndata: ${JSON.stringify(event)}\n\n`
+    try {
+      controller.enqueue(encoder.encode(eventData))
+      console.log(`[Stream ${requestId}] Interrupt event sent (source: ${source})`)
+    } catch {
+      console.log(`[Stream ${requestId}] Could not send interrupt event (stream may be closed)`)
+    }
+  }
+
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
+      streamController = controller
       ;(async () => {
         const sendEvent = (eventType: StreamEvent["type"], data: unknown) => {
           const event: StreamEvent = {
@@ -279,6 +312,12 @@ export function createClaudeStream({
     async cancel(reason?: unknown) {
       cancelled = true
       console.log(`[Stream ${requestId}] Stream cancelled by client:`, reason)
+
+      // Send interrupt event before closing
+      if (streamController) {
+        sendInterruptEvent(streamController, "client_cancel")
+      }
+
       try {
         sdkAbort.abort("client_cancelled")
       } catch {}

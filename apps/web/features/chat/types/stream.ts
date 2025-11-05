@@ -3,6 +3,7 @@ import type {
   CompleteEventData,
   DoneEventData,
   ErrorEventData,
+  InterruptEventData,
   MessageEventData,
   PingEventData,
   SessionEventData,
@@ -41,4 +42,8 @@ export function isPingEvent(event: StreamEvent): event is StreamEvent & { data: 
 
 export function isDoneEvent(event: StreamEvent): event is StreamEvent & { data: DoneEventData } {
   return event.type === "done"
+}
+
+export function isInterruptEvent(event: StreamEvent): event is StreamEvent & { data: InterruptEventData } {
+  return event.type === "interrupt" && "message" in event.data && "source" in event.data
 }

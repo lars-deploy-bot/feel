@@ -4,6 +4,7 @@ import { AssistantMessage } from "@/features/chat/components/message-renderers/A
 import { CompactBoundaryMessage } from "@/features/chat/components/message-renderers/CompactBoundaryMessage"
 import { CompleteMessage } from "@/features/chat/components/message-renderers/CompleteMessage"
 import { ErrorResultMessage } from "@/features/chat/components/message-renderers/ErrorResultMessage"
+import { InterruptMessage } from "@/features/chat/components/message-renderers/InterruptMessage"
 import { ResultMessage } from "@/features/chat/components/message-renderers/ResultMessage"
 import { StartMessage } from "@/features/chat/components/message-renderers/StartMessage"
 import { SystemMessage } from "@/features/chat/components/message-renderers/SystemMessage"
@@ -68,6 +69,9 @@ function renderMessageContent(message: UIMessage): React.ReactNode {
 
     case "compact_boundary":
       return <CompactBoundaryMessage data={message.content} />
+
+    case "interrupt":
+      return <InterruptMessage data={message.content} />
 
     default:
       return (
