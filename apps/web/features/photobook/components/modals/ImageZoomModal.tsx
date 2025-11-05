@@ -11,20 +11,19 @@ export function ImageZoomModal({ imageSrc, onClose }: ImageZoomModalProps) {
     <div
       className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
       onClick={onClose}
+      onKeyDown={e => {
+        if (e.key === "Escape") {
+          onClose()
+        }
+      }}
       role="dialog"
       aria-modal="true"
       aria-label="Zoomed image view"
     >
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: onClick is only for preventing event bubbling, not user interaction */}
       <div
         className="relative max-w-full max-h-full"
         onClick={e => e.stopPropagation()}
-        onKeyDown={e => {
-          if (e.key === "Escape") {
-            onClose()
-          }
-        }}
-        role="button"
-        tabIndex={0}
       >
         <Image
           src={imageSrc}

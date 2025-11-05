@@ -79,13 +79,12 @@ export default function PhotobookPage() {
   }
 
   return (
-    <div
+    <main
       className={`min-h-screen bg-white text-black transition-all ${dragActive ? "bg-blue-50" : ""}`}
       onDragEnter={handleDrag}
       onDragLeave={handleDrag}
       onDragOver={handleDrag}
       onDrop={handleDrop}
-      role="main"
     >
       <div className="max-w-5xl mx-auto p-8">
         {/* Header */}
@@ -221,6 +220,6 @@ export default function PhotobookPage() {
           />
         )}
       </div>
-    </div>
+    </main>
   )
 }

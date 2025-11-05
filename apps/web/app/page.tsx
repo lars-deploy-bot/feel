@@ -99,20 +99,26 @@ function LoginPageContent() {
               {recentSites.map(site => (
                 <div
                   key={site.domain}
-                  onClick={() => {
-                    setWorkspace(site.domain)
-                    setWorkspaceTouched(false)
-                  }}
-                  className="w-full group flex items-center justify-between px-4 py-3 rounded-lg border border-black/10 hover:border-black/30 hover:bg-black/5 transition-all text-left cursor-pointer"
+                  className="w-full group relative flex items-center justify-between px-4 py-3 rounded-lg border border-black/10 hover:border-black/30 hover:bg-black/5 transition-all"
                 >
-                  <span className="text-sm font-medium text-black">{site.domain}</span>
                   <button
                     type="button"
-                    onClick={e => {
-                      e.stopPropagation()
-                      removeSite(site.domain)
+                    onClick={() => {
+                      setWorkspace(site.domain)
+                      setWorkspaceTouched(false)
                     }}
-                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-black/10 rounded transition-opacity"
+                    className="absolute inset-0 text-left"
+                  >
+                    <span className="sr-only">Select {site.domain}</span>
+                  </button>
+                  <span className="text-sm font-medium text-black relative z-10 pointer-events-none">
+                    {site.domain}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeSite(site.domain)}
+                    className="relative z-10 opacity-0 group-hover:opacity-100 p-1 hover:bg-black/10 rounded transition-opacity"
+                    aria-label={`Remove ${site.domain}`}
                   >
                     <X className="h-3 w-3 text-black/50" />
                   </button>

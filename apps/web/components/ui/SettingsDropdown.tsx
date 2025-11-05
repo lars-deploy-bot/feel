@@ -95,11 +95,10 @@ export function SettingsDropdown({ onNewChat, onPhotos }: SettingsDropdownProps)
 
       {/* Invisible overlay to close dropdown when clicking outside */}
       {isOpen && (
-        <div
+        <button
+          type="button"
           className="fixed inset-0 z-[-1]"
           onClick={() => setIsOpen(false)}
-          role="button"
-          tabIndex={0}
           aria-label="Close menu"
           onKeyDown={e => {
             if (e.key === "Escape") {

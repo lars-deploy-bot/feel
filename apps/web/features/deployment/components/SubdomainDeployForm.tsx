@@ -70,7 +70,6 @@ export function SubdomainDeployForm() {
   })
 
   const watchSlug = watch("slug")
-  const watchEmail = watch("email")
   const watchPassword = watch("password")
 
   const onSubmit = async (data: DeploySubdomainForm) => {
@@ -154,7 +153,7 @@ export function SubdomainDeployForm() {
           </motion.div>
 
           <motion.div variants={itemVariants}>
-            <EmailField register={register} errors={errors} watchEmail={watchEmail} isDeploying={isDeploying} />
+            <EmailField register={register} errors={errors} isDeploying={isDeploying} />
           </motion.div>
 
           {/* Hidden field for siteIdeas */}
