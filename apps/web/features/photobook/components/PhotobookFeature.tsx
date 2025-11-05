@@ -3,12 +3,12 @@
 import { ArrowLeft, Upload } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
+import { DeleteModal } from "@/components/modals/DeleteModal"
 // Feature hooks
 import { useCopyToClipboard, useImageManagement, useWorkspace } from "../hooks"
 // Feature components
 import { ImageCard, LoadingState } from "./"
 import { ImageZoomModal, MessageBanner } from "./modals"
-import { DeleteModal } from "@/components/modals/DeleteModal"
 
 export default function PhotobookPage() {
   const router = useRouter()
@@ -101,9 +101,7 @@ export default function PhotobookPage() {
             </button>
             <h1 className="text-2xl font-semibold">Photos</h1>
           </div>
-          <p className="text-base text-gray-700 font-medium">
-            Copy photo links and paste them in chat
-          </p>
+          <p className="text-base text-gray-700 font-medium">Copy photo links and paste them in chat</p>
         </header>
 
         {/* Hidden file input */}
@@ -146,9 +144,7 @@ export default function PhotobookPage() {
               <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-blue-100 mb-6 group-hover:bg-blue-200 transition-colors">
                 <Upload className="w-12 h-12 text-blue-600" />
               </div>
-              <h2 className="text-3xl font-semibold text-gray-900 mb-3">
-                Drop photos here
-              </h2>
+              <h2 className="text-3xl font-semibold text-gray-900 mb-3">Drop photos here</h2>
               <p className="text-lg text-gray-600 mb-2">Drag files from your computer</p>
               <p className="text-base text-blue-600">or click to browse</p>
             </button>

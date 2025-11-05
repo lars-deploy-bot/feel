@@ -1,8 +1,10 @@
 import { BashOutput } from "@/components/ui/chat/tools/bash/BashOutput"
+import { EditOutput } from "@/components/ui/chat/tools/edit/EditOutput"
 import { GlobOutput } from "@/components/ui/chat/tools/glob/GlobOutput"
 import { GrepOutput } from "@/components/ui/chat/tools/grep/GrepOutput"
 import { ReadOutput } from "@/components/ui/chat/tools/read/ReadOutput"
 import { TaskOutput } from "@/components/ui/chat/tools/task/TaskOutput"
+import { WriteOutput } from "@/components/ui/chat/tools/write/WriteOutput"
 
 interface ToolOutputRouterProps {
   toolName: string
@@ -35,6 +37,18 @@ export function ToolOutputRouter({ toolName, content }: ToolOutputRouterProps) {
       // NotebookFileOutput
       if (content.cells) {
         return <ReadOutput {...content} />
+      }
+      break
+
+    case "edit":
+      if (content.replacements !== undefined) {
+        return <EditOutput {...content} />
+      }
+      break
+
+    case "write":
+      if (content.bytes_written !== undefined) {
+        return <WriteOutput {...content} />
       }
       break
 

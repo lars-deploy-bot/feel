@@ -1,14 +1,13 @@
 import type { SDKSystemMessage } from "@anthropic-ai/claude-agent-sdk"
+import { useDebugVisibility } from "@/lib/use-debug-visibility"
 
 interface SystemMessageProps {
   content: SDKSystemMessage
 }
 
 export function SystemMessage({ content }: SystemMessageProps) {
-  // Only show on staging (development mode)
-  if (process.env.NODE_ENV !== "development") {
-    return null
-  }
+  const { showSystemMessages } = useDebugVisibility()
+  if (!showSystemMessages) return null
 
   return (
     <div className="py-2 mb-4 text-sm text-black/60">

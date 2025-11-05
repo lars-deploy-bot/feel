@@ -1,6 +1,8 @@
 import { useState } from "react"
 import { ToolOutputRouter } from "@/components/ui/chat/tools/ToolOutputRouter"
 import type { SDKUserMessage } from "@/lib/sdk-types"
+import { getToolIcon } from "@/lib/tool-icons"
+import { useDebugVisibility } from "@/lib/use-debug-visibility"
 
 // Extended tool result type with our added tool_name
 interface ToolResultContent {
@@ -38,9 +40,11 @@ export function ToolResultMessage({ content }: ToolResultMessageProps) {
 
 function ToolResult({ result }: { result: ToolResultContent }) {
   const [isExpanded, setIsExpanded] = useState(false)
+  const { showToolNames } = useDebugVisibility()
 
   // Use the tool name that was attached by the message parser
   const toolName = result.tool_name || "Tool Result"
+  const Icon = getToolIcon(toolName)
 
   // Parse the content to get structured tool output if it's JSON
   const getDisplayContent = () => {
@@ -59,55 +63,68 @@ function ToolResult({ result }: { result: ToolResultContent }) {
   // Format tool output preview (collapsed state)
   const formatToolOutputPreview = (toolName: string, content: any): string => {
     const tool = toolName.toLowerCase()
+    let preview = ""
 
     try {
       switch (tool) {
         case "read":
-          if (content.total_lines) return `read ${content.lines_returned || content.total_lines} lines`
-          if (content.file_size) return "read image"
-          if (content.total_pages) return "read pdf"
-          if (content.cells) return "read notebook"
+          if (content.total_lines) preview = `read ${content.lines_returned || content.total_lines} lines`
+          else if (content.file_size) preview = "read image"
+          else if (content.total_pages) preview = "read pdf"
+          else if (content.cells) preview = "read notebook"
           break
         case "write":
-          if (content.bytes_written) return "wrote file"
+          if (content.bytes_written) preview = "wrote file"
           break
         case "edit":
-          if (content.replacements !== undefined) return `made ${content.replacements} changes`
+          if (content.replacements !== undefined) preview = `made ${content.replacements} changes`
           break
         case "grep":
-          if (content.count !== undefined) return `found ${content.count} files`
-          if (content.total_matches !== undefined) return `found ${content.total_matches} matches`
-          if (content.total !== undefined) return `found ${content.total} matches`
+          if (content.count !== undefined) preview = `found ${content.count} files`
+          else if (content.total_matches !== undefined) preview = `found ${content.total_matches} matches`
+          else if (content.total !== undefined) preview = `found ${content.total} matches`
           break
         case "glob":
-          if (content.count !== undefined) return `found ${content.count} files`
+          if (content.count !== undefined) preview = `found ${content.count} files`
           break
         case "bash":
           if (content.exitCode !== undefined)
-            return content.exitCode === 0 ? "completed" : `failed (${content.exitCode})`
+            preview = content.exitCode === 0 ? "completed" : `failed (${content.exitCode})`
           break
         case "task":
-          return "completed"
+          preview = "completed"
+          break
       }
     } catch (_e) {
       // Fall through
     }
 
-    return toolName.toLowerCase()
+    if (!preview) {
+      preview = toolName.toLowerCase()
+    }
+
+    // In debug mode, show both exact tool name and preview
+    if (showToolNames) {
+      return `${toolName}: ${preview}`
+    }
+
+    return preview
   }
 
   return (
-    <div className="mb-2">
+    <div className="my-1">
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
-        className={`text-xs font-medium hover:text-black/70 transition-colors pr-4 ${
-          result.is_error ? "text-red-600" : "text-black/50"
+        className={`text-xs font-normal hover:text-black/50 transition-colors flex items-center gap-1.5 ${
+          result.is_error ? "text-red-600" : "text-black/35"
         }`}
       >
-        {formatToolOutputPreview(toolName, displayContent)}
-        {result.is_error && " error"}
-        <span className="ml-1">{isExpanded ? "−" : "+"}</span>
+        <Icon size={12} className="opacity-60" />
+        <span>
+          {formatToolOutputPreview(toolName, displayContent)}
+          {result.is_error && " error"}
+        </span>
       </button>
       {isExpanded && (
         <div className="mt-1 max-w-full overflow-hidden">

@@ -1,6 +1,7 @@
 import { useState } from "react"
 import type { UIMessage } from "@/lib/message-parser"
 import { renderMessage } from "@/lib/message-renderer"
+import { useDebugVisibility } from "@/lib/use-debug-visibility"
 import { ThinkingSpinner } from "./ThinkingSpinner"
 
 interface ThinkingGroupProps {
@@ -10,16 +11,29 @@ interface ThinkingGroupProps {
 
 export function ThinkingGroup({ messages, isComplete }: ThinkingGroupProps) {
   const [isExpanded, setIsExpanded] = useState(false)
+  const { showThinkingWrapper } = useDebugVisibility()
 
+  // If complete and not showing debug wrapper, render messages directly (no "doing some work")
+  if (isComplete && !showThinkingWrapper) {
+    return (
+      <>
+        {messages.map(message => (
+          <div key={message.id}>{renderMessage(message)}</div>
+        ))}
+      </>
+    )
+  }
+
+  // In progress or showing debug: show with wrapper
   return (
-    <div className="mb-2">
+    <div className="my-4">
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
-        className="text-xs font-medium text-black/50 hover:text-black/70 transition-colors flex items-center gap-1"
+        className="text-xs font-normal text-black/35 hover:text-black/50 transition-colors flex items-center gap-1"
       >
         {!isComplete && <ThinkingSpinner />}
-        <span>{isComplete ? "completed" : "thinking"}</span>
+        <span>{isComplete ? "doing some work" : "thinking"}</span>
       </button>
 
       {isExpanded && (

@@ -1,11 +1,15 @@
 import type { SDKResultMessage } from "@anthropic-ai/claude-agent-sdk"
 import { ErrorCodes, getErrorHelp, getErrorMessage } from "@/lib/error-codes"
+import { useDebugVisibility } from "@/lib/use-debug-visibility"
 
 interface ResultMessageProps {
   content: SDKResultMessage
 }
 
 export function ResultMessage({ content }: ResultMessageProps) {
+  // MUST call hooks at top level before any returns
+  const { showCompletionStats } = useDebugVisibility()
+
   // Map SDK subtype to error code
   const getErrorCode = () => {
     if (content.subtype === "error_max_turns") {
@@ -59,6 +63,9 @@ export function ResultMessage({ content }: ResultMessageProps) {
       </div>
     )
   }
+
+  // Only show completion stats in debug mode
+  if (!showCompletionStats) return null
 
   return (
     <div className="py-2 mb-4">

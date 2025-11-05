@@ -1,3 +1,5 @@
+import { useDebugVisibility } from "@/lib/use-debug-visibility"
+
 interface CompleteMessageProps {
   data: {
     totalMessages: number
@@ -10,6 +12,9 @@ interface CompleteMessageProps {
 }
 
 export function CompleteMessage({ data }: CompleteMessageProps) {
+  const { showCompletionStats } = useDebugVisibility()
+  if (!showCompletionStats) return null
+
   return (
     <div className="py-2 mb-4 text-center">
       <div className="text-sm font-medium text-black/60 normal-case tracking-normal">

@@ -1,6 +1,6 @@
-import { cookies } from "next/headers"
 import { exec } from "node:child_process"
 import { promisify } from "node:util"
+import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { loadDomainPasswords, updateDomainPassword } from "@/types/guards/api"
@@ -124,7 +124,7 @@ export async function DELETE(req: NextRequest) {
 
     try {
       const { stdout, stderr } = await execAsync(
-        `/root/webalive/claude-bridge/scripts/delete-site-systemd.sh ${domain}`
+        `/root/webalive/claude-bridge/scripts/delete-site-systemd.sh ${domain}`,
       )
       const res = NextResponse.json({ ok: true, output: stdout, error: stderr || null })
       addCorsHeaders(res, origin)
@@ -135,7 +135,7 @@ export async function DELETE(req: NextRequest) {
           ok: false,
           error: error instanceof Error ? error.message : "Failed to delete site",
         },
-        { status: 500 }
+        { status: 500 },
       )
       addCorsHeaders(res, origin)
       return res

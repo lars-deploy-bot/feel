@@ -1,7 +1,7 @@
 import type { SDKAssistantMessage } from "@anthropic-ai/claude-agent-sdk"
-import { useState } from "react"
 import { MarkdownDisplay } from "@/components/ui/chat/format/MarkdownDisplay"
-import { ToolInputRouter } from "@/components/ui/chat/tools/ToolInputRouter"
+import { getToolIcon } from "@/lib/tool-icons"
+import { useDebugVisibility } from "@/lib/use-debug-visibility"
 import { hasMarkdown } from "@/lib/utils/markdown-utils"
 import type { ContentItem } from "@/types/guards/content"
 import { isTextBlock, isToolUseBlock } from "@/types/guards/content"
@@ -21,8 +21,7 @@ export function AssistantMessage({ content }: AssistantMessageProps) {
 }
 
 function ToolUseItem({ item }: { item: ContentItem }): React.ReactNode {
-  const [isExpanded, setIsExpanded] = useState(false)
-
+  const { showToolNames } = useDebugVisibility()
   if (isTextBlock(item)) {
     const text = item.text
 
@@ -36,44 +35,57 @@ function ToolUseItem({ item }: { item: ContentItem }): React.ReactNode {
 
   if (isToolUseBlock(item)) {
     const toolItem = item as { name: string; input: Record<string, unknown> }
-    const hasInput = toolItem.input && typeof toolItem.input === "object" && Object.keys(toolItem.input).length > 0
+    const Icon = getToolIcon(toolItem.name)
 
     const getActionLabel = (toolName: string) => {
-      switch (toolName.toLowerCase()) {
-        case "read":
-          return "reading"
-        case "edit":
-          return "editing"
-        case "write":
-          return "writing"
-        case "grep":
-          return "searching"
-        case "glob":
-          return "finding"
-        case "bash":
-          return "running"
-        case "task":
-          return "delegating"
-        default:
-          return toolName.toLowerCase()
+      const friendlyLabel = (() => {
+        switch (toolName.toLowerCase()) {
+          case "read":
+            return "reading"
+          case "edit":
+            return "editing"
+          case "write":
+            return "writing"
+          case "grep":
+            return "searching"
+          case "glob":
+            return "finding"
+          case "bash":
+            return "running"
+          case "task":
+            return "delegating"
+          default:
+            return toolName.toLowerCase()
+        }
+      })()
+
+      // In debug mode, show both exact tool name and friendly label
+      if (showToolNames) {
+        return `${toolName} (${friendlyLabel})`
       }
+
+      return friendlyLabel
     }
 
+    const getInlineDetail = (toolName: string, input: Record<string, unknown>) => {
+      const name = toolName.toLowerCase()
+      if (name === "read" || name === "edit" || name === "write") {
+        const filePath = input.file_path as string
+        if (filePath) {
+          const fileName = filePath.split("/").pop() || filePath
+          return fileName
+        }
+      }
+      return null
+    }
+
+    const inlineDetail = getInlineDetail(toolItem.name, toolItem.input)
+
     return (
-      <div className="mb-2">
-        <button
-          type="button"
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="text-xs text-black/40 font-thin hover:text-black/60 transition-colors pr-4"
-        >
-          {getActionLabel(toolItem.name)}
-          {hasInput && <span className="ml-1">{isExpanded ? "−" : "+"}</span>}
-        </button>
-        {hasInput && isExpanded && (
-          <div className="mt-1 max-w-full overflow-hidden">
-            <ToolInputRouter toolName={toolItem.name} input={toolItem.input as Record<string, string>} />
-          </div>
-        )}
+      <div className="my-1 text-xs font-normal text-black/35 flex items-center gap-1.5">
+        <Icon size={12} className="opacity-60" />
+        <span>{getActionLabel(toolItem.name)}</span>
+        {inlineDetail && <span className="font-diatype-mono text-black/50">{inlineDetail}</span>}
       </div>
     )
   }

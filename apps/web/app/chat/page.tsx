@@ -1,5 +1,5 @@
 "use client"
-import { ExternalLink, Square } from "lucide-react"
+import { ExternalLink, Eye, EyeOff, Square } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Suspense, useEffect, useRef, useState } from "react"
 import { ThinkingGroup } from "@/components/ui/chat/ThinkingGroup"
@@ -9,10 +9,11 @@ import { SubdomainInitializer } from "@/features/chat/components/SubdomainInitia
 import { groupMessages } from "@/features/chat/lib/message-grouper"
 import { parseStreamEvent, type StreamEvent, type UIMessage } from "@/features/chat/lib/message-parser"
 import { renderMessage } from "@/features/chat/lib/message-renderer"
+import { DevModeProvider, useDevMode } from "@/lib/dev-mode-context"
 import type { StructuredError } from "@/lib/error-codes"
 import { isTerminalMode } from "@/types/guards/workspace"
 
-export default function ChatPage() {
+function ChatPageContent() {
   const [msg, setMsg] = useState("")
   const [workspace, setWorkspace] = useState("")
   const [messages, setMessages] = useState<UIMessage[]>([])
@@ -29,6 +30,7 @@ export default function ChatPage() {
   const abortControllerRef = useRef<AbortController | null>(null)
   const isSubmitting = useRef<boolean>(false)
   const router = useRouter()
+  const { showDevContent, toggleDevContent } = useDevMode()
 
   useEffect(() => {
     setMounted(true)
@@ -324,7 +326,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="h-[100dvh] flex flex-col max-w-4xl mx-auto overflow-hidden">
+    <div className="h-[100dvh] flex flex-col max-w-4xl mx-auto overflow-hidden dark:bg-[#1a1a1a] dark:text-white">
       <Suspense fallback={null}>
         <SubdomainInitializer
           onInitialize={handleSubdomainInitialize}
@@ -335,22 +337,33 @@ export default function ChatPage() {
       </Suspense>
       <div className="flex-1 min-h-0 flex flex-col">
         {/* Header */}
-        <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-black/10">
-          <h1 className="text-lg font-medium text-black">{mounted && isTerminal ? "Chat" : "Chat"}</h1>
+        <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-black/10 dark:border-white/10">
+          <h1 className="text-lg font-medium text-black dark:text-white">{mounted && isTerminal ? "Chat" : "Chat"}</h1>
           <div className="flex items-center gap-2">
+            {process.env.NODE_ENV === "development" && (
+              <button
+                type="button"
+                onClick={toggleDevContent}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border transition-colors text-black/60 hover:text-black/80 border-black/20 hover:border-black/40 dark:text-white/60 dark:hover:text-white/80 dark:border-white/20 dark:hover:border-white/40"
+                title={showDevContent ? "Hide dev info (production view)" : "Show dev info (development view)"}
+              >
+                {showDevContent ? <Eye size={14} /> : <EyeOff size={14} />}
+                <span>{showDevContent ? "Dev" : "Prod"}</span>
+              </button>
+            )}
             <SettingsDropdown onNewChat={startNewConversation} onPhotos={() => router.push("/photobook")} />
           </div>
         </div>
 
         {mounted && isTerminal && workspace && (
-          <div className="flex-shrink-0 px-6 py-3 border-b border-black/5 bg-black/[0.02]">
+          <div className="flex-shrink-0 px-6 py-3 border-b border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02]">
             <div className="flex items-center text-xs">
-              <span className="text-black/50 font-medium">site</span>
+              <span className="text-black/50 dark:text-white/50 font-medium">site</span>
               <a
                 href={`https://${workspace}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="ml-3 font-diatype-mono text-black/80 font-medium hover:text-black underline decoration-black/30 hover:decoration-black flex items-center gap-1.5 transition-colors"
+                className="ml-3 font-diatype-mono text-black/80 dark:text-white/80 font-medium hover:text-black dark:hover:text-white underline decoration-black/30 dark:decoration-white/30 hover:decoration-black dark:hover:decoration-white flex items-center gap-1.5 transition-colors"
               >
                 {workspace}
                 <ExternalLink size={12} className="opacity-60" />
@@ -365,8 +378,10 @@ export default function ChatPage() {
           {messages.length === 0 && !busy && (
             <div className="flex items-center justify-center h-full">
               <div className="max-w-md text-center space-y-4 pb-20">
-                <p className="text-base text-black/80 font-medium">Tell me what to build and I'll update your site</p>
-                <div className="text-sm text-black/50 font-normal space-y-1.5">
+                <p className="text-base text-black/80 dark:text-white/80 font-medium">
+                  Tell me what to build and I'll update your site
+                </p>
+                <div className="text-sm text-black/50 dark:text-white/50 font-normal space-y-1.5">
                   <p>"Add a contact form"</p>
                   <p>"Change the background to blue"</p>
                   <p>"Make the text bigger"</p>
@@ -389,8 +404,8 @@ export default function ChatPage() {
           })}
           {/* Show thinking indicator only when busy but no assistant response has started yet */}
           {busy && messages.length > 0 && messages[messages.length - 1]?.type === "user" && (
-            <div className="mb-2">
-              <div className="text-xs font-medium text-black/50 flex items-center gap-1">
+            <div className="my-4">
+              <div className="text-xs font-normal text-black/35 dark:text-white/35 flex items-center gap-1">
                 <ThinkingSpinner />
                 <span>thinking</span>
               </div>
@@ -401,7 +416,7 @@ export default function ChatPage() {
 
         {/* Input */}
         <div className="flex-shrink-0 p-4 safe-area-inset-bottom">
-          <div className="relative border border-black/20 focus-within:border-black/40 transition-colors">
+          <div className="relative border border-black/20 dark:border-white/20 focus-within:border-black/40 dark:focus-within:border-white/40 transition-colors">
             <textarea
               value={msg}
               onChange={e => setMsg(e.target.value)}
@@ -412,7 +427,7 @@ export default function ChatPage() {
                 }
               }}
               placeholder="Tell me what to change..."
-              className="w-full resize-none border-0 bg-transparent text-base font-normal focus:outline-none p-3 pr-20"
+              className="w-full resize-none border-0 bg-transparent text-base font-normal focus:outline-none p-3 pr-20 text-black dark:text-white placeholder:text-black/40 dark:placeholder:text-white/40"
               style={{ minHeight: "80px" }}
               data-testid="message-input"
             />
@@ -420,17 +435,17 @@ export default function ChatPage() {
               <button
                 type="button"
                 onClick={stopStreaming}
-                className="absolute top-3 right-3 bottom-3 w-12 text-xs font-medium bg-black text-white hover:bg-gray-800 transition-colors focus:outline-none flex items-center justify-center"
+                className="absolute top-3 right-3 bottom-3 w-12 text-xs font-medium bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors focus:outline-none flex items-center justify-center"
                 data-testid="stop-button"
               >
-                <Square size={14} fill="white" />
+                <Square size={14} fill="currentColor" />
               </button>
             ) : (
               <button
                 type="button"
                 onClick={sendMessage}
                 disabled={busy || !msg.trim()}
-                className="absolute top-3 right-3 bottom-3 w-12 text-lg font-medium bg-black text-white hover:bg-gray-800 transition-colors disabled:opacity-50 focus:outline-none flex items-center justify-center"
+                className="absolute top-3 right-3 bottom-3 w-12 text-lg font-medium bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors disabled:opacity-50 focus:outline-none flex items-center justify-center"
                 data-testid="send-button"
               >
                 {busy ? "•••" : "→"}
@@ -440,5 +455,13 @@ export default function ChatPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function ChatPage() {
+  return (
+    <DevModeProvider>
+      <ChatPageContent />
+    </DevModeProvider>
   )
 }

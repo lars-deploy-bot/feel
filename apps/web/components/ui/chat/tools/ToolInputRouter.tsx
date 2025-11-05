@@ -1,8 +1,10 @@
 import { BashInput } from "@/components/ui/chat/tools/bash/BashInput"
+import { EditInput } from "@/components/ui/chat/tools/edit/EditInput"
 import { GlobInput } from "@/components/ui/chat/tools/glob/GlobInput"
 import { GrepInput } from "@/components/ui/chat/tools/grep/GrepInput"
 import { ReadInput } from "@/components/ui/chat/tools/read/ReadInput"
 import { TaskInput } from "@/components/ui/chat/tools/task/TaskInput"
+import { WriteInput } from "@/components/ui/chat/tools/write/WriteInput"
 
 interface ToolInputRouterProps {
   toolName: string
@@ -22,6 +24,18 @@ export function ToolInputRouter({ toolName, input }: ToolInputRouterProps) {
     case "read":
       if (input.file_path) {
         return <ReadInput {...input} />
+      }
+      break
+
+    case "edit":
+      if (input.file_path && input.old_string && input.new_string) {
+        return <EditInput {...input} />
+      }
+      break
+
+    case "write":
+      if (input.file_path && input.content) {
+        return <WriteInput {...input} />
       }
       break
 

@@ -13,9 +13,7 @@ export function ToolUse({ item }: ToolUseProps) {
 
   return (
     <div className="my-1">
-      <ToolButton onClick={() => setIsExpanded(!isExpanded)} isExpanded={isExpanded} hasContent={hasInput}>
-        {item.name}
-      </ToolButton>
+      <ToolButton onClick={() => setIsExpanded(!isExpanded)}>{item.name}</ToolButton>
       {hasInput && isExpanded && <ScrollableCode content={JSON.stringify(item.input, null, 2)} />}
     </div>
   )
