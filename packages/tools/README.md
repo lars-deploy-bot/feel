@@ -16,6 +16,11 @@ This package exposes an integrated suite of tools through an MCP server that can
 - **list_guides**: Discover available guides across different categories
 - **get_guide**: Retrieve specific guide content by category and topic
 
+### Workspace Management
+
+- **restart_dev_server**: Restart the systemd dev server for a workspace
+- **install_package**: Install a package in the user's workspace using bun
+
 ### Debug Tools
 
 - **read_server_logs**: Read systemd journal logs from workspace dev servers (currently disabled in main terminal)
@@ -83,6 +88,48 @@ Retrieves guide content by category and optional topic search.
 ```typescript
 { tool: "mcp__tools__get_guide", category: "workflows", topic: "authentication" }
 { tool: "mcp__tools__get_guide", category: "design-system", topic: "color" }
+```
+
+### restart_dev_server
+
+Restarts the systemd dev server for a workspace.
+
+**Parameters:**
+- `workspaceRoot` (required): The root path of the workspace (e.g., "/srv/webalive/sites/example.com/user")
+
+**Example:**
+```typescript
+{
+  tool: "mcp__workspace-management__restart_dev_server",
+  workspaceRoot: "/srv/webalive/sites/example.com/user"
+}
+```
+
+### install_package
+
+Installs a package in the user's workspace using bun. Runs in the child process with proper isolation.
+
+**Parameters:**
+- `workspaceRoot` (required): The root path of the workspace (e.g., "/srv/webalive/sites/example.com/user")
+- `packageName` (required): The package name to install (e.g., "react", "lodash", "@types/node")
+- `dev` (optional): Whether to install as a dev dependency (default: false)
+
+**Examples:**
+```typescript
+// Install regular dependency
+{
+  tool: "mcp__workspace-management__install_package",
+  workspaceRoot: "/srv/webalive/sites/example.com/user",
+  packageName: "react"
+}
+
+// Install dev dependency
+{
+  tool: "mcp__workspace-management__install_package",
+  workspaceRoot: "/srv/webalive/sites/example.com/user",
+  packageName: "@types/node",
+  dev: true
+}
 ```
 
 ### read_server_logs

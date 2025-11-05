@@ -3,6 +3,7 @@ import { readServerLogsTool } from "./tools/debug/read-server-logs.js"
 import { getGuideTool } from "./tools/guides/get-guide.js"
 import { listGuidesTool } from "./tools/guides/list-guides.js"
 import { generatePersonaTool } from "./tools/personas/generate-persona.js"
+import { installPackageTool } from "./tools/workspace/install-package.js"
 import { restartServerTool } from "./tools/workspace/restart-server.js"
 
 /**
@@ -32,13 +33,14 @@ export const toolsMcp = createSdkMcpServer({
  *
  * **Workspace Management:**
  * - restart_dev_server: Restart the systemd dev server for a workspace
+ * - install_package: Install a package in the user's workspace using bun
  *
  * Tool names follow MCP pattern: mcp__workspace-management__<tool_name>
  */
 export const workspaceManagementMcp = createSdkMcpServer({
   name: "workspace-management",
   version: "1.0.0",
-  tools: [restartServerTool],
+  tools: [restartServerTool, installPackageTool],
 })
 
 export const guidesMcp = toolsMcp
