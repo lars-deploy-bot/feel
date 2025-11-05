@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -16,13 +20,27 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "@/app/*": ["./app/*"],
-      "@/features/*": ["./features/*"],
-      "@/components/*": ["./components/*"],
-      "@/lib/*": ["./lib/*"],
-      "@/types/*": ["./types/*"],
-      "@/hooks/*": ["./hooks/*"],
-      "@/tools/*": ["./tools/*"]
+      "@/app/*": [
+        "./app/*"
+      ],
+      "@/features/*": [
+        "./features/*"
+      ],
+      "@/components/*": [
+        "./components/*"
+      ],
+      "@/lib/*": [
+        "./lib/*"
+      ],
+      "@/types/*": [
+        "./types/*"
+      ],
+      "@/hooks/*": [
+        "./hooks/*"
+      ],
+      "@/tools/*": [
+        "./tools/*"
+      ]
     },
     "plugins": [
       {
@@ -37,8 +55,15 @@
     "**/*.mts",
     "**/*.ts",
     "**/*.tsx",
+    "../../.builds/current/types/**/*.ts",
+    "../../.builds/current/dev/types/**/*.ts",
+    "../../.builds/dist/types/**/*.ts",
+    "../../.builds/dist/dev/types/**/*.ts",
     "dist/types/**/*.ts",
     "dist/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "../../.builds"
+  ]
 }

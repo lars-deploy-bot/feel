@@ -1,6 +1,6 @@
 #!/bin/bash
 # Atomic build script - prevents PM2 from serving half-built files
-# Builds to dist/, moves to timestamped directory, then atomically swaps symlink
+# Builds to .builds/dist, moves to timestamped directory, then atomically swaps symlink
 
 set -euo pipefail
 
@@ -23,16 +23,17 @@ cd "$PROJECT_ROOT"
 
 # Configuration
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-TEMP_BUILD_DIR="apps/web/dist"
-TIMESTAMPED_DIR="apps/web/dist.${TIMESTAMP}"
-SYMLINK="apps/web/dist"
+TEMP_BUILD_DIR=".builds/dist"
+TIMESTAMPED_DIR=".builds/dist.${TIMESTAMP}"
+SYMLINK=".builds/current"
 WEB_DIR="apps/web"
+BUILDS_DIR=".builds"
 
 log_info "Starting atomic build to dist.${TIMESTAMP}..."
 
 # Remove existing temp build if it exists and is NOT a symlink
 if [ -e "$TEMP_BUILD_DIR" ] && [ ! -L "$TEMP_BUILD_DIR" ]; then
-    log_warn "Found non-symlink dist/ directory - moving to backup..."
+    log_warn "Found non-symlink $TEMP_BUILD_DIR directory - moving to backup..."
     mv "$TEMP_BUILD_DIR" "${TEMP_BUILD_DIR}.backup.$(date +%s)"
 fi
 
@@ -81,15 +82,15 @@ mv "$TEMP_BUILD_DIR" "$TIMESTAMPED_DIR"
 log_success "Build moved to: dist.${TIMESTAMP}"
 
 # Atomic symlink swap
-log_info "Creating symlink: dist -> dist.${TIMESTAMP}"
-cd "$WEB_DIR"
-ln -sfn "dist.${TIMESTAMP}" "dist"
+log_info "Creating symlink: current -> dist.${TIMESTAMP}"
+cd "$BUILDS_DIR"
+ln -sfn "dist.${TIMESTAMP}" "current"
 cd "$PROJECT_ROOT"
 log_success "Symlink updated atomically"
 
 # Cleanup old builds (keep last 3)
 log_info "Cleaning up old builds..."
-cd "$WEB_DIR"
+cd "$BUILDS_DIR"
 OLD_BUILDS=$(ls -dt dist.* 2>/dev/null | tail -n +4)
 if [ -n "$OLD_BUILDS" ]; then
     echo "$OLD_BUILDS" | xargs rm -rf
@@ -105,7 +106,7 @@ log_success "Active build: $ACTUAL_TARGET"
 
 # List all builds with sizes
 log_info "Available builds:"
-cd "$WEB_DIR"
+cd "$BUILDS_DIR"
 ls -dt dist.* 2>/dev/null | while read dir; do
     SIZE=$(du -sh "$dir" 2>/dev/null | cut -f1)
     if [ "dist.${TIMESTAMP}" = "$dir" ]; then
@@ -117,4 +118,4 @@ done
 cd "$PROJECT_ROOT"
 
 echo ""
-log_success "Atomic build complete! PM2 can now safely serve dist/"
+log_success "Atomic build complete! PM2 can now safely serve .builds/current"

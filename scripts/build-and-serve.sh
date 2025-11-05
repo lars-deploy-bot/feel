@@ -25,6 +25,7 @@ PORT=8999
 APP_NAME="claude-bridge"
 LOCK_FILE="/tmp/${APP_NAME}-deploy.lock"
 MAX_WAIT=30  # Max seconds to wait for health check
+STANDALONE_SERVER_PATH=".builds/current/standalone/apps/web/server.js"
 
 # Navigate to project root
 SCRIPT_DIR="$(dirname "$0")"
@@ -48,19 +49,31 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# Start PM2 process with standalone server
+start_pm2_server() {
+    local port="$1"
+    local app_name="$2"
+
+    PORT="$port" pm2 start "$PROJECT_ROOT/$STANDALONE_SERVER_PATH" \
+        --name "$app_name" \
+        --interpreter bun \
+        --cwd "$PROJECT_ROOT" \
+        --update-env
+}
+
 # Rollback to previous build by switching symlink
 rollback_build() {
     local symlink="$1"
     local previous_build="$2"
 
-    if [ -z "$previous_build" ] || [ ! -d "apps/web/$previous_build" ]; then
+    if [ -z "$previous_build" ] || [ ! -d ".builds/$previous_build" ]; then
         log_error "Previous build not found: $previous_build"
         return 1
     fi
 
     log_warn "Rolling back to previous build: $previous_build"
-    cd apps/web
-    ln -sfn "$previous_build" "dist"
+    cd .builds
+    ln -sfn "$previous_build" "current"
     cd "$PROJECT_ROOT"
 
     log_success "Symlink rolled back to: $previous_build"
@@ -141,7 +154,7 @@ if ! bun install; then
 fi
 
 # Capture current build for potential rollback
-DIST_SYMLINK="$PROJECT_ROOT/apps/web/dist"
+DIST_SYMLINK="$PROJECT_ROOT/.builds/current"
 PREVIOUS_BUILD=""
 if [ -L "$DIST_SYMLINK" ]; then
     PREVIOUS_BUILD=$(readlink "$DIST_SYMLINK")
@@ -187,15 +200,14 @@ if [ -n "$NEXT_PIDS" ]; then
     pkill -f "next-server" 2>/dev/null || true
 fi
 
-# Remove lock files
-rm -f apps/web/dist/dev/lock 2>/dev/null || true
-rm -f apps/web/.next/dev/lock 2>/dev/null || true  # Legacy cleanup
+# Remove dev lock files (for staging/dev servers only)
+rm -f apps/web/.next/dev/lock 2>/dev/null || true
 
 # Start the production server
 log_info "Starting production server on port $PORT..."
-cd apps/web
 
-if ! pm2 start "bun next start -p $PORT" --name "$APP_NAME" >/dev/null 2>&1; then
+# Use standalone server (recommended for output: standalone mode)
+if ! start_pm2_server "$PORT" "$APP_NAME" >/dev/null 2>&1; then
     log_error "Failed to start PM2 process"
     exit 1
 fi
@@ -233,9 +245,8 @@ else
         if rollback_build "$DIST_SYMLINK" "$PREVIOUS_BUILD"; then
             log_warn "Attempting to restart with previous build..."
 
-            # Restart with old build
-            cd "$PROJECT_ROOT/apps/web"
-            if pm2 start "bun next start -p $PORT" --name "$APP_NAME" >/dev/null 2>&1; then
+            # Restart with old build using standalone server
+            if start_pm2_server "$PORT" "$APP_NAME" >/dev/null 2>&1; then
                 # Verify rollback is serving
                 sleep 3
                 if curl -sf http://localhost:$PORT/ >/dev/null 2>&1; then

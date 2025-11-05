@@ -7,10 +7,9 @@ import { useState } from "react"
 
 interface SettingsDropdownProps {
   onNewChat?: () => void
-  onPhotos?: () => void
 }
 
-export function SettingsDropdown({ onNewChat, onPhotos }: SettingsDropdownProps) {
+export function SettingsDropdown({ onNewChat }: SettingsDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
   const router = useRouter()
   const { theme, setTheme } = useTheme()
@@ -63,15 +62,6 @@ export function SettingsDropdown({ onNewChat, onPhotos }: SettingsDropdownProps)
               type="button"
             >
               Start new chat
-            </button>
-          )}
-          {onPhotos && (
-            <button
-              onClick={() => handleAction(onPhotos)}
-              className="w-full px-4 py-2.5 text-left text-sm text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors font-medium"
-              type="button"
-            >
-              Photos
             </button>
           )}
           <button

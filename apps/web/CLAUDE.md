@@ -17,9 +17,9 @@ always use bun!
 - **Serves:** Built `.next` folder (production optimized)
 - **Deploy:** `bun run deploy` (runs `./scripts/build-and-serve.sh`)
   - Pulls latest from git
-  - Runs `bun install` + `bun run build`
+  - Runs `bun install` + atomic build to `.builds/`
   - Stops old PM2 process
-  - Starts new process with `next start`
+  - Starts standalone server from `.builds/current/standalone/apps/web/server.js`
   - Reloads Caddy
 
 ### Staging (staging.terminal.goalive.nl)
@@ -35,8 +35,8 @@ always use bun!
 ```
 Internet → Caddy (ports 80/443)
   ↓
-terminal.goalive.nl → localhost:8999 (production build)
-staging.terminal.goalive.nl → localhost:8998 (dev server)
+terminal.goalive.nl → localhost:8999 (standalone production server)
+staging.terminal.goalive.nl → localhost:8998 (dev server with hot reload)
 ```
 
 ### PM2 Commands

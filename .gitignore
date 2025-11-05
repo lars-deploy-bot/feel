@@ -26,11 +26,12 @@ dist.*/
 # Turborepo
 .turbo/
 
-# Production builds
+# Production builds (root level only)
 /.next/
 /out/
 /build/
 /dist/
+/.builds/
 
 # Runtime data
 pids
@@ -101,13 +102,8 @@ jspm_packages/
 .cache
 .parcel-cache
 
-# Next.js build output
-.next
-out
-
 # Nuxt.js build / generate output
 .nuxt
-dist
 
 # Gatsby files
 .cache/

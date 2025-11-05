@@ -1,5 +1,5 @@
 "use client"
-import { ExternalLink, Eye, EyeOff, Square } from "lucide-react"
+import { ExternalLink, Eye, EyeOff, Image, Square } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Suspense, useEffect, useRef, useState } from "react"
 import { SettingsDropdown } from "@/components/ui/SettingsDropdown"
@@ -419,14 +419,23 @@ function ChatPageContent() {
               <button
                 type="button"
                 onClick={toggleDevContent}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border transition-colors text-black/60 hover:text-black/80 border-black/20 hover:border-black/40 dark:text-white/60 dark:hover:text-white/80 dark:border-white/20 dark:hover:border-white/40"
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium border transition-colors text-black/60 hover:text-black/80 border-black/20 hover:border-black/40 dark:text-white/60 dark:hover:text-white/80 dark:border-white/20 dark:hover:border-white/40"
                 title={showDevContent ? "Hide dev info (production view)" : "Show dev info (development view)"}
               >
                 {showDevContent ? <Eye size={14} /> : <EyeOff size={14} />}
                 <span>{showDevContent ? "Dev" : "Prod"}</span>
               </button>
             )}
-            <SettingsDropdown onNewChat={startNewConversation} onPhotos={() => router.push("/photobook")} />
+            <button
+              type="button"
+              onClick={() => router.push("/photobook")}
+              className="inline-flex items-center justify-center px-3 py-2 text-xs font-medium text-black dark:text-white border border-black/20 dark:border-white/20 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors"
+              aria-label="Photos"
+              title="Photos"
+            >
+              <Image size={14} />
+            </button>
+            <SettingsDropdown onNewChat={startNewConversation} />
           </div>
         </div>
 
