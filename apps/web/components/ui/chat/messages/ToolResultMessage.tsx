@@ -1,8 +1,8 @@
 import { useState } from "react"
 import { ToolOutputRouter } from "@/components/ui/chat/tools/ToolOutputRouter"
+import { useDebugVisible } from "@/lib/dev-mode-context"
 import type { SDKUserMessage } from "@/lib/sdk-types"
 import { getToolIcon } from "@/lib/tool-icons"
-import { useDebugVisibility } from "@/lib/use-debug-visibility"
 
 // Extended tool result type with our added tool_name
 interface ToolResultContent {
@@ -40,7 +40,7 @@ export function ToolResultMessage({ content }: ToolResultMessageProps) {
 
 function ToolResult({ result }: { result: ToolResultContent }) {
   const [isExpanded, setIsExpanded] = useState(false)
-  const { showToolNames } = useDebugVisibility()
+  const isDebugMode = useDebugVisible()
 
   // Use the tool name that was attached by the message parser
   const toolName = result.tool_name || "Tool Result"
@@ -104,7 +104,7 @@ function ToolResult({ result }: { result: ToolResultContent }) {
     }
 
     // In debug mode, show both exact tool name and preview
-    if (showToolNames) {
+    if (isDebugMode) {
       return `${toolName}: ${preview}`
     }
 

@@ -1,7 +1,7 @@
 import type { SDKAssistantMessage } from "@anthropic-ai/claude-agent-sdk"
 import { MarkdownDisplay } from "@/components/ui/chat/format/MarkdownDisplay"
+import { useDebugVisible } from "@/lib/dev-mode-context"
 import { getToolIcon } from "@/lib/tool-icons"
-import { useDebugVisibility } from "@/lib/use-debug-visibility"
 import { hasMarkdown } from "@/lib/utils/markdown-utils"
 import type { ContentItem } from "@/types/guards/content"
 import { isTextBlock, isToolUseBlock } from "@/types/guards/content"
@@ -21,7 +21,7 @@ export function AssistantMessage({ content }: AssistantMessageProps) {
 }
 
 function ToolUseItem({ item }: { item: ContentItem }): React.ReactNode {
-  const { showToolNames } = useDebugVisibility()
+  const isDebugMode = useDebugVisible()
   if (isTextBlock(item)) {
     const text = item.text
 
@@ -60,7 +60,7 @@ function ToolUseItem({ item }: { item: ContentItem }): React.ReactNode {
       })()
 
       // In debug mode, show both exact tool name and friendly label
-      if (showToolNames) {
+      if (isDebugMode) {
         return `${toolName} (${friendlyLabel})`
       }
 

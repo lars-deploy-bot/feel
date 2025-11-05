@@ -1,4 +1,4 @@
-import { useDebugVisibility } from "@/lib/use-debug-visibility"
+import { useDebugVisible } from "@/lib/dev-mode-context"
 
 interface CompleteMessageProps {
   data: {
@@ -12,8 +12,8 @@ interface CompleteMessageProps {
 }
 
 export function CompleteMessage({ data }: CompleteMessageProps) {
-  const { showCompletionStats } = useDebugVisibility()
-  if (!showCompletionStats) return null
+  const isDebugMode = useDebugVisible()
+  if (!isDebugMode) return null
 
   return (
     <div className="py-2 mb-4 text-center">

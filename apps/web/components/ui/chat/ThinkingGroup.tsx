@@ -1,7 +1,7 @@
 import { useState } from "react"
+import { useDebugVisible } from "@/lib/dev-mode-context"
 import type { UIMessage } from "@/lib/message-parser"
 import { renderMessage } from "@/lib/message-renderer"
-import { useDebugVisibility } from "@/lib/use-debug-visibility"
 import { ThinkingSpinner } from "./ThinkingSpinner"
 
 interface ThinkingGroupProps {
@@ -11,10 +11,10 @@ interface ThinkingGroupProps {
 
 export function ThinkingGroup({ messages, isComplete }: ThinkingGroupProps) {
   const [isExpanded, setIsExpanded] = useState(false)
-  const { showThinkingWrapper } = useDebugVisibility()
+  const isDebugMode = useDebugVisible()
 
   // If complete and not showing debug wrapper, render messages directly (no "doing some work")
-  if (isComplete && !showThinkingWrapper) {
+  if (isComplete && !isDebugMode) {
     return (
       <>
         {messages.map(message => (
