@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  distDir: "dist",
+  // Production: use "dist" for atomic builds
+  // Development: use ".next" to avoid conflicts with staging dev server
+  distDir: process.env.NODE_ENV === "production" ? "dist" : ".next",
   output: "standalone",
   experimental: {
     serverActions: { bodySizeLimit: "2mb" },
