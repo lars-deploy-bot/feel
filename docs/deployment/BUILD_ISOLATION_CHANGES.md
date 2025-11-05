@@ -202,6 +202,6 @@ When modifying build process, update:
 
 ## Related Documentation
 
-- **Deployment**: See `docs/deployment.md` (if exists)
+- **Deployment**: See `deployment.md` in this directory
 - **Architecture**: See `docs/REORGANIZATION_PLAN.md`
 - **Web App**: See `apps/web/CLAUDE.md`

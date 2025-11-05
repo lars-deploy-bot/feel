@@ -276,7 +276,7 @@ bun run dev
 
 ## Production Deployment
 
-**CRITICAL**: Before doing any Claude Bridge deployment work (building and deploying the bridge itself, not deploying websites), you MUST read `docs/deployment.md` first. All details about atomic builds, rollback, and troubleshooting are there.
+**CRITICAL**: Before doing any Claude Bridge deployment work (building and deploying the bridge itself, not deploying websites), you MUST read `docs/deployment/deployment.md` first. All details about atomic builds, rollback, and troubleshooting are there.
 
 ### Commands
 
@@ -291,7 +291,7 @@ bun run deploy
 bun run see
 ```
 
-For deployment questions, see `docs/deployment.md`.
+For deployment questions, see `docs/deployment/deployment.md`.
 
 ### Environment Variables (Production)
 
@@ -409,7 +409,7 @@ bun run pull
 
 - **README.md**: User-facing documentation
 - **CLAUDE.md**: This file (AI assistant guidelines)
-- **docs/deployment.md**: Atomic build system and deployment guide
+- **docs/deployment/**: Atomic build system and deployment guide (deployment.md, failure modes, build isolation)
 - **docs/setup/**: Local development setup
 - **IMPLEMENTATION_STATUS.md**: Feature completion tracking
 - **PHASE1_IMPLEMENTATION.md**: Initial implementation notes

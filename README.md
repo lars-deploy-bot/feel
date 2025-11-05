@@ -136,7 +136,7 @@ bun run deploy
 - Performs health check
 - Rolls back automatically if health check fails
 
-See `docs/deployment.md` for detailed atomic build system documentation.
+See `docs/deployment/deployment.md` for detailed atomic build system documentation.
 
 **GitHub Webhook Auto-Deploy:**
 ```bash
