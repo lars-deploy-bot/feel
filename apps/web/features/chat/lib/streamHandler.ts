@@ -87,7 +87,10 @@ export function createClaudeStream({
 
   // Helper to send interrupt event
   let interruptSent = false
-  const sendInterruptEvent = (controller: ReadableStreamDefaultController<Uint8Array>, source: "http_abort" | "client_cancel") => {
+  const sendInterruptEvent = (
+    controller: ReadableStreamDefaultController<Uint8Array>,
+    source: "http_abort" | "client_cancel",
+  ) => {
     if (interruptSent) return // Only send once
     interruptSent = true
 
