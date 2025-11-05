@@ -1,0 +1,30 @@
+{
+  "description": "Real error examples from Anthropic Claude API for reference",
+  "errors": [
+    {
+      "type": "authentication_error",
+      "status": 401,
+      "discovered_at": "2025-11-05",
+      "raw_error": "API Error: 401 (\"type\":\"error\",\"error\" (\"type\".\"authentication_error\", message\".\"OAuth token has expired. Please obtain a new token or refresh your existing token.\",\"request_id\":\"req_011CUp5WQxZAVPq6593o1spz\")",
+      "structure": {
+        "type": "error",
+        "error": {
+          "type": "authentication_error",
+          "message": "OAuth token has expired. Please obtain a new token or refresh your existing token.",
+          "request_id": "req_011CUp5WQxZAVPq6593o1spz"
+        }
+      },
+      "handling": {
+        "error_code": "API_AUTH_FAILED",
+        "user_message": "API authentication failed. The API key may be expired or invalid. Please contact the system administrator to update the API key.",
+        "implementation": "apps/web/features/chat/lib/streamHandler.ts"
+      },
+      "notes": [
+        "Error is thrown by Claude SDK when ANTHROPIC_API_KEY is expired or invalid",
+        "HTTP status: 401",
+        "Error structure has type='error' and error.type='authentication_error'",
+        "Should check error.type === 'error' && error.error?.type === 'authentication_error'"
+      ]
+    }
+  ]
+}

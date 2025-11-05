@@ -1,5 +1,6 @@
 import { MarkdownDisplay } from "@/components/ui/chat/format/MarkdownDisplay"
 import { AssistantMessage } from "@/features/chat/components/message-renderers/AssistantMessage"
+import { CompactBoundaryMessage } from "@/features/chat/components/message-renderers/CompactBoundaryMessage"
 import { CompleteMessage } from "@/features/chat/components/message-renderers/CompleteMessage"
 import { ErrorResultMessage } from "@/features/chat/components/message-renderers/ErrorResultMessage"
 import { ResultMessage } from "@/features/chat/components/message-renderers/ResultMessage"
@@ -59,6 +60,9 @@ export function renderMessage(message: UIMessage): React.ReactNode {
 
     case "complete":
       return <CompleteMessage data={message.content} />
+
+    case "compact_boundary":
+      return <CompactBoundaryMessage data={message.content} />
 
     default:
       return (

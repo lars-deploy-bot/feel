@@ -69,7 +69,7 @@ export interface CompleteEventData {
 // Message types for UI
 export type UIMessage = {
   id: string
-  type: "user" | "start" | "session" | "sdk_message" | "result" | "complete"
+  type: "user" | "start" | "session" | "sdk_message" | "result" | "complete" | "compact_boundary"
   content: any
   timestamp: Date
   isStreaming?: boolean
@@ -100,6 +100,19 @@ export function parseStreamEvent(event: StreamEvent): UIMessage | null {
 
   if (isMessageEvent(event)) {
     const content = event.data.content
+
+    // Handle system messages with special subtypes (e.g., compact_boundary)
+    // See: apps/web/features/chat/lib/unknown-message-types.json for documentation
+    if (content.type === "system" && content.subtype === "compact_boundary") {
+      // This is an internal SDK message about context compaction - show visual indicator
+      console.log(`[MessageParser] Context compaction triggered at ${content.compact_metadata?.pre_tokens || 'unknown'} tokens`)
+      return {
+        id: `${event.requestId}-compact-${content.uuid}`,
+        type: "compact_boundary",
+        content: content,
+        ...baseMessage,
+      }
+    }
 
     // If this is an assistant message with tool_use, store the mapping
     if (content.type === "assistant" && content.message?.content && Array.isArray(content.message.content)) {
@@ -201,6 +214,7 @@ export function getMessageComponentType(message: UIMessage): string {
   if (message.type === "start") return "start"
   if (message.type === "session") return "session"
   if (message.type === "complete") return "complete"
+  if (message.type === "compact_boundary") return "compact_boundary"
 
   if (message.type === "sdk_message") {
     const sdkMsg = message.content as SDKMessage

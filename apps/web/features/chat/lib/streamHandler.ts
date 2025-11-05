@@ -195,9 +195,29 @@ export function createClaudeStream({
         } catch (error) {
           console.error(`[Stream ${requestId}] Stream error:`, error)
 
-          // Check if this is a maxTurns limit error with improved detection
+          // Extract error information
           const errorMessage = error instanceof Error ? error.message : String(error)
           const errorString = errorMessage.toLowerCase()
+
+          // Check for API authentication errors by parsing error structure
+          // See: apps/web/features/chat/lib/anthropic-error-examples.json
+          let isAuthError = false
+          try {
+            // Anthropic SDK errors have format: "API Error: 401 (...JSON...)"
+            if (errorString.includes("api error") && errorString.includes("401")) {
+              isAuthError = true
+            } else if (typeof error === "object" && error !== null) {
+              const err = error as any
+              // Check error structure: error.type === "error" && error.error?.type === "authentication_error"
+              if (err.type === "error" && err.error?.type === "authentication_error") {
+                isAuthError = true
+              }
+            }
+          } catch (parseError) {
+            // Fallback to string matching if parsing fails
+            isAuthError = errorString.includes("authentication_error")
+          }
+
           const isMaxTurnsError =
             // Claude SDK specific error patterns
             (errorString.includes("max") && errorString.includes("turn")) ||
@@ -224,7 +244,10 @@ export function createClaudeStream({
             let errorCode: ErrorCode = ErrorCodes.QUERY_FAILED
             let userMessage = "Claude SDK query failed"
 
-            if (isMaxTurnsError) {
+            if (isAuthError) {
+              errorCode = ErrorCodes.API_AUTH_FAILED
+              userMessage = "API authentication failed. The API key may be expired or invalid. Please contact the system administrator to update the API key."
+            } else if (isMaxTurnsError) {
               errorCode = ErrorCodes.ERROR_MAX_TURNS
               userMessage = `Conversation reached maximum turn limit (${turnCount}/${maxTurns} turns). Please start a new conversation to continue working.`
             }

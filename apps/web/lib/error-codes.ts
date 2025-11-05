@@ -22,6 +22,7 @@ export const ErrorCodes = {
   // SDK errors (5xxx)
   QUERY_FAILED: "QUERY_FAILED",
   ERROR_MAX_TURNS: "ERROR_MAX_TURNS",
+  API_AUTH_FAILED: "API_AUTH_FAILED",
 
   // Image errors (6xxx)
   TENANT_NOT_CONFIGURED: "TENANT_NOT_CONFIGURED",
@@ -81,6 +82,9 @@ export function getErrorMessage(code: ErrorCode, details?: Record<string, any>):
     case ErrorCodes.ERROR_MAX_TURNS:
       return "Maximum conversation turns exceeded."
 
+    case ErrorCodes.API_AUTH_FAILED:
+      return "API authentication failed. The API key may be expired or invalid."
+
     case ErrorCodes.TENANT_NOT_CONFIGURED:
       return "This domain is not configured for image uploads."
 
@@ -120,6 +124,9 @@ export function getErrorHelp(code: ErrorCode, details?: Record<string, any>): st
 
     case ErrorCodes.ERROR_MAX_TURNS:
       return "The conversation has reached the maximum number of turns allowed. Consider starting a new conversation."
+
+    case ErrorCodes.API_AUTH_FAILED:
+      return "Please contact the system administrator to update the API key."
 
     default:
       return null
