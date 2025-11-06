@@ -2,6 +2,7 @@ import { cookies, headers } from "next/headers"
 import { NextResponse } from "next/server"
 import { isWorkspaceAuthenticated } from "@/features/auth/lib/auth"
 import { getWorkspace } from "@/features/chat/lib/workspaceRetriever"
+import { isTerminalMode } from "@/features/workspace/types/workspace"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 import { generateRequestId } from "@/lib/utils"
 
@@ -61,17 +62,23 @@ export async function POST(req: Request) {
 
     console.log(`[Verify API ${requestId}] Workspace verification successful: ${workspaceResult.workspace}`)
 
+    // Determine workspace name for authentication (domain only, not path)
+    // Same pattern as claude/stream route
+    const workspaceName = isTerminalMode(host) ? (body as any)?.workspace || "unknown" : host
+
+    console.log(`[Verify API ${requestId}] Workspace name for auth check: ${workspaceName}`)
+
     // Check if user is authenticated for this specific workspace
-    const isAuthenticated = await isWorkspaceAuthenticated(workspaceResult.workspace)
+    const isAuthenticated = await isWorkspaceAuthenticated(workspaceName)
     if (!isAuthenticated) {
-      console.log(`[Verify API ${requestId}] User not authenticated for workspace: ${workspaceResult.workspace}`)
+      console.log(`[Verify API ${requestId}] User not authenticated for workspace: ${workspaceName}`)
       return NextResponse.json(
         {
           ok: false,
           verified: false,
           error: ErrorCodes.WORKSPACE_NOT_AUTHENTICATED,
           message: "Not authenticated for this workspace",
-          workspace: workspaceResult.workspace,
+          workspace: workspaceName,
         },
         { status: 401 },
       )

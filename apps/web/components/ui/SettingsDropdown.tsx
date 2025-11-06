@@ -1,6 +1,6 @@
 "use client"
 
-import { Moon, Sun } from "lucide-react"
+import { ExternalLink, Moon, Sun } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
@@ -12,11 +12,26 @@ interface SettingsDropdownProps {
 export function SettingsDropdown({ onNewChat }: SettingsDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [workspaces, setWorkspaces] = useState<string[]>([])
+  const [currentHost, setCurrentHost] = useState("")
   const router = useRouter()
   const { theme, setTheme } = useTheme()
 
   useEffect(() => {
     setMounted(true)
+    setCurrentHost(window.location.host)
+
+    // Fetch authenticated workspaces
+    fetch("/api/auth/workspaces")
+      .then(res => res.json())
+      .then(data => {
+        if (data.ok && data.workspaces) {
+          setWorkspaces(data.workspaces)
+        }
+      })
+      .catch(err => {
+        console.error("Failed to fetch authenticated workspaces:", err)
+      })
   }, [])
 
   const handleLogout = async () => {
@@ -60,6 +75,28 @@ export function SettingsDropdown({ onNewChat }: SettingsDropdownProps) {
         }}
       >
         <div className="py-1">
+          {/* Authenticated Workspaces */}
+          {workspaces.filter(w => w !== currentHost).length > 0 && (
+            <>
+              <div className="px-4 py-2 text-xs font-medium text-black/50 dark:text-white/50">Other Sites</div>
+              {workspaces
+                .filter(w => w !== currentHost)
+                .map(workspace => (
+                  <a
+                    key={workspace}
+                    href={`https://${workspace}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full px-4 py-2.5 text-left text-sm text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors font-medium flex items-center justify-between gap-2"
+                  >
+                    <span className="truncate">{workspace}</span>
+                    <ExternalLink size={14} className="flex-shrink-0 opacity-60" />
+                  </a>
+                ))}
+              <div className="border-t border-black/10 dark:border-white/10 my-1" />
+            </>
+          )}
+
           {onNewChat && (
             <button
               onClick={() => handleAction(onNewChat)}

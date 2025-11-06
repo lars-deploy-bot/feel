@@ -219,7 +219,8 @@ function ChatPageContent() {
           errorData = null
         }
 
-        // Log HTTP error once (prevents duplicate logging in catch block)
+        // Log once to dev terminal (prevents duplicate in catch block below)
+        // Pattern: Log here → throw HttpError (marked) → catch skips re-logging
         sendClientError({
           conversationId,
           errorType: "http_error",
@@ -231,7 +232,7 @@ function ChatPageContent() {
           addDevEvent,
         })
 
-        // Build user-friendly error message
+        // Build user-friendly message from structured error or fallback to HTTP status
         let userMessage: string
         if (errorData?.error) {
           userMessage = getErrorMessage(errorData.error, errorData.details) || errorData.message
@@ -240,7 +241,7 @@ function ChatPageContent() {
           if (helpText) {
             userMessage += `\n\n${helpText}`
           }
-          // Show details in development only
+          // Show technical details in development only
           if (errorData.details && process.env.NODE_ENV === "development") {
             userMessage += `\n\nDetails: ${JSON.stringify(errorData.details, null, 2)}`
           }
@@ -248,7 +249,8 @@ function ChatPageContent() {
           userMessage = `HTTP ${response.status}: ${response.statusText}`
         }
 
-        // Throw HttpError (marked as already logged to prevent duplicate logging)
+        // Throw HttpError: extends Error but marked as "already logged"
+        // Catch block below checks isAlreadyLogged() and skips duplicate logging
         throw new HttpError(userMessage, response.status, response.statusText)
       }
 
@@ -415,7 +417,8 @@ function ChatPageContent() {
         throw new Error("Server closed connection without sending any response")
       }
     } catch (error) {
-      // Skip logging if already logged (e.g., HttpError already logged as http_error)
+      // Prevent duplicate logging: HttpError was already logged above as "http_error"
+      // Other errors (network, parsing, etc.) need logging here as "general_error"
       if (error instanceof Error && error.name !== "AbortError" && !isAlreadyLogged(error)) {
         sendClientError({
           conversationId,
@@ -429,7 +432,8 @@ function ChatPageContent() {
         })
       }
 
-      // Only show error if not aborted by user
+      // Show error to user (even if logging was skipped - we suppress duplicate
+      // *logging* but still *display* all errors to user, except AbortError)
       if (error instanceof Error && error.name !== "AbortError") {
         const errorMessage: UIMessage = {
           id: Date.now().toString(),
