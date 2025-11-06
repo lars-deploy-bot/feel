@@ -127,18 +127,18 @@ export function SubdomainDeployForm() {
   return (
     <motion.div className="w-full max-w-md" variants={containerVariants} initial="hidden" animate="visible">
       {/* Header */}
-      <motion.div variants={itemVariants} className="text-center mb-8">
-        <h1 className="text-4xl font-bold text-gray-900 mb-3">Launch Your Site</h1>
-        <p className="text-lg text-gray-700 font-medium">Get online in 30 seconds</p>
+      <motion.div variants={itemVariants} className="text-center mb-12">
+        <h1 className="text-4xl font-light mb-3 text-black">Launch Your Site</h1>
+        <p className="text-base text-black/50 font-light">Get online in 30 seconds</p>
       </motion.div>
 
       {/* Info Box */}
-      <motion.div variants={itemVariants} className="bg-blue-50 border-2 border-blue-200 rounded-lg p-5 mb-8">
-        <p className="text-base text-blue-900 mb-4 font-semibold">
-          Your site will be at: <span className="font-bold">{watchSlug.toLowerCase() || "your-name"}</span>
-          <span className="text-blue-700">.{WILDCARD_DOMAIN}</span>
+      <motion.div variants={itemVariants} className="bg-black/5 border border-black/10 rounded-lg p-5 mb-8">
+        <p className="text-base text-black/70 mb-4 font-light">
+          Your site will be at: <span className="font-medium text-black">{watchSlug.toLowerCase() || "your-name"}</span>
+          <span className="text-black/60">.{WILDCARD_DOMAIN}</span>
         </p>
-        <div className="space-y-2 text-sm text-blue-900 font-medium">
+        <div className="space-y-2 text-sm text-black/60 font-light">
           <p>✓ No domain setup needed</p>
           <p>✓ Start building now</p>
           <p>✓ Add your own domain later</p>
@@ -171,7 +171,7 @@ export function SubdomainDeployForm() {
           </motion.div>
 
           <motion.div variants={itemVariants} className="space-y-3">
-            <p className="text-center text-sm text-gray-500 font-medium">
+            <p className="text-center text-sm text-black/50 font-light">
               You'll be able to start building immediately
             </p>
             <SubmitButton
