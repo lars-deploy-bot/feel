@@ -4,14 +4,15 @@ import { motion } from "framer-motion"
 import { CheckCircle2, ExternalLink } from "lucide-react"
 import { useEffect, useState } from "react"
 
-export function AuthenticatedWorkspaces() {
+interface AuthenticatedWorkspacesProps {
+  currentWorkspace?: string
+}
+
+export function AuthenticatedWorkspaces({ currentWorkspace }: AuthenticatedWorkspacesProps) {
   const [workspaces, setWorkspaces] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
-  const [currentHost, setCurrentHost] = useState("")
 
   useEffect(() => {
-    setCurrentHost(window.location.host)
-
     fetch("/api/auth/workspaces")
       .then(res => res.json())
       .then(data => {
@@ -31,7 +32,9 @@ export function AuthenticatedWorkspaces() {
     return null
   }
 
-  const otherWorkspaces = workspaces.filter(w => w !== currentHost)
+  const otherWorkspaces = currentWorkspace
+    ? workspaces.filter(w => w !== currentWorkspace)
+    : workspaces
 
   if (otherWorkspaces.length === 0) {
     return null

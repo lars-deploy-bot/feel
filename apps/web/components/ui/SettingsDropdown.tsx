@@ -7,21 +7,19 @@ import { useEffect, useState } from "react"
 
 interface SettingsDropdownProps {
   onNewChat?: () => void
+  currentWorkspace?: string
 }
 
-export function SettingsDropdown({ onNewChat }: SettingsDropdownProps) {
+export function SettingsDropdown({ onNewChat, currentWorkspace }: SettingsDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [workspaces, setWorkspaces] = useState<string[]>([])
-  const [currentHost, setCurrentHost] = useState("")
   const router = useRouter()
   const { theme, setTheme } = useTheme()
 
   useEffect(() => {
     setMounted(true)
-    setCurrentHost(window.location.host)
 
-    // Fetch authenticated workspaces
     fetch("/api/auth/workspaces")
       .then(res => res.json())
       .then(data => {
@@ -75,11 +73,11 @@ export function SettingsDropdown({ onNewChat }: SettingsDropdownProps) {
         }}
       >
         <div className="py-1">
-          {workspaces.filter(w => w !== currentHost).length > 0 && (
+          {workspaces.filter(w => !currentWorkspace || w !== currentWorkspace).length > 0 && (
             <>
               <div className="px-4 py-2 text-xs font-medium text-black/50 dark:text-white/50">Other Sites</div>
               {workspaces
-                .filter(w => w !== currentHost)
+                .filter(w => !currentWorkspace || w !== currentWorkspace)
                 .map(workspace => (
                   <a
                     key={workspace}
@@ -92,6 +90,13 @@ export function SettingsDropdown({ onNewChat }: SettingsDropdownProps) {
                     <ExternalLink size={14} className="flex-shrink-0 opacity-60" />
                   </a>
                 ))}
+              <button
+                onClick={() => handleAction(() => router.push("/workspace"))}
+                className="w-full px-4 py-2.5 text-left text-sm text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors font-medium"
+                type="button"
+              >
+                Add site
+              </button>
               <div className="border-t border-black/10 dark:border-white/10 my-1" />
             </>
           )}

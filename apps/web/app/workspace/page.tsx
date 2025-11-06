@@ -106,8 +106,7 @@ function WorkspacePageContent() {
 
         <p className="text-black/60 text-sm mb-12 font-thin">workspace setup</p>
 
-        {/* Show authenticated workspaces for quick access */}
-        <AuthenticatedWorkspaces />
+        <AuthenticatedWorkspaces currentWorkspace={workspace} />
 
         <div className="space-y-8">
           <div>

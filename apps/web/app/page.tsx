@@ -11,7 +11,6 @@ function LoginPageContent() {
   const searchParams = useSearchParams()
   const domainParam = searchParams.get("domain")
 
-  const [authed, setAuthed] = useState(false)
   const [pass, setPass] = useState("")
   const [workspace, setWorkspace] = useState(domainParam || "")
   const [mounted, setMounted] = useState(false)
@@ -27,15 +26,6 @@ function LoginPageContent() {
   useEffect(() => {
     setMounted(true)
   }, [])
-
-  useEffect(() => {
-    // If already authenticated, redirect to chat
-    if (authed && mounted) {
-      // Always store workspace for domain-based access
-      sessionStorage.setItem("workspace", workspace)
-      router.push("/chat")
-    }
-  }, [authed, mounted, router, workspace])
 
   async function login(e: React.FormEvent) {
     e.preventDefault()
@@ -72,10 +62,11 @@ function LoginPageContent() {
       // Save to recent sites
       addSite(workspace)
 
-      setAuthed(true)
+      // Store workspace and navigate immediately (don't wait for state update)
+      sessionStorage.setItem("workspace", workspace)
+      router.push("/chat")
     } catch {
       setError("Connection failed")
-    } finally {
       setLoading(false)
     }
   }
