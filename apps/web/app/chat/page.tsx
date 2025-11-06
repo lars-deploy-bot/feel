@@ -588,7 +588,14 @@ function ChatPageContent() {
                 >
                   <Image size={14} />
                 </button>
-                <SettingsDropdown onNewChat={startNewConversation} currentWorkspace={workspace} />
+                <SettingsDropdown
+                  onNewChat={startNewConversation}
+                  currentWorkspace={workspace}
+                  onSwitchWorkspace={newWorkspace => {
+                    setWorkspace(newWorkspace)
+                    startNewConversation()
+                  }}
+                />
               </div>
             </div>
           </div>

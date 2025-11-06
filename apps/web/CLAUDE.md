@@ -128,14 +128,34 @@ const isTextMessage = (msg: UIMessage): boolean => {
 
 ## Authentication
 
-### Cookie → User (auth.ts)
-- Session cookie: `jar.get('session')` from next/headers
-- `SessionUser = { id: string }` extracted as `sessionCookie.value` (TODO: decode JWT/lookup DB in prod)
-- Login: POST `/api/login` with passcode → sets httpOnly cookie
-- All API routes check `jar.get('session')` before proceeding
+### JWT-Based Multi-Workspace Sessions (jwt.ts, auth.ts)
+- Session cookie stores signed JWT token containing authenticated workspaces
+- JWT payload: `{ workspaces: string[], iat, exp }` (30-day expiration)
+- Login flow: `/api/login` validates passcode → creates/updates JWT → sets httpOnly cookie
+- Multi-site support: Single JWT tracks all authenticated workspaces for user
+
+**JWT Functions** (features/auth/lib/jwt.ts):
+- `createSessionToken(workspaces[])` → signed JWT with HS256
+- `verifySessionToken(token)` → validates signature, returns payload or null
+- `addWorkspaceToToken(token, workspace)` → creates new JWT with added workspace
+
+**Security**:
+- JWT_SECRET env var required in production (fails hard if missing)
+- Signature verification prevents token tampering
+- Workspace authentication checked per-request via `isWorkspaceAuthenticated()`
+
+**Workspace Auth Check** (auth.ts):
+```ts
+const isAuthenticated = await isWorkspaceAuthenticated(workspaceName)
+if (!isAuthenticated) {
+  return 401 WORKSPACE_NOT_AUTHENTICATED
+}
+```
+- Applied in `/api/claude`, `/api/claude/stream`, `/api/verify`
+- Ensures user cannot access workspaces not in their JWT
 
 ### Local Development Test User
-- When `BRIDGE_ENV=local`: test user `workspace=test`, `passcode=test` bypasses domain password validation
+- When `BRIDGE_ENV=local`: test user `workspace=test`, `passcode=test` bypasses validation
 - Sets session cookie with value `test-user`
 
 ## Workspace Enforcement

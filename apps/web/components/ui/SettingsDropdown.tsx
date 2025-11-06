@@ -4,22 +4,23 @@ import { ExternalLink, Moon, Sun } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
+import { AddWorkspaceModal } from "@/components/modals/AddWorkspaceModal"
 
 interface SettingsDropdownProps {
   onNewChat?: () => void
   currentWorkspace?: string
+  onSwitchWorkspace?: (workspace: string) => void
 }
 
-export function SettingsDropdown({ onNewChat, currentWorkspace }: SettingsDropdownProps) {
+export function SettingsDropdown({ onNewChat, currentWorkspace, onSwitchWorkspace }: SettingsDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [workspaces, setWorkspaces] = useState<string[]>([])
+  const [showAddModal, setShowAddModal] = useState(false)
   const router = useRouter()
   const { theme, setTheme } = useTheme()
 
-  useEffect(() => {
-    setMounted(true)
-
+  const fetchWorkspaces = () => {
     fetch("/api/auth/workspaces")
       .then(res => res.json())
       .then(data => {
@@ -30,6 +31,11 @@ export function SettingsDropdown({ onNewChat, currentWorkspace }: SettingsDropdo
       .catch(err => {
         console.error("Failed to fetch authenticated workspaces:", err)
       })
+  }
+
+  useEffect(() => {
+    setMounted(true)
+    fetchWorkspaces()
   }, [])
 
   const handleLogout = async () => {
@@ -52,54 +58,68 @@ export function SettingsDropdown({ onNewChat, currentWorkspace }: SettingsDropdo
     action()
   }
 
+  const otherWorkspaces = workspaces.filter(w => !currentWorkspace || w !== currentWorkspace)
+
   return (
-    <div className="relative">
+    <div className="relative z-50">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="inline-flex items-center justify-center px-3 py-2 text-xs font-medium text-black dark:text-white border border-black/20 dark:border-white/20 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors"
         type="button"
         aria-label="Menu"
       >
-        Menu
+        <span className="inline-flex">
+          {"Menu".split("").map((letter, i) => (
+            <span
+              key={i}
+              className={`inline-block transition-all duration-300 ease-out ${
+                isOpen ? "-translate-y-0.5 opacity-70" : "translate-y-0 opacity-100"
+              }`}
+              style={{
+                transitionDelay: isOpen ? `${i * 30}ms` : `${(3 - i) * 30}ms`,
+              }}
+            >
+              {letter}
+            </span>
+          ))}
+        </span>
       </button>
 
-      {/* Dropdown Menu */}
       <div
-        className={`absolute top-full right-0 mt-2 w-48 bg-white dark:bg-[#2a2a2a] border border-black/10 dark:border-white/10 shadow-lg transition-all duration-200 ease-out origin-top-right ${
-          isOpen ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-95 -translate-y-2 pointer-events-none"
+        className={`absolute top-full right-0 mt-2 w-48 bg-white dark:bg-[#2a2a2a] border border-black/10 dark:border-white/10 shadow-lg origin-top z-50 overflow-hidden ${
+          isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
         style={{
           borderRadius: "2px",
+          maxHeight: isOpen ? "500px" : "0",
+          transition: "max-height 250ms cubic-bezier(0.4, 0, 0.2, 1), opacity 200ms ease-in-out",
         }}
       >
         <div className="py-1">
-          {workspaces.filter(w => !currentWorkspace || w !== currentWorkspace).length > 0 && (
+          {otherWorkspaces.length > 0 && (
             <>
               <div className="px-4 py-2 text-xs font-medium text-black/50 dark:text-white/50">Other Sites</div>
-              {workspaces
-                .filter(w => !currentWorkspace || w !== currentWorkspace)
-                .map(workspace => (
-                  <a
-                    key={workspace}
-                    href={`https://${workspace}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full px-4 py-2.5 text-left text-sm text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors font-medium flex items-center justify-between gap-2"
-                  >
-                    <span className="truncate">{workspace}</span>
-                    <ExternalLink size={14} className="flex-shrink-0 opacity-60" />
-                  </a>
-                ))}
-              <button
-                onClick={() => handleAction(() => router.push("/workspace"))}
-                className="w-full px-4 py-2.5 text-left text-sm text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors font-medium"
-                type="button"
-              >
-                Add site
-              </button>
-              <div className="border-t border-black/10 dark:border-white/10 my-1" />
+              {otherWorkspaces.map(workspace => (
+                <button
+                  key={workspace}
+                  onClick={() => handleAction(() => onSwitchWorkspace?.(workspace))}
+                  className="w-full px-4 py-2.5 text-left text-sm text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors font-medium flex items-center justify-between gap-2"
+                  type="button"
+                >
+                  <span className="truncate">{workspace}</span>
+                </button>
+              ))}
             </>
           )}
+
+          <button
+            onClick={() => handleAction(() => setShowAddModal(true))}
+            className="w-full px-4 py-2.5 text-left text-sm text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors font-medium"
+            type="button"
+          >
+            Add site
+          </button>
+          <div className="border-t border-black/10 dark:border-white/10 my-1" />
 
           {onNewChat && (
             <button
@@ -142,7 +162,7 @@ export function SettingsDropdown({ onNewChat, currentWorkspace }: SettingsDropdo
       {isOpen && (
         <button
           type="button"
-          className="fixed inset-0 z-[-1]"
+          className="fixed inset-0 z-40"
           onClick={() => setIsOpen(false)}
           aria-label="Close menu"
           onKeyDown={e => {
@@ -151,6 +171,10 @@ export function SettingsDropdown({ onNewChat, currentWorkspace }: SettingsDropdo
             }
           }}
         />
+      )}
+
+      {showAddModal && (
+        <AddWorkspaceModal onClose={() => setShowAddModal(false)} onSuccess={fetchWorkspaces} />
       )}
     </div>
   )
