@@ -30,6 +30,26 @@ type DebugStoreWithCompat = DebugState & DebugActions & {
   setSSETerminal: (show: boolean) => void
 }
 
+// Actions interface - grouped under stable object (Guide §14.3)
+interface DebugActions {
+  actions: {
+    toggleView: () => void
+    toggleSSETerminal: () => void
+    setDebugView: (show: boolean) => void
+    setSSETerminal: (show: boolean) => void
+  }
+}
+
+// Extended type for backwards compatibility
+type DebugStoreWithCompat = DebugState &
+  DebugActions & {
+    // Legacy direct action exports for backwards compatibility
+    toggleView: () => void
+    toggleSSETerminal: () => void
+    setDebugView: (show: boolean) => void
+    setSSETerminal: (show: boolean) => void
+  }
+
 /**
  * Persisted store for debug UI visibility.
  *

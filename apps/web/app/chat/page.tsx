@@ -22,7 +22,8 @@ import { buildPromptWithAttachments } from "@/features/chat/utils/prompt-builder
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
 import type { StructuredError } from "@/lib/error-codes"
 import { getErrorHelp, getErrorMessage } from "@/lib/error-codes"
-import { HttpError, isAlreadyLogged } from "@/lib/errors"
+import { HttpError } from "@/lib/errors"
+import { isRetryableError, retryWithBackoff } from "@/lib/retry"
 import { isDevelopment, useDebugStore, useDebugVisible } from "@/lib/stores/debug-store"
 import { useLLMStore } from "@/lib/stores/llmStore"
 
@@ -234,51 +235,50 @@ function ChatPageContent() {
         })
       }
 
-      const response = await fetch("/api/claude/stream", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
-        signal: abortController.signal,
-      })
+      // Retry the fetch with exponential backoff for transient failures
+      const response = await retryWithBackoff(
+        async () => {
+          const res = await fetch("/api/claude/stream", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(requestBody),
+            signal: abortController.signal,
+          })
 
-      if (!response.ok) {
-        // Try to read the JSON error response from backend
-        let errorData: StructuredError | null = null
-        try {
-          errorData = await response.json()
-        } catch {
-          errorData = null
-        }
+          if (!res.ok) {
+            // Parse error response if available
+            const errorData: StructuredError | null = await res.json().catch(() => null)
 
-        sendClientError({
-          conversationId,
-          errorType: "http_error",
-          data: {
-            status: response.status,
-            statusText: response.statusText,
-            errorData: errorData,
+            // Build user-friendly error message
+            let userMessage: string
+            if (errorData?.error) {
+              userMessage = getErrorMessage(errorData.error, errorData.details) || errorData.message
+              const helpText = getErrorHelp(errorData.error, errorData.details)
+              if (helpText) {
+                userMessage += `\n\n${helpText}`
+              }
+            } else {
+              userMessage = `HTTP ${res.status}: ${res.statusText}`
+            }
+
+            // Throw HttpError - will be retried if 5xx, logged in outer catch after retries exhausted
+            throw new HttpError(userMessage, res.status, res.statusText)
+          }
+
+          return res
+        },
+        {
+          maxRetries: 3,
+          initialDelay: 1000,
+          maxDelay: 5000,
+          shouldRetry: error => {
+            // Only retry server errors (5xx) and network failures, not client errors (4xx)
+            return isRetryableError(error)
           },
-          addDevEvent,
-        })
+        },
+      )
 
-        let userMessage: string
-        if (errorData?.error) {
-          userMessage = getErrorMessage(errorData.error, errorData.details) || errorData.message
-          const helpText = getErrorHelp(errorData.error, errorData.details)
-
-          if (helpText) {
-            userMessage += `\n\n${helpText}`
-          }
-          if (errorData.details && process.env.NODE_ENV === "development") {
-            userMessage += `\n\nDetails: ${JSON.stringify(errorData.details, null, 2)}`
-          }
-        } else {
-          userMessage = `HTTP ${response.status}: ${response.statusText}`
-        }
-
-        throw new HttpError(userMessage, response.status, response.statusText)
-      }
-
+      // Response is guaranteed to be ok here (errors thrown in retry callback)
       if (!response.body) {
         throw new Error("No response body received from server")
       }
@@ -288,133 +288,147 @@ function ChatPageContent() {
 
       // Track parse errors to detect stream corruption
       let consecutiveParseErrors = 0
-      const MAX_CONSECUTIVE_PARSE_ERRORS = 3
+      const MAX_CONSECUTIVE_PARSE_ERRORS = 10 // Increased from 3
+
+      // Buffer for incomplete SSE chunks
+      let buffer = ""
 
       try {
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
 
-          const chunk = decoder.decode(value)
-          const lines = chunk.split("\n")
+          // Append new chunk to buffer
+          buffer += decoder.decode(value, { stream: true })
 
-          let currentEvent = ""
-          let currentEventData = ""
-          for (const line of lines) {
-            if (line.startsWith("event: ")) {
-              currentEvent = line.slice(7).trim()
-              currentEventData = line
-            } else if (line.startsWith("data: ")) {
-              const dataLine = line.slice(6)
-              currentEventData += `\n${line}\n\n`
+          // Split by double newline (SSE event boundary)
+          const events = buffer.split("\n\n")
 
-              // Parse JSON once
-              try {
-                const rawData = JSON.parse(dataLine)
+          // Keep the last incomplete event in the buffer
+          buffer = events.pop() || ""
 
-                // Capture to dev terminal (dev mode only)
-                if (isDevelopment()) {
-                  if (currentEvent.startsWith("bridge_") && rawData.requestId && rawData.timestamp && rawData.type) {
-                    addDevEvent({
-                      eventName: currentEvent,
-                      event: rawData as StreamEvent,
-                      rawSSE: currentEventData,
-                    })
-                  } else if (currentEvent === "done") {
-                    // Capture done event, skip ping (filtered in DevTerminal)
-                    addDevEvent({
-                      eventName: currentEvent,
-                      event: {
-                        type: currentEvent as "done",
-                        requestId: "n/a",
-                        timestamp: new Date().toISOString(),
-                        data: rawData,
-                      },
-                      rawSSE: currentEventData,
-                    })
-                  }
-                  // Skip ping events entirely - not displayed in terminal
-                }
+          for (const eventBlock of events) {
+            if (!eventBlock.trim()) continue
 
-                // Process bridge events for UI
-                if (currentEvent.startsWith("bridge_")) {
-                  if (rawData.requestId && rawData.timestamp && rawData.type) {
-                    const eventData: StreamEvent = rawData
-                    receivedAnyMessage = true
+            const lines = eventBlock.split("\n")
+            let currentEvent = ""
+            const currentEventData = eventBlock
 
-                    const message = parseStreamEvent(eventData)
-                    if (message) {
-                      setMessages(prev => [...prev, message])
-                    }
+            for (const line of lines) {
+              if (line.startsWith("event: ")) {
+                currentEvent = line.slice(7).trim()
+              } else if (line.startsWith("data: ")) {
+                const dataLine = line.slice(6)
 
-                    consecutiveParseErrors = 0
-                  } else {
-                    console.error("[Chat] Invalid SSE event structure:", rawData)
-                    consecutiveParseErrors++
+                // Parse JSON once
+                try {
+                  const rawData = JSON.parse(dataLine)
 
-                    sendClientError({
-                      conversationId,
-                      errorType: "invalid_event_structure",
-                      data: {
+                  // Capture to dev terminal (dev mode only)
+                  if (isDevelopment()) {
+                    if (currentEvent.startsWith("bridge_") && rawData.requestId && rawData.timestamp && rawData.type) {
+                      addDevEvent({
                         eventName: currentEvent,
-                        rawData: rawData,
-                        consecutiveErrors: consecutiveParseErrors,
-                      },
-                      addDevEvent,
-                    })
+                        event: rawData as StreamEvent,
+                        rawSSE: currentEventData,
+                      })
+                    } else if (currentEvent === "done") {
+                      // Capture done event, skip ping (filtered in DevTerminal)
+                      addDevEvent({
+                        eventName: currentEvent,
+                        event: {
+                          type: currentEvent as "done",
+                          requestId: "n/a",
+                          timestamp: new Date().toISOString(),
+                          data: rawData,
+                        },
+                        rawSSE: currentEventData,
+                      })
+                    }
+                    // Skip ping events entirely - not displayed in terminal
                   }
-                }
-              } catch (parseError) {
-                console.error("[Chat] Failed to parse SSE data:", {
-                  line: dataLine.slice(0, 200),
-                  error: parseError,
-                })
-                consecutiveParseErrors++
 
-                sendClientError({
-                  conversationId,
-                  errorType: "parse_error",
-                  data: {
-                    consecutiveErrors: consecutiveParseErrors,
+                  // Process bridge events for UI
+                  if (currentEvent.startsWith("bridge_")) {
+                    if (rawData.requestId && rawData.timestamp && rawData.type) {
+                      const eventData: StreamEvent = rawData
+                      receivedAnyMessage = true
+
+                      const message = parseStreamEvent(eventData)
+                      if (message) {
+                        setMessages(prev => [...prev, message])
+                      }
+
+                      consecutiveParseErrors = 0
+                    } else {
+                      console.error("[Chat] Invalid SSE event structure:", rawData)
+                      consecutiveParseErrors++
+
+                      sendClientError({
+                        conversationId,
+                        errorType: "invalid_event_structure",
+                        data: {
+                          eventName: currentEvent,
+                          rawData: rawData,
+                          consecutiveErrors: consecutiveParseErrors,
+                        },
+                        addDevEvent,
+                      })
+                    }
+                  } else {
+                    // Reset error counter on successful parse of non-bridge events
+                    consecutiveParseErrors = 0
+                  }
+                } catch (parseError) {
+                  console.error("[Chat] Failed to parse SSE data:", {
                     line: dataLine.slice(0, 200),
-                    error: parseError instanceof Error ? parseError.message : String(parseError),
-                  },
-                  addDevEvent,
-                })
-
-                if (consecutiveParseErrors >= MAX_CONSECUTIVE_PARSE_ERRORS) {
-                  console.error("[Chat] Too many consecutive parse errors, stopping stream", consecutiveParseErrors)
+                    error: parseError,
+                  })
+                  consecutiveParseErrors++
 
                   sendClientError({
                     conversationId,
-                    errorType: "critical_parse_error",
+                    errorType: "parse_error",
                     data: {
                       consecutiveErrors: consecutiveParseErrors,
-                      message: "Too many consecutive parse errors, stopping stream",
+                      line: dataLine.slice(0, 200),
+                      error: parseError instanceof Error ? parseError.message : String(parseError),
                     },
                     addDevEvent,
                   })
 
-                  setMessages(prev => [
-                    ...prev,
-                    {
-                      id: Date.now().toString(),
-                      type: "sdk_message",
-                      content: {
-                        type: "result",
-                        is_error: true,
-                        result:
-                          "Connection unstable: Multiple parse errors detected. Please try again or refresh the page.",
+                  if (consecutiveParseErrors >= MAX_CONSECUTIVE_PARSE_ERRORS) {
+                    console.error("[Chat] Too many consecutive parse errors, stopping stream", consecutiveParseErrors)
+
+                    sendClientError({
+                      conversationId,
+                      errorType: "critical_parse_error",
+                      data: {
+                        consecutiveErrors: consecutiveParseErrors,
+                        message: "Too many consecutive parse errors, stopping stream",
                       },
-                      timestamp: new Date(),
-                    },
-                  ])
-                  reader.cancel()
-                  break
+                      addDevEvent,
+                    })
+
+                    setMessages(prev => [
+                      ...prev,
+                      {
+                        id: Date.now().toString(),
+                        type: "sdk_message",
+                        content: {
+                          type: "result",
+                          is_error: true,
+                          result:
+                            "Connection unstable: Multiple parse errors detected. Please try again or refresh the page.",
+                        },
+                        timestamp: new Date(),
+                      },
+                    ])
+                    reader.cancel()
+                    break
+                  }
                 }
               }
-              // Silently ignore all other events (raw Claude SDK events)
-              currentEvent = "" // Reset after processing
             }
           }
         }
@@ -442,19 +456,36 @@ function ChatPageContent() {
         throw new Error("Server closed connection without sending any response")
       }
     } catch (error) {
-      if (error instanceof Error && error.name !== "AbortError" && !isAlreadyLogged(error)) {
-        sendClientError({
-          conversationId,
-          errorType: "general_error",
-          data: {
-            errorName: error.name,
-            message: error.message,
-            stack: error.stack,
-          },
-          addDevEvent,
-        })
+      // Log error for debugging (even HttpError which has user-friendly message)
+      if (error instanceof Error && error.name !== "AbortError") {
+        // HttpError has status field for HTTP-specific logging
+        if (error instanceof HttpError) {
+          sendClientError({
+            conversationId,
+            errorType: "http_error",
+            data: {
+              status: error.status,
+              statusText: error.statusText,
+              message: error.message,
+            },
+            addDevEvent,
+          })
+        } else {
+          // General unexpected errors
+          sendClientError({
+            conversationId,
+            errorType: "general_error",
+            data: {
+              errorName: error.name,
+              message: error.message,
+              stack: error.stack,
+            },
+            addDevEvent,
+          })
+        }
       }
 
+      // Show error message to user
       if (error instanceof Error && error.name !== "AbortError") {
         const errorMessage: UIMessage = {
           id: Date.now().toString(),

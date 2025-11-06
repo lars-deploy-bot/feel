@@ -1,6 +1,6 @@
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk"
 import { isSDKResultMessage } from "@/features/chat/types/sdk"
-import { getGroqClient } from "@/lib/clients/groq"
+import { getGroqClient, withRetry } from "@/lib/clients/groq"
 import { gatePrompt } from "./gateResult/gateResult.p"
 
 const SAFETY_CHECK_PROMPT = `<instructions>
@@ -75,23 +75,25 @@ export async function summarizeWithGroq(input: string, systemPrompt: string): Pr
   try {
     const groq = await getGroqClient()
 
-    const chatCompletion = await groq.chat.completions.create({
-      messages: [
-        {
-          role: "system",
-          content: systemPrompt,
-        },
-        {
-          role: "user",
-          content: input,
-        },
-      ],
-      model: "openai/gpt-oss-20b",
-      temperature: 1,
-      max_completion_tokens: 8192,
-      top_p: 1,
-      reasoning_effort: "low",
-      stop: null,
+    const chatCompletion = await withRetry(async () => {
+      return await groq.chat.completions.create({
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt,
+          },
+          {
+            role: "user",
+            content: input,
+          },
+        ],
+        model: "openai/gpt-oss-20b",
+        temperature: 1,
+        max_completion_tokens: 8192,
+        top_p: 1,
+        reasoning_effort: "low",
+        stop: null,
+      })
     })
 
     const summarizedContent = chatCompletion.choices[0]?.message?.content
@@ -135,23 +137,25 @@ export async function isInputSafeWithDebug(input: string): Promise<{
   try {
     const groq = await getGroqClient()
 
-    const chatCompletion = await groq.chat.completions.create({
-      messages: [
-        {
-          role: "system",
-          content: SAFETY_CHECK_PROMPT,
-        },
-        {
-          role: "user",
-          content: input,
-        },
-      ],
-      model: "openai/gpt-oss-20b",
-      temperature: 1,
-      max_completion_tokens: 8192,
-      top_p: 1,
-      reasoning_effort: "low",
-      stop: null,
+    const chatCompletion = await withRetry(async () => {
+      return await groq.chat.completions.create({
+        messages: [
+          {
+            role: "system",
+            content: SAFETY_CHECK_PROMPT,
+          },
+          {
+            role: "user",
+            content: input,
+          },
+        ],
+        model: "openai/gpt-oss-20b",
+        temperature: 1,
+        max_completion_tokens: 8192,
+        top_p: 1,
+        reasoning_effort: "low",
+        stop: null,
+      })
     })
 
     const response = chatCompletion.choices[0]?.message?.content?.trim().toLowerCase()

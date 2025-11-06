@@ -1,7 +1,7 @@
 import { tool } from "@anthropic-ai/claude-agent-sdk"
 import { z } from "zod"
 
-import { getGroqClient } from "../../lib/groq-client.js"
+import { getGroqClient, withRetry } from "../../lib/groq-client.js"
 
 async function getPersonaMarkdown(
   query: string,
@@ -70,16 +70,18 @@ Format the response as Markdown with these sections:
 - [What they would immediately reject as not good enough]
 ...`
 
-  const message = await groq.chat.completions.create({
-    messages: [
-      {
-        role: "user",
-        content: prompt,
-      },
-    ],
-    model: "openai/gpt-oss-20b",
-    temperature: 1,
-    max_tokens: 2048,
+  const message = await withRetry(async () => {
+    return await groq.chat.completions.create({
+      messages: [
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      model: "openai/gpt-oss-20b",
+      temperature: 1,
+      max_tokens: 2048,
+    })
   })
 
   const responseText = message.choices[0]?.message?.content
