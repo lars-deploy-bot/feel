@@ -5,9 +5,21 @@ interface GlobInputProps {
 
 export function GlobInput({ pattern, path }: GlobInputProps) {
   return (
-    <div className="space-y-1">
-      <div className="text-xs text-black/60 dark:text-white/60 font-diatype-mono">{pattern}</div>
-      {path && <div className="text-xs text-black/40 dark:text-white/40 font-thin">in {path}</div>}
+    <div className="space-y-2 text-xs">
+      <div>
+        <div className="text-black/50 dark:text-white/50 mb-1">Pattern:</div>
+        <div className="text-black/70 dark:text-white/70 font-diatype-mono bg-black/[0.02] dark:bg-white/[0.02] border border-black/10 dark:border-white/10 rounded p-2">
+          {pattern}
+        </div>
+      </div>
+      {path && (
+        <div>
+          <div className="text-black/50 dark:text-white/50 mb-1">Path:</div>
+          <div className="text-black/60 dark:text-white/60 font-mono text-[10px] break-all">
+            {path}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

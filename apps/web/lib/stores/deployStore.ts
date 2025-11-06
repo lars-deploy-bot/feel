@@ -1,29 +1,6 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
-
-export interface DeployFormState {
-  domain: string
-  password: string
-  setDomain: (domain: string) => void
-  setPassword: (password: string) => void
-  reset: () => void
-}
-
-export interface DeploymentState {
-  isDeploying: boolean
-  deploymentProgress: number
-  deploymentStatus: "idle" | "validating" | "deploying" | "validating-ssl" | "success" | "error"
-  deploymentError: string | null
-  deploymentDomain: string | null
-  deploymentErrors: string[] | null
-  setIsDeploying: (isDeploying: boolean) => void
-  setDeploymentProgress: (progress: number) => void
-  setDeploymentStatus: (status: DeploymentState["deploymentStatus"]) => void
-  setDeploymentError: (error: string | null) => void
-  setDeploymentDomain: (domain: string | null) => void
-  setDeploymentErrors: (errors: string[] | null) => void
-  reset: () => void
-}
+import { useShallow } from "zustand/react/shallow"
 
 export interface DeploymentHistory {
   id: string
@@ -33,72 +10,163 @@ export interface DeploymentHistory {
   error?: string
 }
 
-export interface DeploymentHistoryStore {
+export type DeploymentStatus = "idle" | "validating" | "deploying" | "validating-ssl" | "success" | "error"
+
+// Form slice (Guide §14.3: group actions in stable object)
+interface FormSlice {
+  domain: string
+  password: string
+  formActions: {
+    setDomain: (domain: string) => void
+    setPassword: (password: string) => void
+    resetForm: () => void
+  }
+}
+
+// Status slice (Guide §14.3: group actions in stable object)
+interface StatusSlice {
+  isDeploying: boolean
+  deploymentStatus: DeploymentStatus
+  deploymentDomain: string | null
+  deploymentErrors: string[]
+  statusActions: {
+    setIsDeploying: (isDeploying: boolean) => void
+    setDeploymentStatus: (status: DeploymentStatus) => void
+    setDeploymentDomain: (domain: string | null) => void
+    setDeploymentErrors: (errors: string[]) => void
+  }
+}
+
+// History slice (Guide §14.3: group actions in stable object)
+interface HistorySlice {
   history: DeploymentHistory[]
+  historyActions: {
+    addToHistory: (entry: DeploymentHistory) => void
+    clearHistory: () => void
+  }
+}
+
+// Extended type for backwards compatibility
+type DeployStoreWithCompat = FormSlice & StatusSlice & HistorySlice & {
+  // Legacy direct action exports for backwards compatibility
+  setDomain: (domain: string) => void
+  setPassword: (password: string) => void
+  resetForm: () => void
+  setIsDeploying: (isDeploying: boolean) => void
+  setDeploymentStatus: (status: DeploymentStatus) => void
+  setDeploymentDomain: (domain: string | null) => void
+  setDeploymentErrors: (errors: string[]) => void
   addToHistory: (entry: DeploymentHistory) => void
   clearHistory: () => void
 }
 
-// Form state store with localStorage persistence
-export const useDeployFormStore = create<DeployFormState>()(
+export type DeployStore = DeployStoreWithCompat
+
+const createFormSlice = (set: any, _get: any, _api: any): FormSlice => {
+  const formActions = {
+    setDomain: (domain: string) => set({ domain }),
+    setPassword: (password: string) => set({ password }),
+    resetForm: () => set({ domain: "", password: "" }),
+  }
+  return {
+    domain: "",
+    password: "",
+    formActions,
+    // Legacy direct exports for backwards compatibility
+    ...formActions,
+  }
+}
+
+const createStatusSlice = (set: any, _get: any, _api: any): StatusSlice => {
+  const statusActions = {
+    setIsDeploying: (isDeploying: boolean) => set({ isDeploying }),
+    setDeploymentStatus: (status: DeploymentStatus) => set({ deploymentStatus: status }),
+    setDeploymentDomain: (domain: string | null) => set({ deploymentDomain: domain }),
+    setDeploymentErrors: (errors: string[]) => set({ deploymentErrors: errors }),
+  }
+  return {
+    isDeploying: false,
+    deploymentStatus: "idle",
+    deploymentDomain: null,
+    deploymentErrors: [],
+    statusActions,
+    // Legacy direct exports for backwards compatibility
+    ...statusActions,
+  }
+}
+
+const createHistorySlice = (set: any, _get: any, _api: any): HistorySlice => {
+  const historyActions = {
+    addToHistory: (entry: DeploymentHistory) =>
+      set((state: DeployStoreWithCompat) => ({
+        history: [entry, ...state.history].slice(0, 50),
+      })),
+    clearHistory: () => set({ history: [] }),
+  }
+  return {
+    history: [],
+    historyActions,
+    // Legacy direct exports for backwards compatibility
+    ...historyActions,
+  }
+}
+
+export const useDeployStore = create<DeployStore>()(
   persist(
-    set => ({
-      domain: "",
-      password: "",
-      setDomain: domain => set({ domain }),
-      setPassword: password => set({ password }),
-      reset: () => set({ domain: "", password: "" }),
-    }),
+    (...a) => {
+      const form = createFormSlice(...a) as any
+      const status = createStatusSlice(...a) as any
+      const history = createHistorySlice(...a) as any
+
+      return {
+        ...form,
+        ...status,
+        ...history,
+      } as DeployStore
+    },
     {
-      name: "deploy-form-storage",
+      name: "deploy-storage",
       version: 1,
-      // Only persist domain (not password for security)
       partialize: state => ({
         domain: state.domain,
+        history: state.history,
       }),
     },
   ),
 )
 
-// Deployment status store (in-memory only, resets on page refresh)
-export const useDeploymentStatusStore = create<DeploymentState>(set => ({
-  isDeploying: false,
-  deploymentProgress: 0,
-  deploymentStatus: "idle",
-  deploymentError: null,
-  deploymentDomain: null,
-  deploymentErrors: null,
-  setIsDeploying: isDeploying => set({ isDeploying }),
-  setDeploymentProgress: progress => set({ deploymentProgress: progress }),
-  setDeploymentStatus: status => set({ deploymentStatus: status }),
-  setDeploymentError: error => set({ deploymentError: error }),
-  setDeploymentDomain: domain => set({ deploymentDomain: domain }),
-  setDeploymentErrors: errors => set({ deploymentErrors: errors }),
-  reset: () =>
-    set({
-      isDeploying: false,
-      deploymentProgress: 0,
-      deploymentStatus: "idle",
-      deploymentError: null,
-      deploymentDomain: null,
-      deploymentErrors: null,
-    }),
-}))
+// Atomic selectors (Guide §14.1) - state values
+export const useDeployDomain = () => useDeployStore(state => state.domain)
+export const useDeployPassword = () => useDeployStore(state => state.password)
+export const useDeployIsDeploying = () => useDeployStore(state => state.isDeploying)
+export const useDeploymentStatus = () => useDeployStore(state => state.deploymentStatus)
+export const useDeploymentDomain = () => useDeployStore(state => state.deploymentDomain)
+export const useDeploymentErrors = () => useDeployStore(state => state.deploymentErrors)
+export const useDeploymentHistory = () => useDeployStore(state => state.history)
 
-// Deployment history store with localStorage persistence
-export const useDeploymentHistoryStore = create<DeploymentHistoryStore>()(
-  persist(
-    set => ({
-      history: [],
-      addToHistory: entry =>
-        set(state => ({
-          history: [entry, ...state.history].slice(0, 50), // Keep last 50 deployments
-        })),
-      clearHistory: () => set({ history: [] }),
-    }),
-    {
-      name: "deployment-history-storage",
-      version: 1,
-    },
-  ),
-)
+// Actions hooks (Guide §14.3) - stable references
+export const useFormActions = () => useDeployStore(state => state.formActions)
+export const useStatusActions = () => useDeployStore(state => state.statusActions)
+export const useHistoryActions = () => useDeployStore(state => state.historyActions)
+
+// Composite selector: form data with actions (Guide §14.2)
+export const useDeployForm = () =>
+  useDeployStore(
+    useShallow(state => ({
+      domain: state.domain,
+      password: state.password,
+      ...state.formActions,
+    })),
+  )
+
+// Composite selector: deployment status with actions (Guide §14.2)
+export const useDeploymentStatusWithActions = () =>
+  useDeployStore(
+    useShallow(state => ({
+      isDeploying: state.isDeploying,
+      status: state.deploymentStatus,
+      domain: state.deploymentDomain,
+      errors: state.deploymentErrors,
+      ...state.statusActions,
+    })),
+  )

@@ -1,3 +1,5 @@
+"use client"
+
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 
@@ -6,46 +8,78 @@ export interface RecentSite {
   lastAccessed: number
 }
 
-export interface RecentSitesStore {
+const MAX_RECENT_SITES = 5
+
+// State interface
+interface RecentSitesState {
   sites: RecentSite[]
+}
+
+// Actions interface - grouped under stable object (Guide §14.3)
+interface RecentSitesActions {
+  actions: {
+    addSite: (domain: string) => void
+    removeSite: (domain: string) => void
+    clearSites: () => void
+  }
+}
+
+// Extended type for backwards compatibility
+type RecentSitesStoreWithCompat = RecentSitesState & RecentSitesActions & {
+  // Legacy direct action exports for backwards compatibility
   addSite: (domain: string) => void
   removeSite: (domain: string) => void
   clearSites: () => void
 }
 
-const MAX_RECENT_SITES = 5
-
-export const useRecentSitesStore = create<RecentSitesStore>()(
+const useRecentSitesStoreBase = create<RecentSitesStoreWithCompat>()(
   persist(
-    set => ({
-      sites: [],
+    set => {
+      const actions = {
+        addSite: (domain: string) => {
+          const trimmed = domain?.trim()
+          if (!trimmed) return
 
-      addSite: (domain: string) => {
-        if (!domain?.trim()) return
+          set(state => {
+            // Remove if already exists
+            const filtered = state.sites.filter(site => site.domain !== trimmed)
+            // Add to front with current timestamp
+            return {
+              sites: [{ domain: trimmed, lastAccessed: Date.now() }, ...filtered].slice(0, MAX_RECENT_SITES),
+            }
+          })
+        },
 
-        set(state => {
-          // Remove if already exists
-          const filtered = state.sites.filter(site => site.domain !== domain)
-          // Add to front with current timestamp
-          return {
-            sites: [{ domain: domain.trim(), lastAccessed: Date.now() }, ...filtered].slice(0, MAX_RECENT_SITES),
-          }
-        })
-      },
+        removeSite: (domain: string) => {
+          set(state => ({
+            sites: state.sites.filter(site => site.domain !== domain),
+          }))
+        },
 
-      removeSite: (domain: string) => {
-        set(state => ({
-          sites: state.sites.filter(site => site.domain !== domain),
-        }))
-      },
+        clearSites: () => {
+          set({ sites: [] })
+        },
+      }
 
-      clearSites: () => {
-        set({ sites: [] })
-      },
-    }),
+      return {
+        sites: [],
+        actions,
+        // Legacy direct exports for backwards compatibility
+        ...actions,
+      }
+    },
     {
       name: "recent-sites-storage",
       version: 1,
     },
   ),
 )
+
+// Atomic selector: sites list (Guide §14.1)
+export const useRecentSites = () => useRecentSitesStoreBase(state => state.sites)
+
+// Actions hook - stable reference (Guide §14.3)
+export const useRecentSitesActions = () => useRecentSitesStoreBase(state => state.actions)
+
+// Legacy export for backwards compatibility
+export const useRecentSitesStore = useRecentSitesStoreBase

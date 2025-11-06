@@ -64,9 +64,10 @@ if [ -d "$WEB_NEXT_DIR" ]; then
     rm -rf "$WEB_NEXT_DIR"
 fi
 
-# Build dependencies first (tools package)
+# Build dependencies first (images + tools packages)
 log_info "Building workspace dependencies..."
-cd packages/tools && bun run build && cd "$PROJECT_ROOT"
+cd packages/images && bun run build && cd "$PROJECT_ROOT" || { log_error "Failed to build images package"; exit 1; }
+cd packages/tools && bun run build && cd "$PROJECT_ROOT" || { log_error "Failed to build tools package"; exit 1; }
 
 # Build web app to temp location
 log_info "Building web app..."

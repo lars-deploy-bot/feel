@@ -9,7 +9,7 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { PasswordField } from "@/components/ui/primitives/PasswordField"
 import { containerVariants, fieldVariants, itemVariants } from "@/lib/animations"
-import { useDeployFormStore, useDeploymentStatusStore } from "@/lib/stores/deployStore"
+import { useDeployStore } from "@/lib/stores/deployStore"
 import { DeploymentStatus } from "./DeploymentStatus"
 import { generateRandomDomain } from "./formUtils"
 import { ModeOption } from "./ModeOption"
@@ -89,9 +89,9 @@ export function DeployForm() {
   const [deploymentMode, setDeploymentModeState] = useState<"choose" | DeploymentMode>("choose")
 
   // Stores and hooks
-  const { domain, password, setDomain, setPassword, reset: resetForm } = useDeployFormStore()
-  const { setDeploymentStatus, deploymentStatus } = useDeploymentStatusStore()
-  const { deploy, isDeploying, deploymentError, deploymentDomain, deploymentErrors } = useDeployment()
+  const { domain, password, setDomain, setPassword, resetForm, setDeploymentStatus, deploymentStatus } =
+    useDeployStore()
+  const { deploy, isDeploying, deploymentDomain, deploymentErrors } = useDeployment()
 
   // Sync mode with URL
   const setDeploymentMode = (mode: "choose" | DeploymentMode) => {
@@ -311,7 +311,7 @@ export function DeployForm() {
               <DeploymentStatus
                 status={deploymentStatus === "success" ? "success" : deploymentStatus === "error" ? "error" : "loading"}
                 domain={deploymentDomain}
-                error={deploymentError}
+                error={deploymentErrors[0] ?? null}
                 errorDetails={deploymentErrors}
               />
             </motion.div>

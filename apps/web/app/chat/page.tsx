@@ -1,10 +1,14 @@
 "use client"
-import { ExternalLink, Eye, EyeOff, Image } from "lucide-react"
-import { useRouter } from "next/navigation"
-import { Suspense, useEffect, useRef, useState } from "react"
+import { ExternalLink, Eye, EyeOff, Image, MessageCircle } from "lucide-react"
+import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { Toaster } from "react-hot-toast"
+import { FeedbackModal } from "@/components/modals/FeedbackModal"
+import { SettingsModal } from "@/components/modals/SettingsModal"
+import { PhotoMenu } from "@/components/ui/PhotoMenu"
 import { SettingsDropdown } from "@/components/ui/SettingsDropdown"
+import { ChatDropOverlay } from "@/features/chat/components/ChatDropOverlay"
 import { ChatInput } from "@/features/chat/components/ChatInput"
+import type { ChatInputHandle } from "@/features/chat/components/ChatInput/types"
 import { DevTerminal } from "@/features/chat/components/DevTerminal"
 import { SubdomainInitializer } from "@/features/chat/components/SubdomainInitializer"
 import { ThinkingGroup } from "@/features/chat/components/ThinkingGroup"
@@ -14,11 +18,13 @@ import { DevTerminalProvider, useDevTerminal } from "@/features/chat/lib/dev-ter
 import { groupMessages } from "@/features/chat/lib/message-grouper"
 import { parseStreamEvent, type StreamEvent, type UIMessage } from "@/features/chat/lib/message-parser"
 import { renderMessage } from "@/features/chat/lib/message-renderer"
+import { buildPromptWithAttachments } from "@/features/chat/utils/prompt-builder"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
 import type { StructuredError } from "@/lib/error-codes"
 import { getErrorHelp, getErrorMessage } from "@/lib/error-codes"
 import { HttpError, isAlreadyLogged } from "@/lib/errors"
 import { isDevelopment, useDebugStore, useDebugVisible } from "@/lib/stores/debug-store"
+import { useLLMStore } from "@/lib/stores/llmStore"
 
 const SUGGESTIONS = [
   '"Add a contact form"',
@@ -39,16 +45,35 @@ function ChatPageContent() {
   const [userHasManuallyScrolled, setUserHasManuallyScrolled] = useState(false)
   const [subdomainInitialized, setSubdomainInitialized] = useState(false)
   const [randomSuggestion, setRandomSuggestion] = useState(SUGGESTIONS[0])
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false)
+  const [showSettingsModal, setShowSettingsModal] = useState(false)
+  const [showPhotoMenu, setShowPhotoMenu] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const isAutoScrolling = useRef(false)
   const abortControllerRef = useRef<AbortController | null>(null)
   const isSubmitting = useRef<boolean>(false)
-  const router = useRouter()
+  const chatInputRef = useRef<ChatInputHandle>(null)
+  const dragCounter = useRef(0)
+  const photoButtonRef = useRef<HTMLButtonElement>(null)
   const toggleView = useDebugStore(state => state.toggleView)
   const isDebugView = useDebugVisible()
   const showSSETerminal = useDebugStore(state => state.showSSETerminal)
   const { addEvent: addDevEvent } = useDevTerminal()
   const { workspace, isTerminal, mounted, setWorkspace } = useWorkspace({ redirectOnMissing: "/" })
+  const { apiKey: userApiKey, model: userModel } = useLLMStore()
+
+  // Helper to create API request body (DRY)
+  const createRequestBody = (message: string) => {
+    const baseBody = {
+      message,
+      conversationId,
+      apiKey: userApiKey || undefined,
+      model: userModel,
+    }
+
+    return isTerminal ? { ...baseBody, workspace } : baseBody
+  }
 
   // Pick random suggestion on mount (client-side only)
   useEffect(() => {
@@ -126,15 +151,23 @@ function ChatPageContent() {
     isSubmitting.current = true
     setBusy(true)
 
+    // Get attachments and build prompt with library image references
+    const attachments = chatInputRef.current?.getAttachments() || []
+    const augmentedMsg = buildPromptWithAttachments(msg, attachments)
+
     // Add user message
     const userMessage: UIMessage = {
       id: Date.now().toString(),
       type: "user",
-      content: msg,
+      content: augmentedMsg,
       timestamp: new Date(),
     }
     setMessages(prev => [...prev, userMessage])
     setMsg("")
+
+    // Clear library images from attachments (they're in the prompt now)
+    chatInputRef.current?.clearLibraryImages()
+
     setShouldForceScroll(true)
 
     try {
@@ -154,9 +187,7 @@ function ChatPageContent() {
     let timeoutId: NodeJS.Timeout | null = null
 
     try {
-      const requestBody = isTerminal
-        ? { message: userMessage.content, workspace, conversationId }
-        : { message: userMessage.content, conversationId }
+      const requestBody = createRequestBody(userMessage.content)
 
       // Create AbortController for this request
       const abortController = new AbortController()
@@ -447,9 +478,7 @@ function ChatPageContent() {
 
   async function sendRegular(userMessage: UIMessage) {
     try {
-      const requestBody = isTerminal
-        ? { message: userMessage.content, workspace, conversationId }
-        : { message: userMessage.content, conversationId }
+      const requestBody = createRequestBody(userMessage.content)
 
       const r = await fetch("/api/claude", {
         method: "POST",
@@ -547,11 +576,67 @@ function ChatPageContent() {
     isSubmitting.current = false
   }
 
+  // Drag & drop handlers for entire chat area
+  const handleChatDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dragCounter.current++
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true)
+    }
+  }, [])
+
+  const handleChatDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dragCounter.current--
+    if (dragCounter.current === 0) {
+      setIsDragging(false)
+    }
+  }, [])
+
+  const handleChatDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    e.dataTransfer.dropEffect = "copy"
+  }, [])
+
+  const handleChatDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dragCounter.current = 0
+    setIsDragging(false)
+
+    // Check if it's a photobook image
+    const imageKey = e.dataTransfer.getData("application/x-photobook-image")
+    if (imageKey) {
+      chatInputRef.current?.addPhotobookImage(imageKey)
+      return
+    }
+
+    // Otherwise, handle file drops
+    const files = Array.from(e.dataTransfer.files)
+    if (files.length === 0) return
+
+    for (const file of files) {
+      chatInputRef.current?.addAttachment(file)
+    }
+  }, [])
+
   // SSE terminal visibility is separate from debug view
 
   return (
     <div className="h-[100dvh] flex flex-row overflow-hidden dark:bg-[#1a1a1a] dark:text-white">
-      <div className="flex-1 flex flex-col overflow-hidden transition-all">
+      <div
+        className="flex-1 flex flex-col overflow-hidden transition-all relative"
+        role="region"
+        aria-label="Chat area"
+        onDragEnter={handleChatDragEnter}
+        onDragLeave={handleChatDragLeave}
+        onDragOver={handleChatDragOver}
+        onDrop={handleChatDrop}
+      >
+        <ChatDropOverlay isDragging={isDragging} />
         <Suspense fallback={null}>
           <SubdomainInitializer
             onInitialize={handleSubdomainInitialize}
@@ -581,13 +666,31 @@ function ChatPageContent() {
                 )}
                 <button
                   type="button"
-                  onClick={() => router.push("/photobook")}
-                  className="inline-flex items-center justify-center px-3 py-2 text-xs font-medium text-black dark:text-white border border-black/20 dark:border-white/20 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors"
-                  aria-label="Photos"
-                  title="Photos"
+                  onClick={() => setShowFeedbackModal(true)}
+                  className="inline-flex items-center justify-center px-3 py-2 text-xs font-medium text-black/30 dark:text-white/30 border border-black/20 dark:border-white/20 transition-colors cursor-not-allowed"
+                  aria-label="Send Feedback"
+                  title="Send Feedback (Coming Soon)"
+                  disabled
                 >
-                  <Image size={14} />
+                  <MessageCircle size={14} />
                 </button>
+                <div className="relative">
+                  <button
+                    ref={photoButtonRef}
+                    type="button"
+                    onClick={() => setShowPhotoMenu(!showPhotoMenu)}
+                    className="inline-flex items-center justify-center px-3 py-2 text-xs font-medium text-black dark:text-white border border-black/20 dark:border-white/20 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors"
+                    aria-label="Photos"
+                    title="Photos"
+                  >
+                    <Image size={14} />
+                  </button>
+                  <PhotoMenu
+                    isOpen={showPhotoMenu}
+                    onClose={() => setShowPhotoMenu(false)}
+                    triggerRef={photoButtonRef}
+                  />
+                </div>
                 <SettingsDropdown
                   onNewChat={startNewConversation}
                   currentWorkspace={workspace}
@@ -595,6 +698,7 @@ function ChatPageContent() {
                     setWorkspace(newWorkspace)
                     startNewConversation()
                   }}
+                  onOpenSettings={() => setShowSettingsModal(true)}
                 />
               </div>
             </div>
@@ -664,6 +768,7 @@ function ChatPageContent() {
           {/* Input */}
           <div className="mx-auto w-full md:max-w-2xl">
             <ChatInput
+              ref={chatInputRef}
               message={msg}
               setMessage={setMsg}
               busy={busy}
@@ -683,6 +788,8 @@ function ChatPageContent() {
       </div>
 
       {showSSETerminal && <DevTerminal />}
+      {showFeedbackModal && <FeedbackModal onClose={() => setShowFeedbackModal(false)} />}
+      {showSettingsModal && <SettingsModal onClose={() => setShowSettingsModal(false)} />}
     </div>
   )
 }

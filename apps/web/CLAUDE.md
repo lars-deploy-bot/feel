@@ -4,54 +4,22 @@ Next.js web frontend for Claude Code agentic conversations with workspace-scoped
 
 # rules
 
+**BIG RULE**: This file is a ROUTER, not documentation. Keep sections minimal - just link to guides in `docs/`. No long explanations here.
+
+**Docs structure**: All docs must be in nested directories (e.g., `docs/architecture/`, `docs/security/`), never directly in `docs/`. This keeps organization clear.
+
 always use bun!
 
 ## Deployment & Ports
 
-### Production (terminal.goalive.nl)
-- **Domain:** `terminal.goalive.nl`
-- **Caddy Config:** `/etc/caddy/Caddyfile` (main config)
-- **Port:** `8999` (localhost only)
-- **PM2 Process:** `claude-bridge`
-- **Command:** `bun next start -p 8999`
-- **Serves:** Built `.next` folder (production optimized)
-- **Deploy:** `bun run deploy` (runs `./scripts/build-and-serve.sh`)
-  - Pulls latest from git
-  - Runs `bun install` + atomic build to `.builds/`
-  - Stops old PM2 process
-  - Starts standalone server from `.builds/current/standalone/apps/web/server.js`
-  - Reloads Caddy
+**Guide**: `docs/deployment/deployment-environments.md`
 
-### Staging (staging.terminal.goalive.nl)
-- **Domain:** `staging.terminal.goalive.nl`
-- **Caddy Config:** `/root/webalive/claude-bridge/Caddyfile` (imported)
-- **Port:** `8998` (localhost only)
-- **PM2 Process:** `claude-bridge-staging`
-- **Command:** `bunx next dev --turbo -p 8998`
-- **Serves:** Dev server with hot reload
-- **Purpose:** Testing changes before production deploy
+| Env | Domain | Port | Process | Command |
+|-----|--------|------|---------|---------|
+| **Prod** | `terminal.goalive.nl` | `8999` | `claude-bridge` | `bun run deploy` |
+| **Staging** | `staging.terminal.goalive.nl` | `8998` | `claude-bridge-staging` | `bun run staging` |
 
-### Port Flow
-```
-Internet → Caddy (ports 80/443)
-  ↓
-terminal.goalive.nl → localhost:8999 (standalone production server)
-staging.terminal.goalive.nl → localhost:8998 (dev server with hot reload)
-```
-
-### Management Commands
-```bash
-# Production
-bun run see            # View logs (last 1000 lines)
-pm2 restart claude-bridge
-
-# Staging
-bun run staging        # Build tools + restart staging + show status
-bun run see:staging    # View staging logs (last 1000 lines)
-
-# Both
-pm2 list
-```
+**Quick Commands**: `bun run see` (logs), `bun run see:staging` (staging logs), `pm2 list` (status)
 
 ## Request → Response Pipeline
 
@@ -59,191 +27,87 @@ pm2 list
 
 ## Stream Implementation
 
-### SSE Protocol (createClaudeStream, streamHandler.ts)
-- `new ReadableStream({ async start(controller) { ... } })`
-- Frame format: `event: ${type}\ndata: ${JSON.stringify(event)}\n\n`
-- Encoder: `new TextEncoder().encode()`
-- Response headers: `Content-Type: text/event-stream, Cache-Control: no-cache, Connection: keep-alive`
+**Files**: `app/api/claude/stream/route.ts`, `features/chat/lib/streamHandler.ts`
 
-### Event Lifecycle
-1. **start** – `{ host, cwd, message, messageLength, isResume: !!options.resume }`
-2. **message** – For each SDK msg: `{ messageCount, messageType: m.type, content: SDKMessage }`
-3. **session** – Once per query: `{ sessionId }` (extracted from system:init via `extractSessionId()`, persisted to store)
-4. **complete** – `{ totalMessages, result: SDKResultMessage | null }`
-5. **error** – `{ error, message, details, stack }`
+**Guide**: `docs/streaming/stream-implementation.md`
 
-### Query Iteration (SDK loop)
-```ts
-const q = query({ prompt: message, options: claudeOptions })
-for await (const m of q) {
-  if (m.type === 'system' && !sessionSaved) { await conversation.store.set(key, sessionId) }
-  sendEvent('message', { messageCount++, messageType: m.type, content: m })
-  if (m.type === 'result') queryResult = m
-}
-```
+**SSE events** (in order): `start` → `message` (many) → `session` → `complete` | `error`
 
-## Tool Tracking & Results
+## Tool Tracking & Results & Message Grouping
 
-### toolUseMap Pattern (message-parser.ts)
-- Global `Map<string, string>` maps `tool_use.id` → `tool_use.name`
-- **Assistant msg** with content block `{ type: 'tool_use', id, name }` → `toolUseMap.set(id, name)`
-- **User msg** with content block `{ type: 'tool_result', tool_use_id }` → lookup name from map, inject `item.tool_name = toolUseMap.get(tool_use_id)`
-- Result rendering matches tool name to ToolOutputRouter component
+**Files**: `features/chat/lib/message-parser.ts`, `features/chat/lib/message-grouper.ts`
 
-## Message Grouping Logic (message-grouper.ts)
+**Guide**: `docs/architecture/message-handling.md`
 
-Discriminates on `isTextMessage()`:
-```ts
-const isTextMessage = (msg: UIMessage): boolean => {
-  if (msg.type === 'user') return true
-  if (msg.type === 'sdk_message' && msg.content?.type === 'assistant') {
-    return msg.content.message?.content?.length === 1 && content[0]?.type === 'text'
-  }
-  return false
-}
-```
-
-- **true** → standalone text `MessageGroup { type: 'text', messages: [msg], isComplete: true }`
-- **false** → accumulate into `currentThinkingGroup: UIMessage[]`
-- Flush thinking on text message OR on `isCompletionMessage()` (type === 'complete'|'result')
-- Final group `isComplete` = reached completion message; otherwise incomplete
+- **Tool tracking**: Maps `tool_use.id` → `tool_use.name` for result rendering
+- **Message grouping**: Groups text vs. thinking/tool messages; flushes on completion
 
 ## Session & Concurrency
 
-### SessionStore (sessionStore.ts)
-- Interface: `{ get(key): Promise<str|null>, set(key, val): Promise<void>, delete(key): Promise<void> }`
-- Default: `SessionStoreMemory` = `Map<string, string>` in-memory ⚠️ Lose state on restart; use Redis/DB in prod
-- Key format: `${userId}::${workspace ?? 'default'}::${conversationId}`
+**File**: `features/auth/lib/sessionStore.ts`
 
-### Conversation Locking (sessionStore.ts)
-- `const activeConversations = new Set<string>()`
-- `tryLockConversation(key): boolean` → checks membership, adds if absent, returns success
-- `unlockConversation(key)` → deletes from set (called in finally block of stream)
-- Prevents concurrent requests for same (userId, workspace, conversationId) tuple
+**Guide**: `docs/sessions/session-management.md`
 
-### Session Resume
-- Pre-query: `const existingSessionId = await SessionStoreMemory.get(convKey)`
-- Pass to SDK: `{ resume: existingSessionId }` in claudeOptions (if exists)
-- SDK automatically resumes conversation context; prevents re-execution of prior tools
+- **Session store**: In-memory by default (⚠️ use Redis/DB in prod)
+- **Conversation lock**: Prevents concurrent requests to same conversation
+- **Session resume**: Restores conversation context via SDK, skips tool re-execution
 
 ## Authentication
 
-### JWT-Based Multi-Workspace Sessions (jwt.ts, auth.ts)
-- Session cookie stores signed JWT token containing authenticated workspaces
-- JWT payload: `{ workspaces: string[], iat, exp }` (30-day expiration)
-- Login flow: `/api/login` validates passcode → creates/updates JWT → sets httpOnly cookie
-- Multi-site support: Single JWT tracks all authenticated workspaces for user
+**Files**: `features/auth/lib/jwt.ts`, `features/auth/lib/auth.ts`
 
-**JWT Functions** (features/auth/lib/jwt.ts):
-- `createSessionToken(workspaces[])` → signed JWT with HS256
-- `verifySessionToken(token)` → validates signature, returns payload or null
-- `addWorkspaceToToken(token, workspace)` → creates new JWT with added workspace
+**Guide**: `docs/security/authentication.md`
 
-**Security**:
-- JWT_SECRET env var required in production (fails hard if missing)
-- Signature verification prevents token tampering
-- Workspace authentication checked per-request via `isWorkspaceAuthenticated()`
-
-**Workspace Auth Check** (auth.ts):
-```ts
-const isAuthenticated = await isWorkspaceAuthenticated(workspaceName)
-if (!isAuthenticated) {
-  return 401 WORKSPACE_NOT_AUTHENTICATED
-}
-```
-- Applied in `/api/claude`, `/api/claude/stream`, `/api/verify`
-- Ensures user cannot access workspaces not in their JWT
-
-### Local Development Test User
-- When `BRIDGE_ENV=local`: test user `workspace=test`, `passcode=test` bypasses validation
-- Sets session cookie with value `test-user`
+- **JWT payload**: `{ workspaces: string[], iat, exp }` (30-day) in httpOnly cookie
+- **Login flow**: `/api/login` validates passcode → creates/updates JWT
+- **Per-request check**: `isWorkspaceAuthenticated()` in `/api/claude*`, `/api/verify`
+- **Local dev**: `BRIDGE_ENV=local` + `workspace=test, passcode=test` bypasses validation
 
 ## Workspace Enforcement
 
-### Validation (canUseTool callback, route.ts)
-```ts
-const ALLOWED = new Set(['Write', 'Edit', 'Read', 'Glob', 'Grep'])
-const filePath = input.file_path || input.notebook_path || input.path
-if (filePath) {
-  const norm = path.normalize(filePath)
-  if (!norm.startsWith(cwd + path.sep)) return { behavior: 'deny', message: 'path_outside_workspace' }
-}
-return { behavior: 'allow', updatedInput: input, updatedPermissions: [] }
-```
-- Hoisted via `Options.canUseTool` callback to SDK
-- Tool names whitelisted; paths normalized + boundary-checked
-- Fails deny case early; SDK skips tool invocation
+**Files**: `lib/claude/tool-permissions.ts`, `features/workspace/lib/workspace-secure.ts`, `app/api/claude/stream/route.ts`
 
-### Workspace Resolution (workspace-utils.ts + workspaceRetriever.ts)
-- **Local dev mode** (`BRIDGE_ENV=local` + `LOCAL_TEMPLATE_PATH`): uses explicit template path (monorepo seed repo)
-- **Terminal mode** (`terminal.*` hostname): use `body.workspace` or fail (required)
-- **Chat mode** (default): use `body.workspace` or fallback to system default
-- Validated in `/api/verify` via `getWorkspace()` → checks dir exists + readable
+**Guide**: `docs/security/workspace-enforcement.md`
 
-## UI Routing (message-renderer.tsx switch)
+- **Tool whitelist**: `ALLOWED_SDK_TOOLS` (Read, Write, Edit, Glob, Grep) + `ALLOWED_MCP_TOOLS`
+- **Path validation**: `ensurePathWithinWorkspace()` prevents directory traversal
+- **Workspace resolution**: `getWorkspace()` resolves host → workspace root with symlink safety
+- **Tool callback**: `createToolPermissionHandler()` validates before SDK execution
 
-```ts
-switch (getMessageComponentType(message)) {
-  case 'user': → <UserMessage> (right-aligned, "you" label)
-  case 'start': → <StartMessage> (debug info: host, cwd, messageLength)
-  case 'system': → <SystemMessage> (SDKSystemMessage)
-  case 'assistant': → <AssistantMessage> (text + tool blocks via ToolInputRouter)
-  case 'tool_result': → <ToolResultMessage> (SDKUserMessage with tool_result blocks)
-  case 'result': → <ResultMessage> (SDKResultMessage, final)
-  case 'complete': → <CompleteMessage> (totalMessages, final summary)
-  default: → JSON dump (fallback unknown type)
-}
-```
+## UI Rendering
 
-## Automatic File Ownership (Child Process Isolation)
+**Files**: `features/chat/lib/message-renderer.tsx`, `features/chat/components/message-renderers/AssistantMessage.tsx`
 
-**Problem**: Files created by Claude SDK are owned by `root:root`, but site processes run as dedicated users (e.g., `site-two-goalive-nl`), causing permission errors.
+**Guide**: `docs/architecture/message-handling.md`
 
-**Solution**: Automatic child process isolation for systemd-managed workspaces.
+Routes each message type (user, start, system, assistant, tool_result, result, complete) to dedicated component. Tool inputs hidden by default (debug mode only).
 
-### Detection (agent-child-runner.ts)
+## Automatic File Ownership
 
-```typescript
-export function shouldUseChildProcess(workspaceRoot: string): boolean {
-  const st = statSync(workspaceRoot)
-  return st.uid !== 0 && st.gid !== 0  // Non-root owner = systemd site
-}
-```
+**Files**: `lib/agent-child-runner.ts`, `scripts/run-agent.mjs`, `app/api/claude/stream/route.ts`
 
-### Execution Flow
+Systemd workspaces spawn SDK in child process that drops to workspace user (via `seteuid`/`setegid`). Automatic detection via directory ownership. Ensures SDK writes inherit correct ownership. **Why**: Sites run as dedicated unprivileged users (e.g., `site-example-com`); without UID switching, files would be owned by root.
 
-**Route logic** (`/api/claude/stream`):
-```typescript
-if (shouldUseChildProcess(cwd)) {
-  // Systemd workspace: spawn SDK in child process
-  const childStream = runAgentChild(cwd, { message, model, maxTurns })
-  // Convert NDJSON to SSE
-} else {
-  // Root-owned workspace: use in-process SDK (legacy)
-  createClaudeStream({ message, claudeOptions, ... })
-}
-```
+## State Management (Zustand)
 
-**Child runner** (`scripts/run-agent.mjs`):
-1. Spawned as root (can read `/root/` script)
-2. Immediately drops to workspace user:
-   ```javascript
-   process.setegid(targetGid)  // Kernel-level GID switch
-   process.seteuid(targetUid)  // Kernel-level UID switch
-   ```
-3. All file operations inherit process UID/GID
-4. SDK writes (tools + debug logs) owned by workspace user
+**Location**: `lib/stores/`
 
-**Why it works**:
-- **Kernel enforcement**: After `seteuid()`, entire process runs as workspace user
-- **Catches everything**: Built-in SDK tools, debug logs, cache writes
-- **No patching needed**: ES module imports, internal SDK code all inherit process credentials
-- **Automatic**: Detects systemd workspaces by directory ownership
+All stores follow **Guide §14.1-14.3** patterns:
+- ✅ Actions grouped in stable `actions` object (prevents re-renders)
+- ✅ Atomic selector hooks exported (single values only)
+- ✅ Backwards compatible (legacy direct access still works)
+- ✅ Marked with `"use client"` directive
 
-**Locations**:
-- Parent wrapper: `apps/web/lib/agent-child-runner.ts`
-- Child runner: `apps/web/scripts/run-agent.mjs`
-- Route integration: `apps/web/app/api/claude/stream/route.ts` (line ~263)
+**Store Reference**:
+| Store | Purpose | Hooks |
+|-------|---------|-------|
+| `debug-store.ts` | Dev UI toggles | `useDebugView()`, `useDebugActions()` |
+| `imageStore.ts` | Photo library | `useImages()`, `useImageActions()` |
+| `recentSitesStore.ts` | Site history | `useRecentSites()`, `useRecentSitesActions()` |
+| `llmStore.ts` | Model + API key | `useModel()`, `useApiKey()`, `useLLMActions()` |
+| `deployStore.ts` | Form + deployment | `useDeployDomain()`, `useFormActions()`, etc. |
+
+**Improve a store**: See `/skills/zustand` and `docs/guides/zustand-nextjs-ssr-patterns.md`
 
 ## API Routes Summary
 
@@ -258,9 +122,9 @@ if (shouldUseChildProcess(cwd)) {
 ## Dev
 
 ```bash
-npm run dev     # :8999 Turbo
-npm run build   # next build
-npm run start   # next start :8999
+bun run dev     # :8999 Turbo
+bun run build   # next build
+bun run start   # next start :8999
 ```
 **Deps**: Next.js 16, @anthropic-ai/claude-agent-sdk, TailwindCSS 4, Lucide React, Zod
 **Env**: `CLAUDE_MODEL`, `PASSCODE`, workspace paths

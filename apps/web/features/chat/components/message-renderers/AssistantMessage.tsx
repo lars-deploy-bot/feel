@@ -1,5 +1,26 @@
+"use client"
+
+/**
+ * AssistantMessage Component
+ *
+ * Renders Claude's assistant messages from the SDK.
+ *
+ * IMPORTANT: Tool execution inputs (tool_use blocks) are HIDDEN from regular users.
+ * Users only see:
+ * - Text responses from Claude
+ * - Tool results (via ToolResultMessage component)
+ *
+ * Tool inputs are only shown in debug mode for developers to inspect what Claude
+ * is executing. This keeps the UI clean and focused on results, not process.
+ *
+ * To enable debug mode: Toggle debug view in settings or use debug store.
+ */
+
+import { useState } from "react"
 import type { SDKAssistantMessage } from "@anthropic-ai/claude-agent-sdk"
+import { ChevronRight } from "lucide-react"
 import { MarkdownDisplay } from "@/components/ui/chat/format/MarkdownDisplay"
+import { ToolInputRouter } from "@/components/ui/chat/tools/ToolInputRouter"
 import { useDebugVisible } from "@/lib/stores/debug-store"
 import { getToolIcon } from "@/lib/tool-icons"
 import { hasMarkdown } from "@/lib/utils/markdown-utils"
@@ -34,37 +55,34 @@ function ToolUseItem({ item }: { item: ContentItem }): React.ReactNode {
   }
 
   if (isToolUseBlock(item)) {
+    // Hide all tool_use blocks in normal mode - users only want to see results
+    // In debug mode, show them for inspection
+    if (!isDebugMode) {
+      return null
+    }
+
     const toolItem = item as { name: string; input: Record<string, unknown> }
     const Icon = getToolIcon(toolItem.name)
 
     const getActionLabel = (toolName: string) => {
-      const friendlyLabel = (() => {
-        switch (toolName.toLowerCase()) {
-          case "read":
-            return "reading"
-          case "edit":
-            return "editing"
-          case "write":
-            return "writing"
-          case "grep":
-            return "searching"
-          case "glob":
-            return "finding"
-          case "bash":
-            return "running"
-          case "task":
-            return "delegating"
-          default:
-            return toolName.toLowerCase()
-        }
-      })()
-
-      // In debug mode, show both exact tool name and friendly label
-      if (isDebugMode) {
-        return `${toolName} (${friendlyLabel})`
+      switch (toolName.toLowerCase()) {
+        case "read":
+          return "reading"
+        case "edit":
+          return "editing"
+        case "write":
+          return "writing"
+        case "grep":
+          return "searching"
+        case "glob":
+          return "finding"
+        case "bash":
+          return "running"
+        case "task":
+          return "delegating"
+        default:
+          return toolName.toLowerCase()
       }
-
-      return friendlyLabel
     }
 
     const getInlineDetail = (toolName: string, input: Record<string, unknown>) => {
@@ -72,8 +90,7 @@ function ToolUseItem({ item }: { item: ContentItem }): React.ReactNode {
       if (name === "read" || name === "edit" || name === "write") {
         const filePath = input.file_path as string
         if (filePath) {
-          const fileName = filePath.split("/").pop() || filePath
-          return fileName
+          return filePath.split("/").pop() || filePath
         }
       }
       return null
@@ -81,16 +98,49 @@ function ToolUseItem({ item }: { item: ContentItem }): React.ReactNode {
 
     const inlineDetail = getInlineDetail(toolItem.name, toolItem.input)
 
-    return (
-      <div className="my-1 text-xs font-normal text-black/35 dark:text-white/35 flex items-center gap-1.5">
-        <Icon size={12} className="opacity-60" />
-        <span>{getActionLabel(toolItem.name)}</span>
-        {inlineDetail && <span className="font-diatype-mono text-black/50 dark:text-white/50">{inlineDetail}</span>}
-      </div>
-    )
+    return <DebugToolItem toolItem={toolItem} icon={Icon} actionLabel={getActionLabel(toolItem.name)} inlineDetail={inlineDetail} />
   }
 
   // Unhandled content type
   const unhandledItem = item as unknown as { type: string }
   return <div className="text-xs text-red-600 dark:text-red-400">Unhandled content type: {unhandledItem.type}</div>
+}
+
+function DebugToolItem({
+  toolItem,
+  icon: Icon,
+  actionLabel,
+  inlineDetail
+}: {
+  toolItem: { name: string; input: Record<string, unknown> }
+  icon: React.ComponentType<{ size: number; className?: string }>
+  actionLabel: string
+  inlineDetail: string | null
+}) {
+  const [isExpanded, setIsExpanded] = useState(false)
+
+  return (
+    <div className="my-1">
+      <button
+        type="button"
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="flex items-center gap-1.5 text-xs font-normal text-black/35 dark:text-white/35 hover:text-black/50 dark:hover:text-white/50 transition-colors"
+      >
+        <ChevronRight
+          size={12}
+          className={`opacity-60 transition-transform ${isExpanded ? "rotate-90" : ""}`}
+        />
+        <Icon size={12} className="opacity-60" />
+        <span>{toolItem.name}</span>
+        <span className="text-black/25 dark:text-white/25">({actionLabel})</span>
+        {inlineDetail && <span className="font-diatype-mono text-black/50 dark:text-white/50">{inlineDetail}</span>}
+      </button>
+
+      {isExpanded && (
+        <div className="mt-2 ml-6">
+          <ToolInputRouter toolName={toolItem.name} input={toolItem.input} />
+        </div>
+      )}
+    </div>
+  )
 }

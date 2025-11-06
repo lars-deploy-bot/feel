@@ -1,11 +1,15 @@
 "use client"
 
 import { useCallback, useState } from "react"
-import type { Attachment, ChatInputConfig } from "../types"
-import { createPreviewUrl, getAttachmentType, validateFile } from "../utils/file-validation"
+import { createPreviewUrl, getAttachmentType, validateFile } from "@/features/chat/utils/file-validation"
+import { useImageStore } from "@/lib/stores/imageStore"
+import { hashFile } from "@/lib/utils/file-hash"
+import type { Attachment, ChatInputConfig, FileUploadAttachment, LibraryImageAttachment } from "../types"
+import { isFileUpload, isLibraryImage } from "../types"
 
 export function useAttachments(config: ChatInputConfig) {
   const [attachments, setAttachments] = useState<Attachment[]>([])
+  const images = useImageStore(state => state.images)
 
   const addAttachment = useCallback(
     async (file: File) => {
@@ -20,24 +24,47 @@ export function useAttachments(config: ChatInputConfig) {
         return
       }
 
+      // Hash file first to check duplicates
+      const hash = await hashFile(file)
+
+      // Check if same file already attached
+      if (attachments.some(a => isFileUpload(a) && a.file.name === file.name && a.file.size === file.size)) {
+        config.onMessage?.("File already attached", "error")
+        return
+      }
+
+      // Check if this hash matches an already attached photobook image
+      const existingImage = images.find(img => img.key.includes(hash))
+      if (existingImage && attachments.some(a => isLibraryImage(a) && a.photobookKey === existingImage.key)) {
+        config.onMessage?.("Image already attached", "error")
+        return
+      }
+
       // Check max attachments
       if (config.maxAttachments && attachments.length >= config.maxAttachments) {
         config.onMessage?.(`Maximum ${config.maxAttachments} attachments allowed`, "error")
         return
       }
 
-      // Create attachment
-      const attachment: Attachment = {
+      // Create attachment with blob preview first (instant display)
+      const attachment: FileUploadAttachment = {
+        kind: "file-upload",
         id: crypto.randomUUID(),
         file,
-        type: getAttachmentType(file),
+        category: getAttachmentType(file),
         preview: createPreviewUrl(file),
         uploadProgress: 0,
       }
 
       setAttachments(prev => [...prev, attachment])
 
-      // Simulate upload (replace with actual upload logic)
+      // If already exists in imageStore, mark as complete and skip upload
+      if (existingImage) {
+        setAttachments(prev => prev.map(a => (a.id === attachment.id ? { ...a, uploadProgress: 100 } : a)))
+        return
+      }
+
+      // Upload new file
       if (config.onAttachmentUpload) {
         try {
           const _url = await config.onAttachmentUpload(file)
@@ -61,22 +88,71 @@ export function useAttachments(config: ChatInputConfig) {
         setAttachments(prev => prev.map(a => (a.id === attachment.id ? { ...a, uploadProgress: 100 } : a)))
       }
     },
-    [attachments.length, config],
+    [attachments.length, config, images],
+  )
+
+  const addPhotobookImage = useCallback(
+    (imageKey: string) => {
+      // Check if already attached
+      if (attachments.some(a => isLibraryImage(a) && a.photobookKey === imageKey)) {
+        config.onMessage?.("Image already attached", "error")
+        return
+      }
+
+      const image = images.find(img => img.key === imageKey)
+      if (!image) {
+        config.onMessage?.("Image not found", "error")
+        return
+      }
+
+      // Check max attachments
+      if (config.maxAttachments && attachments.length >= config.maxAttachments) {
+        config.onMessage?.(`Maximum ${config.maxAttachments} attachments allowed`, "error")
+        return
+      }
+
+      // Create attachment from photobook image
+      const attachment: LibraryImageAttachment = {
+        kind: "library-image",
+        id: crypto.randomUUID(),
+        photobookKey: imageKey,
+        preview: image.variants.w640,
+        uploadProgress: 100,
+      }
+
+      setAttachments(prev => [...prev, attachment])
+    },
+    [images, attachments, config],
   )
 
   const removeAttachment = useCallback((id: string) => {
     setAttachments(prev => {
       const attachment = prev.find(a => a.id === id)
-      if (attachment?.preview) {
+      // Only revoke blob URLs for file uploads
+      if (attachment && isFileUpload(attachment) && attachment.preview?.startsWith("blob:")) {
         URL.revokeObjectURL(attachment.preview)
       }
       return prev.filter(a => a.id !== id)
     })
   }, [])
 
+  const clearAttachments = useCallback(() => {
+    setAttachments(prev => {
+      // Revoke all blob URLs for file uploads
+      prev.forEach(attachment => {
+        if (isFileUpload(attachment) && attachment.preview?.startsWith("blob:")) {
+          URL.revokeObjectURL(attachment.preview)
+        }
+      })
+      return []
+    })
+  }, [])
+
   return {
     attachments,
     addAttachment,
+    addPhotobookImage,
     removeAttachment,
+    clearAttachments,
   }
 }

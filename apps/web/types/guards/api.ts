@@ -14,6 +14,8 @@ export const BodySchema = z.object({
   message: z.string().min(1),
   workspace: z.string().optional(),
   conversationId: z.string().uuid(),
+  apiKey: z.string().optional(),
+  model: z.string().optional(),
 })
 
 export type ValidatedBody = z.infer<typeof BodySchema>

@@ -32,7 +32,10 @@ function isToolPermitted(toolName: string): boolean {
  * - SDK tools (Write, Edit, Read, Glob, Grep) validate paths here
  * - MCP tools bypass this entirely (handled in child process with process.cwd())
  */
-export function createToolPermissionHandler(workspace: Workspace, requestId: string): Options["canUseTool"] {
+export function createToolPermissionHandler(
+  workspace: Workspace,
+  requestId: string,
+): NonNullable<Options["canUseTool"]> {
   return async (toolName, input, _options) => {
     console.log(`[Request ${requestId}] Tool requested: ${toolName}`)
 

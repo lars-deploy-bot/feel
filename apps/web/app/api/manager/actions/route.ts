@@ -76,6 +76,22 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    if (action === "backup_websites") {
+      try {
+        const { stdout, stderr } = await execAsync("/root/webalive/claude-bridge/backup-websites.sh")
+        const res = NextResponse.json({ ok: true, output: stdout, error: stderr || null })
+        addCorsHeaders(res, origin)
+        return res
+      } catch (error) {
+        const res = NextResponse.json(
+          { ok: false, error: error instanceof Error ? error.message : "Failed to backup websites" },
+          { status: 500 },
+        )
+        addCorsHeaders(res, origin)
+        return res
+      }
+    }
+
     const res = NextResponse.json(
       {
         ok: false,

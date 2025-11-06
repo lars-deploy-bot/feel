@@ -3,7 +3,7 @@
 import { motion } from "framer-motion"
 import { AlertCircle, CheckCircle2, Trash2 } from "lucide-react"
 import { useEffect, useState } from "react"
-import { useDeploymentHistoryStore } from "@/lib/stores/deployStore"
+import { useDeployStore } from "@/lib/stores/deployStore"
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -25,7 +25,7 @@ const itemVariants = {
 
 export function DeploymentHistory() {
   const [isClient, setIsClient] = useState(false)
-  const { history, clearHistory } = useDeploymentHistoryStore()
+  const { history, clearHistory } = useDeployStore()
 
   useEffect(() => {
     setIsClient(true)

@@ -1,6 +1,6 @@
 "use client"
 
-import { ExternalLink, Moon, Sun } from "lucide-react"
+import { Moon, Settings, Sun } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
@@ -10,9 +10,15 @@ interface SettingsDropdownProps {
   onNewChat?: () => void
   currentWorkspace?: string
   onSwitchWorkspace?: (workspace: string) => void
+  onOpenSettings?: () => void
 }
 
-export function SettingsDropdown({ onNewChat, currentWorkspace, onSwitchWorkspace }: SettingsDropdownProps) {
+export function SettingsDropdown({
+  onNewChat,
+  currentWorkspace,
+  onSwitchWorkspace,
+  onOpenSettings,
+}: SettingsDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [workspaces, setWorkspaces] = useState<string[]>([])
@@ -130,6 +136,16 @@ export function SettingsDropdown({ onNewChat, currentWorkspace, onSwitchWorkspac
               Start new chat
             </button>
           )}
+          {onOpenSettings && (
+            <button
+              onClick={() => handleAction(onOpenSettings)}
+              className="w-full px-4 py-2.5 text-left text-sm text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors font-medium flex items-center gap-2"
+              type="button"
+            >
+              <Settings size={16} />
+              Settings
+            </button>
+          )}
           <button
             onClick={() => handleAction(() => setTheme(theme === "dark" ? "light" : "dark"))}
             className="w-full px-4 py-2.5 text-left text-sm text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors font-medium flex items-center gap-2"
@@ -173,9 +189,7 @@ export function SettingsDropdown({ onNewChat, currentWorkspace, onSwitchWorkspac
         />
       )}
 
-      {showAddModal && (
-        <AddWorkspaceModal onClose={() => setShowAddModal(false)} onSuccess={fetchWorkspaces} />
-      )}
+      {showAddModal && <AddWorkspaceModal onClose={() => setShowAddModal(false)} onSuccess={fetchWorkspaces} />}
     </div>
   )
 }

@@ -11,7 +11,7 @@ describe("Tool Permission System", () => {
   }
 
   const requestId = "test-request-123"
-  const mockOptions = { signal: new AbortController().signal }
+  const mockOptions = { signal: new AbortController().signal, toolUseID: "test-tool-id-123" }
 
   describe("ALLOWED_SDK_TOOLS whitelist", () => {
     it("should only include safe file operation tools", () => {

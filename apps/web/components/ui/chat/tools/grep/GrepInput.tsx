@@ -22,9 +22,22 @@ export function GrepInput({
   ...options
 }: GrepInputProps) {
   return (
-    <div className="space-y-1">
-      <div className="text-xs text-black/60 dark:text-white/60 font-diatype-mono">{pattern}</div>
-      <div className="text-xs text-black/40 dark:text-white/40 font-thin space-x-2">
+    <div className="space-y-2 text-xs">
+      <div>
+        <div className="text-black/50 dark:text-white/50 mb-1">Pattern:</div>
+        <div className="text-black/70 dark:text-white/70 font-diatype-mono bg-black/[0.02] dark:bg-white/[0.02] border border-black/10 dark:border-white/10 rounded p-2">
+          {pattern}
+        </div>
+      </div>
+      {path && (
+        <div>
+          <div className="text-black/50 dark:text-white/50 mb-1">Path:</div>
+          <div className="text-black/60 dark:text-white/60 font-mono text-[10px] break-all">
+            {path}
+          </div>
+        </div>
+      )}
+      <div className="text-black/40 dark:text-white/40 font-normal flex flex-wrap gap-x-2 gap-y-1">
         {glob && <span>in {glob}</span>}
         {type && <span>• {type} files</span>}
         {output_mode !== "files_with_matches" && <span>• {output_mode}</span>}

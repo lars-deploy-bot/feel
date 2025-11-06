@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from "react"
 import toast from "react-hot-toast"
 import { AttachmentsGrid } from "./AttachmentsGrid"
 import { ChatInputProvider } from "./ChatInputContext"
@@ -9,34 +9,23 @@ import { InputArea } from "./InputArea"
 import { InputContainer } from "./InputContainer"
 import { SendButton } from "./SendButton"
 import { Toolbar } from "./Toolbar"
-import type { ChatInputConfig, ChatInputContextValue, ChatInputProps } from "./types"
+import type { ChatInputConfig, ChatInputContextValue, ChatInputHandle, ChatInputProps } from "./types"
 
 /**
  * ChatInput - Clean, accessible chat input component
  *
- * Architecture patterns:
- * - CSS Grid layout with named areas
- * - Data attributes for component state
- * - React Context for shared state
- * - Proper accessibility (ARIA labels, keyboard shortcuts)
- *
  * Features:
- * - File drag & drop and paste support
+ * - File paste support
  * - Image attachments with previews
- * - Photo library upload (mobile camera icon)
- * - Error feedback with animated toasts
+ * - Photo library upload (camera icon)
+ * - Error feedback with toasts
  * - Keyboard shortcuts (Cmd/Ctrl+K to focus)
+ * - Exposes addAttachment via ref for parent drag handling
  */
-export function ChatInput({
-  message,
-  setMessage,
-  busy,
-  abortControllerRef,
-  onSubmit,
-  onStop,
-  config: userConfig = {},
-}: Omit<ChatInputProps, "children">) {
-  const [isDragging, setIsDragging] = useState(false)
+export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "children">>(function ChatInput(
+  { message, setMessage, busy, abortControllerRef, onSubmit, onStop, config: userConfig = {} },
+  ref,
+) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const config: ChatInputConfig = useMemo(
@@ -58,7 +47,22 @@ export function ChatInput({
     [userConfig],
   )
 
-  const { attachments, addAttachment, removeAttachment } = useAttachments(config)
+  const { attachments, addAttachment, addPhotobookImage, removeAttachment, clearAttachments } = useAttachments(config)
+
+  // Expose methods to parent via ref
+  useImperativeHandle(
+    ref,
+    () => ({
+      addAttachment,
+      addPhotobookImage,
+      getAttachments: () => attachments,
+      clearLibraryImages: () => {
+        const libraryImages = attachments.filter(a => a.kind === "library-image")
+        libraryImages.forEach(img => removeAttachment(img.id))
+      },
+    }),
+    [addAttachment, addPhotobookImage, attachments, removeAttachment],
+  )
 
   const canSubmit = useMemo(() => {
     if (busy) return false
@@ -67,6 +71,11 @@ export function ChatInput({
     const attachmentsValid = attachments.every(a => !a.error && a.uploadProgress === 100)
     return (hasMessage || hasAttachments) && attachmentsValid
   }, [busy, message, attachments])
+
+  // Just call parent onSubmit directly (prompt building happens in parent now)
+  const handleSubmit = useCallback(() => {
+    onSubmit()
+  }, [onSubmit])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -87,12 +96,10 @@ export function ChatInput({
       attachments,
       addAttachment,
       removeAttachment,
-      isDragging,
-      setIsDragging,
       busy,
       abortControllerRef,
       canSubmit,
-      onSubmit,
+      onSubmit: handleSubmit,
       onStop,
       config,
     }),
@@ -102,52 +109,13 @@ export function ChatInput({
       attachments,
       addAttachment,
       removeAttachment,
-      isDragging,
       busy,
       abortControllerRef,
       canSubmit,
-      onSubmit,
+      handleSubmit,
       onStop,
       config,
     ],
-  )
-
-  // Drag & drop - improved detection
-  const dragCounter = useRef(0)
-
-  const handleDragEnter = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    dragCounter.current++
-    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
-      setIsDragging(true)
-    }
-  }, [])
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    dragCounter.current--
-    if (dragCounter.current === 0) {
-      setIsDragging(false)
-    }
-  }, [])
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-  }, [])
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault()
-      e.stopPropagation()
-      dragCounter.current = 0
-      setIsDragging(false)
-      const files = Array.from(e.dataTransfer.files)
-      for (const file of files) addAttachment(file)
-    },
-    [addAttachment],
   )
 
   const handlePaste = useCallback(
@@ -184,18 +152,13 @@ export function ChatInput({
       <section
         className="relative flex-shrink-0 p-4 safe-area-inset-bottom"
         aria-label="Chat input"
-        data-dragging={isDragging ? "" : undefined}
-        onDragEnter={handleDragEnter}
-        onDragLeave={handleDragLeave}
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
         onPaste={handlePaste}
       >
         <div className="relative">
           {/* Camera button above input */}
           <Toolbar fileInputRef={fileInputRef} />
 
-          <InputContainer isDragging={isDragging}>
+          <InputContainer>
             {/* Attachments */}
             <AttachmentsGrid />
 
@@ -209,4 +172,4 @@ export function ChatInput({
       </section>
     </ChatInputProvider>
   )
-}
+})

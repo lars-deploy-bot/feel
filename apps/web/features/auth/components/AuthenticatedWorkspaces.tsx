@@ -32,9 +32,7 @@ export function AuthenticatedWorkspaces({ currentWorkspace }: AuthenticatedWorks
     return null
   }
 
-  const otherWorkspaces = currentWorkspace
-    ? workspaces.filter(w => w !== currentWorkspace)
-    : workspaces
+  const otherWorkspaces = currentWorkspace ? workspaces.filter(w => w !== currentWorkspace) : workspaces
 
   if (otherWorkspaces.length === 0) {
     return null

@@ -1,30 +1,27 @@
 import { useCallback } from "react"
 import toast from "react-hot-toast"
 import type { DeployResponse } from "@/features/deployment/types/deploy-subdomain"
-import { useDeployFormStore, useDeploymentHistoryStore, useDeploymentStatusStore } from "@/lib/stores/deployStore"
+import { useDeployStore } from "@/lib/stores/deployStore"
 
 export function useDeployment() {
-  const { reset: resetForm } = useDeployFormStore()
   const {
     isDeploying,
     deploymentStatus,
-    deploymentError,
     deploymentDomain,
     deploymentErrors,
     setIsDeploying,
     setDeploymentStatus,
-    setDeploymentError,
     setDeploymentDomain,
     setDeploymentErrors,
-  } = useDeploymentStatusStore()
-  const { addToHistory } = useDeploymentHistoryStore()
+    addToHistory,
+    resetForm,
+  } = useDeployStore()
 
   const deploy = useCallback(
     async (domain: string, password: string): Promise<void> => {
       setIsDeploying(true)
       setDeploymentStatus("validating")
-      setDeploymentError(null)
-      setDeploymentErrors(null)
+      setDeploymentErrors([])
 
       try {
         setDeploymentStatus("deploying")
@@ -61,8 +58,8 @@ export function useDeployment() {
           resetForm()
         } else {
           setDeploymentStatus("error")
-          setDeploymentError(result.message)
-          setDeploymentErrors(result.errors || [])
+          const errors = result.errors?.length ? result.errors : [result.message]
+          setDeploymentErrors(errors)
           toast.error(result.message)
           addToHistory({
             id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -75,7 +72,7 @@ export function useDeployment() {
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Deployment failed"
         setDeploymentStatus("error")
-        setDeploymentError(errorMessage)
+        setDeploymentErrors([errorMessage])
         toast.error(errorMessage)
         addToHistory({
           id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -88,22 +85,13 @@ export function useDeployment() {
         setIsDeploying(false)
       }
     },
-    [
-      setIsDeploying,
-      setDeploymentStatus,
-      setDeploymentError,
-      setDeploymentDomain,
-      setDeploymentErrors,
-      addToHistory,
-      resetForm,
-    ],
+    [setIsDeploying, setDeploymentStatus, setDeploymentDomain, setDeploymentErrors, addToHistory, resetForm],
   )
 
   return {
     deploy,
     isDeploying,
     deploymentStatus,
-    deploymentError,
     deploymentDomain,
     deploymentErrors,
   }

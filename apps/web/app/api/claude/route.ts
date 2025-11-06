@@ -75,10 +75,16 @@ export async function POST(req: Request) {
       )
     }
 
-    const { message, workspace: requestWorkspace } = parseResult.data
+    const { message, workspace: requestWorkspace, apiKey: userApiKey, model: userModel } = parseResult.data
     console.log(
       `[Claude API ${requestId}] Message received (${message.length} chars): ${message.substring(0, 100)}${message.length > 100 ? "..." : ""}`,
     )
+    if (userApiKey) {
+      console.log(`[Claude API ${requestId}] Using user-provided API key`)
+    }
+    if (userModel) {
+      console.log(`[Claude API ${requestId}] Using user-selected model: ${userModel}`)
+    }
     console.log(`[Claude API ${requestId}] Starting Claude SDK query...`)
 
     const host = (await headers()).get("host") || "localhost"
@@ -138,7 +144,8 @@ export async function POST(req: Request) {
     }
 
     console.log(`[Claude API ${requestId}] Working directory: ${cwd}`)
-    console.log(`[Claude API ${requestId}] Claude model: ${process.env.CLAUDE_MODEL || "not set"}`)
+    const effectiveModel = userModel || process.env.CLAUDE_MODEL
+    console.log(`[Claude API ${requestId}] Claude model: ${effectiveModel || "not set"}`)
 
     // Use shared tool permission handler
     const canUseTool = createToolPermissionHandler(workspace, requestId)
@@ -155,7 +162,8 @@ export async function POST(req: Request) {
         additionalContext: body.additionalContext,
       }),
       settingSources: ["project"],
-      model: process.env.CLAUDE_MODEL,
+      model: effectiveModel,
+      ...(userApiKey ? { apiKey: userApiKey } : {}),
     }
 
     try {

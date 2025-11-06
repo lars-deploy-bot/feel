@@ -1,3 +1,6 @@
+import type { FileCategory } from "../components/ChatInput/types/file-types"
+import { getFileCategory, isImageMimeType } from "../components/ChatInput/types/file-types"
+
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"]
 const ALLOWED_DOCUMENT_TYPES = ["application/pdf", "text/plain", "text/markdown"]
 
@@ -33,13 +36,12 @@ export function validateFile(
   return { valid: true }
 }
 
-export function getAttachmentType(file: File): "image" | "document" {
-  if (ALLOWED_IMAGE_TYPES.includes(file.type)) return "image"
-  return "document"
+export function getAttachmentType(file: File): FileCategory {
+  return getFileCategory(file.type)
 }
 
 export function createPreviewUrl(file: File): string | undefined {
-  if (ALLOWED_IMAGE_TYPES.includes(file.type)) {
+  if (isImageMimeType(file.type)) {
     return URL.createObjectURL(file)
   }
   return undefined

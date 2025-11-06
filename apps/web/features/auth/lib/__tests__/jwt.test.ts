@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, it as test } from "vitest"
 import { addWorkspaceToToken, createSessionToken, verifySessionToken } from "../jwt"
 
 describe("JWT Session Token", () => {

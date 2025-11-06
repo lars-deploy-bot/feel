@@ -18,6 +18,7 @@ interface AgentRequest {
   maxTurns?: number
   resume?: string
   systemPrompt?: string | { type: "preset"; preset: "claude_code"; append?: string }
+  apiKey?: string
 }
 
 function getWorkspaceCredentials(workspaceRoot: string): WorkspaceCredentials {
@@ -54,8 +55,8 @@ export function runAgentChild(workspaceRoot: string, payload: AgentRequest): Rea
       TARGET_UID: String(uid),
       TARGET_GID: String(gid),
       TARGET_CWD: workspaceRoot,
-      // Don't pass ANTHROPIC_API_KEY - let Claude Code use OAuth credentials
-      ANTHROPIC_API_KEY: undefined,
+      // Use user-provided API key if available, otherwise use environment default
+      ANTHROPIC_API_KEY: payload.apiKey || process.env.ANTHROPIC_API_KEY,
     },
     stdio: ["pipe", "pipe", "pipe"],
   })

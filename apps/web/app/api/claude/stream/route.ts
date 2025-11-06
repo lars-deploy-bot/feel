@@ -102,11 +102,23 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { message, workspace: requestWorkspace, conversationId } = parseResult.data
+    const {
+      message,
+      workspace: requestWorkspace,
+      conversationId,
+      apiKey: userApiKey,
+      model: userModel,
+    } = parseResult.data
     console.log(`[Claude Stream ${requestId}] Conversation: ${conversationId}`)
     console.log(
       `[Claude Stream ${requestId}] Message received (${message.length} chars): ${message.substring(0, 100)}${message.length > 100 ? "..." : ""}`,
     )
+    if (userApiKey) {
+      console.log(`[Claude Stream ${requestId}] Using user-provided API key`)
+    }
+    if (userModel) {
+      console.log(`[Claude Stream ${requestId}] Using user-selected model: ${userModel}`)
+    }
 
     // Check input safety
     console.log(`[Claude Stream ${requestId}] Checking input safety...`)
@@ -220,7 +232,8 @@ export async function POST(req: NextRequest) {
     console.log(`[Claude Stream ${requestId}] Existing session: ${existingSessionId ? "found" : "none"}`)
 
     console.log(`[Claude Stream ${requestId}] Working directory: ${cwd}`)
-    console.log(`[Claude Stream ${requestId}] Claude model: ${env.CLAUDE_MODEL}`)
+    const effectiveModel = userModel || env.CLAUDE_MODEL
+    console.log(`[Claude Stream ${requestId}] Claude model: ${effectiveModel}`)
 
     // Use shared tool permission handler
     const canUseTool = createToolPermissionHandler(workspace, requestId)
@@ -257,12 +270,13 @@ export async function POST(req: NextRequest) {
         additionalContext: body.additionalContext,
       }),
       settingSources: [], // Disabled: prevents SDK from overriding allowedTools whitelist
-      model: env.CLAUDE_MODEL,
+      model: effectiveModel,
       mcpServers: {
         "workspace-management": workspaceManagementMcp,
         tools: toolsMcp,
       },
       ...(existingSessionId ? { resume: existingSessionId } : {}),
+      ...(userApiKey ? { apiKey: userApiKey } : {}),
     }
 
     console.log(`[Claude Stream ${requestId}] Creating stream...`)
@@ -275,10 +289,11 @@ export async function POST(req: NextRequest) {
 
       const childStream = runAgentChild(cwd, {
         message,
-        model: env.CLAUDE_MODEL,
+        model: effectiveModel,
         maxTurns: effectiveMaxTurns,
         resume: existingSessionId || undefined,
         systemPrompt: claudeOptions.systemPrompt,
+        apiKey: userApiKey || undefined,
       })
 
       const encoder = new TextEncoder()

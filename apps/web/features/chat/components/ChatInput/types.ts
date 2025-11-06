@@ -1,12 +1,44 @@
 import type { MutableRefObject, ReactNode } from "react"
+import type { FileCategory } from "./types/file-types"
 
-export interface Attachment {
+// Base properties for all attachments
+interface BaseAttachment {
   id: string
-  file: File
-  type: "image" | "document"
-  preview?: string // URL for image preview
-  uploadProgress?: number // 0-100
+  preview?: string
+  uploadProgress?: number
   error?: string
+}
+
+// File being uploaded (new or duplicate detection in progress)
+export interface FileUploadAttachment extends BaseAttachment {
+  kind: "file-upload"
+  file: File
+  category: FileCategory
+}
+
+// Image from photobook library (already uploaded)
+export interface LibraryImageAttachment extends BaseAttachment {
+  kind: "library-image"
+  photobookKey: string
+}
+
+export type Attachment = FileUploadAttachment | LibraryImageAttachment
+
+// Type guards
+export function isFileUpload(attachment: Attachment): attachment is FileUploadAttachment {
+  return attachment.kind === "file-upload"
+}
+
+export function isLibraryImage(attachment: Attachment): attachment is LibraryImageAttachment {
+  return attachment.kind === "library-image"
+}
+
+export function isImageAttachment(attachment: Attachment): boolean {
+  return attachment.kind === "library-image" || (attachment.kind === "file-upload" && attachment.category === "image")
+}
+
+export function isDocumentAttachment(attachment: Attachment): boolean {
+  return attachment.kind === "file-upload" && attachment.category === "document"
 }
 
 export interface ChatInputState {
@@ -18,10 +50,6 @@ export interface ChatInputState {
   attachments: Attachment[]
   addAttachment: (file: File) => Promise<void>
   removeAttachment: (id: string) => void
-
-  // Drag & drop
-  isDragging: boolean
-  setIsDragging: (dragging: boolean) => void
 
   // Loading states
   busy: boolean
@@ -67,4 +95,11 @@ export interface ChatInputProps extends ChatInputActions {
   abortControllerRef: MutableRefObject<AbortController | null>
   config?: ChatInputConfig
   children?: ReactNode
+}
+
+export interface ChatInputHandle {
+  addAttachment: (file: File) => Promise<void>
+  addPhotobookImage: (imageKey: string) => void
+  getAttachments: () => Attachment[]
+  clearLibraryImages: () => void
 }

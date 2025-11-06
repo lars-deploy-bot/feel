@@ -47,6 +47,7 @@ export default function ManagerPage() {
   // Settings actions state
   const [reloadingCaddy, setReloadingCaddy] = useState(false)
   const [restartingBridge, setRestartingBridge] = useState(false)
+  const [backingUp, setBackingUp] = useState(false)
 
   // Login form state
   const [showLogin, setShowLogin] = useState(false)
@@ -414,6 +415,35 @@ export default function ManagerPage() {
     }
   }
 
+  const handleBackupWebsites = async () => {
+    setBackingUp(true)
+    try {
+      const response = await fetch("/api/manager/actions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "backup_websites" }),
+      })
+
+      if (response.ok) {
+        toast.success("Websites backed up successfully to GitHub")
+      } else {
+        let errorMessage = "Failed to backup websites"
+        try {
+          const data = await response.json()
+          errorMessage = data.error || errorMessage
+        } catch {
+          // Response body is empty or invalid JSON
+        }
+        toast.error(errorMessage)
+      }
+    } catch (error) {
+      console.error("Failed to backup websites:", error)
+      toast.error("Failed to backup websites")
+    } finally {
+      setBackingUp(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-4xl mx-auto">
@@ -620,6 +650,21 @@ export default function ManagerPage() {
                       className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {loadingStatus ? "Checking..." : "Refresh All Statuses"}
+                    </button>
+                  </div>
+
+                  <div className="border border-gray-200 rounded-lg p-4">
+                    <h3 className="text-base font-semibold text-gray-900 mb-2">Backup Websites</h3>
+                    <p className="text-sm text-gray-600 mb-4">
+                      Push all website changes from /srv/webalive to GitHub repository (eenlars/all_websites)
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleBackupWebsites}
+                      disabled={backingUp}
+                      className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {backingUp ? "Backing up..." : "Backup to GitHub"}
                     </button>
                   </div>
                 </div>

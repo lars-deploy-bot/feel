@@ -3,6 +3,7 @@
 import { FileText, X } from "lucide-react"
 import Image from "next/image"
 import { useChatInput } from "./ChatInputContext"
+import { isFileUpload, isImageAttachment } from "./types"
 
 /**
  * Attachments - our horizontal layout style
@@ -19,9 +20,22 @@ export function AttachmentsGrid() {
           key={attachment.id}
           className="relative group flex items-center gap-2 px-3 py-2 rounded-lg border border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02]"
         >
-          {attachment.type === "image" && attachment.preview ? (
+          {isImageAttachment(attachment) && attachment.preview ? (
             <div className="w-12 h-12 relative rounded overflow-hidden">
-              <Image src={attachment.preview} alt={attachment.file.name} fill className="object-cover" />
+              {attachment.preview.startsWith("blob:") ? (
+                <Image
+                  src={attachment.preview}
+                  alt={isFileUpload(attachment) ? attachment.file.name : "Photo"}
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <img
+                  src={attachment.preview}
+                  alt={isFileUpload(attachment) ? attachment.file.name : "Photo"}
+                  className="w-full h-full object-cover"
+                />
+              )}
             </div>
           ) : (
             <div className="w-12 h-12 flex items-center justify-center rounded bg-black/5 dark:bg-white/5">
@@ -31,10 +45,10 @@ export function AttachmentsGrid() {
 
           <div className="flex flex-col min-w-0">
             <span className="text-xs font-medium text-black dark:text-white truncate max-w-[150px]">
-              {attachment.file.name}
+              {isFileUpload(attachment) ? attachment.file.name : "Photo"}
             </span>
             <span className="text-xs text-black/50 dark:text-white/50">
-              {(attachment.file.size / 1024).toFixed(1)} KB
+              {isFileUpload(attachment) ? `${(attachment.file.size / 1024).toFixed(1)} KB` : "Library"}
             </span>
           </div>
 

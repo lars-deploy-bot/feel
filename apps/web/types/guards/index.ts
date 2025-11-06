@@ -7,6 +7,8 @@
 export * from "./api"
 // Content Block Guards
 export * from "./content"
+// Storage & Persistence Guards
+export * from "./storage"
 // Tool Guards
 export * from "./tool"
 // UI Message Guards

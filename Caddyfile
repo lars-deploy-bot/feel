@@ -286,3 +286,47 @@ lars.alive.best {
 
 
 
+
+kapper.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3359 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+julieleclercq.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3360 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+hendricus.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3361 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+feedback.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3362 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
