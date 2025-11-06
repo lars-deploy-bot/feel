@@ -1,9 +1,9 @@
+import { dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
 import { tool } from "@anthropic-ai/claude-agent-sdk"
 import { z } from "zod"
 import { GUIDE_CATEGORIES, type GuideCategory, getGuide } from "../guides/get-guide.js"
 import { listGuides } from "../guides/list-guides.js"
-import { dirname, join } from "node:path"
-import { fileURLToPath } from "node:url"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -129,7 +129,7 @@ export async function findGuide(params: FindGuideParams): Promise<FindGuideResul
     }
 
     // List mode: just show matches
-    let output = `# Guide Search Results\n\n`
+    let output = "# Guide Search Results\n\n"
     output += `**Query:** "${query}"\n`
     output += `**Matches:** ${matches.length}\n\n`
 

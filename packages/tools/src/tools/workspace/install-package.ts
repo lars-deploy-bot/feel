@@ -3,7 +3,9 @@ import { z } from "zod"
 import { callBridgeApi, successResult, type ToolResult } from "../../lib/bridge-api-client.js"
 
 export const installPackageParamsSchema = {
-  packageName: z.string().describe("The npm/JavaScript package name to install (e.g., 'react', 'lodash', '@types/node')"),
+  packageName: z
+    .string()
+    .describe("The npm/JavaScript package name to install (e.g., 'react', 'lodash', '@types/node')"),
   version: z
     .string()
     .optional()

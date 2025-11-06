@@ -12,15 +12,6 @@ export function DevTerminal() {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // Auto-scroll disabled: allows users to read/debug events without being
-  // interrupted by new events pushing them down. Users can manually scroll.
-  // Previous behavior: auto-scrolled to bottom on every new event.
-  // useEffect(() => {
-  //   if (scrollRef.current && !isMinimized) {
-  //     scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-  //   }
-  // }, [events, isMinimized])
-
   // Handle resize dragging
   useEffect(() => {
     if (!isResizing) return

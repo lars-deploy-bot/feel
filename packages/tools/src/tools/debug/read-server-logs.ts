@@ -240,7 +240,7 @@ export async function readServerLogs(params: ReadServerLogsParams): Promise<Read
         const originalCount = logs.length
         logs = logs.filter(log => regex.test(log.message) || regex.test(log.level) || regex.test(log.service))
         console.log(`[read-server-logs] Regex filtered from ${originalCount} to ${logs.length} logs`)
-      } catch (regexError) {
+      } catch (_regexError) {
         console.warn(`[read-server-logs] Invalid regex pattern: ${search_regex}, ignoring`)
       }
     } else if (search) {
@@ -298,10 +298,14 @@ export async function readServerLogs(params: ReadServerLogsParams): Promise<Read
       const warnCount = logs.filter(l => l.level === "warn").length
 
       if (errorCount > 10) {
-        resultHints.push("**High error count detected** - Consider restarting: `mcp__workspace-management__restart_dev_server`")
+        resultHints.push(
+          "**High error count detected** - Consider restarting: `mcp__workspace-management__restart_dev_server`",
+        )
       }
       if (errorCount > 0 || warnCount > 0) {
-        resultHints.push("**Use debug_workspace for automated analysis:** `mcp__tools__debug_workspace({ workspace: \"" + workspace + "\" })`")
+        resultHints.push(
+          `**Use debug_workspace for automated analysis:** \`mcp__tools__debug_workspace({ workspace: "${workspace}" })\``,
+        )
       }
       if (summary_only) {
         resultHints.push("**Viewing summary only** - Use `summary_only: false` for full logs")

@@ -1,6 +1,7 @@
 import { type Options, query } from "@anthropic-ai/claude-agent-sdk"
 import { cookies, headers } from "next/headers"
 import { NextResponse } from "next/server"
+import { isWorkspaceAuthenticated } from "@/features/auth/lib/auth"
 import { hasSessionCookie } from "@/features/auth/types/guards"
 import { getSystemPrompt } from "@/features/chat/lib/systemPrompt"
 import { getWorkspace, type Workspace } from "@/features/workspace/lib/workspace-secure"
@@ -86,6 +87,7 @@ export async function POST(req: Request) {
     // Resolve workspace with ownership info
     let workspace: Workspace
     let cwd: string
+    let resolvedWorkspaceName: string
 
     try {
       if (isTerminalMode(host)) {
@@ -96,10 +98,31 @@ export async function POST(req: Request) {
         cwd = workspaceResult.workspace
         const stats = require("node:fs").statSync(cwd)
         workspace = { root: cwd, uid: stats.uid, gid: stats.gid, tenantId: host }
+        resolvedWorkspaceName = requestWorkspace || "unknown"
       } else {
         workspace = getWorkspace(host)
         cwd = workspace.root
+        resolvedWorkspaceName = host
       }
+
+      // Security: Verify user is authenticated for this specific workspace
+      const isAuthenticated = await isWorkspaceAuthenticated(resolvedWorkspaceName)
+      if (!isAuthenticated) {
+        console.log(`[Claude API ${requestId}] User not authenticated for workspace: ${resolvedWorkspaceName}`)
+        const errorRes = NextResponse.json(
+          {
+            ok: false,
+            error: ErrorCodes.WORKSPACE_NOT_AUTHENTICATED,
+            message: getErrorMessage(ErrorCodes.WORKSPACE_NOT_AUTHENTICATED),
+            workspace: resolvedWorkspaceName,
+            requestId,
+          },
+          { status: 401 },
+        )
+        addCorsHeaders(errorRes, origin)
+        return errorRes
+      }
+      console.log(`[Claude API ${requestId}] Workspace authentication verified for: ${resolvedWorkspaceName}`)
     } catch (workspaceError) {
       console.error(`[Claude API ${requestId}] Workspace resolution failed:`, workspaceError)
       const errorRes = NextResponse.json(

@@ -1,4 +1,4 @@
-import type { ErrorCode, StructuredError } from "@/lib/error-codes"
+import type { StructuredError } from "@/lib/error-codes"
 import { getErrorHelp, getErrorMessage, isWorkspaceError } from "@/lib/error-codes"
 
 interface ErrorResultMessageProps {
@@ -12,15 +12,14 @@ interface ErrorResultMessageProps {
 export function ErrorResultMessage({ content }: ErrorResultMessageProps) {
   const errorMessage = content.result
 
-  // Try to parse error as JSON (backend errors include structured info)
   let parsedError: StructuredError | null = null
   try {
     parsedError = JSON.parse(errorMessage)
   } catch {
-    // Not JSON, use as plain string
+    // Not structured error, use raw message
   }
 
-  const errorCode = parsedError?.error as ErrorCode | undefined
+  const errorCode = parsedError?.error
   const isWorkspace = errorCode ? isWorkspaceError(errorCode) : false
 
   // Get friendly message based on error code

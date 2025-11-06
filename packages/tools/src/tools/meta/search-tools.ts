@@ -169,7 +169,8 @@ const TOOL_REGISTRY: ToolMetadata[] = [
   {
     name: "read_server_logs",
     category: "debugging",
-    description: "Reads systemd logs with summary mode, regex filtering, and result hints. Advanced filtering available.",
+    description:
+      "Reads systemd logs with summary mode, regex filtering, and result hints. Advanced filtering available.",
     contextCost: "high",
     parameters: [
       {
