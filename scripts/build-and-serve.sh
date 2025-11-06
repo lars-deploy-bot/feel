@@ -105,21 +105,6 @@ echo $$ > "$LOCK_FILE"
 
 log_info "Starting deployment of ${APP_NAME}..."
 
-# Pull latest code from git
-log_info "Pulling latest code from git..."
-if git rev-parse --git-dir > /dev/null 2>&1; then
-    CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-    log_info "Current branch: $CURRENT_BRANCH"
-
-    if GIT_SSH_COMMAND='ssh -i ~/.ssh/alive_brug_deploy' git pull origin "$CURRENT_BRANCH"; then
-        log_success "Git pull successful"
-    else
-        log_warn "Git pull failed (continuing with local code)"
-    fi
-else
-    log_warn "Not a git repository, skipping pull"
-fi
-
 # Validate environment
 log_info "Validating environment..."
 

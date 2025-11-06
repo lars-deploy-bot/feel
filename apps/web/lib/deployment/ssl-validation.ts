@@ -12,24 +12,28 @@ export interface SSLValidationResult {
 }
 
 export async function validateSSLCertificate(domain: string): Promise<SSLValidationResult> {
-  const maxAttempts = 6
-  const delayMs = 10000
+  const maxAttempts = 12
+  const delayMs = 5000
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       console.log(`[SSL CHECK] Attempt ${attempt}/${maxAttempts} for ${domain}`)
 
+      // Use GET to verify the site actually returns content, not just HEAD
       const response = await fetch(`https://${domain}`, {
-        method: "HEAD",
+        method: "GET",
         signal: AbortSignal.timeout(10000),
       })
 
-      if (response.ok || response.status === 404) {
-        console.log(`[SSL CHECK] Valid SSL certificate for ${domain} (status: ${response.status})`)
+      // Only consider 200-299 as success (site is serving content)
+      // Don't accept 404, 500, etc. - the site should be fully working
+      if (response.ok) {
+        const contentType = response.headers.get("content-type")
+        console.log(`[SSL CHECK] Site ready for ${domain} (status: ${response.status}, content-type: ${contentType})`)
         return { success: true }
       }
 
-      console.log(`[SSL CHECK] Unexpected status ${response.status} for ${domain}`)
+      console.log(`[SSL CHECK] Site not ready - status ${response.status} for ${domain}`)
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error)
       console.log(`[SSL CHECK] Attempt ${attempt} failed: ${errorMessage}`)
@@ -56,6 +60,6 @@ export async function validateSSLCertificate(domain: string): Promise<SSLValidat
 
   return {
     success: false,
-    error: `SSL certificate not ready after ${(maxAttempts * delayMs) / 1000} seconds. Certificate provisioning may still be in progress.`,
+    error: `Site not ready after ${(maxAttempts * delayMs) / 1000} seconds. The site may still be starting up.`,
   }
 }

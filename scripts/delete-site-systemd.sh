@@ -76,6 +76,20 @@ else
     echo "ℹ️  No site directory found"
 fi
 
+# 2.5. Remove symlink if it exists
+SYMLINK_PATH="/srv/webalive/sites/$SLUG"
+if [ -L "$SYMLINK_PATH" ]; then
+    echo "Removing symlink: $SYMLINK_PATH"
+    if ! rm -f "$SYMLINK_PATH"; then
+        echo "⚠️  Failed to remove symlink $SYMLINK_PATH"
+        FAILED=1
+    else
+        echo "✅ Symlink removed"
+    fi
+elif [ -e "$SYMLINK_PATH" ]; then
+    echo "⚠️  Warning: $SYMLINK_PATH exists but is not a symlink"
+fi
+
 # 3. Remove from Caddyfile
 echo "Removing from Caddyfile..."
 if grep -q "^${DOMAIN} {" "$CADDYFILE"; then
