@@ -7,6 +7,7 @@ export const ErrorCodes = {
   WORKSPACE_NOT_FOUND: "WORKSPACE_NOT_FOUND",
   WORKSPACE_INVALID: "WORKSPACE_INVALID",
   WORKSPACE_MISSING: "WORKSPACE_MISSING",
+  WORKSPACE_NOT_AUTHENTICATED: "WORKSPACE_NOT_AUTHENTICATED",
   PATH_OUTSIDE_WORKSPACE: "PATH_OUTSIDE_WORKSPACE",
 
   // Authentication errors (2xxx)
@@ -93,6 +94,9 @@ export function getErrorMessage(code: ErrorCode, details?: Record<string, any>):
 
     case ErrorCodes.WORKSPACE_MISSING:
       return "I need a workspace to work in. Please provide a workspace parameter."
+
+    case ErrorCodes.WORKSPACE_NOT_AUTHENTICATED:
+      return "You need to log in to access this workspace. Please enter your passcode."
 
     case ErrorCodes.PATH_OUTSIDE_WORKSPACE:
       return details?.attemptedPath

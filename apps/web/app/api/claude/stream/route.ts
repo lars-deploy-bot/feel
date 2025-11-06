@@ -2,7 +2,7 @@ import { toolsMcp, workspaceManagementMcp } from "@alive-brug/tools"
 import type { Options } from "@anthropic-ai/claude-agent-sdk"
 import { cookies, headers } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
-import { requireSessionUser } from "@/features/auth/lib/auth"
+import { isWorkspaceAuthenticated, requireSessionUser } from "@/features/auth/lib/auth"
 import {
   SessionStoreMemory,
   sessionKey,
@@ -131,6 +131,7 @@ export async function POST(req: NextRequest) {
 
     let workspace: Workspace
     let cwd: string
+    let resolvedWorkspaceName: string
 
     try {
       if (isTerminalMode(host)) {
@@ -141,10 +142,29 @@ export async function POST(req: NextRequest) {
         cwd = workspaceResult.workspace
         const stats = require("node:fs").statSync(cwd)
         workspace = { root: cwd, uid: stats.uid, gid: stats.gid, tenantId: host }
+        resolvedWorkspaceName = requestWorkspace || "unknown"
       } else {
         workspace = getWorkspace(host)
         cwd = workspace.root
+        resolvedWorkspaceName = host
       }
+
+      // Security: Verify user is authenticated for this specific workspace
+      const isAuthenticated = await isWorkspaceAuthenticated(resolvedWorkspaceName)
+      if (!isAuthenticated) {
+        console.log(`[Claude Stream ${requestId}] User not authenticated for workspace: ${resolvedWorkspaceName}`)
+        return NextResponse.json(
+          {
+            ok: false,
+            error: ErrorCodes.WORKSPACE_NOT_AUTHENTICATED,
+            message: getErrorMessage(ErrorCodes.WORKSPACE_NOT_AUTHENTICATED),
+            workspace: resolvedWorkspaceName,
+            requestId,
+          },
+          { status: 401 },
+        )
+      }
+      console.log(`[Claude Stream ${requestId}] Workspace authentication verified for: ${resolvedWorkspaceName}`)
     } catch (workspaceError) {
       console.error(`[Claude Stream ${requestId}] Workspace resolution failed:`, workspaceError)
       return NextResponse.json(

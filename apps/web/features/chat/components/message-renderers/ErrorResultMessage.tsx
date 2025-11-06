@@ -81,10 +81,15 @@ export function ErrorResultMessage({ content }: ErrorResultMessageProps) {
 
   return (
     <div className="py-3 mb-4">
-      <div className="border border-red-200 bg-red-50/50 p-4 rounded">
+      <div className="border border-red-200 dark:border-red-800/50 bg-red-50/50 dark:bg-red-950/30 p-4 rounded">
         <div className="flex items-start gap-3">
           <div className="flex-shrink-0 mt-0.5">
-            <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg
+              className="w-5 h-5 text-red-500 dark:text-red-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -94,13 +99,15 @@ export function ErrorResultMessage({ content }: ErrorResultMessageProps) {
             </svg>
           </div>
           <div className="flex-1">
-            <h3 className="text-sm font-medium text-red-900 mb-1">{isWorkspace ? "Workspace Error" : "Error"}</h3>
-            <p className="text-sm text-red-700 leading-relaxed">{friendlyMessage}</p>
+            <h3 className="text-sm font-medium text-red-900 dark:text-red-100 mb-1">
+              {isWorkspace ? "Workspace Error" : "Error"}
+            </h3>
+            <p className="text-sm text-red-700 dark:text-red-300 leading-relaxed">{friendlyMessage}</p>
 
-            {helpText && <p className="text-xs text-red-600 mt-2 leading-relaxed">{helpText}</p>}
+            {helpText && <p className="text-xs text-red-600 dark:text-red-400 mt-2 leading-relaxed">{helpText}</p>}
 
             {details && (details.expectedPath || details.fullPath) && (
-              <div className="mt-3 p-2 bg-red-100/50 rounded text-xs font-mono text-red-800">
+              <div className="mt-3 p-2 bg-red-100/50 dark:bg-red-900/20 rounded text-xs font-mono text-red-800 dark:text-red-200">
                 {details.expectedPath && (
                   <div>
                     <span className="font-semibold">Expected:</span> {details.expectedPath}
@@ -114,7 +121,9 @@ export function ErrorResultMessage({ content }: ErrorResultMessageProps) {
               </div>
             )}
 
-            {errorCode && <div className="mt-2 text-xs text-red-500/70 font-mono">Error code: {errorCode}</div>}
+            {errorCode && (
+              <div className="mt-2 text-xs text-red-500/70 dark:text-red-400/70 font-mono">Error code: {errorCode}</div>
+            )}
           </div>
         </div>
       </div>

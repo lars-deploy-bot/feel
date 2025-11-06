@@ -12,12 +12,12 @@ export function DevTerminal() {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // Auto-scroll to bottom when new events arrive
-  useEffect(() => {
-    if (scrollRef.current && !isMinimized) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
-  }, [events, isMinimized])
+  // Auto-scroll disabled - user can manually scroll
+  // useEffect(() => {
+  //   if (scrollRef.current && !isMinimized) {
+  //     scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+  //   }
+  // }, [events, isMinimized])
 
   // Handle resize dragging
   useEffect(() => {
@@ -119,6 +119,9 @@ export function DevTerminal() {
       {/* Resize handle */}
       {!isMinimized && (
         <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize terminal"
           className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-green-500/50 transition-colors z-10"
           onMouseDown={() => setIsResizing(true)}
         />

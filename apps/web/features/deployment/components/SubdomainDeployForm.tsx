@@ -61,7 +61,7 @@ export function SubdomainDeployForm() {
     if (isDeploying) {
       setCountdown(10) // Reset to 10 when deploying starts
       const interval = setInterval(() => {
-        setCountdown((prev) => {
+        setCountdown(prev => {
           if (prev <= 1) {
             clearInterval(interval)
             return 0
@@ -197,9 +197,7 @@ export function SubdomainDeployForm() {
           </motion.div>
 
           <motion.div variants={itemVariants} className="space-y-3">
-            <p className="text-center text-sm text-black/50 font-light">
-              You'll be able to start building immediately
-            </p>
+            <p className="text-center text-sm text-black/50 font-light">You'll be able to start building immediately</p>
             <SubmitButton
               isDeploying={isDeploying}
               isValid={isValid && !errors.slug && !errors.email && !errors.password}

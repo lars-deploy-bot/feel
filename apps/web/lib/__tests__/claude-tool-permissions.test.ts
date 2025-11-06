@@ -79,15 +79,23 @@ describe("Tool Permission System", () => {
       const canUseTool = createToolPermissionHandler(mockWorkspace, requestId)
 
       // Valid path inside workspace
-      const validResult = await canUseTool("Read", {
-        file_path: `${mockWorkspace.root}/valid-file.txt`,
-      }, mockOptions)
+      const validResult = await canUseTool(
+        "Read",
+        {
+          file_path: `${mockWorkspace.root}/valid-file.txt`,
+        },
+        mockOptions,
+      )
       expect(validResult.behavior).toBe("allow")
 
       // Path traversal attack
-      const attackResult = await canUseTool("Read", {
-        file_path: `${mockWorkspace.root}/../../../etc/passwd`,
-      }, mockOptions)
+      const attackResult = await canUseTool(
+        "Read",
+        {
+          file_path: `${mockWorkspace.root}/../../../etc/passwd`,
+        },
+        mockOptions,
+      )
       expect(attackResult.behavior).toBe("deny")
       if (attackResult.behavior === "deny") {
         expect(attackResult.message).toContain("path_outside_workspace")
@@ -98,15 +106,23 @@ describe("Tool Permission System", () => {
       const canUseTool = createToolPermissionHandler(mockWorkspace, requestId)
 
       // Test file_path
-      const filePathResult = await canUseTool("Read", {
-        file_path: "/etc/passwd",
-      }, mockOptions)
+      const filePathResult = await canUseTool(
+        "Read",
+        {
+          file_path: "/etc/passwd",
+        },
+        mockOptions,
+      )
       expect(filePathResult.behavior).toBe("deny")
 
       // Test path
-      const pathResult = await canUseTool("Glob", {
-        path: "/etc/passwd",
-      }, mockOptions)
+      const pathResult = await canUseTool(
+        "Glob",
+        {
+          path: "/etc/passwd",
+        },
+        mockOptions,
+      )
       expect(pathResult.behavior).toBe("deny")
     })
 

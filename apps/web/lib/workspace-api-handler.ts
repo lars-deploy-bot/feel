@@ -1,13 +1,13 @@
 import { realpathSync } from "node:fs"
 import { NextResponse } from "next/server"
-import { type ZodSchema, z } from "zod"
+import type { ZodSchema, z } from "zod"
 import { requireSessionUser } from "@/features/auth/lib/auth"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 
 // Workspace base directory (from env or default)
 const WORKSPACE_BASE = process.env.WORKSPACE_BASE ?? "/srv/webalive/sites"
 
-interface WorkspaceApiConfig<T extends z.ZodRawShape> {
+interface WorkspaceApiConfig<_T extends z.ZodRawShape> {
   schema: ZodSchema<any>
   handler: (params: { data: z.infer<ZodSchema<any>>; requestId: string }) => Promise<NextResponse>
 }
@@ -23,7 +23,7 @@ function validateWorkspaceContainment(workspaceRoot: string, requestId: string):
     const realBaseRoot = realpathSync(WORKSPACE_BASE)
 
     // Ensure workspace is within the base directory
-    if (!realWorkspaceRoot.startsWith(realBaseRoot + "/")) {
+    if (!realWorkspaceRoot.startsWith(`${realBaseRoot}/`)) {
       console.error(
         `[workspace-api ${requestId}] Path traversal attempt: ${workspaceRoot} -> ${realWorkspaceRoot} not in ${realBaseRoot}`,
       )

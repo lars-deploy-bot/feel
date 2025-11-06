@@ -16,6 +16,7 @@ import { join } from "node:path"
 import process from "node:process"
 import { toolsMcp, workspaceManagementMcp } from "@alive-brug/tools"
 import { query } from "@anthropic-ai/claude-agent-sdk"
+
 // Workspace helpers available if needed (currently unused)
 // import { createWorkspaceContext, createWorkspacePermissionHandler } from "../lib/agent-workspace-helpers.mjs"
 

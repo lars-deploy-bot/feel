@@ -21,13 +21,13 @@ interface DebugStore {
  */
 export const useDebugStore = create<DebugStore>()(
   persist(
-    (set) => ({
+    set => ({
       isDebugView: false,
       showSSETerminal: false,
-      toggleView: () => set((state) => ({ isDebugView: !state.isDebugView })),
-      toggleSSETerminal: () => set((state) => ({ showSSETerminal: !state.showSSETerminal })),
-      setDebugView: (show) => set({ isDebugView: show }),
-      setSSETerminal: (show) => set({ showSSETerminal: show }),
+      toggleView: () => set(state => ({ isDebugView: !state.isDebugView })),
+      toggleSSETerminal: () => set(state => ({ showSSETerminal: !state.showSSETerminal })),
+      setDebugView: show => set({ isDebugView: show }),
+      setSSETerminal: show => set({ showSSETerminal: show }),
     }),
     {
       name: "claude-bridge-debug-view-v3",
@@ -44,11 +44,11 @@ export function isProduction(): boolean {
 }
 
 export function useDebugVisible() {
-  const isDebugView = useDebugStore((state) => state.isDebugView)
+  const isDebugView = useDebugStore(state => state.isDebugView)
   return isDevelopment() && isDebugView
 }
 
 export function useSSETerminalVisible() {
-  const showSSETerminal = useDebugStore((state) => state.showSSETerminal)
+  const showSSETerminal = useDebugStore(state => state.showSSETerminal)
   return isDevelopment() && showSSETerminal
 }

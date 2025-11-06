@@ -1,5 +1,5 @@
 "use client"
-import { ExternalLink, Eye, EyeOff, Image, Plus } from "lucide-react"
+import { ExternalLink, Eye, EyeOff, Image } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Suspense, useEffect, useRef, useState } from "react"
 import { Toaster } from "react-hot-toast"
@@ -15,9 +15,10 @@ import { groupMessages } from "@/features/chat/lib/message-grouper"
 import { parseStreamEvent, type StreamEvent, type UIMessage } from "@/features/chat/lib/message-parser"
 import { renderMessage } from "@/features/chat/lib/message-renderer"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
-import { isDevelopment, useDebugStore, useDebugVisible } from "@/lib/stores/debug-store"
 import type { StructuredError } from "@/lib/error-codes"
 import { getErrorHelp, getErrorMessage } from "@/lib/error-codes"
+import { HttpError, isAlreadyLogged } from "@/lib/errors"
+import { isDevelopment, useDebugStore, useDebugVisible } from "@/lib/stores/debug-store"
 
 const SUGGESTIONS = [
   '"Add a contact form"',
@@ -43,10 +44,9 @@ function ChatPageContent() {
   const abortControllerRef = useRef<AbortController | null>(null)
   const isSubmitting = useRef<boolean>(false)
   const router = useRouter()
-  const toggleView = useDebugStore((state) => state.toggleView)
-  const toggleSSETerminal = useDebugStore((state) => state.toggleSSETerminal)
+  const toggleView = useDebugStore(state => state.toggleView)
   const isDebugView = useDebugVisible()
-  const showSSETerminal = useDebugStore((state) => state.showSSETerminal)
+  const showSSETerminal = useDebugStore(state => state.showSSETerminal)
   const { addEvent: addDevEvent } = useDevTerminal()
   const { workspace, isTerminal, mounted, setWorkspace } = useWorkspace({ redirectOnMissing: "/" })
 
@@ -219,6 +219,7 @@ function ChatPageContent() {
           errorData = null
         }
 
+        // Log HTTP error once (prevents duplicate logging in catch block)
         sendClientError({
           conversationId,
           errorType: "http_error",
@@ -230,24 +231,25 @@ function ChatPageContent() {
           addDevEvent,
         })
 
-        // If we got structured error data, use error registry for user-friendly message
+        // Build user-friendly error message
+        let userMessage: string
         if (errorData?.error) {
-          const userMessage = getErrorMessage(errorData.error, errorData.details) || errorData.message
+          userMessage = getErrorMessage(errorData.error, errorData.details) || errorData.message
           const helpText = getErrorHelp(errorData.error, errorData.details)
 
-          let fullMessage = userMessage
           if (helpText) {
-            fullMessage += `\n\n${helpText}`
+            userMessage += `\n\n${helpText}`
           }
           // Show details in development only
           if (errorData.details && process.env.NODE_ENV === "development") {
-            fullMessage += `\n\nDetails: ${JSON.stringify(errorData.details, null, 2)}`
+            userMessage += `\n\nDetails: ${JSON.stringify(errorData.details, null, 2)}`
           }
-
-          throw new Error(fullMessage)
+        } else {
+          userMessage = `HTTP ${response.status}: ${response.statusText}`
         }
 
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        // Throw HttpError (marked as already logged to prevent duplicate logging)
+        throw new HttpError(userMessage, response.status, response.statusText)
       }
 
       if (!response.body) {
@@ -413,8 +415,8 @@ function ChatPageContent() {
         throw new Error("Server closed connection without sending any response")
       }
     } catch (error) {
-      // Log error to dev terminal (dev mode only)
-      if (error instanceof Error && error.name !== "AbortError") {
+      // Skip logging if already logged (e.g., HttpError already logged as http_error)
+      if (error instanceof Error && error.name !== "AbortError" && !isAlreadyLogged(error)) {
         sendClientError({
           conversationId,
           errorType: "general_error",
@@ -572,27 +574,27 @@ function ChatPageContent() {
                 {mounted && isTerminal ? "Chat" : "Chat"}
               </h1>
               <div className="flex items-center gap-2">
-              {isDevelopment() && (
+                {isDevelopment() && (
+                  <button
+                    type="button"
+                    onClick={toggleView}
+                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium border transition-colors text-black/60 hover:text-black/80 border-black/20 hover:border-black/40 dark:text-white/60 dark:hover:text-white/80 dark:border-white/20 dark:hover:border-white/40"
+                    title={isDebugView ? "Hide debug details" : "Show debug details"}
+                  >
+                    {isDebugView ? <Eye size={14} /> : <EyeOff size={14} />}
+                    <span>{isDebugView ? "Debug" : "Live"}</span>
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={toggleView}
-                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium border transition-colors text-black/60 hover:text-black/80 border-black/20 hover:border-black/40 dark:text-white/60 dark:hover:text-white/80 dark:border-white/20 dark:hover:border-white/40"
-                  title={isDebugView ? "Hide debug details" : "Show debug details"}
+                  onClick={() => router.push("/photobook")}
+                  className="inline-flex items-center justify-center px-3 py-2 text-xs font-medium text-black dark:text-white border border-black/20 dark:border-white/20 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors"
+                  aria-label="Photos"
+                  title="Photos"
                 >
-                  {isDebugView ? <Eye size={14} /> : <EyeOff size={14} />}
-                  <span>{isDebugView ? "Debug" : "Live"}</span>
+                  <Image size={14} />
                 </button>
-              )}
-              <button
-                type="button"
-                onClick={() => router.push("/photobook")}
-                className="inline-flex items-center justify-center px-3 py-2 text-xs font-medium text-black dark:text-white border border-black/20 dark:border-white/20 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors"
-                aria-label="Photos"
-                title="Photos"
-              >
-                <Image size={14} />
-              </button>
-              <SettingsDropdown onNewChat={startNewConversation} />
+                <SettingsDropdown onNewChat={startNewConversation} />
               </div>
             </div>
           </div>
@@ -700,7 +702,8 @@ export default function ChatPage() {
         toastOptions={{
           duration: 5000,
           error: {
-            className: "!bg-red-50 !text-red-900 !border !border-red-200 dark:!bg-red-950/90 dark:!text-red-100 dark:!border-red-800/50",
+            className:
+              "!bg-red-50 !text-red-900 !border !border-red-200 dark:!bg-red-950/90 dark:!text-red-100 dark:!border-red-800/50",
             iconTheme: {
               primary: "#dc2626",
               secondary: "#fff",

@@ -18,7 +18,7 @@ export function createWorkspaceContext(targetCwd, targetUid, targetGid) {
     root: targetCwd || process.cwd(),
     uid: targetUid,
     gid: targetGid,
-    tenantId: targetCwd ? targetCwd.split('/').pop() : 'unknown',
+    tenantId: targetCwd ? targetCwd.split("/").pop() : "unknown",
   }
 }
 
@@ -31,7 +31,7 @@ export function createWorkspaceContext(targetCwd, targetUid, targetGid) {
  * Preserved for potential future scenarios where explicit injection is needed.
  */
 export function createWorkspacePermissionHandler(workspace) {
-  return async (toolName, input, _options) => {
+  return async (_toolName, input, _options) => {
     return {
       behavior: "allow",
       updatedInput: {

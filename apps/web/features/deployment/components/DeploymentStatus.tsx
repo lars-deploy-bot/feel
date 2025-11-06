@@ -1,7 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react"
+import { AlertCircle, Loader2 } from "lucide-react"
 import { useEffect, useState } from "react"
 
 type StatusType = "success" | "error" | "loading"
@@ -16,14 +16,14 @@ interface DeploymentStatusProps {
 
 export function DeploymentStatus({ status, domain, error, errorDetails, chatUrl }: DeploymentStatusProps) {
   const [countdown, setCountdown] = useState(10)
-  const [copied, setCopied] = useState(false)
+  const [_copied, setCopied] = useState(false)
 
   // Countdown timer for loading state
   useEffect(() => {
     if (status === "loading") {
       setCountdown(10) // Reset to 10 when loading starts
       const interval = setInterval(() => {
-        setCountdown((prev) => {
+        setCountdown(prev => {
           if (prev <= 1) {
             clearInterval(interval)
             return 0
@@ -70,9 +70,7 @@ export function DeploymentStatus({ status, domain, error, errorDetails, chatUrl 
           className="mb-16 relative"
         >
           <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10 blur-3xl -z-10 scale-150" />
-          <h1 className="text-6xl md:text-7xl font-extralight text-black tracking-tight text-center">
-            {domain}
-          </h1>
+          <h1 className="text-6xl md:text-7xl font-extralight text-black tracking-tight text-center">{domain}</h1>
         </motion.div>
 
         {/* Single action */}
@@ -140,15 +138,7 @@ export function DeploymentStatus({ status, domain, error, errorDetails, chatUrl 
       <div className="relative mb-12">
         {/* Background ring */}
         <svg className="w-28 h-28 -rotate-90" viewBox="0 0 120 120">
-          <circle
-            cx="60"
-            cy="60"
-            r="54"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1"
-            className="text-black/5"
-          />
+          <circle cx="60" cy="60" r="54" fill="none" stroke="currentColor" strokeWidth="1" className="text-black/5" />
           {/* Progress ring */}
           <motion.circle
             cx="60"
@@ -173,10 +163,7 @@ export function DeploymentStatus({ status, domain, error, errorDetails, chatUrl 
 
         {/* Center icon */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 3, ease: "linear", repeat: Infinity }}
-          >
+          <motion.div animate={{ rotate: 360 }} transition={{ duration: 3, ease: "linear", repeat: Infinity }}>
             <Loader2 className="w-7 h-7 text-black/20" strokeWidth={1.5} />
           </motion.div>
         </div>
@@ -191,9 +178,7 @@ export function DeploymentStatus({ status, domain, error, errorDetails, chatUrl 
         transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
         className="mb-6"
       >
-        <h3 className="text-xl font-light text-black text-center">
-          {stages[currentStage]}
-        </h3>
+        <h3 className="text-xl font-light text-black text-center">{stages[currentStage]}</h3>
       </motion.div>
 
       {/* Time remaining */}
@@ -211,15 +196,11 @@ export function DeploymentStatus({ status, domain, error, errorDetails, chatUrl 
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
           >
-            <span className="text-4xl font-light text-black tabular-nums">
-              {countdown}
-            </span>
+            <span className="text-4xl font-light text-black tabular-nums">{countdown}</span>
           </motion.div>
 
           {/* Label */}
-          <p className="text-sm font-light text-black/50">
-            seconds remaining
-          </p>
+          <p className="text-sm font-light text-black/50">seconds remaining</p>
         </motion.div>
       )}
     </motion.div>

@@ -18,6 +18,7 @@ bun.lockb
 
 # Next.js
 .next/
+.next.dev-backup/
 out/
 build/
 dist/

@@ -1,5 +1,6 @@
 import { cookies, headers } from "next/headers"
 import { NextResponse } from "next/server"
+import { isWorkspaceAuthenticated } from "@/features/auth/lib/auth"
 import { getWorkspace } from "@/features/chat/lib/workspaceRetriever"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 import { generateRequestId } from "@/lib/utils"
@@ -59,6 +60,23 @@ export async function POST(req: Request) {
     }
 
     console.log(`[Verify API ${requestId}] Workspace verification successful: ${workspaceResult.workspace}`)
+
+    // Check if user is authenticated for this specific workspace
+    const isAuthenticated = await isWorkspaceAuthenticated(workspaceResult.workspace)
+    if (!isAuthenticated) {
+      console.log(`[Verify API ${requestId}] User not authenticated for workspace: ${workspaceResult.workspace}`)
+      return NextResponse.json(
+        {
+          ok: false,
+          verified: false,
+          error: ErrorCodes.WORKSPACE_NOT_AUTHENTICATED,
+          message: "Not authenticated for this workspace",
+          workspace: workspaceResult.workspace,
+        },
+        { status: 401 },
+      )
+    }
+
     return NextResponse.json({
       ok: true,
       verified: true,

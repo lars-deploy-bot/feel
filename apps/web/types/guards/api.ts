@@ -120,10 +120,7 @@ function getDomainPasswordsPath(): string {
   }
 
   // Fallback paths for development/testing
-  const devPaths = [
-    join(process.cwd(), "domain-passwords.json"),
-    "/root/webalive/claude-bridge/domain-passwords.json",
-  ]
+  const devPaths = [join(process.cwd(), "domain-passwords.json"), "/root/webalive/claude-bridge/domain-passwords.json"]
 
   for (const path of devPaths) {
     if (existsSync(path)) {

@@ -3,7 +3,6 @@
 import { Plus } from "lucide-react"
 import type { RefObject } from "react"
 import { useChatInput } from "./ChatInputContext"
-import { isDevelopment, useDebugStore } from "@/lib/stores/debug-store"
 
 interface ToolbarProps {
   fileInputRef: RefObject<HTMLInputElement | null>
@@ -11,18 +10,13 @@ interface ToolbarProps {
 
 export function Toolbar({ fileInputRef }: ToolbarProps) {
   const { config } = useChatInput()
-  const toggleSSETerminal = useDebugStore((state) => state.toggleSSETerminal)
 
   if (!config.enableCamera) {
     return null
   }
 
   const handleClick = () => {
-    if (isDevelopment()) {
-      toggleSSETerminal()
-    } else {
-      fileInputRef.current?.click()
-    }
+    fileInputRef.current?.click()
   }
 
   return (
@@ -31,7 +25,7 @@ export function Toolbar({ fileInputRef }: ToolbarProps) {
         type="button"
         onClick={handleClick}
         className="flex items-center justify-center w-9 h-9 rounded-md hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors"
-        aria-label={isDevelopment() ? "Toggle SSE terminal" : "Upload photo"}
+        aria-label="Upload photo"
       >
         <Plus className="size-5" />
       </button>

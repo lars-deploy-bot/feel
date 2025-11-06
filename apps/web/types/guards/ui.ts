@@ -22,5 +22,15 @@ export function isTextMessage(message: UIMessage): boolean {
  * Used to determine when to flush message grouping
  */
 export function isCompletionMessage(message: UIMessage): boolean {
-  return message.type === "complete" || message.type === "result"
+  // Direct result or complete message types
+  if (message.type === "complete" || message.type === "result") {
+    return true
+  }
+
+  // SDK messages with result content (including errors)
+  if (message.type === "sdk_message" && message.content?.type === "result") {
+    return true
+  }
+
+  return false
 }

@@ -2,6 +2,7 @@
 import { useRouter, useSearchParams } from "next/navigation"
 import { Suspense, useEffect, useState } from "react"
 import { Button } from "@/components/ui/primitives/Button"
+import { AuthenticatedWorkspaces } from "@/features/auth/components/AuthenticatedWorkspaces"
 import { normalizeDomain } from "@/features/manager/lib/domain-utils"
 import { isTerminalMode } from "@/features/workspace/types/workspace"
 import { WILDCARD_DOMAIN } from "@/lib/config"
@@ -104,6 +105,9 @@ function WorkspacePageContent() {
         <h1 className="text-6xl font-thin mb-16 text-black">◯</h1>
 
         <p className="text-black/60 text-sm mb-12 font-thin">workspace setup</p>
+
+        {/* Show authenticated workspaces for quick access */}
+        <AuthenticatedWorkspaces />
 
         <div className="space-y-8">
           <div>

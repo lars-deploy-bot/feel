@@ -1,8 +1,13 @@
+import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
+import { addWorkspaceToToken, createSessionToken } from "@/features/auth/lib/jwt"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 import { generateRequestId } from "@/lib/utils"
 import { isDomainPasswordValid, LoginSchema } from "@/types/guards/api"
+
+// Session expires in 30 days
+const SESSION_MAX_AGE = 30 * 24 * 60 * 60
 
 export async function POST(req: NextRequest) {
   const requestId = generateRequestId()
@@ -26,6 +31,7 @@ export async function POST(req: NextRequest) {
   }
 
   const { passcode, workspace } = result.data
+  const jar = await cookies()
 
   if (process.env.BRIDGE_ENV === "local" && workspace === "test" && passcode === "test") {
     const res = NextResponse.json({ ok: true })
@@ -34,6 +40,7 @@ export async function POST(req: NextRequest) {
       secure: true,
       sameSite: "none",
       path: "/",
+      maxAge: SESSION_MAX_AGE,
     })
     addCorsHeaders(res, origin)
     return res
@@ -89,13 +96,28 @@ export async function POST(req: NextRequest) {
       secure: true,
       sameSite: "none",
       path: "/",
+      maxAge: SESSION_MAX_AGE,
     })
   } else {
-    res.cookies.set("session", "1", {
+    // Get existing session token (JWT)
+    const existingSession = jar.get("session")
+    let sessionToken: string
+
+    if (existingSession?.value && existingSession.value !== "1") {
+      // Add workspace to existing token (creates new signed token)
+      sessionToken = addWorkspaceToToken(existingSession.value, workspace)
+    } else {
+      // Create new token for first workspace
+      sessionToken = createSessionToken([workspace])
+    }
+
+    // Store signed JWT token
+    res.cookies.set("session", sessionToken, {
       httpOnly: true,
       secure: true,
       sameSite: "none",
       path: "/",
+      maxAge: SESSION_MAX_AGE,
     })
   }
   addCorsHeaders(res, origin)
