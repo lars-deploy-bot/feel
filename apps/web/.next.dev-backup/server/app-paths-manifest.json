@@ -1,0 +1,6 @@
+{
+  "/api/claude/stream/route": "app/api/claude/stream/route.js",
+  "/api/restart-workspace/route": "app/api/restart-workspace/route.js",
+  "/chat/page": "app/chat/page.js",
+  "/page": "app/page.js"
+}

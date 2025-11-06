@@ -16,6 +16,7 @@ interface DeploymentStatusProps {
 
 export function DeploymentStatus({ status, domain, error, errorDetails, chatUrl }: DeploymentStatusProps) {
   const [countdown, setCountdown] = useState(10)
+  const [copied, setCopied] = useState(false)
 
   // Countdown timer for loading state
   useEffect(() => {
@@ -38,27 +39,59 @@ export function DeploymentStatus({ status, domain, error, errorDetails, chatUrl 
   if (!status) return null
 
   if (status === "success") {
+    const copyLink = () => {
+      navigator.clipboard.writeText(`https://${domain}`)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+
     return (
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="p-6 rounded-lg bg-black/5 border border-black/10"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        className="w-full max-w-2xl"
       >
-        <div className="flex gap-3">
-          <CheckCircle2 className="h-5 w-5 text-black flex-shrink-0 mt-0.5" />
-          <div className="w-full">
-            <h3 className="font-medium text-black mb-1">Deployment Successful!</h3>
-            <p className="text-black/60 text-sm font-light mb-4">{domain} is now live</p>
-            <a
-              href={`https://${domain}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center px-4 py-2 bg-black text-white text-sm font-medium rounded-lg hover:bg-black/90 transition-all"
-            >
-              Visit your site →
-            </a>
-          </div>
-        </div>
+        {/* Emotional message */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="text-center text-base font-light text-black/50 mb-16"
+        >
+          You just got your own website
+        </motion.p>
+
+        {/* Hero: Just the domain */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.4, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          className="mb-16 relative"
+        >
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10 blur-3xl -z-10 scale-150" />
+          <h1 className="text-6xl md:text-7xl font-extralight text-black tracking-tight text-center">
+            {domain}
+          </h1>
+        </motion.div>
+
+        {/* Single action */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6 }}
+          className="flex justify-center"
+        >
+          <a
+            href={`https://${domain}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={copyLink}
+            className="px-12 py-4 bg-gradient-to-br from-blue-600 to-blue-500 text-white text-base font-medium rounded-full hover:from-blue-500 hover:to-blue-400 transition-all duration-300 shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 hover:scale-105"
+          >
+            Open Site
+          </a>
+        </motion.div>
       </motion.div>
     )
   }
@@ -91,34 +124,104 @@ export function DeploymentStatus({ status, domain, error, errorDetails, chatUrl 
     )
   }
 
-  // Loading state
+  // Loading state - Clean and minimal
+  const stages = ["Launching", "Deploying", "Setting up your site"]
+  const currentStage = countdown > 7 ? 0 : countdown > 3 ? 1 : 2
+  const progress = ((10 - countdown) / 10) * 100
+
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="p-4 rounded-lg bg-black/5 border border-black/10"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+      className="w-full max-w-md flex flex-col items-center"
     >
-      <div className="flex gap-3">
-        <Loader2 className="h-5 w-5 text-black flex-shrink-0 mt-0.5 animate-spin" />
-        <div className="flex-1">
-          <h3 className="font-medium text-black mb-1">
-            {status === "loading" ? "Deploying..." : "Validating..."}
-          </h3>
-          <p className="text-black/60 text-sm font-light">
-            {status === "loading" ? "Setting up your site" : "Checking domain configuration"}
-          </p>
-          {status === "loading" && countdown > 0 && (
-            <motion.p
-              key={countdown}
-              initial={{ scale: 1.2, opacity: 0.8 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="text-black/70 text-sm font-medium mt-2"
-            >
-              ~{countdown} seconds remaining
-            </motion.p>
-          )}
+      {/* Circular progress indicator */}
+      <div className="relative mb-12">
+        {/* Background ring */}
+        <svg className="w-28 h-28 -rotate-90" viewBox="0 0 120 120">
+          <circle
+            cx="60"
+            cy="60"
+            r="54"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1"
+            className="text-black/5"
+          />
+          {/* Progress ring */}
+          <motion.circle
+            cx="60"
+            cy="60"
+            r="54"
+            fill="none"
+            stroke="url(#progressGradient)"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeDasharray={339.292} // 2πr
+            initial={{ strokeDashoffset: 339.292 }}
+            animate={{ strokeDashoffset: 339.292 - (339.292 * progress) / 100 }}
+            transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+          />
+          <defs>
+            <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="rgb(59, 130, 246)" />
+              <stop offset="100%" stopColor="rgb(147, 51, 234)" />
+            </linearGradient>
+          </defs>
+        </svg>
+
+        {/* Center icon */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 3, ease: "linear", repeat: Infinity }}
+          >
+            <Loader2 className="w-7 h-7 text-black/20" strokeWidth={1.5} />
+          </motion.div>
         </div>
       </div>
+
+      {/* Stage label with smooth transitions */}
+      <motion.div
+        key={currentStage}
+        initial={{ opacity: 0, y: 5 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -5 }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        className="mb-6"
+      >
+        <h3 className="text-xl font-light text-black text-center">
+          {stages[currentStage]}
+        </h3>
+      </motion.div>
+
+      {/* Time remaining */}
+      {countdown > 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="flex flex-col items-center gap-2"
+        >
+          {/* Countdown number */}
+          <motion.div
+            key={countdown}
+            initial={{ scale: 1.05, opacity: 0.8 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <span className="text-4xl font-light text-black tabular-nums">
+              {countdown}
+            </span>
+          </motion.div>
+
+          {/* Label */}
+          <p className="text-sm font-light text-black/50">
+            seconds remaining
+          </p>
+        </motion.div>
+      )}
     </motion.div>
   )
 }

@@ -7,9 +7,10 @@ interface SubmitButtonProps {
   isDeploying: boolean
   isValid: boolean
   label: string
+  countdown?: number
 }
 
-export function SubmitButton({ isDeploying, isValid, label }: SubmitButtonProps) {
+export function SubmitButton({ isDeploying, isValid, label, countdown = 0 }: SubmitButtonProps) {
   return (
     <motion.button
       whileHover={!isDeploying && isValid ? { scale: 1.02 } : {}}
@@ -37,7 +38,7 @@ export function SubmitButton({ isDeploying, isValid, label }: SubmitButtonProps)
       {isDeploying ? (
         <>
           <Loader2 className="h-5 w-5 animate-spin" />
-          <span>Launching...</span>
+          <span>Launching{countdown > 0 ? ` (${countdown}s)` : "..."}</span>
         </>
       ) : (
         <span>{label}</span>

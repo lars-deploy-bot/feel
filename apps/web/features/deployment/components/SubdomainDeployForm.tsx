@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { motion } from "framer-motion"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { EmailField } from "@/components/ui/primitives/EmailField"
@@ -45,6 +45,34 @@ export function SubdomainDeployForm() {
   const [isDeploying, setIsDeploying] = useState(false)
   const [deploymentStatus, setDeploymentStatus] = useState<DeploySubdomainResponse | null>(null)
   const [showPassword, setShowPassword] = useState(false)
+  const [countdown, setCountdown] = useState(10)
+  const isDev = process.env.NODE_ENV === "development"
+
+  const simulateSuccess = () => {
+    setDeploymentStatus({
+      ok: true,
+      domain: `${watchSlug || "test"}.${WILDCARD_DOMAIN}`,
+      message: "Site deployed successfully",
+    })
+  }
+
+  // Countdown timer for deploying state
+  useEffect(() => {
+    if (isDeploying) {
+      setCountdown(10) // Reset to 10 when deploying starts
+      const interval = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval)
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+
+      return () => clearInterval(interval)
+    }
+  }, [isDeploying])
 
   const {
     register,
@@ -130,19 +158,17 @@ export function SubdomainDeployForm() {
       <motion.div variants={itemVariants} className="text-center mb-12">
         <h1 className="text-4xl font-light mb-3 text-black">Launch Your Site</h1>
         <p className="text-base text-black/50 font-light">Get online in 30 seconds</p>
-      </motion.div>
 
-      {/* Info Box */}
-      <motion.div variants={itemVariants} className="bg-black/5 border border-black/10 rounded-lg p-5 mb-8">
-        <p className="text-base text-black/70 mb-4 font-light">
-          Your site will be at: <span className="font-medium text-black">{watchSlug.toLowerCase() || "your-name"}</span>
-          <span className="text-black/60">.{WILDCARD_DOMAIN}</span>
-        </p>
-        <div className="space-y-2 text-sm text-black/60 font-light">
-          <p>✓ No domain setup needed</p>
-          <p>✓ Start building now</p>
-          <p>✓ Add your own domain later</p>
-        </div>
+        {/* Debug button (dev only) */}
+        {isDev && (
+          <button
+            type="button"
+            onClick={simulateSuccess}
+            className="mt-4 text-xs text-black/30 hover:text-black/50 font-mono"
+          >
+            [dev] simulate success
+          </button>
+        )}
       </motion.div>
 
       {/* Form */}
@@ -178,18 +204,19 @@ export function SubdomainDeployForm() {
               isDeploying={isDeploying}
               isValid={isValid && !errors.slug && !errors.email && !errors.password}
               label="Launch Site"
+              countdown={countdown}
             />
           </motion.div>
         </form>
       ) : null}
 
-      {/* Status */}
+      {/* Status - only show success/error, not loading */}
       {deploymentStatus && (
         <DeploymentStatus
           status={deploymentStatus.ok ? "success" : "error"}
-          domain={deploymentStatus.domain}
-          error={deploymentStatus.error}
-          chatUrl={deploymentStatus.chatUrl}
+          domain={deploymentStatus?.domain}
+          error={deploymentStatus?.error}
+          chatUrl={deploymentStatus?.chatUrl}
         />
       )}
     </motion.div>
