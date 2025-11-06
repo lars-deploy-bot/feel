@@ -84,7 +84,6 @@ export async function POST(req: Request) {
     const host = (await headers()).get("host") || "localhost"
     console.log(`[Claude API ${requestId}] Host: ${host}`)
 
-    // Resolve workspace with ownership info
     let workspace: Workspace
     let cwd: string
     let resolvedWorkspaceName: string
@@ -105,7 +104,6 @@ export async function POST(req: Request) {
         resolvedWorkspaceName = host
       }
 
-      // Security: Verify user is authenticated for this specific workspace
       const isAuthenticated = await isWorkspaceAuthenticated(resolvedWorkspaceName)
       if (!isAuthenticated) {
         console.log(`[Claude API ${requestId}] User not authenticated for workspace: ${resolvedWorkspaceName}`)

@@ -4,11 +4,6 @@ import { motion } from "framer-motion"
 import { CheckCircle2, ExternalLink } from "lucide-react"
 import { useEffect, useState } from "react"
 
-interface AuthenticatedWorkspace {
-  name: string
-  url: string
-}
-
 export function AuthenticatedWorkspaces() {
   const [workspaces, setWorkspaces] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
@@ -36,7 +31,6 @@ export function AuthenticatedWorkspaces() {
     return null
   }
 
-  // Filter out current workspace
   const otherWorkspaces = workspaces.filter(w => w !== currentHost)
 
   if (otherWorkspaces.length === 0) {

@@ -6,6 +6,10 @@ import { isTerminalMode } from "@/features/workspace/types/workspace"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 import { generateRequestId } from "@/lib/utils"
 
+interface VerifyRequestBody {
+  workspace?: string
+}
+
 export async function POST(req: Request) {
   const requestId = generateRequestId()
   console.log(`[Verify API ${requestId}] === VERIFICATION START ===`)
@@ -24,7 +28,7 @@ export async function POST(req: Request) {
       )
     }
 
-    let body: unknown
+    let body: VerifyRequestBody
     try {
       body = await req.json()
       console.log(`[Verify API ${requestId}] Raw body:`, body)
@@ -43,12 +47,10 @@ export async function POST(req: Request) {
     const host = (await headers()).get("host") || "localhost"
     console.log(`[Verify API ${requestId}] Host: ${host}`)
 
-    // Use workspace checker to validate
     const workspaceResult = getWorkspace({ host, body, requestId })
 
     if (!workspaceResult.success) {
       console.log(`[Verify API ${requestId}] Workspace verification failed`)
-      // Extract error details from the NextResponse
       const errorResponse = await workspaceResult.response.json()
       return NextResponse.json(
         {
@@ -57,18 +59,15 @@ export async function POST(req: Request) {
           ...errorResponse,
         },
         { status: 200 },
-      ) // Return 200 so frontend can handle verification result
+      )
     }
 
     console.log(`[Verify API ${requestId}] Workspace verification successful: ${workspaceResult.workspace}`)
 
-    // Determine workspace name for authentication (domain only, not path)
-    // Same pattern as claude/stream route
-    const workspaceName = isTerminalMode(host) ? (body as any)?.workspace || "unknown" : host
+    const workspaceName = isTerminalMode(host) ? body.workspace || "unknown" : host
 
     console.log(`[Verify API ${requestId}] Workspace name for auth check: ${workspaceName}`)
 
-    // Check if user is authenticated for this specific workspace
     const isAuthenticated = await isWorkspaceAuthenticated(workspaceName)
     if (!isAuthenticated) {
       console.log(`[Verify API ${requestId}] User not authenticated for workspace: ${workspaceName}`)

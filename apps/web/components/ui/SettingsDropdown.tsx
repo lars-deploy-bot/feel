@@ -75,7 +75,6 @@ export function SettingsDropdown({ onNewChat }: SettingsDropdownProps) {
         }}
       >
         <div className="py-1">
-          {/* Authenticated Workspaces */}
           {workspaces.filter(w => w !== currentHost).length > 0 && (
             <>
               <div className="px-4 py-2 text-xs font-medium text-black/50 dark:text-white/50">Other Sites</div>
