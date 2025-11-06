@@ -45,7 +45,9 @@ export type BatchGetGuidesResult = {
 
 export async function batchGetGuides(params: BatchGetGuidesParams): Promise<BatchGetGuidesResult> {
   const { requests, include_separator = true } = params
-  const guidesBasePath = join(__dirname, "../../internals-folder")
+  // Use source location, not dist - works in both dev and production
+  const packageRoot = join(__dirname, "../../..")
+  const guidesBasePath = join(packageRoot, "internals-folder")
 
   try {
     if (requests.length === 0) {

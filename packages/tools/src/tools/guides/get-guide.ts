@@ -110,7 +110,9 @@ export const getGuideTool = tool(
   "Retrieves development guides and documentation from the Alive Brug internals knowledge base. Use this to get best practices, patterns, and implementation guidelines for various topics like Stripe payments, email integration, AI integration, security, and more.",
   getGuideParamsSchema,
   async args => {
-    const guidesBasePath = join(__dirname, "../../internals-folder")
+    // Use source location, not dist - works in both dev and production
+    const packageRoot = join(__dirname, "../../..")
+    const guidesBasePath = join(packageRoot, "internals-folder")
     return getGuide(args, guidesBasePath)
   },
 )

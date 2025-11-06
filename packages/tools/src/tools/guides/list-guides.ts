@@ -150,7 +150,9 @@ Examples:
 - list_guides({ category: "30-guides", detail_level: "full" }) - With descriptions`,
   listGuidesParamsSchema,
   async args => {
-    const guidesBasePath = join(__dirname, "../../internals-folder")
+    // Use source location, not dist - works in both dev and production
+    const packageRoot = join(__dirname, "../../..")
+    const guidesBasePath = join(packageRoot, "internals-folder")
     return listGuides(args, guidesBasePath)
   },
 )

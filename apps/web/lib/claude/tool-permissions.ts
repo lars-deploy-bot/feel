@@ -10,6 +10,8 @@ export const ALLOWED_MCP_TOOLS = new Set([
   "mcp__workspace-management__install_package",
   "mcp__tools__list_guides",
   "mcp__tools__get_guide",
+  "mcp__tools__find_guide",
+  "mcp__tools__batch_get_guides",
   "mcp__tools__generate_persona",
 ])
 

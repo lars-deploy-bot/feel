@@ -46,7 +46,9 @@ export type FindGuideResult = {
 
 export async function findGuide(params: FindGuideParams): Promise<FindGuideResult> {
   const { query, category, auto_retrieve = true } = params
-  const guidesBasePath = join(__dirname, "../../internals-folder")
+  // Use source location, not dist - works in both dev and production
+  const packageRoot = join(__dirname, "../../..")
+  const guidesBasePath = join(packageRoot, "internals-folder")
 
   try {
     const categoriesToSearch = category ? [category] : GUIDE_CATEGORIES
