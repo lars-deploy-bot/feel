@@ -50,6 +50,11 @@ DEV_BACKUP=""
 if [ -d "$WEB_NEXT_DIR/dev" ]; then
     log_info "Backing up dev server files..."
     DEV_BACKUP="$WEB_NEXT_DIR.dev-backup"
+    # Remove any stale backup from previous failed builds
+    if [ -d "$DEV_BACKUP" ]; then
+        log_warn "Stale dev backup found, removing..."
+        rm -rf "$DEV_BACKUP"
+    fi
     mv "$WEB_NEXT_DIR/dev" "$DEV_BACKUP"
 fi
 
