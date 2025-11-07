@@ -1,6 +1,7 @@
 "use client"
-import { useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { useDebugActions, useSSETerminalMinimized } from "@/lib/stores/debug-store"
+import { useResizablePanel } from "@/lib/hooks/useResizablePanel"
 import { truncateDeep } from "@/lib/utils"
 import { useDevTerminal } from "../lib/dev-terminal-context"
 import { BridgeStreamType } from "../lib/streaming/ndjson"
@@ -9,35 +10,10 @@ export function DevTerminal() {
   const { events, clearEvents } = useDevTerminal()
   const isMinimized = useSSETerminalMinimized()
   const { setSSETerminalMinimized } = useDebugActions()
-  const [width, setWidth] = useState(768) // 2x wider: 768px (was 384px/w-96)
-  const [isResizing, setIsResizing] = useState(false)
+  const { width, isResizing, handleMouseDown } = useResizablePanel({ defaultWidth: 768 })
   const [collapsedMessages, setCollapsedMessages] = useState<Set<number>>(new Set())
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
-
-  // Handle resize dragging
-  useEffect(() => {
-    if (!isResizing) return
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const newWidth = window.innerWidth - e.clientX
-      // Clamp between 200px and 80% of screen width
-      const clampedWidth = Math.max(200, Math.min(newWidth, window.innerWidth * 0.8))
-      setWidth(clampedWidth)
-    }
-
-    const handleMouseUp = () => {
-      setIsResizing(false)
-    }
-
-    document.addEventListener("mousemove", handleMouseMove)
-    document.addEventListener("mouseup", handleMouseUp)
-
-    return () => {
-      document.removeEventListener("mousemove", handleMouseMove)
-      document.removeEventListener("mouseup", handleMouseUp)
-    }
-  }, [isResizing])
 
   // Toggle message collapse
   const toggleMessageCollapse = (index: number) => {
@@ -121,7 +97,18 @@ export function DevTerminal() {
           aria-valuenow={width}
           tabIndex={0}
           className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-green-500/50 transition-colors z-10"
-          onMouseDown={() => setIsResizing(true)}
+          onMouseDown={handleMouseDown}
+          style={{ userSelect: "none" }}
+        />
+      )}
+      {/* Overlay to block content from capturing mouse during resize */}
+      {isResizing && (
+        <div
+          className="absolute inset-0 z-50"
+          style={{
+            cursor: "col-resize",
+            pointerEvents: "all",
+          }}
         />
       )}
       {/* Header */}

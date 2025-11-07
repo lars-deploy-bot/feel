@@ -247,7 +247,9 @@ export async function POST(req: NextRequest) {
     )
 
     const existingSessionId = await SessionStoreMemory.get(convKey)
-    console.log(`[Claude Stream ${requestId}] Existing session: ${existingSessionId ? "found" : "none"}`)
+    console.log(
+      `[Claude Stream ${requestId}] Existing session: ${existingSessionId ? `found (${existingSessionId})` : "none"}`,
+    )
 
     console.log(`[Claude Stream ${requestId}] Working directory: ${cwd}`)
     const effectiveModel = userModel || env.CLAUDE_MODEL
@@ -317,7 +319,10 @@ export async function POST(req: NextRequest) {
                         : childEvent,
                 }
 
-                if (childEvent.type === "session" && childEvent.sessionId) {
+                // Session events are server-side only - store but don't forward to client
+                // This prevents exposing SDK session IDs which are security-sensitive
+                if (childEvent.type === "bridge_session" && childEvent.sessionId) {
+                  console.log(`[Claude Stream ${requestId}] Storing session ID: ${childEvent.sessionId}`)
                   await SessionStoreMemory.set(convKey, childEvent.sessionId)
                 } else {
                   controller.enqueue(encodeNDJSON(message))
@@ -336,7 +341,9 @@ export async function POST(req: NextRequest) {
             try {
               const childEvent = JSON.parse(buffer)
 
-              if (childEvent.type === "session" && childEvent.sessionId) {
+              // Session events are server-side only (see comment above)
+              if (childEvent.type === "bridge_session" && childEvent.sessionId) {
+                console.log(`[Claude Stream ${requestId}] Storing session ID (final): ${childEvent.sessionId}`)
                 await SessionStoreMemory.set(convKey, childEvent.sessionId)
               } else {
                 const message: StreamMessage = {

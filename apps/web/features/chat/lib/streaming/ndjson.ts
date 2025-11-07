@@ -17,6 +17,7 @@ import type { ErrorCode } from "@/lib/error-codes"
  */
 export const BridgeStreamType = {
   START: "bridge_start",
+  SESSION: "bridge_session",
   MESSAGE: "bridge_message",
   COMPLETE: "bridge_complete",
   ERROR: "bridge_error",
@@ -69,6 +70,16 @@ export interface BridgeStartMessage extends Omit<BridgeMessage, "type" | "data">
     message: string
     messageLength: number
     isResume?: boolean
+  }
+}
+
+/**
+ * Bridge SESSION event - carries SDK session ID for resumption
+ */
+export interface BridgeSessionMessage extends Omit<BridgeMessage, "type" | "data"> {
+  type: typeof BridgeStreamType.SESSION
+  data: {
+    sessionId: string
   }
 }
 
@@ -143,6 +154,7 @@ export interface BridgeInterruptMessage extends Omit<BridgeMessage, "type" | "da
  */
 export type StreamMessage =
   | BridgeStartMessage
+  | BridgeSessionMessage
   | BridgeMessageEvent
   | BridgeCompleteMessage
   | BridgeErrorMessage

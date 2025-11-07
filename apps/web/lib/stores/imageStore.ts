@@ -1,6 +1,7 @@
 "use client"
 
 import { create } from "zustand"
+import { uploadImage, UploadError } from "@/features/chat/utils/upload-handler"
 
 const IMAGE_PATH_PREFIX = "/_images/"
 
@@ -103,26 +104,12 @@ const useImageStoreBase = create<ImageStoreWithCompat>((set, get) => {
     set({ uploading: true, error: null })
 
     try {
-      // Upload files in parallel (like photobook does)
-      const uploadPromises = Array.from(files).map(async file => {
-        const formData = new FormData()
-        formData.append("file", file)
-
-        if (workspace) {
-          formData.append("workspace", workspace)
-        }
-
-        const response = await fetch("/api/images/upload", {
-          method: "POST",
-          body: formData,
+      // Upload files in parallel using shared upload handler
+      const uploadPromises = Array.from(files).map(async (file) => {
+        return await uploadImage(file, {
+          workspace,
+          isTerminal: !!workspace, // If workspace is explicitly provided, treat as terminal mode
         })
-
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.message || `Failed to upload ${file.name}`)
-        }
-
-        return await response.json()
       })
 
       await Promise.all(uploadPromises)
@@ -134,7 +121,8 @@ const useImageStoreBase = create<ImageStoreWithCompat>((set, get) => {
       return { success: true }
     } catch (err) {
       console.error("Upload failed:", err)
-      const errorMessage = err instanceof Error ? err.message : "Failed to upload images"
+      // Use categorized error message if available
+      const errorMessage = err instanceof UploadError ? err.message : err instanceof Error ? err.message : "Failed to upload images"
       set({ uploading: false, error: errorMessage })
       return { success: false, error: errorMessage }
     }

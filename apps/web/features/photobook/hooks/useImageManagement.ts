@@ -1,9 +1,8 @@
 import { useCallback, useState } from "react"
-import { getErrorMessage } from "@/lib/error-codes"
+import { uploadImage, UploadError } from "@/features/chat/utils/upload-handler"
 
 const API_ENDPOINTS = {
   LIST: "/api/images/list",
-  UPLOAD: "/api/images/upload",
   DELETE: "/api/images/delete",
 } as const
 
@@ -74,33 +73,21 @@ export function useImageManagement(isTerminal: boolean, workspace: string) {
       clearMessages()
 
       try {
-        const uploadPromises = Array.from(files).map(async file => {
-          const formData = new FormData()
-          formData.append("file", file)
-
-          if (isTerminal && workspace) {
-            formData.append("workspace", workspace)
-          }
-
-          const response = await fetch(API_ENDPOINTS.UPLOAD, {
-            method: "POST",
-            body: formData,
+        // Use shared upload handler with retry and error categorization
+        const uploadPromises = Array.from(files).map(async (file) => {
+          return await uploadImage(file, {
+            workspace,
+            isTerminal,
           })
-
-          if (!response.ok) {
-            const errorData = await response.json()
-            const errorMessage = errorData.error ? getErrorMessage(errorData.error) : "Upload failed"
-            throw new Error(errorMessage)
-          }
-
-          return await response.json()
         })
 
         const results = await Promise.all(uploadPromises)
         setSuccess(`Uploaded ${results.length} image${results.length > 1 ? "s" : ""}`)
         await loadImages()
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Upload failed")
+        // Use categorized error message if available
+        const errorMessage = err instanceof UploadError ? err.message : err instanceof Error ? err.message : "Upload failed"
+        setError(errorMessage)
       } finally {
         setUploading(false)
       }

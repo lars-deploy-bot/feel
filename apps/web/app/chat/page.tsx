@@ -28,6 +28,7 @@ import { SandboxProvider } from "@/features/chat/lib/sandbox-context"
 import { sendClientError } from "@/features/chat/lib/send-client-error"
 import { BridgeInterruptSource } from "@/features/chat/lib/streaming/ndjson"
 import { buildPromptWithAttachments } from "@/features/chat/utils/prompt-builder"
+import { useImageUpload } from "@/features/chat/hooks/useImageUpload"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
 import type { StructuredError } from "@/lib/error-codes"
 import { getErrorHelp, getErrorMessage } from "@/lib/error-codes"
@@ -75,6 +76,9 @@ function ChatPageContent() {
 
   // Session management with workspace-scoped persistence
   const { conversationId, startNewConversation, markActivity } = useConversationSession(workspace, mounted)
+
+  // Image upload handler with progress tracking, retry logic, and store sync
+  const handleAttachmentUpload = useImageUpload({ workspace, isTerminal })
 
   // Helper to create API request body (DRY)
   const createRequestBody = (message: string) => {
@@ -827,6 +831,7 @@ function ChatPageContent() {
                 maxAttachments: 5,
                 maxFileSize: 20 * 1024 * 1024, // 20MB
                 placeholder: "Tell me what to change...",
+                onAttachmentUpload: handleAttachmentUpload,
               }}
             />
           </div>

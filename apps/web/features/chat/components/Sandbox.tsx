@@ -1,6 +1,8 @@
 "use client"
-import { useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
+import { getPreviewUrl } from "@/lib/preview-utils"
+import { useResizablePanel } from "@/lib/hooks/useResizablePanel"
 import { useDebugActions, useSandboxMinimized } from "@/lib/stores/debug-store"
 import { useSandbox } from "../lib/sandbox-context"
 
@@ -9,68 +11,11 @@ export function Sandbox() {
   const isMinimized = useSandboxMinimized()
   const { setSandboxMinimized } = useDebugActions()
   const { workspace } = useWorkspace()
-  const [width, setWidth] = useState(400)
-  const [isResizing, setIsResizing] = useState(false)
+  const { width, isResizing, handleMouseDown } = useResizablePanel({ defaultWidth: 400 })
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
   const [activeTab, setActiveTab] = useState<"preview" | "console">("preview")
   const scrollRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
-
-  // Debug iframe load errors and navigation
-  useEffect(() => {
-    const iframe = iframeRef.current
-    if (!iframe) return
-
-    console.log("[Sandbox] Setting up iframe for workspace:", workspace)
-
-    const handleLoad = () => {
-      try {
-        // Try to access iframe's current location (may fail due to CORS)
-        const iframeLocation = iframe.contentWindow?.location.href
-        console.log("[Sandbox] iframe loaded successfully. URL:", iframeLocation || "unknown (CORS)")
-      } catch (e) {
-        console.log("[Sandbox] iframe loaded (CORS prevents URL access)")
-      }
-    }
-
-    const handleError = (e: Event) => {
-      console.error("[Sandbox] iframe failed to load:", e)
-      console.error("[Sandbox] Current iframe src:", iframe.src)
-      console.error("[Sandbox] Current workspace:", workspace)
-    }
-
-    iframe.addEventListener("load", handleLoad)
-    iframe.addEventListener("error", handleError)
-
-    return () => {
-      iframe.removeEventListener("load", handleLoad)
-      iframe.removeEventListener("error", handleError)
-    }
-  }, [workspace])
-
-  // Handle resize dragging
-  useEffect(() => {
-    if (!isResizing) return
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const newWidth = window.innerWidth - e.clientX
-      // Clamp between 200px and 80% of screen width
-      const clampedWidth = Math.max(200, Math.min(newWidth, window.innerWidth * 0.8))
-      setWidth(clampedWidth)
-    }
-
-    const handleMouseUp = () => {
-      setIsResizing(false)
-    }
-
-    document.addEventListener("mousemove", handleMouseMove)
-    document.addEventListener("mouseup", handleMouseUp)
-
-    return () => {
-      document.removeEventListener("mousemove", handleMouseMove)
-      document.removeEventListener("mouseup", handleMouseUp)
-    }
-  }, [isResizing])
 
   // Copy message to clipboard
   const copyMessage = async (content: string, index: number) => {
@@ -113,7 +58,18 @@ export function Sandbox() {
           aria-valuenow={width}
           tabIndex={0}
           className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-purple-500/50 transition-colors z-10"
-          onMouseDown={() => setIsResizing(true)}
+          onMouseDown={handleMouseDown}
+          style={{ userSelect: "none" }}
+        />
+      )}
+      {/* Overlay to block iframe from capturing mouse during resize */}
+      {isResizing && (
+        <div
+          className="absolute inset-0 z-50"
+          style={{
+            cursor: "col-resize",
+            pointerEvents: "all",
+          }}
         />
       )}
       {/* Header */}
@@ -172,37 +128,18 @@ export function Sandbox() {
         (activeTab === "preview" ? (
           <div className="flex-1 overflow-hidden bg-white relative">
             {workspace && workspace.length > 0 && workspace.includes(".") ? (
-              <>
-                <div className="absolute top-2 left-2 z-10 bg-black/80 text-white text-xs px-2 py-1 rounded font-mono">
-                  Workspace: {workspace}
-                </div>
-                <div className="absolute top-10 left-2 z-10 bg-blue-900/90 text-white text-xs px-2 py-1 rounded font-mono">
-                  URL: /api/workspace-proxy/{workspace}/
-                </div>
-                <iframe
-                  ref={iframeRef}
-                  sandbox="allow-scripts allow-same-origin"
-                  src={`/api/workspace-proxy/${workspace}/`}
-                  className="w-full h-full border-0"
-                  title={`Preview: ${workspace}`}
-                  referrerPolicy="no-referrer-when-downgrade"
-                />
-              </>
+              <iframe
+                ref={iframeRef}
+                src={getPreviewUrl(workspace)}
+                className="w-full h-full border-0"
+                title={`Preview: ${workspace}`}
+                referrerPolicy="no-referrer-when-downgrade"
+              />
             ) : (
               <div className="flex items-center justify-center h-full text-purple-700 bg-black">
                 <div className="text-center">
-                  <div className="mb-2">
-                    {workspace ? "Invalid workspace format" : "No workspace selected"}
-                  </div>
-                  <div className="text-xs text-purple-600">
-                    Terminal mode: check sessionStorage["workspace"]
-                    <br />
-                    Workspace value: "{workspace || "(empty)"}"
-                    <br />
-                    {workspace && !workspace.includes(".") && (
-                      <span className="text-red-400">Workspace must be a domain (e.g., example.com)</span>
-                    )}
-                  </div>
+                  <div className="mb-2">{workspace ? "Invalid workspace format" : "No workspace selected"}</div>
+                  <div className="text-xs text-purple-600">Workspace must be a domain (e.g., example.com)</div>
                 </div>
               </div>
             )}

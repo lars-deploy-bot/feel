@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
       httpOnly: true,
       secure: true,
       sameSite: "none",
+      domain: ".terminal.goalive.nl",
       path: "/",
       maxAge: SESSION_MAX_AGE,
     })
@@ -95,6 +96,7 @@ export async function POST(req: NextRequest) {
       httpOnly: true,
       secure: true,
       sameSite: "none",
+      domain: ".terminal.goalive.nl",
       path: "/",
       maxAge: SESSION_MAX_AGE,
     })
@@ -111,11 +113,12 @@ export async function POST(req: NextRequest) {
       sessionToken = createSessionToken([workspace])
     }
 
-    // Store signed JWT token
+    // Store signed JWT token with domain for preview subdomains
     res.cookies.set("session", sessionToken, {
       httpOnly: true,
       secure: true,
       sameSite: "none",
+      domain: ".terminal.goalive.nl",
       path: "/",
       maxAge: SESSION_MAX_AGE,
     })

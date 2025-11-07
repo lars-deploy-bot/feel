@@ -139,6 +139,17 @@ async function readStdinJson() {
         queryResult = message
       }
 
+      // Capture session ID from system init message
+      if (message.type === "system" && message.subtype === "init" && message.session_id) {
+        console.error(`[runner] Session ID captured: ${message.session_id}`)
+        process.stdout.write(
+          `${JSON.stringify({
+            type: BRIDGE_STREAM_TYPES.SESSION,
+            sessionId: message.session_id,
+          })}\n`,
+        )
+      }
+
       // Filter system init message to only show allowed tools
       let outputMessage = message
       if (message.type === "system" && message.subtype === "init" && message.tools) {
