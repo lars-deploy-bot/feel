@@ -72,6 +72,9 @@ const useRecentSitesStoreBase = create<RecentSitesStoreWithCompat>()(
     {
       name: "recent-sites-storage",
       version: 1,
+      partialize: state => ({
+        sites: state.sites,
+      }),
     },
   ),
 )

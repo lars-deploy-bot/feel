@@ -70,6 +70,10 @@ const useDebugStoreBase = create<DebugStore>()(
     },
     {
       name: "claude-bridge-debug-view-v3",
+      partialize: state => ({
+        isDebugView: state.isDebugView,
+        showSSETerminal: state.showSSETerminal,
+      }),
     },
   ),
 )
