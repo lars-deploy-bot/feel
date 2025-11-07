@@ -64,6 +64,12 @@ if [ -d "$WEB_NEXT_DIR" ]; then
     rm -rf "$WEB_NEXT_DIR"
 fi
 
+# Clean up stale dist directory if it exists (prevents type validation errors)
+if [ -d "$WEB_DIR/dist" ]; then
+    log_info "Removing stale dist directory..."
+    rm -rf "$WEB_DIR/dist"
+fi
+
 # Build dependencies first (images + tools packages)
 log_info "Building workspace dependencies..."
 cd packages/images && bun run build && cd "$PROJECT_ROOT" || { log_error "Failed to build images package"; exit 1; }
