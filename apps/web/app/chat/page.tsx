@@ -76,6 +76,30 @@ function ChatPageContent() {
   // Session management with workspace-scoped persistence
   const { conversationId, startNewConversation, markActivity } = useConversationSession(workspace, mounted)
 
+  // Upload handler for chat attachments
+  const handleAttachmentUpload = useCallback(async (file: File): Promise<string> => {
+    const formData = new FormData()
+    formData.append("file", file)
+
+    // Add workspace if in terminal mode
+    if (isTerminal && workspace) {
+      formData.append("workspace", workspace)
+    }
+
+    const response = await fetch("/api/images/upload", {
+      method: "POST",
+      body: formData,
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.message || `Failed to upload ${file.name}`)
+    }
+
+    const result = await response.json()
+    return result.data.key
+  }, [isTerminal, workspace])
+
   // Helper to create API request body (DRY)
   const createRequestBody = (message: string) => {
     const baseBody = {
@@ -827,6 +851,7 @@ function ChatPageContent() {
                 maxAttachments: 5,
                 maxFileSize: 20 * 1024 * 1024, // 20MB
                 placeholder: "Tell me what to change...",
+                onAttachmentUpload: handleAttachmentUpload,
               }}
             />
           </div>

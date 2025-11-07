@@ -67,21 +67,37 @@ export function useAttachments(config: ChatInputConfig) {
       // Upload new file
       if (config.onAttachmentUpload) {
         try {
-          const _url = await config.onAttachmentUpload(file)
+          // Progress callback updates attachment progress in real-time
+          const onProgress = (progress: number) => {
+            setAttachments(prev =>
+              prev.map(a => (a.id === attachment.id ? { ...a, uploadProgress: progress } : a))
+            )
+          }
+
+          const _imageKey = await config.onAttachmentUpload(file, onProgress)
+
+          // Ensure 100% progress on completion
           setAttachments(prev => prev.map(a => (a.id === attachment.id ? { ...a, uploadProgress: 100 } : a)))
           config.onMessage?.(`Uploaded ${file.name}`, "success")
         } catch (error) {
+          // Set error state on attachment
           setAttachments(prev =>
             prev.map(a =>
               a.id === attachment.id
                 ? {
                     ...a,
                     error: error instanceof Error ? error.message : "Upload failed",
+                    uploadProgress: 0,
                   }
                 : a,
             ),
           )
-          config.onMessage?.(`Failed to upload ${file.name}`, "error")
+
+          // Only show error toast if not aborted (user cancelled)
+          const isAborted = error instanceof Error && error.message.includes("cancelled")
+          if (!isAborted) {
+            config.onMessage?.(error instanceof Error ? error.message : "Upload failed", "error")
+          }
         }
       } else {
         // No upload handler, mark as complete immediately

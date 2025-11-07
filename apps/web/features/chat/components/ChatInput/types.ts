@@ -64,6 +64,10 @@ export interface ChatInputActions {
   onStop: () => void
 }
 
+export interface UploadProgressCallback {
+  (attachmentId: string, progress: number): void
+}
+
 export interface ChatInputConfig {
   // Feature flags
   enableAttachments?: boolean
@@ -81,7 +85,7 @@ export interface ChatInputConfig {
 
   // Callbacks
   onMessage?: (message: string, type: "info" | "error" | "success") => void
-  onAttachmentUpload?: (file: File) => Promise<string> // Returns URL
+  onAttachmentUpload?: (file: File, onProgress?: (progress: number) => void) => Promise<string> // Returns image key
 }
 
 export interface ChatInputContextValue extends ChatInputState, ChatInputActions {
