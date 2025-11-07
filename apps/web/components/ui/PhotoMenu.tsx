@@ -1,5 +1,6 @@
 "use client"
 
+import { Plus } from "lucide-react"
 import type { RefObject } from "react"
 import { useEffect, useRef } from "react"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
@@ -13,8 +14,9 @@ interface PhotoMenuProps {
 
 export function PhotoMenu({ isOpen, onClose, triggerRef }: PhotoMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const { workspace, isTerminal, mounted } = useWorkspace()
-  const { images, loading, loadImages } = useImageStore()
+  const { images, loading, uploading, uploadImages, loadImages } = useImageStore()
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -44,6 +46,24 @@ export function PhotoMenu({ isOpen, onClose, triggerRef }: PhotoMenuProps) {
     }
   }, [isOpen, mounted, isTerminal, workspace, loadImages])
 
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files
+    if (!files || files.length === 0) return
+
+    const workspaceParam = isTerminal && workspace ? workspace : undefined
+
+    await uploadImages(files, workspaceParam)
+
+    // Reset input so same files can be selected again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
+  }
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click()
+  }
+
   if (!isOpen) return null
 
   return (
@@ -59,16 +79,21 @@ export function PhotoMenu({ isOpen, onClose, triggerRef }: PhotoMenuProps) {
       }}
     >
       <div className="p-4">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={handleFileSelect}
+          className="hidden"
+          aria-label="Upload images"
+        />
         {loading ? (
           <div className="flex items-center justify-center py-8">
             <p className="text-sm text-black/60 dark:text-white/60">Loading images...</p>
           </div>
-        ) : images.length === 0 ? (
-          <div className="flex items-center justify-center py-8">
-            <p className="text-sm text-black/60 dark:text-white/60">No images yet</p>
-          </div>
         ) : (
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-4 gap-3 items-start">
             {images.map(image => (
               <button
                 key={image.key}
@@ -87,7 +112,20 @@ export function PhotoMenu({ isOpen, onClose, triggerRef }: PhotoMenuProps) {
                 />
               </button>
             ))}
+            <button
+              type="button"
+              onClick={handleUploadClick}
+              disabled={uploading}
+              className="col-span-4 w-full h-12 border border-black/10 dark:border-white/10 rounded bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              aria-label={uploading ? "Uploading images" : "Upload new images"}
+            >
+              <Plus className="w-4 h-4 text-black/60 dark:text-white/60" />
+              <span className="text-sm font-medium text-black/80 dark:text-white/80">Add photos</span>
+            </button>
           </div>
+        )}
+        {uploading && (
+          <p className="text-sm text-black/60 dark:text-white/60 mt-3 text-center">Uploading...</p>
         )}
       </div>
     </div>

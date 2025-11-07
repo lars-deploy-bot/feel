@@ -27,10 +27,16 @@ function transformImageVariants(image: UploadedImage): UploadedImage {
   }
 }
 
+function sortImagesByDate(images: UploadedImage[]): UploadedImage[] {
+  // Sort newest first
+  return images.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())
+}
+
 // State interface
 interface ImageState {
   images: UploadedImage[]
   loading: boolean
+  uploading: boolean
   error: string | null
 }
 
@@ -38,6 +44,7 @@ interface ImageState {
 interface ImageActions {
   actions: {
     loadImages: (workspace?: string) => Promise<void>
+    uploadImages: (files: FileList, workspace?: string) => Promise<{ success: boolean; error?: string }>
   }
 }
 
@@ -46,6 +53,7 @@ type ImageStoreWithCompat = ImageState &
   ImageActions & {
     // Legacy direct action export for backwards compatibility
     loadImages: (workspace?: string) => Promise<void>
+    uploadImages: (files: FileList, workspace?: string) => Promise<{ success: boolean; error?: string }>
   }
 
 const useImageStoreBase = create<ImageStoreWithCompat>((set, get) => {
@@ -68,9 +76,10 @@ const useImageStoreBase = create<ImageStoreWithCompat>((set, get) => {
 
       const data = await response.json()
       const transformedImages = (data.images || []).map(transformImageVariants)
+      const sortedImages = sortImagesByDate(transformedImages)
 
       set({
-        images: transformedImages,
+        images: sortedImages,
         loading: false,
         error: null,
       })
@@ -84,10 +93,56 @@ const useImageStoreBase = create<ImageStoreWithCompat>((set, get) => {
     }
   }
 
-  const actions = { loadImages }
+  const uploadImages = async (files: FileList, workspace?: string) => {
+    if (files.length === 0) {
+      return { success: false, error: "No files selected" }
+    }
+
+    set({ uploading: true, error: null })
+
+    try {
+      // Upload files in parallel (like photobook does)
+      const uploadPromises = Array.from(files).map(async file => {
+        const formData = new FormData()
+        formData.append("file", file)
+
+        if (workspace) {
+          formData.append("workspace", workspace)
+        }
+
+        const response = await fetch("/api/images/upload", {
+          method: "POST",
+          body: formData,
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.message || `Failed to upload ${file.name}`)
+        }
+
+        return await response.json()
+      })
+
+      await Promise.all(uploadPromises)
+
+      // Reload images after successful upload
+      await loadImages(workspace)
+
+      set({ uploading: false })
+      return { success: true }
+    } catch (err) {
+      console.error("Upload failed:", err)
+      const errorMessage = err instanceof Error ? err.message : "Failed to upload images"
+      set({ uploading: false, error: errorMessage })
+      return { success: false, error: errorMessage }
+    }
+  }
+
+  const actions = { loadImages, uploadImages }
   return {
     images: [],
     loading: false,
+    uploading: false,
     error: null,
     actions,
     // Legacy direct export for backwards compatibility
@@ -100,6 +155,9 @@ export const useImages = () => useImageStoreBase(state => state.images)
 
 // Atomic selector: loading state (Guide §14.1)
 export const useImagesLoading = () => useImageStoreBase(state => state.loading)
+
+// Atomic selector: uploading state (Guide §14.1)
+export const useImagesUploading = () => useImageStoreBase(state => state.uploading)
 
 // Atomic selector: error state (Guide §14.1)
 export const useImagesError = () => useImageStoreBase(state => state.error)
