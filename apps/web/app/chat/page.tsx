@@ -10,9 +10,11 @@ import { ChatDropOverlay } from "@/features/chat/components/ChatDropOverlay"
 import { ChatInput } from "@/features/chat/components/ChatInput"
 import type { ChatInputHandle } from "@/features/chat/components/ChatInput/types"
 import { DevTerminal } from "@/features/chat/components/DevTerminal"
+import { Sandbox } from "@/features/chat/components/Sandbox"
 import { SubdomainInitializer } from "@/features/chat/components/SubdomainInitializer"
 import { ThinkingGroup } from "@/features/chat/components/ThinkingGroup"
 import { ThinkingSpinner } from "@/features/chat/components/ThinkingSpinner"
+import { useConversationSession } from "@/features/chat/hooks/useConversationSession"
 import {
   ClientError,
   ClientRequest,
@@ -22,6 +24,7 @@ import {
 import { groupMessages } from "@/features/chat/lib/message-grouper"
 import { parseStreamEvent, type StreamEvent, type UIMessage } from "@/features/chat/lib/message-parser"
 import { renderMessage } from "@/features/chat/lib/message-renderer"
+import { SandboxProvider } from "@/features/chat/lib/sandbox-context"
 import { sendClientError } from "@/features/chat/lib/send-client-error"
 import { BridgeInterruptSource } from "@/features/chat/lib/streaming/ndjson"
 import { buildPromptWithAttachments } from "@/features/chat/utils/prompt-builder"
@@ -30,7 +33,7 @@ import type { StructuredError } from "@/lib/error-codes"
 import { getErrorHelp, getErrorMessage } from "@/lib/error-codes"
 import { HttpError } from "@/lib/errors"
 import { isRetryableError, retryWithBackoff } from "@/lib/retry"
-import { isDevelopment, useDebugActions, useDebugVisible, useSSETerminal } from "@/lib/stores/debug-store"
+import { isDevelopment, useDebugActions, useDebugVisible, useSandbox, useSSETerminal } from "@/lib/stores/debug-store"
 import { useLLMStore } from "@/lib/stores/llmStore"
 
 const SUGGESTIONS = [
@@ -47,7 +50,6 @@ function ChatPageContent() {
   const [messages, setMessages] = useState<UIMessage[]>([])
   const [busy, setBusy] = useState(false)
   const [useStreaming, _setUseStreaming] = useState(true)
-  const [conversationId, setConversationId] = useState<string>(() => crypto.randomUUID())
   const [shouldForceScroll, setShouldForceScroll] = useState(false)
   const [userHasManuallyScrolled, setUserHasManuallyScrolled] = useState(false)
   const [subdomainInitialized, setSubdomainInitialized] = useState(false)
@@ -63,12 +65,16 @@ function ChatPageContent() {
   const chatInputRef = useRef<ChatInputHandle>(null)
   const dragCounter = useRef(0)
   const photoButtonRef = useRef<HTMLButtonElement>(null)
-  const { toggleView } = useDebugActions()
+  const { toggleView, setSSETerminal, setSSETerminalMinimized, setSandbox, setSandboxMinimized } = useDebugActions()
   const isDebugView = useDebugVisible()
   const showSSETerminal = useSSETerminal()
+  const showSandbox = useSandbox()
   const { addEvent: addDevEvent } = useDevTerminal()
   const { workspace, isTerminal, mounted, setWorkspace } = useWorkspace({ redirectOnMissing: "/" })
   const { apiKey: userApiKey, model: userModel } = useLLMStore()
+
+  // Session management with workspace-scoped persistence
+  const { conversationId, startNewConversation, markActivity } = useConversationSession(workspace, mounted)
 
   // Helper to create API request body (DRY)
   const createRequestBody = (message: string) => {
@@ -86,6 +92,23 @@ function ChatPageContent() {
   useEffect(() => {
     setRandomSuggestion(SUGGESTIONS[Math.floor(Math.random() * SUGGESTIONS.length)])
   }, [])
+
+  // Show SSE terminal and Sandbox minimized on staging (after mount to avoid hydration mismatch)
+  useEffect(() => {
+    if (window.location.hostname.includes("staging")) {
+      setSSETerminal(true)
+      setSSETerminalMinimized(true)
+      setSandbox(true)
+      setSandboxMinimized(true)
+    }
+  }, [setSSETerminal, setSSETerminalMinimized, setSandbox, setSandboxMinimized])
+
+  // Track activity on message updates
+  useEffect(() => {
+    if (messages.length > 0) {
+      markActivity()
+    }
+  }, [messages.length, markActivity])
 
   // Track manual scrolling
   useEffect(() => {
@@ -566,8 +589,8 @@ function ChatPageContent() {
     }
   }
 
-  function startNewConversation() {
-    setConversationId(crypto.randomUUID())
+  function handleNewConversation() {
+    startNewConversation()
     setMessages([])
   }
 
@@ -715,11 +738,11 @@ function ChatPageContent() {
                   />
                 </div>
                 <SettingsDropdown
-                  onNewChat={startNewConversation}
+                  onNewChat={handleNewConversation}
                   currentWorkspace={workspace}
                   onSwitchWorkspace={newWorkspace => {
                     setWorkspace(newWorkspace)
-                    startNewConversation()
+                    handleNewConversation()
                   }}
                   onOpenSettings={() => setShowSettingsModal(true)}
                 />
@@ -810,6 +833,7 @@ function ChatPageContent() {
         </div>
       </div>
 
+      {showSandbox && <Sandbox />}
       {showSSETerminal && <DevTerminal />}
       {showFeedbackModal && <FeedbackModal onClose={() => setShowFeedbackModal(false)} />}
       {showSettingsModal && <SettingsModal onClose={() => setShowSettingsModal(false)} />}
@@ -820,7 +844,9 @@ function ChatPageContent() {
 function ChatPageWrapper() {
   return (
     <DevTerminalProvider>
-      <ChatPageContent />
+      <SandboxProvider>
+        <ChatPageContent />
+      </SandboxProvider>
     </DevTerminalProvider>
   )
 }

@@ -14,7 +14,7 @@ interface DeploymentStatusProps {
   chatUrl?: string | null
 }
 
-export function DeploymentStatus({ status, domain, error, errorDetails, chatUrl }: DeploymentStatusProps) {
+export function DeploymentStatus({ status, domain, error, errorDetails }: DeploymentStatusProps) {
   const [countdown, setCountdown] = useState(10)
   const [_copied, setCopied] = useState(false)
 

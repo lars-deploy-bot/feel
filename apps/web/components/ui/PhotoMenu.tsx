@@ -1,8 +1,9 @@
 "use client"
 
-import { Plus } from "lucide-react"
+import { Plus, Trash2 } from "lucide-react"
 import type { RefObject } from "react"
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
+import { DeleteModal } from "@/components/modals/DeleteModal"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
 import { useImageStore } from "@/lib/stores/imageStore"
 
@@ -16,7 +17,8 @@ export function PhotoMenu({ isOpen, onClose, triggerRef }: PhotoMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { workspace, isTerminal, mounted } = useWorkspace()
-  const { images, loading, uploading, uploadImages, loadImages } = useImageStore()
+  const { images, loading, uploading, uploadImages, loadImages, deleteImage } = useImageStore()
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -64,6 +66,14 @@ export function PhotoMenu({ isOpen, onClose, triggerRef }: PhotoMenuProps) {
     fileInputRef.current?.click()
   }
 
+  const handleDeleteConfirm = () => {
+    if (deleteConfirm) {
+      const workspaceParam = isTerminal && workspace ? workspace : undefined
+      deleteImage(deleteConfirm, workspaceParam)
+      setDeleteConfirm(null)
+    }
+  }
+
   if (!isOpen) return null
 
   return (
@@ -95,22 +105,34 @@ export function PhotoMenu({ isOpen, onClose, triggerRef }: PhotoMenuProps) {
         ) : (
           <div className="grid grid-cols-4 gap-3 items-start">
             {images.map(image => (
-              <button
-                key={image.key}
-                type="button"
-                className="w-full border-0 p-0 bg-transparent cursor-pointer"
-                draggable
-                onDragStart={e => {
-                  e.dataTransfer.effectAllowed = "copy"
-                  e.dataTransfer.setData("application/x-photobook-image", image.key)
-                }}
-              >
-                <img
-                  src={image.variants.thumb}
-                  alt=""
-                  className="w-full h-auto rounded hover:opacity-80 transition-opacity pointer-events-none"
-                />
-              </button>
+              <div key={image.key} className="relative group">
+                <button
+                  type="button"
+                  className="w-full border-0 p-0 bg-transparent cursor-pointer"
+                  draggable
+                  onDragStart={e => {
+                    e.dataTransfer.effectAllowed = "copy"
+                    e.dataTransfer.setData("application/x-photobook-image", image.key)
+                  }}
+                >
+                  <img
+                    src={image.variants.thumb}
+                    alt=""
+                    className="w-full h-auto rounded hover:opacity-80 transition-opacity pointer-events-none"
+                  />
+                </button>
+                <button
+                  type="button"
+                  onClick={e => {
+                    e.stopPropagation()
+                    setDeleteConfirm(image.key)
+                  }}
+                  className="absolute top-1 right-1 p-1.5 bg-white/90 dark:bg-black/90 hover:bg-red-50 dark:hover:bg-red-900/50 text-black/40 dark:text-white/40 hover:text-red-500 dark:hover:text-red-400 rounded opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+                  aria-label="Delete image"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
             ))}
             <button
               type="button"
@@ -124,10 +146,19 @@ export function PhotoMenu({ isOpen, onClose, triggerRef }: PhotoMenuProps) {
             </button>
           </div>
         )}
-        {uploading && (
-          <p className="text-sm text-black/60 dark:text-white/60 mt-3 text-center">Uploading...</p>
-        )}
+        {uploading && <p className="text-sm text-black/60 dark:text-white/60 mt-3 text-center">Uploading...</p>}
       </div>
+
+      {deleteConfirm && (
+        <DeleteModal
+          title="Delete this image?"
+          message="This action cannot be undone."
+          confirmText="Delete"
+          cancelText="Cancel"
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setDeleteConfirm(null)}
+        />
+      )}
     </div>
   )
 }

@@ -45,6 +45,7 @@ interface ImageActions {
   actions: {
     loadImages: (workspace?: string) => Promise<void>
     uploadImages: (files: FileList, workspace?: string) => Promise<{ success: boolean; error?: string }>
+    deleteImage: (key: string, workspace?: string) => Promise<void>
   }
 }
 
@@ -54,6 +55,7 @@ type ImageStoreWithCompat = ImageState &
     // Legacy direct action export for backwards compatibility
     loadImages: (workspace?: string) => Promise<void>
     uploadImages: (files: FileList, workspace?: string) => Promise<{ success: boolean; error?: string }>
+    deleteImage: (key: string, workspace?: string) => Promise<void>
   }
 
 const useImageStoreBase = create<ImageStoreWithCompat>((set, get) => {
@@ -138,7 +140,47 @@ const useImageStoreBase = create<ImageStoreWithCompat>((set, get) => {
     }
   }
 
-  const actions = { loadImages, uploadImages }
+  const deleteImage = async (key: string, workspace?: string) => {
+    const imageToDelete = get().images.find(img => img.key === key)
+
+    // Optimistically remove from UI
+    set(state => ({
+      images: sortImagesByDate(state.images.filter(img => img.key !== key)),
+    }))
+
+    try {
+      const body: { key: string; workspace?: string } = { key }
+      if (workspace) {
+        body.workspace = workspace
+      }
+
+      const response = await fetch("/api/images/delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      })
+
+      if (!response.ok) {
+        // Restore on failure
+        if (imageToDelete) {
+          set(state => ({
+            images: sortImagesByDate([...state.images, imageToDelete]),
+            error: "Failed to delete image. Please try again.",
+          }))
+        }
+      }
+    } catch (_err) {
+      // Restore on error
+      if (imageToDelete) {
+        set(state => ({
+          images: sortImagesByDate([...state.images, imageToDelete]),
+          error: "Failed to delete image. Please try again.",
+        }))
+      }
+    }
+  }
+
+  const actions = { loadImages, uploadImages, deleteImage }
   return {
     images: [],
     loading: false,

@@ -348,7 +348,7 @@ function LLMSettings() {
 
       <div className="space-y-4 sm:space-y-6">
         <div className="animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-75">
-          <label className="block text-sm font-medium text-black dark:text-white mb-2">
+          <label htmlFor="anthropic-api-key" className="block text-sm font-medium text-black dark:text-white mb-2">
             Anthropic API Key
             <span className="ml-2 text-xs text-black/50 dark:text-white/50">(optional)</span>
           </label>
@@ -358,6 +358,7 @@ function LLMSettings() {
           <div className="space-y-3">
             <div className="relative">
               <input
+                id="anthropic-api-key"
                 type={showApiKey ? "text" : "password"}
                 value={apiKeyInput}
                 onChange={handleInputChange}
@@ -411,11 +412,14 @@ function LLMSettings() {
         </div>
 
         <div className="animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-100">
-          <label className="block text-sm font-medium text-black dark:text-white mb-2">Model</label>
+          <label htmlFor="claude-model" className="block text-sm font-medium text-black dark:text-white mb-2">
+            Model
+          </label>
           <p className="text-xs text-black/60 dark:text-white/60 mb-3">
             Choose which Claude model to use for conversations
           </p>
           <select
+            id="claude-model"
             value={model}
             onChange={handleModelChange}
             className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-white dark:bg-[#2a2a2a] border border-black/20 dark:border-white/20 rounded text-sm text-black dark:text-white focus:outline-none focus:border-black dark:focus:border-white transition-colors"

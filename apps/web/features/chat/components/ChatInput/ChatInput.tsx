@@ -47,7 +47,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
     [userConfig],
   )
 
-  const { attachments, addAttachment, addPhotobookImage, removeAttachment, clearAttachments } = useAttachments(config)
+  const { attachments, addAttachment, addPhotobookImage, removeAttachment } = useAttachments(config)
 
   // Expose methods to parent via ref
   useImperativeHandle(
@@ -58,7 +58,9 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
       getAttachments: () => attachments,
       clearLibraryImages: () => {
         const libraryImages = attachments.filter(a => a.kind === "library-image")
-        libraryImages.forEach(img => removeAttachment(img.id))
+        for (const img of libraryImages) {
+          removeAttachment(img.id)
+        }
       },
     }),
     [addAttachment, addPhotobookImage, attachments, removeAttachment],

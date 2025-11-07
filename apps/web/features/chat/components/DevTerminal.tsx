@@ -1,12 +1,14 @@
 "use client"
 import { useEffect, useRef, useState } from "react"
+import { useDebugActions, useSSETerminalMinimized } from "@/lib/stores/debug-store"
 import { truncateDeep } from "@/lib/utils"
 import { useDevTerminal } from "../lib/dev-terminal-context"
 import { BridgeStreamType } from "../lib/streaming/ndjson"
 
 export function DevTerminal() {
   const { events, clearEvents } = useDevTerminal()
-  const [isMinimized, setIsMinimized] = useState(false)
+  const isMinimized = useSSETerminalMinimized()
+  const { setSSETerminalMinimized } = useDebugActions()
   const [width, setWidth] = useState(768) // 2x wider: 768px (was 384px/w-96)
   const [isResizing, setIsResizing] = useState(false)
   const [collapsedMessages, setCollapsedMessages] = useState<Set<number>>(new Set())
@@ -116,6 +118,8 @@ export function DevTerminal() {
           role="separator"
           aria-orientation="vertical"
           aria-label="Resize terminal"
+          aria-valuenow={width}
+          tabIndex={0}
           className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-green-500/50 transition-colors z-10"
           onMouseDown={() => setIsResizing(true)}
         />
@@ -125,7 +129,7 @@ export function DevTerminal() {
         {isMinimized ? (
           <button
             type="button"
-            onClick={() => setIsMinimized(false)}
+            onClick={() => setSSETerminalMinimized(false)}
             className="text-green-500 font-semibold hover:text-green-400 transition-colors w-full text-center"
           >
             +
@@ -151,7 +155,7 @@ export function DevTerminal() {
               </button>
               <button
                 type="button"
-                onClick={() => setIsMinimized(true)}
+                onClick={() => setSSETerminalMinimized(true)}
                 className="text-green-600 hover:text-green-400 transition-colors text-xs px-2 py-1 border border-green-700/30 rounded"
               >
                 −
