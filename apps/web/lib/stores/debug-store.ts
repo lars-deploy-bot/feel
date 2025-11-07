@@ -66,9 +66,12 @@ const useDebugStoreBase = create<DebugStore>()(
         toggleSandboxMinimized: () => set(state => ({ isSandboxMinimized: !state.isSandboxMinimized })),
         setDebugView: (show: boolean) => set({ isDebugView: show }),
         setSSETerminal: (show: boolean) => set({ showSSETerminal: show }),
-        setSSETerminalMinimized: (minimized: boolean) => set({ isSSETerminalMinimized: minimized }),
+        // Mutually exclusive panels: opening one closes the other
+        setSSETerminalMinimized: (minimized: boolean) =>
+          set({ isSSETerminalMinimized: minimized, isSandboxMinimized: minimized ? minimized : true }),
         setSandbox: (show: boolean) => set({ showSandbox: show }),
-        setSandboxMinimized: (minimized: boolean) => set({ isSandboxMinimized: minimized }),
+        setSandboxMinimized: (minimized: boolean) =>
+          set({ isSandboxMinimized: minimized, isSSETerminalMinimized: minimized ? minimized : true }),
       }
       return {
         isDebugView: false,

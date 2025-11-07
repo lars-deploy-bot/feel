@@ -1,15 +1,11 @@
 import type { SDKResultMessage } from "@anthropic-ai/claude-agent-sdk"
 import { ErrorCodes, getErrorHelp, getErrorMessage } from "@/lib/error-codes"
-import { useDebugVisible } from "@/lib/stores/debug-store"
 
 interface ResultMessageProps {
   content: SDKResultMessage
 }
 
 export function ResultMessage({ content }: ResultMessageProps) {
-  // MUST call hooks at top level before any returns
-  const isDebugMode = useDebugVisible()
-
   // Map SDK subtype to error code
   const getErrorCode = () => {
     if (content.subtype === "error_max_turns") {
@@ -60,10 +56,11 @@ export function ResultMessage({ content }: ResultMessageProps) {
               {getDisplayHelp() && (
                 <p className="text-xs text-red-600 dark:text-red-500 mt-2 leading-relaxed">{getDisplayHelp()}</p>
               )}
-              <div className="mt-2 text-xs text-red-500/70 dark:text-red-400/70">
-                Duration: {(content.duration_ms / 1000).toFixed(1)}s • Cost: ${content.total_cost_usd.toFixed(4)}
-                {errorCode && <span className="ml-2 font-mono">• {errorCode}</span>}
-              </div>
+              {errorCode && (
+                <div className="mt-2 text-xs text-red-500/70 dark:text-red-400/70">
+                  <span className="font-mono">{errorCode}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -71,17 +68,6 @@ export function ResultMessage({ content }: ResultMessageProps) {
     )
   }
 
-  // Only show completion stats in debug mode
-  if (!isDebugMode) return null
-
-  return (
-    <div className="py-2 mb-4">
-      <div className="text-sm font-medium text-black/60 dark:text-white/60 normal-case tracking-normal">
-        Completed
-        <span className="ml-2 text-xs text-black/50 dark:text-white/50 font-normal">
-          {(content.duration_ms / 1000).toFixed(1)}s • ${content.total_cost_usd.toFixed(4)}
-        </span>
-      </div>
-    </div>
-  )
+  // Never show completion stats
+  return null
 }

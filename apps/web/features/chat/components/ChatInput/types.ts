@@ -64,9 +64,7 @@ export interface ChatInputActions {
   onStop: () => void
 }
 
-export interface UploadProgressCallback {
-  (attachmentId: string, progress: number): void
-}
+export type UploadProgressCallback = (attachmentId: string, progress: number) => void
 
 export interface ChatInputConfig {
   // Feature flags

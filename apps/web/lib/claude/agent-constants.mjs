@@ -2,6 +2,7 @@ import { toolsMcp, workspaceManagementMcp } from "@alive-brug/tools"
 
 export const BRIDGE_STREAM_TYPES = {
   START: "bridge_start",
+  SESSION: "bridge_session",
   MESSAGE: "bridge_message",
   COMPLETE: "bridge_complete",
   ERROR: "bridge_error",

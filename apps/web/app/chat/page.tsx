@@ -28,6 +28,7 @@ import { SandboxProvider } from "@/features/chat/lib/sandbox-context"
 import { sendClientError } from "@/features/chat/lib/send-client-error"
 import { BridgeInterruptSource } from "@/features/chat/lib/streaming/ndjson"
 import { buildPromptWithAttachments } from "@/features/chat/utils/prompt-builder"
+import { useImageUpload } from "@/features/chat/hooks/useImageUpload"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
 import type { StructuredError } from "@/lib/error-codes"
 import { getErrorHelp, getErrorMessage } from "@/lib/error-codes"
@@ -76,29 +77,8 @@ function ChatPageContent() {
   // Session management with workspace-scoped persistence
   const { conversationId, startNewConversation, markActivity } = useConversationSession(workspace, mounted)
 
-  // Upload handler for chat attachments
-  const handleAttachmentUpload = useCallback(async (file: File): Promise<string> => {
-    const formData = new FormData()
-    formData.append("file", file)
-
-    // Add workspace if in terminal mode
-    if (isTerminal && workspace) {
-      formData.append("workspace", workspace)
-    }
-
-    const response = await fetch("/api/images/upload", {
-      method: "POST",
-      body: formData,
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.message || `Failed to upload ${file.name}`)
-    }
-
-    const result = await response.json()
-    return result.data.key
-  }, [isTerminal, workspace])
+  // Image upload handler with progress tracking, retry logic, and store sync
+  const handleAttachmentUpload = useImageUpload({ workspace, isTerminal })
 
   // Helper to create API request body (DRY)
   const createRequestBody = (message: string) => {

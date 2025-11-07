@@ -131,7 +131,7 @@ async function uploadWithProgress(
 
         // Retry if retryable and attempts remaining
         if (isRetryable(error) && attempt < maxRetries) {
-          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000)
+          const delay = Math.min(1000 * 2 ** (attempt - 1), 5000)
           console.log(`[Upload] Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms`)
 
           setTimeout(() => {
@@ -154,7 +154,7 @@ async function uploadWithProgress(
 
       // Retry if attempts remaining
       if (attempt < maxRetries) {
-        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000)
+        const delay = Math.min(1000 * 2 ** (attempt - 1), 5000)
         console.log(`[Upload] Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms`)
 
         setTimeout(() => {

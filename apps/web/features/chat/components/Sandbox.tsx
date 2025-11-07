@@ -1,7 +1,8 @@
 "use client"
-import { useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
 import { getPreviewUrl } from "@/lib/preview-utils"
+import { useResizablePanel } from "@/lib/hooks/useResizablePanel"
 import { useDebugActions, useSandboxMinimized } from "@/lib/stores/debug-store"
 import { useSandbox } from "../lib/sandbox-context"
 
@@ -10,49 +11,11 @@ export function Sandbox() {
   const isMinimized = useSandboxMinimized()
   const { setSandboxMinimized } = useDebugActions()
   const { workspace } = useWorkspace()
-  const [width, setWidth] = useState(400)
-  const [isResizing, setIsResizing] = useState(false)
+  const { width, isResizing, handleMouseDown } = useResizablePanel({ defaultWidth: 400 })
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
   const [activeTab, setActiveTab] = useState<"preview" | "console">("preview")
   const scrollRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
-  const startXRef = useRef<number>(0)
-  const startWidthRef = useRef<number>(400)
-
-  // Handle resize dragging with minimum drag distance to prevent accidental triggers
-  useEffect(() => {
-    if (!isResizing) return
-
-    const MIN_DRAG_DISTANCE = 5 // Require 5px movement before resizing starts
-    let hasStartedResizing = false
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const dragDistance = Math.abs(e.clientX - startXRef.current)
-
-      // Only start resizing after user has dragged at least MIN_DRAG_DISTANCE
-      if (!hasStartedResizing && dragDistance < MIN_DRAG_DISTANCE) {
-        return
-      }
-      hasStartedResizing = true
-
-      const newWidth = window.innerWidth - e.clientX
-      // Clamp between 200px and 80% of screen width
-      const clampedWidth = Math.max(200, Math.min(newWidth, window.innerWidth * 0.8))
-      setWidth(clampedWidth)
-    }
-
-    const handleMouseUp = () => {
-      setIsResizing(false)
-    }
-
-    document.addEventListener("mousemove", handleMouseMove)
-    document.addEventListener("mouseup", handleMouseUp)
-
-    return () => {
-      document.removeEventListener("mousemove", handleMouseMove)
-      document.removeEventListener("mouseup", handleMouseUp)
-    }
-  }, [isResizing])
 
   // Copy message to clipboard
   const copyMessage = async (content: string, index: number) => {
@@ -95,10 +58,17 @@ export function Sandbox() {
           aria-valuenow={width}
           tabIndex={0}
           className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-purple-500/50 transition-colors z-10"
-          onMouseDown={e => {
-            startXRef.current = e.clientX
-            startWidthRef.current = width
-            setIsResizing(true)
+          onMouseDown={handleMouseDown}
+          style={{ userSelect: "none" }}
+        />
+      )}
+      {/* Overlay to block iframe from capturing mouse during resize */}
+      {isResizing && (
+        <div
+          className="absolute inset-0 z-50"
+          style={{
+            cursor: "col-resize",
+            pointerEvents: "all",
           }}
         />
       )}

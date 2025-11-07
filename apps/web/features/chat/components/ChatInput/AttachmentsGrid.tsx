@@ -18,7 +18,11 @@ export function AttachmentsGrid() {
       {attachments.map(attachment => (
         <div
           key={attachment.id}
-          className="relative group flex items-center gap-2 px-3 py-2 rounded-lg border border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02]"
+          className={`relative group flex items-center gap-2 px-3 py-2 rounded-lg border ${
+            attachment.error
+              ? "border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/20"
+              : "border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02]"
+          }`}
         >
           {isImageAttachment(attachment) && attachment.preview ? (
             <div className="w-12 h-12 relative rounded overflow-hidden">
@@ -47,9 +51,15 @@ export function AttachmentsGrid() {
             <span className="text-xs font-medium text-black dark:text-white truncate max-w-[150px]">
               {isFileUpload(attachment) ? attachment.file.name : "Photo"}
             </span>
-            <span className="text-xs text-black/50 dark:text-white/50">
-              {isFileUpload(attachment) ? `${(attachment.file.size / 1024).toFixed(1)} KB` : "Library"}
-            </span>
+            {attachment.error ? (
+              <span className="text-xs text-red-600 dark:text-red-400 truncate max-w-[150px]" title={attachment.error}>
+                Upload failed
+              </span>
+            ) : (
+              <span className="text-xs text-black/50 dark:text-white/50">
+                {isFileUpload(attachment) ? `${(attachment.file.size / 1024).toFixed(1)} KB` : "Library"}
+              </span>
+            )}
           </div>
 
           <button

@@ -175,6 +175,13 @@ export function parseStreamEvent(event: StreamEvent): UIMessage | null {
     }
   }
 
+  if (event.type === BridgeStreamType.SESSION) {
+    // Session events are server-side only and should never reach the client
+    // They're intercepted in route.ts for session storage
+    console.warn("[MessageParser] SESSION event reached client - this should not happen")
+    return null
+  }
+
   if (event.type === BridgeStreamType.PING) {
     return null
   }
