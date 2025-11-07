@@ -1,5 +1,5 @@
 import { isDevelopment } from "@/lib/stores/debug-store"
-import { ClientError, type ClientErrorType, type DevSSEEvent } from "./dev-terminal-context"
+import type { ClientErrorType, DevSSEEvent } from "./dev-terminal-context"
 
 export interface ClientErrorData {
   errorType: ClientErrorType
@@ -31,7 +31,7 @@ export function sendClientError(params: {
   const devEvent: DevSSEEvent = {
     eventName: errorType,
     event: eventData,
-    rawSSE: JSON.stringify(eventData) + '\n',
+    rawSSE: `${JSON.stringify(eventData)}\n`,
   }
 
   addDevEvent(devEvent)

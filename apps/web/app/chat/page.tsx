@@ -13,12 +13,17 @@ import { DevTerminal } from "@/features/chat/components/DevTerminal"
 import { SubdomainInitializer } from "@/features/chat/components/SubdomainInitializer"
 import { ThinkingGroup } from "@/features/chat/components/ThinkingGroup"
 import { ThinkingSpinner } from "@/features/chat/components/ThinkingSpinner"
-import { sendClientError } from "@/features/chat/lib/send-client-error"
-import { ClientError, ClientRequest, DevTerminalProvider, useDevTerminal } from "@/features/chat/lib/dev-terminal-context"
+import {
+  ClientError,
+  ClientRequest,
+  DevTerminalProvider,
+  useDevTerminal,
+} from "@/features/chat/lib/dev-terminal-context"
 import { groupMessages } from "@/features/chat/lib/message-grouper"
 import { parseStreamEvent, type StreamEvent, type UIMessage } from "@/features/chat/lib/message-parser"
 import { renderMessage } from "@/features/chat/lib/message-renderer"
-import { BridgeInterruptSource, BridgeStreamType } from "@/features/chat/lib/streaming/ndjson"
+import { sendClientError } from "@/features/chat/lib/send-client-error"
+import { BridgeInterruptSource } from "@/features/chat/lib/streaming/ndjson"
 import { buildPromptWithAttachments } from "@/features/chat/utils/prompt-builder"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
 import type { StructuredError } from "@/lib/error-codes"
@@ -229,7 +234,7 @@ function ChatPageContent() {
         addDevEvent({
           eventName: ClientRequest.MESSAGE,
           event: requestEvent,
-          rawSSE: JSON.stringify(requestEvent) + '\n',
+          rawSSE: `${JSON.stringify(requestEvent)}\n`,
         })
       }
 
@@ -327,85 +332,35 @@ function ChatPageContent() {
                   addDevEvent,
                 })
 
-                  // Process bridge events for UI
-                  if (currentEvent.startsWith("bridge_")) {
-                    if (rawData.requestId && rawData.timestamp && rawData.type) {
-                      const eventData: StreamEvent = rawData
-                      receivedAnyMessage = true
-
-                      const message = parseStreamEvent(eventData)
-                      if (message) {
-                        setMessages(prev => [...prev, message])
-                      }
-
-                      consecutiveParseErrors = 0
-                    } else {
-                      console.error("[Chat] Invalid SSE event structure:", rawData)
-                      consecutiveParseErrors++
-
-                      sendClientError({
-                        conversationId,
-                        errorType: "invalid_event_structure",
-                        data: {
-                          eventName: currentEvent,
-                          rawData: rawData,
-                          consecutiveErrors: consecutiveParseErrors,
-                        },
-                        addDevEvent,
-                      })
-                    }
-                  } else {
-                    // Reset error counter on successful parse of non-bridge events
-                    consecutiveParseErrors = 0
-                  }
-                } catch (parseError) {
-                  console.error("[Chat] Failed to parse SSE data:", {
-                    line: dataLine.slice(0, 200),
-                    error: parseError,
-                  })
-                  consecutiveParseErrors++
+                if (consecutiveParseErrors >= MAX_CONSECUTIVE_PARSE_ERRORS) {
+                  console.error("[Chat] Too many consecutive parse errors, stopping stream", consecutiveParseErrors)
 
                   sendClientError({
                     conversationId,
                     errorType: ClientError.CRITICAL_PARSE_ERROR,
                     data: {
                       consecutiveErrors: consecutiveParseErrors,
-                      line: dataLine.slice(0, 200),
-                      error: parseError instanceof Error ? parseError.message : String(parseError),
+                      message: "Too many consecutive parse errors, stopping stream",
                     },
                     addDevEvent,
                   })
 
-                  if (consecutiveParseErrors >= MAX_CONSECUTIVE_PARSE_ERRORS) {
-                    console.error("[Chat] Too many consecutive parse errors, stopping stream", consecutiveParseErrors)
-
-                    sendClientError({
-                      conversationId,
-                      errorType: "critical_parse_error",
-                      data: {
-                        consecutiveErrors: consecutiveParseErrors,
-                        message: "Too many consecutive parse errors, stopping stream",
+                  setMessages(prev => [
+                    ...prev,
+                    {
+                      id: Date.now().toString(),
+                      type: "sdk_message",
+                      content: {
+                        type: "result",
+                        is_error: true,
+                        result:
+                          "Connection unstable: Multiple parse errors detected. Please try again or refresh the page.",
                       },
-                      addDevEvent,
-                    })
-
-                    setMessages(prev => [
-                      ...prev,
-                      {
-                        id: Date.now().toString(),
-                        type: "sdk_message",
-                        content: {
-                          type: "result",
-                          is_error: true,
-                          result:
-                            "Connection unstable: Multiple parse errors detected. Please try again or refresh the page.",
-                        },
-                        timestamp: new Date(),
-                      },
-                    ])
-                    reader.cancel()
-                    break
-                  }
+                      timestamp: new Date(),
+                    },
+                  ])
+                  reader.cancel()
+                  break
                 }
               } else {
                 // Valid message - capture to dev terminal and process

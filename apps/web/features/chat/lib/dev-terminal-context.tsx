@@ -1,6 +1,6 @@
 "use client"
 import { createContext, type ReactNode, useContext, useState } from "react"
-import { BridgeStreamType } from "./streaming/ndjson"
+import type { BridgeStreamType } from "./streaming/ndjson"
 
 /**
  * Client Request Types

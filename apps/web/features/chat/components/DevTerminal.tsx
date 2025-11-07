@@ -1,8 +1,8 @@
 "use client"
 import { useEffect, useRef, useState } from "react"
 import { truncateDeep } from "@/lib/utils"
-import { BridgeStreamType } from "../lib/streaming/ndjson"
 import { useDevTerminal } from "../lib/dev-terminal-context"
+import { BridgeStreamType } from "../lib/streaming/ndjson"
 
 export function DevTerminal() {
   const { events, clearEvents } = useDevTerminal()

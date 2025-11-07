@@ -83,7 +83,7 @@ async function readStdinJson() {
      * Tool permission handler - enforces ALLOWED_TOOLS whitelist and DISALLOWED_TOOLS blacklist
      * @type {import('@anthropic-ai/claude-agent-sdk').CanUseTool}
      */
-    const canUseTool = async (toolName, input, options) => {
+    const canUseTool = async (toolName, input, _options) => {
       // Explicit deny list takes precedence
       if (DISALLOWED_TOOLS.includes(toolName)) {
         console.error(`[runner] SECURITY: Blocked explicitly disallowed tool: ${toolName}`)
