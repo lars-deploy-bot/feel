@@ -6,6 +6,8 @@ A multi-tenant web development platform that provides Claude AI assistance with 
 
 Claude Bridge enables developers to interact with Claude AI in the context of specific website projects, with each domain getting its own isolated workspace where Claude can read, write, and edit files safely.
 
+**📚 [Complete Documentation Index →](./DOCUMENTATION.md)** | **🚀 [Quick Start](#installation--setup)** | **🧪 [Testing Guide](./docs/testing/README.md)**
+
 ## Architecture
 
 ### Multi-Tenant Design
@@ -34,15 +36,20 @@ Claude Bridge enables developers to interact with Claude AI in the context of sp
 - **File Operations**: Read, write, edit, search files within workspace
 - **Real-time Streaming**: Server-Sent Events (SSE) with live updates of Claude's actions
 - **Conversation Context**: Maintains context across file operations with session resumption
-- **Tool Restrictions**: Limited to safe file operations (Read, Write, Edit, Glob, Grep)
+- **Session Persistence**: Workspace-scoped conversation persistence - resume conversations after browser close
+- **Tool Restrictions**: Limited to safe file operations (Read, Write, Edit, Glob, Grep) + approved MCP tools
 - **Tool Tracking**: Advanced toolUseMap pattern for tracking tool invocations and results
 - **Conversation Locking**: Prevents concurrent requests for same conversation
+- **Automatic File Ownership**: Child process UID switching for systemd sites ensures proper file permissions
 
 ### 🔐 Security & Access Control
-- **Passcode Authentication**: Configurable via `BRIDGE_PASSCODE` environment variable
+- **JWT Authentication**: Secure 30-day JWT tokens in httpOnly cookies
 - **Workspace Sandboxing**: Claude cannot access files outside designated workspace
-- **Path Traversal Protection**: Prevents directory escape attacks
-- **Session Management**: Cookie-based authentication
+- **Path Traversal Protection**: Prevents directory escape attacks with path normalization
+- **Tool Whitelisting**: Explicit whitelist for SDK and MCP tools
+- **Systemd Isolation**: Sites run as dedicated unprivileged users with OS-level filesystem protection
+- **Child Process Security**: Automatic UID/GID switching for systemd sites
+- **Session Management**: Cookie-based authentication with workspace-scoped permissions
 
 ### 🌐 Multi-Mode Access
 
@@ -327,17 +334,19 @@ Non-streaming endpoint returning full response as JSON.
 - No access to system files or other sites
 
 ### Authentication
+- **JWT-based**: 30-day tokens with workspace permissions in httpOnly cookies
 - **Domain Manager**: Hidden access via `/manager` URL for password management
 - **Separate Sessions**: Manager uses `manager_session` cookie, isolated from domain sessions
 - **Multi-Mode Authentication**: Manager access ("wachtwoord") + domain-specific passwords (`domain-passwords.json`)
-- Session-based authentication
-- Configurable passcode protection
-- Optional bypass for development (when `BRIDGE_PASSCODE` unset)
+- **Local Development**: `BRIDGE_ENV=local` enables test workspace (workspace: "test", passcode: "test")
+- **Workspace-scoped**: Each JWT token contains authorized workspace list
 
 ### Tool Restrictions
-- Limited to safe file operations
-- No shell access or dangerous operations
-- All tool usage logged and monitored
+- **SDK Tools**: Read, Write, Edit, Glob, Grep (with path validation)
+- **MCP Tools**: Workspace management (restart dev server, install packages), tools guides, persona generation
+- **No Shell Access**: Bash and other dangerous tools blocked
+- **Path Validation**: All file operations validated against workspace boundaries
+- **Audit Logging**: All tool usage logged with request IDs
 
 ## Testing
 
@@ -399,6 +408,10 @@ bun run pull         # Pull with alive_brug_deploy SSH key
 
 ```
 claude-bridge/
+├── README.md                 # This file - project overview
+├── CLAUDE.md                 # Developer guide for AI assistants
+├── DOCUMENTATION.md          # Complete documentation index
+├── IMPLEMENTATION_SUMMARY.md # Feature completion tracking
 ├── apps/web/                 # Next.js application
 │   ├── app/
 │   │   ├── api/              # API routes
@@ -411,14 +424,31 @@ claude-bridge/
 │   │   └── globals.css       # Global styles
 │   ├── components/           # React components
 │   ├── lib/                  # Utility libraries
+│   │   ├── stores/           # Zustand state management
+│   │   └── claude/           # Claude SDK helpers
+│   ├── features/             # Feature-specific code
+│   │   ├── chat/             # Chat components and logic
+│   │   ├── auth/             # Authentication
+│   │   └── workspace/        # Workspace management
 │   ├── dist → dist.TIMESTAMP # Symlink to active build (gitignored)
 │   ├── dist.20251105-155847/ # Timestamped build (gitignored)
 │   └── package.json
 ├── scripts/                  # Deployment scripts
 │   ├── build-atomic.sh       # Atomic build with symlinks
-│   └── build-and-serve.sh    # Full deployment script
+│   ├── build-and-serve.sh    # Full deployment script
+│   └── deploy-site-systemd.sh # New site deployment
 ├── docs/                     # Documentation
-│   └── deployment.md         # Atomic build system guide
+│   ├── architecture/         # System architecture
+│   ├── deployment/           # Deployment guides
+│   ├── testing/              # Testing documentation
+│   ├── security/             # Security documentation
+│   ├── guides/               # How-to guides
+│   ├── features/             # Feature documentation
+│   └── sessions/             # Session management
+├── packages/                 # Workspace packages
+│   ├── template/             # Site template
+│   ├── tools/                # Tool definitions for Claude
+│   └── images/               # Image handling utilities
 ├── Caddyfile                 # Reverse proxy config
 └── package.json              # Monorepo configuration
 ```
@@ -488,28 +518,33 @@ Messages are batched into groups for optimal UI rendering:
 
 ## Production Checklist
 
-### Application Security
-- [ ] Replace in-memory SessionStore with Redis/database
-- [ ] Implement JWT session tokens with expiry
-- [ ] Add logout endpoint and session invalidation
-- [ ] Set proper cookie flags (httpOnly, Secure, SameSite)
+### Application Security ✅
+- [x] Implement JWT session tokens with expiry (30-day tokens)
+- [x] Set proper cookie flags (httpOnly, Secure, SameSite)
+- [x] Validate workspace boundary enforcement with adversarial paths
+- [x] Log all tool invocations for audit trail
+- [x] Tool whitelisting implemented (SDK + MCP)
+- [x] Path traversal protection with normalization
+- [x] Systemd isolation for new sites
+- [ ] Replace in-memory SessionStore with Redis/database (currently in-memory)
+- [ ] Add logout endpoint (client-side cookie clearing exists)
 - [ ] Add rate limiting on authentication and streaming endpoints
-- [ ] Validate workspace boundary enforcement with adversarial paths
-- [ ] Log all tool invocations for audit trail
 
 ### Performance & Monitoring
+- [x] Request tracing with requestId propagation
+- [x] Implement health checks (atomic build system)
 - [ ] Monitor SessionStore memory usage and concurrent conversation limits
-- [ ] Add request tracing with requestId propagation
-- [ ] Implement health checks for all services
-- [ ] Set up error tracking and alerting
+- [ ] Set up error tracking and alerting (Sentry/similar)
 - [ ] Configure proper logging levels for production
 
-### Infrastructure
-- [ ] Configure Caddy reverse proxy with HTTPS/TLS
-- [ ] Set up PM2 process manager for high availability
-- [ ] Validate all required environment variables
-- [ ] Test domain routing for both standard and terminal modes
-- [ ] Implement backup and recovery procedures
+### Infrastructure ✅
+- [x] Configure Caddy reverse proxy with HTTPS/TLS (auto-HTTPS enabled)
+- [x] Set up PM2 process manager for high availability
+- [x] Validate all required environment variables
+- [x] Test domain routing for both standard and terminal modes
+- [x] Atomic build system with rollback capability
+- [x] GitHub webhook auto-deployment
+- [ ] Implement backup and recovery procedures for session data
 
 ## Contributing
 
