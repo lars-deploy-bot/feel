@@ -42,10 +42,11 @@ interface ImageActions {
 }
 
 // Extended type for backwards compatibility
-type ImageStoreWithCompat = ImageState & ImageActions & {
-  // Legacy direct action export for backwards compatibility
-  loadImages: (workspace?: string) => Promise<void>
-}
+type ImageStoreWithCompat = ImageState &
+  ImageActions & {
+    // Legacy direct action export for backwards compatibility
+    loadImages: (workspace?: string) => Promise<void>
+  }
 
 const useImageStoreBase = create<ImageStoreWithCompat>((set, get) => {
   const loadImages = async (workspace?: string) => {

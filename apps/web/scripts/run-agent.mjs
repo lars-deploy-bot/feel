@@ -14,11 +14,15 @@
 import { chownSync, copyFileSync, existsSync, mkdirSync } from "node:fs"
 import { join } from "node:path"
 import process from "node:process"
-import { toolsMcp, workspaceManagementMcp } from "@alive-brug/tools"
 import { query } from "@anthropic-ai/claude-agent-sdk"
-
-// Workspace helpers available if needed (currently unused)
-// import { createWorkspaceContext, createWorkspacePermissionHandler } from "../lib/agent-workspace-helpers.mjs"
+import {
+  ALLOWED_TOOLS,
+  BRIDGE_STREAM_TYPES,
+  DISALLOWED_TOOLS,
+  MCP_SERVERS,
+  PERMISSION_MODE,
+  SETTINGS_SOURCES,
+} from "../lib/claude/agent-constants.mjs"
 
 async function readStdinJson() {
   const chunks = []
@@ -75,6 +79,37 @@ async function readStdinJson() {
     const request = await readStdinJson()
     console.error(`[runner] Received request: ${request.message?.substring(0, 50)}...`)
 
+    /**
+     * Tool permission handler - enforces ALLOWED_TOOLS whitelist and DISALLOWED_TOOLS blacklist
+     * @type {import('@anthropic-ai/claude-agent-sdk').CanUseTool}
+     */
+    const canUseTool = async (toolName, input, options) => {
+      // Explicit deny list takes precedence
+      if (DISALLOWED_TOOLS.includes(toolName)) {
+        console.error(`[runner] SECURITY: Blocked explicitly disallowed tool: ${toolName}`)
+        return {
+          behavior: "deny",
+          message: `Tool "${toolName}" is explicitly disallowed for security reasons.`,
+        }
+      }
+
+      // Check allow list
+      if (!ALLOWED_TOOLS.includes(toolName)) {
+        console.error(`[runner] SECURITY: Blocked unauthorized tool: ${toolName}`)
+        return {
+          behavior: "deny",
+          message: `Tool "${toolName}" is not in the allowed tools list. Only these tools are permitted: ${ALLOWED_TOOLS.join(", ")}`,
+        }
+      }
+
+      console.error(`[runner] Tool allowed: ${toolName}`)
+      return {
+        behavior: "allow",
+        updatedInput: input,
+        updatedPermissions: [],
+      }
+    }
+
     // MCP tools use process.cwd() which is set by process.chdir() above
     // No workspace injection needed - tools default to process.cwd()
     const agentQuery = query({
@@ -83,67 +118,49 @@ async function readStdinJson() {
         cwd: process.cwd(),
         model: request.model,
         maxTurns: request.maxTurns || 25,
-        permissionMode: "acceptEdits",
-        allowedTools: [
-          "Write",
-          "Edit",
-          "Read",
-          "Glob",
-          "Grep",
-          "mcp__workspace-management__restart_dev_server",
-          "mcp__workspace-management__install_package",
-          "mcp__tools__list_guides",
-          "mcp__tools__get_guide",
-          "mcp__tools__generate_persona",
-        ],
-        settingSources: [], // Disabled: prevents SDK from overriding allowedTools whitelist
-        mcpServers: {
-          "workspace-management": workspaceManagementMcp,
-          tools: toolsMcp,
-        },
+        permissionMode: PERMISSION_MODE,
+        allowedTools: ALLOWED_TOOLS,
+        disallowedTools: DISALLOWED_TOOLS,
+        canUseTool,
+        settingSources: SETTINGS_SOURCES,
+        mcpServers: MCP_SERVERS,
         systemPrompt: request.systemPrompt,
         resume: request.resume,
       },
     })
 
     let messageCount = 0
-    let sessionId = null
     let queryResult = null
 
     for await (const message of agentQuery) {
       messageCount++
 
-      if (message.type === "system" && !sessionId) {
-        const match = JSON.stringify(message).match(/"session_id":"([^"]+)"/)
-        if (match) sessionId = match[1]
-      }
-
       if (message.type === "result") {
         queryResult = message
       }
 
+      // Filter system init message to only show allowed tools
+      let outputMessage = message
+      if (message.type === "system" && message.subtype === "init" && message.tools) {
+        outputMessage = {
+          ...message,
+          tools: message.tools.filter(tool => ALLOWED_TOOLS.includes(tool)),
+        }
+      }
+
       process.stdout.write(
         `${JSON.stringify({
-          type: "message",
+          type: BRIDGE_STREAM_TYPES.MESSAGE,
           messageCount,
           messageType: message.type,
-          content: message,
-        })}\n`,
-      )
-    }
-
-    if (sessionId) {
-      process.stdout.write(
-        `${JSON.stringify({
-          type: "session",
-          sessionId,
+          content: outputMessage,
         })}\n`,
       )
     }
 
     process.stdout.write(
       `${JSON.stringify({
-        type: "complete",
+        type: BRIDGE_STREAM_TYPES.COMPLETE,
         totalMessages: messageCount,
         result: queryResult,
       })}\n`,

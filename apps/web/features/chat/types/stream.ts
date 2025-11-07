@@ -1,4 +1,3 @@
-import type { SDKResultMessage } from "@anthropic-ai/claude-agent-sdk"
 import type {
   CompleteEventData,
   DoneEventData,
@@ -6,44 +5,35 @@ import type {
   InterruptEventData,
   MessageEventData,
   PingEventData,
-  SessionEventData,
   StartEventData,
   StreamEvent,
 } from "@/features/chat/lib/message-parser"
+import { BridgeStreamType } from "@/features/chat/lib/streaming/ndjson"
 
-// Type guards for stream events
 export function isStartEvent(event: StreamEvent): event is StreamEvent & { data: StartEventData } {
-  return event.type === "start" && "cwd" in event.data
-}
-
-export function isSessionEvent(event: StreamEvent): event is StreamEvent & { data: SessionEventData } {
-  return event.type === "session" && "sessionId" in event.data
+  return event.type === BridgeStreamType.START && "cwd" in event.data
 }
 
 export function isMessageEvent(event: StreamEvent): event is StreamEvent & { data: MessageEventData } {
-  return event.type === "message" && "messageType" in event.data && "content" in event.data
-}
-
-export function isResultEvent(event: StreamEvent): event is StreamEvent & { data: SDKResultMessage } {
-  return event.type === "result" && "subtype" in event.data
+  return event.type === BridgeStreamType.MESSAGE && "messageType" in event.data && "content" in event.data
 }
 
 export function isCompleteEvent(event: StreamEvent): event is StreamEvent & { data: CompleteEventData } {
-  return event.type === "complete" && "totalMessages" in event.data
+  return event.type === BridgeStreamType.COMPLETE && "totalMessages" in event.data
 }
 
 export function isErrorEvent(event: StreamEvent): event is StreamEvent & { data: ErrorEventData } {
-  return event.type === "error" && "error" in event.data && "message" in event.data
+  return event.type === BridgeStreamType.ERROR && "error" in event.data && "message" in event.data
 }
 
 export function isPingEvent(event: StreamEvent): event is StreamEvent & { data: PingEventData } {
-  return event.type === "ping"
+  return event.type === BridgeStreamType.PING
 }
 
 export function isDoneEvent(event: StreamEvent): event is StreamEvent & { data: DoneEventData } {
-  return event.type === "done"
+  return event.type === BridgeStreamType.DONE
 }
 
 export function isInterruptEvent(event: StreamEvent): event is StreamEvent & { data: InterruptEventData } {
-  return event.type === "interrupt" && "message" in event.data && "source" in event.data
+  return event.type === BridgeStreamType.INTERRUPT && "message" in event.data && "source" in event.data
 }

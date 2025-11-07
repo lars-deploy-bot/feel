@@ -48,7 +48,7 @@ export function verifySessionToken(token: string): SessionPayload | null {
     if (error instanceof TokenExpiredError) {
       console.log("[JWT] Token expired")
     } else if (error instanceof JsonWebTokenError) {
-      console.error("[JWT] Invalid token:", error.message)
+      console.error("[JWT] Invalid token:", (error as Error).message)
     } else {
       console.error("[JWT] Token verification failed:", error)
     }

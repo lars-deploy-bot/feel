@@ -1,4 +1,12 @@
-import type { SDKMessage, SDKResultMessage } from "@/features/chat/types/sdk-types"
+import {
+  type BridgeCompleteMessage,
+  type BridgeErrorMessage,
+  type BridgeInterruptSource,
+  type BridgeMessageEvent,
+  type BridgeStartMessage,
+  BridgeStreamType,
+} from "@/features/chat/lib/streaming/ndjson"
+import type { SDKMessage } from "@/features/chat/types/sdk-types"
 import {
   isErrorResultMessage,
   isSDKAssistantMessage,
@@ -13,34 +21,17 @@ import {
   isInterruptEvent,
   isMessageEvent,
   isPingEvent,
-  isResultEvent,
-  isSessionEvent,
   isStartEvent,
 } from "@/features/chat/types/stream"
-import { type ErrorCode, getErrorHelp, getErrorMessage } from "@/lib/error-codes"
+import { getErrorHelp, getErrorMessage } from "@/lib/error-codes"
 
-// Stream event types
-export interface StreamEvent {
-  type: "start" | "message" | "session" | "result" | "complete" | "error" | "ping" | "done" | "interrupt"
-  requestId: string
-  timestamp: string
-  data:
-    | StartEventData
-    | MessageEventData
-    | SessionEventData
-    | CompleteEventData
-    | ErrorEventData
-    | PingEventData
-    | DoneEventData
-    | InterruptEventData
-}
+export type StartEventData = BridgeStartMessage["data"]
 
-export interface ErrorEventData {
-  error: ErrorCode
-  message: string
-  details?: Record<string, any> | string // Structured error details or string message
-  code?: ErrorCode // Same as error field, matches ErrorCodes
-}
+export type MessageEventData = BridgeMessageEvent["data"]
+
+export type CompleteEventData = BridgeCompleteMessage["data"]
+
+export type ErrorEventData = BridgeErrorMessage["data"]
 
 export type PingEventData = Record<string, never>
 
@@ -48,36 +39,27 @@ export type DoneEventData = Record<string, never>
 
 export interface InterruptEventData {
   message: string
-  source: "http_abort" | "client_cancel"
+  source: BridgeInterruptSource
 }
 
-export interface StartEventData {
-  host: string
-  cwd: string
-  message: string
-  messageLength: number
-  isResume?: boolean
-}
-
-export interface SessionEventData {
-  sessionId: string
-}
-
-export interface MessageEventData {
-  messageCount: number
-  messageType: string
-  content: SDKMessage
-}
-
-export interface CompleteEventData {
-  totalMessages: number
-  result: SDKResultMessage | null
+export interface StreamEvent {
+  type: BridgeStreamType
+  requestId: string
+  timestamp: string
+  data:
+    | StartEventData
+    | MessageEventData
+    | CompleteEventData
+    | ErrorEventData
+    | PingEventData
+    | DoneEventData
+    | InterruptEventData
 }
 
 // Message types for UI
 export type UIMessage = {
   id: string
-  type: "user" | "start" | "session" | "sdk_message" | "result" | "complete" | "compact_boundary" | "interrupt"
+  type: "user" | "start" | "sdk_message" | "result" | "complete" | "compact_boundary" | "interrupt"
   content: any
   timestamp: Date
   isStreaming?: boolean
@@ -101,41 +83,39 @@ export function parseStreamEvent(event: StreamEvent): UIMessage | null {
     }
   }
 
-  if (isSessionEvent(event)) {
-    // Session events are internal - don't create UI messages for them
-    return null
-  }
-
   if (isMessageEvent(event)) {
-    const content = event.data.content
+    const content = event.data.content as SDKMessage
 
-    // Handle system messages with special subtypes (e.g., compact_boundary)
-    // See: apps/web/features/chat/lib/unknown-message-types.json for documentation
-    if (content.type === "system" && content.subtype === "compact_boundary") {
-      // This is an internal SDK message about context compaction - show visual indicator
+    if (content.type === "system" && (content as any).subtype === "compact_boundary") {
       console.log(
-        `[MessageParser] Context compaction triggered at ${content.compact_metadata?.pre_tokens || "unknown"} tokens`,
+        `[MessageParser] Context compaction triggered at ${(content as any).compact_metadata?.pre_tokens || "unknown"} tokens`,
       )
       return {
-        id: `${event.requestId}-compact-${content.uuid}`,
+        id: `${event.requestId}-compact-${(content as any).uuid}`,
         type: "compact_boundary",
         content: content,
         ...baseMessage,
       }
     }
 
-    // If this is an assistant message with tool_use, store the mapping
-    if (content.type === "assistant" && content.message?.content && Array.isArray(content.message.content)) {
-      content.message.content.forEach((item: any) => {
+    if (
+      content.type === "assistant" &&
+      (content as any).message?.content &&
+      Array.isArray((content as any).message.content)
+    ) {
+      ;(content as any).message.content.forEach((item: any) => {
         if (item.type === "tool_use" && item.id && item.name) {
           toolUseMap.set(item.id, item.name)
         }
       })
     }
 
-    // If this is a user message with tool_result, attach tool names
-    if (content.type === "user" && content.message?.content && Array.isArray(content.message.content)) {
-      content.message.content.forEach((item: any) => {
+    if (
+      content.type === "user" &&
+      (content as any).message?.content &&
+      Array.isArray((content as any).message.content)
+    ) {
+      ;(content as any).message.content.forEach((item: any) => {
         if (item.type === "tool_result" && item.tool_use_id) {
           item.tool_name = toolUseMap.get(item.tool_use_id) || "Tool"
         }
@@ -150,16 +130,7 @@ export function parseStreamEvent(event: StreamEvent): UIMessage | null {
     }
   }
 
-  if (isResultEvent(event)) {
-    return {
-      id: `${event.requestId}-result`,
-      type: "result",
-      content: event.data,
-      ...baseMessage,
-    }
-  }
-
-  if (event.type === "complete") {
+  if (event.type === BridgeStreamType.COMPLETE) {
     return {
       id: `${event.requestId}-complete`,
       type: "complete",
@@ -168,16 +139,14 @@ export function parseStreamEvent(event: StreamEvent): UIMessage | null {
     }
   }
 
-  if (event.type === "error") {
+  if (event.type === BridgeStreamType.ERROR) {
     const errorData = event.data as ErrorEventData
     const errorCode = errorData.code || errorData.error
 
-    // Use error registry for user-friendly messages
     const details = typeof errorData.details === "object" ? errorData.details : undefined
     const userMessage = getErrorMessage(errorCode, details) || errorData.message
     const helpText = getErrorHelp(errorCode, details)
 
-    // Format details if it's an object
     let detailsText = ""
     if (errorData.details && typeof errorData.details === "object") {
       detailsText = JSON.stringify(errorData.details, null, 2)
@@ -185,7 +154,6 @@ export function parseStreamEvent(event: StreamEvent): UIMessage | null {
       detailsText = String(errorData.details)
     }
 
-    // Build full error message with help text if available
     let fullMessage = userMessage
     if (helpText) {
       fullMessage += `\n\n${helpText}`
@@ -207,13 +175,11 @@ export function parseStreamEvent(event: StreamEvent): UIMessage | null {
     }
   }
 
-  if (event.type === "ping") {
-    // Don't create UI messages for ping events - they're just keepalive
+  if (event.type === BridgeStreamType.PING) {
     return null
   }
 
-  if (event.type === "done") {
-    // Optional: create a subtle completion indicator
+  if (event.type === BridgeStreamType.DONE) {
     return {
       id: `${event.requestId}-done`,
       type: "complete",
@@ -243,12 +209,10 @@ export {
   isInterruptEvent,
   isMessageEvent,
   isPingEvent,
-  isResultEvent,
   isSDKAssistantMessage,
   isSDKResultMessage,
   isSDKSystemMessage,
   isSDKUserMessage,
-  isSessionEvent,
   isStartEvent,
 }
 
@@ -256,7 +220,6 @@ export {
 export function getMessageComponentType(message: UIMessage): string {
   if (message.type === "user") return "user"
   if (message.type === "start") return "start"
-  if (message.type === "session") return "session"
   if (message.type === "complete") return "complete"
   if (message.type === "compact_boundary") return "compact_boundary"
   if (message.type === "interrupt") return "interrupt"

@@ -13,18 +13,19 @@ import { DevTerminal } from "@/features/chat/components/DevTerminal"
 import { SubdomainInitializer } from "@/features/chat/components/SubdomainInitializer"
 import { ThinkingGroup } from "@/features/chat/components/ThinkingGroup"
 import { ThinkingSpinner } from "@/features/chat/components/ThinkingSpinner"
-import { sendClientError } from "@/features/chat/lib/dev-client-error"
-import { DevTerminalProvider, useDevTerminal } from "@/features/chat/lib/dev-terminal-context"
+import { sendClientError } from "@/features/chat/lib/send-client-error"
+import { ClientError, ClientRequest, DevTerminalProvider, useDevTerminal } from "@/features/chat/lib/dev-terminal-context"
 import { groupMessages } from "@/features/chat/lib/message-grouper"
 import { parseStreamEvent, type StreamEvent, type UIMessage } from "@/features/chat/lib/message-parser"
 import { renderMessage } from "@/features/chat/lib/message-renderer"
+import { BridgeInterruptSource, BridgeStreamType } from "@/features/chat/lib/streaming/ndjson"
 import { buildPromptWithAttachments } from "@/features/chat/utils/prompt-builder"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
 import type { StructuredError } from "@/lib/error-codes"
 import { getErrorHelp, getErrorMessage } from "@/lib/error-codes"
 import { HttpError } from "@/lib/errors"
 import { isRetryableError, retryWithBackoff } from "@/lib/retry"
-import { isDevelopment, useDebugStore, useDebugVisible } from "@/lib/stores/debug-store"
+import { isDevelopment, useDebugActions, useDebugVisible, useSSETerminal } from "@/lib/stores/debug-store"
 import { useLLMStore } from "@/lib/stores/llmStore"
 
 const SUGGESTIONS = [
@@ -57,9 +58,9 @@ function ChatPageContent() {
   const chatInputRef = useRef<ChatInputHandle>(null)
   const dragCounter = useRef(0)
   const photoButtonRef = useRef<HTMLButtonElement>(null)
-  const toggleView = useDebugStore(state => state.toggleView)
+  const { toggleView } = useDebugActions()
   const isDebugView = useDebugVisible()
-  const showSSETerminal = useDebugStore(state => state.showSSETerminal)
+  const showSSETerminal = useSSETerminal()
   const { addEvent: addDevEvent } = useDevTerminal()
   const { workspace, isTerminal, mounted, setWorkspace } = useWorkspace({ redirectOnMissing: "/" })
   const { apiKey: userApiKey, model: userModel } = useLLMStore()
@@ -201,7 +202,7 @@ function ChatPageContent() {
 
           sendClientError({
             conversationId,
-            errorType: "timeout_error",
+            errorType: ClientError.TIMEOUT_ERROR,
             data: {
               message: "Request timeout - no response received in 60s",
               timeoutSeconds: 60,
@@ -215,23 +216,20 @@ function ChatPageContent() {
 
       // Log outgoing request to dev terminal (dev mode only)
       if (isDevelopment()) {
-        addDevEvent({
-          eventName: "outgoing_request",
-          event: {
-            type: "start",
-            requestId: conversationId,
-            timestamp: new Date().toISOString(),
-            data: {
-              endpoint: "/api/claude/stream",
-              method: "POST",
-              body: requestBody,
-            },
-          },
-          rawSSE: `event: outgoing_request\ndata: ${JSON.stringify({
+        const requestEvent = {
+          type: ClientRequest.MESSAGE,
+          requestId: conversationId,
+          timestamp: new Date().toISOString(),
+          data: {
             endpoint: "/api/claude/stream",
             method: "POST",
             body: requestBody,
-          })}\n\n`,
+          },
+        }
+        addDevEvent({
+          eventName: ClientRequest.MESSAGE,
+          event: requestEvent,
+          rawSSE: JSON.stringify(requestEvent) + '\n',
         })
       }
 
@@ -290,7 +288,7 @@ function ChatPageContent() {
       let consecutiveParseErrors = 0
       const MAX_CONSECUTIVE_PARSE_ERRORS = 10 // Increased from 3
 
-      // Buffer for incomplete SSE chunks
+      // Buffer for incomplete NDJSON lines
       let buffer = ""
 
       try {
@@ -301,52 +299,33 @@ function ChatPageContent() {
           // Append new chunk to buffer
           buffer += decoder.decode(value, { stream: true })
 
-          // Split by double newline (SSE event boundary)
-          const events = buffer.split("\n\n")
+          // Split by newline (NDJSON line boundary)
+          const lines = buffer.split("\n")
 
-          // Keep the last incomplete event in the buffer
-          buffer = events.pop() || ""
+          // Keep the last incomplete line in the buffer
+          buffer = lines.pop() || ""
 
-          for (const eventBlock of events) {
-            if (!eventBlock.trim()) continue
+          for (const line of lines) {
+            if (!line.trim()) continue
 
-            const lines = eventBlock.split("\n")
-            let currentEvent = ""
-            const currentEventData = eventBlock
+            // Parse NDJSON line (one JSON message per line)
+            try {
+              const eventData: StreamEvent = JSON.parse(line)
 
-            for (const line of lines) {
-              if (line.startsWith("event: ")) {
-                currentEvent = line.slice(7).trim()
-              } else if (line.startsWith("data: ")) {
-                const dataLine = line.slice(6)
+              // Validate message structure
+              if (!eventData.requestId || !eventData.timestamp || !eventData.type) {
+                console.error("[Chat] Invalid message structure:", eventData)
+                consecutiveParseErrors++
 
-                // Parse JSON once
-                try {
-                  const rawData = JSON.parse(dataLine)
-
-                  // Capture to dev terminal (dev mode only)
-                  if (isDevelopment()) {
-                    if (currentEvent.startsWith("bridge_") && rawData.requestId && rawData.timestamp && rawData.type) {
-                      addDevEvent({
-                        eventName: currentEvent,
-                        event: rawData as StreamEvent,
-                        rawSSE: currentEventData,
-                      })
-                    } else if (currentEvent === "done") {
-                      // Capture done event, skip ping (filtered in DevTerminal)
-                      addDevEvent({
-                        eventName: currentEvent,
-                        event: {
-                          type: currentEvent as "done",
-                          requestId: "n/a",
-                          timestamp: new Date().toISOString(),
-                          data: rawData,
-                        },
-                        rawSSE: currentEventData,
-                      })
-                    }
-                    // Skip ping events entirely - not displayed in terminal
-                  }
+                sendClientError({
+                  conversationId,
+                  errorType: ClientError.INVALID_EVENT_STRUCTURE,
+                  data: {
+                    message: eventData,
+                    consecutiveErrors: consecutiveParseErrors,
+                  },
+                  addDevEvent,
+                })
 
                   // Process bridge events for UI
                   if (currentEvent.startsWith("bridge_")) {
@@ -388,7 +367,7 @@ function ChatPageContent() {
 
                   sendClientError({
                     conversationId,
-                    errorType: "parse_error",
+                    errorType: ClientError.CRITICAL_PARSE_ERROR,
                     data: {
                       consecutiveErrors: consecutiveParseErrors,
                       line: dataLine.slice(0, 200),
@@ -428,6 +407,72 @@ function ChatPageContent() {
                     break
                   }
                 }
+              } else {
+                // Valid message - capture to dev terminal and process
+                if (isDevelopment()) {
+                  addDevEvent({
+                    eventName: eventData.type,
+                    event: eventData,
+                    rawSSE: line,
+                  })
+                }
+
+                // Process the message for UI
+                receivedAnyMessage = true
+                const message = parseStreamEvent(eventData)
+                if (message) {
+                  setMessages(prev => [...prev, message])
+                }
+
+                consecutiveParseErrors = 0
+              }
+            } catch (parseError) {
+              console.error("[Chat] Failed to parse NDJSON line:", {
+                line: line.slice(0, 200),
+                error: parseError,
+              })
+              consecutiveParseErrors++
+
+              sendClientError({
+                conversationId,
+                errorType: ClientError.PARSE_ERROR,
+                data: {
+                  consecutiveErrors: consecutiveParseErrors,
+                  line: line.slice(0, 200),
+                  error: parseError instanceof Error ? parseError.message : String(parseError),
+                },
+                addDevEvent,
+              })
+
+              if (consecutiveParseErrors >= MAX_CONSECUTIVE_PARSE_ERRORS) {
+                console.error("[Chat] Too many consecutive parse errors, stopping stream", consecutiveParseErrors)
+
+                sendClientError({
+                  conversationId,
+                  errorType: ClientError.CRITICAL_PARSE_ERROR,
+                  data: {
+                    consecutiveErrors: consecutiveParseErrors,
+                    message: "Too many consecutive parse errors, stopping stream",
+                  },
+                  addDevEvent,
+                })
+
+                setMessages(prev => [
+                  ...prev,
+                  {
+                    id: Date.now().toString(),
+                    type: "sdk_message",
+                    content: {
+                      type: "result",
+                      is_error: true,
+                      result:
+                        "Connection unstable: Multiple parse errors detected. Please try again or refresh the page.",
+                    },
+                    timestamp: new Date(),
+                  },
+                ])
+                reader.cancel()
+                break
               }
             }
           }
@@ -435,7 +480,7 @@ function ChatPageContent() {
       } catch (readerError) {
         sendClientError({
           conversationId,
-          errorType: "reader_error",
+          errorType: ClientError.READER_ERROR,
           data: {
             receivedMessages: receivedAnyMessage,
             error: readerError instanceof Error ? readerError.message : String(readerError),
@@ -462,7 +507,7 @@ function ChatPageContent() {
         if (error instanceof HttpError) {
           sendClientError({
             conversationId,
-            errorType: "http_error",
+            errorType: ClientError.HTTP_ERROR,
             data: {
               status: error.status,
               statusText: error.statusText,
@@ -474,7 +519,7 @@ function ChatPageContent() {
           // General unexpected errors
           sendClientError({
             conversationId,
-            errorType: "general_error",
+            errorType: ClientError.GENERAL_ERROR,
             data: {
               errorName: error.name,
               message: error.message,
@@ -572,28 +617,20 @@ function ChatPageContent() {
   }
 
   function stopStreaming() {
-    // Log interrupt to dev terminal before aborting (dev mode only)
     if (isDevelopment()) {
-      addDevEvent({
-        eventName: "bridge_interrupt",
-        event: {
-          type: "interrupt",
-          requestId: conversationId,
-          timestamp: new Date().toISOString(),
-          data: {
-            message: "Response interrupted by user",
-            source: "client_stop_button",
-          },
+      const interruptEvent = {
+        type: ClientRequest.INTERRUPT,
+        requestId: conversationId,
+        timestamp: new Date().toISOString(),
+        data: {
+          message: "Response interrupted by user",
+          source: BridgeInterruptSource.CLIENT_CANCEL,
         },
-        rawSSE: `event: bridge_interrupt\ndata: ${JSON.stringify({
-          type: "interrupt",
-          requestId: conversationId,
-          timestamp: new Date().toISOString(),
-          data: {
-            message: "Response interrupted by user",
-            source: "client_stop_button",
-          },
-        })}\n\n`,
+      }
+      addDevEvent({
+        eventName: ClientRequest.INTERRUPT,
+        event: interruptEvent,
+        rawSSE: JSON.stringify(interruptEvent),
       })
     }
 
@@ -660,7 +697,7 @@ function ChatPageContent() {
     <div className="h-[100dvh] flex flex-row overflow-hidden dark:bg-[#1a1a1a] dark:text-white">
       <div
         className="flex-1 flex flex-col overflow-hidden transition-all relative"
-        role="region"
+        role="application"
         aria-label="Chat area"
         onDragEnter={handleChatDragEnter}
         onDragLeave={handleChatDragLeave}

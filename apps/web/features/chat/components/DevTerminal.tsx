@@ -1,6 +1,7 @@
 "use client"
 import { useEffect, useRef, useState } from "react"
 import { truncateDeep } from "@/lib/utils"
+import { BridgeStreamType } from "../lib/streaming/ndjson"
 import { useDevTerminal } from "../lib/dev-terminal-context"
 
 export function DevTerminal() {
@@ -65,7 +66,7 @@ export function DevTerminal() {
   const copyAllMessages = async () => {
     try {
       const allMessages = events
-        .filter(devEvent => devEvent.eventName !== "ping")
+        .filter(devEvent => devEvent.eventName !== BridgeStreamType.PING)
         .map(devEvent => {
           try {
             // Try to return the parsed event object
@@ -167,7 +168,7 @@ export function DevTerminal() {
             <div className="text-green-700">No events yet...</div>
           ) : (
             events
-              .filter(devEvent => devEvent.eventName !== "ping")
+              .filter(devEvent => devEvent.eventName !== BridgeStreamType.PING)
               .map((devEvent, index) => {
                 // Try to beautify the parsed data
                 let displayContent: string
@@ -227,7 +228,7 @@ export function DevTerminal() {
       {!isMinimized && (
         <div className="px-3 py-2 border-t border-green-700/30 bg-black/90 text-green-700 text-[10px]">
           {(() => {
-            const visibleCount = events.filter(e => e.eventName !== "ping").length
+            const visibleCount = events.filter(e => e.eventName !== BridgeStreamType.PING).length
             return `${visibleCount} event${visibleCount !== 1 ? "s" : ""} • ${visibleCount > 0 ? "live data" : "waiting..."}`
           })()}
         </div>

@@ -16,9 +16,9 @@
  * To enable debug mode: Toggle debug view in settings or use debug store.
  */
 
-import { useState } from "react"
 import type { SDKAssistantMessage } from "@anthropic-ai/claude-agent-sdk"
 import { ChevronRight } from "lucide-react"
+import { useState } from "react"
 import { MarkdownDisplay } from "@/components/ui/chat/format/MarkdownDisplay"
 import { ToolInputRouter } from "@/components/ui/chat/tools/ToolInputRouter"
 import { useDebugVisible } from "@/lib/stores/debug-store"
@@ -98,7 +98,14 @@ function ToolUseItem({ item }: { item: ContentItem }): React.ReactNode {
 
     const inlineDetail = getInlineDetail(toolItem.name, toolItem.input)
 
-    return <DebugToolItem toolItem={toolItem} icon={Icon} actionLabel={getActionLabel(toolItem.name)} inlineDetail={inlineDetail} />
+    return (
+      <DebugToolItem
+        toolItem={toolItem}
+        icon={Icon}
+        actionLabel={getActionLabel(toolItem.name)}
+        inlineDetail={inlineDetail}
+      />
+    )
   }
 
   // Unhandled content type
@@ -110,7 +117,7 @@ function DebugToolItem({
   toolItem,
   icon: Icon,
   actionLabel,
-  inlineDetail
+  inlineDetail,
 }: {
   toolItem: { name: string; input: Record<string, unknown> }
   icon: React.ComponentType<{ size: number; className?: string }>
@@ -126,10 +133,7 @@ function DebugToolItem({
         onClick={() => setIsExpanded(!isExpanded)}
         className="flex items-center gap-1.5 text-xs font-normal text-black/35 dark:text-white/35 hover:text-black/50 dark:hover:text-white/50 transition-colors"
       >
-        <ChevronRight
-          size={12}
-          className={`opacity-60 transition-transform ${isExpanded ? "rotate-90" : ""}`}
-        />
+        <ChevronRight size={12} className={`opacity-60 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
         <Icon size={12} className="opacity-60" />
         <span>{toolItem.name}</span>
         <span className="text-black/25 dark:text-white/25">({actionLabel})</span>

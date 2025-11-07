@@ -1,14 +1,39 @@
 import { type Options, query } from "@anthropic-ai/claude-agent-sdk"
 import type { SessionStore } from "@/features/auth/lib/sessionStore"
+import type { SDKMessage } from "@/features/chat/types/sdk-types"
 import { extractSessionId, getMessageStreamData } from "@/features/chat/types/sdk-types"
 import { type ErrorCode, ErrorCodes } from "@/lib/error-codes"
-import { formatMessage } from "./formatMessage"
+import { formatMessage } from "../formatMessage"
+import {
+  BridgeInterruptSource,
+  createCompleteMessage,
+  createDoneMessage,
+  createErrorMessage,
+  createInterruptMessage,
+  createMessageEvent,
+  createPingMessage,
+  createStartMessage,
+  encodeNDJSON,
+  type StreamMessage,
+} from "./ndjson"
 
-export interface StreamEvent {
-  type: "start" | "message" | "session" | "complete" | "error" | "interrupt"
-  requestId: string
-  timestamp: string
-  data: unknown
+// Re-export for compatibility
+export type StreamEvent = StreamMessage
+
+/**
+ * Filter system init message to only expose allowed SDK tools.
+ * The SDK may report all available tools; this restricts visibility to workspace-scoped operations.
+ * Modifies message in-place and returns it for chaining.
+ */
+function filterAllowedTools(message: SDKMessage): SDKMessage {
+  const ALLOWED_SDK_TOOLS = ["Write", "Edit", "Read", "Glob", "Grep"]
+  const msg = message as Record<string, unknown>
+
+  if (msg.type === "system" && msg.subtype === "init" && Array.isArray(msg.tools)) {
+    msg.tools = (msg.tools as string[]).filter(tool => ALLOWED_SDK_TOOLS.includes(tool))
+  }
+
+  return message
 }
 
 export interface StreamOptions {
@@ -41,7 +66,6 @@ export function createClaudeStream({
   onClose,
   maxTurns = 25,
 }: StreamOptions): { stream: ReadableStream } {
-  const encoder = new TextEncoder()
   const sdkAbort = new AbortController()
   let cancelled = false
   let conversationUnlocked = false
@@ -63,7 +87,7 @@ export function createClaudeStream({
   const onHttpAbort = async () => {
     // Send interrupt event if stream is still active
     if (streamController) {
-      sendInterruptEvent(streamController, "http_abort")
+      sendInterruptEvent(streamController, BridgeInterruptSource.HTTP_ABORT)
     }
 
     try {
@@ -85,27 +109,17 @@ export function createClaudeStream({
   }
   requestSignal?.addEventListener("abort", onHttpAbort, { once: true })
 
-  // Helper to send interrupt event
+  // Helper to send interrupt event with typed source
   let interruptSent = false
   const sendInterruptEvent = (
     controller: ReadableStreamDefaultController<Uint8Array>,
-    source: "http_abort" | "client_cancel",
+    source: BridgeInterruptSource,
   ) => {
     if (interruptSent) return // Only send once
     interruptSent = true
 
-    const event: StreamEvent = {
-      type: "interrupt",
-      requestId,
-      timestamp: new Date().toISOString(),
-      data: {
-        message: "Response interrupted by user",
-        source,
-      },
-    }
-    const eventData = `event: bridge_interrupt\ndata: ${JSON.stringify(event)}\n\n`
     try {
-      controller.enqueue(encoder.encode(eventData))
+      controller.enqueue(encodeNDJSON(createInterruptMessage(requestId, source)))
       console.log(`[Stream ${requestId}] Interrupt event sent (source: ${source})`)
     } catch {
       console.log(`[Stream ${requestId}] Could not send interrupt event (stream may be closed)`)
@@ -116,24 +130,15 @@ export function createClaudeStream({
     start(controller) {
       streamController = controller
       ;(async () => {
-        const sendEvent = (eventType: StreamEvent["type"], data: unknown) => {
-          const event: StreamEvent = {
-            type: eventType,
-            requestId,
-            timestamp: new Date().toISOString(),
-            data,
-          }
-          const eventData = `event: bridge_${eventType}\ndata: ${JSON.stringify(event)}\n\n`
-          controller.enqueue(encoder.encode(eventData))
-
-          // Also log for server debugging
-          console.log(`[Stream ${requestId}] Event: ${eventType}`, data)
+        const sendEvent = (message: StreamMessage) => {
+          controller.enqueue(encodeNDJSON(message))
+          console.log(`[Stream ${requestId}] Event: ${message.type}`, message.data)
         }
 
         // Optional heartbeat to keep connection alive (every 20s)
         const tick = setInterval(() => {
           if (!cancelled && !sdkAbort.signal.aborted) {
-            controller.enqueue(encoder.encode("event: ping\ndata: {}\n\n"))
+            controller.enqueue(encodeNDJSON(createPingMessage(requestId)))
           }
         }, 20000)
 
@@ -141,19 +146,21 @@ export function createClaudeStream({
         const killer = setTimeout(() => sdkAbort.abort("timeout"), 120000)
 
         // Declare variables outside try block so they're accessible in catch
-        let queryResult: any = null
+        let queryResult: SDKMessage | null = null
         let messageCount = 0
         let turnCount = 0 // Track conversation turns (assistant responses)
         let sessionSaved = !!claudeOptions.resume // Already had one?
 
         try {
-          sendEvent("start", {
-            host,
-            cwd,
-            message: "Starting Claude query...",
-            messageLength: message.length,
-            isResume: !!claudeOptions.resume,
-          })
+          sendEvent(
+            createStartMessage(requestId, {
+              host,
+              cwd,
+              message: "Starting Claude query...",
+              messageLength: message.length,
+              isResume: !!claudeOptions.resume,
+            }),
+          )
           console.log(`[Stream ${requestId}] Query created, starting iteration...`)
 
           for await (const m of q) {
@@ -166,18 +173,22 @@ export function createClaudeStream({
 
               // Send warning when approaching limit
               if (turnCount === maxTurns - 2) {
-                sendEvent("message", {
-                  messageCount: messageCount + 0.5, // Insert between messages
-                  messageType: "warning",
-                  content: {
-                    type: "warning",
-                    message: `⚠️ Approaching conversation limit: ${turnCount}/${maxTurns} turns used. Consider starting a new conversation soon.`,
-                  },
-                })
+                sendEvent(
+                  createMessageEvent(requestId, {
+                    messageCount: messageCount + 0.5,
+                    messageType: "bridge_warning",
+                    content: {
+                      type: "bridge_warning",
+                      message: `⚠️ Approaching conversation limit: ${turnCount}/${maxTurns} turns used. Consider starting a new conversation soon.`,
+                    },
+                  }),
+                )
               }
             } else {
               console.log(`[Stream ${requestId}] Message ${messageCount}: type=${m.type}`)
             }
+
+            const processedMessageForStream = filterAllowedTools(m)
 
             // Capture and persist the session_id as soon as we see system:init
             if (!sessionSaved) {
@@ -187,7 +198,6 @@ export function createClaudeStream({
                   await conversation.store.set(conversation.key, sessionId)
                   console.log(`[Stream ${requestId}] Session saved: ${sessionId}`)
                   sessionSaved = true
-                  sendEvent("session", { sessionId })
                 } catch (error) {
                   console.error(`[Stream ${requestId}] Failed to save session:`, error)
                 }
@@ -195,18 +205,20 @@ export function createClaudeStream({
             }
 
             // Format/minimize message content if it's a result message
-            let processedMessage = m
-            if (m.type === "result") {
+            let processedMessage = processedMessageForStream
+            if (processedMessage.type === "result") {
               console.log(`[Stream ${requestId}] Formatting result message...`)
-              processedMessage = await formatMessage(m)
+              processedMessage = await formatMessage(processedMessage)
             }
 
             // Stream every message to frontend
             const messageData = getMessageStreamData(processedMessage)
-            sendEvent("message", {
-              messageCount,
-              ...messageData,
-            })
+            sendEvent(
+              createMessageEvent(requestId, {
+                messageCount,
+                ...messageData,
+              }),
+            )
 
             if (processedMessage.type === "result") {
               queryResult = processedMessage
@@ -217,16 +229,18 @@ export function createClaudeStream({
           console.log(`[Stream ${requestId}] Query iteration completed. Total messages: ${messageCount}`)
 
           // Send completion event
-          sendEvent("complete", {
-            totalMessages: messageCount,
-            totalTurns: turnCount,
-            maxTurns: maxTurns,
-            result: queryResult,
-            message: `Claude query completed successfully (${turnCount}/${maxTurns} turns used)`,
-          })
+          sendEvent(
+            createCompleteMessage(requestId, {
+              totalMessages: messageCount,
+              totalTurns: turnCount,
+              maxTurns: maxTurns,
+              result: queryResult,
+              message: `Claude query completed successfully (${turnCount}/${maxTurns} turns used)`,
+            }),
+          )
 
           // Normal end
-          controller.enqueue(encoder.encode("event: done\ndata: {}\n\n"))
+          sendEvent(createDoneMessage(requestId))
           console.log(`[Stream ${requestId}] === STREAM SUCCESS ===`)
         } catch (error) {
           console.error(`[Stream ${requestId}] Stream error:`, error)
@@ -289,12 +303,14 @@ export function createClaudeStream({
               userMessage = `Conversation reached maximum turn limit (${turnCount}/${maxTurns} turns). Please start a new conversation to continue working.`
             }
 
-            sendEvent("error", {
-              error: errorCode,
-              code: errorCode,
-              message: userMessage,
-              details: errorMessage,
-            })
+            sendEvent(
+              createErrorMessage(requestId, {
+                error: errorCode,
+                code: errorCode,
+                message: userMessage,
+                details: errorMessage,
+              }),
+            )
           }
         } finally {
           clearInterval(tick)
@@ -318,7 +334,7 @@ export function createClaudeStream({
 
       // Send interrupt event before closing
       if (streamController) {
-        sendInterruptEvent(streamController, "client_cancel")
+        sendInterruptEvent(streamController, BridgeInterruptSource.CLIENT_CANCEL)
       }
 
       try {
@@ -342,12 +358,12 @@ export function createClaudeStream({
 }
 
 /**
- * Helper to create SSE Response with proper headers
+ * Helper to create NDJSON Response with proper headers
  */
 export function createSSEResponse(stream: ReadableStream): Response {
   return new Response(stream, {
     headers: {
-      "Content-Type": "text/event-stream; charset=utf-8",
+      "Content-Type": "application/x-ndjson; charset=utf-8",
       "Cache-Control": "no-cache, no-transform",
       Connection: "keep-alive",
       "X-Accel-Buffering": "no",

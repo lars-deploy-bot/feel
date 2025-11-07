@@ -20,9 +20,7 @@ export function EditInput({ file_path, old_string, new_string, replace_all }: Ed
         </div>
       </div>
 
-      <div className="text-black/50 dark:text-white/50 font-mono text-[10px] break-all">
-        {file_path}
-      </div>
+      <div className="text-black/50 dark:text-white/50 font-mono text-[10px] break-all">{file_path}</div>
 
       <div className="space-y-2">
         <div>

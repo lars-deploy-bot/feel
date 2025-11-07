@@ -1,4 +1,5 @@
 import type { Route } from "@playwright/test"
+import { ErrorCodes } from "@/lib/error-codes"
 import { StreamBuilder } from "./stream-builder"
 
 interface HandlerOptions {
@@ -19,11 +20,11 @@ function createStreamHandler(builder: StreamBuilder, options: HandlerOptions = {
       const errorStream = new StreamBuilder()
         .start()
         .error(errorMessage || "Internal error")
-        .toSSE()
+        .toNDJSON()
 
       await route.fulfill({
         status: 200,
-        contentType: "text/event-stream; charset=utf-8",
+        contentType: "application/x-ndjson; charset=utf-8",
         body: errorStream,
       })
       return
@@ -31,13 +32,13 @@ function createStreamHandler(builder: StreamBuilder, options: HandlerOptions = {
 
     await route.fulfill({
       status: 200,
-      contentType: "text/event-stream; charset=utf-8",
+      contentType: "application/x-ndjson; charset=utf-8",
       headers: {
         "Cache-Control": "no-cache, no-transform",
         Connection: "keep-alive",
         "X-Accel-Buffering": "no",
       },
-      body: builder.toSSE(),
+      body: builder.toNDJSON(),
     })
   }
 }
@@ -90,10 +91,15 @@ export const handlers = {
 
   maxTurns: (options?: HandlerOptions) =>
     createStreamHandler(
-      new StreamBuilder().start().error("Conversation reached maximum turn limit (25/25 turns)", "ERROR_MAX_TURNS"),
+      new StreamBuilder()
+        .start()
+        .error("Conversation reached maximum turn limit (25/25 turns)", ErrorCodes.ERROR_MAX_TURNS),
       { ...options, fail: true },
     ),
 
   timeout: (options?: HandlerOptions) =>
-    createStreamHandler(new StreamBuilder().start().error("Request timeout", "TIMEOUT"), { ...options, fail: true }),
+    createStreamHandler(new StreamBuilder().start().error("Request timeout", ErrorCodes.QUERY_FAILED), {
+      ...options,
+      fail: true,
+    }),
 }

@@ -17,9 +17,7 @@ export function ReadInput({ file_path, offset, limit }: ReadInputProps) {
           </div>
         )}
       </div>
-      <div className="text-black/50 dark:text-white/50 font-mono text-[10px] break-all">
-        {file_path}
-      </div>
+      <div className="text-black/50 dark:text-white/50 font-mono text-[10px] break-all">{file_path}</div>
     </div>
   )
 }

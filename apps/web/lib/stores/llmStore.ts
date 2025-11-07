@@ -25,13 +25,14 @@ interface LLMActions {
 }
 
 // Extended type for backwards compatibility
-type LLMStoreWithCompat = LLMState & LLMActions & {
-  // Legacy direct action exports for backwards compatibility
-  setApiKey: (key: string | null) => void
-  setModel: (model: ClaudeModel) => void
-  setError: (error: string | null) => void
-  clearApiKey: () => void
-}
+type LLMStoreWithCompat = LLMState &
+  LLMActions & {
+    // Legacy direct action exports for backwards compatibility
+    setApiKey: (key: string | null) => void
+    setModel: (model: ClaudeModel) => void
+    setError: (error: string | null) => void
+    clearApiKey: () => void
+  }
 
 export type LLMStore = LLMStoreWithCompat
 

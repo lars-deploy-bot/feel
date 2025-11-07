@@ -1,10 +1,19 @@
 /**
- * Type-safe Claude SSE stream builder
+ * Type-safe Claude NDJSON stream builder
  *
  * Uses actual StreamEvent types from production code to ensure
  * mocks stay in sync with reality.
  */
-import type { StreamEvent } from "@/features/chat/lib/streamHandler"
+
+import type { StreamEvent } from "@/features/chat/lib/streaming/handler"
+import {
+  type BridgeCompleteMessage,
+  type BridgeErrorMessage,
+  type BridgeMessageEvent,
+  type BridgeStartMessage,
+  BridgeStreamType,
+} from "@/features/chat/lib/streaming/ndjson"
+import { type ErrorCode, ErrorCodes } from "@/lib/error-codes"
 
 const FIXED_TIMESTAMP = "2025-01-01T00:00:00.000Z"
 const FIXED_REQUEST_ID = "test-req-123"
@@ -17,8 +26,8 @@ export class StreamBuilder {
    * Add a 'start' event
    */
   start(cwd = "/test", host = "test"): this {
-    this.events.push({
-      type: "start",
+    const startMsg: BridgeStartMessage = {
+      type: BridgeStreamType.START,
       requestId: FIXED_REQUEST_ID,
       timestamp: FIXED_TIMESTAMP,
       data: {
@@ -28,7 +37,8 @@ export class StreamBuilder {
         messageLength: 100,
         isResume: false,
       },
-    })
+    }
+    this.events.push(startMsg)
     return this
   }
 
@@ -37,8 +47,8 @@ export class StreamBuilder {
    */
   text(content: string): this {
     this.msgCount++
-    this.events.push({
-      type: "message",
+    const textMsg: BridgeMessageEvent = {
+      type: BridgeStreamType.MESSAGE,
       requestId: FIXED_REQUEST_ID,
       timestamp: FIXED_TIMESTAMP,
       data: {
@@ -56,7 +66,8 @@ export class StreamBuilder {
           parent_tool_use_id: null,
         },
       },
-    })
+    }
+    this.events.push(textMsg)
     return this
   }
 
@@ -65,8 +76,8 @@ export class StreamBuilder {
    */
   thinking(content: string): this {
     this.msgCount++
-    this.events.push({
-      type: "message",
+    const thinkingMsg: BridgeMessageEvent = {
+      type: BridgeStreamType.MESSAGE,
       requestId: FIXED_REQUEST_ID,
       timestamp: FIXED_TIMESTAMP,
       data: {
@@ -84,7 +95,8 @@ export class StreamBuilder {
           parent_tool_use_id: null,
         },
       },
-    })
+    }
+    this.events.push(thinkingMsg)
     return this
   }
 
@@ -92,12 +104,11 @@ export class StreamBuilder {
    * Add a tool use + tool result pair
    */
   tool(name: string, input: Record<string, unknown>, result: string, isError = false): this {
-    // Tool use message
     this.msgCount++
     const toolId = `tool-${this.msgCount}`
 
-    this.events.push({
-      type: "message",
+    const toolUseMsg: BridgeMessageEvent = {
+      type: BridgeStreamType.MESSAGE,
       requestId: FIXED_REQUEST_ID,
       timestamp: FIXED_TIMESTAMP,
       data: {
@@ -115,12 +126,12 @@ export class StreamBuilder {
           parent_tool_use_id: null,
         },
       },
-    })
+    }
+    this.events.push(toolUseMsg)
 
-    // Tool result message
     this.msgCount++
-    this.events.push({
-      type: "message",
+    const toolResultMsg: BridgeMessageEvent = {
+      type: BridgeStreamType.MESSAGE,
       requestId: FIXED_REQUEST_ID,
       timestamp: FIXED_TIMESTAMP,
       data: {
@@ -143,21 +154,9 @@ export class StreamBuilder {
           },
         },
       },
-    })
+    }
+    this.events.push(toolResultMsg)
 
-    return this
-  }
-
-  /**
-   * Add a session event
-   */
-  session(sessionId = "test-session-123"): this {
-    this.events.push({
-      type: "session",
-      requestId: FIXED_REQUEST_ID,
-      timestamp: FIXED_TIMESTAMP,
-      data: { sessionId },
-    })
     return this
   }
 
@@ -171,8 +170,8 @@ export class StreamBuilder {
       maxTurns: number
     }>,
   ): this {
-    this.events.push({
-      type: "complete",
+    const completeMsg: BridgeCompleteMessage = {
+      type: BridgeStreamType.COMPLETE,
       requestId: FIXED_REQUEST_ID,
       timestamp: FIXED_TIMESTAMP,
       data: {
@@ -183,16 +182,17 @@ export class StreamBuilder {
         message: "Claude query completed successfully (1/25 turns used)",
         ...data,
       },
-    })
+    }
+    this.events.push(completeMsg)
     return this
   }
 
   /**
    * Add an error event
    */
-  error(message: string, code = "QUERY_FAILED"): this {
-    this.events.push({
-      type: "error",
+  error(message: string, code: ErrorCode = ErrorCodes.QUERY_FAILED): this {
+    const errorMsg: BridgeErrorMessage = {
+      type: BridgeStreamType.ERROR,
       requestId: FIXED_REQUEST_ID,
       timestamp: FIXED_TIMESTAMP,
       data: {
@@ -201,16 +201,23 @@ export class StreamBuilder {
         message,
         details: message,
       },
-    })
+    }
+    this.events.push(errorMsg)
     return this
   }
 
   /**
-   * Convert to SSE format
+   * Convert to NDJSON format (one JSON object per line)
    */
-  toSSE(): string {
-    const lines = this.events.map(e => `event: bridge_${e.type}\ndata: ${JSON.stringify(e)}\n\n`)
-    lines.push("event: done\ndata: {}\n\n")
-    return lines.join("")
+  toNDJSON(): string {
+    const lines = this.events.map(e => JSON.stringify(e))
+    const doneMessage: StreamEvent = {
+      type: BridgeStreamType.DONE,
+      requestId: FIXED_REQUEST_ID,
+      timestamp: FIXED_TIMESTAMP,
+      data: {},
+    }
+    lines.push(JSON.stringify(doneMessage))
+    return lines.join("\n")
   }
 }

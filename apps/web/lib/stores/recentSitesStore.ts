@@ -25,12 +25,13 @@ interface RecentSitesActions {
 }
 
 // Extended type for backwards compatibility
-type RecentSitesStoreWithCompat = RecentSitesState & RecentSitesActions & {
-  // Legacy direct action exports for backwards compatibility
-  addSite: (domain: string) => void
-  removeSite: (domain: string) => void
-  clearSites: () => void
-}
+type RecentSitesStoreWithCompat = RecentSitesState &
+  RecentSitesActions & {
+    // Legacy direct action exports for backwards compatibility
+    addSite: (domain: string) => void
+    removeSite: (domain: string) => void
+    clearSites: () => void
+  }
 
 const useRecentSitesStoreBase = create<RecentSitesStoreWithCompat>()(
   persist(

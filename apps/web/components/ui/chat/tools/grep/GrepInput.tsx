@@ -32,9 +32,7 @@ export function GrepInput({
       {path && (
         <div>
           <div className="text-black/50 dark:text-white/50 mb-1">Path:</div>
-          <div className="text-black/60 dark:text-white/60 font-mono text-[10px] break-all">
-            {path}
-          </div>
+          <div className="text-black/60 dark:text-white/60 font-mono text-[10px] break-all">{path}</div>
         </div>
       )}
       <div className="text-black/40 dark:text-white/40 font-normal flex flex-wrap gap-x-2 gap-y-1">

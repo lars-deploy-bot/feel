@@ -1,18 +1,54 @@
 "use client"
 import { createContext, type ReactNode, useContext, useState } from "react"
+import { BridgeStreamType } from "./streaming/ndjson"
 
-// Flexible event type for dev terminal (not strictly typed like StreamEvent from message-parser)
-export interface DevStreamEvent {
-  type: string
+/**
+ * Client Request Types
+ * Events sent from client to bridge
+ */
+export const ClientRequest = {
+  MESSAGE: "client_request_message",
+  INTERRUPT: "client_request_interrupt",
+} as const
+
+export type ClientRequestType = (typeof ClientRequest)[keyof typeof ClientRequest]
+
+/**
+ * Client Error Types
+ * Errors that occur on the client side
+ */
+export const ClientError = {
+  TIMEOUT_ERROR: "client_error_timeout",
+  PARSE_ERROR: "client_error_parse",
+  INVALID_EVENT_STRUCTURE: "client_error_invalid_structure",
+  CRITICAL_PARSE_ERROR: "client_error_critical_parse",
+  READER_ERROR: "client_error_reader",
+  HTTP_ERROR: "client_error_http",
+  GENERAL_ERROR: "client_error_general",
+} as const
+
+export type ClientErrorType = (typeof ClientError)[keyof typeof ClientError]
+
+/**
+ * Dev Event Names - All possible event names in dev terminal
+ * Combines client requests, client errors, and bridge responses
+ */
+export type DevEventName =
+  | ClientRequestType
+  | ClientErrorType
+  | (typeof BridgeStreamType)[keyof typeof BridgeStreamType]
+
+export interface ClientStreamEvent {
+  type: ClientRequestType | ClientErrorType | BridgeStreamType
   requestId: string
   timestamp: string
   data: unknown
 }
 
 export interface DevSSEEvent {
-  event: DevStreamEvent
-  eventName: string // The SSE event name like "bridge_start", "ping", etc.
-  rawSSE: string // The raw SSE format string
+  event: ClientStreamEvent
+  eventName: DevEventName
+  rawSSE: string
 }
 
 interface DevTerminalContextType {

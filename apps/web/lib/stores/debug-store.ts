@@ -21,14 +21,8 @@ interface DebugActions {
   }
 }
 
-// Extended type for backwards compatibility
-type DebugStoreWithCompat = DebugState & DebugActions & {
-  // Legacy direct action exports for backwards compatibility
-  toggleView: () => void
-  toggleSSETerminal: () => void
-  setDebugView: (show: boolean) => void
-  setSSETerminal: (show: boolean) => void
-}
+// Store type
+type DebugStore = DebugState & DebugActions
 
 // Actions interface - grouped under stable object (Guide §14.3)
 interface DebugActions {
@@ -57,9 +51,9 @@ type DebugStoreWithCompat = DebugState &
  * - Debug View: shows metadata, tool details in chat messages
  * - SSE Terminal: shows dev terminal sidebar for event logging
  *
- * Follows Guide §14.3: actions grouped in stable object with backwards compatibility
+ * Follows Guide §14.3: actions grouped in stable object
  */
-const useDebugStoreBase = create<DebugStoreWithCompat>()(
+const useDebugStoreBase = create<DebugStore>()(
   persist(
     set => {
       const actions = {
@@ -72,8 +66,6 @@ const useDebugStoreBase = create<DebugStoreWithCompat>()(
         isDebugView: false,
         showSSETerminal: false,
         actions,
-        // Legacy direct exports for backwards compatibility
-        ...actions,
       }
     },
     {
@@ -91,9 +83,6 @@ export const useSSETerminal = () => useDebugStoreBase(state => state.showSSETerm
 // Actions hook - stable reference (Guide §14.3)
 export const useDebugActions = () => useDebugStoreBase(state => state.actions)
 
-// Legacy export for backwards compatibility
-export const useDebugStore = useDebugStoreBase
-
 // Helper: Check if debug view should be visible
 export function isDevelopment(): boolean {
   return isDev
@@ -104,5 +93,6 @@ export function isDevelopment(): boolean {
  * Only shows in development mode when user has enabled debug view
  */
 export function useDebugVisible(): boolean {
-  return isDev && useDebugView()
+  const debugView = useDebugView()
+  return isDev && debugView
 }

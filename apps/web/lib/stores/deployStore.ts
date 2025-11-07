@@ -47,18 +47,20 @@ interface HistorySlice {
 }
 
 // Extended type for backwards compatibility
-type DeployStoreWithCompat = FormSlice & StatusSlice & HistorySlice & {
-  // Legacy direct action exports for backwards compatibility
-  setDomain: (domain: string) => void
-  setPassword: (password: string) => void
-  resetForm: () => void
-  setIsDeploying: (isDeploying: boolean) => void
-  setDeploymentStatus: (status: DeploymentStatus) => void
-  setDeploymentDomain: (domain: string | null) => void
-  setDeploymentErrors: (errors: string[]) => void
-  addToHistory: (entry: DeploymentHistory) => void
-  clearHistory: () => void
-}
+type DeployStoreWithCompat = FormSlice &
+  StatusSlice &
+  HistorySlice & {
+    // Legacy direct action exports for backwards compatibility
+    setDomain: (domain: string) => void
+    setPassword: (password: string) => void
+    resetForm: () => void
+    setIsDeploying: (isDeploying: boolean) => void
+    setDeploymentStatus: (status: DeploymentStatus) => void
+    setDeploymentDomain: (domain: string | null) => void
+    setDeploymentErrors: (errors: string[]) => void
+    addToHistory: (entry: DeploymentHistory) => void
+    clearHistory: () => void
+  }
 
 export type DeployStore = DeployStoreWithCompat
 
