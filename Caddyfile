@@ -287,16 +287,6 @@ lars.alive.best {
 
 
 
-kapper.alive.best {
-    import common_headers
-    import image_serving
-    reverse_proxy localhost:3359 {
-        header_up Host {host}
-        header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-For {remote_host}
-        header_up X-Forwarded-Proto {scheme}
-    }
-}
 
 julieleclercq.alive.best {
     import common_headers
@@ -937,3 +927,25 @@ meditationtimer-alive-best.preview.terminal.goalive.nl {
 # END PREVIEW SUBDOMAINS (AUTO-GENERATED)
 # ============================================================================
 
+
+components.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3364 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3366 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}

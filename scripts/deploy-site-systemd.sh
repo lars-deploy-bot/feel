@@ -92,7 +92,7 @@ else
 
     # 1.5. Check for AAAA records that might interfere
     echo "🔍 Checking for AAAA records (IPv6)..."
-    AAAA_RECORDS=$(dig +short "$DOMAIN" AAAA | grep -v "^$")
+    AAAA_RECORDS=$(dig +short "$DOMAIN" AAAA | grep -v "^$" || true)
 
     if [ -n "$AAAA_RECORDS" ]; then
         echo "⚠️  WARNING: AAAA records (IPv6) detected for $DOMAIN:"

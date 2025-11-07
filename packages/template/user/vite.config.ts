@@ -8,12 +8,12 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
-    allowedHosts: "all",
+    allowedHosts: true,
   },
   preview: {
     host: "::",
-    port: 8080, // Will be overridden by config generator
-    allowedHosts: ["*"], // Allow any host for template flexibility
+    port: 8080,
+    allowedHosts: true,
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
