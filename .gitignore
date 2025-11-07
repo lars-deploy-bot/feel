@@ -140,3 +140,9 @@ temp/
 .Trashes
 ehthumbs.db
 Thumbs.dbdomain-passwords.json
+
+# Ignore circular symlinks in packages
+packages/*/guides
+packages/*/images
+packages/*/template
+packages/*/tools
