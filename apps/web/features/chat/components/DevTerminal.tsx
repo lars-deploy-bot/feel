@@ -1,7 +1,7 @@
 "use client"
 import { useRef, useState } from "react"
-import { useDebugActions, useSSETerminalMinimized } from "@/lib/stores/debug-store"
 import { useResizablePanel } from "@/lib/hooks/useResizablePanel"
+import { useDebugActions, useSSETerminalMinimized } from "@/lib/stores/debug-store"
 import { truncateDeep } from "@/lib/utils"
 import { useDevTerminal } from "../lib/dev-terminal-context"
 import { BridgeStreamType } from "../lib/streaming/ndjson"

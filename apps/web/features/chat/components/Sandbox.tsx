@@ -1,8 +1,8 @@
 "use client"
 import { useRef, useState } from "react"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
-import { getPreviewUrl } from "@/lib/preview-utils"
 import { useResizablePanel } from "@/lib/hooks/useResizablePanel"
+import { getPreviewUrl } from "@/lib/preview-utils"
 import { useDebugActions, useSandboxMinimized } from "@/lib/stores/debug-store"
 import { useSandbox } from "../lib/sandbox-context"
 

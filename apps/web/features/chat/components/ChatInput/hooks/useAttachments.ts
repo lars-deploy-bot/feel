@@ -69,9 +69,7 @@ export function useAttachments(config: ChatInputConfig) {
         try {
           // Progress callback updates attachment progress in real-time
           const onProgress = (progress: number) => {
-            setAttachments(prev =>
-              prev.map(a => (a.id === attachment.id ? { ...a, uploadProgress: progress } : a))
-            )
+            setAttachments(prev => prev.map(a => (a.id === attachment.id ? { ...a, uploadProgress: progress } : a)))
           }
 
           const _imageKey = await config.onAttachmentUpload(file, onProgress)

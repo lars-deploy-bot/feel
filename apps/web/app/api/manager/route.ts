@@ -4,9 +4,16 @@ import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
-import { loadDomainPasswords, updateDomainPassword } from "@/types/guards/api"
+import { loadDomainPasswords, updateDomainConfig } from "@/types/guards/api"
+import type { DomainConfigClient } from "@/types/domain"
 
 const execAsync = promisify(exec)
+
+function corsResponse(origin: string | null, data: unknown, status = 200): NextResponse {
+  const res = NextResponse.json(data, { status })
+  addCorsHeaders(res, origin)
+  return res
+}
 
 async function detectOrphanedDomains(): Promise<string[]> {
   const orphaned = new Set<string>()
@@ -37,38 +44,52 @@ async function detectOrphanedDomains(): Promise<string[]> {
   return Array.from(orphaned)
 }
 
+function isPreviewDomain(domain: string): boolean {
+  return domain.includes(".preview.terminal.goalive.nl")
+}
+
 export async function GET(req: NextRequest) {
   const origin = req.headers.get("origin")
   const jar = await cookies()
   const requestId = crypto.randomUUID()
 
   if (!jar.get("manager_session")) {
-    const res = NextResponse.json(
+    return corsResponse(
+      origin,
       {
         ok: false,
         error: ErrorCodes.UNAUTHORIZED,
         message: getErrorMessage(ErrorCodes.UNAUTHORIZED),
         requestId,
       },
-      { status: 401 },
+      401,
     )
-    addCorsHeaders(res, origin)
-    return res
   }
 
   const domains = loadDomainPasswords()
   const orphanedDomains = await detectOrphanedDomains()
 
-  const sanitizedDomains: Record<string, { tenantId?: string; port?: number; orphaned?: boolean }> = {}
+  const sanitizedDomains: Record<string, DomainConfigClient> = {}
 
   for (const [domain, config] of Object.entries(domains)) {
+    // Skip preview domains
+    if (isPreviewDomain(domain)) {
+      continue
+    }
+
     sanitizedDomains[domain] = {
       tenantId: config.tenantId,
       port: config.port,
+      email: config.email,
     }
   }
 
   for (const domain of orphanedDomains) {
+    // Skip preview domains
+    if (isPreviewDomain(domain)) {
+      continue
+    }
+
     if (!sanitizedDomains[domain]) {
       sanitizedDomains[domain] = {
         orphaned: true,
@@ -76,9 +97,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const res = NextResponse.json({ ok: true, domains: sanitizedDomains })
-  addCorsHeaders(res, origin)
-  return res
+  return corsResponse(origin, { ok: true, domains: sanitizedDomains })
 }
 
 export async function POST(req: NextRequest) {
@@ -87,53 +106,56 @@ export async function POST(req: NextRequest) {
   const requestId = crypto.randomUUID()
 
   if (!jar.get("manager_session")) {
-    const res = NextResponse.json(
+    return corsResponse(
+      origin,
       {
         ok: false,
         error: ErrorCodes.UNAUTHORIZED,
         message: getErrorMessage(ErrorCodes.UNAUTHORIZED),
         requestId,
       },
-      { status: 401 },
+      401,
     )
-    addCorsHeaders(res, origin)
-    return res
   }
 
   try {
     const body = await req.json()
-    const { domain, password } = body
+    const { domain, password, email } = body
 
-    if (!domain || !password) {
-      const res = NextResponse.json(
+    if (!domain) {
+      return corsResponse(
+        origin,
         {
           ok: false,
           error: ErrorCodes.INVALID_REQUEST,
           message: getErrorMessage(ErrorCodes.INVALID_REQUEST),
           requestId,
         },
-        { status: 400 },
+        400,
       )
-      addCorsHeaders(res, origin)
-      return res
     }
 
-    await updateDomainPassword(domain, password)
-    const res = NextResponse.json({ ok: true, requestId })
-    addCorsHeaders(res, origin)
-    return res
+    // Update domain config (password and/or email)
+    const updates: { password?: string; email?: string } = {}
+    if (password) updates.password = password
+    if (email !== undefined) updates.email = email
+
+    if (Object.keys(updates).length > 0) {
+      await updateDomainConfig(domain, updates)
+    }
+
+    return corsResponse(origin, { ok: true, requestId })
   } catch (_error) {
-    const res = NextResponse.json(
+    return corsResponse(
+      origin,
       {
         ok: false,
         error: ErrorCodes.INVALID_JSON,
         message: getErrorMessage(ErrorCodes.INVALID_JSON),
         requestId,
       },
-      { status: 400 },
+      400,
     )
-    addCorsHeaders(res, origin)
-    return res
   }
 }
 
@@ -143,17 +165,16 @@ export async function DELETE(req: NextRequest) {
   const requestId = crypto.randomUUID()
 
   if (!jar.get("manager_session")) {
-    const res = NextResponse.json(
+    return corsResponse(
+      origin,
       {
         ok: false,
         error: ErrorCodes.UNAUTHORIZED,
         message: getErrorMessage(ErrorCodes.UNAUTHORIZED),
         requestId,
       },
-      { status: 401 },
+      401,
     )
-    addCorsHeaders(res, origin)
-    return res
   }
 
   try {
@@ -161,28 +182,26 @@ export async function DELETE(req: NextRequest) {
     const { domain } = body
 
     if (!domain) {
-      const res = NextResponse.json(
+      return corsResponse(
+        origin,
         {
           ok: false,
           error: ErrorCodes.INVALID_REQUEST,
           message: getErrorMessage(ErrorCodes.INVALID_REQUEST, { field: "domain" }),
           requestId,
         },
-        { status: 400 },
+        400,
       )
-      addCorsHeaders(res, origin)
-      return res
     }
 
     try {
       const { stdout, stderr } = await execAsync(
         `/root/webalive/claude-bridge/scripts/delete-site-systemd.sh ${domain}`,
       )
-      const res = NextResponse.json({ ok: true, output: stdout, error: stderr || null, requestId })
-      addCorsHeaders(res, origin)
-      return res
+      return corsResponse(origin, { ok: true, output: stdout, error: stderr || null, requestId })
     } catch (error) {
-      const res = NextResponse.json(
+      return corsResponse(
+        origin,
         {
           ok: false,
           error: ErrorCodes.INTERNAL_ERROR,
@@ -192,29 +211,24 @@ export async function DELETE(req: NextRequest) {
           },
           requestId,
         },
-        { status: 500 },
+        500,
       )
-      addCorsHeaders(res, origin)
-      return res
     }
   } catch (_error) {
-    const res = NextResponse.json(
+    return corsResponse(
+      origin,
       {
         ok: false,
         error: ErrorCodes.INVALID_JSON,
         message: getErrorMessage(ErrorCodes.INVALID_JSON),
         requestId,
       },
-      { status: 400 },
+      400,
     )
-    addCorsHeaders(res, origin)
-    return res
   }
 }
 
 export async function OPTIONS(req: NextRequest) {
   const origin = req.headers.get("origin") || req.headers.get("referer")?.split("/").slice(0, 3).join("/")
-  const res = new NextResponse(null, { status: 200 })
-  addCorsHeaders(res, origin ?? null)
-  return res
+  return corsResponse(origin ?? null, null)
 }

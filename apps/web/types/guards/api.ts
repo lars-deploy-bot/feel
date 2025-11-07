@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import bcrypt from "bcrypt"
 import { z } from "zod"
+import type { DomainPasswords } from "@/types/domain"
 
 /**
  * API request validation and schema guards
@@ -103,14 +104,6 @@ export async function verifyPassword(plaintext: string, hash: string): Promise<b
   return bcrypt.compare(plaintext, hash)
 }
 
-interface DomainConfig {
-  tenantId?: string
-  passwordHash: string
-  port: number
-}
-
-type DomainPasswords = Record<string, DomainConfig>
-
 function getDomainPasswordsPath(): string {
   // PRODUCTION: Use persistent location outside of git and build process
   // This ensures the file survives deployments and doesn't require rebuilds
@@ -167,10 +160,27 @@ export async function isDomainPasswordValid(domain: string, providedPassword: st
   return verifyPassword(providedPassword, domainConfig.passwordHash)
 }
 
-export async function updateDomainPassword(domain: string, newPlaintextPassword: string): Promise<void> {
+export async function updateDomainConfig(
+  domain: string,
+  updates: { password?: string; email?: string }
+): Promise<void> {
   const passwords = loadDomainPasswords()
-  if (passwords[domain]) {
-    passwords[domain].passwordHash = await hashPassword(newPlaintextPassword)
-    saveDomainPasswords(passwords)
+  if (!passwords[domain]) return
+
+  if (updates.password) {
+    passwords[domain].passwordHash = await hashPassword(updates.password)
   }
+
+  if (updates.email !== undefined) {
+    passwords[domain].email = updates.email
+  }
+
+  saveDomainPasswords(passwords)
 }
+
+// Legacy exports for backwards compatibility
+export const updateDomainPassword = (domain: string, password: string) =>
+  updateDomainConfig(domain, { password })
+
+export const updateDomainEmail = (domain: string, email: string) =>
+  updateDomainConfig(domain, { email })

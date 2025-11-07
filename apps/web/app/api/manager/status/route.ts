@@ -4,21 +4,10 @@ import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
+import type { DomainStatus } from "@/types/domain"
 import { loadDomainPasswords } from "@/types/guards/api"
 
 const execAsync = promisify(exec)
-
-interface DomainStatus {
-  domain: string
-  portListening: boolean
-  httpAccessible: boolean
-  httpsAccessible: boolean
-  systemdServiceExists: boolean
-  systemdServiceRunning: boolean
-  caddyConfigured: boolean
-  siteDirectoryExists: boolean
-  lastChecked: number
-}
 
 async function checkPortListening(port: number): Promise<boolean> {
   try {
@@ -156,6 +145,7 @@ export async function GET(req: NextRequest) {
       systemdServiceRunning: systemdService.running,
       caddyConfigured,
       siteDirectoryExists,
+      createdAt: config.createdAt || null,
       lastChecked: Date.now(),
     }
   })

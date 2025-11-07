@@ -21,11 +21,11 @@ export function useImageUpload(options: UseImageUploadOptions) {
       const imageKey = await uploadImage(file, {
         workspace,
         isTerminal,
-        onProgress: onProgress ? (progress) => onProgress(progress.percentage) : undefined,
+        onProgress: onProgress ? progress => onProgress(progress.percentage) : undefined,
       })
 
       // Sync image store after successful upload (background, don't block)
-      loadImages(workspace).catch((err) => {
+      loadImages(workspace).catch(err => {
         console.warn("[useImageUpload] Failed to sync image store:", err)
       })
 

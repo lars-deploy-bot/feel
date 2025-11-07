@@ -15,6 +15,7 @@ import { SubdomainInitializer } from "@/features/chat/components/SubdomainInitia
 import { ThinkingGroup } from "@/features/chat/components/ThinkingGroup"
 import { ThinkingSpinner } from "@/features/chat/components/ThinkingSpinner"
 import { useConversationSession } from "@/features/chat/hooks/useConversationSession"
+import { useImageUpload } from "@/features/chat/hooks/useImageUpload"
 import {
   ClientError,
   ClientRequest,
@@ -28,7 +29,6 @@ import { SandboxProvider } from "@/features/chat/lib/sandbox-context"
 import { sendClientError } from "@/features/chat/lib/send-client-error"
 import { BridgeInterruptSource } from "@/features/chat/lib/streaming/ndjson"
 import { buildPromptWithAttachments } from "@/features/chat/utils/prompt-builder"
-import { useImageUpload } from "@/features/chat/hooks/useImageUpload"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
 import type { StructuredError } from "@/lib/error-codes"
 import { getErrorHelp, getErrorMessage } from "@/lib/error-codes"

@@ -1,7 +1,7 @@
 "use client"
 
 import { create } from "zustand"
-import { uploadImage, UploadError } from "@/features/chat/utils/upload-handler"
+import { UploadError, uploadImage } from "@/features/chat/utils/upload-handler"
 
 const IMAGE_PATH_PREFIX = "/_images/"
 
@@ -105,7 +105,7 @@ const useImageStoreBase = create<ImageStoreWithCompat>((set, get) => {
 
     try {
       // Upload files in parallel using shared upload handler
-      const uploadPromises = Array.from(files).map(async (file) => {
+      const uploadPromises = Array.from(files).map(async file => {
         return await uploadImage(file, {
           workspace,
           isTerminal: !!workspace, // If workspace is explicitly provided, treat as terminal mode
@@ -122,7 +122,8 @@ const useImageStoreBase = create<ImageStoreWithCompat>((set, get) => {
     } catch (err) {
       console.error("Upload failed:", err)
       // Use categorized error message if available
-      const errorMessage = err instanceof UploadError ? err.message : err instanceof Error ? err.message : "Failed to upload images"
+      const errorMessage =
+        err instanceof UploadError ? err.message : err instanceof Error ? err.message : "Failed to upload images"
       set({ uploading: false, error: errorMessage })
       return { success: false, error: errorMessage }
     }

@@ -1,9 +1,9 @@
 import { useRef, useState } from "react"
 
 interface UseResizablePanelOptions {
-	defaultWidth?: number
-	minWidth?: number
-	maxWidthPercent?: number
+  defaultWidth?: number
+  minWidth?: number
+  maxWidthPercent?: number
 }
 
 /**
@@ -21,57 +21,57 @@ interface UseResizablePanelOptions {
  * - Guaranteed cleanup: listeners always attached/removed in pairs
  */
 export function useResizablePanel(options: UseResizablePanelOptions = {}) {
-	const { defaultWidth = 400, minWidth = 200, maxWidthPercent = 0.8 } = options
+  const { defaultWidth = 400, minWidth = 200, maxWidthPercent = 0.8 } = options
 
-	const [width, setWidth] = useState(defaultWidth)
-	const [isResizing, setIsResizing] = useState(false)
-	const isDraggingRef = useRef(false)
-	const cleanupRef = useRef<(() => void) | null>(null)
+  const [width, setWidth] = useState(defaultWidth)
+  const [isResizing, setIsResizing] = useState(false)
+  const isDraggingRef = useRef(false)
+  const cleanupRef = useRef<(() => void) | null>(null)
 
-	const handleMouseDown = (e: React.MouseEvent) => {
-		e.preventDefault()
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
 
-		// If already dragging, ignore (shouldn't happen but safety first)
-		if (isDraggingRef.current) return
+    // If already dragging, ignore (shouldn't happen but safety first)
+    if (isDraggingRef.current) return
 
-		isDraggingRef.current = true
-		setIsResizing(true)
+    isDraggingRef.current = true
+    setIsResizing(true)
 
-		const handleMouseMove = (moveEvent: MouseEvent) => {
-			// Guard: only resize if still dragging
-			if (!isDraggingRef.current) return
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      // Guard: only resize if still dragging
+      if (!isDraggingRef.current) return
 
-			const newWidth = window.innerWidth - moveEvent.clientX
-			const maxWidth = window.innerWidth * maxWidthPercent
-			const clampedWidth = Math.max(minWidth, Math.min(newWidth, maxWidth))
+      const newWidth = window.innerWidth - moveEvent.clientX
+      const maxWidth = window.innerWidth * maxWidthPercent
+      const clampedWidth = Math.max(minWidth, Math.min(newWidth, maxWidth))
 
-			setWidth(clampedWidth)
-		}
+      setWidth(clampedWidth)
+    }
 
-		const handleMouseUp = () => {
-			// Clear drag state immediately
-			isDraggingRef.current = false
-			setIsResizing(false)
+    const handleMouseUp = () => {
+      // Clear drag state immediately
+      isDraggingRef.current = false
+      setIsResizing(false)
 
-			// Remove listeners
-			document.removeEventListener("mousemove", handleMouseMove)
-			document.removeEventListener("mouseup", handleMouseUp)
+      // Remove listeners
+      document.removeEventListener("mousemove", handleMouseMove)
+      document.removeEventListener("mouseup", handleMouseUp)
 
-			// Clear cleanup ref
-			cleanupRef.current = null
-		}
+      // Clear cleanup ref
+      cleanupRef.current = null
+    }
 
-		// Attach listeners
-		document.addEventListener("mousemove", handleMouseMove)
-		document.addEventListener("mouseup", handleMouseUp)
+    // Attach listeners
+    document.addEventListener("mousemove", handleMouseMove)
+    document.addEventListener("mouseup", handleMouseUp)
 
-		// Store cleanup function in case component unmounts during drag
-		cleanupRef.current = handleMouseUp
-	}
+    // Store cleanup function in case component unmounts during drag
+    cleanupRef.current = handleMouseUp
+  }
 
-	return {
-		width,
-		isResizing,
-		handleMouseDown,
-	}
+  return {
+    width,
+    isResizing,
+    handleMouseDown,
+  }
 }

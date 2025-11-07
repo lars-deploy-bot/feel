@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react"
-import { uploadImage, UploadError } from "@/features/chat/utils/upload-handler"
+import { UploadError, uploadImage } from "@/features/chat/utils/upload-handler"
 
 const API_ENDPOINTS = {
   LIST: "/api/images/list",
@@ -74,7 +74,7 @@ export function useImageManagement(isTerminal: boolean, workspace: string) {
 
       try {
         // Use shared upload handler with retry and error categorization
-        const uploadPromises = Array.from(files).map(async (file) => {
+        const uploadPromises = Array.from(files).map(async file => {
           return await uploadImage(file, {
             workspace,
             isTerminal,
@@ -86,7 +86,8 @@ export function useImageManagement(isTerminal: boolean, workspace: string) {
         await loadImages()
       } catch (err) {
         // Use categorized error message if available
-        const errorMessage = err instanceof UploadError ? err.message : err instanceof Error ? err.message : "Upload failed"
+        const errorMessage =
+          err instanceof UploadError ? err.message : err instanceof Error ? err.message : "Upload failed"
         setError(errorMessage)
       } finally {
         setUploading(false)

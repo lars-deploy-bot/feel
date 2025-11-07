@@ -30,6 +30,7 @@ CADDYFILE="/root/webalive/claude-bridge/Caddyfile"
 DOMAIN_PASSWORDS_FILE="/var/lib/claude-bridge/domain-passwords.json"
 SERVER_IP="138.201.56.93"
 PASSWORD="${DEPLOY_PASSWORD:-supersecret}"  # Read from environment, fallback to default
+EMAIL="${DEPLOY_EMAIL:-}"  # Optional email address for domain owner
 
 echo "🚀 Deploying $DOMAIN with improved port management..."
 echo "🔐 Hashing password with bcrypt..."
@@ -149,14 +150,23 @@ else
         echo "{}" > "$DOMAIN_PASSWORDS_FILE"
     fi
 
-    # Add domain with hashed password and assigned port (using jq --arg for safe escaping)
+    # Add domain with hashed password, assigned port, creation timestamp, and optional email
+    CREATED_AT=$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
+
     jq --arg domain "$DOMAIN" \
        --arg passwordHash "$PASSWORD_HASH" \
        --argjson port "$PORT" \
-       '.[$domain] = {passwordHash: $passwordHash, port: $port}' \
+       --arg createdAt "$CREATED_AT" \
+       --arg email "$EMAIL" \
+       '.[$domain] = {passwordHash: $passwordHash, port: $port, createdAt: $createdAt} + (if $email != "" then {email: $email} else {} end)' \
        "$DOMAIN_PASSWORDS_FILE" > "${DOMAIN_PASSWORDS_FILE}.tmp"
     mv "${DOMAIN_PASSWORDS_FILE}.tmp" "$DOMAIN_PASSWORDS_FILE"
-    echo "✅ Added $DOMAIN to domain-passwords.json with hashed password and port $PORT"
+
+    if [ -n "$EMAIL" ]; then
+        echo "✅ Added $DOMAIN to domain-passwords.json (port $PORT, email: $EMAIL)"
+    else
+        echo "✅ Added $DOMAIN to domain-passwords.json (port $PORT)"
+    fi
 fi
 
 # 3. For existing domains, verify their assigned port is still available

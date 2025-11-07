@@ -4,26 +4,9 @@ import { useEffect, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
 import { DeleteModal } from "@/components/modals/DeleteModal"
 import { Button } from "@/components/ui/primitives/Button"
+import type { DomainConfigClient, DomainStatus } from "@/types/domain"
 
-interface DomainConfig {
-  tenantId?: string
-  port?: number
-  orphaned?: boolean
-}
-
-interface DomainStatus {
-  domain: string
-  portListening: boolean
-  httpAccessible: boolean
-  httpsAccessible: boolean
-  systemdServiceExists: boolean
-  systemdServiceRunning: boolean
-  caddyConfigured: boolean
-  siteDirectoryExists: boolean
-  lastChecked: number
-}
-
-type DomainPasswords = Record<string, DomainConfig>
+type DomainPasswords = Record<string, DomainConfigClient>
 
 export default function ManagerPage() {
   const [domains, setDomains] = useState<DomainPasswords>({})
@@ -40,6 +23,7 @@ export default function ManagerPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [selectedDomain, setSelectedDomain] = useState<string | null>(null)
   const [newPassword, setNewPassword] = useState("")
+  const [newEmail, setNewEmail] = useState("")
 
   // Tab state
   const [activeTab, setActiveTab] = useState<"domains" | "settings">("domains")
@@ -126,6 +110,7 @@ export default function ManagerPage() {
   const openPasswordDialog = (domain: string) => {
     setSelectedDomain(domain)
     setNewPassword("")
+    setNewEmail(domains[domain]?.email || "")
     setDialogOpen(true)
   }
 
@@ -133,33 +118,58 @@ export default function ManagerPage() {
     setDialogOpen(false)
     setSelectedDomain(null)
     setNewPassword("")
+    setNewEmail("")
   }
 
-  const updatePassword = async () => {
-    if (!selectedDomain || !newPassword.trim()) {
-      toast.error("Password cannot be empty")
+  const updateDomainSettings = async () => {
+    if (!selectedDomain) {
+      return
+    }
+
+    // Validate: at least one field must be changed
+    if (!newPassword.trim() && newEmail === (domains[selectedDomain]?.email || "")) {
+      toast.error("No changes to save")
       return
     }
 
     setSaving(selectedDomain)
     try {
+      const payload: { domain: string; password?: string; email?: string } = { domain: selectedDomain }
+
+      if (newPassword.trim()) {
+        payload.password = newPassword
+      }
+
+      if (newEmail !== (domains[selectedDomain]?.email || "")) {
+        payload.email = newEmail
+      }
+
       const response = await fetch("/api/manager", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ domain: selectedDomain, password: newPassword }),
+        body: JSON.stringify(payload),
       })
 
       if (response.ok) {
-        toast.success("Password updated successfully")
+        // Update local state
+        setDomains(prev => ({
+          ...prev,
+          [selectedDomain]: {
+            ...prev[selectedDomain],
+            email: newEmail || undefined,
+          },
+        }))
+
+        toast.success("Updated successfully")
         closeDialog()
       } else {
-        toast.error("Failed to update password")
+        toast.error("Failed to update")
       }
     } catch (error) {
-      console.error("Failed to update password:", error)
-      toast.error("Failed to update password")
+      console.error("Failed to update:", error)
+      toast.error("Failed to update")
     } finally {
       setSaving(null)
     }
@@ -366,6 +376,12 @@ export default function ManagerPage() {
     ]
   }
 
+  const formatCreatedDate = (isoDate: string | null): string => {
+    if (!isoDate) return "Unknown"
+    const date = new Date(isoDate)
+    return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
+  }
+
   const handleReloadCaddy = async () => {
     setReloadingCaddy(true)
     try {
@@ -543,6 +559,9 @@ export default function ManagerPage() {
                               <>
                                 Port: {config.port}
                                 {config.tenantId && ` • Tenant: ${config.tenantId}`}
+                                {config.email && ` • ${config.email}`}
+                                {statuses[domain]?.createdAt &&
+                                  ` • Created: ${formatCreatedDate(statuses[domain].createdAt)}`}
                               </>
                             )}
                           </div>
@@ -574,9 +593,9 @@ export default function ManagerPage() {
                           onClick={() => openPasswordDialog(domain)}
                           disabled={config.orphaned}
                           className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                          title={config.orphaned ? "Cannot set password for orphaned domain" : ""}
+                          title={config.orphaned ? "Cannot edit orphaned domain" : "Edit domain settings"}
                         >
-                          Set Password
+                          Edit
                         </button>
 
                         <button
@@ -710,26 +729,51 @@ export default function ManagerPage() {
             role="document"
             onClick={e => e.stopPropagation()}
           >
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Set Password</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Edit Domain</h2>
             <p className="text-sm text-gray-600 mb-4">
-              Enter a new password for <span className="font-medium">{selectedDomain}</span>
+              Update settings for <span className="font-medium">{selectedDomain}</span>
             </p>
 
-            <input
-              type="password"
-              value={newPassword}
-              onChange={e => setNewPassword(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === "Enter" && newPassword.trim()) {
-                  updatePassword()
-                }
-                if (e.key === "Escape") {
-                  closeDialog()
-                }
-              }}
-              placeholder="New password"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-6"
-            />
+            <div className="space-y-4 mb-6">
+              <div>
+                <label htmlFor="email-input" className="block text-sm font-medium text-gray-700 mb-1">
+                  Email Address
+                </label>
+                <input
+                  id="email-input"
+                  type="email"
+                  value={newEmail}
+                  onChange={e => setNewEmail(e.target.value)}
+                  placeholder="owner@example.com"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="password-input" className="block text-sm font-medium text-gray-700 mb-1">
+                  New Password (optional)
+                </label>
+                <input
+                  id="password-input"
+                  type="password"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  onKeyDown={e => {
+                    if (
+                      e.key === "Enter" &&
+                      (newPassword.trim() || newEmail !== (domains[selectedDomain || ""]?.email || ""))
+                    ) {
+                      updateDomainSettings()
+                    }
+                    if (e.key === "Escape") {
+                      closeDialog()
+                    }
+                  }}
+                  placeholder="Leave blank to keep current"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
 
             <div className="flex justify-end gap-3">
               <button
@@ -742,11 +786,14 @@ export default function ManagerPage() {
               </button>
               <button
                 type="button"
-                onClick={updatePassword}
-                disabled={saving === selectedDomain || !newPassword.trim()}
+                onClick={updateDomainSettings}
+                disabled={
+                  saving === selectedDomain ||
+                  (!newPassword.trim() && newEmail === (domains[selectedDomain || ""]?.email || ""))
+                }
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {saving === selectedDomain ? "Saving..." : "Save Password"}
+                {saving === selectedDomain ? "Saving..." : "Save Changes"}
               </button>
             </div>
           </div>

@@ -66,31 +66,20 @@ function categorizeError(error: any, status?: number): UploadError {
   }
 
   // Default
-  return new UploadError(
-    error?.message || "Upload failed - please try again",
-    UploadErrorType.UNKNOWN,
-    error,
-  )
+  return new UploadError(error?.message || "Upload failed - please try again", UploadErrorType.UNKNOWN, error)
 }
 
 /**
  * Check if error is retryable
  */
 function isRetryable(error: UploadError): boolean {
-  return (
-    error.type === UploadErrorType.NETWORK_ERROR ||
-    error.type === UploadErrorType.SERVER_ERROR
-  )
+  return error.type === UploadErrorType.NETWORK_ERROR || error.type === UploadErrorType.SERVER_ERROR
 }
 
 /**
  * Upload file with progress tracking and retry logic using XMLHttpRequest
  */
-async function uploadWithProgress(
-  file: File,
-  options: UploadOptions,
-  attempt: number = 1,
-): Promise<string> {
+async function uploadWithProgress(file: File, options: UploadOptions, attempt: number = 1): Promise<string> {
   const maxRetries = options.maxRetries ?? 3
 
   return new Promise((resolve, reject) => {
@@ -104,7 +93,7 @@ async function uploadWithProgress(
     }
 
     // Track upload progress
-    xhr.upload.onprogress = (e) => {
+    xhr.upload.onprogress = e => {
       if (e.lengthComputable && options.onProgress) {
         options.onProgress({
           loaded: e.loaded,
@@ -124,10 +113,7 @@ async function uploadWithProgress(
           reject(categorizeError(error, xhr.status))
         }
       } else {
-        const error = categorizeError(
-          new Error(xhr.statusText),
-          xhr.status,
-        )
+        const error = categorizeError(new Error(xhr.statusText), xhr.status)
 
         // Retry if retryable and attempts remaining
         if (isRetryable(error) && attempt < maxRetries) {
@@ -147,10 +133,7 @@ async function uploadWithProgress(
 
     // Handle network errors
     xhr.onerror = () => {
-      const error = categorizeError(
-        new Error("Network error"),
-        undefined,
-      )
+      const error = categorizeError(new Error("Network error"), undefined)
 
       // Retry if attempts remaining
       if (attempt < maxRetries) {
@@ -188,10 +171,7 @@ async function uploadWithProgress(
 /**
  * Main upload handler with error categorization
  */
-export async function uploadImage(
-  file: File,
-  options: UploadOptions = {},
-): Promise<string> {
+export async function uploadImage(file: File, options: UploadOptions = {}): Promise<string> {
   try {
     return await uploadWithProgress(file, options)
   } catch (error) {
