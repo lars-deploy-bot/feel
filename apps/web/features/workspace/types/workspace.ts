@@ -31,7 +31,7 @@ export function isValidWorkspaceString(workspace: unknown): workspace is string 
  * Both paths should be absolute/resolved
  */
 export function isPathWithinWorkspace(normalizedPath: string, workspacePath: string, pathSeparator: string): boolean {
-  return normalizedPath.startsWith(workspacePath + pathSeparator)
+  return normalizedPath === workspacePath || normalizedPath.startsWith(workspacePath + pathSeparator)
 }
 
 /**
