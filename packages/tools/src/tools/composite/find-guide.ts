@@ -44,6 +44,37 @@ export type FindGuideResult = {
   isError: boolean
 }
 
+/**
+ * Debug function: Check which categories were searched and why matches failed
+ * Can be called independently for diagnostics
+ */
+export async function debugFindGuide(query: string, category?: GuideCategory) {
+  const packageRoot = join(__dirname, "../../..")
+  const guidesBasePath = join(packageRoot, "internals-folder")
+  const categoriesToSearch = category ? [category] : GUIDE_CATEGORIES
+  const debug: Array<{
+    category: GuideCategory
+    searched: boolean
+    listError: boolean
+    queryFound: boolean
+    listPreview?: string
+  }> = []
+
+  for (const cat of categoriesToSearch) {
+    const result = await listGuides({ category: cat, detail_level: "full" }, guidesBasePath)
+
+    debug.push({
+      category: cat,
+      searched: true,
+      listError: result.isError,
+      queryFound: result.isError ? false : result.content[0].text.toLowerCase().includes(query.toLowerCase()),
+      listPreview: result.isError ? undefined : result.content[0].text.substring(0, 200),
+    })
+  }
+
+  return debug
+}
+
 export async function findGuide(params: FindGuideParams): Promise<FindGuideResult> {
   const { query, category, auto_retrieve = true } = params
   // Use source location, not dist - works in both dev and production

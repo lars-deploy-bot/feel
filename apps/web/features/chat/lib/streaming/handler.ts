@@ -3,6 +3,7 @@ import type { SessionStore } from "@/features/auth/lib/sessionStore"
 import type { SDKMessage } from "@/features/chat/types/sdk-types"
 import { extractSessionId, getMessageStreamData } from "@/features/chat/types/sdk-types"
 import { type ErrorCode, ErrorCodes } from "@/lib/error-codes"
+import { ALLOWED_SDK_TOOLS } from "@/lib/claude/agent-constants.mjs"
 import { formatMessage } from "../formatMessage"
 import {
   BridgeInterruptSource,
@@ -26,7 +27,6 @@ export type StreamEvent = StreamMessage
  * Modifies message in-place and returns it for chaining.
  */
 function filterAllowedTools(message: SDKMessage): SDKMessage {
-  const ALLOWED_SDK_TOOLS = ["Write", "Edit", "Read", "Glob", "Grep"]
   const msg = message as Record<string, unknown>
 
   if (msg.type === "system" && msg.subtype === "init" && Array.isArray(msg.tools)) {

@@ -22,7 +22,7 @@
 export { guidesMcp, toolsMcp, workspaceManagementMcp } from "./mcp-server.js"
 export { batchGetGuidesTool } from "./tools/batch/batch-get-guides.js"
 export { debugWorkspaceTool } from "./tools/composite/debug-workspace.js"
-export { findGuideTool } from "./tools/composite/find-guide.js"
+export { debugFindGuide, findGuideTool } from "./tools/composite/find-guide.js"
 export { readServerLogsTool } from "./tools/debug/read-server-logs.js"
 export { getGuideTool } from "./tools/guides/get-guide.js"
 export { listGuidesTool } from "./tools/guides/list-guides.js"

@@ -216,6 +216,25 @@ else
     cp -r "/root/webalive/claude-bridge/packages/template"/* "$NEW_SITE_DIR/"
 fi
 
+# 6.5. Create/update site-specific Caddyfile
+echo "📝 Creating site Caddyfile..."
+cat > "$NEW_SITE_DIR/Caddyfile" << EOF
+# Auto-generated Caddyfile for $DOMAIN
+# Port: $PORT
+
+$DOMAIN {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:$PORT {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+EOF
+echo "✅ Created $NEW_SITE_DIR/Caddyfile with port $PORT"
+
 # 7. CRITICAL: Fix ownership after copying
 echo "🔒 Setting proper file ownership..."
 chown -R "$USER:$USER" "$NEW_SITE_DIR"

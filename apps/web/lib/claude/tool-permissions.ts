@@ -1,19 +1,10 @@
 import type { Options } from "@anthropic-ai/claude-agent-sdk"
 import { ensurePathWithinWorkspace, type Workspace } from "@/features/workspace/lib/workspace-secure"
+import { ALLOWED_SDK_TOOLS as SDK_TOOLS_ARRAY, ALLOWED_MCP_TOOLS as MCP_TOOLS_ARRAY } from "@/lib/claude/agent-constants.mjs"
 
-// SDK built-in tools that operate on files (path validation required)
-export const ALLOWED_SDK_TOOLS = new Set(["Write", "Edit", "Read", "Glob", "Grep"])
-
-// MCP tools allowed (no path validation needed - handled by child process)
-export const ALLOWED_MCP_TOOLS = new Set([
-  "mcp__workspace-management__restart_dev_server",
-  "mcp__workspace-management__install_package",
-  "mcp__tools__list_guides",
-  "mcp__tools__get_guide",
-  "mcp__tools__find_guide",
-  "mcp__tools__batch_get_guides",
-  "mcp__tools__generate_persona",
-])
+// Convert arrays to Sets for O(1) lookup performance
+export const ALLOWED_SDK_TOOLS = new Set(SDK_TOOLS_ARRAY)
+export const ALLOWED_MCP_TOOLS = new Set(MCP_TOOLS_ARRAY)
 
 function extractFilePath(input: Record<string, unknown>): string | null {
   const filePathValue = input.file_path ?? input.path ?? input.notebook_path
