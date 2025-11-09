@@ -1,22 +1,22 @@
 import type { Attachment } from "../components/ChatInput/types"
 
 /**
- * Builds the final prompt by prepending library image references and template requests
+ * Builds the final prompt by prepending library image references and supertemplate requests
  *
  * For library images (from PhotoMenu), prepends structured context with:
  * - List of image URLs
  * - Usage instructions
  * - User intent hint
  *
- * For templates, appends template trigger phrases for MCP tool invocation
+ * For supertemplates, appends supertemplate trigger phrases for MCP tool invocation
  *
  * @param message - The user's text input
- * @param attachments - All current attachments (file uploads + library images + templates)
- * @returns The augmented prompt with library image context and template triggers
+ * @param attachments - All current attachments (file uploads + library images + supertemplates)
+ * @returns The augmented prompt with library image context and supertemplate triggers
  */
 export function buildPromptWithAttachments(message: string, attachments: Attachment[]): string {
   const libraryImages = attachments.filter(a => a.kind === "library-image")
-  const templates = attachments.filter(a => a.kind === "template")
+  const supertemplates = attachments.filter(a => a.kind === "supertemplate")
 
   // Start with user message
   let prompt = message
@@ -50,10 +50,10 @@ ${prompt}
 </user_message>`
   }
 
-  // Append template triggers if any exist
-  if (templates.length > 0) {
-    const templateTriggers = templates.map(t => `Use template: ${t.templateId}`).join("\n")
-    prompt = `${prompt}\n\n${templateTriggers}`
+  // Append supertemplate triggers if any exist
+  if (supertemplates.length > 0) {
+    const supertemplateTriggers = supertemplates.map(t => `Use template: ${t.templateId}`).join("\n")
+    prompt = `${prompt}\n\n${supertemplateTriggers}`
   }
 
   return prompt

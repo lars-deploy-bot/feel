@@ -1,19 +1,19 @@
 import { useEffect, useRef } from "react"
 import type { Attachment } from "../types"
-import { isTemplateAttachment } from "../types"
+import { isSuperTemplateAttachment } from "../types"
 
-interface TemplateJSON {
-  type: "template"
+interface SuperTemplateJSON {
+  type: "supertemplate"
   id: string
   name: string
   preview: string
 }
 
-function isValidTemplateJSON(obj: unknown): obj is TemplateJSON {
+function isValidSuperTemplateJSON(obj: unknown): obj is SuperTemplateJSON {
   if (typeof obj !== "object" || obj === null) return false
   const t = obj as Record<string, unknown>
   return (
-    t.type === "template" &&
+    t.type === "supertemplate" &&
     typeof t.id === "string" &&
     t.id.length > 0 &&
     typeof t.name === "string" &&
@@ -24,16 +24,16 @@ function isValidTemplateJSON(obj: unknown): obj is TemplateJSON {
 }
 
 /**
- * Detects template JSON in message text and converts to attachments
+ * Detects supertemplate JSON in message text and converts to attachments
  *
- * Pattern: {"type":"template","id":"...","name":"...","preview":"..."}
+ * Pattern: {"type":"supertemplate","id":"...","name":"...","preview":"..."}
  * Debounced to 300ms to avoid client overload
  */
-export function useTemplateDetection(
+export function useSuperTemplateDetection(
   message: string,
   setMessage: (msg: string) => void,
   attachments: Attachment[],
-  addTemplateAttachment: (templateId: string, name: string, preview: string) => void,
+  addSuperTemplateAttachment: (templateId: string, name: string, preview: string) => void,
 ) {
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -48,15 +48,15 @@ export function useTemplateDetection(
 
     // Set new debounced timer
     debounceTimerRef.current = setTimeout(() => {
-      // Regex to find template JSON objects (order-independent)
-      // Matches any JSON object containing "type":"template" regardless of property order
-      const jsonRegex = /\{[^}]*"type"\s*:\s*"template"[^}]*\}/g
+      // Regex to find supertemplate JSON objects (order-independent)
+      // Matches any JSON object containing "type":"supertemplate" regardless of property order
+      const jsonRegex = /\{[^}]*"type"\s*:\s*"supertemplate"[^}]*\}/g
       const matches = message.match(jsonRegex)
 
       if (!matches || matches.length === 0) return
 
       // Get existing template IDs to prevent duplicates (type-safe)
-      const existingTemplateIds = new Set(attachments.filter(isTemplateAttachment).map(a => a.templateId))
+      const existingTemplateIds = new Set(attachments.filter(isSuperTemplateAttachment).map(a => a.templateId))
 
       let updatedMessage = message
       let hasChanges = false
@@ -65,7 +65,7 @@ export function useTemplateDetection(
         try {
           const parsed = JSON.parse(jsonStr)
 
-          if (isValidTemplateJSON(parsed)) {
+          if (isValidSuperTemplateJSON(parsed)) {
             // Skip if already exists
             if (existingTemplateIds.has(parsed.id)) {
               // Still remove from message even if duplicate
@@ -74,8 +74,8 @@ export function useTemplateDetection(
               continue
             }
 
-            // Add new template attachment
-            addTemplateAttachment(parsed.id, parsed.name, parsed.preview)
+            // Add new supertemplate attachment
+            addSuperTemplateAttachment(parsed.id, parsed.name, parsed.preview)
             existingTemplateIds.add(parsed.id)
 
             // Remove JSON from message
@@ -84,7 +84,7 @@ export function useTemplateDetection(
           }
         } catch (error) {
           // Invalid JSON - ignore and leave as text
-          console.warn("Failed to parse template JSON:", error)
+          console.warn("Failed to parse supertemplate JSON:", error)
         }
       }
 
@@ -99,5 +99,5 @@ export function useTemplateDetection(
         clearTimeout(debounceTimerRef.current)
       }
     }
-  }, [message, attachments, setMessage, addTemplateAttachment])
+  }, [message, attachments, setMessage, addSuperTemplateAttachment])
 }

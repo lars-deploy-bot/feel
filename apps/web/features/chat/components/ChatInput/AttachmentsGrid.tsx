@@ -3,7 +3,7 @@
 import { FileText, X } from "lucide-react"
 import Image from "next/image"
 import { useChatInput } from "./ChatInputContext"
-import { isFileUpload, isImageAttachment, isTemplateAttachment } from "./types"
+import { isFileUpload, isImageAttachment, isSuperTemplateAttachment } from "./types"
 
 /**
  * Attachments - our horizontal layout style
@@ -24,7 +24,7 @@ export function AttachmentsGrid() {
               : "border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02]"
           }`}
         >
-          {isTemplateAttachment(attachment) && attachment.preview ? (
+          {isSuperTemplateAttachment(attachment) && attachment.preview ? (
             <div className="w-12 h-12 relative rounded overflow-hidden">
               <img src={attachment.preview} alt={attachment.name} className="w-full h-full object-cover" />
             </div>
@@ -53,7 +53,7 @@ export function AttachmentsGrid() {
 
           <div className="flex flex-col min-w-0">
             <span className="text-xs font-medium text-black dark:text-white truncate max-w-[150px]">
-              {isTemplateAttachment(attachment)
+              {isSuperTemplateAttachment(attachment)
                 ? attachment.name
                 : isFileUpload(attachment)
                   ? attachment.file.name
@@ -65,8 +65,8 @@ export function AttachmentsGrid() {
               </span>
             ) : (
               <span className="text-xs text-black/50 dark:text-white/50">
-                {isTemplateAttachment(attachment)
-                  ? "Template"
+                {isSuperTemplateAttachment(attachment)
+                  ? "SuperTemplate"
                   : isFileUpload(attachment)
                     ? `${(attachment.file.size / 1024).toFixed(1)} KB`
                     : "Library"}

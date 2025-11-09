@@ -2,12 +2,12 @@
 
 import { X } from "lucide-react"
 import { useEffect, useState } from "react"
-import { TemplateConfirmDialog } from "@/components/modals/TemplateConfirmDialog"
-import { TemplateCard } from "@/components/ui/TemplateCard"
-import { TemplatePreview } from "@/components/ui/TemplatePreview"
+import { SuperTemplateConfirmDialog } from "@/components/modals/SuperTemplateConfirmDialog"
+import { SuperTemplateCard } from "@/components/ui/SuperTemplateCard"
+import { SuperTemplatePreview } from "@/components/ui/SuperTemplatePreview"
 import { getTemplatesByCategory, type Template } from "@/data/templates"
 
-interface TemplatesModalProps {
+interface SuperTemplatesModalProps {
   onClose: () => void
   onInsertTemplate: (prompt: string) => void
 }
@@ -21,7 +21,7 @@ const categoryLabels: Record<Category, string> = {
   blog: "Blog",
 }
 
-export function TemplatesModal({ onClose, onInsertTemplate }: TemplatesModalProps) {
+export function SuperTemplatesModal({ onClose, onInsertTemplate }: SuperTemplatesModalProps) {
   const [activeCategory, setActiveCategory] = useState<Category>("sliders")
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null)
   const [showConfirm, setShowConfirm] = useState(false)
@@ -50,9 +50,9 @@ export function TemplatesModal({ onClose, onInsertTemplate }: TemplatesModalProp
 
   const handleConfirm = () => {
     if (selectedTemplate) {
-      // Insert JSON that will be auto-detected and converted to template attachment
+      // Insert JSON that will be auto-detected and converted to supertemplate attachment
       const templateJson = JSON.stringify({
-        type: "template",
+        type: "supertemplate",
         id: selectedTemplate.templateId,
         name: selectedTemplate.name,
         preview: selectedTemplate.previewImage,
@@ -154,7 +154,7 @@ export function TemplatesModal({ onClose, onInsertTemplate }: TemplatesModalProp
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-6 md:p-8">
             {selectedTemplate ? (
-              <TemplatePreview template={selectedTemplate} onBack={handleBack} onInsert={handleInsertClick} />
+              <SuperTemplatePreview template={selectedTemplate} onBack={handleBack} onInsert={handleInsertClick} />
             ) : currentTemplates.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <p className="text-base font-[200] text-black/40 dark:text-white/40">
@@ -167,7 +167,7 @@ export function TemplatesModal({ onClose, onInsertTemplate }: TemplatesModalProp
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {currentTemplates.map(template => (
-                  <TemplateCard key={template.id} template={template} onClick={() => handleCardClick(template)} />
+                  <SuperTemplateCard key={template.id} template={template} onClick={() => handleCardClick(template)} />
                 ))}
               </div>
             )}
@@ -177,7 +177,7 @@ export function TemplatesModal({ onClose, onInsertTemplate }: TemplatesModalProp
 
       {/* Confirmation Dialog */}
       {showConfirm && selectedTemplate && (
-        <TemplateConfirmDialog template={selectedTemplate} onConfirm={handleConfirm} onCancel={handleCancelConfirm} />
+        <SuperTemplateConfirmDialog template={selectedTemplate} onConfirm={handleConfirm} onCancel={handleCancelConfirm} />
       )}
     </>
   )

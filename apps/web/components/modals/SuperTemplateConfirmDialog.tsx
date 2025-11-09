@@ -2,13 +2,13 @@
 
 import type { Template } from "@/data/templates"
 
-interface TemplateConfirmDialogProps {
+interface SuperTemplateConfirmDialogProps {
   template: Template
   onConfirm: () => void
   onCancel: () => void
 }
 
-export function TemplateConfirmDialog({ template, onConfirm, onCancel }: TemplateConfirmDialogProps) {
+export function SuperTemplateConfirmDialog({ template, onConfirm, onCancel }: SuperTemplateConfirmDialogProps) {
   return (
     <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
       <div

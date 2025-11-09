@@ -27,7 +27,7 @@ export const templates: Template[] = [
     name: "Carousel with Thumbnails",
     category: "sliders",
     description: "Advanced carousel with thumbnail navigation below. Click thumbnails to jump to slides.",
-    previewImage: "https://terminal.goalive.nl/_images/t/protino.alive.best/o/4b25598918e24811/v/orig.webp",
+    previewImage: "https://terminal.goalive.nl/_images/t/protino.alive.best/o/d15b2037bf21c90e/v/orig.webp",
     tags: ["react", "carousel", "thumbnails"],
     complexity: 2,
     fileCount: 4,

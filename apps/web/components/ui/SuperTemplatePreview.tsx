@@ -3,13 +3,13 @@
 import { ArrowLeft } from "lucide-react"
 import type { Template } from "@/data/templates"
 
-interface TemplatePreviewProps {
+interface SuperTemplatePreviewProps {
   template: Template
   onBack: () => void
   onInsert: () => void
 }
 
-export function TemplatePreview({ template, onBack, onInsert }: TemplatePreviewProps) {
+export function SuperTemplatePreview({ template, onBack, onInsert }: SuperTemplatePreviewProps) {
   return (
     <div className="h-full flex flex-col">
       {/* Back button */}

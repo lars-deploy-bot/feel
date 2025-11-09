@@ -5,7 +5,7 @@ import toast from "react-hot-toast"
 import { AttachmentsGrid } from "./AttachmentsGrid"
 import { ChatInputProvider } from "./ChatInputContext"
 import { useAttachments } from "./hooks/useAttachments"
-import { useTemplateDetection } from "./hooks/useTemplateDetection"
+import { useSuperTemplateDetection } from "./hooks/useTemplateDetection"
 import { InputArea } from "./InputArea"
 import { InputContainer } from "./InputContainer"
 import { SendButton } from "./SendButton"
@@ -48,11 +48,11 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
     [userConfig],
   )
 
-  const { attachments, addAttachment, addPhotobookImage, addTemplateAttachment, removeAttachment } =
+  const { attachments, addAttachment, addPhotobookImage, addSuperTemplateAttachment, removeAttachment } =
     useAttachments(config)
 
-  // Detect template JSON in message and convert to attachments
-  useTemplateDetection(message, setMessage, attachments, addTemplateAttachment)
+  // Detect supertemplate JSON in message and convert to attachments
+  useSuperTemplateDetection(message, setMessage, attachments, addSuperTemplateAttachment)
 
   // Expose methods to parent via ref
   useImperativeHandle(
@@ -60,7 +60,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
     () => ({
       addAttachment,
       addPhotobookImage,
-      addTemplateAttachment,
+      addSuperTemplateAttachment,
       getAttachments: () => attachments,
       clearLibraryImages: () => {
         const libraryImages = attachments.filter(a => a.kind === "library-image")
@@ -69,7 +69,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
         }
       },
     }),
-    [addAttachment, addPhotobookImage, addTemplateAttachment, attachments, removeAttachment],
+    [addAttachment, addPhotobookImage, addSuperTemplateAttachment, attachments, removeAttachment],
   )
 
   const canSubmit = useMemo(() => {

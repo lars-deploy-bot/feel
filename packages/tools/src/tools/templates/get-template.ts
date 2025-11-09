@@ -216,9 +216,9 @@ export async function getTemplate(
 }
 
 /**
- * MCP tool: get_template
+ * MCP tool: get_alive_super_template
  *
- * Retrieves a specific implementation template by ID.
+ * Retrieves a specific Alive Super Template by ID.
  * Templates contain detailed instructions for building components, features, or integrations.
  *
  * WHEN to use: ONLY when the user message contains the EXACT phrase "Use template: {template-id}"
@@ -231,9 +231,9 @@ export async function getTemplate(
  *
  * HOW to use: Extract the template ID from "Use template: {id}" and call with that exact ID
  */
-export const getTemplateTool = tool(
-	"get_template",
-	"Retrieves implementation instructions for a specific template. " +
+export const getAliveSuperTemplateTool = tool(
+	"get_alive_super_template",
+	"Retrieves implementation instructions for a specific Alive Super Template. " +
 		"CRITICAL TRIGGER: Only call when user message contains EXACT phrase 'Use template: carousel-thumbnails-v1.0.0' (or similar template ID). " +
 		"This phrase is sent by the UI when user clicks a template button. " +
 		"DO NOT call for natural language requests like 'build a carousel', 'create a map', or 'I need file upload'. " +

@@ -9,9 +9,9 @@ import type {
   ChatInputConfig,
   FileUploadAttachment,
   LibraryImageAttachment,
-  TemplateAttachment,
+  SuperTemplateAttachment,
 } from "../types"
-import { isFileUpload, isLibraryImage, isTemplateAttachment } from "../types"
+import { isFileUpload, isLibraryImage, isSuperTemplateAttachment } from "../types"
 
 export function useAttachments(config: ChatInputConfig) {
   const [attachments, setAttachments] = useState<Attachment[]>([])
@@ -145,11 +145,11 @@ export function useAttachments(config: ChatInputConfig) {
     [images, attachments, config],
   )
 
-  const addTemplateAttachment = useCallback(
+  const addSuperTemplateAttachment = useCallback(
     (templateId: string, name: string, preview: string) => {
       // Check if already attached
-      if (attachments.some(a => isTemplateAttachment(a) && a.templateId === templateId)) {
-        config.onMessage?.("Template already attached", "error")
+      if (attachments.some(a => isSuperTemplateAttachment(a) && a.templateId === templateId)) {
+        config.onMessage?.("SuperTemplate already attached", "error")
         return
       }
 
@@ -159,14 +159,14 @@ export function useAttachments(config: ChatInputConfig) {
         return
       }
 
-      // Create template attachment
-      const attachment: TemplateAttachment = {
-        kind: "template",
+      // Create supertemplate attachment
+      const attachment: SuperTemplateAttachment = {
+        kind: "supertemplate",
         id: crypto.randomUUID(),
         templateId,
         name,
         preview,
-        uploadProgress: 100, // Templates don't need uploading
+        uploadProgress: 100, // SuperTemplates don't need uploading
       }
 
       setAttachments(prev => [...prev, attachment])
@@ -201,7 +201,7 @@ export function useAttachments(config: ChatInputConfig) {
     attachments,
     addAttachment,
     addPhotobookImage,
-    addTemplateAttachment,
+    addSuperTemplateAttachment,
     removeAttachment,
     clearAttachments,
   }

@@ -2,12 +2,12 @@
 
 import type { Template } from "@/data/templates"
 
-interface TemplateCardProps {
+interface SuperTemplateCardProps {
   template: Template
   onClick: () => void
 }
 
-export function TemplateCard({ template, onClick }: TemplateCardProps) {
+export function SuperTemplateCard({ template, onClick }: SuperTemplateCardProps) {
   const complexityDots = "●".repeat(template.complexity)
   const complexityLabel = template.complexity === 1 ? "Simple" : template.complexity === 2 ? "Medium" : "Complex"
 

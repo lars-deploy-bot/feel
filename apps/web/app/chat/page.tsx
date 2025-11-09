@@ -4,7 +4,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { Toaster } from "react-hot-toast"
 import { FeedbackModal } from "@/components/modals/FeedbackModal"
 import { SettingsModal } from "@/components/modals/SettingsModal"
-import { TemplatesModal } from "@/components/modals/TemplatesModal"
+import { SuperTemplatesModal } from "@/components/modals/SuperTemplatesModal"
 import { PhotoMenu } from "@/components/ui/PhotoMenu"
 import { SettingsDropdown } from "@/components/ui/SettingsDropdown"
 import { ChatDropOverlay } from "@/features/chat/components/ChatDropOverlay"
@@ -859,7 +859,7 @@ function ChatPageContent() {
       {showFeedbackModal && <FeedbackModal onClose={() => setShowFeedbackModal(false)} />}
       {showSettingsModal && <SettingsModal onClose={() => setShowSettingsModal(false)} />}
       {showTemplatesModal && (
-        <TemplatesModal onClose={() => setShowTemplatesModal(false)} onInsertTemplate={handleInsertTemplate} />
+        <SuperTemplatesModal onClose={() => setShowTemplatesModal(false)} onInsertTemplate={handleInsertTemplate} />
       )}
     </div>
   )
