@@ -5,6 +5,7 @@ export type {
   ChatInputActions,
   ChatInputConfig,
   ChatInputContextValue,
+  ChatInputHandle,
   ChatInputProps,
   ChatInputState,
 } from "./types"

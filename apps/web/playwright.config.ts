@@ -5,7 +5,8 @@ const TEST_PORT = "9547"
 const BASE_URL = `http://localhost:${TEST_PORT}`
 
 export default defineConfig({
-  testDir: "./tests/e2e",
+  testDir: "./e2e-tests",
+  testMatch: "**/*.spec.ts", // Standard Playwright convention
   timeout: 30000,
 
   use: {

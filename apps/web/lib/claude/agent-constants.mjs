@@ -31,7 +31,7 @@ export const ALLOWED_MCP_TOOLS = [
   "mcp__tools__get_guide",
   "mcp__tools__find_guide",
   "mcp__tools__batch_get_guides",
-  "mcp__tools__get_template",
+  "mcp__tools__get_alive_super_template",
   "mcp__tools__generate_persona",
 ]
 

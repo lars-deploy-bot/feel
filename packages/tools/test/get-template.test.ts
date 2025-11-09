@@ -5,7 +5,7 @@ import { type GetTemplateParams, getTemplate } from "../src/tools/templates/get-
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
-const templatesPath = join(__dirname, "../internals-folder/templates")
+const templatesPath = join(__dirname, "../supertemplate/templates")
 
 describe("getTemplate", () => {
   describe("Valid template retrieval", () => {
@@ -19,8 +19,8 @@ describe("getTemplate", () => {
       expect(result.isError).toBe(false)
       expect(result.content).toHaveLength(1)
       expect(result.content[0].type).toBe("text")
-      expect(result.content[0].text).toContain("Carousel with Thumbnails")
-      expect(result.content[0].text).toContain("swiper")
+      expect(result.content[0].text).toContain("Auto-Scrolling Carousel")
+      expect(result.content[0].text).toContain("Photo Sliders")
       expect(result.content[0].text).toContain("Ready to implement this template")
     })
 

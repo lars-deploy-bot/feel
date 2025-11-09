@@ -12,7 +12,7 @@ export default defineConfig({
     exclude: [
       "**/node_modules/**",
       "**/dist/**",
-      "**/tests/e2e/**", // Exclude Playwright e2e tests
+      "**/e2e-tests/**", // Exclude Playwright e2e tests
       "**/.next/**",
     ],
   },

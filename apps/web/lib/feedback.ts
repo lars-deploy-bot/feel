@@ -5,8 +5,13 @@ import type { FeedbackEntry, FeedbackStore } from "@/types/feedback"
 /**
  * Get feedback file path with fallback logic
  * Similar pattern to domain-passwords.json
+ * @param customPath - Optional custom path for testing
  */
-function getFeedbackFilePath(): string {
+function getFeedbackFilePath(customPath?: string): string {
+  // Return custom path if provided (for testing)
+  if (customPath) {
+    return customPath
+  }
   // PRODUCTION: Use persistent location outside of git and build process
   const persistentPath = "/var/lib/claude-bridge/feedback.json"
   const persistentDir = dirname(persistentPath)
@@ -44,10 +49,11 @@ function getFeedbackFilePath(): string {
 
 /**
  * Load feedback from JSON file
+ * @param customPath - Optional custom path for testing
  */
-export function loadFeedback(): FeedbackStore {
+export function loadFeedback(customPath?: string): FeedbackStore {
   try {
-    const filePath = getFeedbackFilePath()
+    const filePath = getFeedbackFilePath(customPath)
     if (existsSync(filePath)) {
       const content = readFileSync(filePath, "utf8")
       const parsed = JSON.parse(content) as unknown
@@ -67,10 +73,12 @@ export function loadFeedback(): FeedbackStore {
 
 /**
  * Save feedback to JSON file
+ * @param store - Feedback store to save
+ * @param customPath - Optional custom path for testing
  */
-export function saveFeedback(store: FeedbackStore): void {
+export function saveFeedback(store: FeedbackStore, customPath?: string): void {
   try {
-    const filePath = getFeedbackFilePath()
+    const filePath = getFeedbackFilePath(customPath)
 
     // Ensure directory exists
     const dir = dirname(filePath)
@@ -87,9 +95,11 @@ export function saveFeedback(store: FeedbackStore): void {
 
 /**
  * Add a new feedback entry
+ * @param entry - Feedback entry to add (without id and timestamp)
+ * @param customPath - Optional custom path for testing
  */
-export function addFeedbackEntry(entry: Omit<FeedbackEntry, "id" | "timestamp">): FeedbackEntry {
-  const store = loadFeedback()
+export function addFeedbackEntry(entry: Omit<FeedbackEntry, "id" | "timestamp">, customPath?: string): FeedbackEntry {
+  const store = loadFeedback(customPath)
 
   const newEntry: FeedbackEntry = {
     ...entry,
@@ -98,23 +108,26 @@ export function addFeedbackEntry(entry: Omit<FeedbackEntry, "id" | "timestamp">)
   }
 
   store.entries.push(newEntry)
-  saveFeedback(store)
+  saveFeedback(store, customPath)
 
   return newEntry
 }
 
 /**
  * Get all feedback entries (for admin/manager view)
+ * @param customPath - Optional custom path for testing
  */
-export function getAllFeedback(): FeedbackEntry[] {
-  const store = loadFeedback()
+export function getAllFeedback(customPath?: string): FeedbackEntry[] {
+  const store = loadFeedback(customPath)
   return store.entries
 }
 
 /**
  * Get feedback entries for a specific workspace
+ * @param workspace - Workspace to filter by
+ * @param customPath - Optional custom path for testing
  */
-export function getFeedbackByWorkspace(workspace: string): FeedbackEntry[] {
-  const store = loadFeedback()
+export function getFeedbackByWorkspace(workspace: string, customPath?: string): FeedbackEntry[] {
+  const store = loadFeedback(customPath)
   return store.entries.filter(entry => entry.workspace === workspace)
 }

@@ -196,8 +196,8 @@ function ChatPageContent() {
     addMessage(userMessage)
     setMsg("")
 
-    // Clear library images from attachments (they're in the prompt now)
-    chatInputRef.current?.clearLibraryImages()
+    // Clear all attachments (they're in the prompt now)
+    chatInputRef.current?.clearAllAttachments()
 
     setShouldForceScroll(true)
 

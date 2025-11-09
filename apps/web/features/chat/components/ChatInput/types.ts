@@ -118,4 +118,5 @@ export interface ChatInputHandle {
   addSuperTemplateAttachment: (templateId: string, name: string, preview: string) => void
   getAttachments: () => Attachment[]
   clearLibraryImages: () => void
+  clearAllAttachments: () => void
 }

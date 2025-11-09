@@ -8,7 +8,7 @@
 - **Purpose**: Step-by-step implementation blueprints for specific features
 - **Content**: Exact file structure, requirements, code patterns, and architecture
 - **Use When**: Building a concrete feature (carousel, map, file upload, blog CMS)
-- **Location**: `internals-folder/templates/` (markdown files with version numbers)
+- **Location**: `supertemplate/templates/{category}/` (markdown files organized by category with version numbers)
 - **Tool**: `get_template` tool retrieves these
 - **Example**: `carousel-thumbnails-v1.0.0.md` contains all info needed to build a carousel
 
@@ -38,7 +38,14 @@ Create a template when you have a **specific feature** that needs implementation
 - Feature sets that users will build from scratch
 - Something that needs "here's exactly what to create and how"
 
-**Template files** go in `internals-folder/templates/` with names like `feature-name-v1.0.0.md`
+**Template files** go in `supertemplate/templates/{category}/` with names like `feature-name-v1.0.0.md`
+
+**Template categories:**
+- `photo-sliders/` - Image carousels, galleries, lightboxes
+- `maps/` - Interactive maps, geocoding, markers
+- `forms-and-inputs/` - Upload, validation, multi-step forms
+- `content-management/` - Blogs, CMS, editors
+- `ui-components/` - Buttons, modals, accordions, UI patterns
 
 ### When to Create a Guide
 Create a guide when you have **general knowledge** to share:

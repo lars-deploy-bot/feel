@@ -1,4 +1,4 @@
-import { readFile, realpath } from "node:fs/promises"
+import { readdir, readFile, realpath } from "node:fs/promises"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { tool } from "@anthropic-ai/claude-agent-sdk"
@@ -44,6 +44,35 @@ function isPathWithinBase(resolvedPath: string, basePath: string): boolean {
   const normalizedPath = resolve(resolvedPath)
   const normalizedBase = resolve(basePath)
   return normalizedPath.startsWith(`${normalizedBase}/`) || normalizedPath === normalizedBase
+}
+
+/**
+ * Search for a template file across all category subdirectories and read it
+ * Returns both the path and content to avoid double I/O operations
+ */
+async function findAndReadTemplate(
+  templateFile: string,
+  templatesBasePath: string,
+): Promise<{ path: string; content: string } | null> {
+  try {
+    // Get all subdirectories in templates folder
+    const entries = await readdir(templatesBasePath, { withFileTypes: true })
+    const categories = entries.filter(entry => entry.isDirectory())
+
+    // Search each category directory for the template file
+    for (const category of categories) {
+      const candidatePath = join(templatesBasePath, category.name, templateFile)
+      try {
+        // Try to read the file directly - combines existence check and read
+        const content = await readFile(candidatePath, "utf-8")
+        return { path: candidatePath, content }
+      } catch {}
+    }
+
+    return null // Template not found in any category
+  } catch {
+    return null // Error reading directories
+  }
 }
 
 /**
@@ -119,7 +148,23 @@ export async function getTemplate(params: GetTemplateParams, templatesBasePath: 
     }
 
     const templateFile = `${id}.md`
-    const templatePath = join(templatesBasePath, templateFile)
+
+    // Search for template across all category subdirectories and read it
+    const result = await findAndReadTemplate(templateFile, templatesBasePath)
+
+    if (!result) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Template "${id}" not found.`,
+          },
+        ],
+        isError: true,
+      }
+    }
+
+    const { path: templatePath, content } = result
 
     // Security: Resolve real path and verify it's within templates directory
     const resolvedBase = resolve(templatesBasePath)
@@ -138,8 +183,7 @@ export async function getTemplate(params: GetTemplateParams, templatesBasePath: 
     }
 
     try {
-      // Read file content
-      const content = await readFile(resolvedPath, "utf-8")
+      // Content already read by findAndReadTemplate
 
       // Security: Check file size (prevent memory exhaustion)
       if (content.length > 500000) {
@@ -182,13 +226,13 @@ export async function getTemplate(params: GetTemplateParams, templatesBasePath: 
         ],
         isError: false,
       }
-    } catch (_fileError) {
-      // Template file not found
+    } catch (fileError) {
+      // Error reading template file (e.g., permission denied)
       return {
         content: [
           {
             type: "text" as const,
-            text: `Template "${id}" not found.`,
+            text: `Error reading template "${id}": ${fileError instanceof Error ? fileError.message : String(fileError)}`,
           },
         ],
         isError: true,
@@ -234,7 +278,7 @@ export const getAliveSuperTemplateTool = tool(
   getTemplateParamsSchema,
   async args => {
     const packageRoot = join(__dirname, "../../..")
-    const templatesBasePath = join(packageRoot, "internals-folder/templates")
+    const templatesBasePath = join(packageRoot, "supertemplate/templates")
     return getTemplate(args, templatesBasePath)
   },
 )

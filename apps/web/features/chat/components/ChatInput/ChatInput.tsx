@@ -48,8 +48,14 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
     [userConfig],
   )
 
-  const { attachments, addAttachment, addPhotobookImage, addSuperTemplateAttachment, removeAttachment } =
-    useAttachments(config)
+  const {
+    attachments,
+    addAttachment,
+    addPhotobookImage,
+    addSuperTemplateAttachment,
+    removeAttachment,
+    clearAttachments,
+  } = useAttachments(config)
 
   // Detect supertemplate JSON in message and convert to attachments
   useSuperTemplateDetection(message, setMessage, attachments, addSuperTemplateAttachment)
@@ -68,8 +74,9 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
           removeAttachment(img.id)
         }
       },
+      clearAllAttachments: clearAttachments,
     }),
-    [addAttachment, addPhotobookImage, addSuperTemplateAttachment, attachments, removeAttachment],
+    [addAttachment, addPhotobookImage, addSuperTemplateAttachment, attachments, removeAttachment, clearAttachments],
   )
 
   const canSubmit = useMemo(() => {
