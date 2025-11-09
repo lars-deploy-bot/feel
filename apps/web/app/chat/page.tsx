@@ -1,9 +1,10 @@
 "use client"
-import { ExternalLink, Eye, EyeOff, Image, MessageCircle } from "lucide-react"
+import { ExternalLink, Eye, EyeOff, Image, Layers, MessageCircle } from "lucide-react"
 import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { Toaster } from "react-hot-toast"
 import { FeedbackModal } from "@/components/modals/FeedbackModal"
 import { SettingsModal } from "@/components/modals/SettingsModal"
+import { TemplatesModal } from "@/components/modals/TemplatesModal"
 import { PhotoMenu } from "@/components/ui/PhotoMenu"
 import { SettingsDropdown } from "@/components/ui/SettingsDropdown"
 import { ChatDropOverlay } from "@/features/chat/components/ChatDropOverlay"
@@ -57,6 +58,7 @@ function ChatPageContent() {
   const [randomSuggestion, setRandomSuggestion] = useState(SUGGESTIONS[0])
   const [showFeedbackModal, setShowFeedbackModal] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
+  const [showTemplatesModal, setShowTemplatesModal] = useState(false)
   const [showPhotoMenu, setShowPhotoMenu] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -673,6 +675,11 @@ function ChatPageContent() {
     }
   }, [])
 
+  const handleInsertTemplate = useCallback((prompt: string) => {
+    // Insert the template prompt into the chat input
+    setMsg(prompt)
+  }, [])
+
   // SSE terminal visibility is separate from debug view
 
   return (
@@ -723,6 +730,15 @@ function ChatPageContent() {
                   disabled
                 >
                   <MessageCircle size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowTemplatesModal(true)}
+                  className="inline-flex items-center justify-center px-3 py-2 text-xs font-medium text-black dark:text-white border border-black/20 dark:border-white/20 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors"
+                  aria-label="Components"
+                  title="Components"
+                >
+                  <Layers size={14} />
                 </button>
                 <div className="relative">
                   <button
@@ -842,6 +858,9 @@ function ChatPageContent() {
       {showSSETerminal && <DevTerminal />}
       {showFeedbackModal && <FeedbackModal onClose={() => setShowFeedbackModal(false)} />}
       {showSettingsModal && <SettingsModal onClose={() => setShowSettingsModal(false)} />}
+      {showTemplatesModal && (
+        <TemplatesModal onClose={() => setShowTemplatesModal(false)} onInsertTemplate={handleInsertTemplate} />
+      )}
     </div>
   )
 }

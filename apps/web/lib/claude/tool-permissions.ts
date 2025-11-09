@@ -1,6 +1,9 @@
 import type { Options } from "@anthropic-ai/claude-agent-sdk"
 import { ensurePathWithinWorkspace, type Workspace } from "@/features/workspace/lib/workspace-secure"
-import { ALLOWED_SDK_TOOLS as SDK_TOOLS_ARRAY, ALLOWED_MCP_TOOLS as MCP_TOOLS_ARRAY } from "@/lib/claude/agent-constants.mjs"
+import {
+  ALLOWED_MCP_TOOLS as MCP_TOOLS_ARRAY,
+  ALLOWED_SDK_TOOLS as SDK_TOOLS_ARRAY,
+} from "@/lib/claude/agent-constants.mjs"
 
 // Convert arrays to Sets for O(1) lookup performance
 export const ALLOWED_SDK_TOOLS = new Set(SDK_TOOLS_ARRAY)

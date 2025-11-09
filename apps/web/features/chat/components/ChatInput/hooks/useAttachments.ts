@@ -4,8 +4,14 @@ import { useCallback, useState } from "react"
 import { createPreviewUrl, getAttachmentType, validateFile } from "@/features/chat/utils/file-validation"
 import { useImageStore } from "@/lib/stores/imageStore"
 import { hashFile } from "@/lib/utils/file-hash"
-import type { Attachment, ChatInputConfig, FileUploadAttachment, LibraryImageAttachment } from "../types"
-import { isFileUpload, isLibraryImage } from "../types"
+import type {
+  Attachment,
+  ChatInputConfig,
+  FileUploadAttachment,
+  LibraryImageAttachment,
+  TemplateAttachment,
+} from "../types"
+import { isFileUpload, isLibraryImage, isTemplateAttachment } from "../types"
 
 export function useAttachments(config: ChatInputConfig) {
   const [attachments, setAttachments] = useState<Attachment[]>([])
@@ -139,6 +145,35 @@ export function useAttachments(config: ChatInputConfig) {
     [images, attachments, config],
   )
 
+  const addTemplateAttachment = useCallback(
+    (templateId: string, name: string, preview: string) => {
+      // Check if already attached
+      if (attachments.some(a => isTemplateAttachment(a) && a.templateId === templateId)) {
+        config.onMessage?.("Template already attached", "error")
+        return
+      }
+
+      // Check max attachments
+      if (config.maxAttachments && attachments.length >= config.maxAttachments) {
+        config.onMessage?.(`Maximum ${config.maxAttachments} attachments allowed`, "error")
+        return
+      }
+
+      // Create template attachment
+      const attachment: TemplateAttachment = {
+        kind: "template",
+        id: crypto.randomUUID(),
+        templateId,
+        name,
+        preview,
+        uploadProgress: 100, // Templates don't need uploading
+      }
+
+      setAttachments(prev => [...prev, attachment])
+    },
+    [attachments, config],
+  )
+
   const removeAttachment = useCallback((id: string) => {
     setAttachments(prev => {
       const attachment = prev.find(a => a.id === id)
@@ -166,6 +201,7 @@ export function useAttachments(config: ChatInputConfig) {
     attachments,
     addAttachment,
     addPhotobookImage,
+    addTemplateAttachment,
     removeAttachment,
     clearAttachments,
   }

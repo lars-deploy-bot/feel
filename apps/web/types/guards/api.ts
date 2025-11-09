@@ -162,7 +162,7 @@ export async function isDomainPasswordValid(domain: string, providedPassword: st
 
 export async function updateDomainConfig(
   domain: string,
-  updates: { password?: string; email?: string }
+  updates: { password?: string; email?: string },
 ): Promise<void> {
   const passwords = loadDomainPasswords()
   if (!passwords[domain]) return
@@ -179,8 +179,6 @@ export async function updateDomainConfig(
 }
 
 // Legacy exports for backwards compatibility
-export const updateDomainPassword = (domain: string, password: string) =>
-  updateDomainConfig(domain, { password })
+export const updateDomainPassword = (domain: string, password: string) => updateDomainConfig(domain, { password })
 
-export const updateDomainEmail = (domain: string, email: string) =>
-  updateDomainConfig(domain, { email })
+export const updateDomainEmail = (domain: string, email: string) => updateDomainConfig(domain, { email })

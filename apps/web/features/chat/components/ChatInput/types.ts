@@ -22,7 +22,15 @@ export interface LibraryImageAttachment extends BaseAttachment {
   photobookKey: string
 }
 
-export type Attachment = FileUploadAttachment | LibraryImageAttachment
+// Template from templates modal
+export interface TemplateAttachment extends BaseAttachment {
+  kind: "template"
+  templateId: string // e.g., "carousel-thumbnails-v1.0.0"
+  name: string // e.g., "Carousel with Thumbnails"
+  // preview: inherited from BaseAttachment (template preview image URL)
+}
+
+export type Attachment = FileUploadAttachment | LibraryImageAttachment | TemplateAttachment
 
 // Type guards
 export function isFileUpload(attachment: Attachment): attachment is FileUploadAttachment {
@@ -31,6 +39,10 @@ export function isFileUpload(attachment: Attachment): attachment is FileUploadAt
 
 export function isLibraryImage(attachment: Attachment): attachment is LibraryImageAttachment {
   return attachment.kind === "library-image"
+}
+
+export function isTemplateAttachment(attachment: Attachment): attachment is TemplateAttachment {
+  return attachment.kind === "template"
 }
 
 export function isImageAttachment(attachment: Attachment): boolean {
@@ -102,6 +114,7 @@ export interface ChatInputProps extends ChatInputActions {
 export interface ChatInputHandle {
   addAttachment: (file: File) => Promise<void>
   addPhotobookImage: (imageKey: string) => void
+  addTemplateAttachment: (templateId: string, name: string, preview: string) => void
   getAttachments: () => Attachment[]
   clearLibraryImages: () => void
 }

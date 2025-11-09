@@ -22,7 +22,8 @@
       "@/lib/*": ["./lib/*"],
       "@/types/*": ["./types/*"],
       "@/hooks/*": ["./hooks/*"],
-      "@/tools/*": ["./tools/*"]
+      "@/tools/*": ["./tools/*"],
+      "@/data/*": ["./data/*"]
     },
     "plugins": [
       {

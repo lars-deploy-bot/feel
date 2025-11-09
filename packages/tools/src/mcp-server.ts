@@ -7,6 +7,7 @@ import { getGuideTool } from "./tools/guides/get-guide.js"
 import { listGuidesTool } from "./tools/guides/list-guides.js"
 import { searchToolsTool } from "./tools/meta/search-tools.js"
 import { generatePersonaTool } from "./tools/personas/generate-persona.js"
+import { getTemplateTool } from "./tools/templates/get-template.js"
 import { installPackageTool } from "./tools/workspace/install-package.js"
 import { restartServerTool } from "./tools/workspace/restart-server.js"
 
@@ -53,6 +54,7 @@ export const toolsMcp = createSdkMcpServer({
     batchGetGuidesTool,
     listGuidesTool,
     getGuideTool,
+    getTemplateTool,
     readServerLogsTool,
     generatePersonaTool,
   ],

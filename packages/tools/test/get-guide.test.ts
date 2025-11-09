@@ -1,7 +1,7 @@
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
-import { type GetGuideParams, getGuide } from "../src/tools/get-guide.js"
+import { type GetGuideParams, getGuide } from "../src/tools/guides/get-guide.js"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)

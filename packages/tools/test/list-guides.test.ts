@@ -1,7 +1,7 @@
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
-import { type ListGuidesParams, listGuides } from "../src/tools/list-guides.js"
+import { type ListGuidesParams, listGuides } from "../src/tools/guides/list-guides.js"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -48,6 +48,7 @@ describe("listGuides", () => {
   it("should show guide titles from first line", async () => {
     const params: ListGuidesParams = {
       category: "30-guides",
+      detail_level: "full",
     }
 
     const result = await listGuides(params, fixturesPath)

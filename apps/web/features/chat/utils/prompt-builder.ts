@@ -1,33 +1,38 @@
 import type { Attachment } from "../components/ChatInput/types"
 
 /**
- * Builds the final prompt by prepending library image references
+ * Builds the final prompt by prepending library image references and template requests
  *
  * For library images (from PhotoMenu), prepends structured context with:
  * - List of image URLs
  * - Usage instructions
  * - User intent hint
  *
+ * For templates, appends template trigger phrases for MCP tool invocation
+ *
  * @param message - The user's text input
- * @param attachments - All current attachments (file uploads + library images)
- * @returns The augmented prompt with library image context
+ * @param attachments - All current attachments (file uploads + library images + templates)
+ * @returns The augmented prompt with library image context and template triggers
  */
 export function buildPromptWithAttachments(message: string, attachments: Attachment[]): string {
   const libraryImages = attachments.filter(a => a.kind === "library-image")
+  const templates = attachments.filter(a => a.kind === "template")
 
-  if (libraryImages.length === 0) {
-    return message
-  }
+  // Start with user message
+  let prompt = message
 
-  const imagesList = libraryImages
-    .map(img => {
-      // photobookKey format: "domain/hash"
-      const [domain, hash] = img.photobookKey.split("/")
-      return `  - /_images/t/${domain}/o/${hash}/v/orig.webp`
-    })
-    .join("\n")
+  // Wrap with library images context if any exist
+  if (libraryImages.length > 0) {
+    const imagesList = libraryImages
+      .map(img => {
+        // photobookKey format: "domain/hash"
+        const [domain, hash] = img.photobookKey.split("/")
+        return `  - /_images/t/${domain}/o/${hash}/v/orig.webp`
+      })
+      .join("\n")
 
-  return `<images_attached>
+    // Prepend images context and wrap original message
+    prompt = `<images_attached>
 The user has attached ${libraryImages.length} image${libraryImages.length > 1 ? "s" : ""} from their photobook:
 
 ${imagesList}
@@ -41,6 +46,15 @@ The user is suggesting you might want to add ${libraryImages.length > 1 ? "these
 </images_attached>
 
 <user_message>
-${message}
+${prompt}
 </user_message>`
+  }
+
+  // Append template triggers if any exist
+  if (templates.length > 0) {
+    const templateTriggers = templates.map(t => `Use template: ${t.templateId}`).join("\n")
+    prompt = `${prompt}\n\n${templateTriggers}`
+  }
+
+  return prompt
 }

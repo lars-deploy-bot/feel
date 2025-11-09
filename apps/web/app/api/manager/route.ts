@@ -4,8 +4,8 @@ import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
-import { loadDomainPasswords, updateDomainConfig } from "@/types/guards/api"
 import type { DomainConfigClient } from "@/types/domain"
+import { loadDomainPasswords, updateDomainConfig } from "@/types/guards/api"
 
 const execAsync = promisify(exec)
 
