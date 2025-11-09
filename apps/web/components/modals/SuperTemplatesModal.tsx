@@ -11,13 +11,13 @@ interface SuperTemplatesModalProps {
   onInsertTemplate: (prompt: string) => void
 }
 
-type Category = "sliders" | "maps" | "file-upload" | "blog"
+type Category = "sliders" | "maps" | "file-upload" | "backend"
 
 const categoryLabels: Record<Category, string> = {
   sliders: "Photo Sliders",
   maps: "Maps",
   "file-upload": "File Upload",
-  blog: "Blog",
+  backend: "Backend",
 }
 
 export function SuperTemplatesModal({ onClose, onInsertTemplate }: SuperTemplatesModalProps) {

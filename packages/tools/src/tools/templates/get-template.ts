@@ -10,7 +10,7 @@ const __dirname = dirname(__filename)
 /**
  * Template categories available in the system
  */
-export const TEMPLATE_CATEGORIES = ["sliders", "maps", "file-upload", "blog"] as const
+export const TEMPLATE_CATEGORIES = ["sliders", "maps", "file-upload", "backend"] as const
 
 export type TemplateCategory = (typeof TEMPLATE_CATEGORIES)[number]
 

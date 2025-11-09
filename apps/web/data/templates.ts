@@ -8,7 +8,7 @@ export interface Template {
   id: string
   templateId: VersionedTemplateId // MCP template ID (e.g., "carousel-thumbnails-v1.0.0")
   name: string
-  category: "sliders" | "maps" | "file-upload" | "blog"
+  category: "sliders" | "maps" | "file-upload" | "backend"
   description: string
   previewImage: string
   tags: string[]
@@ -68,20 +68,20 @@ export const templates: Template[] = [
     estimatedTokens: 28,
   },
 
-  // BLOG
+  // BACKEND
   {
-    id: TEMPLATE_IDS.BLOG_CMS_SYSTEM,
-    templateId: versionedId(TEMPLATE_IDS.BLOG_CMS_SYSTEM, "v1.0.0"),
-    name: "Complete Blog CMS",
-    category: "blog",
-    description: "Full blog content management system with posts, categories, tags, and publishing workflow.",
-    previewImage: "https://terminal.goalive.nl/_images/t/protino.alive.best/o/7459f48217d69634/v/orig.webp",
-    tags: ["cms", "blog", "admin"],
-    complexity: 3,
-    fileCount: 12,
-    dependencies: ["react-markdown", "date-fns", "zustand"],
-    estimatedTime: "15-20 minutes",
-    estimatedTokens: 55,
+    id: TEMPLATE_IDS.VITE_API_PLUGIN,
+    templateId: versionedId(TEMPLATE_IDS.VITE_API_PLUGIN, "v1.0.0"),
+    name: "Add a Database & Server",
+    category: "backend",
+    description: "Turn your website into a full app with its own database. Save data, load data, and create your own server routes - all in one place.",
+    previewImage: "https://terminal.goalive.nl/_images/t/alive.best/o/1b98911009639b0d/v/orig.webp",
+    tags: ["backend", "database", "server", "api"],
+    complexity: 2,
+    fileCount: 4,
+    dependencies: ["better-sqlite3"],
+    estimatedTime: "8-12 minutes",
+    estimatedTokens: 85,
   },
 ]
 

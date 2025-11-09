@@ -15,8 +15,8 @@ supertemplate/
     │   └── map-basic-markers-v1.0.0.md
     ├── forms-and-inputs/           # Upload, validation, multi-step forms
     │   └── upload-image-crop-v1.0.0.md
-    ├── content-management/         # Blogs, CMS, editors
-    │   └── blog-cms-system-v1.0.0.md
+    ├── backend/                    # API servers, databases, backend logic
+    │   └── vite-api-plugin-v1.0.0.md
     └── ui-components/              # Buttons, modals, accordions, UI patterns
         └── template-browser-v1.0.0.md
 ```
@@ -44,12 +44,12 @@ Form components, validation, and file handling.
 - Form validation
 - File management
 
-### Content Management
-Blog systems, CMS features, and content editing.
-- Blog post management
-- Category/tag systems
-- Publishing workflows
-- Rich text editors
+### Backend
+API servers, databases, and backend logic.
+- Vite API plugins
+- Database setup
+- REST endpoints
+- Authentication
 
 ### UI Components
 Reusable interface components and patterns.
@@ -97,11 +97,15 @@ Every template MUST meet the requirements in `TEMPLATE_CHECKLIST.md`:
 
 ## Adding New Templates
 
-1. **Choose the right category** - Select from existing categories or propose a new one
-2. **Follow the checklist** - Use `TEMPLATE_CHECKLIST.md` to ensure quality
-3. **Use semantic versioning** - Start at v1.0.0 for new templates
-4. **Test thoroughly** - Verify the template works from scratch
-5. **Place in category folder** - Add to `templates/{category}/`
+**Complete Guide:** See `ADDING_TEMPLATES.md` for the full step-by-step process.
+
+**Quick steps:**
+1. **Create template file** - `templates/{category}/{name}-v{version}.md` following `TEMPLATE_CHECKLIST.md`
+2. **Register in 5 files** - template-ids.ts, templates.ts, SuperTemplatesModal.tsx, get-template.ts, README.md
+3. **Test both systems** - UI browser AND MCP tool
+4. **Verify checklist** - All 49 items from `TEMPLATE_CHECKLIST.md`
+
+**IMPORTANT:** Just creating the `.md` file isn't enough - the template won't show in the UI browser without registration!
 
 ## Template Metadata Format
 
@@ -140,6 +144,14 @@ Before adding a new template:
 3. Ensure your template meets ALL quality requirements
 4. Test with a fresh project (zero prior knowledge test)
 5. Document all troubleshooting steps you encountered
+
+---
+
+## Documentation
+
+- `README.md` - This file (overview and usage)
+- `TEMPLATE_CHECKLIST.md` - Quality requirements for all templates
+- `ADDING_TEMPLATES.md` - Complete guide for adding new templates (includes UI registration)
 
 ---
 

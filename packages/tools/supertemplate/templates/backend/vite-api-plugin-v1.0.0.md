@@ -1,0 +1,1194 @@
+# Vite API Plugin - Backend Server in Vite Dev Server
+
+**Category:** Backend
+**Complexity:** Medium
+**Files:** 4
+**Dependencies:** better-sqlite3
+**Estimated Time:** 8-12 minutes
+**Framework:** Vite 5+
+**Min Node Version:** 18.0.0
+
+## Description
+
+Add a full backend API to your Vite project without needing a separate server. This plugin runs API endpoints directly inside Vite's dev server using custom middleware, enabling full-stack development in a single process. Perfect for prototypes, small apps, or projects that need simple backend functionality without Express/Fastify complexity.
+
+## Step-by-Step Implementation
+
+### Step 1: Install Dependencies
+
+**For Claude (AI Assistant):** Use the `install_package` tool:
+```
+install_package({ packageName: "better-sqlite3", version: "9.2.2" })
+install_package({ packageName: "@types/better-sqlite3", version: "7.6.8", dev: true })
+```
+
+**For manual installation:**
+```bash
+bun add better-sqlite3@9.2.2
+bun add -D @types/better-sqlite3@7.6.8
+```
+
+**Why these packages:**
+- `better-sqlite3@9.2.2` - Fast, synchronous SQLite database (no async needed)
+- `@types/better-sqlite3@7.6.8` - TypeScript types for better-sqlite3
+
+**Peer dependencies** (should already be installed):
+- `vite@^5.0.0` - Required for plugin system
+- `react@^18.0.0` - For frontend components (if using React)
+
+**Success criteria:** No installation errors in terminal. Check with:
+```bash
+bun pm ls | grep better-sqlite3
+# Should show: better-sqlite3@9.2.2
+```
+
+### Step 2: Create the Vite API Plugin
+
+Create `vite-plugin-api.js` in your project root (same level as `vite.config.ts`):
+
+**File location:** `./vite-plugin-api.js` (project root, NOT in src/ folder)
+
+```javascript
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import Database from 'better-sqlite3';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+export default function apiPlugin() {
+  const dbPath = path.join(__dirname, 'api.db');
+
+  // Initialize SQLite database
+  const db = new Database(dbPath);
+
+  // Create example table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      description TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Insert sample data if table is empty
+  const count = db.prepare('SELECT COUNT(*) as count FROM items').get();
+  if (count.count === 0) {
+    const insert = db.prepare('INSERT INTO items (name, description) VALUES (?, ?)');
+    insert.run('Example Item', 'This is a sample item');
+  }
+
+  return {
+    name: 'vite-plugin-api',
+    configureServer(server) {
+      console.log('✅ API Plugin loaded - endpoints available at /api/*');
+      // Health check endpoint
+      server.middlewares.use('/api/health', (req, res, next) => {
+        if (req.method === 'GET') {
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({
+            status: 'ok',
+            timestamp: new Date().toISOString()
+          }));
+        } else {
+          next();
+        }
+      });
+
+      // Items API - GET all items
+      server.middlewares.use('/api/items', (req, res, next) => {
+        if (req.method === 'GET') {
+          try {
+            const items = db.prepare('SELECT * FROM items ORDER BY created_at DESC').all();
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(items));
+          } catch (error) {
+            console.error('Error fetching items:', error);
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: 'Failed to fetch items' }));
+          }
+        } else if (req.method === 'POST') {
+          // Handle POST request
+          let body = '';
+          req.on('data', chunk => {
+            body += chunk.toString();
+          });
+          req.on('end', () => {
+            try {
+              const { name, description } = JSON.parse(body);
+
+              // Validation
+              if (!name || typeof name !== 'string') {
+                res.statusCode = 400;
+                res.end(JSON.stringify({ error: 'Name is required and must be a string' }));
+                return;
+              }
+
+              // Insert into database
+              const insert = db.prepare('INSERT INTO items (name, description) VALUES (?, ?)');
+              const result = insert.run(name, description || null);
+
+              // Return created item
+              const newItem = db.prepare('SELECT * FROM items WHERE id = ?').get(result.lastInsertRowid);
+              res.setHeader('Content-Type', 'application/json');
+              res.statusCode = 201;
+              res.end(JSON.stringify(newItem));
+            } catch (error) {
+              console.error('Error creating item:', error);
+              res.statusCode = 400;
+              res.end(JSON.stringify({ error: 'Invalid request body' }));
+            }
+          });
+        } else if (req.method === 'DELETE') {
+          // Handle DELETE request
+          const url = new URL(req.url, `http://${req.headers.host}`);
+          const id = url.searchParams.get('id');
+
+          if (!id) {
+            res.statusCode = 400;
+            res.end(JSON.stringify({ error: 'ID parameter is required' }));
+            return;
+          }
+
+          try {
+            const deleteStmt = db.prepare('DELETE FROM items WHERE id = ?');
+            const result = deleteStmt.run(id);
+
+            if (result.changes === 0) {
+              res.statusCode = 404;
+              res.end(JSON.stringify({ error: 'Item not found' }));
+              return;
+            }
+
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ success: true, deleted: parseInt(id) }));
+          } catch (error) {
+            console.error('Error deleting item:', error);
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: 'Failed to delete item' }));
+          }
+        } else {
+          next();
+        }
+      });
+    }
+  };
+}
+```
+
+**Success criteria:** File created with no syntax errors. Verify:
+```bash
+ls -la vite-plugin-api.js
+# Should exist in project root
+```
+
+### Step 3: Register the Plugin in Vite Config
+
+Update your `vite.config.ts`:
+
+```typescript
+import path from "node:path";
+import react from "@vitejs/plugin-react-swc";
+import { defineConfig } from "vite";
+import apiPlugin from "./vite-plugin-api.js";  // Import the plugin
+
+export default defineConfig(({ mode }) => ({
+  server: {
+    host: "::",
+    port: 3000,
+  },
+  plugins: [
+    react(),
+    apiPlugin()  // Add the plugin here
+  ],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
+}));
+```
+
+**Success criteria:** Start dev server and check console output:
+```bash
+bun run dev
+# You should see: "✅ API Plugin loaded - endpoints available at /api/*"
+```
+
+Test health endpoint:
+```bash
+curl http://localhost:3000/api/health
+# Expected output: {"status":"ok","timestamp":"2025-11-09T..."}
+```
+
+### Step 4: Create API Helper Functions (Frontend)
+
+Create `src/lib/api.ts`:
+
+```typescript
+export interface Item {
+  id: number;
+  name: string;
+  description: string | null;
+  created_at: string;
+}
+
+export interface ApiError {
+  error: string;
+}
+
+const API_BASE = '/api';
+
+/**
+ * Fetch all items from the API
+ */
+export async function getItems(): Promise<Item[]> {
+  try {
+    const response = await fetch(`${API_BASE}/items`);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch items:', error);
+    return [];
+  }
+}
+
+/**
+ * Create a new item
+ */
+export async function createItem(name: string, description?: string): Promise<Item | null> {
+  try {
+    const response = await fetch(`${API_BASE}/items`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name, description }),
+    });
+
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.error || 'Failed to create item');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to create item:', error);
+    return null;
+  }
+}
+
+/**
+ * Delete an item by ID
+ */
+export async function deleteItem(id: number): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE}/items?id=${id}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to delete item');
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Failed to delete item:', error);
+    return false;
+  }
+}
+
+/**
+ * Check API health
+ */
+export async function checkHealth(): Promise<{ status: string; timestamp: string } | null> {
+  try {
+    const response = await fetch(`${API_BASE}/health`);
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (error) {
+    console.error('Health check failed:', error);
+    return null;
+  }
+}
+```
+
+**Success criteria:** No TypeScript errors in IDE. Test in browser console:
+```javascript
+import { checkHealth } from '@/lib/api';
+await checkHealth(); // Should return {status: 'ok', timestamp: ...}
+```
+
+### Step 5: Use the API in Your Components
+
+Example usage in `src/pages/Index.tsx`:
+
+```tsx
+import { useEffect, useState } from 'react';
+import { getItems, createItem, deleteItem, type Item } from '@/lib/api';
+
+const Index = () => {
+  const [items, setItems] = useState<Item[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newItemName, setNewItemName] = useState('');
+
+  // Load items on mount
+  useEffect(() => {
+    loadItems();
+  }, []);
+
+  const loadItems = async () => {
+    setLoading(true);
+    const data = await getItems();
+    setItems(data);
+    setLoading(false);
+  };
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newItemName.trim()) return;
+
+    const newItem = await createItem(newItemName);
+    if (newItem) {
+      setItems([newItem, ...items]);
+      setNewItemName('');
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    const success = await deleteItem(id);
+    if (success) {
+      setItems(items.filter(item => item.id !== id));
+    }
+  };
+
+  if (loading) {
+    return <div className="p-8">Loading...</div>;
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-8">
+      <div className="max-w-2xl mx-auto">
+        <h1 className="text-3xl font-bold mb-8">Items Manager</h1>
+
+        {/* Create Form */}
+        <form onSubmit={handleCreate} className="mb-8 flex gap-2">
+          <input
+            type="text"
+            value={newItemName}
+            onChange={(e) => setNewItemName(e.target.value)}
+            placeholder="New item name..."
+            className="flex-1 px-4 py-2 border rounded-lg"
+          />
+          <button
+            type="submit"
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Add Item
+          </button>
+        </form>
+
+        {/* Items List */}
+        <div className="space-y-3">
+          {items.length === 0 ? (
+            <p className="text-gray-500">No items yet. Create one above!</p>
+          ) : (
+            items.map((item) => (
+              <div
+                key={item.id}
+                className="bg-white p-4 rounded-lg shadow-sm flex justify-between items-center"
+              >
+                <div>
+                  <h3 className="font-semibold">{item.name}</h3>
+                  {item.description && (
+                    <p className="text-sm text-gray-600">{item.description}</p>
+                  )}
+                  <p className="text-xs text-gray-400 mt-1">
+                    {new Date(item.created_at).toLocaleString()}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleDelete(item.id)}
+                  className="px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded"
+                >
+                  Delete
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Index;
+```
+
+**Success criteria:** Navigate to http://localhost:3000 in browser:
+- Page loads without errors
+- You see "Items Manager" header
+- Sample item "Example Item" appears in the list
+- Can add new items via form
+- Can delete items (list updates immediately)
+
+**Expected console output:**
+```
+✅ API Plugin loaded - endpoints available at /api/*
+GET /api/items 200
+POST /api/items 201
+DELETE /api/items?id=1 200
+```
+
+## How It Works
+
+### Architecture Overview
+
+```
+┌─────────────────────────────────────────┐
+│   Vite Dev Server (port 3000)           │
+│                                          │
+│  ┌────────────────────────────────────┐ │
+│  │  Static File Server                │ │
+│  │  (HTML, JS, CSS)                   │ │
+│  └────────────────────────────────────┘ │
+│                                          │
+│  ┌────────────────────────────────────┐ │
+│  │  API Plugin Middleware             │ │
+│  │  ├─ /api/health                    │ │
+│  │  ├─ /api/items (GET/POST/DELETE)   │ │
+│  │  └─ SQLite Database (api.db)       │ │
+│  └────────────────────────────────────┘ │
+└─────────────────────────────────────────┘
+```
+
+### How Vite Plugins Work
+
+1. **Plugin Registration**: Vite loads your plugin via `plugins: [apiPlugin()]` in config
+2. **configureServer Hook**: Your plugin gets access to Vite's internal server
+3. **Middleware Injection**: You add custom middleware using `server.middlewares.use()`
+4. **Request Routing**: When a request comes in, middleware checks if it matches `/api/*`
+5. **Response Handling**: If matched, your handler runs; otherwise, request passes through
+
+### Request Flow Example (POST /api/items)
+
+```
+1. Browser: fetch('/api/items', { method: 'POST', body: {...} })
+2. Vite Server receives request at port 3000
+3. Middleware checks: Does path === '/api/items'? YES
+4. Middleware checks: Is method === 'POST'? YES
+5. Read request body chunks: req.on('data', ...)
+6. Parse JSON: JSON.parse(body)
+7. Validate: Is name present and string?
+8. Execute SQL: db.prepare('INSERT...').run(name, description)
+9. Query new row: db.prepare('SELECT...').get(lastInsertRowid)
+10. Send response: res.end(JSON.stringify(newItem))
+11. Browser receives JSON response
+```
+
+### Why This Approach?
+
+✅ **Single Process**: No need for separate backend server
+✅ **Zero Config**: No Express/Fastify/Hono setup needed
+✅ **Hot Reload**: Frontend HMR still works
+✅ **Type Safety**: Share types between frontend and backend
+✅ **Fast Development**: Instant backend changes
+✅ **Production Ready**: Can migrate to standalone server later
+
+### Database Choice: SQLite
+
+- **Synchronous API**: No async/await needed (simpler code)
+- **File-based**: Single `api.db` file, easy backup
+- **Zero Setup**: No database server to install
+- **Fast**: Excellent for <100k records
+- **ACID Compliant**: Safe transactions
+
+### Performance Characteristics
+
+**Request Speed:**
+- Health check: ~1-2ms
+- Simple SELECT: ~2-5ms
+- INSERT with index: ~5-10ms
+- Complex queries: ~10-50ms
+
+**Optimizations Applied:**
+- Prepared statements (compiled once, reused)
+- Synchronous I/O (no async overhead)
+- In-process database (no network latency)
+- Automatic query optimization by SQLite
+
+**Limitations:**
+- Single writer at a time (readers unlimited)
+- File locks can cause issues with multiple processes
+- Not suitable for >100 concurrent users
+- Maximum database size: 281 TB (practically unlimited)
+
+**When to migrate:**
+- Concurrent writes needed (use PostgreSQL)
+- Millions of records (use PostgreSQL/MySQL)
+- Geographic distribution (use cloud database)
+- Real-time sync required (use Firebase/Supabase)
+
+## Customization Examples
+
+### Add a New API Endpoint
+
+Add this to your `vite-plugin-api.js` inside `configureServer()`:
+
+```javascript
+// Users API
+server.middlewares.use('/api/users', (req, res, next) => {
+  if (req.method === 'GET') {
+    const users = db.prepare('SELECT * FROM users').all();
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify(users));
+  } else {
+    next();
+  }
+});
+```
+
+Don't forget to create the table in the initialization section!
+
+### Add Request Logging
+
+```javascript
+server.middlewares.use('/api/*', (req, res, next) => {
+  console.log(`[API] ${req.method} ${req.url}`);
+  next();
+});
+```
+
+### Add CORS Headers (for external requests)
+
+```javascript
+server.middlewares.use('/api/*', (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.statusCode = 204;
+    res.end();
+    return;
+  }
+
+  next();
+});
+```
+
+### Use JSON File Instead of Database
+
+Replace the database code with:
+
+```javascript
+const dataPath = path.join(__dirname, 'data.json');
+
+const readData = () => {
+  try {
+    return JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+  } catch {
+    return { items: [] };
+  }
+};
+
+const writeData = (data) => {
+  fs.writeFileSync(dataPath, JSON.stringify(data, null, 2));
+};
+
+// In your endpoint:
+if (req.method === 'GET') {
+  const data = readData();
+  res.end(JSON.stringify(data.items));
+}
+```
+
+### Add Authentication
+
+```javascript
+const AUTH_TOKEN = 'your-secret-token';
+
+server.middlewares.use('/api/*', (req, res, next) => {
+  // Skip auth for health check
+  if (req.url === '/api/health') return next();
+
+  const token = req.headers.authorization?.replace('Bearer ', '');
+
+  if (token !== AUTH_TOKEN) {
+    res.statusCode = 401;
+    res.end(JSON.stringify({ error: 'Unauthorized' }));
+    return;
+  }
+
+  next();
+});
+```
+
+## Important Notes
+
+### ⚠️ Development Only Pattern
+
+**This plugin runs in Vite's DEV server.** For production:
+
+1. **Build static frontend**: `vite build` creates `dist/`
+2. **Migrate API**: Move API to standalone server (Express/Fastify/Hono)
+3. **OR**: Use serverless functions (Vercel/Netlify/Cloudflare)
+4. **OR**: Use this pattern with `vite preview` (not recommended for production)
+
+### ⚠️ File Locations Matter
+
+- Plugin file: `vite-plugin-api.js` (root, same level as `vite.config.ts`)
+- Database file: `api.db` (created automatically in root)
+- Frontend helpers: `src/lib/api.ts`
+
+### ⚠️ SQLite Concurrency
+
+SQLite handles multiple readers but **one writer at a time**. For high-traffic apps:
+- Use PostgreSQL/MySQL instead
+- Or use connection pooling
+- Or migrate to dedicated backend
+
+### ⚠️ Error Handling is Critical
+
+Always wrap database operations in try-catch:
+```javascript
+try {
+  const result = db.prepare('SELECT...').all();
+  res.end(JSON.stringify(result));
+} catch (error) {
+  console.error(error);
+  res.statusCode = 500;
+  res.end(JSON.stringify({ error: 'Internal server error' }));
+}
+```
+
+### ⚠️ Request Body Streaming
+
+Node.js middleware doesn't buffer request bodies automatically:
+```javascript
+let body = '';
+req.on('data', chunk => {
+  body += chunk.toString();
+});
+req.on('end', () => {
+  // Now you can use body
+});
+```
+
+## Best Practices
+
+### 1. **Input Validation**
+
+Always validate before database operations:
+```javascript
+if (!name || typeof name !== 'string' || name.length > 100) {
+  res.statusCode = 400;
+  res.end(JSON.stringify({ error: 'Invalid name' }));
+  return;
+}
+```
+
+### 2. **Prepared Statements**
+
+Use prepared statements to prevent SQL injection:
+```javascript
+// ✅ GOOD (safe)
+const stmt = db.prepare('SELECT * FROM items WHERE id = ?');
+stmt.get(userId);
+
+// ❌ BAD (SQL injection risk)
+db.exec(`SELECT * FROM items WHERE id = ${userId}`);
+```
+
+### 3. **HTTP Status Codes**
+
+Use proper status codes:
+- `200` - Success (GET, DELETE)
+- `201` - Created (POST)
+- `400` - Bad Request (validation error)
+- `401` - Unauthorized (auth failed)
+- `404` - Not Found (resource doesn't exist)
+- `500` - Internal Server Error (unexpected error)
+
+### 4. **Consistent Response Format**
+
+```javascript
+// Success
+{ "data": [...], "success": true }
+
+// Error
+{ "error": "Error message", "success": false }
+```
+
+### 5. **Database Indexes**
+
+For better performance on queries:
+```javascript
+db.exec(`
+  CREATE TABLE items (...);
+  CREATE INDEX idx_items_created_at ON items(created_at);
+  CREATE INDEX idx_items_name ON items(name);
+`);
+```
+
+### 6. **Separate Plugin File**
+
+Keep plugin in separate `.js` file (not `.ts`) because:
+- Vite config needs to import it before TypeScript compilation
+- ESM compatibility is simpler
+- Can be reused across projects
+
+### 7. **Environment Variables**
+
+Don't hardcode secrets:
+```javascript
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'api.db');
+```
+
+## Known Limitations & Future Improvements
+
+### Current Limitations
+
+1. **Development-focused**: Plugin runs in dev server, requires migration for production
+2. **SQLite constraints**: Single writer, not ideal for high concurrency
+3. **No built-in auth**: Authentication needs to be added manually
+4. **File-based storage**: Database file can grow unbounded without cleanup
+5. **No request validation library**: Manual validation only
+6. **No rate limiting**: Endpoints can be spammed
+7. **No request logging**: Manual console.log only
+
+### Future Improvements
+
+**v1.1.0 (Planned):**
+- Add request/response logging middleware
+- Include rate limiting example
+- Add Zod schema validation
+- Include database migration system
+
+**v2.0.0 (Planned):**
+- Support for multiple databases (PostgreSQL, MySQL)
+- Built-in authentication patterns
+- WebSocket support
+- File upload handling
+- Caching layer (Redis example)
+
+**Community Contributions Welcome:**
+- GraphQL endpoint example
+- tRPC integration
+- Prisma ORM integration
+- Connection pooling for production
+
+### Recommended Additions
+
+If using in production-like scenarios, add:
+1. **Helmet.js** - Security headers
+2. **express-rate-limit** - Rate limiting
+3. **Winston** - Structured logging
+4. **Joi/Zod** - Schema validation
+5. **passport.js** - Authentication
+6. **node-cache** - In-memory caching
+
+## Conflicting Patterns
+
+### ⚠️ Incompatible Setups
+
+**This template will NOT work with:**
+
+1. **Vite in library mode** (`build.lib` configured)
+   - Reason: Library mode doesn't run dev server
+   - Alternative: Use standalone Express server
+
+2. **Static site generation (SSG) only**
+   - Reason: No server-side runtime
+   - Alternative: Use serverless functions
+
+3. **Cloudflare Pages (without Functions)**
+   - Reason: No Node.js runtime
+   - Alternative: Use Cloudflare Workers with D1
+
+4. **Multiple Vite instances on same port**
+   - Reason: Port conflicts, database locking
+   - Alternative: Use different ports per instance
+
+5. **Vite config in strict ESM + plugin in CommonJS**
+   - Reason: Module system mismatch
+   - Alternative: Keep plugin as ESM (.js not .cjs)
+
+### ⚠️ Migration Conflicts
+
+**If you have existing:**
+
+1. **Backend on different port** (e.g., Express on 4000)
+   - Issue: API calls need proxy configuration
+   - Solution: Update vite.config.ts proxy settings
+
+2. **Different SQLite library** (e.g., sqlite, sqlite3)
+   - Issue: API differences, no prepared statements
+   - Solution: Uninstall old library, follow Step 1
+
+3. **API routes in separate server directory**
+   - Issue: Duplicate endpoints, conflicts
+   - Solution: Migrate endpoints one by one, test thoroughly
+
+4. **Global middleware** (e.g., body-parser, cors)
+   - Issue: May interfere with Vite's middleware chain
+   - Solution: Apply middleware only to /api/* routes
+
+## Common Troubleshooting
+
+### Error: "Cannot find module 'better-sqlite3'"
+
+**Solution**: Install the package:
+```bash
+bun add better-sqlite3
+```
+
+### Error: "Database is locked"
+
+**Cause**: Multiple processes trying to write simultaneously
+
+**Solution**:
+- Only run one dev server at a time
+- Close all terminal tabs running `bun run dev`
+- Delete `api.db` and restart
+
+### Error: "res.end is not a function"
+
+**Cause**: Called `next()` before `res.end()`
+
+**Solution**: Return after sending response:
+```javascript
+res.end(JSON.stringify(data));
+return; // Important!
+```
+
+### Plugin not loading / API returns 404
+
+**Checklist**:
+1. Is plugin imported in `vite.config.ts`? ✓
+2. Is plugin added to `plugins: []` array? ✓
+3. Is plugin file named correctly? ✓
+4. Did you restart dev server after adding plugin? ✓
+
+**Try**: Stop server and run `bun run dev` again
+
+### Database file not created
+
+**Check**: File permissions in project directory
+```bash
+ls -la api.db
+```
+
+If missing, manually create:
+```bash
+touch api.db
+chmod 644 api.db
+```
+
+### JSON parsing fails on POST
+
+**Check request headers**:
+```javascript
+req.on('end', () => {
+  console.log('Raw body:', body); // Debug
+  try {
+    const data = JSON.parse(body);
+    // ...
+  } catch (error) {
+    console.error('JSON parse error:', error);
+  }
+});
+```
+
+**Common causes**:
+- Client not sending `Content-Type: application/json`
+- Body is empty (check if data is actually sent)
+- Body contains invalid JSON
+
+### CORS errors in browser console
+
+**Solution**: Add CORS headers (see Customization section above)
+
+Or disable CORS in Vite config:
+```typescript
+export default defineConfig({
+  server: {
+    cors: true
+  }
+})
+```
+
+### Changes not reflecting
+
+1. Hard refresh: `Ctrl+Shift+R` (or `Cmd+Shift+R` on Mac)
+2. Clear browser cache
+3. Check if HMR is working (look for Vite connected message)
+4. Restart dev server
+
+## Testing Your API
+
+### Manual Testing Checklist
+
+**Basic Functionality:**
+- [ ] Health endpoint returns 200 OK
+- [ ] GET /api/items returns array
+- [ ] POST /api/items creates new item
+- [ ] DELETE /api/items?id=X removes item
+- [ ] Browser console shows no errors
+
+**Expected Outputs:**
+
+1. **GET /api/health**
+```json
+{
+  "status": "ok",
+  "timestamp": "2025-11-09T16:30:00.000Z"
+}
+```
+
+2. **GET /api/items** (fresh database)
+```json
+[
+  {
+    "id": 1,
+    "name": "Example Item",
+    "description": "This is a sample item",
+    "created_at": "2025-11-09 16:00:00"
+  }
+]
+```
+
+3. **POST /api/items** (success)
+```json
+{
+  "id": 2,
+  "name": "New Item",
+  "description": "Test description",
+  "created_at": "2025-11-09 16:01:00"
+}
+```
+
+4. **POST /api/items** (validation error)
+```json
+{
+  "error": "Name is required and must be a string"
+}
+```
+
+5. **DELETE /api/items?id=1** (success)
+```json
+{
+  "success": true,
+  "deleted": 1
+}
+```
+
+6. **DELETE /api/items?id=999** (not found)
+```json
+{
+  "error": "Item not found"
+}
+```
+
+### Edge Cases Testing
+
+**1. Empty/Invalid Data:**
+```bash
+# Empty name
+curl -X POST http://localhost:3000/api/items \
+  -H "Content-Type: application/json" \
+  -d '{"name":""}'
+# Expected: 400 Bad Request
+
+# Missing name
+curl -X POST http://localhost:3000/api/items \
+  -H "Content-Type: application/json" \
+  -d '{"description":"Only description"}'
+# Expected: 400 Bad Request
+
+# Invalid JSON
+curl -X POST http://localhost:3000/api/items \
+  -H "Content-Type: application/json" \
+  -d '{invalid json}'
+# Expected: 400 Bad Request
+```
+
+**2. SQL Injection Attempts:**
+```bash
+# Try SQL injection (should be blocked by prepared statements)
+curl -X POST http://localhost:3000/api/items \
+  -H "Content-Type: application/json" \
+  -d '{"name":"'; DROP TABLE items; --"}'
+# Expected: Creates item with that literal name, table NOT dropped
+```
+
+**3. Large Datasets:**
+```bash
+# Create 100 items
+for i in {1..100}; do
+  curl -X POST http://localhost:3000/api/items \
+    -H "Content-Type: application/json" \
+    -d "{\"name\":\"Item $i\"}" &
+done
+wait
+
+# Verify all created
+curl http://localhost:3000/api/items | jq '. | length'
+# Expected: ~100 items (some may fail due to concurrent writes)
+```
+
+**4. Special Characters:**
+```bash
+# Unicode, emoji, special chars
+curl -X POST http://localhost:3000/api/items \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Test 测试 🚀 <script>alert(1)</script>"}'
+# Expected: 201 Created (all characters preserved)
+```
+
+**5. Network Failures:**
+```javascript
+// Simulate network error
+navigator.onLine = false;
+await createItem('Test');
+// Expected: Console error, returns null
+```
+
+### Using curl
+
+```bash
+# Health check
+curl http://localhost:3000/api/health
+
+# Get all items
+curl http://localhost:3000/api/items
+
+# Create item
+curl -X POST http://localhost:3000/api/items \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Test Item","description":"From curl"}'
+
+# Delete item
+curl -X DELETE "http://localhost:3000/api/items?id=1"
+
+# Pretty print with jq
+curl -s http://localhost:3000/api/items | jq '.'
+```
+
+### Using Browser DevTools
+
+```javascript
+// In browser console:
+
+// GET
+fetch('/api/items').then(r => r.json()).then(console.log);
+
+// POST
+fetch('/api/items', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ name: 'Test', description: 'Hello' })
+}).then(r => r.json()).then(console.log);
+
+// DELETE
+fetch('/api/items?id=1', { method: 'DELETE' })
+  .then(r => r.json()).then(console.log);
+
+// Test error handling
+fetch('/api/items', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ name: '' }) // Invalid
+}).then(r => r.json()).then(console.log);
+// Expected: {error: "Name is required and must be a string"}
+```
+
+### Visual Verification
+
+**What you should see in the browser:**
+
+1. **On page load:**
+   - Clean UI with "Items Manager" header
+   - One sample item displayed
+   - Input field and "Add Item" button
+   - No console errors
+
+2. **After adding an item:**
+   - New item appears at the top of the list
+   - Input field clears automatically
+   - No page refresh (SPA behavior)
+   - Console shows: `POST /api/items 201`
+
+3. **After deleting an item:**
+   - Item removed from list immediately
+   - List re-renders without that item
+   - Console shows: `DELETE /api/items?id=X 200`
+
+4. **Network tab verification:**
+   - Requests to `/api/items` show 200/201 status
+   - Response previews show JSON data
+   - Request payloads show correct JSON structure
+
+## Migration Path to Production
+
+### Option 1: Standalone Express Server
+
+Create `server.js`:
+```javascript
+import express from 'express';
+import Database from 'better-sqlite3';
+
+const app = express();
+const db = new Database('api.db');
+
+app.use(express.json());
+app.use(express.static('dist')); // Serve Vite build
+
+app.get('/api/items', (req, res) => {
+  const items = db.prepare('SELECT * FROM items').all();
+  res.json(items);
+});
+
+// ... other endpoints
+
+app.listen(3000, () => {
+  console.log('Server running on port 3000');
+});
+```
+
+### Option 2: Serverless Functions
+
+Split each endpoint into separate files:
+```
+api/
+├── items.js        // GET /api/items
+├── create-item.js  // POST /api/items
+└── delete-item.js  // DELETE /api/items
+```
+
+Deploy to Vercel/Netlify/Cloudflare Workers.
+
+### Option 3: Keep Plugin for SSR
+
+If using Vite SSR mode, this plugin works in production with `vite preview`.
+
+## Summary
+
+You now have:
+- ✅ Full backend API running inside Vite dev server
+- ✅ SQLite database with CRUD operations
+- ✅ Type-safe frontend API helpers
+- ✅ Complete error handling and validation
+- ✅ Example component using the API
+
+**Next steps:**
+1. Add more endpoints for your features
+2. Expand database schema
+3. Add authentication if needed
+4. Plan migration strategy for production
+
+Ready to build your full-stack Vite app!

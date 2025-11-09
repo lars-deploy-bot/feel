@@ -411,6 +411,8 @@ bun run pull
 - **CLAUDE.md**: This file (AI assistant guidelines)
 - **docs/deployment/**: Atomic build system and deployment guide (deployment.md, failure modes, build isolation)
 - **docs/setup/**: Local development setup
+- **docs/features/**: Feature-specific documentation
+  - **alive-super-templates.md**: Complete guide to the Alive Super Templates system (architecture, components, adding templates)
 - **IMPLEMENTATION_STATUS.md**: Feature completion tracking
 - **PHASE1_IMPLEMENTATION.md**: Initial implementation notes
 

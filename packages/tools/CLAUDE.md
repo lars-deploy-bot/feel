@@ -12,6 +12,17 @@
 - **Tool**: `get_template` tool retrieves these
 - **Example**: `carousel-thumbnails-v1.0.0.md` contains all info needed to build a carousel
 
+**Two-System Architecture:**
+- **Backend (MCP Tool)**: Auto-discovers templates via directory scanning - no registration needed
+- **Frontend (UI Browser)**: Requires manual registration in 5 files for templates to appear in UI
+
+**CRITICAL**: Creating only the `.md` file is insufficient - templates won't show in the UI browser without full registration!
+
+**Documentation:**
+- **Comprehensive guide**: See `../../docs/features/alive-super-templates.md` for complete system architecture
+- **Adding templates**: See `supertemplate/ADDING_TEMPLATES.md` for step-by-step registration process
+- **Quality requirements**: See `supertemplate/TEMPLATE_CHECKLIST.md` for all 49 quality standards
+
 ### Guides
 - **Purpose**: General development patterns, best practices, reference material
 - **Content**: Knowledge about architecture, security, performance, organization
@@ -44,8 +55,18 @@ Create a template when you have a **specific feature** that needs implementation
 - `photo-sliders/` - Image carousels, galleries, lightboxes
 - `maps/` - Interactive maps, geocoding, markers
 - `forms-and-inputs/` - Upload, validation, multi-step forms
-- `content-management/` - Blogs, CMS, editors
+- `backend/` - API servers, databases, backend logic
 - `ui-components/` - Buttons, modals, accordions, UI patterns
+
+**Registration Process** (CRITICAL):
+After creating the `.md` file, you MUST register it in 5 additional files for UI browser visibility:
+1. `apps/web/data/template-ids.ts` - Add ID constant and version registry
+2. `apps/web/data/templates.ts` - Add category type (if new) and template entry
+3. `apps/web/components/modals/SuperTemplatesModal.tsx` - Add category type and label (if new)
+4. `packages/tools/src/tools/templates/get-template.ts` - Add to TEMPLATE_CATEGORIES (if new)
+5. `supertemplate/README.md` - Update total count and category description (if new)
+
+**See `supertemplate/ADDING_TEMPLATES.md` for complete step-by-step guide.**
 
 ### When to Create a Guide
 Create a guide when you have **general knowledge** to share:

@@ -7,7 +7,7 @@ export const TEMPLATE_IDS = {
   CAROUSEL_THUMBNAILS: "carousel-thumbnails",
   MAP_BASIC_MARKERS: "map-basic-markers",
   UPLOAD_IMAGE_CROP: "upload-image-crop",
-  BLOG_CMS_SYSTEM: "blog-cms-system",
+  VITE_API_PLUGIN: "vite-api-plugin",
 } as const
 
 export type TemplateId = (typeof TEMPLATE_IDS)[keyof typeof TEMPLATE_IDS]
@@ -24,7 +24,7 @@ export const TEMPLATE_VERSION_REGISTRY = {
   [TEMPLATE_IDS.CAROUSEL_THUMBNAILS]: ["v1.0.0"] as const,
   [TEMPLATE_IDS.MAP_BASIC_MARKERS]: ["v1.0.0"] as const,
   [TEMPLATE_IDS.UPLOAD_IMAGE_CROP]: ["v1.0.0"] as const,
-  [TEMPLATE_IDS.BLOG_CMS_SYSTEM]: ["v1.0.0"] as const,
+  [TEMPLATE_IDS.VITE_API_PLUGIN]: ["v1.0.0"] as const,
 } as const
 
 /**
