@@ -61,6 +61,47 @@ export default defineConfig(({ mode }) => ({
 }));
 `
 
+// Generate vite.config.docker.ts (for Docker deployments with HMR)
+const viteDockerConfig = `import path from "node:path";
+import react from "@vitejs/plugin-react-swc";
+import { componentTagger } from "lovable-tagger";
+import { defineConfig } from "vite";
+
+// https://vitejs.dev/config/
+export default defineConfig(({ mode }) => ({
+	server: {
+		host: "0.0.0.0",
+		port: ${port},
+		strictPort: true,
+		allowedHosts: ["${domain}"],
+		hmr: {
+			protocol: "wss",
+			host: "${domain}",
+			port: 443,
+			path: "/__vite_hmr",
+		},
+		fs: {
+			strict: true,
+			allow: ["/app"],
+		},
+		cors: true,
+	},
+	preview: {
+		host: "0.0.0.0",
+		port: ${port},
+		allowedHosts: ["${domain}"],
+	},
+	plugins: [react(), mode === "development" && componentTagger()].filter(
+		Boolean,
+	),
+	resolve: {
+		alias: {
+			"@": path.resolve(__dirname, "./src"),
+		},
+	},
+}));
+`
+
 // Generate systemd-compatible notes (no longer generating PM2 configs)
 const systemdNotes = `# This site uses systemd services for security isolation
 #
@@ -106,6 +147,7 @@ if (fs.existsSync(packageJsonPath)) {
 
 // Write config files with error handling
 const viteConfigPath = path.join(userDir, "vite.config.ts")
+const viteDockerConfigPath = path.join(userDir, "vite.config.docker.ts")
 const systemdNotesPath = path.join(workDir, "SYSTEMD_DEPLOYMENT.md")
 
 try {
@@ -113,6 +155,14 @@ try {
   console.log(`✅ Generated vite.config.ts for ${domain}:${portNum}`)
 } catch (error) {
   console.error(`❌ Failed to write vite.config.ts: ${error.message}`)
+  process.exit(1)
+}
+
+try {
+  fs.writeFileSync(viteDockerConfigPath, viteDockerConfig)
+  console.log(`✅ Generated vite.config.docker.ts for ${domain}:${portNum}`)
+} catch (error) {
+  console.error(`❌ Failed to write vite.config.docker.ts: ${error.message}`)
   process.exit(1)
 }
 
