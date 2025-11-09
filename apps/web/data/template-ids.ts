@@ -32,7 +32,7 @@ export const TEMPLATE_VERSION_REGISTRY = {
  * Examples: "carousel-thumbnails-v1.0.0", "map-basic-markers-v1.0.0"
  */
 export type VersionedTemplateId = {
-  [K in keyof typeof TEMPLATE_VERSION_REGISTRY]: typeof TEMPLATE_VERSION_REGISTRY[K] extends readonly (infer V)[]
+  [K in keyof typeof TEMPLATE_VERSION_REGISTRY]: (typeof TEMPLATE_VERSION_REGISTRY)[K] extends readonly (infer V)[]
     ? `${K & string}-${V & string}`
     : never
 }[keyof typeof TEMPLATE_VERSION_REGISTRY]

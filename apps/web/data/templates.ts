@@ -1,4 +1,4 @@
-import { TEMPLATE_IDS, versionedId, type VersionedTemplateId } from "./template-ids"
+import { TEMPLATE_IDS, type VersionedTemplateId, versionedId } from "./template-ids"
 
 // Re-export for convenience
 export { TEMPLATE_IDS, versionedId }

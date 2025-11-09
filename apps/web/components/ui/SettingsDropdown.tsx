@@ -1,8 +1,7 @@
 "use client"
 
-import { Moon, Settings, Sun } from "lucide-react"
+import { Plus, Settings } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
 import { AddWorkspaceModal } from "@/components/modals/AddWorkspaceModal"
 
@@ -20,11 +19,9 @@ export function SettingsDropdown({
   onOpenSettings,
 }: SettingsDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const [mounted, setMounted] = useState(false)
   const [workspaces, setWorkspaces] = useState<string[]>([])
   const [showAddModal, setShowAddModal] = useState(false)
   const router = useRouter()
-  const { theme, setTheme } = useTheme()
 
   const fetchWorkspaces = () => {
     fetch("/api/auth/workspaces")
@@ -40,7 +37,6 @@ export function SettingsDropdown({
   }
 
   useEffect(() => {
-    setMounted(true)
     fetchWorkspaces()
   }, [])
 
@@ -120,9 +116,10 @@ export function SettingsDropdown({
 
           <button
             onClick={() => handleAction(() => setShowAddModal(true))}
-            className="w-full px-4 py-2.5 text-left text-sm text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors font-medium"
+            className="w-full px-4 py-2.5 text-left text-sm text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors font-medium flex items-center gap-2"
             type="button"
           >
+            <Plus size={16} />
             Add site
           </button>
           <div className="border-t border-black/10 dark:border-white/10 my-1" />
@@ -136,34 +133,15 @@ export function SettingsDropdown({
               Start new chat
             </button>
           )}
-          {onOpenSettings && (
-            <button
-              onClick={() => handleAction(onOpenSettings)}
-              className="w-full px-4 py-2.5 text-left text-sm text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors font-medium flex items-center gap-2"
-              type="button"
-            >
-              <Settings size={16} />
-              Settings
-            </button>
-          )}
+          <div className="border-t border-black/10 dark:border-white/10 my-1" />
           <button
-            onClick={() => handleAction(() => setTheme(theme === "dark" ? "light" : "dark"))}
+            onClick={() => handleAction(() => onOpenSettings?.())}
             className="w-full px-4 py-2.5 text-left text-sm text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors font-medium flex items-center gap-2"
             type="button"
           >
-            {mounted ? (
-              <>
-                {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-                {theme === "dark" ? "Light mode" : "Dark mode"}
-              </>
-            ) : (
-              <>
-                <Moon size={16} />
-                Toggle theme
-              </>
-            )}
+            <Settings size={16} />
+            Settings
           </button>
-          <div className="border-t border-black/10 dark:border-white/10 my-1" />
           <button
             onClick={handleLogout}
             className="w-full px-4 py-2.5 text-left text-sm text-black/60 dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/5 transition-colors font-medium"

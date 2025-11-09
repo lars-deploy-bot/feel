@@ -1,5 +1,5 @@
 "use client"
-import { ExternalLink, Eye, EyeOff, Image, Layers, MessageCircle } from "lucide-react"
+import { ExternalLink, Eye, EyeOff, Image, MessageCircle } from "lucide-react"
 import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { Toaster } from "react-hot-toast"
 import { FeedbackModal } from "@/components/modals/FeedbackModal"
@@ -38,15 +38,6 @@ import { isRetryableError, retryWithBackoff } from "@/lib/retry"
 import { isDevelopment, useDebugActions, useDebugVisible, useSandbox, useSSETerminal } from "@/lib/stores/debug-store"
 import { useLLMStore } from "@/lib/stores/llmStore"
 
-const SUGGESTIONS = [
-  '"Add a contact form"',
-  '"Change the background to blue"',
-  '"Make the text bigger"',
-  '"Add a navigation menu"',
-  '"Create a hero section"',
-  '"Add a footer"',
-]
-
 function ChatPageContent() {
   const [msg, setMsg] = useState("")
   const [messages, setMessages] = useState<UIMessage[]>([])
@@ -55,7 +46,6 @@ function ChatPageContent() {
   const [shouldForceScroll, setShouldForceScroll] = useState(false)
   const [userHasManuallyScrolled, setUserHasManuallyScrolled] = useState(false)
   const [subdomainInitialized, setSubdomainInitialized] = useState(false)
-  const [randomSuggestion, setRandomSuggestion] = useState(SUGGESTIONS[0])
   const [showFeedbackModal, setShowFeedbackModal] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [showTemplatesModal, setShowTemplatesModal] = useState(false)
@@ -93,11 +83,6 @@ function ChatPageContent() {
 
     return isTerminal ? { ...baseBody, workspace } : baseBody
   }
-
-  // Pick random suggestion on mount (client-side only)
-  useEffect(() => {
-    setRandomSuggestion(SUGGESTIONS[Math.floor(Math.random() * SUGGESTIONS.length)])
-  }, [])
 
   // Show SSE terminal and Sandbox minimized on staging (after mount to avoid hydration mismatch)
   useEffect(() => {
@@ -724,21 +709,11 @@ function ChatPageContent() {
                 <button
                   type="button"
                   onClick={() => setShowFeedbackModal(true)}
-                  className="inline-flex items-center justify-center px-3 py-2 text-xs font-medium text-black/30 dark:text-white/30 border border-black/20 dark:border-white/20 transition-colors cursor-not-allowed"
+                  className="inline-flex items-center justify-center px-3 py-2 text-xs font-medium text-black dark:text-white border border-black/20 dark:border-white/20 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors"
                   aria-label="Send Feedback"
-                  title="Send Feedback (Coming Soon)"
-                  disabled
+                  title="Send Feedback"
                 >
                   <MessageCircle size={14} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowTemplatesModal(true)}
-                  className="inline-flex items-center justify-center px-3 py-2 text-xs font-medium text-black dark:text-white border border-black/20 dark:border-white/20 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors"
-                  aria-label="Components"
-                  title="Components"
-                >
-                  <Layers size={14} />
                 </button>
                 <div className="relative">
                   <button
@@ -795,12 +770,18 @@ function ChatPageContent() {
               {/* Empty state - only show when no messages */}
               {messages.length === 0 && !busy && (
                 <div className="flex items-start justify-center h-full pt-32">
-                  <div className="max-w-md text-center space-y-4">
-                    <p className="text-base text-black/80 dark:text-white/80 font-medium">
+                  <div className="max-w-md text-center space-y-6">
+                    <p className="text-lg text-black/90 dark:text-white/90 font-medium">
                       Tell me what to build and I'll update your site
                     </p>
-                    <div className="text-sm text-black/50 dark:text-white/50 font-normal">
-                      <p>{randomSuggestion}</p>
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowTemplatesModal(true)}
+                        className="px-4 py-2 rounded-md bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-sm font-medium text-black dark:text-white transition-colors"
+                      >
+                        Browse templates
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -841,6 +822,7 @@ function ChatPageContent() {
               abortControllerRef={abortControllerRef}
               onSubmit={sendMessage}
               onStop={stopStreaming}
+              onOpenTemplates={() => setShowTemplatesModal(true)}
               config={{
                 enableAttachments: true,
                 enableCamera: true,
@@ -856,7 +838,13 @@ function ChatPageContent() {
 
       {showSandbox && <Sandbox />}
       {showSSETerminal && <DevTerminal />}
-      {showFeedbackModal && <FeedbackModal onClose={() => setShowFeedbackModal(false)} />}
+      {showFeedbackModal && (
+        <FeedbackModal
+          onClose={() => setShowFeedbackModal(false)}
+          workspace={workspace}
+          conversationId={conversationId}
+        />
+      )}
       {showSettingsModal && <SettingsModal onClose={() => setShowSettingsModal(false)} />}
       {showTemplatesModal && (
         <SuperTemplatesModal onClose={() => setShowTemplatesModal(false)} onInsertTemplate={handleInsertTemplate} />

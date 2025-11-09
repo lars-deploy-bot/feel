@@ -9,6 +9,7 @@ export interface DomainConfig {
   port: number
   createdAt?: string
   email?: string
+  tokens?: number
 }
 
 export interface DomainConfigClient {
@@ -17,6 +18,7 @@ export interface DomainConfigClient {
   orphaned?: boolean
   createdAt?: string
   email?: string
+  tokens?: number
 }
 
 export interface DomainStatus {

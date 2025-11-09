@@ -8,18 +8,17 @@ interface SettingsModalProps {
   onClose: () => void
 }
 
-type SettingsTab = "general" | "appearance" | "llm" | "advanced" | "about"
+type SettingsTab = "appearance" | "llm" | "tokens" | "about"
 
 const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
-  { id: "general", label: "General", icon: <Settings size={16} /> },
   { id: "appearance", label: "Appearance", icon: <Sun size={16} /> },
   { id: "llm", label: "LLM", icon: <Bot size={16} /> },
-  { id: "advanced", label: "Advanced", icon: <Zap size={16} /> },
+  { id: "tokens", label: "Tokens", icon: <Zap size={16} /> },
   { id: "about", label: "About", icon: <Info size={16} /> },
 ]
 
 export function SettingsModal({ onClose }: SettingsModalProps) {
-  const [activeTab, setActiveTab] = useState<SettingsTab>("general")
+  const [activeTab, setActiveTab] = useState<SettingsTab>("appearance")
 
   return (
     <div
@@ -98,10 +97,9 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
           {/* Scrollable Content */}
           <div className="flex-1 overflow-y-auto p-4 sm:p-6">
             <div key={activeTab} className="animate-in fade-in-0 slide-in-from-bottom-3 duration-400">
-              {activeTab === "general" && <GeneralSettings />}
               {activeTab === "appearance" && <AppearanceSettings />}
               {activeTab === "llm" && <LLMSettings />}
-              {activeTab === "advanced" && <AdvancedSettings />}
+              {activeTab === "tokens" && <TokensSettings />}
               {activeTab === "about" && <AboutSettings />}
             </div>
           </div>
@@ -111,53 +109,33 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
   )
 }
 
-function GeneralSettings() {
-  return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="animate-in fade-in-0 slide-in-from-top-2 duration-300">
-        <h3 className="text-base sm:text-lg font-medium text-black dark:text-white mb-1">General Settings</h3>
-        <p className="text-xs sm:text-sm text-black/60 dark:text-white/60">Manage your general preferences</p>
-      </div>
-
-      <div className="space-y-2 sm:space-y-4">
-        <div className="flex items-center justify-between gap-4 py-2 sm:py-3 border-b border-black/5 dark:border-white/5 animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-75 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] px-2 -mx-2 rounded transition-colors">
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-black dark:text-white truncate">Auto-save conversations</p>
-            <p className="text-xs text-black/50 dark:text-white/50 mt-0.5">Automatically save your chat history</p>
-          </div>
-          <label className="relative inline-flex items-center cursor-pointer group flex-shrink-0">
-            <input type="checkbox" className="sr-only peer" defaultChecked />
-            <div className="w-11 h-6 bg-black/20 dark:bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white dark:after:bg-black after:rounded-full after:h-5 after:w-5 after:transition-all after:duration-200 peer-checked:bg-black dark:peer-checked:bg-white transition-colors" />
-          </label>
-        </div>
-
-        <div className="flex items-center justify-between gap-4 py-2 sm:py-3 border-b border-black/5 dark:border-white/5 animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-100 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] px-2 -mx-2 rounded transition-colors">
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-black dark:text-white truncate">Show thinking process</p>
-            <p className="text-xs text-black/50 dark:text-white/50 mt-0.5">Display AI reasoning steps</p>
-          </div>
-          <label className="relative inline-flex items-center cursor-pointer group flex-shrink-0">
-            <input type="checkbox" className="sr-only peer" defaultChecked />
-            <div className="w-11 h-6 bg-black/20 dark:bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white dark:after:bg-black after:rounded-full after:h-5 after:w-5 after:transition-all after:duration-200 peer-checked:bg-black dark:peer-checked:bg-white transition-colors" />
-          </label>
-        </div>
-
-        <div className="flex items-center justify-between gap-4 py-2 sm:py-3 animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-150 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] px-2 -mx-2 rounded transition-colors">
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-black dark:text-white truncate">Keyboard shortcuts</p>
-            <p className="text-xs text-black/50 dark:text-white/50 mt-0.5">Enable keyboard navigation</p>
-          </div>
-          <label className="relative inline-flex items-center cursor-pointer group flex-shrink-0">
-            <input type="checkbox" className="sr-only peer" />
-            <div className="w-11 h-6 bg-black/20 dark:bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white dark:after:bg-black after:rounded-full after:h-5 after:w-5 after:transition-all after:duration-200 peer-checked:bg-black dark:peer-checked:bg-white transition-colors" />
-          </label>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function AppearanceSettings() {
+  const [theme, setTheme] = useState<"light" | "dark" | "auto">("auto")
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme") as "light" | "dark" | "auto" | null
+    if (savedTheme) {
+      setTheme(savedTheme)
+      applyTheme(savedTheme)
+    }
+  }, [])
+
+  const applyTheme = (themeMode: "light" | "dark" | "auto") => {
+    const html = document.documentElement
+    if (themeMode === "auto") {
+      const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches
+      html.classList.toggle("dark", isDark)
+    } else {
+      html.classList.toggle("dark", themeMode === "dark")
+    }
+  }
+
+  const handleThemeChange = (newTheme: "light" | "dark" | "auto") => {
+    setTheme(newTheme)
+    localStorage.setItem("theme", newTheme)
+    applyTheme(newTheme)
+  }
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="animate-in fade-in-0 slide-in-from-top-2 duration-300">
@@ -171,27 +149,36 @@ function AppearanceSettings() {
           <div className="grid grid-cols-3 gap-2 sm:gap-3">
             <button
               type="button"
-              className="flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 border border-black/20 dark:border-white/20 rounded hover:border-black dark:hover:border-white transition-all duration-200 hover:shadow-sm"
+              onClick={() => handleThemeChange("light")}
+              className={`flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 border rounded transition-all duration-200 ${
+                theme === "light"
+                  ? "border-black dark:border-white bg-black/5 dark:bg-white/5 shadow-sm"
+                  : "border-black/20 dark:border-white/20 hover:border-black dark:hover:border-white hover:shadow-sm"
+              }`}
             >
-              <Sun
-                size={18}
-                className="sm:w-5 sm:h-5 text-black dark:text-white transition-transform duration-200 group-hover:rotate-45"
-              />
+              <Sun size={18} className="sm:w-5 sm:h-5 text-black dark:text-white" />
               <span className="text-xs text-black/60 dark:text-white/60">Light</span>
             </button>
             <button
               type="button"
-              className="flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 border border-black/20 dark:border-white/20 rounded hover:border-black dark:hover:border-white transition-all duration-200 hover:shadow-sm"
+              onClick={() => handleThemeChange("dark")}
+              className={`flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 border rounded transition-all duration-200 ${
+                theme === "dark"
+                  ? "border-black dark:border-white bg-black/5 dark:bg-white/5 shadow-sm"
+                  : "border-black/20 dark:border-white/20 hover:border-black dark:hover:border-white hover:shadow-sm"
+              }`}
             >
-              <Moon
-                size={18}
-                className="sm:w-5 sm:h-5 text-black dark:text-white transition-transform duration-200 group-hover:-rotate-12"
-              />
+              <Moon size={18} className="sm:w-5 sm:h-5 text-black dark:text-white" />
               <span className="text-xs text-black/60 dark:text-white/60">Dark</span>
             </button>
             <button
               type="button"
-              className="flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 border-2 border-black dark:border-white rounded bg-black/5 dark:bg-white/5 transition-all duration-200 hover:shadow-sm"
+              onClick={() => handleThemeChange("auto")}
+              className={`flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 border rounded transition-all duration-200 ${
+                theme === "auto"
+                  ? "border-2 border-black dark:border-white bg-black/5 dark:bg-white/5 shadow-sm"
+                  : "border border-black/20 dark:border-white/20 hover:border-black dark:hover:border-white hover:shadow-sm"
+              }`}
             >
               <div className="flex items-center gap-1">
                 <Sun size={11} className="sm:w-3 sm:h-3 text-black dark:text-white" />
@@ -201,92 +188,62 @@ function AppearanceSettings() {
             </button>
           </div>
         </div>
-
-        <div className="pt-2 sm:pt-4">
-          <p className="text-sm font-medium text-black dark:text-white mb-3">Font size</p>
-          <div className="flex items-center gap-3 sm:gap-4">
-            <input
-              type="range"
-              min="12"
-              max="18"
-              defaultValue="14"
-              className="flex-1 h-2 bg-black/10 dark:bg-white/10 rounded-lg appearance-none cursor-pointer accent-black dark:accent-white"
-            />
-            <span className="text-sm text-black/60 dark:text-white/60 w-10 sm:w-12 text-right flex-shrink-0">14px</span>
-          </div>
-        </div>
-
-        <div className="pt-2 sm:pt-4">
-          <p className="text-sm font-medium text-black dark:text-white mb-3">Message density</p>
-          <div className="space-y-2">
-            {["Compact", "Comfortable", "Spacious"].map(option => (
-              <label
-                key={option}
-                className="flex items-center gap-3 cursor-pointer p-2 -mx-2 rounded hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors"
-              >
-                <input
-                  type="radio"
-                  name="density"
-                  defaultChecked={option === "Comfortable"}
-                  className="w-4 h-4 accent-black dark:accent-white flex-shrink-0"
-                />
-                <span className="text-sm text-black dark:text-white">{option}</span>
-              </label>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   )
 }
 
-function AdvancedSettings() {
+function TokensSettings() {
+  const [tokens, setTokens] = useState(200)
+  const maxTokens = 200
+
+  useEffect(() => {
+    // Fetch tokens from current workspace/domain
+    const fetchTokens = async () => {
+      try {
+        const workspace = sessionStorage.getItem("workspace")
+        if (workspace) {
+          const response = await fetch("/api/tokens", {
+            headers: {
+              "X-Workspace": workspace,
+            },
+          })
+          if (response.ok) {
+            const data = await response.json()
+            setTokens(data.tokens || 200)
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch tokens:", error)
+      }
+    }
+    fetchTokens()
+  }, [])
+
+  const percentage = (tokens / maxTokens) * 100
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div>
-        <h3 className="text-base sm:text-lg font-medium text-black dark:text-white mb-1">Advanced</h3>
-        <p className="text-xs sm:text-sm text-black/60 dark:text-white/60">Power user settings and developer options</p>
+        <h3 className="text-base sm:text-lg font-medium text-black dark:text-white mb-1">Tokens Available</h3>
+        <p className="text-xs sm:text-sm text-black/60 dark:text-white/60">Your available token balance</p>
       </div>
 
-      <div className="space-y-2 sm:space-y-4">
-        <div className="flex items-center justify-between gap-4 py-2 sm:py-3 border-b border-black/5 dark:border-white/5 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] px-2 -mx-2 rounded transition-colors">
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-black dark:text-white truncate">Enable debug mode</p>
-            <p className="text-xs text-black/50 dark:text-white/50 mt-0.5">Show detailed system information</p>
+      <div className="space-y-4">
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-black dark:text-white">Balance</span>
+            <span className="text-sm font-semibold text-black dark:text-white">{tokens} / {maxTokens}</span>
           </div>
-          <label className="relative inline-flex items-center cursor-pointer group flex-shrink-0">
-            <input type="checkbox" className="sr-only peer" />
-            <div className="w-11 h-6 bg-black/20 dark:bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white dark:after:bg-black after:rounded-full after:h-5 after:w-5 after:transition-all after:duration-200 peer-checked:bg-black dark:peer-checked:bg-white transition-colors" />
-          </label>
-        </div>
-
-        <div className="flex items-center justify-between gap-4 py-2 sm:py-3 border-b border-black/5 dark:border-white/5 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] px-2 -mx-2 rounded transition-colors">
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-black dark:text-white truncate">Experimental features</p>
-            <p className="text-xs text-black/50 dark:text-white/50 mt-0.5">Try new features before they're ready</p>
+          <div className="w-full h-3 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-400 dark:to-blue-500 transition-all duration-300"
+              style={{ width: `${percentage}%` }}
+            />
           </div>
-          <label className="relative inline-flex items-center cursor-pointer group flex-shrink-0">
-            <input type="checkbox" className="sr-only peer" />
-            <div className="w-11 h-6 bg-black/20 dark:bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white dark:after:bg-black after:rounded-full after:h-5 after:w-5 after:transition-all after:duration-200 peer-checked:bg-black dark:peer-checked:bg-white transition-colors" />
-          </label>
-        </div>
-
-        <div className="pt-2 sm:pt-4">
-          <p className="text-sm font-medium text-black dark:text-white mb-3">Model selection</p>
-          <select className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-white dark:bg-[#2a2a2a] border border-black/20 dark:border-white/20 rounded text-sm text-black dark:text-white focus:outline-none focus:border-black dark:focus:border-white transition-colors">
-            <option>Claude Sonnet 4.5</option>
-            <option>Claude Opus 4</option>
-            <option>Claude Haiku 3.5</option>
-          </select>
-        </div>
-
-        <div className="pt-2 sm:pt-4 animate-in fade-in-0 slide-in-from-bottom-2 duration-300 delay-150">
-          <button
-            type="button"
-            className="w-full px-4 py-2.5 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/50 rounded text-sm font-medium hover:bg-red-100 dark:hover:bg-red-950/50 transition-all duration-200"
-          >
-            Clear all conversation data
-          </button>
+          <p className="text-xs text-black/50 dark:text-white/50 mt-2">
+            {tokens > 0 ? `You have ${tokens} tokens available` : "No tokens available"}
+          </p>
         </div>
       </div>
     </div>
@@ -446,52 +403,10 @@ function AboutSettings() {
   return (
     <div className="space-y-4 sm:space-y-6">
       <div>
-        <h3 className="text-base sm:text-lg font-medium text-black dark:text-white mb-1">About</h3>
-        <p className="text-xs sm:text-sm text-black/60 dark:text-white/60">Information about this application</p>
-      </div>
-
-      <div className="space-y-4 sm:space-y-6">
-        <div className="p-4 sm:p-6 bg-black/[0.02] dark:bg-white/[0.02] rounded-lg border border-black/10 dark:border-white/10">
-          <div className="flex items-center gap-3 mb-3 sm:mb-4">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-black dark:bg-white rounded-lg flex items-center justify-center flex-shrink-0">
-              <Settings size={20} className="sm:w-6 sm:h-6 text-white dark:text-black" />
-            </div>
-            <div className="min-w-0">
-              <h4 className="text-sm sm:text-base font-medium text-black dark:text-white truncate">Claude Bridge</h4>
-              <p className="text-xs text-black/50 dark:text-white/50">Version 1.0.0</p>
-            </div>
-          </div>
-          <p className="text-xs sm:text-sm text-black/60 dark:text-white/60 leading-relaxed">
-            A multi-tenant development platform that enables Claude AI to assist with website development through
-            controlled file system access.
-          </p>
-        </div>
-
-        <div className="space-y-3">
-          <div className="flex items-center justify-between py-3 border-b border-black/5 dark:border-white/5">
-            <span className="text-sm text-black/60 dark:text-white/60">Next.js</span>
-            <span className="text-sm font-medium text-black dark:text-white">16.0.0</span>
-          </div>
-          <div className="flex items-center justify-between py-3 border-b border-black/5 dark:border-white/5">
-            <span className="text-sm text-black/60 dark:text-white/60">React</span>
-            <span className="text-sm font-medium text-black dark:text-white">19.2.0</span>
-          </div>
-          <div className="flex items-center justify-between py-3">
-            <span className="text-sm text-black/60 dark:text-white/60">Claude Agent SDK</span>
-            <span className="text-sm font-medium text-black dark:text-white">0.1.25</span>
-          </div>
-        </div>
-
-        <div className="pt-4">
-          <a
-            href="https://github.com/anthropics/claude-code"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-sm text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors underline"
-          >
-            View on GitHub
-          </a>
-        </div>
+        <h3 className="text-base sm:text-lg font-medium text-black dark:text-white mb-3">About</h3>
+        <p className="text-sm sm:text-base font-semibold text-black dark:text-white leading-relaxed">
+          We make AI accessible to anyone wanting to build a company.
+        </p>
       </div>
     </div>
   )

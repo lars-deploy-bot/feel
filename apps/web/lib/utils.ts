@@ -10,6 +10,70 @@ export function generateRequestId(): string {
 }
 
 /**
+ * Parses a user agent string and returns a friendly formatted version
+ * Example: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"
+ * Returns: "Chrome 142 on macOS 10.15.7"
+ */
+export function formatUserAgent(userAgent: string): string {
+  if (!userAgent) return "Unknown"
+
+  // Browser detection
+  let browser = "Unknown"
+  let version = ""
+
+  if (userAgent.includes("Chrome/")) {
+    const match = userAgent.match(/Chrome\/(\d+)/)
+    browser = "Chrome"
+    version = match?.[1] || ""
+  } else if (userAgent.includes("Safari/") && !userAgent.includes("Chrome/")) {
+    const match = userAgent.match(/Version\/(\d+)/)
+    browser = "Safari"
+    version = match?.[1] || ""
+  } else if (userAgent.includes("Firefox/")) {
+    const match = userAgent.match(/Firefox\/(\d+)/)
+    browser = "Firefox"
+    version = match?.[1] || ""
+  } else if (userAgent.includes("Edge/")) {
+    const match = userAgent.match(/Edge\/(\d+)/)
+    browser = "Edge"
+    version = match?.[1] || ""
+  } else if (userAgent.includes("MSIE ") || userAgent.includes("Trident/")) {
+    browser = "Internet Explorer"
+  }
+
+  // OS detection
+  let os = "Unknown OS"
+
+  if (userAgent.includes("Win")) {
+    os = "Windows"
+  } else if (userAgent.includes("Mac")) {
+    const match = userAgent.match(/Mac OS X ([\d_]+)/)
+    if (match) {
+      const version = match[1].replace(/_/g, ".")
+      os = `macOS ${version}`
+    } else {
+      os = "macOS"
+    }
+  } else if (userAgent.includes("Linux")) {
+    if (userAgent.includes("Android")) {
+      const match = userAgent.match(/Android ([\d.]+)/)
+      os = `Android ${match?.[1] || ""}`
+    } else {
+      os = "Linux"
+    }
+  } else if (userAgent.includes("iPhone")) {
+    const match = userAgent.match(/OS ([\d_]+)/)
+    os = `iOS ${match?.[1]?.replace(/_/g, ".") || ""}`
+  } else if (userAgent.includes("iPad")) {
+    const match = userAgent.match(/OS ([\d_]+)/)
+    os = `iPadOS ${match?.[1]?.replace(/_/g, ".") || ""}`
+  }
+
+  const versionStr = version ? ` ${version}` : ""
+  return `${browser}${versionStr} on ${os}`
+}
+
+/**
  * Recursively truncates all string values in an object/array to a maximum length.
  * Preserves object structure while making large payloads more manageable.
  *

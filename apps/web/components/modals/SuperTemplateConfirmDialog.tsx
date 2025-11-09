@@ -18,9 +18,7 @@ export function SuperTemplateConfirmDialog({ template, onConfirm, onCancel }: Su
       >
         {/* Content */}
         <div className="p-8">
-          <h3 className="text-base font-[500] text-black dark:text-white mb-3">
-            Add {template.name}?
-          </h3>
+          <h3 className="text-base font-[500] text-black dark:text-white mb-3">Add {template.name}?</h3>
 
           <p className="text-sm font-[200] text-black/60 dark:text-white/60 leading-relaxed">
             Takes about {template.estimatedTime}. You can undo if needed.

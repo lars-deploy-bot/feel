@@ -139,7 +139,9 @@ temp/
 .Spotlight-V100
 .Trashes
 ehthumbs.db
-Thumbs.dbdomain-passwords.json
+Thumbs.db
+domain-passwords.json
+feedback.json
 
 # Ignore circular symlinks in packages
 packages/*/guides

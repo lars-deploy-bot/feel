@@ -109,6 +109,7 @@ export interface ChatInputProps extends ChatInputActions {
   abortControllerRef: MutableRefObject<AbortController | null>
   config?: ChatInputConfig
   children?: ReactNode
+  onOpenTemplates?: () => void
 }
 
 export interface ChatInputHandle {

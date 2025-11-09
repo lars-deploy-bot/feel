@@ -2,7 +2,6 @@
 
 import { X } from "lucide-react"
 import { useEffect, useState } from "react"
-import { SuperTemplateConfirmDialog } from "@/components/modals/SuperTemplateConfirmDialog"
 import { SuperTemplateCard } from "@/components/ui/SuperTemplateCard"
 import { SuperTemplatePreview } from "@/components/ui/SuperTemplatePreview"
 import { getTemplatesByCategory, type Template } from "@/data/templates"
@@ -24,7 +23,6 @@ const categoryLabels: Record<Category, string> = {
 export function SuperTemplatesModal({ onClose, onInsertTemplate }: SuperTemplatesModalProps) {
   const [activeCategory, setActiveCategory] = useState<Category>("sliders")
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null)
-  const [showConfirm, setShowConfirm] = useState(false)
 
   const currentTemplates = getTemplatesByCategory(activeCategory)
 
@@ -45,10 +43,6 @@ export function SuperTemplatesModal({ onClose, onInsertTemplate }: SuperTemplate
   }
 
   const handleInsertClick = () => {
-    setShowConfirm(true)
-  }
-
-  const handleConfirm = () => {
     if (selectedTemplate) {
       // Insert JSON that will be auto-detected and converted to supertemplate attachment
       const templateJson = JSON.stringify({
@@ -58,13 +52,8 @@ export function SuperTemplatesModal({ onClose, onInsertTemplate }: SuperTemplate
         preview: selectedTemplate.previewImage,
       })
       onInsertTemplate(templateJson)
-      setShowConfirm(false)
       onClose()
     }
-  }
-
-  const handleCancelConfirm = () => {
-    setShowConfirm(false)
   }
 
   return (
@@ -174,11 +163,6 @@ export function SuperTemplatesModal({ onClose, onInsertTemplate }: SuperTemplate
           </div>
         </div>
       </div>
-
-      {/* Confirmation Dialog */}
-      {showConfirm && selectedTemplate && (
-        <SuperTemplateConfirmDialog template={selectedTemplate} onConfirm={handleConfirm} onCancel={handleCancelConfirm} />
-      )}
     </>
   )
 }

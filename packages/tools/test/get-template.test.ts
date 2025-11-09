@@ -260,7 +260,7 @@ describe("getTemplate", () => {
 
     it("should reject template ID that's too long", async () => {
       const params: GetTemplateParams = {
-        id: "a".repeat(101) + "-v1.0.0",
+        id: `${"a".repeat(101)}-v1.0.0`,
       }
 
       const result = await getTemplate(params, templatesPath)
@@ -342,7 +342,7 @@ describe("getTemplate", () => {
     })
 
     it("should handle template ID at exactly 100 characters", async () => {
-      const id = "a".repeat(89) + "-v1.0.0" // Exactly 100 chars
+      const id = `${"a".repeat(89)}-v1.0.0` // Exactly 100 chars
       const params: GetTemplateParams = { id }
 
       const result = await getTemplate(params, templatesPath)

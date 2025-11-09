@@ -1,10 +1,11 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
 import { DeleteModal } from "@/components/modals/DeleteModal"
 import { Button } from "@/components/ui/primitives/Button"
 import type { DomainConfigClient, DomainStatus } from "@/types/domain"
+import type { FeedbackEntry } from "@/types/feedback"
 
 type DomainPasswords = Record<string, DomainConfigClient>
 
@@ -26,7 +27,11 @@ export default function ManagerPage() {
   const [newEmail, setNewEmail] = useState("")
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<"domains" | "settings">("domains")
+  const [activeTab, setActiveTab] = useState<"domains" | "feedback" | "settings">("domains")
+
+  // Feedback state
+  const [feedback, setFeedback] = useState<FeedbackEntry[]>([])
+  const [feedbackLoading, setFeedbackLoading] = useState(false)
 
   // Settings actions state
   const [reloadingCaddy, setReloadingCaddy] = useState(false)
@@ -38,6 +43,24 @@ export default function ManagerPage() {
   const [pass, setPass] = useState("")
   const [loginLoading, setLoginLoading] = useState(false)
   const [loginError, setLoginError] = useState("")
+
+  const fetchFeedback = useCallback(async () => {
+    setFeedbackLoading(true)
+    try {
+      const response = await fetch("/api/manager/feedback")
+      const data = await response.json()
+      if (data.ok) {
+        setFeedback(data.feedback)
+      } else {
+        toast.error("Failed to fetch feedback")
+      }
+    } catch (error) {
+      console.error("Failed to fetch feedback:", error)
+      toast.error("Failed to fetch feedback")
+    } finally {
+      setFeedbackLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
     checkAuthentication()
@@ -52,6 +75,12 @@ export default function ManagerPage() {
 
     return () => clearInterval(interval)
   }, [authenticated, domains])
+
+  useEffect(() => {
+    if (activeTab === "feedback" && authenticated) {
+      fetchFeedback()
+    }
+  }, [activeTab, authenticated, fetchFeedback])
 
   const checkAuthentication = async () => {
     try {
@@ -501,6 +530,22 @@ export default function ManagerPage() {
               </button>
               <button
                 type="button"
+                onClick={() => setActiveTab("feedback")}
+                className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === "feedback"
+                    ? "border-blue-600 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                Feedback
+                {feedback.length > 0 && (
+                  <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-600 rounded-full">
+                    {feedback.length}
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
                 onClick={() => setActiveTab("settings")}
                 className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === "settings"
@@ -614,6 +659,80 @@ export default function ManagerPage() {
                     <div className="text-center py-8 text-gray-500">No domains found</div>
                   )}
                 </div>
+              </div>
+            </>
+          )}
+
+          {activeTab === "feedback" && (
+            <>
+              <div className="px-6 py-4 border-b border-gray-200">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-800">User Feedback</h2>
+                    <p className="text-sm text-gray-600 mt-1">
+                      View feedback submitted from all workspaces ({feedback.length} total)
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={fetchFeedback}
+                    disabled={feedbackLoading}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {feedbackLoading ? "Refreshing..." : "Refresh"}
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6">
+                {feedbackLoading ? (
+                  <div className="text-center py-8 text-gray-500">Loading feedback...</div>
+                ) : feedback.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">No feedback submitted yet</div>
+                ) : (
+                  <div className="space-y-4">
+                    {feedback.map(entry => (
+                      <div
+                        key={entry.id}
+                        className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors"
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-gray-900">{entry.workspace}</span>
+                            <span className="text-xs text-gray-400">•</span>
+                            <span className="text-xs text-gray-500">
+                              {new Date(entry.timestamp).toLocaleString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          </div>
+                          <div className="flex gap-2">
+                            {entry.conversationId && (
+                              <span
+                                className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded"
+                                title={entry.conversationId}
+                              >
+                                Has conversation
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="text-sm text-gray-700 whitespace-pre-wrap mb-2">{entry.feedback}</div>
+
+                        {entry.userAgent && (
+                          <div className="text-xs text-gray-400 font-mono truncate" title={entry.userAgent}>
+                            {entry.userAgent}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </>
           )}

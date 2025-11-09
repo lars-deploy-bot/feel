@@ -20,18 +20,8 @@
 
 /* Vertical scroll fade mask */
 .vertical-scroll-fade-mask {
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    black,
-    black calc(100% - 2rem),
-    transparent
-  );
-  mask-image: linear-gradient(
-    to bottom,
-    black,
-    black calc(100% - 2rem),
-    transparent
-  );
+  -webkit-mask-image: linear-gradient(to bottom, black, black calc(100% - 2rem), transparent);
+  mask-image: linear-gradient(to bottom, black, black calc(100% - 2rem), transparent);
 }
 
 /* Hide scrollbar */

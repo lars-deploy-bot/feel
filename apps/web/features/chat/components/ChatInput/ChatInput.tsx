@@ -24,7 +24,7 @@ import type { ChatInputConfig, ChatInputContextValue, ChatInputHandle, ChatInput
  * - Exposes addAttachment via ref for parent drag handling
  */
 export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "children">>(function ChatInput(
-  { message, setMessage, busy, abortControllerRef, onSubmit, onStop, config: userConfig = {} },
+  { message, setMessage, busy, abortControllerRef, onSubmit, onStop, config: userConfig = {}, onOpenTemplates },
   ref,
 ) {
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -164,7 +164,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
       >
         <div className="relative">
           {/* Camera button above input */}
-          <Toolbar fileInputRef={fileInputRef} />
+          <Toolbar fileInputRef={fileInputRef} onOpenTemplates={onOpenTemplates} />
 
           <InputContainer>
             {/* Attachments */}
