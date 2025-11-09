@@ -1,5 +1,5 @@
 "use client"
-import { ExternalLink, Eye, EyeOff, Image, MessageCircle } from "lucide-react"
+import { ExternalLink, Eye, EyeOff, Image, Layers, MessageCircle } from "lucide-react"
 import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { Toaster } from "react-hot-toast"
 import { FeedbackModal } from "@/components/modals/FeedbackModal"
@@ -718,6 +718,15 @@ function ChatPageContent() {
                   title="Send Feedback"
                 >
                   <MessageCircle size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowTemplatesModal(true)}
+                  className="inline-flex items-center justify-center px-3 py-2 text-xs font-medium text-black dark:text-white border border-black/20 dark:border-white/20 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors"
+                  aria-label="Components"
+                  title="Components"
+                >
+                  <Layers size={14} />
                 </button>
                 <div className="relative">
                   <button
