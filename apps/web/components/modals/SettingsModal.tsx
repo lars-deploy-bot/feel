@@ -1,25 +1,35 @@
 "use client"
 
-import { Bot, Eye, EyeOff, Info, Moon, Settings, Sun, X, Zap } from "lucide-react"
+import { Bot, Eye, EyeOff, Info, Moon, Settings, Sun, User, X, Zap } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
 import { CLAUDE_MODELS, type ClaudeModel, useLLMStore } from "@/lib/stores/llmStore"
+import {
+  useCredits,
+  useTokens,
+  useCreditsLoading,
+  useCreditsError,
+  useEmail,
+  usePhoneNumber,
+  useUserActions,
+} from "@/lib/providers/UserStoreProvider"
 
 interface SettingsModalProps {
   onClose: () => void
 }
 
-type SettingsTab = "appearance" | "llm" | "tokens" | "about"
+type SettingsTab = "account" | "appearance" | "llm" | "tokens" | "about"
 
 const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
+  { id: "account", label: "Account", icon: <User size={16} /> },
   { id: "appearance", label: "Appearance", icon: <Sun size={16} /> },
   { id: "llm", label: "LLM", icon: <Bot size={16} /> },
-  { id: "tokens", label: "Tokens", icon: <Zap size={16} /> },
+  { id: "tokens", label: "Credits", icon: <Zap size={16} /> },
   { id: "about", label: "About", icon: <Info size={16} /> },
 ]
 
 export function SettingsModal({ onClose }: SettingsModalProps) {
-  const [activeTab, setActiveTab] = useState<SettingsTab>("appearance")
+  const [activeTab, setActiveTab] = useState<SettingsTab>("account")
 
   return (
     <div
@@ -98,6 +108,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
           {/* Scrollable Content */}
           <div className="flex-1 overflow-y-auto p-4 sm:p-6">
             <div className="animate-in fade-in-0 slide-in-from-bottom-3 duration-400">
+              {activeTab === "account" && <AccountSettings />}
               {activeTab === "appearance" && <AppearanceSettings />}
               {activeTab === "llm" && <LLMSettings />}
               {activeTab === "tokens" && <TokensSettings />}
@@ -177,60 +188,77 @@ function AppearanceSettings() {
 }
 
 function TokensSettings() {
-  const [tokens, setTokens] = useState(200)
-  const maxTokens = 200
+  const credits = useCredits()
+  const tokens = useTokens()
+  const loading = useCreditsLoading()
+  const error = useCreditsError()
+  const { fetchCredits } = useUserActions()
 
+  // Fetch credits when component mounts or workspace changes
   useEffect(() => {
-    // Fetch tokens from current workspace/domain
-    const fetchTokens = async () => {
-      try {
-        const workspace = sessionStorage.getItem("workspace")
-        if (workspace) {
-          const response = await fetch("/api/tokens", {
-            headers: {
-              "X-Workspace": workspace,
-            },
-          })
-          if (response.ok) {
-            const data = await response.json()
-            setTokens(data.tokens || 200)
-          }
-        }
-      } catch (error) {
-        console.error("Failed to fetch tokens:", error)
-      }
+    const workspace = sessionStorage.getItem("workspace")
+    if (workspace) {
+      fetchCredits(workspace)
     }
-    fetchTokens()
-  }, [])
+  }, [fetchCredits])
 
-  const percentage = (tokens / maxTokens) * 100
+  const handleRetry = () => {
+    const workspace = sessionStorage.getItem("workspace")
+    if (workspace) {
+      fetchCredits(workspace)
+    }
+  }
 
   return (
     <div className="space-y-4 sm:space-y-6">
       <div>
-        <h3 className="text-base sm:text-lg font-medium text-black dark:text-white mb-1">Tokens Available</h3>
-        <p className="text-xs sm:text-sm text-black/60 dark:text-white/60">Your available token balance</p>
+        <h3 className="text-base sm:text-lg font-bold text-black dark:text-white mb-1">Credits Available</h3>
+        <p className="text-xs sm:text-sm text-black/60 dark:text-white/60">Your available credit balance</p>
       </div>
 
-      <div className="space-y-4">
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-black dark:text-white">Balance</span>
-            <span className="text-sm font-semibold text-black dark:text-white">
-              {tokens} / {maxTokens}
-            </span>
+      {error ? (
+        <div className="space-y-3">
+          <div className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/30 rounded p-3">
+            {error === "Not authenticated"
+              ? "Please log in to a workspace to view credits"
+              : `Error: ${error}`}
           </div>
-          <div className="w-full h-3 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-400 dark:to-blue-500 transition-all duration-300"
-              style={{ width: `${percentage}%` }}
-            />
-          </div>
-          <p className="text-xs text-black/50 dark:text-white/50 mt-2">
-            {tokens > 0 ? `You have ${tokens} tokens available` : "No tokens available"}
-          </p>
+          <button
+            type="button"
+            onClick={handleRetry}
+            disabled={loading}
+            className="w-full px-3 py-2 text-xs font-medium bg-black dark:bg-white text-white dark:text-black hover:bg-black/80 dark:hover:bg-white/80 disabled:opacity-50 rounded transition-all"
+          >
+            {loading ? "Retrying..." : "Retry"}
+          </button>
         </div>
-      </div>
+      ) : (
+        <div className="space-y-4">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-bold text-black dark:text-white">Balance</span>
+              <span className="text-lg font-bold text-black dark:text-white">
+                {loading ? "Loading..." : credits != null ? `${credits.toFixed(2)} credits` : "N/A"}
+              </span>
+            </div>
+            {credits != null && credits > 0 && (
+              <div className="w-full h-3 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-400 dark:to-blue-500 transition-all duration-300"
+                  style={{ width: "100%" }}
+                />
+              </div>
+            )}
+            <p className="text-xs text-black/50 dark:text-white/50 mt-2">
+              {loading
+                ? "Loading balance..."
+                : credits != null && credits > 0
+                  ? `${credits.toFixed(2)} credits (${tokens?.toLocaleString()} API tokens)`
+                  : "No credits available"}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -379,6 +407,88 @@ function LLMSettings() {
             call Anthropic&apos;s API—but we never save it on our servers.
           </p>
         </div>
+      </div>
+    </div>
+  )
+}
+
+function AccountSettings() {
+  const email = useEmail()
+  const phoneNumber = usePhoneNumber()
+  const { setEmail, setPhoneNumber } = useUserActions()
+  const [emailInput, setEmailInput] = useState(email || "")
+  const [phoneInput, setPhoneInput] = useState(phoneNumber || "")
+  const [isSaved, setIsSaved] = useState(false)
+
+  useEffect(() => {
+    setEmailInput(email || "")
+    setPhoneInput(phoneNumber || "")
+  }, [email, phoneNumber])
+
+  const handleSave = () => {
+    setEmail(emailInput)
+    setPhoneNumber(phoneInput)
+    setIsSaved(true)
+    setTimeout(() => setIsSaved(false), 2000)
+  }
+
+  const isChanged = emailInput !== (email || "") || phoneInput !== (phoneNumber || "")
+
+  return (
+    <div className="space-y-4 sm:space-y-6">
+      <div className="animate-in fade-in-0 slide-in-from-top-2 duration-300">
+        <h3 className="text-base sm:text-lg font-medium text-black dark:text-white mb-1">Account</h3>
+        <p className="text-xs sm:text-sm text-black/60 dark:text-white/60">Manage your account information</p>
+      </div>
+
+      <div className="space-y-4 sm:space-y-6">
+        <div className="animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-75">
+          <label htmlFor="email-address" className="block text-sm font-medium text-black dark:text-white mb-2">
+            Email Address
+          </label>
+          <input
+            id="email-address"
+            type="email"
+            value={emailInput}
+            onChange={e => setEmailInput(e.target.value)}
+            placeholder="your@email.com"
+            className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-white dark:bg-[#2a2a2a] border border-black/20 dark:border-white/20 rounded text-sm text-black dark:text-white focus:outline-none focus:border-black dark:focus:border-white transition-colors"
+            aria-label="Email Address"
+          />
+        </div>
+
+        <div className="animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-100">
+          <label htmlFor="phone-number" className="block text-sm font-medium text-black dark:text-white mb-2">
+            Phone Number
+          </label>
+          <input
+            id="phone-number"
+            type="tel"
+            value={phoneInput}
+            onChange={e => setPhoneInput(e.target.value)}
+            placeholder="+1 (555) 123-4567"
+            className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-white dark:bg-[#2a2a2a] border border-black/20 dark:border-white/20 rounded text-sm text-black dark:text-white focus:outline-none focus:border-black dark:focus:border-white transition-colors"
+            aria-label="Phone Number"
+          />
+        </div>
+
+        <div className="animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-125">
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={!isChanged}
+            className="w-full px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded text-sm font-medium hover:bg-black/80 dark:hover:bg-white/80 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSaved ? "Saved!" : "Save Changes"}
+          </button>
+        </div>
+
+        {(email || phoneNumber) && (
+          <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400 animate-in fade-in-0 slide-in-from-bottom-2 duration-300 delay-150">
+            <div className="w-2 h-2 bg-green-600 dark:bg-green-400 rounded-full" />
+            Account information saved in browser
+          </div>
+        )}
       </div>
     </div>
   )

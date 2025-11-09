@@ -1,20 +1,24 @@
-import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
+import { tokensToCredits } from "@/lib/credits"
+import { isWorkspaceAuthenticated } from "@/features/auth/lib/auth"
 import { loadDomainPasswords } from "@/types/guards/api"
+import type { TokensResponse, TokensErrorResponse } from "@/types/api"
 
-export async function GET(req: NextRequest) {
+export async function GET(req: NextRequest): Promise<NextResponse<TokensResponse | TokensErrorResponse>> {
   try {
-    const jar = await cookies()
     const workspace = req.headers.get("X-Workspace")
 
     if (!workspace) {
-      return NextResponse.json({ ok: false, error: "No workspace specified" }, { status: 400 })
+      return NextResponse.json<TokensErrorResponse>(
+        { ok: false, error: "No workspace specified" },
+        { status: 400 }
+      )
     }
 
-    // Verify user is authenticated for this workspace
-    const sessionCookie = jar.get(`${workspace}-session`)
-    if (!sessionCookie) {
-      return NextResponse.json({ ok: false, error: "Not authenticated" }, { status: 401 })
+    // Verify user is authenticated for this workspace using JWT
+    const isAuthenticated = await isWorkspaceAuthenticated(workspace)
+    if (!isAuthenticated) {
+      return NextResponse.json<TokensErrorResponse>({ ok: false, error: "Not authenticated" }, { status: 401 })
     }
 
     // Load domain config to get tokens
@@ -22,18 +26,23 @@ export async function GET(req: NextRequest) {
     const domainConfig = passwords[workspace]
 
     if (!domainConfig) {
-      return NextResponse.json({ ok: false, error: "Domain not found" }, { status: 404 })
+      return NextResponse.json<TokensErrorResponse>({ ok: false, error: "Domain not found" }, { status: 404 })
     }
 
-    const tokens = domainConfig.tokens ?? 200
+    const tokens = domainConfig.tokens
+    const credits = tokensToCredits(tokens)
 
-    return NextResponse.json({
+    return NextResponse.json<TokensResponse>({
       ok: true,
       tokens,
+      credits,
       workspace,
     })
   } catch (error) {
     console.error("[Tokens] Error:", error)
-    return NextResponse.json({ ok: false, error: "Internal server error" }, { status: 500 })
+    return NextResponse.json<TokensErrorResponse>(
+      { ok: false, error: "Internal server error" },
+      { status: 500 }
+    )
   }
 }

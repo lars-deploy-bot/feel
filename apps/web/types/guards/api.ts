@@ -9,13 +9,31 @@ import type { DomainPasswords } from "@/types/domain"
  */
 
 /**
+ * Validate API key format
+ * Valid Anthropic keys start with "sk-ant-" and are reasonably long
+ */
+function isValidApiKeyFormat(key: string): boolean {
+  if (!key) return false
+  // Must start with sk-ant- prefix
+  if (!key.startsWith("sk-ant-")) return false
+  // Must be at least sk-ant-X (7 + 1 = 8 chars)
+  if (key.length < 20) return false
+  // Must not contain spaces or newlines
+  if (/\s/.test(key)) return false
+  return true
+}
+
+/**
  * Zod schema for Claude API request body
  */
 export const BodySchema = z.object({
   message: z.string().min(1),
   workspace: z.string().optional(),
   conversationId: z.string().uuid(),
-  apiKey: z.string().optional(),
+  apiKey: z.string().refine(
+    (key) => !key || isValidApiKeyFormat(key),
+    "Invalid API key format. Must start with 'sk-ant-' and be at least 20 characters."
+  ).optional(),
   model: z.string().optional(),
 })
 

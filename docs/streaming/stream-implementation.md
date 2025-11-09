@@ -148,3 +148,36 @@ data: {...}
 - Buffered messages: check X-Accel-Buffering header
 - Connection closes early: error in loop, check logs
 - Messages misordered: concurrency issue, check locking
+
+## Known Issues
+
+### Stream Cancellation Race Condition
+
+**Status**: Under Investigation (RCA Complete)
+**Severity**: High
+**Symptom**: User clicks "stop" button, but sending another message immediately results in "I'm still working on your previous request" error
+
+**Root Cause**: When the client abort signal fires, the conversation lock is released but the child process (running the SDK query) continues executing. This creates a race condition where a new request can acquire the lock before the old child process finishes.
+
+**Technical Details**:
+- The abort listener (line 298-308 in `route.ts`) only releases the lock, it doesn't cancel the `ndjsonStream` or the child process
+- The `ndjsonStream` has no `cancel()` handler to stop reading and kill the child
+- The child process continues executing the SDK `query()` method even after the parent stops reading
+- Process termination (SIGTERM) is required to interrupt the SDK mid-execution
+
+**Impact**:
+- Users can't reliably interrupt long operations
+- Creating a new request while old child is still running causes session conflicts
+- Orphaned child processes consume resources until they exit naturally (2-10+ seconds)
+
+**Mitigation** (Current):
+- 5-minute lock timeout prevents indefinite deadlock
+- Periodic cleanup removes stale locks every 60 seconds
+- Graceful shutdown (SIGTERM) with 5-second timeout before forced kill (SIGKILL)
+
+**For Implementation**: See `docs/postmortems/stream-cancellation-race-condition.md` (full RCA) and `docs/postmortems/sdk-investigation-findings.md` (SDK behavior details)
+
+**Files Affected**:
+- `app/api/claude/stream/route.ts` - Missing stream cancel handler (lines 369-483)
+- `lib/agent-child-runner.ts` - Has correct cancel implementation (reference, lines 134-147)
+- `app/chat/page.tsx` - Client stop button handler

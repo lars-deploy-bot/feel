@@ -2,6 +2,7 @@ import { exec } from "node:child_process"
 import { promisify } from "node:util"
 import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
+import { tokensToCredits } from "@/lib/credits"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 import type { DomainConfigClient } from "@/types/domain"
@@ -81,6 +82,8 @@ export async function GET(req: NextRequest) {
       tenantId: config.tenantId,
       port: config.port,
       email: config.email,
+      tokens: config.tokens,
+      credits: tokensToCredits(config.tokens),
     }
   }
 
@@ -93,6 +96,7 @@ export async function GET(req: NextRequest) {
     if (!sanitizedDomains[domain]) {
       sanitizedDomains[domain] = {
         orphaned: true,
+        tokens: 0,
       }
     }
   }

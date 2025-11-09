@@ -1,5 +1,6 @@
 import NextTopLoader from "nextjs-toploader"
 import { ThemeProvider } from "@/components/providers/theme-provider"
+import { UserStoreProvider } from "@/lib/providers/UserStoreProvider"
 import "./globals.css"
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -10,7 +11,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <NextTopLoader color="#000" height={2} showSpinner={false} />
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <UserStoreProvider>{children}</UserStoreProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

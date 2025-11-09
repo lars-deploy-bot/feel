@@ -15,6 +15,7 @@ import {
   encodeNDJSON,
   type StreamMessage,
 } from "@/features/chat/lib/streaming/ndjson"
+import { isAssistantMessageWithUsage, isBridgeMessageEvent } from "@/features/chat/types/guards"
 import { getSystemPrompt } from "@/features/chat/lib/systemPrompt"
 import { getWorkspace, type Workspace } from "@/features/workspace/lib/workspace-secure"
 import { resolveWorkspace } from "@/features/workspace/lib/workspace-utils"
@@ -24,10 +25,53 @@ import { addCorsHeaders } from "@/lib/cors-utils"
 import { env } from "@/lib/env"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 import { logInput } from "@/lib/input-logger"
+import { calculateTokenCost, deductTokens, type TokenSource } from "@/lib/tokens"
+import { loadDomainPasswords } from "@/types/guards/api"
 import { generateRequestId } from "@/lib/utils"
 import { BodySchema } from "@/types/guards/api"
 
 export const runtime = "nodejs"
+
+/**
+ * Deduct tokens for assistant message if it has usage data
+ * Only deducts when using workspace credits (not user API key)
+ * Uses actual token usage from API response, not estimates
+ * @returns true if tokens were deducted, false otherwise
+ */
+function deductTokensForMessage(
+  message: StreamMessage,
+  workspace: string,
+  requestId: string
+): boolean {
+  if (!isBridgeMessageEvent(message) || !isAssistantMessageWithUsage(message)) {
+    return false
+  }
+
+  const usage = message.data.content.message.usage
+  const tokenCost = calculateTokenCost(usage)
+
+  try {
+    const newBalance = deductTokens(workspace, tokenCost)
+
+    if (newBalance !== null) {
+      console.log(
+        `[Claude Stream ${requestId}] Deducted ${tokenCost} tokens (input: ${usage.input_tokens}, output: ${usage.output_tokens}), new balance: ${newBalance}`
+      )
+      return true
+    }
+
+    console.error(`[Claude Stream ${requestId}] Failed to deduct ${tokenCost} tokens (insufficient balance)`)
+    return false
+  } catch (error) {
+    // Deduction failure - stream already succeeded, tokens were consumed by API
+    // Log but don't crash - user got the response they paid for
+    console.error(
+      `[Claude Stream ${requestId}] Error deducting tokens: ${error instanceof Error ? error.message : String(error)}`
+    )
+    // Return false but don't propagate error - stream already ran
+    return false
+  }
+}
 
 export async function POST(req: NextRequest) {
   const requestId = generateRequestId()
@@ -120,7 +164,9 @@ export async function POST(req: NextRequest) {
       `[Claude Stream ${requestId}] Message received (${message.length} chars): ${message.substring(0, 100)}${message.length > 100 ? "..." : ""}`,
     )
     if (userApiKey) {
-      console.log(`[Claude Stream ${requestId}] Using user-provided API key`)
+      console.log(`[Claude Stream ${requestId}] User provided API key (validation already done in schema)`)
+    } else {
+      console.log(`[Claude Stream ${requestId}] No user API key provided`)
     }
     if (userModel) {
       console.log(`[Claude Stream ${requestId}] Using user-selected model: ${userModel}`)
@@ -150,6 +196,7 @@ export async function POST(req: NextRequest) {
     let workspace: Workspace
     let cwd: string
     let resolvedWorkspaceName: string
+    let tokenSource: TokenSource
 
     try {
       if (isTerminalMode(host)) {
@@ -183,6 +230,42 @@ export async function POST(req: NextRequest) {
         )
       }
       console.log(`[Claude Stream ${requestId}] Workspace authentication verified for: ${resolvedWorkspaceName}`)
+
+      // Determine which API key to use: workspace tokens vs user-provided key
+      const passwords = loadDomainPasswords()
+      const domainConfig = passwords[resolvedWorkspaceName]
+      const workspaceTokens = domainConfig?.tokens ?? 0
+      const COST_ESTIMATE = 100 // Conservative estimate - reasonable for 200 token starting balance
+
+      // Guard: reject if no sufficient tokens AND no API key
+      if (workspaceTokens < COST_ESTIMATE && !userApiKey) {
+        console.log(
+          `[Claude Stream ${requestId}] Insufficient tokens (${workspaceTokens}/${COST_ESTIMATE} required) and no fallback API key`
+        )
+        return NextResponse.json(
+          {
+            ok: false,
+            error: ErrorCodes.INSUFFICIENT_TOKENS,
+            message:
+              workspaceTokens <= 0
+                ? "Workspace credits exhausted. Add your API key in Settings to continue using Claude."
+                : `Insufficient workspace credits (${workspaceTokens}/${COST_ESTIMATE} required). Add your API key in Settings as a fallback.`,
+            workspace: resolvedWorkspaceName,
+            requestId,
+          },
+          { status: 402 },
+        )
+      }
+
+      // Cases 1 & 2: We're guaranteed to have either workspace tokens or a user API key
+      tokenSource =
+        workspaceTokens >= COST_ESTIMATE ? "workspace" : "user_provided"
+
+      if (tokenSource === "workspace") {
+        console.log(`[Claude Stream ${requestId}] Using workspace tokens (${workspaceTokens} available)`)
+      } else {
+        console.log(`[Claude Stream ${requestId}] Using user-provided API key (workspace has ${workspaceTokens} tokens)`)
+      }
     } catch (workspaceError) {
       console.error(`[Claude Stream ${requestId}] Workspace resolution failed:`, workspaceError)
       return NextResponse.json(
@@ -325,6 +408,10 @@ export async function POST(req: NextRequest) {
                   console.log(`[Claude Stream ${requestId}] Storing session ID: ${childEvent.sessionId}`)
                   await SessionStoreMemory.set(convKey, childEvent.sessionId)
                 } else {
+                  // Only deduct tokens if using workspace credits (not user API key)
+                  if (tokenSource === "workspace") {
+                    deductTokensForMessage(message, resolvedWorkspaceName, requestId)
+                  }
                   controller.enqueue(encodeNDJSON(message))
                 }
               } catch (parseError) {
@@ -362,6 +449,10 @@ export async function POST(req: NextRequest) {
                         : childEvent,
                 }
 
+                // Only deduct tokens if using workspace credits (not user API key)
+                if (tokenSource === "workspace") {
+                  deductTokensForMessage(message, resolvedWorkspaceName, requestId)
+                }
                 controller.enqueue(encodeNDJSON(message))
               }
             } catch (_parseError) {

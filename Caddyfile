@@ -190,16 +190,6 @@ staging.goalive.nl, staging.terminal.goalive.nl {
 #     reverse_proxy localhost:3349 { ... }
 # }
 
-joost.alive.best {
-    import common_headers
-    import image_serving
-    reverse_proxy localhost:3349 {
-        header_up Host {host}
-        header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-For {remote_host}
-        header_up X-Forwarded-Proto {scheme}
-    }
-}
 
 
 
@@ -977,6 +967,17 @@ blogtemplate.alive.best {
     import common_headers
     import image_serving
     reverse_proxy localhost:3370 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+startup.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3371 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
         header_up X-Forwarded-For {remote_host}

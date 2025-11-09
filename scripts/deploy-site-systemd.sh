@@ -158,14 +158,14 @@ else
        --argjson port "$PORT" \
        --arg createdAt "$CREATED_AT" \
        --arg email "$EMAIL" \
-       '.[$domain] = {passwordHash: $passwordHash, port: $port, createdAt: $createdAt, tokens: 200} + (if $email != "" then {email: $email} else {} end)' \
+       '.[$domain] = {passwordHash: $passwordHash, port: $port, createdAt: $createdAt, tokens: 50000} + (if $email != "" then {email: $email} else {} end)' \
        "$DOMAIN_PASSWORDS_FILE" > "${DOMAIN_PASSWORDS_FILE}.tmp"
     mv "${DOMAIN_PASSWORDS_FILE}.tmp" "$DOMAIN_PASSWORDS_FILE"
 
     if [ -n "$EMAIL" ]; then
-        echo "✅ Added $DOMAIN to domain-passwords.json (port $PORT, email: $EMAIL, tokens: 200)"
+        echo "✅ Added $DOMAIN to domain-passwords.json (port $PORT, email: $EMAIL, tokens: 50000)"
     else
-        echo "✅ Added $DOMAIN to domain-passwords.json (port $PORT, tokens: 200)"
+        echo "✅ Added $DOMAIN to domain-passwords.json (port $PORT, tokens: 50000)"
     fi
 fi
 

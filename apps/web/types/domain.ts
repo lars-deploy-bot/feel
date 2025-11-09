@@ -9,7 +9,7 @@ export interface DomainConfig {
   port: number
   createdAt?: string
   email?: string
-  tokens?: number
+  tokens: number
 }
 
 export interface DomainConfigClient {
@@ -19,6 +19,7 @@ export interface DomainConfigClient {
   createdAt?: string
   email?: string
   tokens?: number
+  credits?: number
 }
 
 export interface DomainStatus {

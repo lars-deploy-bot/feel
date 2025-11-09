@@ -4,6 +4,8 @@ Next.js web frontend for Claude Code agentic conversations with workspace-scoped
 
 # rules
 
+**🔥 UNIVERSAL RULE**: If you're working on something (auth, state management, API routes, etc.), you MUST check the guide for that area first and follow its patterns. Don't invent new approaches.
+
 **BIG RULE**: This file is a ROUTER, not documentation. Keep sections minimal - just link to guides in `docs/`. No long explanations here.
 
 **Docs structure**: All docs must be in nested directories (e.g., `docs/architecture/`, `docs/security/`), never directly in `docs/`. This keeps organization clear.
@@ -58,9 +60,12 @@ always use bun!
 
 **Guide**: `docs/security/authentication.md`
 
+⚠️ **HARD RULE**: All protected routes MUST use `isWorkspaceAuthenticated(workspace)` from `features/auth/lib/auth.ts`. Do NOT implement custom session checks.
+
 - **JWT payload**: `{ workspaces: string[], iat, exp }` (30-day) in httpOnly cookie
 - **Login flow**: `/api/login` validates passcode → creates/updates JWT
-- **Per-request check**: `isWorkspaceAuthenticated()` in `/api/claude*`, `/api/verify`
+- **Protected route pattern**: `const isAuth = await isWorkspaceAuthenticated(workspace); if (!isAuth) return 401`
+- **Canonical impl**: `/api/claude/stream` and `/api/verify` (follow these)
 - **Local dev**: `BRIDGE_ENV=local` + `workspace=test, passcode=test` bypasses validation
 
 ## Workspace Enforcement
@@ -111,11 +116,14 @@ All stores follow **Guide §14.1-14.3** patterns:
 
 ## API Routes Summary
 
+**Guide**: `docs/security/authentication.md`
+
 | Endpoint | Auth | Async | Purpose |
 |----------|------|-------|---------|
 | POST `/api/claude` | ✓ | Polling | Full response (non-streaming) |
 | POST `/api/claude/stream` | ✓ | SSE | Streaming response (convo locking + session resume + auto permissions) |
-| POST `/api/login` | ✗ | – | Passcode → session cookie |
+| GET `/api/tokens` | ✓ | – | Fetch credits/tokens balance |
+| POST `/api/login` | ✗ | – | Workspace auth → JWT session cookie |
 | POST `/api/verify` | ✓ | – | Check workspace dir exists |
 | POST `/api/files` | ✓ | – | (Likely unused file ops) |
 

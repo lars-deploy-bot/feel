@@ -15,6 +15,7 @@ export const ErrorCodes = {
   AUTH_REQUIRED: "AUTH_REQUIRED",
   UNAUTHORIZED: "UNAUTHORIZED",
   INVALID_CREDENTIALS: "INVALID_CREDENTIALS",
+  INSUFFICIENT_TOKENS: "INSUFFICIENT_TOKENS",
 
   // Request errors (3xxx)
   INVALID_JSON: "INVALID_JSON",
@@ -112,6 +113,11 @@ export function getErrorMessage(code: ErrorCode, details?: Record<string, any>):
 
     case ErrorCodes.INVALID_CREDENTIALS:
       return "The passcode is incorrect. Please check your passcode and try again."
+
+    case ErrorCodes.INSUFFICIENT_TOKENS:
+      return details?.balance !== undefined
+        ? `You don't have enough tokens to make this request (current balance: ${details.balance}). Please contact support to add more tokens.`
+        : "You don't have enough tokens to make this request. Please contact support to add more tokens."
 
     case ErrorCodes.INVALID_JSON:
       return "I received malformed data. Please try sending your message again."
