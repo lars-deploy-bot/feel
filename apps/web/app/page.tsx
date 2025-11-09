@@ -42,6 +42,7 @@ function LoginPageContent() {
 
       if (!loginResponse.ok) {
         setError("Invalid passcode")
+        setLoading(false)
         return
       }
 
@@ -56,6 +57,7 @@ function LoginPageContent() {
 
       if (!verifyResult.verified) {
         setError(`Domain "${workspace}" not found or inaccessible`)
+        setLoading(false)
         return
       }
 
