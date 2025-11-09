@@ -4,6 +4,7 @@ import type { SDKMessage } from "@/features/chat/types/sdk-types"
 import { extractSessionId, getMessageStreamData } from "@/features/chat/types/sdk-types"
 import { ALLOWED_SDK_TOOLS } from "@/lib/claude/agent-constants.mjs"
 import { type ErrorCode, ErrorCodes } from "@/lib/error-codes"
+import { ALLOWED_SDK_TOOLS } from "@/lib/claude/agent-constants.mjs"
 import { formatMessage } from "../formatMessage"
 import {
   BridgeInterruptSource,
