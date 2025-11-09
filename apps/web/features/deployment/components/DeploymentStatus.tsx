@@ -70,7 +70,9 @@ export function DeploymentStatus({ status, domain, error, errorDetails }: Deploy
           className="mb-8 sm:mb-16 relative"
         >
           <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10 blur-3xl -z-10 scale-150" />
-          <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-extralight text-black tracking-tight text-center break-words">{domain}</h1>
+          <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-extralight text-black tracking-tight text-center break-words">
+            {domain}
+          </h1>
         </motion.div>
 
         {/* Single action */}

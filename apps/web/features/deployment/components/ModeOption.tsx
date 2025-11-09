@@ -13,7 +13,15 @@ interface ModeOptionProps {
   disabled?: boolean
 }
 
-export function ModeOption({ icon: Icon, title, description, time, onClick, badge, disabled = false }: ModeOptionProps) {
+export function ModeOption({
+  icon: Icon,
+  title,
+  description,
+  time,
+  onClick,
+  badge,
+  disabled = false,
+}: ModeOptionProps) {
   return (
     <motion.button
       whileHover={!disabled ? { scale: 1.01 } : {}}

@@ -69,14 +69,7 @@ function ModeSelectionScreen({ onSelect }: ModeSelectionScreenProps) {
           badge="Start here"
           onClick={() => onSelect("deploy-only")}
         />
-        <ModeOption
-          icon={Globe}
-          title="Custom Domain"
-          description="Coming soon"
-          time=""
-          disabled
-          onClick={() => {}}
-        />
+        <ModeOption icon={Globe} title="Custom Domain" description="Coming soon" time="" disabled onClick={() => {}} />
       </motion.div>
     </motion.div>
   )

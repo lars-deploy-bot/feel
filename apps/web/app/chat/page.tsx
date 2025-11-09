@@ -37,10 +37,13 @@ import { HttpError } from "@/lib/errors"
 import { isRetryableError, retryWithBackoff } from "@/lib/retry"
 import { isDevelopment, useDebugActions, useDebugVisible, useSandbox, useSSETerminal } from "@/lib/stores/debug-store"
 import { useLLMStore } from "@/lib/stores/llmStore"
+import { useCurrentConversationId, useMessageActions, useMessages } from "@/lib/stores/messageStore"
 
 function ChatPageContent() {
   const [msg, setMsg] = useState("")
-  const [messages, setMessages] = useState<UIMessage[]>([])
+  const messages = useMessages()
+  const storeConversationId = useCurrentConversationId()
+  const { initializeConversation, addMessage, clearForNewConversation } = useMessageActions()
   const [busy, setBusy] = useState(false)
   const [useStreaming, _setUseStreaming] = useState(true)
   const [shouldForceScroll, setShouldForceScroll] = useState(false)
@@ -68,6 +71,13 @@ function ChatPageContent() {
 
   // Session management with workspace-scoped persistence
   const { conversationId, startNewConversation, markActivity } = useConversationSession(workspace, mounted)
+
+  // Initialize message store when conversation changes
+  useEffect(() => {
+    if (conversationId && storeConversationId !== conversationId) {
+      initializeConversation(conversationId)
+    }
+  }, [conversationId, storeConversationId, initializeConversation])
 
   // Image upload handler with progress tracking, retry logic, and store sync
   const handleAttachmentUpload = useImageUpload({ workspace, isTerminal })
@@ -183,7 +193,7 @@ function ChatPageContent() {
       content: augmentedMsg,
       timestamp: new Date(),
     }
-    setMessages(prev => [...prev, userMessage])
+    addMessage(userMessage)
     setMsg("")
 
     // Clear library images from attachments (they're in the prompt now)
@@ -359,20 +369,17 @@ function ChatPageContent() {
                     addDevEvent,
                   })
 
-                  setMessages(prev => [
-                    ...prev,
-                    {
-                      id: Date.now().toString(),
-                      type: "sdk_message",
-                      content: {
-                        type: "result",
-                        is_error: true,
-                        result:
-                          "Connection unstable: Multiple parse errors detected. Please try again or refresh the page.",
-                      },
-                      timestamp: new Date(),
+                  addMessage({
+                    id: Date.now().toString(),
+                    type: "sdk_message",
+                    content: {
+                      type: "result",
+                      is_error: true,
+                      result:
+                        "Connection unstable: Multiple parse errors detected. Please try again or refresh the page.",
                     },
-                  ])
+                    timestamp: new Date(),
+                  })
                   reader.cancel()
                   break
                 }
@@ -390,7 +397,7 @@ function ChatPageContent() {
                 receivedAnyMessage = true
                 const message = parseStreamEvent(eventData)
                 if (message) {
-                  setMessages(prev => [...prev, message])
+                  addMessage(message)
                 }
 
                 consecutiveParseErrors = 0
@@ -426,20 +433,17 @@ function ChatPageContent() {
                   addDevEvent,
                 })
 
-                setMessages(prev => [
-                  ...prev,
-                  {
-                    id: Date.now().toString(),
-                    type: "sdk_message",
-                    content: {
-                      type: "result",
-                      is_error: true,
-                      result:
-                        "Connection unstable: Multiple parse errors detected. Please try again or refresh the page.",
-                    },
-                    timestamp: new Date(),
+                addMessage({
+                  id: Date.now().toString(),
+                  type: "sdk_message",
+                  content: {
+                    type: "result",
+                    is_error: true,
+                    result:
+                      "Connection unstable: Multiple parse errors detected. Please try again or refresh the page.",
                   },
-                ])
+                  timestamp: new Date(),
+                })
                 reader.cancel()
                 break
               }
@@ -511,7 +515,7 @@ function ChatPageContent() {
           },
           timestamp: new Date(),
         }
-        setMessages(prev => [...prev, errorMessage])
+        addMessage(errorMessage)
       }
     } finally {
       if (timeoutId) {
@@ -564,7 +568,7 @@ function ChatPageContent() {
         content: response,
         timestamp: new Date(),
       }
-      setMessages(prev => [...prev, assistantMessage])
+      addMessage(assistantMessage)
     } catch (error) {
       const errorMessage: UIMessage = {
         id: (Date.now() + 1).toString(),
@@ -576,13 +580,13 @@ function ChatPageContent() {
         },
         timestamp: new Date(),
       }
-      setMessages(prev => [...prev, errorMessage])
+      addMessage(errorMessage)
     }
   }
 
   function handleNewConversation() {
     startNewConversation()
-    setMessages([])
+    clearForNewConversation()
   }
 
   function stopStreaming() {

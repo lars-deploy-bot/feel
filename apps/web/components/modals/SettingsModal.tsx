@@ -1,8 +1,8 @@
 "use client"
 
 import { Bot, Eye, EyeOff, Info, Moon, Settings, Sun, X, Zap } from "lucide-react"
-import { useEffect, useState } from "react"
 import { useTheme } from "next-themes"
+import { useEffect, useState } from "react"
 import { CLAUDE_MODELS, type ClaudeModel, useLLMStore } from "@/lib/stores/llmStore"
 
 interface SettingsModalProps {
@@ -117,7 +117,7 @@ function AppearanceSettings() {
     setTheme(newTheme)
   }
 
-  const currentTheme = theme === "system" ? systemTheme : theme
+  const _currentTheme = theme === "system" ? systemTheme : theme
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -216,7 +216,9 @@ function TokensSettings() {
         <div>
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-black dark:text-white">Balance</span>
-            <span className="text-sm font-semibold text-black dark:text-white">{tokens} / {maxTokens}</span>
+            <span className="text-sm font-semibold text-black dark:text-white">
+              {tokens} / {maxTokens}
+            </span>
           </div>
           <div className="w-full h-3 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
             <div
