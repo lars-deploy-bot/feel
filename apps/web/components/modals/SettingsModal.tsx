@@ -97,7 +97,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
 
           {/* Scrollable Content */}
           <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-            <div key={activeTab} className="animate-in fade-in-0 slide-in-from-bottom-3 duration-400">
+            <div className="animate-in fade-in-0 slide-in-from-bottom-3 duration-400">
               {activeTab === "appearance" && <AppearanceSettings />}
               {activeTab === "llm" && <LLMSettings />}
               {activeTab === "tokens" && <TokensSettings />}
@@ -112,19 +112,9 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
 
 function AppearanceSettings() {
   const { theme, setTheme, systemTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
 
   const handleThemeChange = (newTheme: "light" | "dark" | "system") => {
     setTheme(newTheme)
-  }
-
-  // Prevent rendering until hydration is complete
-  if (!mounted) {
-    return null
   }
 
   const currentTheme = theme === "system" ? systemTheme : theme
@@ -143,31 +133,31 @@ function AppearanceSettings() {
             <button
               type="button"
               onClick={() => handleThemeChange("light")}
-              className={`flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 border rounded transition-all duration-200 ${
+              className={`flex flex-col items-center justify-center gap-1.5 sm:gap-2 p-3 sm:p-4 border rounded transition-all duration-200 min-h-[80px] sm:min-h-[96px] ${
                 theme === "light"
                   ? "border-black dark:border-white bg-black/5 dark:bg-white/5 shadow-sm"
                   : "border-black/20 dark:border-white/20 hover:border-black dark:hover:border-white hover:shadow-sm"
               }`}
             >
               <Sun size={18} className="sm:w-5 sm:h-5 text-black dark:text-white" />
-              <span className="text-xs text-black/60 dark:text-white/60">Light</span>
+              <span className="text-xs text-black/60 dark:text-white/60 text-center">Light</span>
             </button>
             <button
               type="button"
               onClick={() => handleThemeChange("dark")}
-              className={`flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 border rounded transition-all duration-200 ${
+              className={`flex flex-col items-center justify-center gap-1.5 sm:gap-2 p-3 sm:p-4 border rounded transition-all duration-200 min-h-[80px] sm:min-h-[96px] ${
                 theme === "dark"
                   ? "border-black dark:border-white bg-black/5 dark:bg-white/5 shadow-sm"
                   : "border-black/20 dark:border-white/20 hover:border-black dark:hover:border-white hover:shadow-sm"
               }`}
             >
               <Moon size={18} className="sm:w-5 sm:h-5 text-black dark:text-white" />
-              <span className="text-xs text-black/60 dark:text-white/60">Dark</span>
+              <span className="text-xs text-black/60 dark:text-white/60 text-center">Dark</span>
             </button>
             <button
               type="button"
               onClick={() => handleThemeChange("system")}
-              className={`flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 border rounded transition-all duration-200 ${
+              className={`flex flex-col items-center justify-center gap-1.5 sm:gap-2 p-3 sm:p-4 border rounded transition-all duration-200 min-h-[80px] sm:min-h-[96px] ${
                 theme === "system"
                   ? "border-2 border-black dark:border-white bg-black/5 dark:bg-white/5 shadow-sm"
                   : "border border-black/20 dark:border-white/20 hover:border-black dark:hover:border-white hover:shadow-sm"
@@ -177,7 +167,7 @@ function AppearanceSettings() {
                 <Sun size={11} className="sm:w-3 sm:h-3 text-black dark:text-white" />
                 <Moon size={11} className="sm:w-3 sm:h-3 text-black dark:text-white" />
               </div>
-              <span className="text-xs font-medium text-black dark:text-white">System</span>
+              <span className="text-xs font-medium text-black dark:text-white text-center">System</span>
             </button>
           </div>
         </div>

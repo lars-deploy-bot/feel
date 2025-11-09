@@ -15,13 +15,13 @@ interface DeploymentStatusProps {
 }
 
 export function DeploymentStatus({ status, domain, error, errorDetails }: DeploymentStatusProps) {
-  const [countdown, setCountdown] = useState(10)
+  const [countdown, setCountdown] = useState(20)
   const [_copied, setCopied] = useState(false)
 
   // Countdown timer for loading state
   useEffect(() => {
     if (status === "loading") {
-      setCountdown(10) // Reset to 10 when loading starts
+      setCountdown(20) // Reset to 20 when loading starts
       const interval = setInterval(() => {
         setCountdown(prev => {
           if (prev <= 1) {
@@ -50,14 +50,14 @@ export function DeploymentStatus({ status, domain, error, errorDetails }: Deploy
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full max-w-2xl"
+        className="w-full px-4 sm:px-6"
       >
         {/* Emotional message */}
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="text-center text-base font-light text-black/50 mb-16"
+          className="text-center text-sm sm:text-base font-light text-black/50 mb-8 sm:mb-16"
         >
           You just got your own website
         </motion.p>
@@ -67,10 +67,10 @@ export function DeploymentStatus({ status, domain, error, errorDetails }: Deploy
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.4, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          className="mb-16 relative"
+          className="mb-8 sm:mb-16 relative"
         >
           <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10 blur-3xl -z-10 scale-150" />
-          <h1 className="text-6xl md:text-7xl font-extralight text-black tracking-tight text-center">{domain}</h1>
+          <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-extralight text-black tracking-tight text-center break-words">{domain}</h1>
         </motion.div>
 
         {/* Single action */}
@@ -85,7 +85,7 @@ export function DeploymentStatus({ status, domain, error, errorDetails }: Deploy
             target="_blank"
             rel="noopener noreferrer"
             onClick={copyLink}
-            className="px-12 py-4 bg-gradient-to-br from-blue-600 to-blue-500 text-white text-base font-medium rounded-full hover:from-blue-500 hover:to-blue-400 transition-all duration-300 shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 hover:scale-105"
+            className="px-6 sm:px-12 py-3 sm:py-4 bg-gradient-to-br from-blue-600 to-blue-500 text-white text-sm sm:text-base font-medium rounded-full hover:from-blue-500 hover:to-blue-400 transition-all duration-300 shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 hover:scale-105 active:scale-95"
           >
             Open Site
           </a>
@@ -124,8 +124,8 @@ export function DeploymentStatus({ status, domain, error, errorDetails }: Deploy
 
   // Loading state - Clean and minimal
   const stages = ["Launching", "Deploying", "Setting up your site"]
-  const currentStage = countdown > 7 ? 0 : countdown > 3 ? 1 : 2
-  const progress = ((10 - countdown) / 10) * 100
+  const currentStage = countdown > 13 ? 0 : countdown > 6 ? 1 : 2
+  const progress = ((20 - countdown) / 20) * 100
 
   return (
     <motion.div

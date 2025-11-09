@@ -72,9 +72,10 @@ function ModeSelectionScreen({ onSelect }: ModeSelectionScreenProps) {
         <ModeOption
           icon={Globe}
           title="Custom Domain"
-          description="Connect your own domain."
-          time="~2 min"
-          onClick={() => onSelect("deploy-with-domain")}
+          description="Coming soon"
+          time=""
+          disabled
+          onClick={() => {}}
         />
       </motion.div>
     </motion.div>
