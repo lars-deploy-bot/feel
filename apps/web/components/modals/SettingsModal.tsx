@@ -2,6 +2,7 @@
 
 import { Bot, Eye, EyeOff, Info, Moon, Settings, Sun, X, Zap } from "lucide-react"
 import { useEffect, useState } from "react"
+import { useTheme } from "next-themes"
 import { CLAUDE_MODELS, type ClaudeModel, useLLMStore } from "@/lib/stores/llmStore"
 
 interface SettingsModalProps {
@@ -110,31 +111,23 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
 }
 
 function AppearanceSettings() {
-  const [theme, setTheme] = useState<"light" | "dark" | "auto">("auto")
+  const { theme, setTheme, systemTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme") as "light" | "dark" | "auto" | null
-    if (savedTheme) {
-      setTheme(savedTheme)
-      applyTheme(savedTheme)
-    }
+    setMounted(true)
   }, [])
 
-  const applyTheme = (themeMode: "light" | "dark" | "auto") => {
-    const html = document.documentElement
-    if (themeMode === "auto") {
-      const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches
-      html.classList.toggle("dark", isDark)
-    } else {
-      html.classList.toggle("dark", themeMode === "dark")
-    }
+  const handleThemeChange = (newTheme: "light" | "dark" | "system") => {
+    setTheme(newTheme)
   }
 
-  const handleThemeChange = (newTheme: "light" | "dark" | "auto") => {
-    setTheme(newTheme)
-    localStorage.setItem("theme", newTheme)
-    applyTheme(newTheme)
+  // Prevent rendering until hydration is complete
+  if (!mounted) {
+    return null
   }
+
+  const currentTheme = theme === "system" ? systemTheme : theme
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -173,9 +166,9 @@ function AppearanceSettings() {
             </button>
             <button
               type="button"
-              onClick={() => handleThemeChange("auto")}
+              onClick={() => handleThemeChange("system")}
               className={`flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 border rounded transition-all duration-200 ${
-                theme === "auto"
+                theme === "system"
                   ? "border-2 border-black dark:border-white bg-black/5 dark:bg-white/5 shadow-sm"
                   : "border border-black/20 dark:border-white/20 hover:border-black dark:hover:border-white hover:shadow-sm"
               }`}
@@ -184,7 +177,7 @@ function AppearanceSettings() {
                 <Sun size={11} className="sm:w-3 sm:h-3 text-black dark:text-white" />
                 <Moon size={11} className="sm:w-3 sm:h-3 text-black dark:text-white" />
               </div>
-              <span className="text-xs font-medium text-black dark:text-white">Auto</span>
+              <span className="text-xs font-medium text-black dark:text-white">System</span>
             </button>
           </div>
         </div>
