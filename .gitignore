@@ -23,6 +23,7 @@ out/
 build/
 dist/
 dist.*/
+next-env.d.ts
 
 # Turborepo
 .turbo/

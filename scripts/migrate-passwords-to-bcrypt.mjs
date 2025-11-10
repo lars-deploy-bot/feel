@@ -14,22 +14,22 @@
  * - Detailed logging of all operations
  */
 
-import { readFileSync, writeFileSync, copyFileSync, existsSync } from 'node:fs'
-import { join, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import bcrypt from 'bcrypt'
+import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs"
+import { dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
+import bcrypt from "bcrypt"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
-const DOMAIN_PASSWORDS_FILE = join(__dirname, '..', 'domain-passwords.json')
+const DOMAIN_PASSWORDS_FILE = join(__dirname, "..", "domain-passwords.json")
 const BACKUP_FILE = `${DOMAIN_PASSWORDS_FILE}.backup-${Date.now()}`
 const SALT_ROUNDS = 12
 
 async function migratePasswords() {
-  console.log('🔐 Password Migration Script: Plaintext → Bcrypt')
-  console.log('=' .repeat(60))
-  console.log('')
+  console.log("🔐 Password Migration Script: Plaintext → Bcrypt")
+  console.log("=".repeat(60))
+  console.log("")
 
   // 1. Check if file exists
   if (!existsSync(DOMAIN_PASSWORDS_FILE)) {
@@ -41,21 +41,21 @@ async function migratePasswords() {
   console.log(`📦 Creating backup: ${BACKUP_FILE}`)
   try {
     copyFileSync(DOMAIN_PASSWORDS_FILE, BACKUP_FILE)
-    console.log('✅ Backup created successfully')
+    console.log("✅ Backup created successfully")
   } catch (error) {
-    console.error('❌ Failed to create backup:', error.message)
+    console.error("❌ Failed to create backup:", error.message)
     process.exit(1)
   }
 
   // 3. Load domain passwords
-  console.log('')
+  console.log("")
   console.log(`📖 Reading ${DOMAIN_PASSWORDS_FILE}`)
   let domainPasswords
   try {
-    const content = readFileSync(DOMAIN_PASSWORDS_FILE, 'utf8')
+    const content = readFileSync(DOMAIN_PASSWORDS_FILE, "utf8")
     domainPasswords = JSON.parse(content)
   } catch (error) {
-    console.error('❌ Failed to parse JSON:', error.message)
+    console.error("❌ Failed to parse JSON:", error.message)
     process.exit(1)
   }
 
@@ -63,15 +63,15 @@ async function migratePasswords() {
   console.log(`✅ Found ${totalDomains} domains`)
 
   // 4. Migrate passwords
-  console.log('')
-  console.log('🔄 Starting migration...')
-  console.log('')
+  console.log("")
+  console.log("🔄 Starting migration...")
+  console.log("")
 
   const results = {
     migrated: [],
     alreadyHashed: [],
     skipped: [],
-    errors: []
+    errors: [],
   }
 
   for (const [domain, config] of Object.entries(domainPasswords)) {
@@ -100,7 +100,6 @@ async function migratePasswords() {
 
       console.log(`✅ ${domain}: Successfully hashed`)
       results.migrated.push(domain)
-
     } catch (error) {
       console.error(`❌ ${domain}: Migration failed -`, error.message)
       results.errors.push({ domain, error: error.message })
@@ -108,59 +107,55 @@ async function migratePasswords() {
   }
 
   // 5. Save updated file
-  console.log('')
-  console.log('💾 Saving updated domain-passwords.json...')
+  console.log("")
+  console.log("💾 Saving updated domain-passwords.json...")
   try {
-    writeFileSync(
-      DOMAIN_PASSWORDS_FILE,
-      JSON.stringify(domainPasswords, null, 2),
-      'utf8'
-    )
-    console.log('✅ File saved successfully')
+    writeFileSync(DOMAIN_PASSWORDS_FILE, JSON.stringify(domainPasswords, null, 2), "utf8")
+    console.log("✅ File saved successfully")
   } catch (error) {
-    console.error('❌ Failed to save file:', error.message)
+    console.error("❌ Failed to save file:", error.message)
     console.log(`🔄 Restore backup with: cp ${BACKUP_FILE} ${DOMAIN_PASSWORDS_FILE}`)
     process.exit(1)
   }
 
   // 6. Summary
-  console.log('')
-  console.log('=' .repeat(60))
-  console.log('📊 Migration Summary')
-  console.log('=' .repeat(60))
+  console.log("")
+  console.log("=".repeat(60))
+  console.log("📊 Migration Summary")
+  console.log("=".repeat(60))
   console.log(`Total domains:        ${totalDomains}`)
   console.log(`✅ Migrated:          ${results.migrated.length}`)
   console.log(`⏭️  Already hashed:    ${results.alreadyHashed.length}`)
   console.log(`⚠️  Skipped:           ${results.skipped.length}`)
   console.log(`❌ Errors:            ${results.errors.length}`)
-  console.log('')
+  console.log("")
 
   if (results.migrated.length > 0) {
-    console.log('Migrated domains:')
+    console.log("Migrated domains:")
     results.migrated.forEach(d => console.log(`  - ${d}`))
-    console.log('')
+    console.log("")
   }
 
   if (results.errors.length > 0) {
-    console.log('❌ Errors encountered:')
+    console.log("❌ Errors encountered:")
     results.errors.forEach(({ domain, error }) => {
       console.log(`  - ${domain}: ${error}`)
     })
-    console.log('')
+    console.log("")
   }
 
-  console.log('=' .repeat(60))
-  console.log('🎉 Migration complete!')
-  console.log('')
-  console.log('📝 Next steps:')
-  console.log('  1. Test login with a few migrated domains')
+  console.log("=".repeat(60))
+  console.log("🎉 Migration complete!")
+  console.log("")
+  console.log("📝 Next steps:")
+  console.log("  1. Test login with a few migrated domains")
   console.log('  2. If successful, you can remove legacy "password" fields later')
   console.log(`  3. Backup stored at: ${BACKUP_FILE}`)
-  console.log('')
+  console.log("")
 }
 
 // Run migration
-migratePasswords().catch((error) => {
-  console.error('💥 Unexpected error:', error)
+migratePasswords().catch(error => {
+  console.error("💥 Unexpected error:", error)
   process.exit(1)
 })

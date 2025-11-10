@@ -97,6 +97,52 @@ try {
 }
 ```
 
+### 5. Model Selection & Credits
+
+**CRITICAL**: Credit users are restricted to Haiku model for cost management
+
+```typescript
+// Determine token source
+const workspaceCredits = getWorkspaceCredits(workspace) ?? 0
+const tokenSource = workspaceCredits >= 1 ? "workspace" : "user_provided"
+
+// Force Haiku for credit users
+const effectiveModel = tokenSource === "workspace"
+  ? CLAUDE_MODELS.HAIKU_3_5  // ENFORCED for credits
+  : (userModel || env.CLAUDE_MODEL)  // User choice with API key
+```
+
+**UI Pattern:**
+```typescript
+// Disable model selection when no API key
+const hasApiKey = !!apiKey
+const modelSelectionDisabled = !hasApiKey
+
+// Show different UI states:
+// - No API key: Locked to Haiku, dropdown disabled
+// - Has API key: All models available, user can select
+```
+
+**Store Pattern:**
+```typescript
+// Reset to Haiku when API key is cleared
+clearApiKey(): {
+  set({ apiKey: null, model: CLAUDE_MODELS.HAIKU_3_5 })
+}
+```
+
+**Why Haiku for Credits?**
+- Haiku: ~0.125 credits/conversation (200 credits = ~1,600 conversations)
+- Sonnet: ~0.375 credits/conversation (200 credits = ~533 conversations)
+- Opus: ~0.75 credits/conversation (200 credits = ~267 conversations)
+
+**Three-Layer Enforcement:**
+1. **UI Layer**: Dropdown disabled when `!hasApiKey`
+2. **Backend Layer**: Forces `HAIKU_3_5` when `tokenSource === "workspace"`
+3. **Store Layer**: Resets to `HAIKU_3_5` when API key cleared
+
+See [docs/architecture/CREDITS_AND_TOKENS.md](./docs/architecture/CREDITS_AND_TOKENS.md) for complete credit system documentation.
+
 ## Development Guidelines
 
 ### File Structure Conventions

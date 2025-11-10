@@ -42,6 +42,19 @@ export async function POST(req: Request) {
     const serviceName = `site@${serviceSlug}.service`
 
     try {
+      // Clear Vite cache to prevent stale dependency issues
+      const viteCachePath = `${workspaceRoot}/node_modules/.vite`
+      try {
+        execSync(`rm -rf "${viteCachePath}"`, {
+          encoding: "utf-8",
+          timeout: 5000,
+        })
+      } catch (cacheError) {
+        // Cache might not exist, continue with restart
+        console.log(`Vite cache not found or already cleared: ${viteCachePath}`)
+      }
+
+      // Restart the systemd service
       execSync(`systemctl restart ${serviceName}`, {
         encoding: "utf-8",
         timeout: 10000,
@@ -50,7 +63,7 @@ export async function POST(req: Request) {
       return NextResponse.json({
         ok: true,
         service: serviceName,
-        message: `Dev server restarted: ${serviceName}`,
+        message: `Vite cache cleared and dev server restarted: ${serviceName}`,
         requestId,
       })
     } catch (error) {

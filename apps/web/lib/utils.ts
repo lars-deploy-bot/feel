@@ -6,7 +6,11 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function generateRequestId(): string {
-  return Math.random().toString(36).substring(2, 8)
+  // Use timestamp + random to ensure uniqueness
+  // Format: <base36-timestamp><random-suffix>
+  const timestamp = Date.now().toString(36)
+  const random = Math.random().toString(36).substring(2, 8)
+  return `${timestamp}-${random}`
 }
 
 /**

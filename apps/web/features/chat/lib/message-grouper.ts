@@ -1,4 +1,5 @@
 import type { UIMessage } from "@/features/chat/lib/message-parser"
+import { isErrorResultMessage } from "@/features/chat/lib/message-parser"
 import { isCompletionMessage, isTextMessage } from "@/types/guards/ui"
 
 export interface MessageGroup {
@@ -25,11 +26,14 @@ export function groupMessages(messages: UIMessage[]): MessageGroup[] {
   for (let i = 0; i < messages.length; i++) {
     const message = messages[i]
 
-    if (isTextMessage(message)) {
+    // Errors should be displayed prominently, not hidden in thinking groups
+    const isError = message.type === "sdk_message" && isErrorResultMessage(message.content)
+
+    if (isTextMessage(message) || isError) {
       // Flush any pending thinking group as complete (thinking finished)
       flushThinkingGroup(true)
 
-      // Add text message as standalone
+      // Add text/error message as standalone
       groups.push({
         type: "text",
         messages: [message],

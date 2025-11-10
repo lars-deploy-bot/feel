@@ -69,7 +69,8 @@ const useLLMStoreBase = create<LLMStore>()(
           if (!key) {
             try {
               removeApiKey()
-              set({ apiKey: null, error: null })
+              // Reset to Haiku when clearing API key (credit users are restricted to Haiku)
+              set({ apiKey: null, error: null, model: CLAUDE_MODELS.HAIKU_3_5 })
             } catch (error) {
               const errorMessage = error instanceof Error ? error.message : "Failed to clear API key"
               set({ error: errorMessage })
@@ -105,7 +106,8 @@ const useLLMStoreBase = create<LLMStore>()(
         clearApiKey: () => {
           try {
             removeApiKey()
-            set({ apiKey: null, error: null })
+            // Reset to Haiku when clearing API key (credit users are restricted to Haiku)
+            set({ apiKey: null, error: null, model: CLAUDE_MODELS.HAIKU_3_5 })
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "Failed to clear API key"
             set({ error: errorMessage })
@@ -115,7 +117,7 @@ const useLLMStoreBase = create<LLMStore>()(
 
       return {
         apiKey: null,
-        model: CLAUDE_MODELS.SONNET_4_5,
+        model: CLAUDE_MODELS.HAIKU_3_5, // Default to Haiku for credit users
         error: null,
         actions,
         // Legacy direct exports for backwards compatibility
@@ -130,16 +132,25 @@ const useLLMStoreBase = create<LLMStore>()(
 
         // Validate persisted model and reset to default if invalid
         if (!isValidClaudeModel(state.model)) {
-          console.warn(`Invalid model "${state.model}", resetting to default`)
-          state.model = CLAUDE_MODELS.SONNET_4_5
+          console.warn(`Invalid model "${state.model}", resetting to Haiku`)
+          state.model = CLAUDE_MODELS.HAIKU_3_5
         }
 
         // Load API key from secure storage
         try {
           state.apiKey = loadApiKey()
+
+          // Force Haiku for credit users (no API key)
+          // This handles existing users who previously selected Sonnet/Opus
+          if (!state.apiKey && state.model !== CLAUDE_MODELS.HAIKU_3_5) {
+            console.log(`No API key found, forcing model to Haiku (was: ${state.model})`)
+            state.model = CLAUDE_MODELS.HAIKU_3_5
+          }
         } catch (error) {
           console.error("Failed to load API key:", error)
           state.apiKey = null
+          // Ensure Haiku on error
+          state.model = CLAUDE_MODELS.HAIKU_3_5
         }
       },
     },

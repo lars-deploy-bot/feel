@@ -1,7 +1,7 @@
 "use client"
 import { ExternalLink, Eye, EyeOff, Image, Layers, MessageCircle } from "lucide-react"
 import { Suspense, useCallback, useEffect, useRef, useState } from "react"
-import { Toaster } from "react-hot-toast"
+import toast, { Toaster } from "react-hot-toast"
 import { FeedbackModal } from "@/components/modals/FeedbackModal"
 import { SettingsModal } from "@/components/modals/SettingsModal"
 import { SuperTemplatesModal } from "@/components/modals/SuperTemplatesModal"
@@ -29,15 +29,20 @@ import { renderMessage } from "@/features/chat/lib/message-renderer"
 import { SandboxProvider } from "@/features/chat/lib/sandbox-context"
 import { sendClientError } from "@/features/chat/lib/send-client-error"
 import { BridgeInterruptSource } from "@/features/chat/lib/streaming/ndjson"
+import { isCompleteEvent, isDoneEvent, isErrorEvent } from "@/features/chat/types/stream"
 import { buildPromptWithAttachments } from "@/features/chat/utils/prompt-builder"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
 import type { StructuredError } from "@/lib/error-codes"
-import { getErrorHelp, getErrorMessage } from "@/lib/error-codes"
+import { ErrorCodes, getErrorHelp, getErrorMessage } from "@/lib/error-codes"
 import { HttpError } from "@/lib/errors"
 import { isRetryableError, retryWithBackoff } from "@/lib/retry"
 import { isDevelopment, useDebugActions, useDebugVisible, useSandbox, useSSETerminal } from "@/lib/stores/debug-store"
 import { useLLMStore } from "@/lib/stores/llmStore"
 import { useCurrentConversationId, useMessageActions, useMessages } from "@/lib/stores/messageStore"
+import { useStreamingActions } from "@/lib/stores/streamingStore"
+
+// Build version for deployment verification
+const BUILD_VERSION = "2025-01-10-clean-cancel-architecture"
 
 function ChatPageContent() {
   const [msg, setMsg] = useState("")
@@ -57,7 +62,19 @@ function ChatPageContent() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const isAutoScrolling = useRef(false)
   const abortControllerRef = useRef<AbortController | null>(null)
-  const isSubmitting = useRef<boolean>(false)
+
+  /**
+   * Tracks the requestId for explicit stream cancellation.
+   *
+   * Populated from X-Request-Id header (preferred) or first SSE event (fallback).
+   * Used by stopStreaming() to call /api/claude/stream/cancel endpoint.
+   *
+   * If null when Stop clicked, falls back to conversationId-based cancellation
+   * (handles super-early Stop case where user clicks Stop < 100ms after request).
+   */
+  const currentRequestIdRef = useRef<string | null>(null)
+  const requestIdPromiseRef = useRef<Promise<string> | null>(null)
+  const isSubmitting = useRef(false)
   const chatInputRef = useRef<ChatInputHandle>(null)
   const dragCounter = useRef(0)
   const photoButtonRef = useRef<HTMLButtonElement>(null)
@@ -68,6 +85,7 @@ function ChatPageContent() {
   const { addEvent: addDevEvent } = useDevTerminal()
   const { workspace, isTerminal, mounted, setWorkspace } = useWorkspace({ redirectOnMissing: "/" })
   const { apiKey: userApiKey, model: userModel } = useLLMStore()
+  const streamingActions = useStreamingActions()
 
   // Session management with workspace-scoped persistence
   const { conversationId, startNewConversation, markActivity } = useConversationSession(workspace, mounted)
@@ -96,6 +114,9 @@ function ChatPageContent() {
 
   // Show SSE terminal and Sandbox minimized on staging (after mount to avoid hydration mismatch)
   useEffect(() => {
+    // Log build version for deployment verification
+    console.log(`%c[Chat] BUILD VERSION: ${BUILD_VERSION}`, "color: #00ff00; font-weight: bold; font-size: 14px")
+
     if (window.location.hostname.includes("staging")) {
       setSSETerminal(true)
       setSSETerminalMinimized(true)
@@ -111,7 +132,7 @@ function ChatPageContent() {
     }
   }, [messages.length, markActivity])
 
-  // Track manual scrolling
+  // Track manual scrolling - attach once at mount time (only needs empty deps)
   useEffect(() => {
     const messagesContainer = messagesEndRef.current?.parentElement
     if (!messagesContainer) return
@@ -124,42 +145,45 @@ function ChatPageContent() {
 
     messagesContainer.addEventListener("scroll", handleScroll)
     return () => messagesContainer.removeEventListener("scroll", handleScroll)
-  }, [mounted])
+  }, [])
 
   useEffect(() => {
     const messagesContainer = messagesEndRef.current?.parentElement
-    if (messagesContainer) {
-      // Force scroll if we just sent a message
-      if (shouldForceScroll) {
-        isAutoScrolling.current = true
-        messagesEndRef.current?.scrollIntoView({ behavior: "auto" })
-        setShouldForceScroll(false)
-        setUserHasManuallyScrolled(false)
-        setTimeout(() => {
-          isAutoScrolling.current = false
-        }, 300)
-      }
-      // Auto-scroll if user hasn't manually scrolled
-      else if (!userHasManuallyScrolled) {
-        isAutoScrolling.current = true
-        messagesEndRef.current?.scrollIntoView({ behavior: "auto" })
-        setTimeout(() => {
-          isAutoScrolling.current = false
-        }, 300)
-      }
-      // Only scroll if near bottom when user has manually scrolled
-      else {
-        const { scrollTop, scrollHeight, clientHeight } = messagesContainer
-        const isNearBottom = scrollHeight - scrollTop - clientHeight < 100
+    if (!messagesContainer) return
 
-        if (isNearBottom) {
-          isAutoScrolling.current = true
-          messagesEndRef.current?.scrollIntoView({ behavior: "auto" })
-          setTimeout(() => {
-            isAutoScrolling.current = false
-          }, 300)
-        }
+    let timeoutId: NodeJS.Timeout | null = null
+
+    const performScroll = () => {
+      isAutoScrolling.current = true
+      messagesEndRef.current?.scrollIntoView({ behavior: "auto" })
+      timeoutId = setTimeout(() => {
+        isAutoScrolling.current = false
+      }, 300)
+    }
+
+    // Force scroll if we just sent a message
+    if (shouldForceScroll) {
+      performScroll()
+      setShouldForceScroll(false)
+      setUserHasManuallyScrolled(false)
+    }
+    // Auto-scroll if user hasn't manually scrolled
+    else if (!userHasManuallyScrolled) {
+      performScroll()
+    }
+    // Only scroll if near bottom when user has manually scrolled
+    else {
+      const { scrollTop, scrollHeight, clientHeight } = messagesContainer
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100
+
+      if (isNearBottom) {
+        performScroll()
       }
+    }
+
+    // Cleanup: cancel any pending timeout
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId)
     }
   }, [messages, shouldForceScroll, userHasManuallyScrolled])
 
@@ -216,18 +240,29 @@ function ChatPageContent() {
   async function sendStreaming(userMessage: UIMessage) {
     let receivedAnyMessage = false
     let timeoutId: NodeJS.Timeout | null = null
+    let shouldStopReading = false
 
     try {
-      const requestBody = createRequestBody(userMessage.content)
+      const requestBody = createRequestBody(userMessage.content as string)
 
       // Create AbortController for this request
       const abortController = new AbortController()
       abortControllerRef.current = abortController
 
+      // Initialize streaming state for this conversation
+      if (conversationId) {
+        streamingActions.startStream(conversationId)
+      }
+
       // Set a timeout to detect hanging requests (60 seconds)
       timeoutId = setTimeout(() => {
-        if (!receivedAnyMessage) {
+        if (!receivedAnyMessage && conversationId) {
           console.error("[Chat] Request timeout - no response received in 60s")
+
+          streamingActions.recordError(conversationId, {
+            type: "timeout_error",
+            message: "Request timeout - no response received in 60s",
+          })
 
           sendClientError({
             conversationId,
@@ -284,12 +319,20 @@ function ChatPageContent() {
               if (helpText) {
                 userMessage += `\n\n${helpText}`
               }
+
+              // Show toast for conversation busy error (409)
+              if (errorData.error === ErrorCodes.CONVERSATION_BUSY) {
+                toast.error(userMessage, {
+                  duration: 4000,
+                  position: "top-center",
+                })
+              }
             } else {
               userMessage = `HTTP ${res.status}: ${res.statusText}`
             }
 
             // Throw HttpError - will be retried if 5xx, logged in outer catch after retries exhausted
-            throw new HttpError(userMessage, res.status, res.statusText)
+            throw new HttpError(userMessage, res.status, res.statusText, errorData?.error)
           }
 
           return res
@@ -310,12 +353,23 @@ function ChatPageContent() {
         throw new Error("No response body received from server")
       }
 
+      // Read requestId from header immediately (before any SSE events)
+      // This ensures we can cancel even if user clicks Stop before first event
+      const headerRequestId = response.headers.get("X-Request-Id")
+      console.log("[Chat] Response headers:", Array.from(response.headers.entries()))
+      console.log("[Chat] X-Request-Id header value:", headerRequestId)
+      if (headerRequestId) {
+        currentRequestIdRef.current = headerRequestId
+        console.log("[Chat] Stored requestId from header:", headerRequestId)
+      } else {
+        console.warn("[Chat] No X-Request-Id header found in response!")
+      }
+
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
 
-      // Track parse errors to detect stream corruption
-      let consecutiveParseErrors = 0
-      const MAX_CONSECUTIVE_PARSE_ERRORS = 10 // Increased from 3
+      // Use streaming store for per-conversation error tracking
+      const MAX_CONSECUTIVE_PARSE_ERRORS = 10
 
       // Buffer for incomplete NDJSON lines
       let buffer = ""
@@ -323,7 +377,7 @@ function ChatPageContent() {
       try {
         while (true) {
           const { done, value } = await reader.read()
-          if (done) break
+          if (done || shouldStopReading) break
 
           // Append new chunk to buffer
           buffer += decoder.decode(value, { stream: true })
@@ -341,29 +395,44 @@ function ChatPageContent() {
             try {
               const eventData: StreamEvent = JSON.parse(line)
 
+              // Store requestId from first event for cancellation
+              if (!currentRequestIdRef.current && eventData.requestId) {
+                currentRequestIdRef.current = eventData.requestId
+                console.log("[Chat] Tracking requestId for cancellation:", eventData.requestId)
+              }
+
               // Validate message structure
               if (!eventData.requestId || !eventData.timestamp || !eventData.type) {
                 console.error("[Chat] Invalid message structure:", eventData)
-                consecutiveParseErrors++
+
+                if (conversationId) {
+                  streamingActions.incrementConsecutiveErrors(conversationId)
+                  streamingActions.recordError(conversationId, {
+                    type: "invalid_event_structure",
+                    message: "Invalid message structure in stream",
+                  })
+                }
+
+                const consecutiveErrors = conversationId ? streamingActions.getConsecutiveErrors(conversationId) : 0
 
                 sendClientError({
                   conversationId,
                   errorType: ClientError.INVALID_EVENT_STRUCTURE,
                   data: {
                     message: eventData,
-                    consecutiveErrors: consecutiveParseErrors,
+                    consecutiveErrors,
                   },
                   addDevEvent,
                 })
 
-                if (consecutiveParseErrors >= MAX_CONSECUTIVE_PARSE_ERRORS) {
-                  console.error("[Chat] Too many consecutive parse errors, stopping stream", consecutiveParseErrors)
+                if (consecutiveErrors >= MAX_CONSECUTIVE_PARSE_ERRORS) {
+                  console.error("[Chat] Too many consecutive parse errors, stopping stream", consecutiveErrors)
 
                   sendClientError({
                     conversationId,
                     errorType: ClientError.CRITICAL_PARSE_ERROR,
                     data: {
-                      consecutiveErrors: consecutiveParseErrors,
+                      consecutiveErrors,
                       message: "Too many consecutive parse errors, stopping stream",
                     },
                     addDevEvent,
@@ -380,6 +449,7 @@ function ChatPageContent() {
                     },
                     timestamp: new Date(),
                   })
+                  shouldStopReading = true
                   reader.cancel()
                   break
                 }
@@ -393,41 +463,61 @@ function ChatPageContent() {
                   })
                 }
 
-                // Process the message for UI
+                // Process the message for UI (now with conversation-scoped tool tracking)
                 receivedAnyMessage = true
-                const message = parseStreamEvent(eventData)
-                if (message) {
-                  addMessage(message)
+                if (conversationId) {
+                  streamingActions.recordMessageReceived(conversationId)
+                  streamingActions.resetConsecutiveErrors(conversationId)
                 }
 
-                consecutiveParseErrors = 0
+                const message = parseStreamEvent(eventData, conversationId, streamingActions)
+                if (message) {
+                  addMessage(message)
+                  // Break on stream completion
+                  if (isCompleteEvent(eventData) || isDoneEvent(eventData) || isErrorEvent(eventData)) {
+                    receivedAnyMessage = true
+                    setBusy(false)
+                    shouldStopReading = true
+                    break
+                  }
+                }
               }
             } catch (parseError) {
               console.error("[Chat] Failed to parse NDJSON line:", {
                 line: line.slice(0, 200),
                 error: parseError,
               })
-              consecutiveParseErrors++
+
+              if (conversationId) {
+                streamingActions.incrementConsecutiveErrors(conversationId)
+                streamingActions.recordError(conversationId, {
+                  type: "parse_error",
+                  message: "Failed to parse NDJSON line",
+                  linePreview: line.slice(0, 200),
+                })
+              }
+
+              const consecutiveErrors = conversationId ? streamingActions.getConsecutiveErrors(conversationId) : 0
 
               sendClientError({
                 conversationId,
                 errorType: ClientError.PARSE_ERROR,
                 data: {
-                  consecutiveErrors: consecutiveParseErrors,
+                  consecutiveErrors,
                   line: line.slice(0, 200),
                   error: parseError instanceof Error ? parseError.message : String(parseError),
                 },
                 addDevEvent,
               })
 
-              if (consecutiveParseErrors >= MAX_CONSECUTIVE_PARSE_ERRORS) {
-                console.error("[Chat] Too many consecutive parse errors, stopping stream", consecutiveParseErrors)
+              if (consecutiveErrors >= MAX_CONSECUTIVE_PARSE_ERRORS) {
+                console.error("[Chat] Too many consecutive parse errors, stopping stream", consecutiveErrors)
 
                 sendClientError({
                   conversationId,
                   errorType: ClientError.CRITICAL_PARSE_ERROR,
                   data: {
-                    consecutiveErrors: consecutiveParseErrors,
+                    consecutiveErrors,
                     message: "Too many consecutive parse errors, stopping stream",
                   },
                   addDevEvent,
@@ -444,6 +534,7 @@ function ChatPageContent() {
                   },
                   timestamp: new Date(),
                 })
+                shouldStopReading = true
                 reader.cancel()
                 break
               }
@@ -451,6 +542,13 @@ function ChatPageContent() {
           }
         }
       } catch (readerError) {
+        if (conversationId) {
+          streamingActions.recordError(conversationId, {
+            type: "reader_error",
+            message: readerError instanceof Error ? readerError.message : "Unknown reader error",
+          })
+        }
+
         sendClientError({
           conversationId,
           errorType: ClientError.READER_ERROR,
@@ -472,6 +570,11 @@ function ChatPageContent() {
       // Check if we received any response at all
       if (!receivedAnyMessage) {
         throw new Error("Server closed connection without sending any response")
+      }
+
+      // End stream tracking
+      if (conversationId) {
+        streamingActions.endStream(conversationId)
       }
     } catch (error) {
       // Log error for debugging (even HttpError which has user-friendly message)
@@ -503,31 +606,38 @@ function ChatPageContent() {
         }
       }
 
-      // Show error message to user
+      // Show error message to user (unless it's a conversation busy error which has a toast)
       if (error instanceof Error && error.name !== "AbortError") {
-        const errorMessage: UIMessage = {
-          id: Date.now().toString(),
-          type: "sdk_message",
-          content: {
-            type: "result",
-            is_error: true,
-            result: error.message,
-          },
-          timestamp: new Date(),
+        // Skip adding to chat for conversation busy error since toast already shows it
+        const isConversationBusy =
+          error instanceof HttpError && error.errorCode === ErrorCodes.CONVERSATION_BUSY
+
+        if (!isConversationBusy) {
+          const errorMessage: UIMessage = {
+            id: Date.now().toString(),
+            type: "sdk_message",
+            content: {
+              type: "result",
+              is_error: true,
+              result: error.message,
+            },
+            timestamp: new Date(),
+          }
+          addMessage(errorMessage)
         }
-        addMessage(errorMessage)
       }
     } finally {
       if (timeoutId) {
         clearTimeout(timeoutId)
       }
       abortControllerRef.current = null
+      currentRequestIdRef.current = null
     }
   }
 
   async function sendRegular(userMessage: UIMessage) {
     try {
-      const requestBody = createRequestBody(userMessage.content)
+      const requestBody = createRequestBody(userMessage.content as string)
 
       const r = await fetch("/api/claude", {
         method: "POST",
@@ -553,6 +663,14 @@ function ChatPageContent() {
             fullMessage += `\n\n${helpText}`
           }
 
+          // Show toast for conversation busy error (409)
+          if (errorData.error === ErrorCodes.CONVERSATION_BUSY) {
+            toast.error(fullMessage, {
+              duration: 4000,
+              position: "top-center",
+            })
+          }
+
           throw new Error(fullMessage)
         }
 
@@ -570,26 +688,77 @@ function ChatPageContent() {
       }
       addMessage(assistantMessage)
     } catch (error) {
-      const errorMessage: UIMessage = {
-        id: (Date.now() + 1).toString(),
-        type: "sdk_message",
-        content: {
-          type: "result",
-          is_error: true,
-          result: error instanceof Error ? error.message : "Unknown error",
-        },
-        timestamp: new Date(),
+      // Skip adding to chat for conversation busy error since toast already shows it
+      const errorMessage = error instanceof Error ? error.message : "Unknown error"
+      const isConversationBusy = errorMessage.includes("I'm still working on your previous request")
+
+      if (!isConversationBusy) {
+        const errorUIMessage: UIMessage = {
+          id: (Date.now() + 1).toString(),
+          type: "sdk_message",
+          content: {
+            type: "result",
+            is_error: true,
+            result: errorMessage,
+          },
+          timestamp: new Date(),
+        }
+        addMessage(errorUIMessage)
       }
-      addMessage(errorMessage)
     }
   }
 
   function handleNewConversation() {
+    // Clear streaming state for the old conversation
+    if (storeConversationId) {
+      streamingActions.clearConversation(storeConversationId)
+    }
     startNewConversation()
     clearForNewConversation()
   }
 
-  function stopStreaming() {
+  /**
+   * Stop active streaming response via explicit cancellation endpoint.
+   *
+   * === CANCELLATION ARCHITECTURE (CLIENT-SIDE) ===
+   *
+   * Two-path cancellation strategy (handles all timing scenarios):
+   *
+   * 1. PRIMARY PATH (99% of cases):
+   *    - Server sends X-Request-Id header immediately in HTTP response
+   *    - We store it in currentRequestIdRef (line 352)
+   *    - Call POST /api/claude/stream/cancel with { requestId }
+   *    - Server cancels via registry, releases lock instantly
+   *
+   * 2. FALLBACK PATH (super-early Stop, < 100ms):
+   *    - User clicks Stop before X-Request-Id header processed
+   *    - currentRequestIdRef is still null
+   *    - Call POST /api/claude/stream/cancel with { conversationId, workspace }
+   *    - Server searches registry by conversationKey, cancels stream
+   *    - Backup: abort() triggers stream.cancel() which releases lock via finally block
+   *
+   * Why both paths?
+   * - Primary path: Explicit cancellation with exact requestId (most reliable)
+   * - Fallback path: Handles race condition when Stop clicked before header arrives
+   * - abort(): Safety net that triggers finally block cleanup (super-early Stop)
+   *
+   * Cleanup sequence:
+   * 1. Cancel endpoint called (best-effort, continues even if fails)
+   * 2. abort() called (triggers stream.cancel() → finally block)
+   * 3. Interrupt message added (stops thinking animation)
+   * 4. State reset (busy = false, isSubmitting = false)
+   * 5. currentRequestIdRef cleared for next request
+   *
+   * Production behavior:
+   * - Works through Cloudflare → Caddy → Next.js proxy layers
+   * - req.signal.addEventListener("abort") NOT used (doesn't work in production)
+   * - Explicit HTTP endpoint is production-safe solution
+   *
+   * See docs/streaming/cancellation-architecture.md for server-side details.
+   */
+  async function stopStreaming() {
+    console.log("[Chat] stopStreaming called, currentRequestIdRef:", currentRequestIdRef.current)
+
     if (isDevelopment()) {
       const interruptEvent = {
         type: ClientRequest.INTERRUPT,
@@ -607,10 +776,50 @@ function ChatPageContent() {
       })
     }
 
+    // Call explicit cancel endpoint (always, with fallback to conversationId)
+    try {
+      if (currentRequestIdRef.current) {
+        // Primary path: Cancel by requestId (received from X-Request-Id header)
+        console.log("[Chat] Calling cancel endpoint with requestId:", currentRequestIdRef.current)
+        await fetch("/api/claude/stream/cancel", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ requestId: currentRequestIdRef.current }),
+        })
+        console.log("[Chat] Cancel endpoint called successfully (by requestId)")
+        currentRequestIdRef.current = null
+      } else {
+        // Fallback path: Cancel by conversationId (super-early Stop, before X-Request-Id received)
+        console.log(
+          "[Chat] No requestId available - using conversationId fallback for super-early Stop:",
+          conversationId,
+        )
+        await fetch("/api/claude/stream/cancel", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ conversationId, workspace }),
+        })
+        console.log("[Chat] Cancel endpoint called successfully (by conversationId)")
+      }
+    } catch (error) {
+      console.error("[Chat] Failed to call cancel endpoint:", error)
+      // Continue with abort anyway - cancel endpoint is best-effort
+    }
+
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
       abortControllerRef.current = null
     }
+
+    // Add completion message to mark thinking group as complete
+    // Without this, the thinking group stays animated (isComplete: false)
+    const interruptMessage: UIMessage = {
+      id: Date.now().toString(),
+      type: "complete",
+      content: {},
+      timestamp: new Date(),
+    }
+    addMessage(interruptMessage)
 
     // Reset state - request is truly stopped
     setBusy(false)

@@ -21,7 +21,7 @@ export async function restartServer(params: RestartServerParams): Promise<ToolRe
 
 export const restartServerTool = tool(
   "restart_dev_server",
-  "Restarts the systemd dev server for the current workspace. Use this after making structural changes that require a server restart (e.g., changing from localStorage to server-side state, adding new dependencies, modifying server configuration).",
+  "Clears the Vite dependency cache and restarts the systemd dev server for the current workspace. Use this after: adding new dependencies, encountering component rendering issues, making structural changes, or when UI components appear to work structurally but don't respond to interactions. This fixes stale Vite cache issues that can cause mysterious 'renders but doesn't work' problems.",
   restartServerParamsSchema,
   async args => {
     return restartServer(args)

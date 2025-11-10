@@ -40,6 +40,10 @@ export const ErrorCodes = {
   FILE_READ_ERROR: "FILE_READ_ERROR",
   FILE_WRITE_ERROR: "FILE_WRITE_ERROR",
 
+  // Package management errors (6.5xxx)
+  PACKAGE_INSTALL_FAILED: "PACKAGE_INSTALL_FAILED",
+  DEV_SERVER_RESTART_FAILED: "DEV_SERVER_RESTART_FAILED",
+
   // Image errors (7xxx)
   TENANT_NOT_CONFIGURED: "TENANT_NOT_CONFIGURED",
   NO_FILE: "NO_FILE",
@@ -151,6 +155,16 @@ export function getErrorMessage(code: ErrorCode, details?: Record<string, any>):
       return details?.filePath
         ? `I cannot write to '${details.filePath}'. I might not have permission to modify it.`
         : "I cannot write to this file. I might not have permission to modify it."
+
+    case ErrorCodes.PACKAGE_INSTALL_FAILED:
+      return details?.package
+        ? `I couldn't install the '${details.package}' package. ${details.reason || "Please try again."}`
+        : "I couldn't install the package. Please try again."
+
+    case ErrorCodes.DEV_SERVER_RESTART_FAILED:
+      return details?.service
+        ? `I installed the package successfully, but couldn't restart the dev server (${details.service}). You may need to restart it manually.`
+        : "I installed the package successfully, but couldn't restart the dev server. You may need to restart it manually."
 
     case ErrorCodes.API_AUTH_FAILED:
       return "API authentication failed. The API key may be expired or invalid."

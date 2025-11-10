@@ -12,6 +12,21 @@ Next.js web frontend for Claude Code agentic conversations with workspace-scoped
 
 always use bun!
 
+## Current Work Documentation
+
+**Directory**: `docs/currently-working-on-this/`
+
+**Purpose**: Living documentation for active development tasks. When working on a multi-step task:
+
+1. **ALWAYS check this directory first** for existing context/plans
+2. **Create/update docs here** as you work (design docs, implementation status, TODO lists)
+3. **Update throughout the session** - don't wait until done
+4. **When task is complete**, move finalized docs to their permanent location (e.g., `docs/streaming/`, `docs/architecture/`)
+
+**Why**: Prevents context loss between sessions, enables easy task switching, creates clear handoff documentation.
+
+**Current Contents**: Check this directory at the start of each session to see what's in progress.
+
 ## Deployment & Ports
 
 **Guide**: `docs/deployment/deployment-environments.md`

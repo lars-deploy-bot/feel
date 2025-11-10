@@ -1,12 +1,7 @@
+import type { BridgeCompleteMessage } from "@/features/chat/lib/streaming/ndjson"
+
 interface CompleteMessageProps {
-  data: {
-    totalMessages: number
-    result: {
-      duration_ms: number
-      total_cost_usd: number
-      is_error: boolean
-    }
-  }
+  data: BridgeCompleteMessage["data"]
 }
 
 export function CompleteMessage(_props: CompleteMessageProps) {

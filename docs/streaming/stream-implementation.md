@@ -149,35 +149,144 @@ data: {...}
 - Connection closes early: error in loop, check logs
 - Messages misordered: concurrency issue, check locking
 
-## Known Issues
+## Stream Cleanup Best Practices
 
-### Stream Cancellation Race Condition
+### Critical Pattern: Finally Block with controller.close()
 
-**Status**: Under Investigation (RCA Complete)
-**Severity**: High
-**Symptom**: User clicks "stop" button, but sending another message immediately results in "I'm still working on your previous request" error
+**REQUIRED**: Every ReadableStream `start()` function MUST have a `finally` block:
 
-**Root Cause**: When the client abort signal fires, the conversation lock is released but the child process (running the SDK query) continues executing. This creates a race condition where a new request can acquire the lock before the old child process finishes.
+```typescript
+return new ReadableStream({
+  async start(controller) {
+    try {
+      // Read from source
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        controller.enqueue(value)
+      }
+    } catch (error) {
+      controller.enqueue(errorMessage)
+    } finally {
+      // ✅ CRITICAL: Always runs on success, error, AND abort
+      controller.close()           // Close HTTP stream to client
+      onStreamComplete?.()         // Release locks, cleanup resources
+    }
+  }
+})
+```
 
-**Technical Details**:
-- The abort listener (line 298-308 in `route.ts`) only releases the lock, it doesn't cancel the `ndjsonStream` or the child process
-- The `ndjsonStream` has no `cancel()` handler to stop reading and kill the child
-- The child process continues executing the SDK `query()` method even after the parent stops reading
-- Process termination (SIGTERM) is required to interrupt the SDK mid-execution
+**Why This Matters:**
 
-**Impact**:
-- Users can't reliably interrupt long operations
-- Creating a new request while old child is still running causes session conflicts
-- Orphaned child processes consume resources until they exit naturally (2-10+ seconds)
+Without `finally`:
+- ❌ HTTP stream never closes → Client hangs on `reader.read()`
+- ❌ Locks never released → Second request gets 409
+- ❌ Resources leak → Memory/file descriptor exhaustion
 
-**Mitigation** (Current):
-- 5-minute lock timeout prevents indefinite deadlock
-- Periodic cleanup removes stale locks every 60 seconds
-- Graceful shutdown (SIGTERM) with 5-second timeout before forced kill (SIGKILL)
+**What Goes in Finally:**
 
-**For Implementation**: See `docs/postmortems/stream-cancellation-race-condition.md` (full RCA) and `docs/postmortems/sdk-investigation-findings.md` (SDK behavior details)
+1. **Stream Closure**: `controller.close()` - Signals client that stream is done
+2. **Lock Release**: Callback to release conversation locks
+3. **Resource Cleanup**: Close file handles, database connections, etc.
 
-**Files Affected**:
-- `app/api/claude/stream/route.ts` - Missing stream cancel handler (lines 369-483)
-- `lib/agent-child-runner.ts` - Has correct cancel implementation (reference, lines 134-147)
-- `app/chat/page.tsx` - Client stop button handler
+### Cleanup Callback Pattern
+
+For operations that need cleanup (locks, connections, etc.), use callback pattern:
+
+```typescript
+// 1. Define callback in config interface
+interface StreamConfig {
+  onStreamComplete?: () => void
+}
+
+// 2. Call in finally block
+export function createStream(config: StreamConfig) {
+  const { onStreamComplete } = config
+
+  return new ReadableStream({
+    async start(controller) {
+      try {
+        // ... stream processing
+      } finally {
+        controller.close()
+        onStreamComplete?.()  // Guaranteed to run
+      }
+    }
+  })
+}
+
+// 3. Register cleanup when creating stream
+const stream = createStream({
+  onStreamComplete: () => {
+    unlockConversation(key)
+    closeDatabase()
+  }
+})
+```
+
+**Benefits:**
+- Separation of concerns (stream logic vs cleanup)
+- Testable (can verify callback gets called)
+- Idempotent (safe to call multiple times)
+- Follows existing patterns (`agent-child-runner.ts`)
+
+### Red Flags to Watch For
+
+**⚠️ Missing Cleanup:**
+```typescript
+// ❌ BAD - No finally block
+try {
+  while (true) {
+    const { done } = await reader.read()
+    if (done) break  // ← Just exits, no cleanup
+  }
+} catch (error) {
+  // cleanup here  ← Only on error, not success
+}
+```
+
+**⚠️ Cleanup Only in Error Handler:**
+```typescript
+// ❌ BAD - Success path leaks
+try {
+  doWork()
+} catch (error) {
+  releaseLock()  // ← Only releases on error
+}
+```
+
+**✅ Correct:**
+```typescript
+// ✅ GOOD - Always cleans up
+try {
+  doWork()
+} finally {
+  releaseLock()  // ← Always releases
+}
+```
+
+### Diagnostic Checklist
+
+When debugging stream issues:
+
+1. ✅ Does `start()` have `try-catch-finally`?
+2. ✅ Does `finally` call `controller.close()`?
+3. ✅ Are locks/resources released in `finally`?
+4. ✅ Is cleanup idempotent (safe to call twice)?
+5. ✅ Check Network tab: Does request show "finished" or "pending"?
+
+**If request shows "pending" forever → Missing `controller.close()`**
+
+## Past Issues (Resolved)
+
+### Conversation Lock Never Released (Nov 2025)
+
+**Status**: ✅ **RESOLVED**
+**Severity**: Critical
+**Symptom**: First message works, second message completely unresponsive
+
+**Root Cause**: Missing `finally` block in `ndjsonStream` - lock only released on error/abort, never on success.
+
+**Fix**: Added `finally { controller.close(); onStreamComplete?.() }` to guarantee cleanup.
+
+**Full Details**: See `docs/postmortems/stream-cancellation-race-condition.md`

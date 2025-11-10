@@ -1,8 +1,7 @@
+import type { BridgeInterruptMessage } from "@/features/chat/lib/streaming/ndjson"
+
 interface InterruptMessageProps {
-  data: {
-    message: string
-    source: "http_abort" | "client_cancel"
-  }
+  data: BridgeInterruptMessage["data"]
 }
 
 export function InterruptMessage({ data }: InterruptMessageProps) {

@@ -74,7 +74,8 @@ export const templates: Template[] = [
     templateId: versionedId(TEMPLATE_IDS.VITE_API_PLUGIN, "v1.0.0"),
     name: "Add a Database & Server",
     category: "backend",
-    description: "Turn your website into a full app with its own database. Save data, load data, and create your own server routes - all in one place.",
+    description:
+      "Turn your website into a full app with its own database. Save data, load data, and create your own server routes - all in one place.",
     previewImage: "https://terminal.goalive.nl/_images/t/alive.best/o/1b98911009639b0d/v/orig.webp",
     tags: ["backend", "database", "server", "api"],
     complexity: 2,

@@ -125,7 +125,10 @@ async function readStdinJson() {
         settingSources: SETTINGS_SOURCES,
         mcpServers: MCP_SERVERS,
         systemPrompt: request.systemPrompt,
+        // Session resumption: We use explicit session IDs for multi-conversation tracking
         resume: request.resume,
+        // Alternative: continue: true - SDK auto-continues most recent conversation (no session ID needed)
+        // continue: true,
       },
     })
 

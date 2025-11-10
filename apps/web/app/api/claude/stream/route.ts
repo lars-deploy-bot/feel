@@ -9,13 +9,6 @@ import {
 } from "@/features/auth/lib/sessionStore"
 import { hasSessionCookie } from "@/features/auth/types/guards"
 import { isInputSafe } from "@/features/chat/lib/formatMessage"
-import {
-  type BridgeErrorMessage,
-  BridgeStreamType,
-  encodeNDJSON,
-  type StreamMessage,
-} from "@/features/chat/lib/streaming/ndjson"
-import { isAssistantMessageWithUsage, isBridgeMessageEvent } from "@/features/chat/types/guards"
 import { getSystemPrompt } from "@/features/chat/lib/systemPrompt"
 import { getWorkspace, type Workspace } from "@/features/workspace/lib/workspace-secure"
 import { resolveWorkspace } from "@/features/workspace/lib/workspace-utils"
@@ -25,53 +18,17 @@ import { addCorsHeaders } from "@/lib/cors-utils"
 import { env } from "@/lib/env"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 import { logInput } from "@/lib/input-logger"
-import { calculateTokenCost, deductTokens, type TokenSource } from "@/lib/tokens"
-import { loadDomainPasswords } from "@/types/guards/api"
+import { CLAUDE_MODELS } from "@/lib/models/claude-models"
+import { registerCancellation, unregisterCancellation, startTTLCleanup } from "@/lib/stream/cancellation-registry"
+import { createNDJSONStream, type CancelState } from "@/lib/stream/ndjson-stream-handler"
+import type { TokenSource } from "@/lib/tokens"
 import { generateRequestId } from "@/lib/utils"
-import { BodySchema } from "@/types/guards/api"
+import { BodySchema, loadDomainPasswords } from "@/types/guards/api"
 
 export const runtime = "nodejs"
 
-/**
- * Deduct tokens for assistant message if it has usage data
- * Only deducts when using workspace credits (not user API key)
- * Uses actual token usage from API response, not estimates
- * @returns true if tokens were deducted, false otherwise
- */
-function deductTokensForMessage(
-  message: StreamMessage,
-  workspace: string,
-  requestId: string
-): boolean {
-  if (!isBridgeMessageEvent(message) || !isAssistantMessageWithUsage(message)) {
-    return false
-  }
-
-  const usage = message.data.content.message.usage
-  const tokenCost = calculateTokenCost(usage)
-
-  try {
-    const newBalance = deductTokens(workspace, tokenCost)
-
-    if (newBalance !== null) {
-      console.log(
-        `[Claude Stream ${requestId}] Deducted ${tokenCost} tokens (input: ${usage.input_tokens}, output: ${usage.output_tokens}), new balance: ${newBalance}`
-      )
-      return true
-    }
-
-    console.error(`[Claude Stream ${requestId}] Failed to deduct ${tokenCost} tokens (insufficient balance)`)
-    return false
-  } catch (error) {
-    // Deduction failure - stream already succeeded, tokens were consumed by API
-    // Log but don't crash - user got the response they paid for
-    console.error(
-      `[Claude Stream ${requestId}] Error deducting tokens: ${error instanceof Error ? error.message : String(error)}`
-    )
-    // Return false but don't propagate error - stream already ran
-    return false
-  }
-}
+// Start TTL cleanup on server start (once)
+startTTLCleanup()
 
 export async function POST(req: NextRequest) {
   const requestId = generateRequestId()
@@ -231,25 +188,25 @@ export async function POST(req: NextRequest) {
       }
       console.log(`[Claude Stream ${requestId}] Workspace authentication verified for: ${resolvedWorkspaceName}`)
 
-      // Determine which API key to use: workspace tokens vs user-provided key
+      // Determine which API key to use: workspace credits vs user-provided key
       const passwords = loadDomainPasswords()
       const domainConfig = passwords[resolvedWorkspaceName]
-      const workspaceTokens = domainConfig?.tokens ?? 0
-      const COST_ESTIMATE = 100 // Conservative estimate - reasonable for 200 token starting balance
+      const workspaceCredits = domainConfig?.credits ?? 0
+      const COST_ESTIMATE = 1 // Conservative estimate - 1 credit minimum for 200 credit starting balance
 
-      // Guard: reject if no sufficient tokens AND no API key
-      if (workspaceTokens < COST_ESTIMATE && !userApiKey) {
+      // Guard: reject if no sufficient credits AND no API key
+      if (workspaceCredits < COST_ESTIMATE && !userApiKey) {
         console.log(
-          `[Claude Stream ${requestId}] Insufficient tokens (${workspaceTokens}/${COST_ESTIMATE} required) and no fallback API key`
+          `[Claude Stream ${requestId}] Insufficient credits (${workspaceCredits}/${COST_ESTIMATE} required) and no fallback API key`
         )
         return NextResponse.json(
           {
             ok: false,
             error: ErrorCodes.INSUFFICIENT_TOKENS,
             message:
-              workspaceTokens <= 0
+              workspaceCredits <= 0
                 ? "Workspace credits exhausted. Add your API key in Settings to continue using Claude."
-                : `Insufficient workspace credits (${workspaceTokens}/${COST_ESTIMATE} required). Add your API key in Settings as a fallback.`,
+                : `Insufficient workspace credits (${workspaceCredits}/${COST_ESTIMATE} required). Add your API key in Settings as a fallback.`,
             workspace: resolvedWorkspaceName,
             requestId,
           },
@@ -257,14 +214,13 @@ export async function POST(req: NextRequest) {
         )
       }
 
-      // Cases 1 & 2: We're guaranteed to have either workspace tokens or a user API key
-      tokenSource =
-        workspaceTokens >= COST_ESTIMATE ? "workspace" : "user_provided"
+      // Cases 1 & 2: We're guaranteed to have either workspace credits or a user API key
+      tokenSource = workspaceCredits >= COST_ESTIMATE ? "workspace" : "user_provided"
 
       if (tokenSource === "workspace") {
-        console.log(`[Claude Stream ${requestId}] Using workspace tokens (${workspaceTokens} available)`)
+        console.log(`[Claude Stream ${requestId}] Using workspace credits (${workspaceCredits} available)`)
       } else {
-        console.log(`[Claude Stream ${requestId}] Using user-provided API key (workspace has ${workspaceTokens} tokens)`)
+        console.log(`[Claude Stream ${requestId}] Using user-provided API key (workspace has ${workspaceCredits} credits)`)
       }
     } catch (workspaceError) {
       console.error(`[Claude Stream ${requestId}] Workspace resolution failed:`, workspaceError)
@@ -301,9 +257,10 @@ export async function POST(req: NextRequest) {
       conversationId,
     })
     console.log(`[Claude Stream ${requestId}] Session key: ${convKey}`)
+    console.log(`[Claude Stream ${requestId}] Attempting to lock conversation...`)
 
     if (!tryLockConversation(convKey)) {
-      console.log(`[Claude Stream ${requestId}] Conversation already in progress`)
+      console.log(`[Claude Stream ${requestId}] ❌ LOCK FAILED - Conversation already in progress for key: ${convKey}`)
       return NextResponse.json(
         {
           ok: false,
@@ -316,18 +273,7 @@ export async function POST(req: NextRequest) {
     }
 
     lockAcquired = true
-
-    req.signal?.addEventListener(
-      "abort",
-      () => {
-        try {
-          unlockConversation(convKey)
-        } catch (error) {
-          console.error(`[Claude Stream ${requestId}] Failed to unlock conversation on abort:`, error)
-        }
-      },
-      { once: true },
-    )
+    console.log(`[Claude Stream ${requestId}] ✅ LOCK ACQUIRED for: ${convKey}`)
 
     const existingSessionId = await SessionStoreMemory.get(convKey)
     console.log(
@@ -335,7 +281,19 @@ export async function POST(req: NextRequest) {
     )
 
     console.log(`[Claude Stream ${requestId}] Working directory: ${cwd}`)
-    const effectiveModel = userModel || env.CLAUDE_MODEL
+
+    // Force Haiku for credit users (cost management)
+    // API key users can choose any model
+    const effectiveModel =
+      tokenSource === "workspace"
+        ? CLAUDE_MODELS.HAIKU_3_5 // ENFORCED for workspace credits
+        : userModel || env.CLAUDE_MODEL // User's choice with API key
+
+    if (tokenSource === "workspace" && userModel && userModel !== CLAUDE_MODELS.HAIKU_3_5) {
+      console.log(
+        `[Claude Stream ${requestId}] Model override: User requested ${userModel} but forcing ${CLAUDE_MODELS.HAIKU_3_5} for workspace credits`,
+      )
+    }
     console.log(`[Claude Stream ${requestId}] Claude model: ${effectiveModel}`)
 
     const maxTurns = Number.parseInt(env.CLAUDE_MAX_TURNS, 10)
@@ -355,6 +313,45 @@ export async function POST(req: NextRequest) {
 
     console.log(`[Claude Stream ${requestId}] Spawning child process runner`)
 
+    /**
+     * === CANCELLATION ARCHITECTURE ===
+     *
+     * Explicit cancellation via dedicated HTTP endpoint (production-safe).
+     * We don't use req.signal.addEventListener("abort") because it doesn't work
+     * in production (Cloudflare → Caddy → Next.js proxy layers don't propagate abort).
+     *
+     * Architecture:
+     * 1. Client receives X-Request-Id header immediately (line 369)
+     * 2. Client calls POST /api/claude/stream/cancel with requestId (primary path)
+     * 3. Cancel endpoint calls cancelStream(requestId, userId) via registry
+     * 4. Registry triggers this callback: sets cancelState.requested = true
+     * 5. Stream handler (ndjson-stream-handler.ts) checks flag in read loop
+     * 6. Stream breaks immediately, onStreamComplete releases lock
+     *
+     * Fallback (super-early Stop, < 100ms):
+     * - If user clicks Stop before X-Request-Id header arrives
+     * - Client calls cancel endpoint with conversationId instead
+     * - Registry searches by conversationKey, triggers same cancellation
+     *
+     * Why shared cancelState?
+     * - Registry needs to signal cancellation (sets requested = true)
+     * - Stream handler needs to check cancellation (reads requested flag)
+     * - Reader needs to be interrupted (reader.cancel() breaks blocked read)
+     *
+     * See docs/streaming/cancellation-architecture.md for full details.
+     */
+    const cancelState: CancelState = {
+      requested: false,
+      reader: null,
+    }
+
+    // Register cancellation callback BEFORE starting stream
+    // This allows cancellation to work even if called before stream fully starts
+    registerCancellation(requestId, user.id, convKey, () => {
+      cancelState.requested = true
+      cancelState.reader?.cancel()  // Interrupt blocked read
+    })
+
     const childStream = runAgentChild(cwd, {
       message,
       model: effectiveModel,
@@ -364,132 +361,45 @@ export async function POST(req: NextRequest) {
       apiKey: userApiKey || undefined,
     })
 
-    const decoder = new TextDecoder()
-
-    const ndjsonStream = new ReadableStream({
-      async start(controller) {
-        const reader = childStream.getReader()
-        let buffer = ""
-
-        try {
-          while (true) {
-            const { done, value } = await reader.read()
-            if (done) break
-
-            buffer += decoder.decode(value, { stream: true })
-            const lines = buffer.split("\n")
-            buffer = lines.pop() || ""
-
-            for (const line of lines) {
-              if (!line.trim()) continue
-
-              try {
-                const childEvent = JSON.parse(line)
-
-                const message: StreamMessage = {
-                  type: childEvent.type,
-                  requestId,
-                  timestamp: new Date().toISOString(),
-                  data:
-                    childEvent.type === "message"
-                      ? {
-                          messageCount: childEvent.messageCount,
-                          messageType: childEvent.messageType,
-                          content: childEvent.content,
-                        }
-                      : childEvent.type === "complete"
-                        ? { totalMessages: childEvent.totalMessages, result: childEvent.result }
-                        : childEvent,
-                }
-
-                // Session events are server-side only - store but don't forward to client
-                // This prevents exposing SDK session IDs which are security-sensitive
-                if (childEvent.type === "bridge_session" && childEvent.sessionId) {
-                  console.log(`[Claude Stream ${requestId}] Storing session ID: ${childEvent.sessionId}`)
-                  await SessionStoreMemory.set(convKey, childEvent.sessionId)
-                } else {
-                  // Only deduct tokens if using workspace credits (not user API key)
-                  if (tokenSource === "workspace") {
-                    deductTokensForMessage(message, resolvedWorkspaceName, requestId)
-                  }
-                  controller.enqueue(encodeNDJSON(message))
-                }
-              } catch (parseError) {
-                console.error(
-                  `[Claude Stream ${requestId}] Failed to parse child output (length: ${line.length}):`,
-                  parseError instanceof Error ? parseError.message : String(parseError),
-                )
-                console.error(`[Claude Stream ${requestId}] Line preview:`, line.substring(0, 200))
-              }
-            }
-          }
-
-          if (buffer.trim()) {
-            try {
-              const childEvent = JSON.parse(buffer)
-
-              // Session events are server-side only (see comment above)
-              if (childEvent.type === "bridge_session" && childEvent.sessionId) {
-                console.log(`[Claude Stream ${requestId}] Storing session ID (final): ${childEvent.sessionId}`)
-                await SessionStoreMemory.set(convKey, childEvent.sessionId)
-              } else {
-                const message: StreamMessage = {
-                  type: childEvent.type,
-                  requestId,
-                  timestamp: new Date().toISOString(),
-                  data:
-                    childEvent.type === "message"
-                      ? {
-                          messageCount: childEvent.messageCount,
-                          messageType: childEvent.messageType,
-                          content: childEvent.content,
-                        }
-                      : childEvent.type === "complete"
-                        ? { totalMessages: childEvent.totalMessages, result: childEvent.result }
-                        : childEvent,
-                }
-
-                // Only deduct tokens if using workspace credits (not user API key)
-                if (tokenSource === "workspace") {
-                  deductTokensForMessage(message, resolvedWorkspaceName, requestId)
-                }
-                controller.enqueue(encodeNDJSON(message))
-              }
-            } catch (_parseError) {
-              console.error(`[Claude Stream ${requestId}] Failed to parse final buffer:`, buffer)
-            }
-          }
-
-          console.log(`[Claude Stream ${requestId}] Child process stream complete`)
-        } catch (error) {
-          console.error(`[Claude Stream ${requestId}] Child process stream error:`, error)
-          const errorMessage: BridgeErrorMessage = {
-            type: BridgeStreamType.ERROR,
-            requestId,
-            timestamp: new Date().toISOString(),
-            data: {
-              error: ErrorCodes.STREAM_ERROR,
-              code: ErrorCodes.STREAM_ERROR,
-              message: getErrorMessage(ErrorCodes.STREAM_ERROR),
-              details: { error: String(error) },
-            },
-          }
-          controller.enqueue(encodeNDJSON(errorMessage))
-        } finally {
-          unlockConversation(convKey)
-          controller.close()
-        }
+    // Create NDJSON stream from child process output
+    // Handles: NDJSON parsing, session ID storage, token deduction, error handling, cancellation
+    const ndjsonStream = createNDJSONStream({
+      childStream,
+      conversationKey: convKey,
+      requestId,
+      conversationWorkspace: resolvedWorkspaceName,
+      tokenSource,
+      cancelState,  // Pass shared cancellation state
+      onStreamComplete: () => {
+        // Guaranteed cleanup: unregister, unlock, callback
+        unregisterCancellation(requestId)
+        unlockConversation(convKey)
+        console.log(`[Claude Stream ${requestId}] Released conversation lock and unregistered cancellation`)
       },
     })
 
-    return new Response(ndjsonStream, {
+    // Return NDJSON stream as HTTP response
+    // Cancellation Architecture:
+    // - Client calls POST /api/claude/stream/cancel with requestId (primary) or conversationId (fallback)
+    // - Registry triggers cancelState.requested = true and reader.cancel()
+    // - Stream breaks immediately and onStreamComplete releases lock
+    //
+    // Note: We don't use req.signal.addEventListener("abort") because it doesn't work
+    // in production (Cloudflare → Caddy → Next.js proxy layers don't propagate abort).
+    // See docs/streaming/cancellation-architecture.md for details.
+    const response = new Response(ndjsonStream, {
       headers: {
         "Content-Type": "application/x-ndjson; charset=utf-8",
         "Cache-Control": "no-cache, no-transform",
         Connection: "keep-alive",
         "X-Accel-Buffering": "no",
+        "X-Request-Id": requestId,  // Send requestId in header for immediate client access
+        "Access-Control-Expose-Headers": "X-Request-Id",  // Allow JS to read custom header
       },
     })
+
+    console.log(`[Claude Stream ${requestId}] Stream response ready, cancellation registered`)
+    return response
   } catch (outerError) {
     console.error(`[Claude Stream ${requestId}] Outer catch - request processing failed:`, outerError)
 

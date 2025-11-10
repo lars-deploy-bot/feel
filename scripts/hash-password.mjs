@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import bcrypt from 'bcrypt'
+import bcrypt from "bcrypt"
 
 const SALT_ROUNDS = 12
 
@@ -14,6 +14,6 @@ try {
   const hash = await bcrypt.hash(password, SALT_ROUNDS)
   console.log(hash)
 } catch (error) {
-  console.error('Error:', error.message)
+  console.error("Error:", error.message)
   process.exit(1)
 }

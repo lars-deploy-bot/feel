@@ -89,3 +89,11 @@ export async function requireSessionUser(): Promise<SessionUser> {
   }
   return user
 }
+
+/**
+ * Check if the manager workspace is authenticated
+ * Special workspace for system administration
+ */
+export async function isManagerAuthenticated(): Promise<boolean> {
+  return isWorkspaceAuthenticated("manager")
+}

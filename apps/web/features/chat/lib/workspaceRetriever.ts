@@ -7,7 +7,7 @@ import { ErrorCodes } from "@/lib/error-codes"
 
 export interface WorkspaceRequest {
   host: string
-  body: any
+  body: Record<string, unknown>
   requestId: string
 }
 

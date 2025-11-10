@@ -5,6 +5,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { ErrorCodes } from "@/lib/error-codes"
 import { handleWorkspaceApi } from "@/lib/workspace-api-handler"
+import { extractDomainFromWorkspace, restartSystemdService } from "@/lib/workspace-service-manager"
 
 const InstallPackageSchema = z.object({
   workspaceRoot: z.string(),
@@ -69,8 +70,7 @@ export async function POST(req: Request) {
           return NextResponse.json(
             {
               ok: false,
-              success: false,
-              error: "INSTALL_FAILED",
+              error: ErrorCodes.PACKAGE_INSTALL_FAILED,
               message: `Failed to install ${packageSpec}`,
               details: {
                 package: packageSpec,
@@ -87,11 +87,52 @@ export async function POST(req: Request) {
         const output = result.stdout || ""
         console.log(`[install-package ${requestId}] Success:`, output)
 
+        // Extract domain from workspace path
+        const domain = extractDomainFromWorkspace(workspaceRoot)
+
+        // Attempt to restart the dev server if we have a valid domain
+        if (domain) {
+          const restartResult = restartSystemdService(domain, requestId)
+
+          // If restart failed, return a partial failure (package installed, but service restart failed)
+          if (!restartResult.success) {
+            return NextResponse.json(
+              {
+                ok: false,
+                error: ErrorCodes.DEV_SERVER_RESTART_FAILED,
+                message: restartResult.message,
+                details: {
+                  service: `site@${domain.replace(/\./g, "-")}.service`,
+                  packageInstalled: true,
+                  packageSpec,
+                },
+                requestId,
+              },
+              { status: 500 },
+            )
+          }
+
+          // Success: both installation and restart succeeded
+          return NextResponse.json({
+            ok: true,
+            message: `Successfully installed ${packageSpec}${dev ? " (dev dependency)" : ""} and restarted dev server`,
+            details: {
+              packageSpec,
+              devServerRestarted: true,
+            },
+            requestId,
+          })
+        }
+
+        // Success: installation succeeded, but domain couldn't be determined (dev server won't auto-restart)
         return NextResponse.json({
           ok: true,
-          success: true,
-          message: `Successfully installed ${packageSpec}${dev ? " (dev dependency)" : ""}`,
-          output: output.trim(),
+          message: `Successfully installed ${packageSpec}${dev ? " (dev dependency)" : ""}. Note: Could not auto-restart dev server (invalid workspace path).`,
+          details: {
+            packageSpec,
+            devServerRestarted: false,
+            reason: "Could not extract domain from workspace path",
+          },
           requestId,
         })
       } catch (error) {
@@ -101,13 +142,12 @@ export async function POST(req: Request) {
         return NextResponse.json(
           {
             ok: false,
-            success: false,
-            error: "INSTALL_FAILED",
+            error: ErrorCodes.PACKAGE_INSTALL_FAILED,
             message: `Failed to install ${packageName}${version ? `@${version}` : ""}`,
             details: {
               package: packageName,
               version,
-              error: errorMessage,
+              reason: errorMessage,
             },
             requestId,
           },

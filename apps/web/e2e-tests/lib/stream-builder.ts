@@ -5,14 +5,16 @@
  * mocks stay in sync with reality.
  */
 
-import type { StreamEvent } from "@/features/chat/lib/streaming/handler"
 import {
   type BridgeCompleteMessage,
   type BridgeErrorMessage,
   type BridgeMessageEvent,
   type BridgeStartMessage,
   BridgeStreamType,
+  type StreamMessage,
 } from "@/features/chat/lib/streaming/ndjson"
+
+type StreamEvent = StreamMessage
 import { type ErrorCode, ErrorCodes } from "@/lib/error-codes"
 
 const FIXED_TIMESTAMP = "2025-01-01T00:00:00.000Z"

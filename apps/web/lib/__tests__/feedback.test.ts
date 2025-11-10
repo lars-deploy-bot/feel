@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { existsSync, unlinkSync } from "node:fs"
 import { join } from "node:path"
 import { addFeedbackEntry, getAllFeedback, getFeedbackByWorkspace, loadFeedback } from "../feedback"

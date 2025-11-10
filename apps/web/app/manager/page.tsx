@@ -25,6 +25,7 @@ export default function ManagerPage() {
   const [selectedDomain, setSelectedDomain] = useState<string | null>(null)
   const [newPassword, setNewPassword] = useState("")
   const [newEmail, setNewEmail] = useState("")
+  const [newCredits, setNewCredits] = useState("")
 
   // Tab state
   const [activeTab, setActiveTab] = useState<"domains" | "feedback" | "settings">("domains")
@@ -43,6 +44,12 @@ export default function ManagerPage() {
   const [pass, setPass] = useState("")
   const [loginLoading, setLoginLoading] = useState(false)
   const [loginError, setLoginError] = useState("")
+
+  // Permissions check state
+  const [permissionsModal, setPermissionsModal] = useState<string | null>(null)
+  const [permissionsData, setPermissionsData] = useState<any>(null)
+  const [checkingPermissions, setCheckingPermissions] = useState(false)
+  const [fixingPermissions, setFixingPermissions] = useState(false)
 
   const fetchFeedback = useCallback(async () => {
     setFeedbackLoading(true)
@@ -140,6 +147,7 @@ export default function ManagerPage() {
     setSelectedDomain(domain)
     setNewPassword("")
     setNewEmail(domains[domain]?.email || "")
+    setNewCredits(String(domains[domain]?.credits || 0))
     setDialogOpen(true)
   }
 
@@ -148,6 +156,7 @@ export default function ManagerPage() {
     setSelectedDomain(null)
     setNewPassword("")
     setNewEmail("")
+    setNewCredits("")
   }
 
   const updateDomainSettings = async () => {
@@ -155,22 +164,38 @@ export default function ManagerPage() {
       return
     }
 
+    const creditsNum = newCredits ? parseFloat(newCredits) : undefined
+    const emailChanged = newEmail !== (domains[selectedDomain]?.email || "")
+    const creditsChanged = creditsNum !== undefined && creditsNum !== domains[selectedDomain]?.credits
+
     // Validate: at least one field must be changed
-    if (!newPassword.trim() && newEmail === (domains[selectedDomain]?.email || "")) {
+    if (!newPassword.trim() && !emailChanged && !creditsChanged) {
       toast.error("No changes to save")
+      return
+    }
+
+    // Validate credits
+    if (creditsNum !== undefined && (creditsNum < 0 || Number.isNaN(creditsNum))) {
+      toast.error("Credits must be a non-negative number")
       return
     }
 
     setSaving(selectedDomain)
     try {
-      const payload: { domain: string; password?: string; email?: string } = { domain: selectedDomain }
+      const payload: { domain: string; password?: string; email?: string; credits?: number } = {
+        domain: selectedDomain,
+      }
 
       if (newPassword.trim()) {
         payload.password = newPassword
       }
 
-      if (newEmail !== (domains[selectedDomain]?.email || "")) {
+      if (emailChanged) {
         payload.email = newEmail
+      }
+
+      if (creditsChanged) {
+        payload.credits = creditsNum
       }
 
       const response = await fetch("/api/manager", {
@@ -188,13 +213,16 @@ export default function ManagerPage() {
           [selectedDomain]: {
             ...prev[selectedDomain],
             email: newEmail || undefined,
+            ...(creditsChanged && { credits: creditsNum }),
+            ...(creditsChanged && { tokens: creditsNum ? creditsNum * 100 : 0 }),
           },
         }))
 
         toast.success("Updated successfully")
         closeDialog()
       } else {
-        toast.error("Failed to update")
+        const error = await response.json()
+        toast.error(error.message || "Failed to update")
       }
     } catch (error) {
       console.error("Failed to update:", error)
@@ -489,6 +517,55 @@ export default function ManagerPage() {
     }
   }
 
+  const handleCheckPermissions = async (domain: string) => {
+    setCheckingPermissions(true)
+    setPermissionsModal(domain)
+    try {
+      const response = await fetch(`/api/manager/permissions?domain=${encodeURIComponent(domain)}`)
+      const data = await response.json()
+      if (data.ok) {
+        setPermissionsData(data.result)
+      } else {
+        toast.error(data.error || "Failed to check permissions")
+        setPermissionsModal(null)
+      }
+    } catch (error) {
+      console.error("Failed to check permissions:", error)
+      toast.error("Failed to check permissions")
+      setPermissionsModal(null)
+    } finally {
+      setCheckingPermissions(false)
+    }
+  }
+
+  const handleFixPermissions = async (domain: string) => {
+    setFixingPermissions(true)
+    try {
+      const response = await fetch("/api/manager/permissions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain, action: "fix" }),
+      })
+      const data = await response.json()
+      if (data.ok) {
+        toast.success("Permissions fixed successfully")
+        setPermissionsData(data.result)
+      } else {
+        toast.error(data.error || "Failed to fix permissions")
+      }
+    } catch (error) {
+      console.error("Failed to fix permissions:", error)
+      toast.error("Failed to fix permissions")
+    } finally {
+      setFixingPermissions(false)
+    }
+  }
+
+  const closePermissionsModal = () => {
+    setPermissionsModal(null)
+    setPermissionsData(null)
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-4xl mx-auto">
@@ -610,6 +687,11 @@ export default function ManagerPage() {
                               </>
                             )}
                           </div>
+                          {!config.orphaned && config.credits !== undefined && (
+                            <div className="text-xs text-blue-600 font-medium mt-1">
+                              Credits: {config.credits.toFixed(2)}
+                            </div>
+                          )}
                           {(() => {
                             const checks = getInfrastructureChecks(domain)
                             if (!checks) return null
@@ -633,6 +715,15 @@ export default function ManagerPage() {
                       </div>
 
                       <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleCheckPermissions(domain)}
+                          className="px-3 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                          title="Check file permissions"
+                        >
+                          🔒
+                        </button>
+
                         <button
                           type="button"
                           onClick={() => openPasswordDialog(domain)}
@@ -855,6 +946,25 @@ export default function ManagerPage() {
 
             <div className="space-y-4 mb-6">
               <div>
+                <label htmlFor="credits-input" className="block text-sm font-medium text-gray-700 mb-1">
+                  Credits
+                </label>
+                <input
+                  id="credits-input"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={newCredits}
+                  onChange={e => setNewCredits(e.target.value)}
+                  placeholder="200"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Current: {domains[selectedDomain || ""]?.credits?.toFixed(2) || "0.00"} credits
+                </p>
+              </div>
+
+              <div>
                 <label htmlFor="email-input" className="block text-sm font-medium text-gray-700 mb-1">
                   Email Address
                 </label>
@@ -878,10 +988,7 @@ export default function ManagerPage() {
                   value={newPassword}
                   onChange={e => setNewPassword(e.target.value)}
                   onKeyDown={e => {
-                    if (
-                      e.key === "Enter" &&
-                      (newPassword.trim() || newEmail !== (domains[selectedDomain || ""]?.email || ""))
-                    ) {
+                    if (e.key === "Enter") {
                       updateDomainSettings()
                     }
                     if (e.key === "Escape") {
@@ -908,7 +1015,9 @@ export default function ManagerPage() {
                 onClick={updateDomainSettings}
                 disabled={
                   saving === selectedDomain ||
-                  (!newPassword.trim() && newEmail === (domains[selectedDomain || ""]?.email || ""))
+                  (!newPassword.trim() &&
+                    newEmail === (domains[selectedDomain || ""]?.email || "") &&
+                    parseFloat(newCredits) === domains[selectedDomain || ""]?.credits)
                 }
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -937,6 +1046,175 @@ export default function ManagerPage() {
           onConfirm={handleDeleteConfirm}
           onCancel={() => setDeleteConfirm(null)}
         />
+      )}
+
+      {permissionsModal && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          role="dialog"
+          aria-modal="true"
+          onClick={closePermissionsModal}
+          onKeyDown={e => {
+            if (e.key === "Escape") closePermissionsModal()
+          }}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6 max-h-[80vh] overflow-y-auto"
+            role="document"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">File Permissions</h2>
+                <p className="text-sm text-gray-600 mt-1">{permissionsModal}</p>
+              </div>
+              <button
+                type="button"
+                onClick={closePermissionsModal}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            {checkingPermissions ? (
+              <div className="text-center py-8">
+                <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4" />
+                <p className="text-gray-600">Checking permissions...</p>
+              </div>
+            ) : permissionsData ? (
+              <div className="space-y-4">
+                {permissionsData.error ? (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <p className="text-red-800 font-medium">{permissionsData.error}</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <p className="text-sm text-gray-600">Expected Owner</p>
+                        <p className="text-lg font-semibold text-gray-900">{permissionsData.expectedOwner}</p>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <p className="text-sm text-gray-600">Total Files</p>
+                        <p className="text-lg font-semibold text-gray-900">{permissionsData.totalFiles}</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div
+                        className={`border rounded-lg p-4 ${
+                          permissionsData.rootOwnedFiles > 0
+                            ? "border-red-300 bg-red-50"
+                            : "border-green-300 bg-green-50"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="font-medium text-gray-900">Root-Owned Files</p>
+                          <span
+                            className={`text-2xl font-bold ${
+                              permissionsData.rootOwnedFiles > 0 ? "text-red-600" : "text-green-600"
+                            }`}
+                          >
+                            {permissionsData.rootOwnedFiles}
+                          </span>
+                        </div>
+                        {permissionsData.rootOwnedFiles > 0 && permissionsData.rootOwnedFilesList.length > 0 && (
+                          <div className="mt-3 space-y-1">
+                            <p className="text-xs text-gray-600 font-medium mb-1">Sample files:</p>
+                            {permissionsData.rootOwnedFilesList.map((file: string, i: number) => (
+                              <p key={i} className="text-xs font-mono text-gray-700 truncate" title={file}>
+                                {file}
+                              </p>
+                            ))}
+                            {permissionsData.rootOwnedFiles > 10 && (
+                              <p className="text-xs text-gray-500 italic">
+                                ... and {permissionsData.rootOwnedFiles - 10} more
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      <div
+                        className={`border rounded-lg p-4 ${
+                          permissionsData.wrongOwnerFiles > 0
+                            ? "border-orange-300 bg-orange-50"
+                            : "border-green-300 bg-green-50"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="font-medium text-gray-900">Wrong Owner Files</p>
+                          <span
+                            className={`text-2xl font-bold ${
+                              permissionsData.wrongOwnerFiles > 0 ? "text-orange-600" : "text-green-600"
+                            }`}
+                          >
+                            {permissionsData.wrongOwnerFiles}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-600">Files not owned by {permissionsData.expectedOwner}</p>
+                        {permissionsData.wrongOwnerFiles > 0 &&
+                          permissionsData.wrongOwnerFilesList.length > 0 && (
+                            <div className="mt-3 space-y-1">
+                              <p className="text-xs text-gray-600 font-medium mb-1">Sample files:</p>
+                              {permissionsData.wrongOwnerFilesList.map((file: string, i: number) => (
+                                <p key={i} className="text-xs font-mono text-gray-700 truncate" title={file}>
+                                  {file}
+                                </p>
+                              ))}
+                              {permissionsData.wrongOwnerFiles > 10 && (
+                                <p className="text-xs text-gray-500 italic">
+                                  ... and {permissionsData.wrongOwnerFiles - 10} more
+                                </p>
+                              )}
+                            </div>
+                          )}
+                      </div>
+                    </div>
+
+                    {permissionsData.wrongOwnerFiles > 0 && (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <p className="text-sm text-yellow-800">
+                          ⚠️ Files with incorrect ownership detected. Click "Fix Permissions" to update all files to
+                          the correct owner.
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="flex justify-end gap-3 pt-4 border-t">
+                      <button
+                        type="button"
+                        onClick={closePermissionsModal}
+                        className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                      >
+                        Close
+                      </button>
+                      {permissionsData.wrongOwnerFiles > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => handleFixPermissions(permissionsModal)}
+                          disabled={fixingPermissions}
+                          className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {fixingPermissions ? "Fixing..." : "Fix Permissions"}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleCheckPermissions(permissionsModal)}
+                        disabled={checkingPermissions}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {checkingPermissions ? "Checking..." : "Recheck"}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : null}
+          </div>
+        </div>
       )}
     </div>
   )

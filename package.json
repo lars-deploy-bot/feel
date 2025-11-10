@@ -2,7 +2,10 @@
   "name": "claude-bridge-mono",
   "private": true,
   "packageManager": "bun@1.2.22",
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "build": "turbo run build",
     "deploy": "./scripts/build-and-serve.sh",

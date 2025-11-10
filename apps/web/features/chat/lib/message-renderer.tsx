@@ -10,6 +10,11 @@ import { StartMessage } from "@/features/chat/components/message-renderers/Start
 import { SystemMessage } from "@/features/chat/components/message-renderers/SystemMessage"
 import { ToolResultMessage } from "@/features/chat/components/message-renderers/ToolResultMessage"
 import type {
+  BridgeCompleteMessage,
+  BridgeInterruptMessage,
+  BridgeStartMessage,
+} from "@/features/chat/lib/streaming/ndjson"
+import type {
   SDKAssistantMessage,
   SDKResultMessage,
   SDKSystemMessage,
@@ -50,7 +55,12 @@ function renderMessageContent(message: UIMessage): React.ReactNode {
     }
 
     case "start":
-      return <StartMessage data={message.content} timestamp={message.timestamp.toISOString()} />
+      return (
+        <StartMessage
+          data={message.content as BridgeStartMessage["data"]}
+          timestamp={message.timestamp.toISOString()}
+        />
+      )
 
     case "system":
       return <SystemMessage content={message.content as SDKSystemMessage} />
@@ -65,13 +75,14 @@ function renderMessageContent(message: UIMessage): React.ReactNode {
       return <ResultMessage content={message.content as SDKResultMessage} />
 
     case "complete":
-      return <CompleteMessage data={message.content} />
+      return <CompleteMessage data={message.content as BridgeCompleteMessage["data"]} />
 
     case "compact_boundary":
-      return <CompactBoundaryMessage data={message.content} />
+      // SDK system message with compact_boundary subtype - no typed interface in SDK
+      return <CompactBoundaryMessage data={message.content as any} />
 
     case "interrupt":
-      return <InterruptMessage data={message.content} />
+      return <InterruptMessage data={message.content as BridgeInterruptMessage["data"]} />
 
     default:
       return (

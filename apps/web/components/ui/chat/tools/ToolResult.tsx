@@ -4,7 +4,7 @@ import { ToolButton } from "@/components/ui/primitives/ToolButton"
 
 interface ToolResultProps {
   toolName: string
-  content: any
+  content: unknown
   isError?: boolean
 }
 

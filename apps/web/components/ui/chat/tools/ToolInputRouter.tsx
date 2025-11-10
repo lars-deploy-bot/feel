@@ -8,6 +8,8 @@ import { WriteInput } from "@/components/ui/chat/tools/write/WriteInput"
 
 interface ToolInputRouterProps {
   toolName: string
+  // Tool input is dynamic JSON from SDK - SDK defines types (BashInput, etc.) in .d.ts but doesn't export a union
+  // Runtime structural validation ensures type safety
   input: any
 }
 

@@ -6,7 +6,7 @@ import { isTerminalMode } from "@/features/workspace/types/workspace"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 import { generateRequestId } from "@/lib/utils"
 
-interface VerifyRequestBody {
+interface VerifyRequestBody extends Record<string, unknown> {
   workspace?: string
 }
 

@@ -1,54 +1,66 @@
 /**
- * Credit System
+ * Credit System - Currency Conversion Utilities
  *
- * Conversion ratio: 5000 API tokens = 1 credit
+ * ARCHITECTURE:
+ * - Credits are stored in domain-passwords.json (primary currency)
+ * - LLM tokens are from Claude API responses
+ * - Conversion only happens when charging (in chargeTokensFromCredits)
  *
- * User-facing: Credits (friendly, easy to understand)
- * Backend: Tokens (actual API usage tracking)
+ * TERMINOLOGY:
+ * - CREDITS: Our primary currency (stored and displayed)
+ * - LLM TOKENS: What Claude API uses (input_tokens, output_tokens)
+ *
+ * Conversion Ratio: 100 LLM tokens = 1 credit
+ *
+ * Example:
+ * - User has 200 credits in database
+ * - Claude API uses 500 LLM tokens
+ * - Convert: 500 tokens ÷ 100 = 5 credits
+ * - Charge with discount: 5 × 0.25 = 1.25 credits
+ * - New balance: 200 - 1.25 = 198.75 credits
  */
 
-export const TOKENS_PER_CREDIT = 5000
+export const LLM_TOKENS_PER_CREDIT = 100
 
 /**
- * Convert API tokens to credits
- * @param tokens - Number of API tokens
- * @returns Credits (rounded to 2 decimals)
+ * Convert LLM tokens to user-facing credits
+ * @param llmTokens - Number of LLM tokens
+ * @returns Credits (rounded to 2 decimals) for UI display
  */
-export function tokensToCredits(tokens: number): number {
-  return Math.round((tokens / TOKENS_PER_CREDIT) * 100) / 100
+export function llmTokensToCredits(llmTokens: number): number {
+  return Math.round((llmTokens / LLM_TOKENS_PER_CREDIT) * 100) / 100
 }
 
 /**
- * Convert credits to API tokens
+ * Convert user-facing credits to LLM tokens
  * @param credits - Number of credits
- * @returns API tokens
+ * @returns LLM tokens
  */
-export function creditsToTokens(credits: number): number {
-  return Math.round(credits * TOKENS_PER_CREDIT)
+export function creditsToLLMTokens(credits: number): number {
+  return Math.round(credits * LLM_TOKENS_PER_CREDIT)
 }
 
 /**
- * Format credits for display
- * @param credits - Number of credits
- * @returns Formatted string (e.g., "10.50")
+ * Format credits for UI display
+ * @param credits - Number of user-facing credits
+ * @returns Formatted string (e.g., "10.50 credits")
  */
-export function formatCredits(credits: number): string {
-  return credits.toFixed(2)
+export function formatCreditsForDisplay(credits: number): string {
+  return `${credits.toFixed(2)} credits`
 }
 
 /**
- * Check if user has enough credits for a token cost
- * @param availableTokens - Current token balance
- * @param requiredTokens - Tokens needed (will be deducted)
+ * Check if user has enough LLM tokens remaining
+ * @param availableLLMTokens - Current LLM token balance
+ * @param requiredLLMTokens - LLM tokens needed (will be deducted)
  * @returns true if sufficient balance
  */
-export function hasSufficientCredits(availableTokens: number, requiredTokens: number = 1): boolean {
-  return availableTokens >= requiredTokens
+export function hasSufficientLLMTokens(availableLLMTokens: number, requiredLLMTokens: number = 1): boolean {
+  return availableLLMTokens >= requiredLLMTokens
 }
 
 /**
  * Default starting balance
- * 50,000 tokens = 10 credits
+ * 200 credits (enough for ~2000 conversations)
  */
-export const DEFAULT_STARTING_TOKENS = 50000
-export const DEFAULT_STARTING_CREDITS = tokensToCredits(DEFAULT_STARTING_TOKENS)
+export const DEFAULT_STARTING_CREDITS = 200

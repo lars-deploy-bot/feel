@@ -29,7 +29,7 @@ describe("Tool Permission System", () => {
       const allowedArray = Array.from(ALLOWED_SDK_TOOLS)
 
       // Must NOT include dangerous operations
-      const dangerousTools = ["Bash", "Exec", "Command", "Shell", "Delete", "Remove", "Rm"]
+      const dangerousTools = ["Bash", "Exec", "Command", "Shell", "Delete", "Remove", "Rm", "WebSearch"]
 
       for (const dangerous of dangerousTools) {
         expect(allowedArray).not.toContain(dangerous)

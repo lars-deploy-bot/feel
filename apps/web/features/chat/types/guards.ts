@@ -4,7 +4,7 @@
 
 import type { BridgeMessageEvent } from "@/features/chat/lib/streaming/ndjson"
 import { BridgeStreamType } from "@/features/chat/lib/streaming/ndjson"
-import type { TokenUsage } from "@/lib/tokens"
+import type { LLMTokenUsage } from "@/lib/tokens"
 
 /**
  * Type guard for BridgeMessageEvent
@@ -27,7 +27,7 @@ export function isBridgeMessageEvent(event: unknown): event is BridgeMessageEven
  */
 export interface AssistantMessageContent {
   message: {
-    usage: TokenUsage
+    usage: LLMTokenUsage
     [key: string]: unknown
   }
   [key: string]: unknown

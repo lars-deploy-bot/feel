@@ -30,10 +30,13 @@ export const BodySchema = z.object({
   message: z.string().min(1),
   workspace: z.string().optional(),
   conversationId: z.string().uuid(),
-  apiKey: z.string().refine(
-    (key) => !key || isValidApiKeyFormat(key),
-    "Invalid API key format. Must start with 'sk-ant-' and be at least 20 characters."
-  ).optional(),
+  apiKey: z
+    .string()
+    .refine(
+      key => !key || isValidApiKeyFormat(key),
+      "Invalid API key format. Must start with 'sk-ant-' and be at least 20 characters.",
+    )
+    .optional(),
   model: z.string().optional(),
 })
 
@@ -180,7 +183,7 @@ export async function isDomainPasswordValid(domain: string, providedPassword: st
 
 export async function updateDomainConfig(
   domain: string,
-  updates: { password?: string; email?: string },
+  updates: { password?: string; email?: string; credits?: number },
 ): Promise<void> {
   const passwords = loadDomainPasswords()
   if (!passwords[domain]) return
@@ -193,10 +196,9 @@ export async function updateDomainConfig(
     passwords[domain].email = updates.email
   }
 
+  if (updates.credits !== undefined && updates.credits >= 0) {
+    passwords[domain].credits = updates.credits
+  }
+
   saveDomainPasswords(passwords)
 }
-
-// Legacy exports for backwards compatibility
-export const updateDomainPassword = (domain: string, password: string) => updateDomainConfig(domain, { password })
-
-export const updateDomainEmail = (domain: string, email: string) => updateDomainConfig(domain, { email })

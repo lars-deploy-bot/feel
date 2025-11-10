@@ -158,14 +158,14 @@ else
        --argjson port "$PORT" \
        --arg createdAt "$CREATED_AT" \
        --arg email "$EMAIL" \
-       '.[$domain] = {passwordHash: $passwordHash, port: $port, createdAt: $createdAt, tokens: 50000} + (if $email != "" then {email: $email} else {} end)' \
+       '.[$domain] = {passwordHash: $passwordHash, port: $port, createdAt: $createdAt, credits: 200} + (if $email != "" then {email: $email} else {} end)' \
        "$DOMAIN_PASSWORDS_FILE" > "${DOMAIN_PASSWORDS_FILE}.tmp"
     mv "${DOMAIN_PASSWORDS_FILE}.tmp" "$DOMAIN_PASSWORDS_FILE"
 
     if [ -n "$EMAIL" ]; then
-        echo "✅ Added $DOMAIN to domain-passwords.json (port $PORT, email: $EMAIL, tokens: 50000)"
+        echo "✅ Added $DOMAIN to domain-passwords.json (port $PORT, email: $EMAIL, credits: 200)"
     else
-        echo "✅ Added $DOMAIN to domain-passwords.json (port $PORT, tokens: 50000)"
+        echo "✅ Added $DOMAIN to domain-passwords.json (port $PORT, credits: 200)"
     fi
 fi
 
@@ -235,8 +235,8 @@ $DOMAIN {
 EOF
 echo "✅ Created $NEW_SITE_DIR/Caddyfile with port $PORT"
 
-# 7. CRITICAL: Fix ownership after copying
-echo "🔒 Setting proper file ownership..."
+# 7. Initial ownership after copying (will fix again after config generation)
+echo "🔒 Setting initial file ownership..."
 chown -R "$USER:$USER" "$NEW_SITE_DIR"
 chmod 750 "$NEW_SITE_DIR"
 
@@ -270,6 +270,11 @@ else
     echo "❌ Config generator not found"
     exit 4
 fi
+
+# 10.5. CRITICAL: Fix ownership again after config generation
+# Config generation may create new files as root, so re-apply ownership
+echo "🔒 Fixing file ownership after config generation..."
+chown -R "$USER:$USER" "$NEW_SITE_DIR"
 
 # 11. Install dependencies and build
 echo "📦 Installing dependencies..."

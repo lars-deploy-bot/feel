@@ -29,7 +29,7 @@ export class UploadError extends Error {
   constructor(
     message: string,
     public type: UploadErrorType,
-    public originalError?: any,
+    public originalError?: unknown,
   ) {
     super(message)
     this.name = "UploadError"
@@ -39,14 +39,16 @@ export class UploadError extends Error {
 /**
  * Categorize upload errors into user-friendly types
  */
-function categorizeError(error: any, status?: number): UploadError {
+function categorizeError(error: unknown, status?: number): UploadError {
+  const errorObj = error as Record<string, any>
+
   // Abort signal
-  if (error?.name === "AbortError" || error?.message?.includes("aborted")) {
+  if (errorObj?.name === "AbortError" || String(errorObj?.message || "").includes("aborted")) {
     return new UploadError("Upload cancelled", UploadErrorType.ABORTED, error)
   }
 
   // Network errors
-  if (error?.message?.includes("fetch") || error?.message?.includes("network")) {
+  if (String(errorObj?.message || "").includes("fetch") || String(errorObj?.message || "").includes("network")) {
     return new UploadError("Network error - check your connection and try again", UploadErrorType.NETWORK_ERROR, error)
   }
 
@@ -66,7 +68,11 @@ function categorizeError(error: any, status?: number): UploadError {
   }
 
   // Default
-  return new UploadError(error?.message || "Upload failed - please try again", UploadErrorType.UNKNOWN, error)
+  return new UploadError(
+    String(errorObj?.message || "Upload failed - please try again"),
+    UploadErrorType.UNKNOWN,
+    error,
+  )
 }
 
 /**

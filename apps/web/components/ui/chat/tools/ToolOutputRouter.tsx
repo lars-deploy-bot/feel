@@ -8,6 +8,8 @@ import { WriteOutput } from "@/components/ui/chat/tools/write/WriteOutput"
 
 interface ToolOutputRouterProps {
   toolName: string
+  // Tool output is dynamic JSON - SDK doesn't provide output types
+  // Runtime structural validation ensures type safety
   content: any
 }
 

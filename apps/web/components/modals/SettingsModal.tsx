@@ -3,16 +3,17 @@
 import { Bot, Eye, EyeOff, Info, Moon, Settings, Sun, User, X, Zap } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
-import { CLAUDE_MODELS, type ClaudeModel, useLLMStore } from "@/lib/stores/llmStore"
 import {
   useCredits,
-  useTokens,
-  useCreditsLoading,
   useCreditsError,
+  useCreditsLoading,
   useEmail,
   usePhoneNumber,
+  useTokens,
   useUserActions,
 } from "@/lib/providers/UserStoreProvider"
+import { CLAUDE_MODELS, type ClaudeModel, useLLMStore } from "@/lib/stores/llmStore"
+import { DEFAULT_STARTING_CREDITS } from "@/lib/credits"
 
 interface SettingsModalProps {
   onClose: () => void
@@ -245,7 +246,7 @@ function TokensSettings() {
               <div className="w-full h-3 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-400 dark:to-blue-500 transition-all duration-300"
-                  style={{ width: "100%" }}
+                  style={{ width: `${Math.min((credits / DEFAULT_STARTING_CREDITS) * 100, 100)}%` }}
                 />
               </div>
             )}
@@ -253,7 +254,7 @@ function TokensSettings() {
               {loading
                 ? "Loading balance..."
                 : credits != null && credits > 0
-                  ? `${credits.toFixed(2)} credits (${tokens?.toLocaleString()} API tokens)`
+                  ? `${credits.toFixed(2)} credits`
                   : "No credits available"}
             </p>
           </div>
@@ -384,21 +385,36 @@ function LLMSettings() {
         <div className="animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-100">
           <label htmlFor="claude-model" className="block text-sm font-medium text-black dark:text-white mb-2">
             Model
+            {!apiKey && (
+              <span className="ml-2 text-xs text-orange-600 dark:text-orange-400">(Credits mode - Haiku only)</span>
+            )}
           </label>
           <p className="text-xs text-black/60 dark:text-white/60 mb-3">
-            Choose which Claude model to use for conversations
+            {apiKey
+              ? "Choose which Claude model to use for conversations"
+              : "Using workspace credits - restricted to Claude 3.5 Haiku for cost management. Add your API key to use other models."}
           </p>
           <select
             id="claude-model"
             value={model}
             onChange={handleModelChange}
-            className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-white dark:bg-[#2a2a2a] border border-black/20 dark:border-white/20 rounded text-sm text-black dark:text-white focus:outline-none focus:border-black dark:focus:border-white transition-colors"
+            disabled={!apiKey}
+            className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-white dark:bg-[#2a2a2a] border border-black/20 dark:border-white/20 rounded text-sm text-black dark:text-white focus:outline-none focus:border-black dark:focus:border-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Claude Model Selection"
           >
             <option value={CLAUDE_MODELS.SONNET_4_5}>Claude Sonnet 4.5 (Recommended)</option>
             <option value={CLAUDE_MODELS.OPUS_4}>Claude Opus 4</option>
             <option value={CLAUDE_MODELS.HAIKU_3_5}>Claude 3.5 Haiku</option>
           </select>
+          {!apiKey && (
+            <div className="mt-2 flex items-start gap-2 text-xs text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800/50 rounded p-2">
+              <div className="w-2 h-2 bg-orange-600 dark:bg-orange-400 rounded-full mt-1 flex-shrink-0" />
+              <p>
+                <strong>Cost savings:</strong> Haiku uses ~0.125 credits per conversation. Your 200 default credits =
+                ~1,600 conversations!
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800/50 animate-in fade-in-0 slide-in-from-bottom-2 duration-300 delay-150">

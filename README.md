@@ -41,6 +41,11 @@ Claude Bridge enables developers to interact with Claude AI in the context of sp
 - **Tool Tracking**: Advanced toolUseMap pattern for tracking tool invocations and results
 - **Conversation Locking**: Prevents concurrent requests for same conversation
 - **Automatic File Ownership**: Child process UID switching for systemd sites ensures proper file permissions
+- **Model Selection & Credits**:
+  - **Credit Users**: Automatically use Claude 3.5 Haiku (cost-effective, ~1,600 conversations per 200 credits)
+  - **API Key Users**: Full model selection (Haiku, Sonnet 4.5, Opus 4) - billed to user's API key
+  - **Smart Enforcement**: UI disables model selection for credit users; backend enforces Haiku regardless of request
+  - **Cost Management**: 75% discount for credit users (0.125 credits per conversation with Haiku)
 
 ### 🔐 Security & Access Control
 - **JWT Authentication**: Secure 30-day JWT tokens in httpOnly cookies

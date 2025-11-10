@@ -21,9 +21,20 @@ export function ErrorResultMessage({ content }: ErrorResultMessageProps) {
 
   const errorCode = parsedError?.error
   const isWorkspace = errorCode ? isWorkspaceError(errorCode) : false
+  const isAuthError = errorCode === "API_AUTH_FAILED"
 
   // Get friendly message based on error code
-  const getFriendlyMessage = () => {
+  const getFriendlyMessage = (): string => {
+    // For auth errors, show the actual Anthropic error message (cleaned)
+    if (isAuthError && parsedError?.details) {
+      if (typeof parsedError.details === "object" && "message" in parsedError.details) {
+        return String(parsedError.details.message)
+      }
+      if (typeof parsedError.details === "string") {
+        return parsedError.details
+      }
+    }
+
     if (errorCode && parsedError?.details) {
       return getErrorMessage(errorCode, parsedError.details)
     }
@@ -63,6 +74,11 @@ export function ErrorResultMessage({ content }: ErrorResultMessageProps) {
       return getErrorHelp(errorCode, parsedError.details)
     }
 
+    // Specific help for authentication errors
+    if (isAuthError) {
+      return "Please run /login to re-authenticate with your Anthropic API key."
+    }
+
     // Helpful context for common errors
     if (errorMessage.includes("HTTP 401") || errorMessage.includes("session has expired")) {
       return "You may need to refresh the page to restore your session."
@@ -99,7 +115,7 @@ export function ErrorResultMessage({ content }: ErrorResultMessageProps) {
           </div>
           <div className="flex-1">
             <h3 className="text-sm font-medium text-red-900 dark:text-red-100 mb-1">
-              {isWorkspace ? "Workspace Error" : "Error"}
+              {isAuthError ? "Authentication Error" : isWorkspace ? "Workspace Error" : "Error"}
             </h3>
             <p className="text-sm text-red-700 dark:text-red-300 leading-relaxed">{friendlyMessage}</p>
 
@@ -123,6 +139,15 @@ export function ErrorResultMessage({ content }: ErrorResultMessageProps) {
             {errorCode && (
               <div className="mt-2 text-xs text-red-500/70 dark:text-red-400/70 font-mono">Error code: {errorCode}</div>
             )}
+
+            {typeof parsedError?.details === "object" &&
+              parsedError.details &&
+              "apiRequestId" in parsedError.details &&
+              parsedError.details.apiRequestId && (
+                <div className="mt-1 text-xs text-red-500/70 dark:text-red-400/70 font-mono">
+                  Request ID: {String(parsedError.details.apiRequestId)}
+                </div>
+              )}
           </div>
         </div>
       </div>

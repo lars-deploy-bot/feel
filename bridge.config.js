@@ -29,32 +29,32 @@ const config = {
   // Secure: /srv/webalive/sites (systemd-managed, isolated users)
   // Legacy: /root/webalive/sites (PM2-managed, should migrate)
   workspaceBase: {
-    production: '/srv/webalive/sites',
-    staging: '/srv/webalive/sites',
-    dev: process.env.LOCAL_TEMPLATE_PATH || '/srv/webalive/sites',
+    production: "/srv/webalive/sites",
+    staging: "/srv/webalive/sites",
+    dev: process.env.LOCAL_TEMPLATE_PATH || "/srv/webalive/sites",
   },
 
   // PM2 process names
   appName: {
-    production: 'claude-bridge',
-    staging: 'claude-bridge-staging',
+    production: "claude-bridge",
+    staging: "claude-bridge-staging",
   },
 }
 
 // Validation
 function validateConfig() {
   const ports = Object.values(config.ports)
-  if (ports.some(p => typeof p !== 'number' || p < 1024 || p > 65535)) {
-    throw new Error('Invalid port configuration: ports must be numbers between 1024-65535')
+  if (ports.some(p => typeof p !== "number" || p < 1024 || p > 65535)) {
+    throw new Error("Invalid port configuration: ports must be numbers between 1024-65535")
   }
 
   if (config.ports.production === config.ports.staging) {
-    throw new Error('Production and staging ports must be different')
+    throw new Error("Production and staging ports must be different")
   }
 
   const paths = Object.values(config.workspaceBase)
-  if (paths.some(p => typeof p !== 'string' || !p.startsWith('/'))) {
-    throw new Error('Invalid workspace paths: must be absolute paths')
+  if (paths.some(p => typeof p !== "string" || !p.startsWith("/"))) {
+    throw new Error("Invalid workspace paths: must be absolute paths")
   }
 }
 

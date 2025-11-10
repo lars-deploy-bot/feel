@@ -6,7 +6,7 @@ import {
   type BridgeStartMessage,
   BridgeStreamType,
 } from "@/features/chat/lib/streaming/ndjson"
-import type { SDKMessage } from "@/features/chat/types/sdk-types"
+import type { SDKAssistantMessage, SDKMessage, SDKUserMessage } from "@/features/chat/types/sdk-types"
 import {
   isErrorResultMessage,
   isSDKAssistantMessage,
@@ -24,6 +24,7 @@ import {
   isStartEvent,
 } from "@/features/chat/types/stream"
 import { getErrorHelp, getErrorMessage } from "@/lib/error-codes"
+import type { StreamingStoreState } from "@/lib/stores/streamingStore"
 
 export type StartEventData = BridgeStartMessage["data"]
 
@@ -60,16 +61,18 @@ export interface StreamEvent {
 export type UIMessage = {
   id: string
   type: "user" | "start" | "sdk_message" | "result" | "complete" | "compact_boundary" | "interrupt"
-  content: any
+  content: unknown
   timestamp: Date
   isStreaming?: boolean
 }
 
-// Global store for tool_use_id to tool name mapping
-const toolUseMap = new Map<string, string>()
-
 // Parse stream event into UI message
-export function parseStreamEvent(event: StreamEvent): UIMessage | null {
+// Now conversation-scoped to avoid tool mapping collisions across conversations
+export function parseStreamEvent(
+  event: StreamEvent,
+  conversationId?: string,
+  streamingActions?: StreamingStoreState["actions"],
+): UIMessage | null {
   const baseMessage = {
     timestamp: new Date(event.timestamp),
   }
@@ -86,40 +89,46 @@ export function parseStreamEvent(event: StreamEvent): UIMessage | null {
   if (isMessageEvent(event)) {
     const content = event.data.content as SDKMessage
 
-    if (content.type === "system" && (content as any).subtype === "compact_boundary") {
-      console.log(
-        `[MessageParser] Context compaction triggered at ${(content as any).compact_metadata?.pre_tokens || "unknown"} tokens`,
-      )
-      return {
-        id: `${event.requestId}-compact-${(content as any).uuid}`,
-        type: "compact_boundary",
-        content: content,
-        ...baseMessage,
+    // Check for system message with compact_boundary subtype
+    if (content.type === "system") {
+      const systemMsg = content as any // SDK system messages may have subtype for context compaction
+      if (systemMsg.subtype === "compact_boundary") {
+        console.log(
+          `[MessageParser] Context compaction triggered at ${systemMsg.compact_metadata?.pre_tokens || "unknown"} tokens`,
+        )
+        return {
+          id: `${event.requestId}-compact-${systemMsg.uuid}`,
+          type: "compact_boundary",
+          content: content,
+          ...baseMessage,
+        }
       }
     }
 
-    if (
-      content.type === "assistant" &&
-      (content as any).message?.content &&
-      Array.isArray((content as any).message.content)
-    ) {
-      ;(content as any).message.content.forEach((item: any) => {
-        if (item.type === "tool_use" && item.id && item.name) {
-          toolUseMap.set(item.id, item.name)
-        }
-      })
+    // Track tool uses per conversation (not globally)
+    if (conversationId && streamingActions && isSDKAssistantMessage(content)) {
+      const assistantMsg = content as SDKAssistantMessage
+      if (assistantMsg.message?.content && Array.isArray(assistantMsg.message.content)) {
+        assistantMsg.message.content.forEach(item => {
+          if (item.type === "tool_use" && item.id && item.name) {
+            streamingActions.recordToolUse(conversationId, item.id, item.name)
+          }
+        })
+      }
     }
 
-    if (
-      content.type === "user" &&
-      (content as any).message?.content &&
-      Array.isArray((content as any).message.content)
-    ) {
-      ;(content as any).message.content.forEach((item: any) => {
-        if (item.type === "tool_result" && item.tool_use_id) {
-          item.tool_name = toolUseMap.get(item.tool_use_id) || "Tool"
-        }
-      })
+    // Lookup tool names from per-conversation store
+    if (conversationId && streamingActions && isSDKUserMessage(content)) {
+      const userMsg = content as SDKUserMessage
+      if (userMsg.message?.content && Array.isArray(userMsg.message.content)) {
+        userMsg.message.content.forEach(item => {
+          if (item.type === "tool_result" && item.tool_use_id) {
+            // Augment SDK ToolResultBlockParam with tool_name for UI rendering
+            // SDK doesn't include tool_name in tool_result, so we add it client-side
+            ;(item as any).tool_name = streamingActions.getToolName(conversationId, item.tool_use_id) || "Tool"
+          }
+        })
+      }
     }
 
     return {
@@ -130,7 +139,7 @@ export function parseStreamEvent(event: StreamEvent): UIMessage | null {
     }
   }
 
-  if (event.type === BridgeStreamType.COMPLETE) {
+  if (isCompleteEvent(event)) {
     return {
       id: `${event.requestId}-complete`,
       type: "complete",
@@ -139,8 +148,8 @@ export function parseStreamEvent(event: StreamEvent): UIMessage | null {
     }
   }
 
-  if (event.type === BridgeStreamType.ERROR) {
-    const errorData = event.data as ErrorEventData
+  if (isErrorEvent(event)) {
+    const errorData = event.data
     const errorCode = errorData.code || errorData.error
 
     const details = typeof errorData.details === "object" ? errorData.details : undefined
@@ -175,18 +184,18 @@ export function parseStreamEvent(event: StreamEvent): UIMessage | null {
     }
   }
 
+  // SESSION events are server-side only - never reach client
+  // They're intercepted in route.ts for session storage
   if (event.type === BridgeStreamType.SESSION) {
-    // Session events are server-side only and should never reach the client
-    // They're intercepted in route.ts for session storage
     console.warn("[MessageParser] SESSION event reached client - this should not happen")
     return null
   }
 
-  if (event.type === BridgeStreamType.PING) {
+  if (isPingEvent(event)) {
     return null
   }
 
-  if (event.type === BridgeStreamType.DONE) {
+  if (isDoneEvent(event)) {
     return {
       id: `${event.requestId}-done`,
       type: "complete",

@@ -1,8 +1,7 @@
 import { describe, expect, it, beforeEach, vi } from "vitest"
 import {
-  calculateTokenCost,
-  hasEnoughTokens,
-  type TokenUsage,
+  calculateLLMTokenCost,
+  type LLMTokenUsage,
   type TokenSource,
 } from "@/lib/tokens"
 
@@ -50,37 +49,37 @@ describe("API Key Fallback System", () => {
 
   describe("Token Cost Calculation", () => {
     it("should calculate cost as sum of input and output tokens", () => {
-      const usage: TokenUsage = {
+      const usage: LLMTokenUsage = {
         input_tokens: 50,
         output_tokens: 75,
       }
-      expect(calculateTokenCost(usage)).toBe(125)
+      expect(calculateLLMTokenCost(usage)).toBe(125)
     })
 
     it("should ignore cache tokens (counted separately)", () => {
-      const usage: TokenUsage = {
+      const usage: LLMTokenUsage = {
         input_tokens: 100,
         output_tokens: 50,
         cache_creation_input_tokens: 200, // Ignored in cost
         cache_read_input_tokens: 150, // Ignored in cost
       }
-      expect(calculateTokenCost(usage)).toBe(150) // Only 100 + 50
+      expect(calculateLLMTokenCost(usage)).toBe(150) // Only 100 + 50
     })
 
     it("should handle zero usage", () => {
-      const usage: TokenUsage = {
+      const usage: LLMTokenUsage = {
         input_tokens: 0,
         output_tokens: 0,
       }
-      expect(calculateTokenCost(usage)).toBe(0)
+      expect(calculateLLMTokenCost(usage)).toBe(0)
     })
 
     it("should handle large token amounts", () => {
-      const usage: TokenUsage = {
+      const usage: LLMTokenUsage = {
         input_tokens: 1000000,
         output_tokens: 500000,
       }
-      expect(calculateTokenCost(usage)).toBe(1500000)
+      expect(calculateLLMTokenCost(usage)).toBe(1500000)
     })
   })
 
@@ -304,10 +303,10 @@ describe("API Key Fallback System", () => {
     })
   })
 
-  describe("Integration with calculateTokenCost", () => {
+  describe("Integration with calculateLLMTokenCost", () => {
     it("should use token cost to inform deduction decisions", () => {
       // Simulate: request costs 125 tokens
-      const cost = calculateTokenCost({
+      const cost = calculateLLMTokenCost({
         input_tokens: 75,
         output_tokens: 50,
       })
@@ -322,11 +321,11 @@ describe("API Key Fallback System", () => {
       const costs = [0, 50, 100, 200, 1000]
 
       costs.forEach((cost) => {
-        const usage: TokenUsage = {
+        const usage: LLMTokenUsage = {
           input_tokens: cost,
           output_tokens: 0,
         }
-        expect(calculateTokenCost(usage)).toBe(cost)
+        expect(calculateLLMTokenCost(usage)).toBe(cost)
       })
     })
   })

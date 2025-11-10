@@ -51,6 +51,10 @@ export const DISALLOWED_TOOLS = [
   "rm",
   "Remove",
   "remove",
+  "Task",
+  "task",
+  "WebSearch",
+  "websearch",
 ]
 
 export const MCP_SERVERS = {
@@ -59,4 +63,5 @@ export const MCP_SERVERS = {
 }
 
 export const PERMISSION_MODE = "default"
-export const SETTINGS_SOURCES = []
+/** @type {import('@anthropic-ai/claude-agent-sdk').SettingSource[]} */
+export const SETTINGS_SOURCES = ["project"]

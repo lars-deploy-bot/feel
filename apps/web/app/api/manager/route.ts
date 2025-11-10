@@ -2,7 +2,6 @@ import { exec } from "node:child_process"
 import { promisify } from "node:util"
 import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
-import { tokensToCredits } from "@/lib/credits"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 import type { DomainConfigClient } from "@/types/domain"
@@ -82,8 +81,7 @@ export async function GET(req: NextRequest) {
       tenantId: config.tenantId,
       port: config.port,
       email: config.email,
-      tokens: config.tokens,
-      credits: tokensToCredits(config.tokens),
+      credits: config.credits ?? 0,
     }
   }
 
@@ -96,7 +94,7 @@ export async function GET(req: NextRequest) {
     if (!sanitizedDomains[domain]) {
       sanitizedDomains[domain] = {
         orphaned: true,
-        tokens: 0,
+        credits: 0,
       }
     }
   }
@@ -124,7 +122,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json()
-    const { domain, password, email } = body
+    const { domain, password, email, credits } = body
 
     if (!domain) {
       return corsResponse(
@@ -139,10 +137,26 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Update domain config (password and/or email)
-    const updates: { password?: string; email?: string } = {}
+    // Update domain config (password, email, and/or credits)
+    const updates: { password?: string; email?: string; credits?: number } = {}
     if (password) updates.password = password
     if (email !== undefined) updates.email = email
+
+    if (credits !== undefined) {
+      if (typeof credits !== "number" || credits < 0) {
+        return corsResponse(
+          origin,
+          {
+            ok: false,
+            error: ErrorCodes.INVALID_REQUEST,
+            message: "Credits must be a non-negative number",
+            requestId,
+          },
+          400,
+        )
+      }
+      updates.credits = credits
+    }
 
     if (Object.keys(updates).length > 0) {
       await updateDomainConfig(domain, updates)
