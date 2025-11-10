@@ -286,12 +286,12 @@ export async function POST(req: NextRequest) {
     // API key users can choose any model
     const effectiveModel =
       tokenSource === "workspace"
-        ? CLAUDE_MODELS.HAIKU_3_5 // ENFORCED for workspace credits
+        ? CLAUDE_MODELS.HAIKU_4_5 // ENFORCED for workspace credits
         : userModel || env.CLAUDE_MODEL // User's choice with API key
 
-    if (tokenSource === "workspace" && userModel && userModel !== CLAUDE_MODELS.HAIKU_3_5) {
+    if (tokenSource === "workspace" && userModel && userModel !== CLAUDE_MODELS.HAIKU_4_5) {
       console.log(
-        `[Claude Stream ${requestId}] Model override: User requested ${userModel} but forcing ${CLAUDE_MODELS.HAIKU_3_5} for workspace credits`,
+        `[Claude Stream ${requestId}] Model override: User requested ${userModel} but forcing ${CLAUDE_MODELS.HAIKU_4_5} for workspace credits`,
       )
     }
     console.log(`[Claude Stream ${requestId}] Claude model: ${effectiveModel}`)

@@ -30,8 +30,28 @@ export interface DomainStatus {
   systemdServiceRunning: boolean
   caddyConfigured: boolean
   siteDirectoryExists: boolean
+  dnsPointsToServer: boolean
+  dnsResolvedIp: string | null
+  dnsIsProxied?: boolean
+  dnsVerificationMethod?: string
+  vitePortMismatch: boolean
+  viteExpectedPort: number
+  viteActualPort: number | null
+  hasSystemdPortOverride: boolean
   createdAt: string | null
   lastChecked: number
+}
+
+export interface ViteConfigInfo {
+  domain: string
+  expectedPort: number
+  actualPort: number | null
+  portMismatch: boolean
+  configPath: string | null
+  allowedHosts: string[] | null
+  hasSystemdOverride: boolean
+  systemdOverridePort: number | null
+  error?: string
 }
 
 export type DomainPasswords = Record<string, DomainConfig>

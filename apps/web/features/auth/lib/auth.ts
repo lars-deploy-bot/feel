@@ -93,7 +93,12 @@ export async function requireSessionUser(): Promise<SessionUser> {
 /**
  * Check if the manager workspace is authenticated
  * Special workspace for system administration
+ * Uses separate manager_session cookie instead of workspace JWT
  */
 export async function isManagerAuthenticated(): Promise<boolean> {
-  return isWorkspaceAuthenticated("manager")
+  const jar = await cookies()
+  const managerCookie = jar.get("manager_session")
+
+  // Manager uses a separate session cookie, not the workspace JWT
+  return !!managerCookie && managerCookie.value === "1"
 }

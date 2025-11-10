@@ -320,133 +320,33 @@ addLLMTokensToCredits()     // Use addCredits() instead
 hasEnoughLLMTokens()        // Use hasEnoughCredits() instead
 ```
 
-## Model Selection Rules (Credit-Based Users)
+## Model Selection
 
-### Core Principle: Haiku-Only for Credit Users
-
-**IMPORTANT**: Users who rely on workspace credits are automatically restricted to Claude 3.5 Haiku to manage costs effectively.
-
-```
-┌────────────────────────────────────────────────────────────┐
-│  CREDIT USERS (Using workspace credits)                    │
-│  ├─ Model: Claude 3.5 Haiku (ENFORCED)                    │
-│  ├─ Cost: ~0.1 credits per conversation                   │
-│  ├─ UI: Model selection disabled/hidden                   │
-│  └─ Backend: Forces Haiku regardless of request           │
-│                                                            │
-│  API KEY USERS (Using own Anthropic API key)              │
-│  ├─ Models: All models available                          │
-│  │   • Claude Sonnet 4.5 (Recommended)                    │
-│  │   • Claude Opus 4                                      │
-│  │   • Claude 3.5 Haiku                                   │
-│  ├─ Cost: Billed directly to their API key                │
-│  ├─ UI: Full model selection dropdown enabled             │
-│  └─ Backend: Uses selected model                          │
-└────────────────────────────────────────────────────────────┘
-```
+**Credit users**: Haiku 4.5 only (enforced in UI + backend)
+**API key users**: Can choose Sonnet 4.5 or Haiku 4.5
 
 ### Why Haiku for Credit Users?
 
-**Cost Management:**
-- Haiku: ~50 LLM tokens/conversation = ~0.5 credits = ~0.125 credits charged (with 75% discount)
-- Sonnet 4.5: ~150 LLM tokens/conversation = ~1.5 credits = ~0.375 credits charged
-- Opus 4: ~300 LLM tokens/conversation = ~3.0 credits = ~0.75 credits charged
+- Haiku: ~0.125 credits/conversation (200 credits = ~1,600 conversations)
+- Sonnet: ~0.375 credits/conversation (200 credits = ~533 conversations)
 
-**User Benefit**: 200 default credits = ~1,600 conversations with Haiku vs ~267 with Opus
+### Implementation
 
-### Implementation Details
-
-**UI Enforcement** (`components/modals/SettingsModal.tsx`):
-```typescript
-// Model selection is disabled when no API key is set
-const hasApiKey = !!apiKey
-const modelSelectionDisabled = !hasApiKey
-
-// Dropdown shows:
-// - If no API key: Shows Haiku (locked, non-editable)
-// - If has API key: Shows all models (user can select)
-```
-
-**Backend Enforcement** (`app/api/claude/stream/route.ts`):
-```typescript
-// Token source determines model enforcement
-const tokenSource = workspaceCredits >= 1 ? "workspace" : "user_provided"
-
-// Force Haiku for credit users
-const effectiveModel = tokenSource === "workspace"
-  ? "claude-3-5-haiku-20241022"  // ENFORCED
-  : (userModel || env.CLAUDE_MODEL)  // User choice
-```
-
-**Store Behavior** (`lib/stores/llmStore.ts`):
-```typescript
-// When API key is cleared, model resets to Haiku
-clearApiKey(): {
-  set({ apiKey: null, model: CLAUDE_MODELS.HAIKU_3_5 })
-}
-```
-
-### User Flow Examples
-
-**Example 1: Credit user tries to use Sonnet**
-```
-1. User has 200 credits, no API key
-2. User opens Settings → LLM
-3. Model dropdown is disabled/hidden
-4. Shows: "Claude 3.5 Haiku (Credits mode)"
-5. User cannot change model
-```
-
-**Example 2: User adds API key**
-```
-1. User enters valid API key (sk-ant-...)
-2. Model dropdown becomes enabled
-3. User can now select Sonnet 4.5 or Opus 4
-4. User's API key is used for billing (no credits charged)
-```
-
-**Example 3: User removes API key**
-```
-1. User clicks "Clear API Key"
-2. Model automatically resets to Haiku
-3. Model dropdown becomes disabled again
-4. Future requests use workspace credits
-```
-
-### Cost Comparison Table
-
-| Model | LLM Tokens/Conv | Credits/Conv | User Charged | 200 Credits = Conversations |
-|-------|----------------|--------------|--------------|----------------------------|
-| Haiku 3.5 | 50 | 0.5 | 0.125 | ~1,600 |
-| Sonnet 4.5 | 150 | 1.5 | 0.375 | ~533 |
-| Opus 4 | 300 | 3.0 | 0.75 | ~267 |
-
-**Note**: Actual usage varies by conversation length and complexity.
-
-### Configuration
-
-**Model Definitions** (`lib/models/claude-models.ts`):
+**Models** (`lib/models/claude-models.ts`):
 ```typescript
 export const CLAUDE_MODELS = {
   SONNET_4_5: "claude-sonnet-4-5-20250929",
-  OPUS_4: "claude-opus-4-20250514",
-  HAIKU_3_5: "claude-3-5-haiku-20241022",  // Default for credit users
-} as const
+  HAIKU_4_5: "claude-haiku-4-5",
+}
 ```
 
-**Environment Defaults** (`lib/env.ts`):
+**Backend** (`app/api/claude/stream/route.ts`):
 ```typescript
-// Server default (used as fallback)
-CLAUDE_MODEL: "claude-3-5-haiku-20241022"
+const effectiveModel = tokenSource === "workspace"
+  ? CLAUDE_MODELS.HAIKU_4_5  // ENFORCED for credits
+  : (userModel || env.CLAUDE_MODEL)
 ```
 
-## Questions?
+**UI** (`components/modals/SettingsModal.tsx`): Dropdown disabled when no API key
 
-If you're unsure:
-1. Are you storing data? → Use credits
-2. Are you displaying to user? → Use credits
-3. Did Claude API just return usage? → Convert to credits and charge
-4. Are you working on chargeTokensFromCredits()? → This is the ONLY place to convert
-5. Is user using credits? → Enforce Haiku model (both UI and backend)
-
-**Remember**: Credits are stored everywhere. Conversion to LLM tokens happens in ONE function only.
+**Store** (`lib/stores/llmStore.ts`): Resets to Haiku when API key cleared

@@ -41,11 +41,7 @@ Claude Bridge enables developers to interact with Claude AI in the context of sp
 - **Tool Tracking**: Advanced toolUseMap pattern for tracking tool invocations and results
 - **Conversation Locking**: Prevents concurrent requests for same conversation
 - **Automatic File Ownership**: Child process UID switching for systemd sites ensures proper file permissions
-- **Model Selection & Credits**:
-  - **Credit Users**: Automatically use Claude 3.5 Haiku (cost-effective, ~1,600 conversations per 200 credits)
-  - **API Key Users**: Full model selection (Haiku, Sonnet 4.5, Opus 4) - billed to user's API key
-  - **Smart Enforcement**: UI disables model selection for credit users; backend enforces Haiku regardless of request
-  - **Cost Management**: 75% discount for credit users (0.125 credits per conversation with Haiku)
+- **Model Selection**: Credit users → Haiku 4.5 only; API key users → choose model (see [docs/architecture/CREDITS_AND_TOKENS.md](./docs/architecture/CREDITS_AND_TOKENS.md))
 
 ### 🔐 Security & Access Control
 - **JWT Authentication**: Secure 30-day JWT tokens in httpOnly cookies
@@ -89,7 +85,7 @@ ANTHROPIC_API_KEY=your_claude_api_key
 
 # Optional
 BRIDGE_PASSCODE=your_secure_passcode  # If unset, any passcode works
-CLAUDE_MODEL=claude-3-5-haiku-20241022  # Default model
+CLAUDE_MODEL=claude-haiku-4-5  # Default model
 WORKSPACE_BASE=/srv/webalive/sites       # Base directory for workspaces (default: /srv/webalive/sites)
 
 # Auto-deployment (optional)

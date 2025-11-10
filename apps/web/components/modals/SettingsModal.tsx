@@ -392,7 +392,7 @@ function LLMSettings() {
           <p className="text-xs text-black/60 dark:text-white/60 mb-3">
             {apiKey
               ? "Choose which Claude model to use for conversations"
-              : "Using workspace credits - restricted to Claude 3.5 Haiku for cost management. Add your API key to use other models."}
+              : "Using workspace credits - restricted to Claude Haiku 4.5 for cost management. Add your API key to use other models."}
           </p>
           <select
             id="claude-model"
@@ -403,8 +403,7 @@ function LLMSettings() {
             aria-label="Claude Model Selection"
           >
             <option value={CLAUDE_MODELS.SONNET_4_5}>Claude Sonnet 4.5 (Recommended)</option>
-            <option value={CLAUDE_MODELS.OPUS_4}>Claude Opus 4</option>
-            <option value={CLAUDE_MODELS.HAIKU_3_5}>Claude 3.5 Haiku</option>
+            <option value={CLAUDE_MODELS.HAIKU_4_5}>Claude Haiku 4.5</option>
           </select>
           {!apiKey && (
             <div className="mt-2 flex items-start gap-2 text-xs text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800/50 rounded p-2">

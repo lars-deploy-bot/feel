@@ -448,7 +448,7 @@ pm2 start apps/web/next start --name claude-bridge -p 8999
 |----------|----------|---------|
 | `ANTHROPIC_API_KEY` | Yes | `sk-ant-...` |
 | `BRIDGE_PASSCODE` | Yes | `secure-password-here` |
-| `CLAUDE_MODEL` | No | `claude-3-5-haiku-20241022` |
+| `CLAUDE_MODEL` | No | `claude-haiku-4-5` |
 | `WORKSPACE_BASE` | No | `/root/webalive/sites` |
 
 ### Key Dependencies

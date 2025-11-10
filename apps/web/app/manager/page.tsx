@@ -51,6 +51,9 @@ export default function ManagerPage() {
   const [checkingPermissions, setCheckingPermissions] = useState(false)
   const [fixingPermissions, setFixingPermissions] = useState(false)
 
+  // Expandable detail view state
+  const [expandedDomain, setExpandedDomain] = useState<string | null>(null)
+
   const fetchFeedback = useCallback(async () => {
     setFeedbackLoading(true)
     try {
@@ -420,6 +423,28 @@ export default function ManagerPage() {
 
     return [
       {
+        label: "DNS",
+        pass: status.dnsPointsToServer,
+        detail: status.dnsPointsToServer
+          ? status.dnsIsProxied
+            ? `verified via ${status.dnsVerificationMethod || "https"} (proxied)`
+            : `verified via ${status.dnsVerificationMethod || "direct"}`
+          : status.dnsResolvedIp
+            ? `points to ${status.dnsResolvedIp} (verification failed)`
+            : "not resolved",
+      },
+      {
+        label: "Port",
+        pass: !status.vitePortMismatch,
+        detail: status.vitePortMismatch
+          ? status.hasSystemdPortOverride
+            ? `systemd override + config: ${status.viteActualPort}, expected: ${status.viteExpectedPort}`
+            : `config: ${status.viteActualPort}, expected: ${status.viteExpectedPort}`
+          : status.viteActualPort
+            ? `${status.viteActualPort}`
+            : "not configured",
+      },
+      {
         label: "Systemd",
         pass: status.systemdServiceExists && status.systemdServiceRunning,
         detail: status.systemdServiceExists ? (status.systemdServiceRunning ? "running" : "stopped") : "missing",
@@ -566,6 +591,43 @@ export default function ManagerPage() {
     setPermissionsData(null)
   }
 
+  const handleFixPort = async (domain: string) => {
+    try {
+      const response = await fetch("/api/manager/vite-config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain, action: "fix-port" }),
+      })
+      const data = await response.json()
+      if (data.ok) {
+        toast.success("Port fixed and service restarted")
+        // Refresh statuses to show updated port
+        fetchStatuses()
+      } else {
+        toast.error(data.error || "Failed to fix port")
+      }
+    } catch (error) {
+      console.error("Failed to fix port:", error)
+      toast.error("Failed to fix port")
+    }
+  }
+
+  const getSummaryStats = () => {
+    const domainList = Object.keys(statuses)
+    const total = domainList.length
+    const online = domainList.filter((d) => statuses[d]?.httpsAccessible).length
+    const httpOnly = domainList.filter((d) => statuses[d]?.httpAccessible && !statuses[d]?.httpsAccessible).length
+    const offline = domainList.filter((d) => !statuses[d]?.httpAccessible && !statuses[d]?.httpsAccessible).length
+    const withIssues = domainList.filter((d) => {
+      const s = statuses[d]
+      return (
+        s && (!s.dnsPointsToServer || s.vitePortMismatch || !s.systemdServiceRunning || !s.caddyConfigured)
+      )
+    }).length
+
+    return { total, online, httpOnly, offline, withIssues }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-4xl mx-auto">
@@ -638,7 +700,7 @@ export default function ManagerPage() {
           {activeTab === "domains" && (
             <>
               <div className="px-6 py-4 border-b border-gray-200">
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center mb-4">
                   <div>
                     <h2 className="text-lg font-semibold text-gray-800">Domain Passwords</h2>
                     <p className="text-sm text-gray-600 mt-1">Manage passwords for each domain</p>
@@ -650,6 +712,35 @@ export default function ManagerPage() {
                     </div>
                   )}
                 </div>
+
+                {Object.keys(statuses).length > 0 &&
+                  (() => {
+                    const stats = getSummaryStats()
+                    return (
+                      <div className="grid grid-cols-5 gap-3">
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
+                          <div className="text-xs text-gray-600">Total Sites</div>
+                        </div>
+                        <div className="bg-green-50 rounded-lg p-3">
+                          <div className="text-2xl font-bold text-green-700">{stats.online}</div>
+                          <div className="text-xs text-green-600">Online (HTTPS)</div>
+                        </div>
+                        <div className="bg-yellow-50 rounded-lg p-3">
+                          <div className="text-2xl font-bold text-yellow-700">{stats.httpOnly}</div>
+                          <div className="text-xs text-yellow-600">HTTP Only</div>
+                        </div>
+                        <div className="bg-red-50 rounded-lg p-3">
+                          <div className="text-2xl font-bold text-red-700">{stats.offline}</div>
+                          <div className="text-xs text-red-600">Offline</div>
+                        </div>
+                        <div className="bg-orange-50 rounded-lg p-3">
+                          <div className="text-2xl font-bold text-orange-700">{stats.withIssues}</div>
+                          <div className="text-xs text-orange-600">With Issues</div>
+                        </div>
+                      </div>
+                    )
+                  })()}
               </div>
 
               <div className="p-6">
@@ -715,6 +806,17 @@ export default function ManagerPage() {
                       </div>
 
                       <div className="flex items-center gap-2">
+                        {statuses[domain]?.vitePortMismatch && (
+                          <button
+                            type="button"
+                            onClick={() => handleFixPort(domain)}
+                            className="px-3 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                            title="Fix port mismatch in vite config"
+                          >
+                            ⚙️ Fix Port
+                          </button>
+                        )}
+
                         <button
                           type="button"
                           onClick={() => handleCheckPermissions(domain)}

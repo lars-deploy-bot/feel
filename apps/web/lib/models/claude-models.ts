@@ -5,8 +5,7 @@
 
 export const CLAUDE_MODELS = {
   SONNET_4_5: "claude-sonnet-4-5-20250929",
-  OPUS_4: "claude-opus-4-20250514",
-  HAIKU_3_5: "claude-3-5-haiku-20241022",
+  HAIKU_4_5: "claude-haiku-4-5",
 } as const
 
 export type ClaudeModel = (typeof CLAUDE_MODELS)[keyof typeof CLAUDE_MODELS]

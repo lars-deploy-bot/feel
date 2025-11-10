@@ -1,4 +1,5 @@
 import { exec } from "node:child_process"
+import { readFile } from "node:fs/promises"
 import { promisify } from "node:util"
 import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
@@ -8,6 +9,22 @@ import type { DomainStatus } from "@/types/domain"
 import { loadDomainPasswords } from "@/types/guards/api"
 
 const execAsync = promisify(exec)
+
+interface ServerConfig {
+  serverIp: string
+  serverIpv6: string
+  createdAt: number
+}
+
+async function loadServerConfig(): Promise<ServerConfig | null> {
+  try {
+    const configPath = "/var/lib/claude-bridge/server-config.json"
+    const data = await readFile(configPath, "utf-8")
+    return JSON.parse(data)
+  } catch {
+    return null
+  }
+}
 
 async function checkPortListening(port: number): Promise<boolean> {
   try {
@@ -103,6 +120,70 @@ async function checkSiteDirectory(domain: string): Promise<boolean> {
   }
 }
 
+/**
+ * Check DNS resolution by verifying the domain serves our verification file
+ * This works with any CDN/proxy setup (Cloudflare, etc.)
+ */
+async function checkDnsResolution(domain: string, serverIp: string): Promise<{ pointsToServer: boolean; resolvedIp: string | null; isProxied?: boolean; verificationMethod?: string }> {
+  try {
+    // First, get the resolved IP for display purposes
+    const { stdout } = await execAsync(`host -t A ${domain} 2>/dev/null || echo "NXDOMAIN"`)
+
+    let resolvedIp: string | null = null
+    if (!stdout.includes("NXDOMAIN") && !stdout.includes("not found")) {
+      const match = stdout.match(/has address\s+(\d+\.\d+\.\d+\.\d+)/)
+      if (match) {
+        resolvedIp = match[1]
+      }
+    }
+
+    // Try to fetch the verification file via HTTPS first, then HTTP
+    const verificationPath = "/.well-known/bridge-verify.txt"
+
+    for (const protocol of ["https", "http"]) {
+      try {
+        const controller = new AbortController()
+        const timeout = setTimeout(() => controller.abort(), 3000)
+
+        const response = await fetch(`${protocol}://${domain}${verificationPath}`, {
+          signal: controller.signal,
+          redirect: "follow",
+        })
+
+        clearTimeout(timeout)
+
+        if (response.ok) {
+          const content = (await response.text()).trim()
+          const pointsToServer = content === serverIp
+          const isProxied = resolvedIp !== null && resolvedIp !== serverIp
+
+          return {
+            pointsToServer,
+            resolvedIp,
+            isProxied,
+            verificationMethod: protocol
+          }
+        }
+      } catch {
+        // Try next protocol
+        continue
+      }
+    }
+
+    // Verification file not found or unreachable
+    // Fall back to direct IP comparison
+    const directMatch = resolvedIp === serverIp
+    return {
+      pointsToServer: directMatch,
+      resolvedIp,
+      isProxied: false,
+      verificationMethod: directMatch ? "direct-ip" : "none"
+    }
+  } catch {
+    return { pointsToServer: false, resolvedIp: null, verificationMethod: "error" }
+  }
+}
+
 export async function GET(req: NextRequest) {
   const origin = req.headers.get("origin")
   const jar = await cookies()
@@ -124,9 +205,11 @@ export async function GET(req: NextRequest) {
 
   const domains = loadDomainPasswords()
   const statuses: DomainStatus[] = []
+  const serverConfig = await loadServerConfig()
+  const serverIp = serverConfig?.serverIp || "138.201.56.93"
 
   const checks = Object.entries(domains).map(async ([domain, config]) => {
-    const [portListening, httpAccessible, httpsAccessible, systemdService, caddyConfigured, siteDirectoryExists] =
+    const [portListening, httpAccessible, httpsAccessible, systemdService, caddyConfigured, siteDirectoryExists, dnsCheck, vitePortCheck] =
       await Promise.all([
         checkPortListening(config.port),
         checkHttpAccessible(domain),
@@ -134,6 +217,8 @@ export async function GET(req: NextRequest) {
         checkSystemdService(domain),
         checkCaddyConfigured(domain),
         checkSiteDirectory(domain),
+        checkDnsResolution(domain, serverIp),
+        checkViteConfigPort(domain, config.port),
       ])
 
     return {
@@ -145,6 +230,14 @@ export async function GET(req: NextRequest) {
       systemdServiceRunning: systemdService.running,
       caddyConfigured,
       siteDirectoryExists,
+      dnsPointsToServer: dnsCheck.pointsToServer,
+      dnsResolvedIp: dnsCheck.resolvedIp,
+      dnsIsProxied: dnsCheck.isProxied,
+      dnsVerificationMethod: dnsCheck.verificationMethod,
+      vitePortMismatch: vitePortCheck.mismatch,
+      viteExpectedPort: config.port,
+      viteActualPort: vitePortCheck.actualPort,
+      hasSystemdPortOverride: vitePortCheck.hasSystemdOverride,
       createdAt: config.createdAt || null,
       lastChecked: Date.now(),
     }
@@ -156,4 +249,48 @@ export async function GET(req: NextRequest) {
   const res = NextResponse.json({ ok: true, statuses })
   addCorsHeaders(res, origin)
   return res
+}
+
+async function checkViteConfigPort(domain: string, expectedPort: number): Promise<{ mismatch: boolean; actualPort: number | null; hasSystemdOverride: boolean }> {
+  try {
+    const sitePath = `/srv/webalive/sites/${domain}`
+    const slug = domain.replace(/[^a-zA-Z0-9]/g, "-")
+
+    // Check for systemd override file
+    let hasSystemdOverride = false
+    try {
+      await execAsync(`test -f "/etc/systemd/system/site@${slug}.service.d/port-override.conf"`)
+      hasSystemdOverride = true
+    } catch {
+      hasSystemdOverride = false
+    }
+
+    // Try vite.config.ts first
+    let configPath: string | null = null
+    try {
+      await execAsync(`test -f "${sitePath}/user/vite.config.ts"`)
+      configPath = `${sitePath}/user/vite.config.ts`
+    } catch {
+      try {
+        await execAsync(`test -f "${sitePath}/user/vite.config.js"`)
+        configPath = `${sitePath}/user/vite.config.js`
+      } catch {
+        return { mismatch: hasSystemdOverride, actualPort: null, hasSystemdOverride }
+      }
+    }
+
+    const { stdout } = await execAsync(`grep -o 'port: [0-9]*' "${configPath}" | head -1`)
+    const match = stdout.match(/port: (\d+)/)
+
+    if (!match) {
+      return { mismatch: hasSystemdOverride, actualPort: null, hasSystemdOverride }
+    }
+
+    const actualPort = Number.parseInt(match[1])
+    const mismatch = actualPort !== expectedPort || hasSystemdOverride
+
+    return { mismatch, actualPort, hasSystemdOverride }
+  } catch {
+    return { mismatch: false, actualPort: null, hasSystemdOverride: false }
+  }
 }
