@@ -70,12 +70,11 @@ export function TemplatesModal({ onClose, onInsertTemplate }: TemplatesModalProp
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/50 z-50"
+      <button
+        type="button"
+        className="fixed inset-0 bg-black/50 z-50 cursor-default"
         onClick={onClose}
         onKeyDown={e => e.key === "Escape" && onClose()}
-        role="button"
-        tabIndex={-1}
         aria-label="Close modal"
       />
 

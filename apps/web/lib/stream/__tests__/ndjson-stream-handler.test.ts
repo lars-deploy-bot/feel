@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { createNDJSONStream, type CancelState } from "../ndjson-stream-handler"
+import { type CancelState, createNDJSONStream } from "../ndjson-stream-handler"
 
 /**
  * NDJSON Stream Handler Tests
@@ -168,7 +168,7 @@ describe("NDJSON Stream Handler", () => {
           requestId: "test-req",
           conversationWorkspace: "test-workspace",
           tokenSource: "user_provided",
-        cancelState: createCancelState(),
+          cancelState: createCancelState(),
         })
 
         expect(stream).toBeDefined()
@@ -191,7 +191,7 @@ describe("NDJSON Stream Handler", () => {
           requestId: id,
           conversationWorkspace: "test-workspace",
           tokenSource: "user_provided",
-        cancelState: createCancelState(),
+          cancelState: createCancelState(),
         })
 
         expect(stream).toBeDefined()
@@ -214,7 +214,7 @@ describe("NDJSON Stream Handler", () => {
           requestId: "test-req",
           conversationWorkspace: workspace,
           tokenSource: "user_provided",
-        cancelState: createCancelState(),
+          cancelState: createCancelState(),
         })
 
         expect(stream).toBeDefined()
@@ -300,7 +300,7 @@ describe("NDJSON Stream Handler", () => {
           requestId: "test-req-error-2",
           conversationWorkspace: "test-workspace",
           tokenSource: "user_provided",
-        cancelState: createCancelState(),
+          cancelState: createCancelState(),
         })
       }).not.toThrow()
     })

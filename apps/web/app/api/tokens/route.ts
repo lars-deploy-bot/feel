@@ -1,18 +1,15 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { creditsToLLMTokens } from "@/lib/credits"
 import { isWorkspaceAuthenticated } from "@/features/auth/lib/auth"
+import { creditsToLLMTokens } from "@/lib/credits"
+import type { TokensErrorResponse, TokensResponse } from "@/types/api"
 import { loadDomainPasswords } from "@/types/guards/api"
-import type { TokensResponse, TokensErrorResponse } from "@/types/api"
 
 export async function GET(req: NextRequest): Promise<NextResponse<TokensResponse | TokensErrorResponse>> {
   try {
     const workspace = req.headers.get("X-Workspace")
 
     if (!workspace) {
-      return NextResponse.json<TokensErrorResponse>(
-        { ok: false, error: "No workspace specified" },
-        { status: 400 }
-      )
+      return NextResponse.json<TokensErrorResponse>({ ok: false, error: "No workspace specified" }, { status: 400 })
     }
 
     // Verify user is authenticated for this workspace using JWT
@@ -40,9 +37,6 @@ export async function GET(req: NextRequest): Promise<NextResponse<TokensResponse
     })
   } catch (error) {
     console.error("[Tokens] Error:", error)
-    return NextResponse.json<TokensErrorResponse>(
-      { ok: false, error: "Internal server error" },
-      { status: 500 }
-    )
+    return NextResponse.json<TokensErrorResponse>({ ok: false, error: "Internal server error" }, { status: 500 })
   }
 }

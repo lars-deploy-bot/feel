@@ -52,7 +52,9 @@ ${prompt}
 
   // Append supertemplate triggers if any exist
   if (supertemplates.length > 0) {
-    const supertemplateTriggers = supertemplates.map(t => `Use template: ${t.templateId}`).join("\n")
+    const supertemplateTriggers = supertemplates
+      .map(t => `use the supertemplate tool (MCP) integrate this following into the website: ${t.templateId}`)
+      .join("\n")
     prompt = `${prompt}\n\n${supertemplateTriggers}`
   }
 

@@ -28,7 +28,7 @@ describe("API Key Validation - BodySchema", () => {
       const body = {
         message: validMessage,
         conversationId: validConversationId,
-        apiKey: "sk-ant-" + "x".repeat(100),
+        apiKey: `sk-ant-${"x".repeat(100)}`,
       }
 
       const result = BodySchema.safeParse(body)
@@ -155,7 +155,7 @@ describe("API Key Validation - BodySchema", () => {
       const body = {
         message: validMessage,
         conversationId: validConversationId,
-        apiKey: "sk-ant-" + "a".repeat(10000), // Excessively long
+        apiKey: `sk-ant-${"a".repeat(10000)}`, // Excessively long
       }
 
       const result = BodySchema.safeParse(body)

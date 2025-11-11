@@ -16,10 +16,10 @@ import { join } from "node:path"
 import process from "node:process"
 import { query } from "@anthropic-ai/claude-agent-sdk"
 import {
-  ALLOWED_TOOLS,
   BRIDGE_STREAM_TYPES,
   DISALLOWED_TOOLS,
-  MCP_SERVERS,
+  getAllowedTools,
+  getMcpServers,
   PERMISSION_MODE,
   SETTINGS_SOURCES,
 } from "../lib/claude/agent-constants.mjs"
@@ -79,8 +79,12 @@ async function readStdinJson() {
     const request = await readStdinJson()
     console.error(`[runner] Received request: ${request.message?.substring(0, 50)}...`)
 
+    // Get workspace-specific allowed tools
+    const workspaceAllowedTools = getAllowedTools(targetCwd || process.cwd())
+    console.error(`[runner] Allowed tools count: ${workspaceAllowedTools.length}`)
+
     /**
-     * Tool permission handler - enforces ALLOWED_TOOLS whitelist and DISALLOWED_TOOLS blacklist
+     * Tool permission handler - enforces workspace-specific ALLOWED_TOOLS whitelist and DISALLOWED_TOOLS blacklist
      * @type {import('@anthropic-ai/claude-agent-sdk').CanUseTool}
      */
     const canUseTool = async (toolName, input, _options) => {
@@ -93,12 +97,12 @@ async function readStdinJson() {
         }
       }
 
-      // Check allow list
-      if (!ALLOWED_TOOLS.includes(toolName)) {
+      // Check workspace-specific allow list
+      if (!workspaceAllowedTools.includes(toolName)) {
         console.error(`[runner] SECURITY: Blocked unauthorized tool: ${toolName}`)
         return {
           behavior: "deny",
-          message: `Tool "${toolName}" is not in the allowed tools list. Only these tools are permitted: ${ALLOWED_TOOLS.join(", ")}`,
+          message: `Tool "${toolName}" is not in the allowed tools list. Only these tools are permitted: ${workspaceAllowedTools.join(", ")}`,
         }
       }
 
@@ -112,6 +116,11 @@ async function readStdinJson() {
 
     // MCP tools use process.cwd() which is set by process.chdir() above
     // No workspace injection needed - tools default to process.cwd()
+
+    // Get workspace-specific MCP servers (e.g., Stripe only for specific domains)
+    const workspaceMcpServers = getMcpServers(targetCwd || process.cwd())
+    console.error("[runner] MCP servers enabled:", Object.keys(workspaceMcpServers).join(", "))
+
     const agentQuery = query({
       prompt: request.message,
       options: {
@@ -119,11 +128,11 @@ async function readStdinJson() {
         model: request.model,
         maxTurns: request.maxTurns || 25,
         permissionMode: PERMISSION_MODE,
-        allowedTools: ALLOWED_TOOLS,
+        allowedTools: workspaceAllowedTools,
         disallowedTools: DISALLOWED_TOOLS,
         canUseTool,
         settingSources: SETTINGS_SOURCES,
-        mcpServers: MCP_SERVERS,
+        mcpServers: workspaceMcpServers,
         systemPrompt: request.systemPrompt,
         // Session resumption: We use explicit session IDs for multi-conversation tracking
         resume: request.resume,
@@ -145,6 +154,18 @@ async function readStdinJson() {
       // Capture session ID from system init message
       if (message.type === "system" && message.subtype === "init" && message.session_id) {
         console.error(`[runner] Session ID captured: ${message.session_id}`)
+
+        // Log MCP server status
+        if (message.mcpServers) {
+          console.error("[runner] MCP server status:", JSON.stringify(message.mcpServers, null, 2))
+        }
+
+        // Log available tools (including MCP tools)
+        if (message.tools) {
+          const mcpTools = message.tools.filter(t => t.startsWith("mcp__"))
+          console.error(`[runner] Available MCP tools (${mcpTools.length}):`, mcpTools.join(", "))
+        }
+
         process.stdout.write(
           `${JSON.stringify({
             type: BRIDGE_STREAM_TYPES.SESSION,
@@ -153,12 +174,12 @@ async function readStdinJson() {
         )
       }
 
-      // Filter system init message to only show allowed tools
+      // Filter system init message to only show workspace-allowed tools
       let outputMessage = message
       if (message.type === "system" && message.subtype === "init" && message.tools) {
         outputMessage = {
           ...message,
-          tools: message.tools.filter(tool => ALLOWED_TOOLS.includes(tool)),
+          tools: message.tools.filter(tool => workspaceAllowedTools.includes(tool)),
         }
       }
 

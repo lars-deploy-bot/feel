@@ -2,11 +2,11 @@
 
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
-import { CLAUDE_MODELS, type ClaudeModel, isValidClaudeModel } from "@/lib/models/claude-models"
+import { CLAUDE_MODELS, type ClaudeModel, DEFAULT_MODEL, isValidClaudeModel } from "@/lib/models/claude-models"
 import { validateApiKey } from "@/lib/utils/api-key-validation"
 import { secureStorage } from "@/lib/utils/secure-storage"
 
-export { CLAUDE_MODELS, type ClaudeModel }
+export { CLAUDE_MODELS, DEFAULT_MODEL, type ClaudeModel }
 
 interface LLMState {
   apiKey: string | null
@@ -69,8 +69,8 @@ const useLLMStoreBase = create<LLMStore>()(
           if (!key) {
             try {
               removeApiKey()
-              // Reset to Haiku when clearing API key (credit users are restricted to Haiku)
-              set({ apiKey: null, error: null, model: CLAUDE_MODELS.HAIKU_4_5 })
+              // Reset to default model when clearing API key (credit users get default)
+              set({ apiKey: null, error: null, model: DEFAULT_MODEL })
             } catch (error) {
               const errorMessage = error instanceof Error ? error.message : "Failed to clear API key"
               set({ error: errorMessage })
@@ -106,8 +106,8 @@ const useLLMStoreBase = create<LLMStore>()(
         clearApiKey: () => {
           try {
             removeApiKey()
-            // Reset to Haiku when clearing API key (credit users are restricted to Haiku)
-            set({ apiKey: null, error: null, model: CLAUDE_MODELS.HAIKU_4_5 })
+            // Reset to default model when clearing API key (credit users get default)
+            set({ apiKey: null, error: null, model: DEFAULT_MODEL })
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "Failed to clear API key"
             set({ error: errorMessage })
@@ -117,7 +117,7 @@ const useLLMStoreBase = create<LLMStore>()(
 
       return {
         apiKey: null,
-        model: CLAUDE_MODELS.HAIKU_4_5, // Default to Haiku for credit users
+        model: DEFAULT_MODEL, // Default model for credit users
         error: null,
         actions,
         // Legacy direct exports for backwards compatibility
@@ -132,25 +132,25 @@ const useLLMStoreBase = create<LLMStore>()(
 
         // Validate persisted model and reset to default if invalid
         if (!isValidClaudeModel(state.model)) {
-          console.warn(`Invalid model "${state.model}", resetting to Haiku`)
-          state.model = CLAUDE_MODELS.HAIKU_4_5
+          console.warn(`Invalid model "${state.model}", resetting to default`)
+          state.model = DEFAULT_MODEL
         }
 
         // Load API key from secure storage
         try {
           state.apiKey = loadApiKey()
 
-          // Force Haiku for credit users (no API key)
-          // This handles existing users who previously selected Sonnet
-          if (!state.apiKey && state.model !== CLAUDE_MODELS.HAIKU_4_5) {
-            console.log(`No API key found, forcing model to Haiku (was: ${state.model})`)
-            state.model = CLAUDE_MODELS.HAIKU_4_5
+          // Force default model for credit users (no API key)
+          // This handles existing users who previously selected a different model
+          if (!state.apiKey && state.model !== DEFAULT_MODEL) {
+            console.log(`No API key found, forcing model to default (was: ${state.model})`)
+            state.model = DEFAULT_MODEL
           }
         } catch (error) {
           console.error("Failed to load API key:", error)
           state.apiKey = null
-          // Ensure Haiku on error
-          state.model = CLAUDE_MODELS.HAIKU_4_5
+          // Ensure default model on error
+          state.model = DEFAULT_MODEL
         }
       },
     },

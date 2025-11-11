@@ -1,4 +1,4 @@
-import type { CanUseTool, Options } from "@anthropic-ai/claude-agent-sdk"
+import type { CanUseTool, McpServerConfig, Options } from "@anthropic-ai/claude-agent-sdk"
 import { ALLOWED_TOOLS, MCP_SERVERS, PERMISSION_MODE, SETTINGS_SOURCES } from "./agent-constants.mjs"
 
 interface BuildAgentOptionsInput {
@@ -21,7 +21,7 @@ export function buildAgentOptions(input: BuildAgentOptionsInput): Options {
     systemPrompt,
     settingSources: SETTINGS_SOURCES,
     model,
-    mcpServers: MCP_SERVERS,
+    mcpServers: MCP_SERVERS as Record<string, McpServerConfig>,
   }
 
   if (canUseTool) {

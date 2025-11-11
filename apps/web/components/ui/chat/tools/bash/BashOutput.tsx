@@ -13,7 +13,7 @@ export function BashOutput({ output, exitCode, killed, shellId }: BashOutputProp
 
   return (
     <div className="space-y-2">
-      <div className="text-xs text-black/40 dark:text-white/40 font-thin">
+      <div className="text-xs text-black/40 dark:text-white/40 font-normal">
         {getStatusText()} {shellId && `• shell ${shellId}`}
       </div>
       {output && (

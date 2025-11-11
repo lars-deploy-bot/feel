@@ -9,7 +9,7 @@
     "start": "next start -p $(node -p \"require('../../bridge.config.js').ports.production\")",
     "staging": "cd ../.. && bun run staging",
     "lint": "biome lint .",
-    "format": "biome check --write --unsafe .",
+    "format": "npx biome format --write .",
     "tsc": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest watch",

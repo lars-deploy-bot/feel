@@ -52,7 +52,7 @@ export default function ManagerPage() {
   const [fixingPermissions, setFixingPermissions] = useState(false)
 
   // Expandable detail view state
-  const [expandedDomain, setExpandedDomain] = useState<string | null>(null)
+  const [_expandedDomain, _setExpandedDomain] = useState<string | null>(null)
 
   const fetchFeedback = useCallback(async () => {
     setFeedbackLoading(true)
@@ -345,7 +345,7 @@ export default function ManagerPage() {
       return (
         <main className="min-h-screen bg-black flex items-center justify-center">
           <div className="w-80">
-            <h1 className="text-6xl font-thin mb-8 text-white">•</h1>
+            <h1 className="text-6xl font-normal mb-8 text-white">•</h1>
             <p className="text-white/60 text-center mb-8">Manager Access</p>
 
             <form onSubmit={handleManagerLogin} className="space-y-8" autoComplete="off">
@@ -360,7 +360,7 @@ export default function ManagerPage() {
                 data-1p-ignore
                 data-lpignore="true"
                 data-form-type="other"
-                className="w-full bg-transparent border-0 border-b border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-white pb-3 text-lg font-thin"
+                className="w-full bg-transparent border-0 border-b border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-white pb-3 text-lg font-normal"
               />
 
               {loginError && <p className="text-white/60 text-sm">{loginError}</p>}
@@ -370,7 +370,7 @@ export default function ManagerPage() {
                 fullWidth
                 loading={loginLoading}
                 disabled={!pass.trim()}
-                className="!bg-white !text-black hover:!bg-white/90 !border-0 !font-thin !text-lg !py-4"
+                className="!bg-white !text-black hover:!bg-white/90 !border-0 !font-normal !text-lg !py-4"
               >
                 enter manager
               </Button>
@@ -615,14 +615,12 @@ export default function ManagerPage() {
   const getSummaryStats = () => {
     const domainList = Object.keys(statuses)
     const total = domainList.length
-    const online = domainList.filter((d) => statuses[d]?.httpsAccessible).length
-    const httpOnly = domainList.filter((d) => statuses[d]?.httpAccessible && !statuses[d]?.httpsAccessible).length
-    const offline = domainList.filter((d) => !statuses[d]?.httpAccessible && !statuses[d]?.httpsAccessible).length
-    const withIssues = domainList.filter((d) => {
+    const online = domainList.filter(d => statuses[d]?.httpsAccessible).length
+    const httpOnly = domainList.filter(d => statuses[d]?.httpAccessible && !statuses[d]?.httpsAccessible).length
+    const offline = domainList.filter(d => !statuses[d]?.httpAccessible && !statuses[d]?.httpsAccessible).length
+    const withIssues = domainList.filter(d => {
       const s = statuses[d]
-      return (
-        s && (!s.dnsPointsToServer || s.vitePortMismatch || !s.systemdServiceRunning || !s.caddyConfigured)
-      )
+      return s && (!s.dnsPointsToServer || s.vitePortMismatch || !s.systemdServiceRunning || !s.caddyConfigured)
     }).length
 
     return { total, online, httpOnly, offline, withIssues }
@@ -1170,11 +1168,7 @@ export default function ManagerPage() {
                 <h2 className="text-xl font-semibold text-gray-900">File Permissions</h2>
                 <p className="text-sm text-gray-600 mt-1">{permissionsModal}</p>
               </div>
-              <button
-                type="button"
-                onClick={closePermissionsModal}
-                className="text-gray-400 hover:text-gray-600"
-              >
+              <button type="button" onClick={closePermissionsModal} className="text-gray-400 hover:text-gray-600">
                 ✕
               </button>
             </div>
@@ -1256,30 +1250,29 @@ export default function ManagerPage() {
                           </span>
                         </div>
                         <p className="text-xs text-gray-600">Files not owned by {permissionsData.expectedOwner}</p>
-                        {permissionsData.wrongOwnerFiles > 0 &&
-                          permissionsData.wrongOwnerFilesList.length > 0 && (
-                            <div className="mt-3 space-y-1">
-                              <p className="text-xs text-gray-600 font-medium mb-1">Sample files:</p>
-                              {permissionsData.wrongOwnerFilesList.map((file: string, i: number) => (
-                                <p key={i} className="text-xs font-mono text-gray-700 truncate" title={file}>
-                                  {file}
-                                </p>
-                              ))}
-                              {permissionsData.wrongOwnerFiles > 10 && (
-                                <p className="text-xs text-gray-500 italic">
-                                  ... and {permissionsData.wrongOwnerFiles - 10} more
-                                </p>
-                              )}
-                            </div>
-                          )}
+                        {permissionsData.wrongOwnerFiles > 0 && permissionsData.wrongOwnerFilesList.length > 0 && (
+                          <div className="mt-3 space-y-1">
+                            <p className="text-xs text-gray-600 font-medium mb-1">Sample files:</p>
+                            {permissionsData.wrongOwnerFilesList.map((file: string, i: number) => (
+                              <p key={i} className="text-xs font-mono text-gray-700 truncate" title={file}>
+                                {file}
+                              </p>
+                            ))}
+                            {permissionsData.wrongOwnerFiles > 10 && (
+                              <p className="text-xs text-gray-500 italic">
+                                ... and {permissionsData.wrongOwnerFiles - 10} more
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
 
                     {permissionsData.wrongOwnerFiles > 0 && (
                       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                         <p className="text-sm text-yellow-800">
-                          ⚠️ Files with incorrect ownership detected. Click "Fix Permissions" to update all files to
-                          the correct owner.
+                          ⚠️ Files with incorrect ownership detected. Click "Fix Permissions" to update all files to the
+                          correct owner.
                         </p>
                       </div>
                     )}

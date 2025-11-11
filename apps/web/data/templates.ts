@@ -8,7 +8,7 @@ export interface Template {
   id: string
   templateId: VersionedTemplateId // MCP template ID (e.g., "carousel-thumbnails-v1.0.0")
   name: string
-  category: "sliders" | "maps" | "file-upload" | "backend"
+  category: "sliders" | "maps" | "file-upload" | "backend" | "content-management"
   description: string
   previewImage: string
   tags: string[]
@@ -83,6 +83,23 @@ export const templates: Template[] = [
     dependencies: ["better-sqlite3"],
     estimatedTime: "8-12 minutes",
     estimatedTokens: 85,
+  },
+
+  // CONTENT MANAGEMENT
+  {
+    id: TEMPLATE_IDS.RECIPE_SYSTEM_INTERACTIVE,
+    templateId: versionedId(TEMPLATE_IDS.RECIPE_SYSTEM_INTERACTIVE, "v1.0.0"),
+    name: "Interactive Recipe System",
+    category: "content-management",
+    description:
+      "Professional recipe management with clickable ingredient tooltips, click-to-hide ingredients, localStorage persistence, and chef's workflow document.",
+    previewImage: "https://terminal.goalive.nl/_images/t/riggedwheel.alive.best/o/8360a2eb511f1141/v/orig.webp",
+    tags: ["recipes", "food", "content", "interactive", "tooltips"],
+    complexity: 3,
+    fileCount: 7,
+    dependencies: ["@radix-ui/react-tooltip", "react-router-dom"],
+    estimatedTime: "25-30 minutes",
+    estimatedTokens: 120,
   },
 ]
 

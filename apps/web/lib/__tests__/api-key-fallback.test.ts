@@ -1,9 +1,5 @@
-import { describe, expect, it, beforeEach, vi } from "vitest"
-import {
-  calculateLLMTokenCost,
-  type LLMTokenUsage,
-  type TokenSource,
-} from "@/lib/tokens"
+import { describe, expect, it } from "vitest"
+import { calculateLLMTokenCost, type LLMTokenUsage, type TokenSource } from "@/lib/tokens"
 
 /**
  * API Key Fallback System - Behavioral Tests
@@ -38,8 +34,7 @@ describe("API Key Fallback System", () => {
     }
 
     // Choice: Use workspace if sufficient, else fall back to user key
-    const source: TokenSource =
-      workspaceTokens >= COST_ESTIMATE ? "workspace" : "user_provided"
+    const source: TokenSource = workspaceTokens >= COST_ESTIMATE ? "workspace" : "user_provided"
 
     // Only deduct if using workspace source
     const shouldDeduct = source === "workspace"
@@ -296,10 +291,8 @@ describe("API Key Fallback System", () => {
     })
 
     it("should be deterministic (no random behavior)", () => {
-      const results = Array.from({ length: 10 }).map(() =>
-        selectTokenSource(150, true),
-      )
-      expect(results.every((r) => r.source === "workspace")).toBe(true)
+      const results = Array.from({ length: 10 }).map(() => selectTokenSource(150, true))
+      expect(results.every(r => r.source === "workspace")).toBe(true)
     })
   })
 
@@ -320,7 +313,7 @@ describe("API Key Fallback System", () => {
     it("should handle various token costs", () => {
       const costs = [0, 50, 100, 200, 1000]
 
-      costs.forEach((cost) => {
+      costs.forEach(cost => {
         const usage: LLMTokenUsage = {
           input_tokens: cost,
           output_tokens: 0,
@@ -332,11 +325,7 @@ describe("API Key Fallback System", () => {
 
   describe("Type Safety", () => {
     it("should only return valid TokenSource values", () => {
-      const validSources: (TokenSource | null)[] = [
-        "workspace",
-        "user_provided",
-        null,
-      ]
+      const validSources: (TokenSource | null)[] = ["workspace", "user_provided", null]
 
       const scenarios = [
         [200, false],

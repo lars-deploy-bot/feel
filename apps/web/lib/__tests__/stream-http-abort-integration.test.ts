@@ -1,12 +1,12 @@
-import { describe, expect, it, beforeEach, afterEach } from "vitest"
+import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import {
+  isConversationLocked,
+  sessionKey,
   tryLockConversation,
   unlockConversation,
-  sessionKey,
-  isConversationLocked,
 } from "@/features/auth/lib/sessionStore"
-import { createNDJSONStream } from "@/lib/stream/ndjson-stream-handler"
 import { setupAbortHandler } from "@/lib/stream/abort-handler"
+import { createNDJSONStream } from "@/lib/stream/ndjson-stream-handler"
 
 /**
  * HTTP Abort Integration Test
@@ -88,7 +88,7 @@ describe("HTTP Abort → Second Message (Production Flow)", () => {
     httpAbortController.abort()
 
     // Wait for abort handler to process
-    await new Promise((resolve) => setTimeout(resolve, 20))
+    await new Promise(resolve => setTimeout(resolve, 20))
 
     // CRITICAL: Lock should be released
     expect(isConversationLocked(convKey)).toBe(false)
@@ -108,9 +108,7 @@ describe("HTTP Abort → Second Message (Production Flow)", () => {
 
       const httpAbortController = new AbortController()
 
-      const childStream = createMockChildStream([
-        { type: "message", data: { content: `Request ${i}` } },
-      ])
+      const childStream = createMockChildStream([{ type: "message", data: { content: `Request ${i}` } }])
 
       const stream = createNDJSONStream({
         childStream,
@@ -133,7 +131,7 @@ describe("HTTP Abort → Second Message (Production Flow)", () => {
 
       // User clicks stop
       httpAbortController.abort()
-      await new Promise((resolve) => setTimeout(resolve, 20))
+      await new Promise(resolve => setTimeout(resolve, 20))
 
       // Lock should be released
       expect(isConversationLocked(convKey)).toBe(false)
@@ -146,11 +144,9 @@ describe("HTTP Abort → Second Message (Production Flow)", () => {
 
     const httpAbortController = new AbortController()
 
-    const childStream = createMockChildStream([
-      { type: "message", data: { content: "Test" } },
-    ])
+    const childStream = createMockChildStream([{ type: "message", data: { content: "Test" } }])
 
-    let callbackFired = false
+    let _callbackFired = false
 
     const stream = createNDJSONStream({
       childStream,
@@ -159,7 +155,7 @@ describe("HTTP Abort → Second Message (Production Flow)", () => {
       conversationWorkspace: workspace,
       tokenSource: "user_provided",
       onStreamComplete: () => {
-        callbackFired = true
+        _callbackFired = true
         unlockConversation(convKey)
       },
       cancelState: { requested: false, reader: null },
@@ -174,7 +170,7 @@ describe("HTTP Abort → Second Message (Production Flow)", () => {
 
     // Trigger abort (calls unlockConversation)
     httpAbortController.abort()
-    await new Promise((resolve) => setTimeout(resolve, 20))
+    await new Promise(resolve => setTimeout(resolve, 20))
 
     // Stream might also complete and call onStreamComplete (also unlocks)
     // Both paths call unlockConversation - should be idempotent
@@ -190,9 +186,7 @@ describe("HTTP Abort → Second Message (Production Flow)", () => {
 
       const httpAbortController = new AbortController()
 
-      const childStream = createMockChildStream([
-        { type: "message", data: { content: "Test" } },
-      ])
+      const childStream = createMockChildStream([{ type: "message", data: { content: "Test" } }])
 
       const stream = createNDJSONStream({
         childStream,
@@ -215,7 +209,7 @@ describe("HTTP Abort → Second Message (Production Flow)", () => {
 
       // User clicks stop button
       httpAbortController.abort()
-      await new Promise((resolve) => setTimeout(resolve, 20))
+      await new Promise(resolve => setTimeout(resolve, 20))
 
       expect(isConversationLocked(convKey)).toBe(false)
     }
@@ -227,9 +221,7 @@ describe("HTTP Abort → Second Message (Production Flow)", () => {
 
       const httpAbortController = new AbortController()
 
-      const childStream = createMockChildStream([
-        { type: "message", data: { content: "Test" } },
-      ])
+      const childStream = createMockChildStream([{ type: "message", data: { content: "Test" } }])
 
       const stream = createNDJSONStream({
         childStream,
@@ -252,7 +244,7 @@ describe("HTTP Abort → Second Message (Production Flow)", () => {
 
       // Browser closes tab (also triggers abort)
       httpAbortController.abort()
-      await new Promise((resolve) => setTimeout(resolve, 20))
+      await new Promise(resolve => setTimeout(resolve, 20))
 
       expect(isConversationLocked(convKey)).toBe(false)
     }
@@ -295,9 +287,9 @@ describe("HTTP Abort → Second Message (Production Flow)", () => {
 
     // 2. User waits a moment, then clicks stop button
     console.log("Step 2: User clicks stop button")
-    await new Promise((resolve) => setTimeout(resolve, 10))
+    await new Promise(resolve => setTimeout(resolve, 10))
     httpAbortController1.abort()
-    await new Promise((resolve) => setTimeout(resolve, 20))
+    await new Promise(resolve => setTimeout(resolve, 20))
 
     // 3. User expects to send second message immediately
     console.log("Step 3: User tries to send second message")

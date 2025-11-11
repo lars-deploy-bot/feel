@@ -124,7 +124,10 @@ async function checkSiteDirectory(domain: string): Promise<boolean> {
  * Check DNS resolution by verifying the domain serves our verification file
  * This works with any CDN/proxy setup (Cloudflare, etc.)
  */
-async function checkDnsResolution(domain: string, serverIp: string): Promise<{ pointsToServer: boolean; resolvedIp: string | null; isProxied?: boolean; verificationMethod?: string }> {
+async function checkDnsResolution(
+  domain: string,
+  serverIp: string,
+): Promise<{ pointsToServer: boolean; resolvedIp: string | null; isProxied?: boolean; verificationMethod?: string }> {
   try {
     // First, get the resolved IP for display purposes
     const { stdout } = await execAsync(`host -t A ${domain} 2>/dev/null || echo "NXDOMAIN"`)
@@ -161,13 +164,10 @@ async function checkDnsResolution(domain: string, serverIp: string): Promise<{ p
             pointsToServer,
             resolvedIp,
             isProxied,
-            verificationMethod: protocol
+            verificationMethod: protocol,
           }
         }
-      } catch {
-        // Try next protocol
-        continue
-      }
+      } catch {}
     }
 
     // Verification file not found or unreachable
@@ -177,7 +177,7 @@ async function checkDnsResolution(domain: string, serverIp: string): Promise<{ p
       pointsToServer: directMatch,
       resolvedIp,
       isProxied: false,
-      verificationMethod: directMatch ? "direct-ip" : "none"
+      verificationMethod: directMatch ? "direct-ip" : "none",
     }
   } catch {
     return { pointsToServer: false, resolvedIp: null, verificationMethod: "error" }
@@ -209,17 +209,25 @@ export async function GET(req: NextRequest) {
   const serverIp = serverConfig?.serverIp || "138.201.56.93"
 
   const checks = Object.entries(domains).map(async ([domain, config]) => {
-    const [portListening, httpAccessible, httpsAccessible, systemdService, caddyConfigured, siteDirectoryExists, dnsCheck, vitePortCheck] =
-      await Promise.all([
-        checkPortListening(config.port),
-        checkHttpAccessible(domain),
-        checkHttpsAccessible(domain),
-        checkSystemdService(domain),
-        checkCaddyConfigured(domain),
-        checkSiteDirectory(domain),
-        checkDnsResolution(domain, serverIp),
-        checkViteConfigPort(domain, config.port),
-      ])
+    const [
+      portListening,
+      httpAccessible,
+      httpsAccessible,
+      systemdService,
+      caddyConfigured,
+      siteDirectoryExists,
+      dnsCheck,
+      vitePortCheck,
+    ] = await Promise.all([
+      checkPortListening(config.port),
+      checkHttpAccessible(domain),
+      checkHttpsAccessible(domain),
+      checkSystemdService(domain),
+      checkCaddyConfigured(domain),
+      checkSiteDirectory(domain),
+      checkDnsResolution(domain, serverIp),
+      checkViteConfigPort(domain, config.port),
+    ])
 
     return {
       domain,
@@ -251,7 +259,10 @@ export async function GET(req: NextRequest) {
   return res
 }
 
-async function checkViteConfigPort(domain: string, expectedPort: number): Promise<{ mismatch: boolean; actualPort: number | null; hasSystemdOverride: boolean }> {
+async function checkViteConfigPort(
+  domain: string,
+  expectedPort: number,
+): Promise<{ mismatch: boolean; actualPort: number | null; hasSystemdOverride: boolean }> {
   try {
     const sitePath = `/srv/webalive/sites/${domain}`
     const slug = domain.replace(/[^a-zA-Z0-9]/g, "-")
@@ -286,7 +297,7 @@ async function checkViteConfigPort(domain: string, expectedPort: number): Promis
       return { mismatch: hasSystemdOverride, actualPort: null, hasSystemdOverride }
     }
 
-    const actualPort = Number.parseInt(match[1])
+    const actualPort = Number.parseInt(match[1], 10)
     const mismatch = actualPort !== expectedPort || hasSystemdOverride
 
     return { mismatch, actualPort, hasSystemdOverride }

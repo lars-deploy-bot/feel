@@ -1,4 +1,4 @@
-import { Code, Edit3, FileText, FolderOpen, Search, Terminal, Workflow } from "lucide-react"
+import { Code, CreditCard, Edit3, FileText, FolderOpen, Search, Terminal, Workflow } from "lucide-react"
 
 /**
  * Maps tool names to their corresponding Lucide icon component
@@ -15,6 +15,9 @@ export function getToolIcon(toolName: string) {
   if (name === "glob") return FolderOpen
   if (name === "bash") return Terminal
   if (name === "task") return Workflow
+
+  // Stripe MCP tools
+  if (name.includes("stripe")) return CreditCard
 
   // Fallback patterns for variations
   if (name.includes("read")) return FileText

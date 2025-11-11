@@ -1,13 +1,13 @@
-import { describe, expect, it, beforeEach, afterEach } from "vitest"
+import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import {
+  isConversationLocked,
+  sessionKey,
   tryLockConversation,
   unlockConversation,
-  sessionKey,
-  isConversationLocked,
 } from "@/features/auth/lib/sessionStore"
-import { createNDJSONStream } from "@/lib/stream/ndjson-stream-handler"
+import { cancelStream, registerCancellation } from "@/lib/stream/cancellation-registry"
 import type { CancelState } from "@/lib/stream/ndjson-stream-handler"
-import { registerCancellation, cancelStream } from "@/lib/stream/cancellation-registry"
+import { createNDJSONStream } from "@/lib/stream/ndjson-stream-handler"
 
 /**
  * STRICT Integration Tests for Explicit Cancellation
@@ -81,7 +81,7 @@ describe("Explicit Cancellation Integration (STRICT)", () => {
       reader1.cancel() // Unblock the read
 
       // Wait for lock to be released
-      await new Promise((resolve) => {
+      await new Promise(resolve => {
         const checkLock = setInterval(() => {
           if (lock1Released) {
             clearInterval(checkLock)
@@ -154,7 +154,7 @@ describe("Explicit Cancellation Integration (STRICT)", () => {
         reader.cancel() // Unblock the read
 
         // Wait for lock release (with timeout)
-        await new Promise((resolve) => {
+        await new Promise(resolve => {
           const check = setInterval(() => {
             if (lockReleased) {
               clearInterval(check)
@@ -189,7 +189,7 @@ describe("Explicit Cancellation Integration (STRICT)", () => {
 
       // Stream with buffered events (all sent at once)
       const events = Array.from({ length: 1000 }, (_, i) => ({ type: "message", data: { i } }))
-      const lines = events.map((e) => JSON.stringify(e)).join("\n") + "\n"
+      const lines = `${events.map(e => JSON.stringify(e)).join("\n")}\n`
 
       const childStream = new ReadableStream({
         start(controller) {
@@ -284,7 +284,7 @@ describe("Explicit Cancellation Integration (STRICT)", () => {
       reader.cancel()
 
       // Wait for cleanup
-      await new Promise((resolve) => setTimeout(resolve, 100))
+      await new Promise(resolve => setTimeout(resolve, 100))
 
       // CRITICAL: Must be called exactly ONCE even though we called reader.cancel()
       // which triggers the cancel() method in addition to the explicit flag
@@ -346,7 +346,7 @@ describe("Explicit Cancellation Integration (STRICT)", () => {
       expect(cancelState.requested).toBe(true)
 
       // Wait for lock release
-      await new Promise((resolve) => {
+      await new Promise(resolve => {
         const check = setInterval(() => {
           if (lock1Released) {
             clearInterval(check)
@@ -417,7 +417,7 @@ describe("Explicit Cancellation Integration (STRICT)", () => {
       expect(result3).toBe(false) // Already cancelled
 
       // Wait for cleanup
-      await new Promise((resolve) => {
+      await new Promise(resolve => {
         const check = setInterval(() => {
           if (lockReleased) {
             clearInterval(check)
@@ -489,7 +489,7 @@ describe("Explicit Cancellation Integration (STRICT)", () => {
       }
 
       // Wait for cleanup
-      await new Promise((resolve) => {
+      await new Promise(resolve => {
         const check = setInterval(() => {
           if (lockReleased) {
             clearInterval(check)
@@ -550,7 +550,7 @@ describe("Explicit Cancellation Integration (STRICT)", () => {
       }
 
       // Wait for cleanup
-      await new Promise((resolve) => {
+      await new Promise(resolve => {
         const check = setInterval(() => {
           if (lockReleased) {
             clearInterval(check)

@@ -323,8 +323,8 @@ export default function DNSSetupPage() {
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="mb-12">
-          <h1 className="text-4xl font-light tracking-tight text-gray-900 mb-4">Connect your domain</h1>
-          <p className="text-lg text-gray-500 font-light">Just a few quick steps to point your domain to us.</p>
+          <h1 className="text-4xl font-normal tracking-tight text-gray-900 mb-4">Connect your domain</h1>
+          <p className="text-lg text-gray-500 font-normal">Just a few quick steps to point your domain to us.</p>
         </div>
 
         {/* Progress */}

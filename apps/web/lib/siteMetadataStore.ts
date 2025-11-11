@@ -28,7 +28,7 @@ export const siteMetadataStore: SiteMetadataStore = {
   async getSite(slug: string): Promise<SiteMetadata | null> {
     try {
       const domain = buildSubdomain(slug)
-      const workspacePath = path.join(WORKSPACE_BASE, domain, "user")
+      const workspacePath = path.join(WORKSPACE_BASE, domain)
       const metadataPath = getMetadataPath(workspacePath)
 
       const content = await fs.readFile(metadataPath, "utf-8")
@@ -51,7 +51,7 @@ export const siteMetadataStore: SiteMetadataStore = {
 
   async setSite(slug: string, metadata: SiteMetadata): Promise<void> {
     try {
-      const workspacePath = path.join(WORKSPACE_BASE, metadata.domain, "user")
+      const workspacePath = path.join(WORKSPACE_BASE, metadata.domain)
       const metadataPath = getMetadataPath(workspacePath)
 
       const dir = path.dirname(metadataPath)

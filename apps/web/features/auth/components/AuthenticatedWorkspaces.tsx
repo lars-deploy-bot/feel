@@ -47,7 +47,7 @@ export function AuthenticatedWorkspaces({ currentWorkspace }: AuthenticatedWorks
     >
       <div className="flex items-center gap-2 mb-3">
         <CheckCircle2 className="h-4 w-4 text-green-500" />
-        <p className="text-sm font-light text-black/60">You also have access to:</p>
+        <p className="text-sm font-normal text-black/60">You also have access to:</p>
       </div>
 
       <div className="space-y-2">
@@ -62,7 +62,7 @@ export function AuthenticatedWorkspaces({ currentWorkspace }: AuthenticatedWorks
             className="block p-3 border border-black/10 rounded-lg hover:border-black/20 hover:bg-black/5 transition-all duration-200 group"
           >
             <div className="flex items-center justify-between">
-              <span className="font-light text-black/80 group-hover:text-black">{workspace}</span>
+              <span className="font-normal text-black/80 group-hover:text-black">{workspace}</span>
               <ExternalLink className="h-4 w-4 text-black/40 group-hover:text-black/60" />
             </div>
           </motion.a>

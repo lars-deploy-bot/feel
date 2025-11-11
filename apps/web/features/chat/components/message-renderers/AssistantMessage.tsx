@@ -19,6 +19,7 @@
 import type { SDKAssistantMessage } from "@anthropic-ai/claude-agent-sdk"
 import { ChevronRight } from "lucide-react"
 import { useState } from "react"
+import { OAuthErrorMessage } from "@/components/ui/chat/errors/OAuthErrorMessage"
 import { MarkdownDisplay } from "@/components/ui/chat/format/MarkdownDisplay"
 import { ToolInputRouter } from "@/components/ui/chat/tools/ToolInputRouter"
 import { useDebugVisible } from "@/lib/stores/debug-store"
@@ -29,6 +30,16 @@ import { isTextBlock, isToolUseBlock } from "@/types/guards/content"
 
 interface AssistantMessageProps {
   content: SDKAssistantMessage
+}
+
+/**
+ * Detects OAuth/authentication errors in error messages
+ */
+function isOAuthError(text: string): boolean {
+  return (
+    text.includes("authentication_error") &&
+    (text.includes("OAuth token has expired") || text.includes("Please run /login"))
+  )
 }
 
 export function AssistantMessage({ content }: AssistantMessageProps) {
@@ -45,6 +56,11 @@ function ToolUseItem({ item }: { item: ContentItem }): React.ReactNode {
   const isDebugMode = useDebugVisible()
   if (isTextBlock(item)) {
     const text = item.text
+
+    // Check for OAuth/authentication errors first
+    if (isOAuthError(text)) {
+      return <OAuthErrorMessage errorText={text} />
+    }
 
     // Use MarkdownDisplay if the text contains markdown, otherwise render plain text
     if (hasMarkdown(text)) {

@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, vi } from "vitest"
+import { beforeEach, describe, expect, it } from "vitest"
 
 /**
  * API Key Fallback System - REAL Production Tests
@@ -16,7 +16,7 @@ import { describe, expect, it, beforeEach, vi } from "vitest"
 
 describe("API Key Fallback - Real Production Scenarios", () => {
   const COST_ESTIMATE = 100
-  const STARTING_BALANCE = 200
+  const _STARTING_BALANCE = 200
 
   /**
    * Simulates domain-passwords state
@@ -84,13 +84,13 @@ describe("API Key Fallback - Real Production Scenarios", () => {
       // 3. Stream fails → tokens lost!
 
       tokenState["timing.test"] = { tokens: 100 }
-      const before = tokenState["timing.test"].tokens
+      const _before = tokenState["timing.test"].tokens
 
       // If implementation deducts FIRST:
       tokenState["timing.test"].tokens -= 100 // ❌ DEDUCTED
 
       // Then stream fails:
-      const streamInitFailed = true
+      const _streamInitFailed = true
 
       // Result: tokens spent but stream never started
       expect(tokenState["timing.test"].tokens).toBe(0) // Deducted anyway
@@ -108,8 +108,8 @@ describe("API Key Fallback - Real Production Scenarios", () => {
       // WRONG: deduct COST_ESTIMATE (100) for every request
       // RIGHT: deduct actual tokens from API response
 
-      const estimate = COST_ESTIMATE // 100
-      const actualUsage = 23 // API actually used 23 tokens
+      const _estimate = COST_ESTIMATE // 100
+      const _actualUsage = 23 // API actually used 23 tokens
 
       // If using estimate: 200 - 100 = 100 remaining
       // User can only make 2 requests (2 × 100 = 200)
@@ -137,7 +137,7 @@ describe("API Key Fallback - Real Production Scenarios", () => {
       expect(validKey).toMatch(/^sk-ant-/)
 
       // Invalid keys user might provide:
-      const invalidKeys = [
+      const _invalidKeys = [
         "sk-invalid", // Wrong prefix
         "my-api-key", // Not Anthropic format
         "sk-ant-", // Incomplete
@@ -158,7 +158,7 @@ describe("API Key Fallback - Real Production Scenarios", () => {
       tokenState["invalid-key.test"] = { tokens: 50 }
 
       const userProvidedKey = "not-a-valid-key"
-      const isValidKey = userProvidedKey.startsWith("sk-ant-")
+      const _isValidKey = userProvidedKey.startsWith("sk-ant-")
 
       // Current logic might be:
       // if (workspace >= COST_ESTIMATE) use workspace
@@ -335,7 +335,7 @@ describe("API Key Fallback - Real Production Scenarios", () => {
       // Decision logic (line 238-240):
       // source = workspaceTokens >= COST_ESTIMATE ? "workspace" : "user_provided"
 
-      const userHasApiKey = true
+      const _userHasApiKey = true
       const workspaceTokens = 150
 
       // Should use workspace (150 >= 100)
@@ -386,10 +386,10 @@ describe("API Key Fallback - Real Production Scenarios", () => {
       // 95-99: false (fallback)
       // 100-105: true (workspace)
 
-      const boundary = results.filter((r) => r.tokens === 100)[0]
+      const boundary = results.filter(r => r.tokens === 100)[0]
       expect(boundary?.useWorkspace).toBe(true)
 
-      const below = results.filter((r) => r.tokens === 99)[0]
+      const below = results.filter(r => r.tokens === 99)[0]
       expect(below?.useWorkspace).toBe(false)
     })
   })

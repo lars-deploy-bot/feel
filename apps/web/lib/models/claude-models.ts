@@ -10,6 +10,12 @@ export const CLAUDE_MODELS = {
 
 export type ClaudeModel = (typeof CLAUDE_MODELS)[keyof typeof CLAUDE_MODELS]
 
+/**
+ * Default model used for credit users and as initial state
+ * Single source of truth for default model selection
+ */
+export const DEFAULT_MODEL: ClaudeModel = CLAUDE_MODELS.HAIKU_4_5
+
 const VALID_MODELS = new Set<string>(Object.values(CLAUDE_MODELS))
 
 export function isValidClaudeModel(value: unknown): value is ClaudeModel {

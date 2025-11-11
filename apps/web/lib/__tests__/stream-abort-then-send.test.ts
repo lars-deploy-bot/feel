@@ -1,12 +1,12 @@
-import { describe, expect, it, beforeEach, afterEach, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import {
+  isConversationLocked,
+  sessionKey,
   tryLockConversation,
   unlockConversation,
-  sessionKey,
-  isConversationLocked,
 } from "@/features/auth/lib/sessionStore"
-import { createNDJSONStream } from "@/lib/stream/ndjson-stream-handler"
 import { setupAbortHandler } from "@/lib/stream/abort-handler"
+import { createNDJSONStream } from "@/lib/stream/ndjson-stream-handler"
 
 /**
  * Stream Abort → Immediate Send Integration Test
@@ -84,7 +84,7 @@ describe("Stream Abort → Send Integration (REAL)", () => {
     abortController.abort()
 
     // Wait for abort handler to process
-    await new Promise((resolve) => setTimeout(resolve, 10))
+    await new Promise(resolve => setTimeout(resolve, 10))
   }
 
   describe("Stream Completion Releases Lock (Success Path)", () => {
@@ -202,7 +202,7 @@ describe("Stream Abort → Send Integration (REAL)", () => {
 
   describe("Stream Abort Releases Lock (Abort Path)", () => {
     it("should release lock when stream is aborted mid-stream", async () => {
-      let callbackFired = false
+      let _callbackFired = false
 
       const childStream = createMockChildStream([
         { type: "start", data: { message: "Starting" } },
@@ -225,7 +225,7 @@ describe("Stream Abort → Send Integration (REAL)", () => {
         conversationWorkspace: workspace,
         tokenSource: "user_provided",
         onStreamComplete: () => {
-          callbackFired = true
+          _callbackFired = true
           unlockConversation(convKey)
         },
         cancelState: { requested: false, reader: null },
@@ -278,7 +278,7 @@ describe("Stream Abort → Send Integration (REAL)", () => {
 
       // Abort immediately
       abortController.abort()
-      await new Promise((resolve) => setTimeout(resolve, 10))
+      await new Promise(resolve => setTimeout(resolve, 10))
 
       expect(isConversationLocked(convKey)).toBe(false)
     })
@@ -509,9 +509,7 @@ describe("Stream Abort → Send Integration (REAL)", () => {
 
       const abortController1 = new AbortController()
 
-      const childStream1 = createMockChildStream([
-        { type: "message", data: { content: "Conv1" } },
-      ])
+      const childStream1 = createMockChildStream([{ type: "message", data: { content: "Conv1" } }])
 
       const stream1 = createNDJSONStream({
         childStream: childStream1,
@@ -591,9 +589,7 @@ describe("Stream Abort → Send Integration (REAL)", () => {
     it("should not double-call onStreamComplete", async () => {
       let callCount = 0
 
-      const childStream = createMockChildStream([
-        { type: "message", data: { content: "Test" } },
-      ])
+      const childStream = createMockChildStream([{ type: "message", data: { content: "Test" } }])
 
       const locked = tryLockConversation(convKey)
       expect(locked).toBe(true)
@@ -620,9 +616,7 @@ describe("Stream Abort → Send Integration (REAL)", () => {
 
   describe("Cleanup Without Callback (Backward Compatibility)", () => {
     it("should work without onStreamComplete callback", async () => {
-      const childStream = createMockChildStream([
-        { type: "message", data: { content: "Test" } },
-      ])
+      const childStream = createMockChildStream([{ type: "message", data: { content: "Test" } }])
 
       // Create stream WITHOUT callback
       const stream = createNDJSONStream({

@@ -17,6 +17,8 @@ supertemplate/
     │   └── upload-image-crop-v1.0.0.md
     ├── backend/                    # API servers, databases, backend logic
     │   └── vite-api-plugin-v1.0.0.md
+    ├── content-management/         # Recipe systems, blogs, CMS
+    │   └── recipe-system-interactive-v1.0.0.md
     └── ui-components/              # Buttons, modals, accordions, UI patterns
         └── template-browser-v1.0.0.md
 ```
@@ -50,6 +52,13 @@ API servers, databases, and backend logic.
 - Database setup
 - REST endpoints
 - Authentication
+
+### Content Management
+Recipe systems, blogs, and content organization.
+- Interactive recipe systems
+- Blog CMS
+- Content editors
+- Tagging and categorization
 
 ### UI Components
 Reusable interface components and patterns.

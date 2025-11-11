@@ -65,7 +65,7 @@ export function AddWorkspaceModal({ onClose, onSuccess }: AddWorkspaceModalProps
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="domain" className="block text-xs text-black/60 dark:text-white/60 mb-2 font-light">
+            <label htmlFor="domain" className="block text-xs text-black/60 dark:text-white/60 mb-2 font-normal">
               Domain name
             </label>
             <input
@@ -83,7 +83,7 @@ export function AddWorkspaceModal({ onClose, onSuccess }: AddWorkspaceModalProps
           </div>
 
           <div>
-            <label htmlFor="passcode" className="block text-xs text-black/60 dark:text-white/60 mb-2 font-light">
+            <label htmlFor="passcode" className="block text-xs text-black/60 dark:text-white/60 mb-2 font-normal">
               Passcode
             </label>
             <input

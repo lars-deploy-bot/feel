@@ -20,32 +20,33 @@ interface ToolMetadata {
 
 const TOOL_REGISTRY: ToolMetadata[] = [
   // Meta tools
-  {
-    name: "search_tools",
-    category: "meta",
-    description: "Discovers available tools with progressive disclosure. Start here to find what tools exist.",
-    contextCost: "low",
-    parameters: [
-      {
-        name: "query",
-        type: "string",
-        required: false,
-        description: "Search query (e.g., 'logs', 'guides', 'debugging')",
-      },
-      {
-        name: "category",
-        type: "string",
-        required: false,
-        description: "Filter by category",
-      },
-      {
-        name: "detail_level",
-        type: "string",
-        required: false,
-        description: "'minimal', 'standard', or 'full'. Default: 'standard'",
-      },
-    ],
-  },
+  // NOTE: search_tools commented out - not available in search results
+  // {
+  //   name: "search_tools",
+  //   category: "meta",
+  //   description: "Discovers available tools with progressive disclosure. Start here to find what tools exist.",
+  //   contextCost: "low",
+  //   parameters: [
+  //     {
+  //       name: "query",
+  //       type: "string",
+  //       required: false,
+  //       description: "Search query (e.g., 'logs', 'guides', 'debugging')",
+  //     },
+  //     {
+  //       name: "category",
+  //       type: "string",
+  //       required: false,
+  //       description: "Filter by category",
+  //     },
+  //     {
+  //       name: "detail_level",
+  //       type: "string",
+  //       required: false,
+  //       description: "'minimal', 'standard', or 'full'. Default: 'standard'",
+  //     },
+  //   ],
+  // },
 
   // Composite tools (reduce round trips)
   {
@@ -232,6 +233,15 @@ const TOOL_REGISTRY: ToolMetadata[] = [
         description: "Workspace domain",
       },
     ],
+  },
+
+  // External MCP Servers (workspace-specific)
+  {
+    name: "stripe",
+    category: "external-mcp",
+    description:
+      "Stripe payment integration (larsvandeneeden.com only). Access to Stripe API for payments, customers, subscriptions, etc.",
+    contextCost: "medium",
   },
 ]
 

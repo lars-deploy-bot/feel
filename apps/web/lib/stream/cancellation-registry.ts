@@ -117,7 +117,9 @@ export function startTTLCleanup(): void {
 
     for (const [requestId, entry] of registry) {
       if (now - entry.createdAt > TTL_MS) {
-        console.warn(`[Registry TTL] Cleaning up stale entry: ${requestId} (age: ${Math.round((now - entry.createdAt) / 1000)}s)`)
+        console.warn(
+          `[Registry TTL] Cleaning up stale entry: ${requestId} (age: ${Math.round((now - entry.createdAt) / 1000)}s)`,
+        )
         entry.cancel()
         registry.delete(requestId)
         cleanedCount++

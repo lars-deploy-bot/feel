@@ -94,6 +94,86 @@ function ToolResult({ result }: { result: ToolResultContent }) {
         case "task":
           preview = "completed"
           break
+        case "mcp__stripe__list_subscriptions":
+          // Parse the JSON to count subscriptions
+          try {
+            let subscriptions = content
+            // Handle MCP text wrapper format
+            if (content[0]?.type === "text" && content[0]?.text) {
+              subscriptions = JSON.parse(content[0].text)
+            }
+            if (Array.isArray(subscriptions)) {
+              preview = `${subscriptions.length} subscription${subscriptions.length !== 1 ? "s" : ""}`
+            }
+          } catch {
+            preview = "subscriptions"
+          }
+          break
+        case "mcp__stripe__list_customers":
+          // Parse the JSON to count customers
+          try {
+            let data = content
+            // Handle MCP text wrapper format
+            if (content[0]?.type === "text" && content[0]?.text) {
+              data = JSON.parse(content[0].text)
+            }
+            const customers = data?.data || data
+            if (Array.isArray(customers)) {
+              preview = `${customers.length} customer${customers.length !== 1 ? "s" : ""}`
+            }
+          } catch {
+            preview = "customers"
+          }
+          break
+        case "mcp__stripe__fetch_stripe_resources":
+          // Parse the resources to count them
+          try {
+            if (Array.isArray(content)) {
+              const count = content.filter(item => item.type === "text").length
+              preview = `${count} resource${count !== 1 ? "s" : ""}`
+            }
+          } catch {
+            preview = "resources"
+          }
+          break
+        case "mcp__stripe__retrieve_balance":
+          preview = "balance"
+          break
+        case "mcp__stripe__get_stripe_account_info":
+          try {
+            if (content[0]?.type === "text" && content[0]?.text) {
+              const account = JSON.parse(content[0].text)
+              preview = account.display_name || "account info"
+            }
+          } catch {
+            preview = "account info"
+          }
+          break
+        case "mcp__stripe__list_payment_intents":
+          try {
+            if (content[0]?.type === "text" && content[0]?.text) {
+              const paymentIntents = JSON.parse(content[0].text)
+              if (Array.isArray(paymentIntents)) {
+                const succeeded = paymentIntents.filter(pi => pi.status === "succeeded").length
+                preview = `${paymentIntents.length} payment${paymentIntents.length !== 1 ? "s" : ""} (${succeeded} succeeded)`
+              }
+            }
+          } catch {
+            preview = "payment intents"
+          }
+          break
+        case "mcp__stripe__search_stripe_resources":
+          try {
+            if (content[0]?.type === "text" && content[0]?.text) {
+              const data = JSON.parse(content[0].text)
+              if (data.results && Array.isArray(data.results)) {
+                preview = `${data.results.length} result${data.results.length !== 1 ? "s" : ""}`
+              }
+            }
+          } catch {
+            preview = "search results"
+          }
+          break
       }
     } catch (_e) {
       // Fall through

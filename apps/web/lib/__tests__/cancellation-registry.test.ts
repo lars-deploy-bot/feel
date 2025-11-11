@@ -1,10 +1,10 @@
-import { describe, expect, test, beforeEach } from "bun:test"
+import { describe, expect, test } from "bun:test"
 import {
-  registerCancellation,
   cancelStream,
   cancelStreamByConversationKey,
-  unregisterCancellation,
   getRegistrySize,
+  registerCancellation,
+  unregisterCancellation,
 } from "../stream/cancellation-registry"
 
 describe("Cancellation Registry", () => {

@@ -37,7 +37,7 @@ export interface AssistantMessageContent {
  * Type guard for assistant message with usage data
  */
 export function isAssistantMessageWithUsage(
-  event: BridgeMessageEvent
+  event: BridgeMessageEvent,
 ): event is BridgeMessageEvent & { data: { content: AssistantMessageContent } } {
   if (event.data.messageType !== "assistant") return false
 
@@ -47,8 +47,5 @@ export function isAssistantMessageWithUsage(
   if (typeof content.message.usage !== "object" || content.message.usage === null) return false
 
   const usage = content.message.usage
-  return (
-    typeof usage.input_tokens === "number" &&
-    typeof usage.output_tokens === "number"
-  )
+  return typeof usage.input_tokens === "number" && typeof usage.output_tokens === "number"
 }

@@ -41,11 +41,11 @@ function renderMessageContent(message: UIMessage): React.ReactNode {
       return (
         <div className="flex justify-end mb-6">
           <div className="max-w-2xl">
-            <div className="text-black/60 dark:text-white/60 text-xs mb-2 text-right font-thin">you</div>
+            <div className="text-black/60 dark:text-white/60 text-xs mb-2 text-right font-normal">you</div>
             {hasMarkdown(userContent) ? (
               <MarkdownDisplay content={userContent} />
             ) : (
-              <div className="whitespace-pre-wrap text-black dark:text-white font-thin leading-relaxed">
+              <div className="whitespace-pre-wrap text-black dark:text-white font-normal leading-relaxed">
                 {userContent}
               </div>
             )}

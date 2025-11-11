@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { motion } from "framer-motion"
+import { useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -42,11 +43,15 @@ const itemVariants = {
 }
 
 export function SubdomainDeployForm() {
+  const searchParams = useSearchParams()
   const [isDeploying, setIsDeploying] = useState(false)
   const [deploymentStatus, setDeploymentStatus] = useState<DeploySubdomainResponse | null>(null)
   const [showPassword, setShowPassword] = useState(false)
   const [countdown, setCountdown] = useState(10)
   const isDev = process.env.NODE_ENV === "development"
+
+  // Extract the 'q' search parameter for site ideas
+  const siteIdeasFromUrl = searchParams.get("q") || ""
 
   const simulateSuccess = () => {
     setDeploymentStatus({
@@ -85,7 +90,7 @@ export function SubdomainDeployForm() {
     defaultValues: {
       slug: "",
       email: "",
-      siteIdeas: "",
+      siteIdeas: siteIdeasFromUrl,
       password: "",
     },
   })
@@ -156,8 +161,8 @@ export function SubdomainDeployForm() {
     <motion.div className="w-full max-w-md" variants={containerVariants} initial="hidden" animate="visible">
       {/* Header */}
       <motion.div variants={itemVariants} className="text-center mb-12">
-        <h1 className="text-4xl font-light mb-3 text-black">Launch Your Site</h1>
-        <p className="text-base text-black/50 font-light">Get online in 30 seconds</p>
+        <h1 className="text-4xl font-normal mb-3 text-black">Launch Your Site</h1>
+        <p className="text-base text-black/50 font-normal">Get online in 30 seconds</p>
 
         {/* Debug button (dev only) */}
         {isDev && (
@@ -182,8 +187,8 @@ export function SubdomainDeployForm() {
             <EmailField register={register} errors={errors} isDeploying={isDeploying} />
           </motion.div>
 
-          {/* Hidden field for siteIdeas */}
-          <input type="hidden" {...register("siteIdeas")} value="" />
+          {/* Hidden field for siteIdeas - populated from 'q' search param */}
+          <input type="hidden" {...register("siteIdeas")} />
 
           <motion.div variants={itemVariants}>
             <PasswordField
@@ -197,7 +202,9 @@ export function SubdomainDeployForm() {
           </motion.div>
 
           <motion.div variants={itemVariants} className="space-y-3">
-            <p className="text-center text-sm text-black/50 font-light">You'll be able to start building immediately</p>
+            <p className="text-center text-sm text-black/50 font-normal">
+              You'll be able to start building immediately
+            </p>
             <SubmitButton
               isDeploying={isDeploying}
               isValid={isValid && !errors.slug && !errors.email && !errors.password}

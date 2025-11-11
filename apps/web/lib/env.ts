@@ -3,6 +3,8 @@
  * Validates required vars at build/startup time
  */
 
+import { DEFAULT_MODEL } from "./models/claude-models"
+
 interface Env {
   ANTH_API_SECRET: string
   CLAUDE_MODEL: string
@@ -38,7 +40,7 @@ function validateEnv(): Env {
 
   return {
     ANTH_API_SECRET: apiKey || "sk-mock-key-for-development",
-    CLAUDE_MODEL: process.env.CLAUDE_MODEL ?? "claude-haiku-4-5",
+    CLAUDE_MODEL: process.env.CLAUDE_MODEL ?? DEFAULT_MODEL,
     CLAUDE_MAX_TURNS: process.env.CLAUDE_MAX_TURNS ?? "25",
     NODE_ENV: process.env.NODE_ENV ?? "production",
     WORKSPACE_BASE: process.env.WORKSPACE_BASE ?? "/srv/webalive/sites",

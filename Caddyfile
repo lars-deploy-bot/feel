@@ -984,3 +984,50 @@ startup.alive.best {
         header_up X-Forwarded-Proto {scheme}
     }
 }
+
+riggedwheel.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3372 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+
+
+
+mealsnap.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3373 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+larsondj.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3374 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+rmk2000test.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3375 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}

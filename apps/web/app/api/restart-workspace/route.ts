@@ -49,7 +49,7 @@ export async function POST(req: Request) {
           encoding: "utf-8",
           timeout: 5000,
         })
-      } catch (cacheError) {
+      } catch (_cacheError) {
         // Cache might not exist, continue with restart
         console.log(`Vite cache not found or already cleared: ${viteCachePath}`)
       }

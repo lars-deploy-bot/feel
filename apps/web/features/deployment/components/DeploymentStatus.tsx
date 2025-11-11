@@ -15,13 +15,13 @@ interface DeploymentStatusProps {
 }
 
 export function DeploymentStatus({ status, domain, error, errorDetails }: DeploymentStatusProps) {
-  const [countdown, setCountdown] = useState(20)
+  const [countdown, setCountdown] = useState(30)
   const [_copied, setCopied] = useState(false)
 
   // Countdown timer for loading state
   useEffect(() => {
     if (status === "loading") {
-      setCountdown(20) // Reset to 20 when loading starts
+      setCountdown(30) // Reset to 30 when loading starts
       const interval = setInterval(() => {
         setCountdown(prev => {
           if (prev <= 1) {
@@ -57,7 +57,7 @@ export function DeploymentStatus({ status, domain, error, errorDetails }: Deploy
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="text-center text-sm sm:text-base font-light text-black/50 mb-8 sm:mb-16"
+          className="text-center text-sm sm:text-base font-normal text-black/50 mb-8 sm:mb-16"
         >
           You just got your own website
         </motion.p>
@@ -107,7 +107,7 @@ export function DeploymentStatus({ status, domain, error, errorDetails }: Deploy
           <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
           <div>
             <h3 className="font-medium text-red-900 mb-1">Deployment Failed</h3>
-            <p className="text-red-700 text-sm font-light mb-3">{error}</p>
+            <p className="text-red-700 text-sm font-normal mb-3">{error}</p>
             {errorDetails && errorDetails.length > 0 && (
               <details>
                 <summary className="cursor-pointer font-medium text-red-700 text-sm hover:text-red-800">
@@ -126,8 +126,8 @@ export function DeploymentStatus({ status, domain, error, errorDetails }: Deploy
 
   // Loading state - Clean and minimal
   const stages = ["Launching", "Deploying", "Setting up your site"]
-  const currentStage = countdown > 13 ? 0 : countdown > 6 ? 1 : 2
-  const progress = ((20 - countdown) / 20) * 100
+  const currentStage = countdown > 20 ? 0 : countdown > 10 ? 1 : 2
+  const progress = ((30 - countdown) / 30) * 100
 
   return (
     <motion.div
@@ -180,7 +180,7 @@ export function DeploymentStatus({ status, domain, error, errorDetails }: Deploy
         transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
         className="mb-6"
       >
-        <h3 className="text-xl font-light text-black text-center">{stages[currentStage]}</h3>
+        <h3 className="text-xl font-normal text-black text-center">{stages[currentStage]}</h3>
       </motion.div>
 
       {/* Time remaining */}
@@ -198,11 +198,11 @@ export function DeploymentStatus({ status, domain, error, errorDetails }: Deploy
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
           >
-            <span className="text-4xl font-light text-black tabular-nums">{countdown}</span>
+            <span className="text-4xl font-normal text-black tabular-nums">{countdown}</span>
           </motion.div>
 
           {/* Label */}
-          <p className="text-sm font-light text-black/50">seconds remaining</p>
+          <p className="text-sm font-normal text-black/50">seconds remaining</p>
         </motion.div>
       )}
     </motion.div>

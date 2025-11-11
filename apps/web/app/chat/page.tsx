@@ -73,7 +73,7 @@ function ChatPageContent() {
    * (handles super-early Stop case where user clicks Stop < 100ms after request).
    */
   const currentRequestIdRef = useRef<string | null>(null)
-  const requestIdPromiseRef = useRef<Promise<string> | null>(null)
+  const _requestIdPromiseRef = useRef<Promise<string> | null>(null)
   const isSubmitting = useRef(false)
   const chatInputRef = useRef<ChatInputHandle>(null)
   const dragCounter = useRef(0)
@@ -609,8 +609,7 @@ function ChatPageContent() {
       // Show error message to user (unless it's a conversation busy error which has a toast)
       if (error instanceof Error && error.name !== "AbortError") {
         // Skip adding to chat for conversation busy error since toast already shows it
-        const isConversationBusy =
-          error instanceof HttpError && error.errorCode === ErrorCodes.CONVERSATION_BUSY
+        const isConversationBusy = error instanceof HttpError && error.errorCode === ErrorCodes.CONVERSATION_BUSY
 
         if (!isConversationBusy) {
           const errorMessage: UIMessage = {
@@ -904,9 +903,30 @@ function ChatPageContent() {
           {/* Header */}
           <div className="flex-shrink-0 border-b border-black/10 dark:border-white/10">
             <div className="flex items-center justify-between px-6 py-4 mx-auto w-full md:max-w-2xl">
-              <h1 className="text-lg font-medium text-black dark:text-white">
-                {mounted && isTerminal ? "Chat" : "Chat"}
-              </h1>
+              <div className="flex items-center gap-3">
+                <a
+                  href="https://alive.best"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center hover:opacity-80 transition-opacity"
+                  aria-label="Alive"
+                >
+                  <svg
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="text-black dark:text-white"
+                  >
+                    <circle cx="12" cy="12" r="10" fill="currentColor" fillOpacity="0.1" className="alive-logo-outer" />
+                    <circle cx="12" cy="12" r="4" fill="currentColor" className="alive-logo-inner" />
+                  </svg>
+                </a>
+                <h1 className="text-lg font-medium text-black dark:text-white">
+                  {mounted && isTerminal ? "Chat" : "Chat"}
+                </h1>
+              </div>
               <div className="flex items-center gap-2">
                 {isDevelopment() && (
                   <button

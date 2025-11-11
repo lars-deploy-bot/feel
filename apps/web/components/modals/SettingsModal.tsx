@@ -3,6 +3,7 @@
 import { Bot, Eye, EyeOff, Info, Moon, Settings, Sun, User, X, Zap } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
+import { DEFAULT_STARTING_CREDITS } from "@/lib/credits"
 import {
   useCredits,
   useCreditsError,
@@ -13,7 +14,6 @@ import {
   useUserActions,
 } from "@/lib/providers/UserStoreProvider"
 import { CLAUDE_MODELS, type ClaudeModel, useLLMStore } from "@/lib/stores/llmStore"
-import { DEFAULT_STARTING_CREDITS } from "@/lib/credits"
 
 interface SettingsModalProps {
   onClose: () => void
@@ -190,7 +190,7 @@ function AppearanceSettings() {
 
 function TokensSettings() {
   const credits = useCredits()
-  const tokens = useTokens()
+  const _tokens = useTokens()
   const loading = useCreditsLoading()
   const error = useCreditsError()
   const { fetchCredits } = useUserActions()
@@ -220,9 +220,7 @@ function TokensSettings() {
       {error ? (
         <div className="space-y-3">
           <div className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/30 rounded p-3">
-            {error === "Not authenticated"
-              ? "Please log in to a workspace to view credits"
-              : `Error: ${error}`}
+            {error === "Not authenticated" ? "Please log in to a workspace to view credits" : `Error: ${error}`}
           </div>
           <button
             type="button"
@@ -514,8 +512,8 @@ function AboutSettings() {
     <div className="space-y-4 sm:space-y-6">
       <div>
         <h3 className="text-base sm:text-lg font-medium text-black dark:text-white mb-3">About</h3>
-        <p className="text-sm sm:text-base font-semibold text-black dark:text-white leading-relaxed">
-          We make AI accessible to anyone wanting to build a company.
+        <p className="text-sm sm:text-base text-black dark:text-white leading-relaxed">
+          We help you guide you through creating a company
         </p>
       </div>
     </div>

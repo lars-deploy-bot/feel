@@ -209,8 +209,8 @@ export function DeployForm() {
               ← Back to options
             </motion.button>
             <div>
-              <h1 className="text-5xl font-light tracking-tight text-gray-900 mb-3">Custom domain</h1>
-              <p className="text-lg text-gray-500 font-light max-w-md mx-auto leading-relaxed">
+              <h1 className="text-5xl font-normal tracking-tight text-gray-900 mb-3">Custom domain</h1>
+              <p className="text-lg text-gray-500 font-normal max-w-md mx-auto leading-relaxed">
                 Point your DNS to our server and launch immediately
               </p>
             </div>

@@ -1,8 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { requireSessionUser } from "@/features/auth/lib/auth"
-import { cancelStream, cancelStreamByConversationKey } from "@/lib/stream/cancellation-registry"
 import { sessionKey } from "@/features/auth/lib/sessionStore"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
+import { cancelStream, cancelStreamByConversationKey } from "@/lib/stream/cancellation-registry"
 
 /**
  * Cancel Stream Endpoint
@@ -82,9 +82,7 @@ export async function POST(req: NextRequest) {
         workspace,
         conversationId,
       })
-      console.log(
-        `[Cancel Stream] User ${user.id} cancelling by conversationKey (super-early Stop): ${convKey}`,
-      )
+      console.log(`[Cancel Stream] User ${user.id} cancelling by conversationKey (super-early Stop): ${convKey}`)
 
       try {
         const cancelled = cancelStreamByConversationKey(convKey, user.id)

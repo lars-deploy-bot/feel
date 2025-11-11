@@ -11,13 +11,14 @@ interface SuperTemplatesModalProps {
   onInsertTemplate: (prompt: string) => void
 }
 
-type Category = "sliders" | "maps" | "file-upload" | "backend"
+type Category = "sliders" | "maps" | "file-upload" | "backend" | "content-management"
 
 const categoryLabels: Record<Category, string> = {
   sliders: "Photo Sliders",
   maps: "Maps",
   "file-upload": "File Upload",
   backend: "Backend",
+  "content-management": "Content Management",
 }
 
 export function SuperTemplatesModal({ onClose, onInsertTemplate }: SuperTemplatesModalProps) {
@@ -59,12 +60,11 @@ export function SuperTemplatesModal({ onClose, onInsertTemplate }: SuperTemplate
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/50 z-50"
+      <button
+        type="button"
+        className="fixed inset-0 bg-black/50 z-50 cursor-default"
         onClick={onClose}
         onKeyDown={e => e.key === "Escape" && onClose()}
-        role="button"
-        tabIndex={-1}
         aria-label="Close modal"
       />
 

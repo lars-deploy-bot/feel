@@ -61,10 +61,14 @@ export function ThinkingGroup({ messages, isComplete }: ThinkingGroupProps) {
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
-        className="text-xs font-normal text-black/35 dark:text-white/35 hover:text-black/50 dark:hover:text-white/50 transition-colors flex items-center gap-1"
+        className={`text-xs font-normal flex items-center gap-1 group ${
+          isDebugMode ? "cursor-pointer" : "cursor-default"
+        }`}
       >
         {!isComplete && <ThinkingSpinner />}
-        <span>{isComplete ? "thought" : "thinking"}</span>
+        <span className="text-black/35 dark:text-white/35 group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-black/35 group-hover:via-black/60 group-hover:to-black/35 dark:group-hover:from-white/35 dark:group-hover:via-white/60 dark:group-hover:to-white/35 group-hover:bg-[length:200%_100%] group-hover:bg-clip-text group-hover:animate-shimmer transition-colors">
+          {isComplete ? "thought" : "thinking"}
+        </span>
       </button>
 
       {isExpanded && (

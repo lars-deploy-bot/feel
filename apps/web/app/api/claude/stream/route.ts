@@ -18,9 +18,9 @@ import { addCorsHeaders } from "@/lib/cors-utils"
 import { env } from "@/lib/env"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 import { logInput } from "@/lib/input-logger"
-import { CLAUDE_MODELS } from "@/lib/models/claude-models"
-import { registerCancellation, unregisterCancellation, startTTLCleanup } from "@/lib/stream/cancellation-registry"
-import { createNDJSONStream, type CancelState } from "@/lib/stream/ndjson-stream-handler"
+import { DEFAULT_MODEL } from "@/lib/models/claude-models"
+import { registerCancellation, startTTLCleanup, unregisterCancellation } from "@/lib/stream/cancellation-registry"
+import { type CancelState, createNDJSONStream } from "@/lib/stream/ndjson-stream-handler"
 import type { TokenSource } from "@/lib/tokens"
 import { generateRequestId } from "@/lib/utils"
 import { BodySchema, loadDomainPasswords } from "@/types/guards/api"
@@ -197,7 +197,7 @@ export async function POST(req: NextRequest) {
       // Guard: reject if no sufficient credits AND no API key
       if (workspaceCredits < COST_ESTIMATE && !userApiKey) {
         console.log(
-          `[Claude Stream ${requestId}] Insufficient credits (${workspaceCredits}/${COST_ESTIMATE} required) and no fallback API key`
+          `[Claude Stream ${requestId}] Insufficient credits (${workspaceCredits}/${COST_ESTIMATE} required) and no fallback API key`,
         )
         return NextResponse.json(
           {
@@ -220,7 +220,9 @@ export async function POST(req: NextRequest) {
       if (tokenSource === "workspace") {
         console.log(`[Claude Stream ${requestId}] Using workspace credits (${workspaceCredits} available)`)
       } else {
-        console.log(`[Claude Stream ${requestId}] Using user-provided API key (workspace has ${workspaceCredits} credits)`)
+        console.log(
+          `[Claude Stream ${requestId}] Using user-provided API key (workspace has ${workspaceCredits} credits)`,
+        )
       }
     } catch (workspaceError) {
       console.error(`[Claude Stream ${requestId}] Workspace resolution failed:`, workspaceError)
@@ -282,16 +284,16 @@ export async function POST(req: NextRequest) {
 
     console.log(`[Claude Stream ${requestId}] Working directory: ${cwd}`)
 
-    // Force Haiku for credit users (cost management)
+    // Force default model for credit users (cost management)
     // API key users can choose any model
     const effectiveModel =
       tokenSource === "workspace"
-        ? CLAUDE_MODELS.HAIKU_4_5 // ENFORCED for workspace credits
+        ? DEFAULT_MODEL // ENFORCED for workspace credits
         : userModel || env.CLAUDE_MODEL // User's choice with API key
 
-    if (tokenSource === "workspace" && userModel && userModel !== CLAUDE_MODELS.HAIKU_4_5) {
+    if (tokenSource === "workspace" && userModel && userModel !== DEFAULT_MODEL) {
       console.log(
-        `[Claude Stream ${requestId}] Model override: User requested ${userModel} but forcing ${CLAUDE_MODELS.HAIKU_4_5} for workspace credits`,
+        `[Claude Stream ${requestId}] Model override: User requested ${userModel} but forcing ${DEFAULT_MODEL} for workspace credits`,
       )
     }
     console.log(`[Claude Stream ${requestId}] Claude model: ${effectiveModel}`)
@@ -349,7 +351,7 @@ export async function POST(req: NextRequest) {
     // This allows cancellation to work even if called before stream fully starts
     registerCancellation(requestId, user.id, convKey, () => {
       cancelState.requested = true
-      cancelState.reader?.cancel()  // Interrupt blocked read
+      cancelState.reader?.cancel() // Interrupt blocked read
     })
 
     const childStream = runAgentChild(cwd, {
@@ -369,7 +371,7 @@ export async function POST(req: NextRequest) {
       requestId,
       conversationWorkspace: resolvedWorkspaceName,
       tokenSource,
-      cancelState,  // Pass shared cancellation state
+      cancelState, // Pass shared cancellation state
       onStreamComplete: () => {
         // Guaranteed cleanup: unregister, unlock, callback
         unregisterCancellation(requestId)
@@ -393,8 +395,8 @@ export async function POST(req: NextRequest) {
         "Cache-Control": "no-cache, no-transform",
         Connection: "keep-alive",
         "X-Accel-Buffering": "no",
-        "X-Request-Id": requestId,  // Send requestId in header for immediate client access
-        "Access-Control-Expose-Headers": "X-Request-Id",  // Allow JS to read custom header
+        "X-Request-Id": requestId, // Send requestId in header for immediate client access
+        "Access-Control-Expose-Headers": "X-Request-Id", // Allow JS to read custom header
       },
     })
 

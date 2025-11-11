@@ -34,7 +34,7 @@ export function DeleteModal({
         <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
           <Trash2 className="w-8 h-8 text-red-500" />
         </div>
-        <h3 id="delete-dialog-title" className="text-xl font-light text-gray-800 mb-2 text-center">
+        <h3 id="delete-dialog-title" className="text-xl font-normal text-gray-800 mb-2 text-center">
           {title}
         </h3>
         <div className="text-gray-500 text-sm text-center mb-8">{message}</div>

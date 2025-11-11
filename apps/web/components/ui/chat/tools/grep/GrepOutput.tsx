@@ -29,11 +29,11 @@ export function GrepOutput(props: GrepOutputProps) {
   if ("matches" in props && "total_matches" in props) {
     return (
       <div className="space-y-2">
-        <div className="text-xs text-black/40 dark:text-white/40 font-thin">{props.total_matches} matches</div>
+        <div className="text-xs text-black/40 dark:text-white/40 font-normal">{props.total_matches} matches</div>
         <div className="space-y-3 max-h-80 overflow-auto">
           {props.matches.map((match, index) => (
             <div key={index} className="space-y-1">
-              <div className="text-xs text-black/50 dark:text-white/50 font-thin">
+              <div className="text-xs text-black/50 dark:text-white/50 font-normal">
                 {match.file.split("/").pop()} {match.line_number && `:${match.line_number}`}
               </div>
               {match.before_context?.map((line, i) => (
@@ -60,7 +60,7 @@ export function GrepOutput(props: GrepOutputProps) {
   if ("files" in props && "count" in props) {
     return (
       <div className="space-y-2">
-        <div className="text-xs text-black/40 dark:text-white/40 font-thin">{props.count} files</div>
+        <div className="text-xs text-black/40 dark:text-white/40 font-normal">{props.count} files</div>
         <div className="space-y-1 max-h-80 overflow-auto">
           {props.files.map((file, index) => (
             <div key={index} className="text-xs text-black/60 dark:text-white/60 font-diatype-mono">
@@ -76,7 +76,7 @@ export function GrepOutput(props: GrepOutputProps) {
   if ("counts" in props && "total" in props) {
     return (
       <div className="space-y-2">
-        <div className="text-xs text-black/40 dark:text-white/40 font-thin">{props.total} total matches</div>
+        <div className="text-xs text-black/40 dark:text-white/40 font-normal">{props.total} total matches</div>
         <div className="space-y-1 max-h-80 overflow-auto">
           {props.counts.map((count, index) => (
             <div

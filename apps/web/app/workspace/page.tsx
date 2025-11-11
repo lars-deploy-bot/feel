@@ -93,7 +93,7 @@ function WorkspacePageContent() {
       <main className="min-h-screen bg-white flex items-center justify-center">
         <div className="w-80 text-center">
           <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-black/60 text-sm font-thin">{!mounted ? "loading" : "redirecting"}</p>
+          <p className="text-black/60 text-sm font-normal">{!mounted ? "loading" : "redirecting"}</p>
         </div>
       </main>
     )
@@ -102,15 +102,15 @@ function WorkspacePageContent() {
   return (
     <main className="min-h-screen bg-white flex items-center justify-center">
       <div className="w-96">
-        <h1 className="text-6xl font-thin mb-16 text-black">◯</h1>
+        <h1 className="text-6xl font-normal mb-16 text-black">◯</h1>
 
-        <p className="text-black/60 text-sm mb-12 font-thin">workspace setup</p>
+        <p className="text-black/60 text-sm mb-12 font-normal">workspace setup</p>
 
         <AuthenticatedWorkspaces currentWorkspace={workspace} />
 
         <div className="space-y-8">
           <div>
-            <p className="text-black/40 text-xs mb-4 font-thin">domain name</p>
+            <p className="text-black/40 text-xs mb-4 font-normal">domain name</p>
             <div className="flex gap-3">
               <input
                 id={`workspace-input-${Math.random().toString(36).substring(2, 15)}`}
@@ -123,14 +123,14 @@ function WorkspacePageContent() {
                   setVerifyResult(null)
                 }}
                 placeholder={`myapp.${WILDCARD_DOMAIN}`}
-                className="flex-1 bg-transparent border-0 border-b border-black/20 text-black placeholder-black/40 focus:outline-none focus:border-black pb-3 text-sm font-thin font-mono"
+                className="flex-1 bg-transparent border-0 border-b border-black/20 text-black placeholder-black/40 focus:outline-none focus:border-black pb-3 text-sm font-normal font-mono"
               />
               <Button
                 onClick={verified ? undefined : verifyWorkspace}
                 disabled={verifying || !workspace.trim() || verified}
                 loading={verifying}
                 variant="ghost"
-                className={`!w-auto !px-6 !py-2 !text-xs !font-thin ${
+                className={`!w-auto !px-6 !py-2 !text-xs !font-normal ${
                   verified
                     ? "!text-green-700 !border-green-600 !border-2 hover:!text-black hover:!bg-transparent !cursor-default"
                     : ""
@@ -143,13 +143,13 @@ function WorkspacePageContent() {
             <div className="mt-6 min-h-[80px]">
               {verifyResult?.verified === false && (
                 <>
-                  <p className="text-sm font-thin text-black/60">failed</p>
-                  {verifyResult.error && <p className="text-black/40 text-xs mt-1 font-thin">{verifyResult.error}</p>}
+                  <p className="text-sm font-normal text-black/60">failed</p>
+                  {verifyResult.error && <p className="text-black/40 text-xs mt-1 font-normal">{verifyResult.error}</p>}
                 </>
               )}
 
               {verifyResult?.verified && (
-                <Button onClick={continueToChat} className="!mt-6 !font-thin !text-sm" fullWidth>
+                <Button onClick={continueToChat} className="!mt-6 !font-normal !text-sm" fullWidth>
                   continue
                 </Button>
               )}
@@ -168,7 +168,7 @@ export default function WorkspacePage() {
         <main className="min-h-screen bg-white flex items-center justify-center">
           <div className="w-80 text-center">
             <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-black/60 text-sm font-thin">loading</p>
+            <p className="text-black/60 text-sm font-normal">loading</p>
           </div>
         </main>
       }

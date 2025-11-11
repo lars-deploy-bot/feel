@@ -45,6 +45,7 @@
   },
   "formatter": {
     "enabled": true,
+    "includes": ["**/*", "!**/*.css"],
     "indentStyle": "space",
     "indentWidth": 2,
     "lineEnding": "lf",
@@ -61,19 +62,22 @@
   },
   "overrides": [
     {
-      "includes": ["**/internals-folder/design-system/examples/index.css"],
+      "includes": ["**/*.css"],
       "linter": {
-        "rules": {
-          "suspicious": {
-            "noUnknownAtRules": "off"
-          }
-        }
+        "enabled": false
+      },
+      "formatter": {
+        "enabled": false
       }
     },
     {
-      "includes": ["**/globals.css"],
+      "includes": ["**/DevTerminal.tsx", "**/Sandbox.tsx"],
       "linter": {
-        "enabled": false
+        "rules": {
+          "a11y": {
+            "useSemanticElements": "off"
+          }
+        }
       }
     }
   ]

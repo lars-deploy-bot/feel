@@ -214,7 +214,16 @@ function buildStreamMessage(childEvent: ChildEvent, requestId: string): StreamMe
  * @returns ReadableStream that can be sent as HTTP response
  */
 export function createNDJSONStream(config: StreamHandlerConfig): ReadableStream<Uint8Array> {
-  const { childStream, conversationKey, requestId, conversationWorkspace, tokenSource, onSessionIdReceived, onStreamComplete, cancelState } = config
+  const {
+    childStream,
+    conversationKey,
+    requestId,
+    conversationWorkspace,
+    tokenSource,
+    onSessionIdReceived,
+    onStreamComplete,
+    cancelState,
+  } = config
 
   const decoder = new TextDecoder()
   let cleanupCalled = false // Track if cleanup was already called (shared between start and cancel)

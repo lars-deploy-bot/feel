@@ -1,9 +1,5 @@
-import { describe, expect, it, beforeEach, afterEach, mock } from "bun:test"
-import {
-  registerCancellation,
-  unregisterCancellation,
-  getRegistrySize,
-} from "@/lib/stream/cancellation-registry"
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
+import { getRegistrySize, registerCancellation, unregisterCancellation } from "@/lib/stream/cancellation-registry"
 
 // Mock requireSessionUser
 mock.module("@/features/auth/lib/auth", () => ({

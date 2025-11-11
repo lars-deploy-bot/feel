@@ -111,7 +111,7 @@ export function FeedbackModal({ onClose, workspace, conversationId }: FeedbackMo
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor={textareaId} className="block text-xs text-black/60 dark:text-white/60 mb-2 font-light">
+            <label htmlFor={textareaId} className="block text-xs text-black/60 dark:text-white/60 mb-2 font-normal">
               Tell us what you think
             </label>
             <textarea
@@ -130,7 +130,7 @@ export function FeedbackModal({ onClose, workspace, conversationId }: FeedbackMo
 
           {!accountEmail && (
             <div>
-              <label htmlFor={emailId} className="block text-xs text-black/60 dark:text-white/60 mb-2 font-light">
+              <label htmlFor={emailId} className="block text-xs text-black/60 dark:text-white/60 mb-2 font-normal">
                 Email (optional)
               </label>
               <input
