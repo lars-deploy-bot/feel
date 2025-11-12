@@ -7,6 +7,9 @@ export interface SessionUser {
   workspaces: string[]
 }
 
+// Legacy session format that should be rejected
+const LEGACY_SESSION_VALUE = "1"
+
 export async function getSessionUser(): Promise<SessionUser | null> {
   const jar = await cookies()
   const sessionCookie = jar.get("session")
@@ -25,8 +28,8 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     }
   }
 
-  // Legacy session format "1" is invalid - requires re-authentication
-  if (sessionValue === "1") {
+  // Legacy session format is invalid - requires re-authentication
+  if (sessionValue === LEGACY_SESSION_VALUE) {
     return null
   }
 
@@ -63,8 +66,8 @@ export async function isWorkspaceAuthenticated(workspace: string): Promise<boole
     return true
   }
 
-  // Legacy session format "1" is invalid - requires re-authentication
-  if (sessionValue === "1") {
+  // Legacy session format is invalid - requires re-authentication
+  if (sessionValue === LEGACY_SESSION_VALUE) {
     return false
   }
 
@@ -92,7 +95,7 @@ export async function getAuthenticatedWorkspaces(): Promise<string[]> {
   const sessionValue = sessionCookie.value
 
   // Legacy session format - return empty (requires re-login to upgrade)
-  if (sessionValue === "1" || sessionValue === "test-user") {
+  if (sessionValue === LEGACY_SESSION_VALUE || sessionValue === "test-user") {
     return []
   }
 
@@ -120,4 +123,55 @@ export async function isManagerAuthenticated(): Promise<boolean> {
 
   // Manager uses a separate session cookie, not the workspace JWT
   return !!managerCookie && managerCookie.value === "1"
+}
+
+/**
+ * Get session cookie value safe for passing to child processes
+ * Validates JWT format to prevent "jwt malformed" errors in MCP tools
+ *
+ * @param logPrefix - Optional prefix for warning logs (e.g., "[Claude Stream xyz]")
+ * @returns Valid JWT cookie value or undefined if invalid/legacy/malformed
+ *
+ * @example
+ * const sessionCookie = await getSafeSessionCookie("[MyRoute abc123]")
+ * runAgentChild(cwd, { sessionCookie, ...otherOptions })
+ */
+export async function getSafeSessionCookie(logPrefix = "[Auth]"): Promise<string | undefined> {
+  const jar = await cookies()
+  const rawCookie = jar.get("session")?.value
+
+  // No cookie present
+  if (!rawCookie) {
+    return undefined
+  }
+
+  // Legacy session format (pre-JWT)
+  if (rawCookie === LEGACY_SESSION_VALUE) {
+    console.warn(`${logPrefix} Skipping legacy session cookie format (value="${LEGACY_SESSION_VALUE}")`)
+    return undefined
+  }
+
+  // Test mode special value
+  if (process.env.BRIDGE_ENV === "local" && rawCookie === "test-user") {
+    return rawCookie
+  }
+
+  // Validate JWT format (must contain dots: header.payload.signature)
+  if (!rawCookie.includes(".")) {
+    console.warn(
+      `${logPrefix} Skipping malformed session cookie (not JWT format, first 20 chars: "${rawCookie.substring(0, 20)}")`,
+    )
+    return undefined
+  }
+
+  // Verify JWT signature and expiration
+  const payload = verifySessionToken(rawCookie)
+  if (!payload) {
+    // verifySessionToken already logs specific error (expired/invalid/tampered)
+    // Log context about where this validation failed
+    console.warn(`${logPrefix} JWT validation failed, see [JWT] logs above for details`)
+    return undefined
+  }
+
+  return rawCookie
 }

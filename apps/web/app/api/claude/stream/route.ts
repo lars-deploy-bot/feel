@@ -1,6 +1,6 @@
 import { cookies, headers } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
-import { isWorkspaceAuthenticated, requireSessionUser } from "@/features/auth/lib/auth"
+import { getSafeSessionCookie, isWorkspaceAuthenticated, requireSessionUser } from "@/features/auth/lib/auth"
 import {
   SessionStoreMemory,
   sessionKey,
@@ -355,7 +355,8 @@ export async function POST(req: NextRequest) {
     })
 
     // Get session cookie value to pass to child process for API authentication
-    const sessionCookie = jar.get("session")?.value
+    // Validates JWT format to prevent "jwt malformed" errors in MCP tools
+    const sessionCookie = await getSafeSessionCookie(`[Claude Stream ${requestId}]`)
 
     const childStream = runAgentChild(cwd, {
       message,

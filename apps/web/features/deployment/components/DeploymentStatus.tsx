@@ -50,17 +50,151 @@ export function DeploymentStatus({ status, domain, error, errorDetails }: Deploy
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4 }}
-        className="w-full min-h-[80vh] flex items-center justify-center"
+        className="w-full max-w-2xl mx-auto px-6 py-12"
       >
-        <a
-          href={`https://${domain}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={copyLink}
-          className="inline-flex items-center justify-center h-12 px-8 bg-black text-white text-[15px] font-normal tracking-[-0.011em] rounded-full hover:bg-black/90 transition-all duration-200 ease-out active:scale-[0.98]"
+        {/* Success Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.5 }}
+          className="text-center mb-16"
         >
-          Start Building
-        </a>
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-50 border border-green-200 mb-4">
+            <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h1 className="text-3xl font-medium text-black mb-2">Your website is ready!</h1>
+          <p className="text-base text-black/60">Let's get you started in two simple steps</p>
+        </motion.div>
+
+        {/* Step 1: Website is Live */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.5 }}
+          className="mb-12"
+        >
+          <div className="flex items-start gap-4 mb-6">
+            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-black text-white flex items-center justify-center text-sm font-medium">
+              1
+            </div>
+            <div className="flex-1">
+              <h2 className="text-xl font-medium text-black mb-2">Your website is live</h2>
+              <p className="text-base text-black/60 mb-4">
+                Your website is already online and accessible to anyone on the internet
+              </p>
+
+              {/* Domain Display */}
+              <div className="bg-black/[0.02] border border-black/10 rounded-lg p-4 mb-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <svg className="w-5 h-5 text-black/40 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                    </svg>
+                    <code className="text-sm font-mono text-black truncate">{domain}</code>
+                  </div>
+                  <button
+                    onClick={copyLink}
+                    className="flex-shrink-0 px-3 py-1.5 text-xs font-medium text-black/60 hover:text-black border border-black/10 rounded-md hover:bg-black/[0.02] transition-colors"
+                  >
+                    {_copied ? "Copied!" : "Copy"}
+                  </button>
+                </div>
+              </div>
+
+              {/* View Website Button */}
+              <a
+                href={`https://${domain}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 h-11 px-6 bg-white text-black text-sm font-medium border border-black/20 rounded-lg hover:bg-black/[0.02] transition-all duration-200 active:scale-[0.98]"
+              >
+                <span>View Your Live Website</span>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Divider */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3, duration: 0.5 }}
+          className="relative mb-12"
+        >
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-black/10" />
+          </div>
+          <div className="relative flex justify-center">
+            <span className="px-4 text-sm text-black/40 bg-white">Next step</span>
+          </div>
+        </motion.div>
+
+        {/* Step 2: Edit with AI Chat */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, duration: 0.5 }}
+          className="mb-12"
+        >
+          <div className="flex items-start gap-4 mb-8">
+            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-black text-white flex items-center justify-center text-sm font-medium">
+              2
+            </div>
+            <div className="flex-1">
+              <h2 className="text-xl font-medium text-black mb-2">Build your website with AI</h2>
+              <p className="text-base text-black/60 mb-6">
+                Use our chat interface, just like ChatGPT, to customize your website. Tell the AI what you want to change, add, or remove—changes happen in real-time.
+              </p>
+
+              {/* Example Prompts */}
+              <div className="space-y-3 mb-6">
+                <p className="text-sm font-medium text-black/60 mb-3">Try saying things like:</p>
+                {[
+                  "Change the heading to 'Welcome to my business'",
+                  "Add a contact form with email and message fields",
+                  "Make the background gradient from blue to purple"
+                ].map((example, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.5 + i * 0.1, duration: 0.4 }}
+                    className="flex items-start gap-3 p-3 bg-black/[0.02] border border-black/10 rounded-lg"
+                  >
+                    <svg className="w-4 h-4 text-black/40 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                    </svg>
+                    <span className="text-sm text-black/70">{example}</span>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Start Building CTA */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8, duration: 0.5 }}
+          className="flex flex-col items-center gap-4"
+        >
+          <a
+            href={`/chat?workspace=${domain}`}
+            className="inline-flex items-center justify-center gap-2 h-12 px-8 bg-black text-white text-[15px] font-medium rounded-full hover:bg-black/90 transition-all duration-200 ease-out active:scale-[0.98] shadow-sm"
+          >
+            <span>Start Building</span>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
+          </a>
+          <p className="text-xs text-black/40">You can always come back to edit your site later</p>
+        </motion.div>
       </motion.div>
     )
   }
