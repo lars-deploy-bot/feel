@@ -1065,7 +1065,7 @@ function ChatPageContent() {
                 </div>
               )}
               {/* Show completion dots after successful completion (non-debug mode only) */}
-              {showCompletionDots && !isDebugView && !busy && <ThreeDotsComplete />}
+              {showCompletionDots && !isDebugView && !busy && messages.length > 0 && <ThreeDotsComplete />}
               <div ref={messagesEndRef} />
             </div>
           </div>

@@ -1010,7 +1010,7 @@ mealsnap.alive.best {
     }
 }
 
-larsondj.alive.best {
+larsondj.alive.best, djlarson.alive.best {
     import common_headers
     import image_serving
     reverse_proxy localhost:3374 {
@@ -1058,6 +1058,28 @@ larsprive.alive.best {
     import common_headers
     import image_serving
     reverse_proxy localhost:3378 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+windowsxp.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3379 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+emailpay.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3380 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
         header_up X-Forwarded-For {remote_host}

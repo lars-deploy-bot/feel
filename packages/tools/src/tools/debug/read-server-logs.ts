@@ -1,9 +1,6 @@
-import { exec } from "node:child_process"
-import { promisify } from "node:util"
 import { tool } from "@anthropic-ai/claude-agent-sdk"
 import { z } from "zod"
-
-const execAsync = promisify(exec)
+import { callBridgeApi } from "../../lib/bridge-api-client.js"
 
 interface ServerLog {
   timestamp: string
@@ -57,64 +54,6 @@ export type ReadServerLogsResult = {
   isError: boolean
 }
 
-function validateWorkspace(workspace: string): { valid: boolean; error?: string } {
-  if (!workspace || workspace.trim().length === 0) {
-    return { valid: false, error: "Workspace cannot be empty" }
-  }
-
-  const domainRegex = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$/i
-  if (!domainRegex.test(workspace)) {
-    return {
-      valid: false,
-      error: `Invalid workspace format: "${workspace}". Must be a valid domain (e.g., two.goalive.nl)`,
-    }
-  }
-
-  return { valid: true }
-}
-
-function workspaceToServiceName(workspace: string): string {
-  return `site@${workspace.replace(/\./g, "-")}.service`
-}
-
-async function serviceExists(serviceName: string): Promise<{ exists: boolean; status?: string; error?: string }> {
-  try {
-    const { stdout } = await execAsync(`systemctl show ${serviceName} --property=LoadState,ActiveState`, {
-      timeout: 5000,
-    })
-
-    const lines = stdout.trim().split("\n")
-    const loadState = lines.find(l => l.startsWith("LoadState="))?.split("=")[1]
-    const activeState = lines.find(l => l.startsWith("ActiveState="))?.split("=")[1]
-
-    if (loadState === "not-found") {
-      return {
-        exists: false,
-        error: `Service ${serviceName} does not exist. The workspace may not be deployed yet.`,
-      }
-    }
-
-    return {
-      exists: true,
-      status: activeState || "unknown",
-    }
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error)
-
-    if (errorMessage.includes("not be found") || errorMessage.includes("not loaded")) {
-      return {
-        exists: false,
-        error: "Service not found. The workspace may not be deployed.",
-      }
-    }
-
-    return {
-      exists: false,
-      error: `Failed to check service status: ${errorMessage}`,
-    }
-  }
-}
-
 function sanitizeSearchTerm(search: string): string {
   return search.replace(/[;&|`$()<>]/g, "")
 }
@@ -163,67 +102,33 @@ export async function readServerLogs(params: ReadServerLogsParams): Promise<Read
   const { workspace, search, search_regex, lines = 100, since, summary_only = false } = params
 
   try {
-    const validation = validateWorkspace(workspace)
-    if (!validation.valid) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `# Invalid Workspace\n\n${validation.error}\n\n**Examples of valid workspaces:**\n- two.goalive.nl\n- demo.goalive.nl\n- mysite.example.com`,
-          },
-        ],
-        isError: true,
-      }
-    }
-
-    const serviceName = workspaceToServiceName(workspace)
-
-    console.log(`[read-server-logs] Checking if service exists: ${serviceName}`)
-    const serviceCheck = await serviceExists(serviceName)
-
-    if (!serviceCheck.exists) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `# Service Not Found\n\n**Workspace:** ${workspace}\n**Service:** ${serviceName}\n\n${serviceCheck.error}\n\n**Troubleshooting:**\n1. Verify the workspace domain is correct\n2. Check if the site is deployed: \`systemctl list-units | grep site@\`\n3. Ensure the site was deployed with systemd (not PM2)\n4. Try listing all sites: \`ls /srv/webalive/sites/\``,
-          },
-        ],
-        isError: true,
-      }
-    }
-
-    console.log(`[read-server-logs] Service ${serviceName} exists (status: ${serviceCheck.status})`)
-
-    const lineLimit = Math.min(Math.max(1, lines), 1000)
-    let cmd = `journalctl -u "${serviceName}" -n ${lineLimit} --no-pager --output=short-iso`
-
-    if (since) {
-      const validSincePatterns = /^(\d+\s+(second|minute|hour|day|week|month|year)s?\s+ago|today|yesterday)$/i
-      if (validSincePatterns.test(since)) {
-        cmd += ` --since "${since}"`
-      } else {
-        console.warn(`[read-server-logs] Invalid 'since' parameter: ${since}, ignoring`)
-      }
-    }
-
-    console.log(`[read-server-logs] Running: ${cmd}`)
-
-    const { stdout, stderr } = await execAsync(cmd, {
-      timeout: 10000,
-      maxBuffer: 10 * 1024 * 1024,
+    // Call Bridge API to read logs (runs as root with proper privileges)
+    const apiResult = await callBridgeApi({
+      endpoint: "/api/internal-tools/read-logs",
+      body: {
+        workspace,
+        lines,
+        since,
+        workspaceRoot: process.cwd(), // Required for auth validation
+      },
+      timeout: 15000,
     })
 
-    if (stderr && !stdout) {
-      throw new Error(stderr)
+    // If API call failed, return the error
+    if (apiResult.isError) {
+      return apiResult
     }
 
-    if (!stdout.trim()) {
+    // Parse API response (output field contains JSON string with logs data)
+    const apiResponse = JSON.parse(apiResult.content[0].text)
+    const { logs: stdout, service: serviceName, status: serviceStatus } = apiResponse
+
+    if (!stdout || stdout.trim() === "") {
       return {
         content: [
           {
             type: "text" as const,
-            text: `# No Logs Available\n\n**Workspace:** ${workspace}\n**Service:** ${serviceName}\n**Status:** ${serviceCheck.status}\n\nThe service exists but has no logs yet.\n\n**Possible reasons:**\n- Service just started\n- Service hasn't generated any output\n- Logs may have been rotated\n\n**Try:**\n- Use a longer time range: \`since: "1 hour ago"\`\n- Check service status: \`systemctl status ${serviceName}\``,
+            text: `# No Logs Available\n\n**Workspace:** ${workspace}\n**Service:** ${serviceName}\n**Status:** ${serviceStatus}\n\nThe service exists but has no logs yet.\n\n**Possible reasons:**\n- Service just started\n- Service hasn't generated any output\n- Logs may have been rotated\n\n**Try:**\n- Use a longer time range: \`since: "1 hour ago"\`\n- Check service status: \`systemctl status ${serviceName}\``,
           },
         ],
         isError: false,
@@ -279,7 +184,7 @@ export async function readServerLogs(params: ReadServerLogsParams): Promise<Read
 
     let output = `# Server Logs: ${workspace}\n\n`
     output += `**Service:** ${serviceName}\n`
-    output += `**Status:** ${serviceCheck.status}\n`
+    output += `**Status:** ${serviceStatus}\n`
     output += `**Total logs:** ${logs.length}\n`
     if (search_regex) {
       output += `**Filtered by regex:** \`${search_regex}\`\n`
@@ -427,12 +332,12 @@ export async function readServerLogs(params: ReadServerLogsParams): Promise<Read
     console.error("[read-server-logs] Error:", error)
 
     let troubleshooting = "\n\n**Troubleshooting:**"
-    if (errorMessage.includes("permission") || errorMessage.includes("denied")) {
-      troubleshooting += "\n- Permission denied to read logs"
-      troubleshooting += "\n- Ensure the process has access to systemd journal"
-    } else if (errorMessage.includes("timeout")) {
-      troubleshooting += "\n- The command timed out (>10 seconds)"
+    if (errorMessage.includes("timeout")) {
+      troubleshooting += "\n- The API request timed out (>15 seconds)"
       troubleshooting += "\n- Try reducing the number of lines or time range"
+    } else if (errorMessage.includes("JSON") || errorMessage.includes("parse")) {
+      troubleshooting += "\n- Failed to parse API response"
+      troubleshooting += "\n- This may indicate a server error"
     } else {
       troubleshooting += `\n- ${errorMessage}`
     }

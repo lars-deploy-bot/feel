@@ -51,11 +51,16 @@ export async function callBridgeApi(options: ApiCallOptions): Promise<ToolResult
     // Include session cookie from environment (set by Bridge)
     const sessionCookie = process.env.BRIDGE_SESSION_COOKIE
 
+    // Include internal tools secret for privileged API calls
+    const internalSecret = process.env.INTERNAL_TOOLS_SECRET
+    const isInternalToolsApi = endpoint.startsWith("/api/internal-tools/")
+
     const response = await fetch(apiUrl, {
       method,
       headers: {
         "Content-Type": "application/json",
         ...(sessionCookie && { Cookie: `session=${sessionCookie}` }),
+        ...(isInternalToolsApi && internalSecret && { "X-Internal-Tools-Secret": internalSecret }),
       },
       body: body ? JSON.stringify(body) : undefined,
       signal: controller.signal,

@@ -148,6 +148,7 @@ const __dirname = path.dirname(__filename);
 
 export default function apiPlugin() {
   const dbPath = path.join(__dirname, 'api.db');
+  const MAX_BODY_SIZE = 1024 * 100; // 100KB limit for security
 
   // Initialize SQLite database
   const db = new Database(dbPath);
@@ -169,18 +170,25 @@ export default function apiPlugin() {
     insert.run('Example Item', 'This is a sample item');
   }
 
+  // Helper function for consistent JSON responses
+  const sendJson = (res, statusCode, data) => {
+    res.statusCode = statusCode;
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify(data));
+  };
+
   return {
     name: 'vite-plugin-api',
     configureServer(server) {
       console.log('✅ API Plugin loaded - endpoints available at /api/*');
+
       // Health check endpoint
       server.middlewares.use('/api/health', (req, res, next) => {
         if (req.method === 'GET') {
-          res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify({
+          sendJson(res, 200, {
             status: 'ok',
             timestamp: new Date().toISOString()
-          }));
+          });
         } else {
           next();
         }
@@ -191,72 +199,82 @@ export default function apiPlugin() {
         if (req.method === 'GET') {
           try {
             const items = db.prepare('SELECT * FROM items ORDER BY created_at DESC').all();
-            res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify(items));
+            sendJson(res, 200, items);
           } catch (error) {
             console.error('Error fetching items:', error);
-            res.statusCode = 500;
-            res.end(JSON.stringify({ error: 'Failed to fetch items' }));
+            sendJson(res, 500, { error: 'Failed to fetch items' });
           }
         } else if (req.method === 'POST') {
-          // Handle POST request
+          // Handle POST request with body size limit
           let body = '';
+          let sizeLimitExceeded = false;
+
           req.on('data', chunk => {
             body += chunk.toString();
+            if (body.length > MAX_BODY_SIZE) {
+              sizeLimitExceeded = true;
+              req.pause();
+              sendJson(res, 413, { error: 'Request body too large' });
+            }
           });
+
           req.on('end', () => {
+            if (sizeLimitExceeded) return;
+
             try {
               const { name, description } = JSON.parse(body);
 
-              // Validation
-              if (!name || typeof name !== 'string') {
-                res.statusCode = 400;
-                res.end(JSON.stringify({ error: 'Name is required and must be a string' }));
-                return;
+              // Enhanced validation
+              if (!name || typeof name !== 'string' || name.trim().length === 0) {
+                return sendJson(res, 400, { error: 'Name is required and must be a non-empty string' });
               }
+
+              if (name.length > 255) {
+                return sendJson(res, 400, { error: 'Name must be less than 255 characters' });
+              }
+
+              // Trim whitespace from name
+              const trimmedName = name.trim();
 
               // Insert into database
               const insert = db.prepare('INSERT INTO items (name, description) VALUES (?, ?)');
-              const result = insert.run(name, description || null);
+              const result = insert.run(trimmedName, description || null);
 
               // Return created item
               const newItem = db.prepare('SELECT * FROM items WHERE id = ?').get(result.lastInsertRowid);
-              res.setHeader('Content-Type', 'application/json');
-              res.statusCode = 201;
-              res.end(JSON.stringify(newItem));
+              sendJson(res, 201, newItem);
             } catch (error) {
               console.error('Error creating item:', error);
-              res.statusCode = 400;
-              res.end(JSON.stringify({ error: 'Invalid request body' }));
+              sendJson(res, 400, { error: 'Invalid request body' });
             }
           });
         } else if (req.method === 'DELETE') {
           // Handle DELETE request
-          const url = new URL(req.url, `http://${req.headers.host}`);
-          const id = url.searchParams.get('id');
-
-          if (!id) {
-            res.statusCode = 400;
-            res.end(JSON.stringify({ error: 'ID parameter is required' }));
-            return;
-          }
-
           try {
+            const url = new URL(req.url, `http://${req.headers.host}`);
+            const idParam = url.searchParams.get('id');
+
+            if (!idParam) {
+              return sendJson(res, 400, { error: 'ID parameter is required' });
+            }
+
+            // Parse and validate ID
+            const id = parseInt(idParam, 10);
+            if (isNaN(id) || id < 1) {
+              return sendJson(res, 400, { error: 'ID must be a positive integer' });
+            }
+
             const deleteStmt = db.prepare('DELETE FROM items WHERE id = ?');
             const result = deleteStmt.run(id);
 
             if (result.changes === 0) {
-              res.statusCode = 404;
-              res.end(JSON.stringify({ error: 'Item not found' }));
-              return;
+              return sendJson(res, 404, { error: 'Item not found' });
             }
 
-            res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify({ success: true, deleted: parseInt(id) }));
+            sendJson(res, 200, { success: true, deleted: id });
           } catch (error) {
             console.error('Error deleting item:', error);
-            res.statusCode = 500;
-            res.end(JSON.stringify({ error: 'Failed to delete item' }));
+            sendJson(res, 500, { error: 'Failed to delete item' });
           }
         } else {
           next();
@@ -266,6 +284,13 @@ export default function apiPlugin() {
   };
 }
 ```
+
+**Key Features Added:**
+- ✅ **Body size limit (100KB)** - Prevents DoS attacks via large payloads
+- ✅ **Enhanced validation** - Name must be non-empty, trimmed, and under 255 characters
+- ✅ **ID validation** - DELETE endpoint validates ID is a positive integer
+- ✅ **Helper function** - `sendJson()` for consistent JSON responses
+- ✅ **Better error messages** - More specific validation errors
 
 **Verification:**
 - File exists in project root (same level as vite.config)
@@ -395,13 +420,20 @@ export async function createItem(name: string, description?: string): Promise<It
     });
 
     if (!response.ok) {
-      const error: ApiError = await response.json();
-      throw new Error(error.error || 'Failed to create item');
+      let errorMsg = 'Failed to create item';
+      try {
+        const error: ApiError = await response.json();
+        errorMsg = error.error || errorMsg;
+      } catch {
+        // If JSON parsing fails, use status text
+        errorMsg = `HTTP ${response.status}: ${response.statusText}`;
+      }
+      throw new Error(errorMsg);
     }
 
     return await response.json();
   } catch (error) {
-    console.error('Failed to create item:', error);
+    console.error('Failed to create item:', error instanceof Error ? error.message : error);
     return null;
   }
 }
@@ -441,6 +473,11 @@ export async function checkHealth(): Promise<{ status: string; timestamp: string
 }
 ```
 
+**Key Improvements:**
+- ✅ **Better error extraction** - Tries to parse JSON error, falls back to status text
+- ✅ **Type-safe error logging** - Uses `instanceof Error` check before accessing `.message`
+- ✅ **Graceful error handling** - Returns null instead of throwing, preventing crashes
+
 **Verification:**
 - No TypeScript errors in IDE
 - File created in correct location based on Step 0 analysis
@@ -471,6 +508,9 @@ const Index = () => {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [newItemName, setNewItemName] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   // Load items on mount
   useEffect(() => {
@@ -479,6 +519,7 @@ const Index = () => {
 
   const loadItems = async () => {
     setLoading(true);
+    setError(null);
     const data = await getItems();
     setItems(data);
     setLoading(false);
@@ -486,20 +527,37 @@ const Index = () => {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newItemName.trim()) return;
+    if (!newItemName.trim()) {
+      setError('Please enter an item name');
+      return;
+    }
 
+    setSubmitting(true);
+    setError(null);
     const newItem = await createItem(newItemName);
+
     if (newItem) {
       setItems([newItem, ...items]);
       setNewItemName('');
+      setError(null);
+    } else {
+      setError('Failed to create item. Please try again.');
     }
+    setSubmitting(false);
   };
 
   const handleDelete = async (id: number) => {
+    setDeletingId(id);
+    setError(null);
     const success = await deleteItem(id);
+
     if (success) {
       setItems(items.filter(item => item.id !== id));
+      setError(null);
+    } else {
+      setError('Failed to delete item. Please try again.');
     }
+    setDeletingId(null);
   };
 
   if (loading) {
@@ -511,6 +569,13 @@ const Index = () => {
       <div className="max-w-2xl mx-auto">
         <h1 className="text-3xl font-bold mb-8">Items Manager</h1>
 
+        {/* Error Banner */}
+        {error && (
+          <div className="mb-6 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
+            {error}
+          </div>
+        )}
+
         {/* Create Form */}
         <form onSubmit={handleCreate} className="mb-8 flex gap-2">
           <input
@@ -518,13 +583,15 @@ const Index = () => {
             value={newItemName}
             onChange={(e) => setNewItemName(e.target.value)}
             placeholder="New item name..."
-            className="flex-1 px-4 py-2 border rounded-lg"
+            disabled={submitting}
+            className="flex-1 px-4 py-2 border rounded-lg disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
           />
           <button
             type="submit"
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            disabled={submitting}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors"
           >
-            Add Item
+            {submitting ? 'Adding...' : 'Add Item'}
           </button>
         </form>
 
@@ -549,9 +616,10 @@ const Index = () => {
                 </div>
                 <button
                   onClick={() => handleDelete(item.id)}
-                  className="px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded"
+                  disabled={deletingId === item.id}
+                  className="px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded disabled:text-red-300 disabled:cursor-not-allowed transition-colors"
                 >
-                  Delete
+                  {deletingId === item.id ? 'Deleting...' : 'Delete'}
                 </button>
               </div>
             ))
@@ -564,6 +632,14 @@ const Index = () => {
 
 export default Index;
 ```
+
+**Key UX Improvements:**
+- ✅ **Error banner** - Shows user-friendly error messages at the top
+- ✅ **Loading states** - `submitting` and `deletingId` prevent double-clicks
+- ✅ **Disabled states** - Inputs and buttons disabled during operations
+- ✅ **Visual feedback** - "Adding..." and "Deleting..." text during operations
+- ✅ **Input validation** - Shows error if user tries to submit empty name
+- ✅ **Error clearing** - Errors automatically clear on next successful operation
 
 **Success criteria:**
 
@@ -831,16 +907,29 @@ req.on('end', () => {
 
 ## Best Practices
 
-### 1. **Input Validation**
+### 1. **Input Validation & Security**
 
 Always validate before database operations:
 ```javascript
-if (!name || typeof name !== 'string' || name.length > 100) {
-  res.statusCode = 400;
-  res.end(JSON.stringify({ error: 'Invalid name' }));
-  return;
+// Check type, emptiness, and length
+if (!name || typeof name !== 'string' || name.trim().length === 0) {
+  return sendJson(res, 400, { error: 'Name is required and must be a non-empty string' });
 }
+
+if (name.length > 255) {
+  return sendJson(res, 400, { error: 'Name must be less than 255 characters' });
+}
+
+// Always trim user input
+const trimmedName = name.trim();
 ```
+
+**Security measures included in template:**
+- ✅ Body size limit (100KB) prevents DoS attacks
+- ✅ Whitespace trimming prevents accidental empty entries
+- ✅ Length validation prevents database overflow
+- ✅ Type checking prevents injection attempts
+- ✅ ID validation ensures positive integers only
 
 ### 2. **Prepared Statements**
 
@@ -1122,10 +1211,24 @@ export default defineConfig({
 }
 ```
 
-4. **POST /api/items** (validation error)
+4. **POST /api/items** (validation error - empty name)
 ```json
 {
-  "error": "Name is required and must be a string"
+  "error": "Name is required and must be a non-empty string"
+}
+```
+
+**POST /api/items** (validation error - name too long)
+```json
+{
+  "error": "Name must be less than 255 characters"
+}
+```
+
+**POST /api/items** (validation error - body too large)
+```json
+{
+  "error": "Request body too large"
 }
 ```
 
@@ -1152,7 +1255,13 @@ export default defineConfig({
 curl -X POST http://localhost:3000/api/items \
   -H "Content-Type: application/json" \
   -d '{"name":""}'
-# Expected: 400 Bad Request
+# Expected: 400 Bad Request - "Name is required and must be a non-empty string"
+
+# Whitespace-only name
+curl -X POST http://localhost:3000/api/items \
+  -H "Content-Type: application/json" \
+  -d '{"name":"   "}'
+# Expected: 400 Bad Request - "Name is required and must be a non-empty string"
 
 # Missing name
 curl -X POST http://localhost:3000/api/items \
@@ -1160,11 +1269,23 @@ curl -X POST http://localhost:3000/api/items \
   -d '{"description":"Only description"}'
 # Expected: 400 Bad Request
 
+# Name too long (>255 characters)
+curl -X POST http://localhost:3000/api/items \
+  -H "Content-Type: application/json" \
+  -d "{\"name\":\"$(printf 'A%.0s' {1..300})\"}"
+# Expected: 400 Bad Request - "Name must be less than 255 characters"
+
 # Invalid JSON
 curl -X POST http://localhost:3000/api/items \
   -H "Content-Type: application/json" \
   -d '{invalid json}'
 # Expected: 400 Bad Request
+
+# Body too large (>100KB)
+curl -X POST http://localhost:3000/api/items \
+  -H "Content-Type: application/json" \
+  -d "{\"name\":\"test\",\"description\":\"$(printf 'A%.0s' {1..110000})\"}"
+# Expected: 413 Payload Too Large - "Request body too large"
 ```
 
 **2. SQL Injection Attempts:**
@@ -1254,7 +1375,7 @@ fetch('/api/items', {
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ name: '' }) // Invalid
 }).then(r => r.json()).then(console.log);
-// Expected: {error: "Name is required and must be a string"}
+// Expected: {error: "Name is required and must be a non-empty string"}
 ```
 
 ### Visual Verification
@@ -1266,22 +1387,39 @@ fetch('/api/items', {
    - One sample item displayed
    - Input field and "Add Item" button
    - No console errors
+   - No error banner visible
 
 2. **After adding an item:**
+   - Button text changes to "Adding..." during submission
+   - Input field becomes disabled during submission
    - New item appears at the top of the list
    - Input field clears automatically
+   - Button returns to "Add Item"
    - No page refresh (SPA behavior)
    - Console shows: `POST /api/items 201`
 
-3. **After deleting an item:**
+3. **After trying to add empty item:**
+   - Red error banner appears at top: "Please enter an item name"
+   - Input remains focused
+   - No API call made (client-side validation)
+
+4. **After deleting an item:**
+   - Delete button text changes to "Deleting..." for that specific item
+   - Button becomes disabled during deletion
    - Item removed from list immediately
    - List re-renders without that item
    - Console shows: `DELETE /api/items?id=X 200`
 
-4. **Network tab verification:**
+5. **Error handling:**
+   - If API call fails, error banner shows: "Failed to create/delete item. Please try again."
+   - Error banner disappears on next successful operation
+   - User can retry the operation
+
+6. **Network tab verification:**
    - Requests to `/api/items` show 200/201 status
    - Response previews show JSON data
    - Request payloads show correct JSON structure
+   - Validation errors return 400 status with error messages
 
 ## Migration Path to Production
 
@@ -1334,6 +1472,23 @@ You now have:
 - ✅ Type-safe frontend API helpers
 - ✅ Complete error handling and validation
 - ✅ Example component using the API
+- ✅ **Security features**: Body size limits, input validation, ID sanitization
+- ✅ **Enhanced UX**: Loading states, error banners, disabled states
+- ✅ **Production-ready code**: Better error handling, type safety, user feedback
+
+**What's included for security:**
+- Request body size limit (100KB) prevents DoS attacks
+- Input trimming and validation prevents empty/malformed data
+- ID validation ensures only positive integers accepted
+- Prepared statements prevent SQL injection
+- Consistent error responses with proper HTTP status codes
+
+**What's included for UX:**
+- Error banner shows user-friendly messages
+- Loading states prevent double-clicks
+- Disabled states during operations
+- Visual feedback ("Adding...", "Deleting...")
+- Automatic error clearing on success
 
 **Next steps:**
 1. Add more endpoints for your features

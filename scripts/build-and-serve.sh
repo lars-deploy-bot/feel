@@ -143,8 +143,15 @@ fi
 
 # Run tests before building
 log_info "Running tests..."
-if ! bun test; then
+TEST_OUTPUT=$(bun test 2>&1)
+TEST_EXIT_CODE=$?
+
+if [ $TEST_EXIT_CODE -ne 0 ]; then
     log_error "Tests failed - deployment aborted"
+    echo ""
+    log_warn "Showing last 100 lines of test output:"
+    echo "$TEST_OUTPUT" | tail -n 100
+    echo ""
     log_error "You should fix the tests before proceeding. Do it cleanly, and only make tests that are actually good."
     log_error "Do not write tests that are nonsense. Make sure to always follow the docs/testing/TESTING_GUIDE.md"
     exit 1
