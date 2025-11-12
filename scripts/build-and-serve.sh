@@ -141,6 +141,16 @@ if ! bun install; then
     exit 1
 fi
 
+# Run tests before building
+log_info "Running tests..."
+if ! bun test; then
+    log_error "Tests failed - deployment aborted"
+    log_error "You should fix the tests before proceeding. Do it cleanly, and only make tests that are actually good."
+    log_error "Do not write tests that are nonsense. Make sure to always follow the docs/testing/TESTING_GUIDE.md"
+    exit 1
+fi
+log_success "All tests passed"
+
 # Capture current build for potential rollback
 DIST_SYMLINK="$PROJECT_ROOT/.builds/current"
 PREVIOUS_BUILD=""

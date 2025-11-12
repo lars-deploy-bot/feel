@@ -41,23 +41,44 @@ bun run deploy
   ↓
 1. Git pull (non-fatal if fails)
 2. Install dependencies (bun install)
-3. Check disk space (require 250MB)
-4. Check port (allow PM2 processes)
-5. Backup staging dev files (.next/dev)
-6. Build to .next
-7. Move to .builds/dist
-8. Copy static assets to standalone
-9. Restore staging dev files
-10. Timestamp: .builds/dist → .builds/dist.TIMESTAMP
-11. Atomic swap: current → dist.TIMESTAMP
-12. Cleanup old builds (keep last 3)
-13. Stop PM2
-14. Start PM2 with standalone server
-15. Health check (30s timeout)
-16. Auto-rollback if health check fails
+3. Run tests (bun test) - deployment aborted if tests fail
+4. Check disk space (require 250MB)
+5. Check port (allow PM2 processes)
+6. Backup staging dev files (.next/dev)
+7. Build to .next
+8. Move to .builds/dist
+9. Copy static assets to standalone
+10. Restore staging dev files
+11. Timestamp: .builds/dist → .builds/dist.TIMESTAMP
+12. Atomic swap: current → dist.TIMESTAMP
+13. Cleanup old builds (keep last 3)
+14. Stop PM2
+15. Start PM2 with standalone server
+16. Health check (30s timeout)
+17. Auto-rollback if health check fails
 ```
 
 ## Troubleshooting
+
+### Tests Failed During Deployment
+
+**Symptom:** `ERROR: Tests failed - deployment aborted`
+
+**Cause:** One or more tests failing in the test suite
+
+**Solution:**
+```bash
+# Run tests locally to see failures
+bun test
+
+# Fix failing tests
+# [make your fixes]
+
+# Redeploy
+bun run deploy
+```
+
+**Prevention:** Always run `bun test` locally before deploying.
 
 ### CSS Not Loading (404)
 

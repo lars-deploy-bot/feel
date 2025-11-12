@@ -4,7 +4,7 @@
 **Complexity:** Medium
 **Files:** 4
 **Dependencies:** better-sqlite3
-**Estimated Time:** 8-12 minutes
+**Estimated Time:** 10-15 minutes (includes project analysis)
 **Framework:** Vite 5+
 **Min Node Version:** 18.0.0
 
@@ -12,20 +12,95 @@
 
 Add a full backend API to your Vite project without needing a separate server. This plugin runs API endpoints directly inside Vite's dev server using custom middleware, enabling full-stack development in a single process. Perfect for prototypes, small apps, or projects that need simple backend functionality without Express/Fastify complexity.
 
+## Implementation Requirements
+
+**For Claude (AI Assistant):**
+- ✅ **Project-Aware:** Analyze existing code structure before starting (Step 0)
+- ✅ **Non-Destructive:** Preserve all existing configuration and plugins
+- ✅ **Typed:** Use proper TypeScript types throughout - no `any` types
+- ✅ **Adaptive:** Match project's code style, indentation, quotes, and patterns
+- ✅ **Verified:** Test each step and provide evidence that it works
+- ✅ **Evidence-Based:** Show console output, API responses, or screenshots as proof
+
 ## Step-by-Step Implementation
+
+### Step 0: Analyze Current Project (CRITICAL - DO THIS FIRST)
+
+**For Claude (AI Assistant):** Before implementing anything, you MUST understand the current project structure. Use your Read tool to analyze these files:
+
+**Required Analysis:**
+
+1. **Read `vite.config.ts` or `vite.config.js`:**
+   - Check current plugins array (don't overwrite existing plugins)
+   - Note server configuration (port, host settings)
+   - Check if using TypeScript or JavaScript
+   - Identify existing path aliases (e.g., `@` mapping)
+   - Preserve any custom configuration
+
+2. **Read `package.json`:**
+   - Check if `better-sqlite3` is already installed (skip installation if present)
+   - Identify package manager: look for `packageManager` field or lockfile
+   - Check existing scripts (don't overwrite `dev`, `build` commands)
+   - Note project dependencies to understand tech stack
+
+3. **Check project structure:**
+   - Use Glob tool: `src/**/*.{ts,tsx,js,jsx}` to find source files
+   - Identify if using `src/lib/`, `src/utils/`, or other patterns
+   - Check if `src/pages/` or `src/app/` exists (routing pattern)
+   - Look for existing API integration patterns
+
+4. **Identify code style:**
+   - Check existing files for quote style (single vs double)
+   - Check indentation (tabs vs spaces, 2 vs 4 spaces)
+   - Check import style (named vs default imports)
+   - Match the project's existing patterns
+
+**Verification Checklist:**
+- [ ] Read vite.config file and noted current plugins
+- [ ] Read package.json and identified package manager
+- [ ] Checked project structure with Glob
+- [ ] Identified code style from existing files
+- [ ] Know where to place new files (lib/api.ts location)
+
+**Output to user:** Briefly summarize what you found (adapt based on actual project):
+```
+Project Analysis Complete:
+- Vite version and current plugins identified
+- Package manager detected
+- Source structure mapped
+- Code style noted (TypeScript/JavaScript, indentation, quotes)
+- Server port configuration found
+- Ready to proceed with implementation
+```
 
 ### Step 1: Install Dependencies
 
-**For Claude (AI Assistant):** Use the `install_package` tool:
+**For Claude (AI Assistant):**
+
+**FIRST:** Check if dependencies already exist by reading package.json from Step 0.
+- If `better-sqlite3` is already in dependencies, SKIP installation and inform user
+- If not present, proceed with installation
+
+Use the `install_package` tool:
 ```
 install_package({ packageName: "better-sqlite3", version: "9.2.2" })
 install_package({ packageName: "@types/better-sqlite3", version: "7.6.8", dev: true })
 ```
 
 **For manual installation:**
+Adapt the command based on package manager identified in Step 0:
 ```bash
+# If bun (default)
 bun add better-sqlite3@9.2.2
 bun add -D @types/better-sqlite3@7.6.8
+
+# If npm
+npm install better-sqlite3@9.2.2
+npm install -D @types/better-sqlite3@7.6.8
+
+# If pnpm
+pnpm add better-sqlite3@9.2.2
+pnpm add -D @types/better-sqlite3@7.6.8
 ```
 
 **Why these packages:**
@@ -36,17 +111,31 @@ bun add -D @types/better-sqlite3@7.6.8
 - `vite@^5.0.0` - Required for plugin system
 - `react@^18.0.0` - For frontend components (if using React)
 
-**Success criteria:** No installation errors in terminal. Check with:
-```bash
-bun pm ls | grep better-sqlite3
-# Should show: better-sqlite3@9.2.2
-```
+**Verification:**
+- No installation errors in terminal
+- `package.json` contains `better-sqlite3` in dependencies
+- Types package in devDependencies (if using TypeScript)
+
+**Optional check:** List installed packages to confirm versions
+
+**Common Issues:**
+- **Installation fails:** Check network connection, try clearing package cache
+- **Native module build errors:** Ensure you have build tools installed (python, make, gcc)
+- **Permission errors:** Don't use sudo with npm/pnpm, use bun if available
+- **Already installed:** If package already exists, skip this step and continue
 
 ### Step 2: Create the Vite API Plugin
+
+**For Claude (AI Assistant):** Adapt this code to match the project's style from Step 0 analysis:
+- If project uses different indentation, adjust the code
+- If project uses different quote style, adjust the code
+- Keep the logic identical, only adjust formatting
 
 Create `vite-plugin-api.js` in your project root (same level as `vite.config.ts`):
 
 **File location:** `./vite-plugin-api.js` (project root, NOT in src/ folder)
+
+**Note:** Plugin must be `.js` (not `.ts`) because Vite config imports it before TypeScript compilation.
 
 ```javascript
 import fs from 'fs';
@@ -178,21 +267,37 @@ export default function apiPlugin() {
 }
 ```
 
-**Success criteria:** File created with no syntax errors. Verify:
-```bash
-ls -la vite-plugin-api.js
-# Should exist in project root
-```
+**Verification:**
+- File exists in project root (same level as vite.config)
+- No syntax errors when reading the file
+- Code matches project's style (indentation, quotes) from Step 0
+
+**Common Issues:**
+- **File in wrong location:** Must be in project root, NOT in src/ or any subdirectory
+- **Syntax errors:** Ensure all quotes and brackets are properly closed
+- **Import errors:** Check that 'better-sqlite3' is correctly installed from Step 1
 
 ### Step 3: Register the Plugin in Vite Config
 
-Update your `vite.config.ts`:
+**For Claude (AI Assistant):** **CRITICAL - DO NOT OVERWRITE EXISTING CONFIG**
+
+1. **Read the current vite.config file** (from Step 0)
+2. **Preserve ALL existing settings:**
+   - Keep all existing plugins in the plugins array
+   - Keep existing server configuration (port, host, proxy, etc.)
+   - Keep existing resolve aliases
+   - Keep any other custom configuration
+3. **Only add these two changes:**
+   - Import line: `import apiPlugin from "./vite-plugin-api.js";`
+   - Add `apiPlugin()` to the existing plugins array
+
+**Example of correct update** (yours will look different based on Step 0):
 
 ```typescript
 import path from "node:path";
 import react from "@vitejs/plugin-react-swc";
 import { defineConfig } from "vite";
-import apiPlugin from "./vite-plugin-api.js";  // Import the plugin
+import apiPlugin from "./vite-plugin-api.js";  // ← ADD THIS LINE
 
 export default defineConfig(({ mode }) => ({
   server: {
@@ -201,7 +306,7 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
-    apiPlugin()  // Add the plugin here
+    apiPlugin()  // ← ADD THIS TO EXISTING PLUGINS ARRAY
   ],
   resolve: {
     alias: {
@@ -211,21 +316,40 @@ export default defineConfig(({ mode }) => ({
 }));
 ```
 
-**Success criteria:** Start dev server and check console output:
+**Important:** The above is just an example. Your actual config will have different plugins, different server settings, etc. Use the Edit tool to:
+1. Add the import line at the top
+2. Add `apiPlugin()` to the plugins array (don't remove other plugins!)
+
+**Verification Steps:**
+
+1. **After editing, read the file back** to verify changes are correct
+2. **Restart the dev server** (stop and start it again)
+3. **Look for confirmation** that the API plugin loaded successfully in the console
+4. **Test health endpoint** (adapt port from Step 0):
 ```bash
-bun run dev
-# You should see: "✅ API Plugin loaded - endpoints available at /api/*"
+curl http://localhost:PORT/api/health
+# Expected: JSON response with status and timestamp
 ```
 
-Test health endpoint:
-```bash
-curl http://localhost:3000/api/health
-# Expected output: {"status":"ok","timestamp":"2025-11-09T..."}
-```
+5. **Check for errors:**
+   - No console errors about missing imports
+   - No TypeScript errors in IDE
+   - Server starts successfully
+
+**Common Issues:**
+- **Plugin not loading:** Check the import path in vite.config - must be `./vite-plugin-api.js` (relative path)
+- **Module not found:** Ensure the plugin file is in project root, not in src/
+- **Changes not applied:** Make sure you restarted the server (stop and start, not just refresh browser)
 
 ### Step 4: Create API Helper Functions (Frontend)
 
-Create `src/lib/api.ts`:
+**For Claude (AI Assistant):**
+- **Check Step 0 analysis** for the correct location (could be `src/lib/`, `src/utils/`, or other)
+- **Match project's TypeScript style** (interfaces vs types, naming conventions)
+- **Use proper TypeScript types** - no `any`, ensure all functions are fully typed
+- If project doesn't have a `lib/` directory, create it or use the appropriate location
+
+Create `src/lib/api.ts` (or adapt path based on project structure):
 
 ```typescript
 export interface Item {
@@ -317,15 +441,27 @@ export async function checkHealth(): Promise<{ status: string; timestamp: string
 }
 ```
 
-**Success criteria:** No TypeScript errors in IDE. Test in browser console:
+**Verification:**
+- No TypeScript errors in IDE
+- File created in correct location based on Step 0 analysis
+- All functions properly typed (no `any` types)
+
+**Optional test** in browser console:
 ```javascript
 import { checkHealth } from '@/lib/api';
-await checkHealth(); // Should return {status: 'ok', timestamp: ...}
+await checkHealth(); // Should return object with status and timestamp
 ```
 
 ### Step 5: Use the API in Your Components
 
-Example usage in `src/pages/Index.tsx`:
+**For Claude (AI Assistant):**
+- **Adapt the example** to fit the project's routing structure (could be `src/pages/`, `src/app/`, or other)
+- **Match project's component style** (function syntax, export style, etc.)
+- **Ensure full TypeScript typing** - properly type state, props, event handlers
+- **Use project's existing patterns** for styling (Tailwind classes, CSS modules, etc.)
+- If project uses a different UI framework or no framework, adapt accordingly
+
+Example usage in `src/pages/Index.tsx` (adapt path and styling based on your project):
 
 ```tsx
 import { useEffect, useState } from 'react';
@@ -429,20 +565,34 @@ const Index = () => {
 export default Index;
 ```
 
-**Success criteria:** Navigate to http://localhost:3000 in browser:
-- Page loads without errors
-- You see "Items Manager" header
-- Sample item "Example Item" appears in the list
-- Can add new items via form
-- Can delete items (list updates immediately)
+**Success criteria:**
 
-**Expected console output:**
-```
-✅ API Plugin loaded - endpoints available at /api/*
-GET /api/items 200
-POST /api/items 201
-DELETE /api/items?id=1 200
-```
+1. **Restart the dev server** to apply changes
+2. **Navigate to the page** in browser (use port from Step 0 analysis)
+3. **Verify functionality:**
+   - Page loads without errors
+   - UI renders correctly (adapted to your project's style)
+   - Sample item appears in the list
+   - Can add new items via form (list updates)
+   - Can delete items (list updates)
+   - No TypeScript errors in IDE or console
+
+**Console verification:**
+- Look for confirmation that API plugin loaded
+- API requests show successful status codes (200, 201)
+- No 404 errors for `/api/*` endpoints
+
+**For Claude:** After implementation:
+1. TEST the functionality manually
+2. Describe what you see in the browser
+3. Show evidence it works (paste console output showing successful API calls)
+4. If errors occur, troubleshoot using the tips below
+
+**Common Issues:**
+- **404 on /api/items:** Plugin not loaded - check vite.config import and restart server
+- **Items don't appear:** Check browser console for fetch errors, verify API endpoint works with curl
+- **TypeScript errors:** Ensure all types are properly imported from '@/lib/api'
+- **CORS errors:** Should not occur (same origin), but if it does, check Vite proxy config
 
 ## How It Works
 
