@@ -10,8 +10,36 @@ import type {
   FileUploadAttachment,
   LibraryImageAttachment,
   SuperTemplateAttachment,
+  UserPromptAttachment,
 } from "../types"
-import { isFileUpload, isLibraryImage, isSuperTemplateAttachment } from "../types"
+import { isFileUpload, isLibraryImage, isSuperTemplateAttachment, isUserPromptAttachment } from "../types"
+
+/**
+ * Converts file-upload attachment to library-image attachment.
+ * This ensures uploaded files are sent to Claude (prompt-builder only includes library-image).
+ */
+function convertToLibraryImage(
+  fileUploadAttachment: FileUploadAttachment,
+  photobookKey: string,
+  preview: string,
+): LibraryImageAttachment {
+  return {
+    kind: "library-image",
+    id: fileUploadAttachment.id,
+    photobookKey,
+    preview,
+    uploadProgress: 100,
+  }
+}
+
+/**
+ * Safely revokes a blob URL if it's valid.
+ */
+function revokeBlobUrl(url: string | undefined): void {
+  if (url?.startsWith("blob:")) {
+    URL.revokeObjectURL(url)
+  }
+}
 
 export function useAttachments(config: ChatInputConfig) {
   const [attachments, setAttachments] = useState<Attachment[]>([])
@@ -64,9 +92,18 @@ export function useAttachments(config: ChatInputConfig) {
 
       setAttachments(prev => [...prev, attachment])
 
-      // If already exists in imageStore, mark as complete and skip upload
+      // If already exists in imageStore, skip upload but convert to library-image
       if (existingImage) {
-        setAttachments(prev => prev.map(a => (a.id === attachment.id ? { ...a, uploadProgress: 100 } : a)))
+        // Revoke blob URL before conversion (outside state updater for purity)
+        revokeBlobUrl(attachment.preview)
+
+        setAttachments(prev =>
+          prev.map(a =>
+            a.id === attachment.id && isFileUpload(a)
+              ? convertToLibraryImage(a, existingImage.key, existingImage.variants.w640)
+              : a,
+          ),
+        )
         return
       }
 
@@ -78,10 +115,25 @@ export function useAttachments(config: ChatInputConfig) {
             setAttachments(prev => prev.map(a => (a.id === attachment.id ? { ...a, uploadProgress: progress } : a)))
           }
 
-          const _imageKey = await config.onAttachmentUpload(file, onProgress)
+          const imageKey = await config.onAttachmentUpload(file, onProgress)
 
-          // Ensure 100% progress on completion
-          setAttachments(prev => prev.map(a => (a.id === attachment.id ? { ...a, uploadProgress: 100 } : a)))
+          // Convert file-upload → library-image after successful upload
+          // This ensures the uploaded file is sent to Claude (prompt-builder only includes library-image)
+          const [domain, hash] = imageKey.split("/", 2)
+          if (!domain || !hash) {
+            throw new Error(`Invalid image key format: ${imageKey}`)
+          }
+          const preview = `/_images/t/${domain}/o/${hash}/v/w640.webp`
+
+          // Revoke blob URL before conversion (outside state updater for purity)
+          revokeBlobUrl(attachment.preview)
+
+          setAttachments(prev =>
+            prev.map(a =>
+              a.id === attachment.id && isFileUpload(a) ? convertToLibraryImage(a, imageKey, preview) : a,
+            ),
+          )
+
           config.onMessage?.(`Uploaded ${file.name}`, "success")
         } catch (error) {
           // Set error state on attachment
@@ -174,34 +226,66 @@ export function useAttachments(config: ChatInputConfig) {
     [attachments, config],
   )
 
-  const removeAttachment = useCallback((id: string) => {
-    setAttachments(prev => {
-      const attachment = prev.find(a => a.id === id)
-      // Only revoke blob URLs for file uploads
-      if (attachment && isFileUpload(attachment) && attachment.preview?.startsWith("blob:")) {
-        URL.revokeObjectURL(attachment.preview)
+  const addUserPrompt = useCallback(
+    (promptType: string, data: string, displayName: string, userFacingDescription?: string) => {
+      // Check if same prompt type already attached
+      if (attachments.some(a => isUserPromptAttachment(a) && a.promptType === promptType)) {
+        config.onMessage?.(`"${displayName}" already attached`, "error")
+        return
       }
-      return prev.filter(a => a.id !== id)
-    })
-  }, [])
+
+      // Check max attachments
+      if (config.maxAttachments && attachments.length >= config.maxAttachments) {
+        config.onMessage?.(`Maximum ${config.maxAttachments} attachments allowed`, "error")
+        return
+      }
+
+      // Create user prompt attachment
+      const attachment: UserPromptAttachment = {
+        kind: "user-prompt",
+        id: crypto.randomUUID(),
+        promptType,
+        data,
+        displayName,
+        userFacingDescription,
+        uploadProgress: 100,
+      }
+
+      setAttachments(prev => [...prev, attachment])
+    },
+    [attachments, config],
+  )
+
+  const removeAttachment = useCallback(
+    (id: string) => {
+      // Find and revoke blob URL before updating state (outside state updater for purity)
+      const attachment = attachments.find(a => a.id === id)
+      if (attachment && isFileUpload(attachment)) {
+        revokeBlobUrl(attachment.preview)
+      }
+
+      setAttachments(prev => prev.filter(a => a.id !== id))
+    },
+    [attachments],
+  )
 
   const clearAttachments = useCallback(() => {
-    setAttachments(prev => {
-      // Revoke all blob URLs for file uploads
-      prev.forEach(attachment => {
-        if (isFileUpload(attachment) && attachment.preview?.startsWith("blob:")) {
-          URL.revokeObjectURL(attachment.preview)
-        }
-      })
-      return []
+    // Revoke all blob URLs before clearing (outside state updater for purity)
+    attachments.forEach(attachment => {
+      if (isFileUpload(attachment)) {
+        revokeBlobUrl(attachment.preview)
+      }
     })
-  }, [])
+
+    setAttachments([])
+  }, [attachments])
 
   return {
     attachments,
     addAttachment,
     addPhotobookImage,
     addSuperTemplateAttachment,
+    addUserPrompt,
     removeAttachment,
     clearAttachments,
   }

@@ -1,14 +1,14 @@
 "use client"
 
-import { FileText, X } from "lucide-react"
+import { ClipboardList, FileText, Sparkles, X } from "lucide-react"
 import Image from "next/image"
 import { useChatInput } from "./ChatInputContext"
-import { isFileUpload, isImageAttachment, isSuperTemplateAttachment } from "./types"
+import { isFileUpload, isImageAttachment, isSuperTemplateAttachment, isUserPromptAttachment } from "./types"
 
 /**
- * Attachments - our horizontal layout style
+ * PromptBarAttachmentGrid - Shows attachments in the chat input bar (before sending)
  */
-export function AttachmentsGrid() {
+export function PromptBarAttachmentGrid() {
   const { attachments, removeAttachment } = useChatInput()
 
   if (attachments.length === 0) return null
@@ -24,7 +24,15 @@ export function AttachmentsGrid() {
               : "border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02]"
           }`}
         >
-          {isSuperTemplateAttachment(attachment) && attachment.preview ? (
+          {isUserPromptAttachment(attachment) ? (
+            <div className="w-12 h-12 flex items-center justify-center rounded bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20">
+              {attachment.promptType === "revise-code" ? (
+                <ClipboardList className="size-6 text-purple-600 dark:text-purple-400" />
+              ) : (
+                <Sparkles className="size-6 text-purple-600 dark:text-purple-400" />
+              )}
+            </div>
+          ) : isSuperTemplateAttachment(attachment) && attachment.preview ? (
             <div className="w-12 h-12 relative rounded overflow-hidden">
               <img src={attachment.preview} alt={attachment.name} className="w-full h-full object-cover" />
             </div>
@@ -53,11 +61,13 @@ export function AttachmentsGrid() {
 
           <div className="flex flex-col min-w-0">
             <span className="text-xs font-medium text-black dark:text-white truncate max-w-[150px]">
-              {isSuperTemplateAttachment(attachment)
-                ? attachment.name
-                : isFileUpload(attachment)
-                  ? attachment.file.name
-                  : "Photo"}
+              {isUserPromptAttachment(attachment)
+                ? attachment.displayName
+                : isSuperTemplateAttachment(attachment)
+                  ? attachment.name
+                  : isFileUpload(attachment)
+                    ? attachment.file.name
+                    : "Photo"}
             </span>
             {attachment.error ? (
               <span className="text-xs text-red-600 dark:text-red-400 truncate max-w-[150px]" title={attachment.error}>
@@ -65,11 +75,13 @@ export function AttachmentsGrid() {
               </span>
             ) : (
               <span className="text-xs text-black/50 dark:text-white/50">
-                {isSuperTemplateAttachment(attachment)
-                  ? "SuperTemplate"
-                  : isFileUpload(attachment)
-                    ? `${(attachment.file.size / 1024).toFixed(1)} KB`
-                    : "Library"}
+                {isUserPromptAttachment(attachment)
+                  ? "User Prompt"
+                  : isSuperTemplateAttachment(attachment)
+                    ? "SuperTemplate"
+                    : isFileUpload(attachment)
+                      ? `${(attachment.file.size / 1024).toFixed(1)} KB`
+                      : "Library"}
               </span>
             )}
           </div>

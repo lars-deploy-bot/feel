@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it, mock } from "bun:test"
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { existsSync, rmSync } from "node:fs"
 
 // Helper to create mock NextRequest
@@ -24,7 +24,7 @@ function createMockRequest(url: string, options?: RequestInit) {
 
 // Mock manager authentication
 let isManagerAuth = false
-mock.module("@/features/auth/lib/auth", () => ({
+vi.mock("@/features/auth/lib/auth", () => ({
   isManagerAuthenticated: async () => isManagerAuth,
 }))
 

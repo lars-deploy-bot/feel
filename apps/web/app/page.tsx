@@ -84,15 +84,18 @@ function LoginPageContent() {
         {/* Recent Sites */}
         {mounted && recentSites.length > 0 && (
           <div className="mb-8">
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-2 mb-4">
               <Clock className="h-4 w-4 text-black/40" />
               <p className="text-sm font-medium text-black/70">Recent sites</p>
             </div>
-            <div className="space-y-2">
+            <div className="flex flex-wrap gap-2">
               {recentSites.map(site => (
                 <div
                   key={site.domain}
-                  className="w-full group relative flex items-center justify-between px-4 py-3 rounded-lg border border-black/10 hover:border-black/30 hover:bg-black/5 transition-all"
+                  className="group relative inline-flex items-center px-3 py-2 rounded-lg border border-black/10 hover:border-black/30 hover:bg-black/5 transition-all cursor-pointer"
+                  style={{
+                    maxWidth: "fit-content",
+                  }}
                 >
                   <button
                     type="button"
@@ -104,16 +107,16 @@ function LoginPageContent() {
                   >
                     <span className="sr-only">Select {site.domain}</span>
                   </button>
-                  <span className="text-sm font-medium text-black relative z-10 pointer-events-none">
+                  <span className="text-sm font-medium text-black relative z-10 pointer-events-none whitespace-nowrap">
                     {site.domain}
                   </span>
                   <button
                     type="button"
                     onClick={() => removeSite(site.domain)}
-                    className="relative z-10 opacity-0 group-hover:opacity-100 p-1 hover:bg-black/10 rounded transition-opacity"
+                    className="absolute -top-1.5 -right-1.5 z-10 hidden group-hover:flex p-1 bg-white hover:bg-gray-100 border border-black/10 rounded-full shadow-sm"
                     aria-label={`Remove ${site.domain}`}
                   >
-                    <X className="h-3 w-3 text-black/50" />
+                    <X className="h-3 w-3 text-black" />
                   </button>
                 </div>
               ))}

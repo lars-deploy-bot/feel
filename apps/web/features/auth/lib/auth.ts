@@ -4,6 +4,7 @@ import { verifySessionToken } from "./jwt"
 
 export interface SessionUser {
   id: string
+  workspaces: string[]
 }
 
 export async function getSessionUser(): Promise<SessionUser | null> {
@@ -14,12 +15,30 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     return null
   }
 
-  // Session value is either a legacy "1" or JSON array of authenticated workspaces
   const sessionValue = sessionCookie.value
 
-  // Simple implementation: use session value as user ID
+  // Test mode
+  if (process.env.BRIDGE_ENV === "local" && sessionValue === "test-user") {
+    return {
+      id: "test-user",
+      workspaces: ["test"],
+    }
+  }
+
+  // Legacy session format "1" is invalid - requires re-authentication
+  if (sessionValue === "1") {
+    return null
+  }
+
+  // Verify JWT token and extract workspaces
+  const payload = verifySessionToken(sessionValue)
+  if (!payload) {
+    return null // Invalid/expired/tampered token
+  }
+
   const user = {
-    id: sessionValue || "anonymous",
+    id: sessionValue,
+    workspaces: payload.workspaces,
   }
 
   return hasValidUser(user) ? user : null

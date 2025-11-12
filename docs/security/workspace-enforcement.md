@@ -1,10 +1,21 @@
 # Workspace Enforcement
 
+**Last Updated**: 2025-11-11
+
+## Overview
+
+Workspace enforcement prevents users from accessing files/workspaces they haven't authenticated for through multiple defense layers.
+
+**See Also**: `docs/security/workspace-security-current-state.md` for complete current security state including MCP tool authorization
+
 ## Files
 
 - `features/workspace/lib/workspace-secure.ts` – Workspace resolution & validation
-- `lib/claude/tool-permissions.ts` – Tool whitelisting & path validation
+- `lib/claude/tool-permissions.ts` – SDK tool whitelisting & path validation
+- `lib/workspace-api-handler.ts` – API route workspace authorization
 - `app/api/claude/stream/route.ts` – Integration
+- `packages/tools/src/lib/workspace-validator.ts` – MCP tool path validation
+- `packages/tools/src/lib/bridge-api-client.ts` – API call authentication
 
 ## Workspace Resolution
 
@@ -67,8 +78,12 @@ export const ALLOWED_MCP_TOOLS = new Set([
 ])
 ```
 
-**SDK tools**: Require path validation (local file operations)
-**MCP tools**: No path validation (handled by child process context)
+**SDK tools**: Require path validation (local file operations via `ensurePathWithinWorkspace()`)
+**MCP tools**: Multi-layer security:
+1. **Parameter restriction**: Tools do NOT expose `workspaceRoot` parameter to Claude
+2. **Path validation**: `validateWorkspacePath()` checks allowed bases
+3. **API authorization**: Routes validate JWT contains requested workspace
+4. **Session authentication**: All API calls require valid session cookie
 
 ## Path Validation
 
@@ -84,6 +99,91 @@ export function ensurePathWithinWorkspace(filePath: string, workspaceRoot: strin
 ```
 
 Called before SDK tool execution to prevent directory traversal.
+
+## MCP Tool Security (November 2025 Update)
+
+**Critical Change**: MCP tools now secured with multi-layer defense to prevent workspace bypass attacks.
+
+### Layer 1: Parameter Restriction
+
+MCP tools do NOT expose `workspaceRoot` parameter to Claude:
+
+```typescript
+// tools/workspace/install-package.ts
+export const installPackageParamsSchema = {
+  packageName: z.string(),
+  version: z.string().optional(),
+  dev: z.boolean().optional(),
+  // NO workspaceRoot parameter - Claude cannot specify workspace
+}
+
+export async function installPackage(params): Promise<ToolResult> {
+  const workspaceRoot = process.cwd() // Set by Bridge based on authenticated workspace
+  // ...
+}
+```
+
+### Layer 2: Path Validation
+
+Tools validate workspace path before operations:
+
+```typescript
+// packages/tools/src/lib/workspace-validator.ts
+const ALLOWED_WORKSPACE_BASES = ["/srv/webalive/sites", "/root/webalive/sites"]
+
+export function validateWorkspacePath(workspaceRoot: string): void {
+  const resolvedPath = resolve(workspaceRoot) // Normalize, resolve symlinks
+
+  const isAllowed = ALLOWED_WORKSPACE_BASES.some(base => {
+    return resolvedPath === base || resolvedPath.startsWith(`${base}/`)
+  })
+
+  if (!isAllowed) throw new Error("Invalid workspace path")
+}
+```
+
+### Layer 3: API Route Authorization
+
+API routes validate user has access to requested workspace:
+
+```typescript
+// apps/web/lib/workspace-api-handler.ts
+const user = await requireSessionUser() // Get JWT with workspaces array
+
+// Extract workspace from path: /srv/webalive/sites/example.com/user -> example.com
+const workspaceName = extractWorkspaceFromPath(workspaceRoot)
+
+if (!user.workspaces.includes(workspaceName)) {
+  return 403 Forbidden // User doesn't have access
+}
+```
+
+### Layer 4: Session Authentication
+
+MCP tools include session cookie in API calls:
+
+```typescript
+// packages/tools/src/lib/bridge-api-client.ts
+const sessionCookie = process.env.BRIDGE_SESSION_COOKIE // Passed by Bridge
+
+const response = await fetch(apiUrl, {
+  headers: {
+    Cookie: `session=${sessionCookie}`, // JWT with authorized workspaces
+  }
+})
+```
+
+**Flow**:
+1. User authenticates for `example.com` → JWT with `workspaces: ["example.com"]`
+2. Bridge spawns child process, passes session cookie as env var
+3. MCP tool calls API with session cookie
+4. API route validates workspace is in JWT `workspaces` array
+
+**Attack Resistance**:
+- ✅ Claude cannot specify workspace (no parameter)
+- ✅ Path traversal blocked (normalized before validation)
+- ✅ Unauthorized workspace access blocked (JWT validation)
+- ✅ Direct API calls require authentication (no localhost bypass)
 
 ## Tool Permission Handler
 

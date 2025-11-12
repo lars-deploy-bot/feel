@@ -17,7 +17,7 @@ interface UseWorkspaceReturn extends WorkspaceState {
 }
 
 export function useWorkspace(options: UseWorkspaceOptions = {}): UseWorkspaceReturn {
-  const { redirectOnMissing = "/workspace" } = options
+  const { redirectOnMissing = "/" } = options
   const router = useRouter()
   const [state, setState] = useState<WorkspaceState>({
     workspace: "",

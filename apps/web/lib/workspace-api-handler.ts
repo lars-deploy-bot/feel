@@ -15,8 +15,15 @@ interface WorkspaceApiConfig<_T extends z.ZodRawShape> {
 /**
  * Validates workspace containment to prevent path traversal attacks
  * Uses realpathSync to resolve symlinks before checking containment
+ * Returns the resolved path for further processing
  */
-function validateWorkspaceContainment(workspaceRoot: string, requestId: string): boolean {
+function validateWorkspaceContainment(
+  workspaceRoot: string,
+  requestId: string,
+): {
+  valid: boolean
+  resolvedPath?: string
+} {
   try {
     // Resolve any symlinks to get real paths
     const realWorkspaceRoot = realpathSync(workspaceRoot)
@@ -27,14 +34,14 @@ function validateWorkspaceContainment(workspaceRoot: string, requestId: string):
       console.error(
         `[workspace-api ${requestId}] Path traversal attempt: ${workspaceRoot} -> ${realWorkspaceRoot} not in ${realBaseRoot}`,
       )
-      return false
+      return { valid: false }
     }
 
     console.log(`[workspace-api ${requestId}] Workspace validated: ${realWorkspaceRoot}`)
-    return true
+    return { valid: true, resolvedPath: realWorkspaceRoot }
   } catch (error) {
     console.error(`[workspace-api ${requestId}] Workspace validation failed:`, error)
-    return false
+    return { valid: false }
   }
 }
 
@@ -49,13 +56,8 @@ export async function handleWorkspaceApi<T extends z.ZodRawShape>(
   const requestId = crypto.randomUUID()
 
   try {
-    // Authentication
-    const origin = req.headers.get("host")
-    const isLocalhost = origin?.includes("localhost")
-
-    if (!isLocalhost) {
-      await requireSessionUser()
-    }
+    // Authentication - always required, no localhost bypass
+    const user = await requireSessionUser()
 
     // Parse and validate request body
     const body = await req.json()
@@ -75,9 +77,12 @@ export async function handleWorkspaceApi<T extends z.ZodRawShape>(
       )
     }
 
-    // Validate workspace containment if workspaceRoot is present
+    // Validate workspace containment and authorization if workspaceRoot is present
     if (parseResult.data.workspaceRoot) {
-      if (!validateWorkspaceContainment(parseResult.data.workspaceRoot, requestId)) {
+      // First: check path is within allowed base and get resolved path
+      const containmentResult = validateWorkspaceContainment(parseResult.data.workspaceRoot, requestId)
+
+      if (!containmentResult.valid) {
         return NextResponse.json(
           {
             ok: false,
@@ -88,6 +93,29 @@ export async function handleWorkspaceApi<T extends z.ZodRawShape>(
           { status: 403 },
         )
       }
+
+      // Second: check user has access to this specific workspace
+      // CRITICAL: Extract workspace name from RESOLVED path (not original)
+      const pathParts = containmentResult.resolvedPath!.split("/")
+      const sitesIndex = pathParts.indexOf("sites")
+      const workspaceName = sitesIndex >= 0 && pathParts[sitesIndex + 1] ? pathParts[sitesIndex + 1] : null
+
+      if (!workspaceName || !user.workspaces.includes(workspaceName)) {
+        console.error(
+          `[workspace-api ${requestId}] Authorization failed: workspace ${workspaceName} not in user's authorized list`,
+        )
+        return NextResponse.json(
+          {
+            ok: false,
+            error: ErrorCodes.UNAUTHORIZED,
+            message: "You don't have access to this workspace",
+            requestId,
+          },
+          { status: 403 },
+        )
+      }
+
+      console.log(`[workspace-api ${requestId}] Workspace authorization passed: ${workspaceName}`)
     }
 
     // Call the specific handler

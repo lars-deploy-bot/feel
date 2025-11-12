@@ -1,6 +1,6 @@
 "use client"
 
-import { Plus, Trash2 } from "lucide-react"
+import { Check, Copy, Plus, Trash2 } from "lucide-react"
 import type { RefObject } from "react"
 import { useEffect, useRef, useState } from "react"
 import { DeleteModal } from "@/components/modals/DeleteModal"
@@ -19,6 +19,7 @@ export function PhotoMenu({ isOpen, onClose, triggerRef }: PhotoMenuProps) {
   const { workspace, isTerminal, mounted } = useWorkspace()
   const { images, loading, uploading, uploadImages, loadImages, deleteImage } = useImageStore()
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [copiedKey, setCopiedKey] = useState<string | null>(null)
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -74,6 +75,21 @@ export function PhotoMenu({ isOpen, onClose, triggerRef }: PhotoMenuProps) {
     }
   }
 
+  const handleCopyUrl = async (imageKey: string) => {
+    const image = images.find(img => img.key === imageKey)
+    if (!image) return
+
+    const fullUrl = `${window.location.origin}${image.variants.orig}`
+
+    try {
+      await navigator.clipboard.writeText(fullUrl)
+      setCopiedKey(imageKey)
+      setTimeout(() => setCopiedKey(null), 2000)
+    } catch (err) {
+      console.error("Failed to copy:", err)
+    }
+  }
+
   if (!isOpen) return null
 
   return (
@@ -121,17 +137,34 @@ export function PhotoMenu({ isOpen, onClose, triggerRef }: PhotoMenuProps) {
                     className="w-full h-auto rounded hover:opacity-80 transition-opacity pointer-events-none"
                   />
                 </button>
-                <button
-                  type="button"
-                  onClick={e => {
-                    e.stopPropagation()
-                    setDeleteConfirm(image.key)
-                  }}
-                  className="absolute top-1 right-1 p-1.5 bg-white/90 dark:bg-black/90 hover:bg-red-50 dark:hover:bg-red-900/50 text-black/40 dark:text-white/40 hover:text-red-500 dark:hover:text-red-400 rounded opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
-                  aria-label="Delete image"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
+                <div className="absolute top-1 right-1 flex flex-col gap-1">
+                  <button
+                    type="button"
+                    onClick={e => {
+                      e.stopPropagation()
+                      setDeleteConfirm(image.key)
+                    }}
+                    className="p-1.5 bg-white dark:bg-zinc-900 hover:bg-red-50 dark:hover:bg-red-950 text-zinc-400 hover:text-red-600 dark:hover:text-red-400 rounded shadow-sm opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-pointer border border-black/5 dark:border-white/10"
+                    aria-label="Delete image"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={e => {
+                      e.stopPropagation()
+                      handleCopyUrl(image.key)
+                    }}
+                    className={`p-1.5 rounded shadow-sm opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-pointer border ${
+                      copiedKey === image.key
+                        ? "bg-green-50 dark:bg-green-950 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800"
+                        : "bg-white dark:bg-zinc-900 hover:bg-blue-50 dark:hover:bg-blue-950 text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 border-black/5 dark:border-white/10"
+                    }`}
+                    aria-label="Copy image URL"
+                  >
+                    {copiedKey === image.key ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
               </div>
             ))}
             <button

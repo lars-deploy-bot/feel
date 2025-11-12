@@ -30,7 +30,16 @@ export interface SuperTemplateAttachment extends BaseAttachment {
   // preview: inherited from BaseAttachment (template preview image URL)
 }
 
-export type Attachment = FileUploadAttachment | LibraryImageAttachment | SuperTemplateAttachment
+// User Prompt template
+export interface UserPromptAttachment extends BaseAttachment {
+  kind: "user-prompt"
+  promptType: string // e.g., "revise-code", "organize-code"
+  data: string // The actual prompt text (sent to Claude SDK)
+  displayName: string // e.g., "Revise Code", "Organize Code"
+  userFacingDescription?: string // Short description shown to user in UI (instead of full prompt)
+}
+
+export type Attachment = FileUploadAttachment | LibraryImageAttachment | SuperTemplateAttachment | UserPromptAttachment
 
 // Type guards
 export function isFileUpload(attachment: Attachment): attachment is FileUploadAttachment {
@@ -43,6 +52,10 @@ export function isLibraryImage(attachment: Attachment): attachment is LibraryIma
 
 export function isSuperTemplateAttachment(attachment: Attachment): attachment is SuperTemplateAttachment {
   return attachment.kind === "supertemplate"
+}
+
+export function isUserPromptAttachment(attachment: Attachment): attachment is UserPromptAttachment {
+  return attachment.kind === "user-prompt"
 }
 
 export function isImageAttachment(attachment: Attachment): boolean {
@@ -116,6 +129,7 @@ export interface ChatInputHandle {
   addAttachment: (file: File) => Promise<void>
   addPhotobookImage: (imageKey: string) => void
   addSuperTemplateAttachment: (templateId: string, name: string, preview: string) => void
+  addUserPrompt: (promptType: string, data: string, displayName: string, userFacingDescription?: string) => void
   getAttachments: () => Attachment[]
   clearLibraryImages: () => void
   clearAllAttachments: () => void

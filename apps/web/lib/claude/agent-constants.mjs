@@ -1,4 +1,4 @@
-import { toolsMcp, workspaceManagementMcp } from "@alive-brug/tools"
+import { getEnabledMcpToolNames, toolsInternalMcp, workspaceInternalMcp } from "@alive-brug/tools"
 
 export const BRIDGE_STREAM_TYPES = {
   START: "bridge_start",
@@ -23,20 +23,12 @@ export const BRIDGE_INTERRUPT_SOURCES = {
 // SDK built-in tools (file operations with workspace path validation)
 export const ALLOWED_SDK_TOOLS = ["Write", "Edit", "Read", "Glob", "Grep"]
 
-// MCP tools (handled by child process, no path validation needed in parent)
-const BASE_MCP_TOOLS = [
-  "mcp__workspace-management__restart_dev_server",
-  "mcp__workspace-management__install_package",
-  "mcp__tools__list_guides",
-  "mcp__tools__get_guide",
-  "mcp__tools__find_guide",
-  "mcp__tools__batch_get_guides",
-  "mcp__tools__get_alive_super_template",
-  "mcp__tools__generate_persona",
-  // "mcp__tools__search_tools", // Disabled
-  "mcp__tools__debug_workspace",
-  "mcp__tools__read_server_logs",
-]
+// MCP tools (auto-generated from TOOL_REGISTRY in packages/tools/src/tools/meta/tool-registry.ts)
+// To enable/disable tools, set enabled=true/false in TOOL_REGISTRY - this list updates automatically
+const BASE_MCP_TOOLS = getEnabledMcpToolNames()
+
+// Export for use in tool-permissions.ts
+export const ALLOWED_MCP_TOOLS = BASE_MCP_TOOLS
 
 // Stripe MCP tools (only for riggedwheel.alive.best)
 const STRIPE_MCP_TOOLS = [
@@ -100,10 +92,6 @@ export function getAllowedTools(workspacePath) {
   return [...ALLOWED_SDK_TOOLS, ...mcpTools]
 }
 
-// Legacy exports for backwards compatibility
-export const ALLOWED_MCP_TOOLS = BASE_MCP_TOOLS
-export const ALLOWED_TOOLS = getAllowedTools("")
-
 export const DISALLOWED_TOOLS = [
   "Bash",
   "bash",
@@ -132,8 +120,8 @@ export const DISALLOWED_TOOLS = [
  */
 export function getMcpServers(workspacePath) {
   const baseServers = {
-    "workspace-management": workspaceManagementMcp,
-    tools: toolsMcp,
+    "alive-workspace": workspaceInternalMcp,
+    "alive-tools": toolsInternalMcp,
   }
 
   // Extract domain from workspace path

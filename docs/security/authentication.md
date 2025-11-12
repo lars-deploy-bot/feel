@@ -224,6 +224,40 @@ res.cookies.set('session', token, {
 - [ ] Cookies never exposed in logs/responses
 - [ ] Token expiration enforced (30 days max)
 
+## Workspace Authorization in API Routes (November 2025 Update)
+
+**File**: `apps/web/lib/workspace-api-handler.ts`
+
+API routes that accept `workspaceRoot` parameter now validate user has access to that specific workspace:
+
+```typescript
+export async function handleWorkspaceApi(req: Request, config): Promise<NextResponse> {
+  // 1. Always require authentication (no localhost bypass)
+  const user = await requireSessionUser() // Get JWT with workspaces array
+
+  // 2. Parse request body
+  const { workspaceRoot } = parseResult.data
+
+  // 3. Extract workspace name from path
+  const pathParts = workspaceRoot.split("/")
+  const sitesIndex = pathParts.indexOf("sites")
+  const workspaceName = pathParts[sitesIndex + 1] // e.g., "example.com"
+
+  // 4. Validate user has access to this workspace
+  if (!user.workspaces.includes(workspaceName)) {
+    return 403 Forbidden // User authenticated, but not for THIS workspace
+  }
+
+  // 5. Proceed with operation
+}
+```
+
+**What This Prevents**:
+- User authenticated for `example.com` cannot call `/api/install-package` with `workspaceRoot: "/srv/webalive/sites/victim.com"`
+- Blocks workspace bypass attacks even with valid session cookie
+
+**See Also**: `docs/security/workspace-security-current-state.md` for complete security implementation
+
 ## Quick Testing
 
 ```bash

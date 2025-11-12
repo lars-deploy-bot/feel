@@ -8,6 +8,7 @@ export interface SiteMetadata {
   workspace: string
   email?: string // Optional for backward compatibility with old sites
   siteIdeas: string
+  selectedTemplate?: "landing" | "recipe" // Optional, added for template selection
   createdAt: number
   port?: number
 }

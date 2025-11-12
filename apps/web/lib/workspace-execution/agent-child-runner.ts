@@ -19,6 +19,7 @@ interface AgentRequest {
   resume?: string
   systemPrompt?: string | { type: "preset"; preset: "claude_code"; append?: string }
   apiKey?: string
+  sessionCookie?: string // For authenticated API calls back to Bridge
 }
 
 function getWorkspaceCredentials(workspaceRoot: string): WorkspaceCredentials {
@@ -57,6 +58,8 @@ export function runAgentChild(workspaceRoot: string, payload: AgentRequest): Rea
       TARGET_CWD: workspaceRoot,
       // Use user-provided API key if available, otherwise use environment default
       ANTHROPIC_API_KEY: payload.apiKey || process.env.ANTHROPIC_API_KEY,
+      // Pass session cookie for authenticated API calls
+      ...(payload.sessionCookie && { BRIDGE_SESSION_COOKIE: payload.sessionCookie }),
     },
     stdio: ["pipe", "pipe", "pipe"],
   })

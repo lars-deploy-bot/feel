@@ -211,3 +211,28 @@ export function isServiceRunning(domain: string, requestId: string): boolean {
   log("log", requestId, `Service ${serviceName} active: ${isActive}`)
   return isActive
 }
+
+/**
+ * Gets recent logs from a service.
+ *
+ * @param domain - Domain name
+ * @param requestId - Request ID for logging
+ * @param lines - Number of log lines to retrieve (default: 30)
+ * @returns Service logs or error message
+ */
+export function getServiceLogs(domain: string, requestId: string, lines = 30): string {
+  const serviceName = domainToServiceName(domain)
+
+  const result = spawnSync("journalctl", ["-u", serviceName, "-n", String(lines), "--no-pager"], {
+    encoding: "utf-8",
+    timeout: 5000,
+    shell: false,
+  })
+
+  if (result.error || result.status !== 0) {
+    log("error", requestId, `Failed to get logs for ${serviceName}`)
+    return "Could not retrieve service logs"
+  }
+
+  return result.stdout || "No logs available"
+}

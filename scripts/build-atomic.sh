@@ -127,6 +127,18 @@ if [ -d "$WEB_DIR/public" ]; then
     log_success "Copied public directory to standalone"
 fi
 
+# Copy workspace packages to standalone (Next.js file tracing doesn't handle symlinked workspaces)
+log_info "Copying workspace packages to standalone..."
+STANDALONE_PACKAGES="$TEMP_BUILD_DIR/standalone/packages"
+mkdir -p "$STANDALONE_PACKAGES"
+
+for pkg in tools images template guides; do
+    if [ -d "packages/$pkg" ]; then
+        cp -r "packages/$pkg" "$STANDALONE_PACKAGES/$pkg"
+        log_success "Copied packages/$pkg to standalone"
+    fi
+done
+
 # Move build to timestamped directory
 log_info "Moving build to timestamped directory..."
 mv "$TEMP_BUILD_DIR" "$TIMESTAMPED_DIR"

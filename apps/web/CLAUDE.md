@@ -102,6 +102,18 @@ always use bun!
 
 Routes each message type (user, start, system, assistant, tool_result, result, complete) to dedicated component. Tool inputs hidden by default (debug mode only).
 
+## Attachments & User Prompts
+
+**Files**: `features/chat/components/ChatInput/hooks/useAttachments.ts`, `features/chat/utils/prompt-builder.ts`, `lib/stores/userPromptsStore.ts`
+
+**Guides**: `docs/architecture/message-handling.md`, `docs/features/user-prompts.md`
+
+- **Attachment types**: Images (library), SuperTemplates, User Prompts, File Uploads
+- **User Prompts**: Pre-configured prompt templates with dual-view (short UI description, full SDK prompt)
+- **Prompt defaults**: `lib/stores/userPromptsDefaults.ts` (REVISE_PROMPT_DEFAULT, ORGANIZE_PROMPT_DEFAULT)
+- **Duplicate detection**: Hash-based (files), key-based (images), type-based (prompts)
+- **Prompt order**: User prompts prepended → message → images → supertemplates
+
 ## Automatic File Ownership
 
 **Files**: `lib/agent-child-runner.ts`, `scripts/run-agent.mjs`, `app/api/claude/stream/route.ts`
@@ -126,6 +138,7 @@ All stores follow **Guide §14.1-14.3** patterns:
 | `recentSitesStore.ts` | Site history | `useRecentSites()`, `useRecentSitesActions()` |
 | `llmStore.ts` | Model + API key | `useModel()`, `useApiKey()`, `useLLMActions()` |
 | `deployStore.ts` | Form + deployment | `useDeployDomain()`, `useFormActions()`, etc. |
+| `userPromptsStore.ts` | Prompt templates | `useUserPrompts()`, `useUserPromptsActions()` |
 
 **Improve a store**: See `/skills/zustand` and `docs/guides/zustand-nextjs-ssr-patterns.md`
 

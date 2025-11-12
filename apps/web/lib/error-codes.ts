@@ -43,6 +43,7 @@ export const ErrorCodes = {
   // Package management errors (6.5xxx)
   PACKAGE_INSTALL_FAILED: "PACKAGE_INSTALL_FAILED",
   DEV_SERVER_RESTART_FAILED: "DEV_SERVER_RESTART_FAILED",
+  DEV_SERVER_START_FAILED: "DEV_SERVER_START_FAILED",
 
   // Image errors (7xxx)
   TENANT_NOT_CONFIGURED: "TENANT_NOT_CONFIGURED",
@@ -165,6 +166,11 @@ export function getErrorMessage(code: ErrorCode, details?: Record<string, any>):
       return details?.service
         ? `I installed the package successfully, but couldn't restart the dev server (${details.service}). You may need to restart it manually.`
         : "I installed the package successfully, but couldn't restart the dev server. You may need to restart it manually."
+
+    case ErrorCodes.DEV_SERVER_START_FAILED:
+      return details?.service
+        ? `The package installed successfully, but the dev server failed to start. There may be an error in your code or a missing dependency. ${details.message || ""}`
+        : "The package installed successfully, but the dev server failed to start. There may be an error in your code or a missing dependency."
 
     case ErrorCodes.API_AUTH_FAILED:
       return "API authentication failed. The API key may be expired or invalid."

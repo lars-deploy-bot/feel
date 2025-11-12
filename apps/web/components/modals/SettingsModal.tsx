@@ -1,6 +1,6 @@
 "use client"
 
-import { Bot, Eye, EyeOff, Info, Moon, Settings, Sun, User, X, Zap } from "lucide-react"
+import { Bot, ClipboardList, Eye, EyeOff, Info, Moon, Settings, Sun, User, X, Zap } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
 import { DEFAULT_STARTING_CREDITS } from "@/lib/credits"
@@ -14,18 +14,20 @@ import {
   useUserActions,
 } from "@/lib/providers/UserStoreProvider"
 import { CLAUDE_MODELS, type ClaudeModel, useLLMStore } from "@/lib/stores/llmStore"
+import { useUserPrompts, useUserPromptsActions } from "@/lib/providers/UserPromptsStoreProvider"
 
 interface SettingsModalProps {
   onClose: () => void
 }
 
-type SettingsTab = "account" | "appearance" | "llm" | "tokens" | "about"
+type SettingsTab = "account" | "appearance" | "llm" | "tokens" | "prompts" | "about"
 
 const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
   { id: "account", label: "Account", icon: <User size={16} /> },
   { id: "appearance", label: "Appearance", icon: <Sun size={16} /> },
   { id: "llm", label: "LLM", icon: <Bot size={16} /> },
   { id: "tokens", label: "Credits", icon: <Zap size={16} /> },
+  { id: "prompts", label: "Prompts", icon: <ClipboardList size={16} /> },
   { id: "about", label: "About", icon: <Info size={16} /> },
 ]
 
@@ -113,6 +115,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
               {activeTab === "appearance" && <AppearanceSettings />}
               {activeTab === "llm" && <LLMSettings />}
               {activeTab === "tokens" && <TokensSettings />}
+              {activeTab === "prompts" && <UserPromptsSettings />}
               {activeTab === "about" && <AboutSettings />}
             </div>
           </div>
@@ -516,6 +519,188 @@ function AboutSettings() {
           We help you guide you through creating a company
         </p>
       </div>
+    </div>
+  )
+}
+
+function UserPromptsSettings() {
+  const prompts = useUserPrompts()
+  const { addPrompt, updatePrompt, removePrompt } = useUserPromptsActions()
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editDisplayName, setEditDisplayName] = useState("")
+  const [editData, setEditData] = useState("")
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [newDisplayName, setNewDisplayName] = useState("")
+  const [newData, setNewData] = useState("")
+
+  const handleStartEdit = (id: string, displayName: string, data: string) => {
+    setEditingId(id)
+    setEditDisplayName(displayName)
+    setEditData(data)
+  }
+
+  const handleSaveEdit = (id: string) => {
+    if (editDisplayName.trim() && editData.trim()) {
+      updatePrompt(id, editData.trim(), editDisplayName.trim())
+      setEditingId(null)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setEditingId(null)
+    setEditDisplayName("")
+    setEditData("")
+  }
+
+  const handleAddPrompt = () => {
+    if (newDisplayName.trim() && newData.trim()) {
+      const promptType = newDisplayName.toLowerCase().replace(/\s+/g, "-")
+      addPrompt(promptType, newData.trim(), newDisplayName.trim())
+      setNewDisplayName("")
+      setNewData("")
+      setShowAddForm(false)
+    }
+  }
+
+  const handleCancelAdd = () => {
+    setShowAddForm(false)
+    setNewDisplayName("")
+    setNewData("")
+  }
+
+  return (
+    <div className="space-y-4 sm:space-y-6">
+      <div className="animate-in fade-in-0 slide-in-from-top-2 duration-300">
+        <h3 className="text-base sm:text-lg font-medium text-black dark:text-white mb-1">User Prompts</h3>
+        <p className="text-xs sm:text-sm text-black/60 dark:text-white/60">
+          Manage your saved prompt templates that appear in the chat toolbar
+        </p>
+      </div>
+
+      {/* Add New Prompt Button */}
+      {!showAddForm && (
+        <button
+          type="button"
+          onClick={() => setShowAddForm(true)}
+          className="w-full px-4 py-2.5 border-2 border-dashed border-black/20 dark:border-white/20 rounded-lg text-sm font-medium text-black/60 dark:text-white/60 hover:border-black dark:hover:border-white hover:text-black dark:hover:text-white transition-colors"
+        >
+          + Add New Prompt
+        </button>
+      )}
+
+      {/* Add New Prompt Form */}
+      {showAddForm && (
+        <div className="px-4 py-3 rounded-lg border-2 border-purple-300 dark:border-purple-700 bg-gradient-to-br from-purple-50/50 to-pink-50/50 dark:from-purple-950/20 dark:to-pink-950/20 space-y-3">
+          <input
+            type="text"
+            value={newDisplayName}
+            onChange={e => setNewDisplayName(e.target.value)}
+            placeholder="Prompt name (e.g., 'Revise Code')"
+            className="w-full px-3 py-2 bg-white dark:bg-[#2a2a2a] border border-purple-300 dark:border-purple-700 rounded text-sm text-black dark:text-white focus:outline-none focus:border-purple-500 dark:focus:border-purple-500"
+          />
+          <textarea
+            value={newData}
+            onChange={e => setNewData(e.target.value)}
+            placeholder="Prompt text (e.g., 'revise the code and find any things that might be wrong')"
+            rows={3}
+            className="w-full px-3 py-2 bg-white dark:bg-[#2a2a2a] border border-purple-300 dark:border-purple-700 rounded text-sm text-black dark:text-white focus:outline-none focus:border-purple-500 dark:focus:border-purple-500 resize-none"
+          />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleAddPrompt}
+              disabled={!newDisplayName.trim() || !newData.trim()}
+              className="flex-1 px-3 py-2 bg-purple-600 text-white rounded text-sm font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Add Prompt
+            </button>
+            <button
+              type="button"
+              onClick={handleCancelAdd}
+              className="px-3 py-2 bg-black/5 dark:bg-white/5 text-black dark:text-white rounded text-sm font-medium hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Saved Prompts List */}
+      <div className="space-y-3">
+        {prompts.map(prompt => (
+          <div
+            key={prompt.id}
+            className="px-4 py-3 rounded-lg border border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50/50 to-pink-50/50 dark:from-purple-950/20 dark:to-pink-950/20"
+          >
+            {editingId === prompt.id ? (
+              // Edit mode
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  value={editDisplayName}
+                  onChange={e => setEditDisplayName(e.target.value)}
+                  className="w-full px-3 py-2 bg-white dark:bg-[#2a2a2a] border border-purple-300 dark:border-purple-700 rounded text-sm text-black dark:text-white focus:outline-none focus:border-purple-500 dark:focus:border-purple-500"
+                />
+                <textarea
+                  value={editData}
+                  onChange={e => setEditData(e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2 bg-white dark:bg-[#2a2a2a] border border-purple-300 dark:border-purple-700 rounded text-sm text-black dark:text-white focus:outline-none focus:border-purple-500 dark:focus:border-purple-500 resize-none"
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSaveEdit(prompt.id)}
+                    disabled={!editDisplayName.trim() || !editData.trim()}
+                    className="flex-1 px-3 py-1.5 bg-purple-600 text-white rounded text-xs font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCancelEdit}
+                    className="px-3 py-1.5 bg-black/5 dark:bg-white/5 text-black dark:text-white rounded text-xs font-medium hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              // View mode
+              <>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="text-xs font-semibold text-purple-900 dark:text-purple-100">
+                    {prompt.displayName}
+                  </span>
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleStartEdit(prompt.id, prompt.displayName, prompt.data)}
+                      className="px-2 py-1 text-xs text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded transition-colors"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removePrompt(prompt.id)}
+                      className="px-2 py-1 text-xs text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+                <p className="text-sm text-black/80 dark:text-white/80">{prompt.data}</p>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {prompts.length === 0 && !showAddForm && (
+        <div className="text-center py-8 text-black/40 dark:text-white/40 text-sm">
+          No saved prompts yet. Click &quot;Add New Prompt&quot; to create one.
+        </div>
+      )}
     </div>
   )
 }

@@ -17,28 +17,28 @@ Claude Bridge is a **multi-tenant development platform** that enables Claude AI 
 
 ## Core Architecture Patterns
 
-### 1. Workspace Isolation
+### 1. Workspace Isolation & Privilege Separation
 
-**CRITICAL**: All file operations must respect workspace boundaries.
+**Guide**: `apps/web/docs/architecture/workspace-privilege-separation.md`
 
+**🔥 CRITICAL RULE**: When working on package installs, file operations, builds, or ANY command that touches workspace files, you **MUST** read the guide first.
+
+**Quick facts:**
+- Each website = own workspace = own system user (e.g., `site-example-com`)
+- Bridge runs as root, spawns children that drop to workspace user
+- Use `runAsWorkspaceUser()` for commands, not `spawnSync()`
+- Pattern in `lib/workspace-execution/`
+
+**Workspace locations:**
+- New sites: `/srv/webalive/sites/[domain]/` (systemd-managed, secure)
+- Legacy sites: `/root/webalive/sites/[domain]/` (PM2-managed, should migrate)
+
+**Path validation:**
 ```typescript
-// Workspace resolution
-const workspace = isTerminalMode
-  ? req.workspace  // Custom workspace from user
-  : hostname       // Auto-mapped from domain
-
-const workspacePath = path.join(WORKSPACE_BASE, workspace, 'user')
-
-// ALWAYS validate before operations
 if (!isPathWithinWorkspace(filePath, workspacePath)) {
   throw new Error('Path traversal attack detected')
 }
 ```
-
-**Locations:**
-- New sites: `/srv/webalive/sites/[domain]/` (systemd-managed, secure)
-- Legacy sites: `/root/webalive/sites/[domain]/` (PM2-managed, should migrate)
-- Template: `/root/webalive/claude-bridge/packages/template/user/`
 
 ### 2. Session Management
 

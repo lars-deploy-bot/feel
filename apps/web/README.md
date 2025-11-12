@@ -12,6 +12,7 @@ This is the web application layer of **Claude Bridge**, the multi-tenant AI deve
 - **Domain-based isolation** – Each domain gets its own sandboxed workspace; prevents cross-site file access
 - **Passcode authentication** – Configurable via `BRIDGE_PASSCODE` environment variable (dev mode accepts any passcode if unset)
 - **Streaming AI conversations** – Real-time SSE responses with inline tool execution visibility
+- **Rich attachments** – Images from photobook library, SuperTemplate components, and pre-configured user prompt templates with dual-view (short UI descriptions, full SDK prompts)
 - **Workspace enforcement** – Path normalization + boundary checks; prevents directory traversal
 - **Session persistence** – Multi-turn conversations with resumption via SessionStore (conversationId-scoped)
 - **Concurrency safety** – Prevents overlapping requests for same conversation via locking mechanism
@@ -53,8 +54,12 @@ Client POST /api/claude/stream
 | **lib/message-grouper.ts** | Batch messages into text vs thinking groups; track completion state |
 | **lib/message-renderer.tsx** | Polymorphic component dispatch by message type |
 | **lib/sessionStore.ts** | In-memory conversation state; concurrency locking; session resumption |
+| **lib/stores/userPromptsStore.ts** | User prompt templates with dual-view (localStorage persistence) |
+| **lib/stores/userPromptsDefaults.ts** | Default prompt templates (REVISE, ORGANIZE) |
 | **lib/auth.ts** | Session cookie extraction; user identity |
 | **lib/workspace-utils.ts** | Workspace resolution (terminal vs chat mode); path validation |
+| **features/chat/utils/prompt-builder.ts** | Attachment → prompt string; prepends user prompts, appends images/supertemplates |
+| **features/chat/components/ChatInput/hooks/useAttachments.ts** | Attachment management; duplicate detection; upload handling |
 | **components/ui/chat*** | Message, tool, thinking, complete component tree |
 
 ## Streaming & SSE Protocol
@@ -414,6 +419,26 @@ Renders a batch of thinking/tool messages:
 - Shows loading state if `isComplete = false`
 - Shows final badge if `isComplete = true`
 - Displays all nested messages (system, assistant tool blocks, user tool results)
+
+### Attachments System
+
+**Types**: Images (library), SuperTemplates, User Prompts, File Uploads
+
+**UI Components**:
+- `PromptBarAttachmentGrid` – Shows attachments before sending (input bar)
+- `ChatAttachments` – Shows attachments after sending (message bubble)
+
+**User Prompt Dual-View**:
+- **UI Layer**: Displays `userFacingDescription` (short, scannable)
+- **SDK Layer**: Sends full `data` field to Claude
+
+**Attachment Flow**:
+1. User adds via Toolbar (ClipboardList icon for prompts, Plus for images/files)
+2. Attachment displayed in input bar with remove button
+3. On send, `prompt-builder.ts` orders: user prompts → message → images → supertemplates
+4. Attachments displayed in message bubble with type-specific styling
+
+**See**: [User Prompts Feature](./docs/features/user-prompts.md), [Message Handling](./docs/architecture/message-handling.md)
 
 ## Development
 

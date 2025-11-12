@@ -47,51 +47,20 @@ export function DeploymentStatus({ status, domain, error, errorDetails }: Deploy
 
     return (
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full px-4 sm:px-6"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4 }}
+        className="w-full min-h-[80vh] flex items-center justify-center"
       >
-        {/* Emotional message */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="text-center text-sm sm:text-base font-normal text-black/50 mb-8 sm:mb-16"
+        <a
+          href={`https://${domain}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={copyLink}
+          className="inline-flex items-center justify-center h-12 px-8 bg-black text-white text-[15px] font-normal tracking-[-0.011em] rounded-full hover:bg-black/90 transition-all duration-200 ease-out active:scale-[0.98]"
         >
-          You just got your own website
-        </motion.p>
-
-        {/* Hero: Just the domain */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.96 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.4, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          className="mb-8 sm:mb-16 relative"
-        >
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10 blur-3xl -z-10 scale-150" />
-          <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-extralight text-black tracking-tight text-center break-words">
-            {domain}
-          </h1>
-        </motion.div>
-
-        {/* Single action */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
-          className="flex justify-center"
-        >
-          <a
-            href={`https://${domain}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={copyLink}
-            className="px-6 sm:px-12 py-3 sm:py-4 bg-gradient-to-br from-blue-600 to-blue-500 text-white text-sm sm:text-base font-medium rounded-full hover:from-blue-500 hover:to-blue-400 transition-all duration-300 shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 hover:scale-105 active:scale-95"
-          >
-            Open Site
-          </a>
-        </motion.div>
+          Start Building
+        </a>
       </motion.div>
     )
   }

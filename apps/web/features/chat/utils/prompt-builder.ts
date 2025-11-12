@@ -1,34 +1,37 @@
 import type { Attachment } from "../components/ChatInput/types"
 
 /**
- * Builds the final prompt by prepending library image references and supertemplate requests
- *
- * For library images (from PhotoMenu), prepends structured context with:
- * - List of image URLs
- * - Usage instructions
- * - User intent hint
- *
- * For supertemplates, appends supertemplate trigger phrases for MCP tool invocation
- *
- * @param message - The user's text input
- * @param attachments - All current attachments (file uploads + library images + supertemplates)
- * @returns The augmented prompt with library image context and supertemplate triggers
+ * Builds the final prompt with attachments:
+ * - User prompts: Prepended to the message
+ * - Library images: Wrapped with structured context and usage instructions
+ * - Supertemplates: Appended as MCP tool triggers
  */
 export function buildPromptWithAttachments(message: string, attachments: Attachment[]): string {
   const libraryImages = attachments.filter(a => a.kind === "library-image")
   const supertemplates = attachments.filter(a => a.kind === "supertemplate")
+  const userPrompts = attachments.filter(a => a.kind === "user-prompt")
 
   // Start with user message
   let prompt = message
+
+  // Prepend user prompts at the very beginning
+  if (userPrompts.length > 0) {
+    const promptTexts = userPrompts.map(p => p.data).join("\n\n")
+    prompt = message.trim() ? `${promptTexts}\n\n${prompt}` : promptTexts
+  }
 
   // Wrap with library images context if any exist
   if (libraryImages.length > 0) {
     const imagesList = libraryImages
       .map(img => {
-        // photobookKey format: "domain/hash"
         const [domain, hash] = img.photobookKey.split("/")
+        if (!domain || !hash) {
+          console.warn(`Invalid photobookKey format: ${img.photobookKey}`)
+          return null
+        }
         return `  - /_images/t/${domain}/o/${hash}/v/orig.webp`
       })
+      .filter((url): url is string => url !== null)
       .join("\n")
 
     // Prepend images context and wrap original message

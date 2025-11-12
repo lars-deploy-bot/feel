@@ -5,6 +5,7 @@ export interface DeploySubdomainForm {
   slug: string
   email: string
   siteIdeas?: string
+  selectedTemplate?: "landing" | "recipe"
   password: string
 }
 

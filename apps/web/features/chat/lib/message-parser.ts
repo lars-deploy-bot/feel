@@ -6,6 +6,7 @@ import {
   type BridgeStartMessage,
   BridgeStreamType,
 } from "@/features/chat/lib/streaming/ndjson"
+import type { Attachment } from "@/features/chat/components/ChatInput/types"
 import type { SDKAssistantMessage, SDKMessage, SDKUserMessage } from "@/features/chat/types/sdk-types"
 import {
   isErrorResultMessage,
@@ -64,6 +65,8 @@ export type UIMessage = {
   content: unknown
   timestamp: Date
   isStreaming?: boolean
+  /** Structured attachments for user messages (images, PDFs, supertemplates) */
+  attachments?: Attachment[]
 }
 
 // Parse stream event into UI message

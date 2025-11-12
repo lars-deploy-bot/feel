@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(validationError, { status: 400 })
     }
 
-    const { slug, email, siteIdeas, password } = parseResult.data
+    const { slug, email, siteIdeas, selectedTemplate, password } = parseResult.data
 
     // Build full domain from slug
     const fullDomain = buildSubdomain(slug)
@@ -98,6 +98,7 @@ export async function POST(request: NextRequest) {
       workspace: fullDomain,
       email,
       siteIdeas,
+      selectedTemplate,
       createdAt: Date.now(),
     })
     console.log("[Deploy-Subdomain] Metadata saved successfully")

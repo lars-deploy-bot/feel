@@ -13,7 +13,7 @@ import { getSystemPrompt } from "@/features/chat/lib/systemPrompt"
 import { getWorkspace, type Workspace } from "@/features/workspace/lib/workspace-secure"
 import { resolveWorkspace } from "@/features/workspace/lib/workspace-utils"
 import { isTerminalMode } from "@/features/workspace/types/workspace"
-import { runAgentChild } from "@/lib/agent-child-runner"
+import { runAgentChild } from "@/lib/workspace-execution/agent-child-runner"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { env } from "@/lib/env"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
@@ -354,6 +354,9 @@ export async function POST(req: NextRequest) {
       cancelState.reader?.cancel() // Interrupt blocked read
     })
 
+    // Get session cookie value to pass to child process for API authentication
+    const sessionCookie = jar.get("session")?.value
+
     const childStream = runAgentChild(cwd, {
       message,
       model: effectiveModel,
@@ -361,6 +364,7 @@ export async function POST(req: NextRequest) {
       resume: existingSessionId || undefined,
       systemPrompt,
       apiKey: userApiKey || undefined,
+      sessionCookie,
     })
 
     // Create NDJSON stream from child process output

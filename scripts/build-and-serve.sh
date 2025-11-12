@@ -59,7 +59,7 @@ start_pm2_server() {
     PORT="$port" BRIDGE_API_PORT="$port" NODE_ENV="production" pm2 start "$PROJECT_ROOT/$STANDALONE_SERVER_PATH" \
         --name "$app_name" \
         --interpreter bun \
-        --cwd "$PROJECT_ROOT" \
+        --cwd "$PROJECT_ROOT/.builds/current/standalone" \
         --update-env
 }
 

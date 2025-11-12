@@ -1,4 +1,3 @@
-import { MarkdownDisplay } from "@/components/ui/chat/format/MarkdownDisplay"
 import { MessageErrorBoundary } from "@/features/chat/components/MessageErrorBoundary"
 import { AssistantMessage } from "@/features/chat/components/message-renderers/AssistantMessage"
 import { CompactBoundaryMessage } from "@/features/chat/components/message-renderers/CompactBoundaryMessage"
@@ -9,6 +8,7 @@ import { ResultMessage } from "@/features/chat/components/message-renderers/Resu
 import { StartMessage } from "@/features/chat/components/message-renderers/StartMessage"
 import { SystemMessage } from "@/features/chat/components/message-renderers/SystemMessage"
 import { ToolResultMessage } from "@/features/chat/components/message-renderers/ToolResultMessage"
+import { UserMessage } from "@/features/chat/components/message-renderers/UserMessage"
 import type {
   BridgeCompleteMessage,
   BridgeInterruptMessage,
@@ -20,7 +20,6 @@ import type {
   SDKSystemMessage,
   SDKUserMessage,
 } from "@/features/chat/types/sdk-types"
-import { hasMarkdown } from "@/lib/utils/markdown-utils"
 import { getMessageComponentType, isErrorResultMessage, type UIMessage } from "./message-parser"
 
 export function renderMessage(message: UIMessage): React.ReactNode {
@@ -38,20 +37,7 @@ function renderMessageContent(message: UIMessage): React.ReactNode {
   switch (componentType) {
     case "user": {
       const userContent = typeof message.content === "string" ? message.content : JSON.stringify(message.content)
-      return (
-        <div className="flex justify-end mb-6">
-          <div className="max-w-2xl">
-            <div className="text-black/60 dark:text-white/60 text-xs mb-2 text-right font-normal">you</div>
-            {hasMarkdown(userContent) ? (
-              <MarkdownDisplay content={userContent} />
-            ) : (
-              <div className="whitespace-pre-wrap text-black dark:text-white font-normal leading-relaxed">
-                {userContent}
-              </div>
-            )}
-          </div>
-        </div>
-      )
+      return <UserMessage content={userContent} attachments={message.attachments} />
     }
 
     case "start":

@@ -2,96 +2,76 @@ import { execSync } from "node:child_process"
 import { basename, dirname } from "node:path"
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { requireSessionUser } from "@/features/auth/lib/auth"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
+import { handleWorkspaceApi } from "@/lib/workspace-api-handler"
+import { runAsWorkspaceUser } from "@/lib/workspace-execution/command-runner"
 
 const RestartSchema = z.object({
   workspaceRoot: z.string(),
 })
 
 export async function POST(req: Request) {
-  const requestId = crypto.randomUUID()
-  try {
-    const origin = req.headers.get("host")
-    const isLocalhost = origin?.includes("localhost")
+  return handleWorkspaceApi(req, {
+    schema: RestartSchema,
+    handler: async ({ data, requestId }) => {
+      const { workspaceRoot } = data
 
-    if (!isLocalhost) {
-      await requireSessionUser()
-    }
+      const sitePath = dirname(workspaceRoot)
+      const domain = basename(sitePath)
+      const serviceSlug = domain.replace(/\./g, "-")
+      const serviceName = `site@${serviceSlug}.service`
 
-    const body = await req.json()
-    const parseResult = RestartSchema.safeParse(body)
-
-    if (!parseResult.success) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: ErrorCodes.INVALID_REQUEST,
-          message: getErrorMessage(ErrorCodes.INVALID_REQUEST, { field: "workspaceRoot" }),
-          requestId,
-        },
-        { status: 400 },
-      )
-    }
-
-    const { workspaceRoot } = parseResult.data
-
-    const sitePath = dirname(workspaceRoot)
-    const domain = basename(sitePath)
-    const serviceSlug = domain.replace(/\./g, "-")
-    const serviceName = `site@${serviceSlug}.service`
-
-    try {
-      // Clear Vite cache to prevent stale dependency issues
-      const viteCachePath = `${workspaceRoot}/node_modules/.vite`
       try {
-        execSync(`rm -rf "${viteCachePath}"`, {
+        // Clear Vite cache to prevent stale dependency issues
+        // IMPORTANT: Run as workspace user to ensure correct file ownership
+        try {
+          const result = await runAsWorkspaceUser({
+            command: "rm",
+            args: ["-rf", "node_modules/.vite"],
+            workspaceRoot,
+            timeout: 5000,
+          })
+
+          if (!result.success) {
+            console.warn(`[restart-workspace ${requestId}] Failed to clear Vite cache:`, result.stderr)
+            // Continue with restart anyway - cache clear is optional
+          } else {
+            console.log(`[restart-workspace ${requestId}] Vite cache cleared`)
+          }
+        } catch (cacheError) {
+          // Cache might not exist or command failed, continue with restart
+          console.warn(`[restart-workspace ${requestId}] Cache clear error:`, cacheError)
+        }
+
+        // Restart the systemd service (runs as root - system operation)
+        execSync(`systemctl restart ${serviceName}`, {
           encoding: "utf-8",
-          timeout: 5000,
+          timeout: 10000,
         })
-      } catch (_cacheError) {
-        // Cache might not exist, continue with restart
-        console.log(`Vite cache not found or already cleared: ${viteCachePath}`)
-      }
 
-      // Restart the systemd service
-      execSync(`systemctl restart ${serviceName}`, {
-        encoding: "utf-8",
-        timeout: 10000,
-      })
-
-      return NextResponse.json({
-        ok: true,
-        service: serviceName,
-        message: `Vite cache cleared and dev server restarted: ${serviceName}`,
-        requestId,
-      })
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error)
-
-      return NextResponse.json(
-        {
-          ok: false,
-          error: ErrorCodes.WORKSPACE_RESTART_FAILED,
-          message: getErrorMessage(ErrorCodes.WORKSPACE_RESTART_FAILED),
-          details: {
-            service: serviceName,
-            error: errorMessage,
-          },
+        return NextResponse.json({
+          ok: true,
+          service: serviceName,
+          message: `Vite cache cleared and dev server restarted: ${serviceName}`,
           requestId,
-        },
-        { status: 500 },
-      )
-    }
-  } catch (_error) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: ErrorCodes.UNAUTHORIZED,
-        message: getErrorMessage(ErrorCodes.UNAUTHORIZED),
-        requestId,
-      },
-      { status: 401 },
-    )
-  }
+        })
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error)
+
+        return NextResponse.json(
+          {
+            ok: false,
+            error: ErrorCodes.WORKSPACE_RESTART_FAILED,
+            message: getErrorMessage(ErrorCodes.WORKSPACE_RESTART_FAILED),
+            details: {
+              service: serviceName,
+              error: errorMessage,
+            },
+            requestId,
+          },
+          { status: 500 },
+        )
+      }
+    },
+  })
 }

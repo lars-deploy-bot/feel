@@ -14,6 +14,7 @@ export default defineConfig({
       "**/dist/**",
       "**/e2e-tests/**", // Exclude Playwright e2e tests
       "**/.next/**",
+      "**/*.spec.{ts,tsx}", // Exclude all Playwright spec files
     ],
   },
 })

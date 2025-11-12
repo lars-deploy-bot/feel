@@ -64,10 +64,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: result.error.code, message: result.error.message }, { status: 500 })
     }
 
-    // 7. Return success
+    // 7. Return success with photobook key format (tenantId/contentHash)
     return NextResponse.json({
       success: true,
-      data: result.data,
+      data: {
+        key: `${tenantId}/${result.data.contentHash}`,
+        ...result.data,
+      },
     })
   } catch (error) {
     console.error("Upload error:", error)

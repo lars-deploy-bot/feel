@@ -1,155 +1,288 @@
-# Session Management
+# Session Management - Current State
 
-## Files
+This document describes how sessions are currently managed in the Claude Bridge application. There are **three distinct session systems** that serve different purposes.
 
-- `features/auth/lib/sessionStore.ts`
-- `features/auth/types/session.ts` (conversation locking)
-- `app/api/claude/stream/route.ts` (integration)
+---
 
-## SessionStore Interface
+## 1. Authentication Sessions (JWT Cookies)
 
+**Purpose**: User authentication and workspace access control
+
+**Files**:
+- `features/auth/lib/jwt.ts` - JWT token creation/verification
+- `features/auth/lib/auth.ts` - Authentication helpers
+- `app/api/login/route.ts` - Login endpoint
+
+**Storage**: httpOnly cookie named `"session"`
+
+**Token Format**:
+```typescript
+interface SessionPayload {
+  workspaces: string[]  // List of workspaces user is authenticated for
+  iat?: number          // Issued at timestamp (JWT standard)
+  exp?: number          // Expiration timestamp (JWT standard)
+}
+```
+
+**Token Lifetime**: 30 days
+
+**JWT Secret**:
+- Development: `"INSECURE_DEV_SECRET_CHANGE_IN_PRODUCTION"`
+- Production: Must be set via `JWT_SECRET` environment variable or server fails to start
+
+**How It Works**:
+
+1. User submits workspace domain + passcode to `/api/login`
+2. Server validates passcode against `domain-passwords.json`
+3. If valid, creates JWT with `workspaces: [domain]`
+4. JWT stored in httpOnly cookie
+5. Future logins to other workspaces add to the `workspaces` array
+6. Protected routes check cookie presence and decode JWT to verify workspace access
+
+**Cookie Verification Pattern** (used in all protected routes):
+```typescript
+const jar = await cookies()
+if (!hasSessionCookie(jar.get("session"))) {
+  return NextResponse.json({ error: "NO_SESSION" }, { status: 401 })
+}
+```
+
+**Workspace Authorization**:
+```typescript
+const isAuth = await isWorkspaceAuthenticated(workspace)
+// Returns true if JWT contains workspace in workspaces array
+```
+
+---
+
+## 2. Backend Conversation Persistence (SDK Sessions)
+
+**Purpose**: Resume Claude SDK conversations without re-executing tools
+
+**Files**:
+- `features/auth/lib/sessionStore.ts` - Store interface and implementation
+- `app/api/claude/stream/route.ts` - Usage (lines 280-283)
+
+**Storage**: In-memory `Map<string, string>`
+
+**Key Format**:
+```typescript
+const sessionKey = `${userId}::${workspace}::${conversationId}`
+// Example: "anon-abc123::example.com::550e8400-e29b-41d4-a716-446655440000"
+```
+
+**Value**: SDK session ID (opaque string from `@anthropic-ai/claude-agent-sdk`)
+
+**Interface**:
 ```typescript
 interface SessionStore {
   get(key: string): Promise<string | null>
-  set(key: string, value: string): Promise<void>
+  set(key: string, val: string): Promise<void>
   delete(key: string): Promise<void>
 }
 ```
 
-## Default Implementation
+**Current Implementation**: `SessionStoreMemory` - simple in-memory Map
+- All sessions lost on server restart
+- No TTL or expiration
+- No persistence
 
-In-memory `Map<string, string>`:
+**How It Works**:
 
+1. Client sends `conversationId` (UUID) with each request
+2. Backend constructs key: `${userId}::${workspace}::${conversationId}`
+3. Lookup existing SDK session: `const sessionId = await SessionStoreMemory.get(key)`
+4. If found, pass to SDK: `query({ resume: sessionId, ... })`
+5. SDK restores conversation context, skips re-executing previous tools
+6. After query completes, save new session ID: `await SessionStoreMemory.set(key, newSessionId)`
+
+**Benefits**: User can refresh page, continue conversation without tools re-running
+
+**Limitations**: Sessions lost on server restart (in-memory only)
+
+---
+
+## 3. Frontend Session Tracking (Client State)
+
+**Purpose**: Track which conversationId belongs to each workspace, persist across page reloads
+
+**File**: `lib/stores/sessionStore.ts` (Zustand store)
+
+**Storage**: Browser localStorage (key: `"claude-session-storage"`)
+
+**State Shape**:
 ```typescript
-const memory = new Map<string, string>()
+interface SessionState {
+  currentConversationId: string | null
+  currentWorkspace: string | null
+  sessions: ConversationSession[]
+}
 
-export const SessionStoreMemory: SessionStore = {
-  async get(key: string) {
-    return memory.get(key) ?? null
-  },
-  async set(key: string, value: string) {
-    memory.set(key, value)
-  },
-  async delete(key: string) {
-    memory.delete(key)
-  },
+interface ConversationSession {
+  conversationId: string    // UUID
+  workspace: string          // Domain (e.g., "example.com")
+  lastActivity: number       // Timestamp
 }
 ```
 
-**⚠️ Warning:** Loses all sessions on server restart. Use Redis or database in production.
+**Max Sessions**: 10 (oldest conversations pruned when limit exceeded)
 
-## Session Key
+**Actions**:
+- `initConversation(workspace)` - Get or create conversationId for workspace
+- `newConversation(workspace)` - Force new conversationId
+- `updateActivity()` - Update timestamp for current conversation
+- `clearWorkspaceConversation(workspace)` - Delete specific workspace session
+- `clearAll()` - Delete all sessions
 
+**How It Works**:
+
+1. User loads chat page for workspace (e.g., `example.com/chat`)
+2. Component calls `initConversation("example.com")`
+3. Store checks if session exists for this workspace
+4. If yes, returns existing `conversationId`
+5. If no, generates new UUID via `crypto.randomUUID()`, saves to localStorage
+6. ConversationId sent to backend in all requests
+7. When user closes browser and returns, conversationId restored from localStorage
+8. Backend uses this conversationId to resume SDK session (see section 2)
+
+**Persistence**: Survives page refresh, browser restart, but NOT browser data clear
+
+---
+
+## 4. Conversation Locking (Concurrency Control)
+
+**Purpose**: Prevent multiple simultaneous requests to the same conversation
+
+**File**: `features/auth/types/session.ts`
+
+**Storage**: In-memory `Set<string>` (not persisted anywhere)
+
+**Key Format**: Same as backend session key: `${userId}::${workspace}::${conversationId}`
+
+**State**:
 ```typescript
-const sessionKey = `${userId}::${workspace}::${conversationId}`
-// Example: "user-123::example-com::conv-456"
+const activeConversations = new Set<string>()           // Currently locked conversations
+const conversationLockTimestamps = new Map<string, number>()  // Lock acquisition time
 ```
 
-## Conversation Locking
+**Lock Timeout**: 5 minutes (300,000 ms)
 
-Prevent concurrent requests to same conversation:
+**How It Works**:
 
-```typescript
-const activeConversations = new Set<string>()
+1. Request arrives at `/api/claude/stream`
+2. Construct lock key: `${userId}::${workspace}::${conversationId}`
+3. Call `tryLockConversation(key)`
+4. If lock exists and is < 5 minutes old, return `409 Conflict`
+5. If lock exists and is > 5 minutes old, force unlock and acquire
+6. If no lock, acquire lock (add to Set, record timestamp)
+7. Process request
+8. Finally block: `unlockConversation(key)` - remove from Set and timestamp Map
 
-const conversationKey = `${userId}::${workspace}::${conversationId}`
+**Stale Lock Cleanup**:
+- Automatic cleanup runs every 60 seconds
+- Removes locks older than 5 minutes
+- Prevents memory leaks from abandoned requests
 
-if (activeConversations.has(conversationKey)) {
-  return res.status(409).json({
-    error: 'CONVERSATION_IN_PROGRESS',
-    message: 'A query is already in progress for this conversation',
-  })
-}
+**Purpose of Timeout**: If client disconnects mid-request, lock auto-releases after 5 minutes
 
-activeConversations.add(conversationKey)
+---
 
-try {
-  const q = query({ prompt: message, options: claudeOptions })
-  for await (const m of q) {
-    // ... send events
-  }
-} finally {
-  activeConversations.delete(conversationKey)
-}
-```
+## Interaction Between Systems
 
-## Session Resumption
+**Login Flow**:
+1. User enters domain + passcode → `/api/login`
+2. JWT created with workspace → **System 1** (Auth)
+3. Cookie sent to browser
+4. User redirects to `/chat`
+5. Frontend calls `initConversation(workspace)` → **System 3** (Frontend)
+6. ConversationId generated, saved to localStorage
 
-1. Client sends `conversationId`
-2. Lookup: `const sessionId = await sessionStore.get(conversationKey)`
-3. Pass to SDK: `{ resume: sessionId, ... }`
-4. SDK restores context, skips re-executing prior tools
-5. Save updated session: `await sessionStore.set(conversationKey, updatedSessionId)`
+**First Message Flow**:
+1. User types message, clicks send
+2. Frontend reads conversationId from Zustand store → **System 3**
+3. POST to `/api/claude/stream` with conversationId
+4. Backend checks JWT cookie → **System 1** (Auth)
+5. Backend tries to lock conversation → **System 4** (Locking)
+6. Backend looks up SDK session → **System 2** (Backend) - none found
+7. SDK query runs without resume
+8. SDK returns new sessionId
+9. Backend saves sessionId to SessionStoreMemory → **System 2**
+10. Response streamed to client
 
-**Result:** No context loss on refresh, no tool re-execution.
+**Subsequent Message Flow**:
+1. User types another message
+2. Frontend reads **same** conversationId from Zustand → **System 3**
+3. POST to `/api/claude/stream` with conversationId
+4. Backend checks JWT cookie → **System 1** (Auth)
+5. Backend tries to lock conversation → **System 4** (Locking)
+6. Backend looks up SDK session → **System 2** (Backend) - **found!**
+7. SDK query runs WITH resume (context restored, tools not re-executed)
+8. SDK returns updated sessionId
+9. Backend updates sessionId in SessionStoreMemory → **System 2**
+10. Response streamed to client
 
-## Redis Migration
+**Page Refresh Flow**:
+1. User refreshes browser
+2. JWT cookie persists (httpOnly) → **System 1**
+3. Zustand store restores from localStorage → **System 3**
+4. ConversationId retrieved for workspace
+5. Next message uses existing conversationId
+6. Backend resumes SDK session → **System 2**
+7. Conversation continues where user left off
 
-Replace in-memory store:
+**Server Restart Flow**:
+1. Server restarts
+2. JWT cookies still valid (stored in browser) → **System 1** ✓
+3. Frontend Zustand still has conversationId (localStorage) → **System 3** ✓
+4. Backend SessionStoreMemory cleared (in-memory) → **System 2** ✗
+5. Conversation locks cleared (in-memory) → **System 4** ✗
+6. Next message: Backend cannot resume SDK session (no sessionId found)
+7. SDK starts new conversation (context lost)
+8. User sees response but prior context forgotten
 
-```typescript
-import redis from 'redis'
+---
 
-const client = redis.createClient()
+## Files Reference
 
-export const sessionStoreRedis: SessionStore = {
-  async get(key: string) {
-    return await client.get(key)
-  },
-  async set(key: string, value: string) {
-    await client.set(key, value, { EX: 86400 })  // 24h TTL
-  },
-  async delete(key: string) {
-    await client.del(key)
-  },
-}
-```
+**Authentication (System 1)**:
+- `features/auth/lib/jwt.ts` - Token operations
+- `features/auth/lib/auth.ts` - Verification helpers
+- `features/auth/types/guards.ts` - Type guards for cookies
+- `app/api/login/route.ts` - Login endpoint
 
-Update route to use `sessionStoreRedis` instead of `SessionStoreMemory`. No other changes needed.
+**Backend Persistence (System 2)**:
+- `features/auth/lib/sessionStore.ts` - Store interface + in-memory impl
+- `app/api/claude/stream/route.ts` - Usage (get/set session)
 
-## Verification Checklist
+**Frontend Tracking (System 3)**:
+- `lib/stores/sessionStore.ts` - Zustand store
+- `features/chat/hooks/useConversationSession.ts` - React hook wrapper
 
-**In-memory store:**
-- [ ] Conversation lock fires on concurrent requests (409 response)
-- [ ] Session ID saved after first query
-- [ ] Second query with same conversationId resumes (resume: sessionId passed)
-- [ ] Tools not re-executed on resume
-- [ ] Session lost on server restart (expected)
+**Conversation Locking (System 4)**:
+- `features/auth/types/session.ts` - Lock implementation
+- `app/api/claude/stream/route.ts` - Lock usage (try/unlock)
 
-**Redis store:**
-- [ ] Redis server running: `redis-cli ping` returns PONG
-- [ ] Session persists across server restarts
-- [ ] TTL respected (24h default)
-- [ ] Old sessions auto-deleted
-- [ ] Concurrent requests still locked (same Set behavior)
+---
 
-## Quick Debugging
+## Current Limitations
 
-**Check active conversations:**
-```typescript
-// In route handler
-console.log('Active conversations:', Array.from(activeConversations))
-```
+**System 2 (Backend Persistence)**:
+- In-memory only, lost on restart
+- No expiration/TTL
+- No cleanup of old sessions
+- Memory grows unbounded
 
-**Inspect session:**
-```bash
-# For in-memory (if exposed):
-curl -X POST http://localhost:8999/api/debug/sessions
+**System 4 (Conversation Locking)**:
+- In-memory only, not shared across server instances
+- If multiple backend servers, locks not coordinated
+- 5-minute timeout is arbitrary (no user configuration)
 
-# For Redis:
-redis-cli GET "user-123::example-com::conv-456"
-```
+---
 
-**Test resumption:**
-```bash
-# First request
-curl -X POST /api/claude/stream \
-  -d '{"message":"hello","conversationId":"test-1",...}'
+## Environment Variables
 
-# Extract sessionId from response
-# Second request with same conversationId
-curl -X POST /api/claude/stream \
-  -d '{"message":"continue","conversationId":"test-1",...}'
+**JWT_SECRET**: Secret key for signing authentication tokens
+- Development: Uses default (server logs warning)
+- Production: Must be set or server refuses to start
 
-# Should have resume: sessionId in second query
-```
+**No other session-related environment variables currently used.**

@@ -5,6 +5,8 @@
  * Handles port resolution, error formatting, and response parsing.
  */
 
+import { validateWorkspacePath } from "./workspace-validator.js"
+
 function getApiBaseUrl(): string {
   if (process.env.BRIDGE_API_URL) return process.env.BRIDGE_API_URL
   if (process.env.BRIDGE_API_PORT) return `http://localhost:${process.env.BRIDGE_API_PORT}`
@@ -25,9 +27,20 @@ export interface ApiCallOptions {
 
 /**
  * Call Bridge API and return formatted tool result
+ * Automatically validates workspaceRoot if present in body
  */
 export async function callBridgeApi(options: ApiCallOptions): Promise<ToolResult> {
   const { endpoint, method = "POST", body, timeout = 60000 } = options
+
+  // Security: Auto-validate workspaceRoot if present (fail fast)
+  if (body?.workspaceRoot) {
+    try {
+      validateWorkspacePath(body.workspaceRoot)
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      return errorResult("Invalid workspace path", errorMessage)
+    }
+  }
 
   try {
     const apiUrl = `${getApiBaseUrl()}${endpoint}`
@@ -35,9 +48,15 @@ export async function callBridgeApi(options: ApiCallOptions): Promise<ToolResult
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), timeout)
 
+    // Include session cookie from environment (set by Bridge)
+    const sessionCookie = process.env.BRIDGE_SESSION_COOKIE
+
     const response = await fetch(apiUrl, {
       method,
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(sessionCookie && { Cookie: `session=${sessionCookie}` }),
+      },
       body: body ? JSON.stringify(body) : undefined,
       signal: controller.signal,
     })

@@ -168,7 +168,38 @@ export const myToolTool = tool(
 )
 ```
 
-### Step 2: Register in MCP Server
+### Step 2: Add to Tool Registry
+
+Add metadata to `src/tools/meta/tool-registry.ts`:
+
+```typescript
+export const TOOL_REGISTRY: ToolMetadata[] = [
+  // ... existing tools
+  {
+    name: "my_tool_name",
+    category: "debugging",  // or your category
+    description: "Clear description of what this tool does",
+    contextCost: "medium",  // "low" | "medium" | "high"
+    enabled: true,  // Set to false to disable
+    parameters: [
+      {
+        name: "param1",
+        type: "string",
+        required: true,
+        description: "Description of param1",
+      },
+      {
+        name: "param2",
+        type: "number",
+        required: false,
+        description: "Optional param2",
+      },
+    ],
+  },
+]
+```
+
+### Step 3: Register in MCP Server
 
 Update `src/mcp-server.ts` to import and register the tool:
 
@@ -240,14 +271,41 @@ const agentQuery = query({
 })
 ```
 
-### Step 5: Build and Test
+### Step 5: Run Tests
+
+The sync test ensures you didn't forget to update both the MCP server and tool registry:
 
 ```bash
-# Build the tools package
 cd packages/tools
+
+# Run the sync test (catches missing registrations)
+bun test tool-registry-sync
+
+# Or run all tests
+bun test
+
+# Build the package
 bun run build
 bun run lint
+```
 
+**The test will fail if:**
+- ✗ Tool added to MCP server but not in tool-registry.ts
+- ✗ Tool added to tool-registry.ts but not in MCP server
+- ✗ Tool enabled in registry but removed from MCP server
+- ✗ Tool disabled in registry but still in MCP server
+- ✗ Workspace category tool registered in toolsInternalMcp instead of workspaceInternalMcp
+- ✗ Non-workspace tool registered in workspaceInternalMcp instead of toolsInternalMcp
+- ✗ Tool has duplicate parameter names
+- ✗ Tool parameter missing name, type, or description
+- ✗ Tool parameter has invalid type (not string, number, boolean, array, or object)
+- ✗ Tool parameter description is too short (< 10 characters)
+- ✗ Tool description is too short (< 20 characters) or contains placeholders (TODO, TBD, etc.)
+- ✗ Duplicate tool names in registry
+
+### Step 6: Deploy and Test
+
+```bash
 # Restart staging to test
 cd apps/web
 pm2 restart claude-bridge-staging

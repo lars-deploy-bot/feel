@@ -1,258 +1,22 @@
 import { tool } from "@anthropic-ai/claude-agent-sdk"
 import { z } from "zod"
-
-/**
- * Tool metadata for discovery and progressive disclosure
- * Follows Anthropic article best practices: load tool definitions on-demand
- */
-interface ToolMetadata {
-  name: string
-  category: string
-  description: string
-  contextCost: "low" | "medium" | "high"
-  parameters?: {
-    name: string
-    type: string
-    required: boolean
-    description: string
-  }[]
-}
-
-const TOOL_REGISTRY: ToolMetadata[] = [
-  // Meta tools
-  // NOTE: search_tools commented out - not available in search results
-  // {
-  //   name: "search_tools",
-  //   category: "meta",
-  //   description: "Discovers available tools with progressive disclosure. Start here to find what tools exist.",
-  //   contextCost: "low",
-  //   parameters: [
-  //     {
-  //       name: "query",
-  //       type: "string",
-  //       required: false,
-  //       description: "Search query (e.g., 'logs', 'guides', 'debugging')",
-  //     },
-  //     {
-  //       name: "category",
-  //       type: "string",
-  //       required: false,
-  //       description: "Filter by category",
-  //     },
-  //     {
-  //       name: "detail_level",
-  //       type: "string",
-  //       required: false,
-  //       description: "'minimal', 'standard', or 'full'. Default: 'standard'",
-  //     },
-  //   ],
-  // },
-
-  // Composite tools (reduce round trips)
-  {
-    name: "debug_workspace",
-    category: "composite",
-    description: "All-in-one debugging: reads logs + analyzes patterns + suggests fixes. USE THIS FIRST for debugging.",
-    contextCost: "medium",
-    parameters: [
-      {
-        name: "workspace",
-        type: "string",
-        required: true,
-        description: "Workspace domain",
-      },
-      {
-        name: "lines",
-        type: "number",
-        required: false,
-        description: "Log lines to analyze (default: 200)",
-      },
-      {
-        name: "since",
-        type: "string",
-        required: false,
-        description: "Time range (e.g., '5 minutes ago')",
-      },
-    ],
-  },
-  {
-    name: "find_guide",
-    category: "composite",
-    description: "Searches AND retrieves guides in one call. Reduces round trips from 2+ to 1.",
-    contextCost: "high",
-    parameters: [
-      {
-        name: "query",
-        type: "string",
-        required: true,
-        description: "Search query (e.g., 'authentication', 'vite errors')",
-      },
-      {
-        name: "category",
-        type: "string",
-        required: false,
-        description: "Optional category filter",
-      },
-      {
-        name: "auto_retrieve",
-        type: "boolean",
-        required: false,
-        description: "If true, retrieves best match. If false, lists matches. Default: true",
-      },
-    ],
-  },
-
-  // Batch operations
-  {
-    name: "batch_get_guides",
-    category: "batch",
-    description: "Retrieves multiple guides in one call (max 5). Reduces round trips for bulk operations.",
-    contextCost: "high",
-    parameters: [
-      {
-        name: "requests",
-        type: "array",
-        required: true,
-        description: "Array of guide requests (max 5), each with category and optional topic",
-      },
-      {
-        name: "include_separator",
-        type: "boolean",
-        required: false,
-        description: "Add separators between guides. Default: true",
-      },
-    ],
-  },
-
-  // Documentation tools
-  {
-    name: "list_guides",
-    category: "documentation",
-    description: "Lists available development guides with result hints. Context-efficient modes available.",
-    contextCost: "low",
-    parameters: [
-      {
-        name: "category",
-        type: "string",
-        required: false,
-        description: "Guide category (e.g., '30-guides', 'workflows')",
-      },
-      {
-        name: "detail_level",
-        type: "string",
-        required: false,
-        description: "'brief' (titles only) or 'full' (titles + descriptions). Default: 'brief'",
-      },
-    ],
-  },
-  {
-    name: "get_guide",
-    category: "documentation",
-    description: "Retrieves full guide content. Can return large markdown documents.",
-    contextCost: "high",
-    parameters: [
-      {
-        name: "category",
-        type: "string",
-        required: true,
-        description: "Guide category",
-      },
-      {
-        name: "topic",
-        type: "string",
-        required: false,
-        description: "Filter by topic keyword",
-      },
-    ],
-  },
-
-  // Debugging tools
-  {
-    name: "read_server_logs",
-    category: "debugging",
-    description:
-      "Reads systemd logs with summary mode, regex filtering, and result hints. Advanced filtering available.",
-    contextCost: "high",
-    parameters: [
-      {
-        name: "workspace",
-        type: "string",
-        required: true,
-        description: "Workspace domain (e.g., 'two.goalive.nl')",
-      },
-      {
-        name: "search",
-        type: "string",
-        required: false,
-        description: "Basic search term",
-      },
-      {
-        name: "search_regex",
-        type: "string",
-        required: false,
-        description: "Advanced regex pattern (e.g., 'error|warn', 'failed.*build')",
-      },
-      {
-        name: "lines",
-        type: "number",
-        required: false,
-        description: "Number of log lines (1-1000, default: 100)",
-      },
-      {
-        name: "since",
-        type: "string",
-        required: false,
-        description: "Time range (e.g., '5 minutes ago')",
-      },
-      {
-        name: "summary_only",
-        type: "boolean",
-        required: false,
-        description: "Return only summary stats (context-efficient). Default: false",
-      },
-    ],
-  },
-
-  // Other tools
-  {
-    name: "generate_persona",
-    category: "development",
-    description: "Generates persona content for testing",
-    contextCost: "medium",
-  },
-  {
-    name: "restart_dev_server",
-    category: "workspace",
-    description: "Restarts systemd dev server for a workspace",
-    contextCost: "low",
-    parameters: [
-      {
-        name: "workspace",
-        type: "string",
-        required: true,
-        description: "Workspace domain",
-      },
-    ],
-  },
-
-  // External MCP Servers (workspace-specific)
-  {
-    name: "stripe",
-    category: "external-mcp",
-    description:
-      "Stripe payment integration (larsvandeneeden.com only). Access to Stripe API for payments, customers, subscriptions, etc.",
-    contextCost: "medium",
-  },
-]
+import {
+  DETAIL_LEVELS,
+  TOOL_CATEGORIES,
+  TOOL_REGISTRY,
+  type DetailLevel,
+  type ToolCategory,
+  type ToolMetadata,
+} from "./tool-registry.js"
 
 export const searchToolsParamsSchema = {
-  query: z
-    .string()
-    .optional()
-    .describe('Search query (matches name, category, description). E.g., "logs", "guides", "debugging"'),
-  category: z.string().optional().describe('Filter by category (e.g., "documentation", "debugging")'),
+  category: z
+    .enum(TOOL_CATEGORIES)
+    .describe(
+      `Category to search. Options: ${TOOL_CATEGORIES.join(", ")}. E.g., "documentation", "debugging", "workspace"`,
+    ),
   detail_level: z
-    .enum(["minimal", "standard", "full"])
+    .enum(DETAIL_LEVELS)
     .optional()
     .default("standard")
     .describe(
@@ -261,9 +25,8 @@ export const searchToolsParamsSchema = {
 }
 
 export type SearchToolsParams = {
-  query?: string
-  category?: string
-  detail_level?: "minimal" | "standard" | "full"
+  category: ToolCategory
+  detail_level?: DetailLevel
 }
 
 export type SearchToolsResult = {
@@ -272,33 +35,18 @@ export type SearchToolsResult = {
 }
 
 export async function searchTools(params: SearchToolsParams): Promise<SearchToolsResult> {
-  const { query, category, detail_level = "standard" } = params
+  const { category, detail_level = "standard" } = params
 
   try {
-    let tools = TOOL_REGISTRY
-
-    // Filter by category
-    if (category) {
-      tools = tools.filter(t => t.category === category)
-    }
-
-    // Filter by query
-    if (query) {
-      const q = query.toLowerCase()
-      tools = tools.filter(
-        t =>
-          t.name.toLowerCase().includes(q) ||
-          t.category.toLowerCase().includes(q) ||
-          t.description.toLowerCase().includes(q),
-      )
-    }
+    // Filter by category (required parameter)
+    const tools = TOOL_REGISTRY.filter(t => t.category === category)
 
     if (tools.length === 0) {
       return {
         content: [
           {
             type: "text" as const,
-            text: `# No Matching Tools\n\n${query ? `Query: "${query}"\n` : ""}${category ? `Category: "${category}"\n` : ""}\n\nTry a different search or browse all categories.`,
+            text: `# No Tools Found\n\nCategory: "${category}"\n\nNo tools found in this category.`,
           },
         ],
         isError: false,
@@ -306,48 +54,30 @@ export async function searchTools(params: SearchToolsParams): Promise<SearchTool
     }
 
     // Format based on detail level
-    let output = `# Tool Search Results (${tools.length})\n\n`
+    let output = `# Tools in "${category}" (${tools.length})\n\n`
 
-    if (query) output += `**Query:** "${query}"\n`
-    if (category) output += `**Category:** "${category}"\n\n`
-    if (!query && !category) output += "**All available tools**\n\n"
+    for (const tool of tools) {
+      if (detail_level === "minimal") {
+        // Just name
+        output += `- **${tool.name}**\n`
+      } else if (detail_level === "standard") {
+        // Name + description + context cost
+        output += `### ${tool.name}\n`
+        output += `${tool.description}\n`
+        output += `- **Context cost:** ${tool.contextCost}\n\n`
+      } else {
+        // Full schema
+        output += `### ${tool.name}\n`
+        output += `${tool.description}\n\n`
+        output += `- **Context cost:** ${tool.contextCost}\n`
 
-    // Group by category
-    const byCategory = tools.reduce(
-      (acc, tool) => {
-        if (!acc[tool.category]) acc[tool.category] = []
-        acc[tool.category].push(tool)
-        return acc
-      },
-      {} as Record<string, ToolMetadata[]>,
-    )
-
-    for (const [cat, catTools] of Object.entries(byCategory)) {
-      output += `## ${cat} (${catTools.length})\n\n`
-
-      for (const tool of catTools) {
-        if (detail_level === "minimal") {
-          // Just name
-          output += `- **${tool.name}**\n`
-        } else if (detail_level === "standard") {
-          // Name + description + context cost
-          output += `### ${tool.name}\n`
-          output += `${tool.description}\n`
-          output += `- **Context cost:** ${tool.contextCost}\n\n`
-        } else {
-          // Full schema
-          output += `### ${tool.name}\n`
-          output += `${tool.description}\n\n`
-          output += `- **Context cost:** ${tool.contextCost}\n`
-
-          if (tool.parameters && tool.parameters.length > 0) {
-            output += "- **Parameters:**\n"
-            for (const param of tool.parameters) {
-              output += `  - \`${param.name}\` (${param.type}${param.required ? ", required" : ", optional"}): ${param.description}\n`
-            }
+        if (tool.parameters && tool.parameters.length > 0) {
+          output += "- **Parameters:**\n"
+          for (const param of tool.parameters) {
+            output += `  - \`${param.name}\` (${param.type}${param.required ? ", required" : ", optional"}): ${param.description}\n`
           }
-          output += "\n"
         }
+        output += "\n"
       }
     }
 
@@ -387,7 +117,9 @@ export async function searchTools(params: SearchToolsParams): Promise<SearchTool
 
 export const searchToolsTool = tool(
   "search_tools",
-  `Discovers available tools using progressive disclosure. Returns tool metadata with configurable detail levels. Use this BEFORE calling unfamiliar tools to understand what's available and their context costs.
+  `Discovers available tools by category using progressive disclosure. Returns tool metadata with configurable detail levels.
+
+Available categories: ${TOOL_CATEGORIES.join(", ")}
 
 Best practices:
 - Start with 'minimal' to browse tool names (lowest context usage)
@@ -395,11 +127,28 @@ Best practices:
 - Only use 'full' when you need complete parameter schemas
 
 Examples:
-- search_tools({ query: "logs" }) - Find log-related tools
-- search_tools({ category: "documentation" }) - Browse documentation tools
-- search_tools({ detail_level: "minimal" }) - List all tools (names only)`,
+- search_tools({ category: "documentation" }) - Browse documentation tools with standard detail
+- search_tools({ category: "workspace", detail_level: "full" }) - Get full schemas for workspace tools
+- search_tools({ category: "debugging", detail_level: "minimal" }) - List debugging tools (names only)`,
   searchToolsParamsSchema,
   async args => {
     return searchTools(args)
   },
 )
+
+/**
+ * Get list of enabled MCP tool names with mcp__ prefixes
+ * Used by Claude Bridge to configure allowedTools
+ */
+export function getEnabledMcpToolNames(): string[] {
+  return TOOL_REGISTRY.filter(tool => tool.enabled).map(tool => {
+    // Map tool names to their actual MCP tool names
+    if (tool.category === "workspace") {
+      return `mcp__alive-workspace__${tool.name}`
+    }
+    if (tool.category === "external-mcp") {
+      return tool.name // External MCP servers don't get prefixes
+    }
+    return `mcp__alive-tools__${tool.name}`
+  })
+}

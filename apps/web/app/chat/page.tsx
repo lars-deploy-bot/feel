@@ -15,6 +15,7 @@ import { Sandbox } from "@/features/chat/components/Sandbox"
 import { SubdomainInitializer } from "@/features/chat/components/SubdomainInitializer"
 import { ThinkingGroup } from "@/features/chat/components/ThinkingGroup"
 import { ThinkingSpinner } from "@/features/chat/components/ThinkingSpinner"
+import { ThreeDotsComplete } from "@/features/chat/components/ThreeDotsComplete"
 import { useConversationSession } from "@/features/chat/hooks/useConversationSession"
 import { useImageUpload } from "@/features/chat/hooks/useImageUpload"
 import {
@@ -42,7 +43,7 @@ import { useCurrentConversationId, useMessageActions, useMessages } from "@/lib/
 import { useStreamingActions } from "@/lib/stores/streamingStore"
 
 // Build version for deployment verification
-const BUILD_VERSION = "2025-01-10-clean-cancel-architecture"
+const BUILD_VERSION = "2025-11-12-direct-execution"
 
 function ChatPageContent() {
   const [msg, setMsg] = useState("")
@@ -59,6 +60,7 @@ function ChatPageContent() {
   const [showTemplatesModal, setShowTemplatesModal] = useState(false)
   const [showPhotoMenu, setShowPhotoMenu] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
+  const [showCompletionDots, setShowCompletionDots] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const isAutoScrolling = useRef(false)
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -198,6 +200,11 @@ function ChatPageContent() {
     setSubdomainInitialized(true)
   }
 
+  // Build prompt with attachments for Claude (DRY helper)
+  function buildPromptForClaude(userMessage: UIMessage): string {
+    return buildPromptWithAttachments(userMessage.content as string, userMessage.attachments || [])
+  }
+
   async function sendMessage() {
     // Simple: Block if already submitting or no message
     if (isSubmitting.current || busy || !msg.trim()) return
@@ -206,21 +213,21 @@ function ChatPageContent() {
     isSubmitting.current = true
     setBusy(true)
 
-    // Get attachments and build prompt with library image references
+    // Get attachments for structured storage
     const attachments = chatInputRef.current?.getAttachments() || []
-    const augmentedMsg = buildPromptWithAttachments(msg, attachments)
 
-    // Add user message
+    // Add user message with original text + structured attachments
     const userMessage: UIMessage = {
       id: Date.now().toString(),
       type: "user",
-      content: augmentedMsg,
+      content: msg, // Original message (not augmented)
       timestamp: new Date(),
+      attachments: attachments.length > 0 ? attachments : undefined,
     }
     addMessage(userMessage)
     setMsg("")
 
-    // Clear all attachments (they're in the prompt now)
+    // Clear all attachments (they're stored in the message now)
     chatInputRef.current?.clearAllAttachments()
 
     setShouldForceScroll(true)
@@ -243,7 +250,8 @@ function ChatPageContent() {
     let shouldStopReading = false
 
     try {
-      const requestBody = createRequestBody(userMessage.content as string)
+      // Build augmented message for Claude (with attachment markup)
+      const requestBody = createRequestBody(buildPromptForClaude(userMessage))
 
       // Create AbortController for this request
       const abortController = new AbortController()
@@ -477,6 +485,10 @@ function ChatPageContent() {
                   if (isCompleteEvent(eventData) || isDoneEvent(eventData) || isErrorEvent(eventData)) {
                     receivedAnyMessage = true
                     setBusy(false)
+                    // Show completion dots only for successful completion (not errors)
+                    if ((isCompleteEvent(eventData) || isDoneEvent(eventData)) && !isErrorEvent(eventData)) {
+                      setShowCompletionDots(true)
+                    }
                     shouldStopReading = true
                     break
                   }
@@ -636,7 +648,8 @@ function ChatPageContent() {
 
   async function sendRegular(userMessage: UIMessage) {
     try {
-      const requestBody = createRequestBody(userMessage.content as string)
+      // Build augmented message for Claude (with attachment markup)
+      const requestBody = createRequestBody(buildPromptForClaude(userMessage))
 
       const r = await fetch("/api/claude", {
         method: "POST",
@@ -822,6 +835,7 @@ function ChatPageContent() {
 
     // Reset state - request is truly stopped
     setBusy(false)
+    setShowCompletionDots(true) // Show completion dots even on interrupt
     isSubmitting.current = false
   }
 
@@ -1050,6 +1064,8 @@ function ChatPageContent() {
                   </div>
                 </div>
               )}
+              {/* Show completion dots after successful completion (non-debug mode only) */}
+              {showCompletionDots && !isDebugView && !busy && <ThreeDotsComplete />}
               <div ref={messagesEndRef} />
             </div>
           </div>

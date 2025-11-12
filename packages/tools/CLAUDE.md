@@ -89,6 +89,16 @@ When adding new tools to this package:
 4. Update tool registry in `src/tools/meta/search-tools.ts`
 5. Build: `bun run build`
 
+### Workspace Tools
+
+**CRITICAL**: See `../../docs/security/workspace-tools.md` for complete security patterns.
+
+**Quick rules:**
+- ✅ ALWAYS use `process.cwd()` (set by Bridge based on authenticated workspace)
+- ❌ NEVER accept `workspaceRoot` parameter from Claude
+- ✅ API tools: Use `callBridgeApi()` (auto-validated)
+- ✅ Direct tools: Call `validateWorkspacePath()` explicitly
+
 ## Context Efficiency Best Practices
 
 Following Anthropic's November 2024 MCP best practices:

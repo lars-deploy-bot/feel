@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { AnimatePresence, motion } from "framer-motion"
 import { Globe, Info, Zap } from "lucide-react"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -64,7 +64,7 @@ function ModeSelectionScreen({ onSelect }: ModeSelectionScreenProps) {
         <ModeOption
           icon={Zap}
           title="Quick Launch"
-          description="Start building now. We give you a free subdomain."
+          description="Get a free live website and 200 free credits, on us."
           time="~1 min"
           badge="Start here"
           onClick={() => onSelect("deploy-only")}
@@ -76,6 +76,7 @@ function ModeSelectionScreen({ onSelect }: ModeSelectionScreenProps) {
 }
 
 export function DeployForm() {
+  const router = useRouter()
   const searchParams = useSearchParams()
 
   const [showPassword, setShowPassword] = useState<boolean>(false)
@@ -90,40 +91,35 @@ export function DeployForm() {
   // Sync mode with URL
   const setDeploymentMode = (mode: "choose" | DeploymentMode) => {
     setDeploymentModeState(mode)
+    const siteIdeas = searchParams.get("q")
+
     if (mode === "choose") {
-      window.history.pushState({}, "", "/deploy")
+      const url = siteIdeas ? `/deploy?q=${encodeURIComponent(siteIdeas)}` : "/deploy"
+      router.replace(url)
     } else {
-      window.history.pushState({}, "", `/deploy?mode=${mode}`)
+      const url = siteIdeas ? `/deploy?mode=${mode}&q=${encodeURIComponent(siteIdeas)}` : `/deploy?mode=${mode}`
+      router.replace(url)
     }
   }
 
-  // Initialize from URL and handle back button
+  // Initialize client state
   useEffect(() => {
     setIsClient(true)
+  }, [])
 
+  // Sync deployment mode with URL params (handles back/forward navigation)
+  useEffect(() => {
     const isValidMode = (mode: string | null): mode is DeploymentMode => {
       return mode === "deploy-only" || mode === "deploy-with-domain"
     }
 
-    // Set initial mode from URL
     const modeParam = searchParams.get("mode")
     if (isValidMode(modeParam)) {
       setDeploymentModeState(modeParam)
+    } else {
+      setDeploymentModeState("choose")
     }
-
-    // Listen for browser back button
-    const handlePopState = () => {
-      const newModeParam = new URLSearchParams(window.location.search).get("mode")
-      if (isValidMode(newModeParam)) {
-        setDeploymentModeState(newModeParam)
-      } else {
-        setDeploymentModeState("choose")
-      }
-    }
-
-    window.addEventListener("popstate", handlePopState)
-    return () => window.removeEventListener("popstate", handlePopState)
-  }, [])
+  }, [searchParams])
 
   // Deploy with domain form
   const deployWithDomainForm = useForm<DeployWithDomainInput>({

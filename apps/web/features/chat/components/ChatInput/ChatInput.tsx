@@ -2,7 +2,7 @@
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from "react"
 import toast from "react-hot-toast"
-import { AttachmentsGrid } from "./AttachmentsGrid"
+import { PromptBarAttachmentGrid } from "./PromptBarAttachmentGrid"
 import { ChatInputProvider } from "./ChatInputContext"
 import { useAttachments } from "./hooks/useAttachments"
 import { useSuperTemplateDetection } from "./hooks/useTemplateDetection"
@@ -53,6 +53,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
     addAttachment,
     addPhotobookImage,
     addSuperTemplateAttachment,
+    addUserPrompt,
     removeAttachment,
     clearAttachments,
   } = useAttachments(config)
@@ -67,6 +68,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
       addAttachment,
       addPhotobookImage,
       addSuperTemplateAttachment,
+      addUserPrompt,
       getAttachments: () => attachments,
       clearLibraryImages: () => {
         const libraryImages = attachments.filter(a => a.kind === "library-image")
@@ -76,15 +78,27 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
       },
       clearAllAttachments: clearAttachments,
     }),
-    [addAttachment, addPhotobookImage, addSuperTemplateAttachment, attachments, removeAttachment, clearAttachments],
+    [
+      addAttachment,
+      addPhotobookImage,
+      addSuperTemplateAttachment,
+      addUserPrompt,
+      attachments,
+      removeAttachment,
+      clearAttachments,
+    ],
   )
 
   const canSubmit = useMemo(() => {
     if (busy) return false
     const hasMessage = message.trim().length > 0
-    const hasAttachments = attachments.length > 0
+    const hasUserPrompt = attachments.some(a => a.kind === "user-prompt")
     const attachmentsValid = attachments.every(a => !a.error && a.uploadProgress === 100)
-    return (hasMessage || hasAttachments) && attachmentsValid
+
+    // User prompts can be sent alone without a message
+    // Other attachments (images, templates) require a message
+    if (hasUserPrompt && attachmentsValid) return true
+    return hasMessage && attachmentsValid
   }, [busy, message, attachments])
 
   // Just call parent onSubmit directly (prompt building happens in parent now)
@@ -171,11 +185,11 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
       >
         <div className="relative">
           {/* Camera button above input */}
-          <Toolbar fileInputRef={fileInputRef} onOpenTemplates={onOpenTemplates} />
+          <Toolbar fileInputRef={fileInputRef} onOpenTemplates={onOpenTemplates} onAddUserPrompt={addUserPrompt} />
 
           <InputContainer>
             {/* Attachments */}
-            <AttachmentsGrid />
+            <PromptBarAttachmentGrid />
 
             {/* Input area */}
             <InputArea />
