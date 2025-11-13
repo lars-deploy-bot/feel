@@ -54,12 +54,12 @@ export async function checkCodebase(_params: CheckCodebaseParams): Promise<ToolR
       env: sanitizeSubprocessEnv(),
     })
 
-    console.log("[check_codebase] TSC Result:", {
+    console.error("[check_codebase] TSC Result:", JSON.stringify({
       status: tscResult.status,
       stdout: tscResult.stdout?.substring(0, 500),
       stderr: tscResult.stderr?.substring(0, 500),
       error: tscResult.error,
-    })
+    }))
 
     // Run ESLint check
     const lintResult = spawnSync("bun", ["run", "lint"], {
@@ -71,12 +71,12 @@ export async function checkCodebase(_params: CheckCodebaseParams): Promise<ToolR
       env: sanitizeSubprocessEnv(),
     })
 
-    console.log("[check_codebase] Lint Result:", {
+    console.error("[check_codebase] Lint Result:", JSON.stringify({
       status: lintResult.status,
       stdout: lintResult.stdout?.substring(0, 500),
       stderr: lintResult.stderr?.substring(0, 500),
       error: lintResult.error,
-    })
+    }))
 
     const tscPassed = tscResult.status === 0
     const lintPassed = lintResult.status === 0
