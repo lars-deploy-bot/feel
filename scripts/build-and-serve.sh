@@ -143,7 +143,7 @@ fi
 
 # Run tests before building
 log_info "Running tests..."
-TEST_OUTPUT=$(bun test 2>&1)
+TEST_OUTPUT=$(bun run test 2>&1)
 TEST_EXIT_CODE=$?
 
 if [ $TEST_EXIT_CODE -ne 0 ]; then

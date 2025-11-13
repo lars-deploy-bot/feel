@@ -123,7 +123,7 @@ export function SubdomainDeployForm() {
     resolver: async (data, context, options) => {
       // Only validate if user has interacted with form, otherwise return no errors
       const hasInteracted =
-        Object.keys(touchedFields).length > 0 || data.slug || data.email || data.password || options.mode === "submit"
+        Object.keys(touchedFields).length > 0 || data.slug || data.email || data.password
 
       if (!hasInteracted) {
         return { values: data, errors: {} }

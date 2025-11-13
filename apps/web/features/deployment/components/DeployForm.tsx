@@ -263,13 +263,13 @@ export function DeployForm() {
                     } disabled:opacity-50 disabled:cursor-not-allowed`}
                   />
                 </div>
-                {deployWithDomainForm.formState.errors.domain && (
+                {deployWithDomainForm.formState.errors.domain?.message && (
                   <motion.p
                     initial={{ opacity: 0, y: -5 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="mt-1.5 text-red-600 text-xs font-medium"
                   >
-                    {deployWithDomainForm.formState.errors.domain.message}
+                    {String(deployWithDomainForm.formState.errors.domain.message)}
                   </motion.p>
                 )}
               </motion.div>

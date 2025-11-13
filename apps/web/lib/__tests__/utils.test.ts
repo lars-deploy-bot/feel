@@ -77,17 +77,17 @@ describe("Utility Functions", () => {
     it("should not be predictable", () => {
       const ids = Array.from({ length: 100 }, () => generateRequestId())
 
-      // IDs should not be sequential or predictable
-      for (let i = 1; i < ids.length; i++) {
-        // Adjacent IDs should be very different
-        expect(ids[i]).not.toBe(ids[i - 1])
+      // IDs should be unique (not sequential or predictable)
+      const uniqueIds = new Set(ids)
+      expect(uniqueIds.size).toBe(ids.length)
 
-        // Should not be incremental
-        const num1 = Number.parseInt(ids[i - 1], 36)
-        const num2 = Number.parseInt(ids[i], 36)
-        if (!Number.isNaN(num1) && !Number.isNaN(num2)) {
-          expect(Math.abs(num2 - num1)).not.toBe(1)
-        }
+      // Each ID should have both timestamp and random parts
+      for (const id of ids) {
+        expect(id).toMatch(/^[0-9a-z]+-[0-9a-z]+$/i)
+        const [timestamp, random] = id.split("-")
+        expect(timestamp).toBeTruthy()
+        expect(random).toBeTruthy()
+        expect(random.length).toBeGreaterThanOrEqual(6)
       }
     })
 
