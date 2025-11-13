@@ -1086,3 +1086,14 @@ emailpay.alive.best {
         header_up X-Forwarded-Proto {scheme}
     }
 }
+
+customers.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3381 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}

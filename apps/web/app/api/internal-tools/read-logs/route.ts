@@ -94,9 +94,9 @@ export async function POST(req: Request) {
           )
         }
 
-        // Build journalctl command
+        // Build journalctl command - return raw log lines
         const lineLimit = Math.min(Math.max(1, lines), 1000)
-        let cmd = `journalctl -u "${serviceName}" -n ${lineLimit} --no-pager --output=short-iso`
+        let cmd = `journalctl -u "${serviceName}" -n ${lineLimit} --no-pager`
 
         if (since) {
           // Validate 'since' parameter format

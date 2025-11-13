@@ -28,11 +28,20 @@ export function sanitizeSubprocessEnv(): NodeJS.ProcessEnv {
 
     // System: Ensure subprocess can write to /tmp
     TMPDIR: "/tmp",
+    TMP: "/tmp",
+    TEMP: "/tmp",
 
-    // Bun: Clear cache directory that might point to /root/.bun/install/cache
-    // After clearing, bun falls back to $HOME/.bun/install/cache which points
-    // to /tmp/claude-home-{uid}/.bun/install/cache (workspace-owned)
+    // XDG Base Directory: Clear XDG cache/config that might point to /root
+    XDG_CACHE_HOME: undefined,
+    XDG_CONFIG_HOME: undefined,
+    XDG_DATA_HOME: undefined,
+    XDG_STATE_HOME: undefined,
+
+    // Bun: Clear all bun-specific paths that might point to /root
+    BUN_INSTALL: undefined, // THIS IS THE KEY ONE - points to /root/.bun
     BUN_INSTALL_CACHE_DIR: undefined,
+    BUN_INSTALL_BIN: undefined,
+    BUN_INSTALL_GLOBAL_DIR: undefined,
 
     // NPM (future-proofing): Clear npm cache/config that might point to /root
     NPM_CONFIG_CACHE: undefined,

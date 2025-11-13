@@ -1,18 +1,25 @@
 # Postmortem: bun install "AccessDenied" tempdir Error
 
-**Date**: 2025-11-12
-**Status**: RESOLVED
+**Date**: 2025-11-12 (Initial investigation), 2025-11-12 23:00 (Actual resolution)
+**Status**: RESOLVED (November 12, 23:45 UTC)
 **Severity**: P1 - Critical functionality broken
-**Duration**: ~2 hours from first report to fix deployment
+**Duration**: ~12 hours from initial report to actual fix (tool was broken the entire time)
 **Author**: Claude (AI Assistant)
+**Update**: The initial "fix" was incomplete. Tool remained broken until proper fix deployed on November 12 evening.
 
 ---
 
 ## Executive Summary
 
-The `install_package` MCP tool was failing with "bun is unable to write files to tempdir: AccessDenied" error, preventing users from installing npm packages. The root cause was the `BUN_INSTALL_CACHE_DIR` environment variable being inherited from the parent process and pointing to a restricted cache directory inaccessible to the workspace user after privilege drop.
+The `install_package` MCP tool was failing with "bun is unable to write files to tempdir: AccessDenied" error, preventing users from installing npm packages. The root cause was **multiple bun environment variables** inherited from the parent process pointing to restricted directories inaccessible to the workspace user after privilege drop.
 
-**Resolution**: Clear `BUN_INSTALL_CACHE_DIR` when spawning bun subprocess, allowing bun to use its default accessible cache location.
+**Initial (Incomplete) Resolution**: Clear `BUN_INSTALL_CACHE_DIR` when spawning bun subprocess.
+
+**Actual Root Cause**: `BUN_INSTALL=/root/.bun` was the primary culprit. Bun checks this variable BEFORE `BUN_INSTALL_CACHE_DIR`, causing it to fail when trying to write to `/root/.bun/tmp`.
+
+**Final Resolution**: Clear ALL bun-related environment variables (`BUN_INSTALL`, `BUN_INSTALL_CACHE_DIR`, `BUN_INSTALL_BIN`, `BUN_INSTALL_GLOBAL_DIR`) plus XDG directories when spawning subprocess.
+
+**Note**: The tool remained broken from initial report until evening of November 12. Manual testing gave false confidence that the issue was resolved.
 
 ---
 
@@ -373,6 +380,196 @@ the problem is ALWAYS in the environment variables, not in the code itself.
 **Incident Commander**: Claude (AI Assistant)
 **Reviewed By**: User
 **Date**: 2025-11-12
+**Follow-up Investigation**: 2025-11-12 23:00-23:45 UTC
 
-**Status**: RESOLVED ✅
-**Production Deploy Pending**: Yes - awaiting user approval for prod deployment
+**Status**: ACTUALLY RESOLVED ✅ (November 12, 23:45 UTC)
+**Production Deploy**: COMPLETED
+
+---
+
+## ADDENDUM: November 12, 23:00 UTC - The Initial Fix Was Incomplete
+
+### What Actually Happened
+
+The "RESOLVED" status from earlier today was **premature**. The tool remained broken until a follow-up investigation found the actual root cause.
+
+**Timeline Correction:**
+
+**Initial Investigation (14:00-16:00):**
+- ❌ Added `BUN_INSTALL_CACHE_DIR: undefined`
+- ✅ Tested **manually** with clean environment → worked
+- ✅ Marked as RESOLVED
+- ❌ **Never actually tested the MCP tool itself**
+
+**What We Missed:**
+Manual test command used a **clean environment**:
+```bash
+sudo -u site-tester-alive-best env HOME=/tmp/claude-home-942 TMPDIR=/tmp bun add lodash
+```
+
+This only had `HOME` and `TMPDIR` - no inherited `BUN_INSTALL` variable.
+
+But the actual tool was doing:
+```typescript
+env: {
+  ...process.env,  // ❌ Inherits BUN_INSTALL=/root/.bun from parent!
+  TMPDIR: "/tmp",
+  BUN_INSTALL_CACHE_DIR: undefined,
+}
+```
+
+**Tool Remained Broken:**
+- 14:00-23:00: Tool continued failing (but nobody tested it)
+- Manual installs worked (clean environment)
+- Users assumed tool was fixed
+
+**Follow-up Investigation (23:00-23:45):**
+
+User reported **same error** on startup.alive.best:
+```
+error: bun is unable to write files to tempdir: AccessDenied
+```
+
+**Debug Findings:**
+```
+[install-package] BUN_INSTALL before: /root/.bun
+[install-package] BUN_INSTALL after: /root/.bun  ⬅️ STILL THERE!
+[install-package] BUN_INSTALL_CACHE_DIR after: undefined  ✅ Cleared
+```
+
+**Root Cause Discovery:**
+
+Bun's environment variable precedence:
+1. **`BUN_INSTALL`** (highest priority) → tries `/root/.bun/tmp` → AccessDenied ❌
+2. `BUN_INSTALL_CACHE_DIR` → if set, uses this
+3. `TMPDIR` → uses `/tmp` (would work if #1 and #2 were cleared)
+4. System default
+
+The initial fix only cleared #2, but bun checks #1 first!
+
+**The Actual Fix:**
+
+```typescript
+export function sanitizeSubprocessEnv(): NodeJS.ProcessEnv {
+  return {
+    ...process.env,
+
+    // System temp
+    TMPDIR: "/tmp",
+    TMP: "/tmp",
+    TEMP: "/tmp",
+
+    // XDG Base Directory
+    XDG_CACHE_HOME: undefined,
+    XDG_CONFIG_HOME: undefined,
+    XDG_DATA_HOME: undefined,
+    XDG_STATE_HOME: undefined,
+
+    // Bun: Clear ALL bun paths
+    BUN_INSTALL: undefined,              // ⬅️ THIS WAS THE MISSING ONE
+    BUN_INSTALL_CACHE_DIR: undefined,
+    BUN_INSTALL_BIN: undefined,
+    BUN_INSTALL_GLOBAL_DIR: undefined,
+
+    // NPM/PNPM/Yarn (future-proofing)
+    NPM_CONFIG_CACHE: undefined,
+    NPM_CONFIG_PREFIX: undefined,
+    PNPM_HOME: undefined,
+    YARN_CACHE_FOLDER: undefined,
+  }
+}
+```
+
+**Verification:**
+- ✅ Tested on startup.alive.best → `better-sqlite3` installed successfully
+- ✅ Tested on roefapp.nl (original victim) → package installed successfully
+- ✅ Debug logs confirmed: `BUN_INSTALL after: undefined`
+
+### Lessons Learned (Updated)
+
+**What Went Wrong:**
+
+1. **Manual testing != tool testing**
+   - Tested with clean `env` command
+   - Should have tested via actual MCP tool call
+   - False confidence from manual success
+
+2. **Incomplete environment analysis**
+   - Focused on `BUN_INSTALL_CACHE_DIR`
+   - Didn't check what `env` command was missing vs `...process.env`
+   - Should have listed ALL BUN_* variables upfront
+
+3. **Verification gap**
+   - Postmortem said "RESOLVED" but tool was never tested post-deploy
+   - No E2E test for install_package tool
+   - Manual testing gave false sense of completion
+
+**New Action Items:**
+
+- [x] Clear `BUN_INSTALL` (the actual fix)
+- [x] Clear all XDG and bun-related variables comprehensively
+- [ ] Add E2E test: "Install package via MCP tool in clean workspace"
+- [ ] Update testing protocol: ALWAYS test the actual tool, not just manual commands
+- [ ] Document: "Manual testing != integration testing"
+
+### The Correct Debugging Prompt (Updated)
+
+If we had used this prompt from the start, we would have found the issue immediately:
+
+```markdown
+The install_package tool is failing with "bun is unable to write files to tempdir: AccessDenied"
+
+1. **Compare environments EXACTLY:**
+   - Show me `process.env` from INSIDE the tool (all vars)
+   - Show me the env from a working manual command
+   - Diff them and highlight ANY BUN_*, XDG_*, or path-related differences
+
+2. **Check bun's env var precedence:**
+   - Which env vars does bun check for temp/cache directories?
+   - In what order does it check them?
+   - Which ones are currently set in the subprocess?
+
+3. **Test hypothesis:**
+   - Clear ALL bun-related env vars one by one
+   - Log which specific var is causing the failure
+
+4. **Verify with actual tool:**
+   - DO NOT test manually with sudo
+   - Use the actual MCP tool
+   - Compare before/after env vars in tool logs
+```
+
+**Why this would have worked:**
+- **"Show me process.env from INSIDE the tool"** would have revealed `BUN_INSTALL=/root/.bun` immediately
+- **"Check bun's precedence"** would have shown `BUN_INSTALL` is checked first
+- **"DO NOT test manually"** would have prevented false confidence
+
+### Production Impact Assessment (Revised)
+
+**Actual Duration of Outage:**
+- Initial report: ~14:00 UTC
+- Marked as "resolved": ~16:00 UTC
+- **Actually broken until**: 23:45 UTC
+- **Total downtime**: ~10 hours (not 2 hours as initially reported)
+
+**User Impact:**
+- Any user attempting `install_package` between 14:00-23:45 would have failed
+- Unclear if anyone actually used the tool during this window
+- Manual workaround (sudo commands) was available
+
+**Severity Correction:**
+- Initially: P1 - 2 hour outage
+- Actually: P1 - 10 hour outage
+- Mitigation: Low usage during outage window (speculation)
+
+---
+
+## Final Status
+
+**Actual Resolution Time**: 2025-11-12 23:45 UTC
+**Root Cause**: `BUN_INSTALL=/root/.bun` inherited from parent process
+**Comprehensive Fix**: Clear all bun and XDG environment variables
+**Verification Method**: Tested with actual MCP tool (not manual commands)
+**Deployed To**: Production (PM2 restart at 23:45 UTC)
+
+**Status**: ✅ **ACTUALLY RESOLVED** (verified with tool, not manual testing)
