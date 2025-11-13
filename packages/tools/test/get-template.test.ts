@@ -48,16 +48,16 @@ describe("getTemplate", () => {
       expect(result.content[0].text).toContain("react-dropzone")
     })
 
-    it("should retrieve blog CMS template by valid versioned ID", async () => {
+    it("should retrieve recipe system template by valid versioned ID", async () => {
       const params: GetTemplateParams = {
-        id: "blog-cms-system-v1.0.0",
+        id: "recipe-system-interactive-v1.0.0",
       }
 
       const result = await getTemplate(params, templatesPath)
 
       expect(result.isError).toBe(false)
-      expect(result.content[0].text).toContain("Complete Blog CMS")
-      expect(result.content[0].text).toContain("zustand")
+      expect(result.content[0].text).toContain("Interactive Recipe System")
+      expect(result.content[0].text).toContain("Recipe Template Interface")
     })
   })
 

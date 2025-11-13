@@ -1108,3 +1108,91 @@ huurmatcher.alive.best {
         header_up X-Forwarded-Proto {scheme}
     }
 }
+
+fabian.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3383 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+khalid.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3384 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+testkhalid.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3385 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+kapper.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3386 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+alessandro.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3387 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+notion.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3388 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+loodgieter.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3389 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+test3.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3390 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}

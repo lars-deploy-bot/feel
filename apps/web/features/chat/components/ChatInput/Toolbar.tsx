@@ -67,7 +67,12 @@ export function Toolbar({ fileInputRef, onOpenTemplates, onAddUserPrompt }: Tool
                       key={prompt.id}
                       type="button"
                       onClick={() =>
-                        handleAddPrompt(prompt.promptType, prompt.data, prompt.displayName, prompt.userFacingDescription)
+                        handleAddPrompt(
+                          prompt.promptType,
+                          prompt.data,
+                          prompt.displayName,
+                          prompt.userFacingDescription,
+                        )
                       }
                       className="w-full text-left px-3 py-2 rounded-md hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                     >

@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev --turbo -p $(node -p \"require('../../bridge.config.js').ports.dev\")",
-    "dev:test": "next dev --turbo -p 9547",
+    "dev:test": "BRIDGE_ENV=local PLAYWRIGHT_TEST=true next dev --turbo -p 9547",
     "build": "next build",
     "start": "next start -p $(node -p \"require('../../bridge.config.js').ports.production\")",
     "staging": "cd ../.. && bun run staging",

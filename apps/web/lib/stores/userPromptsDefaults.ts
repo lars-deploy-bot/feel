@@ -128,10 +128,12 @@ Please analyze the codebase and provide specific recommendations for improvement
 // Export prompt objects with both full prompt (for Claude SDK) and user-facing description (for UI)
 export const REVISE_PROMPT_DEFAULT = {
   data: REVISE_PROMPT_FULL,
-  userFacingDescription: "Comprehensive code review covering quality, bugs, security, performance, TypeScript safety, React patterns, testing, and documentation.",
+  userFacingDescription:
+    "Comprehensive code review covering quality, bugs, security, performance, TypeScript safety, React patterns, testing, and documentation.",
 }
 
 export const ORGANIZE_PROMPT_DEFAULT = {
   data: ORGANIZE_PROMPT_FULL,
-  userFacingDescription: "Review code organization including file structure, lost files, Vite workspace structure, imports, config files, naming conventions, and code grouping.",
+  userFacingDescription:
+    "Review code organization including file structure, lost files, Vite workspace structure, imports, config files, naming conventions, and code grouping.",
 }

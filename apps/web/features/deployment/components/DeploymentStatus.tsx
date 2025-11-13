@@ -89,8 +89,18 @@ export function DeploymentStatus({ status, domain, error, errorDetails }: Deploy
               <div className="bg-black/[0.02] border border-black/10 rounded-lg p-4 mb-4">
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3 min-w-0">
-                    <svg className="w-5 h-5 text-black/40 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                    <svg
+                      className="w-5 h-5 text-black/40 flex-shrink-0"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"
+                      />
                     </svg>
                     <code className="text-sm font-mono text-black truncate">{domain}</code>
                   </div>
@@ -112,7 +122,12 @@ export function DeploymentStatus({ status, domain, error, errorDetails }: Deploy
               >
                 <span>View Your Live Website</span>
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                  />
                 </svg>
               </a>
             </div>
@@ -148,7 +163,8 @@ export function DeploymentStatus({ status, domain, error, errorDetails }: Deploy
             <div className="flex-1">
               <h2 className="text-xl font-medium text-black mb-2">Build your website with AI</h2>
               <p className="text-base text-black/60 mb-6">
-                Use our chat interface, just like ChatGPT, to customize your website. Tell the AI what you want to change, add, or remove—changes happen in real-time.
+                Use our chat interface, just like ChatGPT, to customize your website. Tell the AI what you want to
+                change, add, or remove—changes happen in real-time.
               </p>
 
               {/* Example Prompts */}
@@ -157,7 +173,7 @@ export function DeploymentStatus({ status, domain, error, errorDetails }: Deploy
                 {[
                   "Change the heading to 'Welcome to my business'",
                   "Add a contact form with email and message fields",
-                  "Make the background gradient from blue to purple"
+                  "Make the background gradient from blue to purple",
                 ].map((example, i) => (
                   <motion.div
                     key={i}
@@ -166,8 +182,18 @@ export function DeploymentStatus({ status, domain, error, errorDetails }: Deploy
                     transition={{ delay: 0.5 + i * 0.1, duration: 0.4 }}
                     className="flex items-start gap-3 p-3 bg-black/[0.02] border border-black/10 rounded-lg"
                   >
-                    <svg className="w-4 h-4 text-black/40 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                    <svg
+                      className="w-4 h-4 text-black/40 flex-shrink-0 mt-0.5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+                      />
                     </svg>
                     <span className="text-sm text-black/70">{example}</span>
                   </motion.div>

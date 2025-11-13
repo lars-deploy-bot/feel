@@ -20,9 +20,6 @@ export default defineConfig({
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
-    env: {
-      PLAYWRIGHT_TEST: "true",
-    },
   },
 
   projects: [

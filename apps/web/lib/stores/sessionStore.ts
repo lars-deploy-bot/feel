@@ -8,12 +8,6 @@ import { persist } from "zustand/middleware"
  *
  * Enables session resumption across page reloads by persisting conversationId
  * per workspace. Works with backend SessionStoreMemory for full resume capability.
- *
- * Pattern follows Guide §14.1-14.3:
- * - State + Actions separation
- * - Atomic selectors
- * - Stable actions object
- * - Backwards compatibility
  */
 
 export interface ConversationSession {
@@ -22,54 +16,27 @@ export interface ConversationSession {
   lastActivity: number
 }
 
-// State interface
 interface SessionState {
   currentConversationId: string | null
   currentWorkspace: string | null
   sessions: ConversationSession[]
 }
 
-// Actions interface - grouped under stable object (Guide §14.3)
 interface SessionActions {
   actions: {
-    /**
-     * Initialize or resume a conversation for a workspace
-     * Returns conversationId (existing or new)
-     */
     initConversation: (workspace: string) => string
-    /**
-     * Create a new conversation (resets current conversation)
-     */
     newConversation: (workspace: string) => string
-    /**
-     * Update last activity timestamp for current conversation
-     */
-    updateActivity: () => void
-    /**
-     * Clear conversation for specific workspace
-     */
+    switchToConversation: (conversationId: string, workspace: string) => void
     clearWorkspaceConversation: (workspace: string) => void
-    /**
-     * Clear all conversations
-     */
     clearAll: () => void
   }
 }
 
-// Extended type for backwards compatibility
-type SessionStoreWithCompat = SessionState &
-  SessionActions & {
-    // Legacy direct action exports for backwards compatibility
-    initConversation: (workspace: string) => string
-    newConversation: (workspace: string) => string
-    updateActivity: () => void
-    clearWorkspaceConversation: (workspace: string) => void
-    clearAll: () => void
-  }
+type SessionStore = SessionState & SessionActions
 
-const MAX_SESSIONS = 10 // Keep last 10 workspace conversations
+const MAX_SESSIONS = 10
 
-const useSessionStoreBase = create<SessionStoreWithCompat>()(
+const useSessionStoreBase = create<SessionStore>()(
   persist(
     (set, get) => {
       const actions = {
@@ -101,36 +68,48 @@ const useSessionStoreBase = create<SessionStoreWithCompat>()(
           const newId = crypto.randomUUID()
 
           set(state => {
-            // Remove old session for this workspace if exists
-            const filteredSessions = state.sessions.filter(s => s.workspace !== workspace)
-
-            // Add new session
+            // Add new session (keep other workspace sessions)
             const newSession: ConversationSession = {
               conversationId: newId,
               workspace,
               lastActivity: Date.now(),
             }
 
+            // Keep all sessions, prune globally if needed
             return {
               currentConversationId: newId,
               currentWorkspace: workspace,
-              sessions: [newSession, ...filteredSessions].slice(0, MAX_SESSIONS),
+              sessions: [newSession, ...state.sessions].slice(0, MAX_SESSIONS),
             }
           })
 
           return newId
         },
 
-        updateActivity: () => {
+        switchToConversation: (conversationId: string, workspace: string) => {
           set(state => {
-            if (!state.currentConversationId || !state.currentWorkspace) {
-              return state
+            const existingSession = state.sessions.find(s => s.conversationId === conversationId)
+
+            if (existingSession) {
+              return {
+                currentConversationId: conversationId,
+                currentWorkspace: workspace,
+                sessions: state.sessions.map(s =>
+                  s.conversationId === conversationId ? { ...s, lastActivity: Date.now() } : s,
+                ),
+              }
+            }
+
+            const newSession: ConversationSession = {
+              conversationId,
+              workspace,
+              lastActivity: Date.now(),
             }
 
             return {
-              sessions: state.sessions.map(s =>
-                s.conversationId === state.currentConversationId ? { ...s, lastActivity: Date.now() } : s,
-              ),
+              currentConversationId: conversationId,
+              currentWorkspace: workspace,
+              sessions: [newSession, ...state.sessions].slice(0, MAX_SESSIONS),
             }
           })
         },
@@ -158,8 +137,6 @@ const useSessionStoreBase = create<SessionStoreWithCompat>()(
         currentWorkspace: null,
         sessions: [],
         actions,
-        // Legacy direct exports for backwards compatibility
-        ...actions,
       }
     },
     {
@@ -174,17 +151,10 @@ const useSessionStoreBase = create<SessionStoreWithCompat>()(
   ),
 )
 
-// Atomic selector: current conversationId (Guide §14.1)
 export const useConversationId = () => useSessionStoreBase(state => state.currentConversationId)
 
-// Atomic selector: current workspace (Guide §14.1)
 export const useCurrentWorkspace = () => useSessionStoreBase(state => state.currentWorkspace)
 
-// Atomic selector: all sessions (Guide §14.1)
 export const useSessions = () => useSessionStoreBase(state => state.sessions)
 
-// Actions hook - stable reference (Guide §14.3)
 export const useSessionActions = () => useSessionStoreBase(state => state.actions)
-
-// Legacy export for backwards compatibility
-export const useSessionStore = useSessionStoreBase

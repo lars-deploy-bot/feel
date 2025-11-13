@@ -27,7 +27,7 @@ const deployWithDomainSchema = z.object({
     .min(6, "Password must be at least 6 characters")
     .max(16, "Password must be at most 16 characters")
     .regex(/^[a-zA-Z0-9!@#$%^&*()_+=\-[\]{}|;:,.<>?/~`]+$/, "Password must contain valid characters"),
-})
+}) as z.ZodType<any, any, any>
 
 const deployOnlySchema = z.object({
   password: z
@@ -35,7 +35,7 @@ const deployOnlySchema = z.object({
     .min(6, "Password must be at least 6 characters")
     .max(16, "Password must be at most 16 characters")
     .regex(/^[a-zA-Z0-9!@#$%^&*()_+=\-[\]{}|;:,.<>?/~`]+$/, "Password must contain valid characters"),
-})
+}) as z.ZodType<any, any, any>
 
 type DeployWithDomainInput = z.infer<typeof deployWithDomainSchema>
 type DeployOnlyInput = z.infer<typeof deployOnlySchema>

@@ -6,8 +6,8 @@ import type { Page } from "@playwright/test"
  */
 export async function login(page: Page) {
   await page.goto("/")
-  await page.getByPlaceholder("domain (e.g. demo.goalive.nl)").fill("test")
-  await page.getByPlaceholder("passcode").fill("test")
-  await page.getByRole("button", { name: "ENTER" }).click()
+  await page.getByPlaceholder("myapp.alive.best").fill("test")
+  await page.getByPlaceholder("Enter your password").fill("test")
+  await page.getByRole("button", { name: "Continue" }).click()
   await page.waitForURL("/chat", { timeout: 5000 })
 }

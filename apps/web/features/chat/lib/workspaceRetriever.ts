@@ -61,6 +61,15 @@ function getTerminalWorkspace(body: any, requestId: string): WorkspaceResult {
     }
   }
 
+  // Allow "test" workspace in local development mode (for E2E tests)
+  if (process.env.BRIDGE_ENV === "local" && customWorkspace === "test") {
+    console.log(`[Workspace ${requestId}] Using test workspace in local mode`)
+    return {
+      success: true,
+      workspace: "/tmp/test-workspace", // Dummy path for test workspace
+    }
+  }
+
   // Normalize domain name to handle protocols, www, uppercase, etc.
   const normalizedDomain = normalizeDomain(customWorkspace)
   console.log(`[Workspace ${requestId}] Normalized workspace: ${customWorkspace} → ${normalizedDomain}`)

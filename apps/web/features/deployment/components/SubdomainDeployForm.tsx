@@ -24,11 +24,7 @@ const deploySubdomainSchema = z.object({
     .max(20, "Must be 20 characters or less")
     .regex(/^[a-z0-9-]+$/, "Only lowercase letters, numbers, and dashes"),
   email: z.string().email("Please enter a valid email address"),
-  siteIdeas: z
-    .string()
-    .transform(val => val || "")
-    .optional()
-    .default(""),
+  siteIdeas: z.string().optional().default(""),
   password: z
     .string()
     .min(6, "Password must be at least 6 characters")
@@ -122,9 +118,20 @@ export function SubdomainDeployForm() {
     register,
     handleSubmit,
     watch,
-    formState: { errors, isValid },
+    formState: { errors, isValid, touchedFields },
   } = useForm<DeploySubdomainForm>({
-    resolver: zodResolver(deploySubdomainSchema),
+    resolver: async (data, context, options) => {
+      // Only validate if user has interacted with form, otherwise return no errors
+      const hasInteracted =
+        Object.keys(touchedFields).length > 0 || data.slug || data.email || data.password || options.mode === "submit"
+
+      if (!hasInteracted) {
+        return { values: data, errors: {} }
+      }
+
+      // Run normal validation
+      return zodResolver(deploySubdomainSchema)(data, context, options)
+    },
     mode: "onChange",
     defaultValues: {
       slug: "",

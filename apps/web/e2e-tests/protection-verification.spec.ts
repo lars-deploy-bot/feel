@@ -71,9 +71,9 @@ test.describe("Protection System Verification", () => {
   test("Allows non-Claude API calls (login, verify, etc)", async ({ page }) => {
     // Login should work - it's NOT a protected endpoint
     await page.goto("/")
-    await page.getByPlaceholder("domain (e.g. demo.goalive.nl)").fill("test")
-    await page.getByPlaceholder("passcode").fill("test")
-    await page.getByRole("button", { name: "ENTER" }).click()
+    await page.getByPlaceholder("myapp.alive.best").fill("test")
+    await page.getByPlaceholder("Enter your password").fill("test")
+    await page.getByRole("button", { name: "Continue" }).click()
 
     // Should successfully login (not blocked)
     await expect(page).toHaveURL("/chat", { timeout: 5000 })

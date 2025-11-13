@@ -10,6 +10,7 @@ import { SettingsDropdown } from "@/components/ui/SettingsDropdown"
 import { ChatDropOverlay } from "@/features/chat/components/ChatDropOverlay"
 import { ChatInput } from "@/features/chat/components/ChatInput"
 import type { ChatInputHandle } from "@/features/chat/components/ChatInput/types"
+import { ConversationSidebar } from "@/features/chat/components/ConversationSidebar"
 import { DevTerminal } from "@/features/chat/components/DevTerminal"
 import { Sandbox } from "@/features/chat/components/Sandbox"
 import { SubdomainInitializer } from "@/features/chat/components/SubdomainInitializer"
@@ -37,6 +38,7 @@ import type { StructuredError } from "@/lib/error-codes"
 import { ErrorCodes, getErrorHelp, getErrorMessage } from "@/lib/error-codes"
 import { HttpError } from "@/lib/errors"
 import { isRetryableError, retryWithBackoff } from "@/lib/retry"
+import { useSidebarActions } from "@/lib/stores/conversationSidebarStore"
 import { isDevelopment, useDebugActions, useDebugVisible, useSandbox, useSSETerminal } from "@/lib/stores/debug-store"
 import { useLLMStore } from "@/lib/stores/llmStore"
 import { useCurrentConversationId, useMessageActions, useMessages } from "@/lib/stores/messageStore"
@@ -49,7 +51,14 @@ function ChatPageContent() {
   const [msg, setMsg] = useState("")
   const messages = useMessages()
   const storeConversationId = useCurrentConversationId()
-  const { initializeConversation, addMessage, clearForNewConversation } = useMessageActions()
+  const {
+    initializeConversation,
+    addMessage,
+    clearForNewConversation,
+    switchConversation: switchConversationInMessageStore,
+    deleteConversation,
+  } = useMessageActions()
+  const { toggleSidebar } = useSidebarActions()
   const [busy, setBusy] = useState(false)
   const [useStreaming, _setUseStreaming] = useState(true)
   const [shouldForceScroll, setShouldForceScroll] = useState(false)
@@ -90,14 +99,14 @@ function ChatPageContent() {
   const streamingActions = useStreamingActions()
 
   // Session management with workspace-scoped persistence
-  const { conversationId, startNewConversation, markActivity } = useConversationSession(workspace, mounted)
+  const { conversationId, startNewConversation, switchConversation } = useConversationSession(workspace, mounted)
 
   // Initialize message store when conversation changes
   useEffect(() => {
-    if (conversationId && storeConversationId !== conversationId) {
-      initializeConversation(conversationId)
+    if (conversationId && workspace && storeConversationId !== conversationId) {
+      initializeConversation(conversationId, workspace)
     }
-  }, [conversationId, storeConversationId, initializeConversation])
+  }, [conversationId, workspace, storeConversationId, initializeConversation])
 
   // Image upload handler with progress tracking, retry logic, and store sync
   const handleAttachmentUpload = useImageUpload({ workspace, isTerminal })
@@ -114,7 +123,7 @@ function ChatPageContent() {
     return isTerminal ? { ...baseBody, workspace } : baseBody
   }
 
-  // Show SSE terminal and Sandbox minimized on staging (after mount to avoid hydration mismatch)
+  // Show SSE terminal minimized on staging (after mount to avoid hydration mismatch)
   useEffect(() => {
     // Log build version for deployment verification
     console.log(`%c[Chat] BUILD VERSION: ${BUILD_VERSION}`, "color: #00ff00; font-weight: bold; font-size: 14px")
@@ -122,17 +131,10 @@ function ChatPageContent() {
     if (window.location.hostname.includes("staging")) {
       setSSETerminal(true)
       setSSETerminalMinimized(true)
-      setSandbox(true)
-      setSandboxMinimized(true)
+      // Sandbox disabled by default - user can enable manually
     }
   }, [setSSETerminal, setSSETerminalMinimized, setSandbox, setSandboxMinimized])
 
-  // Track activity on message updates
-  useEffect(() => {
-    if (messages.length > 0) {
-      markActivity()
-    }
-  }, [messages.length, markActivity])
 
   // Track manual scrolling - attach once at mount time (only needs empty deps)
   useEffect(() => {
@@ -891,12 +893,42 @@ function ChatPageContent() {
     setMsg(prompt)
   }, [])
 
+  const handleConversationSelect = useCallback(
+    (selectedConversationId: string) => {
+      if (!selectedConversationId) return
+      switchConversation(selectedConversationId)
+      switchConversationInMessageStore(selectedConversationId)
+    },
+    [switchConversation, switchConversationInMessageStore],
+  )
+
+  const handleDeleteConversation = useCallback(
+    (conversationIdToDelete: string) => {
+      if (!conversationIdToDelete) return
+      deleteConversation(conversationIdToDelete)
+
+      if (conversationIdToDelete === conversationId) {
+        startNewConversation()
+      }
+    },
+    [deleteConversation, conversationId, startNewConversation],
+  )
+
   // SSE terminal visibility is separate from debug view
 
   return (
     <div className="h-[100dvh] flex flex-row overflow-hidden dark:bg-[#1a1a1a] dark:text-white">
+      {/* Conversation Sidebar - Static, not overlay */}
+      <ConversationSidebar
+        workspace={workspace}
+        onNewConversation={handleNewConversation}
+        onConversationSelect={handleConversationSelect}
+        onDeleteConversation={handleDeleteConversation}
+      />
+
+      {/* Main chat area - flex grows to fill remaining space */}
       <div
-        className="flex-1 flex flex-col overflow-hidden transition-all relative"
+        className="flex-1 flex flex-col overflow-hidden relative min-w-0"
         role="application"
         aria-label="Chat area"
         onDragEnter={handleChatDragEnter}
@@ -937,9 +969,14 @@ function ChatPageContent() {
                     <circle cx="12" cy="12" r="4" fill="currentColor" className="alive-logo-inner" />
                   </svg>
                 </a>
-                <h1 className="text-lg font-medium text-black dark:text-white">
+                <button
+                  type="button"
+                  onClick={toggleSidebar}
+                  className="text-lg font-medium text-black dark:text-white hover:opacity-80 transition-opacity"
+                  aria-label="Toggle conversation sidebar"
+                >
                   {mounted && isTerminal ? "Chat" : "Chat"}
-                </h1>
+                </button>
               </div>
               <div className="flex items-center gap-2">
                 {isDevelopment() && (

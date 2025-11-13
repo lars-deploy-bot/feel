@@ -37,9 +37,8 @@ export async function POST(req: NextRequest) {
     const res = NextResponse.json({ ok: true })
     res.cookies.set("session", "test-user", {
       httpOnly: true,
-      secure: true,
-      sameSite: "none",
-      domain: ".terminal.goalive.nl",
+      secure: false, // Allow non-HTTPS for localhost
+      sameSite: "lax", // Lax for localhost compatibility
       path: "/",
       maxAge: SESSION_MAX_AGE,
     })

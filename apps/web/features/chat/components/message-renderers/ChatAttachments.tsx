@@ -64,9 +64,7 @@ export function ChatAttachments({ attachments }: ChatAttachmentsProps) {
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-xs font-semibold text-purple-900 dark:text-purple-100">{prompt.displayName}</span>
               </div>
-              <p className="text-sm text-black/80 dark:text-white/80">
-                {prompt.userFacingDescription || prompt.data}
-              </p>
+              <p className="text-sm text-black/80 dark:text-white/80">{prompt.userFacingDescription || prompt.data}</p>
             </div>
           ))}
         </div>

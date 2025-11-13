@@ -14,17 +14,14 @@ import { useSessionActions } from "@/lib/stores/sessionStore"
  * @returns conversationId and control functions
  */
 export function useConversationSession(workspace: string | null, mounted: boolean) {
-  const { initConversation, newConversation, updateActivity } = useSessionActions()
+  const { initConversation, newConversation, switchToConversation } = useSessionActions()
   const prevWorkspaceRef = useRef<string | null>(null)
 
-  // Initialize synchronously with fallback UUID to prevent race conditions
   const [conversationId, setConversationId] = useState<string>(() => crypto.randomUUID())
 
-  // Update conversation when workspace changes (after mount)
   useEffect(() => {
     if (!workspace || !mounted) return
 
-    // Only update if workspace actually changed
     if (prevWorkspaceRef.current === workspace) return
 
     const id = initConversation(workspace)
@@ -32,7 +29,6 @@ export function useConversationSession(workspace: string | null, mounted: boolea
     prevWorkspaceRef.current = workspace
   }, [workspace, mounted, initConversation])
 
-  // Start new conversation (clears session)
   const startNewConversation = () => {
     if (!workspace) return ""
 
@@ -41,9 +37,16 @@ export function useConversationSession(workspace: string | null, mounted: boolea
     return newId
   }
 
+  const switchConversation = (id: string) => {
+    if (!workspace) return
+
+    switchToConversation(id, workspace)
+    setConversationId(id)
+  }
+
   return {
     conversationId,
     startNewConversation,
-    markActivity: updateActivity,
+    switchConversation,
   }
 }

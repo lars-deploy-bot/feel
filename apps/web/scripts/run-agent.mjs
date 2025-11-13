@@ -122,9 +122,7 @@ async function readStdinJson() {
     console.error("[runner] MCP servers enabled:", Object.keys(workspaceMcpServers).join(", "))
 
     // Log available secrets for debugging (without revealing values)
-    console.error(
-      `[runner] Internal tools secret: ${process.env.INTERNAL_TOOLS_SECRET ? "✓ present" : "✗ missing"}`,
-    )
+    console.error(`[runner] Internal tools secret: ${process.env.INTERNAL_TOOLS_SECRET ? "✓ present" : "✗ missing"}`)
 
     const agentQuery = query({
       prompt: request.message,

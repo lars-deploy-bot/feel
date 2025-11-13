@@ -14,7 +14,7 @@
     "e2e": "cd apps/web && bun run test:e2e",
     "format": "turbo run format",
     "lint": "turbo run lint",
-    "test": "cd packages/tools && bun test && cd ../.. && cd apps/web && bun test './lib/**/*.test.ts' './features/**/*.test.ts' './types/**/*.test.ts'",
+    "test": "cd packages/tools && bun test && cd ../.. && cd apps/web && bun run test",
     "postinstall": "cd packages/template/user && bun install && cd ../../.. && ./scripts/link-workspace-deps.sh",
     "pull": "GIT_SSH_COMMAND='ssh -i ~/.ssh/alive_brug_deploy' git pull",
     "push": "GIT_SSH_COMMAND='ssh -i ~/.ssh/alive_brug_deploy' git push",
