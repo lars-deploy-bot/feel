@@ -1,4 +1,67 @@
-import { beforeEach, describe, expect, it } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+
+// In-memory storage for mocked database
+const mockSessions = new Map<string, { sdk_session_id: string }>()
+
+// Helper to create session key for storage
+function makeDbKey(userId: string, domainId: string, conversationId: string) {
+  return `${userId}::${domainId}::${conversationId}`
+}
+
+// Mock Supabase clients before importing sessionStore
+vi.mock("@/lib/supabase/app", () => ({
+  createAppClient: vi.fn(async () => ({
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          single: vi.fn(async () => ({ data: { domain_id: "test-domain-id" }, error: null })),
+        })),
+      })),
+    })),
+  })),
+}))
+
+vi.mock("@/lib/supabase/iam", () => ({
+  createIamClient: vi.fn(async () => ({
+    from: vi.fn((table: string) => {
+      if (table === "sessions") {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn((col: string, userId: string) => ({
+              eq: vi.fn((col: string, domainId: string) => ({
+                eq: vi.fn((col: string, conversationId: string) => ({
+                  single: vi.fn(async () => {
+                    const key = makeDbKey(userId, domainId, conversationId)
+                    const data = mockSessions.get(key)
+                    return { data: data || null, error: null }
+                  }),
+                })),
+              })),
+            })),
+          })),
+          upsert: vi.fn(async (data: any) => {
+            const key = makeDbKey(data.user_id, data.domain_id, data.conversation_id)
+            mockSessions.set(key, { sdk_session_id: data.sdk_session_id })
+            return { data: null, error: null }
+          }),
+          delete: vi.fn(() => ({
+            eq: vi.fn((col: string, userId: string) => ({
+              eq: vi.fn((col: string, domainId: string) => ({
+                eq: vi.fn(async (col: string, conversationId: string) => {
+                  const key = makeDbKey(userId, domainId, conversationId)
+                  mockSessions.delete(key)
+                  return { data: null, error: null }
+                }),
+              })),
+            })),
+          })),
+        }
+      }
+      return {}
+    }),
+  })),
+}))
+
 import {
   SessionStoreMemory,
   sessionKey,
@@ -12,6 +75,9 @@ const TEST_USER_ID = "ace1261c-2b9a-4845-8d41-4f6ecab8cb37" // demo.goalive.nl u
 
 describe("Session Store - Conversation Locking", () => {
   beforeEach(async () => {
+    // Clear mock database
+    mockSessions.clear()
+
     await SessionStoreMemory.delete(
       sessionKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, conversationId: "test-conv-1" }),
     )

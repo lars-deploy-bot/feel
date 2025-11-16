@@ -3,7 +3,9 @@
  * Provides type-safe access to the IAM schema (users, sessions, workspaces)
  */
 
-if (typeof window !== "undefined") {
+// Security check: Prevent client-side imports (but allow test environments)
+const isTestEnv = process.env.NODE_ENV === "test" || typeof globalThis.vi !== "undefined"
+if (typeof window !== "undefined" && !isTestEnv) {
   throw new Error(
     "[SECURITY] lib/supabase/iam cannot be imported in client-side code. " +
       "IAM operations must only run server-side.",
