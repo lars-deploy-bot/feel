@@ -77,16 +77,42 @@ export async function GET(req: NextRequest) {
 
 ### Response Types
 
-- `OrganizationsResponse` - List of organizations
-- `WorkspacesResponse` - List of workspace domains
-- `LoginResponse` - Login success
-- `ApiError` - Error response
+**Auth APIs:**
+- `LoginResponse` - Login success (`{ ok: true, userId: string }`)
+- `LogoutResponse` - Logout success (`{ ok: true, message: string }`)
+- `VerifyResponse` - Workspace verification (`{ ok: true, verified: true, workspace, message, requestId }`)
+- `TokensResponse` - Credits and tokens (`{ ok: true, tokens, credits, workspace }`)
+- `TokensErrorResponse` - Credits fetch error (`{ ok: false, error }`)
+- `TokensAPIResponse` - Union type for tokens endpoint
+
+**Organization & Workspace:**
+- `Organization` - Organization object (`{ org_id, name, credits, workspace_count? }`)
+- `OrganizationsResponse` - List of organizations (`{ ok: true, organizations: Organization[] }`)
+- `WorkspacesResponse` - List of workspace domains (`{ ok: true, workspaces: string[] }`)
+
+**Feedback:**
+- `FeedbackResponse` - Feedback submission result (`{ ok: true, id, timestamp }`)
+
+**Generic:**
+- `ApiError` - Error response (`{ ok: false, error, message? }`)
 - `ApiResponse<T>` - Generic response wrapper
+
+**Note:** Deploy, Sites, and Images APIs use different response patterns (`success` instead of `ok`) or have endpoint-specific structures. These are defined locally in their route files and not included in shared types.
 
 ### Type Guards
 
+**Available type guards:**
+- `isLoginResponse(data)` - Validates login response
+- `isLogoutResponse(data)` - Validates logout response
+- `isVerifyResponse(data)` - Validates verification response
+- `isTokensResponse(data)` - Validates tokens response
+- `isOrganization(data)` - Validates Organization object
 - `isOrganizationsResponse(data)` - Validates organizations response
 - `isWorkspacesResponse(data)` - Validates workspaces response
+- `isFeedbackResponse(data)` - Validates feedback response
+
+**Generic type guards:**
+- `isApiResponse(data)` - Check if data has API response shape
 - `isApiError(data)` - Check if response is an error
 - `isApiSuccess(data)` - Check if response is successful
 

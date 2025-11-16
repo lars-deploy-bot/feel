@@ -1,6 +1,6 @@
 import { createJSONStorage, persist } from "zustand/middleware"
 import { createStore } from "zustand/vanilla"
-import type { TokensAPIResponse } from "@/types/api"
+import type { TokensAPIResponse } from "@/lib/api/types"
 
 /**
  * User Store - Centralized user data (credits, email, workspace)

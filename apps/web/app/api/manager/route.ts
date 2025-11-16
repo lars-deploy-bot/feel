@@ -122,7 +122,8 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json()
-    const { domain, password, email, credits } = body
+    const { domain: rawDomain, password, email, credits } = body
+    const domain = rawDomain?.toLowerCase() // Always lowercase domain
 
     if (!domain) {
       return corsResponse(
@@ -197,7 +198,8 @@ export async function DELETE(req: NextRequest) {
 
   try {
     const body = await req.json()
-    const { domain } = body
+    const { domain: rawDomain } = body
+    const domain = rawDomain?.toLowerCase() // Always lowercase domain
 
     if (!domain) {
       return corsResponse(

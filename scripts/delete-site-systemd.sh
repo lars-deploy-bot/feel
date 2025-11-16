@@ -18,7 +18,7 @@ if [ $# -eq 0 ]; then
     exit 2
 fi
 
-DOMAIN=$1
+DOMAIN=$(echo "$1" | tr '[:upper:]' '[:lower:]')  # Convert to lowercase
 SLUG=${DOMAIN//[^a-zA-Z0-9]/-}
 SERVICE_NAME="site@${SLUG}.service"
 USER="site-${SLUG}"

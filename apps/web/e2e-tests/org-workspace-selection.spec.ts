@@ -125,7 +125,10 @@ test.describe("Organization and Workspace Selection", () => {
     if (!isStaging || placeholder !== "Select a site to start chatting...") {
       // Either we have a workspace OR we're in staging and might have 0 domains
       // Check if there's a domain count indicator
-      const noDomains = await page.getByText("You don't have any domains yet").isVisible().catch(() => false)
+      const noDomains = await page
+        .getByText("You don't have any domains yet")
+        .isVisible()
+        .catch(() => false)
 
       if (!noDomains) {
         // We should have a workspace selected
@@ -197,7 +200,10 @@ test.describe("Organization and Workspace Selection", () => {
     const errorIndicator = page.getByText("error loading sites")
 
     // Only check if we're in terminal mode (workspace switcher visible)
-    const hasWorkspaceSwitcher = await page.locator('button:has-text("select")').isVisible().catch(() => false)
+    const hasWorkspaceSwitcher = await page
+      .locator('button:has-text("select")')
+      .isVisible()
+      .catch(() => false)
 
     if (hasWorkspaceSwitcher) {
       await expect(errorIndicator).toBeVisible({ timeout: 5000 })

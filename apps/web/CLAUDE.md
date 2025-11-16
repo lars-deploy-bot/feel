@@ -25,7 +25,7 @@ always use bun!
 
 **Why**: Prevents context loss between sessions, enables easy task switching, creates clear handoff documentation.
 
-**Current Contents**: Check this directory at the start of each session to see what's in progress.
+**Status**: ✅ No active multi-session tasks - See `docs/currently-working-on-this/README.md` for workflow.
 
 ## Deployment & Ports
 

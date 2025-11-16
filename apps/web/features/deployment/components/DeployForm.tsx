@@ -159,7 +159,7 @@ export function DeployForm() {
   }, [])
 
   const onSubmitWithDomain = async (data: DeployWithDomainInput): Promise<void> => {
-    await deploy(data.domain, data.password)
+    await deploy(data.domain.toLowerCase(), data.password)
   }
 
   const _onSubmitDeployOnly = async (data: DeployOnlyInput): Promise<void> => {
@@ -256,6 +256,10 @@ export function DeployForm() {
                     data-1p-ignore
                     data-lpignore
                     placeholder="mysite.com"
+                    onChange={e => {
+                      e.target.value = e.target.value.toLowerCase()
+                      deployWithDomainForm.register("domain").onChange(e)
+                    }}
                     className={`w-full px-4 py-3 rounded-lg border-2 transition-colors outline-none font-medium ${
                       deployWithDomainForm.formState.errors.domain
                         ? "border-red-300 bg-red-50 text-gray-900"

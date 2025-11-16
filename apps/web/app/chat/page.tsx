@@ -105,12 +105,7 @@ function ChatPageContent() {
 
   // Fetch organizations and auto-select if none selected
   // Single source of truth for org fetching + auto-selection
-  const {
-    organizations,
-    loading: orgsLoading,
-    error: orgsError,
-    refetch: refetchOrgs,
-  } = useOrganizations()
+  const { organizations, loading: orgsLoading, error: orgsError, refetch: refetchOrgs } = useOrganizations()
 
   // Session management with workspace-scoped persistence
   const { conversationId, startNewConversation, switchConversation } = useConversationSession(workspace, mounted)
@@ -155,7 +150,6 @@ function ChatPageContent() {
 
   // Calculate total domain count from organizations
   const totalDomainCount = organizations.reduce((sum, org) => sum + (org.workspace_count || 0), 0)
-
 
   // Track manual scrolling - attach once at mount time (only needs empty deps)
   useEffect(() => {

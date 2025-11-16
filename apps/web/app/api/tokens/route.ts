@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { isWorkspaceAuthenticated } from "@/features/auth/lib/auth"
 import { creditsToLLMTokens } from "@/lib/credits"
-import type { TokensErrorResponse, TokensResponse } from "@/types/api"
+import type { TokensErrorResponse, TokensResponse } from "@/lib/api/types"
 import { loadDomainPasswords } from "@/types/guards/api"
 
 export async function GET(req: NextRequest): Promise<NextResponse<TokensResponse | TokensErrorResponse>> {
