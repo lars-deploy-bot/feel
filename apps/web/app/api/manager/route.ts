@@ -4,8 +4,9 @@ import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
+import { workspaceRepository } from "@/lib/db/repositories"
 import type { DomainConfigClient } from "@/types/domain"
-import { loadDomainPasswords, updateDomainConfig } from "@/types/guards/api"
+import { updateDomainConfig } from "@/types/guards/api"
 
 const execAsync = promisify(exec)
 
@@ -66,22 +67,23 @@ export async function GET(req: NextRequest) {
     )
   }
 
-  const domains = loadDomainPasswords()
+  // Load workspaces from database
+  const workspaces = await workspaceRepository.findAll()
   const orphanedDomains = await detectOrphanedDomains()
 
   const sanitizedDomains: Record<string, DomainConfigClient> = {}
 
-  for (const [domain, config] of Object.entries(domains)) {
+  for (const workspace of workspaces) {
     // Skip preview domains
-    if (isPreviewDomain(domain)) {
+    if (isPreviewDomain(workspace.domain)) {
       continue
     }
 
-    sanitizedDomains[domain] = {
-      tenantId: config.tenantId,
-      port: config.port,
-      email: config.email,
-      credits: config.credits ?? 0,
+    sanitizedDomains[workspace.domain] = {
+      tenantId: workspace.id, // Workspace ID is the tenant ID
+      port: workspace.port,
+      email: undefined, // Email is per-user now, not per-workspace
+      credits: workspace.credits ?? 0,
     }
   }
 
@@ -138,11 +140,23 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Update domain config (password, email, and/or credits)
-    const updates: { password?: string; email?: string; credits?: number } = {}
-    if (password) updates.password = password
-    if (email !== undefined) updates.email = email
+    // Find workspace in database
+    const workspace = await workspaceRepository.findByDomain(domain)
 
+    if (!workspace) {
+      return corsResponse(
+        origin,
+        {
+          ok: false,
+          error: ErrorCodes.INVALID_REQUEST,
+          message: "Workspace not found",
+          requestId,
+        },
+        404,
+      )
+    }
+
+    // Update credits in database if provided
     if (credits !== undefined) {
       if (typeof credits !== "number" || credits < 0) {
         return corsResponse(
@@ -156,10 +170,15 @@ export async function POST(req: NextRequest) {
           400,
         )
       }
-      updates.credits = credits
+      await workspaceRepository.updateCredits(workspace.id, credits)
     }
 
-    if (Object.keys(updates).length > 0) {
+    // Update password/email in old JSON file if provided (legacy support)
+    // TODO: Move password to user table, remove email from workspace
+    if (password || email !== undefined) {
+      const updates: { password?: string; email?: string } = {}
+      if (password) updates.password = password
+      if (email !== undefined) updates.email = email
       await updateDomainConfig(domain, updates)
     }
 

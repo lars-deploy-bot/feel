@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { isWorkspaceAuthenticated } from "@/features/auth/lib/auth"
 import { creditsToLLMTokens } from "@/lib/credits"
 import type { TokensErrorResponse, TokensResponse } from "@/lib/api/types"
-import { loadDomainPasswords } from "@/types/guards/api"
+import { workspaceRepository } from "@/lib/db/repositories"
 
 export async function GET(req: NextRequest): Promise<NextResponse<TokensResponse | TokensErrorResponse>> {
   try {
@@ -18,15 +18,14 @@ export async function GET(req: NextRequest): Promise<NextResponse<TokensResponse
       return NextResponse.json<TokensErrorResponse>({ ok: false, error: "Not authenticated" }, { status: 401 })
     }
 
-    // Load domain config to get credits
-    const passwords = loadDomainPasswords()
-    const domainConfig = passwords[workspace]
+    // Load workspace from database to get credits
+    const workspaceRecord = await workspaceRepository.findByDomain(workspace)
 
-    if (!domainConfig) {
-      return NextResponse.json<TokensErrorResponse>({ ok: false, error: "Domain not found" }, { status: 404 })
+    if (!workspaceRecord) {
+      return NextResponse.json<TokensErrorResponse>({ ok: false, error: "Workspace not found" }, { status: 404 })
     }
 
-    const credits = domainConfig.credits ?? 0
+    const credits = workspaceRecord.credits ?? 0
     const tokens = creditsToLLMTokens(credits) // For backward compatibility
 
     return NextResponse.json<TokensResponse>({
