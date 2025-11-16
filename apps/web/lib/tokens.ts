@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import type { DomainPasswords } from "@/types/domain"
 import { llmTokensToCredits } from "./credits"
+import { workspaceRepository } from "./db/repositories"
 
 /**
  * Credits Service - Workspace Credit Balance Management
@@ -105,15 +106,14 @@ function saveDomainPasswords(passwords: DomainPasswords): void {
  * @param workspace - Domain/workspace identifier
  * @returns Current credit balance, or null if workspace not found
  */
-export function getWorkspaceCredits(workspace: string): number | null {
-  const passwords = loadDomainPasswords()
-  const config = passwords[workspace]
+export async function getWorkspaceCredits(workspace: string): Promise<number | null> {
+  const workspaceRecord = await workspaceRepository.findByDomain(workspace)
 
-  if (!config) {
+  if (!workspaceRecord) {
     return null
   }
 
-  return config.credits ?? 0
+  return workspaceRecord.credits ?? 0
 }
 
 /**
@@ -137,8 +137,8 @@ export function calculateLLMTokenCost(usage: LLMTokenUsage): number {
  * @param requiredCredits - Number of credits required
  * @returns true if enough credits, false otherwise
  */
-export function hasEnoughCredits(workspace: string, requiredCredits: number): boolean {
-  const current = getWorkspaceCredits(workspace)
+export async function hasEnoughCredits(workspace: string, requiredCredits: number): Promise<boolean> {
+  const current = await getWorkspaceCredits(workspace)
 
   if (current === null) {
     return false
@@ -157,16 +157,15 @@ export function hasEnoughCredits(workspace: string, requiredCredits: number): bo
  * @param llmTokensUsed - Number of LLM tokens actually used by Claude API
  * @returns New credit balance, or null if operation failed
  */
-export function chargeTokensFromCredits(workspace: string, llmTokensUsed: number): number | null {
+export async function chargeTokensFromCredits(workspace: string, llmTokensUsed: number): Promise<number | null> {
   if (llmTokensUsed < 0) {
     console.error("[Credits] Cannot charge negative amount:", llmTokensUsed)
     return null
   }
 
-  const passwords = loadDomainPasswords()
-  const config = passwords[workspace]
+  const workspaceRecord = await workspaceRepository.findByDomain(workspace)
 
-  if (!config) {
+  if (!workspaceRecord) {
     console.error("[Credits] Workspace not found:", workspace)
     return null
   }
@@ -175,7 +174,7 @@ export function chargeTokensFromCredits(workspace: string, llmTokensUsed: number
   const creditsUsed = llmTokensToCredits(llmTokensUsed)
   const chargedCredits = Math.floor(creditsUsed * WORKSPACE_CREDIT_DISCOUNT * 100) / 100
 
-  const currentBalance = config.credits ?? 0
+  const currentBalance = workspaceRecord.credits ?? 0
   const newBalance = Math.round((currentBalance - chargedCredits) * 100) / 100
 
   if (newBalance < 0) {
@@ -188,11 +187,8 @@ export function chargeTokensFromCredits(workspace: string, llmTokensUsed: number
     return null
   }
 
-  // Update balance
-  passwords[workspace].credits = newBalance
-
-  // Save to disk (atomic)
-  saveDomainPasswords(passwords)
+  // Update balance in database
+  await workspaceRepository.updateCredits(workspaceRecord.id, newBalance)
 
   console.log("[Credits] Charged credits:", {
     workspace,
@@ -213,8 +209,8 @@ export function chargeTokensFromCredits(workspace: string, llmTokensUsed: number
  * @param workspace - Domain/workspace identifier
  * @throws Error if workspace not found or insufficient balance
  */
-export function ensureSufficientCredits(workspace: string): void {
-  const balance = getWorkspaceCredits(workspace)
+export async function ensureSufficientCredits(workspace: string): Promise<void> {
+  const balance = await getWorkspaceCredits(workspace)
 
   if (balance === null) {
     throw new Error("Workspace not found")
