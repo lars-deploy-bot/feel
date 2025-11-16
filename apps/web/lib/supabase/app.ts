@@ -4,7 +4,8 @@
  */
 
 // Security: Prevent client-side imports (allow test environment)
-if (typeof window !== "undefined" && !process.env.VITEST) {
+const isTestEnv = process.env.NODE_ENV === "test" || typeof globalThis.vi !== "undefined"
+if (typeof window !== "undefined" && !isTestEnv) {
   throw new Error(
     "[SECURITY] lib/supabase/app cannot be imported in client-side code. " +
       "App operations must only run server-side.",
@@ -34,7 +35,9 @@ export async function createAppClient(keyType: KeyType = "service") {
       },
       setAll(cookiesToSet) {
         try {
-          cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options)
+          })
         } catch {
           // Called from Server Component
         }

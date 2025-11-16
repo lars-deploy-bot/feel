@@ -19,6 +19,8 @@ import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
 import { AddWorkspaceModal } from "@/components/modals/AddWorkspaceModal"
 import { DEFAULT_STARTING_CREDITS } from "@/lib/credits"
+import type { Organization } from "@/lib/api/types"
+import { useOrganizations } from "@/lib/hooks/useOrganizations"
 import { useUserPrompts, useUserPromptsActions } from "@/lib/providers/UserPromptsStoreProvider"
 import {
   useCredits,
@@ -30,7 +32,7 @@ import {
   useUserActions,
 } from "@/lib/providers/UserStoreProvider"
 import { CLAUDE_MODELS, type ClaudeModel, useLLMStore } from "@/lib/stores/llmStore"
-import { type Organization, useSelectedOrgId, useWorkspaceActions } from "@/lib/stores/workspaceStore"
+import { useSelectedOrgId, useWorkspaceActions } from "@/lib/stores/workspaceStore"
 
 interface SettingsModalProps {
   onClose: () => void
@@ -544,44 +546,14 @@ function AboutSettings() {
 }
 
 function OrganizationSettings() {
-  const [organizations, setOrganizations] = useState<Organization[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  // Use centralized hook for org fetching + auto-selection
+  const { organizations, loading, error, refetch } = useOrganizations()
   const selectedOrgId = useSelectedOrgId()
   const { setSelectedOrg } = useWorkspaceActions()
   const [editingOrgId, setEditingOrgId] = useState<string | null>(null)
   const [editOrgName, setEditOrgName] = useState("")
   const [saving, setSaving] = useState(false)
-
-  const fetchOrganizations = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      const response = await fetch("/api/auth/organizations", { credentials: "include" })
-      const data = await response.json()
-
-      if (data.ok && data.organizations) {
-        setOrganizations(data.organizations)
-
-        // Auto-select first org if none selected
-        if (!selectedOrgId && data.organizations.length > 0) {
-          setSelectedOrg(data.organizations[0].org_id)
-        }
-      } else {
-        setError(data.error || "Failed to load organizations")
-      }
-    } catch (err) {
-      console.error("Failed to fetch organizations:", err)
-      setError("Network error - please try again")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchOrganizations()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  const [updateError, setUpdateError] = useState<string | null>(null)
 
   const handleSelectOrg = (orgId: string) => {
     setSelectedOrg(orgId)
@@ -603,7 +575,7 @@ function OrganizationSettings() {
 
     try {
       setSaving(true)
-      setError(null)
+      setUpdateError(null)
 
       const response = await fetch("/api/auth/organizations", {
         method: "PATCH",
@@ -615,16 +587,16 @@ function OrganizationSettings() {
       const data = await response.json()
 
       if (data.ok) {
-        // Update local state
-        setOrganizations(prev => prev.map(org => (org.org_id === orgId ? { ...org, name: editOrgName.trim() } : org)))
+        // Refetch to update local state
+        await refetch()
         setEditingOrgId(null)
         setEditOrgName("")
       } else {
-        setError(data.error || "Failed to update organization")
+        setUpdateError(data.error || "Failed to update organization")
       }
     } catch (err) {
       console.error("Failed to update organization:", err)
-      setError("Failed to update organization")
+      setUpdateError("Failed to update organization")
     } finally {
       setSaving(false)
     }
@@ -640,10 +612,15 @@ function OrganizationSettings() {
         </p>
       </div>
 
-      {/* Error */}
+      {/* Errors */}
       {error && (
         <div className="px-4 py-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/30 rounded-lg text-sm text-red-600 dark:text-red-400">
           {error}
+        </div>
+      )}
+      {updateError && (
+        <div className="px-4 py-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/30 rounded-lg text-sm text-red-600 dark:text-red-400">
+          {updateError}
         </div>
       )}
 

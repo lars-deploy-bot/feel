@@ -27,9 +27,9 @@ vi.mock("@/lib/supabase/iam", () => ({
       if (table === "sessions") {
         return {
           select: vi.fn(() => ({
-            eq: vi.fn((col: string, userId: string) => ({
-              eq: vi.fn((col: string, domainId: string) => ({
-                eq: vi.fn((col: string, conversationId: string) => ({
+            eq: vi.fn((_col: string, userId: string) => ({
+              eq: vi.fn((_col: string, domainId: string) => ({
+                eq: vi.fn((_col: string, conversationId: string) => ({
                   single: vi.fn(async () => {
                     const key = makeDbKey(userId, domainId, conversationId)
                     const data = mockSessions.get(key)
@@ -45,9 +45,9 @@ vi.mock("@/lib/supabase/iam", () => ({
             return { data: null, error: null }
           }),
           delete: vi.fn(() => ({
-            eq: vi.fn((col: string, userId: string) => ({
-              eq: vi.fn((col: string, domainId: string) => ({
-                eq: vi.fn(async (col: string, conversationId: string) => {
+            eq: vi.fn((_col: string, userId: string) => ({
+              eq: vi.fn((_col: string, domainId: string) => ({
+                eq: vi.fn(async (_col: string, conversationId: string) => {
                   const key = makeDbKey(userId, domainId, conversationId)
                   mockSessions.delete(key)
                   return { data: null, error: null }

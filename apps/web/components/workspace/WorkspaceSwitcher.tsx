@@ -1,7 +1,8 @@
 "use client"
 
 import { ChevronDown } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
+import { isWorkspacesResponse } from "@/lib/api/types"
 import { useFetch } from "@/lib/hooks/useFetch"
 import { useRecentForOrg, useSelectedOrgId, useWorkspaceActions } from "@/lib/stores/workspaceStore"
 
@@ -16,10 +17,12 @@ export function WorkspaceSwitcher({ currentWorkspace, onWorkspaceChange }: Works
   const recentWorkspaces = useRecentForOrg(selectedOrgId || "")
   const { setSelectedWorkspace } = useWorkspaceActions()
 
-  const { data, loading, error, retry } = useFetch<{ ok: boolean; workspaces: string[] }>({
+  // Use shared type guard - no inline validators!
+  const validator = useCallback(isWorkspacesResponse, [])
+
+  const { data, loading, error, retry } = useFetch({
     url: selectedOrgId ? `/api/auth/workspaces?org_id=${selectedOrgId}` : null,
-    validator: (data): data is { ok: boolean; workspaces: string[] } =>
-      typeof data === "object" && data !== null && "ok" in data && data.ok === true,
+    validator,
     dependencies: [selectedOrgId],
   })
 

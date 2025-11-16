@@ -45,12 +45,15 @@ export function useWorkspace(options: UseWorkspaceOptions = {}): UseWorkspaceRet
 
   const setWorkspace = useCallback(
     (workspace: string) => {
-      if (state.isTerminal) {
-        sessionStorage.setItem("workspace", workspace)
-      }
-      setState(prev => ({ ...prev, workspace }))
+      setState(prev => {
+        // Use prev state to avoid dependency on state
+        if (prev.isTerminal) {
+          sessionStorage.setItem("workspace", workspace)
+        }
+        return { ...prev, workspace }
+      })
     },
-    [state.isTerminal],
+    [], // No dependencies needed - uses prev state
   )
 
   return { ...state, setWorkspace }

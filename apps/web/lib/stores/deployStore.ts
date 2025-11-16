@@ -133,6 +133,10 @@ export const useDeployStore = create<DeployStore>()(
         domain: state.domain,
         history: state.history,
       }),
+      migrate: (persistedState: unknown, _version: number) => {
+        // Simple pass-through migration - no schema changes needed
+        return persistedState as Partial<DeployStore>
+      },
     },
   ),
 )

@@ -2,13 +2,10 @@
 
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
+import type { Organization } from "@/lib/api/types"
 
-export interface Organization {
-  org_id: string
-  name: string
-  credits: number
-  workspace_count?: number
-}
+// Re-export Organization type for backwards compatibility
+export type { Organization }
 
 export interface RecentWorkspace {
   domain: string
@@ -28,6 +25,7 @@ interface WorkspaceState {
 interface WorkspaceActions {
   actions: {
     setSelectedOrg: (orgId: string | null) => void
+    autoSelectOrg: (organizations: Organization[]) => void
     setSelectedWorkspace: (workspace: string | null, orgId?: string) => void
     addRecentWorkspace: (domain: string, orgId: string) => void
     clearRecentWorkspaces: () => void
@@ -40,6 +38,7 @@ type WorkspaceStoreWithCompat = WorkspaceState &
   WorkspaceActions & {
     // Legacy direct action exports for backwards compatibility
     setSelectedOrg: (orgId: string | null) => void
+    autoSelectOrg: (organizations: Organization[]) => void
     setSelectedWorkspace: (workspace: string | null, orgId?: string) => void
     addRecentWorkspace: (domain: string, orgId: string) => void
     clearRecentWorkspaces: () => void
@@ -52,6 +51,21 @@ const useWorkspaceStoreBase = create<WorkspaceStoreWithCompat>()(
       const actions = {
         setSelectedOrg: (orgId: string | null) => {
           set({ selectedOrgId: orgId })
+        },
+
+        /**
+         * Auto-select first organization if none selected
+         * This is the single source of truth for org auto-selection logic
+         */
+        autoSelectOrg: (organizations: Organization[]) => {
+          set(state => {
+            // Only auto-select if no org currently selected and we have orgs
+            if (!state.selectedOrgId && organizations.length > 0) {
+              console.log("[WorkspaceStore] Auto-selecting first organization:", organizations[0].name)
+              return { selectedOrgId: organizations[0].org_id }
+            }
+            return state
+          })
         },
 
         setSelectedWorkspace: (workspace: string | null, orgId?: string) => {
@@ -115,6 +129,10 @@ const useWorkspaceStoreBase = create<WorkspaceStoreWithCompat>()(
         selectedOrgId: state.selectedOrgId,
         recentWorkspaces: state.recentWorkspaces,
       }),
+      migrate: (persistedState: unknown, _version: number) => {
+        // Simple pass-through migration - no schema changes needed
+        return persistedState as WorkspaceState
+      },
     },
   ),
 )

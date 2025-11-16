@@ -1,5 +1,6 @@
 // Security: Prevent client-side imports (allow test environment)
-if (typeof window !== "undefined" && !process.env.VITEST) {
+const isTestEnv = process.env.NODE_ENV === "test" || typeof globalThis.vi !== "undefined"
+if (typeof window !== "undefined" && !isTestEnv) {
   throw new Error(
     "[SECURITY] env/server cannot be imported in client-side code. " +
       "This file accesses server-only environment variables.",

@@ -38,6 +38,7 @@ import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
 import type { StructuredError } from "@/lib/error-codes"
 import { ErrorCodes, getErrorHelp, getErrorMessage } from "@/lib/error-codes"
 import { HttpError } from "@/lib/errors"
+import { useOrganizations } from "@/lib/hooks/useOrganizations"
 import { isRetryableError, retryWithBackoff } from "@/lib/retry"
 import { useSidebarActions } from "@/lib/stores/conversationSidebarStore"
 import { isDevelopment, useDebugActions, useDebugVisible, useSandbox, useSSETerminal } from "@/lib/stores/debug-store"
@@ -71,9 +72,6 @@ function ChatPageContent() {
   const [showPhotoMenu, setShowPhotoMenu] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [showCompletionDots, setShowCompletionDots] = useState(false)
-  const [totalDomainCount, setTotalDomainCount] = useState<number | null>(null)
-  const [domainLoadError, setDomainLoadError] = useState(false)
-  const [retryOrgsCount, setRetryOrgsCount] = useState(0)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const isAutoScrolling = useRef(false)
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -104,6 +102,15 @@ function ChatPageContent() {
   })
   const { apiKey: userApiKey, model: userModel } = useLLMStore()
   const streamingActions = useStreamingActions()
+
+  // Fetch organizations and auto-select if none selected
+  // Single source of truth for org fetching + auto-selection
+  const {
+    organizations,
+    loading: orgsLoading,
+    error: orgsError,
+    refetch: refetchOrgs,
+  } = useOrganizations()
 
   // Session management with workspace-scoped persistence
   const { conversationId, startNewConversation, switchConversation } = useConversationSession(workspace, mounted)
@@ -146,41 +153,8 @@ function ChatPageContent() {
     }
   }, [setSSETerminal, setSSETerminalMinimized, setSandbox, setSandboxMinimized])
 
-  // Fetch total domain count to detect if user has 0 domains
-  useEffect(() => {
-    async function fetchDomainCount() {
-      try {
-        setDomainLoadError(false)
-        const response = await fetch("/api/auth/organizations", { credentials: "include" })
-
-        if (!response.ok) {
-          console.error("[Chat] Failed to fetch organizations:", response.status)
-          setDomainLoadError(true)
-          setTotalDomainCount(null)
-          return
-        }
-
-        const data = await response.json()
-        if (data.ok && data.organizations) {
-          const total = data.organizations.reduce(
-            (sum: number, org: { workspace_count: number }) => sum + org.workspace_count,
-            0,
-          )
-          setTotalDomainCount(total)
-          setDomainLoadError(false)
-        } else {
-          console.error("[Chat] Invalid organizations response:", data)
-          setDomainLoadError(true)
-          setTotalDomainCount(null)
-        }
-      } catch (error) {
-        console.error("[Chat] Failed to fetch domain count:", error)
-        setDomainLoadError(true)
-        setTotalDomainCount(null)
-      }
-    }
-    fetchDomainCount()
-  }, [retryOrgsCount])
+  // Calculate total domain count from organizations
+  const totalDomainCount = organizations.reduce((sum, org) => sum + (org.workspace_count || 0), 0)
 
 
   // Track manual scrolling - attach once at mount time (only needs empty deps)
@@ -1094,21 +1068,21 @@ function ChatPageContent() {
                 {/* Error and empty state messages - only show when no workspace */}
                 {!workspace && (
                   <>
-                    {domainLoadError && (
+                    {orgsError && (
                       <div className="mb-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                         <p className="text-sm text-red-900 dark:text-red-100 mb-2">
                           Failed to load organizations. Please check your connection.
                         </p>
                         <button
                           type="button"
-                          onClick={() => setRetryOrgsCount(prev => prev + 1)}
+                          onClick={refetchOrgs}
                           className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded transition-colors"
                         >
                           Retry
                         </button>
                       </div>
                     )}
-                    {!domainLoadError && totalDomainCount === 0 && (
+                    {!orgsError && totalDomainCount === 0 && (
                       <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                         <p className="text-sm text-blue-900 dark:text-blue-100 mb-2 font-medium">
                           Welcome! You don't have any domains yet.
@@ -1121,7 +1095,7 @@ function ChatPageContent() {
                         </a>
                       </div>
                     )}
-                    {!domainLoadError && totalDomainCount !== null && totalDomainCount > 0 && (
+                    {!orgsError && !orgsLoading && totalDomainCount > 0 && (
                       <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                         <p className="text-xs text-blue-900 dark:text-blue-100">Loading workspace...</p>
                       </div>

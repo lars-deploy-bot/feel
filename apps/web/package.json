@@ -18,6 +18,8 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:debug": "playwright test --debug",
+    "test:e2e:staging": "TEST_ENV=staging playwright test org-workspace-selection.spec.ts",
+    "test:e2e:staging:ui": "TEST_ENV=staging playwright test org-workspace-selection.spec.ts --ui",
     "gen:db": "bun run scripts/generate-db-types-improved.ts",
     "gen:db:force": "rm -rf .tmp/supabase && bun run scripts/generate-db-types-improved.ts"
   },

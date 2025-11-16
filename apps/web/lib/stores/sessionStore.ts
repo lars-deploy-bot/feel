@@ -147,6 +147,10 @@ const useSessionStoreBase = create<SessionStore>()(
         currentConversationId: state.currentConversationId,
         currentWorkspace: state.currentWorkspace,
       }),
+      migrate: (persistedState: unknown, _version: number) => {
+        // Simple pass-through migration - no schema changes needed
+        return persistedState as SessionState
+      },
     },
   ),
 )

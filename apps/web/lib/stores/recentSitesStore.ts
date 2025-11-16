@@ -81,6 +81,10 @@ const useRecentSitesStoreBase = create<RecentSitesStoreWithCompat>()(
       partialize: state => ({
         sites: state.sites,
       }),
+      migrate: (persistedState: unknown, _version: number) => {
+        // Simple pass-through migration - no schema changes needed
+        return persistedState as RecentSitesState
+      },
     },
   ),
 )
