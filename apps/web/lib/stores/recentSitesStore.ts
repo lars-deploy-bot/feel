@@ -1,5 +1,11 @@
 "use client"
 
+/**
+ * @deprecated This store has been replaced by workspaceStore.ts
+ * Use `useWorkspaceStore` and `useRecentForOrg` instead.
+ * This file is kept for backwards compatibility but will be removed in a future version.
+ */
+
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 

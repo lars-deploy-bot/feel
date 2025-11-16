@@ -86,6 +86,31 @@ export const TOOL_REGISTRY: ToolMetadata[] = [
       },
     ],
   },
+  {
+    name: "list_workflows",
+    category: "meta",
+    description:
+      "Lists all available workflow types. Use this to discover what workflows exist before calling get_workflow.",
+    contextCost: "low",
+    enabled: true,
+    parameters: [],
+  },
+  {
+    name: "get_workflow",
+    category: "meta",
+    description:
+      "Retrieves full workflow decision trees for common development tasks (bug debugging, new features, package installation). Returns the complete workflow content.",
+    contextCost: "medium",
+    enabled: true,
+    parameters: [
+      {
+        name: "workflow_type",
+        type: "string",
+        required: true,
+        description: "Type of workflow: bug-debugging, new-feature, package-installation",
+      },
+    ],
+  },
 
   // Composite tools (reduce round trips)
   {

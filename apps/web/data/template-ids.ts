@@ -9,6 +9,7 @@ export const TEMPLATE_IDS = {
   UPLOAD_IMAGE_CROP: "upload-image-crop",
   VITE_API_PLUGIN: "vite-api-plugin",
   RECIPE_SYSTEM_INTERACTIVE: "recipe-system-interactive",
+  ZUSTAND: "zustand",
 } as const
 
 export type TemplateId = (typeof TEMPLATE_IDS)[keyof typeof TEMPLATE_IDS]
@@ -27,6 +28,7 @@ export const TEMPLATE_VERSION_REGISTRY = {
   [TEMPLATE_IDS.UPLOAD_IMAGE_CROP]: ["v1.0.0"] as const,
   [TEMPLATE_IDS.VITE_API_PLUGIN]: ["v1.0.0"] as const,
   [TEMPLATE_IDS.RECIPE_SYSTEM_INTERACTIVE]: ["v1.0.0"] as const,
+  [TEMPLATE_IDS.ZUSTAND]: ["v1.0.0"] as const,
 } as const
 
 /**

@@ -1,9 +1,25 @@
 "use client"
 
-import { Bot, ClipboardList, Eye, EyeOff, Info, Moon, Settings, Sun, User, X, Zap } from "lucide-react"
+import {
+  Bot,
+  Building2,
+  ClipboardList,
+  Eye,
+  EyeOff,
+  Globe,
+  Info,
+  Moon,
+  Settings,
+  Sun,
+  User,
+  X,
+  Zap,
+} from "lucide-react"
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
+import { AddWorkspaceModal } from "@/components/modals/AddWorkspaceModal"
 import { DEFAULT_STARTING_CREDITS } from "@/lib/credits"
+import { useUserPrompts, useUserPromptsActions } from "@/lib/providers/UserPromptsStoreProvider"
 import {
   useCredits,
   useCreditsError,
@@ -14,13 +30,13 @@ import {
   useUserActions,
 } from "@/lib/providers/UserStoreProvider"
 import { CLAUDE_MODELS, type ClaudeModel, useLLMStore } from "@/lib/stores/llmStore"
-import { useUserPrompts, useUserPromptsActions } from "@/lib/providers/UserPromptsStoreProvider"
+import { type Organization, useSelectedOrgId, useWorkspaceActions } from "@/lib/stores/workspaceStore"
 
 interface SettingsModalProps {
   onClose: () => void
 }
 
-type SettingsTab = "account" | "appearance" | "llm" | "tokens" | "prompts" | "about"
+type SettingsTab = "account" | "appearance" | "llm" | "tokens" | "prompts" | "organization" | "sites" | "about"
 
 const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
   { id: "account", label: "Account", icon: <User size={16} /> },
@@ -28,6 +44,8 @@ const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
   { id: "llm", label: "LLM", icon: <Bot size={16} /> },
   { id: "tokens", label: "Credits", icon: <Zap size={16} /> },
   { id: "prompts", label: "Prompts", icon: <ClipboardList size={16} /> },
+  { id: "organization", label: "Organization", icon: <Building2 size={16} /> },
+  { id: "sites", label: "Sites", icon: <Globe size={16} /> },
   { id: "about", label: "About", icon: <Info size={16} /> },
 ]
 
@@ -116,6 +134,8 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
               {activeTab === "llm" && <LLMSettings />}
               {activeTab === "tokens" && <TokensSettings />}
               {activeTab === "prompts" && <UserPromptsSettings />}
+              {activeTab === "organization" && <OrganizationSettings />}
+              {activeTab === "sites" && <SitesSettings />}
               {activeTab === "about" && <AboutSettings />}
             </div>
           </div>
@@ -519,6 +539,383 @@ function AboutSettings() {
           We help you guide you through creating a company
         </p>
       </div>
+    </div>
+  )
+}
+
+function OrganizationSettings() {
+  const [organizations, setOrganizations] = useState<Organization[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const selectedOrgId = useSelectedOrgId()
+  const { setSelectedOrg } = useWorkspaceActions()
+  const [editingOrgId, setEditingOrgId] = useState<string | null>(null)
+  const [editOrgName, setEditOrgName] = useState("")
+  const [saving, setSaving] = useState(false)
+
+  const fetchOrganizations = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const response = await fetch("/api/auth/organizations", { credentials: "include" })
+      const data = await response.json()
+
+      if (data.ok && data.organizations) {
+        setOrganizations(data.organizations)
+
+        // Auto-select first org if none selected
+        if (!selectedOrgId && data.organizations.length > 0) {
+          setSelectedOrg(data.organizations[0].org_id)
+        }
+      } else {
+        setError(data.error || "Failed to load organizations")
+      }
+    } catch (err) {
+      console.error("Failed to fetch organizations:", err)
+      setError("Network error - please try again")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchOrganizations()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const handleSelectOrg = (orgId: string) => {
+    setSelectedOrg(orgId)
+    setEditingOrgId(null)
+  }
+
+  const handleStartEdit = (org: Organization) => {
+    setEditingOrgId(org.org_id)
+    setEditOrgName(org.name)
+  }
+
+  const handleCancelEdit = () => {
+    setEditingOrgId(null)
+    setEditOrgName("")
+  }
+
+  const handleSaveEdit = async (orgId: string) => {
+    if (!editOrgName.trim()) return
+
+    try {
+      setSaving(true)
+      setError(null)
+
+      const response = await fetch("/api/auth/organizations", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ org_id: orgId, name: editOrgName.trim() }),
+      })
+
+      const data = await response.json()
+
+      if (data.ok) {
+        // Update local state
+        setOrganizations(prev => prev.map(org => (org.org_id === orgId ? { ...org, name: editOrgName.trim() } : org)))
+        setEditingOrgId(null)
+        setEditOrgName("")
+      } else {
+        setError(data.error || "Failed to update organization")
+      }
+    } catch (err) {
+      console.error("Failed to update organization:", err)
+      setError("Failed to update organization")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="animate-in fade-in-0 slide-in-from-top-2 duration-300">
+        <h3 className="text-lg font-medium text-black dark:text-white mb-1">Organizations</h3>
+        <p className="text-sm text-black/60 dark:text-white/60">
+          Select and manage your organizations. Switch between them to access different sites.
+        </p>
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div className="px-4 py-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/30 rounded-lg text-sm text-red-600 dark:text-red-400">
+          {error}
+        </div>
+      )}
+
+      {/* Loading */}
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-12 gap-3">
+          <div className="w-8 h-8 border-2 border-black/20 dark:border-white/20 border-t-black dark:border-t-white rounded-full animate-spin" />
+          <p className="text-sm text-black/40 dark:text-white/40">Loading organizations...</p>
+        </div>
+      ) : organizations.length === 0 ? (
+        <div className="text-center py-12">
+          <Building2 size={48} className="mx-auto mb-4 text-black/20 dark:text-white/20" />
+          <p className="text-sm text-black/60 dark:text-white/60 mb-4">No organizations found</p>
+          <button
+            type="button"
+            className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg text-sm font-medium hover:bg-black/80 dark:hover:bg-white/80 transition-colors"
+          >
+            Create Organization
+          </button>
+        </div>
+      ) : (
+        <div className="grid gap-3">
+          {organizations.map((org, index) => {
+            const isSelected = org.org_id === selectedOrgId
+            const isEditing = editingOrgId === org.org_id
+
+            return (
+              <div
+                key={org.org_id}
+                role={isEditing || isSelected ? "group" : "button"}
+                tabIndex={isEditing || isSelected ? -1 : 0}
+                className={`group relative rounded-lg border-2 transition-all duration-200 animate-in fade-in-0 slide-in-from-left-2 ${
+                  isSelected
+                    ? "border-black dark:border-white bg-black/5 dark:bg-white/5 shadow-lg"
+                    : "border-black/10 dark:border-white/10 hover:border-black/30 dark:hover:border-white/30 cursor-pointer"
+                }`}
+                style={{ animationDelay: `${index * 50}ms` }}
+                onClick={() => !isEditing && !isSelected && handleSelectOrg(org.org_id)}
+                onKeyDown={e => {
+                  if ((e.key === "Enter" || e.key === " ") && !isEditing && !isSelected) {
+                    e.preventDefault()
+                    handleSelectOrg(org.org_id)
+                  }
+                }}
+              >
+                <div className="p-4">
+                  {/* Header */}
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex-1 min-w-0">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editOrgName}
+                          onChange={e => setEditOrgName(e.target.value)}
+                          onClick={e => e.stopPropagation()}
+                          className="w-full px-2 py-1 text-base font-semibold bg-white dark:bg-[#2a2a2a] border border-black/20 dark:border-white/20 rounded text-black dark:text-white focus:outline-none focus:border-black dark:focus:border-white"
+                        />
+                      ) : (
+                        <h4 className="text-base font-semibold text-black dark:text-white truncate">{org.name}</h4>
+                      )}
+                      <p className="text-xs text-black/50 dark:text-white/50 mt-0.5 font-mono truncate">{org.org_id}</p>
+                    </div>
+
+                    {/* Selected Badge */}
+                    {isSelected && !isEditing && (
+                      <div className="flex-shrink-0 px-2 py-1 bg-black dark:bg-white rounded-full">
+                        <span className="text-xs font-medium text-white dark:text-black">Active</span>
+                      </div>
+                    )}
+
+                    {/* Edit/Save Buttons */}
+                    {isEditing ? (
+                      <div className="flex gap-1" role="group" onClick={e => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => handleSaveEdit(org.org_id)}
+                          disabled={!editOrgName.trim() || saving}
+                          className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium transition-colors disabled:opacity-50"
+                        >
+                          {saving ? "..." : "Save"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCancelEdit}
+                          className="px-2 py-1 bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 text-black dark:text-white rounded text-xs font-medium transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      isSelected && (
+                        <button
+                          type="button"
+                          onClick={e => {
+                            e.stopPropagation()
+                            handleStartEdit(org)
+                          }}
+                          className="opacity-0 group-hover:opacity-100 px-2 py-1 bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 text-black dark:text-white rounded text-xs font-medium transition-all"
+                        >
+                          Rename
+                        </button>
+                      )
+                    )}
+                  </div>
+
+                  {/* Stats Grid */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="px-3 py-2 rounded-md bg-black/5 dark:bg-white/5">
+                      <div className="text-xs text-black/50 dark:text-white/50 mb-0.5">Credits</div>
+                      <div className="text-sm font-semibold text-black dark:text-white">{org.credits.toFixed(2)}</div>
+                    </div>
+                    <div className="px-3 py-2 rounded-md bg-black/5 dark:bg-white/5">
+                      <div className="text-xs text-black/50 dark:text-white/50 mb-0.5">Sites</div>
+                      <div className="text-sm font-semibold text-black dark:text-white">{org.workspace_count || 0}</div>
+                    </div>
+                  </div>
+
+                  {/* Click to switch hint */}
+                  {!isSelected && !isEditing && (
+                    <div className="mt-2 text-xs text-black/40 dark:text-white/40 opacity-0 group-hover:opacity-100 transition-opacity">
+                      Click to switch to this organization
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Info */}
+      {organizations.length > 0 && (
+        <div className="px-4 py-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/50 rounded-lg animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
+          <p className="text-xs text-blue-900 dark:text-blue-300 leading-relaxed">
+            <strong>Tip:</strong> When you switch organizations, the available sites in the workspace selector will
+            update automatically.
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SitesSettings() {
+  const [workspaces, setWorkspaces] = useState<string[]>([])
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const currentWorkspace = typeof window !== "undefined" ? sessionStorage.getItem("workspace") : null
+
+  const fetchWorkspaces = () => {
+    setLoading(true)
+    setError(null)
+    fetch("/api/auth/workspaces")
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`Failed to load sites (${res.status})`)
+        }
+        return res.json()
+      })
+      .then(data => {
+        if (data.ok && data.workspaces) {
+          setWorkspaces(data.workspaces)
+          setError(null)
+        } else {
+          throw new Error(data.error || "Failed to load sites")
+        }
+      })
+      .catch(err => {
+        console.error("Failed to fetch authenticated workspaces:", err)
+        const errorMessage = err instanceof Error ? err.message : "Network error - check your connection"
+        setError(errorMessage)
+        setWorkspaces([])
+      })
+      .finally(() => {
+        setLoading(false)
+      })
+  }
+
+  useEffect(() => {
+    fetchWorkspaces()
+  }, [])
+
+  const handleSwitchWorkspace = (workspace: string) => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("workspace", workspace)
+      window.location.href = "/chat"
+    }
+  }
+
+  return (
+    <div className="space-y-4 sm:space-y-6">
+      <div className="animate-in fade-in-0 slide-in-from-top-2 duration-300">
+        <h3 className="text-base sm:text-lg font-medium text-black dark:text-white mb-1">Sites</h3>
+        <p className="text-xs sm:text-sm text-black/60 dark:text-white/60">Manage your authenticated workspaces</p>
+      </div>
+
+      {/* Error Banner */}
+      {error && (
+        <div className="px-4 py-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/30 rounded-lg">
+          <p className="text-sm text-red-900 dark:text-red-100 mb-2">{error}</p>
+          <button
+            type="button"
+            onClick={fetchWorkspaces}
+            disabled={loading}
+            className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded transition-colors disabled:opacity-50"
+          >
+            {loading ? "Retrying..." : "Retry"}
+          </button>
+        </div>
+      )}
+
+      {/* Add Site Button */}
+      <button
+        type="button"
+        onClick={() => setShowAddModal(true)}
+        className="w-full px-4 py-2.5 border-2 border-dashed border-black/20 dark:border-white/20 rounded-lg text-sm font-medium text-black/60 dark:text-white/60 hover:border-black dark:hover:border-white hover:text-black dark:hover:text-white transition-colors flex items-center justify-center gap-2"
+      >
+        <Globe size={16} />
+        Add New Site
+      </button>
+
+      {/* Workspaces Grid */}
+      <div>
+        {loading && !error ? (
+          <div className="text-center py-8 text-black/40 dark:text-white/40 text-sm">Loading sites...</div>
+        ) : error && workspaces.length === 0 ? (
+          <div className="text-center py-8 text-red-600 dark:text-red-400 text-sm">
+            Unable to load sites. Please try again.
+          </div>
+        ) : workspaces.length === 0 ? (
+          <div className="text-center py-8 text-black/40 dark:text-white/40 text-sm">
+            No sites yet. Click &quot;Add New Site&quot; to get started.
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            {workspaces.map(workspace => (
+              <div
+                key={workspace}
+                className={`px-3 py-2.5 rounded border transition-all ${
+                  workspace === currentWorkspace
+                    ? "border-black dark:border-white bg-black/5 dark:bg-white/5"
+                    : "border-black/20 dark:border-white/20 hover:border-black dark:hover:border-white cursor-pointer"
+                }`}
+                onClick={() => workspace !== currentWorkspace && handleSwitchWorkspace(workspace)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={e => {
+                  if ((e.key === "Enter" || e.key === " ") && workspace !== currentWorkspace) {
+                    handleSwitchWorkspace(workspace)
+                  }
+                }}
+              >
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-sm font-medium text-black dark:text-white truncate" title={workspace}>
+                    {workspace}
+                  </span>
+                  {workspace === currentWorkspace ? (
+                    <span className="text-xs px-2 py-0.5 bg-black dark:bg-white text-white dark:text-black rounded self-start">
+                      Current
+                    </span>
+                  ) : (
+                    <span className="text-xs text-black/50 dark:text-white/50">Click to switch</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {showAddModal && <AddWorkspaceModal onClose={() => setShowAddModal(false)} onSuccess={fetchWorkspaces} />}
     </div>
   )
 }

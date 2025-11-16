@@ -1,107 +1,121 @@
 import { cookies } from "next/headers"
-import { hasSessionCookie, hasValidUser } from "@/features/auth/types/guards"
+import { createIamClient } from "@/lib/supabase/iam"
 import { verifySessionToken } from "./jwt"
 
 export interface SessionUser {
   id: string
-  workspaces: string[]
+  email: string
+  name: string | null
 }
-
-// Legacy session format that should be rejected
-const LEGACY_SESSION_VALUE = "1"
 
 export async function getSessionUser(): Promise<SessionUser | null> {
   const jar = await cookies()
   const sessionCookie = jar.get("session")
 
-  if (!sessionCookie || !hasSessionCookie(sessionCookie)) {
+  if (!sessionCookie?.value) {
     return null
   }
 
-  const sessionValue = sessionCookie.value
-
   // Test mode
-  if (process.env.BRIDGE_ENV === "local" && sessionValue === "test-user") {
+  if (process.env.BRIDGE_ENV === "local" && sessionCookie.value === "test-user") {
     return {
       id: "test-user",
-      workspaces: ["test"],
+      email: "test@bridge.local",
+      name: "Test User",
     }
   }
 
-  // Legacy session format is invalid - requires re-authentication
-  if (sessionValue === LEGACY_SESSION_VALUE) {
+  // Verify JWT and extract userId
+  const payload = verifySessionToken(sessionCookie.value)
+  if (!payload?.userId) {
+    console.warn("[Auth] Invalid JWT token")
     return null
   }
 
-  // Verify JWT token and extract workspaces
-  const payload = verifySessionToken(sessionValue)
-  if (!payload) {
-    return null // Invalid/expired/tampered token
+  // Query user from iam.users
+  const iam = await createIamClient("service")
+  const { data: user } = await iam
+    .from("users")
+    .select("user_id, email, display_name")
+    .eq("user_id", payload.userId)
+    .single()
+
+  if (!user) {
+    console.warn("[Auth] User not found in IAM:", payload.userId)
+    return null
   }
 
-  const user = {
-    id: sessionValue,
-    workspaces: payload.workspaces,
+  return {
+    id: user.user_id,
+    email: user.email || "",
+    name: user.display_name,
   }
-
-  return hasValidUser(user) ? user : null
 }
 
 /**
- * Check if a workspace is authenticated in the current session
- * Uses JWT verification to prevent token tampering
+ * Check if a workspace (domain) is authenticated in the current session
+ * Queries user's org memberships and their associated domains
  */
 export async function isWorkspaceAuthenticated(workspace: string): Promise<boolean> {
-  const jar = await cookies()
-  const sessionCookie = jar.get("session")
-
-  if (!sessionCookie || !hasSessionCookie(sessionCookie)) {
+  const user = await getSessionUser()
+  if (!user) {
     return false
   }
 
-  const sessionValue = sessionCookie.value
-
   // Test mode allows all workspaces
-  if (process.env.BRIDGE_ENV === "local" && sessionValue === "test-user") {
+  if (process.env.BRIDGE_ENV === "local" && user.id === "test-user") {
     return true
   }
 
-  // Legacy session format is invalid - requires re-authentication
-  if (sessionValue === LEGACY_SESSION_VALUE) {
+  // Get user's org memberships
+  const iam = await createIamClient("service")
+  const { data: memberships } = await iam.from("org_memberships").select("org_id").eq("user_id", user.id)
+
+  if (!memberships || memberships.length === 0) {
     return false
   }
 
-  // Verify JWT token and extract workspaces
-  const payload = verifySessionToken(sessionValue)
-  if (!payload) {
-    return false // Invalid/expired/tampered token
-  }
+  const orgIds = memberships.map(m => m.org_id)
 
-  return payload.workspaces.includes(workspace)
+  // Check if any of user's orgs has this domain
+  const { createAppClient } = await import("@/lib/supabase/app")
+  const app = await createAppClient("service")
+  const { data: domain } = await app
+    .from("domains")
+    .select("domain_id")
+    .eq("hostname", workspace)
+    .in("org_id", orgIds)
+    .single()
+
+  return !!domain
 }
 
 /**
- * Get list of authenticated workspaces from session
- * Verifies JWT signature before returning workspaces
+ * Get list of authenticated workspaces (domains) from session
+ * Returns all domains from user's organizations
  */
 export async function getAuthenticatedWorkspaces(): Promise<string[]> {
-  const jar = await cookies()
-  const sessionCookie = jar.get("session")
-
-  if (!sessionCookie || !hasSessionCookie(sessionCookie)) {
+  const user = await getSessionUser()
+  if (!user) {
     return []
   }
 
-  const sessionValue = sessionCookie.value
+  // Get user's org memberships
+  const iam = await createIamClient("service")
+  const { data: memberships } = await iam.from("org_memberships").select("org_id").eq("user_id", user.id)
 
-  // Legacy session format - return empty (requires re-login to upgrade)
-  if (sessionValue === LEGACY_SESSION_VALUE || sessionValue === "test-user") {
+  if (!memberships || memberships.length === 0) {
     return []
   }
 
-  // Verify JWT and extract workspaces
-  const payload = verifySessionToken(sessionValue)
-  return payload ? payload.workspaces : []
+  const orgIds = memberships.map(m => m.org_id)
+
+  // Get all domains for these orgs
+  const { createAppClient } = await import("@/lib/supabase/app")
+  const app = await createAppClient("service")
+  const { data: domains } = await app.from("domains").select("hostname").in("org_id", orgIds)
+
+  return domains?.map(d => d.hostname) || []
 }
 
 export async function requireSessionUser(): Promise<SessionUser> {
@@ -115,22 +129,21 @@ export async function requireSessionUser(): Promise<SessionUser> {
 /**
  * Check if the manager workspace is authenticated
  * Special workspace for system administration
- * Uses separate manager_session cookie instead of workspace JWT
+ * Uses separate manager_session cookie
  */
 export async function isManagerAuthenticated(): Promise<boolean> {
+  const { cookies } = await import("next/headers")
   const jar = await cookies()
   const managerCookie = jar.get("manager_session")
 
-  // Manager uses a separate session cookie, not the workspace JWT
   return !!managerCookie && managerCookie.value === "1"
 }
 
 /**
- * Get session cookie value safe for passing to child processes
- * Validates JWT format to prevent "jwt malformed" errors in MCP tools
+ * Get JWT session cookie for passing to child processes
  *
- * @param logPrefix - Optional prefix for warning logs (e.g., "[Claude Stream xyz]")
- * @returns Valid JWT cookie value or undefined if invalid/legacy/malformed
+ * @param logPrefix - Optional prefix for logs (e.g., "[Claude Stream xyz]")
+ * @returns JWT session cookie value or undefined if not authenticated
  *
  * @example
  * const sessionCookie = await getSafeSessionCookie("[MyRoute abc123]")
@@ -138,40 +151,23 @@ export async function isManagerAuthenticated(): Promise<boolean> {
  */
 export async function getSafeSessionCookie(logPrefix = "[Auth]"): Promise<string | undefined> {
   const jar = await cookies()
-  const rawCookie = jar.get("session")?.value
+  const sessionCookie = jar.get("session")
 
-  // No cookie present
-  if (!rawCookie) {
-    return undefined
-  }
-
-  // Legacy session format (pre-JWT)
-  if (rawCookie === LEGACY_SESSION_VALUE) {
-    console.warn(`${logPrefix} Skipping legacy session cookie format (value="${LEGACY_SESSION_VALUE}")`)
+  if (!sessionCookie?.value) {
     return undefined
   }
 
   // Test mode special value
-  if (process.env.BRIDGE_ENV === "local" && rawCookie === "test-user") {
-    return rawCookie
+  if (process.env.BRIDGE_ENV === "local" && sessionCookie.value === "test-user") {
+    return sessionCookie.value
   }
 
-  // Validate JWT format (must contain dots: header.payload.signature)
-  if (!rawCookie.includes(".")) {
-    console.warn(
-      `${logPrefix} Skipping malformed session cookie (not JWT format, first 20 chars: "${rawCookie.substring(0, 20)}")`,
-    )
-    return undefined
-  }
-
-  // Verify JWT signature and expiration
-  const payload = verifySessionToken(rawCookie)
+  // Verify JWT format and validity
+  const payload = verifySessionToken(sessionCookie.value)
   if (!payload) {
-    // verifySessionToken already logs specific error (expired/invalid/tampered)
-    // Log context about where this validation failed
-    console.warn(`${logPrefix} JWT validation failed, see [JWT] logs above for details`)
+    console.warn(`${logPrefix} Invalid JWT session token`)
     return undefined
   }
 
-  return rawCookie
+  return sessionCookie.value
 }

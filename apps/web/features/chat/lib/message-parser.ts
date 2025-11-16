@@ -1,3 +1,4 @@
+import type { Attachment } from "@/features/chat/components/ChatInput/types"
 import {
   type BridgeCompleteMessage,
   type BridgeErrorMessage,
@@ -6,7 +7,6 @@ import {
   type BridgeStartMessage,
   BridgeStreamType,
 } from "@/features/chat/lib/streaming/ndjson"
-import type { Attachment } from "@/features/chat/components/ChatInput/types"
 import type { SDKAssistantMessage, SDKMessage, SDKUserMessage } from "@/features/chat/types/sdk-types"
 import {
   isErrorResultMessage,

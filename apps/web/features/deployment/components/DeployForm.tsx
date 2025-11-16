@@ -269,7 +269,7 @@ export function DeployForm() {
                     animate={{ opacity: 1, y: 0 }}
                     className="mt-1.5 text-red-600 text-xs font-medium"
                   >
-                    {String(deployWithDomainForm.formState.errors.domain.message)}
+                    {deployWithDomainForm.formState.errors.domain?.message as string}
                   </motion.p>
                 )}
               </motion.div>

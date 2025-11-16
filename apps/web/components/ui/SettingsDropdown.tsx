@@ -1,9 +1,8 @@
 "use client"
 
-import { Plus, Settings } from "lucide-react"
+import { Settings } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
-import { AddWorkspaceModal } from "@/components/modals/AddWorkspaceModal"
+import { useState } from "react"
 
 interface SettingsDropdownProps {
   onNewChat?: () => void
@@ -19,26 +18,7 @@ export function SettingsDropdown({
   onOpenSettings,
 }: SettingsDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const [workspaces, setWorkspaces] = useState<string[]>([])
-  const [showAddModal, setShowAddModal] = useState(false)
   const router = useRouter()
-
-  const fetchWorkspaces = () => {
-    fetch("/api/auth/workspaces")
-      .then(res => res.json())
-      .then(data => {
-        if (data.ok && data.workspaces) {
-          setWorkspaces(data.workspaces)
-        }
-      })
-      .catch(err => {
-        console.error("Failed to fetch authenticated workspaces:", err)
-      })
-  }
-
-  useEffect(() => {
-    fetchWorkspaces()
-  }, [])
 
   const handleLogout = async () => {
     try {
@@ -59,8 +39,6 @@ export function SettingsDropdown({
     setIsOpen(false)
     action()
   }
-
-  const otherWorkspaces = workspaces.filter(w => !currentWorkspace || w !== currentWorkspace)
 
   return (
     <div className="relative z-50">
@@ -98,32 +76,6 @@ export function SettingsDropdown({
         }}
       >
         <div className="py-1">
-          {otherWorkspaces.length > 0 && (
-            <>
-              <div className="px-4 py-2 text-xs font-medium text-black/50 dark:text-white/50">Other Sites</div>
-              {otherWorkspaces.map(workspace => (
-                <button
-                  key={workspace}
-                  onClick={() => handleAction(() => onSwitchWorkspace?.(workspace))}
-                  className="w-full px-4 py-2.5 text-left text-sm text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors font-medium flex items-center justify-between gap-2"
-                  type="button"
-                >
-                  <span className="truncate">{workspace}</span>
-                </button>
-              ))}
-            </>
-          )}
-
-          <button
-            onClick={() => handleAction(() => setShowAddModal(true))}
-            className="w-full px-4 py-2.5 text-left text-sm text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors font-medium flex items-center gap-2"
-            type="button"
-          >
-            <Plus size={16} />
-            Add site
-          </button>
-          <div className="border-t border-black/10 dark:border-white/10 my-1" />
-
           {onNewChat && (
             <button
               onClick={() => handleAction(onNewChat)}
@@ -166,8 +118,6 @@ export function SettingsDropdown({
           }}
         />
       )}
-
-      {showAddModal && <AddWorkspaceModal onClose={() => setShowAddModal(false)} onSuccess={fetchWorkspaces} />}
     </div>
   )
 }

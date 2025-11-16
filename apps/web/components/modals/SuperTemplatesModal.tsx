@@ -11,7 +11,7 @@ interface SuperTemplatesModalProps {
   onInsertTemplate: (prompt: string) => void
 }
 
-type Category = "sliders" | "maps" | "file-upload" | "backend" | "content-management"
+type Category = "sliders" | "maps" | "file-upload" | "backend" | "content-management" | "frontend"
 
 const categoryLabels: Record<Category, string> = {
   sliders: "Photo Sliders",
@@ -19,6 +19,7 @@ const categoryLabels: Record<Category, string> = {
   "file-upload": "File Upload",
   backend: "Backend",
   "content-management": "Content Management",
+  frontend: "Frontend",
 }
 
 export function SuperTemplatesModal({ onClose, onInsertTemplate }: SuperTemplatesModalProps) {

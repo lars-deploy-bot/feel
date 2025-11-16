@@ -1,7 +1,7 @@
 import NextTopLoader from "nextjs-toploader"
 import { ThemeProvider } from "@/components/providers/theme-provider"
-import { UserStoreProvider } from "@/lib/providers/UserStoreProvider"
 import { UserPromptsStoreProvider } from "@/lib/providers/UserPromptsStoreProvider"
+import { UserStoreProvider } from "@/lib/providers/UserStoreProvider"
 import "./globals.css"
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

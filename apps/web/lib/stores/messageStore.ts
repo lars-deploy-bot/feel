@@ -107,10 +107,12 @@ export const useMessageStore = create<MessageStore>()(
         set(state => {
           // If conversation already exists, switch to it
           if (state.conversations[id]) {
+            console.log(`[messageStore] Switching to existing conversation ${id} for workspace "${workspace}"`)
             return { conversationId: id }
           }
 
           // Create new conversation
+          console.log(`[messageStore] Creating new conversation ${id} for workspace "${workspace}"`)
           const newConversation: Conversation = {
             id,
             title: "New conversation",
@@ -299,8 +301,18 @@ export const useCurrentConversation = () =>
     return state.conversations[state.conversationId] || null
   })
 
-// Atomic selector: all conversations
-export const useConversations = (workspace?: string) => useMessageStore(state => state.getAllConversations(workspace))
+// Atomic selector: all conversations filtered by workspace
+// Properly reactive to workspace changes
+export const useConversations = (workspace?: string) =>
+  useMessageStore(state => {
+    const conversations = Object.values(state.conversations)
+
+    if (workspace) {
+      return conversations.filter(c => c.workspace === workspace).sort((a, b) => b.lastActivity - a.lastActivity)
+    }
+
+    return conversations.sort((a, b) => b.lastActivity - a.lastActivity)
+  })
 
 export const useMessageActions = () =>
   useMessageStore(state => ({

@@ -1,4 +1,5 @@
-if (typeof window !== "undefined") {
+// Security: Prevent client-side imports (allow test environment)
+if (typeof window !== "undefined" && !process.env.VITEST) {
   throw new Error(
     "[SECURITY] env/server cannot be imported in client-side code. " +
       "This file accesses server-only environment variables.",

@@ -19,7 +19,7 @@ const nextConfig = {
       "!packages/guides/guides", // Exclude circular symlink
     ],
   },
-  serverExternalPackages: ["@napi-rs/image"],
+  serverExternalPackages: ["@napi-rs/image", "bun:sqlite"],
   transpilePackages: ["@alive-brug/guides", "@alive-brug/images", "@alive-brug/tools"],
 }
 export default nextConfig

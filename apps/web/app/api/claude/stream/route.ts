@@ -13,7 +13,7 @@ import { getSystemPrompt } from "@/features/chat/lib/systemPrompt"
 import { getWorkspace, type Workspace } from "@/features/workspace/lib/workspace-secure"
 import { resolveWorkspace } from "@/features/workspace/lib/workspace-utils"
 import { isTerminalMode } from "@/features/workspace/types/workspace"
-import { runAgentChild } from "@/lib/workspace-execution/agent-child-runner"
+import { hasStripeMcpAccess } from "@/lib/claude/agent-constants.mjs"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { env } from "@/lib/env"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
@@ -21,8 +21,10 @@ import { logInput } from "@/lib/input-logger"
 import { DEFAULT_MODEL } from "@/lib/models/claude-models"
 import { registerCancellation, startTTLCleanup, unregisterCancellation } from "@/lib/stream/cancellation-registry"
 import { type CancelState, createNDJSONStream } from "@/lib/stream/ndjson-stream-handler"
+import { createAppClient } from "@/lib/supabase/app"
 import type { TokenSource } from "@/lib/tokens"
 import { generateRequestId } from "@/lib/utils"
+import { runAgentChild } from "@/lib/workspace-execution/agent-child-runner"
 import { BodySchema, loadDomainPasswords } from "@/types/guards/api"
 
 export const runtime = "nodejs"
@@ -253,11 +255,35 @@ export async function POST(req: NextRequest) {
       requestId,
     })
 
+    // Verify domain exists in app.domains
+    const app = await createAppClient("service")
+    const { data: domainRecord } = await app
+      .from("domains")
+      .select("domain_id, hostname, port")
+      .eq("hostname", resolvedWorkspaceName)
+      .single()
+
+    if (!domainRecord) {
+      console.error(`[Claude Stream ${requestId}] Domain not found in database: ${resolvedWorkspaceName}`)
+      return NextResponse.json(
+        {
+          ok: false,
+          error: ErrorCodes.WORKSPACE_NOT_FOUND,
+          message: getErrorMessage(ErrorCodes.WORKSPACE_NOT_FOUND, { host: resolvedWorkspaceName }),
+          requestId,
+        },
+        { status: 404 },
+      )
+    }
+
     convKey = sessionKey({
       userId: user.id,
-      workspace: requestWorkspace,
+      workspace: resolvedWorkspaceName, // Use domain for conversation key (for locking compatibility)
       conversationId,
     })
+    console.log(
+      `[Claude Stream ${requestId}] Domain: ${domainRecord.hostname} (port: ${domainRecord.port}, id: ${domainRecord.domain_id})`,
+    )
     console.log(`[Claude Stream ${requestId}] Session key: ${convKey}`)
     console.log(`[Claude Stream ${requestId}] Attempting to lock conversation...`)
 
@@ -310,6 +336,7 @@ export async function POST(req: NextRequest) {
       projectId: body.projectId,
       userId: body.userId,
       workspaceFolder: cwd,
+      hasStripeMcpAccess: hasStripeMcpAccess(resolvedWorkspaceName),
       additionalContext: body.additionalContext,
     })
 

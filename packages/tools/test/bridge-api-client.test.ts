@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 /**
  * BRIDGE API CLIENT SECRET HEADER TESTS
@@ -101,12 +101,7 @@ describe("callBridgeApi - Internal Tools Secret Header", () => {
    * Session cookie should be included for ALL endpoints (not just internal-tools)
    */
   it("should include session cookie for all endpoints (THE MISSING SESSION BUG)", async () => {
-    const allEndpoints = [
-      "/api/internal-tools/read-logs",
-      "/api/restart-workspace",
-      "/api/verify",
-      "/api/files",
-    ]
+    const allEndpoints = ["/api/internal-tools/read-logs", "/api/restart-workspace", "/api/verify", "/api/files"]
 
     for (const endpoint of allEndpoints) {
       mockFetch.mockClear()

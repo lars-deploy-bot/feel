@@ -242,7 +242,14 @@ function testPerformance() {
       const writeTime = (Date.now() - writeStart) / iterations
 
       // Clean up
-      testFiles.forEach(file => fs.unlinkSync(file))
+      testFiles?.forEach(file => {
+        try {
+          fs.unlinkSync(file)
+        } catch (error) {
+          console.error(`Failed to delete test file: ${file}`, error)
+          allPassed = false
+        }
+      })
 
       if (writeTime < 25) {
         pass(`✓ Atomic write: ${writeTime.toFixed(2)}ms average (< 25ms target)`)

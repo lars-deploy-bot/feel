@@ -8,7 +8,7 @@ import { GUIDE_CATEGORIES } from "../src/tools/guides/get-guide.js"
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 const packageRoot = join(__dirname, "..")
-const guidesBasePath = join(packageRoot, "internals-folder")
+const guidesBasePath = join(packageRoot, "lovable-folder-only-use-for-inspiration")
 
 /**
  * Validation function to check guide structure integrity

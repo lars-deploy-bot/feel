@@ -1,6 +1,8 @@
 import { createSdkMcpServer } from "@anthropic-ai/claude-agent-sdk"
 import { debugWorkspaceTool } from "./tools/composite/debug-workspace.js"
 import { readServerLogsTool } from "./tools/debug/read-server-logs.js"
+import { getWorkflowTool } from "./tools/meta/get-workflow.js"
+import { listWorkflowsTool } from "./tools/meta/list-workflows.js"
 import { searchToolsTool } from "./tools/meta/search-tools.js"
 import { generatePersonaTool } from "./tools/personas/generate-persona.js"
 import { getAliveSuperTemplateTool } from "./tools/templates/get-template.js"
@@ -37,7 +39,15 @@ import { restartServerTool } from "./tools/workspace/restart-server.js"
 export const toolsInternalMcp = createSdkMcpServer({
   name: "alive-tools",
   version: "1.0.0",
-  tools: [searchToolsTool, debugWorkspaceTool, getAliveSuperTemplateTool, readServerLogsTool, generatePersonaTool],
+  tools: [
+    searchToolsTool,
+    getWorkflowTool,
+    listWorkflowsTool,
+    debugWorkspaceTool,
+    getAliveSuperTemplateTool,
+    readServerLogsTool,
+    generatePersonaTool,
+  ],
 })
 
 /**

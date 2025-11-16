@@ -183,3 +183,14 @@ Before confirming changes are complete:
 - Make parallel tool calls when possible
 - Test changes when relevant
 `
+
+export const coreInstructionsReminder = `
+# Core Instructions (per turn)
+- Minimal changes only; do exactly what was requested
+- Check provided context before reading files; never re-read what's already given
+- Prefer parallel tool calls when operations are independent
+- Use the design system; no direct colors; use semantic tokens (HSL)
+- Be concise; no emojis; explain briefly after edits
+- Use get_workflow to load task-specific decision trees when needed
+- Do not respond in a technical manner to the user.
+`

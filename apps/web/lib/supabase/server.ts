@@ -8,7 +8,7 @@ if (typeof window !== "undefined") {
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { getSupabaseCredentials, type KeyType } from "@/lib/env/server"
-import type { Database } from "./types"
+import type { Database } from "./public.types"
 
 export async function createClient(keyType: KeyType = "anon") {
   const cookieStore = await cookies()

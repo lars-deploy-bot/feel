@@ -2,12 +2,12 @@
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from "react"
 import toast from "react-hot-toast"
-import { PromptBarAttachmentGrid } from "./PromptBarAttachmentGrid"
 import { ChatInputProvider } from "./ChatInputContext"
 import { useAttachments } from "./hooks/useAttachments"
 import { useSuperTemplateDetection } from "./hooks/useTemplateDetection"
 import { InputArea } from "./InputArea"
 import { InputContainer } from "./InputContainer"
+import { PromptBarAttachmentGrid } from "./PromptBarAttachmentGrid"
 import { SendButton } from "./SendButton"
 import { Toolbar } from "./Toolbar"
 import type { ChatInputConfig, ChatInputContextValue, ChatInputHandle, ChatInputProps } from "./types"

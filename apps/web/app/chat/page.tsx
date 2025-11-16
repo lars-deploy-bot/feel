@@ -7,6 +7,7 @@ import { SettingsModal } from "@/components/modals/SettingsModal"
 import { SuperTemplatesModal } from "@/components/modals/SuperTemplatesModal"
 import { PhotoMenu } from "@/components/ui/PhotoMenu"
 import { SettingsDropdown } from "@/components/ui/SettingsDropdown"
+import { WorkspaceSwitcher } from "@/components/workspace/WorkspaceSwitcher"
 import { ChatDropOverlay } from "@/features/chat/components/ChatDropOverlay"
 import { ChatInput } from "@/features/chat/components/ChatInput"
 import type { ChatInputHandle } from "@/features/chat/components/ChatInput/types"
@@ -70,6 +71,9 @@ function ChatPageContent() {
   const [showPhotoMenu, setShowPhotoMenu] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [showCompletionDots, setShowCompletionDots] = useState(false)
+  const [totalDomainCount, setTotalDomainCount] = useState<number | null>(null)
+  const [domainLoadError, setDomainLoadError] = useState(false)
+  const [retryOrgsCount, setRetryOrgsCount] = useState(0)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const isAutoScrolling = useRef(false)
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -94,22 +98,29 @@ function ChatPageContent() {
   const showSSETerminal = useSSETerminal()
   const showSandbox = useSandbox()
   const { addEvent: addDevEvent } = useDevTerminal()
-  const { workspace, isTerminal, mounted, setWorkspace } = useWorkspace({ redirectOnMissing: "/" })
+  const { workspace, isTerminal, mounted, setWorkspace } = useWorkspace({
+    redirectOnMissing: "/workspace",
+    allowEmpty: true,
+  })
   const { apiKey: userApiKey, model: userModel } = useLLMStore()
   const streamingActions = useStreamingActions()
 
   // Session management with workspace-scoped persistence
   const { conversationId, startNewConversation, switchConversation } = useConversationSession(workspace, mounted)
 
-  // Initialize message store when conversation changes
+  // Initialize message store when conversation OR workspace changes
   useEffect(() => {
-    if (conversationId && workspace && storeConversationId !== conversationId) {
-      initializeConversation(conversationId, workspace)
+    if (conversationId && workspace) {
+      // Always initialize/switch when workspace or conversationId changes
+      // This ensures conversations are properly scoped to the workspace
+      if (storeConversationId !== conversationId) {
+        initializeConversation(conversationId, workspace)
+      }
     }
   }, [conversationId, workspace, storeConversationId, initializeConversation])
 
   // Image upload handler with progress tracking, retry logic, and store sync
-  const handleAttachmentUpload = useImageUpload({ workspace, isTerminal })
+  const handleAttachmentUpload = useImageUpload({ workspace: workspace ?? undefined, isTerminal })
 
   // Helper to create API request body (DRY)
   const createRequestBody = (message: string) => {
@@ -134,6 +145,42 @@ function ChatPageContent() {
       // Sandbox disabled by default - user can enable manually
     }
   }, [setSSETerminal, setSSETerminalMinimized, setSandbox, setSandboxMinimized])
+
+  // Fetch total domain count to detect if user has 0 domains
+  useEffect(() => {
+    async function fetchDomainCount() {
+      try {
+        setDomainLoadError(false)
+        const response = await fetch("/api/auth/organizations", { credentials: "include" })
+
+        if (!response.ok) {
+          console.error("[Chat] Failed to fetch organizations:", response.status)
+          setDomainLoadError(true)
+          setTotalDomainCount(null)
+          return
+        }
+
+        const data = await response.json()
+        if (data.ok && data.organizations) {
+          const total = data.organizations.reduce(
+            (sum: number, org: { workspace_count: number }) => sum + org.workspace_count,
+            0,
+          )
+          setTotalDomainCount(total)
+          setDomainLoadError(false)
+        } else {
+          console.error("[Chat] Invalid organizations response:", data)
+          setDomainLoadError(true)
+          setTotalDomainCount(null)
+        }
+      } catch (error) {
+        console.error("[Chat] Failed to fetch domain count:", error)
+        setDomainLoadError(true)
+        setTotalDomainCount(null)
+      }
+    }
+    fetchDomainCount()
+  }, [retryOrgsCount])
 
 
   // Track manual scrolling - attach once at mount time (only needs empty deps)
@@ -916,6 +963,9 @@ function ChatPageContent() {
 
   // SSE terminal visibility is separate from debug view
 
+  // Empty workspace state is now handled inline with switchers in header
+  // No need for separate empty state screen
+
   return (
     <div className="h-[100dvh] flex flex-row overflow-hidden dark:bg-[#1a1a1a] dark:text-white">
       {/* Conversation Sidebar - Static, not overlay */}
@@ -1027,7 +1077,7 @@ function ChatPageContent() {
                 </div>
                 <SettingsDropdown
                   onNewChat={handleNewConversation}
-                  currentWorkspace={workspace}
+                  currentWorkspace={workspace ?? undefined}
                   onSwitchWorkspace={newWorkspace => {
                     setWorkspace(newWorkspace)
                     handleNewConversation()
@@ -1038,20 +1088,70 @@ function ChatPageContent() {
             </div>
           </div>
 
-          {mounted && isTerminal && workspace && (
+          {mounted && (
             <div className="flex-shrink-0 border-b border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02]">
               <div className="px-6 py-3 mx-auto w-full md:max-w-2xl">
-                <div className="flex items-center text-xs">
-                  <span className="text-black/50 dark:text-white/50 font-medium">site</span>
-                  <a
-                    href={`https://${workspace}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="ml-3 font-diatype-mono text-black/80 dark:text-white/80 font-medium hover:text-black dark:hover:text-white underline decoration-black/30 dark:decoration-white/30 hover:decoration-black dark:hover:decoration-white flex items-center gap-1.5 transition-colors"
-                  >
-                    {workspace}
-                    <ExternalLink size={12} className="opacity-60" />
-                  </a>
+                {/* Error and empty state messages - only show when no workspace */}
+                {!workspace && (
+                  <>
+                    {domainLoadError && (
+                      <div className="mb-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                        <p className="text-sm text-red-900 dark:text-red-100 mb-2">
+                          Failed to load organizations. Please check your connection.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setRetryOrgsCount(prev => prev + 1)}
+                          className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded transition-colors"
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    )}
+                    {!domainLoadError && totalDomainCount === 0 && (
+                      <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                        <p className="text-sm text-blue-900 dark:text-blue-100 mb-2 font-medium">
+                          Welcome! You don't have any domains yet.
+                        </p>
+                        <a
+                          href="/deploy"
+                          className="inline-block px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors"
+                        >
+                          Deploy your first site
+                        </a>
+                      </div>
+                    )}
+                    {!domainLoadError && totalDomainCount !== null && totalDomainCount > 0 && (
+                      <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                        <p className="text-xs text-blue-900 dark:text-blue-100">Loading workspace...</p>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Workspace info bar - always visible */}
+                <div className="flex items-center gap-6 text-xs">
+                  <div className="flex items-center">
+                    <span className="text-black/50 dark:text-white/50 font-medium">site</span>
+                    {isTerminal ? (
+                      <WorkspaceSwitcher currentWorkspace={workspace} onWorkspaceChange={setWorkspace} />
+                    ) : (
+                      <span className="ml-3 font-diatype-mono font-medium text-black/80 dark:text-white/80">
+                        {workspace || "loading..."}
+                      </span>
+                    )}
+                  </div>
+                  {workspace && (
+                    <a
+                      href={`https://${workspace}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2 py-1 text-xs font-medium text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 rounded transition-colors flex items-center gap-1"
+                    >
+                      open
+                      <ExternalLink size={10} />
+                    </a>
+                  )}
                 </div>
               </div>
             </div>
@@ -1064,18 +1164,28 @@ function ChatPageContent() {
               {messages.length === 0 && !busy && (
                 <div className="flex items-start justify-center h-full pt-32">
                   <div className="max-w-md text-center space-y-6">
-                    <p className="text-lg text-black/90 dark:text-white/90 font-medium">
-                      Tell me what to build and I'll update your site
-                    </p>
-                    <div className="pt-2">
-                      <button
-                        type="button"
-                        onClick={() => setShowTemplatesModal(true)}
-                        className="px-4 py-2 rounded-md bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-sm font-medium text-black dark:text-white transition-colors"
-                      >
-                        Browse templates
-                      </button>
-                    </div>
+                    {workspace ? (
+                      <>
+                        <p className="text-lg text-black/90 dark:text-white/90 font-medium">
+                          Tell me what to build and I'll update your site
+                        </p>
+                        <div className="pt-2">
+                          <button
+                            type="button"
+                            onClick={() => setShowTemplatesModal(true)}
+                            className="px-4 py-2 rounded-md bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-sm font-medium text-black dark:text-white transition-colors"
+                          >
+                            Browse templates
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-lg text-black/60 dark:text-white/60 font-medium">
+                        {totalDomainCount === 0
+                          ? "Deploy your first site to get started"
+                          : "Select a site above to start chatting"}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
@@ -1113,7 +1223,7 @@ function ChatPageContent() {
               ref={chatInputRef}
               message={msg}
               setMessage={setMsg}
-              busy={busy}
+              busy={busy || !workspace}
               abortControllerRef={abortControllerRef}
               onSubmit={sendMessage}
               onStop={stopStreaming}
@@ -1123,7 +1233,7 @@ function ChatPageContent() {
                 enableCamera: true,
                 maxAttachments: 5,
                 maxFileSize: 20 * 1024 * 1024, // 20MB
-                placeholder: "Tell me what to change...",
+                placeholder: !workspace ? "Select a site to start chatting..." : "Tell me what to change...",
                 onAttachmentUpload: handleAttachmentUpload,
               }}
             />
@@ -1136,7 +1246,7 @@ function ChatPageContent() {
       {showFeedbackModal && (
         <FeedbackModal
           onClose={() => setShowFeedbackModal(false)}
-          workspace={workspace}
+          workspace={workspace ?? undefined}
           conversationId={conversationId}
         />
       )}

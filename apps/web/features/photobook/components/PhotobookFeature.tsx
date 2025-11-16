@@ -16,11 +16,11 @@ export default function PhotobookPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Workspace management
-  const { workspace, isTerminal, mounted } = useWorkspace()
+  const { workspace, isTerminal, mounted } = useWorkspace({ allowEmpty: true })
 
   // Image management
   const { images, loadingImages, uploading, error, success, loadImages, uploadImages, deleteImage, clearMessages } =
-    useImageManagement(isTerminal, workspace)
+    useImageManagement(isTerminal, workspace || "")
 
   // Copy to clipboard
   const { copyToClipboard, isCopied } = useCopyToClipboard()

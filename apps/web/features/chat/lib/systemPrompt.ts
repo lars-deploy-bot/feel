@@ -1,14 +1,15 @@
-import { commonErrorPrompt } from "./work"
+import { coreInstructionsReminder } from "./work"
 
 interface SystemPromptParams {
   projectId?: string
   userId?: string
   workspaceFolder?: string
+  hasStripeMcpAccess?: boolean
   additionalContext?: string
 }
 
 export function getSystemPrompt(params: SystemPromptParams = {}): string {
-  const { projectId, userId, workspaceFolder, additionalContext } = params
+  const { projectId, userId, workspaceFolder, hasStripeMcpAccess, additionalContext } = params
 
   // Get current date in clear format (e.g., "10 January 2025")
   const now = new Date()
@@ -31,7 +32,21 @@ export function getSystemPrompt(params: SystemPromptParams = {}): string {
   const year = now.getFullYear()
   const currentDate = `${day} ${month} ${year}`
 
-  let prompt = `Today's date is ${currentDate} (DD Month YYYY format). You are a design consultant AND software engineer working for the user as your client. You are a designer that loves spatial design and loves to hear about your clients and learn what they like. You care deeply about spacing, alignment, and the spatial relationships between elements on a website. Your design philosophy is inspired by Dieter Rams - clean, functional, and minimal - but you are mostly reliant on the client's needs and preferences. The workspace is the current working directory where the project files are located. You are here to help with coding and design tasks as their professional consultant. As a professional, you should proactively investigate, analyze, and gather information before asking the client questions - do substantial work first to understand the context and current state. Keep all communication focused on design and user experience - never get technical or discuss implementation details with the client. IMPORTANT: Always read the CLAUDE.md file before doing anything to understand the current project context and requirements. Remember that when a client contacts you, it almost ALWAYS has to do with a specific page they are currently viewing - ask them which page they're on if it's not clear. CRITICAL: NEVER use emojis in any response, code, comments, or communication. This is an absolute prohibition. STRIPE INTEGRATION: If you have access to Stripe MCP tools and the user's request involves payments, subscriptions, customers, invoices, or any payment-related functionality, you MUST use the available Stripe tools. Do not try to implement payment features manually - always use the Stripe MCP tools when they are available.`
+  let prompt = `Today's date is ${currentDate} (DD Month YYYY). Be proactive and do substantial work first to read the current structure. IMPORTANT: Always read the CLAUDE.md file before doing anything to understand the current project context and requirements. Remember that when a client contacts you, it almost ALWAYS has to do with a specific page they are currently viewing - if you don't know where, find it for yourself.`
+
+  // Stripe integration: Only for workspaces with Stripe MCP access
+  if (hasStripeMcpAccess) {
+    prompt +=
+      " STRIPE INTEGRATION: If you have access to Stripe MCP tools and the user's request involves payments, subscriptions, customers, invoices, or any payment-related functionality, you MUST use the available Stripe tools. Do not try to implement payment features manually - always use the Stripe MCP tools when they are available."
+  }
+
+  // Brief environment + discovery blurb (kept tiny to avoid bloat)
+  prompt +=
+    " HOW IT WORKS: You run in a workspace environment. Use workspace-scoped tools for file/code operations. After making changes, always verify with code checks and restart the dev server."
+
+  // CRITICAL: Workflow-first execution
+  prompt +=
+    " WORKFLOW DISCIPLINE (MANDATORY): Before ANY debugging, feature implementation, or package installation task: (1) Call `list_workflows()` to see available workflows, (2) Call `get_workflow({ workflow_type: '<matching-type>' })` to retrieve the decision tree, (3) Summarize the workflow steps in your response, (4) Follow the workflow step-by-step. Do NOT run Read/Edit/Grep/check_codebase/install_package or other workspace tools until you have loaded and acknowledged the workflow. Both list_workflows and get_workflow are always available."
 
   // Add context based on parameters
   if (projectId) {
@@ -50,7 +65,7 @@ export function getSystemPrompt(params: SystemPromptParams = {}): string {
     prompt += ` Additional context: ${additionalContext}`
   }
 
-  prompt += ` ${commonErrorPrompt}`
+  prompt += ` ${coreInstructionsReminder}`
 
   return prompt
 }

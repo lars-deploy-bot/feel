@@ -16,7 +16,7 @@ interface PhotoMenuProps {
 export function PhotoMenu({ isOpen, onClose, triggerRef }: PhotoMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const { workspace, isTerminal, mounted } = useWorkspace()
+  const { workspace, isTerminal, mounted } = useWorkspace({ allowEmpty: true })
   const { images, loading, uploading, uploadImages, loadImages, deleteImage } = useImageStore()
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [copiedKey, setCopiedKey] = useState<string | null>(null)

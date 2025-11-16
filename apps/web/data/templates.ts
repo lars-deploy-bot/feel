@@ -8,7 +8,7 @@ export interface Template {
   id: string
   templateId: VersionedTemplateId // MCP template ID (e.g., "carousel-thumbnails-v1.0.0")
   name: string
-  category: "sliders" | "maps" | "file-upload" | "backend" | "content-management"
+  category: "sliders" | "maps" | "file-upload" | "backend" | "content-management" | "frontend"
   description: string
   previewImage: string
   tags: string[]
@@ -100,6 +100,23 @@ export const templates: Template[] = [
     dependencies: ["@radix-ui/react-tooltip", "react-router-dom"],
     estimatedTime: "25-30 minutes",
     estimatedTokens: 120,
+  },
+
+  // FRONTEND
+  {
+    id: TEMPLATE_IDS.ZUSTAND,
+    templateId: versionedId(TEMPLATE_IDS.ZUSTAND, "v1.0.0"),
+    name: "Zustand State Management",
+    category: "frontend",
+    description:
+      "Best practices for using Zustand in Vite + React applications with vanilla stores, Providers, performance patterns, and persistence.",
+    previewImage: "/templates/previews/placeholder.svg",
+    tags: ["zustand", "state", "react", "vite", "typescript"],
+    complexity: 2,
+    fileCount: 4,
+    dependencies: ["zustand"],
+    estimatedTime: "10-15 minutes",
+    estimatedTokens: 60,
   },
 ]
 

@@ -149,3 +149,4 @@ packages/*/guides
 packages/*/images
 packages/*/template
 packages/*/tools
+apps/web/.env.save

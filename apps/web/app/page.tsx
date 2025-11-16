@@ -1,31 +1,17 @@
 "use client"
-import { Clock, X } from "lucide-react"
-import { useRouter, useSearchParams } from "next/navigation"
-import { Suspense, useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import { Suspense, useState } from "react"
 import { Button } from "@/components/ui/primitives/Button"
 import { Input } from "@/components/ui/primitives/Input"
-import { WILDCARD_DOMAIN } from "@/lib/config"
-import { useRecentSitesStore } from "@/lib/stores/recentSitesStore"
 
 function LoginPageContent() {
-  const searchParams = useSearchParams()
-  const domainParam = searchParams.get("domain")
-
-  const [pass, setPass] = useState("")
-  const [workspace, setWorkspace] = useState(domainParam || "")
-  const [mounted, setMounted] = useState(false)
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-  const [workspaceTouched, setWorkspaceTouched] = useState(false)
-  const [passTouched, setPassTouched] = useState(false)
+  const [emailTouched, setEmailTouched] = useState(false)
+  const [passwordTouched, setPasswordTouched] = useState(false)
   const router = useRouter()
-
-  // Recent sites from Zustand store
-  const { sites: recentSites, addSite, removeSite } = useRecentSitesStore()
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
 
   async function login(e: React.FormEvent) {
     e.preventDefault()
@@ -33,39 +19,22 @@ function LoginPageContent() {
     setError("")
 
     try {
-      // First validate the login credentials
       const loginResponse = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ passcode: pass, workspace: workspace }),
+        body: JSON.stringify({ email, password }),
+        credentials: "include",
       })
 
-      if (!loginResponse.ok) {
-        setError("Invalid passcode")
+      const data = await loginResponse.json()
+
+      if (!loginResponse.ok || !data.ok) {
+        setError("Invalid email or password")
         setLoading(false)
         return
       }
 
-      // Then verify the workspace exists
-      const verifyResponse = await fetch("/api/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workspace: workspace }),
-      })
-
-      const verifyResult = await verifyResponse.json()
-
-      if (!verifyResult.verified) {
-        setError(`Domain "${workspace}" not found or inaccessible`)
-        setLoading(false)
-        return
-      }
-
-      // Save to recent sites
-      addSite(workspace)
-
-      // Store workspace and navigate immediately (don't wait for state update)
-      sessionStorage.setItem("workspace", workspace)
+      // Redirect to chat
       router.push("/chat")
     } catch {
       setError("Connection failed")
@@ -81,86 +50,39 @@ function LoginPageContent() {
           <p className="text-black/50 text-base font-normal">Sign in to continue</p>
         </div>
 
-        {/* Recent Sites */}
-        {mounted && recentSites.length > 0 && (
-          <div className="mb-8">
-            <div className="flex items-center gap-2 mb-4">
-              <Clock className="h-4 w-4 text-black/40" />
-              <p className="text-sm font-medium text-black/70">Recent sites</p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {recentSites.map(site => (
-                <div
-                  key={site.domain}
-                  className="group relative inline-flex items-center px-3 py-2 rounded-lg border border-black/10 hover:border-black/30 hover:bg-black/5 transition-all cursor-pointer"
-                  style={{
-                    maxWidth: "fit-content",
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setWorkspace(site.domain)
-                      setWorkspaceTouched(false)
-                    }}
-                    className="absolute inset-0 text-left"
-                  >
-                    <span className="sr-only">Select {site.domain}</span>
-                  </button>
-                  <span className="text-sm font-medium text-black relative z-10 pointer-events-none whitespace-nowrap">
-                    {site.domain}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => removeSite(site.domain)}
-                    className="absolute -top-1.5 -right-1.5 z-10 hidden group-hover:flex p-1 bg-white hover:bg-gray-100 border border-black/10 rounded-full shadow-sm"
-                    aria-label={`Remove ${site.domain}`}
-                  >
-                    <X className="h-3 w-3 text-black" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         <form onSubmit={login} className="space-y-6" autoComplete="off">
           <Input
-            id="workspace"
-            label="Your site"
-            type="text"
-            value={workspace}
+            id="email"
+            label="Email"
+            type="email"
+            value={email}
             onChange={e => {
-              setWorkspace(e.target.value)
+              setEmail(e.target.value)
               if (error) setError("")
             }}
-            onBlur={() => setWorkspaceTouched(true)}
-            placeholder={`myapp.${WILDCARD_DOMAIN}`}
+            onBlur={() => setEmailTouched(true)}
+            placeholder="you@example.com"
             disabled={loading}
-            autoComplete="off"
-            data-1p-ignore
-            data-lpignore="true"
-            state={workspaceTouched && !workspace.trim() ? "error" : "default"}
-            errorMessage={workspaceTouched && !workspace.trim() ? "Please enter your site domain" : undefined}
+            autoComplete="email"
+            state={emailTouched && !email.trim() ? "error" : "default"}
+            errorMessage={emailTouched && !email.trim() ? "Please enter your email" : undefined}
           />
 
           <Input
-            id="passcode"
+            id="password"
             label="Password"
             type="password"
-            value={pass}
+            value={password}
             onChange={e => {
-              setPass(e.target.value)
+              setPassword(e.target.value)
               if (error) setError("")
             }}
-            onBlur={() => setPassTouched(true)}
+            onBlur={() => setPasswordTouched(true)}
             placeholder="Enter your password"
             disabled={loading}
-            autoComplete="new-password"
-            data-1p-ignore
-            data-lpignore="true"
-            state={passTouched && !pass.trim() ? "error" : "default"}
-            errorMessage={passTouched && !pass.trim() ? "Please enter your password" : undefined}
+            autoComplete="current-password"
+            state={passwordTouched && !password.trim() ? "error" : "default"}
+            errorMessage={passwordTouched && !password.trim() ? "Please enter your password" : undefined}
           />
 
           {error && (
@@ -173,7 +95,7 @@ function LoginPageContent() {
             type="submit"
             fullWidth
             loading={loading}
-            disabled={!pass.trim() || !workspace.trim()}
+            disabled={!email.trim() || !password.trim()}
             className="!bg-black !text-white hover:!bg-black/90 !border-0 !font-medium !text-base !py-3 !rounded-lg !transition-all"
           >
             {loading ? "Signing in..." : "Continue"}

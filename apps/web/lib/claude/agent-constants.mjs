@@ -84,8 +84,8 @@ export function getAllowedTools(workspacePath) {
   const domainMatch = workspacePath.match(/\/sites\/([^/]+)/)
   const domain = domainMatch ? domainMatch[1] : null
 
-  // Add all Stripe MCP tools for riggedwheel.alive.best
-  if (domain === "riggedwheel.alive.best") {
+  // Add all Stripe MCP tools for workspaces in enabled list
+  if (domain && STRIPE_ENABLED_WORKSPACES.includes(domain)) {
     mcpTools = [...mcpTools, ...STRIPE_MCP_TOOLS]
   }
 
@@ -112,6 +112,12 @@ export const DISALLOWED_TOOLS = [
 ]
 
 /**
+ * Configuration: Workspaces with Stripe MCP access
+ * Add workspace domains here to enable Stripe integration
+ */
+export const STRIPE_ENABLED_WORKSPACES = ["riggedwheel.alive.best"]
+
+/**
  * Get MCP servers configuration based on workspace
  * Allows workspace-specific MCP server access control
  *
@@ -129,8 +135,8 @@ export function getMcpServers(workspacePath) {
   const domainMatch = workspacePath.match(/\/sites\/([^/]+)/)
   const domain = domainMatch ? domainMatch[1] : null
 
-  // Stripe MCP: Only available for riggedwheel.alive.best
-  if (domain === "riggedwheel.alive.best") {
+  // Stripe MCP: Check if workspace is in enabled list
+  if (domain && STRIPE_ENABLED_WORKSPACES.includes(domain)) {
     baseServers.stripe = {
       type: "http",
       url: "https://mcp.stripe.com",
@@ -143,8 +149,20 @@ export function getMcpServers(workspacePath) {
   return baseServers
 }
 
-// Legacy export for backwards compatibility (uses empty workspace path)
-export const MCP_SERVERS = getMcpServers("")
+/**
+ * Check if Stripe MCP is available for a workspace
+ *
+ * @param {string} workspacePath - Path to workspace or workspace domain
+ * @returns {boolean} True if Stripe MCP is configured for this workspace
+ */
+export function hasStripeMcpAccess(workspacePath) {
+  // Extract domain from workspace path or use as-is if it's just a domain
+  const domainMatch = workspacePath.match(/\/sites\/([^/]+)/)
+  const domain = domainMatch ? domainMatch[1] : workspacePath
+
+  // Check if domain is in enabled list
+  return STRIPE_ENABLED_WORKSPACES.includes(domain)
+}
 
 export const PERMISSION_MODE = "default"
 /** @type {import('@anthropic-ai/claude-agent-sdk').SettingSource[]} */

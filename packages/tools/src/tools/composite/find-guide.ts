@@ -50,7 +50,7 @@ export type FindGuideResult = {
  */
 export async function debugFindGuide(query: string, category?: GuideCategory) {
   const packageRoot = join(__dirname, "../../..")
-  const guidesBasePath = join(packageRoot, "internals-folder")
+  const guidesBasePath = join(packageRoot, "lovable-folder-only-use-for-inspiration")
   const categoriesToSearch = category ? [category] : GUIDE_CATEGORIES
   const debug: Array<{
     category: GuideCategory
@@ -79,7 +79,7 @@ export async function findGuide(params: FindGuideParams): Promise<FindGuideResul
   const { query, category, auto_retrieve = true } = params
   // Use source location, not dist - works in both dev and production
   const packageRoot = join(__dirname, "../../..")
-  const guidesBasePath = join(packageRoot, "internals-folder")
+  const guidesBasePath = join(packageRoot, "lovable-folder-only-use-for-inspiration")
 
   try {
     const categoriesToSearch = category ? [category] : GUIDE_CATEGORIES

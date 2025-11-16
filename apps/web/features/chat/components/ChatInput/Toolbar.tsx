@@ -3,8 +3,8 @@
 import { ClipboardList, Layers, Plus } from "lucide-react"
 import type { RefObject } from "react"
 import { useState } from "react"
-import { useChatInput } from "./ChatInputContext"
 import { useUserPrompts } from "@/lib/providers/UserPromptsStoreProvider"
+import { useChatInput } from "./ChatInputContext"
 
 interface ToolbarProps {
   fileInputRef: RefObject<HTMLInputElement | null>

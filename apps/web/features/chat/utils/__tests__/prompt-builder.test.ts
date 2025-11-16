@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
-import { buildPromptWithAttachments } from "../prompt-builder"
 import type { LibraryImageAttachment, UserPromptAttachment } from "../../components/ChatInput/types"
+import { buildPromptWithAttachments } from "../prompt-builder"
 
 describe("buildPromptWithAttachments - core contract", () => {
   it("should include library-image attachments in prompt", () => {

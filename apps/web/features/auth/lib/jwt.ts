@@ -12,19 +12,19 @@ if (process.env.NODE_ENV === "production" && JWT_SECRET === "INSECURE_DEV_SECRET
 }
 
 export interface SessionPayload {
-  workspaces: string[]
+  userId: string
   iat?: number
   exp?: number
 }
 
 /**
- * Create a signed JWT token for authenticated workspaces
+ * Create a signed JWT token for authenticated user
  * Token expires in 30 days
- * @param workspaces - Array of workspace names user is authenticated for
+ * @param userId - User ID (UUID)
  * @returns Signed JWT token
  */
-export function createSessionToken(workspaces: string[]): string {
-  const payload: SessionPayload = { workspaces }
+export function createSessionToken(userId: string): string {
+  const payload: SessionPayload = { userId }
   return sign(payload, JWT_SECRET, { expiresIn: "30d" })
 }
 
@@ -38,8 +38,8 @@ export function verifySessionToken(token: string): SessionPayload | null {
     const decoded = verify(token, JWT_SECRET) as SessionPayload
 
     // Validate payload structure
-    if (!decoded.workspaces || !Array.isArray(decoded.workspaces)) {
-      console.error("[JWT] Invalid token payload: workspaces missing or not an array")
+    if (!decoded.userId || typeof decoded.userId !== "string") {
+      console.error("[JWT] Invalid token payload: userId missing or invalid")
       return null
     }
 
@@ -54,26 +54,4 @@ export function verifySessionToken(token: string): SessionPayload | null {
     }
     return null
   }
-}
-
-/**
- * Add workspace to existing token (creates new token with updated list)
- * @param existingToken - Current JWT token
- * @param newWorkspace - Workspace to add
- * @returns New JWT token with updated workspaces, or new token if existing invalid
- */
-export function addWorkspaceToToken(existingToken: string, newWorkspace: string): string {
-  const payload = verifySessionToken(existingToken)
-
-  if (!payload) {
-    // Invalid/expired token - create new one
-    return createSessionToken([newWorkspace])
-  }
-
-  // Add workspace if not already present
-  if (!payload.workspaces.includes(newWorkspace)) {
-    payload.workspaces.push(newWorkspace)
-  }
-
-  return createSessionToken(payload.workspaces)
 }

@@ -22,9 +22,14 @@ export function useConversationSession(workspace: string | null, mounted: boolea
   useEffect(() => {
     if (!workspace || !mounted) return
 
+    // Skip if workspace hasn't changed
     if (prevWorkspaceRef.current === workspace) return
 
+    console.log(`[useConversationSession] Workspace changed: ${prevWorkspaceRef.current} → ${workspace}`)
+
     const id = initConversation(workspace)
+    console.log(`[useConversationSession] ConversationId for workspace "${workspace}": ${id}`)
+
     setConversationId(id)
     prevWorkspaceRef.current = workspace
   }, [workspace, mounted, initConversation])

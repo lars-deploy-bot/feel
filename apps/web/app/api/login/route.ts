@@ -1,13 +1,19 @@
-import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
-import { addWorkspaceToToken, createSessionToken } from "@/features/auth/lib/jwt"
+import { z } from "zod"
+import { createSessionToken } from "@/features/auth/lib/jwt"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
+import { createIamClient } from "@/lib/supabase/iam"
 import { generateRequestId } from "@/lib/utils"
-import { isDomainPasswordValid, LoginSchema } from "@/types/guards/api"
+import { verifyPassword } from "@/types/guards/api"
 
 // Session expires in 30 days
 const SESSION_MAX_AGE = 30 * 24 * 60 * 60
+
+const LoginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+})
 
 export async function POST(req: NextRequest) {
   const requestId = generateRequestId()
@@ -30,15 +36,15 @@ export async function POST(req: NextRequest) {
     return res
   }
 
-  const { passcode, workspace } = result.data
-  const jar = await cookies()
+  const { email, password } = result.data
 
-  if (process.env.BRIDGE_ENV === "local" && workspace === "test" && passcode === "test") {
+  // Test mode
+  if (process.env.BRIDGE_ENV === "local" && email === "test@bridge.local" && password === "test") {
     const res = NextResponse.json({ ok: true })
     res.cookies.set("session", "test-user", {
       httpOnly: true,
-      secure: false, // Allow non-HTTPS for localhost
-      sameSite: "lax", // Lax for localhost compatibility
+      secure: false,
+      sameSite: "lax",
       path: "/",
       maxAge: SESSION_MAX_AGE,
     })
@@ -46,82 +52,75 @@ export async function POST(req: NextRequest) {
     return res
   }
 
-  if (workspace === "manager") {
-    if (passcode !== "wachtwoord") {
-      const res = NextResponse.json(
-        {
-          ok: false,
-          error: ErrorCodes.INVALID_CREDENTIALS,
-          message: getErrorMessage(ErrorCodes.INVALID_CREDENTIALS),
-          requestId,
-        },
-        { status: 401 },
-      )
-      addCorsHeaders(res, origin)
-      return res
-    }
-  } else if (workspace) {
-    if (!passcode || !(await isDomainPasswordValid(workspace, passcode))) {
-      const res = NextResponse.json(
-        {
-          ok: false,
-          error: ErrorCodes.INVALID_CREDENTIALS,
-          message: getErrorMessage(ErrorCodes.INVALID_CREDENTIALS),
-          requestId,
-        },
-        { status: 401 },
-      )
-      addCorsHeaders(res, origin)
-      return res
-    }
-  } else {
+  // Query user from iam.users
+  const iam = await createIamClient("service")
+  const { data: user, error: userError } = await iam
+    .from("users")
+    .select("user_id, email, password_hash, display_name")
+    .eq("email", email)
+    .single()
+
+  if (userError || !user) {
+    console.error("[Login] User not found:", email)
     const res = NextResponse.json(
       {
         ok: false,
-        error: ErrorCodes.WORKSPACE_MISSING,
-        message: getErrorMessage(ErrorCodes.WORKSPACE_MISSING),
+        error: ErrorCodes.INVALID_CREDENTIALS,
+        message: getErrorMessage(ErrorCodes.INVALID_CREDENTIALS),
         requestId,
       },
-      { status: 400 },
+      { status: 401 },
     )
     addCorsHeaders(res, origin)
     return res
   }
 
-  const res = NextResponse.json({ ok: true })
-
-  if (workspace === "manager") {
-    res.cookies.set("manager_session", "1", {
-      httpOnly: true,
-      secure: true,
-      sameSite: "none",
-      domain: ".terminal.goalive.nl",
-      path: "/",
-      maxAge: SESSION_MAX_AGE,
-    })
-  } else {
-    // Get existing session token (JWT)
-    const existingSession = jar.get("session")
-    let sessionToken: string
-
-    if (existingSession?.value && existingSession.value !== "1") {
-      // Add workspace to existing token (creates new signed token)
-      sessionToken = addWorkspaceToToken(existingSession.value, workspace)
-    } else {
-      // Create new token for first workspace
-      sessionToken = createSessionToken([workspace])
-    }
-
-    // Store signed JWT token with domain for preview subdomains
-    res.cookies.set("session", sessionToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "none",
-      domain: ".terminal.goalive.nl",
-      path: "/",
-      maxAge: SESSION_MAX_AGE,
-    })
+  // Verify password
+  if (!user.password_hash) {
+    console.error("[Login] User has no password_hash:", email)
+    const res = NextResponse.json(
+      {
+        ok: false,
+        error: ErrorCodes.INVALID_CREDENTIALS,
+        message: getErrorMessage(ErrorCodes.INVALID_CREDENTIALS),
+        requestId,
+      },
+      { status: 401 },
+    )
+    addCorsHeaders(res, origin)
+    return res
   }
+
+  const isValid = await verifyPassword(password, user.password_hash)
+  if (!isValid) {
+    console.error("[Login] Invalid password for:", email)
+    const res = NextResponse.json(
+      {
+        ok: false,
+        error: ErrorCodes.INVALID_CREDENTIALS,
+        message: getErrorMessage(ErrorCodes.INVALID_CREDENTIALS),
+        requestId,
+      },
+      { status: 401 },
+    )
+    addCorsHeaders(res, origin)
+    return res
+  }
+
+  // Create JWT session token
+  const sessionToken = createSessionToken(user.user_id)
+
+  console.log("[Login] Successfully authenticated:", user.email)
+
+  const res = NextResponse.json({ ok: true, userId: user.user_id })
+  res.cookies.set("session", sessionToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: SESSION_MAX_AGE,
+  })
+
   addCorsHeaders(res, origin)
   return res
 }

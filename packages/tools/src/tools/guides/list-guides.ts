@@ -152,7 +152,7 @@ Examples:
   async args => {
     // Use source location, not dist - works in both dev and production
     const packageRoot = join(__dirname, "../../..")
-    const guidesBasePath = join(packageRoot, "internals-folder")
+    const guidesBasePath = join(packageRoot, "lovable-folder-only-use-for-inspiration")
     return listGuides(args, guidesBasePath)
   },
 )

@@ -17,7 +17,9 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
-    "test:e2e:debug": "playwright test --debug"
+    "test:e2e:debug": "playwright test --debug",
+    "gen:db": "bun run scripts/generate-db-types-improved.ts",
+    "gen:db:force": "rm -rf .tmp/supabase && bun run scripts/generate-db-types-improved.ts"
   },
   "dependencies": {
     "@alive-brug/images": "workspace:*",
@@ -31,6 +33,7 @@
     "@types/bcrypt": "^6.0.0",
     "bcrypt": "^6.0.0",
     "clsx": "^2.1.1",
+    "drizzle-orm": "^0.44.7",
     "framer-motion": "^11.11.1",
     "groq-sdk": "^0.34.0",
     "lucide-react": "^0.546.0",
@@ -54,6 +57,7 @@
     "@types/node": "24.9.1",
     "@types/react": "19.2.2",
     "autoprefixer": "^10.4.20",
+    "drizzle-kit": "^0.31.7",
     "happy-dom": "^20.0.10",
     "postcss": "^8.4.47",
     "typescript": "5.9.3",

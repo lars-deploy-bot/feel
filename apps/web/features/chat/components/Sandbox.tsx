@@ -10,7 +10,7 @@ export function Sandbox() {
   const { entries, clearEntries } = useSandbox()
   const isMinimized = useSandboxMinimized()
   const { setSandboxMinimized } = useDebugActions()
-  const { workspace } = useWorkspace()
+  const { workspace } = useWorkspace({ allowEmpty: true })
   const { width, isResizing, handleMouseDown } = useResizablePanel({ defaultWidth: 400 })
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
   const [activeTab, setActiveTab] = useState<"preview" | "console">("preview")

@@ -8,9 +8,9 @@
  * 4. Library-image attachment is sent to Claude in prompt
  */
 
-import { describe, expect, it, vi } from "vitest"
+import { describe, expect, it } from "vitest"
+import type { FileUploadAttachment, LibraryImageAttachment } from "../components/ChatInput/types"
 import { buildPromptWithAttachments } from "../utils/prompt-builder"
-import type { LibraryImageAttachment, FileUploadAttachment } from "../components/ChatInput/types"
 import { createTestImageFile } from "./fixtures/test-image"
 
 describe("File Upload Flow - Computer to Claude", () => {

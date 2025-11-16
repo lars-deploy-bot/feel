@@ -9,8 +9,8 @@ interface AddWorkspaceModalProps {
 }
 
 export function AddWorkspaceModal({ onClose, onSuccess }: AddWorkspaceModalProps) {
-  const [domain, setDomain] = useState("")
-  const [passcode, setPasscode] = useState("")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
@@ -23,14 +23,14 @@ export function AddWorkspaceModal({ onClose, onSuccess }: AddWorkspaceModalProps
       const response = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workspace: domain, passcode }),
+        body: JSON.stringify({ email, password }),
         credentials: "include",
       })
 
       const data = await response.json()
 
       if (!response.ok || !data.ok) {
-        setError("Invalid passcode or domain")
+        setError("Invalid email or password")
         setLoading(false)
         return
       }
@@ -38,7 +38,7 @@ export function AddWorkspaceModal({ onClose, onSuccess }: AddWorkspaceModalProps
       onSuccess()
       onClose()
     } catch {
-      setError("Failed to add workspace")
+      setError("Failed to login")
       setLoading(false)
     }
   }
@@ -60,43 +60,41 @@ export function AddWorkspaceModal({ onClose, onSuccess }: AddWorkspaceModalProps
           <Plus className="w-8 h-8 text-black dark:text-white" />
         </div>
         <h3 id="add-workspace-title" className="text-xl font-medium text-black dark:text-white mb-6 text-center">
-          Add Site
+          Login
         </h3>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="domain" className="block text-xs text-black/60 dark:text-white/60 mb-2 font-normal">
-              Domain name
+            <label htmlFor="email" className="block text-xs text-black/60 dark:text-white/60 mb-2 font-normal">
+              Email
             </label>
             <input
-              id="domain"
-              type="text"
-              value={domain}
-              onChange={e => setDomain(e.target.value)}
-              placeholder="example.goalive.nl"
+              id="email"
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="you@example.com"
               className="w-full px-4 py-2.5 bg-white dark:bg-[#2a2a2a] border border-black/20 dark:border-white/20 rounded text-sm text-black dark:text-white focus:outline-none focus:border-black dark:focus:border-white transition-colors"
               required
               disabled={loading}
-              autoComplete="off"
-              data-1p-ignore
+              autoComplete="email"
             />
           </div>
 
           <div>
-            <label htmlFor="passcode" className="block text-xs text-black/60 dark:text-white/60 mb-2 font-normal">
-              Passcode
+            <label htmlFor="password" className="block text-xs text-black/60 dark:text-white/60 mb-2 font-normal">
+              Password
             </label>
             <input
-              id="passcode"
+              id="password"
               type="password"
-              value={passcode}
-              onChange={e => setPasscode(e.target.value)}
-              placeholder="Enter passcode"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="Enter password"
               className="w-full px-4 py-2.5 bg-white dark:bg-[#2a2a2a] border border-black/20 dark:border-white/20 rounded text-sm text-black dark:text-white focus:outline-none focus:border-black dark:focus:border-white transition-colors"
               required
               disabled={loading}
-              autoComplete="off"
-              data-1p-ignore
+              autoComplete="current-password"
             />
           </div>
 
@@ -116,7 +114,7 @@ export function AddWorkspaceModal({ onClose, onSuccess }: AddWorkspaceModalProps
               className="flex-1 px-6 py-3 bg-black dark:bg-white text-white dark:text-black hover:bg-black/80 dark:hover:bg-white/80 rounded transition-all font-medium disabled:opacity-50"
               disabled={loading}
             >
-              {loading ? "Adding..." : "Add"}
+              {loading ? "Logging in..." : "Login"}
             </button>
           </div>
         </form>

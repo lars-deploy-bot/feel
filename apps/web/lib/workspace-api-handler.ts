@@ -1,7 +1,7 @@
 import { realpathSync } from "node:fs"
 import { NextResponse } from "next/server"
 import type { ZodSchema, z } from "zod"
-import { requireSessionUser } from "@/features/auth/lib/auth"
+import { isWorkspaceAuthenticated, requireSessionUser } from "@/features/auth/lib/auth"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 
 // Workspace base directory (from env or default)
@@ -100,9 +100,24 @@ export async function handleWorkspaceApi<T extends z.ZodRawShape>(
       const sitesIndex = pathParts.indexOf("sites")
       const workspaceName = sitesIndex >= 0 && pathParts[sitesIndex + 1] ? pathParts[sitesIndex + 1] : null
 
-      if (!workspaceName || !user.workspaces.includes(workspaceName)) {
+      if (!workspaceName) {
+        console.error(`[workspace-api ${requestId}] Authorization failed: could not extract workspace name from path`)
+        return NextResponse.json(
+          {
+            ok: false,
+            error: ErrorCodes.UNAUTHORIZED,
+            message: "Invalid workspace path",
+            requestId,
+          },
+          { status: 403 },
+        )
+      }
+
+      // Check if user has access to this workspace
+      const hasAccess = await isWorkspaceAuthenticated(workspaceName)
+      if (!hasAccess) {
         console.error(
-          `[workspace-api ${requestId}] Authorization failed: workspace ${workspaceName} not in user's authorized list`,
+          `[workspace-api ${requestId}] Authorization failed: user ${user.id} does not have access to workspace ${workspaceName}`,
         )
         return NextResponse.json(
           {

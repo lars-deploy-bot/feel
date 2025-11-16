@@ -33,7 +33,10 @@ export function ConversationSidebar({
 }: ConversationSidebarProps) {
   const isOpen = useSidebarOpen()
   const { closeSidebar } = useSidebarActions()
-  const conversations = useConversations(workspace || undefined)
+  // IMPORTANT: Only show conversations for current workspace (domain-scoped)
+  // Pass workspace to filter, or undefined to show empty (safer than showing all)
+  const allConversations = useConversations(workspace || "")
+  const conversations = workspace ? allConversations : []
   const currentConversationId = useCurrentConversationId()
   const sidebarRef = useRef<HTMLDivElement>(null)
   const [mounted, setMounted] = useState(false)

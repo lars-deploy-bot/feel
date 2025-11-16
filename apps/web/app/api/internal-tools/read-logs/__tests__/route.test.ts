@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 // Helper to create mock NextRequest
 function createMockRequest(url: string, options?: RequestInit) {
@@ -42,7 +42,7 @@ vi.mock("@/lib/workspace-api-handler", () => ({
     const { requireSessionUser } = await import("@/features/auth/lib/auth")
     try {
       await requireSessionUser()
-    } catch (error) {
+    } catch (_error) {
       return new Response(
         JSON.stringify({
           ok: false,
@@ -355,7 +355,7 @@ describe("POST /api/internal-tools/read-logs - Input Validation", () => {
     })
 
     const response = await POST(req)
-    const data = await response.json()
+    const _data = await response.json()
 
     // Should get past secret check and session check
     // Will likely fail at service check (404) or journalctl execution (500)

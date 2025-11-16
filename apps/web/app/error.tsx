@@ -1,7 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { RefreshCw, Home } from "lucide-react"
+import { Home, RefreshCw } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 
