@@ -54,7 +54,7 @@ Code changes already made:
 ```bash
 git add .
 git commit -m "Enable RLS with custom JWT tokens"
-bun run deploy  # or bun run staging
+make staging  # Deploy to staging for testing
 ```
 
 ---

@@ -14,7 +14,6 @@ const TEST_DOMAIN = `${TEST_SLUG}.alive.best`
 const SITE_PATH = `/srv/webalive/sites/${TEST_DOMAIN}`
 
 test.describe("Website Deployment with Authentication", () => {
-
   // Clean up before each test
   test.beforeEach(async () => {
     console.log(`[E2E Setup] Cleaning up test site: ${TEST_DOMAIN}`)

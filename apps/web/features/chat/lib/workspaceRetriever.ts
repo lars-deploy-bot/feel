@@ -122,4 +122,3 @@ function getTerminalWorkspace(body: any, requestId: string): WorkspaceResult {
     workspace: fullPath,
   }
 }
-

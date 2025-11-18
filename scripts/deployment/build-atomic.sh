@@ -1,6 +1,13 @@
 #!/bin/bash
 # Atomic build script - prevents PM2 from serving half-built files
-# Builds to .builds/dist, moves to timestamped directory, then atomically swaps symlink
+# Builds to .builds/{env}/dist, moves to timestamped directory, then atomically swaps symlink
+#
+# Usage: ./scripts/build-atomic.sh [environment]
+# Examples:
+#   ./scripts/build-atomic.sh prod     # Build to .builds/prod/dist.TIMESTAMP → .builds/prod/current
+#   ./scripts/build-atomic.sh staging  # Build to .builds/staging/dist.TIMESTAMP → .builds/staging/current
+#
+# NOTE: Dev environment uses hot-reload (next dev) and does NOT use this script
 
 set -euo pipefail
 
@@ -18,19 +25,27 @@ log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 
 # Navigate to project root
 SCRIPT_DIR="$(dirname "$0")"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$PROJECT_ROOT"
+
+# Get environment parameter (default: prod)
+ENV="${1:-prod}"
+if [[ ! "$ENV" =~ ^(prod|staging)$ ]]; then
+    log_error "Invalid environment: $ENV. Must be 'prod' or 'staging'"
+    log_error "Dev environment uses hot-reload (next dev) and does not use this script"
+    exit 1
+fi
 
 # Configuration
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-TEMP_BUILD_DIR=".builds/dist"
-TIMESTAMPED_DIR=".builds/dist.${TIMESTAMP}"
-SYMLINK=".builds/current"
+TEMP_BUILD_DIR=".builds/${ENV}/dist"
+TIMESTAMPED_DIR=".builds/${ENV}/dist.${TIMESTAMP}"
+SYMLINK=".builds/${ENV}/current"
 WEB_DIR="apps/web"
 WEB_NEXT_DIR="$WEB_DIR/.next"
-BUILDS_DIR=".builds"
+BUILDS_DIR=".builds/${ENV}"
 
-log_info "Starting atomic build to dist.${TIMESTAMP}..."
+log_info "Starting atomic build of ${ENV} environment to dist.${TIMESTAMP}..."
 
 # Check available disk space (require 250MB: ~127MB build + buffer)
 REQUIRED_MB=250
@@ -181,4 +196,4 @@ done
 cd "$PROJECT_ROOT"
 
 echo ""
-log_success "Atomic build complete! PM2 can now safely serve .builds/current"
+log_success "Atomic build complete! PM2 can now safely serve .builds/${ENV}/current"

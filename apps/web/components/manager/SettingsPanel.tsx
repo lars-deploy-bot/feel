@@ -54,7 +54,10 @@ export function SettingsPanel({
           ) : (
             <div className="space-y-3">
               {serviceStatus.services.map((service: Service) => (
-                <div key={service.service} className="flex items-center justify-between p-3 rounded border border-slate-200">
+                <div
+                  key={service.service}
+                  className="flex items-center justify-between p-3 rounded border border-slate-200"
+                >
                   <div className="flex items-center gap-3">
                     <div
                       className={`w-2 h-2 rounded-full ${
@@ -70,7 +73,9 @@ export function SettingsPanel({
                       <div className="text-xs text-slate-600">{service.message}</div>
                     </div>
                   </div>
-                  {service.latency !== undefined && <div className="text-xs text-slate-600 font-medium">{service.latency}ms</div>}
+                  {service.latency !== undefined && (
+                    <div className="text-xs text-slate-600 font-medium">{service.latency}ms</div>
+                  )}
                 </div>
               ))}
               <div className="text-xs text-slate-500 pt-2 text-center">

@@ -75,11 +75,7 @@ export async function updateOrgCredits(orgId: string, credits: number): Promise<
   }
 }
 
-export async function addOrgMember(
-  orgId: string,
-  userId: string,
-  role: "owner" | "admin" | "member"
-): Promise<void> {
+export async function addOrgMember(orgId: string, userId: string, role: "owner" | "admin" | "member"): Promise<void> {
   const response = await fetch("/api/manager/orgs/members/add", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

@@ -93,8 +93,8 @@ describe("Full Deployment Flow Integration", () => {
     console.log("[Flow Test] Full authenticated deployment flow")
 
     const apiResponse = await authenticatedFetch(API_ENDPOINTS.DEPLOY_SUBDOMAIN, sessionCookie, {
-        method: "POST",
-        body: JSON.stringify({
+      method: "POST",
+      body: JSON.stringify({
         slug: testSlug,
         orgId: testUser.orgId,
         siteIdeas: "",

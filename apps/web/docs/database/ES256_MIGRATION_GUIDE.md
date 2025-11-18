@@ -77,12 +77,13 @@ Before rotating keys in production, test locally:
 2. **Restart the server:**
    ```bash
    cd /root/webalive/claude-bridge
-   bun run deploy  # Or bun run dev for local testing
+   make staging     # Deploy to staging for testing
+   # Or make dev   # For local testing
    ```
 
 3. **Check logs:**
    ```bash
-   bun run see
+   make logs-staging
    # Should show: [JWT] ES256 signing enabled with key ID: f1e49401-0fd7-447e-a163-140ef40645e3
    ```
 
@@ -157,7 +158,7 @@ If something goes wrong:
 2. **Disable ES256 locally:**
    ```bash
    # Remove JWT_ALGORITHM=ES256 from .env
-   bun run deploy
+   make staging  # Deploy to staging to test
    ```
 
 ### After Revocation (If already revoked HS256)

@@ -14,9 +14,9 @@
  *     }
  *     header {
  *       -X-Frame-Options
- *       Content-Security-Policy "frame-ancestors https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+ *       Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl"
  *     }
- *     forward_auth https://staging.terminal.goalive.nl/api/auth/preview-guard
+ *     forward_auth https://dev.terminal.goalive.nl/api/auth/preview-guard
  *   }
  */
 
@@ -25,7 +25,7 @@ import { join } from "node:path"
 
 const CADDYFILE_PATH = "/root/webalive/claude-bridge/Caddyfile"
 const PREVIEW_BASE = "preview.terminal.goalive.nl"
-const AUTH_ENDPOINT = "https://staging.terminal.goalive.nl/api/auth/preview-guard"
+const AUTH_ENDPOINT = "https://dev.terminal.goalive.nl/api/auth/preview-guard"
 
 interface DomainMapping {
   domain: string
@@ -87,7 +87,7 @@ ${previewHost} {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server

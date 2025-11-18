@@ -75,15 +75,14 @@ Result: **22/22 passing** ✅
 
 ```bash
 # Staging (with login verification)
-bun run staging
-
-# Production
-bun run deploy
+make staging
 
 # Verify login
-curl -s -X POST http://localhost:8999/api/login \
+curl -s -X POST http://localhost:8998/api/login \
   -H "Content-Type: application/json" \
   -d '{"email":"eedenlars@gmail.com","password":"supersecret"}'
+
+# Production deployment - contact devops
 ```
 
 ### Related Documentation

@@ -8,14 +8,14 @@
  */
 import { test, expect } from "@playwright/test"
 
-// Real staging credentials
-const STAGING_EMAIL = process.env.TEST_EMAIL || "eedenlars@gmail.com"
-const STAGING_PASSWORD = process.env.TEST_PASSWORD || "supersecret"
+// Real dev environment credentials
+const DEV_EMAIL = process.env.TEST_EMAIL || "eedenlars@gmail.com"
+const DEV_PASSWORD = process.env.TEST_PASSWORD || "supersecret"
 
-async function loginStaging(page: any) {
+async function _loginDev(page: any) {
   await page.goto("/")
-  await page.getByPlaceholder("you@example.com").fill(STAGING_EMAIL)
-  await page.getByPlaceholder("Enter your password").fill(STAGING_PASSWORD)
+  await page.getByPlaceholder("you@example.com").fill(DEV_EMAIL)
+  await page.getByPlaceholder("Enter your password").fill(DEV_PASSWORD)
   await page.getByRole("button", { name: "Continue" }).click()
   await page.waitForURL("/chat", { timeout: 10000 })
   await page.waitForTimeout(2000) // Wait for workspace init

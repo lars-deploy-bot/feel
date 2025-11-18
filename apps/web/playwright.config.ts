@@ -14,7 +14,7 @@ export default defineConfig({
   workers: 1, // Run tests sequentially to avoid state pollution
 
   use: {
-    baseURL: isStaging ? "https://staging.terminal.goalive.nl" : BASE_URL,
+    baseURL: isStaging ? "https://dev.terminal.goalive.nl" : BASE_URL,
     screenshot: "only-on-failure",
     trace: "retain-on-failure",
   },

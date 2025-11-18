@@ -7,7 +7,7 @@
     "dev:test": "next dev -p 9547",
     "build": "next build",
     "start": "next start -p $(node -p \"require('../../bridge.config.js').ports.production\")",
-    "staging": "cd ../.. && bun run staging",
+    "dev:deploy": "cd ../.. && bun run dev",
     "lint": "biome lint .",
     "format": "npx biome format --write .",
     "tsc": "tsc --noEmit",

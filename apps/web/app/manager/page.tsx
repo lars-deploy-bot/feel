@@ -244,7 +244,6 @@ export default function ManagerPage() {
     }
   }
 
-
   const openPasswordDialog = (domain: string) => {
     setSelectedDomain(domain)
     setNewPassword("")
@@ -337,7 +336,7 @@ export default function ManagerPage() {
   const deleteDomain = async (domain: string) => {
     await executeHandler({
       fn: () => domainService.deleteDomain(domain),
-      onLoading: (loading) => setDeleting(loading ? domain : null),
+      onLoading: loading => setDeleting(loading ? domain : null),
       successMessage: "Domain deleted successfully",
       errorMessage: "Failed to delete domain",
       onSuccess: () => {
@@ -601,11 +600,9 @@ export default function ManagerPage() {
     await executeHandler({
       fn: () => settingsService.cleanupTestData(dryRun),
       onLoading: setCleaningTestData,
-      successMessage: dryRun
-        ? "Preview generated"
-        : "Cleanup complete",
+      successMessage: dryRun ? "Preview generated" : "Cleanup complete",
       errorMessage: "Failed to clean up test data",
-      onSuccess: (stats) => {
+      onSuccess: stats => {
         setTestDataStats(stats)
         if (!dryRun) {
           fetchOrgs()
@@ -636,7 +633,7 @@ export default function ManagerPage() {
     setConfirmDeleteOrg(null)
     await executeHandler({
       fn: () => orgService.deleteOrg(orgId),
-      onLoading: (loading) => setDeletingOrg(loading ? orgId : null),
+      onLoading: loading => setDeletingOrg(loading ? orgId : null),
       successMessage: "Organization deleted",
       errorMessage: "Failed to delete organization",
       onSuccess: () => setOrgs(prev => prev.filter(org => org.org_id !== orgId)),
@@ -683,7 +680,7 @@ export default function ManagerPage() {
     setConfirmRemoveMember(null)
     await executeHandler({
       fn: () => orgService.removeMember(orgId, userId),
-      onLoading: (loading) => setRemovingMember(loading ? userId : null),
+      onLoading: loading => setRemovingMember(loading ? userId : null),
       successMessage: "Member removed",
       errorMessage: "Failed to remove member",
       onSuccess: fetchOrgs,
@@ -698,7 +695,7 @@ export default function ManagerPage() {
     setConfirmTransferOwnership(null)
     await executeHandler({
       fn: () => orgService.transferOwnership(orgId, newOwnerId),
-      onLoading: (loading) => setTransferringOwnership(loading ? newOwnerId : null),
+      onLoading: loading => setTransferringOwnership(loading ? newOwnerId : null),
       successMessage: "Ownership transferred successfully",
       errorMessage: "Failed to transfer ownership",
       onSuccess: fetchOrgs,
@@ -712,7 +709,7 @@ export default function ManagerPage() {
       onLoading: setCheckingPermissions,
       successMessage: "Permissions checked",
       errorMessage: "Failed to check permissions",
-      onSuccess: (data) => setPermissionsData(data),
+      onSuccess: data => setPermissionsData(data),
       logError: false,
     }).catch(() => setPermissionsModal(null))
   }
@@ -723,7 +720,7 @@ export default function ManagerPage() {
       onLoading: setFixingPermissions,
       successMessage: "Permissions fixed successfully",
       errorMessage: "Failed to fix permissions",
-      onSuccess: (data) => setPermissionsData(data.result),
+      onSuccess: data => setPermissionsData(data.result),
     })
   }
 
@@ -782,37 +779,27 @@ export default function ManagerPage() {
                 type="button"
                 onClick={() => setActiveTab("domains")}
                 className={`relative py-4 px-1 mr-8 text-sm font-medium transition-colors ${
-                  activeTab === "domains"
-                    ? "text-indigo-600"
-                    : "text-slate-600 hover:text-slate-900"
+                  activeTab === "domains" ? "text-indigo-600" : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 Domains
-                {activeTab === "domains" && (
-                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600" />
-                )}
+                {activeTab === "domains" && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600" />}
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab("feedback")}
                 className={`relative py-4 px-1 mr-8 text-sm font-medium transition-colors ${
-                  activeTab === "feedback"
-                    ? "text-indigo-600"
-                    : "text-slate-600 hover:text-slate-900"
+                  activeTab === "feedback" ? "text-indigo-600" : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 Feedback
-                {activeTab === "feedback" && (
-                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600" />
-                )}
+                {activeTab === "feedback" && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600" />}
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab("organizations")}
                 className={`relative py-4 px-1 mr-8 text-sm font-medium transition-colors ${
-                  activeTab === "organizations"
-                    ? "text-indigo-600"
-                    : "text-slate-600 hover:text-slate-900"
+                  activeTab === "organizations" ? "text-indigo-600" : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 Organizations
@@ -829,15 +816,11 @@ export default function ManagerPage() {
                 type="button"
                 onClick={() => setActiveTab("settings")}
                 className={`relative py-4 px-1 mr-8 text-sm font-medium transition-colors ${
-                  activeTab === "settings"
-                    ? "text-indigo-600"
-                    : "text-slate-600 hover:text-slate-900"
+                  activeTab === "settings" ? "text-indigo-600" : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 Settings
-                {activeTab === "settings" && (
-                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600" />
-                )}
+                {activeTab === "settings" && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600" />}
               </button>
             </nav>
           </div>
@@ -859,11 +842,7 @@ export default function ManagerPage() {
           )}
 
           {activeTab === "feedback" && (
-            <FeedbackList
-              feedback={feedback}
-              loading={feedbackLoading}
-              onRefresh={fetchFeedback}
-            />
+            <FeedbackList feedback={feedback} loading={feedbackLoading} onRefresh={fetchFeedback} />
           )}
 
           {activeTab === "organizations" && (
@@ -874,7 +853,7 @@ export default function ManagerPage() {
               transferring={transferringOwnership}
               removing={removingMember}
               onRefresh={fetchOrgs}
-              onAddMember={(orgId) => {
+              onAddMember={orgId => {
                 setAddMemberOrgId(orgId)
                 fetchUsers()
               }}
@@ -948,7 +927,8 @@ export default function ManagerPage() {
             <div className="mb-8">
               <h2 className="text-2xl font-semibold text-gray-900 mb-2">Edit Domain Settings</h2>
               <p className="text-sm text-gray-600">
-                Manage credentials and access for <span className="font-mono font-medium text-gray-900">{selectedDomain}</span>
+                Manage credentials and access for{" "}
+                <span className="font-mono font-medium text-gray-900">{selectedDomain}</span>
               </p>
             </div>
 
@@ -958,7 +938,8 @@ export default function ManagerPage() {
                   API Credits
                 </label>
                 <p className="text-xs text-gray-600 mb-3">
-                  Number of API credits available for Claude requests. Used for streaming conversations and code operations.
+                  Number of API credits available for Claude requests. Used for streaming conversations and code
+                  operations.
                 </p>
                 <input
                   id="credits-input"
@@ -971,7 +952,9 @@ export default function ManagerPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 <p className="text-xs text-gray-500 mt-3 font-medium">
-                  Current: <span className="text-gray-700">{domains[selectedDomain || ""]?.credits?.toFixed(2) || "0.00"}</span> credits
+                  Current:{" "}
+                  <span className="text-gray-700">{domains[selectedDomain || ""]?.credits?.toFixed(2) || "0.00"}</span>{" "}
+                  credits
                 </p>
               </div>
 
@@ -1254,7 +1237,9 @@ export default function ManagerPage() {
               <h2 className="text-2xl font-semibold text-gray-900 mb-2">Edit Organization Credits</h2>
               <p className="text-sm text-gray-600">
                 Manage API credits for{" "}
-                <span className="font-mono font-medium text-gray-900">{orgs.find(o => o.org_id === selectedOrg)?.name}</span>
+                <span className="font-mono font-medium text-gray-900">
+                  {orgs.find(o => o.org_id === selectedOrg)?.name}
+                </span>
               </p>
             </div>
 
@@ -1264,7 +1249,8 @@ export default function ManagerPage() {
                   Organization Credits
                 </label>
                 <p className="text-xs text-gray-600 mb-3">
-                  Total API credits available for all members of this organization. Each member can use these credits for Claude requests.
+                  Total API credits available for all members of this organization. Each member can use these credits
+                  for Claude requests.
                 </p>
                 <input
                   id="org-credits-input"
@@ -1282,7 +1268,9 @@ export default function ManagerPage() {
                   }}
                 />
                 <p className="text-xs text-gray-500 mt-3 font-medium">
-                  Current: <span className="text-gray-700">{orgs.find(o => o.org_id === selectedOrg)?.credits.toFixed(2)}</span> credits
+                  Current:{" "}
+                  <span className="text-gray-700">{orgs.find(o => o.org_id === selectedOrg)?.credits.toFixed(2)}</span>{" "}
+                  credits
                 </p>
               </div>
             </div>
@@ -1338,7 +1326,10 @@ export default function ManagerPage() {
             <div className="mb-8">
               <h2 className="text-2xl font-semibold text-gray-900 mb-2">Add Member to Organization</h2>
               <p className="text-sm text-gray-600">
-                Add a new member to <span className="font-mono font-medium text-gray-900">{orgs.find(o => o.org_id === addMemberOrgId)?.name}</span>
+                Add a new member to{" "}
+                <span className="font-mono font-medium text-gray-900">
+                  {orgs.find(o => o.org_id === addMemberOrgId)?.name}
+                </span>
               </p>
             </div>
 
@@ -1370,7 +1361,9 @@ export default function ManagerPage() {
                   Assign Role
                 </label>
                 <p className="text-xs text-gray-600 mb-3">
-                  <span className="font-medium">Member</span> can access organization resources, <span className="font-medium">Admin</span> can manage members, <span className="font-medium">Owner</span> has full control.
+                  <span className="font-medium">Member</span> can access organization resources,{" "}
+                  <span className="font-medium">Admin</span> can manage members,{" "}
+                  <span className="font-medium">Owner</span> has full control.
                 </p>
                 <select
                   id="role-select"

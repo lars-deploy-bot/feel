@@ -73,7 +73,9 @@ describe("JWT Session Token - Security & Behavior", () => {
       const userId = "550e8400-e29b-41d4-a716-446655440000"
 
       // Token with email but missing workspaces
-      const invalidToken = sign({ sub: userId, userId, email: TEST_EMAIL, name: TEST_NAME }, JWT_SECRET, { expiresIn: "30d" })
+      const invalidToken = sign({ sub: userId, userId, email: TEST_EMAIL, name: TEST_NAME }, JWT_SECRET, {
+        expiresIn: "30d",
+      })
 
       const payload = await verifySessionToken(invalidToken)
 
@@ -120,7 +122,12 @@ describe("JWT Session Token - Security & Behavior", () => {
     })
 
     test("rejects tampered token signature", async () => {
-      const token = await createSessionToken("550e8400-e29b-41d4-a716-446655440000", TEST_EMAIL, TEST_NAME, TEST_WORKSPACES)
+      const token = await createSessionToken(
+        "550e8400-e29b-41d4-a716-446655440000",
+        TEST_EMAIL,
+        TEST_NAME,
+        TEST_WORKSPACES,
+      )
 
       // Tamper with signature
       const parts = token.split(".")
@@ -131,7 +138,12 @@ describe("JWT Session Token - Security & Behavior", () => {
     })
 
     test("rejects tampered 'sub' claim in payload", async () => {
-      const token = await createSessionToken("550e8400-e29b-41d4-a716-446655440000", TEST_EMAIL, TEST_NAME, TEST_WORKSPACES)
+      const token = await createSessionToken(
+        "550e8400-e29b-41d4-a716-446655440000",
+        TEST_EMAIL,
+        TEST_NAME,
+        TEST_WORKSPACES,
+      )
 
       // Tamper with payload
       const parts = token.split(".")
@@ -198,7 +210,12 @@ describe("JWT Session Token - Security & Behavior", () => {
     })
 
     test("token has standard JWT claims (iat, exp)", async () => {
-      const token = await createSessionToken("550e8400-e29b-41d4-a716-446655440000", TEST_EMAIL, TEST_NAME, TEST_WORKSPACES)
+      const token = await createSessionToken(
+        "550e8400-e29b-41d4-a716-446655440000",
+        TEST_EMAIL,
+        TEST_NAME,
+        TEST_WORKSPACES,
+      )
       const decoded = (ES256_ENABLED ? decodeJwt(token) : verify(token, JWT_SECRET)) as SessionPayload
 
       expect(decoded.iat).toBeDefined()
@@ -208,7 +225,12 @@ describe("JWT Session Token - Security & Behavior", () => {
     })
 
     test("token expiry is exactly 30 days", async () => {
-      const token = await createSessionToken("550e8400-e29b-41d4-a716-446655440000", TEST_EMAIL, TEST_NAME, TEST_WORKSPACES)
+      const token = await createSessionToken(
+        "550e8400-e29b-41d4-a716-446655440000",
+        TEST_EMAIL,
+        TEST_NAME,
+        TEST_WORKSPACES,
+      )
       const decoded = (ES256_ENABLED ? decodeJwt(token) : verify(token, JWT_SECRET)) as SessionPayload
 
       const expiresIn = decoded.exp! - decoded.iat!

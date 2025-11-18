@@ -214,7 +214,7 @@ describe("GET /api/manager/users", () => {
       mockEq.mockReturnValue({ order: mockOrder })
 
       const req = createMockRequest("http://localhost/api/manager/users", {
-        headers: { origin: "http://staging.terminal.goalive.nl" },
+        headers: { origin: "http://dev.terminal.goalive.nl" },
       })
 
       const response = await GET(req)

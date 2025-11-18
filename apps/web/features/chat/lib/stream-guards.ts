@@ -56,11 +56,7 @@ export function hasStreamEventStructure(data: unknown): data is {
 
   const event = data as Record<string, unknown>
 
-  return (
-    typeof event.requestId === "string" &&
-    typeof event.timestamp === "string" &&
-    typeof event.type === "string"
-  )
+  return typeof event.requestId === "string" && typeof event.timestamp === "string" && typeof event.type === "string"
 }
 
 /**

@@ -250,7 +250,7 @@ export async function DELETE(req: NextRequest) {
 
     try {
       const { stdout, stderr } = await execAsync(
-        `/root/webalive/claude-bridge/scripts/delete-site-systemd.sh ${domain}`,
+        `/root/webalive/claude-bridge/scripts/sites/delete-site-systemd.sh ${domain}`,
       )
       return corsResponse(origin, { ok: true, output: stdout, error: stderr || null, requestId })
     } catch (error) {

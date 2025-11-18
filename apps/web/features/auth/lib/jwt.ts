@@ -83,7 +83,7 @@ export async function createSessionToken(
   userId: string,
   email: string,
   name: string | null,
-  workspaces: string[]
+  workspaces: string[],
 ): Promise<string> {
   // Security: Validate userId before creating token
   if (!userId || typeof userId !== "string") {

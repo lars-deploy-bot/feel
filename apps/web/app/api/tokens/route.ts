@@ -26,7 +26,6 @@ export async function GET(req: NextRequest) {
       return createErrorResponse(ErrorCodes.WORKSPACE_NOT_FOUND, 404)
     }
 
-
     const tokens = creditsToLLMTokens(credits) // For backward compatibility
 
     return NextResponse.json<TokensResponse>({

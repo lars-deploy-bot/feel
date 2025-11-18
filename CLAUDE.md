@@ -282,56 +282,31 @@ bun run dev
 
 ## Production Deployment
 
-**CRITICAL**: Before doing any Claude Bridge deployment work (building and deploying the bridge itself, not deploying websites), you MUST read `docs/deployment/deployment.md` first. All details about atomic builds, rollback, and troubleshooting are there.
+**⚠️ CRITICAL: Production deployment is intentionally restricted.** Contact devops for production deploys.
 
-### Commands
+For troubleshooting, inspecting production, and dev/staging work, see `docs/deployment/deployment.md`.
 
+### Available Commands
+
+**Dev & Staging:**
 ```bash
-# Full deploy (recommended)
-bun run deploy
+make staging     # Full staging deployment (port 8998)
+make dev         # Rebuild tools + restart dev server (port 8997)
+make logs-staging # View staging logs
+make logs-dev    # View dev environment logs
 
-# Build only
-./scripts/build-atomic.sh
-
-# Logs
-bun run see
+# Status & monitoring
+make status      # Show all environments
+make rollback    # Interactive rollback (if needed)
 ```
 
-For deployment questions, see `docs/deployment/deployment.md`.
+### Site Deployment (Different)
 
-### Environment Variables (Production)
-
-**Required:**
+To deploy individual websites (not the Claude Bridge itself):
 ```bash
-ANTHROPIC_API_KEY=sk-ant-xxx
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-JWT_SECRET=your-jwt-secret-min-32-chars
-BRIDGE_PASSCODE=your_manager_passcode  # For /manager access only
+bun run deploy-site <domain.com>  # Deploy a website to infrastructure
 ```
 
-**Optional:**
-```bash
-CLAUDE_MODEL=claude-haiku-4-5
-WORKSPACE_BASE=/srv/webalive/sites
-```
-
-**Never set in production:**
-```bash
-BRIDGE_ENV=local  # Development only
-LOCAL_TEMPLATE_PATH=...  # Development only
-```
-
-### Security Hardening Checklist
-
-- [ ] Replace in-memory SessionStore with Redis
-- [ ] Add rate limiting on `/api/claude/stream`
-- [ ] Set secure cookie flags (httpOnly, Secure, SameSite)
-- [ ] Enable HTTPS in Caddy (automatic with valid domains)
-- [ ] Monitor active conversation count
-- [ ] Set up error tracking (Sentry, etc.)
-- [ ] Implement audit logging for all file operations
-- [ ] Regular security audits of workspace isolation
 
 ## Key Dependencies & Versions
 

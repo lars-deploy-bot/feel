@@ -186,7 +186,7 @@ export async function getSafeSessionCookie(logPrefix = "[Auth]"): Promise<string
 export async function verifyWorkspaceAccess(
   user: SessionUser,
   body: Record<string, unknown>,
-  logPrefix = "[Auth]"
+  logPrefix = "[Auth]",
 ): Promise<string | null> {
   const workspace = body.workspace
 
@@ -243,16 +243,12 @@ export async function verifyWorkspaceAccess(
  * createErrorResponse(ErrorCodes.INTERNAL_ERROR, 500, { exception: err.message, requestId })
  * // Returns: { ok: false, error: "INTERNAL_ERROR", message: "Something went wrong...", category: "server", exception: "...", requestId: "..." }
  */
-export function createErrorResponse(
-  error: ErrorCode,
-  status: number,
-  fields?: Record<string, unknown>
-): NextResponse {
+export function createErrorResponse(error: ErrorCode, status: number, fields?: Record<string, unknown>): NextResponse {
   // Remove 'message' from fields if present (prevent override of centralized message)
   const { message: _, ...safeFields } = fields || {}
 
   // Determine error category for frontend handling
-  const category = status >= 500 ? 'server' : 'user'
+  const category = status >= 500 ? "server" : "user"
 
   return NextResponse.json(
     {
@@ -262,7 +258,7 @@ export function createErrorResponse(
       category, // 'user' (4xx) or 'server' (5xx)
       ...safeFields, // Include all other fields in response
     },
-    { status }
+    { status },
   )
 }
 
@@ -284,10 +280,9 @@ export function createErrorResponse(
  */
 export async function validateRequest(
   req: Request,
-  requestId?: string
+  requestId?: string,
 ): Promise<
-  | { error: NextResponse }
-  | { data: { user: SessionUser; body: Record<string, unknown>; workspace: string } }
+  { error: NextResponse } | { data: { user: SessionUser; body: Record<string, unknown>; workspace: string } }
 > {
   const logPrefix = requestId ? `[Request ${requestId}]` : "[Request]"
 

@@ -126,7 +126,9 @@ function ChatPageContent() {
   const handleAttachmentUpload = useImageUpload({ workspace: workspace ?? undefined, isTerminal })
 
   // Helper to create API request body (DRY)
-  const createRequestBody = (message: string): {
+  const createRequestBody = (
+    message: string,
+  ): {
     message: string
     conversationId: string
     apiKey?: string

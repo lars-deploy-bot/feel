@@ -8,7 +8,7 @@ import { ErrorCodes } from "@/lib/error-codes"
 
 // Configuration
 const WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET || ""
-const DEPLOY_SCRIPT = path.join(process.cwd(), "../../scripts/build-and-serve.sh")
+const DEPLOY_SCRIPT = path.join(process.cwd(), "../../scripts/deployment/build-and-serve.sh")
 const LOG_DIR = path.join(process.cwd(), "../../logs")
 const BRANCH = process.env.DEPLOY_BRANCH || "main" // Only deploy on this branch
 

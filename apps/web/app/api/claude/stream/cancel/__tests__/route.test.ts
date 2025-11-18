@@ -14,7 +14,7 @@ vi.mock("@/features/auth/lib/auth", () => ({
         category: status >= 500 ? "server" : "user",
         ...fields,
       }),
-      { status }
+      { status },
     )
   },
 }))

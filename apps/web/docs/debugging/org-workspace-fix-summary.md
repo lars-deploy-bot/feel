@@ -10,7 +10,7 @@
 The organization auto-selection logic was only in the Settings modal (`OrganizationSettings` component), but it needed to run on initial page load in terminal mode.
 
 **Flow Issue:**
-1. User logs in to `staging.terminal.goalive.nl` (terminal mode)
+1. User logs in to `dev.terminal.goalive.nl` (terminal mode)
 2. Chat page loads and fetches organizations (for domain count)
 3. **BUG**: No org is auto-selected
 4. `WorkspaceSwitcher` tries to load workspaces but `selectedOrgId` is null
@@ -133,7 +133,7 @@ pm2 restart claude-bridge-staging
 
 After deployment, verify the fix:
 
-1. **Login to staging**: https://staging.terminal.goalive.nl
+1. **Login to staging**: https://dev.terminal.goalive.nl
 2. **Check browser console** for log:
    ```
    [Chat] Auto-selecting first organization: <org-name>
@@ -143,7 +143,7 @@ After deployment, verify the fix:
 
 ## Notes
 
-- Fix only applies in **terminal mode** (staging.terminal.goalive.nl, terminal.goalive.nl)
+- Fix only applies in **terminal mode** (dev.terminal.goalive.nl, terminal.goalive.nl)
 - In domain mode (direct site.com login), org/workspace comes from domain
 - Settings modal still has its own auto-select logic (unchanged)
 - Zustand store persists selected org across page refreshes

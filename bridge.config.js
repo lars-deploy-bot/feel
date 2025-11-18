@@ -1,43 +1,45 @@
 /**
- * Claude Bridge Configuration
+ * Claude Bridge Configuration (Legacy Wrapper)
  *
- * ⚠️  SINGLE SOURCE OF TRUTH - All ports and paths defined here
+ * ⚠️  READS FROM: environments.json (single source of truth)
  *
- * To change a port:
- *   1. Edit this file
- *   2. Run: pm2 delete all && pm2 start ecosystem.config.js
- *   3. Run: pm2 save
+ * This file loads configuration from environments.json and exposes it in the
+ * legacy format for backward compatibility with existing code.
  *
- * Used by:
- *   - ecosystem.config.js (PM2 processes)
- *   - scripts/build-and-serve.sh (production deployment)
- *   - package.json scripts (npm commands)
- *   - apps/web/package.json (Next.js commands)
+ * Usage:
+ *   - const config = require('./bridge.config.js')
+ *   - config.ports.production, config.appName.dev, config.workspaceBase.production
  */
 
+const fs = require('fs')
+const path = require('path')
+
+// Load from environments.json (single source of truth)
+const envPath = path.join(__dirname, 'environments.json')
+const rawConfig = JSON.parse(fs.readFileSync(envPath, 'utf-8'))
+const environments = rawConfig.environments
+
+// Transform to legacy format
 const config = {
   // Port configuration
-  // Production: Public terminal.goalive.nl
-  // Staging: For testing before deployment
   ports: {
-    production: 8999,
-    staging: 8998,
-    dev: 8999,
+    production: environments.production.port,
+    staging: environments.staging.port,
+    dev: environments.dev.port,
   },
 
   // Workspace paths
-  // Secure: /srv/webalive/sites (systemd-managed, isolated users)
-  // Legacy: /root/webalive/sites (PM2-managed, should migrate)
   workspaceBase: {
-    production: "/srv/webalive/sites",
-    staging: "/srv/webalive/sites",
-    dev: process.env.LOCAL_TEMPLATE_PATH || "/srv/webalive/sites",
+    production: environments.production.workspacePath,
+    staging: environments.staging.workspacePath,
+    dev: environments.dev.workspacePath,
   },
 
   // PM2 process names
   appName: {
-    production: "claude-bridge",
-    staging: "claude-bridge-staging",
+    production: environments.production.processName,
+    staging: environments.staging.processName,
+    dev: environments.dev.processName,
   },
 }
 
@@ -48,8 +50,8 @@ function validateConfig() {
     throw new Error("Invalid port configuration: ports must be numbers between 1024-65535")
   }
 
-  if (config.ports.production === config.ports.staging) {
-    throw new Error("Production and staging ports must be different")
+  if (config.ports.production === config.ports.dev) {
+    throw new Error("Production and dev ports must be different")
   }
 
   const paths = Object.values(config.workspaceBase)

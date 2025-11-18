@@ -52,7 +52,7 @@ protino-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl"
         X-Content-Type-Options nosniff
         X-XSS-Protection "1; mode=block"
         Referrer-Policy strict-origin-when-cross-origin
@@ -63,7 +63,7 @@ protino-alive-best.preview.terminal.goalive.nl {
     }
 
     # Auth check via forward_auth
-    forward_auth staging.terminal.goalive.nl {
+    forward_auth dev.terminal.goalive.nl {
         uri /api/auth/preview-guard
         copy_headers Cookie
     }
@@ -148,7 +148,7 @@ function getPreviewUrl(workspace: string): string {
    ↓
 3. Caddy intercepts via forward_auth
    ↓
-4. Caddy calls https://staging.terminal.goalive.nl/api/auth/preview-guard
+4. Caddy calls https://dev.terminal.goalive.nl/api/auth/preview-guard
    with Cookie header
    ↓
 5. preview-guard checks session cookie
@@ -253,7 +253,7 @@ curl -I https://protino-alive-best.preview.terminal.goalive.nl/ \
 ```
 
 ### 5. Iframe Functionality
-- Load https://staging.terminal.goalive.nl/chat
+- Load https://dev.terminal.goalive.nl/chat
 - Open Sandbox panel (if not visible: toggle debug mode)
 - Select workspace "protino.alive.best"
 - Verify:
@@ -267,7 +267,7 @@ curl -I https://protino-alive-best.preview.terminal.goalive.nl/ \
 ```bash
 curl -I https://protino-alive-best.preview.terminal.goalive.nl/
 # Should include:
-# - Content-Security-Policy: frame-ancestors https://staging.terminal.goalive.nl https://terminal.goalive.nl
+# - Content-Security-Policy: frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl
 # - (no X-Frame-Options header)
 ```
 

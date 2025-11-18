@@ -119,8 +119,8 @@ describe("Deployment API Integration", () => {
 
       for (const slug of invalidSlugs) {
         const response = await authenticatedFetch(API_ENDPOINTS.DEPLOY_SUBDOMAIN, sessionCookie, {
-        method: "POST",
-        body: JSON.stringify({
+          method: "POST",
+          body: JSON.stringify({
             slug,
             orgId: testUser.orgId,
           }),
@@ -138,8 +138,8 @@ describe("Deployment API Integration", () => {
 
       for (const slug of reservedSlugs) {
         const response = await authenticatedFetch(API_ENDPOINTS.DEPLOY_SUBDOMAIN, sessionCookie, {
-        method: "POST",
-        body: JSON.stringify({
+          method: "POST",
+          body: JSON.stringify({
             slug,
             orgId: testUser.orgId,
           }),

@@ -118,10 +118,10 @@ To debug issues against staging:
 
 ```bash
 # Run in headed mode to see what's happening
-TEST_ENV=staging bun run test:e2e:headed org-workspace-selection.spec.ts
+TEST_ENV=dev bun run test:e2e:headed org-workspace-selection.spec.ts
 
 # Or use debug mode
-TEST_ENV=staging bun run test:e2e:debug org-workspace-selection.spec.ts
+TEST_ENV=dev bun run test:e2e:debug org-workspace-selection.spec.ts
 ```
 
 ## Test Coverage

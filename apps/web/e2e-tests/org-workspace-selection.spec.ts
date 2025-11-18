@@ -11,20 +11,20 @@ import { expect, test } from "./setup"
  *
  * Can run against:
  * - Local test mode (test@bridge.local / test)
- * - Staging environment (STAGING_EMAIL / STAGING_PASSWORD env vars)
+ * - Dev environment (DEV_EMAIL / DEV_PASSWORD env vars)
  */
 
-const isStaging = process.env.TEST_ENV === "staging"
-const STAGING_EMAIL = process.env.STAGING_EMAIL || "eedenlars@gmail.com"
-const STAGING_PASSWORD = process.env.STAGING_PASSWORD || "supersecret"
+const isDev = process.env.TEST_ENV === "dev"
+const DEV_EMAIL = process.env.DEV_EMAIL || "eedenlars@gmail.com"
+const DEV_PASSWORD = process.env.DEV_PASSWORD || "supersecret"
 const TEST_EMAIL = "test@bridge.local"
 const TEST_PASSWORD = "test"
 
 test.describe("Organization and Workspace Selection", () => {
   test.beforeEach(async ({ page }) => {
-    // Configure for staging or local
-    if (isStaging) {
-      await page.goto("https://staging.terminal.goalive.nl/")
+    // Configure for dev or local
+    if (isDev) {
+      await page.goto("https://dev.terminal.goalive.nl/")
     } else {
       await page.goto("/")
     }
@@ -32,8 +32,8 @@ test.describe("Organization and Workspace Selection", () => {
 
   test("loads organizations after login", async ({ page }) => {
     // Login
-    const email = isStaging ? STAGING_EMAIL : TEST_EMAIL
-    const password = isStaging ? STAGING_PASSWORD : TEST_PASSWORD
+    const email = isDev ? DEV_EMAIL : TEST_EMAIL
+    const password = isDev ? DEV_PASSWORD : TEST_PASSWORD
 
     await page.getByPlaceholder("you@example.com").fill(email)
     await page.getByPlaceholder("Enter your password").fill(password)
@@ -253,7 +253,7 @@ test.describe("Organization and Workspace Selection", () => {
 test.describe("Organization Selection UI", () => {
   test.beforeEach(async ({ page }) => {
     if (isStaging) {
-      await page.goto("https://staging.terminal.goalive.nl/")
+      await page.goto("https://dev.terminal.goalive.nl/")
     } else {
       await page.goto("/")
     }

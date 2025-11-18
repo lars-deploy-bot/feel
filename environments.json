@@ -1,0 +1,49 @@
+{
+  "environments": {
+    "production": {
+      "key": "production",
+      "displayName": "Production",
+      "prefix": "prod",
+      "port": 8999,
+      "domain": "terminal.goalive.nl",
+      "processName": "claude-bridge",
+      "serverScript": ".builds/prod/current/standalone/apps/web/server.js",
+      "workspacePath": "/srv/webalive/sites",
+      "isProduction": true,
+      "hasHotReload": false,
+      "deployCommand": "make deploy",
+      "logsCommand": "make logs",
+      "restartCommand": "pm2 restart claude-bridge"
+    },
+    "staging": {
+      "key": "staging",
+      "displayName": "Staging",
+      "prefix": "staging",
+      "port": 8998,
+      "domain": "staging.terminal.goalive.nl",
+      "processName": "claude-bridge-staging",
+      "serverScript": ".builds/staging/current/standalone/apps/web/server.js",
+      "workspacePath": "/srv/webalive/sites",
+      "isProduction": false,
+      "hasHotReload": false,
+      "deployCommand": "make staging",
+      "logsCommand": "make logs-staging",
+      "restartCommand": "pm2 restart claude-bridge-staging"
+    },
+    "dev": {
+      "key": "dev",
+      "displayName": "Development",
+      "prefix": "dev",
+      "port": 8997,
+      "domain": "dev.terminal.goalive.nl",
+      "processName": "claude-bridge-dev",
+      "serverScript": "node_modules/.bin/next",
+      "workspacePath": "/srv/webalive/sites",
+      "isProduction": false,
+      "hasHotReload": true,
+      "deployCommand": "make dev",
+      "logsCommand": "make logs-dev",
+      "restartCommand": "pm2 restart claude-bridge-dev"
+    }
+  }
+}

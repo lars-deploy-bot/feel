@@ -99,11 +99,9 @@ export async function POST(req: NextRequest) {
       }
     } else {
       // Invalid request - missing required parameters
-      return createErrorResponse(
-        ErrorCodes.INVALID_REQUEST,
-        400,
-        { message: "Either requestId or conversationId is required" }
-      )
+      return createErrorResponse(ErrorCodes.INVALID_REQUEST, 400, {
+        message: "Either requestId or conversationId is required",
+      })
     }
   } catch (error) {
     console.error("[Cancel Stream] Error processing cancellation:", error)

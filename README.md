@@ -131,76 +131,23 @@ See [docs/setup/README.md](./docs/setup/README.md) for detailed local developmen
 
 ### Production Deployment
 
-#### Automated Deployment (Recommended)
+⚠️ **Production deployment is intentionally restricted.** Contact devops for production deploys.
 
-**One-Command Deploy:**
+#### Development & Staging
+
 ```bash
-# Pull latest code, atomic build, restart PM2 with health checks
-bun run deploy
+# Staging deployment
+make staging
+
+# Dev environment rebuild
+make dev
+
+# View logs
+make logs-staging
+make logs-dev
 ```
 
-**What it does:**
-- Pulls latest code from git
-- Installs dependencies
-- Runs atomic build (timestamped directories + symlink)
-- Restarts PM2 process
-- Performs health check
-- Rolls back automatically if health check fails
-
-See `docs/deployment/deployment.md` for detailed atomic build system documentation.
-
-**GitHub Webhook Auto-Deploy:**
-```bash
-# 1. Setup webhook (generates secret, adds to .env)
-bun run setup-webhook
-
-# 2. Deploy with webhook enabled
-bun run deploy
-
-# 3. Configure GitHub webhook (instructions shown by setup-webhook)
-#    - Payload URL: https://your-domain.com/api/webhook/deploy
-#    - Secret: (copied from setup output)
-#    - Events: Just the push event
-
-# 4. Push to main → auto-deploys!
-git push origin main
-```
-
-**View Deployment Logs:**
-```bash
-# PM2 logs
-pm2 logs claude-bridge
-
-# Webhook deployment logs
-curl https://your-domain.com/api/webhook/deploy/logs/deploy-TIMESTAMP.log
-```
-
-#### Manual Deployment
-
-**Atomic Build System:**
-```bash
-# Build only (creates timestamped directory + symlink)
-./scripts/build-atomic.sh
-
-# Restart PM2 to serve new build
-pm2 restart claude-bridge
-
-# Or combine both steps
-./scripts/build-atomic.sh && pm2 restart claude-bridge
-```
-
-The atomic build system prevents race conditions by:
-- Building to isolated `dist.TIMESTAMP/` directories
-- Using symlinks for atomic swaps (kernel-level operation)
-- Keeping last 3 builds for instant rollback
-- Never serving incomplete builds to PM2
-
-**First-time PM2 setup:**
-```bash
-cd apps/web
-pm2 start "bun next start -p 8999" --name claude-bridge
-pm2 save
-```
+See `docs/deployment/deployment.md` for detailed deployment and troubleshooting documentation.
 
 #### Caddy Configuration & Domain Routing
 
@@ -385,13 +332,11 @@ bun run widget       # Start widget server (Go-based)
 bun test             # Run unit tests (from apps/web)
 bun run test:e2e     # Run E2E tests
 
-# Production
-./scripts/build-atomic.sh  # Atomic build (timestamped + symlink)
-bun run start                # Start production server
-
-# Deployment
-bun run deploy       # Full deploy: pull, atomic build, PM2 restart, health check
-bun run see          # View PM2 logs
+# Deployment (Dev & Staging via Makefile)
+make dev             # Rebuild and restart dev environment
+make staging         # Full staging deployment
+make logs-dev        # View dev logs
+make logs-staging    # View staging logs
 
 # Site Deployment
 bun run deploy-site  # Deploy new site with systemd isolation

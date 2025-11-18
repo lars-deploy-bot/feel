@@ -16,7 +16,7 @@ export interface DeploySiteResult {
 }
 
 export async function deploySite(options: DeploySiteOptions): Promise<DeploySiteResult> {
-  const scriptPath = "/root/webalive/claude-bridge/scripts/deploy-site-systemd.sh"
+  const scriptPath = "/root/webalive/claude-bridge/scripts/sites/deploy-site-systemd.sh"
   const domain = options.domain.toLowerCase() // Always lowercase domain
   const deployCommand = `bash ${scriptPath} ${domain}`
 

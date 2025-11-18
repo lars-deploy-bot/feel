@@ -33,10 +33,12 @@ always use bun!
 
 | Env | Domain | Port | Process | Command |
 |-----|--------|------|---------|---------|
-| **Prod** | `terminal.goalive.nl` | `8999` | `claude-bridge` | `bun run deploy` |
-| **Staging** | `staging.terminal.goalive.nl` | `8998` | `claude-bridge-staging` | `bun run staging` |
+| **Staging** | `staging.terminal.goalive.nl` | `8998` | `claude-bridge-staging` | `make staging` |
+| **Dev** | `dev.terminal.goalive.nl` | `8997` | `claude-bridge-dev` | `make dev` |
 
-**Quick Commands**: `bun run see` (logs), `bun run see:staging` (staging logs), `pm2 list` (status)
+**Quick Commands**: `make logs-staging` (staging), `make logs-dev` (dev), `make status` (all), `pm2 list`
+
+**⚠️ Production deployment is restricted** - Contact devops for production deploys.
 
 ## Request → Response Pipeline
 

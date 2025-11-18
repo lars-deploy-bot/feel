@@ -5,26 +5,27 @@
 ## Start Here
 
 **I want to...**
-- 🚀 **Deploy now** → `bun run deploy` then read [Quick Start](#quick-start)
+- 🚀 **Deploy to staging** → `make staging` then read [Quick Start](#quick-start)
+- 🚀 **Deploy to dev** → `make dev`
 - 🔧 **Fix a problem** → Check [Troubleshooting](#troubleshooting-index)
 - 📚 **Understand how it works** → Read [deployment.md](./deployment.md)
 - 🏗️ **Learn the architecture** → Read [ARCHITECTURE.md](./ARCHITECTURE.md)
 - 📜 **See what changed** → Read [CHANGELOG.md](./CHANGELOG.md)
 
+⚠️ **Production deployment is restricted** - Contact devops for production deploys.
+
 ## Quick Start
 
 ```bash
-# Full deployment (recommended)
-bun run deploy
+# Staging deployment (recommended for testing)
+make staging
 
-# Build only (no restart)
-./scripts/build-atomic.sh
-
-# Staging
-bun run staging
+# Dev environment (with hot reload)
+make dev
 
 # View logs
-bun run see
+make logs-staging
+make logs-dev
 ```
 
 ## What's Protected
@@ -46,11 +47,12 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for complete coverage analysis.
 
 | Symptom | Solution |
 |---------|----------|
-| CSS not loading (404) | `bun run deploy` |
+| CSS not loading in staging (404) | `make staging` |
+| CSS not loading in dev (404) | `make dev` |
 | Port in use error | Check if PM2: `pm2 list` |
 | Staging broken | `pm2 restart claude-bridge-staging` |
+| Dev broken | `make dev` |
 | Disk full | Remove old builds: `cd .builds && ls -dt dist.* \| tail -n +4 \| xargs rm -rf` |
-| Deploy locked | Check running: `ps aux \| grep build-and-serve` |
 
 Full troubleshooting in [deployment.md](./deployment.md#troubleshooting).
 
@@ -77,7 +79,8 @@ apps/web/.next/dev/               # Staging only
 ```
 
 **Servers:**
-- Production: `localhost:8999` → `.builds/current/standalone/`
-- Staging: `localhost:8998` → `next dev` (uses `.next/dev`)
+- Production (restricted): `localhost:8999` → `.builds/current/standalone/`
+- Staging: `localhost:8998` → `.builds/staging/current/standalone/`
+- Dev: `localhost:8997` → `next dev --turbo` (uses `.next/dev`)
 
 **Protection:** 92% coverage, see [ARCHITECTURE.md](./ARCHITECTURE.md#failure-modes)

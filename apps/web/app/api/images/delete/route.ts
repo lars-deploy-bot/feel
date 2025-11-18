@@ -19,7 +19,7 @@ export async function DELETE(request: NextRequest) {
     if (!key || typeof key !== "string") {
       return createErrorResponse(ErrorCodes.INVALID_REQUEST, 400, {
         field: "key",
-        requestId
+        requestId,
       })
     }
 

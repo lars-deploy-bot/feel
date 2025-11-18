@@ -119,12 +119,7 @@ export async function POST(req: NextRequest) {
 
   // Create JWT session token with embedded user profile + workspaces
   // This eliminates 3 database queries per request (iam.users, org_memberships, domains)
-  const sessionToken = await createSessionToken(
-    user.user_id,
-    user.email || "",
-    user.display_name,
-    workspaces
-  )
+  const sessionToken = await createSessionToken(user.user_id, user.email || "", user.display_name, workspaces)
 
   console.log(`[Login] Successfully authenticated: ${user.email} (${workspaces.length} workspaces)`)
 

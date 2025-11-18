@@ -283,7 +283,7 @@ export function SubdomainDeployForm() {
               >
                 <div className="aspect-[4/3] overflow-hidden bg-gray-100">
                   <img
-                    src="https://staging.terminal.goalive.nl/_images/t/alive.best/o/633011933261ab39/v/orig.webp"
+                    src="https://dev.terminal.goalive.nl/_images/t/alive.best/o/633011933261ab39/v/orig.webp"
                     alt="Basic landing page template"
                     className="w-full h-full object-cover"
                   />
@@ -302,7 +302,7 @@ export function SubdomainDeployForm() {
               >
                 <div className="aspect-[4/3] overflow-hidden bg-gray-100">
                   <img
-                    src="https://staging.terminal.goalive.nl/_images/t/alive.best/o/865d2212725460af/v/orig.webp"
+                    src="https://dev.terminal.goalive.nl/_images/t/alive.best/o/865d2212725460af/v/orig.webp"
                     alt="Recipe website template"
                     className="w-full h-full object-cover"
                   />

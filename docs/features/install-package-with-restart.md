@@ -226,7 +226,7 @@ Possible improvements (not required for current implementation):
 If issues arise with the automatic restart:
 
 1. Comment out the `restartSystemdService()` call in the route
-2. Build and deploy: `bun run build && bun run deploy`
+2. Build and deploy via Makefile: `make staging` or contact devops for production
 3. Users can manually restart services as before
 
 No database changes or migrations required.

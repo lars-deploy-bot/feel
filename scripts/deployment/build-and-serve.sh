@@ -1,7 +1,13 @@
 #!/bin/bash
 
 # Build and serve Claude Bridge on PM2 (production mode)
-# This script builds the project and serves it on port 8999
+#
+# Usage: ./scripts/build-and-serve.sh [environment]
+# Examples:
+#   ./scripts/build-and-serve.sh prod        # Deploy to port 8999
+#   ./scripts/build-and-serve.sh staging     # Deploy to port 8998
+#
+# Dev environment uses hot-reload (next dev) - use ./scripts/deploy-dev.sh instead
 #
 # ZERO-DOWNTIME DEPLOYMENT:
 # 1. Backup current build before building new version
@@ -22,15 +28,34 @@ NC='\033[0m' # No Color
 
 # Load configuration from single source of truth
 SCRIPT_DIR="$(dirname "$0")"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 CONFIG_FILE="$PROJECT_ROOT/bridge.config.js"
+ENV_CONFIG="$PROJECT_ROOT/environments.config.ts"
+
+# Get environment parameter (default: prod)
+ENV="${1:-prod}"
+if [[ ! "$ENV" =~ ^(prod|staging)$ ]]; then
+    echo -e "${RED}[ERROR]${NC} Invalid environment: $ENV. Must be 'prod' or 'staging'"
+    echo -e "${RED}[ERROR]${NC} Dev environment uses hot-reload (next dev) - use ./scripts/deploy-dev.sh instead"
+    exit 1
+fi
+
+# Map environment names to config keys
+case "$ENV" in
+    prod)
+        CONFIG_KEY="production"
+        ;;
+    staging|dev)
+        CONFIG_KEY="$ENV"
+        ;;
+esac
 
 # Extract port and app name from config file
-PORT=$(node -p "require('$CONFIG_FILE').ports.production")
-APP_NAME=$(node -p "require('$CONFIG_FILE').appName.production")
+PORT=$(node -p "require('$CONFIG_FILE').ports.${CONFIG_KEY}")
+APP_NAME=$(node -p "require('$CONFIG_FILE').appName.${CONFIG_KEY}")
 LOCK_FILE="/tmp/${APP_NAME}-deploy.lock"
 MAX_WAIT=30  # Max seconds to wait for health check
-STANDALONE_SERVER_PATH=".builds/current/standalone/apps/web/server.js"
+STANDALONE_SERVER_PATH=".builds/${ENV}/current/standalone/apps/web/server.js"
 
 cd "$PROJECT_ROOT"
 
@@ -55,11 +80,12 @@ log_error() {
 start_pm2_server() {
     local port="$1"
     local app_name="$2"
+    local env_dir="$3"
 
     PORT="$port" BRIDGE_API_PORT="$port" NODE_ENV="production" pm2 start "$PROJECT_ROOT/$STANDALONE_SERVER_PATH" \
         --name "$app_name" \
         --interpreter bun \
-        --cwd "$PROJECT_ROOT/.builds/current/standalone" \
+        --cwd "$PROJECT_ROOT/.builds/${env_dir}/current/standalone" \
         --update-env
 }
 
@@ -67,14 +93,15 @@ start_pm2_server() {
 rollback_build() {
     local symlink="$1"
     local previous_build="$2"
+    local env_dir="$3"
 
-    if [ -z "$previous_build" ] || [ ! -d ".builds/$previous_build" ]; then
+    if [ -z "$previous_build" ] || [ ! -d ".builds/${env_dir}/$previous_build" ]; then
         log_error "Previous build not found: $previous_build"
         return 1
     fi
 
     log_warn "Rolling back to previous build: $previous_build"
-    cd .builds
+    cd ".builds/${env_dir}"
     ln -sfn "$previous_build" "current"
     cd "$PROJECT_ROOT"
 
@@ -103,7 +130,7 @@ fi
 # Create lock file
 echo $$ > "$LOCK_FILE"
 
-log_info "Starting deployment of ${APP_NAME}..."
+log_info "Starting deployment of ${APP_NAME} (${ENV} environment, port ${PORT})..."
 
 # Validate environment
 log_info "Validating environment..."
@@ -175,7 +202,7 @@ fi
 log_success "All tests passed"
 
 # Capture current build for potential rollback
-DIST_SYMLINK="$PROJECT_ROOT/.builds/current"
+DIST_SYMLINK="$PROJECT_ROOT/.builds/${ENV}/current"
 PREVIOUS_BUILD=""
 if [ -L "$DIST_SYMLINK" ]; then
     PREVIOUS_BUILD=$(readlink "$DIST_SYMLINK")
@@ -183,8 +210,8 @@ if [ -L "$DIST_SYMLINK" ]; then
 fi
 
 # Run atomic build (builds to timestamped dir, atomically updates symlink)
-log_info "Running atomic build..."
-if ! ./scripts/build-atomic.sh; then
+log_info "Running atomic build for ${ENV} environment..."
+if ! "$PROJECT_ROOT/scripts/deployment/build-atomic.sh" "$ENV"; then
     log_error "Atomic build failed"
     log_info "Previous build still active - no changes made"
     log_error "Deploy aborted - fix build errors and try again"
@@ -225,10 +252,10 @@ fi
 rm -f apps/web/.next/dev/lock 2>/dev/null || true
 
 # Start the production server
-log_info "Starting production server on port $PORT..."
+log_info "Starting ${ENV} server on port $PORT..."
 
 # Use standalone server (recommended for output: standalone mode)
-if ! start_pm2_server "$PORT" "$APP_NAME" >/dev/null 2>&1; then
+if ! start_pm2_server "$PORT" "$APP_NAME" "$ENV" >/dev/null 2>&1; then
     log_error "Failed to start PM2 process"
     exit 1
 fi
@@ -263,11 +290,11 @@ else
 
     # Rollback to previous build if it exists
     if [ -n "$PREVIOUS_BUILD" ]; then
-        if rollback_build "$DIST_SYMLINK" "$PREVIOUS_BUILD"; then
+        if rollback_build "$DIST_SYMLINK" "$PREVIOUS_BUILD" "$ENV"; then
             log_warn "Attempting to restart with previous build..."
 
             # Restart with old build using standalone server
-            if start_pm2_server "$PORT" "$APP_NAME" >/dev/null 2>&1; then
+            if start_pm2_server "$PORT" "$APP_NAME" "$ENV" >/dev/null 2>&1; then
                 # Verify rollback is serving
                 sleep 3
                 if curl -sf http://localhost:$PORT/ >/dev/null 2>&1; then
@@ -311,10 +338,10 @@ pm2 save >/dev/null 2>&1 || true
 # Show final status
 echo ""
 echo "═══════════════════════════════════════════════════════"
-log_success "Deployment completed successfully!"
+log_success "Deployment of ${ENV} completed successfully!"
 echo "═══════════════════════════════════════════════════════"
 echo ""
-pm2 status
+pm2 describe "$APP_NAME"
 echo ""
 echo "📝 Logs:     pm2 logs $APP_NAME"
 echo "🔄 Restart:  pm2 restart $APP_NAME"

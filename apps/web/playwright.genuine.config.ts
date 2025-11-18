@@ -10,7 +10,7 @@ import { defineConfig } from "@playwright/test"
  */
 
 // Use staging server (already running without PLAYWRIGHT_TEST=true)
-const BASE_URL = "https://staging.terminal.goalive.nl"
+const BASE_URL = "https://dev.terminal.goalive.nl"
 
 export default defineConfig({
   testDir: "./e2e-tests",

@@ -1,68 +1,49 @@
 # Deployment Guide
 
-**Purpose:** Operational commands, workflows, and troubleshooting.
+**⚠️ WARNING: Production deployment is intentionally restricted. Contact devops for production deploys.**
 
 ## Commands
 
-### Production Deploy
+### Dev & Staging Deployments
+
 ```bash
-bun run deploy                    # Full: git pull + build + restart + health check
-./scripts/build-atomic.sh         # Build only (no restart)
-bun run see                       # View PM2 logs
+make staging                      # Full staging deployment (port 8998)
+make dev                          # Rebuild tools + restart dev server (port 8997)
 ```
 
-### Staging
+### Logs
+
 ```bash
-bun run staging                   # Rebuild tools + restart staging server
-pm2 logs claude-bridge-staging    # View staging logs
+make logs-staging                 # View staging environment logs
+make logs-dev                     # View dev environment logs
 ```
 
-### Rollback
+### Status & Troubleshooting
+
 ```bash
-# List available builds
-ls -lt .builds/
-
-# Switch to previous build
-cd .builds && ln -sfn dist.TIMESTAMP current && cd ..
-pm2 restart claude-bridge
+make status                       # Show status of all environments
+make rollback                     # Interactive rollback to previous build
 ```
 
-### Verify
+### Site Deployment
+
+For deploying individual websites (not the Claude Bridge):
 ```bash
-readlink .builds/current          # Check active build
-curl -I http://localhost:8999/    # Test production
-curl -I http://localhost:8998/    # Test staging
+bun run deploy-site <domain.com>  # Deploy a website to the infrastructure
 ```
 
-## Deploy Workflow
+### Verify Dev/Staging
 
-```
-bun run deploy
-  ↓
-1. Git pull (non-fatal if fails)
-2. Install dependencies (bun install)
-3. Run tests (bun test) - deployment aborted if tests fail
-4. Check disk space (require 250MB)
-5. Check port (allow PM2 processes)
-6. Backup staging dev files (.next/dev)
-7. Build to .next
-8. Move to .builds/dist
-9. Copy static assets to standalone
-10. Restore staging dev files
-11. Timestamp: .builds/dist → .builds/dist.TIMESTAMP
-12. Atomic swap: current → dist.TIMESTAMP
-13. Cleanup old builds (keep last 3)
-14. Stop PM2
-15. Start PM2 with standalone server
-16. Health check (30s timeout)
-17. Auto-rollback if health check fails
+```bash
+curl -I http://localhost:8997/    # Test dev environment
+pm2 describe claude-bridge-dev    # Check dev process status
 ```
 
-## Troubleshooting
+## Dev Environment Troubleshooting
 
-### Tests Failed During Deployment
+### Tests Failed Locally
 
-**Symptom:** `ERROR: Tests failed - deployment aborted`
+**Symptom:** `ERROR: Tests failed`
 
 **Cause:** One or more tests failing in the test suite
 
@@ -74,55 +55,55 @@ bun test
 # Fix failing tests
 # [make your fixes]
 
-# Redeploy
-bun run deploy
+# Restart dev
+make dev
 ```
 
-**Prevention:** Always run `bun test` locally before deploying.
+**Prevention:** Always run `bun test` locally before testing.
 
-### CSS Not Loading (404)
+### CSS Not Loading in Dev (404)
 
 **Symptom:** `/_next/static/chunks/*.css` returns 404
 
-**Cause:** Static assets not copied to standalone
+**Cause:** Dev assets not built properly
 
 **Solution:**
 ```bash
-bun run deploy  # Full redeploy
+make dev  # Full rebuild
 ```
 
-**Prevention:** Build script copies `.next/static` and `public/` automatically.
+**Prevention:** Build script copies assets automatically.
 
-### Port Already in Use
+### Port 8997 Already in Use
 
-**Symptom:** `ERROR: Port 8999 is in use by another process`
+**Symptom:** `ERROR: Port 8997 is in use by another process`
 
-**Cause:** Non-PM2 process on port 8999
+**Cause:** Non-PM2 process on port 8997
 
 **Solution:**
 ```bash
 # Check what's using the port
-lsof -i :8999
+lsof -i :8997
 
 # If it's not PM2, kill it
 kill <PID>
 
-# Redeploy
-bun run deploy
+# Restart dev
+make dev
 ```
 
-### Staging Broken After Deploy
+### Dev Returns 500 Error
 
-**Symptom:** Staging returns 500 or "ENOENT: no such file or directory"
+**Symptom:** Dev environment returns 500 or "ENOENT: no such file or directory"
 
-**Cause:** Production build removed `.next/dev` files
+**Cause:** Dev files not built properly
 
 **Solution:**
 ```bash
-pm2 restart claude-bridge-staging  # Regenerates dev files
+pm2 restart claude-bridge-dev  # Regenerates dev files
+# or
+make dev
 ```
-
-**Prevention:** Build script backs up `.next/dev` before building.
 
 ### Disk Space Full
 
@@ -135,42 +116,16 @@ pm2 restart claude-bridge-staging  # Regenerates dev files
 # Remove all but last 3 builds
 cd .builds
 ls -dt dist.* | tail -n +4 | xargs rm -rf
-
-# Or remove all except current
-ACTIVE=$(readlink current)
-ls -d dist.* | grep -v "$ACTIVE" | xargs rm -rf
 ```
 
-### Deploy Locked
-
-**Symptom:** `ERROR: Deployment already in progress`
-
-**Cause:** Lock file exists
-
-**Solution:**
-```bash
-# Check if deploy is running
-ps aux | grep build-and-serve
-
-# If not running, remove lock
-rm -f /tmp/claude-bridge-deploy.lock
-
-# Redeploy
-bun run deploy
-```
-
-### Build Fails
+### Build Fails Locally
 
 **Symptom:** Build script exits with error
 
-**Behavior:**
-- Previous build remains active (untouched)
-- Error displayed in logs
-- Exit code 1
-
 **Solution:**
-1. Fix the error
-2. Run `bun run deploy` again
+1. Check error message
+2. Fix the issue
+3. Run `make dev` again
 
 ## Configuration
 

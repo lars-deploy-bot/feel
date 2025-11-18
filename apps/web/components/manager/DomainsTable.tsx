@@ -87,19 +87,34 @@ export function DomainsTable({
         <table className="min-w-full divide-y divide-slate-200">
           <thead>
             <tr>
-              <th scope="col" className="py-3.5 px-6 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+              <th
+                scope="col"
+                className="py-3.5 px-6 text-left text-xs font-medium text-slate-600 uppercase tracking-wider"
+              >
                 Domain
               </th>
-              <th scope="col" className="py-3.5 px-6 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+              <th
+                scope="col"
+                className="py-3.5 px-6 text-left text-xs font-medium text-slate-600 uppercase tracking-wider"
+              >
                 Status
               </th>
-              <th scope="col" className="py-3.5 px-6 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+              <th
+                scope="col"
+                className="py-3.5 px-6 text-left text-xs font-medium text-slate-600 uppercase tracking-wider"
+              >
                 Port
               </th>
-              <th scope="col" className="py-3.5 px-6 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+              <th
+                scope="col"
+                className="py-3.5 px-6 text-left text-xs font-medium text-slate-600 uppercase tracking-wider"
+              >
                 Email
               </th>
-              <th scope="col" className="py-3.5 px-6 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+              <th
+                scope="col"
+                className="py-3.5 px-6 text-left text-xs font-medium text-slate-600 uppercase tracking-wider"
+              >
                 Credits
               </th>
               <th scope="col" className="relative py-3.5 px-6">
@@ -114,7 +129,9 @@ export function DomainsTable({
                   <div className="font-medium text-slate-900">{domain}</div>
                   {config.orphaned && <div className="text-xs text-amber-600 mt-1">Orphaned</div>}
                   {statuses[domain]?.createdAt && (
-                    <div className="text-xs text-slate-500 mt-1">Created {formatCreatedDate(statuses[domain].createdAt)}</div>
+                    <div className="text-xs text-slate-500 mt-1">
+                      Created {formatCreatedDate(statuses[domain].createdAt)}
+                    </div>
                   )}
                 </td>
                 <td className="py-4 px-6 text-sm">
@@ -127,13 +144,19 @@ export function DomainsTable({
                     if (!checks || checks.length === 0) return null
                     const failed = checks.filter((c: any) => !c.pass)
                     if (failed.length === 0) return null
-                    return <div className="text-xs text-red-600 mt-1">{failed.length} issue{failed.length !== 1 ? 's' : ''}</div>
+                    return (
+                      <div className="text-xs text-red-600 mt-1">
+                        {failed.length} issue{failed.length !== 1 ? "s" : ""}
+                      </div>
+                    )
                   })()}
                 </td>
                 <td className="py-4 px-6 text-sm text-slate-700">
                   {config.orphaned ? <span className="text-slate-400">—</span> : config.port}
                 </td>
-                <td className="py-4 px-6 text-sm text-slate-700">{config.email || <span className="text-slate-400">—</span>}</td>
+                <td className="py-4 px-6 text-sm text-slate-700">
+                  {config.email || <span className="text-slate-400">—</span>}
+                </td>
                 <td className="py-4 px-6 text-sm text-slate-700">
                   {!config.orphaned && config.credits !== undefined ? (
                     <span className="font-medium">{config.credits.toFixed(2)}</span>

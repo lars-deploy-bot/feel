@@ -785,13 +785,13 @@ Object.defineProperty(fs, 'writeFileSync', { ... })
 - ❌ Never deployed to production (insufficient coverage discovered)
 
 ### v4.0 Status
-- ✅ Integrated into staging (`staging.terminal.goalive.nl`)
+- ✅ Integrated into staging (`dev.terminal.goalive.nl`)
 - ⚠️ Partial success (some files still root-owned)
 - ❌ Reverted before production deployment
 
 ### v5.0 Status (Current)
 - ✅ **IMPLEMENTED** — Child process isolation with automatic detection
-- ✅ **TESTED** — Verified on staging (staging.terminal.goalive.nl)
+- ✅ **TESTED** — Verified on staging (dev.terminal.goalive.nl)
 - ✅ **PRODUCTION DEPLOYED** — Nov 2, 2025 23:30 UTC
 - ✅ **MIGRATION COMPLETE** — 6 workspaces migrated (60 files fixed)
 - ✅ **VERIFIED** — All systemd workspaces clean (zero root-owned files)
