@@ -1,6 +1,5 @@
 import { spawnSync } from "node:child_process"
 import { tool } from "@anthropic-ai/claude-agent-sdk"
-import { z } from "zod"
 import { errorResult, successResult, type ToolResult } from "../../lib/bridge-api-client.js"
 import { sanitizeSubprocessEnv } from "../../lib/env-sanitizer.js"
 import { hasPackageJson, validateWorkspacePath } from "../../lib/workspace-validator.js"

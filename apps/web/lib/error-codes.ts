@@ -15,7 +15,9 @@ export const ErrorCodes = {
   AUTH_REQUIRED: "AUTH_REQUIRED",
   UNAUTHORIZED: "UNAUTHORIZED",
   INVALID_CREDENTIALS: "INVALID_CREDENTIALS",
+  INVALID_SIGNATURE: "INVALID_SIGNATURE",
   INSUFFICIENT_TOKENS: "INSUFFICIENT_TOKENS",
+  INSUFFICIENT_CREDITS: "INSUFFICIENT_CREDITS",
 
   // Request errors (3xxx)
   INVALID_JSON: "INVALID_JSON",
@@ -24,6 +26,9 @@ export const ErrorCodes = {
   MISSING_SLUG: "MISSING_SLUG",
   INVALID_SLUG: "INVALID_SLUG",
   UNKNOWN_ACTION: "UNKNOWN_ACTION",
+  ORG_ID_REQUIRED: "ORG_ID_REQUIRED",
+  INVALID_DOMAIN: "INVALID_DOMAIN",
+  DOMAIN_ALREADY_EXISTS: "DOMAIN_ALREADY_EXISTS",
 
   // Conversation errors (4xxx)
   CONVERSATION_BUSY: "CONVERSATION_BUSY",
@@ -119,10 +124,18 @@ export function getErrorMessage(code: ErrorCode, details?: Record<string, any>):
     case ErrorCodes.INVALID_CREDENTIALS:
       return "The passcode is incorrect. Please check your passcode and try again."
 
+    case ErrorCodes.INVALID_SIGNATURE:
+      return "Invalid webhook signature. The request could not be verified."
+
     case ErrorCodes.INSUFFICIENT_TOKENS:
       return details?.balance !== undefined
         ? `You don't have enough tokens to make this request (current balance: ${details.balance}). Please contact support to add more tokens.`
         : "You don't have enough tokens to make this request. Please contact support to add more tokens."
+
+    case ErrorCodes.INSUFFICIENT_CREDITS:
+      return details?.balance !== undefined
+        ? `You don't have enough credits to make this request (current balance: ${details.balance}). Please contact support to add more credits.`
+        : "You don't have enough credits to make this request. Please contact support to add more credits."
 
     case ErrorCodes.INVALID_JSON:
       return "I received malformed data. Please try sending your message again."
@@ -231,6 +244,17 @@ export function getErrorMessage(code: ErrorCode, details?: Record<string, any>):
       return details?.action
         ? `I don't know how to handle the action '${details.action}'. Please check the available actions.`
         : "I don't recognize that action. Please check the available actions."
+
+    case ErrorCodes.ORG_ID_REQUIRED:
+      return "Organization ID is required. Please select an organization to deploy to."
+
+    case ErrorCodes.INVALID_DOMAIN:
+      return details?.error || "Invalid domain name. Please provide a valid domain."
+
+    case ErrorCodes.DOMAIN_ALREADY_EXISTS:
+      return details?.domain
+        ? `The domain '${details.domain}' already exists. Please choose a different domain.`
+        : "This domain already exists. Please choose a different domain."
 
     case ErrorCodes.SLUG_TAKEN:
       return details?.slug

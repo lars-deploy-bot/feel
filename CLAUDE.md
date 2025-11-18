@@ -135,7 +135,7 @@ apps/web/
 2. **User Isolation**: New sites MUST use systemd deployment (dedicated users)
 3. **Tool Restrictions**: Only expose Read, Write, Edit, Glob, Grep to Claude
 4. **Session Security**: Never expose session keys in logs or responses
-5. **Password Storage**: Passwords in `domain-passwords.json` (secured at OS level)
+5. **Password Storage**: User passwords in Supabase `iam.users.password_hash` (bcrypt)
 
 ### Code Style
 
@@ -178,7 +178,7 @@ apps/web/
 # - Systemd service: site@newsite-com.service
 # - Dedicated user: site-newsite-com
 # - Workspace: /srv/webalive/sites/newsite.com/
-# - Password: "supersecret" (in domain-passwords.json)
+# - User account: Created or linked in Supabase (email-based)
 # - Port: Auto-assigned from registry
 ```
 
@@ -264,8 +264,8 @@ bun run dev
 ```
 
 **Test Credentials** (when `BRIDGE_ENV=local`):
-- Workspace: `test`
-- Passcode: `test`
+- Email: `test@bridge.local`
+- Password: `test`
 
 ### Before Committing
 
@@ -304,7 +304,10 @@ For deployment questions, see `docs/deployment/deployment.md`.
 **Required:**
 ```bash
 ANTHROPIC_API_KEY=sk-ant-xxx
-BRIDGE_PASSCODE=your_secure_passcode
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+JWT_SECRET=your-jwt-secret-min-32-chars
+BRIDGE_PASSCODE=your_manager_passcode  # For /manager access only
 ```
 
 **Optional:**
@@ -426,7 +429,7 @@ bun run pull
 
 1. **Never bypass security**: All file operations must be workspace-scoped
 2. **Systemd for sites, PM2 for bridge**: Don't mix process managers
-3. **Auto-password generation**: All new sites get "supersecret" password
+3. **User-based authentication**: Users have ONE account password that works across all their sites
 4. **Session persistence**: Current in-memory store is NOT production-ready
 5. **Terminal mode**: Allows custom workspace, verify before use
 6. **Manager access**: Hidden `/manager` URL with separate authentication

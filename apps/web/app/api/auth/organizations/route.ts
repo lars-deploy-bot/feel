@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
+import { COOKIE_NAMES, getClearCookieOptions } from "@/lib/auth/cookies"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { createAppClient } from "@/lib/supabase/app"
 import { createIamClient } from "@/lib/supabase/iam"
@@ -11,6 +12,7 @@ export async function GET(req: NextRequest) {
     // Get authenticated user
     const user = await getSessionUser()
     if (!user) {
+      // Clear stale/invalid session cookie to prevent infinite 401 loops
       const res = NextResponse.json(
         {
           ok: false,
@@ -19,6 +21,10 @@ export async function GET(req: NextRequest) {
         },
         { status: 401 },
       )
+
+      // Clear invalid session cookie (auto-cleanup for stuck mobile sessions)
+      res.cookies.set(COOKIE_NAMES.SESSION, "", getClearCookieOptions())
+
       addCorsHeaders(res, origin)
       return res
     }
@@ -33,18 +39,20 @@ export async function GET(req: NextRequest) {
             name: "Test Organization",
             credits: 1000,
             workspace_count: 2,
+            role: "owner",
           },
         ],
+        current_user_id: user.id,
       })
       addCorsHeaders(res, origin)
       return res
     }
 
-    // Get user's org memberships
+    // Get user's org memberships with roles
     const iam = await createIamClient("service")
     const { data: memberships, error: membershipError } = await iam
       .from("org_memberships")
-      .select("org_id")
+      .select("org_id, role")
       .eq("user_id", user.id)
 
     if (membershipError) {
@@ -112,17 +120,25 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Combine org data with workspace counts
+    // Create role map
+    const roleMap = new Map<string, string>()
+    for (const membership of memberships) {
+      roleMap.set(membership.org_id, membership.role)
+    }
+
+    // Combine org data with workspace counts and user roles
     const organizations = (orgs || []).map(org => ({
       org_id: org.org_id,
       name: org.name,
       credits: org.credits,
       workspace_count: workspaceCounts.get(org.org_id) || 0,
+      role: roleMap.get(org.org_id) || "member",
     }))
 
     const res = NextResponse.json({
       ok: true,
       organizations,
+      current_user_id: user.id, // Include current user ID for permission checks
     })
 
     addCorsHeaders(res, origin)

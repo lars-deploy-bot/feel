@@ -1,8 +1,10 @@
 import { existsSync } from "node:fs"
 import { type NextRequest, NextResponse } from "next/server"
+import { requireSessionUser } from "@/features/auth/lib/auth"
 import { validateDeploySubdomainRequest } from "@/features/deployment/types/guards"
 import { buildSubdomain } from "@/lib/config"
 import { deploySite } from "@/lib/deployment/deploy-site"
+import { validateUserOrgAccess } from "@/lib/deployment/org-resolver"
 import { validateSSLCertificate } from "@/lib/deployment/ssl-validation"
 import { siteMetadataStore } from "@/lib/siteMetadataStore"
 
@@ -11,6 +13,7 @@ interface DeploySubdomainResponse {
   message: string
   domain?: string
   chatUrl?: string
+  orgId?: string
   error?: string
   details?: unknown
 }
@@ -20,6 +23,10 @@ export async function POST(request: NextRequest) {
   console.log("[Deploy-Subdomain] === DEPLOY SUBDOMAIN REQUEST START ===")
 
   try {
+    // AUTHENTICATION REQUIRED - No anonymous deployments allowed
+    const user = await requireSessionUser()
+    console.log(`[Deploy-Subdomain] Authenticated user: ${user.email} (${user.id})`)
+
     // Parse and validate request body
     let body: unknown
     try {
@@ -49,7 +56,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(validationError, { status: 400 })
     }
 
-    const { slug, email, siteIdeas, selectedTemplate, password } = parseResult.data
+    const { slug, siteIdeas, selectedTemplate, orgId } = parseResult.data
+
+    // Validate orgId is provided
+    if (!orgId) {
+      console.error("[Deploy-Subdomain] orgId is required")
+      const errorResponse: DeploySubdomainResponse = {
+        ok: false,
+        message: "Organization ID is required. Please select an organization to deploy to.",
+        error: "ORG_ID_REQUIRED",
+      }
+      return NextResponse.json(errorResponse, { status: 400 })
+    }
+
+    // Validate user has access to the specified organization
+    console.log(`[Deploy-Subdomain] Validating access to organization: ${orgId}`)
+    const hasAccess = await validateUserOrgAccess(user.id, orgId)
+
+    if (!hasAccess) {
+      console.error(`[Deploy-Subdomain] User ${user.email} does not have access to org ${orgId}`)
+      const errorResponse: DeploySubdomainResponse = {
+        ok: false,
+        message: "You do not have access to this organization",
+        error: "ORG_ACCESS_DENIED",
+      }
+      return NextResponse.json(errorResponse, { status: 403 })
+    }
+
+    console.log(`[Deploy-Subdomain] User has access to organization ${orgId}`)
 
     // Build full domain from slug
     const fullDomain = buildSubdomain(slug)
@@ -86,7 +120,9 @@ export async function POST(request: NextRequest) {
     console.log("[Deploy-Subdomain] Starting deployment...")
     await deploySite({
       domain: fullDomain,
-      password,
+      email: user.email, // Use authenticated user's email
+      orgId, // Pass organization ID
+      // Note: No password needed - user is already authenticated
     })
     console.log("[Deploy-Subdomain] Deploy script completed")
 
@@ -96,7 +132,7 @@ export async function POST(request: NextRequest) {
       slug,
       domain: fullDomain,
       workspace: fullDomain,
-      email,
+      email: user.email, // Use authenticated user's email
       siteIdeas,
       selectedTemplate,
       createdAt: Date.now(),
@@ -121,12 +157,13 @@ export async function POST(request: NextRequest) {
       ok: true,
       message: `Site ${fullDomain} deployed successfully!`,
       domain: fullDomain,
+      orgId,
       chatUrl: `/chat?slug=${slug}`,
     }
 
     const res = NextResponse.json(response, { status: 200 })
 
-    res.cookies.set("session", sessionId, {
+    res.cookies.set("auth_session", sessionId, {
       httpOnly: true,
       secure: true,
       sameSite: "none",
@@ -141,27 +178,33 @@ export async function POST(request: NextRequest) {
     let errorMessage = "Deployment failed"
     let statusCode = 500
 
-    const isNodeError = error instanceof Error && "code" in error
-    const errorCode = isNodeError ? (error as Error & { code?: string | number }).code : undefined
-    const stderr = isNodeError && "stderr" in error ? (error as Error & { stderr?: string }).stderr : undefined
+    // Check for authentication errors first
+    if (error instanceof Error && error.message === "Authentication required") {
+      errorMessage = "Authentication required"
+      statusCode = 401
+    } else {
+      const isNodeError = error instanceof Error && "code" in error
+      const errorCode = isNodeError ? (error as Error & { code?: string | number }).code : undefined
+      const stderr = isNodeError && "stderr" in error ? (error as Error & { stderr?: string }).stderr : undefined
 
-    if (errorCode === "ETIMEDOUT") {
-      errorMessage = "Deployment timed out (5 minutes). Please try again."
-      statusCode = 408
-    } else if (errorCode === 12) {
-      errorMessage = "DNS validation failed. Please check your wildcard DNS setup."
-      statusCode = 400
-    } else if (stderr) {
-      if (stderr.includes("User.*already exists")) {
-        errorMessage = "System user conflict. Slug might be partially deployed. Please try a different slug."
-      } else if (stderr.includes("exists in Caddyfile")) {
-        errorMessage = "Domain already exists in configuration. Please try a different slug."
-      } else {
-        errorMessage = `Deployment error: ${stderr.substring(0, 200)}`
+      if (errorCode === "ETIMEDOUT") {
+        errorMessage = "Deployment timed out (5 minutes). Please try again."
+        statusCode = 408
+      } else if (errorCode === 12) {
+        errorMessage = "DNS validation failed. Please check your wildcard DNS setup."
+        statusCode = 400
+      } else if (stderr) {
+        if (stderr.includes("User.*already exists")) {
+          errorMessage = "System user conflict. Slug might be partially deployed. Please try a different slug."
+        } else if (stderr.includes("exists in Caddyfile")) {
+          errorMessage = "Domain already exists in configuration. Please try a different slug."
+        } else {
+          errorMessage = `Deployment error: ${stderr.substring(0, 200)}`
+        }
+        statusCode = 400
+      } else if (error instanceof Error && error.message) {
+        errorMessage = error.message
       }
-      statusCode = 400
-    } else if (error instanceof Error && error.message) {
-      errorMessage = error.message
     }
 
     const deploymentError: DeploySubdomainResponse = {

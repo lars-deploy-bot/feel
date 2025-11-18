@@ -123,6 +123,15 @@ if [ $FAILED -eq 0 ]; then
         mv "${DOMAIN_PASSWORDS_FILE}.tmp" "$DOMAIN_PASSWORDS_FILE"
         echo "✅ Removed from domain-passwords.json"
     fi
+
+    # Also remove from Supabase
+    echo "Removing from Supabase database..."
+    if cd /root/webalive/claude-bridge/apps/web && bun scripts/remove-domain-from-supabase.ts "$DOMAIN" 2>&1; then
+        echo "✅ Removed from Supabase"
+    else
+        echo "⚠️  Failed to remove from Supabase"
+    fi
+    cd - > /dev/null
 else
     echo "⚠️  Skipping removal from domain-passwords.json due to previous failures"
 fi

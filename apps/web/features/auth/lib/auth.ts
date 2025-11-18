@@ -1,5 +1,10 @@
 import { cookies } from "next/headers"
+import { NextResponse } from "next/server"
+import { COOKIE_NAMES } from "@/lib/auth/cookies"
+import { managerSessionStore } from "@/lib/auth/manager-session-store"
 import { createIamClient } from "@/lib/supabase/iam"
+import { createAppClient } from "@/lib/supabase/app"
+import { ErrorCodes, getErrorMessage, type ErrorCode } from "@/lib/error-codes"
 import { verifySessionToken } from "./jwt"
 
 export interface SessionUser {
@@ -10,7 +15,7 @@ export interface SessionUser {
 
 export async function getSessionUser(): Promise<SessionUser | null> {
   const jar = await cookies()
-  const sessionCookie = jar.get("session")
+  const sessionCookie = jar.get(COOKIE_NAMES.SESSION)
 
   if (!sessionCookie?.value) {
     return null
@@ -25,30 +30,19 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     }
   }
 
-  // Verify JWT and extract userId
-  const payload = verifySessionToken(sessionCookie.value)
+  // Verify JWT and extract user data (NO DATABASE QUERY - all data in JWT)
+  const payload = await verifySessionToken(sessionCookie.value)
   if (!payload?.userId) {
     console.warn("[Auth] Invalid JWT token")
     return null
   }
 
-  // Query user from iam.users
-  const iam = await createIamClient("service")
-  const { data: user } = await iam
-    .from("users")
-    .select("user_id, email, display_name")
-    .eq("user_id", payload.userId)
-    .single()
-
-  if (!user) {
-    console.warn("[Auth] User not found in IAM:", payload.userId)
-    return null
-  }
-
+  // Return user data directly from JWT (eliminates iam.users query)
+  // Old tokens without email/workspaces will be rejected by verifySessionToken
   return {
-    id: user.user_id,
-    email: user.email || "",
-    name: user.display_name,
+    id: payload.userId,
+    email: payload.email,
+    name: payload.name,
   }
 }
 
@@ -78,7 +72,6 @@ export async function isWorkspaceAuthenticated(workspace: string): Promise<boole
   const orgIds = memberships.map(m => m.org_id)
 
   // Check if any of user's orgs has this domain
-  const { createAppClient } = await import("@/lib/supabase/app")
   const app = await createAppClient("service")
   const { data: domain } = await app
     .from("domains")
@@ -92,30 +85,28 @@ export async function isWorkspaceAuthenticated(workspace: string): Promise<boole
 
 /**
  * Get list of authenticated workspaces (domains) from session
- * Returns all domains from user's organizations
+ * Returns all domains from JWT workspaces array (NO DATABASE QUERIES)
  */
 export async function getAuthenticatedWorkspaces(): Promise<string[]> {
-  const user = await getSessionUser()
-  if (!user) {
+  const jar = await cookies()
+  const sessionCookie = jar.get(COOKIE_NAMES.SESSION)
+
+  if (!sessionCookie?.value) {
     return []
   }
 
-  // Get user's org memberships
-  const iam = await createIamClient("service")
-  const { data: memberships } = await iam.from("org_memberships").select("org_id").eq("user_id", user.id)
-
-  if (!memberships || memberships.length === 0) {
+  // Test mode
+  if (process.env.BRIDGE_ENV === "local" && sessionCookie.value === "test-user") {
     return []
   }
 
-  const orgIds = memberships.map(m => m.org_id)
+  // Get workspaces from JWT (eliminates org_memberships + domains queries)
+  const payload = await verifySessionToken(sessionCookie.value)
+  if (!payload?.workspaces) {
+    return []
+  }
 
-  // Get all domains for these orgs
-  const { createAppClient } = await import("@/lib/supabase/app")
-  const app = await createAppClient("service")
-  const { data: domains } = await app.from("domains").select("hostname").in("org_id", orgIds)
-
-  return domains?.map(d => d.hostname) || []
+  return payload.workspaces
 }
 
 export async function requireSessionUser(): Promise<SessionUser> {
@@ -132,11 +123,10 @@ export async function requireSessionUser(): Promise<SessionUser> {
  * Uses separate manager_session cookie
  */
 export async function isManagerAuthenticated(): Promise<boolean> {
-  const { cookies } = await import("next/headers")
   const jar = await cookies()
-  const managerCookie = jar.get("manager_session")
+  const managerCookie = jar.get(COOKIE_NAMES.MANAGER_SESSION)
 
-  return !!managerCookie && managerCookie.value === "1"
+  return managerSessionStore.isValidSession(managerCookie?.value)
 }
 
 /**
@@ -151,7 +141,7 @@ export async function isManagerAuthenticated(): Promise<boolean> {
  */
 export async function getSafeSessionCookie(logPrefix = "[Auth]"): Promise<string | undefined> {
   const jar = await cookies()
-  const sessionCookie = jar.get("session")
+  const sessionCookie = jar.get(COOKIE_NAMES.SESSION)
 
   if (!sessionCookie?.value) {
     return undefined
@@ -163,11 +153,186 @@ export async function getSafeSessionCookie(logPrefix = "[Auth]"): Promise<string
   }
 
   // Verify JWT format and validity
-  const payload = verifySessionToken(sessionCookie.value)
+  const payload = await verifySessionToken(sessionCookie.value)
   if (!payload) {
     console.warn(`${logPrefix} Invalid JWT session token`)
     return undefined
   }
 
   return sessionCookie.value
+}
+
+/**
+ * Verify workspace authorization from request body
+ *
+ * Security: Ensures workspace is provided and user has access before any operations.
+ * This prevents information leakage via filesystem checks on unauthorized workspaces.
+ *
+ * Uses JWT workspaces array to verify access (NO DATABASE QUERIES).
+ * Workspace list is embedded in JWT at login time.
+ *
+ * @param user - Already authenticated user (from requireSessionUser)
+ * @param body - Request body containing workspace parameter
+ * @param logPrefix - Optional prefix for logs (e.g., "[Claude Stream xyz]")
+ * @returns Workspace name if authorized, null if not
+ *
+ * @example
+ * const user = await requireSessionUser()
+ * const workspace = await verifyWorkspaceAccess(user, body, "[MyRoute]")
+ * if (!workspace) {
+ *   return createErrorResponse(ErrorCodes.WORKSPACE_NOT_AUTHENTICATED, 401)
+ * }
+ */
+export async function verifyWorkspaceAccess(
+  user: SessionUser,
+  body: Record<string, unknown>,
+  logPrefix = "[Auth]"
+): Promise<string | null> {
+  const workspace = body.workspace
+
+  // Validate workspace is provided and is a string
+  if (!workspace || typeof workspace !== "string" || workspace.trim() === "") {
+    console.log(`${logPrefix} No workspace provided in request body`)
+    return null
+  }
+
+  // Test mode allows all workspaces
+  if (process.env.BRIDGE_ENV === "local" && user.id === "test-user") {
+    return workspace
+  }
+
+  // Get workspaces from JWT (NO DATABASE QUERY - data already in session)
+  const jar = await cookies()
+  const sessionCookie = jar.get(COOKIE_NAMES.SESSION)
+
+  if (!sessionCookie?.value) {
+    console.log(`${logPrefix} No session cookie found`)
+    return null
+  }
+
+  const payload = await verifySessionToken(sessionCookie.value)
+  if (!payload?.workspaces) {
+    console.log(`${logPrefix} Invalid JWT or missing workspaces`)
+    return null
+  }
+
+  // Check if workspace is in user's authorized list (eliminates org_memberships + domains queries)
+  if (!payload.workspaces.includes(workspace)) {
+    console.log(`${logPrefix} User not authenticated for workspace: ${workspace}`)
+    return null
+  }
+
+  return workspace
+}
+
+/**
+ * Create standardized error response
+ *
+ * @param error - Error code from ErrorCodes
+ * @param status - HTTP status code
+ * @param fields - Context for getErrorMessage() AND additional response fields
+ *                 (message field will be filtered out if present)
+ *
+ * @example
+ * // With message context
+ * createErrorResponse(ErrorCodes.INVALID_REQUEST, 400, { field: "email", requestId })
+ * // Returns: { ok: false, error: "INVALID_REQUEST", message: "The email field...", category: "user", field: "email", requestId: "..." }
+ *
+ * @example
+ * // With exception details
+ * createErrorResponse(ErrorCodes.INTERNAL_ERROR, 500, { exception: err.message, requestId })
+ * // Returns: { ok: false, error: "INTERNAL_ERROR", message: "Something went wrong...", category: "server", exception: "...", requestId: "..." }
+ */
+export function createErrorResponse(
+  error: ErrorCode,
+  status: number,
+  fields?: Record<string, unknown>
+): NextResponse {
+  // Remove 'message' from fields if present (prevent override of centralized message)
+  const { message: _, ...safeFields } = fields || {}
+
+  // Determine error category for frontend handling
+  const category = status >= 500 ? 'server' : 'user'
+
+  return NextResponse.json(
+    {
+      ok: false,
+      error,
+      message: getErrorMessage(error, fields), // Centralized message with dynamic context
+      category, // 'user' (4xx) or 'server' (5xx)
+      ...safeFields, // Include all other fields in response
+    },
+    { status }
+  )
+}
+
+/**
+ * Validate request with session and workspace authorization
+ *
+ * DRY helper that performs all common validation steps:
+ * 1. Check session cookie exists
+ * 2. Get authenticated user
+ * 3. Parse and validate request body
+ * 4. Verify workspace authorization
+ *
+ * @returns Either error response (return immediately) or validated data
+ *
+ * @example
+ * const result = await validateRequest(req, requestId)
+ * if ('error' in result) return result.error
+ * const { user, body, workspace } = result.data
+ */
+export async function validateRequest(
+  req: Request,
+  requestId?: string
+): Promise<
+  | { error: NextResponse }
+  | { data: { user: SessionUser; body: Record<string, unknown>; workspace: string } }
+> {
+  const logPrefix = requestId ? `[Request ${requestId}]` : "[Request]"
+
+  // Check session cookie
+  const jar = await cookies()
+  const sessionCookie = jar.get(COOKIE_NAMES.SESSION)
+
+  if (!sessionCookie?.value) {
+    console.log(`${logPrefix} No session cookie found`)
+    return {
+      error: createErrorResponse(ErrorCodes.NO_SESSION, 401, { requestId }),
+    }
+  }
+
+  // Get authenticated user
+  const user = await getSessionUser()
+  if (!user) {
+    console.log(`${logPrefix} Failed to get session user`)
+    return {
+      error: createErrorResponse(ErrorCodes.NO_SESSION, 401, { requestId }),
+    }
+  }
+
+  // Parse request body
+  let body: Record<string, unknown>
+  try {
+    body = await req.json()
+  } catch (jsonError) {
+    console.error(`${logPrefix} Failed to parse JSON body:`, jsonError)
+    return {
+      error: createErrorResponse(ErrorCodes.INVALID_JSON, 400, { requestId }),
+    }
+  }
+
+  // Verify workspace authorization
+  const workspace = await verifyWorkspaceAccess(user, body, logPrefix)
+  if (!workspace) {
+    return {
+      error: createErrorResponse(ErrorCodes.WORKSPACE_NOT_AUTHENTICATED, 401, { requestId }),
+    }
+  }
+
+  console.log(`${logPrefix} Request validated for user ${user.id}, workspace: ${workspace}`)
+
+  return {
+    data: { user, body, workspace },
+  }
 }

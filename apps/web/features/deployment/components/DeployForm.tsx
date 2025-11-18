@@ -67,6 +67,7 @@ function ModeSelectionScreen({ onSelect }: ModeSelectionScreenProps) {
           description="Get a free live website and 200 free credits, on us."
           time="~1 min"
           badge="Start here"
+          testId="mode-option-quick-launch"
           onClick={() => onSelect("deploy-only")}
         />
         <ModeOption icon={Globe} title="Custom Domain" description="Coming soon" time="" disabled onClick={() => {}} />

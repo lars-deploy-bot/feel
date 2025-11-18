@@ -2,6 +2,7 @@ import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import { requireSessionUser } from "@/features/auth/lib/auth"
 import { hasSessionCookie } from "@/features/auth/types/guards"
+import { COOKIE_NAMES } from "@/lib/auth/cookies"
 import { ErrorCodes } from "@/lib/error-codes"
 
 export interface AuthSuccess {
@@ -19,7 +20,7 @@ export type AuthResult = AuthSuccess | AuthFailure
 export async function checkAuth(): Promise<AuthResult> {
   const jar = await cookies()
 
-  if (!hasSessionCookie(jar.get("session"))) {
+  if (!hasSessionCookie(jar.get(COOKIE_NAMES.SESSION))) {
     return {
       authorized: false,
       response: NextResponse.json(

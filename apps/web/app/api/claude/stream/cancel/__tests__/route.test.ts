@@ -1,9 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { getRegistrySize, registerCancellation, unregisterCancellation } from "@/lib/stream/cancellation-registry"
 
-// Mock requireSessionUser
+// Mock auth functions
 vi.mock("@/features/auth/lib/auth", () => ({
-  requireSessionUser: async () => ({ id: "test-user-123" }),
+  requireSessionUser: async () => ({ id: "test-user-123", email: "test@example.com", name: "Test User" }),
+  verifyWorkspaceAccess: async (_user: any, body: any) => body.workspace || "test-workspace",
+  createErrorResponse: (error: string, status: number, fields?: any) => {
+    return new Response(
+      JSON.stringify({
+        ok: false,
+        error,
+        message: `Error: ${error}`,
+        category: status >= 500 ? "server" : "user",
+        ...fields,
+      }),
+      { status }
+    )
+  },
 }))
 
 import { POST } from "../route"

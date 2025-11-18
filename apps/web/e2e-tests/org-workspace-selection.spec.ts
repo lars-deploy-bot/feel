@@ -46,7 +46,7 @@ test.describe("Organization and Workspace Selection", () => {
     // The chat page fetches organizations on mount (line 154 in page.tsx)
     await page.waitForTimeout(2000)
 
-    // Check for org selector or workspace switcher (depends on terminal mode)
+    // Check for workspace switcher (always terminal mode)
     const workspaceInfo = page.locator('text="site"').first()
     await expect(workspaceInfo).toBeVisible({ timeout: 5000 })
 
@@ -67,8 +67,7 @@ test.describe("Organization and Workspace Selection", () => {
     // Wait for org auto-selection
     await page.waitForTimeout(3000)
 
-    // In terminal mode, workspace switcher should be visible with a workspace
-    // In domain mode, workspace should be shown as text
+    // Workspace switcher should be visible with a workspace (always terminal mode)
     const siteLabel = page.locator('text="site"').first()
     await expect(siteLabel).toBeVisible({ timeout: 5000 })
 
@@ -192,11 +191,11 @@ test.describe("Organization and Workspace Selection", () => {
       route.abort("failed")
     })
 
-    // Open settings to trigger org selector (which triggers workspace fetch)
-    await page.getByRole("button", { name: /settings/i }).click()
+    // Open menu dropdown and click settings
+    await page.getByTestId("menu-button").click()
+    await page.getByTestId("settings-button").click()
 
-    // Should show error in workspace switcher (if in terminal mode)
-    // In domain mode, this test may not be applicable
+    // Should show error in workspace switcher (always terminal mode)
     const errorIndicator = page.getByText("error loading sites")
 
     // Only check if we're in terminal mode (workspace switcher visible)
@@ -272,24 +271,21 @@ test.describe("Organization Selection UI", () => {
   })
 
   test("can open settings modal and see organization selector", async ({ page }) => {
-    // Click settings button
-    await page.getByRole("button", { name: /settings/i }).click()
+    // Open menu dropdown and click settings
+    await page.getByTestId("menu-button").click()
+    await page.getByTestId("settings-button").click()
 
-    // Settings modal should open
-    await expect(page.getByText("Settings")).toBeVisible({ timeout: 3000 })
+    // Settings modal should open - use heading role to be specific
+    await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible({ timeout: 3000 })
 
     // Organization section should be visible
     // The org selector might show as a dropdown or as text if only one org
-    const settingsContent = page.locator('text="Settings"').locator("..")
-    await expect(settingsContent).toBeVisible()
+    const settingsModal = page.locator('[role="dialog"]')
+    await expect(settingsModal).toBeVisible()
   })
 
-  test("workspace switcher shows current workspace in terminal mode", async ({ page }) => {
-    // Only applicable in terminal mode (staging.terminal.goalive.nl)
-    if (!isStaging) {
-      test.skip()
-      return
-    }
+  test("workspace switcher shows current workspace", async ({ page }) => {
+    // Always terminal mode - workspace switcher should show selected workspace
 
     // Wait for workspace to load
     await page.waitForTimeout(3000)

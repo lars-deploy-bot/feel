@@ -11,6 +11,7 @@ interface ModeOptionProps {
   onClick: () => void
   badge?: string
   disabled?: boolean
+  testId?: string
 }
 
 export function ModeOption({
@@ -21,6 +22,7 @@ export function ModeOption({
   onClick,
   badge,
   disabled = false,
+  testId,
 }: ModeOptionProps) {
   return (
     <motion.button
@@ -28,6 +30,7 @@ export function ModeOption({
       whileTap={!disabled ? { scale: 0.99 } : {}}
       onClick={onClick}
       disabled={disabled}
+      data-testid={testId}
       className={`w-full p-6 rounded-2xl border transition-all text-left group relative ${
         disabled
           ? "border-gray-200 bg-gray-50 cursor-not-allowed opacity-60"

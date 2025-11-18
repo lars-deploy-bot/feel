@@ -5,7 +5,9 @@ const execAsync = promisify(exec)
 
 export interface DeploySiteOptions {
   domain: string
-  password: string
+  email: string // REQUIRED: User's email (for account linking and org resolution)
+  password?: string // Optional: For new account creation (if user doesn't exist)
+  orgId?: string // Optional: Organization ID (for logging/validation, script will resolve independently)
 }
 
 export interface DeploySiteResult {
@@ -19,13 +21,16 @@ export async function deploySite(options: DeploySiteOptions): Promise<DeploySite
   const deployCommand = `bash ${scriptPath} ${domain}`
 
   console.log(`[Deploy] Executing: ${deployCommand}`)
+  console.log(`[Deploy] Email: ${options.email || "(none - will create new account)"}`)
+  console.log(`[Deploy] Password: ${options.password ? "(provided)" : "(not provided - using existing account)"}`)
 
   const { stdout, stderr } = await execAsync(deployCommand, {
     timeout: 300000,
     cwd: "/root/webalive/claude-bridge",
     env: {
       ...process.env,
-      DEPLOY_PASSWORD: options.password,
+      DEPLOY_PASSWORD: options.password || "",
+      DEPLOY_EMAIL: options.email || "",
     },
   })
 

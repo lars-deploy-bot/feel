@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+
 /**
  * Migration Script: JSON → Supabase
  * Migrates users, workspaces, and domains from JSON files to Supabase tables
@@ -14,22 +15,22 @@
  * Usage: bun scripts/migrate-json-to-supabase.ts
  */
 
+import { randomUUID } from "node:crypto"
+import { readFileSync } from "node:fs"
 import { createClient } from "@supabase/supabase-js"
-import { randomUUID } from "crypto"
-import { readFileSync } from "fs"
 import type { Database as AppDatabase } from "../lib/supabase/app.types"
 import type { Database as IamDatabase } from "../lib/supabase/iam.types"
 
 // ID generation helpers with prefixes
-function generateUserId(): string {
+function _generateUserId(): string {
   return `user_${randomUUID()}`
 }
 
-function generateOrgId(): string {
+function _generateOrgId(): string {
   return `org_${randomUUID()}`
 }
 
-function generateDomainId(): string {
+function _generateDomainId(): string {
   return `domain_${randomUUID()}`
 }
 
@@ -393,7 +394,7 @@ async function main() {
     await migrateDomains()
     await verifyMigration()
 
-    console.log("\n" + "=".repeat(50))
+    console.log(`\n${"=".repeat(50)}`)
     console.log("✨ Migration completed successfully!")
   } catch (error) {
     console.error("\n💥 Migration failed:", error)

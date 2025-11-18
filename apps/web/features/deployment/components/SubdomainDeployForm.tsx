@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { EmailField } from "@/components/ui/primitives/EmailField"
 import { PasswordField } from "@/components/ui/primitives/PasswordField"
+import { useAuth } from "@/features/deployment/hooks/useAuth"
 import { checkSlugAvailability } from "@/features/deployment/lib/slug-api"
 import type { DeploySubdomainForm, DeploySubdomainResponse } from "@/features/deployment/types/deploy-subdomain"
 import { fieldVariants } from "@/lib/animations"
@@ -17,7 +18,8 @@ import { DeploymentStatus } from "./DeploymentStatus"
 import { SlugInput } from "./SlugInput"
 import { SubmitButton } from "./SubmitButton"
 
-const deploySubdomainSchema = z.object({
+// Base schema (always required)
+const baseSchema = z.object({
   slug: z
     .string()
     .min(3, "Must be at least 3 characters")
@@ -25,6 +27,15 @@ const deploySubdomainSchema = z.object({
     .regex(/^[a-z0-9-]+$/, "Only lowercase letters, numbers, and dashes"),
   email: z.string().email("Please enter a valid email address"),
   siteIdeas: z.string().optional().default(""),
+})
+
+// Schema for logged-in users (password optional)
+const deploySubdomainSchemaLoggedIn = baseSchema.extend({
+  password: z.string().optional(),
+})
+
+// Schema for anonymous users (password required)
+const deploySubdomainSchemaAnonymous = baseSchema.extend({
   password: z
     .string()
     .min(6, "Password must be at least 6 characters")
@@ -49,9 +60,12 @@ export function SubdomainDeployForm() {
   const [isDeploying, setIsDeploying] = useState(false)
   const [deploymentStatus, setDeploymentStatus] = useState<DeploySubdomainResponse | null>(null)
   const [showPassword, setShowPassword] = useState(false)
-  const [countdown, setCountdown] = useState(10)
+  const [elapsedTime, setElapsedTime] = useState(0)
   const [showIdeaConfirmation, setShowIdeaConfirmation] = useState(true)
   const isDev = process.env.NODE_ENV === "development"
+
+  // Authentication state
+  const { user, loading: _authLoading, isAuthenticated } = useAuth()
 
   // Onboarding store
   const { siteIdea, selectedTemplate } = useOnboardingStore()
@@ -88,37 +102,12 @@ export function SubdomainDeployForm() {
     }
   }, [siteIdea, selectedTemplate, showIdeaConfirmation])
 
-  const simulateSuccess = () => {
-    setDeploymentStatus({
-      ok: true,
-      domain: `${watchSlug || "test"}.${WILDCARD_DOMAIN}`,
-      message: "Site deployed successfully",
-    })
-  }
-
-  // Countdown timer for deploying state
-  useEffect(() => {
-    if (isDeploying) {
-      setCountdown(10) // Reset to 10 when deploying starts
-      const interval = setInterval(() => {
-        setCountdown(prev => {
-          if (prev <= 1) {
-            clearInterval(interval)
-            return 0
-          }
-          return prev - 1
-        })
-      }, 1000)
-
-      return () => clearInterval(interval)
-    }
-  }, [isDeploying])
-
   const {
     register,
     handleSubmit,
     watch,
     formState: { errors, isValid, touchedFields },
+    setValue,
   } = useForm<DeploySubdomainForm>({
     resolver: async (data, context, options) => {
       // Only validate if user has interacted with form, otherwise return no errors
@@ -128,20 +117,77 @@ export function SubdomainDeployForm() {
         return { values: data, errors: {} }
       }
 
-      // Run normal validation
-      return zodResolver(deploySubdomainSchema)(data, context, options)
+      // Use different schema based on auth state
+      const schema = isAuthenticated ? deploySubdomainSchemaLoggedIn : deploySubdomainSchemaAnonymous
+      return zodResolver(schema)(data, context, options)
     },
     mode: "onChange",
     defaultValues: {
       slug: "",
-      email: "",
+      email: user?.email || "",
       siteIdeas: siteIdeasFromUrl,
       password: "",
     },
   })
 
+  // Pre-fill email when user logs in
+  useEffect(() => {
+    if (user?.email) {
+      setValue("email", user.email)
+    }
+  }, [user?.email, setValue])
+
   const watchSlug = watch("slug")
   const watchPassword = watch("password")
+
+  const simulateSuccess = () => {
+    setDeploymentStatus({
+      ok: true,
+      domain: `${watchSlug || "test"}.${WILDCARD_DOMAIN}`,
+      message: "Site deployed successfully",
+    })
+  }
+
+  // Elapsed time + domain polling during deployment
+  useEffect(() => {
+    if (isDeploying && watchSlug) {
+      setElapsedTime(0)
+      const domain = `${watchSlug}.${WILDCARD_DOMAIN}`
+
+      // Track elapsed time
+      const timeInterval = setInterval(() => {
+        setElapsedTime(prev => prev + 1)
+      }, 1000)
+
+      // Poll domain liveness every second
+      const pollInterval = setInterval(async () => {
+        try {
+          const response = await fetch(`https://${domain}`, {
+            method: "GET",
+            cache: "no-store",
+          })
+
+          if (response.ok) {
+            clearInterval(pollInterval)
+            clearInterval(timeInterval)
+            setDeploymentStatus({
+              ok: true,
+              domain,
+              message: "Site deployed successfully",
+            })
+            setIsDeploying(false)
+          }
+        } catch (_error) {
+          // Domain not ready yet, continue polling
+        }
+      }, 1000)
+
+      return () => {
+        clearInterval(timeInterval)
+        clearInterval(pollInterval)
+      }
+    }
+  }, [isDeploying, watchSlug])
 
   const onSubmit = async (data: DeploySubdomainForm) => {
     setIsDeploying(true)
@@ -227,6 +273,7 @@ export function SubdomainDeployForm() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Basic Website Template */}
               <button
+                type="button"
                 onClick={() => setSelectedTemplate("landing")}
                 className={`group relative overflow-hidden rounded-xl border-2 transition-all text-left ${
                   selectedTemplate === "landing"
@@ -249,6 +296,7 @@ export function SubdomainDeployForm() {
 
               {/* Recipe Website Template */}
               <button
+                type="button"
                 disabled
                 className="group relative overflow-hidden rounded-xl border-2 transition-all text-left border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed"
               >
@@ -269,6 +317,7 @@ export function SubdomainDeployForm() {
 
           <motion.div variants={itemVariants} className="text-center">
             <button
+              type="button"
               onClick={() => setShowIdeaConfirmation(false)}
               disabled={!siteIdea.trim()}
               className="px-12 py-4 bg-black text-white text-base font-medium rounded-full hover:bg-black/90 transition-all duration-200 ease-out disabled:opacity-50 disabled:cursor-not-allowed"
@@ -304,28 +353,48 @@ export function SubdomainDeployForm() {
             </motion.div>
 
             <motion.div variants={itemVariants}>
-              <EmailField register={register} errors={errors} isDeploying={isDeploying} />
+              <EmailField
+                register={register}
+                errors={errors}
+                isDeploying={isDeploying}
+                disabled={isAuthenticated}
+                helperText={isAuthenticated ? "Using your account email" : "We'll create your account with this email"}
+              />
             </motion.div>
 
             <input type="hidden" {...register("siteIdeas")} />
 
-            <motion.div variants={itemVariants}>
-              <PasswordField
-                register={register}
-                errors={errors}
-                watchPassword={watchPassword}
-                isDeploying={isDeploying}
-                showPassword={showPassword}
-                onTogglePassword={() => setShowPassword(!showPassword)}
-              />
-            </motion.div>
+            {/* Only show password field if user is NOT logged in */}
+            {!isAuthenticated && (
+              <motion.div variants={itemVariants}>
+                <PasswordField
+                  register={register}
+                  errors={errors}
+                  watchPassword={watchPassword}
+                  isDeploying={isDeploying}
+                  showPassword={showPassword}
+                  onTogglePassword={() => setShowPassword(!showPassword)}
+                  helperText="6–16 characters. This will be your account password."
+                />
+              </motion.div>
+            )}
+
+            {/* Info message for logged-in users */}
+            {isAuthenticated && (
+              <motion.div variants={itemVariants} className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-900 font-medium">
+                  ✓ Logged in as <span className="font-bold">{user?.email}</span>
+                </p>
+                <p className="text-xs text-blue-700 mt-1">This site will be linked to your account automatically.</p>
+              </motion.div>
+            )}
 
             <motion.div variants={itemVariants}>
               <SubmitButton
                 isDeploying={isDeploying}
                 isValid={isValid && !errors.slug && !errors.email && !errors.password}
                 label="Launch Site"
-                countdown={countdown}
+                countdown={elapsedTime}
               />
             </motion.div>
           </form>

@@ -1,133 +1,113 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
-import { dirname, join } from "node:path"
-import type { FeedbackEntry, FeedbackStore } from "@/types/feedback"
+import type { AppFeedbackInsert } from "@/lib/supabase/app"
+import { createAppClient } from "@/lib/supabase/app"
 
-/**
- * Get feedback file path with fallback logic
- * Similar pattern to domain-passwords.json
- * @param customPath - Optional custom path for testing
- */
-function getFeedbackFilePath(customPath?: string): string {
-  // Return custom path if provided (for testing)
-  if (customPath) {
-    return customPath
-  }
-  // PRODUCTION: Use persistent location outside of git and build process
-  const persistentPath = "/var/lib/claude-bridge/feedback.json"
-  const persistentDir = dirname(persistentPath)
+export interface FeedbackEntry {
+  id: string
+  feedback: string
+  email?: string
+  workspace: string
+  conversationId?: string
+  userAgent?: string
+  timestamp: string
+  status?: string
+}
 
-  // Check if persistent location exists or is writable
-  if (existsSync(persistentPath)) {
-    return persistentPath
-  }
+interface FeedbackContext {
+  workspace?: string
+  conversationId?: string
+  userAgent?: string
+  email?: string
+}
+export async function addFeedbackEntry(entry: Omit<FeedbackEntry, "id" | "timestamp">): Promise<FeedbackEntry> {
+  const app = await createAppClient("service")
 
-  // Check if persistent directory exists and is writable (production server)
-  if (existsSync(persistentDir)) {
-    try {
-      // Try to access the directory to verify write permissions
-      mkdirSync(persistentDir, { recursive: true })
-      return persistentPath
-    } catch {
-      // Directory exists but not writable, fall through to dev paths
-    }
-  }
-
-  // Fallback paths for development/testing
-  const devPaths = [join(process.cwd(), "feedback.json"), "/root/webalive/claude-bridge/feedback.json"]
-
-  for (const path of devPaths) {
-    if (existsSync(path)) {
-      console.log("Found feedback file at:", path)
-      return path
-    }
+  const feedbackInsert: AppFeedbackInsert = {
+    content: entry.feedback,
+    clerk_id: null, // Not using Clerk, set to null
+    context: {
+      workspace: entry.workspace,
+      conversationId: entry.conversationId,
+      userAgent: entry.userAgent,
+      email: entry.email,
+    },
+    status: "pending",
   }
 
-  // Return first dev path for creation (cwd) in development
-  console.log("Feedback file not found, using development path:", devPaths[0])
-  return devPaths[0]
+  const { data, error } = await app.from("feedback").insert(feedbackInsert).select().single()
+
+  if (error || !data) {
+    console.error("[Supabase Feedback] Failed to insert feedback:", error)
+    throw new Error("Failed to save feedback")
+  }
+
+  return {
+    id: data.feedback_id,
+    feedback: data.content,
+    email: entry.email,
+    workspace: entry.workspace,
+    conversationId: entry.conversationId,
+    userAgent: entry.userAgent,
+    timestamp: data.created_at || new Date().toISOString(),
+    status: data.status || "pending",
+  }
 }
 
 /**
- * Load feedback from JSON file
- * @param customPath - Optional custom path for testing
+ * Get all feedback entries from Supabase
+ * @returns Array of feedback entries
  */
-export function loadFeedback(customPath?: string): FeedbackStore {
-  try {
-    const filePath = getFeedbackFilePath(customPath)
-    if (existsSync(filePath)) {
-      const content = readFileSync(filePath, "utf8")
-      const parsed = JSON.parse(content) as unknown
+export async function getAllFeedback(): Promise<FeedbackEntry[]> {
+  const app = await createAppClient("service")
 
-      if (parsed && typeof parsed === "object" && "entries" in parsed && Array.isArray(parsed.entries)) {
-        return parsed as FeedbackStore
+  const { data, error } = await app.from("feedback").select("*").order("created_at", { ascending: false })
+
+  if (error) {
+    console.error("[Supabase Feedback] Failed to fetch feedback:", error)
+    return []
+  }
+
+  return (
+    data?.map(item => {
+      const context = item.context as FeedbackContext | null
+      return {
+        id: item.feedback_id,
+        feedback: item.content,
+        email: context?.email,
+        workspace: context?.workspace || "unknown",
+        conversationId: context?.conversationId,
+        userAgent: context?.userAgent,
+        timestamp: item.created_at || new Date().toISOString(),
+        status: item.status || "pending",
       }
-
-      console.warn("Invalid feedback file structure, resetting to empty store")
-    }
-  } catch (error) {
-    console.warn("Failed to read feedback file:", error)
-  }
-
-  return { entries: [] }
-}
-
-/**
- * Save feedback to JSON file
- * @param store - Feedback store to save
- * @param customPath - Optional custom path for testing
- */
-export function saveFeedback(store: FeedbackStore, customPath?: string): void {
-  try {
-    const filePath = getFeedbackFilePath(customPath)
-
-    // Ensure directory exists
-    const dir = dirname(filePath)
-    if (!existsSync(dir)) {
-      mkdirSync(dir, { recursive: true })
-    }
-
-    writeFileSync(filePath, JSON.stringify(store, null, 2))
-  } catch (error) {
-    console.error("Failed to save feedback file:", error)
-    throw error
-  }
-}
-
-/**
- * Add a new feedback entry
- * @param entry - Feedback entry to add (without id and timestamp)
- * @param customPath - Optional custom path for testing
- */
-export function addFeedbackEntry(entry: Omit<FeedbackEntry, "id" | "timestamp">, customPath?: string): FeedbackEntry {
-  const store = loadFeedback(customPath)
-
-  const newEntry: FeedbackEntry = {
-    ...entry,
-    id: crypto.randomUUID(),
-    timestamp: new Date().toISOString(),
-  }
-
-  store.entries.push(newEntry)
-  saveFeedback(store, customPath)
-
-  return newEntry
-}
-
-/**
- * Get all feedback entries (for admin/manager view)
- * @param customPath - Optional custom path for testing
- */
-export function getAllFeedback(customPath?: string): FeedbackEntry[] {
-  const store = loadFeedback(customPath)
-  return store.entries
+    }) || []
+  )
 }
 
 /**
  * Get feedback entries for a specific workspace
  * @param workspace - Workspace to filter by
- * @param customPath - Optional custom path for testing
+ * @returns Array of feedback entries
  */
-export function getFeedbackByWorkspace(workspace: string, customPath?: string): FeedbackEntry[] {
-  const store = loadFeedback(customPath)
-  return store.entries.filter(entry => entry.workspace === workspace)
+export async function getFeedbackByWorkspace(workspace: string): Promise<FeedbackEntry[]> {
+  const allFeedback = await getAllFeedback()
+  return allFeedback.filter(entry => entry.workspace === workspace)
+}
+
+/**
+ * Update feedback status in Supabase
+ * @param feedbackId - Feedback ID to update
+ * @param status - New status
+ * @returns true if successful
+ */
+export async function updateFeedbackStatus(feedbackId: string, status: string): Promise<boolean> {
+  const app = await createAppClient("service")
+
+  const { error } = await app.from("feedback").update({ status }).eq("feedback_id", feedbackId)
+
+  if (error) {
+    console.error("[Supabase Feedback] Failed to update status:", error)
+    return false
+  }
+
+  return true
 }

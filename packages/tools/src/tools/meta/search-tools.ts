@@ -1,13 +1,6 @@
 import { tool } from "@anthropic-ai/claude-agent-sdk"
 import { z } from "zod"
-import {
-  DETAIL_LEVELS,
-  TOOL_CATEGORIES,
-  TOOL_REGISTRY,
-  type DetailLevel,
-  type ToolCategory,
-  type ToolMetadata,
-} from "./tool-registry.js"
+import { DETAIL_LEVELS, TOOL_CATEGORIES, TOOL_REGISTRY, type DetailLevel, type ToolCategory } from "./tool-registry.js"
 
 export const searchToolsParamsSchema = {
   category: z

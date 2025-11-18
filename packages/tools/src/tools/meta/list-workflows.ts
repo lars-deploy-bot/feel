@@ -1,5 +1,5 @@
 import { tool } from "@anthropic-ai/claude-agent-sdk"
-import { WORKFLOW_CATEGORIES, type WorkflowCategory } from "./get-workflow.js"
+import { WORKFLOW_CATEGORIES } from "./get-workflow.js"
 
 export type ListWorkflowsResult = {
   content: Array<{ type: "text"; text: string }>

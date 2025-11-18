@@ -1,7 +1,15 @@
 import { exec } from "node:child_process"
 import { promisify } from "node:util"
-import { type NextRequest, NextResponse } from "next/server"
-import { isManagerAuthenticated } from "@/features/auth/lib/auth"
+import type { NextRequest } from "next/server"
+import {
+  createBadRequestResponse,
+  createErrorResponse,
+  createSuccessResponse,
+  getDomainParam,
+  requireManagerAuth,
+  requireParam,
+} from "@/features/manager/lib/api-helpers"
+import { domainToSlug, getDomainSitePath, getDomainUser } from "@/features/manager/lib/domain-utils"
 
 const execAsync = promisify(exec)
 
@@ -25,30 +33,19 @@ interface PermissionCheckResult {
  * GET /api/manager/permissions?domain=example.com
  */
 export async function GET(request: NextRequest) {
-  // Check manager authentication
-  const isAuth = await isManagerAuthenticated()
-  if (!isAuth) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  const authError = await requireManagerAuth()
+  if (authError) return authError
 
-  const searchParams = request.nextUrl.searchParams
-  const domain = searchParams.get("domain")
-
-  if (!domain) {
-    return NextResponse.json({ error: "Domain parameter required" }, { status: 400 })
-  }
+  const domain = getDomainParam(request)
+  const domainError = requireParam(domain, "domain")
+  if (domainError) return domainError
 
   try {
-    const result = await checkDomainPermissions(domain)
-    return NextResponse.json({ ok: true, result })
+    const result = await checkDomainPermissions(domain!)
+    return createSuccessResponse({ result })
   } catch (error) {
     console.error("Failed to check permissions:", error)
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Failed to check permissions",
-      },
-      { status: 500 },
-    )
+    return createErrorResponse(error, "Failed to check permissions")
   }
 }
 
@@ -58,42 +55,33 @@ export async function GET(request: NextRequest) {
  * Body: { domain: string, action: "fix" }
  */
 export async function POST(request: NextRequest) {
-  // Check manager authentication
-  const isAuth = await isManagerAuthenticated()
-  if (!isAuth) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  const authError = await requireManagerAuth()
+  if (authError) return authError
 
   const body = await request.json()
   const { domain, action } = body
 
-  if (!domain) {
-    return NextResponse.json({ error: "Domain parameter required" }, { status: 400 })
-  }
+  const domainError = requireParam(domain, "domain")
+  if (domainError) return domainError
 
   if (action !== "fix") {
-    return NextResponse.json({ error: "Invalid action" }, { status: 400 })
+    return createBadRequestResponse("Invalid action")
   }
 
   try {
     await fixDomainPermissions(domain)
     const result = await checkDomainPermissions(domain)
-    return NextResponse.json({ ok: true, message: "Permissions fixed", result })
+    return createSuccessResponse({ message: "Permissions fixed", result })
   } catch (error) {
     console.error("Failed to fix permissions:", error)
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Failed to fix permissions",
-      },
-      { status: 500 },
-    )
+    return createErrorResponse(error, "Failed to fix permissions")
   }
 }
 
 async function checkDomainPermissions(domain: string): Promise<PermissionCheckResult> {
-  const slug = domain.replace(/[^a-zA-Z0-9]/g, "-")
-  const expectedOwner = `site-${slug}`
-  const siteDir = `/srv/webalive/sites/${domain}`
+  const _slug = domainToSlug(domain)
+  const expectedOwner = getDomainUser(domain)
+  const siteDir = getDomainSitePath(domain)
 
   const result: PermissionCheckResult = {
     domain,
@@ -156,9 +144,8 @@ async function checkDomainPermissions(domain: string): Promise<PermissionCheckRe
 }
 
 async function fixDomainPermissions(domain: string): Promise<void> {
-  const slug = domain.replace(/[^a-zA-Z0-9]/g, "-")
-  const expectedOwner = `site-${slug}`
-  const siteDir = `/srv/webalive/sites/${domain}`
+  const expectedOwner = getDomainUser(domain)
+  const siteDir = getDomainSitePath(domain)
 
   // Check if site directory exists FIRST (before revealing user existence)
   try {

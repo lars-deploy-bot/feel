@@ -1,31 +1,32 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { isWorkspaceAuthenticated } from "@/features/auth/lib/auth"
+import { createErrorResponse, isWorkspaceAuthenticated } from "@/features/auth/lib/auth"
+import type { TokensResponse } from "@/lib/api/types"
 import { creditsToLLMTokens } from "@/lib/credits"
-import type { TokensErrorResponse, TokensResponse } from "@/lib/api/types"
-import { workspaceRepository } from "@/lib/db/repositories"
+import { ErrorCodes } from "@/lib/error-codes"
+import { getOrgCredits } from "@/lib/tokens"
 
-export async function GET(req: NextRequest): Promise<NextResponse<TokensResponse | TokensErrorResponse>> {
+export async function GET(req: NextRequest) {
   try {
     const workspace = req.headers.get("X-Workspace")
 
     if (!workspace) {
-      return NextResponse.json<TokensErrorResponse>({ ok: false, error: "No workspace specified" }, { status: 400 })
+      return createErrorResponse(ErrorCodes.WORKSPACE_MISSING, 400)
     }
 
     // Verify user is authenticated for this workspace using JWT
     const isAuthenticated = await isWorkspaceAuthenticated(workspace)
     if (!isAuthenticated) {
-      return NextResponse.json<TokensErrorResponse>({ ok: false, error: "Not authenticated" }, { status: 401 })
+      return createErrorResponse(ErrorCodes.WORKSPACE_NOT_AUTHENTICATED, 401)
     }
 
-    // Load workspace from database to get credits
-    const workspaceRecord = await workspaceRepository.findByDomain(workspace)
+    // Load credits from Supabase (domain → org → credits)
+    const credits = await getOrgCredits(workspace)
 
-    if (!workspaceRecord) {
-      return NextResponse.json<TokensErrorResponse>({ ok: false, error: "Workspace not found" }, { status: 404 })
+    if (credits === null) {
+      return createErrorResponse(ErrorCodes.WORKSPACE_NOT_FOUND, 404)
     }
 
-    const credits = workspaceRecord.credits ?? 0
+
     const tokens = creditsToLLMTokens(credits) // For backward compatibility
 
     return NextResponse.json<TokensResponse>({
@@ -36,6 +37,6 @@ export async function GET(req: NextRequest): Promise<NextResponse<TokensResponse
     })
   } catch (error) {
     console.error("[Tokens] Error:", error)
-    return NextResponse.json<TokensErrorResponse>({ ok: false, error: "Internal server error" }, { status: 500 })
+    return createErrorResponse(ErrorCodes.INTERNAL_ERROR, 500)
   }
 }

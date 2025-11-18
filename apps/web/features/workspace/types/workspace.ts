@@ -1,23 +1,10 @@
 /**
  * Workspace and path validation guards
  * These guards prevent path traversal attacks and validate workspace constraints
- */
-
-/**
- * Check if a hostname is in terminal mode (requires explicit workspace)
- * Terminal mode hostnames start with "terminal." or contain ".terminal."
  *
- * Examples:
- * - terminal.goalive.nl → true
- * - staging.terminal.goalive.nl → true
- * - demo.goalive.nl → false
- *
- * TODO: This is not safe if someone creates a domain like bla.staging.terminal.goalive.nl.joost.nl
- * Should validate that .terminal. is followed by a known domain (e.g., .terminal.goalive.nl)
+ * NOTE: All workspaces now use terminal mode (workspace specified in request body).
+ * Domain-based workspace resolution has been removed.
  */
-export function isTerminalMode(host: string): boolean {
-  return host.startsWith("terminal.") || host.includes(".terminal.")
-}
 
 /**
  * Check if a workspace string is valid (not empty, is string type)

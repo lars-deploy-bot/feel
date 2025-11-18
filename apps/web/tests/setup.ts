@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks"
 import { vi } from "vitest"
 
 process.env.TZ = "UTC"
@@ -12,20 +13,52 @@ if (process.env.CI) {
   process.env.FORCE_COLOR = "0"
 }
 
-// Mock Next.js cookies() to prevent "called outside request scope" errors
-vi.mock("next/headers", async () => {
+// AsyncLocalStorage for test request context
+const testRequestContext = new AsyncLocalStorage<Request>()
+
+// Export function to run code with request context
+export function runWithRequestContext<T>(request: Request, fn: () => T | Promise<T>): Promise<T> {
+  return Promise.resolve(testRequestContext.run(request, fn))
+}
+
+// Helper to parse cookie strings
+function parseCookies(cookieString: string) {
+  const cookies = new Map<string, string>()
+  for (const pair of cookieString.split(";")) {
+    const [key, ...values] = pair.trim().split("=")
+    if (key) {
+      cookies.set(key, values.join("="))
+    }
+  }
+  return cookies
+}
+
+// Mock Next.js cookies() to read from AsyncLocalStorage
+vi.mock("next/headers", () => {
   return {
-    cookies: async () => ({
-      getAll: () => [],
-      get: () => undefined,
-      set: () => {},
-      delete: () => {},
-    }),
-    headers: async () => ({
-      get: () => null,
-      has: () => false,
-      entries: () => [],
-    }),
+    cookies: async () => {
+      const request = testRequestContext.getStore()
+      const cookieHeader = request?.headers?.get("cookie") || ""
+      const cookieMap = parseCookies(cookieHeader)
+
+      return {
+        getAll: () => Array.from(cookieMap.entries()).map(([name, value]) => ({ name, value })),
+        get: (name: string) => {
+          const value = cookieMap.get(name)
+          return value ? { name, value } : undefined
+        },
+        set: () => {},
+        delete: () => {},
+      }
+    },
+    headers: async () => {
+      const request = testRequestContext.getStore()
+      return {
+        get: (name: string) => request?.headers?.get(name) || null,
+        has: (name: string) => request?.headers?.has(name) || false,
+        entries: () => request?.headers?.entries() || [],
+      }
+    },
   }
 })
 

@@ -48,10 +48,12 @@ export function Toolbar({ fileInputRef, onOpenTemplates, onAddUserPrompt }: Tool
         {showPromptMenu && (
           <>
             {/* Backdrop */}
-            <div
-              className="fixed inset-0 z-10"
+            <button
+              type="button"
+              className="fixed inset-0 z-10 bg-transparent border-0 p-0 cursor-default"
               onClick={() => setShowPromptMenu(false)}
               onKeyDown={e => e.key === "Escape" && setShowPromptMenu(false)}
+              aria-label="Close menu"
             />
 
             {/* Menu */}

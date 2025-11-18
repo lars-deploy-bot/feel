@@ -1,12 +1,66 @@
 import { z } from "zod"
 
+/**
+ * Reserved slugs that cannot be used for deployments
+ * These conflict with system routes or common infrastructure paths
+ *
+ * EXPORTED: Tests can import this to verify reserved slug behavior
+ */
+export const RESERVED_SLUGS = [
+  "api",
+  "admin",
+  "www",
+  "mail",
+  "ftp",
+  "smtp",
+  "pop",
+  "imap",
+  "localhost",
+  "webmail",
+  "cpanel",
+  "whm",
+  "blog",
+  "forum",
+  "shop",
+  "store",
+  "cdn",
+  "static",
+  "assets",
+  "media",
+  "files",
+  "download",
+  "uploads",
+  "test",
+  "staging",
+  "dev",
+  "demo",
+  "docs",
+  "help",
+  "support",
+  "status",
+  "health",
+  "ping",
+  "metrics",
+  "webhook",
+  "callback",
+] as const
+
+/**
+ * Deploy Subdomain Request Schema
+ *
+ * IMPORTANT: User must be authenticated before calling this endpoint
+ * Email is derived from authenticated session, not from request body
+ */
 export const DeploySubdomainSchema = z.object({
   slug: z
     .string()
     .min(3, "Slug must be at least 3 characters")
     .max(20, "Slug must be no more than 20 characters")
-    .regex(/^[a-z0-9]([a-z0-9-]{1,18}[a-z0-9])?$/, "Slug must be lowercase letters, numbers, and hyphens only"),
-  email: z.string().email("Please enter a valid email address"),
+    .regex(/^[a-z0-9]([a-z0-9-]{1,18}[a-z0-9])?$/, "Slug must be lowercase letters, numbers, and hyphens only")
+    .refine(slug => !RESERVED_SLUGS.includes(slug as any), {
+      message: "This slug is reserved and cannot be used. Please choose a different name.",
+    }),
+  orgId: z.string().min(1, "Organization ID is required"), // REQUIRED: User must select org
   siteIdeas: z
     .string()
     .max(5000, "Site ideas must be less than 5000 characters")
@@ -14,10 +68,6 @@ export const DeploySubdomainSchema = z.object({
     .optional()
     .default(""),
   selectedTemplate: z.enum(["landing", "recipe"]).optional(),
-  password: z
-    .string()
-    .min(6, "Password must be at least 6 characters")
-    .max(16, "Password must be no more than 16 characters"),
 })
 
 export type DeploySubdomainRequest = z.infer<typeof DeploySubdomainSchema>

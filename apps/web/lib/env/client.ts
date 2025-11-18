@@ -1,9 +1,7 @@
 import { supabaseClientSchema } from "./schema"
+import type { SupabaseCredentials } from "./types"
 
-export interface SupabaseCredentials {
-  url: string
-  key: string
-}
+export type { SupabaseCredentials }
 
 export function getSupabaseCredentials(): SupabaseCredentials {
   const rawEnv = {

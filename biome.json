@@ -16,18 +16,19 @@
       "a11y": {
         "noSvgWithoutTitle": "off",
         "useKeyWithClickEvents": "off",
-        "useButtonType": "warn",
+        "useButtonType": "error",
         "noLabelWithoutControl": "warn",
-        "useSemanticElements": "warn",
+        "useSemanticElements": "error",
         "useFocusableInteractive": "warn",
-        "noStaticElementInteractions": "warn"
+        "noStaticElementInteractions": "error"
       },
       "style": {
         "noNonNullAssertion": "off",
         "noParameterAssign": "off",
-        "noUnusedTemplateLiteral": "warn",
+        "noUnusedTemplateLiteral": "error",
         "useSelfClosingElements": "warn",
-        "useImportType": "warn"
+        "useImportType": "warn",
+        "noCommonJs": "error"
       },
       "complexity": {
         "noForEach": "off",
@@ -35,17 +36,21 @@
       },
       "correctness": {
         "useExhaustiveDependencies": "off",
-        "noUnusedVariables": "warn"
+        "noUnusedVariables": "error",
+        "noUnusedFunctionParameters": "error"
       },
       "suspicious": {
         "noExplicitAny": "off",
         "noArrayIndexKey": "off"
+      },
+      "performance": {
+        "noImgElement": "off"
       }
     }
   },
   "formatter": {
     "enabled": true,
-    "includes": ["**/*", "!**/*.css"],
+    "includes": ["**/*", "!**/*.css", "!packages/tools/lovable-folder-only-use-for-inspiration"],
     "indentStyle": "space",
     "indentWidth": 2,
     "lineEnding": "lf",
@@ -62,6 +67,15 @@
   },
   "overrides": [
     {
+      "includes": ["packages/tools/lovable-folder-only-use-for-inspiration/**"],
+      "linter": {
+        "enabled": false
+      },
+      "formatter": {
+        "enabled": false
+      }
+    },
+    {
       "includes": ["**/*.css"],
       "linter": {
         "enabled": false
@@ -71,11 +85,28 @@
       }
     },
     {
-      "includes": ["**/DevTerminal.tsx", "**/Sandbox.tsx"],
+      "includes": ["**/DevTerminal.tsx", "**/Sandbox.tsx", "**/SettingsModal.tsx"],
       "linter": {
         "rules": {
           "a11y": {
-            "useSemanticElements": "off"
+            "useSemanticElements": "off",
+            "noStaticElementInteractions": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/lib/supabase/*.types.ts"],
+      "linter": {
+        "enabled": false
+      }
+    },
+    {
+      "includes": ["**/lib/db/client.ts", "**/lib/db/repositories/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noCommonJs": "off"
           }
         }
       }

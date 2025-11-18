@@ -18,6 +18,7 @@ export interface DomainConfigClient {
   orphaned?: boolean
   createdAt?: string
   email?: string
+  orgId?: string
   credits: number
 }
 

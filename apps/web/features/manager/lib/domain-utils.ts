@@ -69,3 +69,33 @@ export function normalizeAndValidateDomain(input: string): { domain: string; isV
 
   return { domain: normalized, isValid: true }
 }
+
+/**
+ * Convert domain to slug format (for systemd service names, user names, etc.)
+ * Replaces all non-alphanumeric characters with hyphens
+ *
+ * @example
+ * domainToSlug("example.com") // "example-com"
+ * domainToSlug("sub.example.com") // "sub-example-com"
+ */
+export function domainToSlug(domain: string): string {
+  return domain.replace(/[^a-zA-Z0-9]/g, "-")
+}
+
+/**
+ * Get expected system user name for a domain
+ * @example
+ * getDomainUser("example.com") // "site-example-com"
+ */
+export function getDomainUser(domain: string): string {
+  return `site-${domainToSlug(domain)}`
+}
+
+/**
+ * Get site directory path for a domain
+ * @example
+ * getDomainSitePath("example.com") // "/srv/webalive/sites/example.com"
+ */
+export function getDomainSitePath(domain: string): string {
+  return `/srv/webalive/sites/${domain}`
+}

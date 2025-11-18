@@ -2,8 +2,9 @@ import { exec } from "node:child_process"
 import { promisify } from "node:util"
 import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
+import { createErrorResponse } from "@/features/auth/lib/auth"
 import { addCorsHeaders } from "@/lib/cors-utils"
-import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
+import { ErrorCodes } from "@/lib/error-codes"
 
 const execAsync = promisify(exec)
 
@@ -13,15 +14,7 @@ export async function POST(req: NextRequest) {
   const requestId = crypto.randomUUID()
 
   if (!jar.get("manager_session")) {
-    const res = NextResponse.json(
-      {
-        ok: false,
-        error: ErrorCodes.UNAUTHORIZED,
-        message: getErrorMessage(ErrorCodes.UNAUTHORIZED),
-        requestId,
-      },
-      { status: 401 },
-    )
+    const res = createErrorResponse(ErrorCodes.UNAUTHORIZED, 401, { requestId })
     addCorsHeaders(res, origin)
     return res
   }
@@ -31,15 +24,7 @@ export async function POST(req: NextRequest) {
     const { action } = body
 
     if (!action) {
-      const res = NextResponse.json(
-        {
-          ok: false,
-          error: ErrorCodes.INVALID_REQUEST,
-          message: getErrorMessage(ErrorCodes.INVALID_REQUEST, { field: "action" }),
-          requestId,
-        },
-        { status: 400 },
-      )
+      const res = createErrorResponse(ErrorCodes.INVALID_REQUEST, 400, { field: "action", requestId })
       addCorsHeaders(res, origin)
       return res
     }
@@ -51,10 +36,9 @@ export async function POST(req: NextRequest) {
         addCorsHeaders(res, origin)
         return res
       } catch (error) {
-        const res = NextResponse.json(
-          { ok: false, error: error instanceof Error ? error.message : "Failed to reload Caddy" },
-          { status: 500 },
-        )
+        const res = createErrorResponse(ErrorCodes.INTERNAL_ERROR, 500, {
+          exception: error instanceof Error ? error.message : "Failed to reload Caddy",
+        })
         addCorsHeaders(res, origin)
         return res
       }
@@ -67,10 +51,9 @@ export async function POST(req: NextRequest) {
         addCorsHeaders(res, origin)
         return res
       } catch (error) {
-        const res = NextResponse.json(
-          { ok: false, error: error instanceof Error ? error.message : "Failed to restart bridge" },
-          { status: 500 },
-        )
+        const res = createErrorResponse(ErrorCodes.INTERNAL_ERROR, 500, {
+          exception: error instanceof Error ? error.message : "Failed to restart bridge",
+        })
         addCorsHeaders(res, origin)
         return res
       }
@@ -83,37 +66,19 @@ export async function POST(req: NextRequest) {
         addCorsHeaders(res, origin)
         return res
       } catch (error) {
-        const res = NextResponse.json(
-          { ok: false, error: error instanceof Error ? error.message : "Failed to backup websites" },
-          { status: 500 },
-        )
+        const res = createErrorResponse(ErrorCodes.INTERNAL_ERROR, 500, {
+          exception: error instanceof Error ? error.message : "Failed to backup websites",
+        })
         addCorsHeaders(res, origin)
         return res
       }
     }
 
-    const res = NextResponse.json(
-      {
-        ok: false,
-        error: ErrorCodes.UNKNOWN_ACTION,
-        message: getErrorMessage(ErrorCodes.UNKNOWN_ACTION, { action }),
-        details: { action },
-        requestId,
-      },
-      { status: 400 },
-    )
+    const res = createErrorResponse(ErrorCodes.UNKNOWN_ACTION, 400, { action, requestId })
     addCorsHeaders(res, origin)
     return res
   } catch (_error) {
-    const res = NextResponse.json(
-      {
-        ok: false,
-        error: ErrorCodes.INVALID_JSON,
-        message: getErrorMessage(ErrorCodes.INVALID_JSON),
-        requestId,
-      },
-      { status: 400 },
-    )
+    const res = createErrorResponse(ErrorCodes.INVALID_JSON, 400, { requestId })
     addCorsHeaders(res, origin)
     return res
   }

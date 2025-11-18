@@ -1223,10 +1223,64 @@ awan.alive.best {
     import common_headers
     import image_serving
     reverse_proxy localhost:3394 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
 dogs.alive.best {
     import common_headers
     import image_serving
     reverse_proxy localhost:3391 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+test-flow.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3398 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+gekkewebsite.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3399 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+test123.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3400 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+
+
+
+api.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3407 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
         header_up X-Forwarded-For {remote_host}

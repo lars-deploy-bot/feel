@@ -31,11 +31,13 @@ export interface Organization {
   name: string
   credits: number
   workspace_count?: number
+  role?: "owner" | "admin" | "member"
 }
 
 export interface OrganizationsResponse {
   ok: true
   organizations: Organization[]
+  current_user_id: string
 }
 
 export interface WorkspacesResponse {
@@ -137,7 +139,11 @@ export function isOrganizationsResponse(data: unknown): data is OrganizationsRes
   if (!isApiSuccess(data)) return false
 
   return (
-    "organizations" in data && Array.isArray(data.organizations) && data.organizations.every(org => isOrganization(org))
+    "organizations" in data &&
+    Array.isArray(data.organizations) &&
+    data.organizations.every(org => isOrganization(org)) &&
+    "current_user_id" in data &&
+    typeof (data as OrganizationsResponse).current_user_id === "string"
   )
 }
 

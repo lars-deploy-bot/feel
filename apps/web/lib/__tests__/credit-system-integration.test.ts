@@ -25,7 +25,7 @@ import { llmTokensToCredits } from "@/lib/credits"
 import { eq } from "drizzle-orm"
 
 describe("Credit System Integration", () => {
-  const TEST_WORKSPACE_ID = "test-workspace-credits-" + Date.now()
+  const TEST_WORKSPACE_ID = `test-workspace-credits-${Date.now()}`
   const TEST_DOMAIN = `test-credits-${Date.now()}.example.com`
   const INITIAL_CREDITS = 100
 
@@ -130,8 +130,8 @@ describe("Credit System Integration", () => {
 
     test("should apply discount correctly (25%)", async () => {
       const llmTokensUsed = 1000 // 10 credits
-      const expectedCreditsUsed = 10
-      const expectedCharged = 2.5 // 25% of 10
+      const _expectedCreditsUsed = 10
+      const _expectedCharged = 2.5 // 25% of 10
       const expectedBalance = 97.5 // 100 - 2.5
 
       const newBalance = await chargeTokensFromCredits(TEST_DOMAIN, llmTokensUsed)

@@ -2,7 +2,7 @@ import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
-import { getAllFeedback, saveFeedback } from "@/lib/feedback"
+import { updateFeedbackStatus } from "@/lib/feedback"
 
 /**
  * PATCH /api/manager/feedback/update
@@ -46,35 +46,29 @@ export async function PATCH(req: NextRequest) {
       return res
     }
 
-    // Load all feedback and find the entry
-    const allFeedback = getAllFeedback()
-    const entryIndex = allFeedback.findIndex(f => f.id === id)
+    // Update feedback status in Supabase
+    const status = closed ? "closed" : "pending"
+    const success = await updateFeedbackStatus(id, status)
 
-    if (entryIndex === -1) {
+    if (!success) {
       const res = NextResponse.json(
         {
           ok: false,
           error: ErrorCodes.INVALID_REQUEST,
-          message: "Feedback entry not found",
+          message: "Failed to update feedback entry",
         },
-        { status: 404 },
+        { status: 500 },
       )
       addCorsHeaders(res, origin)
       return res
     }
 
-    // Update the entry
-    allFeedback[entryIndex].closed = closed
-    allFeedback[entryIndex].closedAt = closed ? new Date().toISOString() : undefined
-
-    // Save back to file
-    saveFeedback({ entries: allFeedback })
-
-    console.log(`[Manager] Feedback ${id} marked as ${closed ? "closed" : "reopened"}`)
+    console.log(`[Manager] Feedback ${id} marked as ${status}`)
 
     const res = NextResponse.json({
       ok: true,
-      entry: allFeedback[entryIndex],
+      id,
+      status,
     })
 
     addCorsHeaders(res, origin)

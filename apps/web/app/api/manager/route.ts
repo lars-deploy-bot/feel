@@ -2,11 +2,12 @@ import { exec } from "node:child_process"
 import { promisify } from "node:util"
 import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
+import { updateDomainOwnerPassword } from "@/lib/auth/supabase-passwords"
 import { addCorsHeaders } from "@/lib/cors-utils"
+import { getAllDomains } from "@/lib/deployment/domain-registry"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
-import { workspaceRepository } from "@/lib/db/repositories"
+import { updateOrgCredits } from "@/lib/tokens"
 import type { DomainConfigClient } from "@/types/domain"
-import { updateDomainConfig } from "@/types/guards/api"
 
 const execAsync = promisify(exec)
 
@@ -67,26 +68,29 @@ export async function GET(req: NextRequest) {
     )
   }
 
-  // Load workspaces from database
-  const workspaces = await workspaceRepository.findAll()
+  // Load all domains from Supabase (includes port, credits, email)
+  const allDomains = await getAllDomains()
   const orphanedDomains = await detectOrphanedDomains()
 
   const sanitizedDomains: Record<string, DomainConfigClient> = {}
 
-  for (const workspace of workspaces) {
+  // Add all domains from Supabase with full info
+  for (const domainInfo of allDomains) {
     // Skip preview domains
-    if (isPreviewDomain(workspace.domain)) {
+    if (isPreviewDomain(domainInfo.hostname)) {
       continue
     }
 
-    sanitizedDomains[workspace.domain] = {
-      tenantId: workspace.id, // Workspace ID is the tenant ID
-      port: workspace.port,
-      email: undefined, // Email is per-user now, not per-workspace
-      credits: workspace.credits ?? 0,
+    sanitizedDomains[domainInfo.hostname] = {
+      tenantId: domainInfo.hostname,
+      port: domainInfo.port,
+      email: domainInfo.ownerEmail,
+      orgId: domainInfo.orgId,
+      credits: domainInfo.credits,
     }
   }
 
+  // Add orphaned domains (not in Supabase)
   for (const domain of orphanedDomains) {
     // Skip preview domains
     if (isPreviewDomain(domain)) {
@@ -140,23 +144,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Find workspace in database
-    const workspace = await workspaceRepository.findByDomain(domain)
-
-    if (!workspace) {
-      return corsResponse(
-        origin,
-        {
-          ok: false,
-          error: ErrorCodes.INVALID_REQUEST,
-          message: "Workspace not found",
-          requestId,
-        },
-        404,
-      )
-    }
-
-    // Update credits in database if provided
+    // Update credits in Supabase if provided
     if (credits !== undefined) {
       if (typeof credits !== "number" || credits < 0) {
         return corsResponse(
@@ -170,16 +158,43 @@ export async function POST(req: NextRequest) {
           400,
         )
       }
-      await workspaceRepository.updateCredits(workspace.id, credits)
+
+      const success = await updateOrgCredits(domain, credits)
+      if (!success) {
+        return corsResponse(
+          origin,
+          {
+            ok: false,
+            error: ErrorCodes.INVALID_REQUEST,
+            message: "Failed to update credits (domain or org not found)",
+            requestId,
+          },
+          404,
+        )
+      }
     }
 
-    // Update password/email in old JSON file if provided (legacy support)
-    // TODO: Move password to user table, remove email from workspace
-    if (password || email !== undefined) {
-      const updates: { password?: string; email?: string } = {}
-      if (password) updates.password = password
-      if (email !== undefined) updates.email = email
-      await updateDomainConfig(domain, updates)
+    // Update password/email in Supabase
+    if (password) {
+      const passwordSuccess = await updateDomainOwnerPassword(domain, password)
+      if (!passwordSuccess) {
+        return corsResponse(
+          origin,
+          {
+            ok: false,
+            error: ErrorCodes.INTERNAL_ERROR,
+            message: "Failed to update password",
+            requestId,
+          },
+          500,
+        )
+      }
+    }
+
+    if (email !== undefined) {
+      // Note: This updates the email for the domain owner
+      // If you need to update a specific user's email, you'll need to pass the old email
+      console.warn("[Manager] Email update via domain not yet implemented - need old email address")
     }
 
     return corsResponse(origin, { ok: true, requestId })

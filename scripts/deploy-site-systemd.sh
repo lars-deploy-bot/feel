@@ -29,21 +29,34 @@ NEW_SITE_DIR="/srv/webalive/sites/$DOMAIN"
 CADDYFILE="/root/webalive/claude-bridge/Caddyfile"
 DOMAIN_PASSWORDS_FILE="/var/lib/claude-bridge/domain-passwords.json"
 SERVER_IP="138.201.56.93"
-PASSWORD="${DEPLOY_PASSWORD:-supersecret}"  # Read from environment, fallback to default
-EMAIL="${DEPLOY_EMAIL:-}"  # Optional email address for domain owner
+PASSWORD="${DEPLOY_PASSWORD:-}"  # Read from environment (optional if EMAIL provided)
+EMAIL="${DEPLOY_EMAIL:-}"  # User's email address
 
 echo "🚀 Deploying $DOMAIN with improved port management..."
-echo "🔐 Hashing password with bcrypt..."
 
-# Hash the password using dedicated script
-PASSWORD_HASH=$(cd /root/webalive/claude-bridge && bun scripts/hash-password.mjs "$PASSWORD")
-
-if [ -z "$PASSWORD_HASH" ]; then
-    echo "❌ Failed to hash password"
-    exit 16
+# If both EMAIL and PASSWORD are provided, hash the password
+# If only EMAIL is provided, we'll link to existing user (no password needed)
+# If neither is provided, ERROR (we need at least an email)
+if [ -z "$EMAIL" ]; then
+    echo "❌ DEPLOY_EMAIL is required"
+    echo "   Either provide existing user email (to link domain) or new email (to create account)"
+    exit 17
 fi
 
-echo "✅ Password hashed successfully"
+if [ -n "$PASSWORD" ]; then
+    echo "🔐 Hashing password for new account creation..."
+    PASSWORD_HASH=$(cd /root/webalive/claude-bridge && bun scripts/hash-password.mjs "$PASSWORD")
+
+    if [ -z "$PASSWORD_HASH" ]; then
+        echo "❌ Failed to hash password"
+        exit 16
+    fi
+
+    echo "✅ Password hashed successfully (will create account for $EMAIL if doesn't exist)"
+else
+    echo "✅ No password provided - will link domain to existing account: $EMAIL"
+    PASSWORD_HASH=""  # Empty password hash = link to existing user
+fi
 
 # 1. Validate DNS pointing to our server (skip for wildcard domains)
 WILDCARD_DOMAIN="alive.best"
@@ -145,12 +158,12 @@ else
     PORT=$(get_next_port)
     echo "✅ Assigned new port: $PORT"
 
-    # Add to domain-passwords.json
+    # DEPRECATED: Add to domain-passwords.json (kept for backward compatibility during migration)
+    # TODO: Remove after 2025-11-23 when fully migrated to Supabase
     if [ ! -f "$DOMAIN_PASSWORDS_FILE" ]; then
         echo "{}" > "$DOMAIN_PASSWORDS_FILE"
     fi
 
-    # Add domain with hashed password, assigned port, creation timestamp, and optional email
     CREATED_AT=$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
 
     jq --arg domain "$DOMAIN" \
@@ -163,10 +176,19 @@ else
     mv "${DOMAIN_PASSWORDS_FILE}.tmp" "$DOMAIN_PASSWORDS_FILE"
 
     if [ -n "$EMAIL" ]; then
-        echo "✅ Added $DOMAIN to domain-passwords.json (port $PORT, email: $EMAIL, credits: 200)"
+        echo "✅ Added $DOMAIN to domain-passwords.json (port $PORT, email: $EMAIL, credits: 200) [DEPRECATED - remove after migration]"
     else
-        echo "✅ Added $DOMAIN to domain-passwords.json (port $PORT, credits: 200)"
+        echo "✅ Added $DOMAIN to domain-passwords.json (port $PORT, credits: 200) [DEPRECATED - remove after migration]"
     fi
+
+    # Add to Supabase (primary database)
+    echo "Adding $DOMAIN to Supabase database..."
+    if cd /root/webalive/claude-bridge/apps/web && bun scripts/add-domain-to-supabase.ts "$DOMAIN" "$EMAIL" "$PASSWORD_HASH" "$PORT" 2>&1; then
+        echo "✅ Added $DOMAIN to Supabase"
+    else
+        echo "⚠️  Failed to add $DOMAIN to Supabase (will show as orphaned in manager)"
+    fi
+    cd - > /dev/null
 fi
 
 # 3. For existing domains, verify their assigned port is still available
@@ -317,8 +339,18 @@ else
     exit 8
 fi
 
-# 15. Update Caddyfile
+# 15. Update Caddyfile (with file locking to prevent corruption from concurrent deployments)
 echo "📝 Updating Caddyfile..."
+LOCKFILE="/tmp/caddyfile.lock"
+
+# Acquire exclusive lock (wait up to 30 seconds)
+exec 200>"$LOCKFILE"
+if ! flock -w 30 200; then
+    echo "❌ Failed to acquire Caddyfile lock - another deployment is in progress"
+    exit 15
+fi
+
+# Now we have exclusive access - check and update
 if grep -q "^$DOMAIN {" "$CADDYFILE"; then
     echo "⚠️ Domain already exists in Caddyfile, updating port..."
     sed -i "/^$DOMAIN {/,/^}/ s/localhost:[0-9]*/localhost:$PORT/" "$CADDYFILE"
@@ -338,6 +370,9 @@ $DOMAIN {
 }
 EOF
 fi
+
+# Release lock (file descriptor 200 will be closed automatically at script exit)
+flock -u 200
 
 # 16. Reload Caddy
 echo "🔄 Reloading Caddy configuration..."

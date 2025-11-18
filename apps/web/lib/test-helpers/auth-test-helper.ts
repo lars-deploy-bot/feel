@@ -1,0 +1,159 @@
+/**
+ * Authentication Test Helpers
+ *
+ * Provides utilities for setting up authenticated test scenarios
+ */
+
+import { randomUUID } from "node:crypto"
+import { hash } from "bcrypt"
+import { createClient } from "@supabase/supabase-js"
+import { getUserDefaultOrgId } from "@/lib/deployment/org-resolver"
+import { getSupabaseCredentials } from "@/lib/env/server"
+import type { Database as IamDatabase } from "@/lib/supabase/iam.types"
+import { generateTestEmail, validateTestEmail } from "./test-email-domains"
+
+export interface TestUser {
+  userId: string
+  email: string
+  orgId: string
+  orgName: string
+}
+
+/**
+ * Create a test user with organization for testing
+ *
+ * ⚠️ CRITICAL SECURITY: Email MUST use INTERNAL test domains ONLY ⚠️
+ *
+ * Allowed domains (NEVER use these for real users):
+ * - @bridge-vitest.internal (for vitest tests)
+ * - @bridge-playwright.internal (for E2E tests)
+ * - @claude-bridge-test.local (for other tests)
+ *
+ * DO NOT use @test.com, @example.com, etc. - real users might use these!
+ *
+ * @param email - Test user email (default: auto-generated with @bridge-vitest.internal)
+ * @param credits - Initial credits for org (default: 500)
+ * @param password - Plain text password to hash and store (default: "test-password-123")
+ * @returns Test user with userId and orgId
+ * @throws Error if email doesn't use an allowed internal test domain
+ */
+export async function createTestUser(
+  email?: string,
+  credits: number = 500,
+  password: string = "test-password-123",
+): Promise<TestUser> {
+  const testEmail = email || generateTestEmail()
+
+  // ENFORCE: Email must use internal test domain (throws if invalid)
+  validateTestEmail(testEmail)
+
+  // Create client directly for tests (bypasses Next.js cookies)
+  const { url, key } = getSupabaseCredentials("service")
+  const iam = createClient<IamDatabase>(url, key, {
+    db: { schema: "iam" },
+  })
+
+  // Check if user already exists
+  const { data: existingUser } = await iam.from("users").select("user_id").eq("email", testEmail).single()
+
+  let userId: string
+
+  if (existingUser) {
+    userId = existingUser.user_id
+  } else {
+    // Generate UUID and hash password
+    const newUserId = randomUUID()
+    const passwordHash = await hash(password, 10)
+
+    // Create user
+    const { data: newUser, error: userError } = await iam
+      .from("users")
+      .insert({
+        user_id: newUserId,
+        email: testEmail,
+        password_hash: passwordHash,
+        status: "active",
+        is_test_env: true,
+        metadata: {},
+      })
+      .select("user_id")
+      .single()
+
+    if (userError || !newUser) {
+      throw new Error(`Failed to create test user: ${userError?.message}`)
+    }
+
+    userId = newUser.user_id
+  }
+
+  // Get or create default organization
+  const orgId = await getUserDefaultOrgId(userId, testEmail, credits, iam)
+
+  // Get org name
+  const { data: org } = await iam.from("orgs").select("name").eq("org_id", orgId).single()
+
+  return {
+    userId,
+    email: testEmail,
+    orgId,
+    orgName: org?.name || "Test Organization",
+  }
+}
+
+/**
+ * Clean up test user and their organizations
+ *
+ * @param userId - User ID to delete
+ */
+export async function cleanupTestUser(userId: string): Promise<void> {
+  // Create client directly for tests (bypasses Next.js cookies)
+  const { url, key } = getSupabaseCredentials("service")
+  const iam = createClient<IamDatabase>(url, key, {
+    db: { schema: "iam" },
+  })
+
+  // Get user's orgs
+  const { data: memberships } = await iam.from("org_memberships").select("org_id").eq("user_id", userId)
+
+  // Delete memberships
+  await iam.from("org_memberships").delete().eq("user_id", userId)
+
+  // Delete orgs
+  if (memberships) {
+    // Create app client for domain deletion
+    const app = createClient(url, key, {
+      db: { schema: "app" },
+    })
+
+    for (const membership of memberships) {
+      // Delete domains in this org first
+      await app.from("domains").delete().eq("org_id", membership.org_id)
+
+      // Delete org
+      await iam.from("orgs").delete().eq("org_id", membership.org_id)
+    }
+  }
+
+  // Delete user
+  await iam.from("users").delete().eq("user_id", userId)
+}
+
+/**
+ * Create a mock session cookie for authenticated requests
+ *
+ * In test environment, we use a simple approach.
+ * In production tests, you'd generate a real JWT.
+ *
+ * @param userId - User ID for the session
+ * @returns Cookie value for auth_session
+ */
+export function createTestSessionCookie(userId: string): string {
+  if (process.env.BRIDGE_ENV === "local") {
+    // In local test mode, just use "test-user"
+    return "test-user"
+  }
+
+  // For real tests, you'd generate a proper JWT here
+  // For now, return userId (this won't work in production)
+  return userId
+}

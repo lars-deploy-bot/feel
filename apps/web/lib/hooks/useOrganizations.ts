@@ -14,6 +14,7 @@ interface UseOrganizationsOptions {
 
 interface UseOrganizationsReturn {
   organizations: Organization[]
+  currentUserId: string | null
   loading: boolean
   error: string | null
   refetch: () => Promise<void>
@@ -39,6 +40,7 @@ export function useOrganizations(options: UseOrganizationsOptions = {}): UseOrga
   const { immediate = true } = options
 
   const [organizations, setOrganizations] = useState<Organization[]>([])
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(immediate)
   const [error, setError] = useState<string | null>(null)
   const { autoSelectOrg } = useWorkspaceActions()
@@ -51,6 +53,10 @@ export function useOrganizations(options: UseOrganizationsOptions = {}): UseOrga
       const response = await fetch("/api/auth/organizations", { credentials: "include" })
 
       if (!response.ok) {
+        // Handle 401 specifically with helpful message
+        if (response.status === 401) {
+          throw new Error("Session expired - please login again")
+        }
         throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
 
@@ -59,6 +65,7 @@ export function useOrganizations(options: UseOrganizationsOptions = {}): UseOrga
       // Use shared type guard instead of manual checks
       if (isOrganizationsResponse(data)) {
         setOrganizations(data.organizations)
+        setCurrentUserId(data.current_user_id)
 
         // Auto-select via store (single source of truth)
         // Store logic handles checking if org is already selected
@@ -85,6 +92,7 @@ export function useOrganizations(options: UseOrganizationsOptions = {}): UseOrga
 
   return {
     organizations,
+    currentUserId,
     loading,
     error,
     refetch: fetchOrganizations,

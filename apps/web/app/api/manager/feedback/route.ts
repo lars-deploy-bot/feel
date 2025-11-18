@@ -29,10 +29,8 @@ export async function GET(req: NextRequest) {
       return res
     }
 
-    // Fetch all feedback and sort by timestamp (newest first)
-    const feedback = [...getAllFeedback()].sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-    )
+    // Fetch all feedback (already sorted by created_at desc in Supabase)
+    const feedback = await getAllFeedback()
 
     const res = NextResponse.json({
       ok: true,

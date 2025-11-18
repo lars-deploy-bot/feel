@@ -1,4 +1,4 @@
-import { create } from "zustand"
+import { create, type StateCreator } from "zustand"
 import { persist } from "zustand/middleware"
 import { useShallow } from "zustand/react/shallow"
 
@@ -64,7 +64,7 @@ type DeployStoreWithCompat = FormSlice &
 
 export type DeployStore = DeployStoreWithCompat
 
-const createFormSlice = (set: any, _get: any, _api: any): FormSlice => {
+const createFormSlice: StateCreator<DeployStore, [], [], FormSlice> = (set, _get, _api) => {
   const formActions = {
     setDomain: (domain: string) => set({ domain }),
     setPassword: (password: string) => set({ password }),
@@ -79,7 +79,7 @@ const createFormSlice = (set: any, _get: any, _api: any): FormSlice => {
   }
 }
 
-const createStatusSlice = (set: any, _get: any, _api: any): StatusSlice => {
+const createStatusSlice: StateCreator<DeployStore, [], [], StatusSlice> = (set, _get, _api) => {
   const statusActions = {
     setIsDeploying: (isDeploying: boolean) => set({ isDeploying }),
     setDeploymentStatus: (status: DeploymentStatus) => set({ deploymentStatus: status }),
@@ -97,7 +97,7 @@ const createStatusSlice = (set: any, _get: any, _api: any): StatusSlice => {
   }
 }
 
-const createHistorySlice = (set: any, _get: any, _api: any): HistorySlice => {
+const createHistorySlice: StateCreator<DeployStore, [], [], HistorySlice> = (set, _get, _api) => {
   const historyActions = {
     addToHistory: (entry: DeploymentHistory) =>
       set((state: DeployStoreWithCompat) => ({

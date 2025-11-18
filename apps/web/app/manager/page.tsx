@@ -3,9 +3,18 @@
 import { useCallback, useEffect, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
 import { DeleteModal } from "@/components/modals/DeleteModal"
+import { ConfirmModal } from "@/components/modals/ConfirmModal"
 import { Button } from "@/components/ui/primitives/Button"
+import { DomainsTable } from "@/components/manager/DomainsTable"
+import { OrganizationsList } from "@/components/manager/OrganizationsList"
+import { FeedbackList } from "@/components/manager/FeedbackList"
+import { SettingsPanel } from "@/components/manager/SettingsPanel"
 import type { DomainConfigClient, DomainStatus } from "@/types/domain"
 import type { FeedbackEntry } from "@/types/feedback"
+import * as domainService from "@/features/manager/lib/services/domainService"
+import * as orgService from "@/features/manager/lib/services/orgService"
+import * as settingsService from "@/features/manager/lib/services/settingsService"
+import { executeHandler } from "@/features/manager/lib/utils/executeHandler"
 
 type DomainPasswords = Record<string, DomainConfigClient>
 
@@ -28,16 +37,37 @@ export default function ManagerPage() {
   const [newCredits, setNewCredits] = useState("")
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<"domains" | "feedback" | "settings">("domains")
+  const [activeTab, setActiveTab] = useState<"domains" | "feedback" | "organizations" | "settings">("domains")
 
   // Feedback state
   const [feedback, setFeedback] = useState<FeedbackEntry[]>([])
   const [feedbackLoading, setFeedbackLoading] = useState(false)
 
+  // Organizations state
+  const [orgs, setOrgs] = useState<any[]>([])
+  const [orgsLoading, setOrgsLoading] = useState(false)
+  const [selectedOrg, setSelectedOrg] = useState<string | null>(null)
+  const [newOrgCredits, setNewOrgCredits] = useState("")
+  const [updatingOrgCredits, setUpdatingOrgCredits] = useState(false)
+  const [deletingOrg, setDeletingOrg] = useState<string | null>(null)
+  const [addMemberOrgId, setAddMemberOrgId] = useState<string | null>(null)
+  const [availableUsers, setAvailableUsers] = useState<any[]>([])
+  const [selectedUserId, setSelectedUserId] = useState("")
+  const [selectedRole, setSelectedRole] = useState<"owner" | "admin" | "member">("member")
+  const [addingMember, setAddingMember] = useState(false)
+  const [removingMember, setRemovingMember] = useState<string | null>(null)
+  const [transferringOwnership, setTransferringOwnership] = useState<string | null>(null)
+
   // Settings actions state
   const [reloadingCaddy, setReloadingCaddy] = useState(false)
   const [restartingBridge, setRestartingBridge] = useState(false)
   const [backingUp, setBackingUp] = useState(false)
+  const [cleaningTestData, setCleaningTestData] = useState(false)
+  const [testDataStats, setTestDataStats] = useState<any>(null)
+
+  // Service status state
+  const [serviceStatus, setServiceStatus] = useState<any>(null)
+  const [checkingStatus, setCheckingStatus] = useState(false)
 
   // Login form state
   const [showLogin, setShowLogin] = useState(false)
@@ -51,13 +81,25 @@ export default function ManagerPage() {
   const [checkingPermissions, setCheckingPermissions] = useState(false)
   const [fixingPermissions, setFixingPermissions] = useState(false)
 
-  // Expandable detail view state
-  const [_expandedDomain, _setExpandedDomain] = useState<string | null>(null)
+  // Confirmation modals state
+  const [confirmRestartBridge, setConfirmRestartBridge] = useState(false)
+  const [confirmDeleteOrg, setConfirmDeleteOrg] = useState<string | null>(null)
+  const [confirmRemoveMember, setConfirmRemoveMember] = useState<{ orgId: string; userId: string } | null>(null)
+  const [confirmTransferOwnership, setConfirmTransferOwnership] = useState<{
+    orgId: string
+    newOwnerId: string
+    newOwnerName: string
+  } | null>(null)
 
   const fetchFeedback = useCallback(async () => {
     setFeedbackLoading(true)
     try {
       const response = await fetch("/api/manager/feedback")
+      if (!response.ok) {
+        console.error("Failed to fetch feedback:", response.status, response.statusText)
+        toast.error("Failed to fetch feedback")
+        return
+      }
       const data = await response.json()
       if (data.ok) {
         setFeedback(data.feedback)
@@ -72,25 +114,115 @@ export default function ManagerPage() {
     }
   }, [])
 
+  const fetchOrgs = useCallback(async () => {
+    setOrgsLoading(true)
+    try {
+      const response = await fetch("/api/manager/orgs")
+      if (!response.ok) {
+        console.error("Failed to fetch organizations:", response.status, response.statusText)
+        toast.error("Failed to fetch organizations")
+        return
+      }
+      const data = await response.json()
+      if (data.ok) {
+        setOrgs(data.orgs)
+      } else {
+        toast.error("Failed to fetch organizations")
+      }
+    } catch (error) {
+      console.error("Failed to fetch organizations:", error)
+      toast.error("Failed to fetch organizations")
+    } finally {
+      setOrgsLoading(false)
+    }
+  }, [])
+
+  const fetchStatuses = useCallback(async () => {
+    setLoadingStatus(true)
+    try {
+      const response = await fetch("/api/manager/status")
+      if (!response.ok) {
+        console.log("Domain status check skipped (endpoint not implemented)")
+        return
+      }
+      const data = await response.json()
+      if (data.ok && data.statuses) {
+        const statusMap = data.statuses.reduce((acc: Record<string, DomainStatus>, status: DomainStatus) => {
+          acc[status.domain] = status
+          return acc
+        }, {})
+        setStatuses(statusMap)
+      }
+    } catch (error) {
+      console.error("Failed to fetch statuses:", error)
+    } finally {
+      setLoadingStatus(false)
+    }
+  }, [])
+
+  const fetchDomains = useCallback(async () => {
+    try {
+      const response = await fetch("/api/manager")
+
+      if (!response.ok) {
+        console.error("Failed to fetch domains:", response.status, response.statusText)
+        setLoading(false)
+        return
+      }
+
+      const data = await response.json()
+      if (data.ok) {
+        setDomains(data.domains)
+        // Fetch statuses after domains are loaded
+        // Note: we don't await because we want both to happen in parallel
+        fetch("/api/manager/status")
+          .then(res => {
+            if (!res.ok) throw new Error(`Status ${res.status}`)
+            return res.json()
+          })
+          .then(data => {
+            if (data.ok && data.statuses) {
+              const statusMap = data.statuses.reduce((acc: Record<string, DomainStatus>, status: DomainStatus) => {
+                acc[status.domain] = status
+                return acc
+              }, {})
+              setStatuses(statusMap)
+            }
+          })
+          .catch(error => console.error("Failed to fetch statuses:", error))
+      }
+    } catch (error) {
+      console.error("Failed to fetch domains:", error)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     checkAuthentication()
   }, [])
 
   useEffect(() => {
-    if (!authenticated || Object.keys(domains).length === 0) return
+    if (!authenticated) return
 
     const interval = setInterval(() => {
       fetchStatuses()
     }, 30000)
 
     return () => clearInterval(interval)
-  }, [authenticated, domains])
+  }, [authenticated, fetchStatuses])
 
   useEffect(() => {
     if (activeTab === "feedback" && authenticated) {
       fetchFeedback()
     }
   }, [activeTab, authenticated, fetchFeedback])
+
+  useEffect(() => {
+    if (activeTab === "organizations" && authenticated) {
+      fetchOrgs()
+    }
+  }, [activeTab, authenticated, fetchOrgs])
 
   const checkAuthentication = async () => {
     try {
@@ -112,39 +244,6 @@ export default function ManagerPage() {
     }
   }
 
-  const fetchDomains = async () => {
-    try {
-      const response = await fetch("/api/manager")
-      const data = await response.json()
-      if (data.ok) {
-        setDomains(data.domains)
-        fetchStatuses()
-      }
-    } catch (error) {
-      console.error("Failed to fetch domains:", error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fetchStatuses = async () => {
-    setLoadingStatus(true)
-    try {
-      const response = await fetch("/api/manager/status")
-      const data = await response.json()
-      if (data.ok) {
-        const statusMap = data.statuses.reduce((acc: Record<string, DomainStatus>, status: DomainStatus) => {
-          acc[status.domain] = status
-          return acc
-        }, {})
-        setStatuses(statusMap)
-      }
-    } catch (error) {
-      console.error("Failed to fetch statuses:", error)
-    } finally {
-      setLoadingStatus(false)
-    }
-  }
 
   const openPasswordDialog = (domain: string) => {
     setSelectedDomain(domain)
@@ -236,17 +335,12 @@ export default function ManagerPage() {
   }
 
   const deleteDomain = async (domain: string) => {
-    setDeleting(domain)
-    try {
-      const response = await fetch("/api/manager", {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ domain }),
-      })
-
-      if (response.ok) {
+    await executeHandler({
+      fn: () => domainService.deleteDomain(domain),
+      onLoading: (loading) => setDeleting(loading ? domain : null),
+      successMessage: "Domain deleted successfully",
+      errorMessage: "Failed to delete domain",
+      onSuccess: () => {
         setDomains(prev => {
           const newDomains = { ...prev }
           delete newDomains[domain]
@@ -257,16 +351,8 @@ export default function ManagerPage() {
           delete newStatuses[domain]
           return newStatuses
         })
-        toast.success("Domain deleted successfully")
-      } else {
-        toast.error("Failed to delete domain")
-      }
-    } catch (error) {
-      console.error("Failed to delete domain:", error)
-      toast.error("Failed to delete domain")
-    } finally {
-      setDeleting(null)
-    }
+      },
+    })
   }
 
   const handleDelete = (domain: string) => {
@@ -311,10 +397,10 @@ export default function ManagerPage() {
     setLoginError("")
 
     try {
-      const response = await fetch("/api/login", {
+      const response = await fetch("/api/login-manager", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ passcode: pass, workspace: "manager" }),
+        body: JSON.stringify({ passcode: pass }),
       })
 
       if (response.ok) {
@@ -407,7 +493,7 @@ export default function ManagerPage() {
     return "Offline"
   }
 
-  const getStatusDetails = (domain: string) => {
+  const _getStatusDetails = (domain: string) => {
     const status = statuses[domain]
     if (!status) return "Status unknown"
     const parts = []
@@ -464,126 +550,181 @@ export default function ManagerPage() {
     return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
   }
 
-  const handleReloadCaddy = async () => {
-    setReloadingCaddy(true)
+  const checkServiceStatus = async () => {
+    setCheckingStatus(true)
     try {
-      const response = await fetch("/api/manager/actions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "reload_caddy" }),
-      })
-
-      if (response.ok) {
-        toast.success("Caddy reloaded successfully")
-      } else {
-        const data = await response.json()
-        toast.error(data.error || "Failed to reload Caddy")
-      }
+      const data = await settingsService.checkServiceStatus()
+      setServiceStatus(data)
     } catch (error) {
-      console.error("Failed to reload Caddy:", error)
-      toast.error("Failed to reload Caddy")
+      console.error("Failed to check service status:", error)
+      toast.error("Failed to check service status")
     } finally {
-      setReloadingCaddy(false)
+      setCheckingStatus(false)
     }
+  }
+
+  const handleReloadCaddy = async () => {
+    await executeHandler({
+      fn: () => settingsService.reloadCaddy(),
+      onLoading: setReloadingCaddy,
+      successMessage: "Caddy reloaded successfully",
+      errorMessage: "Failed to reload Caddy",
+    })
   }
 
   const handleRestartBridge = async () => {
-    if (!confirm("This will restart the Claude Bridge server. Continue?")) return
+    setConfirmRestartBridge(true)
+  }
 
-    setRestartingBridge(true)
-    try {
-      const response = await fetch("/api/manager/actions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "restart_bridge" }),
-      })
-
-      if (response.ok) {
-        toast.success("Bridge restart initiated (page will reload in 5s)")
-        setTimeout(() => window.location.reload(), 5000)
-      } else {
-        const data = await response.json()
-        toast.error(data.error || "Failed to restart bridge")
-        setRestartingBridge(false)
-      }
-    } catch (error) {
-      console.error("Failed to restart bridge:", error)
-      toast.error("Failed to restart bridge")
-      setRestartingBridge(false)
-    }
+  const executeRestartBridge = async () => {
+    setConfirmRestartBridge(false)
+    await executeHandler({
+      fn: () => settingsService.restartBridge(),
+      onLoading: setRestartingBridge,
+      successMessage: "Bridge restart initiated (page will reload in 5s)",
+      errorMessage: "Failed to restart bridge",
+      onSuccess: () => setTimeout(() => window.location.reload(), 5000),
+    })
   }
 
   const handleBackupWebsites = async () => {
-    setBackingUp(true)
-    try {
-      const response = await fetch("/api/manager/actions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "backup_websites" }),
-      })
+    await executeHandler({
+      fn: () => settingsService.backupWebsites(),
+      onLoading: setBackingUp,
+      successMessage: "Websites backed up successfully to GitHub",
+      errorMessage: "Failed to backup websites",
+    })
+  }
 
-      if (response.ok) {
-        toast.success("Websites backed up successfully to GitHub")
-      } else {
-        let errorMessage = "Failed to backup websites"
-        try {
-          const data = await response.json()
-          errorMessage = data.error || errorMessage
-        } catch {
-          // Response body is empty or invalid JSON
+  const handleCleanupTestData = async (dryRun: boolean = true) => {
+    setTestDataStats(null)
+    await executeHandler({
+      fn: () => settingsService.cleanupTestData(dryRun),
+      onLoading: setCleaningTestData,
+      successMessage: dryRun
+        ? "Preview generated"
+        : "Cleanup complete",
+      errorMessage: "Failed to clean up test data",
+      onSuccess: (stats) => {
+        setTestDataStats(stats)
+        if (!dryRun) {
+          fetchOrgs()
         }
-        toast.error(errorMessage)
+      },
+    })
+  }
+
+  const handleUpdateOrgCredits = async (orgId: string, credits: number) => {
+    await executeHandler({
+      fn: () => orgService.updateOrgCredits(orgId, credits),
+      onLoading: setUpdatingOrgCredits,
+      successMessage: "Organization credits updated",
+      errorMessage: "Failed to update organization credits",
+      onSuccess: () => {
+        setOrgs(prev => prev.map(org => (org.org_id === orgId ? { ...org, credits } : org)))
+        setSelectedOrg(null)
+        setNewOrgCredits("")
+      },
+    })
+  }
+
+  const handleDeleteOrg = async (orgId: string) => {
+    setConfirmDeleteOrg(orgId)
+  }
+
+  const executeDeleteOrg = async (orgId: string) => {
+    setConfirmDeleteOrg(null)
+    await executeHandler({
+      fn: () => orgService.deleteOrg(orgId),
+      onLoading: (loading) => setDeletingOrg(loading ? orgId : null),
+      successMessage: "Organization deleted",
+      errorMessage: "Failed to delete organization",
+      onSuccess: () => setOrgs(prev => prev.filter(org => org.org_id !== orgId)),
+    })
+  }
+
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch("/api/manager/users")
+      const data = await response.json()
+      if (data.ok) {
+        setAvailableUsers(data.users)
+      } else {
+        toast.error("Failed to fetch users")
       }
     } catch (error) {
-      console.error("Failed to backup websites:", error)
-      toast.error("Failed to backup websites")
-    } finally {
-      setBackingUp(false)
+      console.error("Failed to fetch users:", error)
+      toast.error("Failed to fetch users")
     }
+  }
+
+  const handleAddMember = async () => {
+    if (!addMemberOrgId || !selectedUserId) return
+
+    await executeHandler({
+      fn: () => orgService.addOrgMember(addMemberOrgId, selectedUserId, selectedRole),
+      onLoading: setAddingMember,
+      successMessage: "Member added successfully",
+      errorMessage: "Failed to add member",
+      onSuccess: () => {
+        setAddMemberOrgId(null)
+        setSelectedUserId("")
+        setSelectedRole("member")
+        fetchOrgs()
+      },
+    })
+  }
+
+  const handleRemoveMember = async (orgId: string, userId: string) => {
+    setConfirmRemoveMember({ orgId, userId })
+  }
+
+  const executeRemoveMember = async (orgId: string, userId: string) => {
+    setConfirmRemoveMember(null)
+    await executeHandler({
+      fn: () => orgService.removeMember(orgId, userId),
+      onLoading: (loading) => setRemovingMember(loading ? userId : null),
+      successMessage: "Member removed",
+      errorMessage: "Failed to remove member",
+      onSuccess: fetchOrgs,
+    })
+  }
+
+  const handleTransferOwnership = async (orgId: string, newOwnerId: string, newOwnerName: string) => {
+    setConfirmTransferOwnership({ orgId, newOwnerId, newOwnerName })
+  }
+
+  const executeTransferOwnership = async (orgId: string, newOwnerId: string) => {
+    setConfirmTransferOwnership(null)
+    await executeHandler({
+      fn: () => orgService.transferOwnership(orgId, newOwnerId),
+      onLoading: (loading) => setTransferringOwnership(loading ? newOwnerId : null),
+      successMessage: "Ownership transferred successfully",
+      errorMessage: "Failed to transfer ownership",
+      onSuccess: fetchOrgs,
+    })
   }
 
   const handleCheckPermissions = async (domain: string) => {
-    setCheckingPermissions(true)
     setPermissionsModal(domain)
-    try {
-      const response = await fetch(`/api/manager/permissions?domain=${encodeURIComponent(domain)}`)
-      const data = await response.json()
-      if (data.ok) {
-        setPermissionsData(data.result)
-      } else {
-        toast.error(data.error || "Failed to check permissions")
-        setPermissionsModal(null)
-      }
-    } catch (error) {
-      console.error("Failed to check permissions:", error)
-      toast.error("Failed to check permissions")
-      setPermissionsModal(null)
-    } finally {
-      setCheckingPermissions(false)
-    }
+    await executeHandler({
+      fn: () => domainService.checkPermissions(domain),
+      onLoading: setCheckingPermissions,
+      successMessage: "Permissions checked",
+      errorMessage: "Failed to check permissions",
+      onSuccess: (data) => setPermissionsData(data),
+      logError: false,
+    }).catch(() => setPermissionsModal(null))
   }
 
   const handleFixPermissions = async (domain: string) => {
-    setFixingPermissions(true)
-    try {
-      const response = await fetch("/api/manager/permissions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ domain, action: "fix" }),
-      })
-      const data = await response.json()
-      if (data.ok) {
-        toast.success("Permissions fixed successfully")
-        setPermissionsData(data.result)
-      } else {
-        toast.error(data.error || "Failed to fix permissions")
-      }
-    } catch (error) {
-      console.error("Failed to fix permissions:", error)
-      toast.error("Failed to fix permissions")
-    } finally {
-      setFixingPermissions(false)
-    }
+    await executeHandler({
+      fn: () => domainService.fixPermissions(domain),
+      onLoading: setFixingPermissions,
+      successMessage: "Permissions fixed successfully",
+      errorMessage: "Failed to fix permissions",
+      onSuccess: (data) => setPermissionsData(data.result),
+    })
   }
 
   const closePermissionsModal = () => {
@@ -592,413 +733,178 @@ export default function ManagerPage() {
   }
 
   const handleFixPort = async (domain: string) => {
-    try {
-      const response = await fetch("/api/manager/vite-config", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ domain, action: "fix-port" }),
-      })
-      const data = await response.json()
-      if (data.ok) {
-        toast.success("Port fixed and service restarted")
-        // Refresh statuses to show updated port
-        fetchStatuses()
-      } else {
-        toast.error(data.error || "Failed to fix port")
-      }
-    } catch (error) {
-      console.error("Failed to fix port:", error)
-      toast.error("Failed to fix port")
-    }
-  }
-
-  const getSummaryStats = () => {
-    const domainList = Object.keys(statuses)
-    const total = domainList.length
-    const online = domainList.filter(d => statuses[d]?.httpsAccessible).length
-    const httpOnly = domainList.filter(d => statuses[d]?.httpAccessible && !statuses[d]?.httpsAccessible).length
-    const offline = domainList.filter(d => !statuses[d]?.httpAccessible && !statuses[d]?.httpsAccessible).length
-    const withIssues = domainList.filter(d => {
-      const s = statuses[d]
-      return s && (!s.dnsPointsToServer || s.vitePortMismatch || !s.systemdServiceRunning || !s.caddyConfigured)
-    }).length
-
-    return { total, online, httpOnly, offline, withIssues }
+    await executeHandler({
+      fn: () => domainService.fixPort(domain),
+      onLoading: () => {},
+      successMessage: "Port fixed and service restarted",
+      errorMessage: "Failed to fix port",
+      onSuccess: fetchStatuses,
+    })
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Domain Manager</h1>
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={fetchStatuses}
-              disabled={loadingStatus}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loadingStatus ? "Checking..." : "Refresh Status"}
-            </button>
-            <button
-              type="button"
-              onClick={handleLogout}
-              disabled={loggingOut}
-              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loggingOut ? "Logging out..." : "Logout"}
-            </button>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-6 py-12">
+        {/* Header */}
+        <div className="mb-10">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold text-slate-900">Manager</h1>
+              <p className="mt-1 text-sm text-slate-600">Manage domains, organizations, and system configuration</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={fetchStatuses}
+                disabled={loadingStatus}
+                className="inline-flex items-center px-3.5 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {loadingStatus ? "Refreshing..." : "Refresh status"}
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                disabled={loggingOut}
+                className="inline-flex items-center px-3.5 py-2 text-sm font-medium text-white bg-slate-900 border border-transparent rounded-md hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {loggingOut ? "Logging out..." : "Logout"}
+              </button>
+            </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="border-b border-gray-200">
-            <div className="flex gap-4 px-6">
+        {/* Main Card */}
+        <div className="bg-white rounded-lg border border-slate-200">
+          {/* Tabs */}
+          <div className="border-b border-slate-200">
+            <nav className="flex px-6" aria-label="Tabs">
               <button
                 type="button"
                 onClick={() => setActiveTab("domains")}
-                className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                className={`relative py-4 px-1 mr-8 text-sm font-medium transition-colors ${
                   activeTab === "domains"
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    ? "text-indigo-600"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                Domain Passwords
+                Domains
+                {activeTab === "domains" && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600" />
+                )}
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab("feedback")}
-                className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                className={`relative py-4 px-1 mr-8 text-sm font-medium transition-colors ${
                   activeTab === "feedback"
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    ? "text-indigo-600"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 Feedback
-                {feedback.length > 0 && (
-                  <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-600 rounded-full">
-                    {feedback.length}
+                {activeTab === "feedback" && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("organizations")}
+                className={`relative py-4 px-1 mr-8 text-sm font-medium transition-colors ${
+                  activeTab === "organizations"
+                    ? "text-indigo-600"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Organizations
+                {activeTab === "organizations" && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600" />
+                )}
+                {orgs.length > 0 && (
+                  <span className="ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-700 rounded">
+                    {orgs.length}
                   </span>
                 )}
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab("settings")}
-                className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                className={`relative py-4 px-1 mr-8 text-sm font-medium transition-colors ${
                   activeTab === "settings"
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    ? "text-indigo-600"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 Settings
+                {activeTab === "settings" && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600" />
+                )}
               </button>
-            </div>
+            </nav>
           </div>
 
           {activeTab === "domains" && (
-            <>
-              <div className="px-6 py-4 border-b border-gray-200">
-                <div className="flex justify-between items-center mb-4">
-                  <div>
-                    <h2 className="text-lg font-semibold text-gray-800">Domain Passwords</h2>
-                    <p className="text-sm text-gray-600 mt-1">Manage passwords for each domain</p>
-                  </div>
-                  {loadingStatus && (
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-                      Checking status...
-                    </div>
-                  )}
-                </div>
-
-                {Object.keys(statuses).length > 0 &&
-                  (() => {
-                    const stats = getSummaryStats()
-                    return (
-                      <div className="grid grid-cols-5 gap-3">
-                        <div className="bg-gray-50 rounded-lg p-3">
-                          <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
-                          <div className="text-xs text-gray-600">Total Sites</div>
-                        </div>
-                        <div className="bg-green-50 rounded-lg p-3">
-                          <div className="text-2xl font-bold text-green-700">{stats.online}</div>
-                          <div className="text-xs text-green-600">Online (HTTPS)</div>
-                        </div>
-                        <div className="bg-yellow-50 rounded-lg p-3">
-                          <div className="text-2xl font-bold text-yellow-700">{stats.httpOnly}</div>
-                          <div className="text-xs text-yellow-600">HTTP Only</div>
-                        </div>
-                        <div className="bg-red-50 rounded-lg p-3">
-                          <div className="text-2xl font-bold text-red-700">{stats.offline}</div>
-                          <div className="text-xs text-red-600">Offline</div>
-                        </div>
-                        <div className="bg-orange-50 rounded-lg p-3">
-                          <div className="text-2xl font-bold text-orange-700">{stats.withIssues}</div>
-                          <div className="text-xs text-orange-600">With Issues</div>
-                        </div>
-                      </div>
-                    )
-                  })()}
-              </div>
-
-              <div className="p-6">
-                <div className="space-y-4">
-                  {Object.entries(domains).map(([domain, config]) => (
-                    <div key={domain} className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg">
-                      <div className="flex items-center gap-3 flex-1">
-                        <div className="flex flex-col items-center gap-1 min-w-[80px]">
-                          <div
-                            className={`w-3 h-3 rounded-full ${getStatusColor(domain)}`}
-                            title={getStatusDetails(domain)}
-                          />
-                          <div className="text-xs text-gray-500 font-medium">{getStatusText(domain)}</div>
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <div className="font-medium text-gray-900">{domain}</div>
-                            {config.orphaned && (
-                              <span className="text-xs px-2 py-1 rounded bg-yellow-100 text-yellow-700 font-medium">
-                                ⚠ ORPHANED
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-sm text-gray-500">{getStatusDetails(domain)}</div>
-                          <div className="text-xs text-gray-400 mt-1">
-                            {config.orphaned ? (
-                              <span className="text-yellow-600">Infrastructure exists but not in registry</span>
-                            ) : (
-                              <>
-                                Port: {config.port}
-                                {config.tenantId && ` • Tenant: ${config.tenantId}`}
-                                {config.email && ` • ${config.email}`}
-                                {statuses[domain]?.createdAt &&
-                                  ` • Created: ${formatCreatedDate(statuses[domain].createdAt)}`}
-                              </>
-                            )}
-                          </div>
-                          {!config.orphaned && config.credits !== undefined && (
-                            <div className="text-xs text-blue-600 font-medium mt-1">
-                              Credits: {config.credits.toFixed(2)}
-                            </div>
-                          )}
-                          {(() => {
-                            const checks = getInfrastructureChecks(domain)
-                            if (!checks) return null
-                            return (
-                              <div className="flex gap-2 mt-2">
-                                {checks.map((check, i) => (
-                                  <div
-                                    key={i}
-                                    className={`text-xs px-2 py-1 rounded ${
-                                      check.pass ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                                    }`}
-                                    title={check.detail}
-                                  >
-                                    {check.pass ? "✓" : "✗"} {check.label}
-                                  </div>
-                                ))}
-                              </div>
-                            )
-                          })()}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {statuses[domain]?.vitePortMismatch && (
-                          <button
-                            type="button"
-                            onClick={() => handleFixPort(domain)}
-                            className="px-3 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                            title="Fix port mismatch in vite config"
-                          >
-                            ⚙️ Fix Port
-                          </button>
-                        )}
-
-                        <button
-                          type="button"
-                          onClick={() => handleCheckPermissions(domain)}
-                          className="px-3 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                          title="Check file permissions"
-                        >
-                          🔒
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => openPasswordDialog(domain)}
-                          disabled={config.orphaned}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                          title={config.orphaned ? "Cannot edit orphaned domain" : "Edit domain settings"}
-                        >
-                          Edit
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(domain)}
-                          disabled={deleting === domain}
-                          className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {deleting === domain ? "Deleting..." : "Delete"}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-
-                  {Object.keys(domains).length === 0 && (
-                    <div className="text-center py-8 text-gray-500">No domains found</div>
-                  )}
-                </div>
-              </div>
-            </>
+            <DomainsTable
+              domains={domains}
+              statuses={statuses}
+              deleting={deleting}
+              getStatusColor={getStatusColor}
+              getStatusText={getStatusText}
+              getInfrastructureChecks={getInfrastructureChecks}
+              formatCreatedDate={formatCreatedDate}
+              onFixPort={handleFixPort}
+              onCheck={handleCheckPermissions}
+              onEdit={openPasswordDialog}
+              onDelete={handleDelete}
+            />
           )}
 
           {activeTab === "feedback" && (
-            <>
-              <div className="px-6 py-4 border-b border-gray-200">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h2 className="text-lg font-semibold text-gray-800">User Feedback</h2>
-                    <p className="text-sm text-gray-600 mt-1">
-                      View feedback submitted from all workspaces ({feedback.length} total)
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={fetchFeedback}
-                    disabled={feedbackLoading}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {feedbackLoading ? "Refreshing..." : "Refresh"}
-                  </button>
-                </div>
-              </div>
+            <FeedbackList
+              feedback={feedback}
+              loading={feedbackLoading}
+              onRefresh={fetchFeedback}
+            />
+          )}
 
-              <div className="p-6">
-                {feedbackLoading ? (
-                  <div className="text-center py-8 text-gray-500">Loading feedback...</div>
-                ) : feedback.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">No feedback submitted yet</div>
-                ) : (
-                  <div className="space-y-4">
-                    {feedback.map(entry => (
-                      <div
-                        key={entry.id}
-                        className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors"
-                      >
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-gray-900">{entry.workspace}</span>
-                            <span className="text-xs text-gray-400">•</span>
-                            <span className="text-xs text-gray-500">
-                              {new Date(entry.timestamp).toLocaleString("en-US", {
-                                month: "short",
-                                day: "numeric",
-                                year: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </span>
-                          </div>
-                          <div className="flex gap-2">
-                            {entry.conversationId && (
-                              <span
-                                className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded"
-                                title={entry.conversationId}
-                              >
-                                Has conversation
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="text-sm text-gray-700 whitespace-pre-wrap mb-2">{entry.feedback}</div>
-
-                        {entry.userAgent && (
-                          <div className="text-xs text-gray-400 font-mono truncate" title={entry.userAgent}>
-                            {entry.userAgent}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </>
+          {activeTab === "organizations" && (
+            <OrganizationsList
+              orgs={orgs}
+              loading={orgsLoading}
+              deleting={deletingOrg}
+              transferring={transferringOwnership}
+              removing={removingMember}
+              onRefresh={fetchOrgs}
+              onAddMember={(orgId) => {
+                setAddMemberOrgId(orgId)
+                fetchUsers()
+              }}
+              onDelete={handleDeleteOrg}
+              onRemoveMember={handleRemoveMember}
+              onTransferOwnership={handleTransferOwnership}
+              onEditCredits={(orgId, credits) => {
+                setSelectedOrg(orgId)
+                setNewOrgCredits(String(credits))
+              }}
+            />
           )}
 
           {activeTab === "settings" && (
-            <>
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-800">System Settings</h2>
-                <p className="text-sm text-gray-600 mt-1">Manage system services and configuration</p>
-              </div>
-
-              <div className="p-6">
-                <div className="space-y-6">
-                  <div className="border border-gray-200 rounded-lg p-4">
-                    <h3 className="text-base font-semibold text-gray-900 mb-2">Caddy Web Server</h3>
-                    <p className="text-sm text-gray-600 mb-4">
-                      Reload Caddy configuration to apply changes from the Caddyfile
-                    </p>
-                    <button
-                      type="button"
-                      onClick={handleReloadCaddy}
-                      disabled={reloadingCaddy}
-                      className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {reloadingCaddy ? "Reloading..." : "Reload Caddy"}
-                    </button>
-                  </div>
-
-                  <div className="border border-gray-200 rounded-lg p-4">
-                    <h3 className="text-base font-semibold text-gray-900 mb-2">Claude Bridge</h3>
-                    <p className="text-sm text-gray-600 mb-4">
-                      Restart the Claude Bridge server (this will disconnect all active sessions)
-                    </p>
-                    <button
-                      type="button"
-                      onClick={handleRestartBridge}
-                      disabled={restartingBridge}
-                      className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {restartingBridge ? "Restarting..." : "Restart Bridge"}
-                    </button>
-                  </div>
-
-                  <div className="border border-gray-200 rounded-lg p-4">
-                    <h3 className="text-base font-semibold text-gray-900 mb-2">Domain Status</h3>
-                    <p className="text-sm text-gray-600 mb-4">
-                      Check the status of all domains (HTTP, HTTPS, systemd, Caddy, files)
-                    </p>
-                    <button
-                      type="button"
-                      onClick={fetchStatuses}
-                      disabled={loadingStatus}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {loadingStatus ? "Checking..." : "Refresh All Statuses"}
-                    </button>
-                  </div>
-
-                  <div className="border border-gray-200 rounded-lg p-4">
-                    <h3 className="text-base font-semibold text-gray-900 mb-2">Backup Websites</h3>
-                    <p className="text-sm text-gray-600 mb-4">
-                      Push all website changes from /srv/webalive to GitHub repository (eenlars/all_websites)
-                    </p>
-                    <button
-                      type="button"
-                      onClick={handleBackupWebsites}
-                      disabled={backingUp}
-                      className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {backingUp ? "Backing up..." : "Backup to GitHub"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </>
+            <SettingsPanel
+              serviceStatus={serviceStatus}
+              checkingStatus={checkingStatus}
+              reloadingCaddy={reloadingCaddy}
+              restartingBridge={restartingBridge}
+              loadingStatus={loadingStatus}
+              backingUp={backingUp}
+              cleaningTestData={cleaningTestData}
+              testDataStats={testDataStats}
+              onCheckStatus={checkServiceStatus}
+              onReloadCaddy={handleReloadCaddy}
+              onRestartBridge={handleRestartBridge}
+              onRefreshDomains={fetchStatuses}
+              onBackupWebsites={handleBackupWebsites}
+              onCleanupTestData={handleCleanupTestData}
+            />
           )}
         </div>
       </div>
@@ -1035,20 +941,25 @@ export default function ManagerPage() {
           }}
         >
           <div
-            className="bg-white rounded-lg shadow-xl w-full max-w-md p-6"
+            className="bg-white rounded-lg shadow-xl w-full max-w-lg p-8"
             role="document"
             onClick={e => e.stopPropagation()}
           >
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Edit Domain</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              Update settings for <span className="font-medium">{selectedDomain}</span>
-            </p>
+            <div className="mb-8">
+              <h2 className="text-2xl font-semibold text-gray-900 mb-2">Edit Domain Settings</h2>
+              <p className="text-sm text-gray-600">
+                Manage credentials and access for <span className="font-mono font-medium text-gray-900">{selectedDomain}</span>
+              </p>
+            </div>
 
-            <div className="space-y-4 mb-6">
-              <div>
-                <label htmlFor="credits-input" className="block text-sm font-medium text-gray-700 mb-1">
-                  Credits
+            <div className="space-y-8 mb-8">
+              <div className="border-l-4 border-blue-500 bg-blue-50 p-4 rounded">
+                <label htmlFor="credits-input" className="block text-sm font-semibold text-gray-900 mb-2">
+                  API Credits
                 </label>
+                <p className="text-xs text-gray-600 mb-3">
+                  Number of API credits available for Claude requests. Used for streaming conversations and code operations.
+                </p>
                 <input
                   id="credits-input"
                   type="number"
@@ -1059,15 +970,18 @@ export default function ManagerPage() {
                   placeholder="200"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  Current: {domains[selectedDomain || ""]?.credits?.toFixed(2) || "0.00"} credits
+                <p className="text-xs text-gray-500 mt-3 font-medium">
+                  Current: <span className="text-gray-700">{domains[selectedDomain || ""]?.credits?.toFixed(2) || "0.00"}</span> credits
                 </p>
               </div>
 
-              <div>
-                <label htmlFor="email-input" className="block text-sm font-medium text-gray-700 mb-1">
-                  Email Address
+              <div className="border-l-4 border-green-500 bg-green-50 p-4 rounded">
+                <label htmlFor="email-input" className="block text-sm font-semibold text-gray-900 mb-2">
+                  Owner Email Address
                 </label>
+                <p className="text-xs text-gray-600 mb-3">
+                  Primary contact email for domain notifications, password resets, and account communications.
+                </p>
                 <input
                   id="email-input"
                   type="email"
@@ -1078,10 +992,13 @@ export default function ManagerPage() {
                 />
               </div>
 
-              <div>
-                <label htmlFor="password-input" className="block text-sm font-medium text-gray-700 mb-1">
-                  New Password (optional)
+              <div className="border-l-4 border-purple-500 bg-purple-50 p-4 rounded">
+                <label htmlFor="password-input" className="block text-sm font-semibold text-gray-900 mb-2">
+                  Access Password
                 </label>
+                <p className="text-xs text-gray-600 mb-3">
+                  Used to authenticate workspace access in Claude Code. Leave blank to keep current password unchanged.
+                </p>
                 <input
                   id="password-input"
                   type="password"
@@ -1101,12 +1018,12 @@ export default function ManagerPage() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-3">
+            <div className="border-t border-gray-200 pt-6 flex justify-end gap-3">
               <button
                 type="button"
                 onClick={closeDialog}
                 disabled={saving === selectedDomain}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50"
+                className="px-5 py-2.5 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 font-medium transition-colors"
               >
                 Cancel
               </button>
@@ -1119,7 +1036,7 @@ export default function ManagerPage() {
                     newEmail === (domains[selectedDomain || ""]?.email || "") &&
                     parseFloat(newCredits) === domains[selectedDomain || ""]?.credits)
                 }
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-5 py-2.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
               >
                 {saving === selectedDomain ? "Saving..." : "Save Changes"}
               </button>
@@ -1311,6 +1228,236 @@ export default function ManagerPage() {
           </div>
         </div>
       )}
+
+      {selectedOrg && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => {
+            setSelectedOrg(null)
+            setNewOrgCredits("")
+          }}
+          onKeyDown={e => {
+            if (e.key === "Escape") {
+              setSelectedOrg(null)
+              setNewOrgCredits("")
+            }
+          }}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl w-full max-w-lg p-8"
+            role="document"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="mb-8">
+              <h2 className="text-2xl font-semibold text-gray-900 mb-2">Edit Organization Credits</h2>
+              <p className="text-sm text-gray-600">
+                Manage API credits for{" "}
+                <span className="font-mono font-medium text-gray-900">{orgs.find(o => o.org_id === selectedOrg)?.name}</span>
+              </p>
+            </div>
+
+            <div className="mb-8">
+              <div className="border-l-4 border-blue-500 bg-blue-50 p-4 rounded">
+                <label htmlFor="org-credits-input" className="block text-sm font-semibold text-gray-900 mb-2">
+                  Organization Credits
+                </label>
+                <p className="text-xs text-gray-600 mb-3">
+                  Total API credits available for all members of this organization. Each member can use these credits for Claude requests.
+                </p>
+                <input
+                  id="org-credits-input"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={newOrgCredits}
+                  onChange={e => setNewOrgCredits(e.target.value)}
+                  placeholder="200"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onKeyDown={e => {
+                    if (e.key === "Enter" && newOrgCredits) {
+                      handleUpdateOrgCredits(selectedOrg, parseFloat(newOrgCredits))
+                    }
+                  }}
+                />
+                <p className="text-xs text-gray-500 mt-3 font-medium">
+                  Current: <span className="text-gray-700">{orgs.find(o => o.org_id === selectedOrg)?.credits.toFixed(2)}</span> credits
+                </p>
+              </div>
+            </div>
+
+            <div className="border-t border-gray-200 pt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedOrg(null)
+                  setNewOrgCredits("")
+                }}
+                disabled={updatingOrgCredits}
+                className="px-5 py-2.5 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleUpdateOrgCredits(selectedOrg, parseFloat(newOrgCredits))}
+                disabled={updatingOrgCredits || !newOrgCredits}
+                className="px-5 py-2.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
+              >
+                {updatingOrgCredits ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {addMemberOrgId && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => {
+            setAddMemberOrgId(null)
+            setSelectedUserId("")
+            setSelectedRole("member")
+          }}
+          onKeyDown={e => {
+            if (e.key === "Escape") {
+              setAddMemberOrgId(null)
+              setSelectedUserId("")
+              setSelectedRole("member")
+            }
+          }}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl w-full max-w-lg p-8"
+            role="document"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="mb-8">
+              <h2 className="text-2xl font-semibold text-gray-900 mb-2">Add Member to Organization</h2>
+              <p className="text-sm text-gray-600">
+                Add a new member to <span className="font-mono font-medium text-gray-900">{orgs.find(o => o.org_id === addMemberOrgId)?.name}</span>
+              </p>
+            </div>
+
+            <div className="space-y-6 mb-8">
+              <div>
+                <label htmlFor="user-select" className="block text-sm font-semibold text-gray-900 mb-2">
+                  Select User
+                </label>
+                <p className="text-xs text-gray-600 mb-3">
+                  Choose an existing user account to add to this organization.
+                </p>
+                <select
+                  id="user-select"
+                  value={selectedUserId}
+                  onChange={e => setSelectedUserId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Select a user...</option>
+                  {availableUsers.map(user => (
+                    <option key={user.user_id} value={user.user_id}>
+                      {user.display_name || user.email} ({user.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="role-select" className="block text-sm font-semibold text-gray-900 mb-2">
+                  Assign Role
+                </label>
+                <p className="text-xs text-gray-600 mb-3">
+                  <span className="font-medium">Member</span> can access organization resources, <span className="font-medium">Admin</span> can manage members, <span className="font-medium">Owner</span> has full control.
+                </p>
+                <select
+                  id="role-select"
+                  value={selectedRole}
+                  onChange={e => setSelectedRole(e.target.value as "owner" | "admin" | "member")}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="member">Member</option>
+                  <option value="admin">Admin</option>
+                  <option value="owner">Owner</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="border-t border-gray-200 pt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setAddMemberOrgId(null)
+                  setSelectedUserId("")
+                  setSelectedRole("member")
+                }}
+                disabled={addingMember}
+                className="px-5 py-2.5 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleAddMember}
+                disabled={addingMember || !selectedUserId}
+                className="px-5 py-2.5 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
+              >
+                {addingMember ? "Adding..." : "Add Member"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmRestartBridge && (
+        <ConfirmModal
+          title="Restart Claude Bridge?"
+          message="This will restart the Claude Bridge server and disconnect all active sessions. Continue?"
+          confirmText="Restart"
+          confirmStyle="warning"
+          onConfirm={executeRestartBridge}
+          onCancel={() => setConfirmRestartBridge(false)}
+        />
+      )}
+
+      {confirmDeleteOrg && (
+        <ConfirmModal
+          title="Delete Organization?"
+          message="This will permanently remove the organization and all its members. This action cannot be undone."
+          confirmText="Delete"
+          confirmStyle="danger"
+          onConfirm={() => executeDeleteOrg(confirmDeleteOrg)}
+          onCancel={() => setConfirmDeleteOrg(null)}
+        />
+      )}
+
+      {confirmRemoveMember && (
+        <ConfirmModal
+          title="Remove Member?"
+          message="Are you sure you want to remove this member from the organization?"
+          confirmText="Remove"
+          confirmStyle="danger"
+          onConfirm={() => executeRemoveMember(confirmRemoveMember.orgId, confirmRemoveMember.userId)}
+          onCancel={() => setConfirmRemoveMember(null)}
+        />
+      )}
+
+      {confirmTransferOwnership && (
+        <ConfirmModal
+          title="Transfer Ownership?"
+          message={`Transfer ownership to ${confirmTransferOwnership.newOwnerName}? The current owner will become an admin.`}
+          confirmText="Transfer"
+          confirmStyle="warning"
+          onConfirm={() =>
+            executeTransferOwnership(confirmTransferOwnership.orgId, confirmTransferOwnership.newOwnerId)
+          }
+          onCancel={() => setConfirmTransferOwnership(null)}
+        />
+      )}
+
+      <Toaster position="top-right" />
     </div>
   )
 }

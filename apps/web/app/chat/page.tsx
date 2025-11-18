@@ -27,7 +27,8 @@ import {
   useDevTerminal,
 } from "@/features/chat/lib/dev-terminal-context"
 import { groupMessages } from "@/features/chat/lib/message-grouper"
-import { parseStreamEvent, type StreamEvent, type UIMessage } from "@/features/chat/lib/message-parser"
+import { parseStreamEvent, type UIMessage } from "@/features/chat/lib/message-parser"
+import { isValidStreamEvent } from "@/features/chat/lib/stream-guards"
 import { renderMessage } from "@/features/chat/lib/message-renderer"
 import { SandboxProvider } from "@/features/chat/lib/sandbox-context"
 import { sendClientError } from "@/features/chat/lib/send-client-error"
@@ -125,7 +126,13 @@ function ChatPageContent() {
   const handleAttachmentUpload = useImageUpload({ workspace: workspace ?? undefined, isTerminal })
 
   // Helper to create API request body (DRY)
-  const createRequestBody = (message: string) => {
+  const createRequestBody = (message: string): {
+    message: string
+    conversationId: string
+    apiKey?: string
+    model?: string
+    workspace?: string
+  } => {
     const baseBody = {
       message,
       conversationId,
@@ -133,7 +140,7 @@ function ChatPageContent() {
       model: userModel,
     }
 
-    return isTerminal ? { ...baseBody, workspace } : baseBody
+    return isTerminal ? { ...baseBody, workspace: workspace || undefined } : baseBody
   }
 
   // Show SSE terminal minimized on staging (after mount to avoid hydration mismatch)
@@ -418,23 +425,17 @@ function ChatPageContent() {
 
             // Parse NDJSON line (one JSON message per line)
             try {
-              const eventData: StreamEvent = JSON.parse(line)
+              const parsed: unknown = JSON.parse(line)
 
-              // Store requestId from first event for cancellation
-              if (!currentRequestIdRef.current && eventData.requestId) {
-                currentRequestIdRef.current = eventData.requestId
-                console.log("[Chat] Tracking requestId for cancellation:", eventData.requestId)
-              }
-
-              // Validate message structure
-              if (!eventData.requestId || !eventData.timestamp || !eventData.type) {
-                console.error("[Chat] Invalid message structure:", eventData)
+              // Validate with type guard (runtime safety)
+              if (!isValidStreamEvent(parsed)) {
+                console.error("[Chat] Invalid stream event structure:", parsed)
 
                 if (conversationId) {
                   streamingActions.incrementConsecutiveErrors(conversationId)
                   streamingActions.recordError(conversationId, {
                     type: "invalid_event_structure",
-                    message: "Invalid message structure in stream",
+                    message: "Stream event failed type guard validation",
                   })
                 }
 
@@ -444,71 +445,61 @@ function ChatPageContent() {
                   conversationId,
                   errorType: ClientError.INVALID_EVENT_STRUCTURE,
                   data: {
-                    message: eventData,
+                    message: parsed,
                     consecutiveErrors,
                   },
                   addDevEvent,
                 })
 
                 if (consecutiveErrors >= MAX_CONSECUTIVE_PARSE_ERRORS) {
-                  console.error("[Chat] Too many consecutive parse errors, stopping stream", consecutiveErrors)
-
-                  sendClientError({
-                    conversationId,
-                    errorType: ClientError.CRITICAL_PARSE_ERROR,
-                    data: {
-                      consecutiveErrors,
-                      message: "Too many consecutive parse errors, stopping stream",
-                    },
-                    addDevEvent,
-                  })
-
-                  addMessage({
-                    id: Date.now().toString(),
-                    type: "sdk_message",
-                    content: {
-                      type: "result",
-                      is_error: true,
-                      result:
-                        "Connection unstable: Multiple parse errors detected. Please try again or refresh the page.",
-                    },
-                    timestamp: new Date(),
-                  })
+                  console.error("[Chat] Too many consecutive type guard failures, stopping stream", consecutiveErrors)
                   shouldStopReading = true
                   reader.cancel()
                   break
                 }
-              } else {
-                // Valid message - capture to dev terminal and process
-                if (isDevelopment()) {
-                  addDevEvent({
-                    eventName: eventData.type,
-                    event: eventData,
-                    rawSSE: line,
-                  })
-                }
 
-                // Process the message for UI (now with conversation-scoped tool tracking)
-                receivedAnyMessage = true
-                if (conversationId) {
-                  streamingActions.recordMessageReceived(conversationId)
-                  streamingActions.resetConsecutiveErrors(conversationId)
-                }
+                continue
+              }
 
-                const message = parseStreamEvent(eventData, conversationId, streamingActions)
-                if (message) {
-                  addMessage(message)
-                  // Break on stream completion
-                  if (isCompleteEvent(eventData) || isDoneEvent(eventData) || isErrorEvent(eventData)) {
-                    receivedAnyMessage = true
-                    setBusy(false)
-                    // Show completion dots only for successful completion (not errors)
-                    if ((isCompleteEvent(eventData) || isDoneEvent(eventData)) && !isErrorEvent(eventData)) {
-                      setShowCompletionDots(true)
-                    }
-                    shouldStopReading = true
-                    break
+              // Now typed as StreamEvent after validation
+              const eventData = parsed
+
+              // Store requestId from first event for cancellation
+              if (!currentRequestIdRef.current && eventData.requestId) {
+                currentRequestIdRef.current = eventData.requestId
+                console.log("[Chat] Tracking requestId for cancellation:", eventData.requestId)
+              }
+
+              // Valid message - capture to dev terminal and process
+              // Note: Structure already validated by isValidStreamEvent() type guard
+              if (isDevelopment()) {
+                addDevEvent({
+                  eventName: eventData.type,
+                  event: eventData,
+                  rawSSE: line,
+                })
+              }
+
+              // Process the message for UI (now with conversation-scoped tool tracking)
+              receivedAnyMessage = true
+              if (conversationId) {
+                streamingActions.recordMessageReceived(conversationId)
+                streamingActions.resetConsecutiveErrors(conversationId)
+              }
+
+              const message = parseStreamEvent(eventData, conversationId, streamingActions)
+              if (message) {
+                addMessage(message)
+                // Break on stream completion
+                if (isCompleteEvent(eventData) || isDoneEvent(eventData) || isErrorEvent(eventData)) {
+                  receivedAnyMessage = true
+                  setBusy(false)
+                  // Show completion dots only for successful completion (not errors)
+                  if ((isCompleteEvent(eventData) || isDoneEvent(eventData)) && !isErrorEvent(eventData)) {
+                    setShowCompletionDots(true)
                   }
+                  shouldStopReading = true
+                  break
                 }
               }
             } catch (parseError) {
@@ -737,14 +728,14 @@ function ChatPageContent() {
     }
   }
 
-  function handleNewConversation() {
+  const handleNewConversation = useCallback(() => {
     // Clear streaming state for the old conversation
     if (storeConversationId) {
       streamingActions.clearConversation(storeConversationId)
     }
     startNewConversation()
     clearForNewConversation()
-  }
+  }, [storeConversationId, streamingActions, startNewConversation, clearForNewConversation])
 
   /**
    * Stop active streaming response via explicit cancellation endpoint.
@@ -929,6 +920,14 @@ function ChatPageContent() {
     [deleteConversation, conversationId, startNewConversation],
   )
 
+  const handleSwitchWorkspace = useCallback(
+    (newWorkspace: string) => {
+      setWorkspace(newWorkspace)
+      handleNewConversation()
+    },
+    [setWorkspace, handleNewConversation],
+  )
+
   // SSE terminal visibility is separate from debug view
 
   // Empty workspace state is now handled inline with switchers in header
@@ -1046,10 +1045,7 @@ function ChatPageContent() {
                 <SettingsDropdown
                   onNewChat={handleNewConversation}
                   currentWorkspace={workspace ?? undefined}
-                  onSwitchWorkspace={newWorkspace => {
-                    setWorkspace(newWorkspace)
-                    handleNewConversation()
-                  }}
+                  onSwitchWorkspace={handleSwitchWorkspace}
                   onOpenSettings={() => setShowSettingsModal(true)}
                 />
               </div>
@@ -1098,27 +1094,38 @@ function ChatPageContent() {
                 )}
 
                 {/* Workspace info bar - always visible */}
-                <div className="flex items-center gap-6 text-xs">
-                  <div className="flex items-center">
-                    <span className="text-black/50 dark:text-white/50 font-medium">site</span>
-                    {isTerminal ? (
-                      <WorkspaceSwitcher currentWorkspace={workspace} onWorkspaceChange={setWorkspace} />
-                    ) : (
-                      <span className="ml-3 font-diatype-mono font-medium text-black/80 dark:text-white/80">
-                        {workspace || "loading..."}
-                      </span>
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-6">
+                    <div className="flex items-center">
+                      <span className="text-black/50 dark:text-white/50 font-medium">site</span>
+                      {isTerminal ? (
+                        <WorkspaceSwitcher currentWorkspace={workspace} onWorkspaceChange={setWorkspace} />
+                      ) : (
+                        <span className="ml-3 font-diatype-mono font-medium text-black/80 dark:text-white/80">
+                          {workspace || "loading..."}
+                        </span>
+                      )}
+                    </div>
+                    {workspace && (
+                      <a
+                        href={`https://${workspace}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2 py-1 text-xs font-medium text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 rounded transition-colors flex items-center gap-1"
+                      >
+                        open
+                        <ExternalLink size={10} />
+                      </a>
                     )}
                   </div>
                   {workspace && (
-                    <a
-                      href={`https://${workspace}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-2 py-1 text-xs font-medium text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 rounded transition-colors flex items-center gap-1"
+                    <button
+                      type="button"
+                      onClick={handleNewConversation}
+                      className="px-2 py-1 text-xs font-medium text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 rounded transition-colors"
                     >
-                      open
-                      <ExternalLink size={10} />
-                    </a>
+                      new chat
+                    </button>
                   )}
                 </div>
               </div>

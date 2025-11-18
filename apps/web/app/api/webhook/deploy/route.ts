@@ -3,6 +3,8 @@ import crypto from "node:crypto"
 import fs from "node:fs"
 import path from "node:path"
 import { type NextRequest, NextResponse } from "next/server"
+import { createErrorResponse } from "@/features/auth/lib/auth"
+import { ErrorCodes } from "@/lib/error-codes"
 
 // Configuration
 const WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET || ""
@@ -49,7 +51,7 @@ export async function POST(req: NextRequest) {
     // Verify webhook signature
     if (!verifySignature(payload, signature)) {
       console.error("[WEBHOOK] Invalid signature")
-      return NextResponse.json({ error: "Invalid signature" }, { status: 401 })
+      return createErrorResponse(ErrorCodes.INVALID_SIGNATURE, 401)
     }
 
     // Parse payload
@@ -116,13 +118,9 @@ export async function POST(req: NextRequest) {
     })
   } catch (error) {
     console.error("[WEBHOOK] Error:", error)
-    return NextResponse.json(
-      {
-        error: "Internal server error",
-        message: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 },
-    )
+    return createErrorResponse(ErrorCodes.INTERNAL_ERROR, 500, {
+      exception: error instanceof Error ? error.message : "Unknown error",
+    })
   }
 }
 

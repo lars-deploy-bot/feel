@@ -1,7 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
+import { createErrorResponse } from "@/features/auth/lib/auth"
 import { addCorsHeaders } from "@/lib/cors-utils"
-import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
+import { ErrorCodes } from "@/lib/error-codes"
 import { addFeedbackEntry } from "@/lib/feedback"
 import { generateRequestId } from "@/lib/utils"
 
@@ -30,16 +31,10 @@ export async function POST(req: NextRequest) {
     const result = FeedbackSchema.safeParse(body)
 
     if (!result.success) {
-      const res = NextResponse.json(
-        {
-          ok: false,
-          error: ErrorCodes.INVALID_REQUEST,
-          message: getErrorMessage(ErrorCodes.INVALID_REQUEST),
-          details: { issues: result.error.issues },
-          requestId,
-        },
-        { status: 400 },
-      )
+      const res = createErrorResponse(ErrorCodes.INVALID_REQUEST, 400, {
+        details: { issues: result.error.issues },
+        requestId,
+      })
       addCorsHeaders(res, origin)
       return res
     }
@@ -47,7 +42,7 @@ export async function POST(req: NextRequest) {
     const { feedback, email, workspace, conversationId, userAgent } = result.data
 
     // Add feedback entry to storage
-    const entry = addFeedbackEntry({
+    const entry = await addFeedbackEntry({
       feedback,
       email,
       workspace: workspace || "unknown",
@@ -68,18 +63,10 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error("[Feedback] Error saving feedback:", error)
 
-    const res = NextResponse.json(
-      {
-        ok: false,
-        error: ErrorCodes.INTERNAL_ERROR,
-        message: getErrorMessage(ErrorCodes.INTERNAL_ERROR),
-        details: {
-          message: error instanceof Error ? error.message : "Unknown error",
-        },
-        requestId,
-      },
-      { status: 500 },
-    )
+    const res = createErrorResponse(ErrorCodes.INTERNAL_ERROR, 500, {
+      exception: error instanceof Error ? error.message : "Unknown error",
+      requestId,
+    })
 
     addCorsHeaders(res, origin)
     return res
