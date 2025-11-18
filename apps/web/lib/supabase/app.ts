@@ -4,7 +4,7 @@
  */
 
 // Security: Prevent client-side imports (allow test environment)
-const isTestEnv = process.env.NODE_ENV === "test" || typeof globalThis.vi !== "undefined"
+const isTestEnv = process.env.NODE_ENV === "test" || "vi" in globalThis
 if (typeof window !== "undefined" && !isTestEnv) {
   throw new Error(
     "[SECURITY] lib/supabase/app cannot be imported in client-side code. " +

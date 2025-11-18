@@ -141,6 +141,22 @@ if ! bun install; then
     exit 1
 fi
 
+# Run linter before tests
+log_info "Running linter..."
+LINT_OUTPUT=$(bun run lint 2>&1)
+LINT_EXIT_CODE=$?
+
+if [ $LINT_EXIT_CODE -ne 0 ]; then
+    log_error "Linter failed - deployment aborted"
+    echo ""
+    log_warn "Showing linter output:"
+    echo "$LINT_OUTPUT"
+    echo ""
+    log_error "Fix linting errors before proceeding. Run 'bun run lint' to see all issues."
+    exit 1
+fi
+log_success "Linter passed"
+
 # Run tests before building
 log_info "Running tests..."
 TEST_OUTPUT=$(bun run test 2>&1)

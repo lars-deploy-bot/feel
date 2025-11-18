@@ -1,21 +1,13 @@
 import { useCallback, useState } from "react"
 import { UploadError, uploadImage } from "@/features/chat/utils/upload-handler"
+import type { UploadedImage } from "@/lib/stores/imageStore"
 
 const API_ENDPOINTS = {
   LIST: "/api/images/list",
   DELETE: "/api/images/delete",
 } as const
 
-export interface UploadedImage {
-  key: string
-  variants: {
-    orig: string
-    w640: string
-    w1280: string
-    thumb: string
-  }
-  uploadedAt: string
-}
+export type { UploadedImage }
 
 interface DeleteImageBody {
   key: string

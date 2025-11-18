@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { createIamClient } from "@/lib/supabase/iam"
+import { createAppClient } from "@/lib/supabase/app"
 
 export async function GET(req: NextRequest) {
   const origin = req.headers.get("origin")
@@ -29,7 +30,7 @@ export async function GET(req: NextRequest) {
     if (process.env.BRIDGE_ENV === "local" && user.id === "test-user") {
       const res = NextResponse.json({
         ok: true,
-        workspaces: ["test"],
+        workspaces: ["test.bridge.local", "demo.bridge.local"],
       })
       addCorsHeaders(res, origin)
       return res
@@ -68,7 +69,6 @@ export async function GET(req: NextRequest) {
     }
 
     // Get all domains for these orgs
-    const { createAppClient } = await import("@/lib/supabase/app")
     const app = await createAppClient("service")
     const { data: domains } = await app.from("domains").select("hostname").in("org_id", orgIds)
 

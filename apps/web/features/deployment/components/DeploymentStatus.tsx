@@ -50,6 +50,7 @@ export function DeploymentStatus({ status, domain, error, errorDetails }: Deploy
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4 }}
+        data-testid="deployment-status-success"
         className="w-full max-w-2xl mx-auto px-6 py-12"
       >
         {/* Success Header */}
@@ -105,6 +106,7 @@ export function DeploymentStatus({ status, domain, error, errorDetails }: Deploy
                     <code className="text-sm font-mono text-black truncate">{domain}</code>
                   </div>
                   <button
+                    type="button"
                     onClick={copyLink}
                     className="flex-shrink-0 px-3 py-1.5 text-xs font-medium text-black/60 hover:text-black border border-black/10 rounded-md hover:bg-black/[0.02] transition-colors"
                   >
@@ -230,6 +232,7 @@ export function DeploymentStatus({ status, domain, error, errorDetails }: Deploy
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
+        data-testid="deployment-status-error"
         className="p-4 rounded-lg bg-red-50/50 border border-red-200/50"
       >
         <div className="flex gap-3">

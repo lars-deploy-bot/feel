@@ -2,10 +2,12 @@ import { exec } from "node:child_process"
 import { promisify } from "node:util"
 import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
+import { updateDomainOwnerPassword } from "@/lib/auth/supabase-passwords"
 import { addCorsHeaders } from "@/lib/cors-utils"
+import { getAllDomains } from "@/lib/deployment/domain-registry"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
+import { updateOrgCredits } from "@/lib/tokens"
 import type { DomainConfigClient } from "@/types/domain"
-import { loadDomainPasswords, updateDomainConfig } from "@/types/guards/api"
 
 const execAsync = promisify(exec)
 
@@ -66,25 +68,29 @@ export async function GET(req: NextRequest) {
     )
   }
 
-  const domains = loadDomainPasswords()
+  // Load all domains from Supabase (includes port, credits, email)
+  const allDomains = await getAllDomains()
   const orphanedDomains = await detectOrphanedDomains()
 
   const sanitizedDomains: Record<string, DomainConfigClient> = {}
 
-  for (const [domain, config] of Object.entries(domains)) {
+  // Add all domains from Supabase with full info
+  for (const domainInfo of allDomains) {
     // Skip preview domains
-    if (isPreviewDomain(domain)) {
+    if (isPreviewDomain(domainInfo.hostname)) {
       continue
     }
 
-    sanitizedDomains[domain] = {
-      tenantId: config.tenantId,
-      port: config.port,
-      email: config.email,
-      credits: config.credits ?? 0,
+    sanitizedDomains[domainInfo.hostname] = {
+      tenantId: domainInfo.hostname,
+      port: domainInfo.port,
+      email: domainInfo.ownerEmail,
+      orgId: domainInfo.orgId,
+      credits: domainInfo.credits,
     }
   }
 
+  // Add orphaned domains (not in Supabase)
   for (const domain of orphanedDomains) {
     // Skip preview domains
     if (isPreviewDomain(domain)) {
@@ -122,7 +128,8 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json()
-    const { domain, password, email, credits } = body
+    const { domain: rawDomain, password, email, credits } = body
+    const domain = rawDomain?.toLowerCase() // Always lowercase domain
 
     if (!domain) {
       return corsResponse(
@@ -137,11 +144,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Update domain config (password, email, and/or credits)
-    const updates: { password?: string; email?: string; credits?: number } = {}
-    if (password) updates.password = password
-    if (email !== undefined) updates.email = email
-
+    // Update credits in Supabase if provided
     if (credits !== undefined) {
       if (typeof credits !== "number" || credits < 0) {
         return corsResponse(
@@ -155,11 +158,43 @@ export async function POST(req: NextRequest) {
           400,
         )
       }
-      updates.credits = credits
+
+      const success = await updateOrgCredits(domain, credits)
+      if (!success) {
+        return corsResponse(
+          origin,
+          {
+            ok: false,
+            error: ErrorCodes.INVALID_REQUEST,
+            message: "Failed to update credits (domain or org not found)",
+            requestId,
+          },
+          404,
+        )
+      }
     }
 
-    if (Object.keys(updates).length > 0) {
-      await updateDomainConfig(domain, updates)
+    // Update password/email in Supabase
+    if (password) {
+      const passwordSuccess = await updateDomainOwnerPassword(domain, password)
+      if (!passwordSuccess) {
+        return corsResponse(
+          origin,
+          {
+            ok: false,
+            error: ErrorCodes.INTERNAL_ERROR,
+            message: "Failed to update password",
+            requestId,
+          },
+          500,
+        )
+      }
+    }
+
+    if (email !== undefined) {
+      // Note: This updates the email for the domain owner
+      // If you need to update a specific user's email, you'll need to pass the old email
+      console.warn("[Manager] Email update via domain not yet implemented - need old email address")
     }
 
     return corsResponse(origin, { ok: true, requestId })
@@ -197,7 +232,8 @@ export async function DELETE(req: NextRequest) {
 
   try {
     const body = await req.json()
-    const { domain } = body
+    const { domain: rawDomain } = body
+    const domain = rawDomain?.toLowerCase() // Always lowercase domain
 
     if (!domain) {
       return corsResponse(

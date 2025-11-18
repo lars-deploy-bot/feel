@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { requireSessionUser } from "@/features/auth/lib/auth"
+import { createErrorResponse, requireSessionUser, verifyWorkspaceAccess } from "@/features/auth/lib/auth"
 import { sessionKey } from "@/features/auth/lib/sessionStore"
-import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
+import { ErrorCodes } from "@/lib/error-codes"
 import { cancelStream, cancelStreamByConversationKey } from "@/lib/stream/cancellation-registry"
 
 /**
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
 
     // Parse request body
     const body = await req.json()
-    const { requestId, conversationId, workspace } = body
+    const { requestId, conversationId } = body
 
     // Validate: must have either requestId OR (conversationId + workspace)
     if (requestId && typeof requestId === "string") {
@@ -45,41 +45,34 @@ export async function POST(req: NextRequest) {
 
         if (cancelled) {
           console.log(`[Cancel Stream] Successfully cancelled: ${requestId}`)
-          return NextResponse.json({
-            ok: true,
-            status: "cancelled",
-            requestId,
-          })
+          return NextResponse.json({ ok: true, status: "cancelled", requestId })
         } else {
           // Not found - likely already completed
           console.log(`[Cancel Stream] Request not found (already complete): ${requestId}`)
-          return NextResponse.json({
-            ok: true,
-            status: "already_complete",
-            requestId,
-          })
+          return NextResponse.json({ ok: true, status: "already_complete", requestId })
         }
       } catch (error) {
         // Authorization error (trying to cancel another user's stream)
         if (error instanceof Error && error.message.includes("Unauthorized")) {
           console.warn(`[Cancel Stream] Unauthorized attempt by ${user.id} for request: ${requestId}`)
-          return NextResponse.json(
-            {
-              ok: false,
-              error: ErrorCodes.UNAUTHORIZED,
-              message: getErrorMessage(ErrorCodes.UNAUTHORIZED),
-            },
-            { status: 403 },
-          )
+          return createErrorResponse(ErrorCodes.UNAUTHORIZED, 403)
         }
 
         throw error
       }
     } else if (conversationId && typeof conversationId === "string") {
       // Fallback path: Cancel by conversationId (super-early Stop case)
+
+      // Security: Verify workspace authorization before using it
+      const verifiedWorkspace = await verifyWorkspaceAccess(user, body, "[Cancel Stream]")
+      if (!verifiedWorkspace) {
+        console.warn(`[Cancel Stream] User ${user.id} not authenticated for workspace`)
+        return createErrorResponse(ErrorCodes.WORKSPACE_NOT_AUTHENTICATED, 401)
+      }
+
       const convKey = sessionKey({
         userId: user.id,
-        workspace,
+        workspace: verifiedWorkspace,
         conversationId,
       })
       console.log(`[Cancel Stream] User ${user.id} cancelling by conversationKey (super-early Stop): ${convKey}`)
@@ -89,57 +82,34 @@ export async function POST(req: NextRequest) {
 
         if (cancelled) {
           console.log(`[Cancel Stream] Successfully cancelled by conversationKey: ${convKey}`)
-          return NextResponse.json({
-            ok: true,
-            status: "cancelled",
-            conversationId,
-          })
+          return NextResponse.json({ ok: true, status: "cancelled", conversationId })
         } else {
           // Not found - likely already completed or never started
           console.log(`[Cancel Stream] Conversation not found (already complete): ${convKey}`)
-          return NextResponse.json({
-            ok: true,
-            status: "already_complete",
-            conversationId,
-          })
+          return NextResponse.json({ ok: true, status: "already_complete", conversationId })
         }
       } catch (error) {
         // Authorization error (trying to cancel another user's stream)
         if (error instanceof Error && error.message.includes("Unauthorized")) {
           console.warn(`[Cancel Stream] Unauthorized attempt by ${user.id} for conversation: ${convKey}`)
-          return NextResponse.json(
-            {
-              ok: false,
-              error: ErrorCodes.UNAUTHORIZED,
-              message: getErrorMessage(ErrorCodes.UNAUTHORIZED),
-            },
-            { status: 403 },
-          )
+          return createErrorResponse(ErrorCodes.UNAUTHORIZED, 403)
         }
 
         throw error
       }
     } else {
       // Invalid request - missing required parameters
-      return NextResponse.json(
-        {
-          ok: false,
-          error: ErrorCodes.INVALID_REQUEST,
-          message: "Either requestId or conversationId is required",
-        },
-        { status: 400 },
+      return createErrorResponse(
+        ErrorCodes.INVALID_REQUEST,
+        400,
+        { message: "Either requestId or conversationId is required" }
       )
     }
   } catch (error) {
     console.error("[Cancel Stream] Error processing cancellation:", error)
-    return NextResponse.json(
-      {
-        ok: false,
-        error: ErrorCodes.REQUEST_PROCESSING_FAILED,
-        message: "Failed to process cancellation request",
-        details: { error: error instanceof Error ? error.message : "Unknown error" },
-      },
-      { status: 500 },
-    )
+    return createErrorResponse(ErrorCodes.REQUEST_PROCESSING_FAILED, 500, {
+      message: "Failed to process cancellation request",
+      details: { error: error instanceof Error ? error.message : "Unknown error" },
+    })
   }
 }

@@ -1,6 +1,11 @@
 import { cookies, headers } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
-import { getSafeSessionCookie, isWorkspaceAuthenticated, requireSessionUser } from "@/features/auth/lib/auth"
+import {
+  createErrorResponse,
+  getSafeSessionCookie,
+  requireSessionUser,
+  verifyWorkspaceAccess,
+} from "@/features/auth/lib/auth"
 import {
   SessionStoreMemory,
   sessionKey,
@@ -10,22 +15,23 @@ import {
 import { hasSessionCookie } from "@/features/auth/types/guards"
 import { isInputSafe } from "@/features/chat/lib/formatMessage"
 import { getSystemPrompt } from "@/features/chat/lib/systemPrompt"
-import { getWorkspace, type Workspace } from "@/features/workspace/lib/workspace-secure"
 import { resolveWorkspace } from "@/features/workspace/lib/workspace-utils"
-import { isTerminalMode } from "@/features/workspace/types/workspace"
+import { COOKIE_NAMES } from "@/lib/auth/cookies"
 import { hasStripeMcpAccess } from "@/lib/claude/agent-constants.mjs"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { env } from "@/lib/env"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 import { logInput } from "@/lib/input-logger"
 import { DEFAULT_MODEL } from "@/lib/models/claude-models"
+import { createRequestLogger } from "@/lib/request-logger"
 import { registerCancellation, startTTLCleanup, unregisterCancellation } from "@/lib/stream/cancellation-registry"
 import { type CancelState, createNDJSONStream } from "@/lib/stream/ndjson-stream-handler"
 import { createAppClient } from "@/lib/supabase/app"
 import type { TokenSource } from "@/lib/tokens"
+import { getOrgCredits } from "@/lib/tokens"
 import { generateRequestId } from "@/lib/utils"
 import { runAgentChild } from "@/lib/workspace-execution/agent-child-runner"
-import { BodySchema, loadDomainPasswords } from "@/types/guards/api"
+import { BodySchema } from "@/types/guards/api"
 
 export const runtime = "nodejs"
 
@@ -34,20 +40,14 @@ startTTLCleanup()
 
 export async function POST(req: NextRequest) {
   const requestId = generateRequestId()
-  console.log(`[Claude Stream ${requestId}] === STREAM REQUEST START ===`)
+  const logger = createRequestLogger("Claude Stream", requestId)
+
+  logger.log("=== STREAM REQUEST START ===")
 
   // Defense-in-depth: Block real API calls during E2E tests
   if (process.env.PLAYWRIGHT_TEST === "true") {
-    console.error(`[Claude Stream ${requestId}] ⛔ BLOCKED: Real API call attempted during E2E test`)
-    return NextResponse.json(
-      {
-        ok: false,
-        error: ErrorCodes.TEST_MODE_BLOCK,
-        message: getErrorMessage(ErrorCodes.TEST_MODE_BLOCK),
-        requestId,
-      },
-      { status: 403 },
-    )
+    logger.error("⛔ BLOCKED: Real API call attempted during E2E test")
+    return createErrorResponse(ErrorCodes.TEST_MODE_BLOCK, 403, { requestId })
   }
 
   // Track lock acquisition for cleanup in error handler
@@ -56,59 +56,39 @@ export async function POST(req: NextRequest) {
 
   try {
     const jar = await cookies()
-    console.log(`[Claude Stream ${requestId}] Checking session cookie...`)
+    logger.log("Checking session cookie...")
 
-    if (!hasSessionCookie(jar.get("session"))) {
-      console.log(`[Claude Stream ${requestId}] No session cookie found`)
-      return NextResponse.json(
-        {
-          ok: false,
-          error: ErrorCodes.NO_SESSION,
-          message: getErrorMessage(ErrorCodes.NO_SESSION),
-          requestId,
-        },
-        { status: 401 },
-      )
+    if (!hasSessionCookie(jar.get(COOKIE_NAMES.SESSION))) {
+      logger.log("No session cookie found")
+      return createErrorResponse(ErrorCodes.NO_SESSION, 401, { requestId })
     }
-    console.log(`[Claude Stream ${requestId}] Session cookie verified`)
+    logger.log("Session cookie verified")
 
     // Get user from session
     const user = await requireSessionUser()
-    console.log(`[Claude Stream ${requestId}] User: ${user.id}`)
+    logger.log("User:", user.id)
 
-    console.log(`[Claude Stream ${requestId}] Parsing request body...`)
-    let body: any
+    logger.log("Parsing request body...")
+    let body: Record<string, unknown>
     try {
       body = await req.json()
-      console.log(`[Claude Stream ${requestId}] Raw body keys:`, Object.keys(body))
+      logger.log("Raw body keys:", Object.keys(body))
     } catch (jsonError) {
-      console.error(`[Claude Stream ${requestId}] Failed to parse JSON body:`, jsonError)
-      return NextResponse.json(
-        {
-          ok: false,
-          error: ErrorCodes.INVALID_JSON,
-          message: getErrorMessage(ErrorCodes.INVALID_JSON),
-          details: { error: jsonError instanceof Error ? jsonError.message : "Unknown JSON parse error" },
-          requestId,
-        },
-        { status: 400 },
-      )
+      logger.error("Failed to parse JSON body:", jsonError)
+      return createErrorResponse(ErrorCodes.INVALID_JSON, 400, {
+        details: { error: jsonError instanceof Error ? jsonError.message : "Unknown JSON parse error" },
+        requestId,
+      })
     }
 
     // Validate request body
     const parseResult = BodySchema.safeParse(body)
     if (!parseResult.success) {
-      console.error(`[Claude Stream ${requestId}] Schema validation failed:`, parseResult.error.issues)
-      return NextResponse.json(
-        {
-          ok: false,
-          error: ErrorCodes.INVALID_REQUEST,
-          message: getErrorMessage(ErrorCodes.INVALID_REQUEST),
-          details: { issues: parseResult.error.issues },
-          requestId,
-        },
-        { status: 400 },
-      )
+      logger.error("Schema validation failed:", parseResult.error.issues)
+      return createErrorResponse(ErrorCodes.INVALID_REQUEST, 400, {
+        details: { issues: parseResult.error.issues },
+        requestId,
+      })
     }
 
     const {
@@ -117,98 +97,74 @@ export async function POST(req: NextRequest) {
       conversationId,
       apiKey: userApiKey,
       model: userModel,
+      projectId,
+      userId,
+      additionalContext,
     } = parseResult.data
-    console.log(`[Claude Stream ${requestId}] Conversation: ${conversationId}`)
-    console.log(
-      `[Claude Stream ${requestId}] Message received (${message.length} chars): ${message.substring(0, 100)}${message.length > 100 ? "..." : ""}`,
+    logger.log("Conversation:", conversationId)
+    logger.log(
+      `Message received (${message.length} chars): ${message.substring(0, 100)}${message.length > 100 ? "..." : ""}`,
     )
     if (userApiKey) {
-      console.log(`[Claude Stream ${requestId}] User provided API key (validation already done in schema)`)
+      logger.log("User provided API key (validation already done in schema)")
     } else {
-      console.log(`[Claude Stream ${requestId}] No user API key provided`)
+      logger.log("No user API key provided")
     }
     if (userModel) {
-      console.log(`[Claude Stream ${requestId}] Using user-selected model: ${userModel}`)
+      logger.log("Using user-selected model:", userModel)
     }
 
     // Check input safety
-    console.log(`[Claude Stream ${requestId}] Checking input safety...`)
+    logger.log("Checking input safety...")
     const safetyCheck = await isInputSafe(message)
     if (safetyCheck === "unsafe") {
-      console.log(`[Claude Stream ${requestId}] Input flagged as unsafe`)
-      return NextResponse.json(
-        {
-          ok: false,
-          error: ErrorCodes.INVALID_REQUEST,
-          message: "Your message contains inappropriate content. Please keep it professional and appropriate.",
-          requestId,
-        },
-        { status: 400 },
-      )
+      logger.log("Input flagged as unsafe")
+      return createErrorResponse(ErrorCodes.INVALID_REQUEST, 400, {
+        message: "Your message contains inappropriate content. Please keep it professional and appropriate.",
+        requestId,
+      })
     }
-    console.log(`[Claude Stream ${requestId}] Input safety check passed`)
+    logger.log("Input safety check passed")
 
     const host = (await headers()).get("host") || "localhost"
     const origin = req.headers.get("origin")
-    console.log(`[Claude Stream ${requestId}] Host: ${host}`)
+    logger.log("Host:", host)
 
-    let workspace: Workspace
     let cwd: string
-    let resolvedWorkspaceName: string
+    let resolvedWorkspaceName: string | null
     let tokenSource: TokenSource
 
     try {
-      if (isTerminalMode(host)) {
-        const workspaceResult = resolveWorkspace(host, { ...body, workspace: requestWorkspace }, requestId, origin)
-        if (!workspaceResult.success) {
-          return workspaceResult.response
-        }
-        cwd = workspaceResult.workspace
-        const stats = require("node:fs").statSync(cwd)
-        workspace = { root: cwd, uid: stats.uid, gid: stats.gid, tenantId: host }
-        resolvedWorkspaceName = requestWorkspace || "unknown"
-      } else {
-        workspace = getWorkspace(host)
-        cwd = workspace.root
-        resolvedWorkspaceName = host
-      }
+      // Security: Verify workspace authorization BEFORE resolving paths
+      resolvedWorkspaceName = await verifyWorkspaceAccess(user, body, `[Claude Stream ${requestId}]`)
 
-      // Security: Verify user is authenticated for this specific workspace
-      const isAuthenticated = await isWorkspaceAuthenticated(resolvedWorkspaceName)
-      if (!isAuthenticated) {
-        console.log(`[Claude Stream ${requestId}] User not authenticated for workspace: ${resolvedWorkspaceName}`)
-        return NextResponse.json(
-          {
-            ok: false,
-            error: ErrorCodes.WORKSPACE_NOT_AUTHENTICATED,
-            message: getErrorMessage(ErrorCodes.WORKSPACE_NOT_AUTHENTICATED),
-            workspace: resolvedWorkspaceName,
-            requestId,
-          },
-          { status: 401 },
-        )
+      if (!resolvedWorkspaceName) {
+        return createErrorResponse(ErrorCodes.WORKSPACE_NOT_AUTHENTICATED, 401, { requestId })
       }
-      console.log(`[Claude Stream ${requestId}] Workspace authentication verified for: ${resolvedWorkspaceName}`)
+      logger.log("Workspace authentication verified for:", resolvedWorkspaceName)
 
-      // Determine which API key to use: workspace credits vs user-provided key
-      const passwords = loadDomainPasswords()
-      const domainConfig = passwords[resolvedWorkspaceName]
-      const workspaceCredits = domainConfig?.credits ?? 0
+      // Only after authorization, resolve workspace path
+      const workspaceResult = resolveWorkspace(host, { ...body, workspace: requestWorkspace }, requestId, origin)
+      if (!workspaceResult.success) {
+        return workspaceResult.response
+      }
+      cwd = workspaceResult.workspace
+
+      // Determine which API key to use: org credits vs user-provided key
+      const orgCredits = (await getOrgCredits(resolvedWorkspaceName)) ?? 0
       const COST_ESTIMATE = 1 // Conservative estimate - 1 credit minimum for 200 credit starting balance
 
       // Guard: reject if no sufficient credits AND no API key
-      if (workspaceCredits < COST_ESTIMATE && !userApiKey) {
-        console.log(
-          `[Claude Stream ${requestId}] Insufficient credits (${workspaceCredits}/${COST_ESTIMATE} required) and no fallback API key`,
-        )
+      if (orgCredits < COST_ESTIMATE && !userApiKey) {
+        logger.log(`Insufficient credits (${orgCredits}/${COST_ESTIMATE} required) and no fallback API key`)
         return NextResponse.json(
           {
             ok: false,
             error: ErrorCodes.INSUFFICIENT_TOKENS,
             message:
-              workspaceCredits <= 0
-                ? "Workspace credits exhausted. Add your API key in Settings to continue using Claude."
-                : `Insufficient workspace credits (${workspaceCredits}/${COST_ESTIMATE} required). Add your API key in Settings as a fallback.`,
+              orgCredits <= 0
+                ? "Organization credits exhausted. Add your API key in Settings to continue using Claude."
+                : `Insufficient credits (${orgCredits}/${COST_ESTIMATE} required). Add your API key in Settings as a fallback.`,
             workspace: resolvedWorkspaceName,
             requestId,
           },
@@ -216,23 +172,21 @@ export async function POST(req: NextRequest) {
         )
       }
 
-      // Cases 1 & 2: We're guaranteed to have either workspace credits or a user API key
-      tokenSource = workspaceCredits >= COST_ESTIMATE ? "workspace" : "user_provided"
+      // Cases 1 & 2: We're guaranteed to have either org credits or a user API key
+      tokenSource = orgCredits >= COST_ESTIMATE ? "workspace" : "user_provided"
 
       if (tokenSource === "workspace") {
-        console.log(`[Claude Stream ${requestId}] Using workspace credits (${workspaceCredits} available)`)
+        logger.log(`Using org credits (${orgCredits} available)`)
       } else {
-        console.log(
-          `[Claude Stream ${requestId}] Using user-provided API key (workspace has ${workspaceCredits} credits)`,
-        )
+        logger.log(`Using user-provided API key (workspace has ${orgCredits} credits)`)
       }
     } catch (workspaceError) {
-      console.error(`[Claude Stream ${requestId}] Workspace resolution failed:`, workspaceError)
+      logger.error("Workspace resolution failed:", workspaceError)
       return NextResponse.json(
         {
           ok: false,
           error: ErrorCodes.WORKSPACE_NOT_FOUND,
-          message: getErrorMessage(ErrorCodes.WORKSPACE_NOT_FOUND, { host }),
+          message: getErrorMessage(ErrorCodes.WORKSPACE_NOT_FOUND, { host: requestWorkspace || host }),
           details: {
             host,
             requestWorkspace,
@@ -264,7 +218,7 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (!domainRecord) {
-      console.error(`[Claude Stream ${requestId}] Domain not found in database: ${resolvedWorkspaceName}`)
+      logger.error("Domain not found in database:", resolvedWorkspaceName)
       return NextResponse.json(
         {
           ok: false,
@@ -281,14 +235,12 @@ export async function POST(req: NextRequest) {
       workspace: resolvedWorkspaceName, // Use domain for conversation key (for locking compatibility)
       conversationId,
     })
-    console.log(
-      `[Claude Stream ${requestId}] Domain: ${domainRecord.hostname} (port: ${domainRecord.port}, id: ${domainRecord.domain_id})`,
-    )
-    console.log(`[Claude Stream ${requestId}] Session key: ${convKey}`)
-    console.log(`[Claude Stream ${requestId}] Attempting to lock conversation...`)
+    logger.log(`Domain: ${domainRecord.hostname} (port: ${domainRecord.port}, id: ${domainRecord.domain_id})`)
+    logger.log("Session key:", convKey)
+    logger.log("Attempting to lock conversation...")
 
     if (!tryLockConversation(convKey)) {
-      console.log(`[Claude Stream ${requestId}] ❌ LOCK FAILED - Conversation already in progress for key: ${convKey}`)
+      logger.log("❌ LOCK FAILED - Conversation already in progress for key:", convKey)
       return NextResponse.json(
         {
           ok: false,
@@ -301,28 +253,24 @@ export async function POST(req: NextRequest) {
     }
 
     lockAcquired = true
-    console.log(`[Claude Stream ${requestId}] ✅ LOCK ACQUIRED for: ${convKey}`)
+    logger.log("✅ LOCK ACQUIRED for:", convKey)
 
     const existingSessionId = await SessionStoreMemory.get(convKey)
-    console.log(
-      `[Claude Stream ${requestId}] Existing session: ${existingSessionId ? `found (${existingSessionId})` : "none"}`,
-    )
+    logger.log(`Existing session: ${existingSessionId ? `found (${existingSessionId})` : "none"}`)
 
-    console.log(`[Claude Stream ${requestId}] Working directory: ${cwd}`)
+    logger.log("Working directory:", cwd)
 
     // Force default model for credit users (cost management)
     // API key users can choose any model
     const effectiveModel =
       tokenSource === "workspace"
-        ? DEFAULT_MODEL // ENFORCED for workspace credits
+        ? DEFAULT_MODEL // ENFORCED for org credits
         : userModel || env.CLAUDE_MODEL // User's choice with API key
 
     if (tokenSource === "workspace" && userModel && userModel !== DEFAULT_MODEL) {
-      console.log(
-        `[Claude Stream ${requestId}] Model override: User requested ${userModel} but forcing ${DEFAULT_MODEL} for workspace credits`,
-      )
+      logger.log(`Model override: User requested ${userModel} but forcing ${DEFAULT_MODEL} for org credits`)
     }
-    console.log(`[Claude Stream ${requestId}] Claude model: ${effectiveModel}`)
+    logger.log("Claude model:", effectiveModel)
 
     const maxTurns = Number.parseInt(env.CLAUDE_MAX_TURNS, 10)
     if (Number.isNaN(maxTurns) || maxTurns < 1) {
@@ -330,17 +278,17 @@ export async function POST(req: NextRequest) {
     }
     const effectiveMaxTurns = Number.isNaN(maxTurns) || maxTurns < 1 ? 25 : maxTurns
 
-    console.log(`[Claude Stream ${requestId}] Max turns limit: ${effectiveMaxTurns}`)
+    logger.log("Max turns limit:", effectiveMaxTurns)
 
     const systemPrompt = getSystemPrompt({
-      projectId: body.projectId,
-      userId: body.userId,
+      projectId,
+      userId,
       workspaceFolder: cwd,
       hasStripeMcpAccess: hasStripeMcpAccess(resolvedWorkspaceName),
-      additionalContext: body.additionalContext,
+      additionalContext,
     })
 
-    console.log(`[Claude Stream ${requestId}] Spawning child process runner`)
+    logger.log("Spawning child process runner")
 
     /**
      * === CANCELLATION ARCHITECTURE ===
@@ -408,7 +356,7 @@ export async function POST(req: NextRequest) {
         // Guaranteed cleanup: unregister, unlock, callback
         unregisterCancellation(requestId)
         unlockConversation(convKey)
-        console.log(`[Claude Stream ${requestId}] Released conversation lock and unregistered cancellation`)
+        logger.log("Released conversation lock and unregistered cancellation")
       },
     })
 
@@ -432,19 +380,19 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    console.log(`[Claude Stream ${requestId}] Stream response ready, cancellation registered`)
+    logger.log("Stream response ready, cancellation registered")
     return response
   } catch (outerError) {
-    console.error(`[Claude Stream ${requestId}] Outer catch - request processing failed:`, outerError)
+    logger.error("Outer catch - request processing failed:", outerError)
 
     // CRITICAL: Release lock if we acquired it before the error occurred
     // This prevents deadlocks when errors happen during stream setup
     if (lockAcquired) {
       try {
         unlockConversation(convKey)
-        console.log(`[Claude Stream ${requestId}] Released conversation lock after error`)
+        logger.log("Released conversation lock after error")
       } catch (unlockError) {
-        console.error(`[Claude Stream ${requestId}] Failed to unlock conversation in error handler:`, unlockError)
+        logger.error("Failed to unlock conversation in error handler:", unlockError)
       }
     }
 

@@ -24,8 +24,8 @@ export function PasswordField<T extends FieldValues>({
   isDeploying,
   showPassword,
   onTogglePassword,
-  label = "Site password",
-  helperText = "6–16 characters. You'll need this to edit your site later.",
+  label = "Account password",
+  helperText = "6–16 characters. This creates your account. If you already have an account, log in first instead.",
   fieldName = "password" as Path<T>,
 }: PasswordFieldProps<T>) {
   const fieldError = errors[fieldName]
@@ -48,6 +48,7 @@ export function PasswordField<T extends FieldValues>({
           autoComplete="off"
           data-1p-ignore
           data-lpignore
+          data-testid="password-input"
           placeholder="••••••••"
           className={`w-full px-4 py-3 rounded-lg border-2 transition-colors outline-none font-medium pr-12 ${
             fieldError

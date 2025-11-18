@@ -31,11 +31,13 @@ export interface Organization {
   name: string
   credits: number
   workspace_count?: number
+  role?: "owner" | "admin" | "member"
 }
 
 export interface OrganizationsResponse {
   ok: true
   organizations: Organization[]
+  current_user_id: string
 }
 
 export interface WorkspacesResponse {
@@ -45,7 +47,7 @@ export interface WorkspacesResponse {
 
 export interface LoginResponse {
   ok: true
-  message?: string
+  userId: string
 }
 
 export interface LogoutResponse {
@@ -68,69 +70,12 @@ export interface TokensResponse {
   workspace: string
 }
 
-// ============================================================================
-// Deploy API Types
-// ============================================================================
-
-export interface DeployResponse {
-  ok: true
-  message: string
-  workspace: string
-  url: string
+export interface TokensErrorResponse {
+  ok: false
+  error: string
 }
 
-export interface DeploySubdomainResponse {
-  ok: true
-  message: string
-  subdomain: string
-  workspace: string
-}
-
-// ============================================================================
-// Sites API Types
-// ============================================================================
-
-export interface CheckAvailabilityResponse {
-  ok: true
-  available: boolean
-  domain: string
-}
-
-export interface SiteMetadataResponse {
-  ok: true
-  metadata: {
-    title?: string
-    description?: string
-    favicon?: string
-    og_image?: string
-  }
-}
-
-// ============================================================================
-// Images API Types
-// ============================================================================
-
-export interface ImageUploadResponse {
-  ok: true
-  key: string
-  url: string
-  size: number
-}
-
-export interface ImageListResponse {
-  ok: true
-  images: Array<{
-    key: string
-    url: string
-    size: number
-    uploaded: number
-  }>
-}
-
-export interface ImageDeleteResponse {
-  ok: true
-  deleted: string
-}
+export type TokensAPIResponse = TokensResponse | TokensErrorResponse
 
 // ============================================================================
 // Feedback API Types
@@ -138,8 +83,13 @@ export interface ImageDeleteResponse {
 
 export interface FeedbackResponse {
   ok: true
-  message: string
+  id: string
+  timestamp: number
 }
+
+// Note: Deploy, Sites, and Images APIs use different response formats
+// with { success: boolean } or have endpoint-specific structures.
+// These are defined locally in their respective route files.
 
 // ============================================================================
 // Type Guards
@@ -191,7 +141,9 @@ export function isOrganizationsResponse(data: unknown): data is OrganizationsRes
   return (
     "organizations" in data &&
     Array.isArray(data.organizations) &&
-    data.organizations.every(org => isOrganization(org))
+    data.organizations.every(org => isOrganization(org)) &&
+    "current_user_id" in data &&
+    typeof (data as OrganizationsResponse).current_user_id === "string"
   )
 }
 
@@ -245,54 +197,16 @@ export function isTokensResponse(data: unknown): data is TokensResponse {
 }
 
 /**
- * Type guard for DeployResponse
- */
-export function isDeployResponse(data: unknown): data is DeployResponse {
-  return (
-    isApiSuccess(data) &&
-    "message" in data &&
-    "workspace" in data &&
-    "url" in data &&
-    typeof (data as DeployResponse).workspace === "string"
-  )
-}
-
-/**
- * Type guard for CheckAvailabilityResponse
- */
-export function isCheckAvailabilityResponse(data: unknown): data is CheckAvailabilityResponse {
-  return (
-    isApiSuccess(data) &&
-    "available" in data &&
-    "domain" in data &&
-    typeof (data as CheckAvailabilityResponse).available === "boolean"
-  )
-}
-
-/**
- * Type guard for ImageUploadResponse
- */
-export function isImageUploadResponse(data: unknown): data is ImageUploadResponse {
-  return (
-    isApiSuccess(data) &&
-    "key" in data &&
-    "url" in data &&
-    typeof (data as ImageUploadResponse).key === "string"
-  )
-}
-
-/**
- * Type guard for ImageListResponse
- */
-export function isImageListResponse(data: unknown): data is ImageListResponse {
-  return isApiSuccess(data) && "images" in data && Array.isArray((data as ImageListResponse).images)
-}
-
-/**
  * Type guard for FeedbackResponse
  */
 export function isFeedbackResponse(data: unknown): data is FeedbackResponse {
-  return isApiSuccess(data) && "message" in data && typeof (data as FeedbackResponse).message === "string"
+  return (
+    isApiSuccess(data) &&
+    "id" in data &&
+    "timestamp" in data &&
+    typeof (data as FeedbackResponse).id === "string" &&
+    typeof (data as FeedbackResponse).timestamp === "number"
+  )
 }
 
 // ============================================================================
@@ -323,7 +237,11 @@ export function createErrorResponse(error: string, message?: string): ApiError {
 /**
  * Assert that data matches a type guard, throw if not
  */
-export function assertType<T>(data: unknown, guard: (data: unknown) => data is T, errorMessage?: string): asserts data is T {
+export function assertType<T>(
+  data: unknown,
+  guard: (data: unknown) => data is T,
+  errorMessage?: string,
+): asserts data is T {
   if (!guard(data)) {
     throw new Error(errorMessage || "Type assertion failed")
   }

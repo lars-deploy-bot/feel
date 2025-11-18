@@ -6,6 +6,7 @@
  */
 
 import { NextResponse } from "next/server"
+import { addCorsHeaders } from "@/lib/cors-utils"
 import type { ApiError, OrganizationsResponse, WorkspacesResponse } from "./types"
 
 interface ResponseOptions {
@@ -22,7 +23,6 @@ function jsonResponse<T>(data: T, options: ResponseOptions = {}): NextResponse {
 
   // Add CORS headers if origin provided
   if (origin) {
-    const { addCorsHeaders } = require("@/lib/cors-utils")
     addCorsHeaders(response, origin)
   }
 
@@ -45,11 +45,13 @@ export function errorResponse(error: string, options: ResponseOptions & { status
  */
 export function organizationsResponse(
   organizations: OrganizationsResponse["organizations"],
+  currentUserId: string,
   options: ResponseOptions = {},
 ): NextResponse {
   const data: OrganizationsResponse = {
     ok: true,
     organizations,
+    current_user_id: currentUserId,
   }
   return jsonResponse(data, options)
 }

@@ -1,5 +1,12 @@
 # Authentication
 
+> ⚠️ **DEPRECATED DOCUMENTATION (2025-11-16)**
+> This document describes the OLD authentication system (workspace + passcode).
+> The NEW system uses email + password with Supabase. See below for migration notes.
+>
+> **Current System**: Users authenticate with email + password → JWT with userId → workspace access via org memberships
+> **This Doc Describes**: Old workspace + passcode → JWT with workspaces array (NO LONGER USED)
+
 ## Files
 
 - `features/auth/lib/jwt.ts` – JWT creation/verification
@@ -274,4 +281,103 @@ curl -H "Cookie: session=TOKEN_HERE" \
   -d '{"workspace":"test"}'
 
 # Should return 200
+```
+
+---
+
+## NEW AUTHENTICATION SYSTEM (Current as of 2025-11-16)
+
+### Overview
+Users authenticate with **email + password** instead of workspace + passcode. One account gives access to all their workspaces.
+
+### Key Files
+- `apps/web/app/api/login/route.ts` - Email + password login
+- `apps/web/features/auth/lib/auth.ts` - Session management and workspace validation
+- `apps/web/lib/deployment/domain-registry.ts` - Domain registration and user linking
+
+### Flow
+
+**1. Login (POST /api/login)**
+```json
+{
+  "email": "user@example.com",
+  "password": "securepassword"
+}
+```
+
+**2. Backend Process**
+- Query `iam.users` for user by email
+- Verify password with bcrypt (`verifyPassword()`)
+- Create JWT with `userId` (NOT workspaces array)
+- Set httpOnly session cookie
+
+**3. Workspace Access Check**
+```typescript
+// Get user from JWT
+const user = await getSessionUser() // Returns { id, email, name }
+
+// Check if user has access to workspace
+const isAuth = await isWorkspaceAuthenticated(workspace)
+// → Queries user's org memberships
+// → Checks if any org owns the domain
+```
+
+### Database Schema
+
+**iam.users** - User accounts
+```sql
+- user_id (UUID)
+- email (unique)
+- password_hash (bcrypt)
+- display_name
+```
+
+**iam.orgs** - Organizations
+```sql
+- org_id (UUID)
+- name
+- credits
+```
+
+**iam.org_memberships** - User ↔ Org relationships
+```sql
+- user_id → users.user_id
+- org_id → orgs.org_id
+- role (owner, member, viewer)
+```
+
+**app.domains** - Workspaces/Sites
+```sql
+- hostname (e.g., "example.com")
+- org_id → orgs.org_id
+- port
+```
+
+### Migration Notes
+
+**Deployment Changes:**
+- Old: Each domain had its own password in `domain-passwords.json`
+- New: Domain is linked to a user account via org membership
+- During deployment, if email already exists → use that user, else create new user
+
+**User Experience:**
+- Old: "Enter site password" (different for each site)
+- New: "Enter account password" (same across all sites)
+- If user already has account, deployment uses their existing password
+
+### Environment Variables
+```bash
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+JWT_SECRET=your-jwt-secret-min-32-chars  # For session tokens
+```
+
+### Testing (Local Dev)
+```bash
+# .env.local
+BRIDGE_ENV=local
+
+# Test credentials
+Email: test@bridge.local
+Password: test
 ```

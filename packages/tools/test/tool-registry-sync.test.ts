@@ -48,9 +48,9 @@ describe("Tool Registry Sync", () => {
 
     if (missingFromRegistry.length > 0) {
       throw new Error(
-        `❌ Tools in MCP servers but missing or disabled in TOOL_REGISTRY:\n` +
+        "❌ Tools in MCP servers but missing or disabled in TOOL_REGISTRY:\n" +
           `   ${missingFromRegistry.join(", ")}\n\n` +
-          `   Fix: Add these tools to packages/tools/src/tools/meta/tool-registry.ts with enabled=true`,
+          "   Fix: Add these tools to packages/tools/src/tools/meta/tool-registry.ts with enabled=true",
       )
     }
 
@@ -64,10 +64,10 @@ describe("Tool Registry Sync", () => {
 
     if (missingFromMcp.length > 0) {
       throw new Error(
-        `❌ Tools enabled in TOOL_REGISTRY but missing from MCP servers:\n` +
+        "❌ Tools enabled in TOOL_REGISTRY but missing from MCP servers:\n" +
           `   ${missingFromMcp.join(", ")}\n\n` +
-          `   Fix: Either:\n` +
-          `   1. Add these tools to packages/tools/src/mcp-server.ts (toolsInternalMcp or workspaceInternalMcp)\n` +
+          "   Fix: Either:\n" +
+          "   1. Add these tools to packages/tools/src/mcp-server.ts (toolsInternalMcp or workspaceInternalMcp)\n" +
           `   2. Or set enabled=false in tool-registry.ts if they're intentionally disabled`,
       )
     }
@@ -118,9 +118,9 @@ describe("Tool Registry Sync", () => {
 
     if (disabledButInMcp.length > 0) {
       throw new Error(
-        `❌ Tools marked as disabled in TOOL_REGISTRY but still in MCP servers:\n` +
+        "❌ Tools marked as disabled in TOOL_REGISTRY but still in MCP servers:\n" +
           `   ${disabledButInMcp.join(", ")}\n\n` +
-          `   Fix: Remove these tools from packages/tools/src/mcp-server.ts (toolsInternalMcp or workspaceInternalMcp arrays)`,
+          "   Fix: Remove these tools from packages/tools/src/mcp-server.ts (toolsInternalMcp or workspaceInternalMcp arrays)",
       )
     }
 
@@ -152,9 +152,9 @@ describe("Tool Registry Sync", () => {
 
     if (wrongServerTools.length > 0) {
       throw new Error(
-        `❌ Tools registered in wrong MCP server:\n` +
+        "❌ Tools registered in wrong MCP server:\n" +
           `   ${wrongServerTools.join("\n   ")}\n\n` +
-          `   Fix: Workspace category tools must be in workspaceInternalMcp, others in toolsInternalMcp`,
+          "   Fix: Workspace category tools must be in workspaceInternalMcp, others in toolsInternalMcp",
       )
     }
 
@@ -206,9 +206,9 @@ describe("Tool Registry Sync", () => {
 
     if (toolsWithInconsistentParams.length > 0) {
       throw new Error(
-        `❌ Tools with inconsistent parameter metadata:\n` +
+        "❌ Tools with inconsistent parameter metadata:\n" +
           `   ${toolsWithInconsistentParams.join("\n   ")}\n\n` +
-          `   Fix: Ensure parameter metadata is complete and accurate`,
+          "   Fix: Ensure parameter metadata is complete and accurate",
       )
     }
 
@@ -234,9 +234,9 @@ describe("Tool Registry Sync", () => {
 
     if (toolsWithWeakDescriptions.length > 0) {
       throw new Error(
-        `❌ Tools with weak/placeholder descriptions:\n` +
+        "❌ Tools with weak/placeholder descriptions:\n" +
           `   ${toolsWithWeakDescriptions.join("\n   ")}\n\n` +
-          `   Fix: Write clear, specific descriptions that explain what the tool does`,
+          "   Fix: Write clear, specific descriptions that explain what the tool does",
       )
     }
 
@@ -252,7 +252,7 @@ describe("Tool Registry Sync", () => {
     if (toolNames.length !== uniqueNames.size) {
       const duplicates = toolNames.filter((name, index) => toolNames.indexOf(name) !== index)
       throw new Error(
-        `❌ Duplicate tool names found:\n   ${duplicates.join(", ")}\n\n` + `   Fix: Each tool must have a unique name`,
+        `❌ Duplicate tool names found:\n   ${duplicates.join(", ")}\n\n   Fix: Each tool must have a unique name`,
       )
     }
   })

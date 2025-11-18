@@ -1,4 +1,14 @@
 /**
+ * @deprecated Since 2025-11-16 - SQLite completely unused in production
+ * All data storage migrated to Supabase PostgreSQL:
+ * - Sessions: iam.sessions table (see features/auth/lib/sessionStore.ts)
+ * - Users: iam.users table
+ * - Organizations: iam.orgs table
+ * - Domains: app.domains table
+ * - Feedback: app.feedback table
+ *
+ * This entire lib/db/ directory can be removed once testing is complete.
+ *
  * Database client for SQLite with Drizzle ORM
  * Provides singleton connection with WAL mode for better concurrency
  * Uses Bun's built-in SQLite for better compatibility

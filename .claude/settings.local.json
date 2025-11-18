@@ -22,7 +22,7 @@
       "mcp__ide__getDiagnostics",
       "Skill"
     ],
-    "deny": ["Bash(rm -rf :*)"],
+    "deny": ["Bash(rm -rf :*)", "Bash(bun test)"],
     "ask": []
   }
 }

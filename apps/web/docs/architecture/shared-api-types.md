@@ -45,10 +45,11 @@ const validator = useCallback(isWorkspacesResponse, [])
 ## Files Created
 
 1. **`lib/api/types.ts`** - Shared types & type guards
-   - `Organization`, `OrganizationsResponse`
-   - `WorkspacesResponse`, `LoginResponse`
-   - `isOrganizationsResponse()`, `isWorkspacesResponse()`
-   - Type guard helpers
+   - Auth: `LoginResponse`, `LogoutResponse`, `VerifyResponse`, `TokensResponse`
+   - Organizations: `Organization`, `OrganizationsResponse`, `WorkspacesResponse`
+   - Feedback: `FeedbackResponse`
+   - Type guards for all types
+   - Only includes types that use `{ ok: boolean }` pattern
 
 2. **`lib/api/responses.ts`** - Response builders for API routes
    - `organizationsResponse()`, `workspacesResponse()`
@@ -173,6 +174,25 @@ const { data } = useFetch({ url: "/api/my-endpoint", validator })
 2. ✅ **Always import types from `lib/api/types`** - Never duplicate
 3. ✅ **Always memoize type guards** - `useCallback(guard, [])`
 4. ✅ **API routes use response builders** - `lib/api/responses.ts`
+
+## Known Inconsistencies
+
+### Response Format Patterns
+
+The codebase currently has **two different response patterns**:
+
+1. **Standard Pattern** (recommended) - `{ ok: boolean }`
+   - Used by: Auth APIs (login, logout, verify, tokens), Organizations, Workspaces
+   - All shared types in `lib/api/types.ts` use this pattern
+
+2. **Legacy Pattern** - `{ success: boolean }`
+   - Used by: Deploy API, Image Upload API
+   - Has local type definitions in route files
+   - Frontend code expects this format
+
+**Why this exists**: Different parts of the app were developed at different times with different conventions.
+
+**Resolution**: New APIs should use the `{ ok: boolean }` pattern. Legacy APIs will be gradually migrated when safe to do so (requires frontend updates).
 
 ## Related Docs
 

@@ -1,6 +1,7 @@
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import { verifySessionToken } from "@/features/auth/lib/jwt"
+import { COOKIE_NAMES } from "@/lib/auth/cookies"
 
 /**
  * Preview Guard - Authentication endpoint for Caddy forward_auth
@@ -21,7 +22,7 @@ import { verifySessionToken } from "@/features/auth/lib/jwt"
 export async function GET() {
   try {
     const jar = await cookies()
-    const sessionCookie = jar.get("session")
+    const sessionCookie = jar.get(COOKIE_NAMES.SESSION)
 
     // Check if session cookie exists
     if (!sessionCookie?.value) {
@@ -29,7 +30,7 @@ export async function GET() {
     }
 
     // Verify JWT signature and expiration
-    const payload = verifySessionToken(sessionCookie.value)
+    const payload = await verifySessionToken(sessionCookie.value)
     if (!payload) {
       return new NextResponse("Unauthorized", { status: 401 })
     }

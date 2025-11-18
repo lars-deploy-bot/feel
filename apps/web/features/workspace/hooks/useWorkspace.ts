@@ -1,6 +1,5 @@
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
-import { isTerminalMode } from "@/features/workspace/types/workspace"
 
 interface WorkspaceState {
   workspace: string | null
@@ -27,17 +26,16 @@ export function useWorkspace(options: UseWorkspaceOptions = {}): UseWorkspaceRet
   })
 
   useEffect(() => {
-    const terminal = isTerminalMode(window.location.hostname)
+    // Always terminal mode
+    const terminal = true
     let workspace: string | null = null
 
-    if (terminal) {
-      const savedWorkspace = sessionStorage.getItem("workspace")
-      if (savedWorkspace) {
-        workspace = savedWorkspace
-      } else if (!allowEmpty && redirectOnMissing) {
-        router.push(redirectOnMissing)
-        return
-      }
+    const savedWorkspace = sessionStorage.getItem("workspace")
+    if (savedWorkspace) {
+      workspace = savedWorkspace
+    } else if (!allowEmpty && redirectOnMissing) {
+      router.push(redirectOnMissing)
+      return
     }
 
     setState({ mounted: true, isTerminal: terminal, workspace })

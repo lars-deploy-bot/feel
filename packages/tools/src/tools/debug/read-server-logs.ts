@@ -73,7 +73,7 @@ export async function readServerLogs(params: ReadServerLogsParams): Promise<Read
         content: [
           {
             type: "text" as const,
-            text: `# No Logs Available\n\n**Workspace:** ${workspace}\n**Service:** ${serviceName}\n**Status:** ${serviceStatus}\n\nThe service exists but has no logs yet.\n\n**Possible reasons:**\n- Service just started\n- Service hasn't generated any output\n- Logs may have been rotated\n\n**Try:**\n- Use a longer time range: \`since: \"1 hour ago\"\`\n- Check service status: \`systemctl status ${serviceName}\``,
+            text: `# No Logs Available\n\n**Workspace:** ${workspace}\n**Service:** ${serviceName}\n**Status:** ${serviceStatus}\n\nThe service exists but has no logs yet.\n\n**Possible reasons:**\n- Service just started\n- Service hasn't generated any output\n- Logs may have been rotated\n\n**Try:**\n- Use a longer time range: \`since: "1 hour ago"\`\n- Check service status: \`systemctl status ${serviceName}\``,
           },
         ],
         isError: false,

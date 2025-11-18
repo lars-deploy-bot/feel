@@ -1,5 +1,5 @@
 import type { NextResponse } from "next/server"
-import { getWorkspace } from "@/features/chat/lib/workspaceRetriever"
+import { getWorkspace, type WorkspaceResult } from "@/features/chat/lib/workspaceRetriever"
 import { addCorsHeaders } from "@/lib/cors-utils"
 
 export interface WorkspaceRequest {
@@ -16,8 +16,6 @@ export interface WorkspaceError {
   success: false
   response: NextResponse
 }
-
-export type WorkspaceResult = ResolvedWorkspace | WorkspaceError
 
 export function resolveWorkspace(
   host: string,

@@ -16,7 +16,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 // Store original env
 const originalSecret = process.env.INTERNAL_TOOLS_SECRET
 const originalSessionCookie = process.env.BRIDGE_SESSION_COOKIE
-const originalValidate = global.validateWorkspacePath
+const _originalValidate = global.validateWorkspacePath
 
 // Mock workspace validator to bypass path validation for these tests
 vi.mock("../src/lib/workspace-validator.js", () => ({

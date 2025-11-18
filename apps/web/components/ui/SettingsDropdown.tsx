@@ -13,8 +13,8 @@ interface SettingsDropdownProps {
 
 export function SettingsDropdown({
   onNewChat,
-  currentWorkspace,
-  onSwitchWorkspace,
+  currentWorkspace: _currentWorkspace,
+  onSwitchWorkspace: _onSwitchWorkspace,
   onOpenSettings,
 }: SettingsDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
@@ -47,6 +47,7 @@ export function SettingsDropdown({
         className="inline-flex items-center justify-center px-3 py-2 text-xs font-medium text-black dark:text-white border border-black/20 dark:border-white/20 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors"
         type="button"
         aria-label="Menu"
+        data-testid="menu-button"
       >
         <span className="inline-flex">
           {"Menu".split("").map((letter, i) => (
@@ -81,6 +82,7 @@ export function SettingsDropdown({
               onClick={() => handleAction(onNewChat)}
               className="w-full px-4 py-2.5 text-left text-sm text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors font-medium"
               type="button"
+              data-testid="new-chat-button"
             >
               Start new chat
             </button>
@@ -90,6 +92,7 @@ export function SettingsDropdown({
             onClick={() => handleAction(() => onOpenSettings?.())}
             className="w-full px-4 py-2.5 text-left text-sm text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors font-medium flex items-center gap-2"
             type="button"
+            data-testid="settings-button"
           >
             <Settings size={16} />
             Settings
@@ -98,6 +101,7 @@ export function SettingsDropdown({
             onClick={handleLogout}
             className="w-full px-4 py-2.5 text-left text-sm text-black/60 dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/5 transition-colors font-medium"
             type="button"
+            data-testid="logout-button"
           >
             Logout
           </button>

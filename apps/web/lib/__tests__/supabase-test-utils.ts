@@ -1,0 +1,91 @@
+/**
+ * Supabase Test Utilities
+ * Direct SQL execution for testing (bypasses REST API schema issues)
+ */
+
+const SUPABASE_PROJECT_ID = process.env.SUPABASE_PROJECT_ID
+const SUPABASE_ACCESS_TOKEN = process.env.SUPABASE_ACCESS_TOKEN
+
+if (!SUPABASE_PROJECT_ID || !SUPABASE_ACCESS_TOKEN) {
+  throw new Error("Missing Supabase credentials for tests. Set SUPABASE_PROJECT_ID and SUPABASE_ACCESS_TOKEN in .env")
+}
+
+async function executeSql(query: string) {
+  // Use globalThis.fetch to bypass Happy DOM's CORS restrictions
+  const nodeFetch = globalThis.fetch
+  const response = await nodeFetch(`https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_ID}/database/query`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${SUPABASE_ACCESS_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ query }),
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(`SQL query failed: ${JSON.stringify(error)}`)
+  }
+
+  return response.json()
+}
+
+export const createTestIamClient = () => ({
+  from: (table: string) => ({
+    insert: async (data: any) => {
+      const columns = Object.keys(data).join(", ")
+      const values = Object.values(data)
+        .map(v => `'${v}'`)
+        .join(", ")
+      const query = `INSERT INTO iam.${table} (${columns}) VALUES (${values})`
+
+      try {
+        await executeSql(query)
+        return { error: null }
+      } catch (error: any) {
+        return { error: { message: error.message } }
+      }
+    },
+    delete: () => ({
+      eq: async (column: string, value: any) => {
+        const query = `DELETE FROM iam.${table} WHERE ${column} = '${value}'`
+        try {
+          await executeSql(query)
+          return { error: null }
+        } catch (error: any) {
+          return { error: { message: error.message } }
+        }
+      },
+    }),
+  }),
+})
+
+export const createTestAppClient = () => ({
+  from: (table: string) => ({
+    insert: async (data: any) => {
+      const columns = Object.keys(data).join(", ")
+      const values = Object.values(data)
+        .map(v => (typeof v === "number" ? v : `'${v}'`))
+        .join(", ")
+      const query = `INSERT INTO app.${table} (${columns}) VALUES (${values})`
+
+      try {
+        await executeSql(query)
+        return { error: null }
+      } catch (error: any) {
+        return { error: { message: error.message } }
+      }
+    },
+    delete: () => ({
+      eq: async (column: string, value: any) => {
+        const query = `DELETE FROM app.${table} WHERE ${column} = '${value}'`
+        try {
+          await executeSql(query)
+          return { error: null }
+        } catch (error: any) {
+          return { error: { message: error.message } }
+        }
+      },
+    }),
+  }),
+})

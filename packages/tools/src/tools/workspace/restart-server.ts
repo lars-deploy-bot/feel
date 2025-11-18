@@ -1,5 +1,4 @@
 import { tool } from "@anthropic-ai/claude-agent-sdk"
-import { z } from "zod"
 import { callBridgeApi, type ToolResult } from "../../lib/bridge-api-client.js"
 
 export const restartServerParamsSchema = {}

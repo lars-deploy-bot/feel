@@ -1,5 +1,5 @@
 // Security: Prevent client-side imports (allow test environment)
-const isTestEnv = process.env.NODE_ENV === "test" || typeof globalThis.vi !== "undefined"
+const isTestEnv = process.env.NODE_ENV === "test" || "vi" in globalThis
 if (typeof window !== "undefined" && !isTestEnv) {
   throw new Error(
     "[SECURITY] env/server cannot be imported in client-side code. " +
@@ -8,13 +8,10 @@ if (typeof window !== "undefined" && !isTestEnv) {
 }
 
 import { supabaseServerSchema } from "./schema"
+import type { SupabaseCredentials } from "./types"
 
+export type { SupabaseCredentials }
 export type KeyType = "anon" | "service"
-
-export interface SupabaseCredentials {
-  url: string
-  key: string
-}
 
 export function getSupabaseCredentials(keyType: KeyType = "anon"): SupabaseCredentials {
   const rawEnv = {

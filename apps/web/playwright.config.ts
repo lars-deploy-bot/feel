@@ -11,6 +11,7 @@ export default defineConfig({
   testDir: "./e2e-tests",
   testMatch: "**/*.spec.ts", // Standard Playwright convention
   timeout: 30000,
+  workers: 1, // Run tests sequentially to avoid state pollution
 
   use: {
     baseURL: isStaging ? "https://staging.terminal.goalive.nl" : BASE_URL,
@@ -22,10 +23,10 @@ export default defineConfig({
   webServer: isStaging
     ? undefined
     : {
-        command: "bun run dev:test",
+        command: "bash scripts/start-test-server.sh",
         url: BASE_URL,
         reuseExistingServer: !process.env.CI,
-        timeout: 120000,
+        timeout: 180000, // Increased timeout for slower starts
       },
 
   projects: [

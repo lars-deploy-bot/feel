@@ -3,6 +3,7 @@
  * Replaces in-memory session store with database-backed storage
  */
 
+import { randomUUID } from "node:crypto"
 import { and, eq, lt } from "drizzle-orm"
 import { db, rawDb } from "../client"
 import { sessions } from "../schema"
@@ -65,7 +66,6 @@ export const sessionRepository = {
         .where(eq(sessions.id, existing.id))
     } else {
       // Insert new
-      const { randomUUID } = await import("node:crypto")
       await db.insert(sessions).values({
         id: randomUUID(),
         userId,

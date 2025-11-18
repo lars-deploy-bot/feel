@@ -25,6 +25,7 @@ function isValidApiKeyFormat(key: string): boolean {
 
 /**
  * Zod schema for Claude API request body
+ * IMPORTANT: All fields used by backend must be defined here
  */
 export const BodySchema = z.object({
   message: z.string().min(1),
@@ -38,6 +39,10 @@ export const BodySchema = z.object({
     )
     .optional(),
   model: z.string().optional(),
+  // Optional fields for system prompt context
+  projectId: z.string().optional(),
+  userId: z.string().optional(),
+  additionalContext: z.string().optional(),
 })
 
 export type ValidatedBody = z.infer<typeof BodySchema>
@@ -149,6 +154,11 @@ function getDomainPasswordsPath(): string {
   return persistentPath // Return persistent path for creation
 }
 
+/**
+ * @deprecated Since 2025-11-16 - Migrated to Supabase (iam.users table)
+ * Use `updateDomainOwnerPassword()` from @/lib/auth/supabase-passwords instead
+ * This function reads from legacy domain-passwords.json file
+ */
 export function loadDomainPasswords(): DomainPasswords {
   try {
     const filePath = getDomainPasswordsPath()
@@ -161,6 +171,11 @@ export function loadDomainPasswords(): DomainPasswords {
   return {}
 }
 
+/**
+ * @deprecated Since 2025-11-16 - Migrated to Supabase (iam.users table)
+ * Use `updateDomainOwnerPassword()` from @/lib/auth/supabase-passwords instead
+ * This function writes to legacy domain-passwords.json file
+ */
 export function saveDomainPasswords(passwords: DomainPasswords): void {
   try {
     const filePath = getDomainPasswordsPath()
@@ -170,6 +185,11 @@ export function saveDomainPasswords(passwords: DomainPasswords): void {
   }
 }
 
+/**
+ * @deprecated Since 2025-11-16 - Migrated to Supabase (iam.users table)
+ * Use domain → org_id lookup + user password verification via Supabase instead
+ * This function reads from legacy domain-passwords.json file
+ */
 export async function isDomainPasswordValid(domain: string, providedPassword: string): Promise<boolean> {
   const passwords = loadDomainPasswords()
   const domainConfig = passwords[domain]
@@ -181,6 +201,13 @@ export async function isDomainPasswordValid(domain: string, providedPassword: st
   return verifyPassword(providedPassword, domainConfig.passwordHash)
 }
 
+/**
+ * @deprecated Since 2025-11-16 - Migrated to Supabase
+ * - Password updates: Use `updateDomainOwnerPassword()` from @/lib/auth/supabase-passwords
+ * - Email updates: Use `updateUserEmail()` from @/lib/auth/supabase-passwords
+ * - Credits updates: Use `updateOrgCredits()` from @/lib/tokens
+ * This function writes to legacy domain-passwords.json file
+ */
 export async function updateDomainConfig(
   domain: string,
   updates: { password?: string; email?: string; credits?: number },

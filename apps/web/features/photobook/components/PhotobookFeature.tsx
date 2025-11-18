@@ -8,7 +8,8 @@ import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
 // Feature hooks
 import { useCopyToClipboard, useImageManagement } from "../hooks"
 // Feature components
-import { ImageCard, LoadingState } from "./"
+import { ImageCard } from "./ImageCard"
+import { LoadingState } from "./LoadingState"
 import { ImageZoomModal, MessageBanner } from "./modals"
 
 export default function PhotobookPage() {

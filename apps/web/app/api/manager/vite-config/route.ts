@@ -1,10 +1,18 @@
 import { exec } from "node:child_process"
 import { readFile } from "node:fs/promises"
 import { promisify } from "node:util"
-import { type NextRequest, NextResponse } from "next/server"
-import { isManagerAuthenticated } from "@/features/auth/lib/auth"
+import type { NextRequest } from "next/server"
+import {
+  createBadRequestResponse,
+  createErrorResponse,
+  createSuccessResponse,
+  getDomainParam,
+  requireManagerAuth,
+  requireParam,
+} from "@/features/manager/lib/api-helpers"
+import { domainToSlug, getDomainSitePath, getDomainUser } from "@/features/manager/lib/domain-utils"
+import { getDomain } from "@/lib/domains"
 import type { ViteConfigInfo } from "@/types/domain"
-import { loadDomainPasswords } from "@/types/guards/api"
 
 const execAsync = promisify(exec)
 
@@ -16,30 +24,19 @@ export const runtime = "nodejs"
  * GET /api/manager/vite-config?domain=example.com
  */
 export async function GET(request: NextRequest) {
-  // Check manager authentication
-  const isAuth = await isManagerAuthenticated()
-  if (!isAuth) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  const authError = await requireManagerAuth()
+  if (authError) return authError
 
-  const searchParams = request.nextUrl.searchParams
-  const domain = searchParams.get("domain")
-
-  if (!domain) {
-    return NextResponse.json({ error: "Domain parameter required" }, { status: 400 })
-  }
+  const domain = getDomainParam(request)
+  const domainError = requireParam(domain, "domain")
+  if (domainError) return domainError
 
   try {
-    const info = await getViteConfigInfo(domain)
-    return NextResponse.json({ ok: true, info })
+    const info = await getViteConfigInfo(domain!)
+    return createSuccessResponse({ info })
   } catch (error) {
     console.error("Failed to get vite config:", error)
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Failed to get vite config",
-      },
-      { status: 500 },
-    )
+    return createErrorResponse(error, "Failed to get vite config")
   }
 }
 
@@ -49,49 +46,39 @@ export async function GET(request: NextRequest) {
  * Body: { domain: string, action: "fix-port" }
  */
 export async function POST(request: NextRequest) {
-  // Check manager authentication
-  const isAuth = await isManagerAuthenticated()
-  if (!isAuth) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  const authError = await requireManagerAuth()
+  if (authError) return authError
 
   const body = await request.json()
   const { domain, action } = body
 
-  if (!domain) {
-    return NextResponse.json({ error: "Domain parameter required" }, { status: 400 })
-  }
+  const domainError = requireParam(domain, "domain")
+  if (domainError) return domainError
 
   if (action !== "fix-port") {
-    return NextResponse.json({ error: "Invalid action" }, { status: 400 })
+    return createBadRequestResponse("Invalid action")
   }
 
   try {
     await fixViteConfigPort(domain)
     const info = await getViteConfigInfo(domain)
-    return NextResponse.json({ ok: true, message: "Port fixed", info })
+    return createSuccessResponse({ message: "Port fixed", info })
   } catch (error) {
     console.error("Failed to fix vite config:", error)
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Failed to fix vite config",
-      },
-      { status: 500 },
-    )
+    return createErrorResponse(error, "Failed to fix vite config")
   }
 }
 
 async function getViteConfigInfo(domain: string): Promise<ViteConfigInfo> {
-  const domains = loadDomainPasswords()
-  const config = domains[domain]
+  const domainConfig = await getDomain(domain)
 
-  if (!config) {
+  if (!domainConfig) {
     throw new Error("Domain not found in registry")
   }
 
-  const expectedPort = config.port
-  const sitePath = `/srv/webalive/sites/${domain}`
-  const slug = domain.replace(/[^a-zA-Z0-9]/g, "-")
+  const expectedPort = domainConfig.port
+  const sitePath = getDomainSitePath(domain)
+  const slug = domainToSlug(domain)
 
   // Check for systemd override file
   let hasSystemdOverride = false
@@ -177,8 +164,8 @@ async function getViteConfigInfo(domain: string): Promise<ViteConfigInfo> {
 
 async function fixViteConfigPort(domain: string): Promise<void> {
   const info = await getViteConfigInfo(domain)
-  const slug = domain.replace(/[^a-zA-Z0-9]/g, "-")
-  const user = `site-${slug}`
+  const slug = domainToSlug(domain)
+  const user = getDomainUser(domain)
 
   // Step 1: Remove systemd override file if it exists
   if (info.hasSystemdOverride) {

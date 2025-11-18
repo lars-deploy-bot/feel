@@ -20,7 +20,7 @@ if [ $# -eq 0 ]; then
     exit 1
 fi
 
-DOMAIN=$1
+DOMAIN=$(echo "$1" | tr '[:upper:]' '[:lower:]')  # Convert to lowercase
 SLUG=${DOMAIN//[^a-zA-Z0-9]/-}  # Convert domain to systemd-safe name
 USER="site-${SLUG}"
 SITE_DIR="/srv/webalive/sites/$DOMAIN"

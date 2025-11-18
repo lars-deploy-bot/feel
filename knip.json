@@ -1,0 +1,51 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "workspaces": {
+    "apps/web": {
+      "entry": ["app/**/*.{ts,tsx}", "scripts/**/*.{ts,mjs}"],
+      "project": ["**/*.{ts,tsx,mjs}"]
+    },
+    "packages/tools": {
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "packages/images": {
+      "project": ["src/**/*.{ts,tsx}"]
+    }
+  },
+  "ignore": [
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/node_modules/**",
+    "**/.next/**",
+    "**/dist/**",
+    "**/.turbo/**",
+    "**/lib/db/**",
+    "**/lib/supabase/*.types.ts",
+    "packages/template/**",
+    "packages/tools/lovable-folder-only-use-for-inspiration/**"
+  ],
+  "ignoreDependencies": [
+    "groq-sdk",
+    "msgpackr",
+    "react-markdown",
+    "ws"
+  ],
+  "ignoreBinaries": ["pm2", "go", "sleep"],
+  "ignoreExportsUsedInFile": true,
+  "includeEntryExports": false,
+  "rules": {
+    "duplicates": "error",
+    "unlisted": "off",
+    "unresolved": "warn",
+    "files": "off",
+    "dependencies": "off",
+    "devDependencies": "off",
+    "exports": "off",
+    "nsExports": "off",
+    "nsTypes": "off",
+    "enumMembers": "off",
+    "classMembers": "off",
+    "types": "off"
+  }
+}

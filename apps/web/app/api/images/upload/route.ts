@@ -1,7 +1,6 @@
 import { uploadImage } from "@alive-brug/images"
-import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
-import { hasSessionCookie } from "@/features/auth/types/guards"
+import { createErrorResponse, requireSessionUser, verifyWorkspaceAccess } from "@/features/auth/lib/auth"
 import { resolveWorkspace } from "@/features/workspace/lib/workspace-utils"
 import { ErrorCodes } from "@/lib/error-codes"
 import { imageStorage } from "@/lib/storage"
@@ -10,48 +9,52 @@ import { generateRequestId } from "@/lib/utils"
 
 export async function POST(request: NextRequest) {
   try {
-    // 1. Auth check
-    const jar = await cookies()
-    if (!hasSessionCookie(jar.get("session"))) {
-      return NextResponse.json({ error: ErrorCodes.NO_SESSION }, { status: 401 })
-    }
-
-    // 2. Parse form data first
-    const formData = await request.formData()
-    const host = request.headers.get("host") || "localhost"
     const requestId = generateRequestId()
 
-    // 3. Resolve workspace (same logic as chat)
+    // 1. Get authenticated user
+    const user = await requireSessionUser()
+
+    // 2. Parse form data
+    const formData = await request.formData()
+    const host = request.headers.get("host") || "localhost"
+
+    // 3. Security: Verify workspace authorization BEFORE any operations
     const workspaceParam = formData.get("workspace") as string | null
     const body = workspaceParam ? { workspace: workspaceParam } : {}
 
+    const workspace = await verifyWorkspaceAccess(user, body, `[Upload ${requestId}]`)
+    if (!workspace) {
+      return createErrorResponse(ErrorCodes.WORKSPACE_NOT_AUTHENTICATED, 401, { requestId })
+    }
+
+    // 4. Resolve workspace path (after authorization)
     const workspaceResult = resolveWorkspace(host, body, requestId)
     if (!workspaceResult.success) {
       return workspaceResult.response
     }
 
-    // 4. Convert workspace to tenant ID
+    // 5. Convert workspace to tenant ID
     const tenantId = workspaceToTenantId(workspaceResult.workspace)
 
-    // 5. Parse file from FormData (already parsed above)
+    // 6. Parse file from FormData (already parsed above)
     const file = formData.get("file") as File
 
     if (!file) {
-      return NextResponse.json({ error: ErrorCodes.NO_FILE }, { status: 400 })
+      return createErrorResponse(ErrorCodes.NO_FILE, 400, { requestId })
     }
 
-    // 4. Convert to Buffer
+    // 7. Convert to Buffer
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
-    // 5. Get options
+    // 8. Get options
     const compress = formData.get("compress") !== "false"
     const variantsParam = formData.get("variants")
     const variants = variantsParam
       ? (variantsParam as string).split(",").map(v => v.trim())
       : ["orig", "w640", "w1280", "thumb"]
 
-    // 6. Upload via storage adapter
+    // 9. Upload via storage adapter
     const result = await uploadImage(imageStorage, tenantId, buffer, {
       visibility: "public",
       variants: variants as any,
@@ -61,10 +64,13 @@ export async function POST(request: NextRequest) {
     })
 
     if (result.error) {
-      return NextResponse.json({ error: result.error.code, message: result.error.message }, { status: 500 })
+      return createErrorResponse(ErrorCodes.IMAGE_UPLOAD_FAILED, 500, {
+        errorCode: result.error.code,
+        exception: result.error.message,
+      })
     }
 
-    // 7. Return success with photobook key format (tenantId/contentHash)
+    // 10. Return success with photobook key format (tenantId/contentHash)
     return NextResponse.json({
       success: true,
       data: {
@@ -74,15 +80,8 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error("Upload error:", error)
-    const requestId = Math.random().toString(36).substring(7)
-    return NextResponse.json(
-      {
-        ok: false,
-        error: ErrorCodes.IMAGE_UPLOAD_FAILED,
-        message: error instanceof Error ? error.message : "Failed to upload image",
-        requestId,
-      },
-      { status: 500 },
-    )
+    return createErrorResponse(ErrorCodes.IMAGE_UPLOAD_FAILED, 500, {
+      exception: error instanceof Error ? error.message : "Failed to upload image",
+    })
   }
 }

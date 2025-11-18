@@ -3,6 +3,8 @@
 import {
   Bot,
   Building2,
+  ChevronDown,
+  ChevronUp,
   ClipboardList,
   Eye,
   EyeOff,
@@ -12,15 +14,20 @@ import {
   Settings,
   Sun,
   User,
+  UserMinus,
+  Users,
   X,
   Zap,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
+import toast from "react-hot-toast"
 import { AddWorkspaceModal } from "@/components/modals/AddWorkspaceModal"
-import { DEFAULT_STARTING_CREDITS } from "@/lib/credits"
+import { DeleteModal } from "@/components/modals/DeleteModal"
 import type { Organization } from "@/lib/api/types"
+import { DEFAULT_STARTING_CREDITS } from "@/lib/credits"
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
+import { canRemoveMember } from "@/lib/permissions/org-permissions"
 import { useUserPrompts, useUserPromptsActions } from "@/lib/providers/UserPromptsStoreProvider"
 import {
   useCredits,
@@ -545,15 +552,29 @@ function AboutSettings() {
   )
 }
 
+interface OrgMember {
+  user_id: string
+  email: string
+  display_name: string | null
+  role: "owner" | "admin" | "member"
+}
+
 function OrganizationSettings() {
   // Use centralized hook for org fetching + auto-selection
-  const { organizations, loading, error, refetch } = useOrganizations()
+  const { organizations, currentUserId, loading, error, refetch } = useOrganizations()
   const selectedOrgId = useSelectedOrgId()
   const { setSelectedOrg } = useWorkspaceActions()
   const [editingOrgId, setEditingOrgId] = useState<string | null>(null)
   const [editOrgName, setEditOrgName] = useState("")
   const [saving, setSaving] = useState(false)
   const [updateError, setUpdateError] = useState<string | null>(null)
+
+  // Member management state
+  const [expandedOrgId, setExpandedOrgId] = useState<string | null>(null)
+  const [orgMembers, setOrgMembers] = useState<Record<string, OrgMember[]>>({})
+  const [loadingMembers, setLoadingMembers] = useState<Record<string, boolean>>({})
+  const [removingMember, setRemovingMember] = useState<string | null>(null)
+  const [memberToRemove, setMemberToRemove] = useState<{ orgId: string; userId: string; email: string } | null>(null)
 
   const handleSelectOrg = (orgId: string) => {
     setSelectedOrg(orgId)
@@ -600,6 +621,89 @@ function OrganizationSettings() {
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleToggleMembers = async (orgId: string) => {
+    if (expandedOrgId === orgId) {
+      setExpandedOrgId(null)
+      return
+    }
+
+    setExpandedOrgId(orgId)
+
+    // Fetch members if not already loaded
+    if (!orgMembers[orgId]) {
+      try {
+        setLoadingMembers(prev => ({ ...prev, [orgId]: true }))
+
+        const response = await fetch(`/api/auth/org-members?orgId=${orgId}`, {
+          credentials: "include",
+        })
+
+        const data = await response.json()
+
+        if (data.ok) {
+          setOrgMembers(prev => ({ ...prev, [orgId]: data.members }))
+        } else {
+          console.error("Failed to fetch members:", data.error)
+        }
+      } catch (err) {
+        console.error("Failed to fetch members:", err)
+      } finally {
+        setLoadingMembers(prev => ({ ...prev, [orgId]: false }))
+      }
+    }
+  }
+
+  const handleRemoveMemberClick = (orgId: string, memberId: string, memberEmail: string) => {
+    setMemberToRemove({ orgId, userId: memberId, email: memberEmail })
+  }
+
+  const handleConfirmRemoveMember = async () => {
+    if (!memberToRemove) return
+
+    const { orgId, userId, email } = memberToRemove
+
+    try {
+      setRemovingMember(userId)
+      setMemberToRemove(null) // Close modal
+
+      const response = await fetch("/api/auth/org-members", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ orgId, targetUserId: userId }),
+      })
+
+      const data = await response.json()
+
+      if (data.ok) {
+        // Remove from local state
+        setOrgMembers(prev => ({
+          ...prev,
+          [orgId]: prev[orgId].filter(m => m.user_id !== userId),
+        }))
+        toast.success(`Removed ${email} from organization`)
+      } else {
+        toast.error(data.message || "Failed to remove member")
+      }
+    } catch (err) {
+      console.error("Failed to remove member:", err)
+      toast.error("Failed to remove member")
+    } finally {
+      setRemovingMember(null)
+    }
+  }
+
+  const handleCancelRemoveMember = () => {
+    setMemberToRemove(null)
+  }
+
+  const getCurrentUserRole = (orgId: string): "owner" | "admin" | "member" | null => {
+    // Get current user's role from the organizations list
+    // (role is fetched from org_memberships when loading organizations)
+    const org = organizations.find(o => o.org_id === orgId)
+    return org?.role || null
   }
 
   return (
@@ -738,6 +842,102 @@ function OrganizationSettings() {
                     </div>
                   </div>
 
+                  {/* Members Section - Only show for selected org */}
+                  {isSelected && (
+                    <div className="mt-3 border-t border-black/10 dark:border-white/10 pt-3">
+                      <button
+                        type="button"
+                        onClick={e => {
+                          e.stopPropagation()
+                          handleToggleMembers(org.org_id)
+                        }}
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-md bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Users size={14} className="text-black/60 dark:text-white/60" />
+                          <span className="text-sm font-medium text-black dark:text-white">Members</span>
+                          {orgMembers[org.org_id] && (
+                            <span className="text-xs text-black/50 dark:text-white/50">
+                              ({orgMembers[org.org_id].length})
+                            </span>
+                          )}
+                        </div>
+                        {expandedOrgId === org.org_id ? (
+                          <ChevronUp size={14} className="text-black/60 dark:text-white/60" />
+                        ) : (
+                          <ChevronDown size={14} className="text-black/60 dark:text-white/60" />
+                        )}
+                      </button>
+
+                      {/* Members List */}
+                      {expandedOrgId === org.org_id && (
+                        <div className="mt-2 space-y-1">
+                          {loadingMembers[org.org_id] ? (
+                            <div className="px-3 py-2 text-xs text-black/40 dark:text-white/40 text-center">
+                              Loading members...
+                            </div>
+                          ) : orgMembers[org.org_id] && orgMembers[org.org_id].length > 0 ? (
+                            orgMembers[org.org_id].map(member => {
+                              const currentUserRole = getCurrentUserRole(org.org_id)
+                              const isCurrentUser = member.user_id === currentUserId
+                              const canRemove = canRemoveMember(currentUserRole, member.role, isCurrentUser)
+
+                              return (
+                                <div
+                                  key={member.user_id}
+                                  className="flex items-center justify-between px-3 py-2 rounded-md bg-black/5 dark:bg-white/5"
+                                >
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm text-black dark:text-white truncate">
+                                        {member.display_name || member.email}
+                                      </span>
+                                      <span
+                                        className={`text-xs px-1.5 py-0.5 rounded-full ${
+                                          member.role === "owner"
+                                            ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
+                                            : member.role === "admin"
+                                              ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                                              : "bg-gray-100 dark:bg-gray-800/30 text-gray-600 dark:text-gray-400"
+                                        }`}
+                                      >
+                                        {member.role}
+                                      </span>
+                                    </div>
+                                    {member.display_name && (
+                                      <div className="text-xs text-black/50 dark:text-white/50 truncate">
+                                        {member.email}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {canRemove && (
+                                    <button
+                                      type="button"
+                                      onClick={e => {
+                                        e.stopPropagation()
+                                        handleRemoveMemberClick(org.org_id, member.user_id, member.email)
+                                      }}
+                                      disabled={removingMember === member.user_id}
+                                      className="ml-2 p-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors disabled:opacity-50"
+                                      title="Remove member"
+                                    >
+                                      <UserMinus size={14} />
+                                    </button>
+                                  )}
+                                </div>
+                              )
+                            })
+                          ) : (
+                            <div className="px-3 py-2 text-xs text-black/40 dark:text-white/40 text-center">
+                              No members found
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Click to switch hint */}
                   {!isSelected && !isEditing && (
                     <div className="mt-2 text-xs text-black/40 dark:text-white/40 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -751,14 +951,22 @@ function OrganizationSettings() {
         </div>
       )}
 
-      {/* Info */}
-      {organizations.length > 0 && (
-        <div className="px-4 py-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/50 rounded-lg animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
-          <p className="text-xs text-blue-900 dark:text-blue-300 leading-relaxed">
-            <strong>Tip:</strong> When you switch organizations, the available sites in the workspace selector will
-            update automatically.
-          </p>
-        </div>
+      {/* Delete Member Confirmation Modal */}
+      {memberToRemove && (
+        <DeleteModal
+          title="Remove Member"
+          message={
+            <>
+              Are you sure you want to remove <strong>{memberToRemove.email}</strong> from this organization?
+              <br />
+              <br />
+              This action cannot be undone.
+            </>
+          }
+          confirmText="Remove"
+          onConfirm={handleConfirmRemoveMember}
+          onCancel={handleCancelRemoveMember}
+        />
       )}
     </div>
   )
@@ -770,11 +978,20 @@ function SitesSettings() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const currentWorkspace = typeof window !== "undefined" ? sessionStorage.getItem("workspace") : null
+  const selectedOrgId = useSelectedOrgId()
 
   const fetchWorkspaces = () => {
     setLoading(true)
     setError(null)
-    fetch("/api/auth/workspaces")
+
+    // Only fetch if org is selected
+    if (!selectedOrgId) {
+      setWorkspaces([])
+      setLoading(false)
+      return
+    }
+
+    fetch(`/api/auth/workspaces?org_id=${selectedOrgId}`)
       .then(res => {
         if (!res.ok) {
           throw new Error(`Failed to load sites (${res.status})`)
@@ -802,7 +1019,8 @@ function SitesSettings() {
 
   useEffect(() => {
     fetchWorkspaces()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedOrgId])
 
   const handleSwitchWorkspace = (workspace: string) => {
     if (typeof window !== "undefined") {

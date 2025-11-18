@@ -82,9 +82,12 @@ Claude Bridge enables developers to interact with Claude AI in the context of sp
 ```bash
 # Required
 ANTHROPIC_API_KEY=your_claude_api_key
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+JWT_SECRET=your-jwt-secret-min-32-chars
 
 # Optional
-BRIDGE_PASSCODE=your_secure_passcode  # If unset, any passcode works
+BRIDGE_PASSCODE=your_manager_passcode  # For /manager admin panel access only
 CLAUDE_MODEL=claude-haiku-4-5  # Default model
 WORKSPACE_BASE=/srv/webalive/sites       # Base directory for workspaces (default: /srv/webalive/sites)
 
@@ -99,8 +102,8 @@ LOCAL_TEMPLATE_PATH=/absolute/path/to/packages/template/user  # Absolute path to
 
 ### Local Development Login
 When `BRIDGE_ENV=local` is set, you can use the test credentials:
-- **Workspace**: `test`
-- **Passcode**: `test`
+- **Email**: `test@bridge.local`
+- **Password**: `test`
 
 ### Development
 
@@ -203,13 +206,14 @@ pm2 save
 
 **🔒 Secure Site Deployment (ONLY WAY):**
 ```bash
-# Deploy with systemd isolation + automatic password
+# Deploy with systemd isolation
 /root/webalive/claude-bridge/scripts/deploy-site-systemd.sh newsite.com
 
 # Or use package.json script:
 bun run deploy-site newsite.com
 
-# Result: systemd service with dedicated user, security hardening, and automatic password "supersecret"
+# Result: systemd service with dedicated user and security hardening
+# Account is created or linked in Supabase (email-based authentication)
 ```
 
 **Manual Caddy Setup (if needed):**
@@ -236,16 +240,15 @@ systemctl reload caddy
 
 ### Standard Domain Access
 1. Visit `https://yoursite.com`
-2. Enter passcode
+2. Log in with your account (email + password)
 3. Start chatting with Claude about your site
-4. Claude can read/edit files in `/claude-bridge/sites/yoursite.com/src`
+4. Claude can read/edit files in `/srv/webalive/sites/yoursite.com/`
 
 ### Terminal Mode Access
-1. Visit `https://terminal.yoursite.com`
-2. Enter passcode
-3. Specify workspace (e.g., `webalive/sites/custom-project`)
-4. Verify workspace exists
-5. Claude can work in `/root/webalive/sites/custom-project`
+1. Visit `https://terminal.goalive.nl`
+2. Log in with your account
+3. Select your workspace from the list
+4. Claude can work in the selected workspace directory
 
 ### Claude Capabilities
 ```
@@ -262,10 +265,10 @@ Claude: [writes new file, follows project conventions]
 ## API Endpoints
 
 ### Authentication
-- `POST /api/login` - Authenticate with passcode, sets session cookie
+- `POST /api/login` - Authenticate with email + password, sets JWT session cookie
 - `POST /api/logout` - Clear session cookies
-- `GET /api/manager` - List domain configurations (requires manager auth)
-- `POST /api/manager` - Update domain passwords (requires manager auth)
+- `GET /api/manager` - List domain configurations (requires manager passcode)
+- `POST /api/manager` - Update domain configurations (requires manager passcode)
 
 ### Claude Integration
 
@@ -335,12 +338,12 @@ Non-streaming endpoint returning full response as JSON.
 - No access to system files or other sites
 
 ### Authentication
-- **JWT-based**: 30-day tokens with workspace permissions in httpOnly cookies
-- **Domain Manager**: Hidden access via `/manager` URL for password management
-- **Separate Sessions**: Manager uses `manager_session` cookie, isolated from domain sessions
-- **Multi-Mode Authentication**: Manager access ("wachtwoord") + domain-specific passwords (`domain-passwords.json`)
-- **Local Development**: `BRIDGE_ENV=local` enables test workspace (workspace: "test", passcode: "test")
-- **Workspace-scoped**: Each JWT token contains authorized workspace list
+- **Supabase-based**: Email + password authentication with bcrypt hashing
+- **JWT Sessions**: 30-day tokens with userId in httpOnly cookies
+- **Organization-based**: Workspace access determined via org memberships
+- **Domain Manager**: Hidden access via `/manager` URL (requires BRIDGE_PASSCODE)
+- **Separate Sessions**: Manager uses `manager_session` cookie, isolated from user sessions
+- **Local Development**: `BRIDGE_ENV=local` enables test user (email: "test@bridge.local", password: "test")
 
 ### Tool Restrictions
 - **SDK Tools**: Read, Write, Edit, Glob, Grep (with path validation)

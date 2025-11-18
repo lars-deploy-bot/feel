@@ -1,5 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { createErrorResponse } from "@/features/auth/lib/auth"
 import { isInputSafeWithDebug } from "@/features/chat/lib/formatMessage"
+import { ErrorCodes } from "@/lib/error-codes"
 
 export async function POST(req: NextRequest) {
   try {
@@ -7,7 +9,7 @@ export async function POST(req: NextRequest) {
     const { input } = body
 
     if (!input || typeof input !== "string") {
-      return NextResponse.json({ error: "Input is required and must be a string" }, { status: 400 })
+      return createErrorResponse(ErrorCodes.INVALID_REQUEST, 400, { field: "input" })
     }
 
     console.log(`[Safety Test] Checking input: "${input}"`)
@@ -30,13 +32,8 @@ export async function POST(req: NextRequest) {
     })
   } catch (error) {
     console.error("[Safety Test] Error:", error)
-    return NextResponse.json(
-      {
-        error: "Failed to check input safety",
-        result: "error",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 },
-    )
+    return createErrorResponse(ErrorCodes.INTERNAL_ERROR, 500, {
+      exception: error instanceof Error ? error.message : "Unknown error",
+    })
   }
 }

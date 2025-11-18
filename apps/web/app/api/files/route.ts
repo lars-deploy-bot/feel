@@ -5,6 +5,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { hasSessionCookie } from "@/features/auth/types/guards"
 import { getWorkspace } from "@/features/chat/lib/workspaceRetriever"
 import { isPathWithinWorkspace } from "@/features/workspace/types/workspace"
+import { COOKIE_NAMES } from "@/lib/auth/cookies"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 import { generateRequestId } from "@/lib/utils"
 
@@ -21,7 +22,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const jar = await cookies()
-    if (!hasSessionCookie(jar.get("session"))) {
+    if (!hasSessionCookie(jar.get(COOKIE_NAMES.SESSION))) {
       return NextResponse.json(
         {
           ok: false,

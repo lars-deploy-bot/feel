@@ -29,6 +29,7 @@ export function SubmitButton({ isDeploying, isValid, label, countdown = 0 }: Sub
       transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
       type="submit"
       disabled={isDeploying || !isValid}
+      data-testid="submit-button"
       className={`w-full py-4 px-6 rounded-xl font-bold text-base transition-all duration-300 flex items-center justify-center gap-2 ${
         isDeploying || !isValid
           ? "bg-gray-200 text-gray-400 cursor-not-allowed"

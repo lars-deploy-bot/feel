@@ -1,14 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createSessionToken } from "@/features/auth/lib/jwt"
+import { COOKIE_NAMES, getSessionCookieOptions } from "@/lib/auth/cookies"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
+import { createAppClient } from "@/lib/supabase/app"
 import { createIamClient } from "@/lib/supabase/iam"
 import { generateRequestId } from "@/lib/utils"
 import { verifyPassword } from "@/types/guards/api"
-
-// Session expires in 30 days
-const SESSION_MAX_AGE = 30 * 24 * 60 * 60
 
 const LoginSchema = z.object({
   email: z.string().email(),
@@ -41,13 +40,7 @@ export async function POST(req: NextRequest) {
   // Test mode
   if (process.env.BRIDGE_ENV === "local" && email === "test@bridge.local" && password === "test") {
     const res = NextResponse.json({ ok: true })
-    res.cookies.set("session", "test-user", {
-      httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      path: "/",
-      maxAge: SESSION_MAX_AGE,
-    })
+    res.cookies.set(COOKIE_NAMES.SESSION, "test-user", getSessionCookieOptions())
     addCorsHeaders(res, origin)
     return res
   }
@@ -107,19 +100,36 @@ export async function POST(req: NextRequest) {
     return res
   }
 
-  // Create JWT session token
-  const sessionToken = createSessionToken(user.user_id)
+  // Query user's workspaces (only once at login, embedded in JWT)
+  // This eliminates database queries on every subsequent request
+  const { data: memberships } = await iam.from("org_memberships").select("org_id").eq("user_id", user.user_id)
 
-  console.log("[Login] Successfully authenticated:", user.email)
+  const workspaces: string[] = []
+  if (memberships && memberships.length > 0) {
+    const orgIds = memberships.map(m => m.org_id)
+
+    // Get all domains for these orgs
+    const app = await createAppClient("service")
+    const { data: domains } = await app.from("domains").select("hostname").in("org_id", orgIds)
+
+    if (domains) {
+      workspaces.push(...domains.map(d => d.hostname))
+    }
+  }
+
+  // Create JWT session token with embedded user profile + workspaces
+  // This eliminates 3 database queries per request (iam.users, org_memberships, domains)
+  const sessionToken = await createSessionToken(
+    user.user_id,
+    user.email || "",
+    user.display_name,
+    workspaces
+  )
+
+  console.log(`[Login] Successfully authenticated: ${user.email} (${workspaces.length} workspaces)`)
 
   const res = NextResponse.json({ ok: true, userId: user.user_id })
-  res.cookies.set("session", sessionToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: SESSION_MAX_AGE,
-  })
+  res.cookies.set(COOKIE_NAMES.SESSION, sessionToken, getSessionCookieOptions())
 
   addCorsHeaders(res, origin)
   return res

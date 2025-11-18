@@ -91,7 +91,7 @@ interface StreamHandlerConfig {
  * Only charges when using workspace credits (not user API key)
  * Conversion from LLM tokens to credits happens inside chargeTokensFromCredits
  */
-function chargeTokensForMessage(message: StreamMessage, workspace: string, requestId: string): boolean {
+async function chargeTokensForMessage(message: StreamMessage, workspace: string, requestId: string): Promise<boolean> {
   if (!isBridgeMessageEvent(message) || !isAssistantMessageWithUsage(message)) {
     return false
   }
@@ -102,7 +102,7 @@ function chargeTokensForMessage(message: StreamMessage, workspace: string, reque
   const chargedCredits = Math.floor(creditsUsed * WORKSPACE_CREDIT_DISCOUNT * 100) / 100
 
   try {
-    const newBalance = chargeTokensFromCredits(workspace, llmTokensUsed)
+    const newBalance = await chargeTokensFromCredits(workspace, llmTokensUsed)
 
     if (newBalance !== null) {
       console.log(
@@ -155,7 +155,10 @@ async function processChildEvent(
 
     // Only charge LLM tokens if using workspace credits (not user API key)
     if (tokenSource === "workspace") {
-      chargeTokensForMessage(message, workspace, requestId)
+      // Fire and forget - don't block stream on credit charging
+      chargeTokensForMessage(message, workspace, requestId).catch(error => {
+        console.error(`[NDJSON Stream ${requestId}] Credit charging failed:`, error)
+      })
     }
 
     controller.enqueue(encodeNDJSON(message))

@@ -3,7 +3,7 @@ export const WILDCARD_PATTERN = `*.${WILDCARD_DOMAIN}`
 export const WORKSPACE_BASE = process.env.WORKSPACE_BASE || "/srv/webalive/sites"
 
 export function buildSubdomain(slug: string): string {
-  return `${slug}.${WILDCARD_DOMAIN}`
+  return `${slug.toLowerCase()}.${WILDCARD_DOMAIN}`
 }
 
 export function isWildcardSubdomain(domain: string): boolean {

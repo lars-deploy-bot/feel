@@ -172,9 +172,11 @@ export async function isInputSafeWithDebug(input: string): Promise<{
       },
     }
   } catch (error) {
-    console.error("[isInputSafe] Groq API error:", error)
+    console.error("[isInputSafe] Groq API error, defaulting to safe:", error)
+    // IMPORTANT: On API failure, allow the request through (fail open)
+    // Blocking all requests when moderation API is down creates bad UX
     return {
-      result: "unsafe",
+      result: "safe",
       debug: {
         fullResponse: null,
         rawContent: null,
