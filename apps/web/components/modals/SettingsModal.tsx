@@ -70,7 +70,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
       aria-labelledby="settings-dialog-title"
     >
       <div
-        className="bg-white dark:bg-[#1a1a1a] rounded-t-2xl sm:rounded-lg shadow-xl w-full sm:max-w-4xl h-[85vh] sm:h-[600px] flex flex-col sm:flex-row overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 ease-out"
+        className="bg-white dark:bg-[#1a1a1a] rounded-t-2xl sm:rounded-lg shadow-xl w-full sm:w-[95vw] h-[85vh] sm:h-[90vh] flex flex-col sm:flex-row overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 ease-out"
         onClick={e => e.stopPropagation()}
         role="document"
       >
@@ -575,6 +575,8 @@ function OrganizationSettings() {
   const [loadingMembers, setLoadingMembers] = useState<Record<string, boolean>>({})
   const [removingMember, setRemovingMember] = useState<string | null>(null)
   const [memberToRemove, setMemberToRemove] = useState<{ orgId: string; userId: string; email: string } | null>(null)
+  const [leavingOrg, setLeavingOrg] = useState<string | null>(null)
+  const [orgToLeave, setOrgToLeave] = useState<{ orgId: string; orgName: string } | null>(null)
 
   const handleSelectOrg = (orgId: string) => {
     setSelectedOrg(orgId)
@@ -697,6 +699,47 @@ function OrganizationSettings() {
 
   const handleCancelRemoveMember = () => {
     setMemberToRemove(null)
+  }
+
+  const handleLeaveOrgClick = (orgId: string, orgName: string) => {
+    setOrgToLeave({ orgId, orgName })
+  }
+
+  const handleConfirmLeaveOrg = async () => {
+    if (!orgToLeave) return
+
+    const { orgId } = orgToLeave
+
+    try {
+      setLeavingOrg(orgId)
+      setOrgToLeave(null)
+
+      const response = await fetch("/api/auth/org-members", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ orgId, targetUserId: currentUserId }),
+      })
+
+      const data = await response.json()
+
+      if (data.ok) {
+        // Refetch organizations to update the list
+        await refetch()
+        toast.success("You have left the organization")
+      } else {
+        toast.error(data.message || "Failed to leave organization")
+      }
+    } catch (err) {
+      console.error("Failed to leave organization:", err)
+      toast.error("Failed to leave organization")
+    } finally {
+      setLeavingOrg(null)
+    }
+  }
+
+  const handleCancelLeaveOrg = () => {
+    setOrgToLeave(null)
   }
 
   const getCurrentUserRole = (orgId: string): "owner" | "admin" | "member" | null => {
@@ -938,6 +981,24 @@ function OrganizationSettings() {
                     </div>
                   )}
 
+                  {/* Leave Organization Button */}
+                  {isSelected && (
+                    <div className="mt-3 border-t border-black/10 dark:border-white/10 pt-3">
+                      <button
+                        type="button"
+                        onClick={e => {
+                          e.stopPropagation()
+                          handleLeaveOrgClick(org.org_id, org.name)
+                        }}
+                        disabled={leavingOrg === org.org_id}
+                        className="w-full px-3 py-2 rounded-md bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-900/30 border border-red-200 dark:border-red-800/30 text-red-600 dark:text-red-400 text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        <UserMinus size={14} />
+                        {leavingOrg === org.org_id ? "Leaving..." : "Leave Organization"}
+                      </button>
+                    </div>
+                  )}
+
                   {/* Click to switch hint */}
                   {!isSelected && !isEditing && (
                     <div className="mt-2 text-xs text-black/40 dark:text-white/40 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -966,6 +1027,24 @@ function OrganizationSettings() {
           confirmText="Remove"
           onConfirm={handleConfirmRemoveMember}
           onCancel={handleCancelRemoveMember}
+        />
+      )}
+
+      {/* Leave Organization Confirmation Modal */}
+      {orgToLeave && (
+        <DeleteModal
+          title="Leave Organization"
+          message={
+            <>
+              Are you sure you want to leave <strong>{orgToLeave.orgName}</strong>?
+              <br />
+              <br />
+              This action cannot be undone.
+            </>
+          }
+          confirmText="Leave"
+          onConfirm={handleConfirmLeaveOrg}
+          onCancel={handleCancelLeaveOrg}
         />
       )}
     </div>

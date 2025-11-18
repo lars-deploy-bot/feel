@@ -165,11 +165,12 @@ export async function DELETE(req: NextRequest) {
     // Permission check
     const currentRole = currentUserMembership.role
     const targetRole = targetMembership.role
+    const isLeavingOrg = userId === targetUserId
 
     // Owner can remove anyone
     // Admin can remove members (but not other admins or owner)
-    // Members cannot remove anyone
-    if (currentRole === "member") {
+    // Members cannot remove anyone, but can leave themselves
+    if (currentRole === "member" && !isLeavingOrg) {
       const res = NextResponse.json(
         { ok: false, error: "FORBIDDEN", message: "Members cannot remove other members", requestId },
         { status: 403 },
@@ -178,7 +179,7 @@ export async function DELETE(req: NextRequest) {
       return res
     }
 
-    if (currentRole === "admin" && (targetRole === "admin" || targetRole === "owner")) {
+    if (currentRole === "admin" && !isLeavingOrg && (targetRole === "admin" || targetRole === "owner")) {
       const res = NextResponse.json(
         { ok: false, error: "FORBIDDEN", message: "Admins cannot remove other admins or the owner", requestId },
         { status: 403 },
@@ -187,14 +188,34 @@ export async function DELETE(req: NextRequest) {
       return res
     }
 
-    // Prevent removing yourself
-    if (userId === targetUserId) {
-      const res = NextResponse.json(
-        { ok: false, error: "FORBIDDEN", message: "You cannot remove yourself from the organization", requestId },
-        { status: 403 },
-      )
-      addCorsHeaders(res, origin)
-      return res
+    // Allow users to leave (remove themselves), but prevent admins/owners from removing themselves if they're the only one
+    if (userId === targetUserId && currentRole === "owner") {
+      // Check if there are other owners
+      const { data: otherOwners, error: otherOwnersError } = await iam
+        .from("org_memberships")
+        .select("user_id")
+        .eq("org_id", orgId)
+        .eq("role", "owner")
+        .neq("user_id", userId)
+
+      if (otherOwnersError) {
+        console.error("[Org Members] Failed to check for other owners:", otherOwnersError)
+        const res = NextResponse.json(
+          { ok: false, error: "DATABASE_ERROR", message: "Failed to process request", requestId },
+          { status: 500 },
+        )
+        addCorsHeaders(res, origin)
+        return res
+      }
+
+      if (!otherOwners || otherOwners.length === 0) {
+        const res = NextResponse.json(
+          { ok: false, error: "FORBIDDEN", message: "You cannot leave the organization while being the only owner", requestId },
+          { status: 403 },
+        )
+        addCorsHeaders(res, origin)
+        return res
+      }
     }
 
     // Remove the member
