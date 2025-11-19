@@ -27,17 +27,16 @@ export async function deleteDomain(domain: string): Promise<void> {
 }
 
 export async function checkPermissions(domain: string): Promise<any> {
-  const response = await fetch("/api/manager/permissions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ domain }),
+  const response = await fetch(`/api/manager/permissions?domain=${encodeURIComponent(domain)}`, {
+    method: "GET",
   })
 
   if (!response.ok) {
     throw new Error("Failed to check permissions")
   }
 
-  return response.json()
+  const data = await response.json()
+  return data.result
 }
 
 export async function fixPort(domain: string): Promise<void> {

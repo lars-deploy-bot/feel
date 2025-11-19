@@ -150,7 +150,7 @@ get_next_port() {
     echo $test_port
 }
 
-# Check if domain already exists in domain-passwords.json
+# Port assignment: Check if domain already exists, otherwise get next available
 if [ -f "$DOMAIN_PASSWORDS_FILE" ] && jq -e ".[\"$DOMAIN\"]" "$DOMAIN_PASSWORDS_FILE" > /dev/null 2>&1; then
     PORT=$(jq -r ".[\"$DOMAIN\"].port" "$DOMAIN_PASSWORDS_FILE")
     echo "✅ Using existing port assignment: $PORT"
@@ -181,14 +181,9 @@ else
         echo "✅ Added $DOMAIN to domain-passwords.json (port $PORT, credits: 200) [DEPRECATED - remove after migration]"
     fi
 
-    # Add to Supabase (primary database)
-    echo "Adding $DOMAIN to Supabase database..."
-    if cd /root/webalive/claude-bridge/apps/web && bun scripts/add-domain-to-supabase.ts "$DOMAIN" "$EMAIL" "$PASSWORD_HASH" "$PORT" 2>&1; then
-        echo "✅ Added $DOMAIN to Supabase"
-    else
-        echo "⚠️  Failed to add $DOMAIN to Supabase (will show as orphaned in manager)"
-    fi
-    cd - > /dev/null
+    # Supabase registration is now handled by the API route (POST /api/deploy-subdomain)
+    # This ensures the domain is registered in request context with proper authentication
+    echo "✅ Domain registration handled by API (Supabase + port assignment)"
 fi
 
 # 3. For existing domains, verify their assigned port is still available

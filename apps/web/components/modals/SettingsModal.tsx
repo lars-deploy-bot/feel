@@ -725,6 +725,7 @@ function OrganizationSettings() {
 
       if (data.ok) {
         // Refetch organizations to update the list
+        // The hook's useOrganizations handles validation and cleanup automatically
         await refetch()
         toast.success("You have left the organization")
       } else {

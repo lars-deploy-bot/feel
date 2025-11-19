@@ -1,12 +1,31 @@
 import { existsSync } from "node:fs"
 import { type NextRequest, NextResponse } from "next/server"
-import { requireSessionUser } from "@/features/auth/lib/auth"
+import { getSessionUser } from "@/features/auth/lib/auth"
 import { validateDeploySubdomainRequest } from "@/features/deployment/types/guards"
 import { buildSubdomain } from "@/lib/config"
 import { deploySite } from "@/lib/deployment/deploy-site"
+import { DomainRegistrationError, registerDomain } from "@/lib/deployment/domain-registry"
 import { validateUserOrgAccess } from "@/lib/deployment/org-resolver"
 import { validateSSLCertificate } from "@/lib/deployment/ssl-validation"
 import { siteMetadataStore } from "@/lib/siteMetadataStore"
+import { structuredErrorResponse } from "@/lib/api/responses"
+import { ErrorCodes, type ErrorCode } from "@/lib/error-codes"
+import { loadDomainPasswords } from "@/types/guards/api"
+
+/**
+ * Get port for domain from domain-passwords.json registry
+ * This file is updated by deploy-site-systemd.sh during deployment
+ * Uses loadDomainPasswords() which handles fallback paths correctly
+ */
+function getPortFromRegistry(domain: string): number | null {
+  try {
+    const registry = loadDomainPasswords()
+    const entry = registry[domain]
+    return entry?.port ?? null
+  } catch {
+    return null
+  }
+}
 
 interface DeploySubdomainResponse {
   ok: boolean
@@ -14,142 +33,162 @@ interface DeploySubdomainResponse {
   domain?: string
   chatUrl?: string
   orgId?: string
-  error?: string
+  error?: ErrorCode
   details?: unknown
 }
 
-export async function POST(request: NextRequest) {
-  const startTime = Date.now()
-  console.log("[Deploy-Subdomain] === DEPLOY SUBDOMAIN REQUEST START ===")
+/**
+ * Helper to create standardized error responses
+ */
+function errorResponse(message: string, errorCode: ErrorCode, status: number): [DeploySubdomainResponse, number] {
+  return [{ ok: false, message, error: errorCode }, status]
+}
 
+export async function POST(request: NextRequest) {
   try {
-    // AUTHENTICATION REQUIRED - No anonymous deployments allowed
-    const user = await requireSessionUser()
-    console.log(`[Deploy-Subdomain] Authenticated user: ${user.email} (${user.id})`)
+    // Get user if authenticated (optional - allows anonymous deployments)
+    const sessionUser = await getSessionUser()
 
     // Parse and validate request body
     let body: unknown
     try {
       body = await request.json()
-      console.log("[Deploy-Subdomain] Request parsed")
-    } catch (parseError) {
-      console.error("[Deploy-Subdomain] Failed to parse JSON:", parseError)
-      const errorResponse: DeploySubdomainResponse = {
-        ok: false,
-        message: "Invalid JSON in request body",
-        error: "INVALID_JSON",
+    } catch (_parseError) {
+      const [response, status] = errorResponse("Invalid JSON in request body", ErrorCodes.INVALID_JSON, 400)
+      return NextResponse.json(response, { status })
+    }
+
+    // For anonymous users, require authentication (email/password) before validating full schema
+    if (!sessionUser) {
+      const bodyObj = body as Record<string, unknown>
+      if (!bodyObj?.email || !bodyObj?.password) {
+        const [response, status] = errorResponse(
+          "Authentication required. Please provide email and password to create an account.",
+          ErrorCodes.UNAUTHORIZED,
+          401,
+        )
+        return NextResponse.json(response, { status })
       }
-      return NextResponse.json(errorResponse, { status: 400 })
     }
 
     // Validate using Zod schema
     const parseResult = validateDeploySubdomainRequest(body)
     if (!parseResult.success) {
-      console.error("[Deploy-Subdomain] Schema validation failed:", parseResult.error.issues)
       const firstError = parseResult.error.issues[0]
       const errorMessage = firstError ? `${firstError.path.join(".")}: ${firstError.message}` : "Invalid request"
-      const validationError: DeploySubdomainResponse = {
-        ok: false,
-        message: errorMessage,
-        error: "VALIDATION_ERROR",
-      }
-      return NextResponse.json(validationError, { status: 400 })
+      const [response, status] = errorResponse(errorMessage, ErrorCodes.VALIDATION_ERROR, 400)
+      return NextResponse.json(response, { status })
     }
 
-    const { slug, siteIdeas, selectedTemplate, orgId } = parseResult.data
+    const { slug, siteIdeas, selectedTemplate, orgId, email, password } = parseResult.data
 
-    // Validate orgId is provided
-    if (!orgId) {
-      console.error("[Deploy-Subdomain] orgId is required")
-      const errorResponse: DeploySubdomainResponse = {
-        ok: false,
-        message: "Organization ID is required. Please select an organization to deploy to.",
-        error: "ORG_ID_REQUIRED",
-      }
-      return NextResponse.json(errorResponse, { status: 400 })
+    // Ensure email is always a string (authenticated users get it from session, anonymous users must provide it)
+    const deploymentEmail = sessionUser?.email || email
+    if (!deploymentEmail) {
+      // This should be caught earlier, but TypeScript needs the check
+      const [response, status] = errorResponse("Email is required for deployment", ErrorCodes.VALIDATION_ERROR, 400)
+      return NextResponse.json(response, { status })
     }
 
-    // Validate user has access to the specified organization
-    console.log(`[Deploy-Subdomain] Validating access to organization: ${orgId}`)
-    const hasAccess = await validateUserOrgAccess(user.id, orgId)
+    // Validate user has access to specified organization (if provided)
+    // If no orgId provided, a default org will be created for the user
+    if (sessionUser && orgId) {
+      const hasAccess = await validateUserOrgAccess(sessionUser.id, orgId)
 
-    if (!hasAccess) {
-      console.error(`[Deploy-Subdomain] User ${user.email} does not have access to org ${orgId}`)
-      const errorResponse: DeploySubdomainResponse = {
-        ok: false,
-        message: "You do not have access to this organization",
-        error: "ORG_ACCESS_DENIED",
+      if (!hasAccess) {
+        const [response, status] = errorResponse(
+          "You do not have access to this organization",
+          ErrorCodes.ORG_ACCESS_DENIED,
+          403,
+        )
+        return NextResponse.json(response, { status })
       }
-      return NextResponse.json(errorResponse, { status: 403 })
     }
-
-    console.log(`[Deploy-Subdomain] User has access to organization ${orgId}`)
 
     // Build full domain from slug
     const fullDomain = buildSubdomain(slug)
-    const workspacePath = `/srv/webalive/sites/${fullDomain}/user`
-
-    console.log(`[Deploy-Subdomain] Full domain: ${fullDomain}`)
-    console.log(`[Deploy-Subdomain] Workspace: ${workspacePath}`)
 
     // Check if slug already exists
     const slugExists = await siteMetadataStore.exists(slug)
     if (slugExists) {
-      console.error(`[Deploy-Subdomain] Slug already exists: ${slug}`)
-      const slugTakenError: DeploySubdomainResponse = {
-        ok: false,
-        message: `Subdomain "${slug}" is already taken. Choose a different name.`,
-        error: "SLUG_TAKEN",
-      }
-      return NextResponse.json(slugTakenError, { status: 409 })
+      const [response, status] = errorResponse(
+        `Subdomain "${slug}" is already taken. Choose a different name.`,
+        ErrorCodes.SLUG_TAKEN,
+        409,
+      )
+      return NextResponse.json(response, { status })
     }
 
     // Also check if directory exists (extra safety)
     const siteDir = `/srv/webalive/sites/${fullDomain}`
     if (existsSync(siteDir)) {
-      console.error(`[Deploy-Subdomain] Site directory already exists: ${siteDir}`)
-      const directoryExistsError: DeploySubdomainResponse = {
-        ok: false,
-        message: "Site directory already exists. Choose a different slug.",
-        error: "SLUG_TAKEN",
-      }
-      return NextResponse.json(directoryExistsError, { status: 409 })
+      const [response, status] = errorResponse(
+        "Site directory already exists. Choose a different slug.",
+        ErrorCodes.SLUG_TAKEN,
+        409,
+      )
+      return NextResponse.json(response, { status })
     }
 
-    // Execute deployment script
-    console.log("[Deploy-Subdomain] Starting deployment...")
+    // Execute deployment script (systemd + Caddy setup + port assignment)
+    // The bash script handles port assignment and updates domain-passwords.json
     await deploySite({
       domain: fullDomain,
-      email: user.email, // Use authenticated user's email
+      email: deploymentEmail, // Guaranteed to be non-empty string
+      password: sessionUser ? undefined : password, // Only pass password for new account creation
       orgId, // Pass organization ID
-      // Note: No password needed - user is already authenticated
     })
-    console.log("[Deploy-Subdomain] Deploy script completed")
+
+    // Read the port that was assigned by the bash script
+    const port = getPortFromRegistry(fullDomain)
+
+    if (!port) {
+      const [response, status] = errorResponse(
+        "Deployment succeeded but port assignment could not be verified. Please contact support.",
+        ErrorCodes.DEPLOYMENT_FAILED,
+        500,
+      )
+      return NextResponse.json(response, { status })
+    }
+
+    // Register domain in Supabase (in request context, safe to use createIamClient)
+    try {
+      const registrationPassword = sessionUser ? undefined : password
+
+      await registerDomain({
+        hostname: fullDomain,
+        email: deploymentEmail, // Use guaranteed non-empty email
+        password: registrationPassword,
+        port,
+        orgId,
+      })
+    } catch (registrationError) {
+      // DomainRegistrationError includes errorCode and details - use helper
+      if (registrationError instanceof DomainRegistrationError) {
+        return structuredErrorResponse(registrationError.errorCode, {
+          status: 400,
+          details: registrationError.details,
+        })
+      }
+
+      // Fallback for unexpected errors
+      throw registrationError
+    }
 
     // Save metadata immediately after deployment completes
-    console.log("[Deploy-Subdomain] Saving metadata...")
     await siteMetadataStore.setSite(slug, {
       slug,
       domain: fullDomain,
       workspace: fullDomain,
-      email: user.email, // Use authenticated user's email
+      email: deploymentEmail, // Use guaranteed non-empty email
       siteIdeas,
       selectedTemplate,
       createdAt: Date.now(),
     })
-    console.log("[Deploy-Subdomain] Metadata saved successfully")
 
     // Validate SSL certificate
-    console.log("[Deploy-Subdomain] Validating SSL certificate...")
-    const sslValidation = await validateSSLCertificate(fullDomain)
-
-    if (!sslValidation.success) {
-      console.warn(`[Deploy-Subdomain] SSL validation failed: ${sslValidation.error}`)
-      // Still continue - deployment succeeded, cert might just be slow
-    }
-
-    const duration = Date.now() - startTime
-    console.log(`[Deploy-Subdomain] Deployment completed successfully in ${duration}ms`)
+    await validateSSLCertificate(fullDomain)
+    // Still continue if validation fails - deployment succeeded, cert might just be slow
 
     const sessionId = crypto.randomUUID()
 
@@ -172,9 +211,6 @@ export async function POST(request: NextRequest) {
 
     return res
   } catch (error: unknown) {
-    const duration = Date.now() - startTime
-    console.error(`[Deploy-Subdomain] Error after ${duration}ms:`, error)
-
     let errorMessage = "Deployment failed"
     let statusCode = 500
 

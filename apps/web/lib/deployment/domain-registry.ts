@@ -9,6 +9,9 @@
  */
 
 import { createClient } from "@supabase/supabase-js"
+import { ErrorCodes, type ErrorCode } from "@/lib/error-codes"
+import { verifyPassword } from "@/types/guards/api"
+import { getUserDefaultOrgId } from "@/lib/deployment/org-resolver"
 import type { Database as AppDatabase } from "../supabase/app.types"
 import type { Database as IamDatabase } from "../supabase/iam.types"
 
@@ -27,9 +30,9 @@ export interface DomainInfo {
 export interface DomainRegistration {
   hostname: string
   email: string
-  passwordHash?: string // Optional: if undefined, link to existing user
+  password?: string // Optional: plain password for new account creation or existing account login
   port: number
-  orgId: string // REQUIRED: Organization ID to deploy to (use getUserDefaultOrgId() to get)
+  orgId?: string // Optional: Organization ID to deploy to. If not provided, uses user's default org
   credits?: number // Deprecated: Credits are now managed per-org, not per-domain
 }
 
@@ -134,103 +137,211 @@ export async function getAllDomains(): Promise<DomainInfo[]> {
 }
 
 /**
- * Register a new domain in Supabase
- * Creates user (if needed) and domain entry in specified organization
- *
- * CRITICAL: orgId must be provided and validated before calling this function
- * Use getUserDefaultOrgId() or validateUserOrgAccess() from org-resolver.ts
- *
- * @returns true if successful, false otherwise
+ * Custom error for domain registration failures
+ * Includes error code for proper error handling in API routes
  */
-export async function registerDomain(config: DomainRegistration): Promise<boolean> {
-  const { hostname, email, passwordHash, port, orgId } = config
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export class DomainRegistrationError extends Error {
+  constructor(
+    public readonly errorCode: ErrorCode,
+    message: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    public readonly details: Record<string, any> = {},
+  ) {
+    super(message)
+    this.name = "DomainRegistrationError"
+  }
+}
 
-  if (!orgId) {
-    console.error("[Domain Registry] orgId is required but was not provided")
-    return false
+/**
+ * Get or create a user, optionally validating their password
+ * Handles three cases: existing user with password, existing user without, new user creation
+ */
+async function getOrCreateUserId(email: string, password?: string): Promise<string> {
+  const iam = await getIamClient()
+  const { data: existingUser, error: userQueryError } = await iam
+    .from("users")
+    .select("user_id, password_hash")
+    .eq("email", email)
+    .single()
+
+  if (existingUser) {
+    // User exists - validate password if provided
+    if (password && existingUser.password_hash) {
+      const isPasswordValid = await verifyPassword(password, existingUser.password_hash)
+      if (!isPasswordValid) {
+        throw new DomainRegistrationError(
+          ErrorCodes.INVALID_CREDENTIALS,
+          `The password for email "${email}" is incorrect. Please check your password and try again.`,
+          { email },
+        )
+      }
+    }
+    return existingUser.user_id
   }
 
+  // User doesn't exist - try to create
+  if (userQueryError?.code === "PGRST116") {
+    if (!password) {
+      throw new DomainRegistrationError(
+        ErrorCodes.DEPLOYMENT_FAILED,
+        `Cannot deploy with email "${email}" - account creation requires a password`,
+        { email },
+      )
+    }
+
+    const { hashPassword } = await import("@/types/guards/api")
+    const passwordHash = await hashPassword(password)
+
+    const { data: newUser, error: userError } = await iam
+      .from("users")
+      .insert({
+        email,
+        password_hash: passwordHash,
+        status: "active",
+        is_test_env: false,
+        metadata: {},
+      })
+      .select("user_id")
+      .single()
+
+    if (userError || !newUser) {
+      if (userError?.code === "23505" || userError?.message?.includes("duplicate")) {
+        throw new DomainRegistrationError(
+          ErrorCodes.EMAIL_ALREADY_REGISTERED,
+          `Email "${email}" is already registered. Please use a different email or login with your existing account.`,
+          { email },
+        )
+      }
+      throw new DomainRegistrationError(
+        ErrorCodes.DEPLOYMENT_FAILED,
+        `Failed to create account for "${email}": ${userError?.message || "Unknown error"}`,
+        { email },
+      )
+    }
+    return newUser.user_id
+  }
+
+  // Unexpected database error during user lookup
+  throw new DomainRegistrationError(
+    ErrorCodes.DEPLOYMENT_FAILED,
+    `Error checking user account: ${userQueryError?.message || "Unknown error"}`,
+    { email },
+  )
+}
+
+/**
+ * Validate that a specific organization exists
+ */
+async function validateProvidedOrgId(orgId: string): Promise<void> {
+  const iam = await getIamClient()
+  const { data: orgExists, error: orgCheckError } = await iam.from("orgs").select("org_id").eq("org_id", orgId).single()
+
+  if (orgCheckError?.code === "PGRST116") {
+    throw new DomainRegistrationError(ErrorCodes.ORG_NOT_FOUND, `Organization "${orgId}" not found`, { orgId })
+  }
+
+  if (orgCheckError) {
+    throw new DomainRegistrationError(
+      ErrorCodes.DEPLOYMENT_FAILED,
+      `Failed to check organization: ${orgCheckError.message}`,
+      { orgId },
+    )
+  }
+
+  if (!orgExists) {
+    throw new DomainRegistrationError(ErrorCodes.ORG_NOT_FOUND, `Organization "${orgId}" not found or inaccessible`, {
+      orgId,
+    })
+  }
+}
+
+/**
+ * Create domain entry in app schema
+ */
+async function createDomainEntry(hostname: string, port: number, orgId: string): Promise<void> {
+  const app = await getAppClient()
+  const { error: domainError } = await app.from("domains").insert({
+    hostname,
+    port,
+    org_id: orgId,
+  })
+
+  if (domainError) {
+    if (domainError.code === "23505") {
+      throw new DomainRegistrationError(
+        ErrorCodes.DOMAIN_ALREADY_EXISTS,
+        `Domain "${hostname}" is already registered`,
+        { domain: hostname },
+      )
+    }
+    throw new DomainRegistrationError(
+      ErrorCodes.DEPLOYMENT_FAILED,
+      `Failed to register domain: ${domainError.message}`,
+      { domain: hostname },
+    )
+  }
+}
+
+/**
+ * Register a new domain in Supabase
+ * Creates user (if needed) and upserts organization, then creates domain entry
+ *
+ * FLOW:
+ * 1. Create user account (if new) and validate password (if existing)
+ * 2. Get or create user's default organization (if orgId not provided)
+ * 3. Validate organization exists (if orgId provided)
+ * 4. Create domain entry
+ *
+ * @throws {DomainRegistrationError} with error code and details
+ * @returns true if successful
+ */
+export async function registerDomain(config: DomainRegistration): Promise<boolean> {
+  const { hostname, email, password, port, orgId: providedOrgId } = config
+
   try {
-    const iam = await getIamClient()
     const app = await getAppClient()
 
-    // Step 1: Check if domain already exists
-    const { data: existingDomain } = await app.from("domains").select("hostname").eq("hostname", hostname).single()
+    // Check if domain already exists
+    const { data: existingDomain, error: domainCheckError } = await app
+      .from("domains")
+      .select("hostname")
+      .eq("hostname", hostname)
+      .single()
 
     if (existingDomain) {
-      console.log(`[Domain Registry] Domain ${hostname} already exists`)
       return true
     }
 
-    // Step 2: Get or create user
-    let _userId: string
-    const { data: existingUser } = await iam.from("users").select("user_id").eq("email", email).single()
-
-    if (existingUser) {
-      // User exists - link domain to their account
-      _userId = existingUser.user_id
-      console.log(`[Domain Registry] User ${email} already exists, linking domain to their account`)
-    } else {
-      // User doesn't exist - need to create new account
-      if (!passwordHash) {
-        console.error(`[Domain Registry] Cannot create new user ${email} without password`)
-        return false
-      }
-
-      const { data: newUser, error: userError } = await iam
-        .from("users")
-        .insert({
-          email: email,
-          password_hash: passwordHash,
-          status: "active",
-          is_test_env: false,
-          metadata: {},
-        })
-        .select("user_id")
-        .single()
-
-      if (userError || !newUser) {
-        console.error(`[Domain Registry] Failed to create user ${email}:`, userError)
-        return false
-      }
-
-      _userId = newUser.user_id
-      console.log(`[Domain Registry] Created new user account for ${email}`)
+    if (domainCheckError && domainCheckError.code !== "PGRST116") {
+      throw new DomainRegistrationError(
+        ErrorCodes.DEPLOYMENT_FAILED,
+        `Failed to check if domain exists: ${domainCheckError.message}`,
+        { domain: hostname },
+      )
     }
 
-    // Step 3: Validate organization exists and user has access
-    // NOTE: orgId should have been validated by caller using validateUserOrgAccess()
-    // This is a safety check to ensure org exists in database
-    const { data: orgExists, error: orgCheckError } = await iam
-      .from("orgs")
-      .select("org_id")
-      .eq("org_id", orgId)
-      .single()
+    // Get or create user (validates password if provided)
+    const userId = await getOrCreateUserId(email, password)
 
-    if (orgCheckError || !orgExists) {
-      console.error(`[Domain Registry] Organization ${orgId} not found:`, orgCheckError)
-      return false
+    // Resolve organization: use provided orgId (validate exists) or upsert default for user
+    if (providedOrgId) {
+      await validateProvidedOrgId(providedOrgId)
     }
+    const orgId = providedOrgId || (await getUserDefaultOrgId(userId, email))
 
-    console.log(`[Domain Registry] Using organization ${orgId} for domain ${hostname}`)
+    // Create domain entry
+    await createDomainEntry(hostname, port, orgId)
 
-    // Step 4: Create domain entry
-    const { error: domainError } = await app.from("domains").insert({
-      hostname: hostname,
-      port: port,
-      org_id: orgId,
-    })
-
-    if (domainError) {
-      console.error("[Domain Registry] Failed to create domain:", domainError)
-      return false
-    }
-
-    console.log(`[Domain Registry] Successfully registered ${hostname}`)
     return true
   } catch (error) {
-    console.error(`[Domain Registry] Error registering domain ${hostname}:`, error)
-    return false
+    if (error instanceof DomainRegistrationError) {
+      throw error
+    }
+    throw new DomainRegistrationError(
+      ErrorCodes.INTERNAL_ERROR,
+      error instanceof Error ? error.message : "Unknown error during domain registration",
+    )
   }
 }
 
@@ -238,17 +349,29 @@ export async function registerDomain(config: DomainRegistration): Promise<boolea
  * Unregister a domain from Supabase
  * Removes domain entry (org/memberships preserved for credit history)
  *
- * @returns true if successful, false otherwise
+ * @throws {DomainRegistrationError} with error code and details
+ * @returns true if successful
  */
 export async function unregisterDomain(hostname: string): Promise<boolean> {
   try {
     const app = await getAppClient()
 
     // Check if domain exists
-    const { data: domainData } = await app.from("domains").select("hostname").eq("hostname", hostname).single()
+    const { data: domainData, error: domainCheckError } = await app
+      .from("domains")
+      .select("hostname")
+      .eq("hostname", hostname)
+      .single()
+
+    if (domainCheckError && domainCheckError.code !== "PGRST116") {
+      throw new DomainRegistrationError(
+        ErrorCodes.DEPLOYMENT_FAILED,
+        `Failed to check if domain exists: ${domainCheckError.message}`,
+        { domain: hostname },
+      )
+    }
 
     if (!domainData) {
-      console.log(`[Domain Registry] Domain ${hostname} not found (already removed)`)
       return true
     }
 
@@ -256,14 +379,22 @@ export async function unregisterDomain(hostname: string): Promise<boolean> {
     const { error } = await app.from("domains").delete().eq("hostname", hostname)
 
     if (error) {
-      console.error(`[Domain Registry] Failed to delete domain ${hostname}:`, error)
-      return false
+      throw new DomainRegistrationError(
+        ErrorCodes.DEPLOYMENT_FAILED,
+        `Failed to unregister domain "${hostname}": ${error.message}`,
+        { domain: hostname },
+      )
     }
 
-    console.log(`[Domain Registry] Successfully unregistered ${hostname}`)
     return true
   } catch (error) {
-    console.error(`[Domain Registry] Error unregistering domain ${hostname}:`, error)
-    return false
+    if (error instanceof DomainRegistrationError) {
+      throw error
+    }
+    throw new DomainRegistrationError(
+      ErrorCodes.DEPLOYMENT_FAILED,
+      error instanceof Error ? error.message : "Unknown error during domain unregistration",
+      { domain: hostname },
+    )
   }
 }

@@ -14,6 +14,7 @@ export const ErrorCodes = {
   NO_SESSION: "NO_SESSION",
   AUTH_REQUIRED: "AUTH_REQUIRED",
   UNAUTHORIZED: "UNAUTHORIZED",
+  ORG_ACCESS_DENIED: "ORG_ACCESS_DENIED",
   INVALID_CREDENTIALS: "INVALID_CREDENTIALS",
   INVALID_SIGNATURE: "INVALID_SIGNATURE",
   INSUFFICIENT_TOKENS: "INSUFFICIENT_TOKENS",
@@ -71,6 +72,14 @@ export const ErrorCodes = {
   SLUG_TAKEN: "SLUG_TAKEN",
   SITE_NOT_FOUND: "SITE_NOT_FOUND",
   DEPLOYMENT_FAILED: "DEPLOYMENT_FAILED",
+  EMAIL_ALREADY_REGISTERED: "EMAIL_ALREADY_REGISTERED",
+  ORG_NOT_FOUND: "ORG_NOT_FOUND",
+
+  // Permission errors (9.5xxx)
+  PERMISSION_CHECK_FAILED: "PERMISSION_CHECK_FAILED",
+  PERMISSION_FIX_FAILED: "PERMISSION_FIX_FAILED",
+  SITE_DIRECTORY_NOT_FOUND: "SITE_DIRECTORY_NOT_FOUND",
+  SITE_USER_NOT_FOUND: "SITE_USER_NOT_FOUND",
 
   // General errors
   INTERNAL_ERROR: "INTERNAL_ERROR",
@@ -81,11 +90,12 @@ export const ErrorCodes = {
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes]
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface StructuredError {
   ok: false
   error: ErrorCode
   message: string
-  help?: string // Optional actionable guidance from getErrorHelp()
+  help?: string
   details?: Record<string, any>
   requestId?: string
 }
@@ -93,6 +103,7 @@ export interface StructuredError {
 /**
  * Get user-friendly error message based on error code
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function getErrorMessage(code: ErrorCode, details?: Record<string, any>): string {
   switch (code) {
     case ErrorCodes.WORKSPACE_NOT_FOUND:
@@ -120,6 +131,9 @@ export function getErrorMessage(code: ErrorCode, details?: Record<string, any>):
 
     case ErrorCodes.UNAUTHORIZED:
       return "You don't have access to this. Please check with your administrator if you need permission."
+
+    case ErrorCodes.ORG_ACCESS_DENIED:
+      return "You do not have access to this organization. Please check with your administrator if you need permission."
 
     case ErrorCodes.INVALID_CREDENTIALS:
       return "The passcode is incorrect. Please check your passcode and try again."
@@ -269,6 +283,36 @@ export function getErrorMessage(code: ErrorCode, details?: Record<string, any>):
     case ErrorCodes.DEPLOYMENT_FAILED:
       return "I couldn't deploy your site. Please check the deployment logs to see what went wrong."
 
+    case ErrorCodes.EMAIL_ALREADY_REGISTERED:
+      return details?.email
+        ? `The email '${details.email}' is already registered in the system. Please use a different email or login with this existing account.`
+        : "This email is already registered. Please use a different email or login with your existing account."
+
+    case ErrorCodes.ORG_NOT_FOUND:
+      return details?.orgId
+        ? `The organization '${details.orgId}' was not found or is not accessible.`
+        : "The specified organization was not found or is not accessible."
+
+    case ErrorCodes.PERMISSION_CHECK_FAILED:
+      return details?.domain
+        ? `Failed to check file permissions for ${details.domain}. ${details.reason || "Please try again."}`
+        : "Failed to check file permissions. Please try again."
+
+    case ErrorCodes.PERMISSION_FIX_FAILED:
+      return details?.domain
+        ? `Failed to fix file permissions for ${details.domain}. ${details.reason || "Please try again."}`
+        : "Failed to fix file permissions. Please try again."
+
+    case ErrorCodes.SITE_DIRECTORY_NOT_FOUND:
+      return details?.domain
+        ? `Site directory does not exist for ${details.domain}. The site may not be deployed yet.`
+        : "Site directory does not exist. The site may not be deployed yet."
+
+    case ErrorCodes.SITE_USER_NOT_FOUND:
+      return details?.user
+        ? `System user '${details.user}' does not exist. The site may not be properly configured.`
+        : "System user for this site does not exist. The site may not be properly configured."
+
     case ErrorCodes.TEST_MODE_BLOCK:
       return "I'm in test mode right now and can't make real API calls. Please mock this endpoint in your test."
 
@@ -286,6 +330,7 @@ export function getErrorMessage(code: ErrorCode, details?: Record<string, any>):
 /**
  * Get detailed help text for error codes
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function getErrorHelp(code: ErrorCode, details?: Record<string, any>): string | null {
   switch (code) {
     case ErrorCodes.WORKSPACE_NOT_FOUND:

@@ -153,11 +153,12 @@ See `docs/deployment/deployment.md` for detailed deployment and troubleshooting 
 
 **🔒 Secure Site Deployment (ONLY WAY):**
 ```bash
-# Deploy with systemd isolation
-/root/webalive/claude-bridge/scripts/deploy-site-systemd.sh newsite.com
-
-# Or use package.json script:
+# Deploy with systemd isolation (TypeScript sitectl)
 bun run deploy-site newsite.com
+
+# Or directly:
+export DEPLOY_EMAIL="user@example.com"
+bun run packages/deploy-scripts/src/sitectl.ts newsite.com
 
 # Result: systemd service with dedicated user and security hardening
 # Account is created or linked in Supabase (email-based authentication)
@@ -180,8 +181,8 @@ systemctl reload caddy
 - **Auto-sync**: Changes applied instantly via import, no file copying
 - **Validation**: `caddy validate --config /etc/caddy/Caddyfile`
 
-**Deployment Scripts:**
-- **Secure (Recommended)**: `claude-bridge/scripts/deploy-site-systemd.sh` (systemd isolation)
+**Deployment Tool:**
+- **Secure (Recommended)**: `packages/deploy-scripts/src/sitectl.ts` (TypeScript, systemd isolation)
 
 ## Usage Examples
 
@@ -382,10 +383,10 @@ claude-bridge/
 │   ├── dist → dist.TIMESTAMP # Symlink to active build (gitignored)
 │   ├── dist.20251105-155847/ # Timestamped build (gitignored)
 │   └── package.json
-├── scripts/                  # Deployment scripts
+├── scripts/                  # Infrastructure scripts
 │   ├── build-atomic.sh       # Atomic build with symlinks
 │   ├── build-and-serve.sh    # Full deployment script
-│   └── deploy-site-systemd.sh # New site deployment
+│   └── sites/                # Site management (legacy)
 ├── docs/                     # Documentation
 │   ├── architecture/         # System architecture
 │   ├── deployment/           # Deployment guides
@@ -397,6 +398,7 @@ claude-bridge/
 ├── packages/                 # Workspace packages
 │   ├── template/             # Site template
 │   ├── tools/                # Tool definitions for Claude
+│   ├── deploy-scripts/       # Site deployment (sitectl TypeScript tool)
 │   └── images/               # Image handling utilities
 ├── Caddyfile                 # Reverse proxy config
 └── package.json              # Monorepo configuration

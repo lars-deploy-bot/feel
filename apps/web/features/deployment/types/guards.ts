@@ -48,8 +48,9 @@ export const RESERVED_SLUGS = [
 /**
  * Deploy Subdomain Request Schema
  *
- * IMPORTANT: User must be authenticated before calling this endpoint
- * Email is derived from authenticated session, not from request body
+ * Supports both authenticated and anonymous users:
+ * - Authenticated users: Email from session, password optional
+ * - Anonymous users: Email and password required to create account
  */
 export const DeploySubdomainSchema = z.object({
   slug: z
@@ -60,7 +61,9 @@ export const DeploySubdomainSchema = z.object({
     .refine(slug => !RESERVED_SLUGS.includes(slug as any), {
       message: "This slug is reserved and cannot be used. Please choose a different name.",
     }),
-  orgId: z.string().min(1, "Organization ID is required"), // REQUIRED: User must select org
+  email: z.string().email("Please enter a valid email address").optional(), // Optional: authenticated users get from session
+  password: z.string().optional(), // Required for anonymous users, optional for authenticated
+  orgId: z.string().min(1, "Organization ID cannot be empty").optional(), // Optional: If not provided, user's default org is created/used
   siteIdeas: z
     .string()
     .max(5000, "Site ideas must be less than 5000 characters")

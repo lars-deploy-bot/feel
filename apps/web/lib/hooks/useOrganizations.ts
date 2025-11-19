@@ -43,7 +43,7 @@ export function useOrganizations(options: UseOrganizationsOptions = {}): UseOrga
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(immediate)
   const [error, setError] = useState<string | null>(null)
-  const { autoSelectOrg } = useWorkspaceActions()
+  const { validateAndCleanup } = useWorkspaceActions()
 
   const fetchOrganizations = async () => {
     try {
@@ -67,9 +67,9 @@ export function useOrganizations(options: UseOrganizationsOptions = {}): UseOrga
         setOrganizations(data.organizations)
         setCurrentUserId(data.current_user_id)
 
-        // Auto-select via store (single source of truth)
-        // Store logic handles checking if org is already selected
-        autoSelectOrg(data.organizations)
+        // Centralized cleanup: validates selected org and recent workspaces against new org list
+        // This handles cases where user was kicked out, org was deleted, etc.
+        validateAndCleanup(data.organizations)
       } else {
         const error = (data as { error?: string }).error || "Failed to load organizations"
         throw new Error(error)

@@ -33,17 +33,6 @@ export async function reloadCaddy(): Promise<void> {
   }
 }
 
-export async function restartBridge(): Promise<void> {
-  const response = await fetch("/api/manager/bridge/restart", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-  })
-
-  if (!response.ok) {
-    throw new Error("Failed to restart Claude Bridge")
-  }
-}
-
 export async function backupWebsites(): Promise<void> {
   const response = await fetch("/api/manager/backup", {
     method: "POST",

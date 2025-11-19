@@ -1,7 +1,4 @@
-import { exec } from "node:child_process"
-import { promisify } from "node:util"
-
-const execAsync = promisify(exec)
+import { deploySite as deploySiteLib, DeploymentError } from "@alive-brug/deploy-scripts"
 
 export interface DeploySiteOptions {
   domain: string
@@ -11,35 +8,47 @@ export interface DeploySiteOptions {
 }
 
 export interface DeploySiteResult {
-  stdout: string
-  stderr: string
+  port: number
+  domain: string
+  serviceName: string
 }
 
 export async function deploySite(options: DeploySiteOptions): Promise<DeploySiteResult> {
-  const scriptPath = "/root/webalive/claude-bridge/scripts/sites/deploy-site-systemd.sh"
   const domain = options.domain.toLowerCase() // Always lowercase domain
-  const deployCommand = `bash ${scriptPath} ${domain}`
 
-  console.log(`[Deploy] Executing: ${deployCommand}`)
+  console.log(`[Deploy] Deploying: ${domain}`)
   console.log(`[Deploy] Email: ${options.email || "(none - will create new account)"}`)
   console.log(`[Deploy] Password: ${options.password ? "(provided)" : "(not provided - using existing account)"}`)
 
-  const { stdout, stderr } = await execAsync(deployCommand, {
-    timeout: 300000,
-    cwd: "/root/webalive/claude-bridge",
-    env: {
-      ...process.env,
-      DEPLOY_PASSWORD: options.password || "",
-      DEPLOY_EMAIL: options.email || "",
-    },
-  })
+  try {
+    const result = await deploySiteLib({
+      domain,
+      email: options.email,
+      password: options.password,
+      orgId: options.orgId,
+    })
 
-  if (stdout) {
-    console.log(`[Deploy] STDOUT:\n${stdout}`)
-  }
-  if (stderr) {
-    console.warn(`[Deploy] STDERR:\n${stderr}`)
-  }
+    console.log("[Deploy] ✅ Site deployed successfully")
+    console.log(`[Deploy] Domain: ${result.domain}`)
+    console.log(`[Deploy] Port: ${result.port}`)
+    console.log(`[Deploy] Service: ${result.serviceName}`)
 
-  return { stdout, stderr }
+    return {
+      port: result.port,
+      domain: result.domain,
+      serviceName: result.serviceName,
+    }
+  } catch (error) {
+    if (error instanceof DeploymentError) {
+      console.error(`[Deploy] Deployment error: ${error.message}`)
+      throw new Error(error.message)
+    }
+
+    if (error instanceof Error) {
+      console.error(`[Deploy] Error: ${error.message}`)
+      throw error
+    }
+
+    throw new Error(`Deployment failed: ${String(error)}`)
+  }
 }

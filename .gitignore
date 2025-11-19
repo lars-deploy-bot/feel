@@ -79,6 +79,12 @@ jspm_packages/
 # TypeScript cache
 *.tsbuildinfo
 
+# Compiled build outputs from packages (keep .ts source files only)
+packages/deploy-scripts/src/*.js
+packages/deploy-scripts/src/*.js.map
+packages/deploy-scripts/src/*.d.ts
+packages/deploy-scripts/deploy-scripts
+
 # Optional npm cache directory
 .npm
 

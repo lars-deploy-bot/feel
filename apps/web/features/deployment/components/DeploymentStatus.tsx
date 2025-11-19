@@ -233,23 +233,25 @@ export function DeploymentStatus({ status, domain, error, errorDetails }: Deploy
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         data-testid="deployment-status-error"
-        className="p-4 rounded-lg bg-red-50/50 border border-red-200/50"
+        className="w-full max-w-md mx-auto px-0"
       >
-        <div className="flex gap-3">
-          <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <h3 className="font-medium text-red-900 mb-1">Deployment Failed</h3>
-            <p className="text-red-700 text-sm font-normal mb-3">{error}</p>
-            {errorDetails && errorDetails.length > 0 && (
-              <details>
-                <summary className="cursor-pointer font-medium text-red-700 text-sm hover:text-red-800">
-                  Error Details
-                </summary>
-                <pre className="mt-2 text-xs bg-red-100 p-2 rounded border border-red-200 overflow-auto max-h-32 whitespace-pre-wrap break-words text-red-900">
-                  {errorDetails.join("\n")}
-                </pre>
-              </details>
-            )}
+        <div className="p-4 rounded-lg bg-red-50/50 border border-red-200/50">
+          <div className="flex gap-3">
+            <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="font-medium text-red-900 mb-2">Deployment Failed</h3>
+              <p className="text-red-700 text-sm font-normal leading-relaxed">{error}</p>
+              {errorDetails && errorDetails.length > 0 && (
+                <details>
+                  <summary className="cursor-pointer font-medium text-red-700 text-sm hover:text-red-800 mt-3">
+                    Error Details
+                  </summary>
+                  <pre className="mt-2 text-xs bg-red-100 p-2 rounded border border-red-200 overflow-auto max-h-32 whitespace-pre-wrap break-words text-red-900">
+                    {errorDetails.join("\n")}
+                  </pre>
+                </details>
+              )}
+            </div>
           </div>
         </div>
       </motion.div>

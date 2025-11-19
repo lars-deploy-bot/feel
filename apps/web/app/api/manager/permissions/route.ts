@@ -1,15 +1,16 @@
 import { exec } from "node:child_process"
 import { promisify } from "node:util"
 import type { NextRequest } from "next/server"
+import { NextResponse } from "next/server"
 import {
   createBadRequestResponse,
-  createErrorResponse,
   createSuccessResponse,
   getDomainParam,
   requireManagerAuth,
   requireParam,
 } from "@/features/manager/lib/api-helpers"
 import { domainToSlug, getDomainSitePath, getDomainUser } from "@/features/manager/lib/domain-utils"
+import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 
 const execAsync = promisify(exec)
 
@@ -33,6 +34,7 @@ interface PermissionCheckResult {
  * GET /api/manager/permissions?domain=example.com
  */
 export async function GET(request: NextRequest) {
+  const requestId = crypto.randomUUID()
   const authError = await requireManagerAuth()
   if (authError) return authError
 
@@ -44,8 +46,26 @@ export async function GET(request: NextRequest) {
     const result = await checkDomainPermissions(domain!)
     return createSuccessResponse({ result })
   } catch (error) {
-    console.error("Failed to check permissions:", error)
-    return createErrorResponse(error, "Failed to check permissions")
+    console.error(`[${requestId}] Permission check failed for ${domain}:`, error)
+
+    const errorMessage = getErrorMessage(ErrorCodes.PERMISSION_CHECK_FAILED, {
+      domain,
+      reason: error instanceof Error ? error.message : "Unknown error",
+    })
+
+    return NextResponse.json(
+      {
+        ok: false,
+        error: errorMessage,
+        errorCode: ErrorCodes.PERMISSION_CHECK_FAILED,
+        requestId,
+        details: {
+          domain,
+          originalError: error instanceof Error ? error.message : String(error),
+        },
+      },
+      { status: 500 },
+    )
   }
 }
 
@@ -55,6 +75,7 @@ export async function GET(request: NextRequest) {
  * Body: { domain: string, action: "fix" }
  */
 export async function POST(request: NextRequest) {
+  const requestId = crypto.randomUUID()
   const authError = await requireManagerAuth()
   if (authError) return authError
 
@@ -65,16 +86,32 @@ export async function POST(request: NextRequest) {
   if (domainError) return domainError
 
   if (action !== "fix") {
-    return createBadRequestResponse("Invalid action")
+    return createBadRequestResponse("Invalid action. Must be 'fix'")
   }
 
   try {
     await fixDomainPermissions(domain)
     const result = await checkDomainPermissions(domain)
-    return createSuccessResponse({ message: "Permissions fixed", result })
+    return createSuccessResponse({ message: "Permissions fixed successfully", result })
   } catch (error) {
-    console.error("Failed to fix permissions:", error)
-    return createErrorResponse(error, "Failed to fix permissions")
+    console.error(`[${requestId}] Permission fix failed for ${domain}:`, error)
+
+    // Extract the actual error message - if it's from our getErrorMessage, use it directly
+    const errorMsg = error instanceof Error ? error.message : "Unknown error"
+
+    return NextResponse.json(
+      {
+        ok: false,
+        error: errorMsg,
+        errorCode: ErrorCodes.PERMISSION_FIX_FAILED,
+        requestId,
+        details: {
+          domain,
+          originalError: errorMsg,
+        },
+      },
+      { status: 500 },
+    )
   }
 }
 
@@ -100,7 +137,7 @@ async function checkDomainPermissions(domain: string): Promise<PermissionCheckRe
     result.siteDirectoryExists = true
   } catch {
     result.siteDirectoryExists = false
-    result.error = "Site directory does not exist"
+    result.error = getErrorMessage(ErrorCodes.SITE_DIRECTORY_NOT_FOUND, { domain })
     return result
   }
 
@@ -109,7 +146,7 @@ async function checkDomainPermissions(domain: string): Promise<PermissionCheckRe
     const { stdout: totalOutput } = await execAsync(`find "${siteDir}" -type f | wc -l`)
     result.totalFiles = Number.parseInt(totalOutput.trim(), 10)
   } catch (error) {
-    console.error("Failed to count total files:", error)
+    console.error(`Failed to count total files for ${domain}:`, error)
   }
 
   // Find root-owned files
@@ -122,7 +159,7 @@ async function checkDomainPermissions(domain: string): Promise<PermissionCheckRe
     result.rootOwnedFiles = rootFilesList.length
     result.rootOwnedFilesList = rootFilesList.slice(0, 10) // Limit to first 10 for display
   } catch (error) {
-    console.error("Failed to find root-owned files:", error)
+    console.error(`Failed to find root-owned files for ${domain}:`, error)
   }
 
   // Find files owned by anyone other than expected owner
@@ -137,7 +174,7 @@ async function checkDomainPermissions(domain: string): Promise<PermissionCheckRe
     result.wrongOwnerFiles = wrongFilesList.length
     result.wrongOwnerFilesList = wrongFilesList.slice(0, 10) // Limit to first 10 for display
   } catch (error) {
-    console.error("Failed to find wrong-owner files:", error)
+    console.error(`Failed to find wrong-owner files for ${domain}:`, error)
   }
 
   return result
@@ -151,20 +188,23 @@ async function fixDomainPermissions(domain: string): Promise<void> {
   try {
     await execAsync(`test -d "${siteDir}"`)
   } catch {
-    throw new Error("Site directory does not exist")
+    const errorMsg = getErrorMessage(ErrorCodes.SITE_DIRECTORY_NOT_FOUND, { domain })
+    throw new Error(errorMsg)
   }
 
   // Check if user exists
   try {
     await execAsync(`id "${expectedOwner}" >/dev/null 2>&1`)
   } catch {
-    throw new Error(`User ${expectedOwner} does not exist`)
+    const errorMsg = getErrorMessage(ErrorCodes.SITE_USER_NOT_FOUND, { user: expectedOwner })
+    throw new Error(errorMsg)
   }
 
   // Fix ownership recursively
   try {
     await execAsync(`chown -R "${expectedOwner}:${expectedOwner}" "${siteDir}"`)
   } catch (error) {
-    throw new Error(`Failed to fix permissions: ${error instanceof Error ? error.message : "Unknown error"}`)
+    const errorMsg = `Failed to change ownership: ${error instanceof Error ? error.message : "Unknown error"}`
+    throw new Error(errorMsg)
   }
 }

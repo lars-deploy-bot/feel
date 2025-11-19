@@ -23,10 +23,51 @@ log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 
+# Cleanup function for failed builds
+cleanup_failed_build() {
+    local EXIT_CODE=$?
+    if [ $EXIT_CODE -ne 0 ]; then
+        log_error "Build failed with exit code $EXIT_CODE"
+
+        # Clean up temporary build directory if it exists
+        if [ -n "${TEMP_BUILD_DIR:-}" ] && [ -d "$TEMP_BUILD_DIR" ]; then
+            log_info "Cleaning up failed build directory..."
+            rm -rf "$TEMP_BUILD_DIR"
+            log_success "Cleaned up temporary build directory"
+        fi
+
+        # Restore dev server files if backup exists
+        if [ -n "${DEV_BACKUP:-}" ] && [ -d "$DEV_BACKUP" ]; then
+            log_info "Restoring dev server files from backup..."
+            mkdir -p "${WEB_NEXT_DIR:-apps/web/.next}"
+            mv "$DEV_BACKUP" "${WEB_NEXT_DIR}/dev" 2>/dev/null || true
+            log_success "Dev server files restored"
+        fi
+
+        log_error "Build aborted - previous build remains active"
+    fi
+}
+
+# Register cleanup trap
+trap cleanup_failed_build EXIT
+
 # Navigate to project root
 SCRIPT_DIR="$(dirname "$0")"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$PROJECT_ROOT"
+
+# Verify required commands exist
+log_info "Verifying required commands..."
+if ! command -v bun &> /dev/null; then
+    log_error "bun command not found. Please install Bun runtime."
+    exit 1
+fi
+
+if ! command -v node &> /dev/null; then
+    log_error "node command not found. Please install Node.js."
+    exit 1
+fi
+log_success "Required commands verified (bun, node)"
 
 # Get environment parameter (default: prod)
 ENV="${1:-prod}"
@@ -85,10 +126,55 @@ if [ -d "$WEB_DIR/dist" ]; then
     rm -rf "$WEB_DIR/dist"
 fi
 
-# Build dependencies first (images + tools packages)
+# Build dependencies first (images + tools + deploy-scripts packages)
 log_info "Building workspace dependencies..."
-cd packages/images && bun run build && cd "$PROJECT_ROOT" || { log_error "Failed to build images package"; exit 1; }
-cd packages/tools && bun run build && cd "$PROJECT_ROOT" || { log_error "Failed to build tools package"; exit 1; }
+
+# Build images package
+if [ ! -d "packages/images" ]; then
+    log_error "Package not found: packages/images"
+    exit 1
+fi
+log_info "Building packages/images..."
+cd packages/images
+if ! bun run build; then
+    log_error "Failed to build images package"
+    cd "$PROJECT_ROOT"
+    exit 1
+fi
+cd "$PROJECT_ROOT"
+log_success "Built packages/images"
+
+# Build tools package
+if [ ! -d "packages/tools" ]; then
+    log_error "Package not found: packages/tools"
+    exit 1
+fi
+log_info "Building packages/tools..."
+cd packages/tools
+if ! bun run build; then
+    log_error "Failed to build tools package"
+    cd "$PROJECT_ROOT"
+    exit 1
+fi
+cd "$PROJECT_ROOT"
+log_success "Built packages/tools"
+
+# Build deploy-scripts package
+if [ ! -d "packages/deploy-scripts" ]; then
+    log_error "Package not found: packages/deploy-scripts"
+    exit 1
+fi
+log_info "Building packages/deploy-scripts..."
+cd packages/deploy-scripts
+if ! bun run build; then
+    log_error "Failed to build deploy-scripts package"
+    cd "$PROJECT_ROOT"
+    exit 1
+fi
+cd "$PROJECT_ROOT"
+log_success "Built packages/deploy-scripts"
+
+log_success "All workspace dependencies built successfully"
 
 # Build web app to temp location
 log_info "Building web app..."
@@ -106,11 +192,28 @@ BUILD_END=$(date +%s)
 BUILD_TIME=$((BUILD_END - BUILD_START))
 log_success "Build completed in ${BUILD_TIME}s"
 
-# Verify .next build output exists
+# Verify .next build output exists and has required structure
+log_info "Verifying build output structure..."
 if [ ! -d "$WEB_NEXT_DIR" ]; then
     log_error "Build directory not found: $WEB_NEXT_DIR"
     exit 1
 fi
+
+# Verify standalone directory exists (Next.js output=standalone mode)
+if [ ! -d "$WEB_NEXT_DIR/standalone" ]; then
+    log_error "Standalone directory not found: $WEB_NEXT_DIR/standalone"
+    log_error "Ensure next.config.ts has output: 'standalone' configured"
+    exit 1
+fi
+
+# Verify server.js exists (required for production)
+if [ ! -f "$WEB_NEXT_DIR/standalone/apps/web/server.js" ]; then
+    log_error "Server entry point not found: $WEB_NEXT_DIR/standalone/apps/web/server.js"
+    log_error "Next.js standalone build may have failed"
+    exit 1
+fi
+
+log_success "Build output structure verified"
 
 # Move .next to .builds/dist
 log_info "Moving build to .builds/dist..."
@@ -145,26 +248,142 @@ fi
 # Copy workspace packages to standalone (Next.js file tracing doesn't handle symlinked workspaces)
 log_info "Copying workspace packages to standalone..."
 STANDALONE_PACKAGES="$TEMP_BUILD_DIR/standalone/packages"
-mkdir -p "$STANDALONE_PACKAGES"
+mkdir -p "$STANDALONE_PACKAGES" || {
+    log_error "Failed to create packages directory: $STANDALONE_PACKAGES"
+    exit 1
+}
 
-for pkg in tools images template guides; do
-    if [ -d "packages/$pkg" ]; then
-        cp -r "packages/$pkg" "$STANDALONE_PACKAGES/$pkg"
-        log_success "Copied packages/$pkg to standalone"
+REQUIRED_PACKAGES=("tools" "images" "template" "guides" "deploy-scripts")
+COPIED_PACKAGES=0
+
+for pkg in "${REQUIRED_PACKAGES[@]}"; do
+    if [ ! -d "packages/$pkg" ]; then
+        log_error "Required package not found: packages/$pkg"
+        log_error "All workspace packages must exist before building"
+        exit 1
+    fi
+
+    if ! cp -r "packages/$pkg" "$STANDALONE_PACKAGES/$pkg"; then
+        log_error "Failed to copy packages/$pkg to standalone"
+        exit 1
+    fi
+
+    # Remove any symlinks that may have been copied (prevents circular reference issues)
+    find "$STANDALONE_PACKAGES/$pkg" -type l -delete 2>/dev/null
+
+    # Verify package.json exists
+    if [ ! -f "$STANDALONE_PACKAGES/$pkg/package.json" ]; then
+        log_error "Package $pkg is missing package.json"
+        exit 1
+    fi
+
+    COPIED_PACKAGES=$((COPIED_PACKAGES + 1))
+    log_success "Copied packages/$pkg to standalone (symlinks removed)"
+done
+
+log_success "Verified and copied all $COPIED_PACKAGES required packages"
+
+# Create node_modules symlinks for workspace packages (required for Bun module resolution)
+log_info "Creating node_modules symlinks for workspace packages..."
+STANDALONE_NODE_MODULES="$STANDALONE_DIR/node_modules"
+
+if ! mkdir -p "$STANDALONE_NODE_MODULES/@alive-brug"; then
+    log_error "Failed to create node_modules directory: $STANDALONE_NODE_MODULES/@alive-brug"
+    exit 1
+fi
+
+CREATED_LINKS=0
+for pkg in "${REQUIRED_PACKAGES[@]}"; do
+    if [ -d "$STANDALONE_PACKAGES/$pkg" ]; then
+        if ! ln -sf "../../../../packages/$pkg" "$STANDALONE_NODE_MODULES/@alive-brug/$pkg"; then
+            log_error "Failed to create symlink for package: $pkg"
+            exit 1
+        fi
+        CREATED_LINKS=$((CREATED_LINKS + 1))
+        log_success "Linked @alive-brug/$pkg -> ../../../../packages/$pkg"
+    else
+        log_error "Package directory not found: $STANDALONE_PACKAGES/$pkg"
+        log_error "Package should have been copied in previous step"
+        exit 1
     fi
 done
 
+log_success "Created $CREATED_LINKS package symlinks"
+
+# Verify all symlinks resolve correctly (fail fast if broken)
+log_info "Verifying workspace package symlinks..."
+BROKEN_LINKS=0
+for pkg in tools images template guides deploy-scripts; do
+    LINK_PATH="$STANDALONE_NODE_MODULES/@alive-brug/$pkg"
+    if [ -L "$LINK_PATH" ]; then
+        # Symlink exists, verify it resolves to a valid directory
+        if [ ! -d "$LINK_PATH" ]; then
+            log_error "Broken symlink: @alive-brug/$pkg does not resolve to valid directory"
+            log_error "  Link: $LINK_PATH"
+            log_error "  Target: $(readlink "$LINK_PATH")"
+            BROKEN_LINKS=$((BROKEN_LINKS + 1))
+        else
+            log_success "Verified @alive-brug/$pkg symlink"
+        fi
+    else
+        log_warn "Missing symlink for package: $pkg (package may not exist)"
+    fi
+done
+
+if [ $BROKEN_LINKS -gt 0 ]; then
+    log_error "Build failed: $BROKEN_LINKS broken package symlink(s) detected"
+    log_error "This will cause runtime errors when importing workspace packages"
+    exit 1
+fi
+
 # Move build to timestamped directory
 log_info "Moving build to timestamped directory..."
-mv "$TEMP_BUILD_DIR" "$TIMESTAMPED_DIR"
+if ! mv "$TEMP_BUILD_DIR" "$TIMESTAMPED_DIR"; then
+    log_error "Failed to move build to timestamped directory"
+    log_error "Source: $TEMP_BUILD_DIR"
+    log_error "Destination: $TIMESTAMPED_DIR"
+    exit 1
+fi
 log_success "Build moved to: dist.${TIMESTAMP}"
+
+# Verify the timestamped directory exists and contains expected files
+if [ ! -d "$TIMESTAMPED_DIR/standalone/apps/web" ]; then
+    log_error "Build directory verification failed: $TIMESTAMPED_DIR/standalone/apps/web not found"
+    exit 1
+fi
+
+if [ ! -f "$TIMESTAMPED_DIR/standalone/apps/web/server.js" ]; then
+    log_error "Build verification failed: server.js not found in timestamped directory"
+    exit 1
+fi
+
+log_success "Build directory verified"
 
 # Atomic symlink swap
 log_info "Creating symlink: current -> dist.${TIMESTAMP}"
-cd "$BUILDS_DIR"
-ln -sfn "dist.${TIMESTAMP}" "current"
+cd "$BUILDS_DIR" || {
+    log_error "Failed to change to builds directory: $BUILDS_DIR"
+    exit 1
+}
+
+if ! ln -sfn "dist.${TIMESTAMP}" "current"; then
+    log_error "Failed to create current symlink"
+    cd "$PROJECT_ROOT"
+    exit 1
+fi
+
 cd "$PROJECT_ROOT"
 log_success "Symlink updated atomically"
+
+# Verify the symlink points to the correct build
+ACTUAL_TARGET=$(readlink "$SYMLINK")
+if [ "$ACTUAL_TARGET" != "dist.${TIMESTAMP}" ]; then
+    log_error "Symlink verification failed"
+    log_error "Expected: dist.${TIMESTAMP}"
+    log_error "Actual: $ACTUAL_TARGET"
+    exit 1
+fi
+log_success "Symlink verified: $SYMLINK -> $ACTUAL_TARGET"
 
 # Cleanup old builds (keep last 3)
 log_info "Cleaning up old builds..."

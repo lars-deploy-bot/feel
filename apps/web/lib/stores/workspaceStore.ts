@@ -26,6 +26,7 @@ interface WorkspaceActions {
   actions: {
     setSelectedOrg: (orgId: string | null) => void
     autoSelectOrg: (organizations: Organization[]) => void
+    validateAndCleanup: (organizations: Organization[]) => void
     setSelectedWorkspace: (workspace: string | null, orgId?: string) => void
     addRecentWorkspace: (domain: string, orgId: string) => void
     clearRecentWorkspaces: () => void
@@ -39,6 +40,7 @@ type WorkspaceStoreWithCompat = WorkspaceState &
     // Legacy direct action exports for backwards compatibility
     setSelectedOrg: (orgId: string | null) => void
     autoSelectOrg: (organizations: Organization[]) => void
+    validateAndCleanup: (organizations: Organization[]) => void
     setSelectedWorkspace: (workspace: string | null, orgId?: string) => void
     addRecentWorkspace: (domain: string, orgId: string) => void
     clearRecentWorkspaces: () => void
@@ -66,6 +68,43 @@ const useWorkspaceStoreBase = create<WorkspaceStoreWithCompat>()(
             }
             return state
           })
+        },
+
+        /**
+         * Validate and clean up org references when org list changes
+         * Handles cases where user was kicked out, org was deleted, etc.
+         *
+         * This is the central cleanup point for:
+         * - Invalid selectedOrgId (user no longer member)
+         * - Stale recentWorkspaces pointing to removed orgs
+         */
+        validateAndCleanup: (organizations: Organization[]) => {
+          set(state => {
+            const validOrgIds = new Set(organizations.map(org => org.org_id))
+            const updates: Partial<WorkspaceState> = {}
+
+            // Check if selected org is still valid
+            if (state.selectedOrgId && !validOrgIds.has(state.selectedOrgId)) {
+              console.log("[WorkspaceStore] Clearing invalid selectedOrgId:", state.selectedOrgId)
+              updates.selectedOrgId = null
+            }
+
+            // Filter out recent workspaces for orgs user is no longer member of
+            const filteredRecent = state.recentWorkspaces.filter(workspace => validOrgIds.has(workspace.orgId))
+            if (filteredRecent.length !== state.recentWorkspaces.length) {
+              console.log(
+                "[WorkspaceStore] Cleaned up stale recent workspaces:",
+                state.recentWorkspaces.length - filteredRecent.length,
+                "removed",
+              )
+              updates.recentWorkspaces = filteredRecent
+            }
+
+            return Object.keys(updates).length > 0 ? updates : state
+          })
+
+          // After cleanup, trigger auto-selection if needed
+          actions.autoSelectOrg(organizations)
         },
 
         setSelectedWorkspace: (workspace: string | null, orgId?: string) => {

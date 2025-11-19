@@ -72,7 +72,6 @@ async function syncOrphanedDomains() {
 
       // Use workspace owner if available, fallback to domain email or default
       const email = workspace?.owner || domainData.email || "barendbootsma@gmail.com"
-      const passwordHash = domainData.passwordHash
       const port = domainData.port
       const credits = domainData.credits || 200
 
@@ -101,7 +100,9 @@ async function syncOrphanedDomains() {
       const success = await registerDomain({
         hostname: domain,
         email,
-        passwordHash,
+        // Note: For migration, we don't pass password/passwordHash
+        // If user exists, domain will be linked without password verification
+        // If user doesn't exist, migration is skipped (see check above)
         port,
         orgId,
         credits,

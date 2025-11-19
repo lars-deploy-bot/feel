@@ -16,10 +16,11 @@ const nextConfig = {
       "packages/tools/**/*",
       "packages/images/**/*",
       "packages/guides/**/*",
+      "packages/deploy-scripts/**/*",
       "!packages/guides/guides", // Exclude circular symlink
     ],
   },
   serverExternalPackages: ["@napi-rs/image", "bun:sqlite"],
-  transpilePackages: ["@alive-brug/guides", "@alive-brug/images", "@alive-brug/tools"],
+  transpilePackages: ["@alive-brug/guides", "@alive-brug/images", "@alive-brug/tools", "@alive-brug/deploy-scripts"],
 }
 export default nextConfig

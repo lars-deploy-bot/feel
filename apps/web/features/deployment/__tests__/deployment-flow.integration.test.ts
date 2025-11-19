@@ -67,24 +67,22 @@ describe("Full Deployment Flow Integration", () => {
     console.log("[Flow Test] ✓ Unauthenticated request rejected")
   })
 
-  test("deployment flow rejects requests without orgId", async () => {
+  test("deployment flow allows requests without orgId (auto-creates default org)", async () => {
     console.log("[Flow Test] Step 1: Call deployment API without orgId")
 
     const apiResponse = await authenticatedFetch(API_ENDPOINTS.DEPLOY_SUBDOMAIN, sessionCookie, {
       method: "POST",
       body: JSON.stringify({
-        slug: testSlug,
-        // Missing orgId
+        slug: `${testSlug}-auto-org`,
+        // orgId omitted - should auto-create default org
         siteIdeas: "",
         selectedTemplate: "landing",
       }),
     })
 
-    expect(apiResponse.status).toBe(400)
-    const apiResult = await apiResponse.json()
-    expect(apiResult.ok).toBe(false)
-    expect(apiResult.message).toContain("orgId")
-    console.log("[Flow Test] ✓ Request without orgId rejected")
+    // Should not reject with 400 for missing orgId - it's optional
+    expect(apiResponse.status).not.toBe(400)
+    console.log("[Flow Test] ✓ Request without orgId accepted (optional field)")
   })
 
   test.skip("full deployment flow: API call with auth -> site deployment", async () => {

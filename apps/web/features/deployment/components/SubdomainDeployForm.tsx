@@ -403,12 +403,14 @@ export function SubdomainDeployForm() {
 
       {/* Status - full width, no constraints */}
       {deploymentStatus && (
-        <DeploymentStatus
-          status={deploymentStatus.ok ? "success" : "error"}
-          domain={deploymentStatus?.domain}
-          error={deploymentStatus?.error}
-          chatUrl={deploymentStatus?.chatUrl}
-        />
+        <div className="mt-8">
+          <DeploymentStatus
+            status={deploymentStatus.ok ? "success" : "error"}
+            domain={deploymentStatus?.domain}
+            error={deploymentStatus?.message}
+            chatUrl={deploymentStatus?.chatUrl}
+          />
+        </div>
       )}
     </motion.div>
   )

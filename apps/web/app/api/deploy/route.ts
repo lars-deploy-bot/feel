@@ -5,6 +5,7 @@ import { normalizeAndValidateDomain } from "@/features/manager/lib/domain-utils"
 import { deploySite } from "@/lib/deployment/deploy-site"
 import { validateUserOrgAccess } from "@/lib/deployment/org-resolver"
 import { validateSSLCertificate } from "@/lib/deployment/ssl-validation"
+import { registerDomain, DomainRegistrationError } from "@/lib/deployment/domain-registry"
 import { ErrorCodes } from "@/lib/error-codes"
 
 interface DeployRequest {
@@ -81,12 +82,31 @@ export async function POST(request: NextRequest) {
     }
 
     // Execute deployment script (SECURE: uses systemd isolation)
-    await deploySite({
+    const deployResult = await deploySite({
       domain,
       email: user.email, // User email (authenticated)
       orgId, // Organization to deploy to
       // Note: No password needed - user is already authenticated
     })
+
+    // Register domain in Supabase with deployment info
+    console.log("📝 [DEPLOY API] Registering domain in database...")
+    try {
+      await registerDomain({
+        hostname: domain,
+        email: user.email,
+        port: deployResult.port,
+        orgId,
+      })
+      console.log("✅ [DEPLOY API] Domain registered successfully")
+    } catch (registrationError) {
+      if (registrationError instanceof DomainRegistrationError) {
+        console.error(`⚠️  [DEPLOY API] Domain registration warning: ${registrationError.message}`)
+        // Don't fail deployment if registration fails - infrastructure is up
+      } else {
+        throw registrationError
+      }
+    }
 
     // Wait for SSL certificate to be provisioned and validate deployment
     console.log(`🔒 [DEPLOY API] Validating SSL certificate for ${domain}...`)

@@ -1300,3 +1300,143 @@ api.alive.best {
         header_up X-Forwarded-Proto {scheme}
     }
 }
+
+hallohallo.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3408 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+test-hallohallo.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3409 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+verify-fix-test.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3410 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+verify-fix-final.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3411 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+deploy-1713.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3412 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+test-wrong-812.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3413 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+test-correct-824.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3414 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+newtest-847.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3415 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+wrongpass-860.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3416 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+test1-93.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3417 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+test2-09.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3418 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+geeskitchen.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3419 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+evermore.alive.best {
+    reverse_proxy localhost:3335
+}
+
+mp4-to-mp3.alive.best {
+    reverse_proxy localhost:3336
+}

@@ -7,6 +7,7 @@
 
 import { NextResponse } from "next/server"
 import { addCorsHeaders } from "@/lib/cors-utils"
+import { getErrorMessage, type StructuredError, type ErrorCode } from "@/lib/error-codes"
 import type { ApiError, OrganizationsResponse, WorkspacesResponse } from "./types"
 
 interface ResponseOptions {
@@ -30,7 +31,26 @@ function jsonResponse<T>(data: T, options: ResponseOptions = {}): NextResponse {
 }
 
 /**
- * Create an error response
+ * Create an error response with ErrorCode
+ * Automatically generates user-friendly message from error code
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function structuredErrorResponse(
+  errorCode: ErrorCode,
+  options: ResponseOptions & { status: number; details?: Record<string, any> },
+): NextResponse {
+  const { details = {} } = options
+  const errorData: StructuredError = {
+    ok: false,
+    error: errorCode,
+    message: getErrorMessage(errorCode, details),
+    details: Object.keys(details).length > 0 ? details : undefined,
+  }
+  return jsonResponse(errorData, options)
+}
+
+/**
+ * Create an error response (legacy - use structuredErrorResponse instead)
  */
 export function errorResponse(error: string, options: ResponseOptions & { status: number }): NextResponse {
   const errorData: ApiError = {

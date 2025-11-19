@@ -9,6 +9,7 @@ import { DomainsTable } from "@/components/manager/DomainsTable"
 import { OrganizationsList } from "@/components/manager/OrganizationsList"
 import { FeedbackList } from "@/components/manager/FeedbackList"
 import { SettingsPanel } from "@/components/manager/SettingsPanel"
+import { UsersPanel } from "@/components/manager/UsersPanel"
 import type { DomainConfigClient, DomainStatus } from "@/types/domain"
 import type { FeedbackEntry } from "@/types/feedback"
 import * as domainService from "@/features/manager/lib/services/domainService"
@@ -37,11 +38,14 @@ export default function ManagerPage() {
   const [newCredits, setNewCredits] = useState("")
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<"domains" | "feedback" | "organizations" | "settings">("domains")
+  const [activeTab, setActiveTab] = useState<"domains" | "feedback" | "organizations" | "users" | "settings">("domains")
 
   // Feedback state
   const [feedback, setFeedback] = useState<FeedbackEntry[]>([])
   const [feedbackLoading, setFeedbackLoading] = useState(false)
+
+  // Users state
+  const [_creatingUser, setCreatingUser] = useState(false)
 
   // Organizations state
   const [orgs, setOrgs] = useState<any[]>([])
@@ -60,7 +64,6 @@ export default function ManagerPage() {
 
   // Settings actions state
   const [reloadingCaddy, setReloadingCaddy] = useState(false)
-  const [restartingBridge, setRestartingBridge] = useState(false)
   const [backingUp, setBackingUp] = useState(false)
   const [cleaningTestData, setCleaningTestData] = useState(false)
   const [testDataStats, setTestDataStats] = useState<any>(null)
@@ -82,7 +85,6 @@ export default function ManagerPage() {
   const [fixingPermissions, setFixingPermissions] = useState(false)
 
   // Confirmation modals state
-  const [confirmRestartBridge, setConfirmRestartBridge] = useState(false)
   const [confirmDeleteOrg, setConfirmDeleteOrg] = useState<string | null>(null)
   const [confirmRemoveMember, setConfirmRemoveMember] = useState<{ orgId: string; userId: string } | null>(null)
   const [confirmTransferOwnership, setConfirmTransferOwnership] = useState<{
@@ -219,7 +221,7 @@ export default function ManagerPage() {
   }, [activeTab, authenticated, fetchFeedback])
 
   useEffect(() => {
-    if (activeTab === "organizations" && authenticated) {
+    if ((activeTab === "organizations" || activeTab === "users") && authenticated) {
       fetchOrgs()
     }
   }, [activeTab, authenticated, fetchOrgs])
@@ -420,18 +422,18 @@ export default function ManagerPage() {
   if (!authenticated) {
     if (loading) {
       return (
-        <div className="min-h-screen bg-black flex items-center justify-center">
-          <div className="text-xl text-white">Checking authentication...</div>
+        <div className="min-h-screen bg-white dark:bg-black flex items-center justify-center">
+          <div className="text-xl text-black dark:text-white">Checking authentication...</div>
         </div>
       )
     }
 
     if (showLogin) {
       return (
-        <main className="min-h-screen bg-black flex items-center justify-center">
+        <main className="min-h-screen bg-white dark:bg-black flex items-center justify-center">
           <div className="w-80">
-            <h1 className="text-6xl font-normal mb-8 text-white">•</h1>
-            <p className="text-white/60 text-center mb-8">Manager Access</p>
+            <h1 className="text-6xl font-normal mb-8 text-black dark:text-white">•</h1>
+            <p className="text-black/60 dark:text-white/60 text-center mb-8">Manager Access</p>
 
             <form onSubmit={handleManagerLogin} className="space-y-8" autoComplete="off">
               <input
@@ -445,17 +447,17 @@ export default function ManagerPage() {
                 data-1p-ignore
                 data-lpignore="true"
                 data-form-type="other"
-                className="w-full bg-transparent border-0 border-b border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-white pb-3 text-lg font-normal"
+                className="w-full bg-transparent border-0 border-b border-black/20 dark:border-white/20 text-black dark:text-white placeholder-black/40 dark:placeholder-white/40 focus:outline-none focus:border-black dark:focus:border-white pb-3 text-lg font-normal"
               />
 
-              {loginError && <p className="text-white/60 text-sm">{loginError}</p>}
+              {loginError && <p className="text-black/60 dark:text-white/60 text-sm">{loginError}</p>}
 
               <Button
                 type="submit"
                 fullWidth
                 loading={loginLoading}
                 disabled={!pass.trim()}
-                className="!bg-white !text-black hover:!bg-white/90 !border-0 !font-normal !text-lg !py-4"
+                className="!bg-black dark:!bg-white !text-white dark:!text-black hover:!bg-black/90 dark:hover:!bg-white/90 !border-0 !font-normal !text-lg !py-4"
               >
                 enter manager
               </Button>
@@ -468,8 +470,8 @@ export default function ManagerPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-xl">Loading domains...</div>
+      <div className="min-h-screen bg-gray-50 dark:bg-[#1a1a1a] flex items-center justify-center">
+        <div className="text-xl text-black dark:text-white">Loading domains...</div>
       </div>
     )
   }
@@ -568,21 +570,6 @@ export default function ManagerPage() {
       onLoading: setReloadingCaddy,
       successMessage: "Caddy reloaded successfully",
       errorMessage: "Failed to reload Caddy",
-    })
-  }
-
-  const handleRestartBridge = async () => {
-    setConfirmRestartBridge(true)
-  }
-
-  const executeRestartBridge = async () => {
-    setConfirmRestartBridge(false)
-    await executeHandler({
-      fn: () => settingsService.restartBridge(),
-      onLoading: setRestartingBridge,
-      successMessage: "Bridge restart initiated (page will reload in 5s)",
-      errorMessage: "Failed to restart bridge",
-      onSuccess: () => setTimeout(() => window.location.reload(), 5000),
     })
   }
 
@@ -740,21 +727,21 @@ export default function ManagerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#1a1a1a]">
       <div className="max-w-7xl mx-auto px-6 py-12">
         {/* Header */}
         <div className="mb-10">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-semibold text-slate-900">Manager</h1>
-              <p className="mt-1 text-sm text-slate-600">Manage domains, organizations, and system configuration</p>
+              <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Manager</h1>
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Manage domains, organizations, and system configuration</p>
             </div>
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={fetchStatuses}
                 disabled={loadingStatus}
-                className="inline-flex items-center px-3.5 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="inline-flex items-center px-3.5 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-[#2a2a2a] border border-slate-300 dark:border-white/10 rounded-md hover:bg-slate-50 dark:hover:bg-[#333] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {loadingStatus ? "Refreshing..." : "Refresh status"}
               </button>
@@ -762,7 +749,7 @@ export default function ManagerPage() {
                 type="button"
                 onClick={handleLogout}
                 disabled={loggingOut}
-                className="inline-flex items-center px-3.5 py-2 text-sm font-medium text-white bg-slate-900 border border-transparent rounded-md hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="inline-flex items-center px-3.5 py-2 text-sm font-medium text-white dark:text-black bg-slate-900 dark:bg-white border border-transparent rounded-md hover:bg-slate-800 dark:hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900 dark:focus:ring-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {loggingOut ? "Logging out..." : "Logout"}
               </button>
@@ -771,56 +758,66 @@ export default function ManagerPage() {
         </div>
 
         {/* Main Card */}
-        <div className="bg-white rounded-lg border border-slate-200">
+        <div className="bg-white dark:bg-[#2a2a2a] rounded-lg border border-slate-200 dark:border-white/10">
           {/* Tabs */}
-          <div className="border-b border-slate-200">
+          <div className="border-b border-slate-200 dark:border-white/10">
             <nav className="flex px-6" aria-label="Tabs">
               <button
                 type="button"
                 onClick={() => setActiveTab("domains")}
                 className={`relative py-4 px-1 mr-8 text-sm font-medium transition-colors ${
-                  activeTab === "domains" ? "text-indigo-600" : "text-slate-600 hover:text-slate-900"
+                  activeTab === "domains" ? "text-indigo-600 dark:text-indigo-400" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
                 Domains
-                {activeTab === "domains" && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600" />}
+                {activeTab === "domains" && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400" />}
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab("feedback")}
                 className={`relative py-4 px-1 mr-8 text-sm font-medium transition-colors ${
-                  activeTab === "feedback" ? "text-indigo-600" : "text-slate-600 hover:text-slate-900"
+                  activeTab === "feedback" ? "text-indigo-600 dark:text-indigo-400" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
                 Feedback
-                {activeTab === "feedback" && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600" />}
+                {activeTab === "feedback" && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400" />}
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab("organizations")}
                 className={`relative py-4 px-1 mr-8 text-sm font-medium transition-colors ${
-                  activeTab === "organizations" ? "text-indigo-600" : "text-slate-600 hover:text-slate-900"
+                  activeTab === "organizations" ? "text-indigo-600 dark:text-indigo-400" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
                 Organizations
                 {activeTab === "organizations" && (
-                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600" />
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400" />
                 )}
                 {orgs.length > 0 && (
-                  <span className="ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-700 rounded">
+                  <span className="ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded">
                     {orgs.length}
                   </span>
                 )}
               </button>
               <button
                 type="button"
+                onClick={() => setActiveTab("users")}
+                className={`relative py-4 px-1 mr-8 text-sm font-medium transition-colors ${
+                  activeTab === "users" ? "text-indigo-600 dark:text-indigo-400" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                Users
+                {activeTab === "users" && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400" />}
+              </button>
+              <button
+                type="button"
                 onClick={() => setActiveTab("settings")}
                 className={`relative py-4 px-1 mr-8 text-sm font-medium transition-colors ${
-                  activeTab === "settings" ? "text-indigo-600" : "text-slate-600 hover:text-slate-900"
+                  activeTab === "settings" ? "text-indigo-600 dark:text-indigo-400" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
                 Settings
-                {activeTab === "settings" && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600" />}
+                {activeTab === "settings" && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400" />}
               </button>
             </nav>
           </div>
@@ -867,19 +864,19 @@ export default function ManagerPage() {
             />
           )}
 
+          {activeTab === "users" && <UsersPanel orgs={orgs} onSuccess={fetchOrgs} onLoading={setCreatingUser} />}
+
           {activeTab === "settings" && (
             <SettingsPanel
               serviceStatus={serviceStatus}
               checkingStatus={checkingStatus}
               reloadingCaddy={reloadingCaddy}
-              restartingBridge={restartingBridge}
               loadingStatus={loadingStatus}
               backingUp={backingUp}
               cleaningTestData={cleaningTestData}
               testDataStats={testDataStats}
               onCheckStatus={checkServiceStatus}
               onReloadCaddy={handleReloadCaddy}
-              onRestartBridge={handleRestartBridge}
               onRefreshDomains={fetchStatuses}
               onBackupWebsites={handleBackupWebsites}
               onCleanupTestData={handleCleanupTestData}
@@ -911,7 +908,7 @@ export default function ManagerPage() {
 
       {dialogOpen && (
         <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50"
           role="dialog"
           aria-modal="true"
           onClick={closeDialog}
@@ -920,24 +917,24 @@ export default function ManagerPage() {
           }}
         >
           <div
-            className="bg-white rounded-lg shadow-xl w-full max-w-lg p-8"
+            className="bg-white dark:bg-[#2a2a2a] rounded-lg shadow-xl w-full max-w-lg p-8"
             role="document"
             onClick={e => e.stopPropagation()}
           >
             <div className="mb-8">
-              <h2 className="text-2xl font-semibold text-gray-900 mb-2">Edit Domain Settings</h2>
-              <p className="text-sm text-gray-600">
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">Edit Domain Settings</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
                 Manage credentials and access for{" "}
-                <span className="font-mono font-medium text-gray-900">{selectedDomain}</span>
+                <span className="font-mono font-medium text-gray-900 dark:text-white">{selectedDomain}</span>
               </p>
             </div>
 
             <div className="space-y-8 mb-8">
-              <div className="border-l-4 border-blue-500 bg-blue-50 p-4 rounded">
-                <label htmlFor="credits-input" className="block text-sm font-semibold text-gray-900 mb-2">
+              <div className="border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/20 p-4 rounded">
+                <label htmlFor="credits-input" className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
                   API Credits
                 </label>
-                <p className="text-xs text-gray-600 mb-3">
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
                   Number of API credits available for Claude requests. Used for streaming conversations and code
                   operations.
                 </p>
@@ -949,20 +946,20 @@ export default function ManagerPage() {
                   value={newCredits}
                   onChange={e => setNewCredits(e.target.value)}
                   placeholder="200"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 bg-white dark:bg-[#1a1a1a] text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
-                <p className="text-xs text-gray-500 mt-3 font-medium">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 font-medium">
                   Current:{" "}
-                  <span className="text-gray-700">{domains[selectedDomain || ""]?.credits?.toFixed(2) || "0.00"}</span>{" "}
+                  <span className="text-gray-700 dark:text-gray-300">{domains[selectedDomain || ""]?.credits?.toFixed(2) || "0.00"}</span>{" "}
                   credits
                 </p>
               </div>
 
-              <div className="border-l-4 border-green-500 bg-green-50 p-4 rounded">
-                <label htmlFor="email-input" className="block text-sm font-semibold text-gray-900 mb-2">
+              <div className="border-l-4 border-green-500 bg-green-50 dark:bg-green-900/20 p-4 rounded">
+                <label htmlFor="email-input" className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
                   Owner Email Address
                 </label>
-                <p className="text-xs text-gray-600 mb-3">
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
                   Primary contact email for domain notifications, password resets, and account communications.
                 </p>
                 <input
@@ -971,15 +968,15 @@ export default function ManagerPage() {
                   value={newEmail}
                   onChange={e => setNewEmail(e.target.value)}
                   placeholder="owner@example.com"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 bg-white dark:bg-[#1a1a1a] text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
 
-              <div className="border-l-4 border-purple-500 bg-purple-50 p-4 rounded">
-                <label htmlFor="password-input" className="block text-sm font-semibold text-gray-900 mb-2">
+              <div className="border-l-4 border-purple-500 bg-purple-50 dark:bg-purple-900/20 p-4 rounded">
+                <label htmlFor="password-input" className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
                   Access Password
                 </label>
-                <p className="text-xs text-gray-600 mb-3">
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
                   Used to authenticate workspace access in Claude Code. Leave blank to keep current password unchanged.
                 </p>
                 <input
@@ -996,17 +993,17 @@ export default function ManagerPage() {
                     }
                   }}
                   placeholder="Leave blank to keep current"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 bg-white dark:bg-[#1a1a1a] text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
             </div>
 
-            <div className="border-t border-gray-200 pt-6 flex justify-end gap-3">
+            <div className="border-t border-gray-200 dark:border-white/10 pt-6 flex justify-end gap-3">
               <button
                 type="button"
                 onClick={closeDialog}
                 disabled={saving === selectedDomain}
-                className="px-5 py-2.5 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 font-medium transition-colors"
+                className="px-5 py-2.5 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-[#333] rounded-md hover:bg-gray-200 dark:hover:bg-[#444] focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 font-medium transition-colors"
               >
                 Cancel
               </button>
@@ -1050,7 +1047,7 @@ export default function ManagerPage() {
 
       {permissionsModal && (
         <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50"
           role="dialog"
           aria-modal="true"
           onClick={closePermissionsModal}
@@ -1059,16 +1056,16 @@ export default function ManagerPage() {
           }}
         >
           <div
-            className="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6 max-h-[80vh] overflow-y-auto"
+            className="bg-white dark:bg-[#2a2a2a] rounded-lg shadow-xl w-full max-w-2xl p-6 max-h-[80vh] overflow-y-auto"
             role="document"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex justify-between items-start mb-4">
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">File Permissions</h2>
-                <p className="text-sm text-gray-600 mt-1">{permissionsModal}</p>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">File Permissions</h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{permissionsModal}</p>
               </div>
-              <button type="button" onClick={closePermissionsModal} className="text-gray-400 hover:text-gray-600">
+              <button type="button" onClick={closePermissionsModal} className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
                 ✕
               </button>
             </div>
@@ -1076,24 +1073,24 @@ export default function ManagerPage() {
             {checkingPermissions ? (
               <div className="text-center py-8">
                 <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4" />
-                <p className="text-gray-600">Checking permissions...</p>
+                <p className="text-gray-600 dark:text-gray-400">Checking permissions...</p>
               </div>
             ) : permissionsData ? (
               <div className="space-y-4">
                 {permissionsData.error ? (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                    <p className="text-red-800 font-medium">{permissionsData.error}</p>
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                    <p className="text-red-800 dark:text-red-300 font-medium">{permissionsData.error}</p>
                   </div>
                 ) : (
                   <>
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-gray-50 rounded-lg p-4">
-                        <p className="text-sm text-gray-600">Expected Owner</p>
-                        <p className="text-lg font-semibold text-gray-900">{permissionsData.expectedOwner}</p>
+                      <div className="bg-gray-50 dark:bg-[#1a1a1a] rounded-lg p-4">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Expected Owner</p>
+                        <p className="text-lg font-semibold text-gray-900 dark:text-white">{permissionsData.expectedOwner}</p>
                       </div>
-                      <div className="bg-gray-50 rounded-lg p-4">
-                        <p className="text-sm text-gray-600">Total Files</p>
-                        <p className="text-lg font-semibold text-gray-900">{permissionsData.totalFiles}</p>
+                      <div className="bg-gray-50 dark:bg-[#1a1a1a] rounded-lg p-4">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Total Files</p>
+                        <p className="text-lg font-semibold text-gray-900 dark:text-white">{permissionsData.totalFiles}</p>
                       </div>
                     </div>
 
@@ -1101,15 +1098,15 @@ export default function ManagerPage() {
                       <div
                         className={`border rounded-lg p-4 ${
                           permissionsData.rootOwnedFiles > 0
-                            ? "border-red-300 bg-red-50"
-                            : "border-green-300 bg-green-50"
+                            ? "border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20"
+                            : "border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20"
                         }`}
                       >
                         <div className="flex items-center justify-between mb-2">
-                          <p className="font-medium text-gray-900">Root-Owned Files</p>
+                          <p className="font-medium text-gray-900 dark:text-white">Root-Owned Files</p>
                           <span
                             className={`text-2xl font-bold ${
-                              permissionsData.rootOwnedFiles > 0 ? "text-red-600" : "text-green-600"
+                              permissionsData.rootOwnedFiles > 0 ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"
                             }`}
                           >
                             {permissionsData.rootOwnedFiles}
@@ -1117,14 +1114,14 @@ export default function ManagerPage() {
                         </div>
                         {permissionsData.rootOwnedFiles > 0 && permissionsData.rootOwnedFilesList.length > 0 && (
                           <div className="mt-3 space-y-1">
-                            <p className="text-xs text-gray-600 font-medium mb-1">Sample files:</p>
+                            <p className="text-xs text-gray-600 dark:text-gray-400 font-medium mb-1">Sample files:</p>
                             {permissionsData.rootOwnedFilesList.map((file: string, i: number) => (
-                              <p key={i} className="text-xs font-mono text-gray-700 truncate" title={file}>
+                              <p key={i} className="text-xs font-mono text-gray-700 dark:text-gray-300 truncate" title={file}>
                                 {file}
                               </p>
                             ))}
                             {permissionsData.rootOwnedFiles > 10 && (
-                              <p className="text-xs text-gray-500 italic">
+                              <p className="text-xs text-gray-500 dark:text-gray-400 italic">
                                 ... and {permissionsData.rootOwnedFiles - 10} more
                               </p>
                             )}
@@ -1135,31 +1132,31 @@ export default function ManagerPage() {
                       <div
                         className={`border rounded-lg p-4 ${
                           permissionsData.wrongOwnerFiles > 0
-                            ? "border-orange-300 bg-orange-50"
-                            : "border-green-300 bg-green-50"
+                            ? "border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-900/20"
+                            : "border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20"
                         }`}
                       >
                         <div className="flex items-center justify-between mb-2">
-                          <p className="font-medium text-gray-900">Wrong Owner Files</p>
+                          <p className="font-medium text-gray-900 dark:text-white">Wrong Owner Files</p>
                           <span
                             className={`text-2xl font-bold ${
-                              permissionsData.wrongOwnerFiles > 0 ? "text-orange-600" : "text-green-600"
+                              permissionsData.wrongOwnerFiles > 0 ? "text-orange-600 dark:text-orange-400" : "text-green-600 dark:text-green-400"
                             }`}
                           >
                             {permissionsData.wrongOwnerFiles}
                           </span>
                         </div>
-                        <p className="text-xs text-gray-600">Files not owned by {permissionsData.expectedOwner}</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">Files not owned by {permissionsData.expectedOwner}</p>
                         {permissionsData.wrongOwnerFiles > 0 && permissionsData.wrongOwnerFilesList.length > 0 && (
                           <div className="mt-3 space-y-1">
-                            <p className="text-xs text-gray-600 font-medium mb-1">Sample files:</p>
+                            <p className="text-xs text-gray-600 dark:text-gray-400 font-medium mb-1">Sample files:</p>
                             {permissionsData.wrongOwnerFilesList.map((file: string, i: number) => (
-                              <p key={i} className="text-xs font-mono text-gray-700 truncate" title={file}>
+                              <p key={i} className="text-xs font-mono text-gray-700 dark:text-gray-300 truncate" title={file}>
                                 {file}
                               </p>
                             ))}
                             {permissionsData.wrongOwnerFiles > 10 && (
-                              <p className="text-xs text-gray-500 italic">
+                              <p className="text-xs text-gray-500 dark:text-gray-400 italic">
                                 ... and {permissionsData.wrongOwnerFiles - 10} more
                               </p>
                             )}
@@ -1169,19 +1166,19 @@ export default function ManagerPage() {
                     </div>
 
                     {permissionsData.wrongOwnerFiles > 0 && (
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                        <p className="text-sm text-yellow-800">
+                      <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                        <p className="text-sm text-yellow-800 dark:text-yellow-300">
                           ⚠️ Files with incorrect ownership detected. Click "Fix Permissions" to update all files to the
                           correct owner.
                         </p>
                       </div>
                     )}
 
-                    <div className="flex justify-end gap-3 pt-4 border-t">
+                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-white/10">
                       <button
                         type="button"
                         onClick={closePermissionsModal}
-                        className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                        className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-[#333] rounded-md hover:bg-gray-200 dark:hover:bg-[#444] focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
                       >
                         Close
                       </button>
@@ -1214,7 +1211,7 @@ export default function ManagerPage() {
 
       {selectedOrg && (
         <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50"
           role="dialog"
           aria-modal="true"
           onClick={() => {
@@ -1229,26 +1226,26 @@ export default function ManagerPage() {
           }}
         >
           <div
-            className="bg-white rounded-lg shadow-xl w-full max-w-lg p-8"
+            className="bg-white dark:bg-[#2a2a2a] rounded-lg shadow-xl w-full max-w-lg p-8"
             role="document"
             onClick={e => e.stopPropagation()}
           >
             <div className="mb-8">
-              <h2 className="text-2xl font-semibold text-gray-900 mb-2">Edit Organization Credits</h2>
-              <p className="text-sm text-gray-600">
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">Edit Organization Credits</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
                 Manage API credits for{" "}
-                <span className="font-mono font-medium text-gray-900">
+                <span className="font-mono font-medium text-gray-900 dark:text-white">
                   {orgs.find(o => o.org_id === selectedOrg)?.name}
                 </span>
               </p>
             </div>
 
             <div className="mb-8">
-              <div className="border-l-4 border-blue-500 bg-blue-50 p-4 rounded">
-                <label htmlFor="org-credits-input" className="block text-sm font-semibold text-gray-900 mb-2">
+              <div className="border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/20 p-4 rounded">
+                <label htmlFor="org-credits-input" className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
                   Organization Credits
                 </label>
-                <p className="text-xs text-gray-600 mb-3">
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
                   Total API credits available for all members of this organization. Each member can use these credits
                   for Claude requests.
                 </p>
@@ -1260,22 +1257,22 @@ export default function ManagerPage() {
                   value={newOrgCredits}
                   onChange={e => setNewOrgCredits(e.target.value)}
                   placeholder="200"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 bg-white dark:bg-[#1a1a1a] text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   onKeyDown={e => {
                     if (e.key === "Enter" && newOrgCredits) {
                       handleUpdateOrgCredits(selectedOrg, parseFloat(newOrgCredits))
                     }
                   }}
                 />
-                <p className="text-xs text-gray-500 mt-3 font-medium">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 font-medium">
                   Current:{" "}
-                  <span className="text-gray-700">{orgs.find(o => o.org_id === selectedOrg)?.credits.toFixed(2)}</span>{" "}
+                  <span className="text-gray-700 dark:text-gray-300">{orgs.find(o => o.org_id === selectedOrg)?.credits.toFixed(2)}</span>{" "}
                   credits
                 </p>
               </div>
             </div>
 
-            <div className="border-t border-gray-200 pt-6 flex justify-end gap-3">
+            <div className="border-t border-gray-200 dark:border-white/10 pt-6 flex justify-end gap-3">
               <button
                 type="button"
                 onClick={() => {
@@ -1283,7 +1280,7 @@ export default function ManagerPage() {
                   setNewOrgCredits("")
                 }}
                 disabled={updatingOrgCredits}
-                className="px-5 py-2.5 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 font-medium transition-colors"
+                className="px-5 py-2.5 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-[#333] rounded-md hover:bg-gray-200 dark:hover:bg-[#444] focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 font-medium transition-colors"
               >
                 Cancel
               </button>
@@ -1302,7 +1299,7 @@ export default function ManagerPage() {
 
       {addMemberOrgId && (
         <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50"
           role="dialog"
           aria-modal="true"
           onClick={() => {
@@ -1319,15 +1316,15 @@ export default function ManagerPage() {
           }}
         >
           <div
-            className="bg-white rounded-lg shadow-xl w-full max-w-lg p-8"
+            className="bg-white dark:bg-[#2a2a2a] rounded-lg shadow-xl w-full max-w-lg p-8"
             role="document"
             onClick={e => e.stopPropagation()}
           >
             <div className="mb-8">
-              <h2 className="text-2xl font-semibold text-gray-900 mb-2">Add Member to Organization</h2>
-              <p className="text-sm text-gray-600">
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">Add Member to Organization</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
                 Add a new member to{" "}
-                <span className="font-mono font-medium text-gray-900">
+                <span className="font-mono font-medium text-gray-900 dark:text-white">
                   {orgs.find(o => o.org_id === addMemberOrgId)?.name}
                 </span>
               </p>
@@ -1335,17 +1332,17 @@ export default function ManagerPage() {
 
             <div className="space-y-6 mb-8">
               <div>
-                <label htmlFor="user-select" className="block text-sm font-semibold text-gray-900 mb-2">
+                <label htmlFor="user-select" className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
                   Select User
                 </label>
-                <p className="text-xs text-gray-600 mb-3">
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
                   Choose an existing user account to add to this organization.
                 </p>
                 <select
                   id="user-select"
                   value={selectedUserId}
                   onChange={e => setSelectedUserId(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 bg-white dark:bg-[#1a1a1a] text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">Select a user...</option>
                   {availableUsers.map(user => (
@@ -1357,10 +1354,10 @@ export default function ManagerPage() {
               </div>
 
               <div>
-                <label htmlFor="role-select" className="block text-sm font-semibold text-gray-900 mb-2">
+                <label htmlFor="role-select" className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
                   Assign Role
                 </label>
-                <p className="text-xs text-gray-600 mb-3">
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
                   <span className="font-medium">Member</span> can access organization resources,{" "}
                   <span className="font-medium">Admin</span> can manage members,{" "}
                   <span className="font-medium">Owner</span> has full control.
@@ -1369,7 +1366,7 @@ export default function ManagerPage() {
                   id="role-select"
                   value={selectedRole}
                   onChange={e => setSelectedRole(e.target.value as "owner" | "admin" | "member")}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 bg-white dark:bg-[#1a1a1a] text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="member">Member</option>
                   <option value="admin">Admin</option>
@@ -1378,7 +1375,7 @@ export default function ManagerPage() {
               </div>
             </div>
 
-            <div className="border-t border-gray-200 pt-6 flex justify-end gap-3">
+            <div className="border-t border-gray-200 dark:border-white/10 pt-6 flex justify-end gap-3">
               <button
                 type="button"
                 onClick={() => {
@@ -1387,7 +1384,7 @@ export default function ManagerPage() {
                   setSelectedRole("member")
                 }}
                 disabled={addingMember}
-                className="px-5 py-2.5 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 font-medium transition-colors"
+                className="px-5 py-2.5 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-[#333] rounded-md hover:bg-gray-200 dark:hover:bg-[#444] focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 font-medium transition-colors"
               >
                 Cancel
               </button>
@@ -1402,17 +1399,6 @@ export default function ManagerPage() {
             </div>
           </div>
         </div>
-      )}
-
-      {confirmRestartBridge && (
-        <ConfirmModal
-          title="Restart Claude Bridge?"
-          message="This will restart the Claude Bridge server and disconnect all active sessions. Continue?"
-          confirmText="Restart"
-          confirmStyle="warning"
-          onConfirm={executeRestartBridge}
-          onCancel={() => setConfirmRestartBridge(false)}
-        />
       )}
 
       {confirmDeleteOrg && (

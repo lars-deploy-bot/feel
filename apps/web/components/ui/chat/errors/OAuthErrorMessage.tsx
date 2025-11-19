@@ -6,7 +6,7 @@ interface OAuthErrorMessageProps {
   errorText: string
 }
 
-export function OAuthErrorMessage({ errorText }: OAuthErrorMessageProps) {
+export function OAuthErrorMessage(_props: OAuthErrorMessageProps) {
   const handleReauthenticate = () => {
     // Reload the page to trigger auth flow
     window.location.reload()
@@ -32,16 +32,6 @@ export function OAuthErrorMessage({ errorText }: OAuthErrorMessageProps) {
             </button>
           </div>
         </div>
-
-        {/* Technical details (collapsed by default) */}
-        <details className="mt-4 pt-4 border-t border-amber-200 dark:border-amber-800/50">
-          <summary className="text-xs text-amber-700 dark:text-amber-400 cursor-pointer hover:text-amber-900 dark:hover:text-amber-200">
-            Technical Details
-          </summary>
-          <pre className="mt-2 text-xs text-amber-800 dark:text-amber-300 font-mono bg-amber-100 dark:bg-amber-950/40 p-2 rounded overflow-x-auto">
-            {errorText}
-          </pre>
-        </details>
       </div>
     </div>
   )

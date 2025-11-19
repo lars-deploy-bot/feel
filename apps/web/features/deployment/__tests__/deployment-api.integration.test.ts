@@ -63,20 +63,21 @@ describe("Deployment API Integration", () => {
   })
 
   describe("Request Validation", () => {
-    test("requires orgId in request body", async () => {
+    test("orgId is optional - auto-creates default org if not provided", async () => {
       const response = await authenticatedFetch(API_ENDPOINTS.DEPLOY_SUBDOMAIN, sessionCookie, {
         method: "POST",
         body: JSON.stringify({
-          slug: `test-${Date.now() % 10000}`,
-          // Missing orgId
+          slug: `test-auto-org-${Date.now() % 10000}`,
+          // orgId omitted - should auto-create default org
+          siteIdeas: "Testing auto org creation",
+          selectedTemplate: "landing",
         }),
       })
 
-      expect(response.status).toBe(400)
-      const result = await response.json()
-      expect(result.ok).toBe(false)
-      expect(result.error).toBe("VALIDATION_ERROR")
-      expect(result.message).toContain("orgId")
+      // Should not reject - orgId is optional
+      expect(response.status).not.toBe(400)
+      // If it fails, it should be for a different reason (DNS, deployment, etc)
+      // But the request should be valid from a schema perspective
     })
 
     test("validates slug meets minimum length (3 chars)", async () => {

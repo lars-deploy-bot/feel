@@ -171,8 +171,12 @@ apps/web/
 **ONLY use the secure systemd deployment:**
 
 ```bash
-# Automated deployment
-/root/webalive/claude-bridge/scripts/deploy-site-systemd.sh newsite.com
+# Automated deployment (via sitectl TypeScript tool)
+bun run deploy-site newsite.com
+
+# Or with explicit email:
+export DEPLOY_EMAIL="user@example.com"
+bun run packages/deploy-scripts/src/sitectl.ts newsite.com
 
 # This creates:
 # - Systemd service: site@newsite-com.service
@@ -183,6 +187,8 @@ apps/web/
 ```
 
 **Never use PM2 for new sites** - it lacks security isolation.
+
+**sitectl tool**: See `packages/deploy-scripts/README.md` for detailed documentation and environment variables.
 
 #### Updating Caddy Configuration
 
