@@ -1,6 +1,6 @@
-import { promises as fs } from "node:fs"
 import path from "node:path"
 import { buildSubdomain, WORKSPACE_BASE } from "./config"
+import { ensureDirectory, readJsonFile, writeJsonFile } from "./utils/fs-helpers"
 
 export interface SiteMetadata {
   slug: string
@@ -32,8 +32,10 @@ export const siteMetadataStore: SiteMetadataStore = {
       const workspacePath = path.join(WORKSPACE_BASE, domain)
       const metadataPath = getMetadataPath(workspacePath)
 
-      const content = await fs.readFile(metadataPath, "utf-8")
-      const metadata = JSON.parse(content) as SiteMetadata
+      const metadata = await readJsonFile<SiteMetadata>(metadataPath)
+      if (!metadata) {
+        return null
+      }
 
       if (!metadata.slug || !metadata.domain || !metadata.workspace) {
         console.error(`[Metadata] Invalid metadata structure for slug: ${slug}`)
@@ -42,9 +44,6 @@ export const siteMetadataStore: SiteMetadataStore = {
 
       return metadata
     } catch (error) {
-      if (error instanceof Error && error.message.includes("ENOENT")) {
-        return null
-      }
       console.error(`[Metadata] Failed to read metadata for slug ${slug}:`, error)
       return null
     }
@@ -56,15 +55,9 @@ export const siteMetadataStore: SiteMetadataStore = {
       const metadataPath = getMetadataPath(workspacePath)
 
       const dir = path.dirname(metadataPath)
-      try {
-        await fs.mkdir(dir, { recursive: true })
-      } catch (mkdirError) {
-        if (!(mkdirError instanceof Error) || !mkdirError.message.includes("EEXIST")) {
-          throw mkdirError
-        }
-      }
+      await ensureDirectory(dir)
 
-      await fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2), "utf-8")
+      await writeJsonFile(metadataPath, metadata)
       console.log(`[Metadata] Saved metadata for slug: ${slug}`)
     } catch (error) {
       console.error(`[Metadata] Failed to save metadata for slug ${slug}:`, error)
@@ -79,11 +72,6 @@ export const siteMetadataStore: SiteMetadataStore = {
 }
 
 export async function getSiteMetadataByWorkspace(workspace: string): Promise<SiteMetadata | null> {
-  try {
-    const metadataPath = getMetadataPath(workspace)
-    const content = await fs.readFile(metadataPath, "utf-8")
-    return JSON.parse(content) as SiteMetadata
-  } catch {
-    return null
-  }
+  const metadataPath = getMetadataPath(workspace)
+  return await readJsonFile<SiteMetadata>(metadataPath)
 }

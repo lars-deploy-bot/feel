@@ -39,8 +39,8 @@ export const DEFAULTS = {
   /** Server IP for DNS validation */
   SERVER_IP: '138.201.56.93',
 
-  /** Wildcard domain that skips DNS validation */
-  WILDCARD_DOMAIN: '*.alive.best',
+  /** Wildcard domain that skips DNS validation (subdomains of this domain skip validation) */
+  WILDCARD_DOMAIN: 'alive.best',
 
   /** Port range for site assignments */
   PORT_RANGE: {
@@ -63,13 +63,6 @@ export const DEFAULTS = {
   /** Flock timeout (seconds) */
   FLOCK_TIMEOUT: 30,
 } as const
-
-/**
- * Get the script directory path
- */
-export function getScriptDir(): string {
-  return resolve(__dirname, '../scripts')
-}
 
 /**
  * Generate systemd service name from slug

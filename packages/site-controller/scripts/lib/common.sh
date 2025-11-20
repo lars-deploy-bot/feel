@@ -8,13 +8,13 @@ readonly COLOR_SUCCESS='\033[0;32m'
 readonly COLOR_WARN='\033[0;33m'
 readonly COLOR_ERROR='\033[0;31m'
 
-# Logging functions
+# Logging functions (all write to stderr to avoid interfering with script output)
 log_info() {
-    echo -e "${COLOR_INFO}[INFO]${COLOR_RESET} $*"
+    echo -e "${COLOR_INFO}[INFO]${COLOR_RESET} $*" >&2
 }
 
 log_success() {
-    echo -e "${COLOR_SUCCESS}[SUCCESS]${COLOR_RESET} $*"
+    echo -e "${COLOR_SUCCESS}[SUCCESS]${COLOR_RESET} $*" >&2
 }
 
 log_warn() {

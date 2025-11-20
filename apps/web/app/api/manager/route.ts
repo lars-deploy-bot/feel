@@ -1,21 +1,17 @@
 import { exec } from "node:child_process"
 import { promisify } from "node:util"
-import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
+import { requireManagerAuth } from "@/features/manager/lib/api-helpers"
+import { createCorsErrorResponse, createCorsResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { updateDomainOwnerPassword } from "@/lib/auth/supabase-passwords"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { getAllDomains } from "@/lib/deployment/domain-registry"
-import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
+import { ErrorCodes } from "@/lib/error-codes"
 import { updateOrgCredits } from "@/lib/tokens"
+import { generateRequestId } from "@/lib/utils"
 import type { DomainConfigClient } from "@/types/domain"
 
 const execAsync = promisify(exec)
-
-function corsResponse(origin: string | null, data: unknown, status = 200): NextResponse {
-  const res = NextResponse.json(data, { status })
-  addCorsHeaders(res, origin)
-  return res
-}
 
 async function detectOrphanedDomains(): Promise<string[]> {
   const orphaned = new Set<string>()
@@ -52,20 +48,10 @@ function isPreviewDomain(domain: string): boolean {
 
 export async function GET(req: NextRequest) {
   const origin = req.headers.get("origin")
-  const jar = await cookies()
-  const requestId = crypto.randomUUID()
 
-  if (!jar.get("manager_session")) {
-    return corsResponse(
-      origin,
-      {
-        ok: false,
-        error: ErrorCodes.UNAUTHORIZED,
-        message: getErrorMessage(ErrorCodes.UNAUTHORIZED),
-        requestId,
-      },
-      401,
-    )
+  const authError = await requireManagerAuth()
+  if (authError) {
+    return authError
   }
 
   // Load all domains from Supabase (includes port, credits, email)
@@ -105,25 +91,16 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return corsResponse(origin, { ok: true, domains: sanitizedDomains })
+  return createCorsSuccessResponse(origin, { domains: sanitizedDomains })
 }
 
 export async function POST(req: NextRequest) {
   const origin = req.headers.get("origin")
-  const jar = await cookies()
-  const requestId = crypto.randomUUID()
+  const requestId = generateRequestId()
 
-  if (!jar.get("manager_session")) {
-    return corsResponse(
-      origin,
-      {
-        ok: false,
-        error: ErrorCodes.UNAUTHORIZED,
-        message: getErrorMessage(ErrorCodes.UNAUTHORIZED),
-        requestId,
-      },
-      401,
-    )
+  const authError = await requireManagerAuth()
+  if (authError) {
+    return authError
   }
 
   try {
@@ -132,22 +109,13 @@ export async function POST(req: NextRequest) {
     const domain = rawDomain?.toLowerCase() // Always lowercase domain
 
     if (!domain) {
-      return corsResponse(
-        origin,
-        {
-          ok: false,
-          error: ErrorCodes.INVALID_REQUEST,
-          message: getErrorMessage(ErrorCodes.INVALID_REQUEST),
-          requestId,
-        },
-        400,
-      )
+      return createCorsErrorResponse(origin, ErrorCodes.INVALID_REQUEST, 400, { requestId })
     }
 
     // Update credits in Supabase if provided
     if (credits !== undefined) {
       if (typeof credits !== "number" || credits < 0) {
-        return corsResponse(
+        return createCorsResponse(
           origin,
           {
             ok: false,
@@ -161,7 +129,7 @@ export async function POST(req: NextRequest) {
 
       const success = await updateOrgCredits(domain, credits)
       if (!success) {
-        return corsResponse(
+        return createCorsResponse(
           origin,
           {
             ok: false,
@@ -178,16 +146,7 @@ export async function POST(req: NextRequest) {
     if (password) {
       const passwordSuccess = await updateDomainOwnerPassword(domain, password)
       if (!passwordSuccess) {
-        return corsResponse(
-          origin,
-          {
-            ok: false,
-            error: ErrorCodes.INTERNAL_ERROR,
-            message: "Failed to update password",
-            requestId,
-          },
-          500,
-        )
+        return createCorsErrorResponse(origin, ErrorCodes.INTERNAL_ERROR, 500, { requestId })
       }
     }
 
@@ -197,37 +156,19 @@ export async function POST(req: NextRequest) {
       console.warn("[Manager] Email update via domain not yet implemented - need old email address")
     }
 
-    return corsResponse(origin, { ok: true, requestId })
+    return createCorsSuccessResponse(origin, { requestId })
   } catch (_error) {
-    return corsResponse(
-      origin,
-      {
-        ok: false,
-        error: ErrorCodes.INVALID_JSON,
-        message: getErrorMessage(ErrorCodes.INVALID_JSON),
-        requestId,
-      },
-      400,
-    )
+    return createCorsErrorResponse(origin, ErrorCodes.INVALID_JSON, 400, { requestId })
   }
 }
 
 export async function DELETE(req: NextRequest) {
   const origin = req.headers.get("origin")
-  const jar = await cookies()
-  const requestId = crypto.randomUUID()
+  const requestId = generateRequestId()
 
-  if (!jar.get("manager_session")) {
-    return corsResponse(
-      origin,
-      {
-        ok: false,
-        error: ErrorCodes.UNAUTHORIZED,
-        message: getErrorMessage(ErrorCodes.UNAUTHORIZED),
-        requestId,
-      },
-      401,
-    )
+  const authError = await requireManagerAuth()
+  if (authError) {
+    return authError
   }
 
   try {
@@ -236,53 +177,30 @@ export async function DELETE(req: NextRequest) {
     const domain = rawDomain?.toLowerCase() // Always lowercase domain
 
     if (!domain) {
-      return corsResponse(
-        origin,
-        {
-          ok: false,
-          error: ErrorCodes.INVALID_REQUEST,
-          message: getErrorMessage(ErrorCodes.INVALID_REQUEST, { field: "domain" }),
-          requestId,
-        },
-        400,
-      )
+      return createCorsErrorResponse(origin, ErrorCodes.INVALID_REQUEST, 400, { requestId })
     }
 
     try {
       const { stdout, stderr } = await execAsync(
         `/root/webalive/claude-bridge/scripts/sites/delete-site-systemd.sh ${domain}`,
       )
-      return corsResponse(origin, { ok: true, output: stdout, error: stderr || null, requestId })
+      return createCorsSuccessResponse(origin, { output: stdout, error: stderr || null, requestId })
     } catch (error) {
-      return corsResponse(
-        origin,
-        {
-          ok: false,
-          error: ErrorCodes.INTERNAL_ERROR,
-          message: getErrorMessage(ErrorCodes.INTERNAL_ERROR),
-          details: {
-            error: error instanceof Error ? error.message : String(error),
-          },
-          requestId,
+      return createCorsErrorResponse(origin, ErrorCodes.INTERNAL_ERROR, 500, {
+        requestId,
+        details: {
+          error: error instanceof Error ? error.message : String(error),
         },
-        500,
-      )
+      })
     }
   } catch (_error) {
-    return corsResponse(
-      origin,
-      {
-        ok: false,
-        error: ErrorCodes.INVALID_JSON,
-        message: getErrorMessage(ErrorCodes.INVALID_JSON),
-        requestId,
-      },
-      400,
-    )
+    return createCorsErrorResponse(origin, ErrorCodes.INVALID_JSON, 400, { requestId })
   }
 }
 
 export async function OPTIONS(req: NextRequest) {
   const origin = req.headers.get("origin") || req.headers.get("referer")?.split("/").slice(0, 3).join("/")
-  return corsResponse(origin ?? null, null)
+  const res = new NextResponse(null, { status: 204 })
+  addCorsHeaders(res, origin ?? null)
+  return res
 }

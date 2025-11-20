@@ -28,12 +28,3 @@ export const DeploySubdomainResponseSchema = z.object({
 
 export type DeployResponse = z.infer<typeof DeployResponseSchema>
 export type DeploySubdomainResponse = z.infer<typeof DeploySubdomainResponseSchema>
-
-// Type guards
-export function isDeployResponse(body: unknown): body is DeployResponse {
-  return DeployResponseSchema.safeParse(body).success
-}
-
-export function isDeploySubdomainResponse(body: unknown): body is DeploySubdomainResponse {
-  return DeploySubdomainResponseSchema.safeParse(body).success
-}

@@ -338,3 +338,72 @@ export async function validateRequest(
     data: { user, body, workspace },
   }
 }
+
+/**
+ * Enhanced workspace authentication that combines user auth, workspace verification,
+ * and workspace path resolution into a single call.
+ *
+ * This helper eliminates the need for separate calls to:
+ * - requireSessionUser()
+ * - verifyWorkspaceAccess()
+ * - resolveWorkspace()
+ *
+ * @param req - Next.js request object
+ * @param body - Request body containing workspace
+ * @param requestId - Request ID for error responses
+ * @returns Success with user/workspace/path or error response
+ *
+ * @example
+ * const result = await requireWorkspaceAuth(req, body, requestId)
+ * if (!result.success) {
+ *   return result.error
+ * }
+ * const { user, workspace, workspacePath } = result.data
+ */
+export async function requireWorkspaceAuth(
+  req: { headers: { get: (name: string) => string | null } },
+  body: { workspace?: string },
+  requestId?: string,
+): Promise<
+  | { success: true; data: { user: SessionUser; workspace: string; workspacePath: string } }
+  | { success: false; error: NextResponse }
+> {
+  // Step 1: Authenticate user
+  const user = await getSessionUser()
+  if (!user) {
+    return {
+      success: false,
+      error: createErrorResponse(ErrorCodes.NO_SESSION, 401, { requestId }),
+    }
+  }
+
+  // Step 2: Verify workspace access
+  const workspace = await verifyWorkspaceAccess(user, body, "[requireWorkspaceAuth]")
+  if (!workspace) {
+    return {
+      success: false,
+      error: createErrorResponse(ErrorCodes.WORKSPACE_NOT_AUTHENTICATED, 401, { requestId }),
+    }
+  }
+
+  // Step 3: Resolve workspace path
+  const { resolveWorkspace } = await import("@/features/workspace/lib/workspace-utils")
+  const host = req.headers.get("host") || ""
+  const workspaceResult = resolveWorkspace(host, body, requestId || "unknown")
+
+  if (!workspaceResult.success) {
+    return {
+      success: false,
+      error: workspaceResult.response,
+    }
+  }
+
+  return {
+    success: true,
+    data: {
+      user,
+      workspace,
+      workspacePath: workspaceResult.workspace,
+    },
+  }
+}

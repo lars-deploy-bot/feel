@@ -82,32 +82,3 @@ export async function getAllFeedback(): Promise<FeedbackEntry[]> {
     }) || []
   )
 }
-
-/**
- * Get feedback entries for a specific workspace
- * @param workspace - Workspace to filter by
- * @returns Array of feedback entries
- */
-export async function getFeedbackByWorkspace(workspace: string): Promise<FeedbackEntry[]> {
-  const allFeedback = await getAllFeedback()
-  return allFeedback.filter(entry => entry.workspace === workspace)
-}
-
-/**
- * Update feedback status in Supabase
- * @param feedbackId - Feedback ID to update
- * @param status - New status
- * @returns true if successful
- */
-export async function updateFeedbackStatus(feedbackId: string, status: string): Promise<boolean> {
-  const app = await createAppClient("service")
-
-  const { error } = await app.from("feedback").update({ status }).eq("feedback_id", feedbackId)
-
-  if (error) {
-    console.error("[Supabase Feedback] Failed to update status:", error)
-    return false
-  }
-
-  return true
-}

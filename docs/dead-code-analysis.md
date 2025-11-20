@@ -24,10 +24,15 @@ This analysis identified **45 dead code items** across the codebase:
 
 #### 1. Duplicate Type Definitions
 - **DeploySubdomainRequest Schema** - Defined in 2 locations
+  - **Dependencies:** Zod (stays in use)
 - **DeployResponse Types** - Defined in 3 locations
+  - **Dependencies:** Zod (stays in use)
 - **isPortListening() function** - Duplicate implementations
+  - **Dependencies:** Node.js net module (built-in, stays in use)
 
 **Impact:** Maintenance burden, potential inconsistencies, violates DRY principle
+
+**Action:** Consolidate to single location - all dependencies stay in use
 
 **Location:** See [Apps/Web Details](./dead-code/apps-web.md#critical-findings)
 
@@ -35,49 +40,59 @@ This analysis identified **45 dead code items** across the codebase:
 Functions and utilities exported but never imported anywhere:
 
 - Type guards: `isDeployResponse()`, `isDeploySubdomainResponse()`
+  - **Dependencies:** Zod schemas (stay in use)
 - Feedback functions: `getFeedbackByWorkspace()`, `updateFeedbackStatus()`
+  - **Dependencies:** Supabase client (stays in use)
 - Markdown utilities: `isPrimaryCodeBlock()`, `hasInlineCode()`, `getMarkdownComplexity()`, `extractCodeLanguage()`
+  - **Dependencies:** None (pure functions)
 - Credit utilities: `hasSufficientLLMTokens()`, `formatCreditsForDisplay()`, `DEFAULT_STARTING_CREDITS`
+  - **Dependencies:** None (pure functions/constants)
 - Hook: `useOnlineStatus()`
+  - **Dependencies:** React hooks (stay in use)
 - Middleware: `checkAuth()`
+  - **Dependencies:** Next.js, auth utilities (stay in use)
 - Packages: `askAI()`, `getScriptDir()`
+  - **Dependencies:** groq-client (stays in use), Node.js path (built-in)
 
 **Impact:** Unnecessary bundle size, maintenance overhead
 
-**Action:** Safe to remove immediately
+**Action:** Safe to remove immediately - all dependencies stay in use by other code
 
 ### Medium Priority
 
 #### 3. Test-Only Exports (5 items)
 Functions only used in test files, not production:
 
-- `isValidRequestBody()`
-- `isValidLoginRequest()`
-- `validateRequestBody()`
-- `validateLoginRequest()`
+- `isValidRequestBody()`, `isValidLoginRequest()`
+  - **Dependencies:** Zod schemas (stay in use)
+- `validateRequestBody()`, `validateLoginRequest()`
+  - **Dependencies:** Zod schemas (stay in use)
 - `isToolAllowed()`
+  - **Dependencies:** ALLOWED_TOOLS constant (stays in use)
 
-**Action:** Remove and update tests to use Zod schemas directly
+**Action:** Remove wrappers and update tests to use Zod schemas directly - all underlying dependencies stay in use
 
 #### 4. Debug/Test Routes (2 items)
 Routes that appear to be for testing/debugging:
 
 - `/api/test-safety` - Groq safety filter test endpoint
+  - **Dependencies:** Groq utilities (stay in use)
 - `/test-checks` - Safety checker UI page
+  - **Dependencies:** React (stays in use)
 
-**Action:** Remove or restrict to admin-only access
+**Action:** Remove or restrict to admin-only access - all dependencies stay in use by other routes
 
 ### Low Priority
 
 #### 5. Unused Response Type Guards (4 items)
 Type guards for responses that are never validated:
 
-- `isLogoutResponse()`
-- `isVerifyResponse()`
-- `isFeedbackResponse()`
+- `isLogoutResponse()`, `isVerifyResponse()`, `isFeedbackResponse()`
+  - **Dependencies:** isApiResponse() helper (stays in use)
 - `assertType()`
+  - **Dependencies:** None (generic function)
 
-**Action:** Consider removing if validation not needed
+**Action:** Consider removing if validation not needed - helper function stays in use by other guards
 
 ## Detailed Reports
 

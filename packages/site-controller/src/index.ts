@@ -37,3 +37,7 @@ export type {
   CaddyStatus,
   CaddyValidation,
 } from './executors/caddy.js'
+
+// Backup operations
+export { backupWebsites } from './backup.js'
+export { DeploymentError } from './errors.js'

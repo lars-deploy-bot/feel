@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
-import { createErrorResponse } from "@/features/auth/lib/auth"
+import { createCorsErrorResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { ErrorCodes } from "@/lib/error-codes"
 import { addFeedbackEntry } from "@/lib/feedback"
@@ -31,12 +31,10 @@ export async function POST(req: NextRequest) {
     const result = FeedbackSchema.safeParse(body)
 
     if (!result.success) {
-      const res = createErrorResponse(ErrorCodes.INVALID_REQUEST, 400, {
-        details: { issues: result.error.issues },
+      return createCorsErrorResponse(origin, ErrorCodes.INVALID_REQUEST, 400, {
         requestId,
+        details: { issues: result.error.issues },
       })
-      addCorsHeaders(res, origin)
-      return res
     }
 
     const { feedback, email, workspace, conversationId, userAgent } = result.data
@@ -52,24 +50,17 @@ export async function POST(req: NextRequest) {
 
     console.log(`[Feedback] New feedback received from workspace: ${entry.workspace} (ID: ${entry.id})`)
 
-    const res = NextResponse.json({
-      ok: true,
+    return createCorsSuccessResponse(origin, {
       id: entry.id,
       timestamp: entry.timestamp,
     })
-
-    addCorsHeaders(res, origin)
-    return res
   } catch (error) {
     console.error("[Feedback] Error saving feedback:", error)
 
-    const res = createErrorResponse(ErrorCodes.INTERNAL_ERROR, 500, {
-      exception: error instanceof Error ? error.message : "Unknown error",
+    return createCorsErrorResponse(origin, ErrorCodes.INTERNAL_ERROR, 500, {
       requestId,
+      details: { exception: error instanceof Error ? error.message : "Unknown error" },
     })
-
-    addCorsHeaders(res, origin)
-    return res
   }
 }
 

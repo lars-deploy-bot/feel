@@ -132,6 +132,9 @@ export function isDeployResponse(obj: unknown): obj is DeployResponse {
 **Evidence:** No imports or calls found in codebase
 **Safe to remove:** YES
 
+**Dependencies:**
+- `zod` (DeployResponseSchema) - Stays in use (schema is used elsewhere)
+
 #### isDeploySubdomainResponse() - Line 37-39
 ```typescript
 export function isDeploySubdomainResponse(obj: unknown): obj is DeploySubdomainResponse {
@@ -142,6 +145,9 @@ export function isDeploySubdomainResponse(obj: unknown): obj is DeploySubdomainR
 **Status:** ❌ NEVER USED
 **Evidence:** No imports or calls found in codebase
 **Safe to remove:** YES
+
+**Dependencies:**
+- `zod` (DeploySubdomainResponseSchema) - Stays in use (schema is used elsewhere)
 
 ---
 
@@ -162,6 +168,9 @@ export async function getFeedbackByWorkspace(
 **Evidence:** Not imported anywhere in codebase
 **Safe to remove:** YES
 
+**Dependencies:**
+- `@supabase/supabase-js` (Supabase client) - Stays in use (used by other functions)
+
 #### updateFeedbackStatus() - Lines 102-113
 ```typescript
 export async function updateFeedbackStatus(
@@ -175,6 +184,9 @@ export async function updateFeedbackStatus(
 **Status:** ❌ NEVER USED
 **Evidence:** Not imported anywhere in codebase
 **Safe to remove:** YES
+
+**Dependencies:**
+- `@supabase/supabase-js` (Supabase client) - Stays in use (used by other functions)
 
 ---
 
@@ -197,6 +209,9 @@ export function isPrimaryCodeBlock(text: string): boolean {
 **Status:** ❌ NEVER USED
 **Safe to remove:** YES
 
+**Dependencies:**
+- None (pure function using only built-in string methods)
+
 #### hasInlineCode() - Lines 62-64
 ```typescript
 export function hasInlineCode(text: string): boolean {
@@ -206,6 +221,9 @@ export function hasInlineCode(text: string): boolean {
 
 **Status:** ❌ NEVER USED
 **Safe to remove:** YES
+
+**Dependencies:**
+- None (pure function using only built-in regex)
 
 #### getMarkdownComplexity() - Lines 69-82
 ```typescript
@@ -225,6 +243,9 @@ export function getMarkdownComplexity(text: string): 'simple' | 'complex' {
 **Status:** ❌ NEVER USED
 **Safe to remove:** YES
 
+**Dependencies:**
+- None (pure function using only built-in regex)
+
 #### extractCodeLanguage() - Lines 54-57
 ```typescript
 export function extractCodeLanguage(text: string): string | null {
@@ -235,6 +256,9 @@ export function extractCodeLanguage(text: string): string | null {
 
 **Status:** ❌ NEVER USED
 **Safe to remove:** YES
+
+**Dependencies:**
+- None (pure function using only built-in regex)
 
 ---
 
@@ -251,6 +275,9 @@ export function useOnlineStatus() {
 **Status:** ❌ NEVER USED
 **Evidence:** Never imported in any component
 **Safe to remove:** YES (can remove entire file)
+
+**Dependencies:**
+- `react` (useState, useEffect) - Stays in use (used throughout the app)
 
 ---
 
@@ -270,6 +297,11 @@ export async function checkAuth(): Promise<AuthResult> {
 **Note:** Similar pattern exists in `deployment/hooks/useAuth.ts`
 **Safe to remove:** YES (can remove entire file)
 
+**Dependencies:**
+- `next/headers` (cookies) - Stays in use (used in API routes)
+- `next/server` (NextResponse) - Stays in use (used in API routes)
+- Auth utilities (getCookieUserId, getSessionUser) - Stay in use (used in API routes)
+
 ---
 
 ## Potentially Dead API Routes
@@ -282,11 +314,17 @@ export async function checkAuth(): Promise<AuthResult> {
 **Status:** ⚠️ Debug route exposed in production
 **Recommendation:** Remove or restrict to admin-only access
 
+**Dependencies:**
+- Groq utilities (used elsewhere in the app, stay in use)
+
 #### /test-checks
 **File:** `app/test-checks/page.tsx`
 **Purpose:** Test UI page for safety checker
 **Status:** ⚠️ Debug page exposed in production
 **Recommendation:** Remove or restrict to admin-only access
+
+**Dependencies:**
+- React (used throughout the app, stays in use)
 
 ---
 

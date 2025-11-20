@@ -10,6 +10,7 @@ require_var SITE_DOMAIN SITE_SLUG SERVICE_NAME
 # Optional variables with defaults
 REMOVE_USER=${REMOVE_USER:-false}
 REMOVE_FILES=${REMOVE_FILES:-false}
+REMOVE_PORT=${REMOVE_PORT:-true}
 
 log_info "Tearing down site: $SITE_DOMAIN"
 
@@ -64,13 +65,17 @@ if [[ -n "${ENV_FILE_PATH:-}" ]] && [[ -f "$ENV_FILE_PATH" ]]; then
     rm -f "$ENV_FILE_PATH"
 fi
 
-# Remove port from registry
-if [[ -n "${REGISTRY_PATH:-}" ]] && [[ -f "$REGISTRY_PATH" ]]; then
-    log_info "Removing port assignment from registry..."
-    TMP_FILE="${REGISTRY_PATH}.tmp.$$"
-    jq --arg domain "$SITE_DOMAIN" 'del(.[$domain])' "$REGISTRY_PATH" > "$TMP_FILE"
-    mv "$TMP_FILE" "$REGISTRY_PATH"
-    log_success "Port assignment removed"
+# Remove port from registry (if requested)
+if [[ "$REMOVE_PORT" == "true" ]]; then
+    if [[ -n "${REGISTRY_PATH:-}" ]] && [[ -f "$REGISTRY_PATH" ]]; then
+        log_info "Removing port assignment from registry..."
+        TMP_FILE="${REGISTRY_PATH}.tmp.$$"
+        jq --arg domain "$SITE_DOMAIN" 'del(.[$domain])' "$REGISTRY_PATH" > "$TMP_FILE"
+        mv "$TMP_FILE" "$REGISTRY_PATH"
+        log_success "Port assignment removed"
+    fi
+else
+    log_info "Keeping port assignment in registry (REMOVE_PORT=false)"
 fi
 
 # Remove user if requested

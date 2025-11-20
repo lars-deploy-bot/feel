@@ -1,4 +1,4 @@
-import { deploySite as deploySiteLib, DeploymentError } from "@alive-brug/deploy-scripts"
+import { SiteOrchestrator, PATHS, DEFAULTS } from "@webalive/site-controller"
 
 export interface DeploySiteOptions {
   domain: string
@@ -21,12 +21,22 @@ export async function deploySite(options: DeploySiteOptions): Promise<DeploySite
   console.log(`[Deploy] Password: ${options.password ? "(provided)" : "(not provided - using existing account)"}`)
 
   try {
-    const result = await deploySiteLib({
+    // Convert domain to slug for systemd compatibility
+    const slug = domain.replace(/[^a-z0-9]+/gi, "-").toLowerCase()
+
+    // Use new SiteOrchestrator from site-controller package
+    const result = await SiteOrchestrator.deploy({
       domain,
-      email: options.email,
-      password: options.password,
-      orgId: options.orgId,
+      slug,
+      templatePath: PATHS.TEMPLATE_PATH,
+      serverIp: DEFAULTS.SERVER_IP,
+      wildcardDomain: DEFAULTS.WILDCARD_DOMAIN,
+      rollbackOnFailure: true, // Automatic rollback on failure
     })
+
+    if (!result.success) {
+      throw new Error(result.error || `Deployment failed at phase: ${result.failedPhase}`)
+    }
 
     console.log("[Deploy] ✅ Site deployed successfully")
     console.log(`[Deploy] Domain: ${result.domain}`)
@@ -39,11 +49,6 @@ export async function deploySite(options: DeploySiteOptions): Promise<DeploySite
       serviceName: result.serviceName,
     }
   } catch (error) {
-    if (error instanceof DeploymentError) {
-      console.error(`[Deploy] Deployment error: ${error.message}`)
-      throw new Error(error.message)
-    }
-
     if (error instanceof Error) {
       console.error(`[Deploy] Error: ${error.message}`)
       throw error

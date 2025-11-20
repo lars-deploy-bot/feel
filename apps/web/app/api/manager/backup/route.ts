@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { backupWebsites, DeploymentError } from "@alive-brug/deploy-scripts"
+import { backupWebsites, DeploymentError } from "@webalive/site-controller"
 import { isManagerAuthenticated } from "@/features/auth/lib/auth"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { generateRequestId } from "@/lib/utils"

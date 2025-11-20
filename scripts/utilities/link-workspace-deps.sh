@@ -23,10 +23,11 @@ for pkg in tools images template guides; do
     fi
 done
 
-# Link deploy-scripts to @alive-brug
-if [ -d "$PROJECT_ROOT/packages/deploy-scripts" ]; then
-    ln -sf "$PROJECT_ROOT/packages/deploy-scripts" "$ALIVE_BRUG_NM/deploy-scripts"
-    echo "✓ Linked @alive-brug/deploy-scripts"
+# Create @webalive directory and link site-controller
+mkdir -p "$WEBALIVE_NM"
+if [ -d "$PROJECT_ROOT/packages/site-controller" ]; then
+    ln -sf "$PROJECT_ROOT/packages/site-controller" "$WEBALIVE_NM/site-controller"
+    echo "✓ Linked @webalive/site-controller"
 fi
 
 echo "✓ Workspace dependencies linked successfully"

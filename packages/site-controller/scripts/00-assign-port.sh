@@ -7,6 +7,12 @@ source "$(dirname "$0")/lib/common.sh"
 # Validate required environment variables
 require_var SITE_DOMAIN REGISTRY_PATH
 
+# Cleanup function to ensure lock is always released
+cleanup() {
+    flock -u 200 2>/dev/null || true
+}
+trap cleanup EXIT ERR INT TERM
+
 log_info "Assigning port for domain: $SITE_DOMAIN"
 
 # Ensure registry file exists
@@ -59,12 +65,34 @@ if [[ $NEXT_PORT -gt 3999 ]]; then
     die "No available ports in range 3333-3999"
 fi
 
-# Double-check port is not in use on system
-while port_in_use "$NEXT_PORT"; do
-    log_warn "Port $NEXT_PORT appears to be in use, trying next..."
+# Double-check port is not in use (both in registry AND on system)
+# This prevents race condition where another deployment claims port between our read and write
+attempts=0
+while true; do
+    # Check if port is in registry (another concurrent deployment might have claimed it)
+    REGISTRY_CHECK=$(jq -r ".[] | select(.port == $NEXT_PORT) | .port" "$REGISTRY_PATH" 2>/dev/null || echo "")
+
+    # Check if port is in use on system
+    PORT_IN_USE=false
+    if [[ -n "$REGISTRY_CHECK" ]] || port_in_use "$NEXT_PORT"; then
+        PORT_IN_USE=true
+    fi
+
+    if [[ "$PORT_IN_USE" == "false" ]]; then
+        break  # Port is free, use it
+    fi
+
+    log_warn "Port $NEXT_PORT is occupied (registry or system), trying next..."
     NEXT_PORT=$((NEXT_PORT + 1))
+
+    # Safety checks
     if [[ $NEXT_PORT -gt 3999 ]]; then
         die "No available ports in range 3333-3999"
+    fi
+
+    ((attempts++))
+    if [[ $attempts -gt 100 ]]; then
+        die "Failed to find available port after 100 attempts"
     fi
 done
 

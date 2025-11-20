@@ -1,7 +1,8 @@
-import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
+import { requireManagerAuth } from "@/features/manager/lib/api-helpers"
 import { addCorsHeaders } from "@/lib/cors-utils"
-import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
+import { createCorsSuccessResponse, createCorsErrorResponse } from "@/lib/api/responses"
+import { ErrorCodes } from "@/lib/error-codes"
 import { getAllFeedback } from "@/lib/feedback"
 
 /**
@@ -13,50 +14,26 @@ export async function GET(req: NextRequest) {
 
   try {
     // Check manager authentication
-    const jar = await cookies()
-    const session = jar.get("manager_session")
-
-    if (!session) {
-      const res = NextResponse.json(
-        {
-          ok: false,
-          error: ErrorCodes.WORKSPACE_NOT_AUTHENTICATED,
-          message: getErrorMessage(ErrorCodes.WORKSPACE_NOT_AUTHENTICATED),
-        },
-        { status: 401 },
-      )
-      addCorsHeaders(res, origin)
-      return res
+    const authError = await requireManagerAuth()
+    if (authError) {
+      return authError
     }
 
     // Fetch all feedback (already sorted by created_at desc in Supabase)
     const feedback = await getAllFeedback()
 
-    const res = NextResponse.json({
-      ok: true,
+    return createCorsSuccessResponse(origin, {
       feedback,
       count: feedback.length,
     })
-
-    addCorsHeaders(res, origin)
-    return res
   } catch (error) {
     console.error("[Manager] Error fetching feedback:", error)
 
-    const res = NextResponse.json(
-      {
-        ok: false,
-        error: ErrorCodes.INTERNAL_ERROR,
-        message: getErrorMessage(ErrorCodes.INTERNAL_ERROR),
-        details: {
-          message: error instanceof Error ? error.message : "Unknown error",
-        },
+    return createCorsErrorResponse(origin, ErrorCodes.INTERNAL_ERROR, 500, {
+      details: {
+        message: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 },
-    )
-
-    addCorsHeaders(res, origin)
-    return res
+    })
   }
 }
 

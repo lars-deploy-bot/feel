@@ -164,25 +164,6 @@ export function isLoginResponse(data: unknown): data is LoginResponse {
 }
 
 /**
- * Type guard for LogoutResponse
- */
-export function isLogoutResponse(data: unknown): data is LogoutResponse {
-  return isApiSuccess(data) && "message" in data && typeof (data as LogoutResponse).message === "string"
-}
-
-/**
- * Type guard for VerifyResponse
- */
-export function isVerifyResponse(data: unknown): data is VerifyResponse {
-  return (
-    isApiSuccess(data) &&
-    "verified" in data &&
-    "workspace" in data &&
-    typeof (data as VerifyResponse).workspace === "string"
-  )
-}
-
-/**
  * Type guard for TokensResponse
  */
 export function isTokensResponse(data: unknown): data is TokensResponse {
@@ -193,19 +174,6 @@ export function isTokensResponse(data: unknown): data is TokensResponse {
     "workspace" in data &&
     typeof (data as TokensResponse).tokens === "number" &&
     typeof (data as TokensResponse).credits === "number"
-  )
-}
-
-/**
- * Type guard for FeedbackResponse
- */
-export function isFeedbackResponse(data: unknown): data is FeedbackResponse {
-  return (
-    isApiSuccess(data) &&
-    "id" in data &&
-    "timestamp" in data &&
-    typeof (data as FeedbackResponse).id === "string" &&
-    typeof (data as FeedbackResponse).timestamp === "number"
   )
 }
 
@@ -231,18 +199,5 @@ export function createErrorResponse(error: string, message?: string): ApiError {
     ok: false,
     error,
     ...(message && { message }),
-  }
-}
-
-/**
- * Assert that data matches a type guard, throw if not
- */
-export function assertType<T>(
-  data: unknown,
-  guard: (data: unknown) => data is T,
-  errorMessage?: string,
-): asserts data is T {
-  if (!guard(data)) {
-    throw new Error(errorMessage || "Type assertion failed")
   }
 }

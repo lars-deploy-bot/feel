@@ -1,11 +1,10 @@
 import { exec } from "node:child_process"
 import { readFile } from "node:fs/promises"
 import { promisify } from "node:util"
-import { cookies } from "next/headers"
-import { type NextRequest, NextResponse } from "next/server"
-import { addCorsHeaders } from "@/lib/cors-utils"
+import type { NextRequest } from "next/server"
+import { requireManagerAuth } from "@/features/manager/lib/api-helpers"
+import { createCorsSuccessResponse } from "@/lib/api/responses"
 import { getAllDomains } from "@/lib/deployment/domain-registry"
-import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 import type { DomainStatus } from "@/types/domain"
 
 const execAsync = promisify(exec)
@@ -233,21 +232,10 @@ async function checkViteConfigPort(
 
 export async function GET(req: NextRequest) {
   const origin = req.headers.get("origin")
-  const jar = await cookies()
 
-  if (!jar.get("manager_session")) {
-    const requestId = crypto.randomUUID()
-    const res = NextResponse.json(
-      {
-        ok: false,
-        error: ErrorCodes.UNAUTHORIZED,
-        message: getErrorMessage(ErrorCodes.UNAUTHORIZED),
-        requestId,
-      },
-      { status: 401 },
-    )
-    addCorsHeaders(res, origin)
-    return res
+  const authError = await requireManagerAuth()
+  if (authError) {
+    return authError
   }
 
   const domains = await getAllDomains()
@@ -304,7 +292,5 @@ export async function GET(req: NextRequest) {
   const results = await Promise.all(checks)
   statuses.push(...results)
 
-  const res = NextResponse.json({ ok: true, statuses })
-  addCorsHeaders(res, origin)
-  return res
+  return createCorsSuccessResponse(origin, { statuses })
 }

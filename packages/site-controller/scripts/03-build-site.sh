@@ -18,9 +18,9 @@ PORT=$SITE_PORT
 EOF
 
 # Generate config if script exists
-if [[ -f "${TARGET_DIR}/../scripts/generate-config.js" ]]; then
+if [[ -f "${TARGET_DIR}/scripts/generate-config.js" ]]; then
     log_info "Generating site config..."
-    cd "$(dirname "$TARGET_DIR")"
+    cd "$TARGET_DIR"
     bun run scripts/generate-config.js "$SITE_DOMAIN" "$SITE_PORT" || log_warn "Config generation failed, continuing..."
 fi
 

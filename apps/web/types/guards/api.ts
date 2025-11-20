@@ -57,69 +57,6 @@ export const LoginSchema = z.object({
 
 export type LoginRequest = z.infer<typeof LoginSchema>
 
-/**
- * Check if a request body is valid (uses Zod safeParse)
- */
-export function isValidRequestBody(body: unknown): body is ValidatedBody {
-  const result = BodySchema.safeParse(body)
-  return result.success
-}
-
-/**
- * Check if a login request is valid
- */
-export function isValidLoginRequest(body: unknown): body is LoginRequest {
-  const result = LoginSchema.safeParse(body)
-  return result.success
-}
-
-/**
- * Validate request body and return parsed result with error details
- */
-export function validateRequestBody(body: unknown) {
-  return BodySchema.safeParse(body)
-}
-
-/**
- * Validate login request and return parsed result
- */
-export function validateLoginRequest(body: unknown) {
-  return LoginSchema.safeParse(body)
-}
-
-/**
- * Check if request body parsed successfully
- */
-export function isParseResultSuccess<T>(result: z.SafeParseReturnType<T, T>): result is z.SafeParseSuccess<T> {
-  return result.success
-}
-
-/**
- * Check if request body parsing failed
- */
-export function isParseResultError<T>(result: z.SafeParseReturnType<T, T>): result is z.SafeParseError<T> {
-  return !result.success
-}
-
-/**
- * Check if a tool name is in the allowed whitelist
- */
-export function isToolAllowed(toolName: string, allowedTools: Set<string>): boolean {
-  return allowedTools.has(toolName)
-}
-
-/**
- * Check if a JSON string is valid
- */
-export function isValidJSON(jsonString: string): boolean {
-  try {
-    JSON.parse(jsonString)
-    return true
-  } catch {
-    return false
-  }
-}
-
 const SALT_ROUNDS = 12
 
 export async function hashPassword(plaintext: string): Promise<string> {
@@ -173,4 +110,3 @@ export function loadDomainPasswords(): DomainPasswords {
   }
   return {}
 }
-

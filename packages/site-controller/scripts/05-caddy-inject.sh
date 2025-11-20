@@ -30,8 +30,11 @@ if grep -q "^${SITE_DOMAIN} {" "$CADDYFILE_PATH"; then
 else
     log_info "Domain block does not exist, creating new entry..."
 
-    # Append new domain block with imports and headers
-    cat >> "$CADDYFILE_PATH" <<EOF
+    # Append new domain block atomically using temp file
+    TMP_FILE="${CADDYFILE_PATH}.tmp.$$"
+    cp "$CADDYFILE_PATH" "$TMP_FILE"
+
+    cat >> "$TMP_FILE" <<EOF
 
 ${SITE_DOMAIN} {
     import common_headers
@@ -44,6 +47,9 @@ ${SITE_DOMAIN} {
     }
 }
 EOF
+
+    # Atomic move
+    mv "$TMP_FILE" "$CADDYFILE_PATH"
 fi
 
 log_success "Caddyfile updated"

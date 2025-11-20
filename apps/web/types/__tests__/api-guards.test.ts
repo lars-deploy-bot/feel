@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { BodySchema, isToolAllowed, LoginSchema } from "@/types/guards/api"
+import { BodySchema, LoginSchema } from "@/types/guards/api"
 
 describe("API Request Validation Guards", () => {
   describe("BodySchema (Claude API request)", () => {
@@ -159,62 +159,6 @@ describe("API Request Validation Guards", () => {
 
       const result = LoginSchema.safeParse(pathTraversal)
       expect(result.success).toBe(true)
-    })
-  })
-
-  describe("isToolAllowed", () => {
-    it("should allow tools in the whitelist", () => {
-      const allowedTools = new Set(["Read", "Write", "Edit"])
-
-      expect(isToolAllowed("Read", allowedTools)).toBe(true)
-      expect(isToolAllowed("Write", allowedTools)).toBe(true)
-      expect(isToolAllowed("Edit", allowedTools)).toBe(true)
-    })
-
-    it("should deny tools not in the whitelist", () => {
-      const allowedTools = new Set(["Read", "Write"])
-
-      expect(isToolAllowed("Bash", allowedTools)).toBe(false)
-      expect(isToolAllowed("Exec", allowedTools)).toBe(false)
-      expect(isToolAllowed("Delete", allowedTools)).toBe(false)
-    })
-
-    it("should be case-sensitive", () => {
-      const allowedTools = new Set(["Read"])
-
-      expect(isToolAllowed("Read", allowedTools)).toBe(true)
-      expect(isToolAllowed("read", allowedTools)).toBe(false)
-      expect(isToolAllowed("READ", allowedTools)).toBe(false)
-    })
-
-    it("should not allow partial matches", () => {
-      const allowedTools = new Set(["Read"])
-
-      expect(isToolAllowed("Read ", allowedTools)).toBe(false)
-      expect(isToolAllowed(" Read", allowedTools)).toBe(false)
-      expect(isToolAllowed("ReadFile", allowedTools)).toBe(false)
-    })
-
-    it("should handle empty tool names", () => {
-      const allowedTools = new Set(["Read"])
-
-      expect(isToolAllowed("", allowedTools)).toBe(false)
-    })
-
-    it("should handle empty whitelist", () => {
-      const emptyWhitelist = new Set<string>([])
-
-      expect(isToolAllowed("Read", emptyWhitelist)).toBe(false)
-      expect(isToolAllowed("Write", emptyWhitelist)).toBe(false)
-    })
-
-    it("should not be vulnerable to prototype pollution", () => {
-      const allowedTools = new Set(["Read"])
-
-      // Attempt to pollute with special properties
-      expect(isToolAllowed("toString", allowedTools)).toBe(false)
-      expect(isToolAllowed("constructor", allowedTools)).toBe(false)
-      expect(isToolAllowed("__proto__", allowedTools)).toBe(false)
     })
   })
 

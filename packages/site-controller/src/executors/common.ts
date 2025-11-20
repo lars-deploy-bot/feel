@@ -28,7 +28,11 @@ export async function runScript(
   scriptName: string,
   env: Record<string, string>
 ): Promise<string> {
-  const scriptPath = resolve(__dirname, '../../scripts', scriptName)
+  // Use absolute path to scripts directory to avoid path resolution issues with symlinks
+  const scriptsDir = '/root/webalive/claude-bridge/packages/site-controller/scripts'
+  const scriptPath = resolve(scriptsDir, scriptName)
+  console.log(`[runScript] Scripts dir: ${scriptsDir}`)
+  console.log(`[runScript] Resolved script path: ${scriptPath}`)
 
   return new Promise((resolve, reject) => {
     const proc = spawn(scriptPath, [], {

@@ -29,6 +29,14 @@ export class SiteOrchestrator {
       wildcardDomain = DEFAULTS.WILDCARD_DOMAIN,
     } = config
 
+    // Validate domain format to prevent path traversal
+    if (!/^[a-z0-9.-]+$/i.test(domain)) {
+      throw new Error(`Invalid domain format: ${domain}`)
+    }
+    if (domain.includes('..') || domain.startsWith('/')) {
+      throw new Error(`Path traversal detected in domain: ${domain}`)
+    }
+
     const serviceName = getServiceName(slug)
     let deployedPort: number | undefined
 
@@ -132,7 +140,11 @@ export class SiteOrchestrator {
       if (rollbackOnFailure && deployedPort) {
         console.log('\n=== Attempting rollback ===\n')
         try {
-          await this.teardown(domain, { removeFiles: false, removeUser: false })
+          await this.teardown(domain, {
+            removeFiles: false,
+            removeUser: false,
+            removePort: false,  // Keep port reserved for retry
+          })
           console.log('✓ Rollback successful\n')
         } catch (rollbackError) {
           console.error(
@@ -163,6 +175,7 @@ export class SiteOrchestrator {
     options: {
       removeUser?: boolean
       removeFiles?: boolean
+      removePort?: boolean
     } = {}
   ): Promise<void> {
     const slug = domain.replace(/\./g, '-')
@@ -176,6 +189,7 @@ export class SiteOrchestrator {
       serviceName,
       removeUser: options.removeUser,
       removeFiles: options.removeFiles,
+      removePort: options.removePort,
       caddyfilePath: PATHS.CADDYFILE_PATH,
       caddyLockPath: PATHS.CADDY_LOCK,
       envFilePath: getEnvFilePath(slug),

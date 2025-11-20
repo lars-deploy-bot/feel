@@ -39,28 +39,3 @@ export function llmTokensToCredits(llmTokens: number): number {
 export function creditsToLLMTokens(credits: number): number {
   return Math.round(credits * LLM_TOKENS_PER_CREDIT)
 }
-
-/**
- * Format credits for UI display
- * @param credits - Number of user-facing credits
- * @returns Formatted string (e.g., "10.50 credits")
- */
-export function formatCreditsForDisplay(credits: number): string {
-  return `${credits.toFixed(2)} credits`
-}
-
-/**
- * Check if user has enough LLM tokens remaining
- * @param availableLLMTokens - Current LLM token balance
- * @param requiredLLMTokens - LLM tokens needed (will be deducted)
- * @returns true if sufficient balance
- */
-export function hasSufficientLLMTokens(availableLLMTokens: number, requiredLLMTokens: number = 1): boolean {
-  return availableLLMTokens >= requiredLLMTokens
-}
-
-/**
- * Default starting balance
- * 200 credits (enough for ~2000 conversations)
- */
-export const DEFAULT_STARTING_CREDITS = 200

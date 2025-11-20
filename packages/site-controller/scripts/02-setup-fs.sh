@@ -21,12 +21,13 @@ if [[ -d "$LEGACY_PATH" ]]; then
     rsync -av --exclude='node_modules' --exclude='.git' "${LEGACY_PATH}/" "${TARGET_DIR}/"
 else
     log_info "Copying from template: $TEMPLATE_PATH"
-    # Copy template
-    cp -r "${TEMPLATE_PATH}/user/." "$TARGET_DIR/"
+    # Copy entire template directory (includes user/, scripts/, and root files)
+    # Exclude node_modules, .git, and symlinks to prevent issues
+    rsync -av --exclude='node_modules' --exclude='.git' --exclude='template' "${TEMPLATE_PATH}/" "${TARGET_DIR}/"
 
-    # Create site-specific Caddyfile if doesn't exist
-    if [[ ! -f "${TARGET_DIR}/Caddyfile" ]]; then
-        cat > "${TARGET_DIR}/Caddyfile" <<EOF
+    # Create site-specific Caddyfile (overwrite template's generic one)
+    log_info "Creating site-specific Caddyfile..."
+    cat > "${TARGET_DIR}/Caddyfile" <<EOF
 # Auto-generated Caddyfile for ${SITE_DOMAIN}
 # Port: __PORT__
 
@@ -41,7 +42,6 @@ ${SITE_DOMAIN} {
     }
 }
 EOF
-    fi
 fi
 
 # Set ownership

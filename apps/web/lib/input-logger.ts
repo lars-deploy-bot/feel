@@ -1,5 +1,6 @@
-import { appendFile, mkdir } from "node:fs/promises"
+import { appendFile } from "node:fs/promises"
 import path from "node:path"
+import { ensureDirectory } from "./utils/fs-helpers"
 
 export interface InputLogEntry {
   timestamp: string
@@ -22,7 +23,7 @@ const LOG_FILE = path.join(LOG_DIR, "inputs.jsonl")
 export async function logInput(entry: InputLogEntry): Promise<void> {
   try {
     // Ensure log directory exists
-    await mkdir(LOG_DIR, { recursive: true })
+    await ensureDirectory(LOG_DIR)
 
     // Append as JSONL (one JSON object per line)
     const line = `${JSON.stringify(entry)}\n`

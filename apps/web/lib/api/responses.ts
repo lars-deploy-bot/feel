@@ -102,3 +102,74 @@ export const CommonErrors = {
   internal: (message = "Internal server error", origin?: string | null) =>
     errorResponse(message, { origin, status: 500 }),
 }
+
+/**
+ * Simplified CORS response helpers for common patterns
+ * These always add CORS headers (unlike jsonResponse which is optional)
+ */
+
+/**
+ * Create a JSON response with CORS headers (always applied)
+ *
+ * @param origin - The request origin for CORS headers
+ * @param data - The data to return in the response
+ * @param status - HTTP status code (default: 200)
+ * @returns NextResponse with CORS headers
+ * @example
+ * return createCorsResponse(origin, { ok: true, data: [...] }, 200)
+ */
+export function createCorsResponse(origin: string | null, data: unknown, status = 200): NextResponse {
+  const res = NextResponse.json(data, { status })
+  addCorsHeaders(res, origin)
+  return res
+}
+
+/**
+ * Create an error JSON response with CORS headers (always applied)
+ *
+ * @param origin - The request origin for CORS headers
+ * @param error - The error code
+ * @param status - HTTP status code
+ * @param fields - Additional fields to include in the response (e.g., requestId, details)
+ * @returns NextResponse with error and CORS headers
+ * @example
+ * return createCorsErrorResponse(origin, ErrorCodes.UNAUTHORIZED, 401, { requestId })
+ * return createCorsErrorResponse(origin, ErrorCodes.INVALID_REQUEST, 400, { requestId, details: { issues } })
+ */
+export function createCorsErrorResponse(
+  origin: string | null,
+  error: ErrorCode,
+  status: number,
+  fields?: { requestId?: string; details?: unknown },
+): NextResponse {
+  const res = NextResponse.json(
+    {
+      ok: false,
+      error,
+      message: getErrorMessage(error),
+      ...fields,
+    },
+    { status },
+  )
+  addCorsHeaders(res, origin)
+  return res
+}
+
+/**
+ * Create a success JSON response with CORS headers (always applied)
+ *
+ * @param origin - The request origin for CORS headers
+ * @param data - The data to return (will be wrapped in { ok: true, ...data })
+ * @param status - HTTP status code (default: 200)
+ * @returns NextResponse with success response and CORS headers
+ * @example
+ * return createCorsSuccessResponse(origin, { users: [...] })
+ * // Returns: { ok: true, users: [...] }
+ */
+export function createCorsSuccessResponse(
+  origin: string | null,
+  data: Record<string, unknown>,
+  status = 200,
+): NextResponse {
+  return createCorsResponse(origin, { ok: true, ...data }, status)
+}

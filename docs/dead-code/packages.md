@@ -63,6 +63,9 @@ export async function isPortListening(port: number): Promise<boolean> {
 
 **Status:** ❌ DUPLICATE - orchestration/utils.ts version is UNUSED
 
+**Dependencies:**
+- `net` (Node.js built-in module) - Both versions use it
+
 **Recommendation:**
 - **Keep:** `packages/deploy-scripts/src/ports/registry.ts` version
 - **Remove:** `packages/deploy-scripts/src/orchestration/utils.ts` version (lines 13-33)
@@ -121,6 +124,10 @@ export async function askAI(prompt: string, schema?: string): Promise<string> {
 - Never imported by any tool or test file
 - Grep search found 0 usages outside definition file
 
+**Dependencies:**
+- `groq-client` (getGroqClient, withRetry) - withRetry is used by generate-persona.ts, so stays in use
+- Only the askAI() file itself is dead
+
 **Related Code:**
 - Imports `withRetry()` from groq-client
 - `withRetry()` IS used in `generate-persona.ts`, so groq-client is not fully dead
@@ -156,6 +163,9 @@ export function getScriptDir(): string {
 - Exported from config.ts
 - Never imported by orchestrator.ts or any other file
 - Grep search found 0 usages in codebase
+
+**Dependencies:**
+- `path` (Node.js built-in module, resolve function)
 
 **Recommendation:**
 - **Remove:** Function from config.ts (lines 70-72)

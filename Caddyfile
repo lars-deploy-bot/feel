@@ -183,7 +183,7 @@ sk.goalive.nl {
     reverse_proxy localhost:3888
 }
 
-# NOTE: alive.best subdomain entries are added dynamically by deploy-site-systemd.sh
+# NOTE: alive.best subdomain entries are added dynamically by @webalive/site-controller
 # When a new subdomain is deployed, the script adds an entry like:
 # alice.alive.best {
 #     import common_headers
@@ -1496,6 +1496,31 @@ geesjeskitchen.alive.best {
     import common_headers
     import image_serving
     reverse_proxy localhost:3507 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+# Auto-generated Caddyfile for larrylar.alive.best
+# Port: 3508
+
+larrylar.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3508 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+asdfadsfadsf.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3510 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
         header_up X-Forwarded-For {remote_host}

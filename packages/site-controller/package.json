@@ -4,6 +4,10 @@
   "description": "Shell-Operator Pattern implementation for website deployment",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "scripts"
+  ],
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",

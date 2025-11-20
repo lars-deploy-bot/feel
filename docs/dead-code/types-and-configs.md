@@ -36,6 +36,9 @@ export function hasSufficientLLMTokens(
 **Evidence:** Not imported anywhere except definition file
 **Safe to remove:** YES
 
+**Dependencies:**
+- None (pure function with no external dependencies)
+
 **Current usage check:**
 ```bash
 grep -r "hasSufficientLLMTokens" apps/web --exclude-dir=node_modules
@@ -58,6 +61,9 @@ export function formatCreditsForDisplay(credits: number): string {
 **Evidence:** Not imported anywhere
 **Safe to remove:** YES
 
+**Dependencies:**
+- None (pure function with no external dependencies)
+
 **Current usage check:**
 ```bash
 grep -r "formatCreditsForDisplay" apps/web --exclude-dir=node_modules
@@ -78,6 +84,9 @@ export const DEFAULT_STARTING_CREDITS = 200
 **Evidence:** Not referenced anywhere
 **Safe to remove:** YES
 **Note:** Initial credit balance likely moved to Supabase configuration
+
+**Dependencies:**
+- None (constant with no external dependencies)
 
 **Current usage check:**
 ```bash
@@ -108,6 +117,10 @@ export function isValidRequestBody(body: unknown): body is ValidatedBody {
 **Safe to remove:** YES
 **Alternative:** Tests can use `BodySchema.safeParse()` directly
 
+**Dependencies:**
+- `zod` (BodySchema) - Stays in use (schema is used in production)
+- Type guard wrapper is dead, underlying schema stays
+
 **Recommendation:**
 ```typescript
 // Before (using type guard)
@@ -135,6 +148,10 @@ export function isValidLoginRequest(body: unknown): body is LoginRequest {
 **Safe to remove:** YES
 **Alternative:** Tests can use `LoginSchema.safeParse()` directly
 
+**Dependencies:**
+- `zod` (LoginSchema) - Stays in use (schema is used in production)
+- Type guard wrapper is dead, underlying schema stays
+
 ---
 
 ### 6. validateRequestBody()
@@ -151,6 +168,10 @@ export function validateRequestBody(body: unknown): z.SafeParseReturnType<Valida
 **Usage:** Only in test file
 **Safe to remove:** YES
 **Alternative:** Call `BodySchema.safeParse()` directly
+
+**Dependencies:**
+- `zod` (BodySchema, SafeParseReturnType) - Stays in use (schema is used in production)
+- Validation wrapper is dead, underlying schema stays
 
 **Note:** This is a thin wrapper around Zod's safeParse - unnecessary abstraction.
 
@@ -170,6 +191,10 @@ export function validateLoginRequest(body: unknown): z.SafeParseReturnType<Login
 **Usage:** Only in test file
 **Safe to remove:** YES
 **Alternative:** Call `LoginSchema.safeParse()` directly
+
+**Dependencies:**
+- `zod` (LoginSchema, SafeParseReturnType) - Stays in use (schema is used in production)
+- Validation wrapper is dead, underlying schema stays
 
 **Note:** Another thin wrapper - unnecessary abstraction.
 
@@ -195,6 +220,10 @@ export function isParseResultSuccess<T>(
 **Evidence:** Not imported or used anywhere
 **Safe to remove:** YES
 
+**Dependencies:**
+- `zod` (SafeParseReturnType, SafeParseSuccess) - Stays in use (used elsewhere)
+- Type guard wrapper is dead, underlying Zod types stay
+
 **Note:** Zod's SafeParseReturnType already has `.success` boolean - this wrapper is redundant.
 
 ---
@@ -214,6 +243,10 @@ export function isParseResultError<T>(
 **Status:** ❌ COMPLETELY UNUSED
 **Evidence:** Not imported or used anywhere
 **Safe to remove:** YES
+
+**Dependencies:**
+- `zod` (SafeParseReturnType, SafeParseError) - Stays in use (used elsewhere)
+- Type guard wrapper is dead, underlying Zod types stay
 
 **Note:** Can check `!result.success` directly - wrapper unnecessary.
 
@@ -238,6 +271,10 @@ export function isToolAllowed(toolName: string): boolean {
 **Production:** Tool validation happens in `lib/claude/tool-permissions.ts`
 **Safe to remove:** YES
 
+**Dependencies:**
+- `ALLOWED_TOOLS` Set (from same file) - Stays in use (used in production)
+- Function wrapper is dead, underlying constant stays
+
 **Note:** Tests can check `ALLOWED_TOOLS.has(toolName)` directly.
 
 ---
@@ -261,6 +298,9 @@ export function isValidJSON(str: string): boolean {
 **Evidence:** Not imported or used anywhere
 **Safe to remove:** YES
 
+**Dependencies:**
+- None (pure function using only built-in JSON.parse)
+
 ---
 
 ## Group 5: API Response Type Guards (4 items)
@@ -283,6 +323,10 @@ export function isLogoutResponse(obj: unknown): obj is LogoutResponse {
 **Evidence:** LogoutResponse type exists but guard never called
 **Safe to remove:** YES
 
+**Dependencies:**
+- `isApiResponse()` (internal function) - Stays in use (used by other guards)
+- Type guard wrapper is dead, underlying helper stays
+
 ---
 
 ### 13. isVerifyResponse()
@@ -303,6 +347,10 @@ export function isVerifyResponse(obj: unknown): obj is VerifyResponse {
 **Evidence:** Type exists but guard never called
 **Safe to remove:** YES
 
+**Dependencies:**
+- `isApiResponse()` (internal function) - Stays in use (used by other guards)
+- Type guard wrapper is dead, underlying helper stays
+
 ---
 
 ### 14. isFeedbackResponse()
@@ -322,6 +370,10 @@ export function isFeedbackResponse(obj: unknown): obj is FeedbackResponse {
 **Status:** ❌ UNUSED IN PRODUCTION
 **Evidence:** Type exists but guard never called
 **Safe to remove:** YES
+
+**Dependencies:**
+- `isApiResponse()` (internal function) - Stays in use (used by other guards)
+- Type guard wrapper is dead, underlying helper stays
 
 ---
 
@@ -344,6 +396,9 @@ export function assertType<T>(
 **Status:** ❌ COMPLETELY UNUSED
 **Evidence:** Not imported or used anywhere
 **Safe to remove:** YES
+
+**Dependencies:**
+- None (generic assertion function with no external dependencies)
 
 ---
 

@@ -35,7 +35,7 @@ export default defineConfig({
     preserveSymlinks: false,
     alias: {
       "@alive-brug/tools": join(process.cwd(), "../../packages/tools"),
-      "@alive-brug/deploy-scripts": join(process.cwd(), "../../packages/deploy-scripts"),
+      "@webalive/site-controller": join(process.cwd(), "../../packages/site-controller"),
       "@alive-brug/images": join(process.cwd(), "../../packages/images"),
       "@alive-brug/template": join(process.cwd(), "../../packages/template"),
       "@alive-brug/guides": join(process.cwd(), "../../packages/guides"),
@@ -44,7 +44,7 @@ export default defineConfig({
   ssr: {
     noExternal: [
       "@alive-brug/tools",
-      "@alive-brug/deploy-scripts",
+      "@webalive/site-controller",
       "@alive-brug/images",
       "@alive-brug/template",
       "@alive-brug/guides",

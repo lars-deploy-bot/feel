@@ -172,27 +172,37 @@ apps/web/
 
 #### Deploying a New Site
 
-**ONLY use the secure systemd deployment:**
+**Site deployments now use the `@webalive/site-controller` package:**
 
 ```bash
-# Automated deployment (via sitectl TypeScript tool)
-bun run deploy-site newsite.com
+# Via API (authenticated deployment)
+# POST /api/deploy-subdomain with { domain, email, password? }
+# This is the primary deployment method used by the web UI
 
-# Or with explicit email:
-export DEPLOY_EMAIL="user@example.com"
-bun run packages/deploy-scripts/src/sitectl.ts newsite.com
+# Or programmatically:
+import { SiteOrchestrator } from '@webalive/site-controller'
+
+await SiteOrchestrator.deploy({
+  domain: 'newsite.com',
+  slug: 'newsite-com',
+  templatePath: PATHS.TEMPLATE_PATH,
+  serverIp: DEFAULTS.SERVER_IP,
+  wildcardDomain: DEFAULTS.WILDCARD_DOMAIN,
+  rollbackOnFailure: true
+})
 
 # This creates:
 # - Systemd service: site@newsite-com.service
 # - Dedicated user: site-newsite-com
 # - Workspace: /srv/webalive/sites/newsite.com/
-# - User account: Created or linked in Supabase (email-based)
-# - Port: Auto-assigned from registry
+# - Port: Auto-assigned from registry (3333-3999 range)
+# - Caddy configuration: Auto-updated with reverse proxy
 ```
 
 **Never use PM2 for new sites** - it lacks security isolation.
 
-**sitectl tool**: See `packages/deploy-scripts/README.md` for detailed documentation and environment variables.
+**Package**: See `packages/site-controller/README.md` for detailed documentation.
+**Implementation**: Uses Shell-Operator Pattern with atomic bash scripts and TypeScript orchestration.
 
 #### Updating Caddy Configuration
 
@@ -312,10 +322,16 @@ make rollback    # Interactive rollback (if needed)
 
 ### Site Deployment (Different)
 
-To deploy individual websites (not the Claude Bridge itself):
+To deploy individual websites (not the Claude Bridge itself), use the API endpoint:
 ```bash
-bun run deploy-site <domain.com>  # Deploy a website to infrastructure
+# Via web UI at /deploy (recommended)
+# Or via API:
+curl -X POST https://terminal.goalive.nl/api/deploy-subdomain \
+  -H "Content-Type: application/json" \
+  -d '{"domain": "newsite.alive.best", "email": "user@example.com"}'
 ```
+
+**Package**: Site deployments are handled by `@webalive/site-controller` with atomic bash scripts and automatic rollback.
 
 
 ## Key Dependencies & Versions

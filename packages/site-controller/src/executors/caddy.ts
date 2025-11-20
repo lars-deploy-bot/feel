@@ -31,6 +31,7 @@ export interface TeardownParams {
   serviceName: string
   removeUser?: boolean
   removeFiles?: boolean
+  removePort?: boolean
   caddyfilePath?: string
   caddyLockPath?: string
   envFilePath?: string
@@ -49,6 +50,7 @@ export async function teardown(params: TeardownParams): Promise<void> {
     SERVICE_NAME: params.serviceName,
     REMOVE_USER: params.removeUser ? 'true' : 'false',
     REMOVE_FILES: params.removeFiles ? 'true' : 'false',
+    REMOVE_PORT: params.removePort !== false ? 'true' : 'false',  // Default true
   }
 
   if (params.caddyfilePath) env.CADDYFILE_PATH = params.caddyfilePath
