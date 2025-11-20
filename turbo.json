@@ -15,6 +15,18 @@
     },
     "format": {
       "dependsOn": ["^format"]
+    },
+    "@alive-brug/redis#start": {
+      "cache": false
+    },
+    "@alive-brug/redis#stop": {
+      "cache": false
+    },
+    "@alive-brug/redis#status": {
+      "cache": false
+    },
+    "@alive-brug/redis#health": {
+      "cache": false
     }
   }
 }

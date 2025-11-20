@@ -1,0 +1,18 @@
+{
+  "name": "@alive-brug/redis",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Redis infrastructure for monorepo",
+  "scripts": {
+    "install": "bash scripts/install.sh",
+    "start": "bash scripts/start.sh",
+    "stop": "bash scripts/stop.sh",
+    "status": "docker-compose ps redis",
+    "logs": "docker-compose logs -f redis",
+    "cli": "docker exec -it redis redis-cli",
+    "monitor": "docker exec -it redis redis-cli MONITOR",
+    "health": "bash scripts/health-check.sh",
+    "test": "bash scripts/test.sh",
+    "clean": "docker-compose down -v"
+  }
+}
