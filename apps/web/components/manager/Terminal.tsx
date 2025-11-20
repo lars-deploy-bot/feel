@@ -138,7 +138,7 @@ export function Terminal({ workspace = "root", onExit }: TerminalProps) {
     }
 
     // Handle user input
-    term.onData(data => {
+    term.onData((data: string) => {
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(
           JSON.stringify({

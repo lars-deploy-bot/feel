@@ -10,7 +10,7 @@
     "build": "turbo run build",
     "cleanup-test-db": "bun scripts/database/cleanup-test-database.ts",
     "deploy-site": "echo 'Usage: export DEPLOY_EMAIL=user@example.com DEPLOY_PASSWORD=optional && bun run @alive-brug/deploy-scripts'",
-    "dev": "./scripts/deployment/deploy-dev.sh",
+    "dev": "HOSTED_ENV=computer ./scripts/deployment/deploy-dev.sh",
     "dev:turbo": "turbo run dev",
     "e2e": "cd apps/web && bun run test:e2e",
     "gates": "cd apps/web && bun run test:gates",

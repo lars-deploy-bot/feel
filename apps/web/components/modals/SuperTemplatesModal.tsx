@@ -112,10 +112,45 @@ export function SuperTemplatesModal({ onClose, onInsertTemplate }: SuperTemplate
             </div>
           )}
 
-          {/* Tabs */}
+          {/* Categories */}
           {!selectedTemplate && (
-            <div className="px-6 md:px-8 pt-6 border-b border-black/10 dark:border-white/10">
-              <div className="flex gap-1">
+            <div className="border-b border-black/10 dark:border-white/10">
+              {/* Mobile: Horizontal scroll with visual indicators */}
+              <div className="md:hidden pt-6 pb-4 relative">
+                {/* Gradient fade on right edge to indicate scrollability */}
+                <div className="absolute right-0 top-6 bottom-4 w-12 bg-gradient-to-l from-white dark:from-[#1a1a1a] to-transparent pointer-events-none z-10" />
+
+                <div className="overflow-x-auto scrollbar-hide px-6 -mx-6">
+                  <div className="flex gap-3 px-6 pb-1">
+                    {(Object.keys(categoryLabels) as Category[]).map(category => {
+                      const count = getTemplatesByCategory(category).length
+                      const isActive = activeCategory === category
+
+                      return (
+                        <button
+                          key={category}
+                          type="button"
+                          onClick={() => setActiveCategory(category)}
+                          className={`px-5 py-3.5 rounded-full whitespace-nowrap text-base font-[500] transition-all flex-shrink-0
+                            ${
+                              isActive
+                                ? "bg-black dark:bg-white text-white dark:text-black shadow-md"
+                                : "bg-black/[0.06] dark:bg-white/[0.06] text-black dark:text-white active:bg-black/10 dark:active:bg-white/10"
+                            }`}
+                        >
+                          {categoryLabels[category]}
+                          <span className={`ml-2 text-sm font-[300] ${isActive ? "opacity-75" : "opacity-50"}`}>
+                            {count}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Desktop: Minimal tabs */}
+              <div className="hidden md:flex gap-1 px-8 pt-6">
                 {(Object.keys(categoryLabels) as Category[]).map(category => {
                   const count = getTemplatesByCategory(category).length
                   const isActive = activeCategory === category
@@ -125,7 +160,7 @@ export function SuperTemplatesModal({ onClose, onInsertTemplate }: SuperTemplate
                       key={category}
                       type="button"
                       onClick={() => setActiveCategory(category)}
-                      className={`px-4 py-2.5 text-sm font-[500] uppercase tracking-wide transition-colors
+                      className={`px-4 py-2.5 text-sm font-[500] uppercase tracking-wide transition-all
                         ${
                           isActive
                             ? "text-black dark:text-white border-b-2 border-black dark:border-white"

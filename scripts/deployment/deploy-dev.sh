@@ -8,6 +8,50 @@ SCRIPT_DIR="$(dirname "$0")"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 ENV_CONFIG="$PROJECT_ROOT/environments.json"
 
+# Validate HOSTED_ENV is set
+if [ -z "$HOSTED_ENV" ]; then
+    echo "❌ Error: HOSTED_ENV environment variable is not set"
+    echo ""
+    echo "Please set HOSTED_ENV to either 'server' or 'computer':"
+    echo "  export HOSTED_ENV=server    # For production server with PM2"
+    echo "  export HOSTED_ENV=computer  # For local development"
+    echo ""
+    echo "Add to your shell profile (~/.bashrc, ~/.zshrc) or conductor.json to make it permanent."
+    exit 1
+fi
+
+# Validate HOSTED_ENV value
+if [ "$HOSTED_ENV" != "server" ] && [ "$HOSTED_ENV" != "computer" ]; then
+    echo "❌ Error: HOSTED_ENV must be either 'server' or 'computer'"
+    echo "   Current value: '$HOSTED_ENV'"
+    exit 1
+fi
+
+# If running on computer (local dev), use simple workflow
+if [ "$HOSTED_ENV" = "computer" ]; then
+    echo "💻 Computer environment detected (HOSTED_ENV=computer)"
+    echo "🔄 Building packages and starting dev server..."
+
+    bun run lint
+    echo "✅ Linting complete"
+
+    bun run type-check
+    echo "✅ Type checking complete"
+
+    # Clean Next.js build cache
+    echo "🧹 Cleaning Next.js build cache..."
+    rm -rf "$PROJECT_ROOT/apps/web/.next"
+    echo "✅ Build cache cleaned"
+
+    # Start dev server
+    echo "🚀 Starting Next.js dev server..."
+    cd "$PROJECT_ROOT/apps/web"
+    exec bun run dev
+fi
+
+# Server environment - proceed with PM2 deployment
+echo "🖥️  Server environment detected (HOSTED_ENV=server)"
+
 # Read dev configuration
 DEV_PORT=$(jq -r '.environments.dev.port' "$ENV_CONFIG")
 DEV_PROCESS=$(jq -r '.environments.dev.processName' "$ENV_CONFIG")

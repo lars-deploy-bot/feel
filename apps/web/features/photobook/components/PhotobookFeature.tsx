@@ -154,7 +154,7 @@ export default function PhotobookPage() {
           <LoadingState message="Loading your images..." />
         ) : images.length > 0 ? (
           <div className="masonry-grid">
-            <style jsx>{`
+            <style>{`
               .masonry-grid {
                 columns: 1;
                 column-gap: 2rem;
