@@ -10,7 +10,7 @@
  * Automatically uses local or production based on BRIDGE_ENV
  */
 const getApiUrl = (path: string): string => {
-  const baseUrl = process.env.BRIDGE_ENV === "local" ? "http://localhost:8999" : "https://terminal.goalive.nl"
+  const baseUrl = process.env.BRIDGE_ENV === "local" ? "http://localhost:9000" : "https://terminal.goalive.nl"
   return `${baseUrl}${path}`
 }
 

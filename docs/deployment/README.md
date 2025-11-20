@@ -1,86 +1,173 @@
-# Claude Bridge Deployment
+# Deployment
 
-> **Atomic build system with zero-downtime deployments, automatic rollback, and 92% failure protection**
+Environment management and deployment guides.
 
-## Start Here
+**⚠️ Production deployment restricted - contact devops.**
 
-**I want to...**
-- 🚀 **Deploy to staging** → `make staging` then read [Quick Start](#quick-start)
-- 🚀 **Deploy to dev** → `make dev`
-- 🔧 **Fix a problem** → Check [Troubleshooting](#troubleshooting-index)
-- 📚 **Understand how it works** → Read [deployment.md](./deployment.md)
-- 🏗️ **Learn the architecture** → Read [ARCHITECTURE.md](./ARCHITECTURE.md)
-- 📜 **See what changed** → Read [CHANGELOG.md](./CHANGELOG.md)
+## Documentation Overview
 
-⚠️ **Production deployment is restricted** - Contact devops for production deploys.
+| Document | Purpose |
+|----------|---------|
+| [CURRENT_ARCHITECTURE.md](./CURRENT_ARCHITECTURE.md) | Current (as-is) deployment architecture with known issues |
+| [REFACTORING_PROBLEM_STATEMENT.md](./REFACTORING_PROBLEM_STATEMENT.md) | Complete analysis of deployment flow problems and state machines |
+| [site-deployment-state-machine.md](./site-deployment-state-machine.md) | Detailed bash script state machine (194 states, 6 phases) |
+| [site-deployment-architecture.md](./site-deployment-architecture.md) | End-to-end deployment architecture documentation |
 
-## Quick Start
+**Note:** A refactoring is being planned to address architectural issues documented in REFACTORING_PROBLEM_STATEMENT.md.
+
+## Environments
+
+| Environment | Domain | Port | Command |
+|-------------|--------|------|---------|
+| Dev | `dev.terminal.goalive.nl` | 8997 | `make dev` |
+| Staging | `staging.terminal.goalive.nl` | 8998 | `make staging` |
+
+## Dev & Staging Commands
 
 ```bash
-# Staging deployment (recommended for testing)
-make staging
+# Deploy staging
+make staging                  # Full staging deployment
 
-# Dev environment (with hot reload)
-make dev
+# Rebuild dev tools + restart
+make dev                      # Rebuild tools + restart dev server
 
-# View logs
+# Logs
+make logs-staging            # View staging logs
+make logs-dev                # View dev logs
+
+# Status
+make status                  # Show all environments
+pm2 list                     # List all PM2 processes
+
+# Rollback
+make rollback                # Interactive rollback to previous build
+```
+
+## Site Deployment
+
+Deploy individual websites (not Claude Bridge itself):
+
+```bash
+bun run deploy-site <domain.com>
+```
+
+This creates:
+- Systemd service: `site@domain-com.service`
+- Dedicated user: `site-domain-com`
+- Workspace: `/srv/webalive/sites/domain.com/`
+- User account: Created or linked in Supabase
+- Port: Auto-assigned from registry
+
+**Docs:** `packages/deploy-scripts/README.md`
+
+## Common Tasks
+
+### View Logs
+
+```bash
+# Staging
 make logs-staging
+
+# Dev
 make logs-dev
+
+# Specific site
+journalctl -u site@example-com.service -n 50 -f
 ```
 
-## What's Protected
+### Check Status
 
-✅ **12/13 failure modes covered (92%)**
+```bash
+# All environments
+make status
 
-- Concurrent deploys → Lock file
-- CSS/static assets → Explicit copy to standalone
-- Port conflicts → PM2 process check
-- Disk exhaustion → 250MB pre-check
-- Staging isolation → Dev files backed up
-- Failed builds → Old build untouched
-- Build cleanup → Keeps last 3
-- Zombie processes → Killed before start
+# Specific environment
+pm2 describe claude-bridge-staging
 
-See [ARCHITECTURE.md](./ARCHITECTURE.md) for complete coverage analysis.
-
-## Troubleshooting Index
-
-| Symptom | Solution |
-|---------|----------|
-| CSS not loading in staging (404) | `make staging` |
-| CSS not loading in dev (404) | `make dev` |
-| Port in use error | Check if PM2: `pm2 list` |
-| Staging broken | `pm2 restart claude-bridge-staging` |
-| Dev broken | `make dev` |
-| Disk full | Remove old builds: `cd .builds && ls -dt dist.* \| tail -n +4 \| xargs rm -rf` |
-
-Full troubleshooting in [deployment.md](./deployment.md#troubleshooting).
-
-## File Guide
-
-| File | Purpose | Read When |
-|------|---------|-----------|
-| **deployment.md** | Complete operational guide | Deploying or troubleshooting |
-| **ARCHITECTURE.md** | Technical design & internals | Understanding how it works |
-| **CHANGELOG.md** | Historical changes | Investigating past decisions |
-| **README.md** | This file - navigation hub | Starting point |
-
-## Current State
-
-**Structure:**
-```
-.builds/                          # Isolated builds
-├── current → dist.TIMESTAMP      # Active (PM2 serves this)
-├── dist.20251105-180718/         # Latest
-├── dist.20251105-180529/         # Rollback ready
-└── dist.20251105-180347/         # Backup
-
-apps/web/.next/dev/               # Staging only
+# Specific site
+systemctl status site@example-com.service
 ```
 
-**Servers:**
-- Production (restricted): `localhost:8999` → `.builds/current/standalone/`
-- Staging: `localhost:8998` → `.builds/staging/current/standalone/`
-- Dev: `localhost:8997` → `next dev --turbo` (uses `.next/dev`)
+### Restart Service
 
-**Protection:** 92% coverage, see [ARCHITECTURE.md](./ARCHITECTURE.md#failure-modes)
+```bash
+# Dev environment
+pm2 restart claude-bridge-dev
+
+# Staging environment
+pm2 restart claude-bridge-staging
+
+# Individual site
+systemctl restart site@example-com.service
+```
+
+## Troubleshooting
+
+### Tests Failed
+
+**Solution:**
+```bash
+bun test                     # See failures
+# Fix tests
+make dev                     # Retry
+```
+
+### CSS Not Loading (404)
+
+**Cause:** Dev assets not built
+
+**Solution:**
+```bash
+make dev                     # Full rebuild
+```
+
+### Port Already in Use
+
+**Cause:** Previous process didn't stop
+
+**Solution:**
+```bash
+lsof -ti:8997 | xargs kill -9  # Kill process on port
+make dev                        # Restart
+```
+
+## Current Architecture Issues
+
+**⚠️ Known Problems** (documented in [REFACTORING_PROBLEM_STATEMENT.md](./REFACTORING_PROBLEM_STATEMENT.md)):
+
+1. **Ordering Problem**: Infrastructure deployed BEFORE Supabase registration
+   - If Supabase fails, infrastructure is orphaned (no rollback)
+   - Leaves running services, consumed ports, created users
+
+2. **Mixed Concerns**: Auth credentials passed through infrastructure layer but unused
+   - TypeScript library requires `email` parameter but never uses it
+   - Creates false dependency and confusing API
+
+3. **Dual Implementation**: TypeScript library vs Bash script
+   - Maintenance burden, feature parity issues
+   - Bash script has 194 states across 6 phases (fully documented)
+
+4. **Port Registry Divergence**: Two sources of truth
+   - JSON file written during deploy, Supabase after
+   - No sync mechanism if they diverge
+
+5. **No Rollback**: Partial failures leave inconsistent state
+   - Infrastructure may be deployed but Supabase registration failed
+   - No cleanup mechanism
+
+6. **Concurrent Conflicts**: Limited locking mechanisms
+   - Caddy file locking only, no distributed locks
+   - Potential race conditions on port assignment
+
+See [REFACTORING_PROBLEM_STATEMENT.md](./REFACTORING_PROBLEM_STATEMENT.md) for complete analysis including:
+- 3 complete state machines (API, TypeScript, Bash)
+- Database schema details
+- Interaction flows
+- Solution space exploration
+
+## See Also
+
+- [Architecture](../architecture/README.md) - System design
+- [CURRENT_ARCHITECTURE.md](./CURRENT_ARCHITECTURE.md) - Current deployment architecture (as-is)
+- [Security: systemd Hardening](../security/systemd-hardening.md) - Site security
+- [Troubleshooting](../troubleshooting/README.md) - Common issues

@@ -126,7 +126,7 @@ get_next_port() {
 
     if [ -f "$DOMAIN_PASSWORDS_FILE" ]; then
         # Get all currently used ports in the site port range (3333-3999) and find the highest
-        # Exclude special service ports like 8998, 8999 (staging, terminal)
+        # Exclude special service ports like 8997, 8998, 9000 (dev, staging, production)
         local highest_port=$(jq -r '.[].port' "$DOMAIN_PASSWORDS_FILE" 2>/dev/null | awk '$1 >= 3333 && $1 < 4000' | sort -n | tail -1)
 
         if [ -n "$highest_port" ] && [ "$highest_port" != "null" ]; then
@@ -158,28 +158,19 @@ else
     PORT=$(get_next_port)
     echo "✅ Assigned new port: $PORT"
 
-    # DEPRECATED: Add to domain-passwords.json (kept for backward compatibility during migration)
-    # TODO: Remove after 2025-11-23 when fully migrated to Supabase
+    # Add port to domain-passwords.json (used by /api/deploy-subdomain for port registry)
+    # Only port is stored; all other fields (email, credits, passwordHash) are in Supabase
     if [ ! -f "$DOMAIN_PASSWORDS_FILE" ]; then
         echo "{}" > "$DOMAIN_PASSWORDS_FILE"
     fi
 
-    CREATED_AT=$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
-
     jq --arg domain "$DOMAIN" \
-       --arg passwordHash "$PASSWORD_HASH" \
        --argjson port "$PORT" \
-       --arg createdAt "$CREATED_AT" \
-       --arg email "$EMAIL" \
-       '.[$domain] = {passwordHash: $passwordHash, port: $port, createdAt: $createdAt, credits: 200} + (if $email != "" then {email: $email} else {} end)' \
+       '.[$domain] = {port: $port}' \
        "$DOMAIN_PASSWORDS_FILE" > "${DOMAIN_PASSWORDS_FILE}.tmp"
     mv "${DOMAIN_PASSWORDS_FILE}.tmp" "$DOMAIN_PASSWORDS_FILE"
 
-    if [ -n "$EMAIL" ]; then
-        echo "✅ Added $DOMAIN to domain-passwords.json (port $PORT, email: $EMAIL, credits: 200) [DEPRECATED - remove after migration]"
-    else
-        echo "✅ Added $DOMAIN to domain-passwords.json (port $PORT, credits: 200) [DEPRECATED - remove after migration]"
-    fi
+    echo "✅ Added $DOMAIN to domain-passwords.json (port $PORT)"
 
     # Supabase registration is now handled by the API route (POST /api/deploy-subdomain)
     # This ensures the domain is registered in request context with proper authentication

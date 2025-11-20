@@ -46,6 +46,19 @@ export const createTestIamClient = () => ({
         return { error: { message: error.message } }
       }
     },
+    select: (columns = "*") => ({
+      eq: (column: string, value: any) => ({
+        single: async () => {
+          const query = `SELECT ${columns} FROM iam.${table} WHERE ${column} = '${value}' LIMIT 1`
+          try {
+            const result = await executeSql(query)
+            return { data: result[0] || null, error: null }
+          } catch (error: any) {
+            return { data: null, error: { message: error.message } }
+          }
+        },
+      }),
+    }),
     delete: () => ({
       eq: async (column: string, value: any) => {
         const query = `DELETE FROM iam.${table} WHERE ${column} = '${value}'`

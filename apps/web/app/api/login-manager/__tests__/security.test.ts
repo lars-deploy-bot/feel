@@ -35,13 +35,11 @@ function createMockRequest(url: string, options?: RequestInit & { cookies?: Reco
   return req
 }
 
-const originalBridgePasscode = process.env.BRIDGE_PASSCODE
-
 describe("Manager Login Security Tests", () => {
   beforeEach(() => {
-    process.env.BRIDGE_PASSCODE = "wachtwoord"
-    process.env.BRIDGE_ENV = undefined
-    process.env.NODE_ENV = "production"
+    vi.stubEnv("BRIDGE_PASSCODE", "wachtwoord")
+    vi.stubEnv("BRIDGE_ENV", "")
+    vi.stubEnv("NODE_ENV", "production")
     vi.clearAllMocks()
 
     // Reset rate limiter before each test
@@ -49,7 +47,7 @@ describe("Manager Login Security Tests", () => {
   })
 
   afterEach(() => {
-    process.env.BRIDGE_PASSCODE = originalBridgePasscode
+    vi.unstubAllEnvs()
   })
 
   /**

@@ -64,6 +64,7 @@ export function ThinkingGroup({ messages, isComplete }: ThinkingGroupProps) {
         className={`text-xs font-normal flex items-center gap-1 group ${
           isDebugMode ? "cursor-pointer" : "cursor-default"
         }`}
+        data-testid={isComplete ? "thought-indicator" : "thinking-indicator"}
       >
         {!isComplete && <ThinkingSpinner />}
         <span className="text-black/35 dark:text-white/35 group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-black/35 group-hover:via-black/60 group-hover:to-black/35 dark:group-hover:from-white/35 dark:group-hover:via-white/60 dark:group-hover:to-white/35 group-hover:bg-[length:200%_100%] group-hover:bg-clip-text group-hover:animate-shimmer transition-colors">

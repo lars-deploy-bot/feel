@@ -18,7 +18,6 @@ Scripts for building, deploying, and managing the three Claude Bridge environmen
 - `logs-dev.sh` - View dev logs
 - `status.sh` - Show status of all three environments
 - `rollback.sh` - Interactive rollback to previous build
-- `env-helper.sh` - Source this in scripts to access environment variables
 
 **Usage:**
 ```bash
@@ -41,7 +40,6 @@ Scripts for deploying and managing individual customer websites.
 - `remove-site.sh` - Remove a site from deployment
 - `add-verification-files.sh` - Add bridge verification files to sites
 - `fix-file-ownership.sh` - Fix file permissions for site access
-- `migrate-workspace-ownership.sh` - Migrate site ownership between users
 
 **Usage:**
 ```bash
@@ -132,10 +130,9 @@ Important documentation about scripts and operations.
 ### Single Source of Truth
 
 All environment configuration is defined in:
-- **`environments.json`** - Master configuration file
+- **`environments.json`** - Master configuration file (scripts read this with `jq`)
 - **`bridge.config.js`** - Legacy CommonJS wrapper
 - **`environments.config.ts`** - TypeScript interface
-- **`env-helper.sh`** - Bash environment variables
 
 ### Deployment Flow
 
@@ -233,10 +230,6 @@ For scripts in subdirectories:
 ### Script path errors
 - Check that `SCRIPT_DIR` and `PROJECT_ROOT` calculations are correct
 - Run script with absolute path to verify: `/root/webalive/claude-bridge/scripts/deployment/deploy-prod.sh`
-
-### env-helper.sh not found
-- Ensure you're sourcing with correct relative path: `source "$(dirname "$0")/env-helper.sh"`
-- Both scripts must be in same directory
 
 ### Makefile not finding scripts
 - Update script paths in Makefile if you reorganize

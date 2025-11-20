@@ -61,13 +61,19 @@ export function FeedbackList({ feedback, loading, onRefresh }: FeedbackListProps
                   </span>
                 </div>
                 {entry.conversationId && (
-                  <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-300 rounded">Has conversation</span>
+                  <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-300 rounded">
+                    Has conversation
+                  </span>
                 )}
               </div>
 
-              <div className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap mb-3">{entry.feedback}</div>
+              <div className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap mb-3">
+                {entry.feedback}
+              </div>
 
-              {entry.userAgent && <div className="text-xs text-slate-500 dark:text-slate-400 font-mono truncate">{entry.userAgent}</div>}
+              {entry.userAgent && (
+                <div className="text-xs text-slate-500 dark:text-slate-400 font-mono truncate">{entry.userAgent}</div>
+              )}
             </div>
           ))
         )}

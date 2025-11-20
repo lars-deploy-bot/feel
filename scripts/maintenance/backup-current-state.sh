@@ -5,7 +5,6 @@ set -e
 
 BACKUP_DIR="/var/lib/claude-bridge/backups/$(date +%Y%m%d-%H%M%S)"
 DOMAIN_PASSWORDS="/var/lib/claude-bridge/domain-passwords.json"
-DATABASE="/var/lib/claude-bridge/database.sqlite"
 
 echo "📦 Creating backup: $BACKUP_DIR"
 
@@ -18,14 +17,6 @@ if [ -f "$DOMAIN_PASSWORDS" ]; then
   echo "✓ Backed up: domain-passwords.json"
 else
   echo "⚠️  domain-passwords.json not found"
-fi
-
-# Backup database if it exists
-if [ -f "$DATABASE" ]; then
-  cp "$DATABASE" "$BACKUP_DIR/database.sqlite"
-  cp "$DATABASE-wal" "$BACKUP_DIR/database.sqlite-wal" 2>/dev/null || true
-  cp "$DATABASE-shm" "$BACKUP_DIR/database.sqlite-shm" 2>/dev/null || true
-  echo "✓ Backed up: database.sqlite"
 fi
 
 # Backup git state
@@ -48,5 +39,4 @@ echo "✅ Backup complete: $BACKUP_DIR"
 echo ""
 echo "To restore this backup:"
 echo "  cp $BACKUP_DIR/domain-passwords.json $DOMAIN_PASSWORDS"
-echo "  rm $DATABASE"
 echo "  cd /root/webalive/claude-bridge && git checkout \$(cat $BACKUP_DIR/git-commit.txt)"

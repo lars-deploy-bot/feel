@@ -54,7 +54,7 @@ export interface CleanupStats {
 }
 
 export async function cleanupTestData(preview: boolean): Promise<CleanupStats> {
-  const response = await fetch("/api/manager/cleanup-test-data", {
+  const response = await fetch("/api/manager/actions/cleanup-test-data", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ preview }),

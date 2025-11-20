@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs"
 import path from "node:path"
 import { NextResponse } from "next/server"
-import { normalizeDomain } from "@/features/manager/lib/domain-utils"
+import { normalizeDomain, domainToSlug } from "@/features/manager/lib/domain-utils"
 import { ErrorCodes } from "@/lib/error-codes"
 
 export interface GetWorkspaceParams {
@@ -53,12 +53,13 @@ function getTerminalWorkspace(body: any, requestId: string): WorkspaceResult {
     }
   }
 
-  // Allow "test" workspace in local development mode (for E2E tests)
-  if (process.env.BRIDGE_ENV === "local" && customWorkspace === "test") {
+  // Allow "test" or "test.bridge.local" workspace in local development mode (for E2E tests)
+  // Test workspace is created by e2e-tests/genuine-setup.ts
+  if (process.env.BRIDGE_ENV === "local" && (customWorkspace === "test" || customWorkspace === "test.bridge.local")) {
     console.log(`[Workspace ${requestId}] Using test workspace in local mode`)
     return {
       success: true,
-      workspace: "/tmp/test-workspace", // Dummy path for test workspace
+      workspace: "/tmp/test-workspace", // Created by e2e-tests/genuine-setup.ts
     }
   }
 
@@ -66,49 +67,58 @@ function getTerminalWorkspace(body: any, requestId: string): WorkspaceResult {
   const normalizedDomain = normalizeDomain(customWorkspace)
   console.log(`[Workspace ${requestId}] Normalized workspace: ${customWorkspace} → ${normalizedDomain}`)
 
-  // Auto-prepend webalive/sites/ if not present, and always append /user
-  let workspacePath = normalizedDomain.startsWith("webalive/sites/")
-    ? normalizedDomain
-    : `webalive/sites/${normalizedDomain}`
+  // Try to find the workspace directory using both naming conventions:
+  // 1. New convention: domain with dots (e.g., "example.com")
+  // 2. Legacy convention: domain with hyphens (e.g., "example-com")
+  const candidates = [
+    normalizedDomain, // Try with dots first (new sites)
+    domainToSlug(normalizedDomain), // Fall back to hyphens (legacy sites)
+  ]
 
-  // Always append /user to the workspace path
-  if (!workspacePath.endsWith("/user")) {
-    workspacePath = `${workspacePath}/user`
-  }
+  let workspacePath: string | null = null
+  let fullPath: string | null = null
 
-  // Prevent path traversal attacks
-  const normalizedWorkspace = path.normalize(workspacePath)
-  if (normalizedWorkspace !== workspacePath || normalizedWorkspace.includes("..")) {
-    console.error(`[Workspace ${requestId}] Potential path traversal in workspace: ${workspacePath}`)
-    return {
-      success: false,
-      response: NextResponse.json(
-        {
-          ok: false,
-          error: ErrorCodes.WORKSPACE_INVALID,
-          message: "Invalid workspace path detected",
-        },
-        { status: 400 },
-      ),
+  for (const candidate of candidates) {
+    // Build the workspace path
+    const candidatePath = candidate.startsWith("webalive/sites/") ? candidate : `webalive/sites/${candidate}`
+
+    // Always append /user to the workspace path
+    const candidatePathWithUser = candidatePath.endsWith("/user") ? candidatePath : `${candidatePath}/user`
+
+    // Prevent path traversal attacks
+    const normalized = path.normalize(candidatePathWithUser)
+    if (normalized !== candidatePathWithUser || normalized.includes("..")) {
+      console.warn(`[Workspace ${requestId}] Skipping invalid candidate path: ${candidatePathWithUser}`)
+      continue
+    }
+
+    // Build full path and check if it exists
+    const candidateFullPath = path.join("/srv", normalized)
+    if (existsSync(candidateFullPath)) {
+      workspacePath = normalized
+      fullPath = candidateFullPath
+      console.log(
+        `[Workspace ${requestId}] Found workspace using ${candidate === normalizedDomain ? "dots (new)" : "hyphens (legacy)"}: ${candidateFullPath}`,
+      )
+      break
     }
   }
 
-  const fullPath = path.join("/srv", normalizedWorkspace)
-
-  // Check if workspace directory exists
-  if (!existsSync(fullPath)) {
-    console.error(`[Workspace ${requestId}] Workspace directory does not exist: ${fullPath}`)
+  // If no workspace found after trying both conventions
+  if (!workspacePath || !fullPath) {
+    const attemptedPaths = candidates.map(c => path.join("/srv/webalive/sites", c, "user"))
+    console.error(`[Workspace ${requestId}] Workspace not found. Tried: ${attemptedPaths.join(", ")}`)
     return {
       success: false,
       response: NextResponse.json(
         {
           ok: false,
           error: ErrorCodes.WORKSPACE_NOT_FOUND,
-          message: `Workspace directory not found: ${normalizedWorkspace}`,
+          message: `Workspace directory not found for domain: ${normalizedDomain}`,
           details: {
-            workspace: normalizedWorkspace,
-            fullPath,
-            suggestion: `Create the workspace directory at: ${fullPath}`,
+            domain: normalizedDomain,
+            attemptedPaths,
+            suggestion: `Create the workspace directory at: ${attemptedPaths[0]} -> check the logs`,
           },
         },
         { status: 404 },

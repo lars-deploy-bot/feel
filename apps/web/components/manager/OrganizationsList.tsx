@@ -68,7 +68,9 @@ export function OrganizationsList({
         ) : orgs.length === 0 ? (
           <div className="text-center py-12 px-6">
             <p className="text-sm text-slate-600 dark:text-slate-400">No organizations found</p>
-            <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">Organizations will appear here when created</p>
+            <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">
+              Organizations will appear here when created
+            </p>
           </div>
         ) : (
           <div className="divide-y divide-slate-200 dark:divide-white/10">
@@ -87,13 +89,16 @@ export function OrganizationsList({
                       </button>
                       <div className="flex items-center gap-4 mt-2 text-sm text-slate-600 dark:text-slate-400">
                         <span>
-                          Credits: <span className="font-medium text-slate-900 dark:text-white">{org.credits.toFixed(2)}</span>
+                          Credits:{" "}
+                          <span className="font-medium text-slate-900 dark:text-white">{org.credits.toFixed(2)}</span>
                         </span>
                         <span>Members: {org.member_count}</span>
                         <span>Projects: {org.domain_count}</span>
                       </div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                        Created {new Date(org.created_at).toLocaleDateString()}
+                      <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        <span>Created {new Date(org.created_at).toLocaleDateString()}</span>
+                        <span className="text-slate-400 dark:text-slate-500">•</span>
+                        <span className="font-mono text-xs">{org.org_id}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -139,7 +144,9 @@ export function OrganizationsList({
                               className="px-3 py-2 bg-slate-50 dark:bg-[#333] rounded text-sm text-slate-700 dark:text-slate-300"
                             >
                               <div className="font-medium">{domain.hostname}</div>
-                              <div className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">Port {domain.port}</div>
+                              <div className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                                Port {domain.port}
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -172,7 +179,9 @@ export function OrganizationsList({
                                   {member.display_name || member.email}
                                 </div>
                                 {member.display_name && (
-                                  <div className="text-xs text-slate-600 dark:text-slate-400 truncate">{member.email}</div>
+                                  <div className="text-xs text-slate-600 dark:text-slate-400 truncate">
+                                    {member.email}
+                                  </div>
                                 )}
                               </div>
                               <div className="flex items-center gap-2 ml-4 flex-shrink-0">

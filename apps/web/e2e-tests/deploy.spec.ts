@@ -5,8 +5,9 @@
  */
 
 import { execSync } from "node:child_process"
-import { existsSync, rmSync } from "node:fs"
-import jwt from "jsonwebtoken"
+import { existsSync } from "node:fs"
+import { createTestSessionToken } from "@/lib/test-helpers/auth-test-helper"
+import { setAuthCookie } from "@/lib/test-helpers/playwright-helpers"
 import { expect, test } from "./fixtures"
 
 const TEST_SLUG = "test-e2e"
@@ -18,23 +19,24 @@ test.describe("Website Deployment with Authentication", () => {
   test.beforeEach(async () => {
     console.log(`[E2E Setup] Cleaning up test site: ${TEST_DOMAIN}`)
 
-    // Remove site directory if it exists
-    if (existsSync(SITE_PATH)) {
-      console.log(`[E2E Setup] Removing existing directory: ${SITE_PATH}`)
-      try {
-        rmSync(SITE_PATH, { recursive: true, force: true })
-      } catch (error) {
-        console.error("[E2E Setup] Failed to remove directory:", error)
-      }
-    }
-
-    // Stop systemd service if running
+    // Stop systemd service first if running
     try {
       const serviceSlug = TEST_DOMAIN.replace(/\./g, "-")
       execSync(`systemctl stop site@${serviceSlug}.service 2>/dev/null || true`, { stdio: "ignore" })
       console.log(`[E2E Setup] Stopped service: site@${serviceSlug}.service`)
     } catch (_error) {
       // Service doesn't exist, that's fine
+    }
+
+    // Remove site directory if it exists (use rm -rf for better permission handling)
+    if (existsSync(SITE_PATH)) {
+      console.log(`[E2E Setup] Removing existing directory: ${SITE_PATH}`)
+      try {
+        execSync(`rm -rf "${SITE_PATH}"`, { stdio: "ignore" })
+        console.log(`[E2E Setup] Removed directory: ${SITE_PATH}`)
+      } catch (error) {
+        console.error("[E2E Setup] Failed to remove directory:", error)
+      }
     }
 
     console.log("[E2E Setup] Cleanup complete")
@@ -44,17 +46,7 @@ test.describe("Website Deployment with Authentication", () => {
   test.afterEach(async () => {
     console.log(`[E2E Cleanup] Removing test site: ${TEST_DOMAIN}`)
 
-    // Remove site directory
-    if (existsSync(SITE_PATH)) {
-      try {
-        rmSync(SITE_PATH, { recursive: true, force: true })
-        console.log(`[E2E Cleanup] Removed directory: ${SITE_PATH}`)
-      } catch (error) {
-        console.error("[E2E Cleanup] Failed to remove directory:", error)
-      }
-    }
-
-    // Stop and disable systemd service
+    // Stop and disable systemd service first
     try {
       const serviceSlug = TEST_DOMAIN.replace(/\./g, "-")
       execSync(`systemctl stop site@${serviceSlug}.service 2>/dev/null || true`, { stdio: "ignore" })
@@ -64,24 +56,31 @@ test.describe("Website Deployment with Authentication", () => {
       // Best effort cleanup
     }
 
+    // Remove site directory (use rm -rf for better permission handling)
+    if (existsSync(SITE_PATH)) {
+      try {
+        execSync(`rm -rf "${SITE_PATH}"`, { stdio: "ignore" })
+        console.log(`[E2E Cleanup] Removed directory: ${SITE_PATH}`)
+      } catch (error) {
+        console.error("[E2E Cleanup] Failed to remove directory:", error)
+      }
+    }
+
     console.log("[E2E Cleanup] Complete")
   })
 
-  test.skip("deploy page shows authentication requirement", async ({ page }) => {
-    // TODO: Update when frontend implements auth-required flow
-    // Expected flow:
-    // 1. Navigate to /deploy
-    // 2. Should redirect to /login if not authenticated
-    // 3. After login, should show org selector
-    // 4. After selecting org, should show deploy form
-
-    console.log("[Test] Step 1: Navigate to /deploy without authentication")
+  test("deploy page is accessible without authentication", async ({ page }) => {
+    console.log("[Test] Navigate to /deploy without authentication")
     await page.goto("/deploy")
 
-    // Should redirect to login or show auth requirement
-    // await expect(page).toHaveURL(/\/login/)
-    // OR
-    // await expect(page.getByText("Please log in")).toBeVisible()
+    // Should show deploy form (not redirect to login)
+    await page.waitForLoadState("networkidle")
+
+    // Should see the deployment mode selection screen
+    await expect(page.getByText("Launch your site")).toBeVisible()
+    await expect(page.getByTestId("mode-option-quick-launch")).toBeVisible()
+
+    console.log("[Test] ✓ Deploy page accessible without authentication")
   })
 
   test("deployment API rejects unauthenticated requests", async ({ request }) => {
@@ -102,80 +101,57 @@ test.describe("Website Deployment with Authentication", () => {
     console.log("[Test] ✓ Unauthenticated request properly rejected")
   })
 
-  test.skip("deployment API rejects requests without orgId", async ({ request }) => {
-    // TODO: Fix - Playwright request context doesn't share cookies properly
-    // Need to either use page.request or find another way to send auth cookie
-    console.log("[Test] Testing API without orgId")
+  test("deployment API allows authenticated requests without explicit orgId", async ({ page, deployUser }) => {
+    // Current API behavior: if orgId is not provided, a default org is created
+    // This test verifies that authenticated users can deploy without explicit orgId
+    const isStaging = process.env.TEST_ENV === "staging"
+    test.setTimeout(isStaging ? 120000 : 60000) // 2 minutes for staging, 60s for local
 
-    // Create mock user JWT for authentication (no DB needed)
-    const mockUser = {
-      userId: "test-user-id-123",
-      email: "test@bridge-e2e.internal",
-      orgId: "org_test123",
-      orgName: "Test Org",
-    }
+    console.log("[Test] Testing API with authenticated user but no orgId")
 
-    // Create JWT token directly
-    const JWT_SECRET = process.env.JWT_SECRET || "INSECURE_DEV_SECRET_CHANGE_IN_PRODUCTION"
-    const payload = {
-      sub: mockUser.userId,
-      userId: mockUser.userId,
-      email: mockUser.email,
-      name: mockUser.orgName,
-      workspaces: [],
-    }
-    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "30d" })
+    // Create and set authentication cookie
+    const token = await createTestSessionToken(deployUser)
+    await setAuthCookie(page, token)
 
-    const response = await request.post("/api/deploy-subdomain", {
+    // Use page.request to ensure cookies are sent
+    const response = await page.request.post("/api/deploy-subdomain", {
       data: {
         slug: TEST_SLUG,
-        // Missing orgId
-        siteIdeas: "",
+        email: deployUser.email,
+        // No orgId provided - should use default org
+        siteIdeas: "Test deployment without explicit orgId",
         selectedTemplate: "landing",
-      },
-      headers: {
-        cookie: `auth_session=${token}`,
       },
     })
 
-    expect(response.status()).toBe(400)
+    // Should succeed even without orgId (default org will be created/used)
+    expect(response.status()).toBe(200)
     const result = await response.json()
-    expect(result.ok).toBe(false)
-    expect(result.message).toContain("Organization ID")
-    console.log("[Test] ✓ Request without orgId properly rejected")
+    expect(result.ok).toBe(true)
+    expect(result.domain).toBe(TEST_DOMAIN)
+    console.log("[Test] ✓ Authenticated user can deploy without explicit orgId")
   })
 
-  test.skip("can deploy with valid authentication and orgId - full flow", async ({ page, context }) => {
-    // Skip this test unless explicitly running full deployment tests
-    // Requires proper authentication setup and takes ~60s
-    test.setTimeout(70000)
+  test("can deploy with valid authentication and orgId - full flow", async ({ page, deployUser }) => {
+    // Full deployment test with authentication and explicit orgId
+    // Takes ~60s for actual deployment (local), longer for staging
+    const isStaging = process.env.TEST_ENV === "staging"
+    test.setTimeout(isStaging ? 180000 : 70000) // 3 minutes for staging, 70s for local
 
-    console.log("[Test] Full authenticated deployment flow")
+    console.log("[Test] Full authenticated deployment flow with orgId")
 
-    // TODO: Implement full E2E flow when frontend is updated:
-    // 1. Login via UI
-    // 2. Select organization
-    // 3. Fill deployment form
-    // 4. Submit and wait for completion
-    // 5. Verify site is deployed
+    // Create and set authentication cookie
+    const token = await createTestSessionToken(deployUser)
+    await setAuthCookie(page, token)
 
-    // For now, test via API directly
-    await context.addCookies([
-      {
-        name: "auth_session",
-        value: "test-user",
-        domain: "localhost",
-        path: "/",
-        httpOnly: true,
-        sameSite: "Lax",
-      },
-    ])
+    console.log(`[Test] Deploying with user: ${deployUser.email}, org: ${deployUser.orgId}`)
 
     const response = await page.request.post("/api/deploy-subdomain", {
       data: {
         slug: TEST_SLUG,
-        orgId: testUser.orgId,
-        siteIdeas: "E2E test deployment",
+        email: deployUser.email,
+        orgId: deployUser.orgId,
+        siteIdeas: "E2E test deployment with authentication",
         selectedTemplate: "landing",
       },
     })
@@ -189,7 +165,7 @@ test.describe("Website Deployment with Authentication", () => {
     const result = await response.json()
     expect(result.ok).toBe(true)
     expect(result.domain).toBe(TEST_DOMAIN)
-    expect(result.orgId).toBe(testUser.orgId)
+    expect(result.orgId).toBe(deployUser.orgId)
 
     console.log("[Test] ✓ Deployment succeeded")
 
@@ -205,6 +181,64 @@ test.describe("Website Deployment with Authentication", () => {
       console.log("[Test] ✓ Systemd service is active")
     } catch (_error) {
       throw new Error("Systemd service is not active")
+    }
+  })
+
+  test("CLI deployment works via bin/deploy.ts", async ({ deployUser }) => {
+    // Test CLI deployment path (different from API path)
+    const isStaging = process.env.TEST_ENV === "staging"
+    test.setTimeout(isStaging ? 180000 : 70000)
+
+    const CLI_TEST_SLUG = "test-cli-e2e"
+    const CLI_TEST_DOMAIN = `${CLI_TEST_SLUG}.alive.best`
+    const CLI_SITE_PATH = `/srv/webalive/sites/${CLI_TEST_DOMAIN}`
+
+    console.log("[Test] Testing CLI deployment via bin/deploy.ts")
+
+    // Cleanup before test
+    try {
+      const serviceSlug = CLI_TEST_DOMAIN.replace(/\./g, "-")
+      execSync(`systemctl stop site@${serviceSlug}.service 2>/dev/null || true`, { stdio: "ignore" })
+      if (existsSync(CLI_SITE_PATH)) {
+        execSync(`rm -rf "${CLI_SITE_PATH}"`, { stdio: "ignore" })
+      }
+    } catch (_error) {
+      // Best effort cleanup
+    }
+
+    try {
+      // Run CLI deployment
+      const result = execSync(
+        "cd /root/webalive/claude-bridge/packages/deploy-scripts && " +
+          `DEPLOY_EMAIL="${deployUser.email}" ` +
+          `DEPLOY_ORG_ID="${deployUser.orgId}" ` +
+          `bun run bin/deploy.ts ${CLI_TEST_DOMAIN}`,
+        { encoding: "utf-8", timeout: 60000 },
+      )
+
+      console.log("[Test] CLI output:", result)
+
+      // Verify site directory exists
+      expect(existsSync(CLI_SITE_PATH)).toBe(true)
+      console.log("[Test] ✓ CLI created site directory")
+
+      // Verify systemd service is running
+      const serviceSlug = CLI_TEST_DOMAIN.replace(/\./g, "-")
+      const status = execSync(`systemctl is-active site@${serviceSlug}.service`, { encoding: "utf-8" }).trim()
+      expect(status).toBe("active")
+      console.log("[Test] ✓ CLI deployment systemd service is active")
+    } finally {
+      // Cleanup after test
+      try {
+        const serviceSlug = CLI_TEST_DOMAIN.replace(/\./g, "-")
+        execSync(`systemctl stop site@${serviceSlug}.service 2>/dev/null || true`, { stdio: "ignore" })
+        execSync(`systemctl disable site@${serviceSlug}.service 2>/dev/null || true`, { stdio: "ignore" })
+        if (existsSync(CLI_SITE_PATH)) {
+          execSync(`rm -rf "${CLI_SITE_PATH}"`, { stdio: "ignore" })
+        }
+      } catch (_error) {
+        // Best effort cleanup
+      }
     }
   })
 })

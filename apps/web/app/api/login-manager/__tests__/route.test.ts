@@ -143,24 +143,17 @@ function createMockRequest(url: string, options?: RequestInit) {
   return req
 }
 
-// Store original env
-const originalNodeEnv = process.env.NODE_ENV
-const originalBridgeEnv = process.env.BRIDGE_ENV
-const originalBridgePasscode = process.env.BRIDGE_PASSCODE
-
 describe("POST /api/login-manager", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     // Set default test environment
-    process.env.NODE_ENV = "production"
-    process.env.BRIDGE_PASSCODE = "wachtwoord"
-    process.env.BRIDGE_ENV = undefined
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("BRIDGE_PASSCODE", "wachtwoord")
+    vi.stubEnv("BRIDGE_ENV", "")
   })
 
   afterEach(() => {
-    process.env.NODE_ENV = originalNodeEnv
-    process.env.BRIDGE_ENV = originalBridgeEnv
-    process.env.BRIDGE_PASSCODE = originalBridgePasscode
+    vi.unstubAllEnvs()
   })
 
   /**
@@ -279,10 +272,11 @@ describe("POST /api/login-manager", () => {
     expect(res.status).toBe(200)
     expect(json.ok).toBe(true)
 
-    // Check manager_session cookie is set with secure token
+    // Check manager_session cookie is set with secure token (not the test value "1")
     const setCookie = res.headers.get("set-cookie")
     expect(setCookie).toContain("manager_session=")
-    expect(setCookie).not.toContain("manager_session=1")
+    expect(setCookie).not.toContain("manager_session=1;") // Should not be exactly "1"
+    expect(setCookie).not.toContain("manager_session=1 ") // Alternative format check
   })
 
   /**
@@ -290,8 +284,8 @@ describe("POST /api/login-manager", () => {
    * Test passcode should be rejected when not in local mode
    */
   it("should reject test passcode in production mode", async () => {
-    process.env.BRIDGE_ENV = undefined
-    process.env.NODE_ENV = "production"
+    vi.stubEnv("BRIDGE_ENV", "")
+    vi.stubEnv("NODE_ENV", "production")
 
     const req = createMockRequest("http://localhost/api/login-manager", {
       method: "POST",
@@ -333,7 +327,7 @@ describe("POST /api/login-manager", () => {
    * Manager login cookie should match logout cookie attributes
    */
   it("should set manager cookie with attributes matching logout (PRODUCTION)", async () => {
-    process.env.NODE_ENV = "production"
+    vi.stubEnv("NODE_ENV", "production")
 
     // Get login cookie config
     const loginReq = createMockRequest("http://localhost/api/login-manager", {
@@ -392,7 +386,7 @@ describe("POST /api/login-manager", () => {
    * Same test for development environment
    */
   it("should set manager cookie with attributes matching logout (DEVELOPMENT)", async () => {
-    process.env.NODE_ENV = "development"
+    vi.stubEnv("NODE_ENV", "development")
 
     const loginReq = createMockRequest("http://localhost/api/login-manager", {
       method: "POST",
@@ -443,7 +437,7 @@ describe("POST /api/login-manager", () => {
    */
   it("should set secure flag based on NODE_ENV", async () => {
     // Production: secure should be TRUE
-    process.env.NODE_ENV = "production"
+    vi.stubEnv("NODE_ENV", "production")
     let req = createMockRequest("http://localhost/api/login-manager", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -454,7 +448,7 @@ describe("POST /api/login-manager", () => {
     expect(setCookie).toContain("Secure")
 
     // Development: secure should be FALSE
-    process.env.NODE_ENV = "development"
+    vi.stubEnv("NODE_ENV", "development")
     req = createMockRequest("http://localhost/api/login-manager", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

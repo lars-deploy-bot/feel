@@ -5,95 +5,167 @@
  * Uses real API calls to verify the full request/response flow works.
  *
  * Run with: bun run test:e2e:genuine
+ *
+ * Prerequisites:
+ * - Test workspace created by globalSetup (e2e-tests/genuine-setup.ts)
+ * - Local test server running on port 9548 (BRIDGE_ENV=local)
+ * - ANTHROPIC_API_KEY in .env
  */
-import { test, expect } from "@playwright/test"
+import { expect, test } from "@playwright/test"
+import type { Page, Request, Response } from "@playwright/test"
+import { TEST_USER, TEST_TIMEOUTS } from "./fixtures/test-data"
+import { TEST_API, TEST_MODELS, PATTERNS, TEST_MESSAGES } from "./fixtures/test-constants"
 
-// Real dev environment credentials
-const DEV_EMAIL = process.env.TEST_EMAIL || "eedenlars@gmail.com"
-const DEV_PASSWORD = process.env.TEST_PASSWORD || "supersecret"
+/**
+ * Type-safe chat request body
+ */
+interface ChatRequest {
+  message: string
+  conversationId: string
+  model: string
+  workspace: string
+}
 
-async function _loginDev(page: any) {
+/**
+ * Type-safe error response
+ */
+interface ErrorResponse {
+  ok: false
+  error: string
+  message: string
+  category?: string
+}
+
+/**
+ * Login helper for genuine tests
+ * Uses TEST_USER fixture for consistent credentials
+ *
+ * @param page - Playwright page object
+ */
+async function loginGenuine(page: Page): Promise<void> {
   await page.goto("/")
-  await page.getByPlaceholder("you@example.com").fill(DEV_EMAIL)
-  await page.getByPlaceholder("Enter your password").fill(DEV_PASSWORD)
+  await page.getByPlaceholder("you@example.com").fill(TEST_USER.email)
+  await page.getByPlaceholder("Enter your password").fill(TEST_USER.password)
   await page.getByRole("button", { name: "Continue" }).click()
-  await page.waitForURL("/chat", { timeout: 10000 })
-  await page.waitForTimeout(2000) // Wait for workspace init
+
+  // Wait for navigation to /chat (event-based, not timeout)
+  await page.waitForURL("/chat", { timeout: TEST_TIMEOUTS.max })
+
+  // Wait for workspace to be ready (data-testid or network idle)
+  await page.waitForLoadState("networkidle")
 }
 
 test.describe("Chat API - Request Validation", () => {
   test("can send message without INVALID_REQUEST error", async ({ page }) => {
-    await loginStaging(page)
-    await page.goto("/chat")
+    await loginGenuine(page)
 
-    // Wait for chat interface to be ready
-    await expect(page.locator('[data-testid="message-input"]')).toBeVisible({ timeout: 10000 })
+    // Verify chat interface is ready (using data-testids)
+    await expect(page.locator('[data-testid="message-input"]')).toBeVisible({
+      timeout: TEST_TIMEOUTS.max,
+    })
     await expect(page.locator('[data-testid="send-button"]')).toBeVisible()
 
-    // Type a simple message (same pattern as user's bug report)
+    // Type a simple message (using constant, not hardcoded)
     const messageInput = page.locator('[data-testid="message-input"]')
-    await messageInput.fill("test message")
+    await messageInput.fill(TEST_MESSAGES.SIMPLE)
 
-    // Capture network request/response
-    let requestBody: any = null
-    let responseStatus: number | null = null
-    let responseBody: any = null
+    // Setup request/response promises BEFORE clicking send (event-based approach)
+    const requestPromise = page.waitForRequest(
+      (req: Request) => req.url().includes(TEST_API.CLAUDE_STREAM) && req.method() === "POST",
+    )
 
-    page.on("request", req => {
-      if (req.url().includes("/api/claude/stream")) {
-        const postData = req.postData()
-        if (postData) {
-          requestBody = JSON.parse(postData)
-          console.log("📤 Request body:", requestBody)
-        }
-      }
-    })
-
-    page.on("response", async res => {
-      if (res.url().includes("/api/claude/stream")) {
-        responseStatus = res.status()
-        console.log("📥 Response status:", responseStatus)
-
-        // For non-200 responses, try to read error body
-        if (responseStatus !== 200) {
-          try {
-            responseBody = await res.json()
-            console.log("❌ Error response:", responseBody)
-          } catch {
-            console.log("Could not parse error response")
-          }
-        }
-      }
-    })
+    const responsePromise = page.waitForResponse(
+      (res: Response) => res.url().includes(TEST_API.CLAUDE_STREAM) && res.request().method() === "POST",
+    )
 
     // Send the message
     const sendButton = page.locator('[data-testid="send-button"]')
-    await sendButton.click()
+    await Promise.all([
+      requestPromise,
+      responsePromise,
+      sendButton.click(), // Click triggers both request and response
+    ])
 
-    // Wait a moment for request to be sent
-    await page.waitForTimeout(1000)
+    // Get the captured request and response
+    const request = await requestPromise
+    const response = await responsePromise
 
-    // Verify request was made with correct structure
-    expect(requestBody).toBeTruthy()
-    expect(requestBody.message).toBe("test message")
-    expect(requestBody.conversationId).toMatch(/^[0-9a-f-]{36}$/) // UUID format
-    expect(requestBody.model).toBe("claude-haiku-4-5")
-    console.log("✅ Request structure valid:", JSON.stringify(requestBody, null, 2))
+    // Parse request body (type-safe)
+    const postData = request.postData()
+    expect(postData).toBeTruthy()
 
-    // Verify user message appears in UI (use first() to avoid strict mode violation)
-    await expect(page.getByText("test message").first()).toBeVisible({ timeout: 5000 })
-    console.log("✅ User message displayed")
+    const requestBody: ChatRequest = JSON.parse(postData!)
+    console.log("📤 Request body:", requestBody)
 
-    // Verify Claude starts thinking (no error occurred)
-    await expect(page.getByText("thinking").first()).toBeVisible({ timeout: 5000 })
-    console.log("✅ Claude response started (no INVALID_REQUEST error)")
+    // Verify request structure (using constants)
+    expect(requestBody.message).toBe(TEST_MESSAGES.SIMPLE)
+    expect(requestBody.conversationId).toMatch(PATTERNS.UUID)
+    expect(requestBody.model).toBe(TEST_MODELS.HAIKU)
+    expect(requestBody.workspace).toBe(TEST_USER.workspace)
+    console.log("✅ Request structure valid")
 
-    // If there was an error, responseBody would be set
-    if (responseBody?.error === "INVALID_REQUEST") {
-      console.error("❌ INVALID_REQUEST error occurred:", responseBody)
-      throw new Error(`INVALID_REQUEST: ${responseBody.message}`)
+    // Verify response status
+    const responseStatus = response.status()
+    console.log("📥 Response status:", responseStatus)
+
+    // If error response, parse and fail explicitly
+    if (responseStatus !== 200) {
+      const errorBody: ErrorResponse = await response.json()
+      console.error("❌ Error response:", errorBody)
+
+      if (errorBody.error === "INVALID_REQUEST") {
+        throw new Error(`INVALID_REQUEST error: ${errorBody.message}`)
+      }
+
+      throw new Error(`API error (${responseStatus}): ${errorBody.error} - ${errorBody.message}`)
     }
 
+    // Verify user message appears in UI
+    // Note: Using data-testid would be better, but getByText is acceptable for message content
+    await expect(page.getByText(TEST_MESSAGES.SIMPLE).first()).toBeVisible({
+      timeout: TEST_TIMEOUTS.slow,
+    })
+    console.log("✅ User message displayed")
+
+    // Verify Claude starts thinking (using data-testid, not brittle text selector)
+    await expect(page.locator('[data-testid="thinking-indicator"]')).toBeVisible({
+      timeout: TEST_TIMEOUTS.slow,
+    })
+    console.log("✅ Claude response started (no INVALID_REQUEST error)")
+
     console.log("✅ Test passed - chat works without INVALID_REQUEST error")
+  })
+
+  test("handles insufficient tokens gracefully", async ({ page }) => {
+    await loginGenuine(page)
+
+    await expect(page.locator('[data-testid="message-input"]')).toBeVisible({
+      timeout: TEST_TIMEOUTS.max,
+    })
+
+    const messageInput = page.locator('[data-testid="message-input"]')
+    await messageInput.fill(TEST_MESSAGES.SIMPLE)
+
+    const responsePromise = page.waitForResponse(
+      (res: Response) => res.url().includes(TEST_API.CLAUDE_STREAM) && res.request().method() === "POST",
+    )
+
+    const sendButton = page.locator('[data-testid="send-button"]')
+    await sendButton.click()
+
+    const response = await responsePromise
+    const status = response.status()
+
+    // Test should handle both success (200) and insufficient tokens (402/403)
+    // This makes the test resilient to credit/token availability
+    if (status === 200) {
+      console.log("✅ Request succeeded (user has credits)")
+    } else if (status === 402 || status === 403) {
+      const errorBody: ErrorResponse = await response.json()
+      console.log("✅ Request blocked due to insufficient tokens (expected):", errorBody.error)
+      expect(errorBody.error).toMatch(/INSUFFICIENT_TOKENS|TEST_MODE_BLOCK/)
+    } else {
+      throw new Error(`Unexpected status ${status}`)
+    }
   })
 })

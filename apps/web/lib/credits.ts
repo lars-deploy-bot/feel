@@ -2,7 +2,7 @@
  * Credit System - Currency Conversion Utilities
  *
  * ARCHITECTURE:
- * - Credits are stored in domain-passwords.json (primary currency)
+ * - Credits are stored in Supabase (iam.orgs.credits) - primary currency
  * - LLM tokens are from Claude API responses
  * - Conversion only happens when charging (in chargeTokensFromCredits)
  *
@@ -13,7 +13,7 @@
  * Conversion Ratio: 100 LLM tokens = 1 credit
  *
  * Example:
- * - User has 200 credits in database
+ * - User has 200 credits in Supabase
  * - Claude API uses 500 LLM tokens
  * - Convert: 500 tokens ÷ 100 = 5 credits
  * - Charge with discount: 5 × 0.25 = 1.25 credits

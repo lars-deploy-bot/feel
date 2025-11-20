@@ -968,10 +968,10 @@ Production deployment completed Nov 2, 2025:
 - [x] Clean up test files and failed approaches
 - [x] Update CLAUDE.md documentation
 - [x] Deploy to production: `pm2 restart claude-bridge`
-- [x] Fix existing root-owned files (one-time migration):
+- [x] Fix existing root-owned files (one-time migration - completed and script removed):
   ```bash
-  # Migration script fixed 6 workspaces (60 root-owned files)
-  /root/webalive/claude-bridge/scripts/migrate-workspace-ownership.sh
+  # Migration completed: Fixed 6 workspaces (60 root-owned files)
+  # Script was at: scripts/migrate-workspace-ownership.sh (removed after completion)
   ```
 - [x] Verify child process completes successfully (logs show "Success: N messages")
 - [x] Monitor logs for "Use child process: true" ✓ Working
@@ -1110,7 +1110,7 @@ The child process isolation implementation (v5.0) is now fully deployed to produ
 - `apps/web/lib/env.ts` (NEW - T3-style validation)
 
 **Migration tooling:**
-- `scripts/migrate-workspace-ownership.sh` (NEW - one-time migration)
+- `scripts/migrate-workspace-ownership.sh` (one-time migration - completed and removed)
 
 **Documentation:**
 - `docs/IMPLEMENTATION_AUTO_PERMISSION_FIX.md` (updated)

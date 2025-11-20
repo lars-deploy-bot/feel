@@ -13,8 +13,7 @@ import { handlers } from "./lib/handlers"
 const test = baseTest
 
 test.describe("Protection System Verification", () => {
-  // TODO: Fix workspace auto-selection in test mode
-  test.skip("Layer 1: Catches unmocked calls at browser level", async ({ page }) => {
+  test("Layer 1: Catches unmocked calls at browser level", async ({ page }) => {
     await login(page)
 
     // Register our own request monitor to verify Layer 1 works
@@ -29,6 +28,12 @@ test.describe("Protection System Verification", () => {
     await page.route("**/api/claude/stream", handlers.text("Protected!"))
 
     await page.goto("/chat")
+
+    // Wait for workspace to be fully initialized (mounted + workspace set)
+    await expect(page.locator('[data-testid="workspace-ready"]')).toBeVisible({
+      timeout: 5000,
+    })
+
     const messageInput = page.locator('[data-testid="message-input"]')
     const sendButton = page.locator('[data-testid="send-button"]')
 
@@ -36,8 +41,8 @@ test.describe("Protection System Verification", () => {
     await expect(sendButton).toBeEnabled({ timeout: 2000 })
     await sendButton.click()
 
-    // Wait for response
-    await expect(page.getByText("Protected!")).toBeVisible({ timeout: 5000 })
+    // Wait for response (use .first() to avoid strict mode violations)
+    await expect(page.getByText("Protected!").first()).toBeVisible({ timeout: 5000 })
 
     // Verify the API call was made (but mocked)
     expect(apiCalls.length).toBeGreaterThan(0)
@@ -47,6 +52,11 @@ test.describe("Protection System Verification", () => {
   test("Layer 2: Server blocks calls when PLAYWRIGHT_TEST=true", async ({ page }) => {
     await login(page)
     await page.goto("/chat")
+
+    // Wait for workspace to be fully initialized
+    await expect(page.locator('[data-testid="workspace-ready"]')).toBeVisible({
+      timeout: 5000,
+    })
 
     // Make a direct fetch to the API (bypass Playwright routing)
     const response = await page.evaluate(async () => {

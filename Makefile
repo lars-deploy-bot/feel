@@ -1,4 +1,4 @@
-.PHONY: help staging dev logs-staging logs-dev status rollback
+.PHONY: help staging dev logs-prod logs-staging logs-dev status rollback wash wash-skip
 
 # Colors for output
 BLUE := \033[0;34m
@@ -15,8 +15,9 @@ help:
 	@echo "  make dev:turbo     Run all monorepo dev servers with Turbo"
 	@echo ""
 	@echo "$(GREEN)Logs:$(NC)"
-	@echo "  make logs-staging  View staging environment logs"
-	@echo "  make logs-dev      View dev environment logs"
+	@echo "  make logs-prod     View production logs (systemd)"
+	@echo "  make logs-staging  View staging logs (systemd)"
+	@echo "  make logs-dev      View dev logs (PM2)"
 	@echo ""
 	@echo "$(GREEN)Troubleshooting:$(NC)"
 	@echo "  make status        Show status of all environments"
@@ -32,6 +33,9 @@ staging:
 dev:
 	@./scripts/deployment/deploy-dev.sh
 
+logs-prod:
+	@./scripts/deployment/logs-prod.sh
+
 logs-staging:
 	@./scripts/deployment/logs-staging.sh
 
@@ -46,5 +50,12 @@ rollback:
 
 dev\:turbo:
 	@bun run dev:turbo
+
+# Never inspect
+wash:
+	@./scripts/deployment/washingmachine.sh
+
+wash-skip:
+	@SKIP_E2E=1 ./scripts/deployment/washingmachine.sh
 
 .DEFAULT_GOAL := help

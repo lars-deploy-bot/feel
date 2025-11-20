@@ -16,7 +16,7 @@ describe("Domain Polling Integration", () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-    })
+    }) as any
 
     const response = await fetch(`https://${domain}`, {
       method: "GET",
@@ -32,7 +32,7 @@ describe("Domain Polling Integration", () => {
     const domain = "nonexistent-test-12345.alive.best"
 
     // Mock fetch to simulate a network error
-    global.fetch = vi.fn().mockRejectedValue(new Error("Domain not found"))
+    global.fetch = vi.fn().mockRejectedValue(new Error("Domain not found")) as any
 
     try {
       await fetch(`https://${domain}`, {
@@ -61,7 +61,7 @@ describe("Domain Polling Integration", () => {
         return Promise.reject(new Error("Not ready yet"))
       }
       return Promise.resolve({ ok: true, status: 200 })
-    })
+    }) as any
 
     const pollPromise = new Promise<void>((resolve, reject) => {
       const interval = setInterval(async () => {

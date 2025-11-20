@@ -156,7 +156,9 @@ export function UsersPanel({ orgs, onSuccess, onLoading }: UsersPanelProps) {
                 placeholder="••••••••"
                 disabled={isSubmitting}
               />
-              <p className="mt-1.5 text-xs text-gray-600 dark:text-gray-400">Password will be hashed and stored securely</p>
+              <p className="mt-1.5 text-xs text-gray-600 dark:text-gray-400">
+                Password will be hashed and stored securely
+              </p>
             </div>
 
             {/* Organization */}
@@ -189,7 +191,9 @@ export function UsersPanel({ orgs, onSuccess, onLoading }: UsersPanelProps) {
                     />
                     <div className="flex-1">
                       <div className="text-sm font-medium text-gray-900 dark:text-white">Create new organization</div>
-                      <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">Create a new organization for this user</div>
+                      <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                        Create a new organization for this user
+                      </div>
                     </div>
                   </div>
 
@@ -233,7 +237,9 @@ export function UsersPanel({ orgs, onSuccess, onLoading }: UsersPanelProps) {
                     />
                     <div className="flex-1">
                       <div className="text-sm font-medium text-gray-900 dark:text-white">Use existing organization</div>
-                      <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">Assign this user to an existing organization</div>
+                      <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                        Assign this user to an existing organization
+                      </div>
                     </div>
                   </div>
 

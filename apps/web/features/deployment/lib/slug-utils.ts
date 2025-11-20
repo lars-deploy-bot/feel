@@ -28,7 +28,7 @@ const RESERVED_SLUGS = new Set([
   "root",
   "system",
   "localhost",
-  "terminal",
+  "shell",
   "manager",
   "webhook",
   "auth",

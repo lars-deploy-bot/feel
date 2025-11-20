@@ -58,10 +58,12 @@ Attacker exploits buffer overflow or use-after-free vulnerability to inject and 
 
 ## Vulnerability Example (Hypothetical)
 
+> **Note:** These are hypothetical security examples for educational purposes. Claude Bridge does not use SQLite or these specific native modules.
+
 ### Buffer Overflow in Native Module
 
 ```c
-// Hypothetical bug in better-sqlite3 or other native module
+// Hypothetical bug in better-sqlite3 or other native module (NOT used in Claude Bridge)
 void process_query(const char *sql) {
   char buffer[256];
   strcpy(buffer, sql);  // ⚠️ No bounds check!
@@ -201,7 +203,7 @@ CapabilityBoundingSet=
 
 ### Node.js Native Module Exploits
 
-**Example**: Buffer overflow in `node-sqlite3` (hypothetical)
+**Example**: Buffer overflow in `node-sqlite3` (hypothetical - NOT used in Claude Bridge)
 
 **Exploit complexity**:
 - Find buffer overflow (weeks of fuzzing)

@@ -1,8 +1,12 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "workspaces": {
+    ".": {
+      "entry": ["scripts/**/*.{ts,mjs}"],
+      "project": ["*.{ts,js,mjs}", "scripts/**/*.{ts,mjs}"]
+    },
     "apps/web": {
-      "entry": ["app/**/*.{ts,tsx}", "scripts/**/*.{ts,mjs}"],
+      "entry": ["app/**/*.{ts,tsx}", "lib/test-helpers/**/*.ts"],
       "project": ["**/*.{ts,tsx,mjs}"]
     },
     "packages/tools": {
@@ -10,6 +14,14 @@
     },
     "packages/images": {
       "project": ["src/**/*.{ts,tsx}"]
+    },
+    "packages/deploy-scripts": {
+      "entry": ["bin/**/*.ts"],
+      "project": ["src/**/*.ts", "bin/**/*.ts"]
+    },
+    "apps/shell-server": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.ts"]
     }
   },
   "ignore": [
@@ -20,10 +32,14 @@
     "**/.next/**",
     "**/dist/**",
     "**/.turbo/**",
+    "**/.builds/**",
     "**/lib/db/**",
     "**/lib/supabase/*.types.ts",
     "packages/template/**",
-    "packages/tools/lovable-folder-only-use-for-inspiration/**"
+    "packages/tools/lovable-folder-only-use-for-inspiration/**",
+    "**/scripts/**",
+    "*.config.{js,ts}",
+    "apps/web/lib/agent-workspace-helpers.mjs"
   ],
   "ignoreDependencies": [
     "groq-sdk",
@@ -31,13 +47,13 @@
     "react-markdown",
     "ws"
   ],
-  "ignoreBinaries": ["pm2", "go", "sleep"],
+  "ignoreBinaries": ["pm2", "go"],
   "ignoreExportsUsedInFile": true,
   "includeEntryExports": false,
   "rules": {
     "duplicates": "error",
     "unlisted": "off",
-    "unresolved": "warn",
+    "unresolved": "off",
     "files": "off",
     "dependencies": "off",
     "devDependencies": "off",

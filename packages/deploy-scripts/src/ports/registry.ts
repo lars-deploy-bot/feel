@@ -7,8 +7,9 @@ const MAX_PORT = 3999
 const DOMAIN_PASSWORDS_FILE = "/var/lib/claude-bridge/domain-passwords.json"
 
 interface DomainPasswordEntry {
+  port: number // Required - used by /api/deploy-subdomain for port registry
+  // Legacy fields (no longer written, may exist in old entries):
   passwordHash?: string
-  port: number
   createdAt?: string
   credits?: number
   email?: string
@@ -103,10 +104,9 @@ export async function addToDomainRegistry(domain: string, port: number) {
     // File doesn't exist yet
   }
 
+  // Only store port - all other fields (email, credits, createdAt) are in Supabase
   registry[domain] = {
     port,
-    createdAt: new Date().toISOString(),
-    credits: 200,
   }
 
   await fs.writeFile(DOMAIN_PASSWORDS_FILE, JSON.stringify(registry, null, 2))

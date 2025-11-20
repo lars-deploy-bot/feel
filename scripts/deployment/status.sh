@@ -2,22 +2,32 @@
 set -e
 
 # Show status of all three environments
-source "$(dirname "$0")/env-helper.sh"
+SCRIPT_DIR="$(dirname "$0")"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+ENV_CONFIG="$PROJECT_ROOT/environments.json"
+
+# Read environment configuration
+PROD_PORT=$(jq -r '.environments.production.port' "$ENV_CONFIG")
+STAGING_PORT=$(jq -r '.environments.staging.port' "$ENV_CONFIG")
+DEV_PORT=$(jq -r '.environments.dev.port' "$ENV_CONFIG")
+PROD_SERVICE=$(jq -r '.environments.production.systemdService' "$ENV_CONFIG")
+STAGING_SERVICE=$(jq -r '.environments.staging.systemdService' "$ENV_CONFIG")
+DEV_PROCESS_NAME=$(jq -r '.environments.dev.processName' "$ENV_CONFIG")
 
 echo "📊 Claude Bridge Environment Status"
 echo "=================================="
 echo ""
 
-echo "Production ($ENV_PROD_PORT) - $ENV_PROD_PROCESS_NAME:"
-pm2 describe "$ENV_PROD_PROCESS_NAME" 2>/dev/null || echo "  ❌ Not running"
+echo "Production ($PROD_PORT) - $PROD_SERVICE:"
+systemctl status "$PROD_SERVICE" --no-pager -l | head -3 || echo "  ❌ Not running"
 echo ""
 
-echo "Staging ($ENV_STAGING_PORT) - $ENV_STAGING_PROCESS_NAME:"
-pm2 describe "$ENV_STAGING_PROCESS_NAME" 2>/dev/null || echo "  ❌ Not running"
+echo "Staging ($STAGING_PORT) - $STAGING_SERVICE:"
+systemctl status "$STAGING_SERVICE" --no-pager -l | head -3 || echo "  ❌ Not running"
 echo ""
 
-echo "Dev ($ENV_DEV_PORT) - $ENV_DEV_PROCESS_NAME:"
-pm2 describe "$ENV_DEV_PROCESS_NAME" 2>/dev/null || echo "  ❌ Not running"
+echo "Dev ($DEV_PORT) - $DEV_PROCESS_NAME:"
+pm2 describe "$DEV_PROCESS_NAME" 2>/dev/null || echo "  ❌ Not running"
 echo ""
 
 echo "Active production build:"

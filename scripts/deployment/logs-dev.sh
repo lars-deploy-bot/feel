@@ -2,6 +2,11 @@
 set -e
 
 # View dev environment logs
-source "$(dirname "$0")/env-helper.sh"
+SCRIPT_DIR="$(dirname "$0")"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+ENV_CONFIG="$PROJECT_ROOT/environments.json"
 
-pm2 logs "$ENV_DEV_PROCESS_NAME" --lines 1000
+# Read dev process name from environments.json
+DEV_PROCESS_NAME=$(jq -r '.environments.dev.processName' "$ENV_CONFIG")
+
+pm2 logs "$DEV_PROCESS_NAME" --lines 1000

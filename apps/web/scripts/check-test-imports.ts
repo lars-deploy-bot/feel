@@ -23,9 +23,9 @@ const RESET = "\x1b[0m"
 console.log("🔍 Checking for invalid bun:test imports...\n")
 
 try {
-  // Search for bun:test imports in all test files
+  // Search for bun:test imports in all test files (excluding build directories)
   const result = execSync(
-    'grep -rn "from.*bun:test" --include="*.test.ts" --include="*.test.tsx" --include="*.spec.ts" --include="*.spec.tsx" . 2>/dev/null || true',
+    'grep -rn "from.*bun:test" --include="*.test.ts" --include="*.test.tsx" --include="*.spec.ts" --include="*.spec.tsx" --exclude-dir=.next --exclude-dir=.next-test --exclude-dir=node_modules --exclude-dir=dist . 2>/dev/null || true',
     { encoding: "utf-8", cwd: process.cwd() },
   )
 

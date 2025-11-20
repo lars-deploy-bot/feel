@@ -5,6 +5,8 @@
  */
 
 import { beforeAll, describe, expect, it, vi } from "vitest"
+import { NextRequest } from "next/server"
+import type { RequestInit as NextRequestInit } from "next/dist/server/web/spec-extension/request"
 import { createIamClient } from "@/lib/supabase/iam"
 
 // Mock auth check
@@ -21,10 +23,8 @@ vi.mock("@/lib/supabase/iam", () => ({
 const { GET } = await import("../route")
 const { isManagerAuthenticated } = await import("@/features/auth/lib/auth")
 
-function createMockRequest(url: string, options: RequestInit = {}): Request {
-  const req = new Request(url, options) as any
-  req.nextUrl = new URL(url)
-  return req
+function createMockRequest(url: string, options: NextRequestInit = {}): NextRequest {
+  return new NextRequest(url, options)
 }
 
 describe("GET /api/manager/users", () => {

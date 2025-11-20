@@ -8,7 +8,7 @@
  *   bun bin/deploy.ts domain.com
  */
 
-import { deploySite, DeploymentError } from "../src/lib/sitectl"
+import { deploySite, DeploymentError } from "../src/orchestration"
 
 async function main() {
   if (process.argv.length < 3) {

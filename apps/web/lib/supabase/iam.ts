@@ -13,7 +13,6 @@ if (typeof window !== "undefined" && !isTestEnv) {
 }
 
 import { createServerClient } from "@supabase/ssr"
-import { cookies } from "next/headers"
 import { getSupabaseCredentials, type KeyType } from "@/lib/env/server"
 import type { Database } from "./iam.types"
 
@@ -22,6 +21,8 @@ import type { Database } from "./iam.types"
  * @param keyType - Use "service" for admin operations, "anon" for RLS-protected queries
  */
 export async function createIamClient(keyType: KeyType = "service") {
+  // Lazy import cookies to avoid breaking Playwright tests
+  const { cookies } = await import("next/headers")
   const cookieStore = await cookies()
   const { url, key } = getSupabaseCredentials(keyType)
 

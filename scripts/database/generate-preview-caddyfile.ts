@@ -27,6 +27,11 @@ const CADDYFILE_PATH = "/root/webalive/claude-bridge/Caddyfile"
 const PREVIEW_BASE = "preview.terminal.goalive.nl"
 const AUTH_ENDPOINT = "https://dev.terminal.goalive.nl/api/auth/preview-guard"
 
+// Read staging port from environments.json
+const ENV_CONFIG_PATH = "/root/webalive/claude-bridge/environments.json"
+const envConfig = JSON.parse(readFileSync(ENV_CONFIG_PATH, "utf-8"))
+const STAGING_PORT = envConfig.environments.staging.port
+
 interface DomainMapping {
   domain: string
   port: number
@@ -95,7 +100,7 @@ ${previewHost} {
     }
 
     # Auth check via forward_auth (direct to localhost to avoid redirect loops)
-    forward_auth localhost:8998 {
+    forward_auth localhost:${STAGING_PORT} {
         uri /api/auth/preview-guard
         copy_headers Cookie
     }

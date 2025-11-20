@@ -1,5 +1,7 @@
 # Claudable Competitor Analysis - Smart Architectural Patterns
 
+> **Note:** This document analyzes a competitor's architecture. References to SQLite and other technologies describe THEIR system, not Claude Bridge. Claude Bridge uses Supabase (PostgreSQL) exclusively.
+
 **Date:** 2025-11-17
 **Analyzed Codebase:** `/root/webalive/learn-from-claudable-competitor`
 **Analysis Focus:** Intelligent, non-obvious design decisions worth learning from

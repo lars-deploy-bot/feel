@@ -102,7 +102,9 @@ export function SettingsPanel({
         </div>
         <div className="p-6">
           {!serviceStatus ? (
-            <div className="text-sm text-slate-600 dark:text-slate-400 text-center py-4">Click refresh to check service status</div>
+            <div className="text-sm text-slate-600 dark:text-slate-400 text-center py-4">
+              Click refresh to check service status
+            </div>
           ) : (
             <div className="space-y-3">
               {serviceStatus.services.map((service: Service) => (
@@ -168,7 +170,9 @@ export function SettingsPanel({
       <div className="border border-slate-200 dark:border-white/10 rounded-lg">
         <div className="px-6 py-4 border-b border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#1a1a1a]">
           <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Domain Status</h3>
-          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">Check HTTP, HTTPS, systemd, Caddy, and file status</p>
+          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+            Check HTTP, HTTPS, systemd, Caddy, and file status
+          </p>
         </div>
         <div className="p-6">
           <button
@@ -186,7 +190,9 @@ export function SettingsPanel({
       <div className="border border-slate-200 dark:border-white/10 rounded-lg">
         <div className="px-6 py-4 border-b border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#1a1a1a]">
           <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Backup Websites</h3>
-          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">Push changes to GitHub (eenlars/all_websites)</p>
+          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+            Push changes to GitHub (eenlars/all_websites)
+          </p>
         </div>
         <div className="p-6">
           <button

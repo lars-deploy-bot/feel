@@ -1,11 +1,10 @@
 /**
  * Credits Service - Workspace Credit Balance Management
  *
- * ARCHITECTURE (Migrated to Supabase):
+ * ARCHITECTURE:
  * - Credits stored in Supabase iam.orgs.credits (PostgreSQL)
  * - Domains map to orgs via app.domains.org_id
  * - Flow: domain → org_id → credits
- * - SQLite workspaces table is now legacy (migration completed 2025-11-14)
  *
  * TERMINOLOGY:
  * - CREDITS: Our currency (stored in Supabase, shown to users)
@@ -15,7 +14,7 @@
  * All operations are atomic and safe for concurrent access.
  */
 
-// Re-export Supabase credit functions (migration from SQLite completed)
+// Re-export Supabase credit functions
 export {
   calculateLLMTokenCost,
   chargeTokensFromCredits,

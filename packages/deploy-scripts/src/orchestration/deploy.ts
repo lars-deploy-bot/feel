@@ -142,39 +142,56 @@ export async function deploySite(config: DeploymentConfig): Promise<DeploymentRe
   // 8. Stop old PM2 process
   await stopPM2Service(domain)
 
-  // 9. Start systemd service
+  // 9. Create environment file BEFORE starting service
+  // This ensures systemd reads the correct PORT from the env file
   const serviceName = getServiceName(slug)
+  const envFile = resolve(ETC_SITES_DIR, `${serviceName.replace("site@", "").replace(".service", "")}.env`)
+  await createEnvFile(envFile, domain, port)
+  console.log(`[Deploy] ✅ Created ${envFile} with PORT=${port}`)
+
+  // 10. Start systemd service
   await reloadSystemd()
   await startService(serviceName)
 
-  // 10. Verify service
+  // 11. Verify service
   await delay(3000)
   await verifyService(serviceName)
 
-  // 11. Verify port
+  // 12. Verify port with retry logic (Vite takes time to start)
   await delay(2000)
-  if (!(await isPortListening(port))) {
-    const logs = execSync(`journalctl -u ${serviceName} --lines=10`).toString()
-    throw new DeploymentError(`Service not listening on port ${port}\n${logs}`)
+  let retries = 3
+  let portListening = false
+  while (retries > 0) {
+    if (await isPortListening(port)) {
+      console.log(`[Deploy] ✅ Service listening on port ${port}`)
+      portListening = true
+      break
+    }
+    retries--
+    if (retries > 0) {
+      console.log(`[Deploy] Port ${port} not ready, retrying... (${retries} attempts left)`)
+      await delay(2000)
+    }
   }
 
-  // 12. Update main Caddyfile
+  if (!portListening) {
+    const logs = execSync(`journalctl -u ${serviceName} --lines=20`).toString()
+    throw new DeploymentError(`Service not listening on port ${port} after 3 retries\n${logs}`)
+  }
+
+  // 13. Update main Caddyfile
   await updateCaddyfile(domain, port)
 
-  // 13. Reload Caddy
+  // 14. Reload Caddy
   await reloadCaddy()
 
-  // 14. Final verification
+  // 15. Final verification
   await delay(2000)
   try {
     spawnSync("curl", ["-f", "-s", "-I", `https://${domain}`], { stdio: "pipe" })
   } catch {
     // Site might not be ready yet
   }
-
-  // 15. Create environment file
-  const envFile = resolve(ETC_SITES_DIR, `${slug}.env`)
-  await createEnvFile(envFile, domain, port)
 
   return {
     domain,

@@ -84,7 +84,7 @@ export function createTestPNG(): Buffer {
  * This simulates what happens when a user drags a file from their computer
  */
 export function bufferToFile(buffer: Buffer, filename: string, mimeType: string): File {
-  const blob = new Blob([buffer], { type: mimeType })
+  const blob = new Blob([new Uint8Array(buffer)], { type: mimeType })
   return new File([blob], filename, { type: mimeType })
 }
 

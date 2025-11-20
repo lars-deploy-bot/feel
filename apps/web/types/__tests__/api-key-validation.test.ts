@@ -230,7 +230,7 @@ describe("API Key Validation - BodySchema", () => {
         }
 
         const result = BodySchema.safeParse(body)
-        expect(result.success).toBe(valid, `${reason}: "${key}"`)
+        expect(result.success, `${reason}: "${key}"`).toBe(valid)
       })
     })
   })

@@ -85,7 +85,7 @@ kranazilie.nl {
 barendbootsma.com {
     import common_headers
     import image_serving
-    reverse_proxy localhost:3341 {
+    reverse_proxy localhost:3340 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
         header_up X-Forwarded-For {remote_host}
@@ -172,28 +172,15 @@ six.goalive.nl {
 }
 
 # Claude Bridge staging and dev environments
-# (production terminal.goalive.nl is defined in /etc/caddy/Caddyfile)
+# (Now defined in /etc/caddy/Caddyfile.staging)
 
-staging.terminal.goalive.nl {
-    import common_headers
-    import image_serving
-    reverse_proxy localhost:8998 {
-        header_up Host {host}
-        header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-For {remote_host}
-        header_up X-Forwarded-Proto {scheme}
-    }
+# Terminal app (standalone Hono server)
+shell.terminal.goalive.nl {
+    reverse_proxy localhost:3888
 }
 
-dev.terminal.goalive.nl {
-    import common_headers
-    import image_serving
-    reverse_proxy localhost:8997 {
-        header_up Host {host}
-        header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-For {remote_host}
-        header_up X-Forwarded-Proto {scheme}
-    }
+sk.goalive.nl {
+    reverse_proxy localhost:3888
 }
 
 # NOTE: alive.best subdomain entries are added dynamically by deploy-site-systemd.sh
@@ -1210,16 +1197,6 @@ test3.alive.best {
     }
 }
 
-arnotennis.alive.best {
-    import common_headers
-    import image_serving
-    reverse_proxy localhost:3392 {
-        header_up Host {host}
-        header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-For {remote_host}
-        header_up X-Forwarded-Proto {scheme}
-    }
-}
 
 blabla.alive.best {
     import common_headers
@@ -1367,16 +1344,6 @@ test-wrong-812.alive.best {
     }
 }
 
-test-correct-824.alive.best {
-    import common_headers
-    import image_serving
-    reverse_proxy localhost:3414 {
-        header_up Host {host}
-        header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-For {remote_host}
-        header_up X-Forwarded-Proto {scheme}
-    }
-}
 
 newtest-847.alive.best {
     import common_headers
@@ -1439,4 +1406,99 @@ evermore.alive.best {
 
 mp4-to-mp3.alive.best {
     reverse_proxy localhost:3336
+}
+
+saaslanding.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3465 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+# Auto-generated Caddyfile for pf163218.alive.best
+# Port: 3467
+
+
+# Auto-generated Caddyfile for test-e2e.alive.best
+# Port: 3395
+
+test-e2e.alive.best {
+    import common_headers
+    reverse_proxy localhost:3395 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+# Auto-generated Caddyfile for tc2.alive.best
+# Port: 3406
+
+
+# Auto-generated Caddyfile for tc1.alive.best
+# Port: 3404
+
+
+# Auto-generated Caddyfile for tc3.alive.best
+# Port: 3405
+
+
+# Auto-generated Caddyfile for test-cli-e2e.alive.best
+# Port: 3482
+
+test-cli-e2e.alive.best {
+    import common_headers
+    reverse_proxy localhost:3482 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+# Auto-generated Caddyfile for asdf.alive.best
+# Port: 3485
+
+asdf.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3485 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+# Auto-generated Caddyfile for larrysgarden.alive.best
+# Port: 3506
+
+larrysgarden.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3506 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+# Auto-generated Caddyfile for geesjeskitchen.alive.best
+# Port: 3507
+
+geesjeskitchen.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3507 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
 }

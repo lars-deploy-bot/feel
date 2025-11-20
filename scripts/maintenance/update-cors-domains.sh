@@ -8,15 +8,28 @@ set -e
 SITES_DIR="/root/webalive/sites"
 ALLOWED_DOMAINS_FILE="/root/webalive/claude-bridge/allowed-domains.json"
 
+# Read environment configuration
+SCRIPT_DIR="$(dirname "$0")"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+ENV_CONFIG="$PROJECT_ROOT/environments.json"
+
+PROD_PORT=$(jq -r '.environments.production.port' "$ENV_CONFIG")
+STAGING_PORT=$(jq -r '.environments.staging.port' "$ENV_CONFIG")
+DEV_PORT=$(jq -r '.environments.dev.port' "$ENV_CONFIG")
+
 echo "🔍 Scanning for domains in $SITES_DIR..."
 
 # Start with base domains
 DOMAINS=(
     "https://terminal.goalive.nl"
     "http://localhost:3000"
-    "http://localhost:8999"
+    "http://localhost:$PROD_PORT"
+    "http://localhost:$STAGING_PORT"
+    "http://localhost:$DEV_PORT"
     "http://127.0.0.1:3000"
-    "http://127.0.0.1:8999"
+    "http://127.0.0.1:$PROD_PORT"
+    "http://127.0.0.1:$STAGING_PORT"
+    "http://127.0.0.1:$DEV_PORT"
 )
 
 # Scan sites directory for domain names

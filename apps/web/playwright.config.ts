@@ -1,4 +1,8 @@
 import { defineConfig } from "@playwright/test"
+import dotenv from "dotenv"
+
+// Load environment variables from .env for test fixtures
+dotenv.config()
 
 // Use port 9547 for testing to avoid conflicts with production (8999)
 const TEST_PORT = "9547"
@@ -10,8 +14,9 @@ const isStaging = process.env.TEST_ENV === "staging"
 export default defineConfig({
   testDir: "./e2e-tests",
   testMatch: "**/*.spec.ts", // Standard Playwright convention
+  testIgnore: "**/*-genuine.spec.ts", // Exclude genuine tests (run separately with playwright.genuine.config.ts)
   timeout: 30000,
-  workers: 1, // Run tests sequentially to avoid state pollution
+  workers: 1, // Run all tests sequentially to avoid state pollution
 
   use: {
     baseURL: isStaging ? "https://dev.terminal.goalive.nl" : BASE_URL,

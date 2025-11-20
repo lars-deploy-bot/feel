@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import bcrypt from "bcrypt"
 import { z } from "zod"
@@ -155,9 +155,12 @@ function getDomainPasswordsPath(): string {
 }
 
 /**
- * @deprecated Since 2025-11-16 - Migrated to Supabase (iam.users table)
- * Use `updateDomainOwnerPassword()` from @/lib/auth/supabase-passwords instead
- * This function reads from legacy domain-passwords.json file
+ * Load domain registry from domain-passwords.json
+ *
+ * Currently used for port assignment lookups. Legacy fields (passwordHash, email, credits)
+ * are no longer written but may exist in old entries. All user data is now in Supabase.
+ *
+ * @returns Domain registry object (domain → {port, ...legacy fields})
  */
 export function loadDomainPasswords(): DomainPasswords {
   try {
@@ -171,61 +174,3 @@ export function loadDomainPasswords(): DomainPasswords {
   return {}
 }
 
-/**
- * @deprecated Since 2025-11-16 - Migrated to Supabase (iam.users table)
- * Use `updateDomainOwnerPassword()` from @/lib/auth/supabase-passwords instead
- * This function writes to legacy domain-passwords.json file
- */
-export function saveDomainPasswords(passwords: DomainPasswords): void {
-  try {
-    const filePath = getDomainPasswordsPath()
-    writeFileSync(filePath, JSON.stringify(passwords, null, 2))
-  } catch (error) {
-    console.error("Failed to save domain passwords file:", error)
-  }
-}
-
-/**
- * @deprecated Since 2025-11-16 - Migrated to Supabase (iam.users table)
- * Use domain → org_id lookup + user password verification via Supabase instead
- * This function reads from legacy domain-passwords.json file
- */
-export async function isDomainPasswordValid(domain: string, providedPassword: string): Promise<boolean> {
-  const passwords = loadDomainPasswords()
-  const domainConfig = passwords[domain]
-
-  if (!domainConfig?.passwordHash) {
-    return false
-  }
-
-  return verifyPassword(providedPassword, domainConfig.passwordHash)
-}
-
-/**
- * @deprecated Since 2025-11-16 - Migrated to Supabase
- * - Password updates: Use `updateDomainOwnerPassword()` from @/lib/auth/supabase-passwords
- * - Email updates: Use `updateUserEmail()` from @/lib/auth/supabase-passwords
- * - Credits updates: Use `updateOrgCredits()` from @/lib/tokens
- * This function writes to legacy domain-passwords.json file
- */
-export async function updateDomainConfig(
-  domain: string,
-  updates: { password?: string; email?: string; credits?: number },
-): Promise<void> {
-  const passwords = loadDomainPasswords()
-  if (!passwords[domain]) return
-
-  if (updates.password) {
-    passwords[domain].passwordHash = await hashPassword(updates.password)
-  }
-
-  if (updates.email !== undefined) {
-    passwords[domain].email = updates.email
-  }
-
-  if (updates.credits !== undefined && updates.credits >= 0) {
-    passwords[domain].credits = updates.credits
-  }
-
-  saveDomainPasswords(passwords)
-}

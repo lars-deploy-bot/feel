@@ -1,0 +1,56 @@
+/**
+ * Custom assertions and helpers for E2E tests
+ *
+ * Benefits:
+ * - Consistent waiting strategies
+ * - Better error messages
+ * - Reusable patterns
+ */
+import { expect, type Page } from "@playwright/test"
+import { TEST_SELECTORS, TEST_TIMEOUTS } from "../fixtures/test-data"
+
+/**
+ * Wait for workspace to be fully initialized
+ * - Waits for both mounted and workspace state to be set
+ * - Required before any chat interactions
+ */
+export async function expectWorkspaceReady(page: Page) {
+  await expect(page.locator(TEST_SELECTORS.workspaceReady)).toBeVisible({
+    timeout: TEST_TIMEOUTS.slow,
+  })
+}
+
+/**
+ * Expect a chat message to be visible
+ * Uses .first() to handle message appearing in both sidebar and chat area
+ */
+export async function expectChatMessage(page: Page, text: string | RegExp) {
+  const locator = typeof text === "string" ? page.getByText(text, { exact: true }) : page.getByText(text)
+
+  await expect(locator.first()).toBeVisible({
+    timeout: TEST_TIMEOUTS.medium,
+  })
+}
+
+/**
+ * Expect send button to be enabled
+ * Indicates workspace is ready and no message is being sent
+ *
+ * Note: Uses medium timeout because after sending a message,
+ * the button needs time to process response and re-enable
+ */
+export async function expectSendButtonEnabled(page: Page) {
+  await expect(page.locator(TEST_SELECTORS.sendButton)).toBeEnabled({
+    timeout: TEST_TIMEOUTS.medium, // 3s - needs time for response cycle
+  })
+}
+
+/**
+ * Expect send button to be disabled
+ * Indicates message is being sent or workspace not ready
+ */
+export async function expectSendButtonDisabled(page: Page) {
+  await expect(page.locator(TEST_SELECTORS.sendButton)).toBeDisabled({
+    timeout: TEST_TIMEOUTS.fast,
+  })
+}

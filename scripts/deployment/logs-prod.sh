@@ -1,7 +1,10 @@
 #!/bin/bash
 set -e
 
-# View production logs
-source "$(dirname "$0")/env-helper.sh"
+# View production logs via systemd
+SCRIPT_DIR="$(dirname "$0")"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+ENV_CONFIG="$PROJECT_ROOT/environments.json"
 
-pm2 logs "$ENV_PROD_PROCESS_NAME" --lines 1000
+PROD_SERVICE=$(jq -r '.environments.production.systemdService' "$ENV_CONFIG")
+journalctl -u "$PROD_SERVICE" -f

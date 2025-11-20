@@ -1,0 +1,64 @@
+#!/bin/bash
+set -e
+
+# Source common functions
+source "$(dirname "$0")/lib/common.sh"
+
+# Validate required environment variables
+require_var SITE_USER SITE_DOMAIN TARGET_DIR TEMPLATE_PATH LEGACY_SITES_ROOT
+
+log_info "Setting up filesystem for: $SITE_DOMAIN"
+
+# Create target directory
+log_info "Creating directory: $TARGET_DIR"
+mkdir -p "$TARGET_DIR"
+
+# Check if this is a migration from legacy location
+LEGACY_PATH="${LEGACY_SITES_ROOT}/${SITE_DOMAIN}"
+if [[ -d "$LEGACY_PATH" ]]; then
+    log_info "Migrating from legacy location: $LEGACY_PATH"
+    # Copy all files except node_modules and .git
+    rsync -av --exclude='node_modules' --exclude='.git' "${LEGACY_PATH}/" "${TARGET_DIR}/"
+else
+    log_info "Copying from template: $TEMPLATE_PATH"
+    # Copy template
+    cp -r "${TEMPLATE_PATH}/user/." "$TARGET_DIR/"
+
+    # Create site-specific Caddyfile if doesn't exist
+    if [[ ! -f "${TARGET_DIR}/Caddyfile" ]]; then
+        cat > "${TARGET_DIR}/Caddyfile" <<EOF
+# Auto-generated Caddyfile for ${SITE_DOMAIN}
+# Port: __PORT__
+
+${SITE_DOMAIN} {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:__PORT__ {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+EOF
+    fi
+fi
+
+# Set ownership
+log_info "Setting ownership to: $SITE_USER:$SITE_USER"
+chown -R "$SITE_USER:$SITE_USER" "$TARGET_DIR"
+
+# Set permissions
+log_info "Setting directory permissions to 750"
+chmod 750 "$TARGET_DIR"
+
+# Create symlink if domain has dots (for easier access)
+SYMLINK_NAME=$(echo "$SITE_DOMAIN" | tr '.' '-')
+SYMLINK_PATH="/srv/webalive/sites/${SYMLINK_NAME}"
+if [[ "$SYMLINK_PATH" != "$TARGET_DIR" ]] && [[ ! -e "$SYMLINK_PATH" ]]; then
+    log_info "Creating symlink: $SYMLINK_PATH -> $TARGET_DIR"
+    ln -s "$TARGET_DIR" "$SYMLINK_PATH"
+fi
+
+log_success "Filesystem setup complete: $TARGET_DIR"
+exit 0

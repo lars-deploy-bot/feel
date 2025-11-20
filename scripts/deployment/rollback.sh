@@ -2,9 +2,39 @@
 set -e
 
 # Interactive rollback to previous build
-source "$(dirname "$0")/env-helper.sh"
+# Works for production and staging (both use systemd)
 
-BUILDS_DIR="/root/webalive/claude-bridge/.builds"
+SCRIPT_DIR="$(dirname "$0")"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+ENV_CONFIG="$PROJECT_ROOT/environments.json"
+
+# Read environment configuration
+PROD_PORT=$(jq -r '.environments.production.port' "$ENV_CONFIG")
+STAGING_PORT=$(jq -r '.environments.staging.port' "$ENV_CONFIG")
+PROD_SERVICE=$(jq -r '.environments.production.systemdService' "$ENV_CONFIG")
+STAGING_SERVICE=$(jq -r '.environments.staging.systemdService' "$ENV_CONFIG")
+
+echo "Select environment to rollback:"
+echo "  1) Production (port $PROD_PORT)"
+echo "  2) Staging (port $STAGING_PORT)"
+read -p "Enter choice (1-2): " env_choice
+
+case $env_choice in
+  1)
+    ENV="prod"
+    SERVICE="$PROD_SERVICE"
+    ;;
+  2)
+    ENV="staging"
+    SERVICE="$STAGING_SERVICE"
+    ;;
+  *)
+    echo "❌ Invalid selection"
+    exit 1
+    ;;
+esac
+
+BUILDS_DIR="/root/webalive/claude-bridge/.builds/${ENV}"
 CURRENT_LINK="$BUILDS_DIR/current"
 
 if [ ! -d "$BUILDS_DIR" ]; then
@@ -12,7 +42,8 @@ if [ ! -d "$BUILDS_DIR" ]; then
   exit 1
 fi
 
-echo "📋 Available builds:"
+echo ""
+echo "📋 Available builds for ${ENV}:"
 echo ""
 
 cd "$BUILDS_DIR"
@@ -49,11 +80,11 @@ fi
 ln -sfn "$BUILD_TO_ROLLBACK" current
 echo "✅ Symlink updated"
 
-# Restart production
-echo "🔄 Restarting production..."
-pm2 restart "$ENV_PROD_PROCESS_NAME"
+# Restart service
+echo "🔄 Restarting $SERVICE..."
+systemctl restart "$SERVICE"
 sleep 5
 
 echo "✅ Rollback complete"
 echo ""
-pm2 describe "$ENV_PROD_PROCESS_NAME"
+systemctl status "$SERVICE" --no-pager | head -10

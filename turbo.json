@@ -7,6 +7,9 @@
       "dependsOn": ["^build"]
     },
     "start": {},
+    "type-check": {
+      "dependsOn": ["^type-check"]
+    },
     "lint": {
       "dependsOn": ["^lint"]
     },

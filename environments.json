@@ -4,16 +4,19 @@
       "key": "production",
       "displayName": "Production",
       "prefix": "prod",
-      "port": 8999,
+      "port": 9000,
       "domain": "terminal.goalive.nl",
-      "processName": "claude-bridge",
+      "processName": "claude-bridge-prod",
+      "serviceType": "systemd",
+      "systemdService": "claude-bridge-prod.service",
       "serverScript": ".builds/prod/current/standalone/apps/web/server.js",
+      "buildPath": ".builds/prod",
       "workspacePath": "/srv/webalive/sites",
       "isProduction": true,
       "hasHotReload": false,
-      "deployCommand": "make deploy",
-      "logsCommand": "make logs",
-      "restartCommand": "pm2 restart claude-bridge"
+      "deployCommand": "make wash-skip",
+      "logsCommand": "journalctl -u claude-bridge-prod.service -f",
+      "restartCommand": "systemctl restart claude-bridge-prod.service"
     },
     "staging": {
       "key": "staging",
@@ -22,13 +25,16 @@
       "port": 8998,
       "domain": "staging.terminal.goalive.nl",
       "processName": "claude-bridge-staging",
+      "serviceType": "systemd",
+      "systemdService": "claude-bridge-staging.service",
       "serverScript": ".builds/staging/current/standalone/apps/web/server.js",
+      "buildPath": ".builds/staging",
       "workspacePath": "/srv/webalive/sites",
       "isProduction": false,
       "hasHotReload": false,
       "deployCommand": "make staging",
-      "logsCommand": "make logs-staging",
-      "restartCommand": "pm2 restart claude-bridge-staging"
+      "logsCommand": "journalctl -u claude-bridge-staging.service -f",
+      "restartCommand": "systemctl restart claude-bridge-staging.service"
     },
     "dev": {
       "key": "dev",

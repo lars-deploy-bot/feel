@@ -1,7 +1,10 @@
 #!/bin/bash
 set -e
 
-# View staging logs
-source "$(dirname "$0")/env-helper.sh"
+# View staging logs via systemd
+SCRIPT_DIR="$(dirname "$0")"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+ENV_CONFIG="$PROJECT_ROOT/environments.json"
 
-pm2 logs "$ENV_STAGING_PROCESS_NAME" --lines 1000
+STAGING_SERVICE=$(jq -r '.environments.staging.systemdService' "$ENV_CONFIG")
+journalctl -u "$STAGING_SERVICE" -f

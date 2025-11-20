@@ -145,8 +145,19 @@ export function DomainsTable({
                     const failed = checks.filter((c: any) => !c.pass)
                     if (failed.length === 0) return null
                     return (
-                      <div className="text-xs text-red-600 mt-1">
+                      <div className="text-xs text-red-600 mt-1 group relative cursor-help">
                         {failed.length} issue{failed.length !== 1 ? "s" : ""}
+                        <div className="invisible group-hover:visible absolute left-0 top-full mt-1 z-10 w-64 p-3 bg-slate-900 dark:bg-slate-800 text-white rounded-lg shadow-xl border border-slate-700">
+                          <div className="text-xs font-semibold mb-2">Failed checks:</div>
+                          <div className="space-y-1.5">
+                            {failed.map((check: any, idx: number) => (
+                              <div key={idx} className="text-xs">
+                                <div className="font-medium text-red-400">{check.label}</div>
+                                <div className="text-slate-300 ml-2">{check.detail}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     )
                   })()}

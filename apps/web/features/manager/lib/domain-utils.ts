@@ -30,6 +30,9 @@ export function normalizeDomain(input: string): string {
   // Remove port numbers
   domain = domain.replace(/:\d+$/, "")
 
+  // Remove query strings and anchors
+  domain = domain.replace(/[?#].*$/, "")
+
   // Convert to lowercase
   domain = domain.toLowerCase()
 

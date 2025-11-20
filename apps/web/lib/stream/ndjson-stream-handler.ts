@@ -361,10 +361,13 @@ export function createNDJSONStream(config: StreamHandlerConfig): ReadableStream<
         cleanupCalled = true
       }
 
-      // Then try to cancel child stream (may already be locked, that's fine)
-      childStream.cancel().catch(error => {
-        console.error(`[NDJSON Stream ${requestId}] Failed to cancel childStream:`, error)
-      })
+      // Cancel the reader instead of the stream (avoids "locked" error)
+      // The reader is stored in cancelState and used in the start() loop
+      if (cancelState.reader) {
+        cancelState.reader.cancel().catch(error => {
+          console.error(`[NDJSON Stream ${requestId}] Failed to cancel reader:`, error)
+        })
+      }
     },
   })
 }

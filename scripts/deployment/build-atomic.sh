@@ -129,6 +129,11 @@ fi
 # Build dependencies first (images + tools + deploy-scripts packages)
 log_info "Building workspace dependencies..."
 
+# Remove circular symlinks created by bun workspace linking (causes Turbopack build failures)
+log_info "Removing circular symlinks in packages..."
+rm -f packages/guides/guides packages/images/images packages/tools/tools packages/deploy-scripts/deploy-scripts 2>/dev/null || true
+log_success "Cleaned up circular symlinks"
+
 # Build images package
 if [ ! -d "packages/images" ]; then
     log_error "Package not found: packages/images"
@@ -261,6 +266,11 @@ for pkg in "${REQUIRED_PACKAGES[@]}"; do
         log_error "Required package not found: packages/$pkg"
         log_error "All workspace packages must exist before building"
         exit 1
+    fi
+
+    # Remove existing directory if Next.js already created it (prevents nested copy)
+    if [ -d "$STANDALONE_PACKAGES/$pkg" ]; then
+        rm -rf "$STANDALONE_PACKAGES/$pkg"
     fi
 
     if ! cp -r "packages/$pkg" "$STANDALONE_PACKAGES/$pkg"; then

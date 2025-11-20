@@ -6,7 +6,7 @@ A multi-tenant web development platform that provides Claude AI assistance with 
 
 Claude Bridge enables developers to interact with Claude AI in the context of specific website projects, with each domain getting its own isolated workspace where Claude can read, write, and edit files safely.
 
-**📚 [Complete Documentation Index →](./DOCUMENTATION.md)** | **🚀 [Quick Start](#installation--setup)** | **🧪 [Testing Guide](./docs/testing/README.md)**
+**📚 [Documentation →](./docs/README.md)** | **🚀 [Quick Start](./docs/GETTING_STARTED.md)** | **🏗️ [Architecture](./docs/architecture/README.md)** | **🔐 [Security](./docs/security/README.md)** | **🧪 [Testing](./docs/testing/README.md)**
 
 ## Architecture
 

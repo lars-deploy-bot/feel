@@ -41,7 +41,9 @@ describe("File Upload Flow - Computer to Claude", () => {
     expect(attachment.uploadProgress).toBe(0)
 
     // Cleanup
-    URL.revokeObjectURL(attachment.preview)
+    if (attachment.preview) {
+      URL.revokeObjectURL(attachment.preview)
+    }
   })
 
   it("should convert to library-image after successful upload", () => {
@@ -99,7 +101,9 @@ describe("File Upload Flow - Computer to Claude", () => {
     expect(prompt).toBe("add this image")
 
     // Cleanup
-    URL.revokeObjectURL(fileUploadAttachment.preview)
+    if (fileUploadAttachment.preview) {
+      URL.revokeObjectURL(fileUploadAttachment.preview)
+    }
   })
 
   it("should construct correct preview URL from photobook key", () => {

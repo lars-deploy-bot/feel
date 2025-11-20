@@ -262,7 +262,44 @@ export async function DELETE(req: NextRequest) {
 
     const iam = await createIamClient("service")
 
-    // Delete org memberships first (foreign key constraint)
+    // Update domains to remove org reference (nullify org_id in app schema)
+    const supabaseUrl = process.env.SUPABASE_URL
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+    if (!supabaseUrl || !supabaseKey) {
+      const res = NextResponse.json(
+        { ok: false, error: "CONFIG_ERROR", message: "Missing Supabase credentials", requestId },
+        { status: 500 },
+      )
+      addCorsHeaders(res, origin)
+      return res
+    }
+
+    const app = createClient<AppDatabase>(supabaseUrl, supabaseKey, {
+      db: { schema: "app" },
+    })
+
+    const { error: domainsError } = await app.from("domains").update({ org_id: null }).eq("org_id", org_id)
+
+    if (domainsError) {
+      console.error("[Manager Orgs] Failed to nullify domain org references:", domainsError)
+      // Don't fail the whole operation for this, just log it
+    }
+
+    // Delete org invites first (foreign key constraint)
+    const { error: invitesError } = await iam.from("org_invites").delete().eq("org_id", org_id)
+
+    if (invitesError) {
+      console.error("[Manager Orgs] Failed to delete org invites:", invitesError)
+      const res = NextResponse.json(
+        { ok: false, error: "DATABASE_ERROR", message: "Failed to delete org invites", requestId },
+        { status: 500 },
+      )
+      addCorsHeaders(res, origin)
+      return res
+    }
+
+    // Delete org memberships (foreign key constraint)
     const { error: membershipsError } = await iam.from("org_memberships").delete().eq("org_id", org_id)
 
     if (membershipsError) {

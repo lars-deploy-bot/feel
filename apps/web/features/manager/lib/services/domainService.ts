@@ -15,8 +15,8 @@ export interface FixPortRequest {
 }
 
 export async function deleteDomain(domain: string): Promise<void> {
-  const response = await fetch("/api/manager/delete-domain", {
-    method: "POST",
+  const response = await fetch("/api/manager", {
+    method: "DELETE",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ domain }),
   })
@@ -40,10 +40,10 @@ export async function checkPermissions(domain: string): Promise<any> {
 }
 
 export async function fixPort(domain: string): Promise<void> {
-  const response = await fetch("/api/manager/fix-port", {
+  const response = await fetch("/api/manager/vite-config", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ domain }),
+    body: JSON.stringify({ domain, action: "fix-port" }),
   })
 
   if (!response.ok) {

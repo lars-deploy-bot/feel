@@ -69,26 +69,27 @@ describe("Manager Login Integration", () => {
     expect(typeof managerLoginRateLimiter.reset).toBe("function")
   })
 
-  it("should have session store initialized", async () => {
-    const { managerSessionStore } = await import("@/lib/auth/manager-session-store")
+  it("should create manager JWT tokens", async () => {
+    const { createSessionToken, verifySessionToken } = await import("@/features/auth/lib/jwt")
 
-    expect(managerSessionStore).toBeDefined()
-    expect(typeof managerSessionStore.createSession).toBe("function")
-    expect(typeof managerSessionStore.isValidSession).toBe("function")
-    expect(typeof managerSessionStore.revokeSession).toBe("function")
+    expect(createSessionToken).toBeDefined()
+    expect(verifySessionToken).toBeDefined()
 
-    // Test session creation returns valid token
-    const token = managerSessionStore.createSession()
+    // Test manager JWT creation
+    const token = await createSessionToken("manager", "manager@system", "Manager", [])
+
     expect(token).toBeDefined()
     expect(typeof token).toBe("string")
-    expect(token.length).toBeGreaterThan(20) // base64url tokens are ~43 chars
+    expect(token.split(".").length).toBe(3) // JWT has 3 parts
 
-    // Test session validation
-    expect(managerSessionStore.isValidSession(token)).toBe(true)
-    expect(managerSessionStore.isValidSession("invalid-token")).toBe(false)
+    // Test JWT validation
+    const payload = await verifySessionToken(token)
+    expect(payload).toBeDefined()
+    expect(payload?.userId).toBe("manager")
+    expect(payload?.email).toBe("manager@system")
 
-    // Test session revocation
-    managerSessionStore.revokeSession(token)
-    expect(managerSessionStore.isValidSession(token)).toBe(false)
+    // Test invalid token
+    const invalid = await verifySessionToken("invalid.jwt.token")
+    expect(invalid).toBeNull()
   })
 })

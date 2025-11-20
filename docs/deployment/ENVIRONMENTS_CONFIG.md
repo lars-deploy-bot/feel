@@ -11,15 +11,15 @@ All environment definitions (ports, process names, domains, etc.) are defined in
 | **`environments.json`** | **SINGLE SOURCE OF TRUTH** - All env data | N/A |
 | `environments.config.ts` | TypeScript config (typed) | environments.json |
 | `bridge.config.js` | Legacy wrapper (backward compatible) | environments.json |
-| `scripts/env-helper.sh` | Bash helper for shell scripts | environments.json |
+| Scripts (`*.sh`) | Bash scripts read with `jq` | environments.json |
 
 ### One file, three interfaces
 - **JSON**: Raw configuration (simple, universal)
 - **TypeScript**: Type-safe with validation and helper functions
-- **Bash**: Environment variables via shell sourcing
+- **Bash**: Read directly with `jq` (see examples below)
 - **CommonJS**: Backward-compatible Node.js API
 
-All three read from `environments.json` = **True DRY principle**
+All interfaces read from `environments.json` = **True DRY principle**
 
 ## Adding a New Environment
 
@@ -59,7 +59,7 @@ If using TypeScript, update the `EnvironmentKey` type in `environments.config.ts
 export type EnvironmentKey = 'production' | 'dev' | 'staging'
 ```
 
-That's it! All other files (`bridge.config.js`, `env-helper.sh`, etc.) will automatically read the new environment.
+That's it! All other files (`bridge.config.js`, bash scripts, etc.) will automatically read the new environment.
 
 ## Using the Configuration
 
@@ -83,14 +83,18 @@ const byProcess = getEnvironmentByProcessName('claude-bridge')
 
 ```bash
 #!/bin/bash
-source "$(dirname "$0")/env-helper.sh"
+SCRIPT_DIR="$(dirname "$0")"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+ENV_CONFIG="$PROJECT_ROOT/environments.json"
 
-# Access variables
-echo "Dev port: $ENV_DEV_PORT"
-echo "Prod process: $ENV_PROD_PROCESS_NAME"
+# Read values directly with jq
+DEV_PORT=$(jq -r '.environments.dev.port' "$ENV_CONFIG")
+PROD_PROCESS=$(jq -r '.environments.production.processName' "$ENV_CONFIG")
 
 # Use in commands
-pm2 logs "$ENV_DEV_PROCESS_NAME" --lines 1000
+echo "Dev port: $DEV_PORT"
+echo "Prod process: $PROD_PROCESS"
+pm2 logs "$(jq -r '.environments.dev.processName' "$ENV_CONFIG")" --lines 1000
 ```
 
 ### Node.js (CommonJS)
@@ -148,8 +152,8 @@ bridge.config.js:
   appName.dev: 'claude-bridge-dev'
 
 scripts/*.sh:
-  source env-helper.sh
-  pm2 logs "$ENV_DEV_PROCESS_NAME"
+  DEV_PROCESS=$(jq -r '.environments.dev.processName' environments.json)
+  pm2 logs "$DEV_PROCESS"
 ```
 
 ## Benefits
@@ -159,5 +163,5 @@ scripts/*.sh:
 3. **Validated** - Prevents duplicate ports/names
 4. **Documented** - All properties in one place
 5. **Queryable** - Helper functions to find envs by port, name, domain
-6. **Bash-friendly** - Works in shell scripts via env-helper.sh
+6. **Bash-friendly** - Scripts read directly with `jq` (standard JSON tool)
 7. **Backward compatible** - Legacy code still works with bridge.config.js

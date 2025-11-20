@@ -55,8 +55,8 @@ test.describe("Organization and Workspace Selection", () => {
   })
 
   test("auto-selects first organization when none selected", async ({ page }) => {
-    const email = isStaging ? STAGING_EMAIL : TEST_EMAIL
-    const password = isStaging ? STAGING_PASSWORD : TEST_PASSWORD
+    const email = isDev ? DEV_EMAIL : TEST_EMAIL
+    const password = isDev ? DEV_PASSWORD : TEST_PASSWORD
 
     await page.getByPlaceholder("you@example.com").fill(email)
     await page.getByPlaceholder("Enter your password").fill(password)
@@ -76,8 +76,8 @@ test.describe("Organization and Workspace Selection", () => {
   })
 
   test("loads workspaces for selected organization", async ({ page }) => {
-    const email = isStaging ? STAGING_EMAIL : TEST_EMAIL
-    const password = isStaging ? STAGING_PASSWORD : TEST_PASSWORD
+    const email = isDev ? DEV_EMAIL : TEST_EMAIL
+    const password = isDev ? DEV_PASSWORD : TEST_PASSWORD
 
     await page.getByPlaceholder("you@example.com").fill(email)
     await page.getByPlaceholder("Enter your password").fill(password)
@@ -101,8 +101,8 @@ test.describe("Organization and Workspace Selection", () => {
   })
 
   test("auto-selects first workspace when org is selected", async ({ page }) => {
-    const email = isStaging ? STAGING_EMAIL : TEST_EMAIL
-    const password = isStaging ? STAGING_PASSWORD : TEST_PASSWORD
+    const email = isDev ? DEV_EMAIL : TEST_EMAIL
+    const password = isDev ? DEV_PASSWORD : TEST_PASSWORD
 
     await page.getByPlaceholder("you@example.com").fill(email)
     await page.getByPlaceholder("Enter your password").fill(password)
@@ -121,7 +121,7 @@ test.describe("Organization and Workspace Selection", () => {
     const placeholder = await chatInput.getAttribute("placeholder")
 
     // If workspace is selected, placeholder should NOT be "Select a site to start chatting..."
-    if (!isStaging || placeholder !== "Select a site to start chatting...") {
+    if (!isDev || placeholder !== "Select a site to start chatting...") {
       // Either we have a workspace OR we're in staging and might have 0 domains
       // Check if there's a domain count indicator
       const noDomains = await page
@@ -145,8 +145,8 @@ test.describe("Organization and Workspace Selection", () => {
   })
 
   test("shows error state and retry button when org loading fails", async ({ page }) => {
-    const email = isStaging ? STAGING_EMAIL : TEST_EMAIL
-    const password = isStaging ? STAGING_PASSWORD : TEST_PASSWORD
+    const email = isDev ? DEV_EMAIL : TEST_EMAIL
+    const password = isDev ? DEV_PASSWORD : TEST_PASSWORD
 
     // Intercept organizations API to simulate failure
     await page.route("**/api/auth/organizations", route => {
@@ -175,8 +175,8 @@ test.describe("Organization and Workspace Selection", () => {
   })
 
   test("shows error and retry when workspace loading fails", async ({ page }) => {
-    const email = isStaging ? STAGING_EMAIL : TEST_EMAIL
-    const password = isStaging ? STAGING_PASSWORD : TEST_PASSWORD
+    const email = isDev ? DEV_EMAIL : TEST_EMAIL
+    const password = isDev ? DEV_PASSWORD : TEST_PASSWORD
 
     await page.getByPlaceholder("you@example.com").fill(email)
     await page.getByPlaceholder("Enter your password").fill(password)
@@ -214,8 +214,8 @@ test.describe("Organization and Workspace Selection", () => {
   })
 
   test("handles empty workspace list gracefully", async ({ page }) => {
-    const email = isStaging ? STAGING_EMAIL : TEST_EMAIL
-    const password = isStaging ? STAGING_PASSWORD : TEST_PASSWORD
+    const email = isDev ? DEV_EMAIL : TEST_EMAIL
+    const password = isDev ? DEV_PASSWORD : TEST_PASSWORD
 
     // Mock empty workspace response
     await page.route("**/api/auth/workspaces*", route => {
@@ -252,15 +252,15 @@ test.describe("Organization and Workspace Selection", () => {
 
 test.describe("Organization Selection UI", () => {
   test.beforeEach(async ({ page }) => {
-    if (isStaging) {
+    if (isDev) {
       await page.goto("https://dev.terminal.goalive.nl/")
     } else {
       await page.goto("/")
     }
 
     // Login
-    const email = isStaging ? STAGING_EMAIL : TEST_EMAIL
-    const password = isStaging ? STAGING_PASSWORD : TEST_PASSWORD
+    const email = isDev ? DEV_EMAIL : TEST_EMAIL
+    const password = isDev ? DEV_PASSWORD : TEST_PASSWORD
 
     await page.getByPlaceholder("you@example.com").fill(email)
     await page.getByPlaceholder("Enter your password").fill(password)

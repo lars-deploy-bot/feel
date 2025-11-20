@@ -5,11 +5,11 @@ import { expect, test } from "./setup"
 const CADDYFILE_PATH = "/root/webalive/claude-bridge/Caddyfile"
 
 // Test domains - using short names to avoid Linux username length limits (32 chars)
-// IMPORTANT: Emails MUST use @test.com domain for safety (enforced by cleanup scripts)
+// IMPORTANT: Emails MUST use INTERNAL test domains (@bridge-playwright.internal)
 const TEST_SITES = [
-  { slug: "tc1", domain: "tc1.alive.best", email: "tc1@test.com" },
-  { slug: "tc2", domain: "tc2.alive.best", email: "tc2@test.com" },
-  { slug: "tc3", domain: "tc3.alive.best", email: "tc3@test.com" },
+  { slug: "tc1", domain: "tc1.alive.best", email: "tc1@bridge-playwright.internal" },
+  { slug: "tc2", domain: "tc2.alive.best", email: "tc2@bridge-playwright.internal" },
+  { slug: "tc3", domain: "tc3.alive.best", email: "tc3@bridge-playwright.internal" },
 ]
 
 const TEST_PASSWORD = "testpass123"
@@ -161,15 +161,16 @@ test.describe("Concurrent Deployment - File Locking", () => {
   })
 
   test.skip("deploys 3 sites concurrently without Caddyfile corruption", async ({ browser }) => {
-    // TODO: Fix deployment flow - requires pre-authentication now, but test tries to create users during deployment
-    // Test expects to create new users via email/password in form, but API requires authentication first
-    test.setTimeout(120000) // 2 minute timeout for 3 concurrent deployments
+    // DEPRECATED: This E2E test has been converted to an integration test
+    // Location: features/deployment/__tests__/concurrent-deploy.integration.test.ts
+    // Reason: Testing API behavior (file locking), not UI - integration tests are faster and more reliable
+    test.setTimeout(180000) // 3 minute timeout for setup + 3 concurrent deployments
 
     console.log("\n[Test] ========================================")
     console.log("[Test] CONCURRENT DEPLOYMENT TEST - File Locking Validation")
     console.log("[Test] ========================================\n")
 
-    // STEP 1: Create 3 browser contexts (simulate 3 different users deploying at the same time)
+    // STEP 1: Create 3 browser contexts (anonymous users)
     console.log("[Test] Step 1: Create 3 browser contexts")
     const contexts = await Promise.all([browser.newContext(), browser.newContext(), browser.newContext()])
     const pages = await Promise.all(contexts.map(ctx => ctx.newPage()))
@@ -190,8 +191,8 @@ test.describe("Concurrent Deployment - File Locking", () => {
     )
     console.log("[Test] ✓ Quick Launch clicked on all\n")
 
-    // STEP 4: Fill forms concurrently
-    console.log("[Test] Step 4: Fill deployment forms concurrently")
+    // STEP 4: Fill forms concurrently (anonymous users - full registration)
+    console.log("[Test] Step 4: Fill deployment forms concurrently (anonymous users)")
     await Promise.all(
       pages.map(async (page, i) => {
         const site = TEST_SITES[i]
@@ -204,10 +205,17 @@ test.describe("Concurrent Deployment - File Locking", () => {
     )
     console.log("[Test] ✓ All forms filled\n")
 
-    // STEP 5: Wait for validation (slug availability)
-    console.log("[Test] Step 5: Wait for form validation (1.5s)")
-    await Promise.all(pages.map(page => page.waitForTimeout(1500)))
-    console.log("[Test] ✓ Validation complete\n")
+    // STEP 5: Wait for submit button to be enabled (form validation + slug availability)
+    console.log("[Test] Step 5: Wait for submit buttons to be enabled")
+    await Promise.all(
+      pages.map(async (page, i) => {
+        const site = TEST_SITES[i]
+        // Wait for the submit button to be enabled (not disabled)
+        await expect(page.getByTestId("submit-button")).toBeEnabled({ timeout: 10000 })
+        console.log(`[Test] ✓ Submit button enabled for ${site.domain}`)
+      }),
+    )
+    console.log("[Test] ✓ All submit buttons ready\n")
 
     // STEP 6: Verify Caddyfile state BEFORE deployments
     console.log("[Test] Step 6: Verify Caddyfile BEFORE deployments")

@@ -13,10 +13,13 @@ fi
 
 export BRIDGE_ENV=local
 
-# Important: NOT setting PLAYWRIGHT_TEST=true
-# This allows the genuine E2E tests to make real API calls
+# Important: Explicitly UNSET PLAYWRIGHT_TEST
+# Playwright runner sets this automatically, but we need to clear it
+# to allow genuine E2E tests to make real API calls
+unset PLAYWRIGHT_TEST
 
 echo "[Genuine Test Server] Starting on port 9548 (genuine API mode)"
 echo "[Genuine Test Server] ⚠️  REAL API CALLS ENABLED - will consume credits/tokens"
+echo "[Genuine Test Server] PLAYWRIGHT_TEST unset - real API calls allowed"
 
 exec bun x --bun next dev --turbo -p 9548

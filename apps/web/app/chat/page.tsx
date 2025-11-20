@@ -98,7 +98,6 @@ function ChatPageContent() {
   const showSandbox = useSandbox()
   const { addEvent: addDevEvent } = useDevTerminal()
   const { workspace, isTerminal, mounted, setWorkspace } = useWorkspace({
-    redirectOnMissing: "/workspace",
     allowEmpty: true,
   })
   const { apiKey: userApiKey, model: userModel } = useLLMStore()
@@ -936,7 +935,10 @@ function ChatPageContent() {
   // No need for separate empty state screen
 
   return (
-    <div className="h-[100dvh] flex flex-row overflow-hidden dark:bg-[#1a1a1a] dark:text-white">
+    <div
+      className="h-[100dvh] flex flex-row overflow-hidden dark:bg-[#1a1a1a] dark:text-white"
+      data-testid={mounted && workspace ? "workspace-ready" : "workspace-loading"}
+    >
       {/* Conversation Sidebar - Static, not overlay */}
       <ConversationSidebar
         workspace={workspace}

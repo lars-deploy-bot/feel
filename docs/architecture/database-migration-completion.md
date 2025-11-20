@@ -9,7 +9,7 @@
 ## Migration Results
 
 ### Database Status
-- **Database:** SQLite with WAL mode at `/var/lib/claude-bridge/database.sqlite`
+- **Database:** Supabase (PostgreSQL - fully managed)
 - **Users:** 55 users migrated
 - **Workspaces:** 55 workspaces migrated
 - **IAM Provider:** Supabase Auth (managed authentication)
@@ -32,7 +32,7 @@ domain-passwords.json
 
 #### After (User-first)
 ```
-SQLite Database
+Supabase Database
 ├─ users (id, email, name, passwordHash)
 ├─ workspaces (id, domain, port, tenantId)
 ├─ user_workspaces (userId, workspaceId)
@@ -133,10 +133,10 @@ SQLite Database
 - Foundation for user management features
 
 ### 4. **Developer Experience**
-- Clean separation: IAM (Supabase) + Data (SQLite)
+- Fully managed Supabase (IAM + Data)
 - Repository pattern for database operations
-- Type-safe Drizzle ORM
-- WAL mode for concurrent access
+- Type-safe database client
+- Built-in concurrency handling
 
 ---
 
@@ -275,8 +275,7 @@ bun scripts/test-login.ts user@example.com password123
 # Verify migration
 bun scripts/verify-migration.ts
 
-# Check database
-sqlite3 /var/lib/claude-bridge/database.sqlite "SELECT COUNT(*) FROM users;"
+# Check database via Supabase dashboard or API
 ```
 
 ---
@@ -296,13 +295,10 @@ pm2 stop claude-bridge
 # 3. Restore JSON
 cp "$BACKUP/domain-passwords.json" /var/lib/claude-bridge/
 
-# 4. Delete database
-rm -f /var/lib/claude-bridge/database.sqlite*
-
-# 5. Revert code (commit hash before migration)
+# 4. Revert code (commit hash before migration)
 git checkout <pre-migration-commit>
 
-# 6. Rebuild and restart
+# 5. Rebuild and restart
 cd apps/web && bun run build && pm2 restart claude-bridge
 ```
 
@@ -339,7 +335,6 @@ cd apps/web && bun run build && pm2 restart claude-bridge
 ## Metrics
 
 **Migration Performance:**
-- Database size: 4.0 KB (base) + 552 KB (WAL)
 - Migration time: ~5 minutes (55 users + 55 workspaces)
 - Downtime: 0 (cutover during low traffic)
 - Data loss: 0 records

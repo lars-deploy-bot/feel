@@ -210,7 +210,12 @@ export async function DELETE(req: NextRequest) {
 
       if (!otherOwners || otherOwners.length === 0) {
         const res = NextResponse.json(
-          { ok: false, error: "FORBIDDEN", message: "You cannot leave the organization while being the only owner", requestId },
+          {
+            ok: false,
+            error: "FORBIDDEN",
+            message: "You cannot leave the organization while being the only owner",
+            requestId,
+          },
           { status: 403 },
         )
         addCorsHeaders(res, origin)

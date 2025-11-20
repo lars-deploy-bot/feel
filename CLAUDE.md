@@ -1,9 +1,13 @@
 # Claude Bridge Development Guide
 
-This document provides instructions and guidelines for AI assistants (Claude) working on the Claude Bridge codebase.
+AI assistant guidelines for working on Claude Bridge.
 
-1. NEVER COMMIT
-2. ALWAYS USE BUN
+**Quick Links:** [Getting Started](./docs/GETTING_STARTED.md) | [Architecture](./docs/architecture/README.md) | [Security](./docs/security/README.md) | [Testing](./docs/testing/README.md)
+
+## Core Rules
+
+1. **NEVER COMMIT** - Never create commits
+2. **ALWAYS USE BUN** - Runtime and package manager
 
 ## Project Overview
 
@@ -395,16 +399,19 @@ bun run push
 bun run pull
 ```
 
-## Documentation
+## Documentation Structure
 
-- **README.md**: User-facing documentation
-- **CLAUDE.md**: This file (AI assistant guidelines)
-- **docs/deployment/**: Atomic build system and deployment guide (deployment.md, failure modes, build isolation)
-- **docs/setup/**: Local development setup
-- **docs/features/**: Feature-specific documentation
-  - **alive-super-templates.md**: Complete guide to the Alive Super Templates system (architecture, components, adding templates)
-- **IMPLEMENTATION_STATUS.md**: Feature completion tracking
-- **PHASE1_IMPLEMENTATION.md**: Initial implementation notes
+All documentation in `/docs` with clean, nested organization:
+
+- **[docs/README.md](./docs/README.md)** - Documentation hub
+- **[docs/GETTING_STARTED.md](./docs/GETTING_STARTED.md)** - Setup & quick start
+- **[docs/architecture/](./docs/architecture/README.md)** - System design, patterns, core concepts
+- **[docs/security/](./docs/security/README.md)** - Authentication, workspace isolation, security patterns
+- **[docs/testing/](./docs/testing/README.md)** - Unit, integration, E2E testing
+- **[docs/features/](./docs/features/README.md)** - Feature documentation
+- **[docs/deployment/](./docs/deployment/README.md)** - Environment management (devops)
+- **[docs/troubleshooting/](./docs/troubleshooting/README.md)** - Common issues, solutions
+- **[docs/archive/](./docs/archive/)** - Historical documentation
 
 ## Important Notes
 

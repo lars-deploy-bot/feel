@@ -18,9 +18,6 @@ export async function login(page: Page) {
   await page.getByPlaceholder("Enter your password").fill("test")
   await page.getByRole("button", { name: "Continue" }).click()
   await page.waitForURL("/chat", { timeout: 5000 })
-
-  // Wait for workspace to load
-  await page.waitForTimeout(1000)
 }
 
 /**

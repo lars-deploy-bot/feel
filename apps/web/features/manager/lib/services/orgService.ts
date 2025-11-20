@@ -28,10 +28,10 @@ export interface AddMemberRequest {
 }
 
 export async function deleteOrg(orgId: string): Promise<void> {
-  const response = await fetch("/api/manager/orgs/delete", {
-    method: "POST",
+  const response = await fetch("/api/manager/orgs", {
+    method: "DELETE",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ orgId }),
+    body: JSON.stringify({ org_id: orgId }),
   })
 
   if (!response.ok) {
@@ -40,10 +40,10 @@ export async function deleteOrg(orgId: string): Promise<void> {
 }
 
 export async function removeMember(orgId: string, userId: string): Promise<void> {
-  const response = await fetch("/api/manager/orgs/members/remove", {
-    method: "POST",
+  const response = await fetch("/api/manager/orgs/members", {
+    method: "DELETE",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ orgId, userId }),
+    body: JSON.stringify({ org_id: orgId, user_id: userId }),
   })
 
   if (!response.ok) {
@@ -64,10 +64,10 @@ export async function transferOwnership(orgId: string, newOwnerId: string): Prom
 }
 
 export async function updateOrgCredits(orgId: string, credits: number): Promise<void> {
-  const response = await fetch("/api/manager/orgs/credits", {
+  const response = await fetch("/api/manager/orgs", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ orgId, credits }),
+    body: JSON.stringify({ org_id: orgId, credits }),
   })
 
   if (!response.ok) {
@@ -76,10 +76,10 @@ export async function updateOrgCredits(orgId: string, credits: number): Promise<
 }
 
 export async function addOrgMember(orgId: string, userId: string, role: "owner" | "admin" | "member"): Promise<void> {
-  const response = await fetch("/api/manager/orgs/members/add", {
+  const response = await fetch("/api/manager/orgs/members", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ orgId, userId, role }),
+    body: JSON.stringify({ org_id: orgId, user_id: userId, role }),
   })
 
   if (!response.ok) {

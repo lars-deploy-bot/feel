@@ -1,0 +1,26 @@
+{
+  "name": "@webalive/site-controller",
+  "version": "1.0.0",
+  "description": "Shell-Operator Pattern implementation for website deployment",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "devDependencies": {},
+  "keywords": [
+    "deployment",
+    "systemd",
+    "website",
+    "orchestration"
+  ],
+  "author": "WebAlive",
+  "license": "MIT"
+}

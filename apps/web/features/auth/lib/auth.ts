@@ -1,7 +1,6 @@
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import { COOKIE_NAMES } from "@/lib/auth/cookies"
-import { managerSessionStore } from "@/lib/auth/manager-session-store"
 import { createIamClient } from "@/lib/supabase/iam"
 import { createAppClient } from "@/lib/supabase/app"
 import { ErrorCodes, getErrorMessage, type ErrorCode } from "@/lib/error-codes"
@@ -120,13 +119,21 @@ export async function requireSessionUser(): Promise<SessionUser> {
 /**
  * Check if the manager workspace is authenticated
  * Special workspace for system administration
- * Uses separate manager_session cookie
+ * Uses separate manager_session cookie with JWT
  */
 export async function isManagerAuthenticated(): Promise<boolean> {
   const jar = await cookies()
   const managerCookie = jar.get(COOKIE_NAMES.MANAGER_SESSION)
 
-  return managerSessionStore.isValidSession(managerCookie?.value)
+  if (!managerCookie?.value) {
+    return false
+  }
+
+  // Verify JWT token (just like regular user sessions)
+  const payload = await verifySessionToken(managerCookie.value)
+
+  // Check if it's a manager token (userId === "manager")
+  return payload?.userId === "manager"
 }
 
 /**

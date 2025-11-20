@@ -13,14 +13,16 @@ test("has chat interface", async ({ page }) => {
   await expect(page.locator('[data-testid="send-button"]')).toBeVisible()
 })
 
-// TODO: Fix workspace auto-selection in test mode
-// Workspace switcher requires org selection which requires async API calls
-// The 3-second wait isn't sufficient - need proper workspace ready state
-test.skip("can send a message and receive response", async ({ page }) => {
+test("can send a message and receive response", async ({ page }) => {
   // Register mock BEFORE navigating to page
   await page.route("**/api/claude/stream", handlers.text("Hi there! How can I help you today?"))
 
   await page.goto("/chat")
+
+  // Wait for workspace to be fully initialized (mounted + workspace set)
+  await expect(page.locator('[data-testid="workspace-ready"]')).toBeVisible({
+    timeout: 5000,
+  })
 
   const messageInput = page.locator('[data-testid="message-input"]')
   const sendButton = page.locator('[data-testid="send-button"]')
@@ -29,8 +31,9 @@ test.skip("can send a message and receive response", async ({ page }) => {
   await expect(sendButton).toBeEnabled({ timeout: 2000 })
   await sendButton.click()
 
-  await expect(page.getByText("Hello")).toBeVisible()
-  await expect(page.getByText(/Hi there.*help you today/)).toBeVisible({
+  // Use .first() to avoid strict mode violations (message appears in sidebar + chat)
+  await expect(page.getByText("Hello").first()).toBeVisible()
+  await expect(page.getByText(/Hi there.*help you today/).first()).toBeVisible({
     timeout: 5000,
   })
 })

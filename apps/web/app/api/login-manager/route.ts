@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { COOKIE_NAMES, getSessionCookieOptions } from "@/lib/auth/cookies"
-import { managerSessionStore } from "@/lib/auth/manager-session-store"
+import { createSessionToken } from "@/features/auth/lib/jwt"
 import { managerLoginRateLimiter } from "@/lib/auth/rate-limiter"
 import { timingSafeCompare } from "@/lib/auth/timing-safe"
 import { addCorsHeaders } from "@/lib/cors-utils"
@@ -76,8 +76,8 @@ export async function POST(req: NextRequest) {
   if (env.BRIDGE_ENV === "local" && passcode === "test") {
     console.log("[Manager Login] Test mode authentication")
 
-    // Create secure session token even in test mode
-    const sessionToken = managerSessionStore.createSession()
+    // Create JWT session token (same as regular users, but with manager role)
+    const sessionToken = await createSessionToken("manager", "manager@system", "Manager", [])
 
     const res = NextResponse.json({ ok: true, requestId })
     res.cookies.set(COOKIE_NAMES.MANAGER_SESSION, sessionToken, getSessionCookieOptions())
@@ -112,10 +112,10 @@ export async function POST(req: NextRequest) {
   // Reset rate limiter on successful login
   managerLoginRateLimiter.reset(clientId)
 
-  // Create cryptographically secure session token
-  const sessionToken = managerSessionStore.createSession()
+  // Create JWT session token (same as regular users, but with manager role)
+  const sessionToken = await createSessionToken("manager", "manager@system", "Manager", [])
 
-  // Set manager session cookie with secure token
+  // Set manager session cookie with JWT token
   const res = NextResponse.json({ ok: true, requestId })
   res.cookies.set(COOKIE_NAMES.MANAGER_SESSION, sessionToken, getSessionCookieOptions())
 

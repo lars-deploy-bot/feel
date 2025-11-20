@@ -8,8 +8,6 @@ import {
   ClipboardList,
   Eye,
   EyeOff,
-  Globe,
-  Info,
   Moon,
   Settings,
   Sun,
@@ -17,15 +15,14 @@ import {
   UserMinus,
   Users,
   X,
-  Zap,
 } from "lucide-react"
 import { useTheme } from "next-themes"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import toast from "react-hot-toast"
 import { AddWorkspaceModal } from "@/components/modals/AddWorkspaceModal"
 import { DeleteModal } from "@/components/modals/DeleteModal"
+import { PromptEditorModal } from "@/components/modals/PromptEditorModal"
 import type { Organization } from "@/lib/api/types"
-import { DEFAULT_STARTING_CREDITS } from "@/lib/credits"
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
 import { canRemoveMember } from "@/lib/permissions/org-permissions"
 import { useUserPrompts, useUserPromptsActions } from "@/lib/providers/UserPromptsStoreProvider"
@@ -35,7 +32,6 @@ import {
   useCreditsLoading,
   useEmail,
   usePhoneNumber,
-  useTokens,
   useUserActions,
 } from "@/lib/providers/UserStoreProvider"
 import { CLAUDE_MODELS, type ClaudeModel, useLLMStore } from "@/lib/stores/llmStore"
@@ -45,17 +41,14 @@ interface SettingsModalProps {
   onClose: () => void
 }
 
-type SettingsTab = "account" | "appearance" | "llm" | "tokens" | "prompts" | "organization" | "sites" | "about"
+type SettingsTab = "account" | "appearance" | "llm" | "prompts" | "organization"
 
 const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
-  { id: "account", label: "Account", icon: <User size={16} /> },
+  { id: "account", label: "Profile", icon: <User size={16} /> },
   { id: "appearance", label: "Appearance", icon: <Sun size={16} /> },
-  { id: "llm", label: "LLM", icon: <Bot size={16} /> },
-  { id: "tokens", label: "Credits", icon: <Zap size={16} /> },
+  { id: "llm", label: "AI", icon: <Bot size={16} /> },
   { id: "prompts", label: "Prompts", icon: <ClipboardList size={16} /> },
-  { id: "organization", label: "Organization", icon: <Building2 size={16} /> },
-  { id: "sites", label: "Sites", icon: <Globe size={16} /> },
-  { id: "about", label: "About", icon: <Info size={16} /> },
+  { id: "organization", label: "Workspace", icon: <Building2 size={16} /> },
 ]
 
 export function SettingsModal({ onClose }: SettingsModalProps) {
@@ -141,11 +134,8 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
               {activeTab === "account" && <AccountSettings />}
               {activeTab === "appearance" && <AppearanceSettings />}
               {activeTab === "llm" && <LLMSettings />}
-              {activeTab === "tokens" && <TokensSettings />}
               {activeTab === "prompts" && <UserPromptsSettings />}
-              {activeTab === "organization" && <OrganizationSettings />}
-              {activeTab === "sites" && <SitesSettings />}
-              {activeTab === "about" && <AboutSettings />}
+              {activeTab === "organization" && <WorkspaceSettings />}
             </div>
           </div>
         </div>
@@ -220,80 +210,6 @@ function AppearanceSettings() {
   )
 }
 
-function TokensSettings() {
-  const credits = useCredits()
-  const _tokens = useTokens()
-  const loading = useCreditsLoading()
-  const error = useCreditsError()
-  const { fetchCredits } = useUserActions()
-
-  // Fetch credits when component mounts or workspace changes
-  useEffect(() => {
-    const workspace = sessionStorage.getItem("workspace")
-    if (workspace) {
-      fetchCredits(workspace)
-    }
-  }, [fetchCredits])
-
-  const handleRetry = () => {
-    const workspace = sessionStorage.getItem("workspace")
-    if (workspace) {
-      fetchCredits(workspace)
-    }
-  }
-
-  return (
-    <div className="space-y-4 sm:space-y-6">
-      <div>
-        <h3 className="text-base sm:text-lg font-bold text-black dark:text-white mb-1">Credits Available</h3>
-        <p className="text-xs sm:text-sm text-black/60 dark:text-white/60">Your available credit balance</p>
-      </div>
-
-      {error ? (
-        <div className="space-y-3">
-          <div className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/30 rounded p-3">
-            {error === "Not authenticated" ? "Please log in to a workspace to view credits" : `Error: ${error}`}
-          </div>
-          <button
-            type="button"
-            onClick={handleRetry}
-            disabled={loading}
-            className="w-full px-3 py-2 text-xs font-medium bg-black dark:bg-white text-white dark:text-black hover:bg-black/80 dark:hover:bg-white/80 disabled:opacity-50 rounded transition-all"
-          >
-            {loading ? "Retrying..." : "Retry"}
-          </button>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-bold text-black dark:text-white">Balance</span>
-              <span className="text-lg font-bold text-black dark:text-white">
-                {loading ? "Loading..." : credits != null ? `${credits.toFixed(2)} credits` : "N/A"}
-              </span>
-            </div>
-            {credits != null && credits > 0 && (
-              <div className="w-full h-3 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-400 dark:to-blue-500 transition-all duration-300"
-                  style={{ width: `${Math.min((credits / DEFAULT_STARTING_CREDITS) * 100, 100)}%` }}
-                />
-              </div>
-            )}
-            <p className="text-xs text-black/50 dark:text-white/50 mt-2">
-              {loading
-                ? "Loading balance..."
-                : credits != null && credits > 0
-                  ? `${credits.toFixed(2)} credits`
-                  : "No credits available"}
-            </p>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
 function isValidModel(value: string): value is ClaudeModel {
   return Object.values(CLAUDE_MODELS).includes(value as ClaudeModel)
 }
@@ -304,9 +220,23 @@ function LLMSettings() {
   const [apiKeyInput, setApiKeyInput] = useState("")
   const [isSaved, setIsSaved] = useState(false)
 
+  // Credits state
+  const credits = useCredits()
+  const creditsLoading = useCreditsLoading()
+  const creditsError = useCreditsError()
+  const { fetchCredits } = useUserActions()
+
   useEffect(() => {
     setApiKeyInput(apiKey || "")
   }, [apiKey])
+
+  // Fetch credits when component mounts
+  useEffect(() => {
+    const workspace = sessionStorage.getItem("workspace")
+    if (workspace && !apiKey) {
+      fetchCredits(workspace)
+    }
+  }, [fetchCredits, apiKey])
 
   const handleSaveApiKey = () => {
     const trimmedKey = apiKeyInput.trim()
@@ -343,19 +273,29 @@ function LLMSettings() {
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="animate-in fade-in-0 slide-in-from-top-2 duration-300">
-        <h3 className="text-base sm:text-lg font-medium text-black dark:text-white mb-1">LLM Configuration</h3>
-        <p className="text-xs sm:text-sm text-black/60 dark:text-white/60">Configure your AI model and API settings</p>
+        <h3 className="text-base sm:text-lg font-medium text-black dark:text-white mb-1">AI Model</h3>
+        <p className="text-xs sm:text-sm text-black/60 dark:text-white/60">Configure your AI settings</p>
       </div>
 
       <div className="space-y-4 sm:space-y-6">
+        {/* Credits Display - Only show when using workspace credits */}
+        {!apiKey && (
+          <div className="animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-50">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-medium text-black dark:text-white">Credits</h4>
+              <span className="text-lg font-semibold text-black dark:text-white">
+                {creditsLoading ? "Loading..." : creditsError ? "—" : credits != null ? credits.toFixed(2) : "—"}
+              </span>
+            </div>
+          </div>
+        )}
+
         <div className="animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-75">
           <label htmlFor="anthropic-api-key" className="block text-sm font-medium text-black dark:text-white mb-2">
-            Anthropic API Key
+            Your API Key
             <span className="ml-2 text-xs text-black/50 dark:text-white/50">(optional)</span>
           </label>
-          <p className="text-xs text-black/60 dark:text-white/60 mb-3">
-            Use your own API key. Leave blank to use the default server key.
-          </p>
+          <p className="text-xs text-black/60 dark:text-white/60 mb-3">Use your own key to unlock all models</p>
           <div className="space-y-3">
             <div className="relative">
               <input
@@ -415,14 +355,9 @@ function LLMSettings() {
         <div className="animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-100">
           <label htmlFor="claude-model" className="block text-sm font-medium text-black dark:text-white mb-2">
             Model
-            {!apiKey && (
-              <span className="ml-2 text-xs text-orange-600 dark:text-orange-400">(Credits mode - Haiku only)</span>
-            )}
           </label>
           <p className="text-xs text-black/60 dark:text-white/60 mb-3">
-            {apiKey
-              ? "Choose which Claude model to use for conversations"
-              : "Using workspace credits - restricted to Claude Haiku 4.5 for cost management. Add your API key to use other models."}
+            {apiKey ? "Choose which Claude model to use" : "Currently using Claude Haiku 4.5"}
           </p>
           <select
             id="claude-model"
@@ -435,15 +370,6 @@ function LLMSettings() {
             <option value={CLAUDE_MODELS.SONNET_4_5}>Claude Sonnet 4.5 (Recommended)</option>
             <option value={CLAUDE_MODELS.HAIKU_4_5}>Claude Haiku 4.5</option>
           </select>
-          {!apiKey && (
-            <div className="mt-2 flex items-start gap-2 text-xs text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800/50 rounded p-2">
-              <div className="w-2 h-2 bg-orange-600 dark:bg-orange-400 rounded-full mt-1 flex-shrink-0" />
-              <p>
-                <strong>Cost savings:</strong> Haiku uses ~0.125 credits per conversation. Your 200 default credits =
-                ~1,600 conversations!
-              </p>
-            </div>
-          )}
         </div>
 
         <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800/50 animate-in fade-in-0 slide-in-from-bottom-2 duration-300 delay-150">
@@ -482,8 +408,8 @@ function AccountSettings() {
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="animate-in fade-in-0 slide-in-from-top-2 duration-300">
-        <h3 className="text-base sm:text-lg font-medium text-black dark:text-white mb-1">Account</h3>
-        <p className="text-xs sm:text-sm text-black/60 dark:text-white/60">Manage your account information</p>
+        <h3 className="text-base sm:text-lg font-medium text-black dark:text-white mb-1">Profile</h3>
+        <p className="text-xs sm:text-sm text-black/60 dark:text-white/60">Your account information</p>
       </div>
 
       <div className="space-y-4 sm:space-y-6">
@@ -539,19 +465,6 @@ function AccountSettings() {
   )
 }
 
-function AboutSettings() {
-  return (
-    <div className="space-y-4 sm:space-y-6">
-      <div>
-        <h3 className="text-base sm:text-lg font-medium text-black dark:text-white mb-3">About</h3>
-        <p className="text-sm sm:text-base text-black dark:text-white leading-relaxed">
-          We help you guide you through creating a company
-        </p>
-      </div>
-    </div>
-  )
-}
-
 interface OrgMember {
   user_id: string
   email: string
@@ -559,73 +472,67 @@ interface OrgMember {
   role: "owner" | "admin" | "member"
 }
 
-function OrganizationSettings() {
-  // Use centralized hook for org fetching + auto-selection
-  const { organizations, currentUserId, loading, error, refetch } = useOrganizations()
-  const selectedOrgId = useSelectedOrgId()
-  const { setSelectedOrg } = useWorkspaceActions()
+// Hook: Organization name editing
+function useOrgEditor(refetch: () => Promise<void>) {
   const [editingOrgId, setEditingOrgId] = useState<string | null>(null)
   const [editOrgName, setEditOrgName] = useState("")
   const [saving, setSaving] = useState(false)
-  const [updateError, setUpdateError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
-  // Member management state
-  const [expandedOrgId, setExpandedOrgId] = useState<string | null>(null)
-  const [orgMembers, setOrgMembers] = useState<Record<string, OrgMember[]>>({})
-  const [loadingMembers, setLoadingMembers] = useState<Record<string, boolean>>({})
-  const [removingMember, setRemovingMember] = useState<string | null>(null)
-  const [memberToRemove, setMemberToRemove] = useState<{ orgId: string; userId: string; email: string } | null>(null)
-  const [leavingOrg, setLeavingOrg] = useState<string | null>(null)
-  const [orgToLeave, setOrgToLeave] = useState<{ orgId: string; orgName: string } | null>(null)
-
-  const handleSelectOrg = (orgId: string) => {
-    setSelectedOrg(orgId)
-    setEditingOrgId(null)
-  }
-
-  const handleStartEdit = (org: Organization) => {
+  const startEdit = (org: Organization) => {
     setEditingOrgId(org.org_id)
     setEditOrgName(org.name)
   }
 
-  const handleCancelEdit = () => {
+  const cancelEdit = () => {
     setEditingOrgId(null)
     setEditOrgName("")
+    setError(null)
   }
 
-  const handleSaveEdit = async (orgId: string) => {
+  const saveEdit = async (orgId: string) => {
     if (!editOrgName.trim()) return
 
     try {
       setSaving(true)
-      setUpdateError(null)
+      setError(null)
 
-      const response = await fetch("/api/auth/organizations", {
+      const res = await fetch("/api/auth/organizations", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ org_id: orgId, name: editOrgName.trim() }),
       })
 
-      const data = await response.json()
+      const data = await res.json()
 
       if (data.ok) {
-        // Refetch to update local state
         await refetch()
         setEditingOrgId(null)
         setEditOrgName("")
       } else {
-        setUpdateError(data.error || "Failed to update organization")
+        setError(data.error || "Failed to update organization")
       }
     } catch (err) {
       console.error("Failed to update organization:", err)
-      setUpdateError("Failed to update organization")
+      setError("Failed to update organization")
     } finally {
       setSaving(false)
     }
   }
 
-  const handleToggleMembers = async (orgId: string) => {
+  return { editingOrgId, editOrgName, setEditOrgName, saving, error, startEdit, cancelEdit, saveEdit }
+}
+
+// Hook: Organization members management
+function useOrgMembers() {
+  const [expandedOrgId, setExpandedOrgId] = useState<string | null>(null)
+  const [orgMembers, setOrgMembers] = useState<Record<string, OrgMember[]>>({})
+  const [loadingMembers, setLoadingMembers] = useState<Record<string, boolean>>({})
+  const [removingMember, setRemovingMember] = useState<string | null>(null)
+  const [memberToRemove, setMemberToRemove] = useState<{ orgId: string; userId: string; email: string } | null>(null)
+
+  const toggleMembers = async (orgId: string) => {
     if (expandedOrgId === orgId) {
       setExpandedOrgId(null)
       return
@@ -633,21 +540,13 @@ function OrganizationSettings() {
 
     setExpandedOrgId(orgId)
 
-    // Fetch members if not already loaded
     if (!orgMembers[orgId]) {
       try {
         setLoadingMembers(prev => ({ ...prev, [orgId]: true }))
-
-        const response = await fetch(`/api/auth/org-members?orgId=${orgId}`, {
-          credentials: "include",
-        })
-
-        const data = await response.json()
-
+        const res = await fetch(`/api/auth/org-members?orgId=${orgId}`, { credentials: "include" })
+        const data = await res.json()
         if (data.ok) {
           setOrgMembers(prev => ({ ...prev, [orgId]: data.members }))
-        } else {
-          console.error("Failed to fetch members:", data.error)
         }
       } catch (err) {
         console.error("Failed to fetch members:", err)
@@ -657,34 +556,30 @@ function OrganizationSettings() {
     }
   }
 
-  const handleRemoveMemberClick = (orgId: string, memberId: string, memberEmail: string) => {
-    setMemberToRemove({ orgId, userId: memberId, email: memberEmail })
+  const requestRemoveMember = (orgId: string, userId: string, email: string) => {
+    setMemberToRemove({ orgId, userId, email })
   }
 
-  const handleConfirmRemoveMember = async () => {
+  const confirmRemoveMember = async () => {
     if (!memberToRemove) return
 
     const { orgId, userId, email } = memberToRemove
 
     try {
       setRemovingMember(userId)
-      setMemberToRemove(null) // Close modal
+      setMemberToRemove(null)
 
-      const response = await fetch("/api/auth/org-members", {
+      const res = await fetch("/api/auth/org-members", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ orgId, targetUserId: userId }),
       })
 
-      const data = await response.json()
+      const data = await res.json()
 
       if (data.ok) {
-        // Remove from local state
-        setOrgMembers(prev => ({
-          ...prev,
-          [orgId]: prev[orgId].filter(m => m.user_id !== userId),
-        }))
+        setOrgMembers(prev => ({ ...prev, [orgId]: prev[orgId].filter(m => m.user_id !== userId) }))
         toast.success(`Removed ${email} from organization`)
       } else {
         toast.error(data.message || "Failed to remove member")
@@ -697,55 +592,258 @@ function OrganizationSettings() {
     }
   }
 
-  const handleCancelRemoveMember = () => {
-    setMemberToRemove(null)
-  }
+  const cancelRemoveMember = () => setMemberToRemove(null)
 
-  const handleLeaveOrgClick = (orgId: string, orgName: string) => {
+  return {
+    expandedOrgId,
+    orgMembers,
+    loadingMembers,
+    removingMember,
+    memberToRemove,
+    toggleMembers,
+    requestRemoveMember,
+    confirmRemoveMember,
+    cancelRemoveMember,
+  }
+}
+
+// Hook: Leave organization
+function useOrgLeave() {
+  const [leavingOrg, setLeavingOrg] = useState<string | null>(null)
+  const [orgToLeave, setOrgToLeave] = useState<{ orgId: string; orgName: string } | null>(null)
+
+  const requestLeave = (orgId: string, orgName: string) => {
     setOrgToLeave({ orgId, orgName })
   }
 
-  const handleConfirmLeaveOrg = async () => {
+  const confirmLeave = async () => {
     if (!orgToLeave) return
 
-    const { orgId } = orgToLeave
+    const { orgId, orgName } = orgToLeave
 
     try {
       setLeavingOrg(orgId)
       setOrgToLeave(null)
 
-      const response = await fetch("/api/auth/org-members", {
-        method: "DELETE",
+      const res = await fetch("/api/auth/org-members/leave", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ orgId, targetUserId: currentUserId }),
+        body: JSON.stringify({ orgId }),
       })
 
-      const data = await response.json()
+      const data = await res.json()
 
       if (data.ok) {
-        // Refetch organizations to update the list
-        // The hook's useOrganizations handles validation and cleanup automatically
-        await refetch()
-        toast.success("You have left the organization")
+        toast.success(`Left ${orgName}`)
+        window.location.reload()
       } else {
         toast.error(data.message || "Failed to leave organization")
       }
     } catch (err) {
-      console.error("Failed to leave organization:", err)
+      console.error("Failed to leave org:", err)
       toast.error("Failed to leave organization")
     } finally {
       setLeavingOrg(null)
     }
   }
 
-  const handleCancelLeaveOrg = () => {
-    setOrgToLeave(null)
+  const cancelLeave = () => setOrgToLeave(null)
+
+  return { leavingOrg, orgToLeave, requestLeave, confirmLeave, cancelLeave }
+}
+
+// Cache for org sites (lives outside component for persistence)
+const orgSitesCache = new Map<string, string[]>()
+
+// Custom hook for fetching workspaces with caching
+function useOrgWorkspaces(orgId: string) {
+  const [workspaces, setWorkspaces] = useState<string[]>(() => orgSitesCache.get(orgId) || [])
+  const [loading, setLoading] = useState(!orgSitesCache.has(orgId))
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchWorkspaces = useCallback(() => {
+    if (!orgSitesCache.has(orgId)) setLoading(true)
+    setError(null)
+
+    fetch(`/api/auth/workspaces?org_id=${orgId}`)
+      .then(res => (res.ok ? res.json() : Promise.reject(new Error(`Failed to load sites (${res.status})`))))
+      .then(data => {
+        if (data.ok && data.workspaces) {
+          setWorkspaces(data.workspaces)
+          orgSitesCache.set(orgId, data.workspaces)
+          setError(null)
+        } else {
+          throw new Error(data.error || "Failed to load sites")
+        }
+      })
+      .catch(err => {
+        const errorMessage = err instanceof Error ? err.message : "Network error"
+        setError(errorMessage)
+        if (!orgSitesCache.has(orgId)) setWorkspaces([])
+      })
+      .finally(() => setLoading(false))
+  }, [orgId])
+
+  useEffect(() => {
+    const cached = orgSitesCache.get(orgId)
+    if (cached) {
+      setWorkspaces(cached)
+      setLoading(false)
+    }
+    fetchWorkspaces()
+  }, [fetchWorkspaces, orgId])
+
+  return { workspaces, loading, error, refetch: fetchWorkspaces }
+}
+
+// Custom hook for optimistic workspace switching
+function useWorkspaceSwitch() {
+  const actualCurrent = typeof window !== "undefined" ? sessionStorage.getItem("workspace") : null
+  const [optimisticCurrent, setOptimisticCurrent] = useState<string | null>(null)
+
+  const switchWorkspace = useCallback((workspace: string) => {
+    if (typeof window === "undefined") return
+
+    setOptimisticCurrent(workspace)
+    sessionStorage.setItem("workspace", workspace)
+    setTimeout(() => {
+      window.location.href = "/chat"
+    }, 100)
+  }, [])
+
+  return {
+    currentWorkspace: optimisticCurrent || actualCurrent,
+    switchWorkspace,
+  }
+}
+
+function OrgSitesSection({ orgId }: { orgId: string }) {
+  const { workspaces, loading, error, refetch } = useOrgWorkspaces(orgId)
+  const { currentWorkspace, switchWorkspace } = useWorkspaceSwitch()
+  const [showAddModal, setShowAddModal] = useState(false)
+
+  return (
+    <div className="mb-4">
+      <div className="flex items-center justify-between mb-3">
+        <h5 className="text-sm font-medium text-black dark:text-white">Sites</h5>
+        <button
+          type="button"
+          onClick={() => setShowAddModal(true)}
+          className="text-xs text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors"
+        >
+          + Add Site
+        </button>
+      </div>
+
+      <WorkspacesGrid
+        workspaces={workspaces}
+        currentWorkspace={currentWorkspace}
+        loading={loading}
+        error={error}
+        onSwitch={switchWorkspace}
+      />
+
+      {showAddModal && <AddWorkspaceModal onClose={() => setShowAddModal(false)} onSuccess={refetch} />}
+    </div>
+  )
+}
+
+// Reusable workspaces grid component
+function WorkspacesGrid({
+  workspaces,
+  currentWorkspace,
+  loading,
+  error,
+  onSwitch,
+}: {
+  workspaces: string[]
+  currentWorkspace: string | null
+  loading: boolean
+  error: string | null
+  onSwitch: (workspace: string) => void
+}) {
+  if (loading) {
+    return (
+      <div className="px-3 py-4 text-xs text-black/40 dark:text-white/40 text-center rounded-md bg-black/5 dark:bg-white/5">
+        Loading sites...
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="px-3 py-3 text-xs text-red-600 dark:text-red-400 text-center rounded-md bg-red-50 dark:bg-red-950/20">
+        {error}
+      </div>
+    )
+  }
+
+  if (workspaces.length === 0) {
+    return (
+      <div className="px-3 py-4 text-xs text-black/40 dark:text-white/40 text-center rounded-md bg-black/5 dark:bg-white/5">
+        No sites yet
+      </div>
+    )
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {workspaces.map(workspace => {
+        const isCurrent = workspace === currentWorkspace
+        return (
+          <div
+            key={workspace}
+            className={`px-3 py-2.5 rounded border transition-all ${
+              isCurrent
+                ? "border-black dark:border-white bg-black/5 dark:bg-white/5"
+                : "border-black/20 dark:border-white/20 hover:border-black dark:hover:border-white cursor-pointer"
+            }`}
+            onClick={() => !isCurrent && onSwitch(workspace)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={e => {
+              if ((e.key === "Enter" || e.key === " ") && !isCurrent) {
+                e.preventDefault()
+                onSwitch(workspace)
+              }
+            }}
+          >
+            <div className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium text-black dark:text-white truncate" title={workspace}>
+                {workspace}
+              </span>
+              {isCurrent ? (
+                <span className="text-xs px-2 py-0.5 bg-black dark:bg-white text-white dark:text-black rounded self-start">
+                  Current
+                </span>
+              ) : (
+                <span className="text-xs text-black/50 dark:text-white/50">Click to switch</span>
+              )}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function WorkspaceSettings() {
+  const { organizations, currentUserId, loading, error, refetch } = useOrganizations()
+  const selectedOrgId = useSelectedOrgId()
+  const { setSelectedOrg } = useWorkspaceActions()
+
+  // Use extracted hooks for clean state management
+  const editor = useOrgEditor(refetch)
+  const members = useOrgMembers()
+  const leave = useOrgLeave()
+
+  const handleSelectOrg = (orgId: string) => {
+    setSelectedOrg(orgId)
+    editor.cancelEdit()
   }
 
   const getCurrentUserRole = (orgId: string): "owner" | "admin" | "member" | null => {
-    // Get current user's role from the organizations list
-    // (role is fetched from org_memberships when loading organizations)
     const org = organizations.find(o => o.org_id === orgId)
     return org?.role || null
   }
@@ -754,9 +852,9 @@ function OrganizationSettings() {
     <div className="space-y-6">
       {/* Header */}
       <div className="animate-in fade-in-0 slide-in-from-top-2 duration-300">
-        <h3 className="text-lg font-medium text-black dark:text-white mb-1">Organizations</h3>
+        <h3 className="text-lg font-medium text-black dark:text-white mb-1">Workspace</h3>
         <p className="text-sm text-black/60 dark:text-white/60">
-          Select and manage your organizations. Switch between them to access different sites.
+          Manage your organizations and switch between workspaces
         </p>
       </div>
 
@@ -766,9 +864,9 @@ function OrganizationSettings() {
           {error}
         </div>
       )}
-      {updateError && (
+      {editor.error && (
         <div className="px-4 py-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/30 rounded-lg text-sm text-red-600 dark:text-red-400">
-          {updateError}
+          {editor.error}
         </div>
       )}
 
@@ -790,407 +888,249 @@ function OrganizationSettings() {
           </button>
         </div>
       ) : (
-        <div className="grid gap-3">
-          {organizations.map((org, index) => {
-            const isSelected = org.org_id === selectedOrgId
-            const isEditing = editingOrgId === org.org_id
-
-            return (
-              <div
+        <div className="space-y-4">
+          {/* Organization Selector */}
+          <div className="flex flex-wrap gap-2">
+            {organizations.map(org => (
+              <button
                 key={org.org_id}
-                role={isEditing || isSelected ? "group" : "button"}
-                tabIndex={isEditing || isSelected ? -1 : 0}
-                className={`group relative rounded-lg border-2 transition-all duration-200 animate-in fade-in-0 slide-in-from-left-2 ${
-                  isSelected
-                    ? "border-black dark:border-white bg-black/5 dark:bg-white/5 shadow-lg"
-                    : "border-black/10 dark:border-white/10 hover:border-black/30 dark:hover:border-white/30 cursor-pointer"
+                type="button"
+                onClick={() => handleSelectOrg(org.org_id)}
+                className={`px-3 py-1.5 rounded-full text-sm transition-all ${
+                  org.org_id === selectedOrgId
+                    ? "bg-black dark:bg-white text-white dark:text-black font-medium"
+                    : "bg-black/5 dark:bg-white/5 text-black/60 dark:text-white/60 hover:bg-black/10 dark:hover:bg-white/10 hover:text-black dark:hover:text-white"
                 }`}
-                style={{ animationDelay: `${index * 50}ms` }}
-                onClick={() => !isEditing && !isSelected && handleSelectOrg(org.org_id)}
-                onKeyDown={e => {
-                  if ((e.key === "Enter" || e.key === " ") && !isEditing && !isSelected) {
-                    e.preventDefault()
-                    handleSelectOrg(org.org_id)
-                  }
-                }}
               >
-                <div className="p-4">
+                {org.name}
+              </button>
+            ))}
+          </div>
+
+          {/* Selected Organization Details */}
+          {selectedOrgId &&
+            (() => {
+              const selectedOrg = organizations.find(org => org.org_id === selectedOrgId)
+              if (!selectedOrg) return null
+
+              const isEditing = editor.editingOrgId === selectedOrgId
+
+              return (
+                <div className="rounded-lg border border-black/10 dark:border-white/10 p-4 bg-black/[0.02] dark:bg-white/[0.02]">
                   {/* Header */}
-                  <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex items-start justify-between gap-3 mb-4">
                     <div className="flex-1 min-w-0">
                       {isEditing ? (
                         <input
                           type="text"
-                          value={editOrgName}
-                          onChange={e => setEditOrgName(e.target.value)}
-                          onClick={e => e.stopPropagation()}
+                          value={editor.editOrgName}
+                          onChange={e => editor.setEditOrgName(e.target.value)}
                           className="w-full px-2 py-1 text-base font-semibold bg-white dark:bg-[#2a2a2a] border border-black/20 dark:border-white/20 rounded text-black dark:text-white focus:outline-none focus:border-black dark:focus:border-white"
                         />
                       ) : (
-                        <h4 className="text-base font-semibold text-black dark:text-white truncate">{org.name}</h4>
+                        <>
+                          <h4 className="text-base font-semibold text-black dark:text-white truncate">
+                            {selectedOrg.name}
+                          </h4>
+                          <p className="text-xs text-black/50 dark:text-white/50 mt-0.5 font-mono truncate">
+                            {selectedOrg.org_id}
+                          </p>
+                        </>
                       )}
-                      <p className="text-xs text-black/50 dark:text-white/50 mt-0.5 font-mono truncate">{org.org_id}</p>
                     </div>
-
-                    {/* Selected Badge */}
-                    {isSelected && !isEditing && (
-                      <div className="flex-shrink-0 px-2 py-1 bg-black dark:bg-white rounded-full">
-                        <span className="text-xs font-medium text-white dark:text-black">Active</span>
-                      </div>
-                    )}
 
                     {/* Edit/Save Buttons */}
                     {isEditing ? (
-                      <div className="flex gap-1" role="group" onClick={e => e.stopPropagation()}>
+                      <div className="flex gap-1">
                         <button
                           type="button"
-                          onClick={() => handleSaveEdit(org.org_id)}
-                          disabled={!editOrgName.trim() || saving}
-                          className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium transition-colors disabled:opacity-50"
+                          onClick={() => editor.saveEdit(selectedOrg.org_id)}
+                          disabled={!editor.editOrgName.trim() || editor.saving}
+                          className="px-2 py-1 bg-black dark:bg-white text-white dark:text-black rounded text-xs font-medium transition-colors disabled:opacity-50"
                         >
-                          {saving ? "..." : "Save"}
+                          {editor.saving ? "..." : "Save"}
                         </button>
                         <button
                           type="button"
-                          onClick={handleCancelEdit}
-                          className="px-2 py-1 bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 text-black dark:text-white rounded text-xs font-medium transition-colors"
+                          onClick={editor.cancelEdit}
+                          className="px-2 py-1 text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white rounded text-xs font-medium transition-colors"
                         >
                           Cancel
                         </button>
                       </div>
                     ) : (
-                      isSelected && (
-                        <button
-                          type="button"
-                          onClick={e => {
-                            e.stopPropagation()
-                            handleStartEdit(org)
-                          }}
-                          className="opacity-0 group-hover:opacity-100 px-2 py-1 bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 text-black dark:text-white rounded text-xs font-medium transition-all"
-                        >
-                          Rename
-                        </button>
-                      )
+                      <button
+                        type="button"
+                        onClick={() => editor.startEdit(selectedOrg)}
+                        className="px-2 py-1 text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white rounded text-xs transition-all"
+                      >
+                        Rename
+                      </button>
                     )}
                   </div>
 
                   {/* Stats Grid */}
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2 mb-4">
                     <div className="px-3 py-2 rounded-md bg-black/5 dark:bg-white/5">
                       <div className="text-xs text-black/50 dark:text-white/50 mb-0.5">Credits</div>
-                      <div className="text-sm font-semibold text-black dark:text-white">{org.credits.toFixed(2)}</div>
+                      <div className="text-sm font-semibold text-black dark:text-white">
+                        {selectedOrg.credits.toFixed(2)}
+                      </div>
                     </div>
                     <div className="px-3 py-2 rounded-md bg-black/5 dark:bg-white/5">
                       <div className="text-xs text-black/50 dark:text-white/50 mb-0.5">Sites</div>
-                      <div className="text-sm font-semibold text-black dark:text-white">{org.workspace_count || 0}</div>
+                      <div className="text-sm font-semibold text-black dark:text-white">
+                        {selectedOrg.workspace_count || 0}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Members Section - Only show for selected org */}
-                  {isSelected && (
-                    <div className="mt-3 border-t border-black/10 dark:border-white/10 pt-3">
-                      <button
-                        type="button"
-                        onClick={e => {
-                          e.stopPropagation()
-                          handleToggleMembers(org.org_id)
-                        }}
-                        className="w-full flex items-center justify-between px-3 py-2 rounded-md bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Users size={14} className="text-black/60 dark:text-white/60" />
-                          <span className="text-sm font-medium text-black dark:text-white">Members</span>
-                          {orgMembers[org.org_id] && (
-                            <span className="text-xs text-black/50 dark:text-white/50">
-                              ({orgMembers[org.org_id].length})
-                            </span>
-                          )}
-                        </div>
-                        {expandedOrgId === org.org_id ? (
-                          <ChevronUp size={14} className="text-black/60 dark:text-white/60" />
-                        ) : (
-                          <ChevronDown size={14} className="text-black/60 dark:text-white/60" />
+                  {/* Sites Section */}
+                  <OrgSitesSection orgId={selectedOrg.org_id} />
+
+                  {/* Members Section */}
+                  <div className="mb-4">
+                    <button
+                      type="button"
+                      onClick={() => members.toggleMembers(selectedOrg.org_id)}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-md bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Users size={14} className="text-black/60 dark:text-white/60" />
+                        <span className="text-sm font-medium text-black dark:text-white">Members</span>
+                        {members.orgMembers[selectedOrg.org_id] && (
+                          <span className="text-xs text-black/50 dark:text-white/50">
+                            ({members.orgMembers[selectedOrg.org_id].length})
+                          </span>
                         )}
-                      </button>
+                      </div>
+                      {members.expandedOrgId === selectedOrg.org_id ? (
+                        <ChevronUp size={14} className="text-black/60 dark:text-white/60" />
+                      ) : (
+                        <ChevronDown size={14} className="text-black/60 dark:text-white/60" />
+                      )}
+                    </button>
 
-                      {/* Members List */}
-                      {expandedOrgId === org.org_id && (
-                        <div className="mt-2 space-y-1">
-                          {loadingMembers[org.org_id] ? (
-                            <div className="px-3 py-2 text-xs text-black/40 dark:text-white/40 text-center">
-                              Loading members...
-                            </div>
-                          ) : orgMembers[org.org_id] && orgMembers[org.org_id].length > 0 ? (
-                            orgMembers[org.org_id].map(member => {
-                              const currentUserRole = getCurrentUserRole(org.org_id)
-                              const isCurrentUser = member.user_id === currentUserId
-                              const canRemove = canRemoveMember(currentUserRole, member.role, isCurrentUser)
+                    {/* Members List */}
+                    {members.expandedOrgId === selectedOrg.org_id && (
+                      <div className="mt-2 space-y-1">
+                        {members.loadingMembers[selectedOrg.org_id] ? (
+                          <div className="px-3 py-2 text-xs text-black/40 dark:text-white/40 text-center">
+                            Loading members...
+                          </div>
+                        ) : members.orgMembers[selectedOrg.org_id] &&
+                          members.orgMembers[selectedOrg.org_id].length > 0 ? (
+                          members.orgMembers[selectedOrg.org_id].map(member => {
+                            const currentUserRole = getCurrentUserRole(selectedOrg.org_id)
+                            const isCurrentUser = member.user_id === currentUserId
+                            const canRemove = canRemoveMember(currentUserRole, member.role, isCurrentUser)
 
-                              return (
-                                <div
-                                  key={member.user_id}
-                                  className="flex items-center justify-between px-3 py-2 rounded-md bg-black/5 dark:bg-white/5"
-                                >
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-sm text-black dark:text-white truncate">
-                                        {member.display_name || member.email}
-                                      </span>
-                                      <span
-                                        className={`text-xs px-1.5 py-0.5 rounded-full ${
-                                          member.role === "owner"
-                                            ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
-                                            : member.role === "admin"
-                                              ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                                              : "bg-gray-100 dark:bg-gray-800/30 text-gray-600 dark:text-gray-400"
-                                        }`}
-                                      >
-                                        {member.role}
-                                      </span>
-                                    </div>
-                                    {member.display_name && (
-                                      <div className="text-xs text-black/50 dark:text-white/50 truncate">
-                                        {member.email}
-                                      </div>
-                                    )}
-                                  </div>
-
-                                  {canRemove && (
-                                    <button
-                                      type="button"
-                                      onClick={e => {
-                                        e.stopPropagation()
-                                        handleRemoveMemberClick(org.org_id, member.user_id, member.email)
-                                      }}
-                                      disabled={removingMember === member.user_id}
-                                      className="ml-2 p-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors disabled:opacity-50"
-                                      title="Remove member"
+                            return (
+                              <div
+                                key={member.user_id}
+                                className="flex items-center justify-between px-3 py-2 rounded-md bg-black/5 dark:bg-white/5"
+                              >
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm text-black dark:text-white truncate">
+                                      {member.display_name || member.email}
+                                    </span>
+                                    <span
+                                      className={`text-xs px-1.5 py-0.5 rounded-full ${
+                                        member.role === "owner"
+                                          ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
+                                          : member.role === "admin"
+                                            ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                                            : "bg-gray-100 dark:bg-gray-800/30 text-gray-600 dark:text-gray-400"
+                                      }`}
                                     >
-                                      <UserMinus size={14} />
-                                    </button>
+                                      {member.role}
+                                    </span>
+                                  </div>
+                                  {member.display_name && (
+                                    <div className="text-xs text-black/50 dark:text-white/50 truncate">
+                                      {member.email}
+                                    </div>
                                   )}
                                 </div>
-                              )
-                            })
-                          ) : (
-                            <div className="px-3 py-2 text-xs text-black/40 dark:text-white/40 text-center">
-                              No members found
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
 
-                  {/* Leave Organization Button */}
-                  {isSelected && (
-                    <div className="mt-3 border-t border-black/10 dark:border-white/10 pt-3">
-                      <button
-                        type="button"
-                        onClick={e => {
-                          e.stopPropagation()
-                          handleLeaveOrgClick(org.org_id, org.name)
-                        }}
-                        disabled={leavingOrg === org.org_id}
-                        className="w-full px-3 py-2 rounded-md bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-900/30 border border-red-200 dark:border-red-800/30 text-red-600 dark:text-red-400 text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                      >
-                        <UserMinus size={14} />
-                        {leavingOrg === org.org_id ? "Leaving..." : "Leave Organization"}
-                      </button>
-                    </div>
-                  )}
+                                {canRemove && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      members.requestRemoveMember(selectedOrg.org_id, member.user_id, member.email)
+                                    }
+                                    disabled={members.removingMember === member.user_id}
+                                    className="ml-2 p-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors disabled:opacity-50"
+                                    title="Remove member"
+                                  >
+                                    <UserMinus size={14} />
+                                  </button>
+                                )}
+                              </div>
+                            )
+                          })
+                        ) : (
+                          <div className="px-3 py-2 text-xs text-black/40 dark:text-white/40 text-center">
+                            No members found
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
 
-                  {/* Click to switch hint */}
-                  {!isSelected && !isEditing && (
-                    <div className="mt-2 text-xs text-black/40 dark:text-white/40 opacity-0 group-hover:opacity-100 transition-opacity">
-                      Click to switch to this organization
-                    </div>
-                  )}
+                  {/* Leave Organization - Subtle footer link */}
+                  <div className="pt-3 border-t border-black/5 dark:border-white/5">
+                    <button
+                      type="button"
+                      onClick={() => leave.requestLeave(selectedOrg.org_id, selectedOrg.name)}
+                      disabled={leave.leavingOrg === selectedOrg.org_id}
+                      className="text-xs text-red-600/70 dark:text-red-400/70 hover:text-red-600 dark:hover:text-red-400 transition-colors disabled:opacity-50"
+                    >
+                      {leave.leavingOrg === selectedOrg.org_id ? "Leaving..." : "Leave organization"}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )
-          })}
+              )
+            })()}
         </div>
       )}
 
       {/* Delete Member Confirmation Modal */}
-      {memberToRemove && (
+      {members.memberToRemove && (
         <DeleteModal
           title="Remove Member"
           message={
             <>
-              Are you sure you want to remove <strong>{memberToRemove.email}</strong> from this organization?
+              Are you sure you want to remove <strong>{members.memberToRemove.email}</strong> from this organization?
               <br />
               <br />
               This action cannot be undone.
             </>
           }
           confirmText="Remove"
-          onConfirm={handleConfirmRemoveMember}
-          onCancel={handleCancelRemoveMember}
+          onConfirm={members.confirmRemoveMember}
+          onCancel={members.cancelRemoveMember}
         />
       )}
 
       {/* Leave Organization Confirmation Modal */}
-      {orgToLeave && (
+      {leave.orgToLeave && (
         <DeleteModal
           title="Leave Organization"
           message={
             <>
-              Are you sure you want to leave <strong>{orgToLeave.orgName}</strong>?
+              Are you sure you want to leave <strong>{leave.orgToLeave.orgName}</strong>?
               <br />
               <br />
               This action cannot be undone.
             </>
           }
           confirmText="Leave"
-          onConfirm={handleConfirmLeaveOrg}
-          onCancel={handleCancelLeaveOrg}
+          onConfirm={leave.confirmLeave}
+          onCancel={leave.cancelLeave}
         />
       )}
-    </div>
-  )
-}
-
-function SitesSettings() {
-  const [workspaces, setWorkspaces] = useState<string[]>([])
-  const [showAddModal, setShowAddModal] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const currentWorkspace = typeof window !== "undefined" ? sessionStorage.getItem("workspace") : null
-  const selectedOrgId = useSelectedOrgId()
-
-  const fetchWorkspaces = () => {
-    setLoading(true)
-    setError(null)
-
-    // Only fetch if org is selected
-    if (!selectedOrgId) {
-      setWorkspaces([])
-      setLoading(false)
-      return
-    }
-
-    fetch(`/api/auth/workspaces?org_id=${selectedOrgId}`)
-      .then(res => {
-        if (!res.ok) {
-          throw new Error(`Failed to load sites (${res.status})`)
-        }
-        return res.json()
-      })
-      .then(data => {
-        if (data.ok && data.workspaces) {
-          setWorkspaces(data.workspaces)
-          setError(null)
-        } else {
-          throw new Error(data.error || "Failed to load sites")
-        }
-      })
-      .catch(err => {
-        console.error("Failed to fetch authenticated workspaces:", err)
-        const errorMessage = err instanceof Error ? err.message : "Network error - check your connection"
-        setError(errorMessage)
-        setWorkspaces([])
-      })
-      .finally(() => {
-        setLoading(false)
-      })
-  }
-
-  useEffect(() => {
-    fetchWorkspaces()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedOrgId])
-
-  const handleSwitchWorkspace = (workspace: string) => {
-    if (typeof window !== "undefined") {
-      sessionStorage.setItem("workspace", workspace)
-      window.location.href = "/chat"
-    }
-  }
-
-  return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="animate-in fade-in-0 slide-in-from-top-2 duration-300">
-        <h3 className="text-base sm:text-lg font-medium text-black dark:text-white mb-1">Sites</h3>
-        <p className="text-xs sm:text-sm text-black/60 dark:text-white/60">Manage your authenticated workspaces</p>
-      </div>
-
-      {/* Error Banner */}
-      {error && (
-        <div className="px-4 py-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/30 rounded-lg">
-          <p className="text-sm text-red-900 dark:text-red-100 mb-2">{error}</p>
-          <button
-            type="button"
-            onClick={fetchWorkspaces}
-            disabled={loading}
-            className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded transition-colors disabled:opacity-50"
-          >
-            {loading ? "Retrying..." : "Retry"}
-          </button>
-        </div>
-      )}
-
-      {/* Add Site Button */}
-      <button
-        type="button"
-        onClick={() => setShowAddModal(true)}
-        className="w-full px-4 py-2.5 border-2 border-dashed border-black/20 dark:border-white/20 rounded-lg text-sm font-medium text-black/60 dark:text-white/60 hover:border-black dark:hover:border-white hover:text-black dark:hover:text-white transition-colors flex items-center justify-center gap-2"
-      >
-        <Globe size={16} />
-        Add New Site
-      </button>
-
-      {/* Workspaces Grid */}
-      <div>
-        {loading && !error ? (
-          <div className="text-center py-8 text-black/40 dark:text-white/40 text-sm">Loading sites...</div>
-        ) : error && workspaces.length === 0 ? (
-          <div className="text-center py-8 text-red-600 dark:text-red-400 text-sm">
-            Unable to load sites. Please try again.
-          </div>
-        ) : workspaces.length === 0 ? (
-          <div className="text-center py-8 text-black/40 dark:text-white/40 text-sm">
-            No sites yet. Click &quot;Add New Site&quot; to get started.
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-2">
-            {workspaces.map(workspace => (
-              <div
-                key={workspace}
-                className={`px-3 py-2.5 rounded border transition-all ${
-                  workspace === currentWorkspace
-                    ? "border-black dark:border-white bg-black/5 dark:bg-white/5"
-                    : "border-black/20 dark:border-white/20 hover:border-black dark:hover:border-white cursor-pointer"
-                }`}
-                onClick={() => workspace !== currentWorkspace && handleSwitchWorkspace(workspace)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={e => {
-                  if ((e.key === "Enter" || e.key === " ") && workspace !== currentWorkspace) {
-                    handleSwitchWorkspace(workspace)
-                  }
-                }}
-              >
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-sm font-medium text-black dark:text-white truncate" title={workspace}>
-                    {workspace}
-                  </span>
-                  {workspace === currentWorkspace ? (
-                    <span className="text-xs px-2 py-0.5 bg-black dark:bg-white text-white dark:text-black rounded self-start">
-                      Current
-                    </span>
-                  ) : (
-                    <span className="text-xs text-black/50 dark:text-white/50">Click to switch</span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {showAddModal && <AddWorkspaceModal onClose={() => setShowAddModal(false)} onSuccess={fetchWorkspaces} />}
     </div>
   )
 }
@@ -1198,46 +1138,32 @@ function SitesSettings() {
 function UserPromptsSettings() {
   const prompts = useUserPrompts()
   const { addPrompt, updatePrompt, removePrompt } = useUserPromptsActions()
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editDisplayName, setEditDisplayName] = useState("")
-  const [editData, setEditData] = useState("")
-  const [showAddForm, setShowAddForm] = useState(false)
-  const [newDisplayName, setNewDisplayName] = useState("")
-  const [newData, setNewData] = useState("")
+  const [editorState, setEditorState] = useState<{
+    mode: "add" | "edit"
+    promptId?: string
+    displayName: string
+    data: string
+  } | null>(null)
 
-  const handleStartEdit = (id: string, displayName: string, data: string) => {
-    setEditingId(id)
-    setEditDisplayName(displayName)
-    setEditData(data)
+  const handleOpenEditor = (mode: "add" | "edit", promptId?: string, displayName = "", data = "") => {
+    setEditorState({ mode, promptId, displayName, data })
   }
 
-  const handleSaveEdit = (id: string) => {
-    if (editDisplayName.trim() && editData.trim()) {
-      updatePrompt(id, editData.trim(), editDisplayName.trim())
-      setEditingId(null)
+  const handleCloseEditor = () => {
+    setEditorState(null)
+  }
+
+  const handleSavePrompt = (displayName: string, data: string) => {
+    if (!editorState) return
+
+    if (editorState.mode === "add") {
+      const promptType = displayName.toLowerCase().replace(/\s+/g, "-")
+      addPrompt(promptType, data, displayName)
+    } else if (editorState.mode === "edit" && editorState.promptId) {
+      updatePrompt(editorState.promptId, data, displayName)
     }
-  }
 
-  const handleCancelEdit = () => {
-    setEditingId(null)
-    setEditDisplayName("")
-    setEditData("")
-  }
-
-  const handleAddPrompt = () => {
-    if (newDisplayName.trim() && newData.trim()) {
-      const promptType = newDisplayName.toLowerCase().replace(/\s+/g, "-")
-      addPrompt(promptType, newData.trim(), newDisplayName.trim())
-      setNewDisplayName("")
-      setNewData("")
-      setShowAddForm(false)
-    }
-  }
-
-  const handleCancelAdd = () => {
-    setShowAddForm(false)
-    setNewDisplayName("")
-    setNewData("")
+    setEditorState(null)
   }
 
   return (
@@ -1250,52 +1176,13 @@ function UserPromptsSettings() {
       </div>
 
       {/* Add New Prompt Button */}
-      {!showAddForm && (
-        <button
-          type="button"
-          onClick={() => setShowAddForm(true)}
-          className="w-full px-4 py-2.5 border-2 border-dashed border-black/20 dark:border-white/20 rounded-lg text-sm font-medium text-black/60 dark:text-white/60 hover:border-black dark:hover:border-white hover:text-black dark:hover:text-white transition-colors"
-        >
-          + Add New Prompt
-        </button>
-      )}
-
-      {/* Add New Prompt Form */}
-      {showAddForm && (
-        <div className="px-4 py-3 rounded-lg border-2 border-purple-300 dark:border-purple-700 bg-gradient-to-br from-purple-50/50 to-pink-50/50 dark:from-purple-950/20 dark:to-pink-950/20 space-y-3">
-          <input
-            type="text"
-            value={newDisplayName}
-            onChange={e => setNewDisplayName(e.target.value)}
-            placeholder="Prompt name (e.g., 'Revise Code')"
-            className="w-full px-3 py-2 bg-white dark:bg-[#2a2a2a] border border-purple-300 dark:border-purple-700 rounded text-sm text-black dark:text-white focus:outline-none focus:border-purple-500 dark:focus:border-purple-500"
-          />
-          <textarea
-            value={newData}
-            onChange={e => setNewData(e.target.value)}
-            placeholder="Prompt text (e.g., 'revise the code and find any things that might be wrong')"
-            rows={3}
-            className="w-full px-3 py-2 bg-white dark:bg-[#2a2a2a] border border-purple-300 dark:border-purple-700 rounded text-sm text-black dark:text-white focus:outline-none focus:border-purple-500 dark:focus:border-purple-500 resize-none"
-          />
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={handleAddPrompt}
-              disabled={!newDisplayName.trim() || !newData.trim()}
-              className="flex-1 px-3 py-2 bg-purple-600 text-white rounded text-sm font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Add Prompt
-            </button>
-            <button
-              type="button"
-              onClick={handleCancelAdd}
-              className="px-3 py-2 bg-black/5 dark:bg-white/5 text-black dark:text-white rounded text-sm font-medium hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
+      <button
+        type="button"
+        onClick={() => handleOpenEditor("add")}
+        className="w-full px-4 py-2.5 border-2 border-dashed border-black/20 dark:border-white/20 rounded-lg text-sm font-medium text-black/60 dark:text-white/60 hover:border-black dark:hover:border-white hover:text-black dark:hover:text-white transition-colors"
+      >
+        + Add New Prompt
+      </button>
 
       {/* Saved Prompts List */}
       <div className="space-y-3">
@@ -1304,74 +1191,45 @@ function UserPromptsSettings() {
             key={prompt.id}
             className="px-4 py-3 rounded-lg border border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50/50 to-pink-50/50 dark:from-purple-950/20 dark:to-pink-950/20"
           >
-            {editingId === prompt.id ? (
-              // Edit mode
-              <div className="space-y-3">
-                <input
-                  type="text"
-                  value={editDisplayName}
-                  onChange={e => setEditDisplayName(e.target.value)}
-                  className="w-full px-3 py-2 bg-white dark:bg-[#2a2a2a] border border-purple-300 dark:border-purple-700 rounded text-sm text-black dark:text-white focus:outline-none focus:border-purple-500 dark:focus:border-purple-500"
-                />
-                <textarea
-                  value={editData}
-                  onChange={e => setEditData(e.target.value)}
-                  rows={3}
-                  className="w-full px-3 py-2 bg-white dark:bg-[#2a2a2a] border border-purple-300 dark:border-purple-700 rounded text-sm text-black dark:text-white focus:outline-none focus:border-purple-500 dark:focus:border-purple-500 resize-none"
-                />
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleSaveEdit(prompt.id)}
-                    disabled={!editDisplayName.trim() || !editData.trim()}
-                    className="flex-1 px-3 py-1.5 bg-purple-600 text-white rounded text-xs font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Save
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleCancelEdit}
-                    className="px-3 py-1.5 bg-black/5 dark:bg-white/5 text-black dark:text-white rounded text-xs font-medium hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="text-sm font-semibold text-purple-900 dark:text-purple-100">{prompt.displayName}</span>
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => handleOpenEditor("edit", prompt.id, prompt.displayName, prompt.data)}
+                  className="px-2 py-1 text-xs text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded transition-colors"
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => removePrompt(prompt.id)}
+                  className="px-2 py-1 text-xs text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
+                >
+                  Delete
+                </button>
               </div>
-            ) : (
-              // View mode
-              <>
-                <div className="flex items-center justify-between gap-2 mb-1">
-                  <span className="text-xs font-semibold text-purple-900 dark:text-purple-100">
-                    {prompt.displayName}
-                  </span>
-                  <div className="flex gap-1">
-                    <button
-                      type="button"
-                      onClick={() => handleStartEdit(prompt.id, prompt.displayName, prompt.data)}
-                      className="px-2 py-1 text-xs text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded transition-colors"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => removePrompt(prompt.id)}
-                      className="px-2 py-1 text-xs text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-                <p className="text-sm text-black/80 dark:text-white/80">{prompt.data}</p>
-              </>
-            )}
+            </div>
+            <p className="text-xs text-black/70 dark:text-white/70 line-clamp-2">{prompt.data}</p>
           </div>
         ))}
       </div>
 
-      {prompts.length === 0 && !showAddForm && (
+      {prompts.length === 0 && (
         <div className="text-center py-8 text-black/40 dark:text-white/40 text-sm">
           No saved prompts yet. Click &quot;Add New Prompt&quot; to create one.
         </div>
+      )}
+
+      {/* Prompt Editor Modal */}
+      {editorState && (
+        <PromptEditorModal
+          mode={editorState.mode}
+          initialDisplayName={editorState.displayName}
+          initialData={editorState.data}
+          onSave={handleSavePrompt}
+          onCancel={handleCloseEditor}
+        />
       )}
     </div>
   )

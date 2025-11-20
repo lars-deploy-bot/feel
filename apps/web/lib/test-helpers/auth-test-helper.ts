@@ -6,6 +6,7 @@
 
 import { randomUUID } from "node:crypto"
 import { hash } from "bcrypt"
+import jwt from "jsonwebtoken"
 import { createClient } from "@supabase/supabase-js"
 import { getUserDefaultOrgId } from "@/lib/deployment/org-resolver"
 import { getSupabaseCredentials } from "@/lib/env/server"
@@ -139,21 +140,24 @@ export async function cleanupTestUser(userId: string): Promise<void> {
 }
 
 /**
- * Create a mock session cookie for authenticated requests
+ * Create a JWT session token for E2E tests
  *
- * In test environment, we use a simple approach.
- * In production tests, you'd generate a real JWT.
+ * Uses HS256 signing (same as production) with proper payload structure.
+ * Matches the SessionPayload interface from features/auth/lib/jwt.ts
  *
- * @param userId - User ID for the session
- * @returns Cookie value for auth_session
+ * @param testUser - Test user object from fixtures
+ * @returns Signed JWT token
  */
-export function createTestSessionCookie(userId: string): string {
-  if (process.env.BRIDGE_ENV === "local") {
-    // In local test mode, just use "test-user"
-    return "test-user"
+export async function createTestSessionToken(testUser: TestUser): Promise<string> {
+  const JWT_SECRET = process.env.JWT_SECRET || "INSECURE_DEV_SECRET_CHANGE_IN_PRODUCTION"
+
+  const payload = {
+    sub: testUser.userId, // Standard JWT claim (used by RLS policies)
+    userId: testUser.userId, // Legacy claim (backward compatibility)
+    email: testUser.email,
+    name: testUser.orgName,
+    workspaces: [], // Empty workspaces for test deployments
   }
 
-  // For real tests, you'd generate a proper JWT here
-  // For now, return userId (this won't work in production)
-  return userId
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: "30d" })
 }

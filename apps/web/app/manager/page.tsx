@@ -734,7 +734,9 @@ export default function ManagerPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Manager</h1>
-              <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Manage domains, organizations, and system configuration</p>
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                Manage domains, organizations, and system configuration
+              </p>
             </div>
             <div className="flex items-center gap-3">
               <button
@@ -766,27 +768,37 @@ export default function ManagerPage() {
                 type="button"
                 onClick={() => setActiveTab("domains")}
                 className={`relative py-4 px-1 mr-8 text-sm font-medium transition-colors ${
-                  activeTab === "domains" ? "text-indigo-600 dark:text-indigo-400" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  activeTab === "domains"
+                    ? "text-indigo-600 dark:text-indigo-400"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
                 Domains
-                {activeTab === "domains" && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400" />}
+                {activeTab === "domains" && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400" />
+                )}
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab("feedback")}
                 className={`relative py-4 px-1 mr-8 text-sm font-medium transition-colors ${
-                  activeTab === "feedback" ? "text-indigo-600 dark:text-indigo-400" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  activeTab === "feedback"
+                    ? "text-indigo-600 dark:text-indigo-400"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
                 Feedback
-                {activeTab === "feedback" && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400" />}
+                {activeTab === "feedback" && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400" />
+                )}
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab("organizations")}
                 className={`relative py-4 px-1 mr-8 text-sm font-medium transition-colors ${
-                  activeTab === "organizations" ? "text-indigo-600 dark:text-indigo-400" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  activeTab === "organizations"
+                    ? "text-indigo-600 dark:text-indigo-400"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
                 Organizations
@@ -803,21 +815,29 @@ export default function ManagerPage() {
                 type="button"
                 onClick={() => setActiveTab("users")}
                 className={`relative py-4 px-1 mr-8 text-sm font-medium transition-colors ${
-                  activeTab === "users" ? "text-indigo-600 dark:text-indigo-400" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  activeTab === "users"
+                    ? "text-indigo-600 dark:text-indigo-400"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
                 Users
-                {activeTab === "users" && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400" />}
+                {activeTab === "users" && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400" />
+                )}
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab("settings")}
                 className={`relative py-4 px-1 mr-8 text-sm font-medium transition-colors ${
-                  activeTab === "settings" ? "text-indigo-600 dark:text-indigo-400" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  activeTab === "settings"
+                    ? "text-indigo-600 dark:text-indigo-400"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
                 Settings
-                {activeTab === "settings" && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400" />}
+                {activeTab === "settings" && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400" />
+                )}
               </button>
             </nav>
           </div>
@@ -931,7 +951,10 @@ export default function ManagerPage() {
 
             <div className="space-y-8 mb-8">
               <div className="border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/20 p-4 rounded">
-                <label htmlFor="credits-input" className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                <label
+                  htmlFor="credits-input"
+                  className="block text-sm font-semibold text-gray-900 dark:text-white mb-2"
+                >
                   API Credits
                 </label>
                 <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
@@ -950,7 +973,9 @@ export default function ManagerPage() {
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 font-medium">
                   Current:{" "}
-                  <span className="text-gray-700 dark:text-gray-300">{domains[selectedDomain || ""]?.credits?.toFixed(2) || "0.00"}</span>{" "}
+                  <span className="text-gray-700 dark:text-gray-300">
+                    {domains[selectedDomain || ""]?.credits?.toFixed(2) || "0.00"}
+                  </span>{" "}
                   credits
                 </p>
               </div>
@@ -973,7 +998,10 @@ export default function ManagerPage() {
               </div>
 
               <div className="border-l-4 border-purple-500 bg-purple-50 dark:bg-purple-900/20 p-4 rounded">
-                <label htmlFor="password-input" className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                <label
+                  htmlFor="password-input"
+                  className="block text-sm font-semibold text-gray-900 dark:text-white mb-2"
+                >
                   Access Password
                 </label>
                 <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
@@ -1065,7 +1093,11 @@ export default function ManagerPage() {
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-white">File Permissions</h2>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{permissionsModal}</p>
               </div>
-              <button type="button" onClick={closePermissionsModal} className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
+              <button
+                type="button"
+                onClick={closePermissionsModal}
+                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
+              >
                 ✕
               </button>
             </div>
@@ -1086,11 +1118,15 @@ export default function ManagerPage() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="bg-gray-50 dark:bg-[#1a1a1a] rounded-lg p-4">
                         <p className="text-sm text-gray-600 dark:text-gray-400">Expected Owner</p>
-                        <p className="text-lg font-semibold text-gray-900 dark:text-white">{permissionsData.expectedOwner}</p>
+                        <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                          {permissionsData.expectedOwner}
+                        </p>
                       </div>
                       <div className="bg-gray-50 dark:bg-[#1a1a1a] rounded-lg p-4">
                         <p className="text-sm text-gray-600 dark:text-gray-400">Total Files</p>
-                        <p className="text-lg font-semibold text-gray-900 dark:text-white">{permissionsData.totalFiles}</p>
+                        <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                          {permissionsData.totalFiles}
+                        </p>
                       </div>
                     </div>
 
@@ -1106,7 +1142,9 @@ export default function ManagerPage() {
                           <p className="font-medium text-gray-900 dark:text-white">Root-Owned Files</p>
                           <span
                             className={`text-2xl font-bold ${
-                              permissionsData.rootOwnedFiles > 0 ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"
+                              permissionsData.rootOwnedFiles > 0
+                                ? "text-red-600 dark:text-red-400"
+                                : "text-green-600 dark:text-green-400"
                             }`}
                           >
                             {permissionsData.rootOwnedFiles}
@@ -1116,7 +1154,11 @@ export default function ManagerPage() {
                           <div className="mt-3 space-y-1">
                             <p className="text-xs text-gray-600 dark:text-gray-400 font-medium mb-1">Sample files:</p>
                             {permissionsData.rootOwnedFilesList.map((file: string, i: number) => (
-                              <p key={i} className="text-xs font-mono text-gray-700 dark:text-gray-300 truncate" title={file}>
+                              <p
+                                key={i}
+                                className="text-xs font-mono text-gray-700 dark:text-gray-300 truncate"
+                                title={file}
+                              >
                                 {file}
                               </p>
                             ))}
@@ -1140,18 +1182,26 @@ export default function ManagerPage() {
                           <p className="font-medium text-gray-900 dark:text-white">Wrong Owner Files</p>
                           <span
                             className={`text-2xl font-bold ${
-                              permissionsData.wrongOwnerFiles > 0 ? "text-orange-600 dark:text-orange-400" : "text-green-600 dark:text-green-400"
+                              permissionsData.wrongOwnerFiles > 0
+                                ? "text-orange-600 dark:text-orange-400"
+                                : "text-green-600 dark:text-green-400"
                             }`}
                           >
                             {permissionsData.wrongOwnerFiles}
                           </span>
                         </div>
-                        <p className="text-xs text-gray-600 dark:text-gray-400">Files not owned by {permissionsData.expectedOwner}</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                          Files not owned by {permissionsData.expectedOwner}
+                        </p>
                         {permissionsData.wrongOwnerFiles > 0 && permissionsData.wrongOwnerFilesList.length > 0 && (
                           <div className="mt-3 space-y-1">
                             <p className="text-xs text-gray-600 dark:text-gray-400 font-medium mb-1">Sample files:</p>
                             {permissionsData.wrongOwnerFilesList.map((file: string, i: number) => (
-                              <p key={i} className="text-xs font-mono text-gray-700 dark:text-gray-300 truncate" title={file}>
+                              <p
+                                key={i}
+                                className="text-xs font-mono text-gray-700 dark:text-gray-300 truncate"
+                                title={file}
+                              >
                                 {file}
                               </p>
                             ))}
@@ -1242,7 +1292,10 @@ export default function ManagerPage() {
 
             <div className="mb-8">
               <div className="border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/20 p-4 rounded">
-                <label htmlFor="org-credits-input" className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                <label
+                  htmlFor="org-credits-input"
+                  className="block text-sm font-semibold text-gray-900 dark:text-white mb-2"
+                >
                   Organization Credits
                 </label>
                 <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
@@ -1266,7 +1319,9 @@ export default function ManagerPage() {
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 font-medium">
                   Current:{" "}
-                  <span className="text-gray-700 dark:text-gray-300">{orgs.find(o => o.org_id === selectedOrg)?.credits.toFixed(2)}</span>{" "}
+                  <span className="text-gray-700 dark:text-gray-300">
+                    {orgs.find(o => o.org_id === selectedOrg)?.credits.toFixed(2)}
+                  </span>{" "}
                   credits
                 </p>
               </div>

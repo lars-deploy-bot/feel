@@ -10,7 +10,7 @@ import { validateWorkspacePath } from "./workspace-validator.js"
 function getApiBaseUrl(): string {
   if (process.env.BRIDGE_API_URL) return process.env.BRIDGE_API_URL
   if (process.env.BRIDGE_API_PORT) return `http://localhost:${process.env.BRIDGE_API_PORT}`
-  return "http://localhost:8999" // Default to production
+  return "http://localhost:9000" // Default to production
 }
 
 export interface ToolResult {

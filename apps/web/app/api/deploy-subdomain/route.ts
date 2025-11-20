@@ -14,7 +14,7 @@ import { loadDomainPasswords } from "@/types/guards/api"
 
 /**
  * Get port for domain from domain-passwords.json registry
- * This file is updated by deploy-site-systemd.sh during deployment
+ * This file is updated by the TypeScript deployment package during deployment
  * Uses loadDomainPasswords() which handles fallback paths correctly
  */
 function getPortFromRegistry(domain: string): number | null {

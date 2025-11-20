@@ -35,7 +35,7 @@ const config = {
     dev: environments.dev.workspacePath,
   },
 
-  // PM2 process names
+  // Process/service names (systemd for prod/staging, PM2 for dev)
   appName: {
     production: environments.production.processName,
     staging: environments.staging.processName,
