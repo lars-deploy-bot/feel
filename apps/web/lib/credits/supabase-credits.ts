@@ -113,19 +113,47 @@ export function calculateLLMTokenCost(usage: LLMTokenUsage): number {
 }
 
 /**
- * Get org ID for a domain
+ * In-memory cache for domain → org_id mapping with TTL
+ * Reduces database queries from 2 to 1 for repeat requests
+ */
+interface CacheEntry {
+  orgId: string
+  expiresAt: number
+}
+
+const domainOrgCache = new Map<string, CacheEntry>()
+const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+
+/**
+ * Get org ID for a domain with caching
+ * Cache entries expire after 5 minutes to ensure fresh data
  *
  * @param domain - Domain identifier
  * @returns Org ID or null if domain not found
  */
 async function getOrgIdForDomain(domain: string): Promise<string | null> {
+  // Check cache first
+  const cached = domainOrgCache.get(domain)
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.orgId
+  }
+
+  // Cache miss or expired - query database
   const app = await getAppClient()
   const { data, error } = await app.from("domains").select("org_id").eq("hostname", domain).single()
 
-  if (error || !data) {
+  if (error || !data || !data.org_id) {
     console.error(`[Supabase Credits] Domain not found: ${domain}`, error)
+    // Remove from cache if domain no longer exists
+    domainOrgCache.delete(domain)
     return null
   }
+
+  // Cache the result with TTL
+  domainOrgCache.set(domain, {
+    orgId: data.org_id,
+    expiresAt: Date.now() + CACHE_TTL_MS,
+  })
 
   return data.org_id
 }
@@ -178,9 +206,12 @@ export async function hasEnoughCredits(domain: string, requiredCredits: number):
  * This is the ONLY place where LLM tokens are converted to credits.
  * All other operations work with credits directly.
  *
+ * ATOMIC OPERATION: Uses Supabase RPC to perform atomic deduction.
+ * Prevents race conditions and negative balances.
+ *
  * @param domain - Domain identifier
  * @param llmTokensUsed - Number of LLM tokens actually used by Claude API
- * @returns New credit balance, or null if operation failed
+ * @returns New credit balance, or null if operation failed (insufficient credits or error)
  */
 export async function chargeTokensFromCredits(domain: string, llmTokensUsed: number): Promise<number | null> {
   if (llmTokensUsed < 0) {
@@ -195,39 +226,46 @@ export async function chargeTokensFromCredits(domain: string, llmTokensUsed: num
     return null
   }
 
-  // Step 2: Get current credits
-  const iam = await getIamClient()
-  const { data: org, error: fetchError } = await iam.from("orgs").select("credits").eq("org_id", orgId).single()
-
-  if (fetchError || !org) {
-    console.error("[Supabase Credits] Org not found:", orgId, fetchError)
-    return null
-  }
-
-  // Step 3: Calculate charge amount
+  // Step 2: Calculate charge amount
   const creditsUsed = llmTokensToCredits(llmTokensUsed)
   const chargedCredits = Math.floor(creditsUsed * WORKSPACE_CREDIT_DISCOUNT * 100) / 100
 
-  const currentBalance = org.credits ?? 0
-  const newBalance = Math.round((currentBalance - chargedCredits) * 100) / 100
+  // Step 3: Atomic deduction using Supabase RPC
+  // This prevents race conditions by performing the check and update atomically in the database
+  const iam = await getIamClient()
+  const { data, error } = await iam.rpc("deduct_credits", {
+    p_org_id: orgId,
+    p_amount: chargedCredits,
+  })
 
-  // Step 4: Validate balance
-  if (newBalance < 0) {
+  if (error) {
+    console.error("[Supabase Credits] Failed to deduct credits:", {
+      domain,
+      orgId,
+      chargedCredits,
+      error: error.message,
+    })
+    return null
+  }
+
+  // data will be null if insufficient credits (WHERE clause failed)
+  if (data === null) {
     console.error("[Supabase Credits] Insufficient balance:", {
       domain,
       orgId,
-      current: currentBalance,
       requested: chargedCredits,
       actualTokensUsed: llmTokensUsed,
     })
     return null
   }
 
-  // Step 5: Update balance in database
-  const updateSuccess = await updateCreditsInDatabase(orgId, newBalance)
-  if (!updateSuccess) {
+  // Supabase RPC returns numeric values as unknown, verify it's a number
+  if (typeof data !== "number") {
+    console.error("[Supabase Credits] Unexpected return type from deduct_credits:", typeof data)
     return null
   }
+
+  const newBalance = data
 
   console.log("[Supabase Credits] Charged credits:", {
     domain,
@@ -236,7 +274,6 @@ export async function chargeTokensFromCredits(domain: string, llmTokensUsed: num
     creditsUsed,
     chargedCredits,
     discountSaved: creditsUsed - chargedCredits,
-    oldBalance: currentBalance,
     newBalance,
   })
 

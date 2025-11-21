@@ -213,6 +213,10 @@ export type Database = {
     }
     Functions: {
       current_clerk_id: { Args: never; Returns: string }
+      deduct_credits: {
+        Args: { p_org_id: string; p_amount: number }
+        Returns: number | null
+      }
       is_org_admin: { Args: { p_org_id: string }; Returns: boolean }
       is_org_member: { Args: { p_org_id: string }; Returns: boolean }
       sub: { Args: never; Returns: string }

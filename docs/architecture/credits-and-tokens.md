@@ -1,7 +1,13 @@
 # Credits vs LLM Tokens - Clear Terminology Guide
 
-**Status**: ✅ Complete (Updated for Credits-First Architecture)
-**Updated**: November 10, 2025
+**Status**: ⚠️ PARTIALLY OUTDATED - See atomic-credit-charging.md for current implementation
+**Last Updated**: November 10, 2025
+
+**IMPORTANT**:
+- Credits are NOW stored in **Supabase `iam.orgs.credits`** table (PostgreSQL)
+- This document references the legacy `domain-passwords.json` system throughout
+- For the CURRENT atomic credit deduction system, see [atomic-credit-charging.md](./atomic-credit-charging.md)
+- The concepts (credits vs LLM tokens, conversion ratios, discount) remain accurate
 
 ## TL;DR - The Essential Distinction
 
@@ -10,7 +16,7 @@
 │  CREDITS (Our Currency)                                      │
 │  ├─ What: Primary currency stored and used throughout       │
 │  ├─ Format: 200 credits (human-readable)                   │
-│  ├─ Storage: Stored in domain-passwords.json               │
+│  ├─ Storage: Supabase iam.orgs.credits (PostgreSQL)        │
 │  └─ Example: User has 200 credits balance                  │
 │                                                             │
 │  LLM TOKENS (Claude API)                                    │
@@ -37,21 +43,21 @@ Before this refactor:
 - ❌ Conversion happened throughout the codebase
 
 After this refactor:
-- ✅ Store credits (200) in database
+- ✅ Store credits (200) in Supabase iam.orgs.credits table
 - ✅ Work with credits throughout the codebase
 - ✅ Convert to LLM tokens ONLY in chargeTokensFromCredits() (1-3 lines)
 
 ### The System Architecture
 
 ```
-1. User has 200 credits stored in domain-passwords.json
+1. User has 200 credits stored in Supabase (iam.orgs.credits)
 2. User makes API request
 3. Claude API returns: { input_tokens: 350, output_tokens: 150 }
 4. Calculate total LLM tokens: 350 + 150 = 500 tokens
 5. CONVERSION STEP (only here): 500 tokens ÷ 100 = 5 credits
 6. Apply discount: 5 × 0.25 = 1.25 credits charged
-7. Deduct from balance: 200 - 1.25 = 198.75 credits
-8. Save: 198.75 credits back to domain-passwords.json
+7. Atomically deduct via Supabase RPC: deduct_credits(org_id, 1.25)
+8. Database atomically updates: iam.orgs.credits = 198.75
 ```
 
 ## File Reference Guide
@@ -350,3 +356,8 @@ const effectiveModel = tokenSource === "workspace"
 **UI** (`components/modals/SettingsModal.tsx`): Dropdown disabled when no API key
 
 **Store** (`lib/stores/llmStore.ts`): Resets to Haiku when API key cleared
+
+## See Also
+
+- [Atomic Credit Charging](./atomic-credit-charging.md) - Race condition fix, atomic deduction implementation
+- [Testing Philosophy](./TESTING_PHILOSOPHY.md) - How to write tests that prove correctness

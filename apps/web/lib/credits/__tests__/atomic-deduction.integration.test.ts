@@ -1,0 +1,165 @@
+/**
+ * Atomic Credit Deduction - Integration Tests
+ *
+ * These tests verify the ACTUAL database behavior with real Supabase.
+ * Run these separately from unit tests: bun test --integration
+ *
+ * Requirements:
+ * - Supabase credentials in env
+ * - Test domain exists: atomic-test.goalive.nl
+ * - SQL function iam.deduct_credits() deployed
+ */
+
+import { afterAll, beforeAll, describe, expect, it } from "bun:test"
+import { chargeTokensFromCredits, getOrgCredits, updateOrgCredits } from "../supabase-credits"
+
+const TEST_DOMAIN = "atomic-test.goalive.nl"
+let originalBalance: number | null = null
+
+// Skip if env not configured
+const skipIntegration = !process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY
+
+if (skipIntegration) {
+  console.warn("⚠️  Skipping integration tests - Supabase credentials not configured")
+}
+
+beforeAll(async () => {
+  if (skipIntegration) return
+
+  // Save original balance to restore after tests
+  originalBalance = await getOrgCredits(TEST_DOMAIN)
+  if (originalBalance === null) {
+    throw new Error(`Test domain ${TEST_DOMAIN} not found in database`)
+  }
+})
+
+afterAll(async () => {
+  if (skipIntegration || originalBalance === null) return
+
+  // Restore original balance
+  await updateOrgCredits(TEST_DOMAIN, originalBalance)
+  console.log(`✓ Restored ${TEST_DOMAIN} to ${originalBalance} credits`)
+})
+
+describe.skipIf(skipIntegration)("Atomic Credit Deduction - Integration", () => {
+  describe("Database function exists and works", () => {
+    it("can charge credits successfully", async () => {
+      await updateOrgCredits(TEST_DOMAIN, 100)
+
+      const result = await chargeTokensFromCredits(TEST_DOMAIN, 500) // 5 credits
+
+      expect(result).not.toBeNull()
+      expect(result).toBeLessThan(100)
+      expect(result).toBeGreaterThanOrEqual(0)
+    })
+
+    it("returns null when insufficient credits", async () => {
+      await updateOrgCredits(TEST_DOMAIN, 1)
+
+      const result = await chargeTokensFromCredits(TEST_DOMAIN, 1000) // Try 10 credits
+
+      expect(result).toBeNull()
+
+      // Verify balance unchanged
+      const balance = await getOrgCredits(TEST_DOMAIN)
+      expect(balance).toBe(1)
+    })
+  })
+
+  describe("Atomicity under real concurrent load", () => {
+    it("handles 3 concurrent requests correctly", async () => {
+      await updateOrgCredits(TEST_DOMAIN, 10)
+
+      // 3 concurrent requests for 5 credits each
+      const results = await Promise.all([
+        chargeTokensFromCredits(TEST_DOMAIN, 500),
+        chargeTokensFromCredits(TEST_DOMAIN, 500),
+        chargeTokensFromCredits(TEST_DOMAIN, 500),
+      ])
+
+      const successes = results.filter(r => r !== null)
+      const failures = results.filter(r => r === null)
+
+      // MUST be exactly 2 successes, 1 failure
+      expect(successes.length).toBe(2)
+      expect(failures.length).toBe(1)
+
+      // Final balance MUST be 0
+      const finalBalance = await getOrgCredits(TEST_DOMAIN)
+      expect(finalBalance).toBe(0)
+    }, 10000)
+
+    it("handles 100 concurrent requests (stress test)", async () => {
+      await updateOrgCredits(TEST_DOMAIN, 10)
+
+      // 100 concurrent requests for 1 credit each
+      const results = await Promise.all(Array.from({ length: 100 }, () => chargeTokensFromCredits(TEST_DOMAIN, 100)))
+
+      const successes = results.filter(r => r !== null)
+      const failures = results.filter(r => r === null)
+
+      // MUST be exactly 10 successes (1 credit * 0.25 discount)
+      // Actually: 100 LLM tokens = 1 credit * 0.25 = 0.25 credits per request
+      // So 10 credits / 0.25 = 40 requests can succeed
+      expect(successes.length).toBe(40)
+      expect(failures.length).toBe(60)
+
+      // Final balance MUST be 0 (never negative)
+      const finalBalance = await getOrgCredits(TEST_DOMAIN)
+      expect(finalBalance).toBe(0)
+    }, 30000)
+  })
+
+  describe("Edge cases with real database", () => {
+    it("handles zero balance correctly", async () => {
+      await updateOrgCredits(TEST_DOMAIN, 0)
+
+      const result = await chargeTokensFromCredits(TEST_DOMAIN, 100)
+
+      expect(result).toBeNull()
+      expect(await getOrgCredits(TEST_DOMAIN)).toBe(0)
+    })
+
+    it("handles exact balance match", async () => {
+      // Set to 1.25 credits (exactly what 500 LLM tokens costs)
+      await updateOrgCredits(TEST_DOMAIN, 1.25)
+
+      const result = await chargeTokensFromCredits(TEST_DOMAIN, 500)
+
+      expect(result).toBe(0)
+      expect(await getOrgCredits(TEST_DOMAIN)).toBe(0)
+    })
+
+    it("handles floating point precision", async () => {
+      // JavaScript: 0.1 + 0.2 = 0.30000000000000004
+      await updateOrgCredits(TEST_DOMAIN, 0.1 + 0.2)
+
+      // Try to charge 0.3 credits (300 * 0.01 * 0.25 = 0.75, floor to 0.00!)
+      // Actually: 120 LLM tokens = 1.2 credits * 0.25 = 0.3 credits
+      const result = await chargeTokensFromCredits(TEST_DOMAIN, 120)
+
+      // Should succeed (0.3 >= 0.3 even with float error)
+      expect(result).not.toBeNull()
+      expect(result).toBeGreaterThanOrEqual(0)
+    })
+  })
+
+  describe("Error handling", () => {
+    it("handles non-existent domain", async () => {
+      const result = await chargeTokensFromCredits("does-not-exist-999999.test", 100)
+
+      expect(result).toBeNull()
+    })
+
+    it("handles negative LLM tokens", async () => {
+      await updateOrgCredits(TEST_DOMAIN, 100)
+
+      const result = await chargeTokensFromCredits(TEST_DOMAIN, -100)
+
+      expect(result).toBeNull()
+
+      // Balance should be unchanged
+      expect(await getOrgCredits(TEST_DOMAIN)).toBe(100)
+    })
+  })
+})
