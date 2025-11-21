@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createSessionToken } from "@/features/auth/lib/jwt"
 import { COOKIE_NAMES, getSessionCookieOptions } from "@/lib/auth/cookies"
+import { createCorsResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 import { createAppClient } from "@/lib/supabase/app"
@@ -21,7 +22,8 @@ export async function POST(req: NextRequest) {
   const result = LoginSchema.safeParse(body)
 
   if (!result.success) {
-    const res = NextResponse.json(
+    return createCorsResponse(
+      origin,
       {
         ok: false,
         error: ErrorCodes.INVALID_REQUEST,
@@ -29,19 +31,16 @@ export async function POST(req: NextRequest) {
         details: { issues: result.error.issues },
         requestId,
       },
-      { status: 400 },
+      400,
     )
-    addCorsHeaders(res, origin)
-    return res
   }
 
   const { email, password } = result.data
 
   // Test mode
   if (process.env.BRIDGE_ENV === "local" && email === "test@bridge.local" && password === "test") {
-    const res = NextResponse.json({ ok: true })
+    const res = createCorsSuccessResponse(origin, {})
     res.cookies.set(COOKIE_NAMES.SESSION, "test-user", getSessionCookieOptions())
-    addCorsHeaders(res, origin)
     return res
   }
 
@@ -55,49 +54,46 @@ export async function POST(req: NextRequest) {
 
   if (userError || !user) {
     console.error("[Login] User not found:", email)
-    const res = NextResponse.json(
+    return createCorsResponse(
+      origin,
       {
         ok: false,
         error: ErrorCodes.INVALID_CREDENTIALS,
         message: getErrorMessage(ErrorCodes.INVALID_CREDENTIALS),
         requestId,
       },
-      { status: 401 },
+      401,
     )
-    addCorsHeaders(res, origin)
-    return res
   }
 
   // Verify password
   if (!user.password_hash) {
     console.error("[Login] User has no password_hash:", email)
-    const res = NextResponse.json(
+    return createCorsResponse(
+      origin,
       {
         ok: false,
         error: ErrorCodes.INVALID_CREDENTIALS,
         message: getErrorMessage(ErrorCodes.INVALID_CREDENTIALS),
         requestId,
       },
-      { status: 401 },
+      401,
     )
-    addCorsHeaders(res, origin)
-    return res
   }
 
   const isValid = await verifyPassword(password, user.password_hash)
   if (!isValid) {
     console.error("[Login] Invalid password for:", email)
-    const res = NextResponse.json(
+    return createCorsResponse(
+      origin,
       {
         ok: false,
         error: ErrorCodes.INVALID_CREDENTIALS,
         message: getErrorMessage(ErrorCodes.INVALID_CREDENTIALS),
         requestId,
       },
-      { status: 401 },
+      401,
     )
-    addCorsHeaders(res, origin)
-    return res
   }
 
   // Query user's workspaces (only once at login, embedded in JWT)
@@ -123,10 +119,8 @@ export async function POST(req: NextRequest) {
 
   console.log(`[Login] Successfully authenticated: ${user.email} (${workspaces.length} workspaces)`)
 
-  const res = NextResponse.json({ ok: true, userId: user.user_id })
+  const res = createCorsSuccessResponse(origin, { userId: user.user_id })
   res.cookies.set(COOKIE_NAMES.SESSION, sessionToken, getSessionCookieOptions())
-
-  addCorsHeaders(res, origin)
   return res
 }
 

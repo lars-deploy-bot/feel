@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { isManagerAuthenticated } from "@/features/auth/lib/auth"
+import { createCorsResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { createIamClient } from "@/lib/supabase/iam"
 import { generateRequestId } from "@/lib/utils"
@@ -13,12 +14,11 @@ export async function POST(req: NextRequest) {
 
   // Check manager authentication
   if (!(await isManagerAuthenticated())) {
-    const res = NextResponse.json(
+    return createCorsResponse(
+      origin,
       { ok: false, error: "UNAUTHORIZED", message: "Manager authentication required", requestId },
-      { status: 401 },
+      401,
     )
-    addCorsHeaders(res, origin)
-    return res
   }
 
   try {
@@ -26,22 +26,20 @@ export async function POST(req: NextRequest) {
     const { org_id, user_id, role } = body
 
     if (!org_id || !user_id || !role) {
-      const res = NextResponse.json(
+      return createCorsResponse(
+        origin,
         { ok: false, error: "INVALID_REQUEST", message: "org_id, user_id, and role are required", requestId },
-        { status: 400 },
+        400,
       )
-      addCorsHeaders(res, origin)
-      return res
     }
 
     // Validate role
     if (!["owner", "admin", "member"].includes(role)) {
-      const res = NextResponse.json(
+      return createCorsResponse(
+        origin,
         { ok: false, error: "INVALID_REQUEST", message: "Invalid role. Must be owner, admin, or member", requestId },
-        { status: 400 },
+        400,
       )
-      addCorsHeaders(res, origin)
-      return res
     }
 
     const iam = await createIamClient("service")
@@ -64,12 +62,11 @@ export async function POST(req: NextRequest) {
 
       if (updateError) {
         console.error("[Manager Org Members] Failed to update membership:", updateError)
-        const res = NextResponse.json(
+        return createCorsResponse(
+          origin,
           { ok: false, error: "DATABASE_ERROR", message: "Failed to update org membership", requestId },
-          { status: 500 },
+          500,
         )
-        addCorsHeaders(res, origin)
-        return res
       }
     } else {
       // Create new membership
@@ -81,26 +78,22 @@ export async function POST(req: NextRequest) {
 
       if (insertError) {
         console.error("[Manager Org Members] Failed to create membership:", insertError)
-        const res = NextResponse.json(
+        return createCorsResponse(
+          origin,
           { ok: false, error: "DATABASE_ERROR", message: "Failed to create org membership", requestId },
-          { status: 500 },
+          500,
         )
-        addCorsHeaders(res, origin)
-        return res
       }
     }
 
-    const res = NextResponse.json({ ok: true, requestId })
-    addCorsHeaders(res, origin)
-    return res
+    return createCorsSuccessResponse(origin, { requestId })
   } catch (error) {
     console.error("[Manager Org Members] Unexpected error:", error)
-    const res = NextResponse.json(
+    return createCorsResponse(
+      origin,
       { ok: false, error: "INTERNAL_ERROR", message: "An unexpected error occurred", requestId },
-      { status: 500 },
+      500,
     )
-    addCorsHeaders(res, origin)
-    return res
   }
 }
 
@@ -113,12 +106,11 @@ export async function DELETE(req: NextRequest) {
 
   // Check manager authentication
   if (!(await isManagerAuthenticated())) {
-    const res = NextResponse.json(
+    return createCorsResponse(
+      origin,
       { ok: false, error: "UNAUTHORIZED", message: "Manager authentication required", requestId },
-      { status: 401 },
+      401,
     )
-    addCorsHeaders(res, origin)
-    return res
   }
 
   try {
@@ -126,12 +118,11 @@ export async function DELETE(req: NextRequest) {
     const { org_id, user_id } = body
 
     if (!org_id || !user_id) {
-      const res = NextResponse.json(
+      return createCorsResponse(
+        origin,
         { ok: false, error: "INVALID_REQUEST", message: "org_id and user_id are required", requestId },
-        { status: 400 },
+        400,
       )
-      addCorsHeaders(res, origin)
-      return res
     }
 
     const iam = await createIamClient("service")
@@ -145,25 +136,21 @@ export async function DELETE(req: NextRequest) {
 
     if (deleteError) {
       console.error("[Manager Org Members] Failed to delete membership:", deleteError)
-      const res = NextResponse.json(
+      return createCorsResponse(
+        origin,
         { ok: false, error: "DATABASE_ERROR", message: "Failed to remove org member", requestId },
-        { status: 500 },
+        500,
       )
-      addCorsHeaders(res, origin)
-      return res
     }
 
-    const res = NextResponse.json({ ok: true, requestId })
-    addCorsHeaders(res, origin)
-    return res
+    return createCorsSuccessResponse(origin, { requestId })
   } catch (error) {
     console.error("[Manager Org Members] Unexpected error:", error)
-    const res = NextResponse.json(
+    return createCorsResponse(
+      origin,
       { ok: false, error: "INTERNAL_ERROR", message: "An unexpected error occurred", requestId },
-      { status: 500 },
+      500,
     )
-    addCorsHeaders(res, origin)
-    return res
   }
 }
 

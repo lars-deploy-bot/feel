@@ -9,14 +9,14 @@ if ! docker ps | grep -q "redis"; then
     exit 1
 fi
 
-# Check if Redis responds to PING
-if docker exec redis redis-cli ping &> /dev/null; then
+# Check if Redis responds to PING (with authentication)
+if docker exec redis redis-cli -a dev_password_only ping &> /dev/null; then
     echo "✅ Redis is healthy"
 
     # Show stats
     echo ""
     echo "📊 Redis Stats:"
-    docker exec redis redis-cli INFO stats | grep -E "total_commands_processed|total_connections_received|used_memory_human"
+    docker exec redis redis-cli -a dev_password_only INFO stats 2>/dev/null | grep -E "total_commands_processed|total_connections_received|used_memory_human"
 
     exit 0
 else

@@ -68,7 +68,10 @@ function ChatPageContent() {
   const [userHasManuallyScrolled, setUserHasManuallyScrolled] = useState(false)
   const [subdomainInitialized, setSubdomainInitialized] = useState(false)
   const [showFeedbackModal, setShowFeedbackModal] = useState(false)
-  const [showSettingsModal, setShowSettingsModal] = useState(false)
+
+  // Settings modal: null (closed), 'manual' (user-opened), 'error' (auto-opened for error)
+  const [settingsModalReason, setSettingsModalReason] = useState<'manual' | 'error' | null>(null)
+
   const [showTemplatesModal, setShowTemplatesModal] = useState(false)
   const [showPhotoMenu, setShowPhotoMenu] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
@@ -104,8 +107,14 @@ function ChatPageContent() {
   const streamingActions = useStreamingActions()
 
   // Fetch organizations and auto-select if none selected
-  // Single source of truth for org fetching + auto-selection
-  const { organizations, loading: orgsLoading, error: orgsError, refetch: refetchOrgs } = useOrganizations()
+  const { organizations, loading: orgsLoading, error: orgsError } = useOrganizations()
+
+  // Auto-open settings modal on org loading error
+  useEffect(() => {
+    if (orgsError && settingsModalReason === null) {
+      setSettingsModalReason('error')
+    }
+  }, [orgsError, settingsModalReason])
 
   // Session management with workspace-scoped persistence
   const { conversationId, startNewConversation, switchConversation } = useConversationSession(workspace, mounted)
@@ -929,6 +938,14 @@ function ChatPageContent() {
     [setWorkspace, handleNewConversation],
   )
 
+  const handleOpenSettings = useCallback(() => {
+    setSettingsModalReason('manual')
+  }, [])
+
+  const handleCloseSettings = useCallback(() => {
+    setSettingsModalReason(null)
+  }, [])
+
   // SSE terminal visibility is separate from debug view
 
   // Empty workspace state is now handled inline with switchers in header
@@ -1050,7 +1067,7 @@ function ChatPageContent() {
                   onNewChat={handleNewConversation}
                   currentWorkspace={workspace ?? undefined}
                   onSwitchWorkspace={handleSwitchWorkspace}
-                  onOpenSettings={() => setShowSettingsModal(true)}
+                  onOpenSettings={handleOpenSettings}
                 />
               </div>
             </div>
@@ -1059,24 +1076,10 @@ function ChatPageContent() {
           {mounted && (
             <div className="flex-shrink-0 border-b border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02]">
               <div className="px-6 py-3 mx-auto w-full md:max-w-2xl">
-                {/* Error and empty state messages - only show when no workspace */}
-                {!workspace && (
+                {/* Empty state messages - only show when no workspace and no error */}
+                {!workspace && !orgsError && (
                   <>
-                    {orgsError && (
-                      <div className="mb-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                        <p className="text-sm text-red-900 dark:text-red-100 mb-2">
-                          Failed to load organizations. Please check your connection.
-                        </p>
-                        <button
-                          type="button"
-                          onClick={refetchOrgs}
-                          className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded transition-colors"
-                        >
-                          Retry
-                        </button>
-                      </div>
-                    )}
-                    {!orgsError && totalDomainCount === 0 && (
+                    {totalDomainCount === 0 && (
                       <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                         <p className="text-sm text-blue-900 dark:text-blue-100 mb-2 font-medium">
                           Welcome! You don't have any domains yet.
@@ -1089,7 +1092,7 @@ function ChatPageContent() {
                         </a>
                       </div>
                     )}
-                    {!orgsError && !orgsLoading && totalDomainCount > 0 && (
+                    {!orgsLoading && totalDomainCount > 0 && (
                       <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                         <p className="text-xs text-blue-900 dark:text-blue-100">Loading workspace...</p>
                       </div>
@@ -1229,7 +1232,12 @@ function ChatPageContent() {
           conversationId={conversationId}
         />
       )}
-      {showSettingsModal && <SettingsModal onClose={() => setShowSettingsModal(false)} />}
+      {settingsModalReason && (
+        <SettingsModal
+          onClose={handleCloseSettings}
+          initialTab={settingsModalReason === 'error' ? "organization" : undefined}
+        />
+      )}
       {showTemplatesModal && (
         <SuperTemplatesModal onClose={() => setShowTemplatesModal(false)} onInsertTemplate={handleInsertTemplate} />
       )}

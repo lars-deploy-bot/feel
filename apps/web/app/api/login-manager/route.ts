@@ -2,11 +2,12 @@ import { type NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { COOKIE_NAMES, getSessionCookieOptions } from "@/lib/auth/cookies"
 import { createSessionToken } from "@/features/auth/lib/jwt"
+import { createCorsErrorResponse, createCorsResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { managerLoginRateLimiter } from "@/lib/auth/rate-limiter"
 import { timingSafeCompare } from "@/lib/auth/timing-safe"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { env } from "@/lib/env"
-import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
+import { ErrorCodes } from "@/lib/error-codes"
 import { generateRequestId } from "@/lib/utils"
 
 const ManagerLoginSchema = z.object({
@@ -38,17 +39,16 @@ export async function POST(req: NextRequest) {
 
     console.warn(`[Manager Login] Rate limited: ${clientId}`)
 
-    const res = NextResponse.json(
+    return createCorsResponse(
+      origin,
       {
         ok: false,
         error: "TOO_MANY_REQUESTS",
         message: `Too many failed login attempts. Please try again in ${minutesRemaining} minute${minutesRemaining !== 1 ? "s" : ""}.`,
         requestId,
       },
-      { status: 429 },
+      429,
     )
-    addCorsHeaders(res, origin)
-    return res
   }
 
   // Parse and validate request body
@@ -56,18 +56,10 @@ export async function POST(req: NextRequest) {
   const result = ManagerLoginSchema.safeParse(body)
 
   if (!result.success) {
-    const res = NextResponse.json(
-      {
-        ok: false,
-        error: ErrorCodes.INVALID_REQUEST,
-        message: getErrorMessage(ErrorCodes.INVALID_REQUEST),
-        details: { issues: result.error.issues },
-        requestId,
-      },
-      { status: 400 },
-    )
-    addCorsHeaders(res, origin)
-    return res
+    return createCorsErrorResponse(origin, ErrorCodes.INVALID_REQUEST, 400, {
+      requestId,
+      details: { issues: result.error.issues },
+    })
   }
 
   const { passcode } = result.data
@@ -79,9 +71,8 @@ export async function POST(req: NextRequest) {
     // Create JWT session token (same as regular users, but with manager role)
     const sessionToken = await createSessionToken("manager", "manager@system", "Manager", [])
 
-    const res = NextResponse.json({ ok: true, requestId })
+    const res = createCorsSuccessResponse(origin, { requestId })
     res.cookies.set(COOKIE_NAMES.MANAGER_SESSION, sessionToken, getSessionCookieOptions())
-    addCorsHeaders(res, origin)
     return res
   }
 
@@ -94,17 +85,7 @@ export async function POST(req: NextRequest) {
     // Record failed attempt for rate limiting
     managerLoginRateLimiter.recordFailedAttempt(clientId)
 
-    const res = NextResponse.json(
-      {
-        ok: false,
-        error: ErrorCodes.INVALID_CREDENTIALS,
-        message: getErrorMessage(ErrorCodes.INVALID_CREDENTIALS),
-        requestId,
-      },
-      { status: 401 },
-    )
-    addCorsHeaders(res, origin)
-    return res
+    return createCorsErrorResponse(origin, ErrorCodes.INVALID_CREDENTIALS, 401, { requestId })
   }
 
   console.log(`[Manager Login] Successfully authenticated: ${clientId}`)
@@ -116,10 +97,8 @@ export async function POST(req: NextRequest) {
   const sessionToken = await createSessionToken("manager", "manager@system", "Manager", [])
 
   // Set manager session cookie with JWT token
-  const res = NextResponse.json({ ok: true, requestId })
+  const res = createCorsSuccessResponse(origin, { requestId })
   res.cookies.set(COOKIE_NAMES.MANAGER_SESSION, sessionToken, getSessionCookieOptions())
-
-  addCorsHeaders(res, origin)
   return res
 }
 

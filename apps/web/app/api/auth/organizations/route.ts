@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { COOKIE_NAMES, getClearCookieOptions } from "@/lib/auth/cookies"
+import { createCorsResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { createAppClient } from "@/lib/supabase/app"
 import { createIamClient } from "@/lib/supabase/iam"
@@ -13,26 +14,25 @@ export async function GET(req: NextRequest) {
     const user = await getSessionUser()
     if (!user) {
       // Clear stale/invalid session cookie to prevent infinite 401 loops
-      const res = NextResponse.json(
+      const res = createCorsResponse(
+        origin,
         {
           ok: false,
           error: "Unauthorized",
           organizations: [],
         },
-        { status: 401 },
+        401,
       )
 
       // Clear invalid session cookie (auto-cleanup for stuck mobile sessions)
       res.cookies.set(COOKIE_NAMES.SESSION, "", getClearCookieOptions())
 
-      addCorsHeaders(res, origin)
       return res
     }
 
     // Test mode
     if (process.env.BRIDGE_ENV === "local" && user.id === "test-user") {
-      const res = NextResponse.json({
-        ok: true,
+      return createCorsSuccessResponse(origin, {
         organizations: [
           {
             org_id: "test-org-1",
@@ -44,8 +44,6 @@ export async function GET(req: NextRequest) {
         ],
         current_user_id: user.id,
       })
-      addCorsHeaders(res, origin)
-      return res
     }
 
     // Get user's org memberships with roles
@@ -57,25 +55,21 @@ export async function GET(req: NextRequest) {
 
     if (membershipError) {
       console.error("[Organizations API] Error fetching memberships:", membershipError)
-      const res = NextResponse.json(
+      return createCorsResponse(
+        origin,
         {
           ok: false,
           error: "Failed to fetch organizations",
           organizations: [],
         },
-        { status: 500 },
+        500,
       )
-      addCorsHeaders(res, origin)
-      return res
     }
 
     if (!memberships || memberships.length === 0) {
-      const res = NextResponse.json({
-        ok: true,
+      return createCorsSuccessResponse(origin, {
         organizations: [],
       })
-      addCorsHeaders(res, origin)
-      return res
     }
 
     const orgIds = memberships.map(m => m.org_id)
@@ -89,16 +83,15 @@ export async function GET(req: NextRequest) {
 
     if (orgsError) {
       console.error("[Organizations API] Error fetching orgs:", orgsError)
-      const res = NextResponse.json(
+      return createCorsResponse(
+        origin,
         {
           ok: false,
           error: "Failed to fetch organizations",
           organizations: [],
         },
-        { status: 500 },
+        500,
       )
-      addCorsHeaders(res, origin)
-      return res
     }
 
     // Get workspace counts for each org
@@ -135,26 +128,21 @@ export async function GET(req: NextRequest) {
       role: roleMap.get(org.org_id) || "member",
     }))
 
-    const res = NextResponse.json({
-      ok: true,
+    return createCorsSuccessResponse(origin, {
       organizations,
       current_user_id: user.id, // Include current user ID for permission checks
     })
-
-    addCorsHeaders(res, origin)
-    return res
   } catch (error) {
     console.error("[Organizations API] Unexpected error:", error)
-    const res = NextResponse.json(
+    return createCorsResponse(
+      origin,
       {
         ok: false,
         error: "Internal server error",
         organizations: [],
       },
-      { status: 500 },
+      500,
     )
-    addCorsHeaders(res, origin)
-    return res
   }
 }
 
@@ -165,15 +153,14 @@ export async function PATCH(req: NextRequest) {
     // Get authenticated user
     const user = await getSessionUser()
     if (!user) {
-      const res = NextResponse.json(
+      return createCorsResponse(
+        origin,
         {
           ok: false,
           error: "Unauthorized",
         },
-        { status: 401 },
+        401,
       )
-      addCorsHeaders(res, origin)
-      return res
     }
 
     // Parse request body
@@ -181,41 +168,38 @@ export async function PATCH(req: NextRequest) {
     const { org_id, name } = body
 
     if (!org_id || !name) {
-      const res = NextResponse.json(
+      return createCorsResponse(
+        origin,
         {
           ok: false,
           error: "Missing required fields: org_id and name",
         },
-        { status: 400 },
+        400,
       )
-      addCorsHeaders(res, origin)
-      return res
     }
 
     // Validate name
     const trimmedName = name.trim()
     if (trimmedName.length === 0) {
-      const res = NextResponse.json(
+      return createCorsResponse(
+        origin,
         {
           ok: false,
           error: "Organization name cannot be empty",
         },
-        { status: 400 },
+        400,
       )
-      addCorsHeaders(res, origin)
-      return res
     }
 
     if (trimmedName.length > 100) {
-      const res = NextResponse.json(
+      return createCorsResponse(
+        origin,
         {
           ok: false,
           error: "Organization name cannot exceed 100 characters",
         },
-        { status: 400 },
+        400,
       )
-      addCorsHeaders(res, origin)
-      return res
     }
 
     // Check if user has permission to update this org
@@ -228,28 +212,26 @@ export async function PATCH(req: NextRequest) {
       .single()
 
     if (membershipError || !membership) {
-      const res = NextResponse.json(
+      return createCorsResponse(
+        origin,
         {
           ok: false,
           error: "You are not a member of this organization",
         },
-        { status: 403 },
+        403,
       )
-      addCorsHeaders(res, origin)
-      return res
     }
 
     // Only owners and admins can update org name
     if (membership.role !== "owner" && membership.role !== "admin") {
-      const res = NextResponse.json(
+      return createCorsResponse(
+        origin,
         {
           ok: false,
           error: "Only organization owners and admins can update the organization name",
         },
-        { status: 403 },
+        403,
       )
-      addCorsHeaders(res, origin)
-      return res
     }
 
     // Update organization name
@@ -262,35 +244,29 @@ export async function PATCH(req: NextRequest) {
 
     if (updateError) {
       console.error("[Organizations API] Error updating org:", updateError)
-      const res = NextResponse.json(
+      return createCorsResponse(
+        origin,
         {
           ok: false,
           error: "Failed to update organization",
         },
-        { status: 500 },
+        500,
       )
-      addCorsHeaders(res, origin)
-      return res
     }
 
-    const res = NextResponse.json({
-      ok: true,
+    return createCorsSuccessResponse(origin, {
       organization: updatedOrg,
     })
-
-    addCorsHeaders(res, origin)
-    return res
   } catch (error) {
     console.error("[Organizations API] Unexpected error in PATCH:", error)
-    const res = NextResponse.json(
+    return createCorsResponse(
+      origin,
       {
         ok: false,
         error: "Internal server error",
       },
-      { status: 500 },
+      500,
     )
-    addCorsHeaders(res, origin)
-    return res
   }
 }
 

@@ -10,7 +10,7 @@
  * These are TRUE unit tests - they mock the database and test logic in isolation.
  */
 
-import { describe, expect, it } from "bun:test"
+import { describe, expect, it } from "vitest"
 import { llmTokensToCredits } from "@/lib/credits"
 import { WORKSPACE_CREDIT_DISCOUNT } from "../supabase-credits"
 

@@ -30,6 +30,7 @@ const schemas = [
   // { name: "public", filename: "public.types.ts" }, // Commented out - not needed yet
   { name: "iam", filename: "iam.types.ts" },
   { name: "app", filename: "app.types.ts" },
+  { name: "lockbox", filename: "lockbox.types.ts" },
 ]
 
 const projectId = env.SUPABASE_PROJECT_ID || "qnvprftdorualkdyogka"

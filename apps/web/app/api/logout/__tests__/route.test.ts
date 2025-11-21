@@ -106,12 +106,15 @@ vi.mock("@/types/guards/api", () => ({
 }))
 
 describe("POST /api/logout - Cookie Configuration Consistency", () => {
+  let originalNodeEnv: string | undefined
+
   beforeEach(() => {
     vi.clearAllMocks()
+    originalNodeEnv = process.env.NODE_ENV
   })
 
   afterEach(() => {
-    vi.unstubAllEnvs()
+    process.env.NODE_ENV = originalNodeEnv
   })
 
   /**
@@ -122,7 +125,7 @@ describe("POST /api/logout - Cookie Configuration Consistency", () => {
    * TODO: Fix this test to properly set up test user in database
    */
   it.skip("should match login cookie config in production (THE COOKIE MISMATCH BUG)", async () => {
-    vi.stubEnv("NODE_ENV", "production")
+    process.env.NODE_ENV = "production"
 
     // Get login cookie config
     const loginReq = createMockRequest("http://localhost/api/login", {
@@ -276,7 +279,7 @@ describe("POST /api/logout - Cookie Configuration Consistency", () => {
    */
   it("should set secure flag based on NODE_ENV (THE SECURE FLAG BUG)", async () => {
     // Production: secure should be TRUE
-    vi.stubEnv("NODE_ENV", "production")
+    process.env.NODE_ENV = "production"
     let req = createMockRequest("http://localhost/api/logout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -286,7 +289,7 @@ describe("POST /api/logout - Cookie Configuration Consistency", () => {
     expect(setCookie).toContain("Secure")
 
     // Development: secure should be FALSE
-    vi.stubEnv("NODE_ENV", "development")
+    process.env.NODE_ENV = "development"
     req = createMockRequest("http://localhost/api/logout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

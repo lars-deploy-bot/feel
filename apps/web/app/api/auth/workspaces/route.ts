@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
+import { createCorsResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { createIamClient } from "@/lib/supabase/iam"
 import { createAppClient } from "@/lib/supabase/app"
@@ -14,26 +15,22 @@ export async function GET(req: NextRequest) {
 
     const user = await getSessionUser()
     if (!user) {
-      const res = NextResponse.json(
+      return createCorsResponse(
+        origin,
         {
           ok: false,
           error: "Unauthorized",
           workspaces: [],
         },
-        { status: 401 },
+        401,
       )
-      addCorsHeaders(res, origin)
-      return res
     }
 
     // Test mode
     if (process.env.BRIDGE_ENV === "local" && user.id === "test-user") {
-      const res = NextResponse.json({
-        ok: true,
+      return createCorsSuccessResponse(origin, {
         workspaces: ["test.bridge.local", "demo.bridge.local"],
       })
-      addCorsHeaders(res, origin)
-      return res
     }
 
     // Get user's org memberships
@@ -41,12 +38,9 @@ export async function GET(req: NextRequest) {
     const { data: memberships } = await iam.from("org_memberships").select("org_id").eq("user_id", user.id)
 
     if (!memberships || memberships.length === 0) {
-      const res = NextResponse.json({
-        ok: true,
+      return createCorsSuccessResponse(origin, {
         workspaces: [],
       })
-      addCorsHeaders(res, origin)
-      return res
     }
 
     let orgIds = memberships.map(m => m.org_id)
@@ -54,16 +48,15 @@ export async function GET(req: NextRequest) {
     // If org filter provided, validate user has access and filter
     if (orgId) {
       if (!orgIds.includes(orgId)) {
-        const res = NextResponse.json(
+        return createCorsResponse(
+          origin,
           {
             ok: false,
             error: "You don't have access to this organization",
             workspaces: [],
           },
-          { status: 403 },
+          403,
         )
-        addCorsHeaders(res, origin)
-        return res
       }
       orgIds = [orgId]
     }
@@ -74,25 +67,19 @@ export async function GET(req: NextRequest) {
 
     const workspaces = domains?.map(d => d.hostname) || []
 
-    const res = NextResponse.json({
-      ok: true,
+    return createCorsSuccessResponse(origin, {
       workspaces,
     })
-
-    addCorsHeaders(res, origin)
-    return res
   } catch (_error) {
-    const res = NextResponse.json(
+    return createCorsResponse(
+      origin,
       {
         ok: false,
         error: "Failed to get authenticated workspaces",
         workspaces: [],
       },
-      { status: 500 },
+      500,
     )
-
-    addCorsHeaders(res, origin)
-    return res
   }
 }
 

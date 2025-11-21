@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { isManagerAuthenticated } from "@/features/auth/lib/auth"
+import { createCorsResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { createIamClient } from "@/lib/supabase/iam"
 import { generateRequestId } from "@/lib/utils"
@@ -28,12 +29,11 @@ export async function GET(req: NextRequest) {
 
   // Check manager authentication
   if (!(await isManagerAuthenticated())) {
-    const res = NextResponse.json(
+    return createCorsResponse(
+      origin,
       { ok: false, error: "UNAUTHORIZED", message: "Manager authentication required", requestId },
-      { status: 401 },
+      401,
     )
-    addCorsHeaders(res, origin)
-    return res
   }
 
   try {
@@ -47,12 +47,11 @@ export async function GET(req: NextRequest) {
 
     if (orgsError) {
       console.error("[Manager Orgs] Failed to fetch orgs:", orgsError)
-      const res = NextResponse.json(
+      return createCorsResponse(
+        origin,
         { ok: false, error: "DATABASE_ERROR", message: "Failed to fetch organizations", requestId },
-        { status: 500 },
+        500,
       )
-      addCorsHeaders(res, origin)
-      return res
     }
 
     // Fetch all memberships with user details
@@ -75,12 +74,11 @@ export async function GET(req: NextRequest) {
 
     if (membershipsError) {
       console.error("[Manager Orgs] Failed to fetch memberships:", membershipsError)
-      const res = NextResponse.json(
+      return createCorsResponse(
+        origin,
         { ok: false, error: "DATABASE_ERROR", message: "Failed to fetch org memberships", requestId },
-        { status: 500 },
+        500,
       )
-      addCorsHeaders(res, origin)
-      return res
     }
 
     // Group memberships by org_id
@@ -151,21 +149,17 @@ export async function GET(req: NextRequest) {
       domain_count: domainsByOrg?.[org.org_id]?.length || 0,
     }))
 
-    const res = NextResponse.json({
-      ok: true,
+    return createCorsSuccessResponse(origin, {
       orgs: orgsWithMembers || [],
       requestId,
     })
-    addCorsHeaders(res, origin)
-    return res
   } catch (error) {
     console.error("[Manager Orgs] Unexpected error:", error)
-    const res = NextResponse.json(
+    return createCorsResponse(
+      origin,
       { ok: false, error: "INTERNAL_ERROR", message: "An unexpected error occurred", requestId },
-      { status: 500 },
+      500,
     )
-    addCorsHeaders(res, origin)
-    return res
   }
 }
 
@@ -178,12 +172,11 @@ export async function POST(req: NextRequest) {
 
   // Check manager authentication
   if (!(await isManagerAuthenticated())) {
-    const res = NextResponse.json(
+    return createCorsResponse(
+      origin,
       { ok: false, error: "UNAUTHORIZED", message: "Manager authentication required", requestId },
-      { status: 401 },
+      401,
     )
-    addCorsHeaders(res, origin)
-    return res
   }
 
   try {
@@ -191,12 +184,11 @@ export async function POST(req: NextRequest) {
     const { org_id, credits } = body
 
     if (!org_id) {
-      const res = NextResponse.json(
+      return createCorsResponse(
+        origin,
         { ok: false, error: "INVALID_REQUEST", message: "org_id is required", requestId },
-        { status: 400 },
+        400,
       )
-      addCorsHeaders(res, origin)
-      return res
     }
 
     const iam = await createIamClient("service")
@@ -207,26 +199,22 @@ export async function POST(req: NextRequest) {
 
       if (updateError) {
         console.error("[Manager Orgs] Failed to update org credits:", updateError)
-        const res = NextResponse.json(
+        return createCorsResponse(
+          origin,
           { ok: false, error: "DATABASE_ERROR", message: "Failed to update org credits", requestId },
-          { status: 500 },
+          500,
         )
-        addCorsHeaders(res, origin)
-        return res
       }
     }
 
-    const res = NextResponse.json({ ok: true, requestId })
-    addCorsHeaders(res, origin)
-    return res
+    return createCorsSuccessResponse(origin, { requestId })
   } catch (error) {
     console.error("[Manager Orgs] Unexpected error:", error)
-    const res = NextResponse.json(
+    return createCorsResponse(
+      origin,
       { ok: false, error: "INTERNAL_ERROR", message: "An unexpected error occurred", requestId },
-      { status: 500 },
+      500,
     )
-    addCorsHeaders(res, origin)
-    return res
   }
 }
 
@@ -239,12 +227,11 @@ export async function DELETE(req: NextRequest) {
 
   // Check manager authentication
   if (!(await isManagerAuthenticated())) {
-    const res = NextResponse.json(
+    return createCorsResponse(
+      origin,
       { ok: false, error: "UNAUTHORIZED", message: "Manager authentication required", requestId },
-      { status: 401 },
+      401,
     )
-    addCorsHeaders(res, origin)
-    return res
   }
 
   try {
@@ -252,12 +239,11 @@ export async function DELETE(req: NextRequest) {
     const { org_id } = body
 
     if (!org_id) {
-      const res = NextResponse.json(
+      return createCorsResponse(
+        origin,
         { ok: false, error: "INVALID_REQUEST", message: "org_id is required", requestId },
-        { status: 400 },
+        400,
       )
-      addCorsHeaders(res, origin)
-      return res
     }
 
     const iam = await createIamClient("service")
@@ -267,12 +253,11 @@ export async function DELETE(req: NextRequest) {
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
     if (!supabaseUrl || !supabaseKey) {
-      const res = NextResponse.json(
+      return createCorsResponse(
+        origin,
         { ok: false, error: "CONFIG_ERROR", message: "Missing Supabase credentials", requestId },
-        { status: 500 },
+        500,
       )
-      addCorsHeaders(res, origin)
-      return res
     }
 
     const app = createClient<AppDatabase>(supabaseUrl, supabaseKey, {
@@ -291,12 +276,11 @@ export async function DELETE(req: NextRequest) {
 
     if (invitesError) {
       console.error("[Manager Orgs] Failed to delete org invites:", invitesError)
-      const res = NextResponse.json(
+      return createCorsResponse(
+        origin,
         { ok: false, error: "DATABASE_ERROR", message: "Failed to delete org invites", requestId },
-        { status: 500 },
+        500,
       )
-      addCorsHeaders(res, origin)
-      return res
     }
 
     // Delete org memberships (foreign key constraint)
@@ -304,12 +288,11 @@ export async function DELETE(req: NextRequest) {
 
     if (membershipsError) {
       console.error("[Manager Orgs] Failed to delete org memberships:", membershipsError)
-      const res = NextResponse.json(
+      return createCorsResponse(
+        origin,
         { ok: false, error: "DATABASE_ERROR", message: "Failed to delete org memberships", requestId },
-        { status: 500 },
+        500,
       )
-      addCorsHeaders(res, origin)
-      return res
     }
 
     // Delete the org
@@ -317,25 +300,21 @@ export async function DELETE(req: NextRequest) {
 
     if (orgError) {
       console.error("[Manager Orgs] Failed to delete org:", orgError)
-      const res = NextResponse.json(
+      return createCorsResponse(
+        origin,
         { ok: false, error: "DATABASE_ERROR", message: "Failed to delete organization", requestId },
-        { status: 500 },
+        500,
       )
-      addCorsHeaders(res, origin)
-      return res
     }
 
-    const res = NextResponse.json({ ok: true, requestId })
-    addCorsHeaders(res, origin)
-    return res
+    return createCorsSuccessResponse(origin, { requestId })
   } catch (error) {
     console.error("[Manager Orgs] Unexpected error:", error)
-    const res = NextResponse.json(
+    return createCorsResponse(
+      origin,
       { ok: false, error: "INTERNAL_ERROR", message: "An unexpected error occurred", requestId },
-      { status: 500 },
+      500,
     )
-    addCorsHeaders(res, origin)
-    return res
   }
 }
 

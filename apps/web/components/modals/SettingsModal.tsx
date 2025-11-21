@@ -22,6 +22,7 @@ import toast from "react-hot-toast"
 import { AddWorkspaceModal } from "@/components/modals/AddWorkspaceModal"
 import { DeleteModal } from "@/components/modals/DeleteModal"
 import { PromptEditorModal } from "@/components/modals/PromptEditorModal"
+import { MarkdownDisplay } from "@/components/ui/chat/format/MarkdownDisplay"
 import type { Organization } from "@/lib/api/types"
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
 import { canRemoveMember } from "@/lib/permissions/org-permissions"
@@ -37,11 +38,12 @@ import {
 import { CLAUDE_MODELS, type ClaudeModel, useLLMStore } from "@/lib/stores/llmStore"
 import { useSelectedOrgId, useWorkspaceActions } from "@/lib/stores/workspaceStore"
 
+type SettingsTab = "account" | "appearance" | "llm" | "prompts" | "organization"
+
 interface SettingsModalProps {
   onClose: () => void
+  initialTab?: SettingsTab // Defaults to "account", use "organization" for error states
 }
-
-type SettingsTab = "account" | "appearance" | "llm" | "prompts" | "organization"
 
 const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
   { id: "account", label: "Profile", icon: <User size={16} /> },
@@ -51,8 +53,8 @@ const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
   { id: "organization", label: "Workspace", icon: <Building2 size={16} /> },
 ]
 
-export function SettingsModal({ onClose }: SettingsModalProps) {
-  const [activeTab, setActiveTab] = useState<SettingsTab>("account")
+export function SettingsModal({ onClose, initialTab }: SettingsModalProps) {
+  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab || "account")
 
   return (
     <div
@@ -63,7 +65,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
       aria-labelledby="settings-dialog-title"
     >
       <div
-        className="bg-white dark:bg-[#1a1a1a] rounded-t-2xl sm:rounded-lg shadow-xl w-full sm:w-[95vw] h-[85vh] sm:h-[90vh] flex flex-col sm:flex-row overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 ease-out"
+        className="bg-white dark:bg-[#1a1a1a] rounded-t-2xl sm:rounded-lg shadow-xl w-full sm:w-[95vw] sm:max-w-5xl h-[85vh] sm:h-[92vh] flex flex-col sm:flex-row overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 ease-out"
         onClick={e => e.stopPropagation()}
         role="document"
       >
@@ -742,6 +744,7 @@ function OrgSitesSection({ orgId }: { orgId: string }) {
         loading={loading}
         error={error}
         onSwitch={switchWorkspace}
+        onRetry={refetch}
       />
 
       {showAddModal && <AddWorkspaceModal onClose={() => setShowAddModal(false)} onSuccess={refetch} />}
@@ -756,12 +759,14 @@ function WorkspacesGrid({
   loading,
   error,
   onSwitch,
+  onRetry,
 }: {
   workspaces: string[]
   currentWorkspace: string | null
   loading: boolean
   error: string | null
   onSwitch: (workspace: string) => void
+  onRetry?: () => void
 }) {
   if (loading) {
     return (
@@ -773,8 +778,17 @@ function WorkspacesGrid({
 
   if (error) {
     return (
-      <div className="px-3 py-3 text-xs text-red-600 dark:text-red-400 text-center rounded-md bg-red-50 dark:bg-red-950/20">
-        {error}
+      <div className="px-3 py-3 text-xs text-center rounded-md bg-red-50 dark:bg-red-950/20 space-y-2">
+        <p className="text-red-600 dark:text-red-400">{error}</p>
+        {onRetry && (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded transition-colors"
+          >
+            Retry
+          </button>
+        )}
       </div>
     )
   }
@@ -860,8 +874,15 @@ function WorkspaceSettings() {
 
       {/* Errors */}
       {error && (
-        <div className="px-4 py-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/30 rounded-lg text-sm text-red-600 dark:text-red-400">
-          {error}
+        <div className="px-4 py-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/30 rounded-lg space-y-2">
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+          <button
+            type="button"
+            onClick={refetch}
+            className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded transition-colors"
+          >
+            Retry
+          </button>
         </div>
       )}
       {editor.error && (
@@ -1185,13 +1206,13 @@ function UserPromptsSettings() {
       </button>
 
       {/* Saved Prompts List */}
-      <div className="space-y-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {prompts.map(prompt => (
           <div
             key={prompt.id}
             className="px-4 py-3 rounded-lg border border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50/50 to-pink-50/50 dark:from-purple-950/20 dark:to-pink-950/20"
           >
-            <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center justify-between gap-2 mb-3">
               <span className="text-sm font-semibold text-purple-900 dark:text-purple-100">{prompt.displayName}</span>
               <div className="flex gap-1">
                 <button
@@ -1210,7 +1231,9 @@ function UserPromptsSettings() {
                 </button>
               </div>
             </div>
-            <p className="text-xs text-black/70 dark:text-white/70 line-clamp-2">{prompt.data}</p>
+            <div className="text-xs text-black/70 dark:text-white/70 line-clamp-6 overflow-hidden">
+              <MarkdownDisplay content={prompt.data} />
+            </div>
           </div>
         ))}
       </div>

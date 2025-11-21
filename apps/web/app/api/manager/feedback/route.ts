@@ -11,20 +11,36 @@ import { getAllFeedback } from "@/lib/feedback"
  */
 export async function GET(req: NextRequest) {
   const origin = req.headers.get("origin")
+  const startTime = performance.now()
+  const timings: Record<string, number> = {}
 
   try {
     // Check manager authentication
+    const authStart = performance.now()
     const authError = await requireManagerAuth()
+    timings.auth = performance.now() - authStart
+
     if (authError) {
       return authError
     }
 
     // Fetch all feedback (already sorted by created_at desc in Supabase)
+    const fetchStart = performance.now()
     const feedback = await getAllFeedback()
+    timings.fetch = performance.now() - fetchStart
+
+    timings.total = performance.now() - startTime
 
     return createCorsSuccessResponse(origin, {
       feedback,
       count: feedback.length,
+      debug: {
+        timings: {
+          auth_ms: Math.round(timings.auth * 100) / 100,
+          fetch_ms: Math.round(timings.fetch * 100) / 100,
+          total_ms: Math.round(timings.total * 100) / 100,
+        },
+      },
     })
   } catch (error) {
     console.error("[Manager] Error fetching feedback:", error)

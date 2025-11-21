@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { backupWebsites, DeploymentError } from "@webalive/site-controller"
 import { isManagerAuthenticated } from "@/features/auth/lib/auth"
+import { createCorsResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { generateRequestId } from "@/lib/utils"
 
@@ -15,12 +16,11 @@ export async function POST(req: NextRequest) {
 
   // Check manager authentication
   if (!(await isManagerAuthenticated())) {
-    const res = NextResponse.json(
+    return createCorsResponse(
+      origin,
       { ok: false, error: "UNAUTHORIZED", message: "Manager authentication required", requestId },
-      { status: 401 },
+      401,
     )
-    addCorsHeaders(res, origin)
-    return res
   }
 
   try {
@@ -29,14 +29,11 @@ export async function POST(req: NextRequest) {
 
     console.log("[Manager] Website backup completed successfully")
 
-    const res = NextResponse.json({
-      ok: true,
+    return createCorsSuccessResponse(origin, {
       stats,
       message: "Websites backed up to GitHub successfully",
       requestId,
     })
-    addCorsHeaders(res, origin)
-    return res
   } catch (error) {
     console.error("[Manager] Website backup failed:", error)
     const message =
@@ -45,17 +42,16 @@ export async function POST(req: NextRequest) {
         : error instanceof Error
           ? error.message
           : "Failed to backup websites"
-    const res = NextResponse.json(
+    return createCorsResponse(
+      origin,
       {
         ok: false,
         error: "BACKUP_FAILED",
         message,
         requestId,
       },
-      { status: 500 },
+      500,
     )
-    addCorsHeaders(res, origin)
-    return res
   }
 }
 

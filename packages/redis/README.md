@@ -10,7 +10,45 @@ From monorepo root:
 bun --filter @alive-brug/redis install
 ```
 
+Or install dependencies for the client:
+
+```bash
+cd packages/redis && bun install
+```
+
 ## Usage
+
+### Using the Redis Client in Your Application
+
+This package exports a pre-configured Redis client that you can use in your applications:
+
+```typescript
+import { createRedisClient, type RedisClient } from '@alive-brug/redis';
+
+// Create a client (uses REDIS_URL env var or default connection)
+const redis = createRedisClient();
+
+// Use the client
+await redis.set('key', 'value');
+const value = await redis.get('key');
+
+// Custom connection URL
+const redisCustom = createRedisClient('redis://:password@localhost:6379');
+```
+
+**Features:**
+- Automatic connection with retry logic
+- Built-in error handling and logging
+- Supports environment variable configuration (`REDIS_URL`)
+- TypeScript types included
+- Handles authentication automatically
+
+**Environment Setup:**
+
+Add to your app's `.env`:
+```bash
+REDIS_URL=redis://:dev_password_only@127.0.0.1:6379
+```
 
 ### Start Redis
 
@@ -68,14 +106,11 @@ bun --filter @alive-brug/redis cli
 
 ## Connection String
 
-- From host: `redis://127.0.0.1:6379`
-- From Docker: `redis://redis:6379`
+**With authentication (recommended):**
+- From host: `redis://:dev_password_only@127.0.0.1:6379`
+- From Docker: `redis://:dev_password_only@redis:6379`
 
-Add to your app's `.env`:
-
-```bash
-REDIS_URL=redis://127.0.0.1:6379
-```
+**For production:** Replace `dev_password_only` with a strong password in both `config/redis.conf` and connection strings.
 
 ## For New Developers
 
@@ -128,8 +163,46 @@ bun --filter @alive-brug/redis start
 The Redis configuration is located at `config/redis.conf`. Key settings:
 
 - **Port**: 6379
+- **Authentication**: Password-protected (`requirepass dev_password_only`)
 - **Max Memory**: 256MB
 - **Eviction Policy**: allkeys-lru
-- **Persistence**: Enabled (RDB snapshots)
+- **Persistence**: Enabled (RDB snapshots in `./.data/dump.rdb`)
+
+**Security Note:** The default password `dev_password_only` is for development only. For production deployments:
+1. Change `requirepass` in `config/redis.conf`
+2. Update `REDIS_URL` in your application's `.env`
+3. Restart Redis: `bun --filter @alive-brug/redis stop && bun --filter @alive-brug/redis start`
 
 Modify the configuration file and restart Redis to apply changes.
+
+## Development
+
+### Building the Client
+
+The package includes a TypeScript client that can be imported into other packages:
+
+```bash
+# Build the client once
+bun --filter @alive-brug/redis build
+
+# Watch mode for development
+bun --filter @alive-brug/redis dev
+```
+
+Build output goes to `dist/` and includes:
+- `dist/index.js` - ESM and CJS bundles
+- `dist/index.d.ts` - TypeScript type definitions
+
+### Package Structure
+
+```
+packages/redis/
+├── src/
+│   └── index.ts          # TypeScript client source
+├── dist/                 # Build output (gitignored)
+├── .data/                # Redis data files (gitignored)
+├── config/
+│   └── redis.conf        # Redis configuration
+├── scripts/              # Management scripts
+└── docker-compose.yml    # Docker setup
+```
