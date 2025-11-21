@@ -16,12 +16,6 @@ if ! command -v docker-compose &> /dev/null; then
     exit 1
 fi
 
-# Create .env if it doesn't exist
-if [ ! -f .env ]; then
-    echo "📝 Creating .env file..."
-    cp .env.example .env
-    echo "✅ Created .env file"
-fi
 
 # Pull Redis image
 echo "📦 Pulling Redis image..."

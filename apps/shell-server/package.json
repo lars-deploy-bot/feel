@@ -4,22 +4,26 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun run --watch src/index.ts",
-    "build": "bun build src/index.ts --outdir dist --target node --minify",
+    "dev": "bun run build && node dist/index.js",
+    "dev:watch": "nodemon --watch src --exec 'bun run build && node dist/index.js'",
+    "build": "bun build src/index.ts --outdir dist --target node --minify && cp -r src/templates dist/templates",
     "start": "node dist/index.js",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.7",
     "@hono/node-ws": "^1.2.0",
+    "adm-zip": "^0.5.16",
     "cookie": "^1.0.2",
     "hono": "^4.6.16",
     "node-pty": "^1.0.0",
     "ws": "^8.18.3"
   },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.7",
     "@types/cookie": "^0.6.0",
     "@types/ws": "^8.5.13",
+    "nodemon": "^3.1.11",
     "typescript": "^5.0.0"
   }
 }

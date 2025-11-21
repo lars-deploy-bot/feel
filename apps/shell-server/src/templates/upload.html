@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Upload Files</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1e1e1e;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .header {
+      background: #2d2d2d;
+      padding: 20px;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    h1 {
+      color: #fff;
+      font-size: 24px;
+    }
+    .header-buttons {
+      display: flex;
+      gap: 8px;
+    }
+    .header-buttons button {
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    #back {
+      background: #0dbc79;
+      color: #fff;
+    }
+    #back:hover {
+      background: #0aa868;
+    }
+    #logout {
+      background: #f14c4c;
+      color: #fff;
+    }
+    #logout:hover {
+      background: #d43e3e;
+    }
+    .workspace-info {
+      background: #2d2d2d;
+      padding: 16px 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      color: #d4d4d4;
+      font-size: 14px;
+    }
+    .workspace-info strong {
+      color: #0dbc79;
+    }
+    .upload-section {
+      background: #2d2d2d;
+      padding: 30px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-group label {
+      display: block;
+      color: #d4d4d4;
+      font-size: 14px;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+    .form-group input[type="text"] {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #444;
+      background: #1e1e1e;
+      color: #fff;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: #0dbc79;
+    }
+    .dropzone {
+      border: 2px dashed #444;
+      border-radius: 8px;
+      padding: 60px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: #1e1e1e;
+    }
+    .dropzone:hover, .dropzone.dragover {
+      border-color: #0dbc79;
+      background: #252525;
+    }
+    .dropzone-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    .dropzone-text {
+      color: #d4d4d4;
+      font-size: 16px;
+      margin-bottom: 8px;
+    }
+    .dropzone-subtext {
+      color: #888;
+      font-size: 14px;
+    }
+    .file-input {
+      display: none;
+    }
+    .selected-file {
+      background: #1e1e1e;
+      padding: 16px;
+      border-radius: 4px;
+      margin-top: 16px;
+      display: none;
+    }
+    .selected-file.show {
+      display: block;
+    }
+    .selected-file-name {
+      color: #0dbc79;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+    .selected-file-size {
+      color: #888;
+      font-size: 12px;
+    }
+    .check-button {
+      padding: 10px 20px;
+      background: #2472c8;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    .check-button:hover:not(:disabled) {
+      background: #1e5fa8;
+    }
+    .check-button:disabled {
+      background: #666;
+      cursor: not-allowed;
+    }
+    .upload-button {
+      width: 100%;
+      padding: 14px;
+      background: #0dbc79;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 20px;
+      display: none;
+    }
+    .upload-button.show {
+      display: block;
+    }
+    .upload-button:hover:not(:disabled) {
+      background: #0aa868;
+    }
+    .upload-button:disabled {
+      background: #666;
+      cursor: not-allowed;
+    }
+    .progress {
+      width: 100%;
+      height: 4px;
+      background: #444;
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 12px;
+      display: none;
+    }
+    .progress.show {
+      display: block;
+    }
+    .progress-bar {
+      height: 100%;
+      background: #0dbc79;
+      transition: width 0.3s;
+      width: 0%;
+    }
+    .message {
+      padding: 16px;
+      border-radius: 4px;
+      margin-top: 20px;
+      display: none;
+      font-size: 14px;
+    }
+    .message.show {
+      display: block;
+    }
+    .message.success {
+      background: rgba(13, 188, 121, 0.1);
+      border: 1px solid #0dbc79;
+      color: #0dbc79;
+    }
+    .message.error {
+      background: rgba(241, 76, 76, 0.1);
+      border: 1px solid #f14c4c;
+      color: #f14c4c;
+    }
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+      .header {
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+      }
+      h1 {
+        font-size: 20px;
+      }
+      .header-buttons {
+        width: 100%;
+      }
+      .header-buttons button {
+        flex: 1;
+      }
+      .upload-section {
+        padding: 20px;
+      }
+      .dropzone {
+        padding: 40px 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📦 Upload Files</h1>
+      <div class="header-buttons">
+        <button id="back">← Back</button>
+        <button id="logout">Logout</button>
+      </div>
+    </div>
+
+    <div class="workspace-info">
+      Workspace: <strong id="workspace-display"></strong>
+    </div>
+
+    <div class="upload-section">
+      <div class="form-group">
+        <label for="target-dir">Target Directory (relative to workspace)</label>
+        <input type="text" id="target-dir" placeholder="./ (current directory)" value="./" />
+        <button class="check-button" id="check-button">Check Directory</button>
+      </div>
+
+      <div class="dropzone" id="dropzone">
+        <div class="dropzone-icon">📦</div>
+        <div class="dropzone-text">Drag & drop a ZIP file here</div>
+        <div class="dropzone-subtext">or click to browse</div>
+      </div>
+
+      <input type="file" id="file-input" class="file-input" accept=".zip" />
+
+      <div class="selected-file" id="selected-file">
+        <div class="selected-file-name" id="file-name"></div>
+        <div class="selected-file-size" id="file-size"></div>
+      </div>
+
+      <button class="upload-button" id="upload-button">Upload & Extract</button>
+
+      <div class="progress" id="progress">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+
+      <div class="message" id="message"></div>
+    </div>
+  </div>
+
+  <script>
+    // State management (React-like)
+    const state = {
+      workspace: new URLSearchParams(window.location.search).get('workspace') || 'root',
+      targetDir: './',
+      file: null,
+      uploading: false,
+      checking: false,
+      progress: 0,
+      message: '',
+      messageType: ''
+    };
+
+    // DOM references
+    const elements = {
+      workspaceDisplay: document.getElementById('workspace-display'),
+      targetDirInput: document.getElementById('target-dir'),
+      checkButton: document.getElementById('check-button'),
+      dropzone: document.getElementById('dropzone'),
+      fileInput: document.getElementById('file-input'),
+      selectedFile: document.getElementById('selected-file'),
+      fileName: document.getElementById('file-name'),
+      fileSize: document.getElementById('file-size'),
+      uploadButton: document.getElementById('upload-button'),
+      progress: document.getElementById('progress'),
+      progressBar: document.getElementById('progress-bar'),
+      message: document.getElementById('message'),
+      backButton: document.getElementById('back'),
+      logoutButton: document.getElementById('logout')
+    };
+
+    // Utility functions
+    function formatFileSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+    }
+
+    function setState(updates) {
+      Object.assign(state, updates);
+      render();
+    }
+
+    // Render function (updates UI based on state)
+    function render() {
+      // Workspace display
+      elements.workspaceDisplay.textContent = state.workspace;
+
+      // Target directory
+      elements.targetDirInput.value = state.targetDir;
+
+      // Selected file
+      if (state.file) {
+        elements.selectedFile.classList.add('show');
+        elements.fileName.textContent = state.file.name;
+        elements.fileSize.textContent = formatFileSize(state.file.size);
+        elements.uploadButton.classList.add('show');
+      } else {
+        elements.selectedFile.classList.remove('show');
+        elements.uploadButton.classList.remove('show');
+      }
+
+      // Check button
+      elements.checkButton.disabled = state.checking || state.uploading;
+      elements.checkButton.textContent = state.checking ? 'Checking...' : 'Check Directory';
+
+      // Upload button
+      elements.uploadButton.disabled = state.uploading;
+      elements.uploadButton.textContent = state.uploading
+        ? `Uploading ${state.progress}%`
+        : 'Upload & Extract';
+
+      // Progress bar
+      if (state.uploading) {
+        elements.progress.classList.add('show');
+        elements.progressBar.style.width = state.progress + '%';
+      } else {
+        elements.progress.classList.remove('show');
+      }
+
+      // Message
+      if (state.message) {
+        elements.message.classList.add('show');
+        elements.message.classList.remove('success', 'error');
+        elements.message.classList.add(state.messageType);
+        elements.message.textContent = state.message;
+      } else {
+        elements.message.classList.remove('show');
+      }
+    }
+
+    // Event handlers
+    function handleFile(file) {
+      if (!file) return;
+
+      if (!file.name.endsWith('.zip')) {
+        setState({
+          message: 'Please select a ZIP file',
+          messageType: 'error'
+        });
+        return;
+      }
+
+      setState({
+        file: file,
+        message: '',
+        messageType: ''
+      });
+    }
+
+    async function checkDirectory() {
+      if (state.checking || state.uploading) return;
+
+      setState({
+        checking: true,
+        message: '',
+        messageType: ''
+      });
+
+      const formData = new FormData();
+      formData.append('workspace', state.workspace);
+      formData.append('targetDir', state.targetDir || './');
+
+      try {
+        const response = await fetch('/api/check-directory', {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          setState({
+            message: result.message + (result.exists ? ' ✓' : ' ✗'),
+            messageType: result.exists ? 'success' : 'error',
+            checking: false
+          });
+        } else {
+          setState({
+            message: result.error || 'Check failed',
+            messageType: 'error',
+            checking: false
+          });
+        }
+      } catch (err) {
+        setState({
+          message: 'Check failed: ' + err.message,
+          messageType: 'error',
+          checking: false
+        });
+      }
+    }
+
+    async function uploadFile() {
+      if (!state.file || state.uploading) return;
+
+      setState({
+        uploading: true,
+        progress: 0,
+        message: '',
+        messageType: ''
+      });
+
+      const formData = new FormData();
+      formData.append('file', state.file);
+      formData.append('workspace', state.workspace);
+      formData.append('targetDir', state.targetDir || './');
+
+      try {
+        setState({ progress: 30 });
+
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData
+        });
+
+        setState({ progress: 90 });
+        const result = await response.json();
+        setState({ progress: 100 });
+
+        if (response.ok && result.success) {
+          setState({
+            message: result.message || 'Upload successful!',
+            messageType: 'success'
+          });
+
+          // Reset after 2 seconds
+          setTimeout(() => {
+            elements.fileInput.value = '';
+            setState({
+              file: null,
+              progress: 0,
+              message: '',
+              messageType: ''
+            });
+          }, 2000);
+        } else {
+          setState({
+            message: result.error || 'Upload failed',
+            messageType: 'error',
+            uploading: false
+          });
+        }
+      } catch (err) {
+        setState({
+          message: 'Upload failed: ' + err.message,
+          messageType: 'error',
+          uploading: false
+        });
+      }
+
+      if (state.uploading) {
+        setState({ uploading: false });
+      }
+    }
+
+    // Event listeners
+    elements.dropzone.addEventListener('click', () => {
+      elements.fileInput.click();
+    });
+
+    elements.fileInput.addEventListener('change', (e) => {
+      handleFile(e.target.files[0]);
+    });
+
+    elements.dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      elements.dropzone.classList.add('dragover');
+    });
+
+    elements.dropzone.addEventListener('dragleave', () => {
+      elements.dropzone.classList.remove('dragover');
+    });
+
+    elements.dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      elements.dropzone.classList.remove('dragover');
+      handleFile(e.dataTransfer.files[0]);
+    });
+
+    elements.checkButton.addEventListener('click', checkDirectory);
+
+    elements.uploadButton.addEventListener('click', uploadFile);
+
+    elements.targetDirInput.addEventListener('input', (e) => {
+      setState({ targetDir: e.target.value });
+    });
+
+    elements.backButton.addEventListener('click', () => {
+      window.location.href = '/dashboard';
+    });
+
+    elements.logoutButton.addEventListener('click', () => {
+      window.location.href = '/logout';
+    });
+
+    // Initial render
+    render();
+  </script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "development": {
+    "port": 3500,
+    "defaultWorkspace": "root",
+    "defaultCwd": ".alive/shell-server",
+    "workspaceBase": "/root/webalive",
+    "allowWorkspaceSelection": true
+  },
+  "production": {
+    "port": 3888,
+    "defaultWorkspace": "root",
+    "defaultCwd": "/root/webalive/claude-bridge",
+    "workspaceBase": "/root/webalive",
+    "allowWorkspaceSelection": false
+  }
+}

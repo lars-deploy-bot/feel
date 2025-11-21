@@ -4,13 +4,60 @@ import { createNodeWebSocket } from "@hono/node-ws"
 import cookie from "cookie"
 import { randomBytes } from "node:crypto"
 import * as pty from "node-pty"
-import { readFileSync, writeFileSync, existsSync } from "node:fs"
-import { join } from "node:path"
+import { readFileSync, writeFileSync, existsSync, writeFile, mkdirSync } from "node:fs"
+import { mkdir, rm } from "node:fs/promises"
+import { join, resolve } from "node:path"
+import AdmZip from "adm-zip"
+
+// Load configuration
+const configPath = join(__dirname, "..", "config.json")
+const config = JSON.parse(readFileSync(configPath, "utf-8"))
+const env = process.env.NODE_ENV || "development"
+const envConfig = config[env] || config.development
+
+// Resolve defaultCwd (relative paths use process.cwd() as base)
+const resolvedDefaultCwd = envConfig.defaultCwd.startsWith("/")
+  ? envConfig.defaultCwd
+  : join(process.cwd(), envConfig.defaultCwd)
+
+// In development, ensure the workspace directory exists
+if (env === "development") {
+  if (!existsSync(resolvedDefaultCwd)) {
+    console.log(`[CONFIG] Creating development workspace: ${resolvedDefaultCwd}`)
+    mkdirSync(resolvedDefaultCwd, { recursive: true })
+
+    // Create README to explain the directory
+    const readmeContent = `# Local Development Workspace
+
+This directory is your local shell-server workspace for development.
+
+- Auto-created by shell-server on first run
+- Gitignored (won't be committed)
+- Isolated from production infrastructure
+- Safe to experiment with files and scripts
+
+When you run "make shell" and access the terminal, this is your working directory.
+`
+    writeFileSync(join(resolvedDefaultCwd, "README.md"), readmeContent, "utf-8")
+  }
+}
+
+console.log(`[CONFIG] Environment: ${env}`)
+console.log(`[CONFIG] Port: ${envConfig.port}`)
+console.log(`[CONFIG] Default workspace: ${resolvedDefaultCwd}`)
+console.log(`[CONFIG] Workspace selection: ${envConfig.allowWorkspaceSelection ? "enabled" : "disabled"}`)
+
+// Load HTML templates
+const templatesDir = join(__dirname, "templates")
+const loginTemplate = readFileSync(join(templatesDir, "login.html"), "utf-8")
+const dashboardTemplate = readFileSync(join(templatesDir, "dashboard.html"), "utf-8")
+const shellTemplate = readFileSync(join(templatesDir, "shell.html"), "utf-8")
+const uploadTemplate = readFileSync(join(templatesDir, "upload.html"), "utf-8")
 
 const app = new Hono()
 const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app })
 
-const port = parseInt(process.env.PORT || "3500", 10)
+const port = parseInt(process.env.PORT || envConfig.port.toString(), 10)
 const SHELL_PASSWORD = process.env.SHELL_PASSWORD
 
 console.log(`[DEBUG] PORT env var: ${process.env.PORT}, parsed port: ${port}`)
@@ -155,9 +202,9 @@ function generateSessionToken(): string {
 app.get("/", (c) => {
   const cookies = cookie.parse(c.req.header("cookie") || "")
 
-  // If already authenticated, redirect to shell
+  // If already authenticated, redirect to dashboard
   if (cookies.shell_session && sessions.has(cookies.shell_session)) {
-    return c.redirect("/shell")
+    return c.redirect("/dashboard")
   }
 
   // Get error message
@@ -176,99 +223,11 @@ app.get("/", (c) => {
     }
   }
 
-  return c.html(`<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>Shell Login</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #1e1e1e;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      padding: 20px;
-    }
-    .login-box {
-      background: #2d2d2d;
-      padding: 40px;
-      border-radius: 8px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-      width: 100%;
-      max-width: 400px;
-    }
-    h1 {
-      color: #fff;
-      margin-bottom: 24px;
-      font-size: 24px;
-      text-align: center;
-    }
-    form {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-    input {
-      padding: 14px;
-      border: 1px solid #444;
-      background: #1e1e1e;
-      color: #fff;
-      border-radius: 4px;
-      font-size: 16px;
-    }
-    input:focus {
-      outline: none;
-      border-color: #0dbc79;
-    }
-    button {
-      padding: 14px;
-      background: #0dbc79;
-      color: #fff;
-      border: none;
-      border-radius: 4px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      touch-action: manipulation;
-    }
-    button:hover {
-      background: #0aa868;
-    }
-    button:active {
-      background: #098e5a;
-    }
-    .error {
-      color: #f14c4c;
-      font-size: 14px;
-      text-align: center;
-    }
-
-    @media (max-width: 768px) {
-      .login-box {
-        padding: 30px 20px;
-      }
-      h1 {
-        font-size: 20px;
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="login-box">
-    <h1>🖥️ Shell Access</h1>
-    <form method="POST" action="/login">
-      <input type="password" name="password" placeholder="Password" autofocus required />
-      <button type="submit">Login</button>
-      ${errorMessage ? `<p class="error">${errorMessage}</p>` : ""}
-    </form>
-  </div>
-</body>
-</html>`)
+  const html = loginTemplate.replace(
+    "{{ERROR_MESSAGE}}",
+    errorMessage ? `<p class="error">${errorMessage}</p>` : ""
+  )
+  return c.html(html)
 })
 
 // Login handler
@@ -308,7 +267,23 @@ app.post("/login", async (c) => {
     })
   )
 
-  return c.redirect("/shell")
+  return c.redirect("/dashboard")
+})
+
+// Dashboard - choose between shell or upload
+app.get("/dashboard", (c) => {
+  const cookies = cookie.parse(c.req.header("cookie") || "")
+
+  if (!cookies.shell_session || !sessions.has(cookies.shell_session)) {
+    return c.redirect("/")
+  }
+
+  // In production (allowWorkspaceSelection=false), redirect directly to shell with root workspace
+  if (!envConfig.allowWorkspaceSelection) {
+    return c.redirect(`/shell?workspace=${envConfig.defaultWorkspace}`)
+  }
+
+  return c.html(dashboardTemplate)
 })
 
 // Logout handler
@@ -338,306 +313,151 @@ app.get("/shell", (c) => {
     return c.redirect("/")
   }
 
-  return c.html(`<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Shell</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html {
-      height: 100%;
-      overflow: hidden;
-      position: fixed;
-      width: 100%;
-    }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #1e1e1e;
-      overflow: hidden;
-      height: 100%;
-      width: 100%;
-      position: fixed;
-      overscroll-behavior: none;
-      touch-action: manipulation;
-      -webkit-overflow-scrolling: touch;
-    }
-    #header {
-      background: #2d2d2d;
-      padding: 8px 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid #444;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 100;
-      height: 41px;
-    }
-    #header h1 {
-      color: #fff;
-      font-size: 14px;
-      font-weight: 600;
-    }
-    #logout {
-      background: #f14c4c;
-      color: #fff;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 4px;
-      font-size: 12px;
-      cursor: pointer;
-    }
-    #logout:hover {
-      background: #d43e3e;
-    }
-    #shell-container {
-      position: fixed;
-      top: 41px;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      overflow: hidden;
-    }
-    #shell {
-      height: 100%;
-      width: 100%;
-      padding: 10px;
-      overflow: auto;
-      -webkit-overflow-scrolling: touch;
-    }
-    #error {
-      position: fixed;
-      top: 51px;
-      left: 10px;
-      right: 10px;
-      background: rgba(220, 38, 38, 0.1);
-      border: 1px solid rgb(220, 38, 38);
-      color: rgb(220, 38, 38);
-      padding: 12px;
-      border-radius: 6px;
-      display: none;
-      font-size: 14px;
-      z-index: 99;
-    }
-    #loading {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      color: white;
-      font-size: 16px;
+  return c.html(shellTemplate)
+})
+
+// Upload page (protected)
+app.get("/upload", (c) => {
+  const cookies = cookie.parse(c.req.header("cookie") || "")
+
+  if (!cookies.shell_session || !sessions.has(cookies.shell_session)) {
+    return c.redirect("/")
+  }
+
+  const workspace = c.req.query("workspace") || "root"
+  const html = uploadTemplate.replace(/\${workspace}/g, workspace)
+  return c.html(html)
+})
+
+// Check directory API endpoint
+app.post("/api/check-directory", async (c) => {
+  // Check authentication
+  const cookies = cookie.parse(c.req.header("cookie") || "")
+  if (!cookies.shell_session || !sessions.has(cookies.shell_session)) {
+    return c.json({ error: "Unauthorized" }, 401)
+  }
+
+  try {
+    const body = await c.req.parseBody()
+    const workspace = body.workspace?.toString() || "root"
+    const targetDir = body.targetDir?.toString() || "./"
+
+    // Validate workspace path using config
+    const baseCwd =
+      workspace !== "root"
+        ? `${envConfig.workspaceBase.replace("/root/webalive", "/srv/webalive/sites")}/${workspace}`
+        : resolvedDefaultCwd
+
+    // Resolve target directory
+    const resolvedTarget = resolve(baseCwd, targetDir)
+    if (!resolvedTarget.startsWith(baseCwd)) {
+      return c.json({ error: "Path traversal detected" }, 400)
     }
 
-    /* Mobile-specific optimizations */
-    @media (max-width: 768px) {
-      #shell-container {
-        padding-bottom: env(safe-area-inset-bottom, 0px);
-      }
-      #shell {
-        padding: 5px;
-      }
+    // Check if directory exists
+    const exists = existsSync(resolvedTarget)
+
+    return c.json({
+      exists,
+      path: resolvedTarget,
+      message: exists
+        ? `Directory exists: ${targetDir}`
+        : `Directory does not exist: ${targetDir}`
+    })
+  } catch (err) {
+    console.error("[CHECK] Directory check failed:", err)
+    return c.json({ error: `Check failed: ${err}` }, 500)
+  }
+})
+
+// Upload API endpoint
+app.post("/api/upload", async (c) => {
+  // Check authentication
+  const cookies = cookie.parse(c.req.header("cookie") || "")
+  if (!cookies.shell_session || !sessions.has(cookies.shell_session)) {
+    return c.json({ error: "Unauthorized" }, 401)
+  }
+
+  try {
+    const body = await c.req.parseBody()
+    const workspace = body.workspace?.toString() || "root"
+    const targetDir = body.targetDir?.toString() || "./"
+    const file = body.file as File
+
+    if (!file) {
+      return c.json({ error: "No file provided" }, 400)
     }
 
-    /* Prevent text selection on mobile to avoid interfering with terminal */
-    @media (max-width: 768px) {
-      body {
-        -webkit-user-select: none;
-        user-select: none;
-      }
-      #shell {
-        -webkit-user-select: text;
-        user-select: text;
-      }
-    }
-  </style>
-</head>
-<body>
-  <div id="header">
-    <h1>🖥️ Shell</h1>
-    <button id="logout" onclick="window.location.href='/logout'">Logout</button>
-  </div>
-  <div id="error"></div>
-  <div id="loading">Connecting to shell...</div>
-  <div id="shell-container">
-    <div id="shell"></div>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-web-links@0.11.0/lib/addon-web-links.min.js"></script>
-  <script>
-    const params = new URLSearchParams(window.location.search);
-    const workspace = params.get('workspace') || 'root';
-
-    // Detect mobile device
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-                     || window.innerWidth <= 768;
-
-    // Use larger font on mobile for better readability
-    const fontSize = isMobile ? 16 : 14;
-
-    const term = new Terminal({
-      cursorBlink: true,
-      fontSize: fontSize,
-      fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-      scrollback: 1000,
-      theme: {
-        background: '#1e1e1e',
-        foreground: '#d4d4d4',
-        cursor: '#d4d4d4',
-        black: '#000000',
-        red: '#cd3131',
-        green: '#0dbc79',
-        yellow: '#e5e510',
-        blue: '#2472c8',
-        magenta: '#bc3fbc',
-        cyan: '#11a8cd',
-        white: '#e5e5e5',
-        brightBlack: '#666666',
-        brightRed: '#f14c4c',
-        brightGreen: '#23d18b',
-        brightYellow: '#f5f543',
-        brightBlue: '#3b8eea',
-        brightMagenta: '#d670d6',
-        brightCyan: '#29b8db',
-        brightWhite: '#e5e5e5',
-      }
-    });
-
-    const fitAddon = new FitAddon.FitAddon();
-    const webLinksAddon = new WebLinksAddon.WebLinksAddon();
-
-    term.loadAddon(fitAddon);
-    term.loadAddon(webLinksAddon);
-    term.open(document.getElementById('shell'));
-
-    // Fit terminal to container
-    function fitTerminal() {
-      try {
-        fitAddon.fit();
-      } catch (e) {
-        console.error('Failed to fit terminal:', e);
-      }
+    // File size limit (100MB)
+    const MAX_UPLOAD_SIZE = 100 * 1024 * 1024
+    if (file.size > MAX_UPLOAD_SIZE) {
+      return c.json({ error: "File too large (max 100MB)" }, 400)
     }
 
-    requestAnimationFrame(() => {
-      fitTerminal();
-    });
+    // Validate workspace path using config
+    const baseCwd =
+      workspace !== "root"
+        ? `${envConfig.workspaceBase.replace("/root/webalive", "/srv/webalive/sites")}/${workspace}`
+        : resolvedDefaultCwd
 
-    // WebSocket connection
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(\`\${protocol}//\${window.location.host}/ws?workspace=\${workspace}\`);
+    // Resolve and validate target directory
+    const resolvedTarget = resolve(baseCwd, targetDir)
+    if (!resolvedTarget.startsWith(baseCwd)) {
+      return c.json({ error: "Path traversal detected" }, 400)
+    }
 
-    ws.onopen = () => {
-      document.getElementById('loading').style.display = 'none';
-      ws.send(JSON.stringify({
-        type: 'resize',
-        cols: term.cols,
-        rows: term.rows
-      }));
-    };
+    console.log(`[UPLOAD] Uploading to workspace: ${workspace}, target: ${resolvedTarget}`)
 
-    ws.onmessage = (event) => {
-      const msg = JSON.parse(event.data);
-      if (msg.type === 'data') {
-        term.write(msg.data);
-      } else if (msg.type === 'exit') {
-        term.write(\`\\r\\n\\r\\n[Process exited with code \${msg.exitCode}]\\r\\n\`);
-      }
-    };
+    // Save uploaded file temporarily
+    const tempFile = `/tmp/upload-${Date.now()}-${randomBytes(8).toString("hex")}.zip`
+    const buffer = await file.arrayBuffer()
+    await new Promise<void>((resolve, reject) => {
+      writeFile(tempFile, Buffer.from(buffer), (err) => {
+        if (err) reject(err)
+        else resolve()
+      })
+    })
 
-    ws.onerror = () => {
-      document.getElementById('loading').style.display = 'none';
-      document.getElementById('error').textContent = 'Connection error. Please refresh.';
-      document.getElementById('error').style.display = 'block';
-    };
+    try {
+      // Extract ZIP
+      const zip = new AdmZip(tempFile)
+      const zipEntries = zip.getEntries()
 
-    term.onData((data) => {
-      if (ws.readyState === 1) {
-        ws.send(JSON.stringify({ type: 'input', data }));
-      }
-    });
-
-    // Handle resize - throttled to prevent excessive calls
-    let resizeTimeout;
-    function handleResize() {
-      clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(() => {
-        fitTerminal();
-        if (ws.readyState === 1) {
-          ws.send(JSON.stringify({
-            type: 'resize',
-            cols: term.cols,
-            rows: term.rows
-          }));
+      // Validate ZIP contents (prevent malicious filenames)
+      for (const entry of zipEntries) {
+        const entryPath = resolve(resolvedTarget, entry.entryName)
+        if (!entryPath.startsWith(resolvedTarget)) {
+          await rm(tempFile, { force: true })
+          return c.json({ error: "Malicious ZIP detected (path traversal in archive)" }, 400)
         }
-      }, 100);
-    }
-
-    window.addEventListener('resize', handleResize);
-
-    // Mobile: Handle visual viewport changes (keyboard appearing/disappearing)
-    if (isMobile && window.visualViewport) {
-      let lastHeight = window.visualViewport.height;
-
-      window.visualViewport.addEventListener('resize', () => {
-        const currentHeight = window.visualViewport.height;
-        const shellContainer = document.getElementById('shell-container');
-
-        // Adjust container height when keyboard appears
-        if (shellContainer) {
-          const headerHeight = 41;
-          const availableHeight = currentHeight - headerHeight;
-          shellContainer.style.height = availableHeight + 'px';
-        }
-
-        // Only refit if height changed significantly (keyboard show/hide)
-        if (Math.abs(currentHeight - lastHeight) > 100) {
-          setTimeout(() => {
-            fitTerminal();
-            if (ws.readyState === 1) {
-              ws.send(JSON.stringify({
-                type: 'resize',
-                cols: term.cols,
-                rows: term.rows
-              }));
-            }
-          }, 150);
-          lastHeight = currentHeight;
-        }
-      });
-
-      // Initial adjustment
-      const shellContainer = document.getElementById('shell-container');
-      if (shellContainer) {
-        const headerHeight = 41;
-        const availableHeight = window.visualViewport.height - headerHeight;
-        shellContainer.style.height = availableHeight + 'px';
       }
-    }
 
-    // Mobile: Scroll terminal into view when it receives focus
-    if (isMobile) {
-      const shellElement = document.getElementById('shell');
-      if (shellElement) {
-        shellElement.addEventListener('focus', () => {
-          setTimeout(() => {
-            shellElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
-          }, 300);
-        }, true);
-      }
+      // Create target directory if it doesn't exist
+      await mkdir(resolvedTarget, { recursive: true })
+
+      // Extract all files
+      zip.extractAllTo(resolvedTarget, true)
+
+      console.log(`[UPLOAD] Successfully extracted ${zipEntries.length} files to ${resolvedTarget}`)
+
+      // Clean up temp file
+      await rm(tempFile, { force: true })
+
+      return c.json({
+        success: true,
+        message: `Extracted ${zipEntries.length} files to ${targetDir}`,
+        extractedTo: resolvedTarget,
+        fileCount: zipEntries.length,
+      })
+    } catch (err) {
+      await rm(tempFile, { force: true })
+      console.error("[UPLOAD] Extraction failed:", err)
+      return c.json({ error: `Extraction failed: ${err}` }, 500)
     }
-  </script>
-</body>
-</html>`)
+  } catch (err) {
+    console.error("[UPLOAD] Upload failed:", err)
+    return c.json({ error: `Upload failed: ${err}` }, 500)
+  }
 })
 
 // Health check
@@ -661,14 +481,12 @@ app.get(
     const url = new URL(c.req.url)
     const workspace = url.searchParams.get("workspace") || "root"
 
-    // Determine shell and working directory
+    // Determine shell and working directory using config
     const shell = process.platform === "win32" ? "powershell.exe" : "/bin/bash"
-    const workspaceBase = process.env.WORKSPACE_BASE || "/root/webalive"
-    const defaultCwd = "/root/webalive/claude-bridge"
     const cwd =
       workspace !== "root"
-        ? `${workspaceBase.replace("/root/webalive", "/srv/webalive/sites")}/${workspace}`
-        : defaultCwd
+        ? `${envConfig.workspaceBase.replace("/root/webalive", "/srv/webalive/sites")}/${workspace}`
+        : resolvedDefaultCwd
 
     let ptyProcess: pty.IPty | null = null
 
