@@ -1,7 +1,7 @@
 import { exec } from "node:child_process"
 import { promisify } from "node:util"
 import type { NextRequest } from "next/server"
-import { NextResponse } from "next/server"
+import { createErrorResponse } from "@/features/auth/lib/auth"
 import {
   createBadRequestResponse,
   createSuccessResponse,
@@ -49,24 +49,11 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error(`[${requestId}] Permission check failed for ${domain}:`, error)
 
-    const errorMessage = getErrorMessage(ErrorCodes.PERMISSION_CHECK_FAILED, {
+    return createErrorResponse(ErrorCodes.PERMISSION_CHECK_FAILED, 500, {
+      requestId,
       domain,
       reason: error instanceof Error ? error.message : "Unknown error",
     })
-
-    return NextResponse.json(
-      {
-        ok: false,
-        error: errorMessage,
-        errorCode: ErrorCodes.PERMISSION_CHECK_FAILED,
-        requestId,
-        details: {
-          domain,
-          originalError: error instanceof Error ? error.message : String(error),
-        },
-      },
-      { status: 500 },
-    )
   }
 }
 
@@ -97,22 +84,11 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error(`[${requestId}] Permission fix failed for ${domain}:`, error)
 
-    // Extract the actual error message - if it's from our getErrorMessage, use it directly
-    const errorMsg = error instanceof Error ? error.message : "Unknown error"
-
-    return NextResponse.json(
-      {
-        ok: false,
-        error: errorMsg,
-        errorCode: ErrorCodes.PERMISSION_FIX_FAILED,
-        requestId,
-        details: {
-          domain,
-          originalError: errorMsg,
-        },
-      },
-      { status: 500 },
-    )
+    return createErrorResponse(ErrorCodes.PERMISSION_FIX_FAILED, 500, {
+      requestId,
+      domain,
+      reason: error instanceof Error ? error.message : "Unknown error",
+    })
   }
 }
 

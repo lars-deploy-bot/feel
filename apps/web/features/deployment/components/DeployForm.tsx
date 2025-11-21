@@ -56,7 +56,9 @@ function ModeSelectionScreen({ onSelect }: ModeSelectionScreenProps) {
       className="w-full max-w-lg mx-auto"
     >
       <motion.div variants={itemVariants} className="text-center mb-12">
-        <h1 className="text-4xl font-bold tracking-tight text-gray-900 mb-4">Launch your site</h1>
+        <h1 className="text-4xl font-bold tracking-tight text-gray-900 mb-4" data-testid="deploy-heading">
+          Launch your site
+        </h1>
         <p className="text-lg text-gray-600 font-medium">Pick one to start:</p>
       </motion.div>
 

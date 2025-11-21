@@ -2,7 +2,8 @@ import { execSync } from "node:child_process"
 import { basename, dirname } from "node:path"
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
+import { createErrorResponse } from "@/features/auth/lib/auth"
+import { ErrorCodes } from "@/lib/error-codes"
 import { handleWorkspaceApi } from "@/lib/workspace-api-handler"
 import { runAsWorkspaceUser } from "@/lib/workspace-execution/command-runner"
 
@@ -58,19 +59,11 @@ export async function POST(req: Request) {
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error)
 
-        return NextResponse.json(
-          {
-            ok: false,
-            error: ErrorCodes.WORKSPACE_RESTART_FAILED,
-            message: getErrorMessage(ErrorCodes.WORKSPACE_RESTART_FAILED),
-            details: {
-              service: serviceName,
-              error: errorMessage,
-            },
-            requestId,
-          },
-          { status: 500 },
-        )
+        return createErrorResponse(ErrorCodes.WORKSPACE_RESTART_FAILED, 500, {
+          requestId,
+          service: serviceName,
+          error: errorMessage,
+        })
       }
     },
   })

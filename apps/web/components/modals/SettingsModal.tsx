@@ -63,6 +63,7 @@ export function SettingsModal({ onClose, initialTab }: SettingsModalProps) {
       role="dialog"
       aria-modal="true"
       aria-labelledby="settings-dialog-title"
+      data-testid="settings-modal"
     >
       <div
         className="bg-white dark:bg-[#1a1a1a] rounded-t-2xl sm:rounded-lg shadow-xl w-full sm:w-[95vw] sm:max-w-5xl h-[85vh] sm:h-[92vh] flex flex-col sm:flex-row overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 ease-out"
@@ -875,11 +876,14 @@ function WorkspaceSettings() {
       {/* Errors */}
       {error && (
         <div className="px-4 py-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/30 rounded-lg space-y-2">
-          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+          <p className="text-sm text-red-600 dark:text-red-400" data-testid="org-error-message">
+            {error}
+          </p>
           <button
             type="button"
             onClick={refetch}
             className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded transition-colors"
+            data-testid="org-error-retry"
           >
             Retry
           </button>

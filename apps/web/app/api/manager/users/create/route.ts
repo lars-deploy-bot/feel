@@ -2,8 +2,9 @@ import { randomUUID } from "node:crypto"
 import { hash } from "bcrypt"
 import { type NextRequest, NextResponse } from "next/server"
 import { isManagerAuthenticated } from "@/features/auth/lib/auth"
-import { createCorsResponse, createCorsSuccessResponse } from "@/lib/api/responses"
+import { createCorsErrorResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { addCorsHeaders } from "@/lib/cors-utils"
+import { ErrorCodes } from "@/lib/error-codes"
 import { createIamClient } from "@/lib/supabase/iam"
 import { generateRequestId } from "@/lib/utils"
 
@@ -16,11 +17,7 @@ export async function POST(req: NextRequest) {
 
   // Check manager authentication
   if (!(await isManagerAuthenticated())) {
-    return createCorsResponse(
-      origin,
-      { ok: false, error: "UNAUTHORIZED", message: "Manager authentication required", requestId },
-      401,
-    )
+    return createCorsErrorResponse(origin, ErrorCodes.UNAUTHORIZED, 401, { requestId })
   }
 
   try {
@@ -29,37 +26,21 @@ export async function POST(req: NextRequest) {
 
     // Validate required fields
     if (!email || !password || !orgType) {
-      return createCorsResponse(
-        origin,
-        { ok: false, error: "INVALID_REQUEST", message: "email, password, and orgType are required", requestId },
-        400,
-      )
+      return createCorsErrorResponse(origin, ErrorCodes.INVALID_REQUEST, 400, { requestId })
     }
 
     // Validate orgType
     if (orgType !== "new" && orgType !== "existing") {
-      return createCorsResponse(
-        origin,
-        { ok: false, error: "INVALID_REQUEST", message: "orgType must be 'new' or 'existing'", requestId },
-        400,
-      )
+      return createCorsErrorResponse(origin, ErrorCodes.INVALID_REQUEST, 400, { requestId })
     }
 
     // Validate org-specific requirements
     if (orgType === "new" && !orgName) {
-      return createCorsResponse(
-        origin,
-        { ok: false, error: "INVALID_REQUEST", message: "orgName is required when creating new org", requestId },
-        400,
-      )
+      return createCorsErrorResponse(origin, ErrorCodes.INVALID_REQUEST, 400, { requestId })
     }
 
     if (orgType === "existing" && !orgId) {
-      return createCorsResponse(
-        origin,
-        { ok: false, error: "INVALID_REQUEST", message: "orgId is required when assigning to existing org", requestId },
-        400,
-      )
+      return createCorsErrorResponse(origin, ErrorCodes.INVALID_REQUEST, 400, { requestId })
     }
 
     const iam = await createIamClient("service")
@@ -68,11 +49,7 @@ export async function POST(req: NextRequest) {
     const { data: existingUser } = await iam.from("users").select("user_id").eq("email", email).single()
 
     if (existingUser) {
-      return createCorsResponse(
-        origin,
-        { ok: false, error: "USER_EXISTS", message: "User with this email already exists", requestId },
-        409,
-      )
+      return createCorsErrorResponse(origin, ErrorCodes.EMAIL_ALREADY_REGISTERED, 409, { requestId })
     }
 
     // Hash password
@@ -96,11 +73,7 @@ export async function POST(req: NextRequest) {
 
     if (userError) {
       console.error("[Manager Users] Failed to create user:", userError)
-      return createCorsResponse(
-        origin,
-        { ok: false, error: "DATABASE_ERROR", message: "Failed to create user", requestId },
-        500,
-      )
+      return createCorsErrorResponse(origin, ErrorCodes.INTERNAL_ERROR, 500, { requestId })
     }
 
     let finalOrgId: string
@@ -123,11 +96,7 @@ export async function POST(req: NextRequest) {
         console.error("[Manager Users] Failed to create org:", orgError)
         // Cleanup user if org creation fails
         await iam.from("users").delete().eq("user_id", userId)
-        return createCorsResponse(
-          origin,
-          { ok: false, error: "DATABASE_ERROR", message: "Failed to create organization", requestId },
-          500,
-        )
+        return createCorsErrorResponse(origin, ErrorCodes.INTERNAL_ERROR, 500, { requestId })
       }
 
       finalOrgId = newOrgId
@@ -139,11 +108,7 @@ export async function POST(req: NextRequest) {
         console.error("[Manager Users] Organization not found:", orgId)
         // Cleanup user if org verification fails
         await iam.from("users").delete().eq("user_id", userId)
-        return createCorsResponse(
-          origin,
-          { ok: false, error: "ORG_NOT_FOUND", message: "Organization not found", requestId },
-          404,
-        )
+        return createCorsErrorResponse(origin, ErrorCodes.ORG_NOT_FOUND, 404, { requestId })
       }
 
       finalOrgId = orgId
@@ -163,11 +128,7 @@ export async function POST(req: NextRequest) {
       if (orgType === "new") {
         await iam.from("orgs").delete().eq("org_id", finalOrgId)
       }
-      return createCorsResponse(
-        origin,
-        { ok: false, error: "DATABASE_ERROR", message: "Failed to add user to organization", requestId },
-        500,
-      )
+      return createCorsErrorResponse(origin, ErrorCodes.INTERNAL_ERROR, 500, { requestId })
     }
 
     console.log(`[Manager Users] Created user ${email} (${userId}) in org ${finalOrgId}`)
@@ -183,11 +144,7 @@ export async function POST(req: NextRequest) {
     })
   } catch (error) {
     console.error("[Manager Users] Unexpected error:", error)
-    return createCorsResponse(
-      origin,
-      { ok: false, error: "INTERNAL_ERROR", message: "An unexpected error occurred", requestId },
-      500,
-    )
+    return createCorsErrorResponse(origin, ErrorCodes.INTERNAL_ERROR, 500, { requestId })
   }
 }
 

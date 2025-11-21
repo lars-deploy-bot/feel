@@ -1,6 +1,8 @@
 import { execSync } from "node:child_process"
 import { NextResponse } from "next/server"
 import { z } from "zod"
+import { createErrorResponse } from "@/features/auth/lib/auth"
+import { ErrorCodes } from "@/lib/error-codes"
 import { handleWorkspaceApi } from "@/lib/workspace-api-handler"
 
 const ReadLogsSchema = z.object({
@@ -35,15 +37,7 @@ export async function POST(req: Request) {
 
   if (!internalSecret || providedSecret !== internalSecret) {
     console.error("[read-logs] Unauthorized: Invalid or missing internal tools secret")
-    return NextResponse.json(
-      {
-        ok: false,
-        error: "UNAUTHORIZED",
-        message: "Invalid credentials",
-        requestId: crypto.randomUUID(),
-      },
-      { status: 401 },
-    )
+    return createErrorResponse(ErrorCodes.UNAUTHORIZED, 401, { requestId: crypto.randomUUID() })
   }
   return handleWorkspaceApi(req, {
     schema: ReadLogsSchema,
@@ -53,15 +47,7 @@ export async function POST(req: Request) {
       // Validate workspace format (domain)
       const domainRegex = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$/i
       if (!domainRegex.test(workspace)) {
-        return NextResponse.json(
-          {
-            ok: false,
-            error: "INVALID_WORKSPACE",
-            message: `Invalid workspace format: "${workspace}". Must be a valid domain.`,
-            requestId,
-          },
-          { status: 400 },
-        )
+        return createErrorResponse(ErrorCodes.WORKSPACE_INVALID, 400, { requestId, workspace })
       }
 
       // Convert domain to service name
@@ -83,15 +69,7 @@ export async function POST(req: Request) {
         const activeState = lines_output.find(l => l.startsWith("ActiveState="))?.split("=")[1]
 
         if (loadState === "not-found") {
-          return NextResponse.json(
-            {
-              ok: false,
-              error: "SERVICE_NOT_FOUND",
-              message: `Service ${serviceName} does not exist. The workspace may not be deployed yet.`,
-              requestId,
-            },
-            { status: 404 },
-          )
+          return createErrorResponse(ErrorCodes.SITE_NOT_FOUND, 404, { requestId, serviceName })
         }
 
         // Build journalctl command - return raw log lines
@@ -134,16 +112,11 @@ export async function POST(req: Request) {
 
         console.error(`[read-logs ${requestId}] Error:`, error)
 
-        return NextResponse.json(
-          {
-            ok: false,
-            error: "READ_LOGS_FAILED",
-            message: `Failed to read logs for ${serviceName}`,
-            details: errorMessage,
-            requestId,
-          },
-          { status: 500 },
-        )
+        return createErrorResponse(ErrorCodes.INTERNAL_ERROR, 500, {
+          requestId,
+          serviceName,
+          details: errorMessage,
+        })
       }
     },
   })

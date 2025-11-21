@@ -1,6 +1,8 @@
 import { existsSync } from "node:fs"
+import { PATHS } from "@webalive/shared"
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
+import type { DeploySubdomainResponse } from "@/features/deployment/types/deploy-subdomain"
 import { validateDeploySubdomainRequest } from "@/features/deployment/types/guards"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { buildSubdomain } from "@/lib/config"
@@ -8,7 +10,7 @@ import { deploySite } from "@/lib/deployment/deploy-site"
 import { DomainRegistrationError, registerDomain } from "@/lib/deployment/domain-registry"
 import { validateUserOrgAccess } from "@/lib/deployment/org-resolver"
 import { validateSSLCertificate } from "@/lib/deployment/ssl-validation"
-import { type ErrorCode, ErrorCodes } from "@/lib/error-codes"
+import { ErrorCodes } from "@/lib/error-codes"
 import { siteMetadataStore } from "@/lib/siteMetadataStore"
 import { loadDomainPasswords } from "@/types/guards/api"
 
@@ -27,23 +29,6 @@ function getPortFromRegistry(domain: string): number | null {
   }
 }
 
-interface DeploySubdomainResponse {
-  ok: boolean
-  message: string
-  domain?: string
-  chatUrl?: string
-  orgId?: string
-  error?: ErrorCode
-  details?: unknown
-}
-
-/**
- * Helper to create standardized error responses
- */
-function errorResponse(message: string, errorCode: ErrorCode, status: number): [DeploySubdomainResponse, number] {
-  return [{ ok: false, message, error: errorCode }, status]
-}
-
 export async function POST(request: NextRequest) {
   try {
     // Get user if authenticated (optional - allows anonymous deployments)
@@ -54,20 +39,20 @@ export async function POST(request: NextRequest) {
     try {
       body = await request.json()
     } catch (_parseError) {
-      const [response, status] = errorResponse("Invalid JSON in request body", ErrorCodes.INVALID_JSON, 400)
-      return NextResponse.json(response, { status })
+      return structuredErrorResponse(ErrorCodes.INVALID_JSON, {
+        status: 400,
+        details: { message: "Invalid JSON in request body" },
+      })
     }
 
     // For anonymous users, require authentication (email/password) before validating full schema
     if (!sessionUser) {
       const bodyObj = body as Record<string, unknown>
       if (!bodyObj?.email || !bodyObj?.password) {
-        const [response, status] = errorResponse(
-          "Authentication required. Please provide email and password to create an account.",
-          ErrorCodes.UNAUTHORIZED,
-          401,
-        )
-        return NextResponse.json(response, { status })
+        return structuredErrorResponse(ErrorCodes.UNAUTHORIZED, {
+          status: 401,
+          details: { message: "Authentication required. Please provide email and password to create an account." },
+        })
       }
     }
 
@@ -76,8 +61,10 @@ export async function POST(request: NextRequest) {
     if (!parseResult.success) {
       const firstError = parseResult.error.issues[0]
       const errorMessage = firstError ? `${firstError.path.join(".")}: ${firstError.message}` : "Invalid request"
-      const [response, status] = errorResponse(errorMessage, ErrorCodes.VALIDATION_ERROR, 400)
-      return NextResponse.json(response, { status })
+      return structuredErrorResponse(ErrorCodes.VALIDATION_ERROR, {
+        status: 400,
+        details: { message: errorMessage },
+      })
     }
 
     const { slug, siteIdeas, selectedTemplate, orgId, email, password } = parseResult.data
@@ -86,8 +73,10 @@ export async function POST(request: NextRequest) {
     const deploymentEmail = sessionUser?.email || email
     if (!deploymentEmail) {
       // This should be caught earlier, but TypeScript needs the check
-      const [response, status] = errorResponse("Email is required for deployment", ErrorCodes.VALIDATION_ERROR, 400)
-      return NextResponse.json(response, { status })
+      return structuredErrorResponse(ErrorCodes.VALIDATION_ERROR, {
+        status: 400,
+        details: { message: "Email is required for deployment" },
+      })
     }
 
     // Validate user has access to specified organization (if provided)
@@ -96,12 +85,10 @@ export async function POST(request: NextRequest) {
       const hasAccess = await validateUserOrgAccess(sessionUser.id, orgId)
 
       if (!hasAccess) {
-        const [response, status] = errorResponse(
-          "You do not have access to this organization",
-          ErrorCodes.ORG_ACCESS_DENIED,
-          403,
-        )
-        return NextResponse.json(response, { status })
+        return structuredErrorResponse(ErrorCodes.ORG_ACCESS_DENIED, {
+          status: 403,
+          details: { message: "You do not have access to this organization" },
+        })
       }
     }
 
@@ -111,23 +98,19 @@ export async function POST(request: NextRequest) {
     // Check if slug already exists
     const slugExists = await siteMetadataStore.exists(slug)
     if (slugExists) {
-      const [response, status] = errorResponse(
-        `Subdomain "${slug}" is already taken. Choose a different name.`,
-        ErrorCodes.SLUG_TAKEN,
-        409,
-      )
-      return NextResponse.json(response, { status })
+      return structuredErrorResponse(ErrorCodes.SLUG_TAKEN, {
+        status: 409,
+        details: { message: `Subdomain "${slug}" is already taken. Choose a different name.` },
+      })
     }
 
     // Also check if directory exists (extra safety)
-    const siteDir = `/srv/webalive/sites/${fullDomain}`
+    const siteDir = `${PATHS.SITES_ROOT}/${fullDomain}`
     if (existsSync(siteDir)) {
-      const [response, status] = errorResponse(
-        "Site directory already exists. Choose a different slug.",
-        ErrorCodes.SLUG_TAKEN,
-        409,
-      )
-      return NextResponse.json(response, { status })
+      return structuredErrorResponse(ErrorCodes.SLUG_TAKEN, {
+        status: 409,
+        details: { message: "Site directory already exists. Choose a different slug." },
+      })
     }
 
     // Execute deployment script (systemd + Caddy setup + port assignment)
@@ -143,12 +126,12 @@ export async function POST(request: NextRequest) {
     const port = getPortFromRegistry(fullDomain)
 
     if (!port) {
-      const [response, status] = errorResponse(
-        "Deployment succeeded but port assignment could not be verified. Please contact support.",
-        ErrorCodes.DEPLOYMENT_FAILED,
-        500,
-      )
-      return NextResponse.json(response, { status })
+      return structuredErrorResponse(ErrorCodes.DEPLOYMENT_FAILED, {
+        status: 500,
+        details: {
+          message: "Deployment succeeded but port assignment could not be verified. Please contact support.",
+        },
+      })
     }
 
     // Register domain in Supabase (in request context, safe to use createIamClient)
@@ -186,9 +169,11 @@ export async function POST(request: NextRequest) {
       createdAt: Date.now(),
     })
 
-    // Validate SSL certificate
-    await validateSSLCertificate(fullDomain)
-    // Still continue if validation fails - deployment succeeded, cert might just be slow
+    // Validate SSL certificate (skip in test mode for speed)
+    if (process.env.SKIP_SSL_VALIDATION !== "true") {
+      await validateSSLCertificate(fullDomain)
+      // Still continue if validation fails - deployment succeeded, cert might just be slow
+    }
 
     const sessionId = crypto.randomUUID()
 
@@ -246,7 +231,7 @@ export async function POST(request: NextRequest) {
     const deploymentError: DeploySubdomainResponse = {
       ok: false,
       message: errorMessage,
-      error: "DEPLOYMENT_FAILED",
+      error: ErrorCodes.DEPLOYMENT_FAILED,
       details:
         process.env.NODE_ENV === "development"
           ? error instanceof Error

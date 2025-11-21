@@ -2,6 +2,8 @@
  * Domain normalization utilities for consistent domain handling
  */
 
+import { PATHS } from "@webalive/shared"
+
 /**
  * Normalizes a domain name by:
  * - Converting to lowercase
@@ -100,5 +102,5 @@ export function getDomainUser(domain: string): string {
  * getDomainSitePath("example.com") // "/srv/webalive/sites/example.com"
  */
 export function getDomainSitePath(domain: string): string {
-  return `/srv/webalive/sites/${domain}`
+  return `${PATHS.SITES_ROOT}/${domain}`
 }

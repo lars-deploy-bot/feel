@@ -12,6 +12,7 @@ import {
 } from "@/features/manager/lib/api-helpers"
 import { domainToSlug, getDomainSitePath, getDomainUser } from "@/features/manager/lib/domain-utils"
 import { getDomain } from "@/lib/domains"
+import { ErrorCodes } from "@/lib/error-codes"
 import type { ViteConfigInfo } from "@/types/domain"
 
 const execAsync = promisify(exec)
@@ -125,7 +126,7 @@ async function getViteConfigInfo(domain: string): Promise<ViteConfigInfo> {
         allowedHosts: null,
         hasSystemdOverride,
         systemdOverridePort,
-        error: "Vite config not found",
+        error: ErrorCodes.FILE_READ_ERROR,
       }
     }
   }

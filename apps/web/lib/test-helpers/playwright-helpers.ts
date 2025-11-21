@@ -15,6 +15,7 @@ export const AUTH_COOKIE_CONFIG = {
   domain: "localhost",
   path: "/",
   httpOnly: true,
+  secure: false, // Must be false for local test server (HTTP, not HTTPS)
   sameSite: "Lax" as const,
 }
 
@@ -23,12 +24,17 @@ export const AUTH_COOKIE_CONFIG = {
  *
  * @param page - Playwright page object
  * @param token - JWT session token
+ * @param baseURL - Base URL for the test server (defaults to localhost:9547)
  */
-export async function setAuthCookie(page: Page, token: string): Promise<void> {
+export async function setAuthCookie(page: Page, token: string, baseURL = "http://localhost:9547"): Promise<void> {
   await page.context().addCookies([
     {
-      ...AUTH_COOKIE_CONFIG,
+      name: AUTH_COOKIE_CONFIG.name,
       value: token,
+      httpOnly: true,
+      secure: false,
+      sameSite: "Lax",
+      url: baseURL, // URL includes domain and path, don't specify them separately
     },
   ])
 }

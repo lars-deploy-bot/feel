@@ -1,8 +1,11 @@
 /**
  * Environment variable validation (T3 OSS pattern)
  * Validates required vars at build/startup time
+ *
+ * Uses centralized constants from @webalive/site-controller
  */
 
+import { DEFAULTS, PATHS } from "@webalive/shared"
 import { DEFAULT_MODEL } from "./models/claude-models"
 
 interface Env {
@@ -41,9 +44,9 @@ function validateEnv(): Env {
   return {
     ANTH_API_SECRET: apiKey || "sk-mock-key-for-development",
     CLAUDE_MODEL: process.env.CLAUDE_MODEL ?? DEFAULT_MODEL,
-    CLAUDE_MAX_TURNS: process.env.CLAUDE_MAX_TURNS ?? "25",
+    CLAUDE_MAX_TURNS: process.env.CLAUDE_MAX_TURNS ?? String(DEFAULTS.CLAUDE_MAX_TURNS),
     NODE_ENV: process.env.NODE_ENV ?? "production",
-    WORKSPACE_BASE: process.env.WORKSPACE_BASE ?? "/srv/webalive/sites",
+    WORKSPACE_BASE: process.env.WORKSPACE_BASE ?? PATHS.SITES_ROOT,
     BRIDGE_PASSCODE: process.env.BRIDGE_PASSCODE,
     GROQ_API_SECRET: process.env.GROQ_API_SECRET,
     GITHUB_WEBHOOK_SECRET: process.env.GITHUB_WEBHOOK_SECRET,

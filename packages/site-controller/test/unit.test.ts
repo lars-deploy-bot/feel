@@ -28,9 +28,9 @@ describe('Configuration Constants', () => {
 
 describe('Port Range Validation', () => {
   it('should have valid port range', () => {
-    expect(DEFAULTS.MIN_PORT).toBe(3333)
-    expect(DEFAULTS.MAX_PORT).toBe(3999)
-    expect(DEFAULTS.MIN_PORT).toBeLessThan(DEFAULTS.MAX_PORT)
+    expect(DEFAULTS.PORT_RANGE.MIN).toBe(3333)
+    expect(DEFAULTS.PORT_RANGE.MAX).toBe(3999)
+    expect(DEFAULTS.PORT_RANGE.MIN).toBeLessThan(DEFAULTS.PORT_RANGE.MAX)
   })
 })
 

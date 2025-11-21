@@ -1,8 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { isManagerAuthenticated } from "@/features/auth/lib/auth"
-import { createCorsResponse, createCorsSuccessResponse } from "@/lib/api/responses"
+import { createCorsErrorResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { addCorsHeaders } from "@/lib/cors-utils"
+import { ErrorCodes } from "@/lib/error-codes"
 import { createIamClient } from "@/lib/supabase/iam"
 import { generateRequestId } from "@/lib/utils"
 
@@ -21,11 +22,7 @@ export async function POST(req: NextRequest) {
 
   // Check manager authentication
   if (!(await isManagerAuthenticated())) {
-    return createCorsResponse(
-      origin,
-      { ok: false, error: "UNAUTHORIZED", message: "Manager authentication required", requestId },
-      401,
-    )
+    return createCorsErrorResponse(origin, ErrorCodes.UNAUTHORIZED, 401, { requestId })
   }
 
   try {
@@ -33,17 +30,10 @@ export async function POST(req: NextRequest) {
     const result = TransferOwnershipSchema.safeParse(body)
 
     if (!result.success) {
-      return createCorsResponse(
-        origin,
-        {
-          ok: false,
-          error: "INVALID_REQUEST",
-          message: "Invalid request body",
-          details: result.error.issues,
-          requestId,
-        },
-        400,
-      )
+      return createCorsErrorResponse(origin, ErrorCodes.INVALID_REQUEST, 400, {
+        requestId,
+        details: result.error.issues,
+      })
     }
 
     const { orgId, newOwnerId } = result.data
@@ -58,11 +48,7 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (membershipError || !membership) {
-      return createCorsResponse(
-        origin,
-        { ok: false, error: "NOT_FOUND", message: "User is not a member of this organization", requestId },
-        404,
-      )
+      return createCorsErrorResponse(origin, ErrorCodes.ORG_NOT_FOUND, 404, { requestId })
     }
 
     // Get current owner
@@ -83,11 +69,7 @@ export async function POST(req: NextRequest) {
 
       if (demoteError) {
         console.error("[Manager] Failed to demote current owner:", demoteError)
-        return createCorsResponse(
-          origin,
-          { ok: false, error: "DATABASE_ERROR", message: "Failed to update current owner", requestId },
-          500,
-        )
+        return createCorsErrorResponse(origin, ErrorCodes.INTERNAL_ERROR, 500, { requestId })
       }
     }
 
@@ -100,11 +82,7 @@ export async function POST(req: NextRequest) {
 
     if (promoteError) {
       console.error("[Manager] Failed to promote new owner:", promoteError)
-      return createCorsResponse(
-        origin,
-        { ok: false, error: "DATABASE_ERROR", message: "Failed to transfer ownership", requestId },
-        500,
-      )
+      return createCorsErrorResponse(origin, ErrorCodes.INTERNAL_ERROR, 500, { requestId })
     }
 
     console.log(`[Manager] Transferred ownership of org ${orgId} to user ${newOwnerId}`)
@@ -112,11 +90,7 @@ export async function POST(req: NextRequest) {
     return createCorsSuccessResponse(origin, { requestId })
   } catch (error) {
     console.error("[Manager] Transfer ownership error:", error)
-    return createCorsResponse(
-      origin,
-      { ok: false, error: "SERVER_ERROR", message: "Failed to transfer ownership", requestId },
-      500,
-    )
+    return createCorsErrorResponse(origin, ErrorCodes.INTERNAL_ERROR, 500, { requestId })
   }
 }
 

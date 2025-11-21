@@ -185,7 +185,7 @@ test.describe("Concurrent Deployment - File Locking", () => {
     console.log("[Test] Step 3: Click Quick Launch on all 3 contexts")
     await Promise.all(
       pages.map(async page => {
-        await expect(page.getByRole("heading", { name: "Launch your site" })).toBeVisible()
+        await expect(page.getByTestId("deploy-heading")).toBeVisible()
         await page.getByTestId("mode-option-quick-launch").click()
       }),
     )

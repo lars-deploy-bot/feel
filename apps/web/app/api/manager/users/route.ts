@@ -1,7 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { isManagerAuthenticated } from "@/features/auth/lib/auth"
-import { createCorsResponse, createCorsSuccessResponse } from "@/lib/api/responses"
+import { createCorsErrorResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { addCorsHeaders } from "@/lib/cors-utils"
+import { ErrorCodes } from "@/lib/error-codes"
 import { createIamClient } from "@/lib/supabase/iam"
 import { generateRequestId } from "@/lib/utils"
 
@@ -14,11 +15,7 @@ export async function GET(req: NextRequest) {
 
   // Check manager authentication
   if (!(await isManagerAuthenticated())) {
-    return createCorsResponse(
-      origin,
-      { ok: false, error: "UNAUTHORIZED", message: "Manager authentication required", requestId },
-      401,
-    )
+    return createCorsErrorResponse(origin, ErrorCodes.UNAUTHORIZED, 401, { requestId })
   }
 
   try {
@@ -35,11 +32,7 @@ export async function GET(req: NextRequest) {
 
     if (usersError) {
       console.error("[Manager Users] Failed to fetch users:", usersError)
-      return createCorsResponse(
-        origin,
-        { ok: false, error: "DATABASE_ERROR", message: "Failed to fetch users", requestId },
-        500,
-      )
+      return createCorsErrorResponse(origin, ErrorCodes.INTERNAL_ERROR, 500, { requestId })
     }
 
     return createCorsSuccessResponse(origin, {
@@ -48,11 +41,7 @@ export async function GET(req: NextRequest) {
     })
   } catch (error) {
     console.error("[Manager Users] Unexpected error:", error)
-    return createCorsResponse(
-      origin,
-      { ok: false, error: "INTERNAL_ERROR", message: "An unexpected error occurred", requestId },
-      500,
-    )
+    return createCorsErrorResponse(origin, ErrorCodes.INTERNAL_ERROR, 500, { requestId })
   }
 }
 

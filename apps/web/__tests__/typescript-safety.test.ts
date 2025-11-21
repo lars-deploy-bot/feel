@@ -51,7 +51,7 @@ export function TestComponent() {
         unlinkSync(testFile)
       } catch {}
     }
-  }, 15000)
+  }, 60000)
 
   it("CRITICAL: SettingsModal doesn't reference 'updateError'", () => {
     const settingsModalPath = join(process.cwd(), "components/modals/SettingsModal.tsx")

@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
+import { PATHS } from "@webalive/shared"
 import bcrypt from "bcrypt"
 import { z } from "zod"
 import type { DomainPasswords } from "@/types/domain"
@@ -78,7 +79,7 @@ function getDomainPasswordsPath(): string {
   }
 
   // Fallback paths for development/testing
-  const devPaths = [join(process.cwd(), "domain-passwords.json"), "/root/webalive/claude-bridge/domain-passwords.json"]
+  const devPaths = [join(process.cwd(), "domain-passwords.json"), join(PATHS.BRIDGE_ROOT, "domain-passwords.json")]
 
   for (const path of devPaths) {
     if (existsSync(path)) {

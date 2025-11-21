@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
 
     // 10. Return success with photobook key format (tenantId/contentHash)
     return NextResponse.json({
-      success: true,
+      ok: true,
       data: {
         key: `${tenantId}/${result.data.contentHash}`,
         ...result.data,

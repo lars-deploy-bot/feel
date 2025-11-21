@@ -1,6 +1,7 @@
 import * as crypto from "node:crypto"
 import * as fs from "node:fs"
 import * as path from "node:path"
+import { PATHS } from "@webalive/shared"
 
 export interface Workspace {
   root: string
@@ -28,7 +29,7 @@ function hostToTenantId(host: string): string {
  * Implements Patrick's invariant: "Given a host, we resolve to the one true workspace on disk"
  */
 export function resolveWorkspace(host: string): string {
-  const BASE = process.env.WORKSPACE_BASE ?? "/srv/webalive/sites"
+  const BASE = process.env.WORKSPACE_BASE ?? PATHS.SITES_ROOT
 
   // 1) Translate host→tenant (don't couple on the display domain)
   const tenant = hostToTenantId(host.toLowerCase())

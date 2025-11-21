@@ -14,9 +14,9 @@ export async function login(page: Page) {
     sessionStorage.setItem("workspace", "test.bridge.local")
   })
 
-  await page.getByPlaceholder("you@example.com").fill("test@bridge.local")
-  await page.getByPlaceholder("Enter your password").fill("test")
-  await page.getByRole("button", { name: "Continue" }).click()
+  await page.getByTestId("email-input").fill("test@bridge.local")
+  await page.getByTestId("password-input").fill("test")
+  await page.getByTestId("login-button").click()
   await page.waitForURL("/chat", { timeout: 5000 })
 }
 
@@ -49,6 +49,7 @@ export async function setAuthCookie(user: TestUser, context: BrowserContext) {
       domain: "localhost",
       path: "/",
       httpOnly: true,
+      secure: false, // Must be false for local test server (HTTP, not HTTPS)
       sameSite: "Lax",
     },
   ])

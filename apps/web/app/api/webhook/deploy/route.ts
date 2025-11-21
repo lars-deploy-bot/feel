@@ -147,7 +147,7 @@ export async function GET() {
     return NextResponse.json({
       configured: !!WEBHOOK_SECRET,
       branch: BRANCH,
-      error: "Could not read deployment logs",
+      error: ErrorCodes.FILE_READ_ERROR,
     })
   }
 }

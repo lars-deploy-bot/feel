@@ -2,8 +2,9 @@
 "use client"
 
 import { ZodError } from "zod"
-import type { ApiInit, Endpoint, PathOverride, Req, Res } from "./api.types"
+import type { ApiInit, PathOverride } from "./api.types"
 import { endpointPath } from "./api.types"
+import type { Endpoint, Req, Res } from "./schemas"
 import { apiSchemas } from "./schemas"
 
 export class ApiError extends Error {

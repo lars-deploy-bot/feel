@@ -2,6 +2,7 @@ import { exec } from "node:child_process"
 import dns from "node:dns"
 import { promises as fs } from "node:fs"
 import { promisify } from "node:util"
+import { PATHS } from "@webalive/shared"
 import { getAllDomains } from "@/lib/deployment/domain-registry"
 import type { SourceData } from "@/types/sources"
 import { ensureDomain, isPreviewDomain } from "./source-utils"
@@ -32,7 +33,7 @@ export async function fetchSupabaseSources(results: Map<string, SourceData>): Pr
  * Fetch domains from Caddy configuration file
  */
 export async function fetchCaddySources(results: Map<string, SourceData>): Promise<void> {
-  const caddyContent = await fs.readFile("/root/webalive/claude-bridge/Caddyfile", "utf-8")
+  const caddyContent = await fs.readFile(PATHS.CADDYFILE_PATH, "utf-8")
   const lines = caddyContent.split("\n")
 
   let currentDomain: string | null = null
@@ -59,7 +60,7 @@ export async function fetchCaddySources(results: Map<string, SourceData>): Promi
  * Fetch domains from JSON password registry
  */
 export async function fetchJsonSources(results: Map<string, SourceData>): Promise<void> {
-  const jsonContent = await fs.readFile("/var/lib/claude-bridge/domain-passwords.json", "utf-8")
+  const jsonContent = await fs.readFile(PATHS.REGISTRY_PATH, "utf-8")
   const jsonData = JSON.parse(jsonContent)
 
   for (const [domain, config] of Object.entries(jsonData)) {
@@ -78,7 +79,7 @@ export async function fetchJsonSources(results: Map<string, SourceData>): Promis
  * Fetch domains from filesystem (/srv/webalive/sites/)
  */
 export async function fetchFilesystemSources(results: Map<string, SourceData>): Promise<void> {
-  const sitesDir = "/srv/webalive/sites"
+  const sitesDir = PATHS.SITES_ROOT
   const entries = await fs.readdir(sitesDir, { withFileTypes: true })
 
   for (const entry of entries) {

@@ -1,9 +1,9 @@
+import { createClient } from "@supabase/supabase-js"
 import { type NextRequest, NextResponse } from "next/server"
 import { requireManagerAuth } from "@/features/manager/lib/api-helpers"
-import { createCorsSuccessResponse, createCorsErrorResponse } from "@/lib/api/responses"
+import { createCorsErrorResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { ErrorCodes } from "@/lib/error-codes"
-import { createClient } from "@supabase/supabase-js"
 import type { Database as AppDatabase } from "@/lib/supabase/app.types"
 
 /**
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     }
 
     return createCorsSuccessResponse(origin, {
-      success: true,
+      ok: true,
       message: `Domain ${domain} transferred to organization ${targetOrgId}`,
     })
   } catch (error) {

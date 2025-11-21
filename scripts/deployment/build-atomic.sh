@@ -126,12 +126,20 @@ if [ -d "$WEB_DIR/dist" ]; then
     rm -rf "$WEB_DIR/dist"
 fi
 
-# Build dependencies first (images + tools + deploy-scripts packages)
+# Validate workspace integrity before building
+log_info "Validating workspace integrity..."
+if ! "$SCRIPT_DIR/../validation/detect-workspace-issues.sh"; then
+    log_error "Workspace validation failed - fix issues before deploying"
+    exit 1
+fi
+log_success "Workspace validation passed"
+
+# Build dependencies first (images + tools packages)
 log_info "Building workspace dependencies..."
 
 # Remove circular symlinks created by bun workspace linking (causes Turbopack build failures)
 log_info "Removing circular symlinks in packages..."
-rm -f packages/guides/guides packages/images/images packages/tools/tools packages/deploy-scripts/deploy-scripts 2>/dev/null || true
+rm -f packages/template/template packages/site-controller/site-controller packages/images/images packages/tools/tools packages/shared/shared 2>/dev/null || true
 log_success "Cleaned up circular symlinks"
 
 # Build images package
@@ -164,20 +172,20 @@ fi
 cd "$PROJECT_ROOT"
 log_success "Built packages/tools"
 
-# Build deploy-scripts package
-if [ ! -d "packages/deploy-scripts" ]; then
-    log_error "Package not found: packages/deploy-scripts"
+# Build site-controller package
+if [ ! -d "packages/site-controller" ]; then
+    log_error "Package not found: packages/site-controller"
     exit 1
 fi
-log_info "Building packages/deploy-scripts..."
-cd packages/deploy-scripts
+log_info "Building packages/site-controller..."
+cd packages/site-controller
 if ! bun run build; then
-    log_error "Failed to build deploy-scripts package"
+    log_error "Failed to build site-controller package"
     cd "$PROJECT_ROOT"
     exit 1
 fi
 cd "$PROJECT_ROOT"
-log_success "Built packages/deploy-scripts"
+log_success "Built packages/site-controller"
 
 log_success "All workspace dependencies built successfully"
 
@@ -258,7 +266,7 @@ mkdir -p "$STANDALONE_PACKAGES" || {
     exit 1
 }
 
-REQUIRED_PACKAGES=("tools" "images" "template" "guides" "deploy-scripts")
+REQUIRED_PACKAGES=("tools" "images" "template" "site-controller")
 COPIED_PACKAGES=0
 
 for pkg in "${REQUIRED_PACKAGES[@]}"; do
@@ -323,7 +331,9 @@ log_success "Created $CREATED_LINKS package symlinks"
 # Verify all symlinks resolve correctly (fail fast if broken)
 log_info "Verifying workspace package symlinks..."
 BROKEN_LINKS=0
-for pkg in tools images template guides deploy-scripts; do
+
+# Check @alive-brug packages
+for pkg in tools images template; do
     LINK_PATH="$STANDALONE_NODE_MODULES/@alive-brug/$pkg"
     if [ -L "$LINK_PATH" ]; then
         # Symlink exists, verify it resolves to a valid directory
@@ -339,6 +349,21 @@ for pkg in tools images template guides deploy-scripts; do
         log_warn "Missing symlink for package: $pkg (package may not exist)"
     fi
 done
+
+# Check @webalive packages
+LINK_PATH="$STANDALONE_NODE_MODULES/@webalive/site-controller"
+if [ -L "$LINK_PATH" ]; then
+    if [ ! -d "$LINK_PATH" ]; then
+        log_error "Broken symlink: @webalive/site-controller does not resolve to valid directory"
+        log_error "  Link: $LINK_PATH"
+        log_error "  Target: $(readlink "$LINK_PATH")"
+        BROKEN_LINKS=$((BROKEN_LINKS + 1))
+    else
+        log_success "Verified @webalive/site-controller symlink"
+    fi
+else
+    log_warn "Missing symlink for package: site-controller (package may not exist)"
+fi
 
 if [ $BROKEN_LINKS -gt 0 ]; then
     log_error "Build failed: $BROKEN_LINKS broken package symlink(s) detected"

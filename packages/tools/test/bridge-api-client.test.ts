@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { COOKIE_NAMES } from "@webalive/shared"
 
 /**
  * BRIDGE API CLIENT SECRET HEADER TESTS
@@ -113,7 +114,7 @@ describe("callBridgeApi - Internal Tools Secret Header", () => {
       const [_, options] = mockFetch.mock.calls[0]
 
       expect(options.headers).toHaveProperty("Cookie")
-      expect(options.headers.Cookie).toBe("session=test-session-abc")
+      expect(options.headers.Cookie).toBe(`${COOKIE_NAMES.SESSION}=test-session-abc`)
 
       // If this test FAILS, some endpoints won't have authentication
     }
@@ -229,7 +230,7 @@ describe("callBridgeApi - Internal Tools Secret Header", () => {
 
     expect(options.headers).toHaveProperty("Cookie")
     expect(options.headers).toHaveProperty("X-Internal-Tools-Secret")
-    expect(options.headers.Cookie).toBe("session=test-session-abc")
+    expect(options.headers.Cookie).toBe(`${COOKIE_NAMES.SESSION}=test-session-abc`)
     expect(options.headers["X-Internal-Tools-Secret"]).toBe("test-secret-xyz")
 
     // If this test FAILS, we're missing one of the required headers
@@ -238,3 +239,204 @@ describe("callBridgeApi - Internal Tools Secret Header", () => {
 
 // Note: Workspace path validation is tested separately in workspace-validator.test.ts
 // We mock it here to focus on testing the secret header logic
+
+/**
+ * COOKIE NAME AUTHENTICATION BUG TESTS
+ *
+ * BUG HISTORY (2025-11-21):
+ * MCP tools were hardcoding cookie name as "session" instead of importing
+ * COOKIE_NAMES.SESSION ("auth_session") from the shared package.
+ *
+ * Result: Tools sent `Cookie: session=<JWT>` but API expected `Cookie: auth_session=<JWT>`
+ * This caused all tool API calls to fail with 401 Unauthorized.
+ *
+ * SOLUTION:
+ * - Import COOKIE_NAMES from @webalive/shared (single source of truth)
+ * - Use COOKIE_NAMES.SESSION in header construction
+ * - These tests prevent regression by verifying correct cookie name usage
+ */
+describe("callBridgeApi - Cookie Name Authentication (THE COOKIE NAME BUG)", () => {
+  beforeEach(() => {
+    process.env.BRIDGE_SESSION_COOKIE = "jwt-token-123"
+    mockFetch.mockClear()
+
+    // Default mock response
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, message: "Success" }),
+    })
+  })
+
+  afterEach(() => {
+    process.env.BRIDGE_SESSION_COOKIE = originalSessionCookie
+    vi.clearAllMocks()
+  })
+
+  /**
+   * THE COOKIE NAME BUG - Primary regression test
+   * Cookie header MUST use "auth_session" not "session"
+   */
+  it("should use 'auth_session' cookie name from shared constant, not hardcoded 'session'", async () => {
+    await callBridgeApi({
+      endpoint: "/api/restart-workspace",
+      body: { workspaceRoot: "/srv/webalive/sites/test.com/user" },
+    })
+
+    const [_, options] = mockFetch.mock.calls[0]
+
+    // CRITICAL: Must be "auth_session" (from COOKIE_NAMES.SESSION)
+    expect(options.headers.Cookie).toBe(`${COOKIE_NAMES.SESSION}=jwt-token-123`)
+
+    // CRITICAL: Must NOT start with the old hardcoded "session=" pattern
+    expect(options.headers.Cookie).not.toMatch(/^session=/)
+    expect(options.headers.Cookie).toMatch(/^auth_session=/)
+
+    // If this test FAILS, MCP tools will fail with 401 Unauthorized
+  })
+
+  /**
+   * Verify cookie name matches the shared constant value
+   */
+  it("should use COOKIE_NAMES.SESSION constant value (auth_session)", async () => {
+    await callBridgeApi({
+      endpoint: "/api/test",
+      body: {},
+    })
+
+    const [_, options] = mockFetch.mock.calls[0]
+
+    // Extract cookie name from header "auth_session=value"
+    const cookieName = options.headers.Cookie?.split("=")[0]
+
+    expect(cookieName).toBe(COOKIE_NAMES.SESSION)
+    expect(cookieName).toBe("auth_session")
+  })
+
+  /**
+   * Verify cookie format is exactly "auth_session=<value>" with no spaces
+   */
+  it("should format cookie header correctly without extra spaces", async () => {
+    await callBridgeApi({
+      endpoint: "/api/test",
+      body: {},
+    })
+
+    const [_, options] = mockFetch.mock.calls[0]
+
+    // Exact format check
+    expect(options.headers.Cookie).toBe("auth_session=jwt-token-123")
+    expect(options.headers.Cookie).not.toContain(" ")
+
+    // Regex validation: name=value with no spaces
+    expect(options.headers.Cookie).toMatch(/^[a-z_]+=[a-zA-Z0-9._-]+$/)
+  })
+
+  /**
+   * Test with different JWT values to ensure format is preserved
+   */
+  it("should preserve cookie format with various JWT tokens", async () => {
+    const testTokens = [
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ",
+      "short-token",
+      "token.with.dots",
+      "token-with-dashes",
+      "token_with_underscores",
+    ]
+
+    for (const token of testTokens) {
+      mockFetch.mockClear()
+      process.env.BRIDGE_SESSION_COOKIE = token
+
+      await callBridgeApi({ endpoint: "/api/test", body: {} })
+
+      const [_, options] = mockFetch.mock.calls[0]
+      expect(options.headers.Cookie).toBe(`auth_session=${token}`)
+    }
+  })
+
+  /**
+   * Verify cookie is included for all endpoint types
+   */
+  it("should include auth_session cookie for all API endpoints", async () => {
+    const endpoints = [
+      "/api/restart-workspace",
+      "/api/internal-tools/read-logs",
+      "/api/verify",
+      "/api/files/read",
+      "/api/deploy",
+    ]
+
+    for (const endpoint of endpoints) {
+      mockFetch.mockClear()
+      await callBridgeApi({ endpoint, body: { workspaceRoot: "/srv/webalive/sites/test.com/user" } })
+
+      const [_, options] = mockFetch.mock.calls[0]
+
+      expect(options.headers.Cookie).toBeDefined()
+      expect(options.headers.Cookie).toBe(`${COOKIE_NAMES.SESSION}=jwt-token-123`)
+      expect(options.headers.Cookie).toMatch(/^auth_session=/) // Must start with auth_session=
+
+      // If this fails for ANY endpoint, that endpoint won't authenticate
+    }
+  })
+
+  /**
+   * Verify graceful handling when session cookie is missing
+   */
+  it("should omit Cookie header when BRIDGE_SESSION_COOKIE is undefined", async () => {
+    delete process.env.BRIDGE_SESSION_COOKIE
+
+    await callBridgeApi({
+      endpoint: "/api/test",
+      body: {},
+    })
+
+    const [_, options] = mockFetch.mock.calls[0]
+
+    expect(options.headers.Cookie).toBeUndefined()
+
+    // Should not crash or send malformed cookie
+  })
+
+  /**
+   * Verify empty cookie value is handled gracefully
+   */
+  it("should omit Cookie header when BRIDGE_SESSION_COOKIE is empty string", async () => {
+    process.env.BRIDGE_SESSION_COOKIE = ""
+
+    await callBridgeApi({
+      endpoint: "/api/test",
+      body: {},
+    })
+
+    const [_, options] = mockFetch.mock.calls[0]
+
+    expect(options.headers.Cookie).toBeUndefined()
+
+    // Empty cookie should not be sent
+  })
+
+  /**
+   * Verify cookie header is combined correctly with other headers
+   */
+  it("should include cookie alongside other headers without conflict", async () => {
+    process.env.INTERNAL_TOOLS_SECRET = "secret-123"
+
+    await callBridgeApi({
+      endpoint: "/api/internal-tools/test",
+      body: {},
+    })
+
+    const [_, options] = mockFetch.mock.calls[0]
+
+    // All headers should coexist
+    expect(options.headers["Content-Type"]).toBe("application/json")
+    expect(options.headers.Cookie).toBe("auth_session=jwt-token-123")
+    expect(options.headers["X-Internal-Tools-Secret"]).toBe("secret-123")
+
+    // Verify cookie doesn't interfere with other headers
+    expect(Object.keys(options.headers)).toContain("Cookie")
+    expect(Object.keys(options.headers)).toContain("Content-Type")
+    expect(Object.keys(options.headers)).toContain("X-Internal-Tools-Secret")
+  })
+})

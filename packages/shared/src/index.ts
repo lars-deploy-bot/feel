@@ -1,0 +1,28 @@
+/**
+ * @webalive/shared
+ *
+ * Shared constants and types used across all packages in the monorepo.
+ *
+ * @example
+ * ```typescript
+ * import { COOKIE_NAMES, ENV_VARS, PATHS, DOMAINS } from "@webalive/shared"
+ *
+ * const sessionCookieName = COOKIE_NAMES.SESSION // "auth_session"
+ * const envVarName = ENV_VARS.BRIDGE_SESSION_COOKIE // "BRIDGE_SESSION_COOKIE"
+ * const sitesRoot = PATHS.SITES_ROOT // "/srv/webalive/sites"
+ * ```
+ */
+
+export { COOKIE_NAMES, SESSION_MAX_AGE, ENV_VARS } from "./constants.js"
+export {
+  PATHS,
+  DOMAINS,
+  PORTS,
+  TIMEOUTS,
+  DEFAULTS,
+  SECURITY,
+  getServiceName,
+  getSiteUser,
+  getSiteHome,
+  getEnvFilePath,
+} from "./config.js"

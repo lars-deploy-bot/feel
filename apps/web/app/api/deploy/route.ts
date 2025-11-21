@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs"
+import { DEFAULTS, DOMAINS, PATHS } from "@webalive/shared"
 import { type NextRequest, NextResponse } from "next/server"
 import { createErrorResponse, requireSessionUser } from "@/features/auth/lib/auth"
 import { normalizeAndValidateDomain } from "@/features/manager/lib/domain-utils"
@@ -14,7 +15,7 @@ interface DeployRequest {
 }
 
 interface DeployResponse {
-  success: boolean
+  ok: boolean
   message: string
   domain?: string
   orgId?: string
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
     console.log(`📋 [DEPLOY API] Request: domain=${body.domain} → normalized: ${domain}`)
 
     // Check if site already exists
-    const sitePath = `/root/webalive/sites/${domain}`
+    const sitePath = `${PATHS.LEGACY_SITES_ROOT}/${domain}`
     const siteExists = existsSync(sitePath)
 
     if (siteExists) {
@@ -118,7 +119,7 @@ export async function POST(request: NextRequest) {
     if (sslValidation.success) {
       console.log(`✅ [DEPLOY API] Deployment completed successfully in ${duration}ms`)
       return NextResponse.json({
-        success: true,
+        ok: true,
         message: `Site ${domain} deployed successfully with SSL certificate`,
         domain,
         orgId,
@@ -126,7 +127,7 @@ export async function POST(request: NextRequest) {
     }
     console.warn(`⚠️  [DEPLOY API] Deployment completed but SSL validation failed: ${sslValidation.error}`)
     return NextResponse.json({
-      success: true, // Deployment itself succeeded
+      ok: true, // Deployment itself succeeded
       message: `Site ${domain} deployed but SSL certificate is still being provisioned. Try again in 30-60 seconds.`,
       domain,
       orgId,
@@ -179,12 +180,11 @@ export async function POST(request: NextRequest) {
       const errorStderr = error && typeof error === "object" && "stderr" in error ? String(error.stderr) : ""
       // Check if the error message contains Cloudflare proxy detection
       if (errorStderr.includes("CLOUDFLARE PROXY DETECTED")) {
-        errorMessage =
-          "🚨 Cloudflare proxy detected! You must disable the orange cloud (proxy) in your Cloudflare DNS settings. Make the cloud icon GRAY (not orange) next to your A record, then try again. See DNS setup guide: https://terminal.goalive.nl/docs/dns-setup"
+        errorMessage = `🚨 Cloudflare proxy detected! You must disable the orange cloud (proxy) in your Cloudflare DNS settings. Make the cloud icon GRAY (not orange) next to your A record, then try again. See DNS setup guide: ${DOMAINS.BRIDGE_PROD}/docs/dns-setup`
       } else if (errorStderr.includes("No A record found")) {
-        errorMessage = `DNS Error: No A record found for ${domain}. You must create an A record with these settings: Type=A, Name/Host=@ (or ${domain}), Value/Points to=138.201.56.93, TTL=300. ALSO: Remove any AAAA records (IPv6) for ${domain}. See DNS setup guide: https://terminal.goalive.nl/docs/dns-setup`
+        errorMessage = `DNS Error: No A record found for ${domain}. You must create an A record with these settings: Type=A, Name/Host=@ (or ${domain}), Value/Points to=${DEFAULTS.SERVER_IP}, TTL=300. ALSO: Remove any AAAA records (IPv6) for ${domain}. See DNS setup guide: ${DOMAINS.BRIDGE_PROD}/docs/dns-setup`
       } else {
-        errorMessage = `DNS Error: ${domain} does not point to our server (138.201.56.93). You need to update your A record with these settings: Type=A, Name/Host=@ (or ${domain}), Value/Points to=138.201.56.93, TTL=300. ALSO: Remove any AAAA records (IPv6) for ${domain}. See DNS setup guide: https://terminal.goalive.nl/docs/dns-setup`
+        errorMessage = `DNS Error: ${domain} does not point to our server (${DEFAULTS.SERVER_IP}). You need to update your A record with these settings: Type=A, Name/Host=@ (or ${domain}), Value/Points to=${DEFAULTS.SERVER_IP}, TTL=300. ALSO: Remove any AAAA records (IPv6) for ${domain}. See DNS setup guide: ${DOMAINS.BRIDGE_PROD}/docs/dns-setup`
       }
       statusCode = 400
     } else if (error && typeof error === "object" && "stderr" in error) {
@@ -195,7 +195,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       {
-        success: false,
+        ok: false,
         message: errorMessage,
         errors: [String(error)],
       } as DeployResponse,
@@ -212,8 +212,8 @@ export async function GET() {
       deploy: "POST /api/deploy",
     },
     documentation: {
-      manual_guide: "/root/webalive/claude-bridge/packages/template/DEPLOYMENT.md",
-      web_interface: "https://terminal.goalive.nl/deploy",
+      manual_guide: `${PATHS.TEMPLATE_PATH}/DEPLOYMENT.md`,
+      web_interface: `${DOMAINS.BRIDGE_PROD}/deploy`,
     },
   })
 }

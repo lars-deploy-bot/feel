@@ -5,6 +5,7 @@
  * Handles port resolution, error formatting, and response parsing.
  */
 
+import { COOKIE_NAMES } from "@webalive/shared"
 import { validateWorkspacePath } from "./workspace-validator.js"
 
 function getApiBaseUrl(): string {
@@ -59,7 +60,7 @@ export async function callBridgeApi(options: ApiCallOptions): Promise<ToolResult
       method,
       headers: {
         "Content-Type": "application/json",
-        ...(sessionCookie && { Cookie: `session=${sessionCookie}` }),
+        ...(sessionCookie && { Cookie: `${COOKIE_NAMES.SESSION}=${sessionCookie}` }),
         ...(isInternalToolsApi && internalSecret && { "X-Internal-Tools-Secret": internalSecret }),
       },
       body: body ? JSON.stringify(body) : undefined,

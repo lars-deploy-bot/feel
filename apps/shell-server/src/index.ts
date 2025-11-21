@@ -8,6 +8,7 @@ import { readFileSync, writeFileSync, existsSync, writeFile, mkdirSync } from "n
 import { mkdir, rm } from "node:fs/promises"
 import { join, resolve } from "node:path"
 import AdmZip from "adm-zip"
+import { PATHS } from "@webalive/site-controller"
 
 // Load configuration
 const configPath = join(__dirname, "..", "config.json")
@@ -345,7 +346,7 @@ app.post("/api/check-directory", async (c) => {
     // Validate workspace path using config
     const baseCwd =
       workspace !== "root"
-        ? `${envConfig.workspaceBase.replace("/root/webalive", "/srv/webalive/sites")}/${workspace}`
+        ? `${envConfig.workspaceBase.replace(PATHS.WEBALIVE_ROOT, PATHS.SITES_ROOT)}/${workspace}`
         : resolvedDefaultCwd
 
     // Resolve target directory
@@ -397,7 +398,7 @@ app.post("/api/upload", async (c) => {
     // Validate workspace path using config
     const baseCwd =
       workspace !== "root"
-        ? `${envConfig.workspaceBase.replace("/root/webalive", "/srv/webalive/sites")}/${workspace}`
+        ? `${envConfig.workspaceBase.replace(PATHS.WEBALIVE_ROOT, PATHS.SITES_ROOT)}/${workspace}`
         : resolvedDefaultCwd
 
     // Resolve and validate target directory
@@ -485,7 +486,7 @@ app.get(
     const shell = process.platform === "win32" ? "powershell.exe" : "/bin/bash"
     const cwd =
       workspace !== "root"
-        ? `${envConfig.workspaceBase.replace("/root/webalive", "/srv/webalive/sites")}/${workspace}`
+        ? `${envConfig.workspaceBase.replace(PATHS.WEBALIVE_ROOT, PATHS.SITES_ROOT)}/${workspace}`
         : resolvedDefaultCwd
 
     let ptyProcess: pty.IPty | null = null

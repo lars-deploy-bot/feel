@@ -15,10 +15,6 @@
     "packages/images": {
       "project": ["src/**/*.{ts,tsx}"]
     },
-    "packages/deploy-scripts": {
-      "entry": ["bin/**/*.ts"],
-      "project": ["src/**/*.ts", "bin/**/*.ts"]
-    },
     "apps/shell-server": {
       "entry": ["src/index.ts"],
       "project": ["src/**/*.ts"]

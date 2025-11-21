@@ -1,7 +1,8 @@
 "use client"
 
-import React from "react"
-import type { SourceData, PortConsistency } from "@/types/sources"
+import React, { useState } from "react"
+import toast from "react-hot-toast"
+import type { PortConsistency, SourceData } from "@/types/sources"
 
 interface SourcesTableProps {
   sources: SourceData[]
@@ -9,6 +10,32 @@ interface SourcesTableProps {
 }
 
 export function SourcesTable({ sources, loading }: SourcesTableProps) {
+  const [restarting, setRestarting] = useState<string | null>(null)
+
+  const handleRestart = async (domain: string) => {
+    setRestarting(domain)
+    try {
+      const response = await fetch("/api/manager/restart-service", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.ok) {
+        toast.success(`Service restarted: ${domain}`)
+      } else {
+        toast.error(data.message || data.error || "Failed to restart service")
+      }
+    } catch (error) {
+      console.error("Failed to restart service:", error)
+      toast.error("Failed to restart service")
+    } finally {
+      setRestarting(null)
+    }
+  }
+
   if (loading) {
     return (
       <div className="text-center py-12 px-6">
@@ -63,6 +90,9 @@ export function SourcesTable({ sources, loading }: SourcesTableProps) {
             </th>
             <th className="py-2 px-4 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase">
               Org / Email
+            </th>
+            <th className="py-2 px-4 text-center text-xs font-medium text-slate-600 dark:text-slate-400 uppercase">
+              Actions
             </th>
           </tr>
         </thead>
@@ -155,6 +185,19 @@ export function SourcesTable({ sources, loading }: SourcesTableProps) {
                     ) : (
                       <span className="text-slate-400 dark:text-slate-500">—</span>
                     )}
+                  </td>
+                  <td className="py-2 px-4 text-center" rowSpan={3}>
+                    <button
+                      type="button"
+                      onClick={e => {
+                        e.stopPropagation()
+                        handleRestart(domain.domain)
+                      }}
+                      disabled={restarting === domain.domain}
+                      className="inline-flex items-center px-2 py-1 text-xs font-medium text-white bg-blue-600 dark:bg-blue-500 rounded hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {restarting === domain.domain ? "Restarting..." : "Restart"}
+                    </button>
                   </td>
                 </tr>
 

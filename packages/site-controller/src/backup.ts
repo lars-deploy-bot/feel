@@ -10,10 +10,11 @@
  */
 
 import { execSync, spawnSync } from "child_process"
-import { DeploymentError } from "./errors"
+import { DeploymentError } from "./errors.js"
+import { PATHS } from "./config.js"
 
 // Configuration
-const REPO_DIR = "/srv/webalive"
+const REPO_DIR = PATHS.BACKUP_REPO
 const SSH_KEY = "/root/.ssh/id_lars_deploy_bot"
 const MAX_FILES_PER_SITE = 200
 

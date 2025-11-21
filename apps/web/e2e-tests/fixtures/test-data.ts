@@ -8,9 +8,11 @@
  * - Self-documenting
  */
 
+import { SECURITY, TIMEOUTS } from "@webalive/shared"
+
 export const TEST_USER = {
-  email: "test@bridge.local",
-  password: "test",
+  email: SECURITY.LOCAL_TEST.EMAIL,
+  password: SECURITY.LOCAL_TEST.PASSWORD,
   workspace: "test.bridge.local",
 } as const
 
@@ -24,13 +26,13 @@ export const TEST_MESSAGES = {
 
 export const TEST_TIMEOUTS = {
   /** Fast UI operations (button clicks, input fills) */
-  fast: 1000,
+  fast: TIMEOUTS.TEST.SHORT,
   /** Medium operations (API responses, DOM updates) */
-  medium: 3000,
+  medium: TIMEOUTS.TEST.MEDIUM,
   /** Slow operations (page loads, workspace initialization) */
   slow: 5000,
   /** Maximum timeout for any operation */
-  max: 10000,
+  max: TIMEOUTS.TEST.LONG,
 } as const
 
 export const TEST_SELECTORS = {

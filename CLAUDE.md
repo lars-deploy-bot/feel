@@ -172,37 +172,51 @@ apps/web/
 
 #### Deploying a New Site
 
-**Site deployments now use the `@webalive/site-controller` package:**
+**Site deployments use the `@webalive/site-controller` package with the Shell-Operator Pattern:**
 
 ```bash
-# Via API (authenticated deployment)
+# Via API (authenticated deployment - primary method)
 # POST /api/deploy-subdomain with { domain, email, password? }
-# This is the primary deployment method used by the web UI
 
 # Or programmatically:
 import { SiteOrchestrator } from '@webalive/site-controller'
 
-await SiteOrchestrator.deploy({
+const result = await SiteOrchestrator.deploy({
   domain: 'newsite.com',
   slug: 'newsite-com',
   templatePath: PATHS.TEMPLATE_PATH,
   serverIp: DEFAULTS.SERVER_IP,
   wildcardDomain: DEFAULTS.WILDCARD_DOMAIN,
-  rollbackOnFailure: true
+  rollbackOnFailure: true  // Automatic rollback on failure
 })
 
-# This creates:
-# - Systemd service: site@newsite-com.service
-# - Dedicated user: site-newsite-com
-# - Workspace: /srv/webalive/sites/newsite.com/
-# - Port: Auto-assigned from registry (3333-3999 range)
-# - Caddy configuration: Auto-updated with reverse proxy
+if (result.success) {
+  console.log(`Deployed: ${result.domain} on port ${result.port}`)
+} else {
+  console.error(`Failed at phase: ${result.failedPhase}`)
+  // Infrastructure automatically rolled back
+}
 ```
 
-**Never use PM2 for new sites** - it lacks security isolation.
+**Creates:**
+- Systemd service: `site@newsite-com.service`
+- Dedicated user: `site-newsite-com`
+- Workspace: `/srv/webalive/sites/newsite.com/`
+- Port: Auto-assigned from registry (3333-3999 range)
+- Caddy configuration: Auto-updated with reverse proxy
 
-**Package**: See `packages/site-controller/README.md` for detailed documentation.
-**Implementation**: Uses Shell-Operator Pattern with atomic bash scripts and TypeScript orchestration.
+**Architecture**: Shell-Operator Pattern
+- **TypeScript**: Orchestration, error handling, state management
+- **Bash**: OS operations, filesystem, permissions, systemd
+- **Atomic scripts**: 7 deployment phases with automatic rollback
+- **Concurrent safety**: File locking prevents race conditions
+
+**Documentation**:
+- Package: `packages/site-controller/README.md`
+- Scripts: `packages/site-controller/scripts/*.sh`
+- Architecture: `docs/architecture/README.md`
+
+**Never use PM2 for new sites** - it lacks security isolation.
 
 #### Updating Caddy Configuration
 
@@ -336,12 +350,22 @@ curl -X POST https://terminal.goalive.nl/api/deploy-subdomain \
 
 ## Key Dependencies & Versions
 
+### Core Stack
 - **Next.js**: 16.0.0 (App Router, RSC)
 - **React**: 19.2.0 (Concurrent features)
 - **Claude Agent SDK**: 0.1.25 (query, streaming, tools)
 - **Bun**: 1.2.22+ (runtime & package manager)
 - **TypeScript**: 5.x (strict mode)
 - **TailwindCSS**: 4.1.15 (utility-first CSS)
+
+### Infrastructure Packages
+- **@webalive/site-controller**: Site deployment orchestration (Shell-Operator Pattern)
+- **@webalive/oauth-core**: Multi-tenant OAuth with AES-256-GCM encryption
+- **@alive-brug/redis**: Redis client with automatic retry and error handling
+- **@webalive/template**: Template for new site deployments
+
+### Legacy (Deprecated)
+- **@alive-brug/deploy-scripts**: Replaced by site-controller (no longer maintained)
 
 ## Common Issues & Solutions
 
@@ -402,6 +426,24 @@ id site-domain-com
 # Test manual start
 sudo -u site-domain-com bun /srv/webalive/sites/domain.com/user/index.ts
 ```
+
+### Issue: Race Condition in Credit Charging
+
+**Symptom**: Negative credit balances or billing leaks
+
+**Cause**: Concurrent requests use read-modify-write pattern
+
+**Solution**: Use atomic database operation (implemented in `atomic-credit-charging.md`)
+```typescript
+// ✅ Atomic deduction via RPC
+const { data } = await iam.rpc('deduct_credits', {
+  p_org_id: orgId,
+  p_amount: credits
+})
+// Returns new balance or null if insufficient
+```
+
+**Documentation**: `docs/architecture/atomic-credit-charging.md`
 
 ## Git Workflow
 

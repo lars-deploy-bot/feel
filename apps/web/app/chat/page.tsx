@@ -1103,8 +1103,10 @@ function ChatPageContent() {
                 {/* Workspace info bar - always visible */}
                 <div className="flex items-center justify-between text-xs">
                   <div className="flex items-center gap-6">
-                    <div className="flex items-center">
-                      <span className="text-black/50 dark:text-white/50 font-medium">site</span>
+                    <div className="flex items-center" data-testid="workspace-section">
+                      <span className="text-black/50 dark:text-white/50 font-medium" data-testid="workspace-label">
+                        site
+                      </span>
                       {isTerminal ? (
                         <WorkspaceSwitcher currentWorkspace={workspace} onWorkspaceChange={setWorkspace} />
                       ) : (

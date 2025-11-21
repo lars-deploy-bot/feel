@@ -30,6 +30,7 @@ export const ErrorCodes = {
   ORG_ID_REQUIRED: "ORG_ID_REQUIRED",
   INVALID_DOMAIN: "INVALID_DOMAIN",
   DOMAIN_ALREADY_EXISTS: "DOMAIN_ALREADY_EXISTS",
+  TOO_MANY_REQUESTS: "TOO_MANY_REQUESTS",
 
   // Conversation errors (4xxx)
   CONVERSATION_BUSY: "CONVERSATION_BUSY",
@@ -247,6 +248,11 @@ export function getErrorMessage(code: ErrorCode, details?: Record<string, any>):
 
     case ErrorCodes.VALIDATION_ERROR:
       return details?.message || "Something in your input isn't valid. Please check what you entered and try again."
+
+    case ErrorCodes.TOO_MANY_REQUESTS:
+      return details?.retryAfter
+        ? `Too many requests. Please try again in ${details.retryAfter}.`
+        : "Too many requests. Please try again later."
 
     case ErrorCodes.MISSING_SLUG:
       return "You need to provide a site name (slug). Please enter a site name."

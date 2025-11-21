@@ -1,6 +1,15 @@
-export const WILDCARD_DOMAIN = process.env.WILDCARD_TLD || "alive.best"
+/**
+ * Web application configuration
+ *
+ * Imports from centralized constants in @webalive/site-controller
+ * See packages/site-controller/src/config.ts for all hardcoded constants
+ */
+
+import { DOMAINS, PATHS } from "@webalive/shared"
+
+export const WILDCARD_DOMAIN = process.env.WILDCARD_TLD || DOMAINS.WILDCARD
 export const WILDCARD_PATTERN = `*.${WILDCARD_DOMAIN}`
-export const WORKSPACE_BASE = process.env.WORKSPACE_BASE || "/srv/webalive/sites"
+export const WORKSPACE_BASE = process.env.WORKSPACE_BASE || PATHS.SITES_ROOT
 
 export function buildSubdomain(slug: string): string {
   return `${slug.toLowerCase()}.${WILDCARD_DOMAIN}`

@@ -1,3 +1,8 @@
+import { assertServerOnly } from './guards.js'
+
+// Prevent this module from being imported in browser environments
+assertServerOnly('@webalive/site-controller', 'Use @webalive/shared for constants')
+
 import type { DeployConfig, DeployResult } from './types.js'
 import { PATHS, DEFAULTS, getServiceName, getSiteUser, getSiteHome, getEnvFilePath } from './config.js'
 import { validateDns } from './executors/dns.js'

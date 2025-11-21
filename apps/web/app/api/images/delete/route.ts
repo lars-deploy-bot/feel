@@ -65,7 +65,7 @@ export async function DELETE(request: NextRequest) {
     await Promise.all(deletePromises)
 
     return Response.json({
-      success: true,
+      ok: true,
       message: `Deleted ${listResult.data.length} variants`,
     })
   } catch (error) {

@@ -7,8 +7,9 @@
 
 import { existsSync } from "node:fs"
 import { resolve } from "node:path"
+import { SECURITY } from "@webalive/site-controller"
 
-const ALLOWED_WORKSPACE_BASES = ["/srv/webalive/sites", "/root/webalive/sites"]
+const ALLOWED_WORKSPACE_BASES = SECURITY.ALLOWED_WORKSPACE_BASES
 
 /**
  * Validates that a workspace path is within allowed boundaries

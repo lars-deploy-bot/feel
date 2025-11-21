@@ -1,12 +1,15 @@
+import { randomUUID } from "node:crypto"
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
-import { createCorsResponse, createCorsSuccessResponse } from "@/lib/api/responses"
+import { createCorsErrorResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { addCorsHeaders } from "@/lib/cors-utils"
+import { ErrorCodes } from "@/lib/error-codes"
 import { createAppClient } from "@/lib/supabase/app"
 import { createIamClient } from "@/lib/supabase/iam"
 
 export async function GET(req: NextRequest) {
   const origin = req.headers.get("origin")
+  const requestId = randomUUID()
 
   try {
     // Get optional org filter from query params
@@ -15,15 +18,7 @@ export async function GET(req: NextRequest) {
 
     const user = await getSessionUser()
     if (!user) {
-      return createCorsResponse(
-        origin,
-        {
-          ok: false,
-          error: "Unauthorized",
-          workspaces: [],
-        },
-        401,
-      )
+      return createCorsErrorResponse(origin, ErrorCodes.UNAUTHORIZED, 401, { requestId })
     }
 
     // Test mode
@@ -48,15 +43,7 @@ export async function GET(req: NextRequest) {
     // If org filter provided, validate user has access and filter
     if (orgId) {
       if (!orgIds.includes(orgId)) {
-        return createCorsResponse(
-          origin,
-          {
-            ok: false,
-            error: "You don't have access to this organization",
-            workspaces: [],
-          },
-          403,
-        )
+        return createCorsErrorResponse(origin, ErrorCodes.ORG_ACCESS_DENIED, 403, { requestId })
       }
       orgIds = [orgId]
     }
@@ -71,15 +58,7 @@ export async function GET(req: NextRequest) {
       workspaces,
     })
   } catch (_error) {
-    return createCorsResponse(
-      origin,
-      {
-        ok: false,
-        error: "Failed to get authenticated workspaces",
-        workspaces: [],
-      },
-      500,
-    )
+    return createCorsErrorResponse(origin, ErrorCodes.INTERNAL_ERROR, 500, { requestId })
   }
 }
 

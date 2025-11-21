@@ -4,21 +4,29 @@
  * Bypasses API authentication for quick testing
  */
 
-import { deploySite } from "@alive-brug/deploy-scripts"
+import { SiteOrchestrator, PATHS, DEFAULTS } from "@webalive/site-controller"
 
 const testSlug = process.argv[2] || `test-${Date.now()}`
 const domain = `${testSlug}.alive.best`
+const slug = testSlug.replace(/\./g, "-")
 
 console.log(`🚀 Testing deployment: ${domain}`)
-console.log(`📧 Email: test@bridge.internal`)
+console.log(`📧 Slug: ${slug}`)
 console.log("")
 
 try {
-  const result = await deploySite({
+  const result = await SiteOrchestrator.deploy({
     domain,
-    email: "test@bridge.internal",
-    password: "test123", // Will create if doesn't exist
+    slug,
+    templatePath: PATHS.TEMPLATE_PATH,
+    serverIp: DEFAULTS.SERVER_IP,
+    wildcardDomain: DEFAULTS.WILDCARD_DOMAIN,
+    rollbackOnFailure: true,
   })
+
+  if (!result.success) {
+    throw new Error(result.error || "Deployment failed")
+  }
 
   console.log("")
   console.log("✅ DEPLOYMENT SUCCESSFUL!")
@@ -27,11 +35,8 @@ try {
   console.log(`   Domain: ${result.domain}`)
   console.log(`   Port: ${result.port}`)
   console.log(`   Service: ${result.serviceName}`)
-  console.log(`   Directory: ${result.siteDirectory}`)
-  console.log(`   Env File: ${result.envFile}`)
   console.log("")
   console.log("🔍 Verification Commands:")
-  console.log(`   Check env file:  cat ${result.envFile}`)
   console.log(`   Check service:   systemctl status ${result.serviceName}`)
   console.log(`   Check port:      lsof -i :${result.port}`)
   console.log(`   Test site:       curl -I http://localhost:${result.port}`)

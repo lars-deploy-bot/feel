@@ -1,4 +1,4 @@
-.PHONY: help staging dev logs-prod logs-staging logs-dev status rollback wash wash-skip shell
+.PHONY: help staging dev logs-prod logs-staging logs-dev status rollback wash wash-skip shell build\:shell test\:shell
 
 # Load environment variables from .env
 ifneq (,$(wildcard .env))
@@ -20,6 +20,8 @@ help:
 	@echo "  make dev           Rebuild and restart dev environment (port 8997, hot-reload)"
 	@echo "  make dev:turbo     Run all monorepo dev servers with Turbo"
 	@echo "  make shell         Run shell-server locally (port 3500)"
+	@echo "  make build:shell   Build, test, and restart shell-server"
+	@echo "  make test:shell    Run shell-server build verification tests"
 	@echo ""
 	@echo "$(GREEN)Logs:$(NC)"
 	@echo "  make logs-prod     View production logs (systemd)"
@@ -56,6 +58,23 @@ rollback:
 
 dev\:turbo:
 	@bun run dev:turbo
+
+build\:shell:
+	@echo "$(BLUE)Building shell-server...$(NC)"
+	@cd apps/shell-server && bun run build
+	@echo "$(GREEN)✓ Shell-server built successfully$(NC)"
+	@echo "$(BLUE)Running build verification tests...$(NC)"
+	@cd apps/shell-server && bun run test
+	@echo "$(GREEN)✓ All tests passed$(NC)"
+	@echo "$(BLUE)Restarting shell-server service...$(NC)"
+	@systemctl restart shell-server
+	@sleep 1
+	@echo "$(GREEN)✓ Service restarted$(NC)"
+	@systemctl status shell-server --no-pager -l | head -8
+
+test\:shell:
+	@echo "$(BLUE)Running shell-server tests...$(NC)"
+	@cd apps/shell-server && bun run test
 
 # Never inspect
 wash:

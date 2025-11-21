@@ -20,6 +20,9 @@ Claude Bridge is a multi-tenant development platform enabling Claude AI to assis
 | [Message Handling](./message-handling.md) | SSE streaming, tool tracking, message grouping, rendering |
 | [Session Management](./session-management.md) | Session persistence, conversation locking, resumption |
 | [Credits & Tokens](./credits-and-tokens.md) | Credit system, LLM token conversion, model selection |
+| [Atomic Credit Charging](./atomic-credit-charging.md) | Race condition fix, database RPC, concurrent safety |
+| [Shell Server Config](./shell-server-config.md) | Environment-specific terminal configuration |
+| [DNS Verification](./dns-verification.md) | CDN/proxy support, origin validation |
 | [Deployment Architecture](../deployment/CURRENT_ARCHITECTURE.md) | Current site deployment flow (with known issues) |
 
 ## Request → Response Pipeline
@@ -82,6 +85,7 @@ apps/web/
 
 ## Tech Stack
 
+### Core Stack
 - **Next.js 16** - React framework (App Router)
 - **React 19** - UI library (concurrent features)
 - **Claude Agent SDK 0.1.25** - AI integration (query, streaming, tools)
@@ -89,6 +93,23 @@ apps/web/
 - **TypeScript 5.x** - Type safety (strict mode)
 - **TailwindCSS 4** - Utility-first styling
 - **Zustand** - State management (atomic selectors pattern)
+
+### Infrastructure Packages
+
+| Package | Purpose |
+|---------|---------|
+| [@webalive/site-controller](../../packages/site-controller/README.md) | Site deployment with Shell-Operator Pattern |
+| [@webalive/oauth-core](../../packages/oauth-core/README.md) | Multi-tenant OAuth with AES-256-GCM encryption |
+| [@alive-brug/redis](../../packages/redis/README.md) | Redis client with automatic retry |
+| [@webalive/template](../../packages/template/README.md) | Template for new site deployments |
+| [@webalive/guides](../../packages/guides/README.md) | Shared guide templates |
+| [@webalive/images](../../packages/images/README.md) | Shared images and assets |
+
+### Database
+- **Supabase (PostgreSQL)** - Primary database with RLS
+- **IAM Schema** - Users, orgs, sessions (`iam.*`)
+- **App Schema** - Domains, sources, uploads (`app.*`)
+- **Lockbox Schema** - Encrypted secrets (`lockbox.*`)
 
 ## Key Files Reference
 
@@ -136,6 +157,25 @@ if (shouldUseChildProcess(workspace.root)) {
   // All file ops inherit workspace user credentials
 }
 ```
+
+### Atomic Credit Operations
+
+Prevent race conditions in concurrent credit charging:
+
+```typescript
+// ❌ BAD: Read-modify-write (race condition)
+const balance = await getBalance()
+await setBalance(balance - amount)
+
+// ✅ GOOD: Atomic database operation
+const { data } = await iam.rpc('deduct_credits', {
+  p_org_id: orgId,
+  p_amount: amount
+})
+// Returns new balance or null if insufficient
+```
+
+See [Atomic Credit Charging](./atomic-credit-charging.md) for complete analysis.
 
 ### Conversation Locking
 

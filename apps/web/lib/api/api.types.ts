@@ -1,18 +1,16 @@
-import type { apiSchemas } from "@/lib/api/schemas"
-import type { z } from "zod"
+/**
+ * @deprecated This file re-exports types for backward compatibility.
+ * New code should import directly from '@/lib/api/schemas' instead.
+ *
+ * Migration guide:
+ *   ❌ import { type Endpoint, type Req, type Res } from '@/lib/api/api.types'
+ *   ✅ import { type Endpoint, type Req, type Res } from '@/lib/api/schemas'
+ *
+ * This file will be removed in a future version.
+ */
+import type { Endpoint, Req, Res } from "@/lib/api/schemas"
 
-export type ApiSchemas = typeof apiSchemas
-export type Endpoint = keyof ApiSchemas
-export type Req<E extends Endpoint> = ApiSchemas[E] extends { req: infer R }
-  ? R extends z.ZodTypeAny
-    ? z.infer<R>
-    : never
-  : never
-export type Res<E extends Endpoint> = ApiSchemas[E] extends { res: infer R }
-  ? R extends z.ZodTypeAny
-    ? z.infer<R>
-    : never
-  : never
+export type { Endpoint, Req, Res }
 
 /**
  * Default path mapping: /api/<endpoint>

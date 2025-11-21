@@ -1,3 +1,4 @@
+import { DEFAULTS } from "@webalive/shared"
 import type { NextRequest } from "next/server"
 import { requireManagerAuth } from "@/features/manager/lib/api-helpers"
 import { createCorsSuccessResponse } from "@/lib/api/responses"
@@ -12,7 +13,7 @@ import {
 import { fetchSourceSafely } from "@/lib/manager/source-utils"
 import type { SourceData } from "@/types/sources"
 
-const SERVER_IP = "138.201.56.93"
+const SERVER_IP = DEFAULTS.SERVER_IP
 
 /**
  * Source fetcher registry for parallel execution

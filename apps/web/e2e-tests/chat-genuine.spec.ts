@@ -45,9 +45,9 @@ interface ErrorResponse {
  */
 async function loginGenuine(page: Page): Promise<void> {
   await page.goto("/")
-  await page.getByPlaceholder("you@example.com").fill(TEST_USER.email)
-  await page.getByPlaceholder("Enter your password").fill(TEST_USER.password)
-  await page.getByRole("button", { name: "Continue" }).click()
+  await page.getByTestId("email-input").fill(TEST_USER.email)
+  await page.getByTestId("password-input").fill(TEST_USER.password)
+  await page.getByTestId("login-button").click()
 
   // Wait for navigation to /chat (event-based, not timeout)
   await page.waitForURL("/chat", { timeout: TEST_TIMEOUTS.max })

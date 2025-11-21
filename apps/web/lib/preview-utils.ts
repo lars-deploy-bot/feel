@@ -2,7 +2,9 @@
  * Shared utilities for preview subdomain handling
  */
 
-const PREVIEW_BASE = "preview.terminal.goalive.nl"
+import { DOMAINS } from "@webalive/shared"
+
+const PREVIEW_BASE = DOMAINS.PREVIEW_BASE
 
 /**
  * Convert workspace domain to preview subdomain label

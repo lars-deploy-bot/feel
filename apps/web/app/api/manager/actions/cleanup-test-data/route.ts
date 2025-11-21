@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { isManagerAuthenticated } from "@/features/auth/lib/auth"
+import { createCorsErrorResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { addCorsHeaders } from "@/lib/cors-utils"
+import { ErrorCodes } from "@/lib/error-codes"
 import { cleanupTestDatabase } from "@/lib/test-helpers/cleanup-test-database"
 import { generateRequestId } from "@/lib/utils"
 
@@ -17,12 +19,7 @@ export async function POST(req: NextRequest) {
 
   // Check manager authentication
   if (!(await isManagerAuthenticated())) {
-    const res = NextResponse.json(
-      { ok: false, error: "UNAUTHORIZED", message: "Manager authentication required", requestId },
-      { status: 401 },
-    )
-    addCorsHeaders(res, origin)
-    return res
+    return createCorsErrorResponse(origin, ErrorCodes.UNAUTHORIZED, 401, { requestId })
   }
 
   try {
@@ -35,28 +32,15 @@ export async function POST(req: NextRequest) {
 
     console.log(`[Manager] Test cleanup ${dryRun ? "preview" : "completed"}:`, stats)
 
-    const res = NextResponse.json({
-      ok: true,
+    return createCorsSuccessResponse(origin, {
       dryRun,
       stats,
       message: dryRun ? "Preview complete - no data was deleted" : "Test data cleanup completed successfully",
       requestId,
     })
-    addCorsHeaders(res, origin)
-    return res
   } catch (error) {
     console.error("[Manager] Test cleanup failed:", error)
-    const res = NextResponse.json(
-      {
-        ok: false,
-        error: "CLEANUP_FAILED",
-        message: error instanceof Error ? error.message : "Failed to clean up test data",
-        requestId,
-      },
-      { status: 500 },
-    )
-    addCorsHeaders(res, origin)
-    return res
+    return createCorsErrorResponse(origin, ErrorCodes.INTERNAL_ERROR, 500, { requestId })
   }
 }
 

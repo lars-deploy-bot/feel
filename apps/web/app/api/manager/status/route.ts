@@ -1,6 +1,7 @@
 import { exec } from "node:child_process"
 import { readFile } from "node:fs/promises"
 import { promisify } from "node:util"
+import { DEFAULTS, PATHS, TIMEOUTS } from "@webalive/shared"
 import type { NextRequest } from "next/server"
 import { requireManagerAuth } from "@/features/manager/lib/api-helpers"
 import { createCorsSuccessResponse } from "@/lib/api/responses"
@@ -17,8 +18,7 @@ interface ServerConfig {
 
 async function loadServerConfig(): Promise<ServerConfig | null> {
   try {
-    const configPath = "/var/lib/claude-bridge/server-config.json"
-    const data = await readFile(configPath, "utf-8")
+    const data = await readFile(PATHS.SERVER_CONFIG, "utf-8")
     return JSON.parse(data)
   } catch {
     return null
@@ -37,7 +37,7 @@ async function checkPortListening(port: number): Promise<boolean> {
 async function checkHttpAccessible(domain: string): Promise<boolean> {
   try {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 3000)
+    const timeout = setTimeout(() => controller.abort(), TIMEOUTS.HTTP_REQUEST)
 
     const response = await fetch(`http://${domain}`, {
       signal: controller.signal,
@@ -54,7 +54,7 @@ async function checkHttpAccessible(domain: string): Promise<boolean> {
 async function checkHttpsAccessible(domain: string): Promise<boolean> {
   try {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 3000)
+    const timeout = setTimeout(() => controller.abort(), TIMEOUTS.HTTP_REQUEST)
 
     const response = await fetch(`https://${domain}`, {
       signal: controller.signal,
@@ -90,8 +90,9 @@ async function checkSystemdService(domain: string): Promise<{ exists: boolean; r
 
 async function checkCaddyConfigured(domain: string): Promise<boolean> {
   try {
-    const caddyfilePath = "/root/webalive/claude-bridge/Caddyfile"
-    const { stdout } = await execAsync(`grep -q "^${domain} {" ${caddyfilePath} && echo "found" || echo "missing"`)
+    const { stdout } = await execAsync(
+      `grep -q "^${domain} {" ${PATHS.CADDYFILE_PATH} && echo "found" || echo "missing"`,
+    )
     return stdout.trim() === "found"
   } catch {
     return false
@@ -101,9 +102,9 @@ async function checkCaddyConfigured(domain: string): Promise<boolean> {
 async function checkSiteDirectory(domain: string): Promise<boolean> {
   try {
     const possiblePaths = [
-      `/srv/webalive/sites/${domain}`,
-      `/srv/webalive/sites/${domain.replace(/\./g, "-")}`,
-      `/root/webalive/sites/${domain}`,
+      `${PATHS.SITES_ROOT}/${domain}`,
+      `${PATHS.SITES_ROOT}/${domain.replace(/\./g, "-")}`,
+      `${PATHS.LEGACY_SITES_ROOT}/${domain}`,
     ]
 
     for (const path of possiblePaths) {
@@ -145,7 +146,7 @@ async function checkDnsResolution(
     for (const protocol of ["https", "http"]) {
       try {
         const controller = new AbortController()
-        const timeout = setTimeout(() => controller.abort(), 3000)
+        const timeout = setTimeout(() => controller.abort(), TIMEOUTS.HTTP_REQUEST)
 
         const response = await fetch(`${protocol}://${domain}${verificationPath}`, {
           signal: controller.signal,
@@ -188,7 +189,7 @@ async function checkViteConfigPort(
   expectedPort: number,
 ): Promise<{ mismatch: boolean; actualPort: number | null; hasSystemdOverride: boolean }> {
   try {
-    const sitePath = `/srv/webalive/sites/${domain}`
+    const sitePath = `${PATHS.SITES_ROOT}/${domain}`
     const slug = domain.replace(/[^a-zA-Z0-9]/g, "-")
 
     // Check for systemd override file
@@ -241,7 +242,7 @@ export async function GET(req: NextRequest) {
   const domains = await getAllDomains()
   const statuses: DomainStatus[] = []
   const serverConfig = await loadServerConfig()
-  const serverIp = serverConfig?.serverIp || "138.201.56.93"
+  const serverIp = serverConfig?.serverIp || DEFAULTS.SERVER_IP
 
   const checks = domains.map(async domainInfo => {
     const domain = domainInfo.hostname

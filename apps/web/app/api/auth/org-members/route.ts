@@ -1,7 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
-import { createCorsResponse, createCorsSuccessResponse } from "@/lib/api/responses"
+import { createCorsErrorResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { addCorsHeaders } from "@/lib/cors-utils"
+import { ErrorCodes } from "@/lib/error-codes"
 import { createIamClient } from "@/lib/supabase/iam"
 import { generateRequestId } from "@/lib/utils"
 
@@ -16,11 +17,7 @@ export async function GET(req: NextRequest) {
   // Check authentication
   const user = await getSessionUser()
   if (!user) {
-    return createCorsResponse(
-      origin,
-      { ok: false, error: "UNAUTHORIZED", message: "Authentication required", requestId },
-      401,
-    )
+    return createCorsErrorResponse(origin, ErrorCodes.UNAUTHORIZED, 401, { requestId })
   }
 
   try {
@@ -28,11 +25,7 @@ export async function GET(req: NextRequest) {
     const orgId = searchParams.get("orgId")
 
     if (!orgId) {
-      return createCorsResponse(
-        origin,
-        { ok: false, error: "INVALID_REQUEST", message: "orgId is required", requestId },
-        400,
-      )
+      return createCorsErrorResponse(origin, ErrorCodes.INVALID_REQUEST, 400, { requestId })
     }
 
     const iam = await createIamClient("service")
@@ -55,11 +48,7 @@ export async function GET(req: NextRequest) {
 
     if (membersError) {
       console.error("[Org Members] Failed to fetch members:", membersError)
-      return createCorsResponse(
-        origin,
-        { ok: false, error: "DATABASE_ERROR", message: "Failed to fetch members", requestId },
-        500,
-      )
+      return createCorsErrorResponse(origin, ErrorCodes.INTERNAL_ERROR, 500, { requestId })
     }
 
     // Transform the data to a flatter structure and sort by email
@@ -78,11 +67,7 @@ export async function GET(req: NextRequest) {
     })
   } catch (error) {
     console.error("[Org Members] Unexpected error:", error)
-    return createCorsResponse(
-      origin,
-      { ok: false, error: "INTERNAL_ERROR", message: "An unexpected error occurred", requestId },
-      500,
-    )
+    return createCorsErrorResponse(origin, ErrorCodes.INTERNAL_ERROR, 500, { requestId })
   }
 }
 
@@ -97,11 +82,7 @@ export async function DELETE(req: NextRequest) {
   // Check authentication
   const user = await getSessionUser()
   if (!user) {
-    return createCorsResponse(
-      origin,
-      { ok: false, error: "UNAUTHORIZED", message: "Authentication required", requestId },
-      401,
-    )
+    return createCorsErrorResponse(origin, ErrorCodes.UNAUTHORIZED, 401, { requestId })
   }
 
   const userId = user.id
@@ -111,11 +92,7 @@ export async function DELETE(req: NextRequest) {
     const { orgId, targetUserId } = body
 
     if (!orgId || !targetUserId) {
-      return createCorsResponse(
-        origin,
-        { ok: false, error: "INVALID_REQUEST", message: "orgId and targetUserId are required", requestId },
-        400,
-      )
+      return createCorsErrorResponse(origin, ErrorCodes.INVALID_REQUEST, 400, { requestId })
     }
 
     const iam = await createIamClient("service")
@@ -129,11 +106,7 @@ export async function DELETE(req: NextRequest) {
       .single()
 
     if (currentUserError || !currentUserMembership) {
-      return createCorsResponse(
-        origin,
-        { ok: false, error: "FORBIDDEN", message: "You are not a member of this organization", requestId },
-        403,
-      )
+      return createCorsErrorResponse(origin, ErrorCodes.ORG_ACCESS_DENIED, 403, { requestId })
     }
 
     // Get target user's role
@@ -145,11 +118,7 @@ export async function DELETE(req: NextRequest) {
       .single()
 
     if (targetError || !targetMembership) {
-      return createCorsResponse(
-        origin,
-        { ok: false, error: "NOT_FOUND", message: "Target user is not a member of this organization", requestId },
-        404,
-      )
+      return createCorsErrorResponse(origin, ErrorCodes.ORG_NOT_FOUND, 404, { requestId })
     }
 
     // Permission check
@@ -161,19 +130,11 @@ export async function DELETE(req: NextRequest) {
     // Admin can remove members (but not other admins or owner)
     // Members cannot remove anyone, but can leave themselves
     if (currentRole === "member" && !isLeavingOrg) {
-      return createCorsResponse(
-        origin,
-        { ok: false, error: "FORBIDDEN", message: "Members cannot remove other members", requestId },
-        403,
-      )
+      return createCorsErrorResponse(origin, ErrorCodes.ORG_ACCESS_DENIED, 403, { requestId })
     }
 
     if (currentRole === "admin" && !isLeavingOrg && (targetRole === "admin" || targetRole === "owner")) {
-      return createCorsResponse(
-        origin,
-        { ok: false, error: "FORBIDDEN", message: "Admins cannot remove other admins or the owner", requestId },
-        403,
-      )
+      return createCorsErrorResponse(origin, ErrorCodes.ORG_ACCESS_DENIED, 403, { requestId })
     }
 
     // Allow users to leave (remove themselves), but prevent admins/owners from removing themselves if they're the only one
@@ -188,24 +149,11 @@ export async function DELETE(req: NextRequest) {
 
       if (otherOwnersError) {
         console.error("[Org Members] Failed to check for other owners:", otherOwnersError)
-        return createCorsResponse(
-          origin,
-          { ok: false, error: "DATABASE_ERROR", message: "Failed to process request", requestId },
-          500,
-        )
+        return createCorsErrorResponse(origin, ErrorCodes.INTERNAL_ERROR, 500, { requestId })
       }
 
       if (!otherOwners || otherOwners.length === 0) {
-        return createCorsResponse(
-          origin,
-          {
-            ok: false,
-            error: "FORBIDDEN",
-            message: "You cannot leave the organization while being the only owner",
-            requestId,
-          },
-          403,
-        )
+        return createCorsErrorResponse(origin, ErrorCodes.ORG_ACCESS_DENIED, 403, { requestId })
       }
     }
 
@@ -218,11 +166,7 @@ export async function DELETE(req: NextRequest) {
 
     if (deleteError) {
       console.error("[Org Members] Failed to remove member:", deleteError)
-      return createCorsResponse(
-        origin,
-        { ok: false, error: "DATABASE_ERROR", message: "Failed to remove member", requestId },
-        500,
-      )
+      return createCorsErrorResponse(origin, ErrorCodes.INTERNAL_ERROR, 500, { requestId })
     }
 
     console.log(`[Org Members] User ${userId} removed ${targetUserId} from org ${orgId}`)
@@ -233,11 +177,7 @@ export async function DELETE(req: NextRequest) {
     })
   } catch (error) {
     console.error("[Org Members] Unexpected error:", error)
-    return createCorsResponse(
-      origin,
-      { ok: false, error: "INTERNAL_ERROR", message: "An unexpected error occurred", requestId },
-      500,
-    )
+    return createCorsErrorResponse(origin, ErrorCodes.INTERNAL_ERROR, 500, { requestId })
   }
 }
 

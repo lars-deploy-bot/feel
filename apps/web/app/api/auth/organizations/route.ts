@@ -1,28 +1,23 @@
+import { randomUUID } from "node:crypto"
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
-import { createCorsResponse, createCorsSuccessResponse } from "@/lib/api/responses"
+import { createCorsErrorResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { COOKIE_NAMES, getClearCookieOptions } from "@/lib/auth/cookies"
 import { addCorsHeaders } from "@/lib/cors-utils"
+import { ErrorCodes } from "@/lib/error-codes"
 import { createAppClient } from "@/lib/supabase/app"
 import { createIamClient } from "@/lib/supabase/iam"
 
 export async function GET(req: NextRequest) {
   const origin = req.headers.get("origin")
+  const requestId = randomUUID()
 
   try {
     // Get authenticated user
     const user = await getSessionUser()
     if (!user) {
       // Clear stale/invalid session cookie to prevent infinite 401 loops
-      const res = createCorsResponse(
-        origin,
-        {
-          ok: false,
-          error: "Unauthorized",
-          organizations: [],
-        },
-        401,
-      )
+      const res = createCorsErrorResponse(origin, ErrorCodes.UNAUTHORIZED, 401, { requestId })
 
       // Clear invalid session cookie (auto-cleanup for stuck mobile sessions)
       res.cookies.set(COOKIE_NAMES.SESSION, "", getClearCookieOptions())
@@ -55,15 +50,7 @@ export async function GET(req: NextRequest) {
 
     if (membershipError) {
       console.error("[Organizations API] Error fetching memberships:", membershipError)
-      return createCorsResponse(
-        origin,
-        {
-          ok: false,
-          error: "Failed to fetch organizations",
-          organizations: [],
-        },
-        500,
-      )
+      return createCorsErrorResponse(origin, ErrorCodes.INTERNAL_ERROR, 500, { requestId })
     }
 
     if (!memberships || memberships.length === 0) {
@@ -83,15 +70,7 @@ export async function GET(req: NextRequest) {
 
     if (orgsError) {
       console.error("[Organizations API] Error fetching orgs:", orgsError)
-      return createCorsResponse(
-        origin,
-        {
-          ok: false,
-          error: "Failed to fetch organizations",
-          organizations: [],
-        },
-        500,
-      )
+      return createCorsErrorResponse(origin, ErrorCodes.INTERNAL_ERROR, 500, { requestId })
     }
 
     // Get workspace counts for each org
@@ -134,33 +113,19 @@ export async function GET(req: NextRequest) {
     })
   } catch (error) {
     console.error("[Organizations API] Unexpected error:", error)
-    return createCorsResponse(
-      origin,
-      {
-        ok: false,
-        error: "Internal server error",
-        organizations: [],
-      },
-      500,
-    )
+    return createCorsErrorResponse(origin, ErrorCodes.INTERNAL_ERROR, 500, { requestId })
   }
 }
 
 export async function PATCH(req: NextRequest) {
   const origin = req.headers.get("origin")
+  const requestId = randomUUID()
 
   try {
     // Get authenticated user
     const user = await getSessionUser()
     if (!user) {
-      return createCorsResponse(
-        origin,
-        {
-          ok: false,
-          error: "Unauthorized",
-        },
-        401,
-      )
+      return createCorsErrorResponse(origin, ErrorCodes.UNAUTHORIZED, 401, { requestId })
     }
 
     // Parse request body
@@ -168,38 +133,17 @@ export async function PATCH(req: NextRequest) {
     const { org_id, name } = body
 
     if (!org_id || !name) {
-      return createCorsResponse(
-        origin,
-        {
-          ok: false,
-          error: "Missing required fields: org_id and name",
-        },
-        400,
-      )
+      return createCorsErrorResponse(origin, ErrorCodes.INVALID_REQUEST, 400, { requestId })
     }
 
     // Validate name
     const trimmedName = name.trim()
     if (trimmedName.length === 0) {
-      return createCorsResponse(
-        origin,
-        {
-          ok: false,
-          error: "Organization name cannot be empty",
-        },
-        400,
-      )
+      return createCorsErrorResponse(origin, ErrorCodes.VALIDATION_ERROR, 400, { requestId })
     }
 
     if (trimmedName.length > 100) {
-      return createCorsResponse(
-        origin,
-        {
-          ok: false,
-          error: "Organization name cannot exceed 100 characters",
-        },
-        400,
-      )
+      return createCorsErrorResponse(origin, ErrorCodes.VALIDATION_ERROR, 400, { requestId })
     }
 
     // Check if user has permission to update this org
@@ -212,26 +156,12 @@ export async function PATCH(req: NextRequest) {
       .single()
 
     if (membershipError || !membership) {
-      return createCorsResponse(
-        origin,
-        {
-          ok: false,
-          error: "You are not a member of this organization",
-        },
-        403,
-      )
+      return createCorsErrorResponse(origin, ErrorCodes.ORG_ACCESS_DENIED, 403, { requestId })
     }
 
     // Only owners and admins can update org name
     if (membership.role !== "owner" && membership.role !== "admin") {
-      return createCorsResponse(
-        origin,
-        {
-          ok: false,
-          error: "Only organization owners and admins can update the organization name",
-        },
-        403,
-      )
+      return createCorsErrorResponse(origin, ErrorCodes.UNAUTHORIZED, 403, { requestId })
     }
 
     // Update organization name
@@ -244,14 +174,7 @@ export async function PATCH(req: NextRequest) {
 
     if (updateError) {
       console.error("[Organizations API] Error updating org:", updateError)
-      return createCorsResponse(
-        origin,
-        {
-          ok: false,
-          error: "Failed to update organization",
-        },
-        500,
-      )
+      return createCorsErrorResponse(origin, ErrorCodes.INTERNAL_ERROR, 500, { requestId })
     }
 
     return createCorsSuccessResponse(origin, {
@@ -259,14 +182,7 @@ export async function PATCH(req: NextRequest) {
     })
   } catch (error) {
     console.error("[Organizations API] Unexpected error in PATCH:", error)
-    return createCorsResponse(
-      origin,
-      {
-        ok: false,
-        error: "Internal server error",
-      },
-      500,
-    )
+    return createCorsErrorResponse(origin, ErrorCodes.INTERNAL_ERROR, 500, { requestId })
   }
 }
 

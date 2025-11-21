@@ -22,7 +22,8 @@ export const DeploySubdomainResponseSchema = z.object({
   message: z.string(),
   domain: z.string().optional(),
   chatUrl: z.string().optional(),
-  error: z.string().optional(),
+  orgId: z.string().optional(),
+  error: z.string().optional(), // Error code from lib/error-codes.ts
   details: z.unknown().optional(),
 })
 

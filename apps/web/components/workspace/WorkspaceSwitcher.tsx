@@ -59,7 +59,11 @@ export function WorkspaceSwitcher({ currentWorkspace, onWorkspaceChange }: Works
 
   if (!selectedOrgId) {
     return (
-      <span className="ml-3 text-xs text-orange-600 dark:text-orange-400" title="Select an organization in Settings">
+      <span
+        className="ml-3 text-xs text-orange-600 dark:text-orange-400"
+        title="Select an organization in Settings"
+        data-testid="no-org-selected"
+      >
         no org selected
       </span>
     )
@@ -68,7 +72,7 @@ export function WorkspaceSwitcher({ currentWorkspace, onWorkspaceChange }: Works
   if (error) {
     return (
       <div className="ml-3 flex items-center gap-2">
-        <span className="text-xs text-red-600 dark:text-red-400" title={error}>
+        <span className="text-xs text-red-600 dark:text-red-400" title={error} data-testid="workspace-error">
           error loading sites
         </span>
         <button
@@ -76,6 +80,7 @@ export function WorkspaceSwitcher({ currentWorkspace, onWorkspaceChange }: Works
           onClick={retry}
           disabled={loading}
           className="px-2 py-0.5 text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          data-testid="workspace-error-retry"
         >
           {loading ? "..." : "retry"}
         </button>
@@ -91,8 +96,9 @@ export function WorkspaceSwitcher({ currentWorkspace, onWorkspaceChange }: Works
         className={`ml-3 font-diatype-mono font-medium hover:text-black dark:hover:text-white transition-colors flex items-center gap-1 ${
           currentWorkspace ? "text-black/80 dark:text-white/80" : "text-black/60 dark:text-white/60"
         }`}
+        data-testid="workspace-switcher"
       >
-        <span>{currentWorkspace || (loading ? "loading..." : "select")}</span>
+        <span data-testid="workspace-switcher-text">{currentWorkspace || (loading ? "loading..." : "select")}</span>
         <ChevronDown size={10} className={`transition-transform ${isOpen ? "rotate-180" : ""}`} />
       </button>
 

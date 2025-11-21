@@ -1,5 +1,6 @@
 import { exec } from "node:child_process"
 import { promisify } from "node:util"
+import { DOMAINS, PATHS } from "@webalive/shared"
 import { type NextRequest, NextResponse } from "next/server"
 import { requireManagerAuth } from "@/features/manager/lib/api-helpers"
 import { createCorsErrorResponse, createCorsResponse, createCorsSuccessResponse } from "@/lib/api/responses"
@@ -29,8 +30,7 @@ async function detectOrphanedDomains(): Promise<string[]> {
   }
 
   try {
-    const caddyfilePath = "/root/webalive/claude-bridge/Caddyfile"
-    const { stdout: caddyContent } = await execAsync(`cat ${caddyfilePath}`)
+    const { stdout: caddyContent } = await execAsync(`cat ${PATHS.CADDYFILE_PATH}`)
     const caddyMatches = caddyContent.matchAll(/^([a-zA-Z0-9.-]+)\s+\{/gm)
     for (const match of caddyMatches) {
       orphaned.add(match[1])
@@ -43,7 +43,7 @@ async function detectOrphanedDomains(): Promise<string[]> {
 }
 
 function isPreviewDomain(domain: string): boolean {
-  return domain.includes(".preview.terminal.goalive.nl")
+  return domain.includes(`.${DOMAINS.PREVIEW_BASE}`)
 }
 
 export async function GET(req: NextRequest) {
@@ -181,9 +181,7 @@ export async function DELETE(req: NextRequest) {
     }
 
     try {
-      const { stdout, stderr } = await execAsync(
-        `/root/webalive/claude-bridge/scripts/sites/delete-site-systemd.sh ${domain}`,
-      )
+      const { stdout, stderr } = await execAsync(`${PATHS.BRIDGE_ROOT}/scripts/sites/delete-site-systemd.sh ${domain}`)
       return createCorsSuccessResponse(origin, { output: stdout, error: stderr || null, requestId })
     } catch (error) {
       return createCorsErrorResponse(origin, ErrorCodes.INTERNAL_ERROR, 500, {

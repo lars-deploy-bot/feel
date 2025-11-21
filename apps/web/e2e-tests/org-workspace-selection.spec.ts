@@ -35,9 +35,9 @@ test.describe("Organization and Workspace Selection", () => {
     const email = isDev ? DEV_EMAIL : TEST_EMAIL
     const password = isDev ? DEV_PASSWORD : TEST_PASSWORD
 
-    await page.getByPlaceholder("you@example.com").fill(email)
-    await page.getByPlaceholder("Enter your password").fill(password)
-    await page.getByRole("button", { name: "Continue" }).click()
+    await page.getByTestId("email-input").fill(email)
+    await page.getByTestId("password-input").fill(password)
+    await page.getByTestId("login-button").click()
 
     // Wait for chat page
     await expect(page).toHaveURL(/\/chat/, { timeout: 10000 })
@@ -46,9 +46,9 @@ test.describe("Organization and Workspace Selection", () => {
     // The chat page fetches organizations on mount (line 154 in page.tsx)
     await page.waitForTimeout(2000)
 
-    // Check for workspace switcher (always terminal mode)
-    const workspaceInfo = page.locator('text="site"').first()
-    await expect(workspaceInfo).toBeVisible({ timeout: 5000 })
+    // Check for workspace section (always terminal mode)
+    const workspaceSection = page.getByTestId("workspace-section")
+    await expect(workspaceSection).toBeVisible({ timeout: 5000 })
 
     // Should not show error state
     await expect(page.getByText("Failed to load organizations")).not.toBeVisible()
@@ -58,38 +58,38 @@ test.describe("Organization and Workspace Selection", () => {
     const email = isDev ? DEV_EMAIL : TEST_EMAIL
     const password = isDev ? DEV_PASSWORD : TEST_PASSWORD
 
-    await page.getByPlaceholder("you@example.com").fill(email)
-    await page.getByPlaceholder("Enter your password").fill(password)
-    await page.getByRole("button", { name: "Continue" }).click()
+    await page.getByTestId("email-input").fill(email)
+    await page.getByTestId("password-input").fill(password)
+    await page.getByTestId("login-button").click()
 
     await expect(page).toHaveURL(/\/chat/, { timeout: 10000 })
 
     // Wait for org auto-selection
     await page.waitForTimeout(3000)
 
-    // Workspace switcher should be visible with a workspace (always terminal mode)
-    const siteLabel = page.locator('text="site"').first()
-    await expect(siteLabel).toBeVisible({ timeout: 5000 })
+    // Workspace section should be visible (always terminal mode)
+    const workspaceSection = page.getByTestId("workspace-section")
+    await expect(workspaceSection).toBeVisible({ timeout: 5000 })
 
     // Should not show "no org selected" error
-    await expect(page.getByText("no org selected")).not.toBeVisible()
+    await expect(page.getByTestId("no-org-selected")).not.toBeVisible()
   })
 
   test("loads workspaces for selected organization", async ({ page }) => {
     const email = isDev ? DEV_EMAIL : TEST_EMAIL
     const password = isDev ? DEV_PASSWORD : TEST_PASSWORD
 
-    await page.getByPlaceholder("you@example.com").fill(email)
-    await page.getByPlaceholder("Enter your password").fill(password)
-    await page.getByRole("button", { name: "Continue" }).click()
+    await page.getByTestId("email-input").fill(email)
+    await page.getByTestId("password-input").fill(password)
+    await page.getByTestId("login-button").click()
 
     await expect(page).toHaveURL(/\/chat/, { timeout: 10000 })
 
     // Wait for org and workspace auto-selection
     await page.waitForTimeout(3000)
 
-    // Look for workspace name or "loading..." indicator
-    const workspaceSection = page.locator('text="site"').first().locator("..")
+    // Look for workspace section
+    const workspaceSection = page.getByTestId("workspace-section")
     await expect(workspaceSection).toBeVisible({ timeout: 5000 })
 
     // Should not be stuck on "loading..."
@@ -97,16 +97,16 @@ test.describe("Organization and Workspace Selection", () => {
     expect(workspaceText).not.toContain("loading...")
 
     // Should not show error
-    await expect(page.getByText("error loading sites")).not.toBeVisible()
+    await expect(page.getByTestId("workspace-error")).not.toBeVisible()
   })
 
   test("auto-selects first workspace when org is selected", async ({ page }) => {
     const email = isDev ? DEV_EMAIL : TEST_EMAIL
     const password = isDev ? DEV_PASSWORD : TEST_PASSWORD
 
-    await page.getByPlaceholder("you@example.com").fill(email)
-    await page.getByPlaceholder("Enter your password").fill(password)
-    await page.getByRole("button", { name: "Continue" }).click()
+    await page.getByTestId("email-input").fill(email)
+    await page.getByTestId("password-input").fill(password)
+    await page.getByTestId("login-button").click()
 
     await expect(page).toHaveURL(/\/chat/, { timeout: 10000 })
 
@@ -134,12 +134,12 @@ test.describe("Organization and Workspace Selection", () => {
         expect(placeholder).not.toBe("Select a site to start chatting...")
 
         // Verify workspace is shown
-        const siteSection = page.locator('text="site"').first().locator("..")
-        const siteText = await siteSection.textContent()
+        const workspaceSection = page.getByTestId("workspace-section")
+        const workspaceText = await workspaceSection.textContent()
 
         // Should show actual workspace name (not "loading..." or "select")
-        expect(siteText).not.toContain("loading...")
-        expect(siteText).not.toContain("select")
+        expect(workspaceText).not.toContain("loading...")
+        expect(workspaceText).not.toContain("select")
       }
     }
   })
@@ -153,17 +153,20 @@ test.describe("Organization and Workspace Selection", () => {
       route.abort("failed")
     })
 
-    await page.getByPlaceholder("you@example.com").fill(email)
-    await page.getByPlaceholder("Enter your password").fill(password)
-    await page.getByRole("button", { name: "Continue" }).click()
+    await page.getByTestId("email-input").fill(email)
+    await page.getByTestId("password-input").fill(password)
+    await page.getByTestId("login-button").click()
 
     await expect(page).toHaveURL(/\/chat/, { timeout: 10000 })
 
-    // Should show error message
-    await expect(page.getByText("Failed to load organizations")).toBeVisible({ timeout: 5000 })
+    // Settings modal should auto-open on org loading error
+    await expect(page.getByTestId("settings-modal")).toBeVisible({ timeout: 5000 })
 
-    // Should show retry button
-    const retryButton = page.getByRole("button", { name: "Retry" })
+    // Should show error message inside the modal
+    await expect(page.getByTestId("org-error-message")).toBeVisible()
+
+    // Should show retry button inside the modal
+    const retryButton = page.getByTestId("org-error-retry")
     await expect(retryButton).toBeVisible()
 
     // Click retry should attempt to reload
@@ -171,44 +174,50 @@ test.describe("Organization and Workspace Selection", () => {
     await retryButton.click()
 
     // Error should disappear after retry succeeds
-    await expect(page.getByText("Failed to load organizations")).not.toBeVisible({ timeout: 5000 })
+    await expect(page.getByTestId("org-error-message")).not.toBeVisible({ timeout: 5000 })
   })
 
   test("shows error and retry when workspace loading fails", async ({ page }) => {
     const email = isDev ? DEV_EMAIL : TEST_EMAIL
     const password = isDev ? DEV_PASSWORD : TEST_PASSWORD
 
-    await page.getByPlaceholder("you@example.com").fill(email)
-    await page.getByPlaceholder("Enter your password").fill(password)
-    await page.getByRole("button", { name: "Continue" }).click()
-
-    await expect(page).toHaveURL(/\/chat/, { timeout: 10000 })
-
-    // Wait for org to load, then block workspace API
-    await page.waitForTimeout(2000)
-
+    // Block workspace API BEFORE login to ensure fetch fails
     await page.route("**/api/auth/workspaces*", route => {
       route.abort("failed")
     })
 
-    // Open menu dropdown and click settings
-    await page.getByTestId("menu-button").click()
-    await page.getByTestId("settings-button").click()
+    await page.getByTestId("email-input").fill(email)
+    await page.getByTestId("password-input").fill(password)
+    await page.getByTestId("login-button").click()
+
+    await expect(page).toHaveURL(/\/chat/, { timeout: 10000 })
+
+    // Wait for workspace fetch to fail
+    await page.waitForTimeout(2000)
 
     // Should show error in workspace switcher (always terminal mode)
-    const errorIndicator = page.getByText("error loading sites")
+    const errorIndicator = page.getByTestId("workspace-error")
 
     // Only check if we're in terminal mode (workspace switcher visible)
     const hasWorkspaceSwitcher = await page
-      .locator('button:has-text("select")')
+      .getByTestId("workspace-switcher")
       .isVisible()
       .catch(() => false)
 
-    if (hasWorkspaceSwitcher) {
+    if (!hasWorkspaceSwitcher) {
+      // WorkspaceSwitcher should be visible in terminal mode
+      // If not visible, error is inline
       await expect(errorIndicator).toBeVisible({ timeout: 5000 })
 
       // Should have retry button
-      const retryButton = page.getByRole("button", { name: "retry" })
+      const retryButton = page.getByTestId("workspace-error-retry")
+      await expect(retryButton).toBeVisible()
+    } else {
+      // WorkspaceSwitcher is visible, check inline error
+      await expect(errorIndicator).toBeVisible({ timeout: 5000 })
+
+      // Should have retry button
+      const retryButton = page.getByTestId("workspace-error-retry")
       await expect(retryButton).toBeVisible()
     }
   })
@@ -229,9 +238,9 @@ test.describe("Organization and Workspace Selection", () => {
       })
     })
 
-    await page.getByPlaceholder("you@example.com").fill(email)
-    await page.getByPlaceholder("Enter your password").fill(password)
-    await page.getByRole("button", { name: "Continue" }).click()
+    await page.getByTestId("email-input").fill(email)
+    await page.getByTestId("password-input").fill(password)
+    await page.getByTestId("login-button").click()
 
     await expect(page).toHaveURL(/\/chat/, { timeout: 10000 })
 
@@ -262,9 +271,9 @@ test.describe("Organization Selection UI", () => {
     const email = isDev ? DEV_EMAIL : TEST_EMAIL
     const password = isDev ? DEV_PASSWORD : TEST_PASSWORD
 
-    await page.getByPlaceholder("you@example.com").fill(email)
-    await page.getByPlaceholder("Enter your password").fill(password)
-    await page.getByRole("button", { name: "Continue" }).click()
+    await page.getByTestId("email-input").fill(email)
+    await page.getByTestId("password-input").fill(password)
+    await page.getByTestId("login-button").click()
 
     await expect(page).toHaveURL(/\/chat/, { timeout: 10000 })
     await page.waitForTimeout(2000)
@@ -290,13 +299,13 @@ test.describe("Organization Selection UI", () => {
     // Wait for workspace to load
     await page.waitForTimeout(3000)
 
-    // Look for workspace switcher with dropdown
-    const workspaceSwitcher = page.locator('[class*="font-diatype-mono"]').first()
+    // Look for workspace switcher text
+    const workspaceSwitcherText = page.getByTestId("workspace-switcher-text")
 
-    const isVisible = await workspaceSwitcher.isVisible().catch(() => false)
+    const isVisible = await workspaceSwitcherText.isVisible().catch(() => false)
 
     if (isVisible) {
-      const text = await workspaceSwitcher.textContent()
+      const text = await workspaceSwitcherText.textContent()
       // Should not be stuck on "loading..." or "select"
       expect(text).not.toBe("loading...")
       expect(text).not.toBe("select")

@@ -8,9 +8,16 @@
  * @packageDocumentation
  */
 
+import { assertServerOnly } from './guards.js'
+
+// Prevent this package from being imported in browser environments
+assertServerOnly('@webalive/site-controller', 'Use @webalive/shared for constants')
+
 export { SiteOrchestrator } from './orchestrator.js'
 export type { DeployConfig, DeployResult, DnsValidationResult, PortAssignment } from './types.js'
-export { PATHS, DEFAULTS } from './config.js'
+
+// Constants - re-exported from constants.ts for browser safety
+export { PATHS, DEFAULTS, DOMAINS, PORTS, TIMEOUTS, SECURITY } from './constants.js'
 
 // Re-export individual executors for advanced usage
 export { validateDns } from './executors/dns.js'
@@ -38,6 +45,7 @@ export type {
   CaddyValidation,
 } from './executors/caddy.js'
 
-// Backup operations
-export { backupWebsites } from './backup.js'
+// Backup operations - NOT exported from main index due to Node.js dependencies
+// Import directly: import { backupWebsites } from '@webalive/site-controller/dist/backup'
+
 export { DeploymentError } from './errors.js'

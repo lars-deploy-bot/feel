@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs"
 import path from "node:path"
+import { PATHS } from "@webalive/shared"
 import { NextResponse } from "next/server"
 import { domainToSlug, normalizeDomain } from "@/features/manager/lib/domain-utils"
 import { ErrorCodes } from "@/lib/error-codes"
@@ -106,7 +107,7 @@ function getTerminalWorkspace(body: any, requestId: string): WorkspaceResult {
 
   // If no workspace found after trying both conventions
   if (!workspacePath || !fullPath) {
-    const attemptedPaths = candidates.map(c => path.join("/srv/webalive/sites", c, "user"))
+    const attemptedPaths = candidates.map(c => path.join(PATHS.SITES_ROOT, c, "user"))
     console.error(`[Workspace ${requestId}] Workspace not found. Tried: ${attemptedPaths.join(", ")}`)
     return {
       success: false,

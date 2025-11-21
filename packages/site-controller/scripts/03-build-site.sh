@@ -28,23 +28,44 @@ fi
 log_info "Ensuring correct ownership..."
 chown -R "$SITE_USER:$SITE_USER" "$TARGET_DIR"
 
-# Install dependencies
-log_info "Installing dependencies..."
-cd "$TARGET_DIR"
-if ! sudo -u "$SITE_USER" bun install; then
-    log_error "Failed to install dependencies"
-    exit 13
-fi
-
-# Run build if package.json has build script
-if jq -e '.scripts.build' package.json &>/dev/null; then
-    log_info "Running build..."
-    if ! sudo -u "$SITE_USER" bun run build; then
-        log_error "Build failed"
-        exit 14
+# Check for pre-built test cache (speeds up E2E tests significantly)
+TEST_CACHE_DIR="/tmp/webalive-test-template-cache"
+if [[ "$SKIP_BUILD" == "true" ]] && [[ -d "$TEST_CACHE_DIR/node_modules" ]]; then
+    log_info "Using pre-built template cache (test mode)..."
+    cp -r "$TEST_CACHE_DIR/node_modules" "$TARGET_DIR/" 2>/dev/null || true
+    if [[ -d "$TEST_CACHE_DIR/user/dist" ]]; then
+        mkdir -p "$TARGET_DIR/user"
+        cp -r "$TEST_CACHE_DIR/user/dist" "$TARGET_DIR/user/" 2>/dev/null || true
     fi
+    chown -R "$SITE_USER:$SITE_USER" "$TARGET_DIR"
+    log_success "Skipped build (using cache)"
 else
-    log_info "No build script found, skipping build step"
+    # Install dependencies
+    log_info "Installing dependencies..."
+    cd "$TARGET_DIR"
+    if ! sudo -u "$SITE_USER" bun install; then
+        log_error "Failed to install dependencies"
+        exit 13
+    fi
+
+    # Run build if package.json has build script
+    if jq -e '.scripts.build' package.json &>/dev/null; then
+        log_info "Running build..."
+        if ! sudo -u "$SITE_USER" bun run build; then
+            log_error "Build failed"
+            exit 14
+        fi
+    else
+        log_info "No build script found, skipping build step"
+    fi
+
+    # Cache the build for future test runs
+    if [[ "$SKIP_BUILD" == "true" ]] && [[ ! -d "$TEST_CACHE_DIR" ]]; then
+        log_info "Creating test template cache for future runs..."
+        mkdir -p "$TEST_CACHE_DIR/user"
+        cp -r "$TARGET_DIR/node_modules" "$TEST_CACHE_DIR/" 2>/dev/null || true
+        [[ -d "$TARGET_DIR/user/dist" ]] && cp -r "$TARGET_DIR/user/dist" "$TEST_CACHE_DIR/user/" 2>/dev/null || true
+    fi
 fi
 
 # Final ownership fix

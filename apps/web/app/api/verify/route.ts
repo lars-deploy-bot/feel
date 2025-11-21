@@ -1,8 +1,9 @@
 import { headers } from "next/headers"
 import { NextResponse } from "next/server"
+import { createErrorResponse } from "@/features/auth/lib/auth"
 import { validateRequest } from "@/features/auth/lib/auth"
 import { getWorkspace } from "@/features/chat/lib/workspaceRetriever"
-import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
+import { ErrorCodes } from "@/lib/error-codes"
 import { generateRequestId } from "@/lib/utils"
 
 export async function POST(req: Request) {
@@ -47,16 +48,9 @@ export async function POST(req: Request) {
     })
   } catch (error) {
     console.error(`[Verify API ${requestId}] Verification failed:`, error)
-    return NextResponse.json(
-      {
-        ok: false,
-        verified: false,
-        error: ErrorCodes.REQUEST_PROCESSING_FAILED,
-        message: getErrorMessage(ErrorCodes.REQUEST_PROCESSING_FAILED),
-        details: error instanceof Error ? error.message : "Unknown error",
-        requestId,
-      },
-      { status: 500 },
-    )
+    return createErrorResponse(ErrorCodes.REQUEST_PROCESSING_FAILED, 500, {
+      requestId,
+      details: error instanceof Error ? error.message : "Unknown error",
+    })
   }
 }

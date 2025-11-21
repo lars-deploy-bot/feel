@@ -1,8 +1,9 @@
 import { execSync } from "node:child_process"
 import { type NextRequest, NextResponse } from "next/server"
 import { isManagerAuthenticated } from "@/features/auth/lib/auth"
-import { createCorsResponse, createCorsSuccessResponse } from "@/lib/api/responses"
+import { createCorsErrorResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { addCorsHeaders } from "@/lib/cors-utils"
+import { ErrorCodes } from "@/lib/error-codes"
 import { generateRequestId } from "@/lib/utils"
 
 /**
@@ -16,11 +17,7 @@ export async function POST(req: NextRequest) {
 
   // Check manager authentication
   if (!(await isManagerAuthenticated())) {
-    return createCorsResponse(
-      origin,
-      { ok: false, error: "UNAUTHORIZED", message: "Manager authentication required", requestId },
-      401,
-    )
+    return createCorsErrorResponse(origin, ErrorCodes.UNAUTHORIZED, 401, { requestId })
   }
 
   try {
@@ -36,16 +33,7 @@ export async function POST(req: NextRequest) {
     })
   } catch (error) {
     console.error("[Manager] Caddy reload failed:", error)
-    return createCorsResponse(
-      origin,
-      {
-        ok: false,
-        error: "RELOAD_FAILED",
-        message: error instanceof Error ? error.message : "Failed to reload Caddy",
-        requestId,
-      },
-      500,
-    )
+    return createCorsErrorResponse(origin, ErrorCodes.INTERNAL_ERROR, 500, { requestId })
   }
 }
 

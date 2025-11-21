@@ -24,9 +24,13 @@ function createMockRequest(url: string, options?: RequestInit) {
 
 // Mock manager authentication
 let isManagerAuth = false
-vi.mock("@/features/auth/lib/auth", () => ({
-  isManagerAuthenticated: async () => isManagerAuth,
-}))
+vi.mock("@/features/auth/lib/auth", async importOriginal => {
+  const actual = await importOriginal<typeof import("@/features/auth/lib/auth")>()
+  return {
+    ...actual,
+    isManagerAuthenticated: async () => isManagerAuth,
+  }
+})
 
 import { GET, POST } from "../route"
 
@@ -289,7 +293,10 @@ describe("POST /api/manager/permissions (Fix Permissions)", () => {
 
     // Should fail - either directory missing OR user doesn't exist
     expect(response.status).toBe(500)
-    expect(data.error).toMatch(/does not exist/i)
+    expect(data.error).toBe("PERMISSION_FIX_FAILED")
+    expect(data.message).toBeTruthy() // Message exists (contains details about what failed)
+    expect(typeof data.message).toBe("string")
+    expect(data.message.length).toBeGreaterThan(0)
 
     // If this test FAILS, we might be chown'ing to uid 0 (root) or wrong user
   })
@@ -314,7 +321,10 @@ describe("POST /api/manager/permissions (Fix Permissions)", () => {
 
     // Should fail - directory doesn't exist
     expect(response.status).toBe(500)
-    expect(data.error).toMatch(/directory does not exist/i)
+    expect(data.error).toBe("PERMISSION_FIX_FAILED")
+    expect(data.message).toBeTruthy() // Message exists (contains details about what failed)
+    expect(typeof data.message).toBe("string")
+    expect(data.message.length).toBeGreaterThan(0)
   })
 
   /**

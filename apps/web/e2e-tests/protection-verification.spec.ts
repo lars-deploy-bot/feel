@@ -83,9 +83,9 @@ test.describe("Protection System Verification", () => {
   test("Allows non-Claude API calls (login, verify, etc)", async ({ page }) => {
     // Login should work - it's NOT a protected endpoint
     await page.goto("/")
-    await page.getByPlaceholder("you@example.com").fill("test@bridge.local")
-    await page.getByPlaceholder("Enter your password").fill("test")
-    await page.getByRole("button", { name: "Continue" }).click()
+    await page.getByTestId("email-input").fill("test@bridge.local")
+    await page.getByTestId("password-input").fill("test")
+    await page.getByTestId("login-button").click()
 
     // Should successfully login (not blocked)
     await expect(page).toHaveURL("/chat", { timeout: 5000 })

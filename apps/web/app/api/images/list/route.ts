@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
     const formattedImages = Object.values(groupedImages)
 
     return Response.json({
-      success: true,
+      ok: true,
       images: formattedImages,
       count: formattedImages.length,
     })

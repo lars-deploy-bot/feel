@@ -66,6 +66,7 @@ function LoginPageContent() {
             autoComplete="email"
             state={emailTouched && !email.trim() ? "error" : "default"}
             errorMessage={emailTouched && !email.trim() ? "Please enter your email" : undefined}
+            data-testid="email-input"
           />
 
           <Input
@@ -83,6 +84,7 @@ function LoginPageContent() {
             autoComplete="current-password"
             state={passwordTouched && !password.trim() ? "error" : "default"}
             errorMessage={passwordTouched && !password.trim() ? "Please enter your password" : undefined}
+            data-testid="password-input"
           />
 
           {error && (
@@ -97,6 +99,7 @@ function LoginPageContent() {
             loading={loading}
             disabled={!email.trim() || !password.trim()}
             className="!bg-black !text-white hover:!bg-black/90 !border-0 !font-medium !text-base !py-3 !rounded-lg !transition-all"
+            data-testid="login-button"
           >
             {loading ? "Signing in..." : "Continue"}
           </Button>

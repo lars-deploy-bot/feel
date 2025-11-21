@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createSessionToken } from "@/features/auth/lib/jwt"
-import { createCorsErrorResponse, createCorsResponse, createCorsSuccessResponse } from "@/lib/api/responses"
+import { createCorsErrorResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { COOKIE_NAMES, getSessionCookieOptions } from "@/lib/auth/cookies"
 import { managerLoginRateLimiter } from "@/lib/auth/rate-limiter"
 import { timingSafeCompare } from "@/lib/auth/timing-safe"
@@ -39,16 +39,12 @@ export async function POST(req: NextRequest) {
 
     console.warn(`[Manager Login] Rate limited: ${clientId}`)
 
-    return createCorsResponse(
-      origin,
-      {
-        ok: false,
-        error: "TOO_MANY_REQUESTS",
-        message: `Too many failed login attempts. Please try again in ${minutesRemaining} minute${minutesRemaining !== 1 ? "s" : ""}.`,
-        requestId,
+    return createCorsErrorResponse(origin, ErrorCodes.TOO_MANY_REQUESTS, 429, {
+      requestId,
+      details: {
+        retryAfter: `${minutesRemaining} minute${minutesRemaining !== 1 ? "s" : ""}`,
       },
-      429,
-    )
+    })
   }
 
   // Parse and validate request body

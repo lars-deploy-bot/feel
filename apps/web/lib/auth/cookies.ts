@@ -1,9 +1,14 @@
 /**
- * Cookie Configuration - Single Source of Truth
+ * Cookie Configuration
  *
- * All cookie names and configurations defined here.
- * DO NOT duplicate cookie config anywhere else.
+ * Cookie names and session config imported from @webalive/shared (single source of truth).
+ * This file provides cookie options helpers for Next.js.
  */
+
+import { COOKIE_NAMES, SESSION_MAX_AGE } from "@webalive/shared"
+
+// Re-export for backward compatibility
+export { COOKIE_NAMES, SESSION_MAX_AGE }
 
 type CookieOptions = {
   httpOnly?: boolean
@@ -13,15 +18,6 @@ type CookieOptions = {
   maxAge?: number
   expires?: Date
 }
-
-// Cookie Names
-export const COOKIE_NAMES = {
-  SESSION: "auth_session",
-  MANAGER_SESSION: "manager_session",
-} as const
-
-// Cookie Expiry
-export const SESSION_MAX_AGE = 30 * 24 * 60 * 60 // 30 days in seconds
 
 /**
  * Get standard cookie options for session cookies

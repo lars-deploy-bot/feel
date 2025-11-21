@@ -190,7 +190,7 @@ describe("GET /api/manager/users", () => {
 
       expect(response.status).toBe(500)
       expect(data.ok).toBe(false)
-      expect(data.error).toBe("DATABASE_ERROR")
+      expect(data.error).toBe("INTERNAL_ERROR")
     })
   })
 

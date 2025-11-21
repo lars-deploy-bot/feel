@@ -174,7 +174,7 @@ six.goalive.nl {
 # Claude Bridge staging and dev environments
 # (Now defined in /etc/caddy/Caddyfile.staging)
 
-# Terminal app (standalone Hono server)
+# Terminal app (standalone Hono server with automatic WebSocket support)
 shell.terminal.goalive.nl {
     reverse_proxy localhost:3888
 }
@@ -1521,6 +1521,17 @@ asdfadsfadsf.alive.best {
     import common_headers
     import image_serving
     reverse_proxy localhost:3510 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+larryd.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3549 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
         header_up X-Forwarded-For {remote_host}

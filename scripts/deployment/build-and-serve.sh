@@ -370,6 +370,10 @@ fi
 
 log_step "Next.js production build (this may take 1-2 minutes)..."
 
+# Remove circular symlinks created by bun install (MUST be done after bun install phase)
+log_step "Removing circular symlinks created by bun install..."
+rm -f packages/*/template packages/*/images packages/*/tools packages/*/site-controller packages/*/shared 2>/dev/null || true
+
 # Run atomic build (builds to timestamped dir, atomically updates symlink)
 set +e
 BUILD_OUTPUT=$("$PROJECT_ROOT/scripts/deployment/build-atomic.sh" "$ENV" 2>&1)

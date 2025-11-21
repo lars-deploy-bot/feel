@@ -2,11 +2,12 @@ import { readdir, stat } from "node:fs/promises"
 import path from "node:path"
 import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
+import { createErrorResponse } from "@/features/auth/lib/auth"
 import { hasSessionCookie } from "@/features/auth/types/guards"
 import { getWorkspace } from "@/features/chat/lib/workspaceRetriever"
 import { isPathWithinWorkspace } from "@/features/workspace/types/workspace"
 import { COOKIE_NAMES } from "@/lib/auth/cookies"
-import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
+import { ErrorCodes } from "@/lib/error-codes"
 import { generateRequestId } from "@/lib/utils"
 
 interface FileInfo {
@@ -23,15 +24,7 @@ export async function POST(request: NextRequest) {
   try {
     const jar = await cookies()
     if (!hasSessionCookie(jar.get(COOKIE_NAMES.SESSION))) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: ErrorCodes.NO_SESSION,
-          message: getErrorMessage(ErrorCodes.NO_SESSION),
-          requestId,
-        },
-        { status: 401 },
-      )
+      return createErrorResponse(ErrorCodes.NO_SESSION, 401, { requestId })
     }
 
     const body = await request.json()
@@ -49,22 +42,11 @@ export async function POST(request: NextRequest) {
     const resolvedPath = path.resolve(fullPath)
     const resolvedWorkspace = path.resolve(workspaceResult.workspace)
     if (!isPathWithinWorkspace(resolvedPath, resolvedWorkspace, path.sep)) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: ErrorCodes.PATH_OUTSIDE_WORKSPACE,
-          message: getErrorMessage(ErrorCodes.PATH_OUTSIDE_WORKSPACE, {
-            attemptedPath: resolvedPath,
-            workspacePath: resolvedWorkspace,
-          }),
-          details: {
-            attemptedPath: resolvedPath,
-            workspacePath: resolvedWorkspace,
-          },
-          requestId,
-        },
-        { status: 403 },
-      )
+      return createErrorResponse(ErrorCodes.PATH_OUTSIDE_WORKSPACE, 403, {
+        requestId,
+        attemptedPath: resolvedPath,
+        workspacePath: resolvedWorkspace,
+      })
     }
 
     try {
@@ -100,35 +82,17 @@ export async function POST(request: NextRequest) {
       })
     } catch (fsError) {
       console.error(`[Files ${requestId}] Error reading directory:`, fsError)
-      return NextResponse.json(
-        {
-          ok: false,
-          error: ErrorCodes.FILE_READ_ERROR,
-          message: getErrorMessage(ErrorCodes.FILE_READ_ERROR, {
-            filePath: targetPath,
-          }),
-          details: {
-            path: targetPath,
-            error: fsError instanceof Error ? fsError.message : "Unknown error",
-          },
-          requestId,
-        },
-        { status: 500 },
-      )
+      return createErrorResponse(ErrorCodes.FILE_READ_ERROR, 500, {
+        requestId,
+        filePath: targetPath,
+        error: fsError instanceof Error ? fsError.message : "Unknown error",
+      })
     }
   } catch (error) {
     console.error("Files API error:", error)
-    return NextResponse.json(
-      {
-        ok: false,
-        error: ErrorCodes.REQUEST_PROCESSING_FAILED,
-        message: getErrorMessage(ErrorCodes.REQUEST_PROCESSING_FAILED),
-        details: {
-          error: error instanceof Error ? error.message : "Unknown error",
-        },
-        requestId,
-      },
-      { status: 500 },
-    )
+    return createErrorResponse(ErrorCodes.REQUEST_PROCESSING_FAILED, 500, {
+      requestId,
+      error: error instanceof Error ? error.message : "Unknown error",
+    })
   }
 }

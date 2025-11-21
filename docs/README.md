@@ -7,6 +7,7 @@
 | Document | Purpose |
 |----------|---------|
 | [Getting Started](./GETTING_STARTED.md) | Installation, local development setup, first steps |
+| [Doc Writing Guide](./DOC_WRITING_GUIDE.md) | Best practices for writing documentation |
 | [Architecture](./architecture/README.md) | System design, patterns, core concepts |
 | [Security](./security/README.md) | Authentication, workspace isolation, security patterns |
 | [Features](./features/README.md) | Feature documentation and implementation guides |
@@ -21,6 +22,7 @@
 | [Database](./database/) | Supabase setup, RLS, ES256 migration |
 | [Integrations](./integrations/) | External service integrations |
 | [Streaming](./streaming/) | SSE implementation details |
+| [Diagrams](./diagrams/) | Sequence diagrams and flow charts |
 
 ## Active Work
 
@@ -35,10 +37,14 @@
 2. **Conciseness**: Information density over verbosity
 3. **Consolidation**: Related topics merged, duplication eliminated
 4. **Clarity**: Clear structure, scannable headings, code examples
+5. **Actionability**: Concrete examples and commands, not abstract theory
+
+**Complete Guide**: [Documentation Writing Guide](./DOC_WRITING_GUIDE.md)
 
 ## For AI Assistants
 
 - **Primary guide**: `/CLAUDE.md` in project root
+- **Doc writing**: Follow [DOC_WRITING_GUIDE.md](./DOC_WRITING_GUIDE.md) for style and structure
 - **Testing**: Always check [testing/README.md](./testing/README.md) before writing tests
 - **Security**: Review [security/README.md](./security/README.md) before file operations or auth changes
 - **Patterns**: Follow existing patterns in [architecture/README.md](./architecture/README.md)
