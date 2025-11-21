@@ -7,7 +7,7 @@
 
 import { NextResponse } from "next/server"
 import { addCorsHeaders } from "@/lib/cors-utils"
-import { getErrorMessage, type StructuredError, type ErrorCode } from "@/lib/error-codes"
+import { type ErrorCode, getErrorMessage, type StructuredError } from "@/lib/error-codes"
 import type { ApiError, OrganizationsResponse, WorkspacesResponse } from "./types"
 
 interface ResponseOptions {

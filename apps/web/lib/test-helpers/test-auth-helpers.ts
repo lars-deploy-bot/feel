@@ -5,10 +5,10 @@
  * DRY: All auth logic lives here, not in individual test files
  */
 
-import { POST as loginPOST } from "@/app/api/login/route"
 import { POST as deployPOST } from "@/app/api/deploy-subdomain/route"
-import { POST as verifyPOST } from "@/app/api/verify/route"
+import { POST as loginPOST } from "@/app/api/login/route"
 import { GET as tokensGET } from "@/app/api/tokens/route"
+import { POST as verifyPOST } from "@/app/api/verify/route"
 import { runWithRequestContext } from "../../tests/setup"
 import type { TestUser } from "./auth-test-helper"
 import { API_ENDPOINTS, SESSION_COOKIE, TEST_CREDENTIALS } from "./test-constants"

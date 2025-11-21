@@ -5,10 +5,10 @@
  * They run tsc to ensure undefined variables are caught at compile time.
  */
 
-import { describe, it, expect } from "vitest"
 import { execSync } from "node:child_process"
-import { readFileSync, writeFileSync, unlinkSync } from "node:fs"
+import { readFileSync, unlinkSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
+import { describe, expect, it } from "vitest"
 
 describe("TypeScript Compilation Safety", () => {
   it("CRITICAL: TypeScript catches undefined variables in components", () => {

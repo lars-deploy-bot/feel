@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { COOKIE_NAMES, getClearCookieOptions } from "@/lib/auth/cookies"
 import { createCorsSuccessResponse } from "@/lib/api/responses"
+import { COOKIE_NAMES, getClearCookieOptions } from "@/lib/auth/cookies"
 import { addCorsHeaders } from "@/lib/cors-utils"
 
 export async function POST(req: NextRequest) {

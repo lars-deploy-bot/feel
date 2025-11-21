@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
-import { Terminal as XTerm } from "@xterm/xterm"
 import { FitAddon } from "@xterm/addon-fit"
 import { WebLinksAddon } from "@xterm/addon-web-links"
+import { Terminal as XTerm } from "@xterm/xterm"
+import { useEffect, useRef, useState } from "react"
 import "@xterm/xterm/css/xterm.css"
 
 interface TerminalProps {

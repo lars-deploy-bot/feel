@@ -2,20 +2,21 @@
 
 import { useCallback, useEffect, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
-import { DeleteModal } from "@/components/modals/DeleteModal"
-import { ConfirmModal } from "@/components/modals/ConfirmModal"
-import { Button } from "@/components/ui/primitives/Button"
-import { DomainsTable } from "@/components/manager/DomainsTable"
-import { OrganizationsList } from "@/components/manager/OrganizationsList"
 import { FeedbackList } from "@/components/manager/FeedbackList"
+import { OrganizationsList } from "@/components/manager/OrganizationsList"
 import { SettingsPanel } from "@/components/manager/SettingsPanel"
+import { SourcesTable } from "@/components/manager/SourcesTable"
 import { UsersPanel } from "@/components/manager/UsersPanel"
-import type { DomainConfigClient, DomainStatus } from "@/types/domain"
-import type { FeedbackEntry } from "@/types/feedback"
+import { ConfirmModal } from "@/components/modals/ConfirmModal"
+import { DeleteModal } from "@/components/modals/DeleteModal"
+import { Button } from "@/components/ui/primitives/Button"
 import * as domainService from "@/features/manager/lib/services/domainService"
 import * as orgService from "@/features/manager/lib/services/orgService"
 import * as settingsService from "@/features/manager/lib/services/settingsService"
 import { executeHandler } from "@/features/manager/lib/utils/executeHandler"
+import type { DomainConfigClient, DomainStatus } from "@/types/domain"
+import type { FeedbackEntry } from "@/types/feedback"
+import type { SourceData } from "@/types/sources"
 
 type DomainPasswords = Record<string, DomainConfigClient>
 
@@ -25,7 +26,7 @@ export default function ManagerPage() {
   const [loading, setLoading] = useState(true)
   const [loadingStatus, setLoadingStatus] = useState(false)
   const [saving, setSaving] = useState<string | null>(null)
-  const [deleting, setDeleting] = useState<string | null>(null)
+  const [_deleting, setDeleting] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [loggingOut, setLoggingOut] = useState(false)
   const [authenticated, setAuthenticated] = useState(false)
@@ -34,11 +35,13 @@ export default function ManagerPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [selectedDomain, setSelectedDomain] = useState<string | null>(null)
   const [newPassword, setNewPassword] = useState("")
-  const [newEmail, setNewEmail] = useState("")
-  const [newCredits, setNewCredits] = useState("")
 
   // Tab state
   const [activeTab, setActiveTab] = useState<"domains" | "feedback" | "organizations" | "users" | "settings">("domains")
+
+  // Sources state (multi-source domain data)
+  const [sources, setSources] = useState<SourceData[]>([])
+  const [sourcesLoading, setSourcesLoading] = useState(false)
 
   // Feedback state
   const [feedback, setFeedback] = useState<FeedbackEntry[]>([])
@@ -61,6 +64,7 @@ export default function ManagerPage() {
   const [addingMember, setAddingMember] = useState(false)
   const [removingMember, setRemovingMember] = useState<string | null>(null)
   const [transferringOwnership, setTransferringOwnership] = useState<string | null>(null)
+  const [transferringDomain, setTransferringDomain] = useState<string | null>(null)
 
   // Settings actions state
   const [reloadingCaddy, setReloadingCaddy] = useState(false)
@@ -95,14 +99,26 @@ export default function ManagerPage() {
 
   const fetchFeedback = useCallback(async () => {
     setFeedbackLoading(true)
+    const startTime = performance.now()
     try {
       const response = await fetch("/api/manager/feedback")
+      const fetchTime = performance.now() - startTime
+
       if (!response.ok) {
         console.error("Failed to fetch feedback:", response.status, response.statusText)
         toast.error("Failed to fetch feedback")
         return
       }
       const data = await response.json()
+
+      // Log debug timings
+      if (data.debug?.timings) {
+        console.log("[Feedback] Performance:", {
+          network_ms: Math.round(fetchTime * 100) / 100,
+          ...data.debug.timings,
+        })
+      }
+
       if (data.ok) {
         setFeedback(data.feedback)
       } else {
@@ -118,6 +134,7 @@ export default function ManagerPage() {
 
   const fetchOrgs = useCallback(async () => {
     setOrgsLoading(true)
+    setFeedbackLoading(true)
     try {
       const response = await fetch("/api/manager/orgs")
       if (!response.ok) {
@@ -126,8 +143,18 @@ export default function ManagerPage() {
         return
       }
       const data = await response.json()
+
+      // Log debug timings
+      if (data.debug?.timings) {
+        console.log("[Orgs + Feedback] Performance:", data.debug.timings)
+      }
+
       if (data.ok) {
         setOrgs(data.orgs)
+        // Set feedback from the same response
+        if (data.feedback) {
+          setFeedback(data.feedback)
+        }
       } else {
         toast.error("Failed to fetch organizations")
       }
@@ -136,6 +163,7 @@ export default function ManagerPage() {
       toast.error("Failed to fetch organizations")
     } finally {
       setOrgsLoading(false)
+      setFeedbackLoading(false)
     }
   }, [])
 
@@ -162,6 +190,29 @@ export default function ManagerPage() {
     }
   }, [])
 
+  const fetchSources = useCallback(async () => {
+    setSourcesLoading(true)
+    try {
+      const response = await fetch("/api/manager/sources")
+      if (!response.ok) {
+        console.error("Failed to fetch sources:", response.status, response.statusText)
+        toast.error("Failed to fetch source data")
+        return
+      }
+
+      const data = await response.json()
+      if (data.ok) {
+        setSources(data.sources)
+        console.log("[Sources] Data loaded:", data.sources.length, "domains")
+      }
+    } catch (error) {
+      console.error("Failed to fetch sources:", error)
+      toast.error("Failed to fetch source data")
+    } finally {
+      setSourcesLoading(false)
+    }
+  }, [])
+
   const fetchDomains = useCallback(async () => {
     try {
       const response = await fetch("/api/manager")
@@ -175,23 +226,6 @@ export default function ManagerPage() {
       const data = await response.json()
       if (data.ok) {
         setDomains(data.domains)
-        // Fetch statuses after domains are loaded
-        // Note: we don't await because we want both to happen in parallel
-        fetch("/api/manager/status")
-          .then(res => {
-            if (!res.ok) throw new Error(`Status ${res.status}`)
-            return res.json()
-          })
-          .then(data => {
-            if (data.ok && data.statuses) {
-              const statusMap = data.statuses.reduce((acc: Record<string, DomainStatus>, status: DomainStatus) => {
-                acc[status.domain] = status
-                return acc
-              }, {})
-              setStatuses(statusMap)
-            }
-          })
-          .catch(error => console.error("Failed to fetch statuses:", error))
       }
     } catch (error) {
       console.error("Failed to fetch domains:", error)
@@ -204,24 +238,26 @@ export default function ManagerPage() {
     checkAuthentication()
   }, [])
 
-  useEffect(() => {
-    if (!authenticated) return
-
-    const interval = setInterval(() => {
-      fetchStatuses()
-    }, 30000)
-
-    return () => clearInterval(interval)
-  }, [authenticated, fetchStatuses])
+  // Removed automatic status polling - status checks are now manual only via "Refresh status" button
+  // Status checks take 20+ seconds and should never block other data loading
 
   useEffect(() => {
     if (activeTab === "feedback" && authenticated) {
-      fetchFeedback()
+      // Feedback is now loaded with orgs, only fetch if not already loaded
+      if (feedback.length === 0) {
+        fetchFeedback()
+      }
     }
-  }, [activeTab, authenticated, fetchFeedback])
+  }, [activeTab, authenticated, feedback.length, fetchFeedback])
 
   useEffect(() => {
-    if ((activeTab === "organizations" || activeTab === "users") && authenticated) {
+    if (activeTab === "domains" && authenticated) {
+      fetchSources()
+    }
+  }, [activeTab, authenticated, fetchSources])
+
+  useEffect(() => {
+    if ((activeTab === "organizations" || activeTab === "users" || activeTab === "feedback") && authenticated) {
       fetchOrgs()
     }
   }, [activeTab, authenticated, fetchOrgs])
@@ -246,11 +282,9 @@ export default function ManagerPage() {
     }
   }
 
-  const openPasswordDialog = (domain: string) => {
+  const _openPasswordDialog = (domain: string) => {
     setSelectedDomain(domain)
     setNewPassword("")
-    setNewEmail(domains[domain]?.email || "")
-    setNewCredits(String(domains[domain]?.credits || 0))
     setDialogOpen(true)
   }
 
@@ -258,8 +292,6 @@ export default function ManagerPage() {
     setDialogOpen(false)
     setSelectedDomain(null)
     setNewPassword("")
-    setNewEmail("")
-    setNewCredits("")
   }
 
   const updateDomainSettings = async () => {
@@ -267,38 +299,17 @@ export default function ManagerPage() {
       return
     }
 
-    const creditsNum = newCredits ? parseFloat(newCredits) : undefined
-    const emailChanged = newEmail !== (domains[selectedDomain]?.email || "")
-    const creditsChanged = creditsNum !== undefined && creditsNum !== domains[selectedDomain]?.credits
-
-    // Validate: at least one field must be changed
-    if (!newPassword.trim() && !emailChanged && !creditsChanged) {
-      toast.error("No changes to save")
-      return
-    }
-
-    // Validate credits
-    if (creditsNum !== undefined && (creditsNum < 0 || Number.isNaN(creditsNum))) {
-      toast.error("Credits must be a non-negative number")
+    // Validate: password must be provided
+    if (!newPassword.trim()) {
+      toast.error("Password is required")
       return
     }
 
     setSaving(selectedDomain)
     try {
-      const payload: { domain: string; password?: string; email?: string; credits?: number } = {
+      const payload: { domain: string; password: string } = {
         domain: selectedDomain,
-      }
-
-      if (newPassword.trim()) {
-        payload.password = newPassword
-      }
-
-      if (emailChanged) {
-        payload.email = newEmail
-      }
-
-      if (creditsChanged) {
-        payload.credits = creditsNum
+        password: newPassword,
       }
 
       const response = await fetch("/api/manager", {
@@ -310,18 +321,7 @@ export default function ManagerPage() {
       })
 
       if (response.ok) {
-        // Update local state
-        setDomains(prev => ({
-          ...prev,
-          [selectedDomain]: {
-            ...prev[selectedDomain],
-            email: newEmail || undefined,
-            ...(creditsChanged && { credits: creditsNum }),
-            ...(creditsChanged && { tokens: creditsNum ? creditsNum * 100 : 0 }),
-          },
-        }))
-
-        toast.success("Updated successfully")
+        toast.success("Password updated successfully")
         closeDialog()
       } else {
         const error = await response.json()
@@ -356,7 +356,7 @@ export default function ManagerPage() {
     })
   }
 
-  const handleDelete = (domain: string) => {
+  const _handleDelete = (domain: string) => {
     setDeleteConfirm(domain)
   }
 
@@ -476,7 +476,7 @@ export default function ManagerPage() {
     )
   }
 
-  const getStatusColor = (domain: string) => {
+  const _getStatusColor = (domain: string) => {
     const status = statuses[domain]
     if (!status) return "bg-gray-300 animate-pulse"
     if (status.httpsAccessible) return "bg-green-500"
@@ -485,7 +485,7 @@ export default function ManagerPage() {
     return "bg-red-500"
   }
 
-  const getStatusText = (domain: string) => {
+  const _getStatusText = (domain: string) => {
     const status = statuses[domain]
     if (!status) return "Checking"
     if (status.httpsAccessible) return "Online"
@@ -504,7 +504,7 @@ export default function ManagerPage() {
     return parts.length > 0 ? parts.join(" • ") : "Not accessible"
   }
 
-  const getInfrastructureChecks = (domain: string) => {
+  const _getInfrastructureChecks = (domain: string) => {
     const status = statuses[domain]
     if (!status) return null
 
@@ -545,7 +545,7 @@ export default function ManagerPage() {
     ]
   }
 
-  const formatCreatedDate = (isoDate: string | null): string => {
+  const _formatCreatedDate = (isoDate: string | null): string => {
     if (!isoDate) return "Unknown"
     const date = new Date(isoDate)
     return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
@@ -689,6 +689,32 @@ export default function ManagerPage() {
     })
   }
 
+  const handleTransferDomain = async (domain: string, _currentOrgId: string, targetOrgId: string) => {
+    setTransferringDomain(domain)
+    try {
+      const response = await fetch("/api/manager/domains/transfer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain, targetOrgId }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        toast.error(data.message || "Failed to transfer domain")
+        return
+      }
+
+      toast.success(`Domain ${domain} transferred successfully`)
+      await fetchOrgs()
+    } catch (error) {
+      console.error("Error transferring domain:", error)
+      toast.error("Failed to transfer domain")
+    } finally {
+      setTransferringDomain(null)
+    }
+  }
+
   const handleCheckPermissions = async (domain: string) => {
     setPermissionsModal(domain)
     await executeHandler({
@@ -716,7 +742,7 @@ export default function ManagerPage() {
     setPermissionsData(null)
   }
 
-  const handleFixPort = async (domain: string) => {
+  const _handleFixPort = async (domain: string) => {
     await executeHandler({
       fn: () => domainService.fixPort(domain),
       onLoading: () => {},
@@ -842,21 +868,7 @@ export default function ManagerPage() {
             </nav>
           </div>
 
-          {activeTab === "domains" && (
-            <DomainsTable
-              domains={domains}
-              statuses={statuses}
-              deleting={deleting}
-              getStatusColor={getStatusColor}
-              getStatusText={getStatusText}
-              getInfrastructureChecks={getInfrastructureChecks}
-              formatCreatedDate={formatCreatedDate}
-              onFixPort={handleFixPort}
-              onCheck={handleCheckPermissions}
-              onEdit={openPasswordDialog}
-              onDelete={handleDelete}
-            />
-          )}
+          {activeTab === "domains" && <SourcesTable sources={sources} loading={sourcesLoading} />}
 
           {activeTab === "feedback" && (
             <FeedbackList feedback={feedback} loading={feedbackLoading} onRefresh={fetchFeedback} />
@@ -881,6 +893,8 @@ export default function ManagerPage() {
                 setSelectedOrg(orgId)
                 setNewOrgCredits(String(credits))
               }}
+              onTransferDomain={handleTransferDomain}
+              transferringDomain={transferringDomain}
             />
           )}
 
@@ -950,53 +964,6 @@ export default function ManagerPage() {
             </div>
 
             <div className="space-y-8 mb-8">
-              <div className="border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/20 p-4 rounded">
-                <label
-                  htmlFor="credits-input"
-                  className="block text-sm font-semibold text-gray-900 dark:text-white mb-2"
-                >
-                  API Credits
-                </label>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
-                  Number of API credits available for Claude requests. Used for streaming conversations and code
-                  operations.
-                </p>
-                <input
-                  id="credits-input"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={newCredits}
-                  onChange={e => setNewCredits(e.target.value)}
-                  placeholder="200"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 bg-white dark:bg-[#1a1a1a] text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 font-medium">
-                  Current:{" "}
-                  <span className="text-gray-700 dark:text-gray-300">
-                    {domains[selectedDomain || ""]?.credits?.toFixed(2) || "0.00"}
-                  </span>{" "}
-                  credits
-                </p>
-              </div>
-
-              <div className="border-l-4 border-green-500 bg-green-50 dark:bg-green-900/20 p-4 rounded">
-                <label htmlFor="email-input" className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                  Owner Email Address
-                </label>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
-                  Primary contact email for domain notifications, password resets, and account communications.
-                </p>
-                <input
-                  id="email-input"
-                  type="email"
-                  value={newEmail}
-                  onChange={e => setNewEmail(e.target.value)}
-                  placeholder="owner@example.com"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 bg-white dark:bg-[#1a1a1a] text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
               <div className="border-l-4 border-purple-500 bg-purple-50 dark:bg-purple-900/20 p-4 rounded">
                 <label
                   htmlFor="password-input"
@@ -1038,15 +1005,10 @@ export default function ManagerPage() {
               <button
                 type="button"
                 onClick={updateDomainSettings}
-                disabled={
-                  saving === selectedDomain ||
-                  (!newPassword.trim() &&
-                    newEmail === (domains[selectedDomain || ""]?.email || "") &&
-                    parseFloat(newCredits) === domains[selectedDomain || ""]?.credits)
-                }
+                disabled={saving === selectedDomain || !newPassword.trim()}
                 className="px-5 py-2.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
               >
-                {saving === selectedDomain ? "Saving..." : "Save Changes"}
+                {saving === selectedDomain ? "Saving..." : "Update Password"}
               </button>
             </div>
           </div>

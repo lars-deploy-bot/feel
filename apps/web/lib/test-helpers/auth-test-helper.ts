@@ -5,9 +5,9 @@
  */
 
 import { randomUUID } from "node:crypto"
+import { createClient } from "@supabase/supabase-js"
 import { hash } from "bcrypt"
 import jwt from "jsonwebtoken"
-import { createClient } from "@supabase/supabase-js"
 import { getUserDefaultOrgId } from "@/lib/deployment/org-resolver"
 import { getSupabaseCredentials } from "@/lib/env/server"
 import type { Database as IamDatabase } from "@/lib/supabase/iam.types"

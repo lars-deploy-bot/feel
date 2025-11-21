@@ -1,4 +1,4 @@
-import { SiteOrchestrator, PATHS, DEFAULTS } from "@webalive/site-controller"
+import { DEFAULTS, PATHS, SiteOrchestrator } from "@webalive/site-controller"
 
 export interface DeploySiteOptions {
   domain: string

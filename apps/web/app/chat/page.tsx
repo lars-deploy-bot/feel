@@ -28,10 +28,10 @@ import {
 } from "@/features/chat/lib/dev-terminal-context"
 import { groupMessages } from "@/features/chat/lib/message-grouper"
 import { parseStreamEvent, type UIMessage } from "@/features/chat/lib/message-parser"
-import { isValidStreamEvent } from "@/features/chat/lib/stream-guards"
 import { renderMessage } from "@/features/chat/lib/message-renderer"
 import { SandboxProvider } from "@/features/chat/lib/sandbox-context"
 import { sendClientError } from "@/features/chat/lib/send-client-error"
+import { isValidStreamEvent } from "@/features/chat/lib/stream-guards"
 import { BridgeInterruptSource } from "@/features/chat/lib/streaming/ndjson"
 import { isCompleteEvent, isDoneEvent, isErrorEvent } from "@/features/chat/types/stream"
 import { buildPromptWithAttachments } from "@/features/chat/utils/prompt-builder"
@@ -70,7 +70,7 @@ function ChatPageContent() {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false)
 
   // Settings modal: null (closed), 'manual' (user-opened), 'error' (auto-opened for error)
-  const [settingsModalReason, setSettingsModalReason] = useState<'manual' | 'error' | null>(null)
+  const [settingsModalReason, setSettingsModalReason] = useState<"manual" | "error" | null>(null)
 
   const [showTemplatesModal, setShowTemplatesModal] = useState(false)
   const [showPhotoMenu, setShowPhotoMenu] = useState(false)
@@ -112,7 +112,7 @@ function ChatPageContent() {
   // Auto-open settings modal on org loading error
   useEffect(() => {
     if (orgsError && settingsModalReason === null) {
-      setSettingsModalReason('error')
+      setSettingsModalReason("error")
     }
   }, [orgsError, settingsModalReason])
 
@@ -939,7 +939,7 @@ function ChatPageContent() {
   )
 
   const handleOpenSettings = useCallback(() => {
-    setSettingsModalReason('manual')
+    setSettingsModalReason("manual")
   }, [])
 
   const handleCloseSettings = useCallback(() => {
@@ -1235,7 +1235,7 @@ function ChatPageContent() {
       {settingsModalReason && (
         <SettingsModal
           onClose={handleCloseSettings}
-          initialTab={settingsModalReason === 'error' ? "organization" : undefined}
+          initialTab={settingsModalReason === "error" ? "organization" : undefined}
         />
       )}
       {showTemplatesModal && (

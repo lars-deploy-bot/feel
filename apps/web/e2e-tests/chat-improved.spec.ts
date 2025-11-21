@@ -9,12 +9,13 @@
  *
  * Compare with chat.spec.ts to see the difference!
  */
+
+import { TEST_MESSAGES } from "./fixtures/test-data"
 import { login } from "./helpers"
 import { expectWorkspaceReady } from "./helpers/assertions"
 import { handlers } from "./lib/handlers"
 import { ChatPage } from "./pages/ChatPage"
 import { expect, test } from "./setup"
-import { TEST_MESSAGES } from "./fixtures/test-data"
 
 test.beforeEach(async ({ page }) => {
   await login(page)

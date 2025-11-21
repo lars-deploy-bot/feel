@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs"
 import path from "node:path"
 import { NextResponse } from "next/server"
-import { normalizeDomain, domainToSlug } from "@/features/manager/lib/domain-utils"
+import { domainToSlug, normalizeDomain } from "@/features/manager/lib/domain-utils"
 import { ErrorCodes } from "@/lib/error-codes"
 
 export interface GetWorkspaceParams {

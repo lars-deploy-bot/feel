@@ -3,5 +3,5 @@
  * Reusable functions for handler execution and other utilities
  */
 
-export { executeHandler } from "./executeHandler"
 export type { ExecuteHandlerOptions } from "./executeHandler"
+export { executeHandler } from "./executeHandler"

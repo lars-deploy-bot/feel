@@ -258,7 +258,7 @@ describe("POST /api/login-manager", () => {
    * Should accept "test" passcode when BRIDGE_ENV=local
    */
   it("should authenticate with test passcode in local mode", async () => {
-    process.env.BRIDGE_ENV = "local"
+    vi.stubEnv("BRIDGE_ENV", "local")
 
     const req = createMockRequest("http://localhost/api/login-manager", {
       method: "POST",

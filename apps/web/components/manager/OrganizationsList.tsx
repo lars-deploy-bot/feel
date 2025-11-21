@@ -25,6 +25,8 @@ interface OrganizationsListProps {
   onAddMember: (orgId: string) => void
   onTransferOwnership: (orgId: string, userId: string, userName: string) => void
   onRemoveMember: (orgId: string, userId: string) => void
+  onTransferDomain: (domain: string, currentOrgId: string, targetOrgId: string) => void
+  transferringDomain: string | null
 }
 
 export function OrganizationsList({
@@ -39,8 +41,13 @@ export function OrganizationsList({
   onAddMember,
   onTransferOwnership,
   onRemoveMember,
+  onTransferDomain,
+  transferringDomain,
 }: OrganizationsListProps) {
   const [expandedOrg, setExpandedOrg] = useState<string | null>(null)
+  const [transferModalOpen, setTransferModalOpen] = useState(false)
+  const [selectedDomain, setSelectedDomain] = useState<{ hostname: string; orgId: string } | null>(null)
+  const [targetOrgId, setTargetOrgId] = useState("")
 
   return (
     <>
@@ -141,12 +148,30 @@ export function OrganizationsList({
                           {org.domains.map((domain: any) => (
                             <div
                               key={domain.domain_id}
-                              className="px-3 py-2 bg-slate-50 dark:bg-[#333] rounded text-sm text-slate-700 dark:text-slate-300"
+                              className="px-3 py-2 bg-slate-50 dark:bg-[#333] rounded flex items-center justify-between gap-3"
                             >
-                              <div className="font-medium">{domain.hostname}</div>
-                              <div className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-                                Port {domain.port}
-                              </div>
+                              <button
+                                type="button"
+                                className="flex-1 text-left cursor-pointer hover:opacity-80 transition-opacity"
+                                onClick={() => window.open(`https://${domain.hostname}`, "_blank")}
+                              >
+                                <div className="font-medium text-blue-600 dark:text-blue-400 text-sm">
+                                  {domain.hostname}
+                                </div>
+                                <div className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">Port {domain.port}</div>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedDomain({ hostname: domain.hostname, orgId: org.org_id })
+                                  setTargetOrgId("")
+                                  setTransferModalOpen(true)
+                                }}
+                                disabled={transferringDomain === domain.hostname}
+                                className="text-xs px-2 py-1 text-indigo-700 bg-indigo-50 border border-indigo-200 rounded hover:bg-indigo-100 dark:bg-indigo-950/30 dark:text-indigo-300 dark:border-indigo-800 dark:hover:bg-indigo-900/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                              >
+                                {transferringDomain === domain.hostname ? "Transferring..." : "Transfer"}
+                              </button>
                             </div>
                           ))}
                         </div>
@@ -227,6 +252,71 @@ export function OrganizationsList({
           </div>
         )}
       </div>
+
+      {/* Transfer Domain Modal */}
+      {transferModalOpen && selectedDomain && (
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-[#1a1a1a] rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="px-6 py-4 border-b border-slate-200 dark:border-white/10">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Transfer Domain</h3>
+            </div>
+            <div className="px-6 py-4">
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                Transfer <span className="font-medium text-slate-900 dark:text-white">{selectedDomain.hostname}</span>{" "}
+                to another organization
+              </p>
+              <div>
+                <label htmlFor="target-org" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  Target Organization
+                </label>
+                <select
+                  id="target-org"
+                  value={targetOrgId}
+                  onChange={(e) => setTargetOrgId(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-white/20 rounded-lg bg-white dark:bg-[#2a2a2a] text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent"
+                >
+                  <option value="">Select organization...</option>
+                  {orgs
+                    .filter((org) => org.org_id !== selectedDomain.orgId)
+                    .map((org) => (
+                      <option key={org.org_id} value={org.org_id}>
+                        {org.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-slate-200 dark:border-white/10 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setTransferModalOpen(false)
+                  setSelectedDomain(null)
+                  setTargetOrgId("")
+                }}
+                className="px-4 py-2 text-sm text-slate-700 dark:text-slate-300 bg-white dark:bg-[#2a2a2a] border border-slate-300 dark:border-white/20 rounded-lg hover:bg-slate-50 dark:hover:bg-[#333] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (targetOrgId && selectedDomain) {
+                    onTransferDomain(selectedDomain.hostname, selectedDomain.orgId, targetOrgId)
+                    setTransferModalOpen(false)
+                    setSelectedDomain(null)
+                    setTargetOrgId("")
+                  }
+                }}
+                disabled={!targetOrgId || transferringDomain === selectedDomain.hostname}
+                className="px-4 py-2 text-sm text-white bg-indigo-600 dark:bg-indigo-500 rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {transferringDomain === selectedDomain.hostname ? "Transferring..." : "Transfer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

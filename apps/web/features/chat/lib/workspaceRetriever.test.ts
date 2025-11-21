@@ -5,9 +5,9 @@
  * We test with existing workspaces to verify the full resolution flow.
  */
 
-import { describe, it, expect } from "vitest"
+import { describe, expect, it, vi } from "vitest"
+import { domainToSlug, normalizeDomain } from "@/features/manager/lib/domain-utils"
 import { getWorkspace } from "./workspaceRetriever"
-import { normalizeDomain, domainToSlug } from "@/features/manager/lib/domain-utils"
 
 describe("Workspace Resolution", () => {
   describe("Domain to Slug Conversion (Unit)", () => {
@@ -209,8 +209,7 @@ describe("Workspace Resolution", () => {
 
   describe("Local Development Mode", () => {
     it("allows 'test' workspace in BRIDGE_ENV=local", () => {
-      const originalEnv = process.env.BRIDGE_ENV
-      process.env.BRIDGE_ENV = "local"
+      vi.stubEnv("BRIDGE_ENV", "local")
 
       const result = getWorkspace({
         host: "localhost",
@@ -223,7 +222,7 @@ describe("Workspace Resolution", () => {
         expect(result.workspace).toBe("/tmp/test-workspace")
       }
 
-      process.env.BRIDGE_ENV = originalEnv
+      vi.unstubAllEnvs()
     })
   })
 })

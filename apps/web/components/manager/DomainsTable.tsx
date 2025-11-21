@@ -105,18 +105,6 @@ export function DomainsTable({
               >
                 Port
               </th>
-              <th
-                scope="col"
-                className="py-3.5 px-6 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider"
-              >
-                Email
-              </th>
-              <th
-                scope="col"
-                className="py-3.5 px-6 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider"
-              >
-                Credits
-              </th>
               <th scope="col" className="relative py-3.5 px-6">
                 <span className="sr-only">Actions</span>
               </th>
@@ -164,16 +152,6 @@ export function DomainsTable({
                 </td>
                 <td className="py-4 px-6 text-sm text-slate-700 dark:text-slate-300">
                   {config.orphaned ? <span className="text-slate-400 dark:text-slate-500">—</span> : config.port}
-                </td>
-                <td className="py-4 px-6 text-sm text-slate-700 dark:text-slate-300">
-                  {config.email || <span className="text-slate-400 dark:text-slate-500">—</span>}
-                </td>
-                <td className="py-4 px-6 text-sm text-slate-700 dark:text-slate-300">
-                  {!config.orphaned && config.credits !== undefined ? (
-                    <span className="font-medium">{config.credits.toFixed(2)}</span>
-                  ) : (
-                    <span className="text-slate-400 dark:text-slate-500">—</span>
-                  )}
                 </td>
                 <td className="py-4 px-6 text-sm text-right">
                   <div className="flex items-center justify-end gap-2">

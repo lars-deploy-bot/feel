@@ -2,8 +2,8 @@ import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { createCorsResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { addCorsHeaders } from "@/lib/cors-utils"
-import { createIamClient } from "@/lib/supabase/iam"
 import { createAppClient } from "@/lib/supabase/app"
+import { createIamClient } from "@/lib/supabase/iam"
 
 export async function GET(req: NextRequest) {
   const origin = req.headers.get("origin")

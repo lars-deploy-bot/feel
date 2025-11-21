@@ -8,14 +8,14 @@
  * - Assertion helpers work correctly
  * - TypeScript types are correct
  */
-import { expect, test } from "./setup"
-import { login } from "./helpers"
-import { handlers } from "./lib/handlers"
 
 // Import new utilities to test
-import { TEST_USER, TEST_MESSAGES, TEST_TIMEOUTS, TEST_SELECTORS } from "./fixtures/test-data"
-import { expectWorkspaceReady, expectChatMessage, expectSendButtonEnabled } from "./helpers/assertions"
+import { TEST_MESSAGES, TEST_SELECTORS, TEST_TIMEOUTS, TEST_USER } from "./fixtures/test-data"
+import { login } from "./helpers"
+import { expectChatMessage, expectSendButtonEnabled, expectWorkspaceReady } from "./helpers/assertions"
+import { handlers } from "./lib/handlers"
 import { ChatPage } from "./pages/ChatPage"
+import { expect, test } from "./setup"
 
 test.describe("E2E Utilities Validation", () => {
   test("test-data constants are accessible and have correct types", async () => {

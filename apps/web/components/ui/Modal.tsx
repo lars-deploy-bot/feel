@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useCallback } from "react"
 import { X } from "lucide-react"
+import { useCallback, useEffect } from "react"
 
 export interface ModalProps {
   /** Whether the modal is open */
@@ -129,7 +129,7 @@ export function Modal({
             animate-in fade-in-0 zoom-in-95 duration-300
             ${className}
           `}
-          onClick={(e) => e.stopPropagation()}
+          onClick={e => e.stopPropagation()}
           role="dialog"
           aria-modal="true"
           aria-labelledby={title ? "modal-title" : undefined}

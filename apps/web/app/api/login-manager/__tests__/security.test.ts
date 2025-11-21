@@ -236,7 +236,7 @@ describe("Manager Login Security Tests", () => {
    */
   it('should handle BRIDGE_PASSCODE="" differently from undefined', async () => {
     // Test 1: BRIDGE_PASSCODE = "" (empty string)
-    process.env.BRIDGE_PASSCODE = ""
+    vi.stubEnv("BRIDGE_PASSCODE", "")
 
     const res1 = await loginManagerPOST(
       createMockRequest("http://localhost/api/login-manager", {
@@ -249,7 +249,7 @@ describe("Manager Login Security Tests", () => {
     expect(res1.status).toBe(400)
 
     // Test 2: BRIDGE_PASSCODE = undefined
-    process.env.BRIDGE_PASSCODE = undefined
+    vi.unstubAllEnvs()
 
     const res2 = await loginManagerPOST(
       createMockRequest("http://localhost/api/login-manager", {
@@ -267,7 +267,7 @@ describe("Manager Login Security Tests", () => {
    * Can passcode contain emoji or special chars?
    */
   it("should handle unicode and special characters in passcode", async () => {
-    process.env.BRIDGE_PASSCODE = "🔐secure🔑"
+    vi.stubEnv("BRIDGE_PASSCODE", "🔐secure🔑")
 
     const res = await loginManagerPOST(
       createMockRequest("http://localhost/api/login-manager", {
@@ -281,6 +281,8 @@ describe("Manager Login Security Tests", () => {
 
     const json = await res.json()
     expect(json.ok).toBe(true)
+
+    vi.unstubAllEnvs()
   })
 
   /**
@@ -350,7 +352,7 @@ describe("Manager Login Security Tests", () => {
    * What if someone sets BRIDGE_PASSCODE with newlines or special chars?
    */
   it("should handle newlines in environment variable", async () => {
-    process.env.BRIDGE_PASSCODE = "pass\nword"
+    vi.stubEnv("BRIDGE_PASSCODE", "pass\nword")
 
     const res = await loginManagerPOST(
       createMockRequest("http://localhost/api/login-manager", {
@@ -361,5 +363,7 @@ describe("Manager Login Security Tests", () => {
 
     // Should work - exact match including newline
     expect(res.status).toBe(200)
+
+    vi.unstubAllEnvs()
   })
 })

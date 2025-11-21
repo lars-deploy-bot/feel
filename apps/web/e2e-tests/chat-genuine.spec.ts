@@ -11,10 +11,11 @@
  * - Local test server running on port 9548 (BRIDGE_ENV=local)
  * - ANTHROPIC_API_KEY in .env
  */
-import { expect, test } from "@playwright/test"
+
 import type { Page, Request, Response } from "@playwright/test"
-import { TEST_USER, TEST_TIMEOUTS } from "./fixtures/test-data"
-import { TEST_API, TEST_MODELS, PATTERNS, TEST_MESSAGES } from "./fixtures/test-constants"
+import { expect, test } from "@playwright/test"
+import { PATTERNS, TEST_API, TEST_MESSAGES, TEST_MODELS } from "./fixtures/test-constants"
+import { TEST_TIMEOUTS, TEST_USER } from "./fixtures/test-data"
 
 /**
  * Type-safe chat request body

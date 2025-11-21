@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
-import { COOKIE_NAMES, getClearCookieOptions } from "@/lib/auth/cookies"
 import { createCorsResponse, createCorsSuccessResponse } from "@/lib/api/responses"
+import { COOKIE_NAMES, getClearCookieOptions } from "@/lib/auth/cookies"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { createAppClient } from "@/lib/supabase/app"
 import { createIamClient } from "@/lib/supabase/iam"

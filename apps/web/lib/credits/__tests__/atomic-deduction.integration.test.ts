@@ -16,7 +16,7 @@
  * Setup: Create test domain with `INSERT INTO iam.orgs (hostname, credits) VALUES ('atomic-test.goalive.nl', 100);`
  */
 
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest"
+import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { chargeTokensFromCredits, getOrgCredits, updateOrgCredits } from "../supabase-credits"
 
 const TEST_DOMAIN = "atomic-test.goalive.nl"
@@ -38,7 +38,9 @@ beforeAll(async () => {
 
   if (originalBalance === null) {
     console.warn(`⚠️  Test infrastructure not ready: domain ${TEST_DOMAIN} not found in database`)
-    console.warn(`   To enable tests, create domain: INSERT INTO iam.orgs (hostname, credits) VALUES ('${TEST_DOMAIN}', 100);`)
+    console.warn(
+      `   To enable tests, create domain: INSERT INTO iam.orgs (hostname, credits) VALUES ('${TEST_DOMAIN}', 100);`,
+    )
     testInfrastructureReady = false
     return
   }

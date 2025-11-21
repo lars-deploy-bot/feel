@@ -7,9 +7,9 @@
  * If this test fails, someone broke the naming convention support.
  */
 
-import { describe, it, expect } from "vitest"
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
+import { describe, expect, it } from "vitest"
 import { getWorkspace } from "../workspaceRetriever"
 
 describe("Workspace Naming Bug - Regression Test", () => {

@@ -28,9 +28,25 @@ interface BackupStats {
  * Execute git command with SSH key configured
  */
 function gitExec(args: string[], cwd: string = REPO_DIR): string {
-  const cmd = `GIT_SSH_COMMAND="ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no" git ${args.join(" ")}`
   try {
-    return execSync(cmd, { cwd, encoding: "utf-8" }).trim()
+    const result = spawnSync("git", args, {
+      cwd,
+      encoding: "utf-8",
+      env: {
+        ...process.env,
+        GIT_SSH_COMMAND: `ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no`,
+      },
+    })
+
+    if (result.error) {
+      throw result.error
+    }
+
+    if (result.status !== 0) {
+      throw new Error(result.stderr || result.stdout || `Command exited with status ${result.status}`)
+    }
+
+    return result.stdout.trim()
   } catch (error) {
     throw new DeploymentError(`Git command failed: ${error}`)
   }

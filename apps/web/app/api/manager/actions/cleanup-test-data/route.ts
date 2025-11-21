@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { isManagerAuthenticated } from "@/features/auth/lib/auth"
-import { cleanupTestDatabase } from "@/lib/test-helpers/cleanup-test-database"
 import { addCorsHeaders } from "@/lib/cors-utils"
+import { cleanupTestDatabase } from "@/lib/test-helpers/cleanup-test-database"
 import { generateRequestId } from "@/lib/utils"
 
 /**

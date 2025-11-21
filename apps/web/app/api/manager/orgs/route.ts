@@ -1,11 +1,12 @@
+import { createClient } from "@supabase/supabase-js"
 import { type NextRequest, NextResponse } from "next/server"
 import { isManagerAuthenticated } from "@/features/auth/lib/auth"
 import { createCorsResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { addCorsHeaders } from "@/lib/cors-utils"
+import { getAllFeedback } from "@/lib/feedback"
+import type { Database as AppDatabase } from "@/lib/supabase/app.types"
 import { createIamClient } from "@/lib/supabase/iam"
 import { generateRequestId } from "@/lib/utils"
-import type { Database as AppDatabase } from "@/lib/supabase/app.types"
-import { createClient } from "@supabase/supabase-js"
 
 // Type for membership with nested user data from Supabase join
 interface MembershipWithUser {
@@ -37,13 +38,18 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    const startTime = performance.now()
+    const timings: Record<string, number> = {}
+
     const iam = await createIamClient("service")
 
     // Fetch all orgs
+    const orgsStart = performance.now()
     const { data: orgs, error: orgsError } = await iam
       .from("orgs")
       .select("*")
       .order("created_at", { ascending: false })
+    timings.orgs_fetch = performance.now() - orgsStart
 
     if (orgsError) {
       console.error("[Manager Orgs] Failed to fetch orgs:", orgsError)
@@ -149,9 +155,24 @@ export async function GET(req: NextRequest) {
       domain_count: domainsByOrg?.[org.org_id]?.length || 0,
     }))
 
+    // Fetch feedback
+    const feedbackStart = performance.now()
+    const feedback = await getAllFeedback()
+    timings.feedback_fetch = performance.now() - feedbackStart
+
+    timings.total = performance.now() - startTime
+
     return createCorsSuccessResponse(origin, {
       orgs: orgsWithMembers || [],
+      feedback: feedback || [],
       requestId,
+      debug: {
+        timings: {
+          orgs_fetch_ms: Math.round(timings.orgs_fetch * 100) / 100,
+          feedback_fetch_ms: Math.round(timings.feedback_fetch * 100) / 100,
+          total_ms: Math.round(timings.total * 100) / 100,
+        },
+      },
     })
   } catch (error) {
     console.error("[Manager Orgs] Unexpected error:", error)

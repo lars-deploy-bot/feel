@@ -9,9 +9,9 @@
  */
 
 import { createClient } from "@supabase/supabase-js"
-import { ErrorCodes, type ErrorCode } from "@/lib/error-codes"
-import { verifyPassword } from "@/types/guards/api"
 import { getUserDefaultOrgId } from "@/lib/deployment/org-resolver"
+import { type ErrorCode, ErrorCodes } from "@/lib/error-codes"
+import { verifyPassword } from "@/types/guards/api"
 import type { Database as AppDatabase } from "../supabase/app.types"
 import type { Database as IamDatabase } from "../supabase/iam.types"
 

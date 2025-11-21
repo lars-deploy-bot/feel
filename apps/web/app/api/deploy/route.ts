@@ -3,9 +3,9 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createErrorResponse, requireSessionUser } from "@/features/auth/lib/auth"
 import { normalizeAndValidateDomain } from "@/features/manager/lib/domain-utils"
 import { deploySite } from "@/lib/deployment/deploy-site"
+import { DomainRegistrationError, registerDomain } from "@/lib/deployment/domain-registry"
 import { validateUserOrgAccess } from "@/lib/deployment/org-resolver"
 import { validateSSLCertificate } from "@/lib/deployment/ssl-validation"
-import { registerDomain, DomainRegistrationError } from "@/lib/deployment/domain-registry"
 import { ErrorCodes } from "@/lib/error-codes"
 
 interface DeployRequest {
