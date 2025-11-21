@@ -1,7 +1,0 @@
-{
-  "name": "@alive-brug/guides",
-  "version": "0.0.1",
-  "private": true,
-  "description": "Documentation guides for WebAlive platform",
-  "type": "module"
-}
