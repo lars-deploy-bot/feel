@@ -47,10 +47,7 @@ export async function POST(req: NextRequest) {
     const app = await getAppClient()
 
     // Update domain's org_id
-    const { error: updateError } = await app
-      .from("domains")
-      .update({ org_id: targetOrgId })
-      .eq("hostname", domain)
+    const { error: updateError } = await app.from("domains").update({ org_id: targetOrgId }).eq("hostname", domain)
 
     if (updateError) {
       console.error("[Manager] Failed to transfer domain:", updateError)

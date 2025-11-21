@@ -158,7 +158,9 @@ export function OrganizationsList({
                                 <div className="font-medium text-blue-600 dark:text-blue-400 text-sm">
                                   {domain.hostname}
                                 </div>
-                                <div className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">Port {domain.port}</div>
+                                <div className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                                  Port {domain.port}
+                                </div>
                               </button>
                               <button
                                 type="button"
@@ -266,19 +268,22 @@ export function OrganizationsList({
                 to another organization
               </p>
               <div>
-                <label htmlFor="target-org" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                <label
+                  htmlFor="target-org"
+                  className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2"
+                >
                   Target Organization
                 </label>
                 <select
                   id="target-org"
                   value={targetOrgId}
-                  onChange={(e) => setTargetOrgId(e.target.value)}
+                  onChange={e => setTargetOrgId(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 dark:border-white/20 rounded-lg bg-white dark:bg-[#2a2a2a] text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent"
                 >
                   <option value="">Select organization...</option>
                   {orgs
-                    .filter((org) => org.org_id !== selectedDomain.orgId)
-                    .map((org) => (
+                    .filter(org => org.org_id !== selectedDomain.orgId)
+                    .map(org => (
                       <option key={org.org_id} value={org.org_id}>
                         {org.name}
                       </option>

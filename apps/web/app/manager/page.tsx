@@ -11,6 +11,7 @@ import { ConfirmModal } from "@/components/modals/ConfirmModal"
 import { DeleteModal } from "@/components/modals/DeleteModal"
 import { Button } from "@/components/ui/primitives/Button"
 import * as domainService from "@/features/manager/lib/services/domainService"
+import * as domainTransferService from "@/features/manager/lib/services/domainTransferService"
 import * as orgService from "@/features/manager/lib/services/orgService"
 import * as settingsService from "@/features/manager/lib/services/settingsService"
 import { executeHandler } from "@/features/manager/lib/utils/executeHandler"
@@ -690,29 +691,13 @@ export default function ManagerPage() {
   }
 
   const handleTransferDomain = async (domain: string, _currentOrgId: string, targetOrgId: string) => {
-    setTransferringDomain(domain)
-    try {
-      const response = await fetch("/api/manager/domains/transfer", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ domain, targetOrgId }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok || !data.success) {
-        toast.error(data.message || "Failed to transfer domain")
-        return
-      }
-
-      toast.success(`Domain ${domain} transferred successfully`)
-      await fetchOrgs()
-    } catch (error) {
-      console.error("Error transferring domain:", error)
-      toast.error("Failed to transfer domain")
-    } finally {
-      setTransferringDomain(null)
-    }
+    await executeHandler({
+      fn: () => domainTransferService.transferDomain(domain, targetOrgId),
+      onLoading: loading => setTransferringDomain(loading ? domain : null),
+      successMessage: `Domain ${domain} transferred successfully`,
+      errorMessage: "Failed to transfer domain",
+      onSuccess: fetchOrgs,
+    })
   }
 
   const handleCheckPermissions = async (domain: string) => {

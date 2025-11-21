@@ -3,7 +3,10 @@
  * Handles transferring domains between organizations
  */
 
-export async function transferDomain(domain: string, targetOrgId: string): Promise<{
+export async function transferDomain(
+  domain: string,
+  targetOrgId: string,
+): Promise<{
   success: boolean
   message: string
 }> {

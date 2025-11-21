@@ -84,7 +84,7 @@ export function SourcesTable({ sources, loading }: SourcesTableProps) {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-600 dark:text-blue-400 hover:underline"
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={e => e.stopPropagation()}
                     >
                       {domain.domain}
                     </a>
@@ -95,9 +95,7 @@ export function SourcesTable({ sources, loading }: SourcesTableProps) {
                     </div>
                   </td>
                   <td className="py-2 px-4 text-xs text-slate-700 dark:text-slate-300">
-                    <span className="font-mono bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 rounded">
-                      DB
-                    </span>
+                    <span className="font-mono bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 rounded">DB</span>
                   </td>
                   <td className="py-2 px-4 text-sm text-slate-700 dark:text-slate-300 text-center">
                     {domain.supabase.port || <span className="text-slate-400 dark:text-slate-500">—</span>}
@@ -118,7 +116,13 @@ export function SourcesTable({ sources, loading }: SourcesTableProps) {
                   </td>
                   <td className="py-2 px-4 text-sm text-center" rowSpan={3}>
                     {domain.dns.resolves ? (
-                      <span className={domain.dns.matchesServer ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}>
+                      <span
+                        className={
+                          domain.dns.matchesServer
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : "text-amber-600 dark:text-amber-400"
+                        }
+                      >
                         {domain.dns.matchesServer ? "✓" : "⚠"}
                       </span>
                     ) : (
@@ -127,7 +131,13 @@ export function SourcesTable({ sources, loading }: SourcesTableProps) {
                   </td>
                   <td className="py-2 px-4 text-sm text-center" rowSpan={3}>
                     {domain.systemd.exists ? (
-                      <span className={domain.systemd.active ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}>
+                      <span
+                        className={
+                          domain.systemd.active
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : "text-red-600 dark:text-red-400"
+                        }
+                      >
                         {domain.systemd.active ? "✓" : "✗"}
                       </span>
                     ) : (
@@ -155,9 +165,7 @@ export function SourcesTable({ sources, loading }: SourcesTableProps) {
                   onClick={() => window.open(`https://${domain.domain}`, "_blank")}
                 >
                   <td className="py-2 px-4 text-xs text-slate-700 dark:text-slate-300">
-                    <span className="font-mono bg-orange-100 dark:bg-orange-900/30 px-2 py-0.5 rounded">
-                      Proxy
-                    </span>
+                    <span className="font-mono bg-orange-100 dark:bg-orange-900/30 px-2 py-0.5 rounded">Proxy</span>
                   </td>
                   <td className="py-2 px-4 text-sm text-slate-700 dark:text-slate-300 text-center">
                     {domain.caddy.port || <span className="text-slate-400 dark:text-slate-500">—</span>}
@@ -178,9 +186,7 @@ export function SourcesTable({ sources, loading }: SourcesTableProps) {
                   onClick={() => window.open(`https://${domain.domain}`, "_blank")}
                 >
                   <td className="py-2 px-4 text-xs text-slate-700 dark:text-slate-300">
-                    <span className="font-mono bg-purple-100 dark:bg-purple-900/30 px-2 py-0.5 rounded">
-                      Config
-                    </span>
+                    <span className="font-mono bg-purple-100 dark:bg-purple-900/30 px-2 py-0.5 rounded">Config</span>
                   </td>
                   <td className="py-2 px-4 text-sm text-slate-700 dark:text-slate-300 text-center">
                     {domain.json.port || <span className="text-slate-400 dark:text-slate-500">—</span>}
