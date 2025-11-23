@@ -13,7 +13,7 @@
  * ```
  */
 
-export { COOKIE_NAMES, SESSION_MAX_AGE, ENV_VARS } from "./constants.js"
+export { COOKIE_NAMES, SESSION_MAX_AGE, ENV_VARS, TEST_CONFIG } from "./constants.js"
 export {
   PATHS,
   DOMAINS,
@@ -26,3 +26,13 @@ export {
   getSiteHome,
   getEnvFilePath,
 } from "./config.js"
+export {
+  environments,
+  getEnvironment,
+  getAllEnvironments,
+  getEnvironmentByPort,
+  getEnvironmentByProcessName,
+  getEnvironmentByDomain,
+  type Environment,
+  type EnvironmentKey,
+} from "./environments.js"

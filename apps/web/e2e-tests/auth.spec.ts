@@ -1,12 +1,12 @@
+import { login } from "./helpers"
 import { expect, test } from "./setup"
 
-test("can login with test credentials", async ({ page }) => {
-  await page.goto("/")
-
-  await page.getByTestId("email-input").fill("test@bridge.local")
-  await page.getByTestId("password-input").fill("test")
-  await page.getByTestId("login-button").click()
-
-  await expect(page).toHaveURL("/chat")
+test("can access chat with worker tenant auth", async ({ page, tenant }) => {
+  await login(page, tenant)
+  await page.goto("/chat")
   await expect(page.locator('[data-testid="message-input"]')).toBeVisible()
+
+  // Verify workspace is set correctly
+  const workspace = await page.evaluate(() => sessionStorage.getItem("workspace"))
+  expect(workspace).toBe(tenant.workspace)
 })

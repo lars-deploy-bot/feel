@@ -175,7 +175,8 @@ async function fixViteConfigPort(domain: string): Promise<void> {
       await execAsync(`rm -f "${overridePath}"`)
       await execAsync("systemctl daemon-reload")
     } catch (error) {
-      throw new Error(`Failed to remove systemd override: ${error instanceof Error ? error.message : "Unknown error"}`)
+      console.error("[Vite Config] Failed to remove systemd override:", error)
+      throw new Error("Failed to remove systemd override", { cause: error as Error })
     }
   }
 
@@ -188,7 +189,8 @@ async function fixViteConfigPort(domain: string): Promise<void> {
         `sudo -u ${user} sed -i 's/port: ${info.actualPort}/port: ${info.expectedPort}/g' "${info.configPath}"`,
       )
     } catch (error) {
-      throw new Error(`Failed to update vite config: ${error instanceof Error ? error.message : "Unknown error"}`)
+      console.error("[Vite Config] Failed to update vite config:", error)
+      throw new Error("Failed to update vite config", { cause: error as Error })
     }
   }
 

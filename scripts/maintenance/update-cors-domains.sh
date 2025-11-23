@@ -11,7 +11,7 @@ ALLOWED_DOMAINS_FILE="/root/webalive/claude-bridge/allowed-domains.json"
 # Read environment configuration
 SCRIPT_DIR="$(dirname "$0")"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-ENV_CONFIG="$PROJECT_ROOT/environments.json"
+ENV_CONFIG="$PROJECT_ROOT/packages/shared/environments.json"
 
 PROD_PORT=$(jq -r '.environments.production.port' "$ENV_CONFIG")
 STAGING_PORT=$(jq -r '.environments.staging.port' "$ENV_CONFIG")

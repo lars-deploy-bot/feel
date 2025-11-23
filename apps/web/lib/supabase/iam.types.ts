@@ -1,9 +1,15 @@
 // Auto-generated iam schema types
-// Generated: 2025-11-14T14:26:53.034Z
+// Generated: 2025-11-23T18:54:10.983Z
 // Run: bun run gen:db
 // Project: qnvprftdorualkdyogka
 
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
@@ -104,22 +110,28 @@ export type Database = {
         Row: {
           created_at: string | null
           credits: number
+          is_test_env: boolean | null
           name: string
           org_id: string
+          test_run_id: string | null
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
           credits?: number
+          is_test_env?: boolean | null
           name: string
           org_id?: string
+          test_run_id?: string | null
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
           credits?: number
+          is_test_env?: boolean | null
           name?: string
           org_id?: string
+          test_run_id?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -176,6 +188,7 @@ export type Database = {
           metadata: Json
           password_hash: string | null
           status: Database["iam"]["Enums"]["user_status"]
+          test_run_id: string | null
           updated_at: string
           user_id: string
         }
@@ -189,6 +202,7 @@ export type Database = {
           metadata?: Json
           password_hash?: string | null
           status?: Database["iam"]["Enums"]["user_status"]
+          test_run_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -202,6 +216,7 @@ export type Database = {
           metadata?: Json
           password_hash?: string | null
           status?: Database["iam"]["Enums"]["user_status"]
+          test_run_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -214,8 +229,8 @@ export type Database = {
     Functions: {
       current_clerk_id: { Args: never; Returns: string }
       deduct_credits: {
-        Args: { p_org_id: string; p_amount: number }
-        Returns: number | null
+        Args: { p_amount: number; p_org_id: string }
+        Returns: number
       }
       is_org_admin: { Args: { p_org_id: string }; Returns: boolean }
       is_org_member: { Args: { p_org_id: string }; Returns: boolean }
@@ -254,8 +269,10 @@ export type Tables<
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -263,7 +280,9 @@ export type Tables<
     : never
 
 export type TablesInsert<
-  DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
@@ -286,7 +305,9 @@ export type TablesInsert<
     : never
 
 export type TablesUpdate<
-  DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
@@ -309,7 +330,9 @@ export type TablesUpdate<
     : never
 
 export type Enums<
-  DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"] | { schema: keyof DatabaseWithoutInternals },
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }

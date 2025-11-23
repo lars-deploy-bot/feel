@@ -15,7 +15,7 @@ Claude Bridge is a **multi-tenant development platform** that enables Claude AI 
 
 - **Multi-tenant architecture**: Each domain gets isolated workspace
 - **Security-first design**: Workspace sandboxing, systemd isolation, process separation
-- **Next.js 16 + React 19**: Modern App Router architecture
+- **TURBOREPO Next.js 16 + React 19**: Modern App Router architecture using **Turborepo** for building and deploying the project.
 - **SSE streaming**: Real-time Claude responses via Server-Sent Events
 - **Tool-based interaction**: Limited to safe file operations (Read, Write, Edit, Glob, Grep)
 
@@ -170,6 +170,26 @@ apps/web/
 - All tool operations must be logged
 - Errors should be streamed as SSE events, not thrown
 
+#### Migrating Config Files
+
+**⚠️ CRITICAL**: Config/file migrations can break production. Always follow the safe migration guide.
+
+**Required reading**: [`docs/guides/safe-config-migration.md`](./docs/guides/safe-config-migration.md)
+
+**Quick checklist:**
+1. ✅ Document the migration plan
+2. ✅ Search for ALL references: `grep -r "old-file" .`
+3. ✅ Validate before deleting: `./scripts/validate-no-deleted-refs.sh old-file`
+4. ✅ Test service restarts: `pm2 restart && pm2 logs`
+5. ✅ Run full test suite: `bun test && bun run test:e2e`
+
+**Never**:
+- ❌ Delete files before updating all references
+- ❌ Skip the validation script
+- ❌ Use dynamic requires in npm scripts: `$(node -p "require('./config').value")`
+
+**See also**: [Postmortem: 2025-11-23 Config Migration Outage](./docs/postmortems/2025-11-23-config-migration-outage.md)
+
 #### Deploying a New Site
 
 **Site deployments use the `@webalive/site-controller` package with the Shell-Operator Pattern:**
@@ -291,7 +311,7 @@ bun run setup
 # 3. Add .env.local (as shown by setup script)
 # ANTHROPIC_API_KEY=your_key
 # BRIDGE_ENV=local
-# LOCAL_TEMPLATE_PATH=/path/to/packages/template/user
+# LOCAL_TEMPLATE_PATH=/path/to/.alive/template
 
 # 4. Start dev server
 bun run dev

@@ -130,9 +130,8 @@ Important documentation about scripts and operations.
 ### Single Source of Truth
 
 All environment configuration is defined in:
-- **`environments.json`** - Master configuration file (scripts read this with `jq`)
-- **`bridge.config.js`** - Legacy CommonJS wrapper
-- **`environments.config.ts`** - TypeScript interface
+- **`packages/shared/src/environments.json`** - Master configuration file (scripts read this with `jq`)
+- **`environments.config.ts`** - TypeScript interface for type-safe access
 
 ### Deployment Flow
 

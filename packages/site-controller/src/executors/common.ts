@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process'
 import { resolve } from 'node:path'
+import { PATHS } from '@webalive/shared'
 
 /**
  * Error thrown when a script execution fails
@@ -29,7 +30,7 @@ export async function runScript(
   env: Record<string, string>
 ): Promise<string> {
   // Use absolute path to scripts directory to avoid path resolution issues with symlinks
-  const scriptsDir = '/root/webalive/claude-bridge/packages/site-controller/scripts'
+  const scriptsDir = PATHS.SCRIPTS_DIR
   const scriptPath = resolve(scriptsDir, scriptName)
   console.log(`[runScript] Scripts dir: ${scriptsDir}`)
   console.log(`[runScript] Resolved script path: ${scriptPath}`)

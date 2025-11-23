@@ -21,16 +21,35 @@
  */
 
 import { existsSync, readFileSync } from "node:fs"
-import { join } from "node:path"
+import { dirname, resolve } from "node:path"
+import { fileURLToPath } from "node:url"
 
-const CADDYFILE_PATH = "/root/webalive/claude-bridge/Caddyfile"
+// Get script directory and repo root
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+const REPO_ROOT = resolve(__dirname, "../..")
+
+// Configurable paths via environment variables with repo-relative defaults
+const CADDYFILE_PATH = process.env.CADDYFILE_PATH || resolve(REPO_ROOT, "ops/caddy/Caddyfile")
+const ENV_CONFIG_PATH = process.env.ENV_CONFIG_PATH || resolve(REPO_ROOT, "packages/shared/environments.json")
+
 const PREVIEW_BASE = "preview.terminal.goalive.nl"
 const AUTH_ENDPOINT = "https://dev.terminal.goalive.nl/api/auth/preview-guard"
 
-// Read staging port from environments.json
-const ENV_CONFIG_PATH = "/root/webalive/claude-bridge/environments.json"
-const envConfig = JSON.parse(readFileSync(ENV_CONFIG_PATH, "utf-8"))
-const STAGING_PORT = envConfig.environments.staging.port
+// Validate and read environments.json
+if (!existsSync(ENV_CONFIG_PATH)) {
+  console.error(`Error: environments.json not found at ${ENV_CONFIG_PATH}`)
+  console.error("Set ENV_CONFIG_PATH environment variable or ensure file exists at default location")
+  process.exit(1)
+}
+
+const envConfigRaw = JSON.parse(readFileSync(ENV_CONFIG_PATH, "utf-8"))
+const staging = envConfigRaw?.environments?.staging
+if (!staging || typeof staging.port !== "number") {
+  console.error(`Error: environments.staging.port must be defined and numeric in ${ENV_CONFIG_PATH}`)
+  process.exit(1)
+}
+const STAGING_PORT = staging.port
 
 interface DomainMapping {
   domain: string
@@ -145,9 +164,17 @@ ${blocks}
  * Main execution
  */
 function main() {
+  // Show resolved paths for debugging
+  console.error("Configuration:")
+  console.error(`  Caddyfile: ${CADDYFILE_PATH}`)
+  console.error(`  Environments: ${ENV_CONFIG_PATH}`)
+  console.error(`  Staging port: ${STAGING_PORT}`)
+  console.error("")
+
   // Check if Caddyfile exists
   if (!existsSync(CADDYFILE_PATH)) {
     console.error(`Error: Caddyfile not found at ${CADDYFILE_PATH}`)
+    console.error("Set CADDYFILE_PATH environment variable or ensure file exists at default location")
     process.exit(1)
   }
 

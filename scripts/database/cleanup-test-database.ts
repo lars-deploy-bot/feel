@@ -6,14 +6,14 @@
  * Can be run manually or scheduled via cron.
  *
  * Usage:
- *   bun scripts/cleanup-test-database.ts           # Dry run (preview only)
- *   bun scripts/cleanup-test-database.ts --force   # Actually delete
+ *   bun scripts/database/cleanup-test-database.ts           # Dry run (preview only)
+ *   bun scripts/database/cleanup-test-database.ts --force   # Actually delete
  *
  * Add to cron (runs daily at 2am):
- *   0 2 * * * cd /root/webalive/claude-bridge && bun scripts/cleanup-test-database.ts --force >> /var/log/test-cleanup.log 2>&1
+ *   0 2 * * * cd /path/to/project && bun scripts/database/cleanup-test-database.ts --force >> /var/log/test-cleanup.log 2>&1
  */
 
-import { cleanupTestDatabase } from "../apps/web/lib/test-helpers/cleanup-test-database"
+import { cleanupTestDatabase } from "../../apps/web/lib/test-helpers/cleanup-test-database"
 
 async function main() {
   const args = process.argv.slice(2)
@@ -28,7 +28,7 @@ async function main() {
 
   if (dryRun) {
     console.log("ℹ️  This is a DRY RUN. No data will be deleted.")
-    console.log("ℹ️  To actually delete, run: bun scripts/cleanup-test-database.ts --force")
+    console.log("ℹ️  To actually delete, run: bun scripts/database/cleanup-test-database.ts --force")
     console.log("")
   }
 
@@ -48,7 +48,7 @@ async function main() {
     console.log("")
     if (dryRun) {
       console.log("ℹ️  No data was deleted. This was a preview only.")
-      console.log("ℹ️  To actually delete, run: bun scripts/cleanup-test-database.ts --force")
+      console.log("ℹ️  To actually delete, run: bun scripts/database/cleanup-test-database.ts --force")
       console.log("")
     }
     console.log(`Finished at: ${new Date().toISOString()}`)

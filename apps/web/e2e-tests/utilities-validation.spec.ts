@@ -45,8 +45,8 @@ test.describe("E2E Utilities Validation", () => {
 
   // Tests below need page/login
   test.describe("Tests requiring page interaction", () => {
-    test.beforeEach(async ({ page }) => {
-      await login(page)
+    test.beforeEach(async ({ page, tenant }) => {
+      await login(page, tenant)
     })
 
     test("selectors match actual DOM elements", async ({ page }) => {

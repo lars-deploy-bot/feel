@@ -97,7 +97,7 @@ DEPLOY_BRANCH=main                         # Only deploy on this branch (default
 
 # Local development (requires both)
 BRIDGE_ENV=local                        # Enables local template mode + test user (test/test)
-LOCAL_TEMPLATE_PATH=/absolute/path/to/packages/template/user  # Absolute path to template workspace
+LOCAL_TEMPLATE_PATH=.alive/template     # Relative workspace path to template
 ```
 
 ### Local Development Login

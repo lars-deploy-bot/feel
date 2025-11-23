@@ -335,9 +335,9 @@ describe("getTemplate", () => {
 
       const result = await getTemplate(params, templatesPath)
 
-      // Should pass validation but not be found (case-sensitive filesystem)
-      expect(result.isError).toBe(true)
-      expect(result.content[0].text).toContain("not found")
+      // Template IDs are normalized to lowercase, so this should succeed
+      expect(result.isError).toBe(false)
+      expect(result.content[0].text).toContain("Auto-Scrolling Carousel")
       expect(result.content[0].text).not.toContain("Invalid template ID format")
     })
 

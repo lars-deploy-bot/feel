@@ -35,7 +35,10 @@ export const PATHS = {
   LEGACY_SITES_ROOT: "/root/webalive/sites",
 
   /** Template directory for new sites */
-  TEMPLATE_PATH: "/root/webalive/claude-bridge/packages/template",
+  TEMPLATE_PATH: "/root/webalive/claude-bridge/templates/site-template",
+
+  /** Site controller deployment scripts directory */
+  SCRIPTS_DIR: "/root/webalive/claude-bridge/packages/site-controller/scripts",
 
   /** Domain password registry */
   REGISTRY_PATH: "/var/lib/claude-bridge/domain-passwords.json",
@@ -44,7 +47,7 @@ export const PATHS = {
   SERVER_CONFIG: "/var/lib/claude-bridge/server-config.json",
 
   /** Caddyfile location for reverse proxy configuration */
-  CADDYFILE_PATH: "/root/webalive/claude-bridge/Caddyfile",
+  CADDYFILE_PATH: "/root/webalive/claude-bridge/ops/caddy/Caddyfile",
 
   /** Systemd service environment files */
   SYSTEMD_ENV_DIR: "/etc/sites",

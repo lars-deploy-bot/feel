@@ -64,10 +64,8 @@ export async function POST(request: NextRequest) {
     })
 
     if (result.error) {
-      return createErrorResponse(ErrorCodes.IMAGE_UPLOAD_FAILED, 500, {
-        errorCode: result.error.code,
-        exception: result.error.message,
-      })
+      console.error("[Image Upload] Upload failed:", result.error)
+      return createErrorResponse(ErrorCodes.IMAGE_UPLOAD_FAILED, 500)
     }
 
     // 10. Return success with photobook key format (tenantId/contentHash)
@@ -79,9 +77,7 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error("Upload error:", error)
-    return createErrorResponse(ErrorCodes.IMAGE_UPLOAD_FAILED, 500, {
-      exception: error instanceof Error ? error.message : "Failed to upload image",
-    })
+    console.error("[Image Upload] Unexpected error:", error)
+    return createErrorResponse(ErrorCodes.IMAGE_UPLOAD_FAILED, 500)
   }
 }

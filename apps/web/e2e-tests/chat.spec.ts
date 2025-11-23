@@ -2,8 +2,8 @@ import { login } from "./helpers"
 import { handlers } from "./lib/handlers"
 import { expect, test } from "./setup"
 
-test.beforeEach(async ({ page }) => {
-  await login(page)
+test.beforeEach(async ({ page, tenant }) => {
+  await login(page, tenant)
 })
 
 test("has chat interface", async ({ page }) => {

@@ -38,8 +38,19 @@ TOTAL_PHASES=8
 # Load configuration from single source of truth
 SCRIPT_DIR="$(dirname "$0")"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-CONFIG_FILE="$PROJECT_ROOT/bridge.config.js"
-ENV_CONFIG="$PROJECT_ROOT/environments.config.ts"
+ENV_CONFIG="$PROJECT_ROOT/packages/shared/environments.json"
+
+# Verify jq is available
+if ! command -v jq &> /dev/null; then
+    echo -e "${RED}[ERROR]${NC} jq is required but not installed"
+    exit 1
+fi
+
+# Verify configuration file exists
+if [ ! -f "$ENV_CONFIG" ]; then
+    echo -e "${RED}[ERROR]${NC} Configuration file not found: $ENV_CONFIG"
+    exit 1
+fi
 
 # Get environment parameter (default: prod)
 ENV="${1:-prod}"
@@ -54,14 +65,35 @@ case "$ENV" in
     prod)
         CONFIG_KEY="production"
         ;;
-    staging|dev)
+    staging)
         CONFIG_KEY="$ENV"
         ;;
 esac
 
-# Extract port and app name from config file
-PORT=$(node -p "require('$CONFIG_FILE').ports.${CONFIG_KEY}")
-APP_NAME=$(node -p "require('$CONFIG_FILE').appName.${CONFIG_KEY}")
+# Extract port and app name from environments.json
+PORT=$(jq -r ".environments.${CONFIG_KEY}.port" "$ENV_CONFIG")
+APP_NAME=$(jq -r ".environments.${CONFIG_KEY}.processName" "$ENV_CONFIG")
+
+# Validate extracted values
+if [[ ! "$PORT" =~ ^[0-9]+$ ]]; then
+    echo -e "${RED}[ERROR]${NC} Invalid PORT extracted from $ENV_CONFIG: '$PORT'"
+    echo -e "${RED}[ERROR]${NC} Check environments.${CONFIG_KEY}.port in $ENV_CONFIG"
+    exit 1
+fi
+
+if [[ -z "$APP_NAME" || "$APP_NAME" == "null" ]]; then
+    echo -e "${RED}[ERROR]${NC} Invalid APP_NAME extracted from $ENV_CONFIG: '$APP_NAME'"
+    echo -e "${RED}[ERROR]${NC} Check environments.${CONFIG_KEY}.processName in $ENV_CONFIG"
+    exit 1
+fi
+
+# Validate APP_NAME contains only safe filename characters
+if [[ ! "$APP_NAME" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+    echo -e "${RED}[ERROR]${NC} APP_NAME contains unsafe characters: '$APP_NAME'"
+    echo -e "${RED}[ERROR]${NC} APP_NAME must contain only alphanumeric, dot, hyphen, or underscore"
+    exit 1
+fi
+
 LOCK_FILE="/tmp/${APP_NAME}-deploy.lock"
 
 # Environment-aware health check timeout
@@ -231,60 +263,27 @@ fi
 
 end_phase "success" "Dependencies installed"
 
-start_phase "Running linter"
-log_step "@biomejs/biome check..."
+start_phase "Running static analysis"
+log_step "Comprehensive checks (workspace, knip, lint, types, dependencies)..."
 
 set +e  # Allow capturing exit code
-LINT_OUTPUT=$(bun run lint 2>&1)
-LINT_EXIT_CODE=$?
+STATIC_CHECK_OUTPUT=$(make static-check 2>&1)
+STATIC_CHECK_EXIT_CODE=$?
 set -e
 
-if [ $LINT_EXIT_CODE -ne 0 ]; then
-    end_phase "error" "Linter failed"
+if [ $STATIC_CHECK_EXIT_CODE -ne 0 ]; then
+    end_phase "error" "Static analysis failed"
     echo ""
-    log_error "Lint errors found:"
+    log_error "Static check errors:"
     echo ""
-    # Show actual errors (filter out verbose output)
-    echo "$LINT_OUTPUT" | grep -E "(error|✖|×)" | head -n 30
+    echo "$STATIC_CHECK_OUTPUT"
     echo ""
-    if [ $(echo "$LINT_OUTPUT" | grep -c "error" || echo 0) -gt 30 ]; then
-        log_warn "... and more. Run 'bun run lint' to see all issues."
-    fi
-    echo ""
-    log_error "Fix linting errors before proceeding."
+    log_error "Fix all static check errors before deploying."
+    log_error "Run 'make static-check' locally to see full details."
     exit 1
 fi
 
-end_phase "success" "Linter passed"
-
-start_phase "TypeScript type checking"
-log_step "Running type-check across all packages and apps..."
-
-set +e  # Allow capturing exit code
-TSC_OUTPUT=$(bun run type-check 2>&1)
-TSC_EXIT_CODE=$?
-set -e
-
-if [ $TSC_EXIT_CODE -ne 0 ]; then
-    end_phase "error" "TypeScript type checking failed"
-    echo ""
-    log_error "Type errors found:"
-    echo ""
-    # Show actual errors (first 40 lines of errors)
-    echo "$TSC_OUTPUT" | grep -E "error TS[0-9]+" | head -n 40
-    echo ""
-    TSC_ERROR_COUNT=$(echo "$TSC_OUTPUT" | grep -c "error TS" || echo "0")
-    if [ "$TSC_ERROR_COUNT" -gt 40 ]; then
-        log_warn "... and $(($TSC_ERROR_COUNT - 40)) more errors."
-    fi
-    log_error "Found $TSC_ERROR_COUNT type errors total"
-    echo ""
-    log_error "ALL type errors must be fixed (including in test files)."
-    log_error "Run 'bun run type-check' to see full details."
-    exit 1
-fi
-
-end_phase "success" "TypeScript type checking passed (0 errors)"
+end_phase "success" "All static checks passed"
 
 start_phase "Running unit tests"
 log_step "Executing test suite..."

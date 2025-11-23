@@ -35,14 +35,6 @@ bun run setup || {
     exit 1
 }
 
-# Symlink bridge.config.js if it exists in base repo
-if [ -f "$CONDUCTOR_ROOT_PATH/bridge.config.js" ] && [ ! -f "./bridge.config.js" ]; then
-    ln -s "$CONDUCTOR_ROOT_PATH/bridge.config.js" "./bridge.config.js" || {
-        echo "Warning: Could not symlink bridge.config.js, copying instead"
-        cp "$CONDUCTOR_ROOT_PATH/bridge.config.js" "./bridge.config.js"
-    }
-fi
-
 # Copy and configure .env.local
 ENV_SOURCE="$CONDUCTOR_ROOT_PATH/apps/web/.env.local"
 ENV_DEST="./apps/web/.env.local"

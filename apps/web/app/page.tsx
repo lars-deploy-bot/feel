@@ -36,7 +36,8 @@ function LoginPageContent() {
 
       // Redirect to chat
       router.push("/chat")
-    } catch {
+    } catch (error) {
+      console.error("Login error:", error)
       setError("Connection failed")
       setLoading(false)
     }

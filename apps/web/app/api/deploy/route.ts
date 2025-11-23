@@ -188,16 +188,18 @@ export async function POST(request: NextRequest) {
       }
       statusCode = 400
     } else if (error && typeof error === "object" && "stderr" in error) {
-      errorMessage = `Script error: ${String(error.stderr).slice(0, 500)}`
+      console.error("[Deploy] Script error:", error.stderr)
+      errorMessage = "Deployment script failed. Please check configuration and try again."
     } else if (error instanceof Error) {
-      errorMessage = error.message
+      console.error("[Deploy] Unexpected error:", error)
+      errorMessage = "Deployment failed. Please try again."
     }
 
     return NextResponse.json(
       {
         ok: false,
         message: errorMessage,
-        errors: [String(error)],
+        errors: process.env.NODE_ENV === "development" ? [String(error)] : undefined,
       } as DeployResponse,
       { status: statusCode },
     )

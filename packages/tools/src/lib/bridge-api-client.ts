@@ -5,13 +5,13 @@
  * Handles port resolution, error formatting, and response parsing.
  */
 
-import { COOKIE_NAMES } from "@webalive/shared"
+import { COOKIE_NAMES, environments } from "@webalive/shared"
 import { validateWorkspacePath } from "./workspace-validator.js"
 
 function getApiBaseUrl(): string {
   if (process.env.BRIDGE_API_URL) return process.env.BRIDGE_API_URL
   if (process.env.BRIDGE_API_PORT) return `http://localhost:${process.env.BRIDGE_API_PORT}`
-  return "http://localhost:9000" // Default to production
+  return `http://localhost:${environments.production.port}` // Default to production
 }
 
 export interface ToolResult {

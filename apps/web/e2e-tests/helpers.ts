@@ -1,23 +1,56 @@
-import type { BrowserContext, Page } from "@playwright/test"
+import type { BrowserContext, Page, Response } from "@playwright/test"
 import jwt from "jsonwebtoken"
+import { TEST_CONFIG } from "@webalive/shared"
 import type { TestUser } from "./fixtures"
+
+interface LoginResult {
+  loginResponse: Response
+  loginData: unknown
+}
 
 /**
  * Login helper for e2e tests
- * Uses test@bridge.local/test credentials in local dev mode
+ * Uses worker-specific tenant credentials
  */
-export async function login(page: Page) {
+export async function login(
+  page: Page,
+  tenant: { email: string; workspace: string },
+): Promise<LoginResult> {
   await page.goto("/")
 
-  // Set up test workspace in sessionStorage (always terminal mode)
-  await page.evaluate(() => {
-    sessionStorage.setItem("workspace", "test.bridge.local")
-  })
+  // Set workspace for this tenant
+  await page.evaluate(ws => {
+    sessionStorage.setItem("workspace", ws)
+  }, tenant.workspace)
 
-  await page.getByTestId("email-input").fill("test@bridge.local")
-  await page.getByTestId("password-input").fill("test")
+  await page.getByTestId("email-input").fill(tenant.email)
+  await page.getByTestId("password-input").fill(TEST_CONFIG.TEST_PASSWORD)
+
+  // Intercept login request to capture response
+  const loginResponsePromise = page.waitForResponse(
+    response => response.url().includes("/api/login") && response.request().method() === "POST",
+  )
+
   await page.getByTestId("login-button").click()
-  await page.waitForURL("/chat", { timeout: 5000 })
+
+  // Log login response for debugging
+  const loginResponse = await loginResponsePromise
+
+  if (!loginResponse.ok()) {
+    const errorText = await loginResponse.text()
+    throw new Error(`Login failed: ${loginResponse.status()} - ${errorText}`)
+  }
+
+  const loginData: unknown = await loginResponse.json()
+  console.log(
+    `[Login Debug] Email: ${tenant.email}, Status: ${loginResponse.status()}`,
+  )
+
+  // Don't wait for redirect - tests handle their own navigation
+  // The login page may call router.push("/chat") but client-side navigation
+  // doesn't always trigger Playwright's navigation detection reliably
+
+  return { loginResponse, loginData }
 }
 
 /**

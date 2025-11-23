@@ -6,8 +6,6 @@
 
 import { execSync } from "node:child_process"
 import { existsSync } from "node:fs"
-import { createTestSessionToken } from "@/lib/test-helpers/auth-test-helper"
-import { setAuthCookie } from "@/lib/test-helpers/playwright-helpers"
 import { expect, test } from "./fixtures"
 
 const TEST_SLUG = "test-e2e"
@@ -101,7 +99,7 @@ test.describe("Website Deployment with Authentication", () => {
     console.log("[Test] ✓ Unauthenticated request properly rejected")
   })
 
-  test.skip("deployment API allows authenticated requests without explicit orgId", async ({ page, deployUser }) => {
+  test.skip("deployment API allows authenticated requests without explicit orgId", async ({ authenticatedPage }) => {
     // Current API behavior: if orgId is not provided, a default org is created
     // This test verifies that authenticated users can deploy without explicit orgId
     const isStaging = process.env.TEST_ENV === "staging"
@@ -109,12 +107,8 @@ test.describe("Website Deployment with Authentication", () => {
 
     console.log("[Test] Testing API with authenticated user but no orgId")
 
-    // Create and set authentication cookie
-    const token = await createTestSessionToken(deployUser)
-    await setAuthCookie(page, token)
-
     // Use page.request to ensure cookies are sent
-    const response = await page.request.post("/api/deploy-subdomain", {
+    const response = await authenticatedPage.request.post("/api/deploy-subdomain", {
       data: {
         slug: TEST_SLUG,
         // No email needed - authenticated via cookie
@@ -132,7 +126,10 @@ test.describe("Website Deployment with Authentication", () => {
     console.log("[Test] ✓ Authenticated user can deploy without explicit orgId")
   })
 
-  test.skip("can deploy with valid authentication and orgId - full flow", async ({ page, deployUser }) => {
+  test.skip("can deploy with valid authentication and orgId - full flow", async ({
+    authenticatedPage,
+    workerTenant,
+  }) => {
     // Full deployment test with authentication and explicit orgId
     // Takes ~60s for actual deployment (local), longer for staging
     const isStaging = process.env.TEST_ENV === "staging"
@@ -140,17 +137,13 @@ test.describe("Website Deployment with Authentication", () => {
 
     console.log("[Test] Full authenticated deployment flow with orgId")
 
-    // Create and set authentication cookie
-    const token = await createTestSessionToken(deployUser)
-    await setAuthCookie(page, token)
+    console.log(`[Test] Deploying with user: ${workerTenant.email}, org: ${workerTenant.orgId}`)
 
-    console.log(`[Test] Deploying with user: ${deployUser.email}, org: ${deployUser.orgId}`)
-
-    const response = await page.request.post("/api/deploy-subdomain", {
+    const response = await authenticatedPage.request.post("/api/deploy-subdomain", {
       data: {
         slug: TEST_SLUG,
         // No email needed - authenticated via cookie
-        orgId: deployUser.orgId,
+        orgId: workerTenant.orgId,
         siteIdeas: "E2E test deployment with authentication",
         selectedTemplate: "landing",
       },
@@ -165,7 +158,7 @@ test.describe("Website Deployment with Authentication", () => {
     const result = await response.json()
     expect(result.ok).toBe(true)
     expect(result.domain).toBe(TEST_DOMAIN)
-    expect(result.orgId).toBe(deployUser.orgId)
+    expect(result.orgId).toBe(workerTenant.orgId)
 
     console.log("[Test] ✓ Deployment succeeded")
 

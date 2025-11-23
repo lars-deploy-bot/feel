@@ -1,8 +1,7 @@
 import { execSync } from "node:child_process"
 import { existsSync, readFileSync, rmSync } from "node:fs"
+import { PATHS } from "@webalive/shared"
 import { expect, test } from "./setup"
-
-const CADDYFILE_PATH = "/root/webalive/claude-bridge/Caddyfile"
 
 // Test domains - using short names to avoid Linux username length limits (32 chars)
 // IMPORTANT: Emails MUST use INTERNAL test domains (@bridge-playwright.internal)
@@ -16,11 +15,11 @@ const TEST_PASSWORD = "testpass123"
 
 // Validation function for Caddyfile integrity
 function validateCaddyfile(expectedDomains: string[]): { valid: boolean; error?: string } {
-  if (!existsSync(CADDYFILE_PATH)) {
+  if (!existsSync(PATHS.CADDYFILE_PATH)) {
     return { valid: false, error: "Caddyfile not found" }
   }
 
-  const content = readFileSync(CADDYFILE_PATH, "utf-8")
+  const content = readFileSync(PATHS.CADDYFILE_PATH, "utf-8")
   const lines = content.split("\n")
 
   // Count domain entries
@@ -85,9 +84,9 @@ test.describe("Concurrent Deployment - File Locking", () => {
       // Remove Caddyfile entries (for clean test)
       try {
         // Remove domain block from Caddyfile
-        const tempFile = `${CADDYFILE_PATH}.tmp`
+        const tempFile = `${PATHS.CADDYFILE_PATH}.tmp`
         execSync(
-          `awk '/^${site.domain.replace(/\./g, "\\.")} \\{/,/^\\}/ {next} {print}' ${CADDYFILE_PATH} > ${tempFile} && mv ${tempFile} ${CADDYFILE_PATH}`,
+          `awk '/^${site.domain.replace(/\./g, "\\.")} \\{/,/^\\}/ {next} {print}' ${PATHS.CADDYFILE_PATH} > ${tempFile} && mv ${tempFile} ${PATHS.CADDYFILE_PATH}`,
           { stdio: "ignore" },
         )
         console.log(`[E2E Setup] Removed ${site.domain} from Caddyfile`)
@@ -128,9 +127,9 @@ test.describe("Concurrent Deployment - File Locking", () => {
 
       // Remove Caddyfile entries
       try {
-        const tempFile = `${CADDYFILE_PATH}.tmp`
+        const tempFile = `${PATHS.CADDYFILE_PATH}.tmp`
         execSync(
-          `awk '/^${site.domain.replace(/\./g, "\\.")} \\{/,/^\\}/ {next} {print}' ${CADDYFILE_PATH} > ${tempFile} && mv ${tempFile} ${CADDYFILE_PATH}`,
+          `awk '/^${site.domain.replace(/\./g, "\\.")} \\{/,/^\\}/ {next} {print}' ${PATHS.CADDYFILE_PATH} > ${tempFile} && mv ${tempFile} ${PATHS.CADDYFILE_PATH}`,
           { stdio: "ignore" },
         )
         console.log(`[E2E Cleanup] Removed ${site.domain} from Caddyfile`)
@@ -288,7 +287,7 @@ test.describe("Concurrent Deployment - File Locking", () => {
       console.log(`[Test] ❌ CADDYFILE CORRUPTED: ${afterValidation.error}`)
       console.log("\n[Test] Caddyfile content (showing test domains only):")
 
-      const content = readFileSync(CADDYFILE_PATH, "utf-8")
+      const content = readFileSync(PATHS.CADDYFILE_PATH, "utf-8")
       const testDomainPattern = /tc\d+\.alive\.best/
       const lines = content.split("\n")
       const relevantLines = []

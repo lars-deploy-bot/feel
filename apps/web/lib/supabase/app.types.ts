@@ -1,9 +1,15 @@
 // Auto-generated app schema types
-// Generated: 2025-11-14T14:26:54.600Z
+// Generated: 2025-11-23T18:54:13.223Z
 // Run: bun run gen:db
 // Project: qnvprftdorualkdyogka
 
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
@@ -18,22 +24,28 @@ export type Database = {
           created_at: string
           domain_id: string
           hostname: string
+          is_test_env: boolean | null
           org_id: string | null
           port: number
+          test_run_id: string | null
         }
         Insert: {
           created_at?: string
           domain_id?: string
           hostname: string
+          is_test_env?: boolean | null
           org_id?: string | null
           port: number
+          test_run_id?: string | null
         }
         Update: {
           created_at?: string
           domain_id?: string
           hostname?: string
+          is_test_env?: boolean | null
           org_id?: string | null
           port?: number
+          test_run_id?: string | null
         }
         Relationships: []
       }
@@ -84,28 +96,28 @@ export type Database = {
       }
       feedback: {
         Row: {
-          clerk_id: string | null
           content: string
           context: Json | null
           created_at: string | null
           feedback_id: string
           status: string | null
+          user_id: string | null
         }
         Insert: {
-          clerk_id?: string | null
           content: string
           context?: Json | null
           created_at?: string | null
           feedback_id?: string
           status?: string | null
+          user_id?: string | null
         }
         Update: {
-          clerk_id?: string | null
           content?: string
           context?: Json | null
           created_at?: string | null
           feedback_id?: string
           status?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -286,8 +298,10 @@ export type Tables<
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -295,7 +309,9 @@ export type Tables<
     : never
 
 export type TablesInsert<
-  DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
@@ -318,7 +334,9 @@ export type TablesInsert<
     : never
 
 export type TablesUpdate<
-  DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
@@ -341,7 +359,9 @@ export type TablesUpdate<
     : never
 
 export type Enums<
-  DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"] | { schema: keyof DatabaseWithoutInternals },
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }

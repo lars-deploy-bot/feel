@@ -16,10 +16,10 @@
 import { execSync } from "node:child_process"
 import { existsSync, readFileSync } from "node:fs"
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
+import { PATHS, environments } from "@webalive/shared"
 import { createTestUser } from "@/lib/test-helpers/auth-test-helper"
 
-const CADDYFILE_PATH = "/root/webalive/claude-bridge/Caddyfile"
-const BASE_URL = "http://localhost:9000"
+const BASE_URL = `http://localhost:${environments.production.port}`
 
 interface TestSite {
   slug: string
@@ -44,11 +44,11 @@ const TEST_SLUGS = ["cd1", "cd2", "cd3"] // cd = concurrent deploy
  * - No incomplete entries
  */
 function validateCaddyfile(expectedDomains: string[]): { valid: boolean; error?: string } {
-  if (!existsSync(CADDYFILE_PATH)) {
+  if (!existsSync(PATHS.CADDYFILE_PATH)) {
     return { valid: false, error: "Caddyfile not found" }
   }
 
-  const content = readFileSync(CADDYFILE_PATH, "utf-8")
+  const content = readFileSync(PATHS.CADDYFILE_PATH, "utf-8")
 
   // Count braces
   const openBraces = (content.match(/\{/g) || []).length
@@ -94,9 +94,9 @@ async function cleanupTestSite(domain: string): Promise<void> {
 
   // Remove from Caddyfile
   try {
-    const tempFile = `${CADDYFILE_PATH}.tmp`
+    const tempFile = `${PATHS.CADDYFILE_PATH}.tmp`
     execSync(
-      `awk '/^${domain.replace(/\./g, "\\.")} \\{/,/^\\}/ {next} {print}' ${CADDYFILE_PATH} > ${tempFile} && mv ${tempFile} ${CADDYFILE_PATH}`,
+      `awk '/^${domain.replace(/\./g, "\\.")} \\{/,/^\\}/ {next} {print}' ${PATHS.CADDYFILE_PATH} > ${tempFile} && mv ${tempFile} ${PATHS.CADDYFILE_PATH}`,
       { stdio: "ignore" },
     )
   } catch {
@@ -254,7 +254,7 @@ describe.skip("Concurrent Deployment - File Locking", () => {
       console.error(`[Integration Test] ❌ CADDYFILE CORRUPTED: ${afterValidation.error}`)
 
       // Show affected domains in Caddyfile
-      const content = readFileSync(CADDYFILE_PATH, "utf-8")
+      const content = readFileSync(PATHS.CADDYFILE_PATH, "utf-8")
       const testDomainPattern = new RegExp(`(${TEST_SLUGS.join("|")})\\.alive\\.best`)
       const lines = content.split("\n")
       const relevantLines = []

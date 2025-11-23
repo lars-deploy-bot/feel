@@ -1,43 +1,65 @@
-# E2E Tests
+# E2E Tests - Worker Isolation
 
-End-to-end tests for the Claude Bridge web application using Playwright.
+Playwright tests with parallel workers, each with dedicated test tenant.
+
+## Architecture
+
+```text
+Test Run: E2E_2025-11-21T10:30:00Z
+├── Worker 0 → e2e-w0@bridge.local (e2e-w0.bridge.local)
+├── Worker 1 → e2e-w1@bridge.local (e2e-w1.bridge.local)
+├── Worker 2 → e2e-w2@bridge.local (e2e-w2.bridge.local)
+└── Worker 3 → e2e-w3@bridge.local (e2e-w3.bridge.local)
+```
+
+Each worker gets isolated user/org/domain - no shared state, true parallelization.
+
+## Setup (One-Time)
+
+**Note**: If you're working on an existing database where E2E tests have been run before, the `test_run_id` columns should already exist. Only run the migration below if:
+- You're provisioning a fresh database instance, OR
+- You receive database errors about missing `test_run_id` columns when running tests
+
+1. **Run SQL migration in Supabase:**
+   ```sql
+   -- Adds test_run_id columns for isolation
+   \i apps/web/migrations/add-test-run-id.sql
+   ```
+
+2. **Regenerate Supabase types:**
+   ```bash
+   bun run gen:db
+   ```
 
 ## Running Tests
 
-### Local Development Tests
-
 ```bash
-# Run all tests (starts local dev server on port 9547)
+# Run all tests in parallel (4 workers)
 bun run test:e2e
 
-# Run with UI mode (interactive test runner)
+# Run with UI mode
 bun run test:e2e:ui
 
-# Run in headed mode (see browser)
+# Run in headed mode
 bun run test:e2e:headed
 
-# Debug mode (step through tests)
+# Debug mode
 bun run test:e2e:debug
 ```
 
 ### Staging Environment Tests
 
-Tests can also run against the live staging environment:
+Tests can run against staging ([https://staging.terminal.goalive.nl](https://staging.terminal.goalive.nl)):
 
 ```bash
-# Run org/workspace tests against staging
-bun run test:e2e:staging
+# Run against staging
+TEST_ENV=staging bun run test:e2e
 
 # With UI mode
-bun run test:e2e:staging:ui
-
-# Custom credentials (optional)
-STAGING_EMAIL=your@email.com STAGING_PASSWORD=yourpass bun run test:e2e:staging
+TEST_ENV=staging bun run test:e2e:ui
 ```
 
-**Default staging credentials:**
-- Email: `eedenlars@gmail.com`
-- Password: `supersecret`
+**Note:** Staging tests use real data, not isolated worker tenants.
 
 ## Test Files
 
@@ -49,41 +71,50 @@ STAGING_EMAIL=your@email.com STAGING_PASSWORD=yourpass bun run test:e2e:staging
 
 ## Writing Tests
 
-### Setup
-
-All tests use the custom setup from `./setup.ts` which:
-- Prevents unmocked Claude API calls (fail-fast protection)
-- Tracks route registrations
-- Provides enhanced test utilities
-
-### Example Test
+### Authenticated Tests (Most Common)
 
 ```typescript
-import { expect, test } from "./setup"
-import { login } from "./helpers"
+import { expect, test } from "./fixtures"
 
-test("my test", async ({ page }) => {
-  await login(page)
-  await page.goto("/chat")
-  // ... test code
+test("my test", async ({ authenticatedPage, workerTenant }) => {
+  // Already authenticated with JWT + workspace set
+  await authenticatedPage.goto("/chat")
+
+  // Use workerTenant for assertions
+  console.log(workerTenant.email)      // e2e-w0@bridge.local
+  console.log(workerTenant.workspace)  // e2e-w0.bridge.local
+})
+```
+
+### Unauthenticated Tests
+
+```typescript
+import { expect, test } from "./fixtures"
+
+test("login page", async ({ page }) => {
+  await page.goto("/")
+  // No auth, no workspace - test login flow
 })
 ```
 
 ### Mocking API Responses
 
-For Claude API calls, register mocks BEFORE navigation:
+Register mocks BEFORE navigation:
 
 ```typescript
 import { handlers } from "./lib/handlers"
 
-test("test with mock", async ({ page }) => {
-  // Register mock BEFORE page.goto
-  await page.route("**/api/claude/stream", handlers.text("Mock response"))
-
-  await page.goto("/chat")
-  // ... test code
+test("mock test", async ({ authenticatedPage }) => {
+  await authenticatedPage.route("**/api/claude/stream", handlers.text("Mock response"))
+  await authenticatedPage.goto("/chat")
 })
 ```
+
+### Available Fixtures
+
+- `workerTenant` (test-scoped): Tenant info for this worker (userId, email, orgId, workspace)
+- `authenticatedPage` (test-scoped): Pre-authenticated page with JWT + workspace
+- `page` (test-scoped): Unauthenticated page (default Playwright fixture)
 
 ## CI/CD
 
@@ -118,27 +149,63 @@ To debug issues against staging:
 
 ```bash
 # Run in headed mode to see what's happening
-TEST_ENV=dev bun run test:e2e:headed org-workspace-selection.spec.ts
+TEST_ENV=staging bun run test:e2e:headed org-workspace-selection.spec.ts
 
 # Or use debug mode
-TEST_ENV=dev bun run test:e2e:debug org-workspace-selection.spec.ts
+TEST_ENV=staging bun run test:e2e:debug org-workspace-selection.spec.ts
+```
+
+## How It Works
+
+1. **Global Setup** (`global-setup.ts`):
+   - Generates unique run ID: `E2E_${timestamp}`
+   - Creates N tenants (one per worker) via `/api/test/bootstrap-tenant`
+   - Each tenant: user + org + domain tagged with `test_run_id`
+   - Polls `/api/test/verify-tenant` for readiness (replaces arbitrary 2s delay)
+
+2. **Fixtures** (`fixtures.ts`):
+   - `workerStorageState` (worker-scoped): Fetches tenant for this worker once via bootstrap API
+   - `workerTenant` (test-scoped): Convenience wrapper that passes through the worker's tenant
+   - `authenticatedPage` (test-scoped): Sets JWT cookie + workspace per test
+
+3. **Global Teardown** (`global-teardown.ts`):
+   - Deletes all data where `test_run_id = E2E_${timestamp}`
+   - Fast indexed cleanup, no orphaned test data
+
+## Constants
+
+All test config in `@webalive/shared/constants`:
+
+```typescript
+TEST_CONFIG.PORT            // 9547
+TEST_CONFIG.BASE_URL        // http://localhost:9547
+TEST_CONFIG.EMAIL_DOMAIN    // bridge.local
+TEST_CONFIG.DEFAULT_CREDITS // 1000
+```
+
+## Debugging
+
+### View Worker's Tenant
+```typescript
+test("debug", async ({ workerTenant }) => {
+  console.log(workerTenant)
+  // { userId, email, orgId, orgName, workspace, workerIndex }
+})
+```
+
+### Check Database
+```sql
+-- View current test run
+SELECT email, test_run_id, is_test_env
+FROM iam.users
+WHERE test_run_id LIKE 'E2E_%'
+ORDER BY test_run_id DESC;
 ```
 
 ## Test Coverage
 
-Current focus areas:
-- ✅ Authentication (login flow)
-- ✅ Organization loading and selection
-- ✅ Workspace loading and auto-selection
-- ✅ Error states and retry functionality
-- ⚠️ Chat messaging (needs workspace auto-selection fix)
-- ✅ API protection verification
-
-## Future Improvements
-
-- [ ] Add tests for conversation history
-- [ ] Add tests for file attachments
-- [ ] Add tests for SuperTemplates
-- [ ] Add tests for user prompts
-- [ ] Fix workspace auto-selection in chat tests
-- [ ] Add visual regression testing
+- ✅ Worker isolation (parallel execution)
+- ✅ Authentication with JWT
+- ✅ Workspace selection
+- ✅ Chat interface
+- ✅ API mocking protection

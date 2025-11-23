@@ -5,16 +5,13 @@
  * - Layer 1: Browser request monitoring
  * - Layer 2: Server-side blocking
  */
-import { test as baseTest, expect } from "@playwright/test"
+import { expect, test } from "./setup"
 import { login } from "./helpers"
 import { handlers } from "./lib/handlers"
 
-// Use base Playwright test WITHOUT our protection fixture for these tests
-const test = baseTest
-
 test.describe("Protection System Verification", () => {
-  test("Layer 1: Catches unmocked calls at browser level", async ({ page }) => {
-    await login(page)
+  test("Layer 1: Catches unmocked calls at browser level", async ({ page, tenant }) => {
+    await login(page, tenant)
 
     // Register our own request monitor to verify Layer 1 works
     const apiCalls: string[] = []
@@ -49,8 +46,8 @@ test.describe("Protection System Verification", () => {
     expect(apiCalls[0]).toContain("/api/claude/stream")
   })
 
-  test("Layer 2: Server blocks calls when PLAYWRIGHT_TEST=true", async ({ page }) => {
-    await login(page)
+  test("Layer 2: Server blocks calls when PLAYWRIGHT_TEST=true", async ({ page, tenant }) => {
+    await login(page, tenant)
     await page.goto("/chat")
 
     // Wait for workspace to be fully initialized

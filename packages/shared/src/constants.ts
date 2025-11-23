@@ -33,3 +33,23 @@ export const ENV_VARS = {
   BRIDGE_API_PORT: "BRIDGE_API_PORT",
   INTERNAL_TOOLS_SECRET: "INTERNAL_TOOLS_SECRET",
 } as const
+
+/**
+ * Test Configuration
+ *
+ * Constants for E2E test isolation and worker management.
+ */
+export const TEST_CONFIG = {
+  PORT: 9547,
+  BASE_URL: "http://localhost:9547",
+  EMAIL_DOMAIN: "bridge.local",
+  DEFAULT_CREDITS: 1000,
+  WORKER_EMAIL_PREFIX: "e2e_w", // e2e_w0@bridge.local
+  WORKSPACE_PREFIX: "e2e-w", // e2e-w0.bridge.local
+  TEST_PASSWORD: "test-password-123", // Password for all E2E test users
+
+  // Worker port configuration (single source of truth)
+  // Allow env override for CI environments with port conflicts
+  WORKER_PORT_BASE: Number(process.env.TEST_WORKER_PORT_BASE) || 9100, // Base port for virtual worker domains
+  MAX_WORKERS: 20, // Maximum parallel Playwright workers
+} as const

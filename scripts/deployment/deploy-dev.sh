@@ -6,7 +6,7 @@ set -e
 
 SCRIPT_DIR="$(dirname "$0")"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-ENV_CONFIG="$PROJECT_ROOT/environments.json"
+ENV_CONFIG="$PROJECT_ROOT/packages/shared/environments.json"
 
 # Validate HOSTED_ENV is set
 if [ -z "$HOSTED_ENV" ]; then
@@ -32,11 +32,8 @@ if [ "$HOSTED_ENV" = "computer" ]; then
     echo "💻 Computer environment detected (HOSTED_ENV=computer)"
     echo "🔄 Building packages and starting dev server..."
 
-    bun run lint
-    echo "✅ Linting complete"
-
-    bun run type-check
-    echo "✅ Type checking complete"
+    make static-check
+    echo "✅ Static checks complete"
 
     # Clean Next.js build cache
     echo "🧹 Cleaning Next.js build cache..."
@@ -58,11 +55,8 @@ DEV_PROCESS=$(jq -r '.environments.dev.processName' "$ENV_CONFIG")
 
 echo "🔄 Rebuilding packages and restarting dev environment..."
 
-bun run lint
-echo "✅ Linting complete"
-
-bun run type-check
-echo "✅ Type checking complete"
+make static-check
+echo "✅ Static checks complete"
 
 cd packages/images && bun run build && cd ../..
 echo "✅ Images built"

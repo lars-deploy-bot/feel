@@ -125,6 +125,7 @@ public
 # Temporary folders
 tmp/
 temp/
+.tmp/
 
 # Local development workspace
 .alive/

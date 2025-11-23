@@ -20,7 +20,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 ALIVE_DIR="$PROJECT_ROOT/.alive"
 TEMPLATE_DIR="$ALIVE_DIR/template"
-SOURCE_TEMPLATE="$PROJECT_ROOT/packages/template/user"
+SOURCE_TEMPLATE="$PROJECT_ROOT/templates/site-template/user"
 ENV_FILE="$PROJECT_ROOT/apps/web/.env.local"
 
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -141,6 +141,12 @@ if [ "$SKIP_COPY" != true ]; then
 
     echo -e "${GREEN}✓${NC} Template copied successfully"
 fi
+
+echo ""
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${BLUE}Installing git hooks...${NC}"
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+"$SCRIPT_DIR/install-git-hooks.sh"
 
 echo ""
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

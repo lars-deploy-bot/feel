@@ -4,7 +4,7 @@ set -e
 # Show status of all three environments
 SCRIPT_DIR="$(dirname "$0")"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-ENV_CONFIG="$PROJECT_ROOT/environments.json"
+ENV_CONFIG="$PROJECT_ROOT/packages/shared/environments.json"
 
 # Read environment configuration
 PROD_PORT=$(jq -r '.environments.production.port' "$ENV_CONFIG")

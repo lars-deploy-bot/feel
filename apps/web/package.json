@@ -3,10 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev --turbo -p $(node -p \"require('../../bridge.config.js').ports.dev\")",
+    "dev": "next dev --turbo -p 8997",
     "dev:test": "next dev -p 9547",
     "build": "next build",
-    "start": "next start -p $(node -p \"require('../../bridge.config.js').ports.production\")",
+    "start": "next start -p 9000",
     "dev:deploy": "cd ../.. && bun run dev",
     "lint": "biome lint .",
     "format": "npx biome format --write .",
@@ -27,7 +27,7 @@
     "test:e2e:staging": "TEST_ENV=staging playwright test org-workspace-selection.spec.ts",
     "test:e2e:staging:ui": "TEST_ENV=staging playwright test org-workspace-selection.spec.ts --ui",
     "test:gates": "playwright test smoke.spec.ts auth.spec.ts protection-verification.spec.ts org-workspace-selection.spec.ts chat.spec.ts deploy.spec.ts && playwright test --config=playwright.genuine.config.ts chat-genuine.spec.ts",
-    "gen:db": "bun run scripts/generate-db-types-improved.ts",
+    "gen:db": "../../scripts/database/generate-types.sh",
     "gen:db:force": "rm -rf .tmp/supabase && bun run scripts/generate-db-types-improved.ts"
   },
   "dependencies": {

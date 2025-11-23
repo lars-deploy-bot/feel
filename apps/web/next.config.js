@@ -24,7 +24,7 @@ const nextConfig = {
       "../../node_modules/zod/**/*",
     ],
   },
-  serverExternalPackages: ["@napi-rs/image"],
-  transpilePackages: ["@alive-brug/guides", "@alive-brug/images", "@alive-brug/tools", "@webalive/site-controller"],
+  serverExternalPackages: ["@napi-rs/image", "@webalive/shared", "@webalive/site-controller"],
+  transpilePackages: ["@alive-brug/guides", "@alive-brug/images", "@alive-brug/tools"],
 }
 export default nextConfig

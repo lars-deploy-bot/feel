@@ -1,5 +1,6 @@
 import type { AppFeedbackInsert } from "@/lib/supabase/app"
 import { createAppClient } from "@/lib/supabase/app"
+import { getSessionUser } from "@/features/auth/lib/auth"
 
 export interface FeedbackEntry {
   id: string
@@ -21,9 +22,11 @@ interface FeedbackContext {
 export async function addFeedbackEntry(entry: Omit<FeedbackEntry, "id" | "timestamp">): Promise<FeedbackEntry> {
   const app = await createAppClient("service")
 
+  // Get the current authenticated user (if any)
+  const user = await getSessionUser()
+
   const feedbackInsert: AppFeedbackInsert = {
     content: entry.feedback,
-    clerk_id: null, // Not using Clerk, set to null
     context: {
       workspace: entry.workspace,
       conversationId: entry.conversationId,
@@ -31,6 +34,7 @@ export async function addFeedbackEntry(entry: Omit<FeedbackEntry, "id" | "timest
       email: entry.email,
     },
     status: "pending",
+    user_id: user?.id ?? null, // Set user_id if authenticated, otherwise null
   }
 
   const { data, error } = await app.from("feedback").insert(feedbackInsert).select().single()

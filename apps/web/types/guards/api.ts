@@ -71,7 +71,7 @@ export async function verifyPassword(plaintext: string, hash: string): Promise<b
 function getDomainPasswordsPath(): string {
   // PRODUCTION: Use persistent location outside of git and build process
   // This ensures the file survives deployments and doesn't require rebuilds
-  const persistentPath = "/var/lib/claude-bridge/domain-passwords.json"
+  const persistentPath = PATHS.REGISTRY_PATH
 
   // Always prefer persistent location if it exists
   if (existsSync(persistentPath)) {

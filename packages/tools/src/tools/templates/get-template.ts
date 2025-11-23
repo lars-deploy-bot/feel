@@ -154,7 +154,9 @@ export async function getTemplate(params: GetTemplateParams, templatesBasePath: 
       }
     }
 
-    const templateFile = `${id}.md`
+    // Normalize template ID to lowercase for filesystem lookups
+    // This ensures consistent behavior across case-sensitive and case-insensitive filesystems
+    const templateFile = `${id.toLowerCase()}.md`
 
     // Search for template across all category subdirectories and read it
     const result = await findAndReadTemplate(templateFile, templatesBasePath)

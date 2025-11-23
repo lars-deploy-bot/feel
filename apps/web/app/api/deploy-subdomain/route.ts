@@ -220,11 +220,13 @@ export async function POST(request: NextRequest) {
         } else if (stderr.includes("exists in Caddyfile")) {
           errorMessage = "Domain already exists in configuration. Please try a different slug."
         } else {
-          errorMessage = `Deployment error: ${stderr.substring(0, 200)}`
+          console.error("[Deploy-Subdomain] Script error:", stderr)
+          errorMessage = "Deployment script failed. Please check configuration and try again."
         }
         statusCode = 400
       } else if (error instanceof Error && error.message) {
-        errorMessage = error.message
+        console.error("[Deploy-Subdomain] Unexpected error:", error)
+        errorMessage = "Deployment failed. Please try again."
       }
     }
 

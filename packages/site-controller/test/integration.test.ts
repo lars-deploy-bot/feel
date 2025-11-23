@@ -25,7 +25,7 @@ describe('SiteOrchestrator', () => {
 describe('Configuration', () => {
   it('should have correct default paths', () => {
     expect(PATHS.REGISTRY_PATH).toBe('/var/lib/claude-bridge/domain-passwords.json')
-    expect(PATHS.CADDYFILE_PATH).toBe('/root/webalive/claude-bridge/Caddyfile')
+    expect(PATHS.CADDYFILE_PATH).toBe('/root/webalive/claude-bridge/ops/caddy/Caddyfile')
     expect(PATHS.SYSTEMD_ENV_DIR).toBe('/etc/sites')
   })
 })

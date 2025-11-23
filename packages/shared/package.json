@@ -8,6 +8,14 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./constants": {
+      "import": "./dist/constants.js",
+      "types": "./dist/constants.d.ts"
+    },
+    "./environments": {
+      "import": "./dist/environments.js",
+      "types": "./dist/environments.d.ts"
     }
   },
   "scripts": {
@@ -15,7 +23,8 @@
     "dev": "tsc --watch",
     "type-check": "tsc --noEmit",
     "lint": "biome lint .",
-    "format": "biome format --write ."
+    "format": "biome format --write .",
+    "generate-json": "node dist/generate-environments-json.js"
   },
   "devDependencies": {
     "@types/node": "^22.5.2",

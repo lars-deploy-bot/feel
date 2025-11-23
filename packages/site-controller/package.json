@@ -2,6 +2,7 @@
   "name": "@webalive/site-controller",
   "version": "1.0.0",
   "description": "Shell-Operator Pattern implementation for website deployment",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
@@ -16,6 +17,7 @@
   },
   "dependencies": {
     "@types/node": "^20.0.0",
+    "@webalive/shared": "workspace:*",
     "typescript": "^5.0.0"
   },
   "devDependencies": {},

@@ -181,7 +181,7 @@ async function fixDomainPermissions(domain: string): Promise<void> {
   try {
     await execAsync(`chown -R "${expectedOwner}:${expectedOwner}" "${siteDir}"`)
   } catch (error) {
-    const errorMsg = `Failed to change ownership: ${error instanceof Error ? error.message : "Unknown error"}`
-    throw new Error(errorMsg)
+    console.error("[Permissions] Failed to change ownership:", error)
+    throw new Error("Failed to change ownership")
   }
 }

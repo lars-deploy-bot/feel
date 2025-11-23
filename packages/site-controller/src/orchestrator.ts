@@ -4,7 +4,7 @@ import { assertServerOnly } from './guards.js'
 assertServerOnly('@webalive/site-controller', 'Use @webalive/shared for constants')
 
 import type { DeployConfig, DeployResult } from './types.js'
-import { PATHS, DEFAULTS, getServiceName, getSiteUser, getSiteHome, getEnvFilePath } from './config.js'
+import { PATHS, DEFAULTS, getServiceName, getSiteUser, getSiteHome, getEnvFilePath } from '@webalive/shared'
 import { validateDns } from './executors/dns.js'
 import { assignPort } from './executors/port.js'
 import { ensureUser } from './executors/system.js'

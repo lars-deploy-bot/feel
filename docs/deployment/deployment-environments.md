@@ -89,7 +89,7 @@ WORKSPACE_BASE=/srv/webalive/sites            # Optional
 **Local dev only:**
 ```bash
 BRIDGE_ENV=local
-LOCAL_TEMPLATE_PATH=/path/to/packages/template/user
+LOCAL_TEMPLATE_PATH=.alive/template
 ```
 
 ## Atomic Build

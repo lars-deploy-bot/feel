@@ -1,0 +1,75 @@
+/**
+ * Verify Tenant Readiness for E2E Tests
+ *
+ * Checks if tenant has been fully created and is ready for testing.
+ * Used by global-setup.ts to poll for database consistency.
+ * Only accessible in test environments.
+ */
+
+import { TEST_CONFIG } from "@webalive/shared"
+import { createAppClient } from "@/lib/supabase/app"
+import { createIamClient } from "@/lib/supabase/iam"
+import { ErrorCodes } from "@/lib/error-codes"
+import { createErrorResponse } from "@/features/auth/lib/auth"
+
+export async function GET(req: Request) {
+  // Environment guard - ONLY accessible in test or local environments (whitelist approach)
+  if (process.env.NODE_ENV !== "test" && process.env.BRIDGE_ENV !== "local") {
+    return createErrorResponse(ErrorCodes.UNAUTHORIZED, 404)
+  }
+
+  const { searchParams } = new URL(req.url)
+  const email = searchParams.get("email")
+
+  if (!email) {
+    return createErrorResponse(ErrorCodes.VALIDATION_ERROR, 400)
+  }
+
+  const iam = await createIamClient("service")
+  const app = await createAppClient("service")
+
+  try {
+    // 1. Check if user exists
+    const { data: user } = await iam.from("users").select("user_id").eq("email", email).single()
+
+    if (!user) {
+      return Response.json({ ready: false, missing: "user" })
+    }
+
+    // 2. Check if user has org membership
+    const { data: membership } = await iam.from("org_memberships").select("org_id").eq("user_id", user.user_id).single()
+
+    if (!membership) {
+      return Response.json({ ready: false, missing: "membership" })
+    }
+
+    // 3. Check if org has credits
+    const { data: org } = await iam.from("orgs").select("credits").eq("org_id", membership.org_id).single()
+
+    if (!org || org.credits < 0) {
+      return Response.json({ ready: false, missing: "org" })
+    }
+
+    // 4. Check if domain exists (extract workspace from email pattern)
+    const workerIndex = email.match(/worker(\d+)@/)?.[1]
+    if (workerIndex !== undefined) {
+      const workspace = `${TEST_CONFIG.WORKSPACE_PREFIX}${workerIndex}.${TEST_CONFIG.EMAIL_DOMAIN}`
+      const { data: domain } = await app
+        .from("domains")
+        .select("hostname")
+        .eq("hostname", workspace)
+        .eq("org_id", membership.org_id)
+        .single()
+
+      if (!domain) {
+        return Response.json({ ready: false, missing: "domain" })
+      }
+    }
+
+    // All checks passed
+    return Response.json({ ready: true })
+  } catch (error) {
+    console.error("[Verify Tenant] Error:", error)
+    return Response.json({ ready: false, error: "database_error" }, { status: 500 })
+  }
+}
