@@ -55,8 +55,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 
       if (!res.ok) {
         throw new Error(
-          `Failed to bootstrap tenant for worker ${workerIndex} (runId=${runId}): ` +
-            `${res.status} ${res.statusText}`,
+          `Failed to bootstrap tenant for worker ${workerIndex} (runId=${runId}): ${res.status} ${res.statusText}`,
         )
       }
 

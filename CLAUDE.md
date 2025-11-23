@@ -8,6 +8,7 @@ AI assistant guidelines for working on Claude Bridge.
 
 1. **NEVER COMMIT** - Never create commits
 2. **ALWAYS USE BUN** - Runtime and package manager
+3. **GIT HOOKS** - Pre-push hooks run automatically; if they fail, fix the issues (don't force-push)
 
 ## Project Overview
 
@@ -148,6 +149,53 @@ apps/web/
 - **TypeScript**: Strict mode enabled, no implicit any
 - **React**: Use hooks, functional components only
 - **Error Handling**: Always catch and properly format errors for SSE
+
+### Git Hooks (Husky)
+
+**IMPORTANT**: This project uses Husky for automated quality checks. Hooks run automatically and cannot be disabled without `--no-verify`.
+
+#### Pre-Commit Hook
+- **What it does**: Formats only the files being committed using `lint-staged`
+- **Speed**: Instant (only touches staged files)
+- **When it runs**: Every `git commit`
+
+#### Pre-Push Hook
+- **What it does**: Runs comprehensive checks before allowing push
+  - Type checking (`turbo run type-check`)
+  - Linting (`turbo run lint`)
+  - Format checking (`turbo run format`)
+  - Unit tests (`bun run unit`)
+- **Speed**: 10-60 seconds (uses Turborepo cache)
+- **When it runs**: Every `git push`
+
+#### If Pre-Push Hook Fails
+
+**DO:**
+1. Read the error output carefully
+2. Fix the type errors, lint errors, or test failures
+3. Run `bun run static-check` locally to verify fixes
+4. Commit the fixes and push again
+
+**DON'T:**
+- Use `git push --no-verify` to bypass checks
+- Force push to circumvent quality gates
+- Ignore failing tests or type errors
+
+**Manual Testing:**
+```bash
+# Test what pre-push will run
+bun run static-check
+
+# Or test individual checks
+bun run type-check
+bun run lint
+bun run unit
+```
+
+**Common Issues:**
+- **"bun: command not found" in GUI clients**: See README.md Git Hooks Setup section
+- **Slow pre-push**: First run is slow; subsequent runs use Turbo cache and are fast
+- **Test failures**: Some tests may require environment setup (see Testing Guide)
 
 ### Common Tasks
 

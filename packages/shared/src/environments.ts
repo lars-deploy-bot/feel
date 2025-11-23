@@ -12,9 +12,9 @@
  *   - Direct access: environments.dev.port, environments.production.processName
  */
 
-import { PATHS } from './config.js'
+import { PATHS } from "./config.js"
 
-export type EnvironmentKey = 'production' | 'staging' | 'dev'
+export type EnvironmentKey = "production" | "staging" | "dev"
 
 export interface Environment {
   // Identification
@@ -71,7 +71,7 @@ export const environments: Record<EnvironmentKey, Environment> = {
     hasHotReload: false,
     deployCommand: "make wash-skip",
     logsCommand: "journalctl -u claude-bridge-prod.service -f",
-    restartCommand: "systemctl restart claude-bridge-prod.service"
+    restartCommand: "systemctl restart claude-bridge-prod.service",
   },
   staging: {
     key: "staging",
@@ -89,7 +89,7 @@ export const environments: Record<EnvironmentKey, Environment> = {
     hasHotReload: false,
     deployCommand: "make staging",
     logsCommand: "journalctl -u claude-bridge-staging.service -f",
-    restartCommand: "systemctl restart claude-bridge-staging.service"
+    restartCommand: "systemctl restart claude-bridge-staging.service",
   },
   dev: {
     key: "dev",
@@ -104,8 +104,8 @@ export const environments: Record<EnvironmentKey, Environment> = {
     hasHotReload: true,
     deployCommand: "make dev",
     logsCommand: "make logs-dev",
-    restartCommand: "pm2 restart claude-bridge-dev"
-  }
+    restartCommand: "pm2 restart claude-bridge-dev",
+  },
 }
 
 /**
@@ -156,18 +156,18 @@ function validateEnvironments() {
   // Check for duplicate ports
   const ports = allEnvs.map(e => e.port)
   if (new Set(ports).size !== ports.length) {
-    throw new Error('Duplicate ports in environment configuration')
+    throw new Error("Duplicate ports in environment configuration")
   }
 
   // Check for duplicate process names
   const processNames = allEnvs.map(e => e.processName)
   if (new Set(processNames).size !== processNames.length) {
-    throw new Error('Duplicate process names in environment configuration')
+    throw new Error("Duplicate process names in environment configuration")
   }
 
   // Check for valid ports
   if (allEnvs.some(e => e.port < 1024 || e.port > 65535)) {
-    throw new Error('Invalid port range (must be 1024-65535)')
+    throw new Error("Invalid port range (must be 1024-65535)")
   }
 
   // Check exactly one production

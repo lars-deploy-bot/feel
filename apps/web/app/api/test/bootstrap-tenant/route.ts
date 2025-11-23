@@ -48,7 +48,11 @@ export async function POST(req: Request) {
   const passwordHash = await hash(TEST_CONFIG.TEST_PASSWORD, 10)
 
   // Check if tenant already exists by email (idempotent across test runs)
-  const { data: existingUser, error: existingUserError } = await iam.from("users").select("user_id, email").eq("email", email).single()
+  const { data: existingUser, error: existingUserError } = await iam
+    .from("users")
+    .select("user_id, email")
+    .eq("email", email)
+    .single()
 
   if (existingUserError) {
     return createErrorResponse(ErrorCodes.INTERNAL_ERROR, 500)
@@ -70,7 +74,11 @@ export async function POST(req: Request) {
       return createErrorResponse(ErrorCodes.INTERNAL_ERROR, 500)
     }
 
-    const { data: org, error: orgError } = await iam.from("orgs").select("name").eq("org_id", membership.org_id).single()
+    const { data: org, error: orgError } = await iam
+      .from("orgs")
+      .select("name")
+      .eq("org_id", membership.org_id)
+      .single()
 
     if (orgError) {
       return createErrorResponse(ErrorCodes.INTERNAL_ERROR, 500)

@@ -1,6 +1,6 @@
-import { spawn } from 'node:child_process'
-import { resolve } from 'node:path'
-import { PATHS } from '@webalive/shared'
+import { spawn } from "node:child_process"
+import { resolve } from "node:path"
+import { PATHS } from "@webalive/shared"
 
 /**
  * Error thrown when a script execution fails
@@ -10,10 +10,10 @@ export class ScriptError extends Error {
     public script: string,
     public exitCode: number,
     public stderr: string,
-    public stdout: string
+    public stdout: string,
   ) {
     super(`Script ${script} failed with exit code ${exitCode}`)
-    this.name = 'ScriptError'
+    this.name = "ScriptError"
   }
 }
 
@@ -25,10 +25,7 @@ export class ScriptError extends Error {
  * @returns Promise resolving to stdout content
  * @throws ScriptError if script exits with non-zero code
  */
-export async function runScript(
-  scriptName: string,
-  env: Record<string, string>
-): Promise<string> {
+export async function runScript(scriptName: string, env: Record<string, string>): Promise<string> {
   // Use absolute path to scripts directory to avoid path resolution issues with symlinks
   const scriptsDir = PATHS.SCRIPTS_DIR
   const scriptPath = resolve(scriptsDir, scriptName)
@@ -37,29 +34,29 @@ export async function runScript(
 
   return new Promise((resolve, reject) => {
     const proc = spawn(scriptPath, [], {
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: ["ignore", "pipe", "pipe"],
       env: { ...process.env, ...env },
-      shell: '/bin/bash',
+      shell: "/bin/bash",
     })
 
-    let stdout = ''
-    let stderr = ''
+    let stdout = ""
+    let stderr = ""
 
-    proc.stdout.on('data', (data) => {
+    proc.stdout.on("data", data => {
       const text = data.toString()
       stdout += text
       // Log to console for visibility
       process.stdout.write(`[${scriptName}] ${text}`)
     })
 
-    proc.stderr.on('data', (data) => {
+    proc.stderr.on("data", data => {
       const text = data.toString()
       stderr += text
       // Log to console for visibility
       process.stderr.write(`[${scriptName}] ${text}`)
     })
 
-    proc.on('close', (code) => {
+    proc.on("close", code => {
       if (code === 0) {
         resolve(stdout.trim())
       } else {
@@ -67,7 +64,7 @@ export async function runScript(
       }
     })
 
-    proc.on('error', (err) => {
+    proc.on("error", err => {
       reject(new Error(`Failed to spawn script ${scriptName}: ${err.message}`))
     })
   })
@@ -83,11 +80,11 @@ export async function runScript(
  */
 export async function runScriptSafe(
   scriptName: string,
-  env: Record<string, string>
+  env: Record<string, string>,
 ): Promise<{ exitCode: number; stdout: string; stderr: string }> {
   try {
     const stdout = await runScript(scriptName, env)
-    return { exitCode: 0, stdout, stderr: '' }
+    return { exitCode: 0, stdout, stderr: "" }
   } catch (error) {
     if (error instanceof ScriptError) {
       return {

@@ -119,6 +119,30 @@ bun run setup
 # (The setup script will show you the exact values)
 ```
 
+#### Git Hooks Setup (Important for GUI Git Clients)
+
+This project uses Husky for Git hooks. If you use a **GUI Git client** (SourceTree, Tower, VS Code Git, GitHub Desktop), you need to configure your environment once:
+
+```bash
+# Create Husky config directory
+mkdir -p ~/.config/husky
+
+# Add Bun to PATH for Git hooks
+echo 'export PATH="$HOME/.bun/bin:$PATH"' > ~/.config/husky/init.sh
+```
+
+**Why?** GUI Git clients don't load your shell configuration (`.zshrc`, `.bashrc`), so hooks can't find `bun` without this setup. Command-line Git users don't need this step.
+
+**What runs automatically:**
+- **Pre-commit**: Formats only the files you're committing (instant with lint-staged)
+- **Pre-push**: Runs type-check, lint, format, and unit tests before allowing push
+
+**To bypass hooks** (not recommended):
+```bash
+git commit --no-verify
+git push --no-verify
+```
+
 #### Start Development Server
 ```bash
 # Start development server

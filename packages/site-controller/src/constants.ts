@@ -6,4 +6,4 @@
  * in client-side code and React Server Components.
  */
 
-export { PATHS, DEFAULTS, DOMAINS, PORTS, TIMEOUTS, SECURITY } from '@webalive/shared'
+export { PATHS, DEFAULTS, DOMAINS, PORTS, TIMEOUTS, SECURITY } from "@webalive/shared"

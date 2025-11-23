@@ -12,10 +12,7 @@ interface LoginResult {
  * Login helper for e2e tests
  * Uses worker-specific tenant credentials
  */
-export async function login(
-  page: Page,
-  tenant: { email: string; workspace: string },
-): Promise<LoginResult> {
+export async function login(page: Page, tenant: { email: string; workspace: string }): Promise<LoginResult> {
   await page.goto("/")
 
   // Set workspace for this tenant
@@ -42,9 +39,7 @@ export async function login(
   }
 
   const loginData: unknown = await loginResponse.json()
-  console.log(
-    `[Login Debug] Email: ${tenant.email}, Status: ${loginResponse.status()}`,
-  )
+  console.log(`[Login Debug] Email: ${tenant.email}, Status: ${loginResponse.status()}`)
 
   // Don't wait for redirect - tests handle their own navigation
   // The login page may call router.push("/chat") but client-side navigation

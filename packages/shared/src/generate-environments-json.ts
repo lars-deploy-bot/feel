@@ -8,19 +8,19 @@
  * Output: packages/shared/environments.json
  */
 
-import * as fs from 'fs'
-import { join, dirname } from 'path'
-import { fileURLToPath } from 'url'
-import { environments } from './environments.js'
+import * as fs from "fs"
+import { join, dirname } from "path"
+import { fileURLToPath } from "url"
+import { environments } from "./environments.js"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
 const output = {
-  environments
+  environments,
 }
 
-const outputPath = join(dirname(__dirname), 'environments.json')
+const outputPath = join(dirname(__dirname), "environments.json")
 
 try {
   fs.writeFileSync(outputPath, JSON.stringify(output, null, 2))

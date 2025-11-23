@@ -15,6 +15,7 @@
     "format": "turbo run format",
     "lint": "turbo run lint",
     "type-check": "turbo run type-check",
+    "static-check": "turbo run type-check lint format && bun run unit",
     "knip": "knip --no-progress",
     "depcruise": "depcruise apps/web --config .dependency-cruiser.json",
     "test": "cd packages/tools && bun test && cd ../.. && cd apps/web && bun run test",
@@ -22,6 +23,7 @@
     "e2e": "cd apps/web && bun run test:e2e",
     "gates": "cd apps/web && bun run test:gates",
     "postinstall": "bun run prepare:repo",
+    "prepare": "husky",
     "prepare:repo": "bun run setup:template && bun run build:libs",
     "setup:template": "cd templates/site-template/user && bun install",
     "build:libs": "turbo run build --filter='!apps/*'",
@@ -46,13 +48,20 @@
     "see": "pm2 logs claude-bridge --lines 1000",
     "see:dev": "pm2 logs claude-bridge-dev --lines 1000"
   },
+  "lint-staged": {
+    "**/*.{ts,tsx,js,jsx,json,md}": [
+      "biome format --write"
+    ]
+  },
   "devDependencies": {
     "@biomejs/biome": "^2.3.2",
     "@playwright/test": "^1.56.1",
     "@types/jsonwebtoken": "^9.0.10",
     "dependency-cruiser": "^17.3.1",
     "dotenv": "^17.2.3",
+    "husky": "^9.1.7",
     "knip": "^5.69.1",
+    "lint-staged": "^16.2.7",
     "turbo": "^2.6.1"
   },
   "dependencies": {

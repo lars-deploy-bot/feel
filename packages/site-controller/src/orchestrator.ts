@@ -1,17 +1,17 @@
-import { assertServerOnly } from './guards.js'
+import { assertServerOnly } from "./guards.js"
 
 // Prevent this module from being imported in browser environments
-assertServerOnly('@webalive/site-controller', 'Use @webalive/shared for constants')
+assertServerOnly("@webalive/site-controller", "Use @webalive/shared for constants")
 
-import type { DeployConfig, DeployResult } from './types.js'
-import { PATHS, DEFAULTS, getServiceName, getSiteUser, getSiteHome, getEnvFilePath } from '@webalive/shared'
-import { validateDns } from './executors/dns.js'
-import { assignPort } from './executors/port.js'
-import { ensureUser } from './executors/system.js'
-import { setupFilesystem } from './executors/filesystem.js'
-import { buildSite } from './executors/build.js'
-import { startService } from './executors/service.js'
-import { configureCaddy, teardown } from './executors/caddy.js'
+import type { DeployConfig, DeployResult } from "./types.js"
+import { PATHS, DEFAULTS, getServiceName, getSiteUser, getSiteHome, getEnvFilePath } from "@webalive/shared"
+import { validateDns } from "./executors/dns.js"
+import { assignPort } from "./executors/port.js"
+import { ensureUser } from "./executors/system.js"
+import { setupFilesystem } from "./executors/filesystem.js"
+import { buildSite } from "./executors/build.js"
+import { startService } from "./executors/service.js"
+import { configureCaddy, teardown } from "./executors/caddy.js"
 
 /**
  * Site deployment orchestrator
@@ -38,7 +38,7 @@ export class SiteOrchestrator {
     if (!/^[a-z0-9.-]+$/i.test(domain)) {
       throw new Error(`Invalid domain format: ${domain}`)
     }
-    if (domain.includes('..') || domain.startsWith('/')) {
+    if (domain.includes("..") || domain.startsWith("/")) {
       throw new Error(`Path traversal detected in domain: ${domain}`)
     }
 
@@ -49,31 +49,31 @@ export class SiteOrchestrator {
 
     try {
       // Phase 1: DNS Validation
-      console.log('[Phase 1/7] Validating DNS...')
+      console.log("[Phase 1/7] Validating DNS...")
       const dnsResult = await validateDns({ domain, serverIp, wildcardDomain })
       if (!dnsResult.valid) {
         throw new Error(`DNS validation failed: ${dnsResult.message}`)
       }
-      console.log('✓ DNS validation passed\n')
+      console.log("✓ DNS validation passed\n")
 
       // Phase 2: Port Assignment
-      console.log('[Phase 2/7] Assigning port...')
+      console.log("[Phase 2/7] Assigning port...")
       const portResult = await assignPort({
         domain,
         registryPath: PATHS.REGISTRY_PATH,
       })
       deployedPort = portResult.port
-      console.log(`✓ Port assigned: ${deployedPort}${portResult.isNew ? ' (new)' : ' (existing)'}\n`)
+      console.log(`✓ Port assigned: ${deployedPort}${portResult.isNew ? " (new)" : " (existing)"}\n`)
 
       // Phase 3: User Creation
-      console.log('[Phase 3/7] Ensuring system user...')
+      console.log("[Phase 3/7] Ensuring system user...")
       const siteUser = getSiteUser(slug)
       const siteHome = getSiteHome(domain)
       await ensureUser({ user: siteUser, home: siteHome })
       console.log(`✓ User ready: ${siteUser}\n`)
 
       // Phase 4: Filesystem Setup
-      console.log('[Phase 4/7] Setting up filesystem...')
+      console.log("[Phase 4/7] Setting up filesystem...")
       await setupFilesystem({
         user: siteUser,
         domain,
@@ -84,7 +84,7 @@ export class SiteOrchestrator {
       console.log(`✓ Filesystem ready: ${siteHome}\n`)
 
       // Phase 5: Build Site
-      console.log('[Phase 5/7] Building site...')
+      console.log("[Phase 5/7] Building site...")
       await buildSite({
         user: siteUser,
         domain,
@@ -93,10 +93,10 @@ export class SiteOrchestrator {
         targetDir: siteHome,
         envFilePath: getEnvFilePath(slug),
       })
-      console.log('✓ Site built successfully\n')
+      console.log("✓ Site built successfully\n")
 
       // Phase 6: Start Service
-      console.log('[Phase 6/7] Starting systemd service...')
+      console.log("[Phase 6/7] Starting systemd service...")
       await startService({
         slug,
         port: deployedPort,
@@ -106,7 +106,7 @@ export class SiteOrchestrator {
       console.log(`✓ Service started: ${serviceName}\n`)
 
       // Phase 7: Configure Caddy
-      console.log('[Phase 7/7] Configuring Caddy...')
+      console.log("[Phase 7/7] Configuring Caddy...")
       await configureCaddy({
         domain,
         port: deployedPort,
@@ -114,7 +114,7 @@ export class SiteOrchestrator {
         caddyLockPath: PATHS.CADDY_LOCK,
         flockTimeout: DEFAULTS.FLOCK_TIMEOUT,
       })
-      console.log('✓ Caddy configured\n')
+      console.log("✓ Caddy configured\n")
 
       console.log(`\n=== Deployment successful: ${domain} ===`)
       console.log(`Site URL: https://${domain}`)
@@ -132,28 +132,28 @@ export class SiteOrchestrator {
       console.error(`\n✗ Deployment failed: ${errorMessage}\n`)
 
       // Determine which phase failed
-      let failedPhase = 'unknown'
-      if (errorMessage.includes('DNS')) failedPhase = 'dns'
-      else if (errorMessage.includes('port')) failedPhase = 'port'
-      else if (errorMessage.includes('user')) failedPhase = 'user'
-      else if (errorMessage.includes('filesystem')) failedPhase = 'filesystem'
-      else if (errorMessage.includes('build')) failedPhase = 'build'
-      else if (errorMessage.includes('service')) failedPhase = 'service'
-      else if (errorMessage.includes('Caddy')) failedPhase = 'caddy'
+      let failedPhase = "unknown"
+      if (errorMessage.includes("DNS")) failedPhase = "dns"
+      else if (errorMessage.includes("port")) failedPhase = "port"
+      else if (errorMessage.includes("user")) failedPhase = "user"
+      else if (errorMessage.includes("filesystem")) failedPhase = "filesystem"
+      else if (errorMessage.includes("build")) failedPhase = "build"
+      else if (errorMessage.includes("service")) failedPhase = "service"
+      else if (errorMessage.includes("Caddy")) failedPhase = "caddy"
 
       // Attempt rollback if enabled
       if (rollbackOnFailure && deployedPort) {
-        console.log('\n=== Attempting rollback ===\n')
+        console.log("\n=== Attempting rollback ===\n")
         try {
           await this.teardown(domain, {
             removeFiles: false,
             removeUser: false,
-            removePort: false,  // Keep port reserved for retry
+            removePort: false, // Keep port reserved for retry
           })
-          console.log('✓ Rollback successful\n')
+          console.log("✓ Rollback successful\n")
         } catch (rollbackError) {
           console.error(
-            `✗ Rollback failed: ${rollbackError instanceof Error ? rollbackError.message : String(rollbackError)}\n`
+            `✗ Rollback failed: ${rollbackError instanceof Error ? rollbackError.message : String(rollbackError)}\n`,
           )
         }
       }
@@ -181,9 +181,9 @@ export class SiteOrchestrator {
       removeUser?: boolean
       removeFiles?: boolean
       removePort?: boolean
-    } = {}
+    } = {},
   ): Promise<void> {
-    const slug = domain.replace(/\./g, '-')
+    const slug = domain.replace(/\./g, "-")
     const serviceName = getServiceName(slug)
 
     console.log(`\n=== Tearing down ${domain} ===\n`)

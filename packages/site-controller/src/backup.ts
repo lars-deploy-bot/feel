@@ -155,7 +155,14 @@ function stageFiles(includedSites: string[]): number {
       gitExec(["add", "-A", `sites/${site}/`], REPO_DIR)
       // Remove build artifacts if accidentally added
       gitExec(
-        ["reset", `sites/${site}/node_modules`, `sites/${site}/**/.vite`, `sites/${site}/**/dist`, `sites/${site}/**/build`, `sites/${site}/**/.bun`],
+        [
+          "reset",
+          `sites/${site}/node_modules`,
+          `sites/${site}/**/.vite`,
+          `sites/${site}/**/dist`,
+          `sites/${site}/**/build`,
+          `sites/${site}/**/.bun`,
+        ],
         REPO_DIR,
       )
     } catch (error) {
@@ -189,7 +196,9 @@ function stageFiles(includedSites: string[]): number {
   }
 
   // Count staged files
-  const stagedFiles = gitExec(["diff", "--cached", "--name-only"]).split("\n").filter(f => f.trim()).length
+  const stagedFiles = gitExec(["diff", "--cached", "--name-only"])
+    .split("\n")
+    .filter(f => f.trim()).length
 
   if (stagedFiles === 0) {
     throw new DeploymentError("No files staged for commit")

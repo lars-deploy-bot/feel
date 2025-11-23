@@ -22,7 +22,9 @@ help:
 	@echo "  make shell         Run shell-server locally (port 3500)"
 	@echo "  make build:shell   Build, test, and restart shell-server"
 	@echo "  make test:shell    Run shell-server build verification tests"
-	@echo "  make static-check  Run all static analysis (knip, lint, type-check, workspace validation)"
+	@echo ""
+	@echo "$(GREEN)Quality Checks:$(NC)"
+	@echo "  make static-check  Run type-check, lint, format, and unit tests (used by pre-push hook)"
 	@echo ""
 	@echo "$(GREEN)Logs:$(NC)"
 	@echo "  make logs-prod     View production logs (systemd)"
@@ -78,7 +80,8 @@ test\:shell:
 	@cd apps/shell-server && bun run test
 
 static-check:
-	@./scripts/validation/run-static-checks.sh
+	@echo "$(BLUE)Running static checks (type-check, lint, format, unit tests)...$(NC)"
+	@bun run static-check
 
 # Never inspect
 wash:

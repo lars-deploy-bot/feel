@@ -12,9 +12,10 @@ import { environments } from "@webalive/shared/environments"
  * Automatically uses local or production based on BRIDGE_ENV
  */
 const getApiUrl = (path: string): string => {
-  const baseUrl = process.env.BRIDGE_ENV === "local"
-    ? `http://localhost:${environments.production.port}`
-    : `https://${environments.production.domain}`
+  const baseUrl =
+    process.env.BRIDGE_ENV === "local"
+      ? `http://localhost:${environments.production.port}`
+      : `https://${environments.production.domain}`
   return `${baseUrl}${path}`
 }
 
