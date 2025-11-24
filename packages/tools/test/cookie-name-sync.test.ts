@@ -45,8 +45,8 @@ describe("Cookie Name Synchronization - Prevent Hardcoding", () => {
     const sourcePath = join(__dirname, "../src/lib/bridge-api-client.ts")
     const sourceCode = readFileSync(sourcePath, "utf-8")
 
-    // Must import COOKIE_NAMES from shared package
-    expect(sourceCode).toContain('import { COOKIE_NAMES } from "@webalive/shared"')
+    // Must import COOKIE_NAMES from shared package (allow other imports too)
+    expect(sourceCode).toMatch(/import\s+{[^}]*COOKIE_NAMES[^}]*}\s+from\s+"@webalive\/shared"/)
 
     // Must use the constant in cookie header construction
     expect(sourceCode).toContain("COOKIE_NAMES.SESSION")
