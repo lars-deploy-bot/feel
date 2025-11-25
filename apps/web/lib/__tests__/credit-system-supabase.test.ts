@@ -13,6 +13,7 @@
 
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
 import { llmTokensToCredits } from "@/lib/credits"
+import { assertSupabaseManagementEnv, assertSupabaseServiceEnv } from "@/lib/test-helpers/integration-env"
 import {
   calculateLLMTokenCost,
   chargeTokensFromCredits,
@@ -25,7 +26,10 @@ import {
 } from "@/lib/tokens"
 import { createTestAppClient, createTestIamClient } from "./supabase-test-utils"
 
-describe.skip("Supabase Credit System Integration", () => {
+assertSupabaseServiceEnv()
+assertSupabaseManagementEnv()
+
+describe("Supabase Credit System Integration", () => {
   const TEST_ORG_ID = `test-org-${Date.now()}`
   const TEST_DOMAIN = `test-credits-${Date.now()}.example.com`
   const INITIAL_CREDITS = 100

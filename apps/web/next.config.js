@@ -1,5 +1,14 @@
 import path from "node:path"
 
+/**
+ * NOTE: Environment validation happens in the app itself via:
+ * - apps/web/app/layout.tsx (imports @webalive/env)
+ * - apps/web/lib/env-validation.ts (can be imported in API routes)
+ *
+ * This ensures validation runs during build AND runtime.
+ * Cannot import TS files here since next.config.js runs in Node before transpilation.
+ */
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Separate distDir for test server to avoid conflicts with dev server
@@ -24,7 +33,7 @@ const nextConfig = {
       "../../node_modules/zod/**/*",
     ],
   },
-  serverExternalPackages: ["@napi-rs/image", "@webalive/shared", "@webalive/site-controller"],
+  serverExternalPackages: ["@napi-rs/image", "@webalive/shared", "@webalive/site-controller", "@webalive/env"],
   transpilePackages: ["@alive-brug/guides", "@alive-brug/images", "@alive-brug/tools"],
 }
 export default nextConfig

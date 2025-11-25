@@ -2,24 +2,37 @@ import { defineConfig } from "@playwright/test"
 import dotenv from "dotenv"
 import { TEST_CONFIG } from "@webalive/shared"
 
-// Load environment variables from .env for test fixtures
-dotenv.config()
+// Support staging/production environment tests
+const isStaging = process.env.TEST_ENV === "staging"
+const isProductionEnv = process.env.TEST_ENV === "production"
+
+// Load appropriate environment file
+if (isProductionEnv) {
+  // For production tests, load .env.production
+  dotenv.config({ path: ".env.production", override: true })
+} else if (isStaging) {
+  // For staging tests, load .env.staging
+  dotenv.config({ path: ".env.staging", override: true })
+} else {
+  // For local tests, load .env.test
+  dotenv.config({ path: ".env.test", override: true })
+}
 
 // Use port 9547 for testing to avoid conflicts with production (8999)
 const TEST_PORT = "9547"
 const BASE_URL = `http://localhost:${TEST_PORT}`
 
-// Support staging environment tests
-const isStaging = process.env.TEST_ENV === "staging"
-
 // Enforce worker limits against centralized config (single source of truth)
-const desiredWorkers = process.env.CI ? 2 : 4
+// - CI: 2 workers (conservative for shared runners)
+// - Staging/Production: 6 workers (deployed server can handle more)
+// - Local: 4 workers (dev machine balance)
+const desiredWorkers = process.env.CI ? 2 : isStaging || isProductionEnv ? 6 : 4
 const maxWorkers = TEST_CONFIG.MAX_WORKERS
 
 if (desiredWorkers > maxWorkers) {
   throw new Error(
     `Playwright workers (${desiredWorkers}) exceeds TEST_CONFIG.MAX_WORKERS (${maxWorkers}). ` +
-      `Update TEST_CONFIG.MAX_WORKERS in packages/shared/src/constants.ts`,
+      "Update TEST_CONFIG.MAX_WORKERS in packages/shared/src/constants.ts",
   )
 }
 
@@ -33,20 +46,25 @@ export default defineConfig({
   globalTeardown: "./e2e-tests/global-teardown.ts",
 
   use: {
-    baseURL: isStaging ? "https://staging.terminal.goalive.nl" : BASE_URL,
+    baseURL: isProductionEnv
+      ? "https://terminal.goalive.nl"
+      : isStaging
+        ? "https://staging.terminal.goalive.nl"
+        : BASE_URL,
     screenshot: "only-on-failure",
     trace: "retain-on-failure",
   },
 
-  // Only start web server for local tests
-  webServer: isStaging
-    ? undefined
-    : {
-        command: "bash scripts/start-test-server.sh",
-        url: BASE_URL,
-        reuseExistingServer: !process.env.CI,
-        timeout: 180000, // Increased timeout for slower starts
-      },
+  // Only start web server for local tests (staging/production use deployed servers)
+  webServer:
+    isStaging || isProductionEnv
+      ? undefined
+      : {
+          command: "bash scripts/start-test-server.sh",
+          url: BASE_URL,
+          reuseExistingServer: !process.env.CI,
+          timeout: 180000, // Increased timeout for slower starts
+        },
 
   projects: [
     {

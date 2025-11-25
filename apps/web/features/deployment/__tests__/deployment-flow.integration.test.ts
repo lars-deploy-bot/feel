@@ -9,20 +9,26 @@ import { existsSync, rmSync } from "node:fs"
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
 import type { TestUser } from "@/lib/test-helpers/auth-test-helper"
 import { cleanupTestUser, createTestUser } from "@/lib/test-helpers/auth-test-helper"
+import { assertSupabaseServiceEnv, assertSystemTestEnv } from "@/lib/test-helpers/integration-env"
 import { authenticatedFetch, callRouteHandler, loginAndGetSession } from "@/lib/test-helpers/test-auth-helpers"
 import { API_ENDPOINTS, TEST_CREDENTIALS } from "@/lib/test-helpers/test-constants"
+
+assertSystemTestEnv()
+assertSupabaseServiceEnv()
 
 describe("Full Deployment Flow Integration", () => {
   const testSlug = "test-flow"
   const testDomain = `${testSlug}.alive.best`
   const sitePath = `/srv/webalive/sites/${testDomain}`
 
-  let testUser: TestUser
+  let testUser!: TestUser
   let sessionCookie: string = ""
+  const createdUsers: TestUser[] = []
 
   beforeAll(async () => {
     // Create test user with organization and password (auto-generates internal test domain)
     testUser = await createTestUser(undefined, TEST_CREDENTIALS.CREDITS, TEST_CREDENTIALS.PASSWORD)
+    createdUsers.push(testUser)
     console.log(`[Test Setup] Created test user: ${testUser.email} with org: ${testUser.orgId}`)
 
     // Login to get real session cookie
@@ -32,7 +38,9 @@ describe("Full Deployment Flow Integration", () => {
 
   afterAll(async () => {
     // Cleanup test user
-    await cleanupTestUser(testUser.userId)
+    for (const user of createdUsers) {
+      await cleanupTestUser(user.userId)
+    }
     console.log("[Test Cleanup] Removed test user and org")
   })
 

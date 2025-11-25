@@ -1,6 +1,7 @@
+import { describe, expect, it, vi } from "vitest"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
-import { describe, expect, it, vi } from "vitest"
+import * as fsPromises from "node:fs/promises"
 import type { GetWorkflowParams, WorkflowCategory } from "../src/tools/meta/get-workflow.js"
 import { getWorkflow } from "../src/tools/meta/get-workflow.js"
 import { TOOL_REGISTRY } from "../src/tools/meta/tool-registry.js"
@@ -35,10 +36,7 @@ describe("getWorkflow", () => {
     expect(text).not.toContain("detail_level")
 
     // It should equal the exact file contents (no modifications)
-    const expected = await (await import("node:fs/promises")).readFile(
-      join(workflowsPath, FILE_MAP["bug-debugging"]),
-      "utf-8",
-    )
+    const expected = await fsPromises.readFile(join(workflowsPath, FILE_MAP["bug-debugging"]), "utf-8")
     expect(text).toBe(expected)
   })
 
@@ -57,10 +55,7 @@ describe("getWorkflow", () => {
     expect(text).not.toContain("Usage Examples")
     expect(text).not.toContain("detail_level")
 
-    const expected = await (await import("node:fs/promises")).readFile(
-      join(workflowsPath, FILE_MAP["new-feature"]),
-      "utf-8",
-    )
+    const expected = await fsPromises.readFile(join(workflowsPath, FILE_MAP["new-feature"]), "utf-8")
     expect(text).toBe(expected)
   })
 
@@ -79,10 +74,7 @@ describe("getWorkflow", () => {
     expect(text).not.toContain("Usage Examples")
     expect(text).not.toContain("detail_level")
 
-    const expected = await (await import("node:fs/promises")).readFile(
-      join(workflowsPath, FILE_MAP["package-installation"]),
-      "utf-8",
-    )
+    const expected = await fsPromises.readFile(join(workflowsPath, FILE_MAP["package-installation"]), "utf-8")
     expect(text).toBe(expected)
   })
 
@@ -101,8 +93,7 @@ describe("getWorkflow", () => {
   })
 
   it("returns error when file read fails (I/O error path)", async () => {
-    const fs = await import("node:fs/promises")
-    const spy = vi.spyOn(fs, "readFile").mockRejectedValue(new Error("simulated read error"))
+    const spy = vi.spyOn(fsPromises, "readFile").mockRejectedValueOnce(new Error("simulated read error"))
     try {
       const result = await getWorkflow({ workflow_type: "bug-debugging" })
       expect(result.isError).toBe(true)

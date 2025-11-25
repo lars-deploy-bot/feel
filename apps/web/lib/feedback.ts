@@ -1,6 +1,6 @@
+import { getSessionUser } from "@/features/auth/lib/auth"
 import type { AppFeedbackInsert } from "@/lib/supabase/app"
 import { createAppClient } from "@/lib/supabase/app"
-import { getSessionUser } from "@/features/auth/lib/auth"
 
 export interface FeedbackEntry {
   id: string

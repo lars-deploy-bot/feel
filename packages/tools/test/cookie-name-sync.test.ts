@@ -46,7 +46,7 @@ describe("Cookie Name Synchronization - Prevent Hardcoding", () => {
     const sourceCode = readFileSync(sourcePath, "utf-8")
 
     // Must import COOKIE_NAMES from shared package (allow other imports too)
-    expect(sourceCode).toMatch(/import\s+{[^}]*COOKIE_NAMES[^}]*}\s+from\s+"@webalive\/shared"/)
+    expect(sourceCode).toMatch(/import\s+\{[^}]*COOKIE_NAMES[^}]*\}\s+from\s+["']@webalive\/shared["']/)
 
     // Must use the constant in cookie header construction
     expect(sourceCode).toContain("COOKIE_NAMES.SESSION")

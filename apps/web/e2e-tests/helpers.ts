@@ -1,6 +1,6 @@
 import type { BrowserContext, Page, Response } from "@playwright/test"
-import jwt from "jsonwebtoken"
 import { TEST_CONFIG } from "@webalive/shared"
+import jwt from "jsonwebtoken"
 import type { TestUser } from "./fixtures"
 
 interface LoginResult {

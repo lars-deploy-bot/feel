@@ -4,15 +4,63 @@
  * Main entry point and public API
  */
 
-import { LockboxAdapter } from './storage.js';
-import { getProvider } from './providers/index.js';
-import type { OAuthTokens, ProviderConfig } from './types.js';
+import { LockboxAdapter, type LockboxAdapterConfig } from "./storage"
+import { getProvider } from "./providers/index"
+import { createRefreshLockManager, type IRefreshLockManager } from "./refresh-lock"
+import { isRefreshable, isRevocable } from "./providers/base"
+import { OAUTH_TOKENS_NAMESPACE, type OAuthTokens, type ProviderConfig, type OAuthManagerConfig } from "./types"
 
 export class OAuthManager {
-  private storage: LockboxAdapter;
+  private storage: LockboxAdapter
+  private config: OAuthManagerConfig
+  private lockManager: IRefreshLockManager
 
-  constructor() {
-    this.storage = new LockboxAdapter();
+  // Token expiry buffer to prevent edge cases where token expires during request
+  private static readonly TOKEN_EXPIRY_BUFFER_MS = 5 * 60 * 1000 // 5 minutes
+
+  constructor(config?: OAuthManagerConfig) {
+    // If no config provided, use defaults for backwards compatibility
+    this.config = config || {
+      provider: "default",
+      instanceId: "default",
+      namespace: OAUTH_TOKENS_NAMESPACE,
+      environment: process.env.NODE_ENV || "production",
+      defaultTtlSeconds: undefined,
+    }
+
+    // Create storage adapter with instance configuration
+    const storageConfig: LockboxAdapterConfig = {
+      instanceId: this.config.instanceId,
+      defaultTtlSeconds: this.config.defaultTtlSeconds,
+    }
+    this.storage = new LockboxAdapter(storageConfig)
+
+    // Use injected lock manager or create one from config/defaults
+    this.lockManager = this.config.lockManager || createRefreshLockManager(this.config.lockManagerConfig)
+  }
+
+  /**
+   * Get the lock manager instance (useful for testing/monitoring)
+   * @returns The refresh lock manager instance
+   */
+  getLockManager(): IRefreshLockManager {
+    return this.lockManager
+  }
+
+  /**
+   * Get the current instance configuration
+   * @returns The OAuth manager configuration
+   */
+  getConfig(): OAuthManagerConfig {
+    return this.config
+  }
+
+  /**
+   * Get the instance ID for this OAuth manager
+   * @returns The instance identifier
+   */
+  getInstanceId(): string {
+    return this.config.instanceId
   }
 
   // ------------------------------------------------------------------
@@ -33,35 +81,16 @@ export class OAuthManager {
    *   redirect_uri: 'https://myapp.com/auth/callback'
    * });
    */
-  async setProviderConfig(
-    tenantUserId: string,
-    provider: string,
-    config: ProviderConfig
-  ): Promise<void> {
+  async setProviderConfig(tenantUserId: string, provider: string, config: ProviderConfig): Promise<void> {
     // Verify provider exists
-    getProvider(provider);
+    getProvider(provider)
 
-    await this.storage.save(
-      tenantUserId,
-      'provider_config',
-      `${provider}_client_id`,
-      config.client_id
-    );
+    await this.storage.save(tenantUserId, "provider_config", `${provider}_client_id`, config.client_id)
 
-    await this.storage.save(
-      tenantUserId,
-      'provider_config',
-      `${provider}_client_secret`,
-      config.client_secret
-    );
+    await this.storage.save(tenantUserId, "provider_config", `${provider}_client_secret`, config.client_secret)
 
     if (config.redirect_uri) {
-      await this.storage.save(
-        tenantUserId,
-        'provider_config',
-        `${provider}_redirect_uri`,
-        config.redirect_uri
-      );
+      await this.storage.save(tenantUserId, "provider_config", `${provider}_redirect_uri`, config.redirect_uri)
     }
   }
 
@@ -72,33 +101,22 @@ export class OAuthManager {
    * @param provider - Provider name
    * @returns Provider config or null if not configured
    */
-  async getProviderConfig(
-    tenantUserId: string,
-    provider: string
-  ): Promise<ProviderConfig | null> {
+  async getProviderConfig(tenantUserId: string, provider: string): Promise<ProviderConfig | null> {
     const [clientId, clientSecret, redirectUri] = await Promise.all([
-      this.storage.get(tenantUserId, 'provider_config', `${provider}_client_id`),
-      this.storage.get(
-        tenantUserId,
-        'provider_config',
-        `${provider}_client_secret`
-      ),
-      this.storage.get(
-        tenantUserId,
-        'provider_config',
-        `${provider}_redirect_uri`
-      ),
-    ]);
+      this.storage.get(tenantUserId, "provider_config", `${provider}_client_id`),
+      this.storage.get(tenantUserId, "provider_config", `${provider}_client_secret`),
+      this.storage.get(tenantUserId, "provider_config", `${provider}_redirect_uri`),
+    ])
 
     if (!clientId || !clientSecret) {
-      return null;
+      return null
     }
 
     return {
       client_id: clientId,
       client_secret: clientSecret,
       redirect_uri: redirectUri || undefined,
-    };
+    }
   }
 
   /**
@@ -108,17 +126,9 @@ export class OAuthManager {
    * @param provider - Provider name
    */
   async deleteProviderConfig(tenantUserId: string, provider: string): Promise<void> {
-    const names = [
-      `${provider}_client_id`,
-      `${provider}_client_secret`,
-      `${provider}_redirect_uri`,
-    ];
+    const names = [`${provider}_client_id`, `${provider}_client_secret`, `${provider}_redirect_uri`]
 
-    await Promise.all(
-      names.map((name) =>
-        this.storage.delete(tenantUserId, 'provider_config', name)
-      )
-    );
+    await Promise.all(names.map(name => this.storage.delete(tenantUserId, "provider_config", name)))
   }
 
   // ------------------------------------------------------------------
@@ -147,99 +157,186 @@ export class OAuthManager {
     tenantUserId: string,
     authenticatingUserId: string,
     provider: string,
-    code: string
+    code: string,
   ): Promise<{ success: boolean; scopes?: string }> {
-    // 1. Get tenant's OAuth app credentials
-    const config = await this.getProviderConfig(tenantUserId, provider);
+    // 1. Get OAuth app credentials - try database first, then env vars
+    let config = await this.getProviderConfig(tenantUserId, provider)
+
+    // Fall back to environment variables for system-wide OAuth apps
     if (!config) {
-      throw new Error(
-        `Tenant ${tenantUserId} has not configured OAuth for '${provider}'`
-      );
+      const envClientId = process.env[`${provider.toUpperCase()}_CLIENT_ID`]
+      const envClientSecret = process.env[`${provider.toUpperCase()}_CLIENT_SECRET`]
+      const envRedirectUri = process.env[`${provider.toUpperCase()}_REDIRECT_URI`]
+
+      if (envClientId && envClientSecret) {
+        config = {
+          client_id: envClientId,
+          client_secret: envClientSecret,
+          redirect_uri: envRedirectUri || undefined,
+        }
+      }
+    }
+
+    if (!config) {
+      throw new Error(`OAuth not configured for '${provider}'. Set environment variables or configure in database.`)
     }
 
     // 2. Get provider instance and exchange code for tokens
-    const oauthProvider = getProvider(provider);
-    const tokens = await oauthProvider.exchangeCode(
-      code,
-      config.client_id,
-      config.client_secret,
-      config.redirect_uri
-    );
+    const oauthProvider = getProvider(provider)
+    const tokens = await oauthProvider.exchangeCode(code, config.client_id, config.client_secret, config.redirect_uri)
 
     // 3. Store tokens for the authenticating user
-    await this.saveTokens(authenticatingUserId, provider, tokens);
+    await this.saveTokens(authenticatingUserId, provider, tokens)
 
-    return { success: true, scopes: tokens.scope };
+    return { success: true, scopes: tokens.scope }
   }
 
   /**
-   * Gets a user's access token for a provider
+   * Gets a user's access token for a provider (with transparent auto-refresh)
    *
    * @param userId - User ID
    * @param provider - Provider name
-   * @returns Access token
-   * @throws Error if user not connected to provider
+   * @returns Valid access token
+   * @throws Error if user not connected to provider or refresh fails
    *
    * @example
-   * const token = await oauth.getAccessToken('user-456', 'github');
-   * // Use with GitHub API
-   * fetch('https://api.github.com/user', {
+   * const token = await oauth.getAccessToken('user-456', 'linear');
+   * // Use with Linear API
+   * fetch('https://api.linear.app/graphql', {
    *   headers: { Authorization: `Bearer ${token}` }
    * });
    */
   async getAccessToken(userId: string, provider: string): Promise<string> {
-    const token = await this.storage.get(
-      userId,
-      'oauth_tokens',
-      `${provider}_access_token`
-    );
+    // Read encrypted JSON blob
+    const tokenBlob = await this.storage.get(userId, OAUTH_TOKENS_NAMESPACE, provider)
 
-    if (!token) {
-      throw new Error(`User ${userId} is not connected to '${provider}'`);
+    if (!tokenBlob) {
+      throw new Error(`User ${userId} is not connected to '${provider}'`)
     }
 
-    return token;
+    // Parse token data
+    let tokenData: {
+      access_token: string
+      refresh_token: string | null
+      expires_at: string | null
+      scope?: string | null
+      token_type?: string
+    }
+
+    try {
+      tokenData = JSON.parse(tokenBlob)
+    } catch (error) {
+      throw new Error(
+        `Failed to parse token data for '${provider}': ${error instanceof Error ? error.message : "Unknown error"}`,
+      )
+    }
+
+    // Check if token is expired (with buffer)
+    const now = Date.now()
+
+    if (tokenData.expires_at) {
+      const expiresAt = new Date(tokenData.expires_at).getTime()
+
+      if (now >= expiresAt - OAuthManager.TOKEN_EXPIRY_BUFFER_MS) {
+        // Token expired or expiring soon - attempt refresh
+        if (!tokenData.refresh_token) {
+          throw new Error(
+            `Access token for '${provider}' has expired and no refresh token is available. User must re-authenticate.`,
+          )
+        }
+
+        // Get provider instance to refresh token
+        const oauthProvider = getProvider(provider)
+
+        // Use type guard to check refresh capability
+        if (!isRefreshable(oauthProvider)) {
+          throw new Error(`Provider '${provider}' does not support token refresh. User must re-authenticate.`)
+        }
+
+        // Get provider config (client credentials)
+        // Note: For system-wide OAuth apps, we'd use env vars here instead
+        // For now, assume we have LINEAR_CLIENT_ID and LINEAR_CLIENT_SECRET in env
+        const clientId = process.env[`${provider.toUpperCase()}_CLIENT_ID`]
+        const clientSecret = process.env[`${provider.toUpperCase()}_CLIENT_SECRET`]
+
+        if (!clientId || !clientSecret) {
+          throw new Error(
+            `Missing OAuth credentials for '${provider}'. Set ${provider.toUpperCase()}_CLIENT_ID and ${provider.toUpperCase()}_CLIENT_SECRET.`,
+          )
+        }
+
+        // Use lock manager to prevent concurrent refresh attempts
+        const lockKey = `${userId}:${provider}`
+
+        try {
+          const newAccessToken = await this.lockManager.withLock(lockKey, async () => {
+            // Double-check if token is still expired (another request might have refreshed it)
+            const recentTokenBlob = await this.storage.get(userId, OAUTH_TOKENS_NAMESPACE, provider)
+            if (recentTokenBlob) {
+              try {
+                const recentTokenData = JSON.parse(recentTokenBlob)
+                if (recentTokenData.expires_at) {
+                  const recentExpiresAt = new Date(recentTokenData.expires_at).getTime()
+                  if (Date.now() < recentExpiresAt - OAuthManager.TOKEN_EXPIRY_BUFFER_MS) {
+                    // Token was refreshed by another request, use it
+                    return recentTokenData.access_token
+                  }
+                }
+              } catch {
+                // Corrupted token blob - ignore and proceed with refresh
+              }
+            }
+
+            // Proceed with refresh (we already checked it's refreshable above)
+            const newTokens = await oauthProvider.refreshToken(tokenData.refresh_token!, clientId, clientSecret)
+
+            // Save the new tokens atomically
+            await this.saveTokens(userId, provider, newTokens)
+
+            // Return the new access token
+            return newTokens.access_token
+          })
+
+          return newAccessToken
+        } catch (error) {
+          throw new Error(
+            `Token refresh failed for '${provider}': ${error instanceof Error ? error.message : "Unknown error"}. User may need to re-authenticate.`,
+          )
+        }
+      }
+    }
+
+    // Token is still valid, return it
+    return tokenData.access_token
   }
 
   /**
-   * Saves OAuth tokens for a user
+   * Saves OAuth tokens for a user (Atomic JSON Blob Pattern)
    *
    * @param userId - User ID
    * @param provider - Provider name
    * @param tokens - OAuth tokens to store
    */
-  async saveTokens(
-    userId: string,
-    provider: string,
-    tokens: OAuthTokens
-  ): Promise<void> {
+  async saveTokens(userId: string, provider: string, tokens: OAuthTokens): Promise<void> {
+    // Calculate expiry timestamp
+    const expiresAt = tokens.expires_in ? new Date(Date.now() + tokens.expires_in * 1000).toISOString() : null
+
+    // Create atomic JSON blob containing all token data
+    const tokenData = {
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token || null,
+      expires_at: expiresAt,
+      scope: tokens.scope || null,
+      token_type: tokens.token_type || "Bearer",
+    }
+
+    // Save as single encrypted JSON blob
     await this.storage.save(
       userId,
-      'oauth_tokens',
-      `${provider}_access_token`,
-      tokens.access_token
-    );
-
-    if (tokens.refresh_token) {
-      await this.storage.save(
-        userId,
-        'oauth_tokens',
-        `${provider}_refresh_token`,
-        tokens.refresh_token
-      );
-    }
-
-    if (tokens.expires_in) {
-      const expiresAt = new Date(
-        Date.now() + tokens.expires_in * 1000
-      ).toISOString();
-      await this.storage.save(
-        userId,
-        'oauth_tokens',
-        `${provider}_expires_at`,
-        expiresAt
-      );
-    }
+      OAUTH_TOKENS_NAMESPACE,
+      provider, // Use provider name directly (e.g., 'linear', 'github')
+      JSON.stringify(tokenData),
+    )
   }
 
   /**
@@ -250,7 +347,18 @@ export class OAuthManager {
    * @returns Refresh token or null
    */
   async getRefreshToken(userId: string, provider: string): Promise<string | null> {
-    return this.storage.get(userId, 'oauth_tokens', `${provider}_refresh_token`);
+    const tokenBlob = await this.storage.get(userId, OAUTH_TOKENS_NAMESPACE, provider)
+
+    if (!tokenBlob) {
+      return null
+    }
+
+    try {
+      const tokenData = JSON.parse(tokenBlob)
+      return tokenData.refresh_token || null
+    } catch {
+      return null
+    }
   }
 
   /**
@@ -261,7 +369,7 @@ export class OAuthManager {
    * @returns true if user has an access token
    */
   async isConnected(userId: string, provider: string): Promise<boolean> {
-    return this.storage.exists(userId, 'oauth_tokens', `${provider}_access_token`);
+    return this.storage.exists(userId, OAUTH_TOKENS_NAMESPACE, provider)
   }
 
   /**
@@ -271,18 +379,10 @@ export class OAuthManager {
    * @param provider - Provider name
    *
    * @example
-   * await oauth.disconnect('user-456', 'github');
+   * await oauth.disconnect('user-456', 'linear');
    */
   async disconnect(userId: string, provider: string): Promise<void> {
-    const names = [
-      `${provider}_access_token`,
-      `${provider}_refresh_token`,
-      `${provider}_expires_at`,
-    ];
-
-    await Promise.all(
-      names.map((name) => this.storage.delete(userId, 'oauth_tokens', name))
-    );
+    await this.storage.delete(userId, OAUTH_TOKENS_NAMESPACE, provider)
   }
 
   /**
@@ -293,29 +393,38 @@ export class OAuthManager {
    * @param userId - User ID
    * @param provider - Provider name
    */
-  async revoke(
-    tenantUserId: string,
-    userId: string,
-    provider: string
-  ): Promise<void> {
-    // Get provider config and user token
-    const [config, token] = await Promise.all([
-      this.getProviderConfig(tenantUserId, provider),
-      this.getAccessToken(userId, provider),
-    ]);
+  async revoke(tenantUserId: string, userId: string, provider: string): Promise<void> {
+    // 1. Get OAuth app credentials - try database first, then env vars
+    let config = await this.getProviderConfig(tenantUserId, provider)
+
+    // Fall back to environment variables for system-wide OAuth apps (e.g., Linear)
+    if (!config) {
+      const envClientId = process.env[`${provider.toUpperCase()}_CLIENT_ID`]
+      const envClientSecret = process.env[`${provider.toUpperCase()}_CLIENT_SECRET`]
+
+      if (envClientId && envClientSecret) {
+        config = {
+          client_id: envClientId,
+          client_secret: envClientSecret,
+        }
+      }
+    }
 
     if (!config) {
-      throw new Error(`Tenant not configured for '${provider}'`);
+      throw new Error(`OAuth not configured for '${provider}'. Set environment variables or configure in database.`)
     }
 
-    // Revoke with provider (if supported)
-    const oauthProvider = getProvider(provider);
-    if (oauthProvider.revokeToken) {
-      await oauthProvider.revokeToken(token, config.client_id, config.client_secret);
+    // 2. Get user's access token
+    const token = await this.getAccessToken(userId, provider)
+
+    // 3. Revoke with provider (if supported)
+    const oauthProvider = getProvider(provider)
+    if (isRevocable(oauthProvider)) {
+      await oauthProvider.revokeToken(token, config.client_id, config.client_secret)
     }
 
-    // Remove from local storage
-    await this.disconnect(userId, provider);
+    // 4. Remove from local storage
+    await this.disconnect(userId, provider)
   }
 
   // ------------------------------------------------------------------
@@ -340,33 +449,69 @@ export class OAuthManager {
    * );
    * // Redirect user to authUrl
    */
-  async getAuthUrl(
-    tenantUserId: string,
-    provider: string,
-    scope: string,
-    state?: string
-  ): Promise<string> {
-    const config = await this.getProviderConfig(tenantUserId, provider);
+  async getAuthUrl(tenantUserId: string, provider: string, scope: string, state?: string): Promise<string> {
+    // Try database config first, then fall back to environment variables
+    let config = await this.getProviderConfig(tenantUserId, provider)
+
+    // Fall back to environment variables for system-wide OAuth apps
     if (!config) {
-      throw new Error(`Tenant not configured for '${provider}'`);
+      const envClientId = process.env[`${provider.toUpperCase()}_CLIENT_ID`]
+      const envClientSecret = process.env[`${provider.toUpperCase()}_CLIENT_SECRET`]
+      const envRedirectUri = process.env[`${provider.toUpperCase()}_REDIRECT_URI`]
+
+      if (envClientId && envClientSecret) {
+        config = {
+          client_id: envClientId,
+          client_secret: envClientSecret,
+          redirect_uri: envRedirectUri || undefined,
+        }
+      }
     }
 
-    const oauthProvider = getProvider(provider);
-    if (!oauthProvider.getAuthUrl) {
-      throw new Error(`Provider '${provider}' does not support getAuthUrl`);
+    if (!config) {
+      throw new Error(`OAuth not configured for '${provider}'. Set environment variables or configure in database.`)
     }
 
-    return oauthProvider.getAuthUrl(
-      config.client_id,
-      config.redirect_uri || '',
-      scope,
-      state
-    );
+    const oauthProvider = getProvider(provider)
+    // getAuthUrl is now required in OAuthProviderCore, no need to check
+    return oauthProvider.getAuthUrl(config.client_id, config.redirect_uri || "", scope, state)
   }
 }
 
-// Singleton instance for convenience
-export const oauth = new OAuthManager();
+// Factory function for creating OAuth instances with proper configuration
+export function createOAuthManager(config: OAuthManagerConfig): OAuthManager {
+  return new OAuthManager(config)
+}
+
+// Helper to build instance ID for different scenarios
+export function buildInstanceId(
+  provider: string,
+  environment: string,
+  tenantId?: string,
+  runId?: string,
+  workerIndex?: number,
+): string {
+  const parts = [provider, environment]
+
+  if (tenantId) {
+    parts.push(tenantId)
+  }
+
+  if (runId) {
+    parts.push(runId)
+  }
+
+  if (workerIndex !== undefined) {
+    parts.push(`w${workerIndex}`)
+  }
+
+  return parts.join(":")
+}
+
+// Singleton instance for backwards compatibility
+// DEPRECATED: Use createOAuthManager() or new OAuthManager() with explicit config instead
+// The web app uses this singleton pattern throughout
+export const oauth = new OAuthManager()
 
 // Re-export types and utilities
 export type {
@@ -375,10 +520,23 @@ export type {
   SecretNamespace,
   EncryptedPayload,
   UserSecret,
-} from './types.js';
+  OAuthManagerConfig,
+  LockManagerConfig,
+} from "./types"
 
-export { Security } from './security.js';
-export { LockboxAdapter } from './storage.js';
-export { getProvider, registerProvider, listProviders, hasProvider } from './providers/index.js';
-export type { OAuthProvider } from './providers/base.js';
-export { GitHubProvider } from './providers/github.js';
+export { Security } from "./security"
+export { LockboxAdapter, type LockboxAdapterConfig } from "./storage"
+export {
+  createRefreshLockManager,
+  InMemoryRefreshLockManager,
+  RedisRefreshLockManager,
+  RefreshLockManager,
+  type IRefreshLockManager,
+  type LockStrategy,
+} from "./refresh-lock"
+export { getProvider, registerProvider, listProviders, hasProvider } from "./providers/index"
+export type { OAuthProvider, OAuthProviderCore, OAuthRefreshable, OAuthRevocable } from "./providers/base"
+export { isRefreshable, isRevocable } from "./providers/base"
+export { GitHubProvider } from "./providers/github"
+export { LINEAR_SCOPES, LinearProvider } from "./providers/linear"
+export { STRIPE_SCOPES, StripeProvider, type StripeTokenResponse } from "./providers/stripe"

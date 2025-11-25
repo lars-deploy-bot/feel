@@ -2,6 +2,169 @@
 
 > **Focus**: Test complete user flows in a real browser using Playwright
 
+## Architecture Overview
+
+This section explains how E2E tests work across different environments.
+
+### Environment Comparison
+
+| Environment | Target | Workers | Database | Triggered By |
+|-------------|--------|---------|----------|--------------|
+| **Local** | `localhost:9547` | 4 | Test DB | `bun run test:e2e` |
+| **Staging** | `staging.terminal.goalive.nl` | 6 | Production DB | `make staging` |
+| **Production** | `terminal.goalive.nl` | 6 | Production DB | `make wash` |
+
+### Local Development
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     LOCAL DEVELOPMENT                            │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   Developer Machine                                             │
+│   ┌─────────────────┐      ┌─────────────────┐                 │
+│   │  Playwright     │ ───► │  Test Server    │ (localhost:9547)│
+│   │  (4 workers)    │      │  (next dev)     │                 │
+│   └─────────────────┘      └─────────────────┘                 │
+│          │                        │                             │
+│          │                        ▼                             │
+│          │                 ┌─────────────────┐                 │
+│          │                 │  .env.test      │ (test secrets)  │
+│          │                 └─────────────────┘                 │
+│          │                                                      │
+│          ▼                                                      │
+│   Creates test users: e2e_w0@bridge.local, e2e_w1@bridge.local │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Key points:**
+- Playwright auto-starts a test server on port 9547
+- Uses `.env.test` for configuration
+- Test users created in test database
+- Mocking Claude API is optional (but recommended to avoid costs)
+
+### Staging / Production Deployment
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    STAGING / PRODUCTION                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   Same Server (138.201.56.93)                                   │
+│   ┌─────────────────┐      ┌─────────────────┐                 │
+│   │  Playwright     │ ───► │  Deployed App   │                 │
+│   │  (6 workers)    │      │  (systemd)      │                 │
+│   │                 │      │                 │                 │
+│   │  Runs during    │      │  staging:8998   │                 │
+│   │  deployment     │      │  prod:9000      │                 │
+│   └─────────────────┘      └─────────────────┘                 │
+│          │                        │                             │
+│          │ HTTPS via Caddy        │                             │
+│          ▼                        ▼                             │
+│   ┌─────────────────┐      ┌─────────────────┐                 │
+│   │ staging.terminal│      │  .env.staging   │                 │
+│   │ .goalive.nl     │      │  or             │                 │
+│   │       or        │      │  .env.production│                 │
+│   │ terminal.goalive│      └─────────────────┘                 │
+│   │ .nl             │             │                             │
+│   └─────────────────┘             │                             │
+│                                   ▼                             │
+│                          Same Supabase DB!                      │
+│                          (real users created)                   │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Key points:**
+- Tests run on the **same server** as the deployed app
+- No separate test server - tests hit the real deployed application
+- Uses production Supabase database
+- Test users use `.bridge.local` domain (not real TLD) for isolation
+
+### Deployment Flow with E2E Tests
+
+```
+make wash (production deployment)
+    │
+    ├─► 1. Build new version
+    ├─► 2. Deploy to production (port 9000)
+    ├─► 3. Health check passes
+    │
+    ├─► 4. Run E2E tests against https://terminal.goalive.nl
+    │       │
+    │       ├─► global-setup.ts creates test users via API
+    │       ├─► Tests run (login, navigate, verify UI)
+    │       └─► global-teardown.ts cleans up
+    │
+    ├─► 5a. If tests FAIL → rollback to previous build
+    └─► 5b. If tests PASS → deployment complete ✓
+```
+
+### Test User Isolation
+
+Each Playwright worker gets its own isolated test user:
+
+```typescript
+// Worker 0: e2e_w0@bridge.local → workspace e2e-w0.bridge.local
+// Worker 1: e2e_w1@bridge.local → workspace e2e-w1.bridge.local
+// Worker 2: e2e_w2@bridge.local → workspace e2e-w2.bridge.local
+// etc.
+```
+
+This allows 6 workers to run tests in parallel without conflicts.
+
+### The E2E_TEST_SECRET
+
+The `E2E_TEST_SECRET` prevents unauthorized access to test bootstrap endpoints:
+
+```
+┌──────────────┐    x-test-secret header    ┌──────────────────┐
+│  global-     │ ────────────────────────►  │ /api/test/       │
+│  setup.ts    │    E2E_TEST_SECRET         │ bootstrap-tenant │
+│              │                            │                  │
+└──────────────┘                            └──────────────────┘
+                                                   │
+                                                   ▼
+                                             Creates test
+                                             users in DB
+```
+
+**Configuration:**
+- Local: Set in `.env.test`
+- Staging: Set in `.env.staging`
+- Production: Set in `.env.production`
+
+Without this secret, the `/api/test/bootstrap-tenant` endpoint rejects requests.
+
+### Why Test Against Production?
+
+| Benefit | Explanation |
+|---------|-------------|
+| **Real environment** | Tests run against actual production config, Caddy, systemd |
+| **Catches real issues** | Database migrations, env vars, service configs all tested |
+| **No drift** | No separate test infrastructure that can diverge from prod |
+| **Automatic rollback** | If tests fail, deployment rolls back automatically |
+
+### Running E2E Tests
+
+```bash
+# Local development
+bun run test:e2e
+
+# Against staging (manual)
+TEST_ENV=staging bun run test:e2e
+
+# Against production (manual)
+TEST_ENV=production bun run test:e2e
+
+# During deployment (automatic)
+make wash        # Production - runs E2E after deploy
+make staging     # Staging - runs E2E after deploy
+```
+
+---
+
 ## What are E2E Tests?
 
 End-to-end (E2E) tests simulate real user interactions in a browser. They:

@@ -1,6 +1,6 @@
 import { createBrowserClient } from "@supabase/ssr"
 import { getSupabaseCredentials } from "@/lib/env/client"
-import type { Database } from "./public.types"
+import type { PublicDatabase as Database } from "@webalive/database"
 
 let browserClient: ReturnType<typeof createBrowserClient<Database>> | null = null
 

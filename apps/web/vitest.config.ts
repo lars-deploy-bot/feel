@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import tsconfigPaths from "vite-tsconfig-paths"
-import { defineConfig } from "vitest/config"
+import { defineConfig, type Plugin, type ViteUserConfig } from "vitest/config"
 
 // Load .env file manually for tests
 function loadEnvFile() {
@@ -28,9 +28,8 @@ function loadEnvFile() {
   }
 }
 
-export default defineConfig({
-  // @ts-expect-error - vite-tsconfig-paths plugin type mismatch between root and vitest bundled vite
-  plugins: [tsconfigPaths()],
+export const sharedConfig = {
+  plugins: [tsconfigPaths() as Plugin],
   resolve: {
     preserveSymlinks: false,
     alias: {
@@ -50,22 +49,45 @@ export default defineConfig({
       "@alive-brug/guides",
     ],
   },
+} satisfies ViteUserConfig
+
+export const baseTestConfig = {
+  globals: true,
+  setupFiles: ["./tests/setup.ts"],
+  env: {
+    ...loadEnvFile(),
+    BRIDGE_ENV: "local",
+  },
+  exclude: [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/e2e-tests/**",
+    "**/.next/**",
+    "**/*.spec.{ts,tsx}",
+    "**/lib/__tests__/claude-tool-permissions.test.ts",
+  ],
+}
+
+export const dbIntegrationGlobs = [
+  "lib/credits/__tests__/**/*.integration.test.ts",
+  "lib/credits/__tests__/credit-system-supabase.test.ts",
+  "lib/__tests__/credit-system-supabase.test.ts",
+  "lib/deployment/__tests__/org-resolver.test.ts",
+  "features/auth/lib/__tests__/rls-integration.test.ts",
+]
+
+export const systemGlobs = [
+  "features/deployment/__tests__/**/*.test.ts",
+  "lib/__tests__/install-package-e2e.test.ts",
+  "app/api/login-manager/__tests__/security.test.ts",
+]
+
+export default defineConfig({
+  ...sharedConfig,
   test: {
-    globals: true,
+    ...baseTestConfig,
     environment: "happy-dom",
-    setupFiles: ["./tests/setup.ts"],
-    env: {
-      ...loadEnvFile(),
-      BRIDGE_ENV: "local", // Force tests to run against local server
-    },
     include: ["**/*.test.{ts,tsx}"],
-    exclude: [
-      "**/node_modules/**",
-      "**/dist/**",
-      "**/e2e-tests/**", // Exclude Playwright e2e tests
-      "**/.next/**",
-      "**/*.spec.{ts,tsx}", // Exclude all Playwright spec files
-      "**/lib/__tests__/claude-tool-permissions.test.ts", // Temporarily exclude - requires .mjs module resolution
-    ],
+    exclude: [...baseTestConfig.exclude, ...dbIntegrationGlobs, ...systemGlobs],
   },
 })

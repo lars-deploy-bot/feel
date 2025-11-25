@@ -2,38 +2,91 @@
  * OAuth Core Type Definitions
  */
 
-export type SecretNamespace = 'provider_config' | 'oauth_tokens';
+import type { IRefreshLockManager, LockStrategy } from "./refresh-lock"
+
+export type SecretNamespace = "provider_config" | "oauth_tokens" | "oauth_connections"
+
+/**
+ * Namespace for OAuth token storage
+ * MUST match what the integrations.get_available_integrations RPC expects
+ */
+export const OAUTH_TOKENS_NAMESPACE: SecretNamespace = "oauth_connections"
+
+/**
+ * Lock manager configuration options
+ */
+export interface LockManagerConfig {
+  /** Lock strategy: "memory", "redis", or "auto" (default: "auto") */
+  strategy?: LockStrategy
+  /** Redis URL for distributed locking (required if strategy is "redis") */
+  redisUrl?: string
+}
+
+/**
+ * OAuth Manager configuration for instance-aware operations
+ */
+export interface OAuthManagerConfig {
+  provider: string // 'linear', 'github', ...
+  instanceId: string // maps to lockbox.*.instance_id
+  namespace: string // e.g. 'oauth_connections'
+  environment: string // 'local' | 'dev' | 'staging' | 'prod' | 'test'
+  defaultTtlSeconds?: number // optional, for user_secrets.expires_at
+
+  /**
+   * Inject a custom lock manager instance (for DI/testing).
+   * If not provided, one will be created using lockManagerConfig or defaults.
+   */
+  lockManager?: IRefreshLockManager
+
+  /**
+   * Configuration for creating the lock manager (ignored if lockManager is provided)
+   */
+  lockManagerConfig?: LockManagerConfig
+}
 
 export interface EncryptedPayload {
-  ciphertext: string; // Postgres bytea format: "\x..."
-  iv: string; // 12 bytes in hex
-  authTag: string; // 16 bytes in hex
+  ciphertext: string // Postgres bytea format: "\x..."
+  iv: string // 12 bytes in hex
+  authTag: string // 16 bytes in hex
 }
 
 export interface OAuthTokens {
-  access_token: string;
-  refresh_token?: string;
-  expires_in?: number;
-  scope?: string;
-  token_type?: string;
+  access_token: string
+  refresh_token?: string
+  expires_in?: number
+  scope?: string
+  token_type?: string
 }
 
 export interface ProviderConfig {
-  client_id: string;
-  client_secret: string;
-  redirect_uri?: string;
+  client_id: string
+  client_secret: string
+  redirect_uri?: string
 }
 
 export interface UserSecret {
-  secret_id: string;
-  clerk_id: string;
-  namespace: SecretNamespace;
-  name: string;
-  ciphertext: string;
-  iv: string;
-  auth_tag: string;
-  version: number;
-  is_current: boolean;
-  created_at: string;
-  updated_at: string;
+  user_secret_id: string
+  user_id: string
+  instance_id?: string // Instance identifier for multi-tenant isolation
+  namespace: string
+  name: string
+  ciphertext: string
+  iv: string
+  auth_tag: string
+  version: number
+  is_current: boolean
+  scope: string | null // OAuth scope string or null
+  expires_at?: string | null // TTL for automatic cleanup
+  last_used_at: string | null
+  deleted_at: string | null
+  created_at: string
+  updated_at: string
+  created_by: string | null
+  updated_by: string | null
+}
+
+// GraphQL error type for API responses
+export interface GraphQLError {
+  message?: string
+  extensions?: Record<string, unknown>
 }

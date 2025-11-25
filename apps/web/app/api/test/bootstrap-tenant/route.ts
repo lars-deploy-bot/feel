@@ -22,8 +22,15 @@ interface BootstrapRequest {
 }
 
 export async function POST(req: Request) {
-  // Environment guard - ONLY accessible in test or local environments (whitelist approach)
-  if (process.env.NODE_ENV !== "test" && process.env.BRIDGE_ENV !== "local") {
+  // Environment guard - accessible in test/local environments OR with valid test secret
+  const isTestEnv = process.env.NODE_ENV === "test" || process.env.BRIDGE_ENV === "local"
+
+  // Check for test secret header (for staging/production E2E tests)
+  const testSecret = req.headers.get("x-test-secret")
+  const expectedSecret = process.env.E2E_TEST_SECRET
+  const hasValidSecret = expectedSecret && testSecret === expectedSecret
+
+  if (!isTestEnv && !hasValidSecret) {
     return createErrorResponse(ErrorCodes.UNAUTHORIZED, 404)
   }
 
@@ -54,7 +61,9 @@ export async function POST(req: Request) {
     .eq("email", email)
     .single()
 
-  if (existingUserError) {
+  // PGRST116 = "The result contains 0 rows" - expected for new users
+  if (existingUserError && existingUserError.code !== "PGRST116") {
+    console.error("[Bootstrap] User lookup failed:", existingUserError)
     return createErrorResponse(ErrorCodes.INTERNAL_ERROR, 500)
   }
 
@@ -86,7 +95,7 @@ export async function POST(req: Request) {
 
     // Update test_run_id and password hash to ensure consistency across test runs
     // Use upsert for domain to handle case where domain was deleted but user still exists
-    let userUpdate, orgUpdate, domainUpsert
+    let userUpdate: any, orgUpdate: any, domainUpsert: any
     try {
       ;[userUpdate, orgUpdate, domainUpsert] = await Promise.all([
         iam

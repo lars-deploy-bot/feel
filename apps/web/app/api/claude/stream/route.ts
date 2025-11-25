@@ -18,6 +18,7 @@ import { getSystemPrompt } from "@/features/chat/lib/systemPrompt"
 import { resolveWorkspace } from "@/features/workspace/lib/workspace-utils"
 import { COOKIE_NAMES } from "@/lib/auth/cookies"
 import { hasStripeMcpAccess } from "@/lib/claude/agent-constants.mjs"
+import { getStripeOAuth } from "@/lib/oauth/oauth-instances"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { env } from "@/lib/env"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
@@ -280,11 +281,23 @@ export async function POST(req: NextRequest) {
 
     logger.log("Max turns limit:", effectiveMaxTurns)
 
+    // Fetch user's Stripe OAuth token if connected
+    let stripeAccessToken: string | undefined
+    try {
+      const stripeOAuth = getStripeOAuth()
+      stripeAccessToken = await stripeOAuth.getAccessToken(user.id, "stripe")
+      logger.log("User has Stripe OAuth connection")
+    } catch {
+      // User not connected to Stripe - this is normal
+      stripeAccessToken = undefined
+    }
+    const hasStripeConnection = !!stripeAccessToken
+
     const systemPrompt = getSystemPrompt({
       projectId,
       userId,
       workspaceFolder: cwd,
-      hasStripeMcpAccess: hasStripeMcpAccess(resolvedWorkspaceName),
+      hasStripeMcpAccess: hasStripeMcpAccess(resolvedWorkspaceName, hasStripeConnection),
       additionalContext,
     })
 
@@ -341,6 +354,7 @@ export async function POST(req: NextRequest) {
       systemPrompt,
       apiKey: userApiKey || undefined,
       sessionCookie,
+      stripeAccessToken, // Pass user's Stripe OAuth token for MCP server
     })
 
     // Create NDJSON stream from child process output

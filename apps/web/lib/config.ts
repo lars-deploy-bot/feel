@@ -6,10 +6,11 @@
  */
 
 import { DOMAINS, PATHS } from "@webalive/shared"
+import { env } from "@webalive/env/server"
 
-export const WILDCARD_DOMAIN = process.env.WILDCARD_TLD || DOMAINS.WILDCARD
+export const WILDCARD_DOMAIN = env.WILDCARD_TLD || DOMAINS.WILDCARD
 export const WILDCARD_PATTERN = `*.${WILDCARD_DOMAIN}`
-export const WORKSPACE_BASE = process.env.WORKSPACE_BASE || PATHS.SITES_ROOT
+export const WORKSPACE_BASE = env.WORKSPACE_BASE || PATHS.SITES_ROOT
 
 export function buildSubdomain(slug: string): string {
   return `${slug.toLowerCase()}.${WILDCARD_DOMAIN}`

@@ -5,14 +5,17 @@
 
 import { createClient } from "@supabase/supabase-js"
 import { getSupabaseCredentials } from "../apps/web/lib/env/server"
-import type { Database as IamDatabase } from "../apps/web/lib/supabase/iam.types"
+import type { IamDatabase } from "@webalive/database"
 
 async function checkUsers() {
   const { url, key } = getSupabaseCredentials("service")
   const iam = createClient<IamDatabase>(url, key, { db: { schema: "iam" } })
 
   // Get all users
-  const { data: allUsers } = await iam.from("users").select("user_id, email, is_test_env, created_at").order("created_at", { ascending: false })
+  const { data: allUsers } = await iam
+    .from("users")
+    .select("user_id, email, is_test_env, created_at")
+    .order("created_at", { ascending: false })
 
   console.log(`Total users: ${allUsers?.length || 0}`)
   console.log()

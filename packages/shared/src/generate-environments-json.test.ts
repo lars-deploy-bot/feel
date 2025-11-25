@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach, mock, spyOn } from "bun:test"
-import { existsSync } from "fs"
-import { join, dirname } from "path"
-import { fileURLToPath } from "url"
+import { describe, it, expect, beforeEach, afterEach, spyOn } from "bun:test"
+import { existsSync } from "node:fs"
+import { join, dirname } from "node:path"
+import { fileURLToPath } from "node:url"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -43,8 +43,7 @@ describe("generate-environments-json", () => {
 
   it("should handle write errors gracefully", async () => {
     // Mock writeFileSync to throw an error
-    const fs = await import("fs")
-    const originalWriteFileSync = fs.writeFileSync
+    const fs = await import("node:fs")
 
     const writeError = new Error("EACCES: permission denied")
     const writeSpy = spyOn(fs, "writeFileSync").mockImplementation(() => {
@@ -72,7 +71,7 @@ describe("generate-environments-json", () => {
 
   it("should handle non-Error exceptions", async () => {
     // Mock writeFileSync to throw a string (non-Error)
-    const fs = await import("fs")
+    const fs = await import("node:fs")
 
     const writeSpy = spyOn(fs, "writeFileSync").mockImplementation(() => {
       throw "String error"
@@ -95,10 +94,10 @@ describe("generate-environments-json", () => {
   })
 
   it("should preserve JSON formatting with 2-space indentation", async () => {
-    const fs = await import("fs")
+    const fs = await import("node:fs")
     let capturedJson: string = ""
 
-    const writeSpy = spyOn(fs, "writeFileSync").mockImplementation((path, data) => {
+    const writeSpy = spyOn(fs, "writeFileSync").mockImplementation((_path, data) => {
       capturedJson = data as string
     })
 

@@ -17,56 +17,51 @@
  */
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { assertSupabaseServiceEnv } from "@/lib/test-helpers/integration-env"
 import { chargeTokensFromCredits, getOrgCredits, updateOrgCredits } from "../supabase-credits"
 
+assertSupabaseServiceEnv()
+
 const TEST_DOMAIN = "atomic-test.goalive.nl"
-let originalBalance: number | null = null
-let testInfrastructureReady = false
+describe("Atomic Credit Deduction - Integration", () => {
+  let originalBalance: number | null = null
+  let testInfrastructureReady = false
 
-// Check if integration tests should run (pattern from docs/testing/INTEGRATION_TESTING.md:556-563)
-const skipIntegration = !process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY
+  // Setup hook - verify test infrastructure exists
+  beforeAll(async () => {
+    // Check if test domain exists - this is infrastructure verification, not the test itself
+    originalBalance = await getOrgCredits(TEST_DOMAIN)
 
-// Setup hook - verify test infrastructure exists
-beforeAll(async () => {
-  if (skipIntegration) {
-    console.warn("⚠️  Skipping integration tests - Supabase credentials not configured")
-    return
+    if (originalBalance === null) {
+      console.warn(`⚠️  Test infrastructure not ready: domain ${TEST_DOMAIN} not found in database`)
+      console.warn(
+        `   To enable tests, create domain: INSERT INTO iam.orgs (hostname, credits) VALUES ('${TEST_DOMAIN}', 100);`,
+      )
+      testInfrastructureReady = false
+      return
+    }
+
+    testInfrastructureReady = true
+    console.log(`✓ Test infrastructure ready: ${TEST_DOMAIN} has ${originalBalance} credits`)
+  })
+
+  // Cleanup hook - restore original state
+  afterAll(async () => {
+    if (!testInfrastructureReady || originalBalance === null) return
+
+    await updateOrgCredits(TEST_DOMAIN, originalBalance)
+    console.log(`✓ Restored ${TEST_DOMAIN} to ${originalBalance} credits`)
+  })
+
+  // Test guard helper - ensures infrastructure is ready before running test logic
+  function requireInfrastructure() {
+    if (!testInfrastructureReady) {
+      // Return early - test will pass but do nothing (logged in beforeAll)
+      return false
+    }
+    return true
   }
 
-  // Check if test domain exists - this is infrastructure verification, not the test itself
-  originalBalance = await getOrgCredits(TEST_DOMAIN)
-
-  if (originalBalance === null) {
-    console.warn(`⚠️  Test infrastructure not ready: domain ${TEST_DOMAIN} not found in database`)
-    console.warn(
-      `   To enable tests, create domain: INSERT INTO iam.orgs (hostname, credits) VALUES ('${TEST_DOMAIN}', 100);`,
-    )
-    testInfrastructureReady = false
-    return
-  }
-
-  testInfrastructureReady = true
-  console.log(`✓ Test infrastructure ready: ${TEST_DOMAIN} has ${originalBalance} credits`)
-})
-
-// Cleanup hook - restore original state
-afterAll(async () => {
-  if (!testInfrastructureReady || originalBalance === null) return
-
-  await updateOrgCredits(TEST_DOMAIN, originalBalance)
-  console.log(`✓ Restored ${TEST_DOMAIN} to ${originalBalance} credits`)
-})
-
-// Test guard helper - ensures infrastructure is ready before running test logic
-function requireInfrastructure() {
-  if (!testInfrastructureReady) {
-    // Return early - test will pass but do nothing (logged in beforeAll)
-    return false
-  }
-  return true
-}
-
-describe.skipIf(skipIntegration)("Atomic Credit Deduction - Integration", () => {
   describe("Database function exists and works", () => {
     it("can charge credits successfully", async () => {
       if (!requireInfrastructure()) return

@@ -7,14 +7,21 @@
  */
 
 import { TEST_CONFIG } from "@webalive/shared"
+import { createErrorResponse } from "@/features/auth/lib/auth"
+import { ErrorCodes } from "@/lib/error-codes"
 import { createAppClient } from "@/lib/supabase/app"
 import { createIamClient } from "@/lib/supabase/iam"
-import { ErrorCodes } from "@/lib/error-codes"
-import { createErrorResponse } from "@/features/auth/lib/auth"
 
 export async function GET(req: Request) {
-  // Environment guard - ONLY accessible in test or local environments (whitelist approach)
-  if (process.env.NODE_ENV !== "test" && process.env.BRIDGE_ENV !== "local") {
+  // Environment guard - accessible in test/local environments OR with valid test secret
+  const isTestEnv = process.env.NODE_ENV === "test" || process.env.BRIDGE_ENV === "local"
+
+  // Check for test secret header (for staging/production E2E tests)
+  const testSecret = req.headers.get("x-test-secret")
+  const expectedSecret = process.env.E2E_TEST_SECRET
+  const hasValidSecret = expectedSecret && testSecret === expectedSecret
+
+  if (!isTestEnv && !hasValidSecret) {
     return createErrorResponse(ErrorCodes.UNAUTHORIZED, 404)
   }
 
@@ -70,6 +77,6 @@ export async function GET(req: Request) {
     return Response.json({ ready: true })
   } catch (error) {
     console.error("[Verify Tenant] Error:", error)
-    return Response.json({ ready: false, error: "database_error" }, { status: 500 })
+    return createErrorResponse(ErrorCodes.INTERNAL_ERROR, 500)
   }
 }

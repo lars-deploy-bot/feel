@@ -13,17 +13,28 @@ if (typeof window !== "undefined" && !isTestEnv) {
 }
 
 import { createServerClient } from "@supabase/ssr"
+import { createClient } from "@supabase/supabase-js"
 import { cookies } from "next/headers"
 import { getSupabaseCredentials, type KeyType } from "@/lib/env/server"
-import type { Database } from "./app.types"
+import type { AppDatabase as Database } from "@webalive/database"
 
 /**
  * Create a Supabase client scoped to the app schema
  * @param keyType - Use "service" for admin operations, "anon" for RLS-protected queries
  */
 export async function createAppClient(keyType: KeyType = "service") {
-  const cookieStore = await cookies()
   const { url, key } = getSupabaseCredentials(keyType)
+
+  // In test environment, use direct client without cookies
+  if (isTestEnv) {
+    return createClient<Database>(url, key, {
+      db: {
+        schema: "app",
+      },
+    })
+  }
+
+  const cookieStore = await cookies()
 
   return createServerClient<Database>(url, key, {
     db: {

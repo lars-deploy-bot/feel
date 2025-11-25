@@ -6,52 +6,111 @@ import {
   TokenExpiredError,
   verify as verifyHS256,
 } from "jsonwebtoken"
+import { env } from "@webalive/env/server"
 
-const JWT_SECRET: Secret = process.env.JWT_SECRET || "INSECURE_DEV_SECRET_CHANGE_IN_PRODUCTION"
+/**
+ * JWT Configuration - Lazy Initialization
+ *
+ * This module uses lazy initialization to avoid top-level validation errors during build.
+ * Validation occurs on first use, not on module import.
+ */
 
-// ES256 private key configuration
-const ES256_ENABLED = process.env.JWT_ALGORITHM === "ES256"
-let ES256_PRIVATE_KEY_DATA: any = null
-let ES256_KID: string | null = null
-
-if (ES256_ENABLED) {
-  const privateKeyEnv = process.env.JWT_ES256_PRIVATE_KEY
-
-  if (!privateKeyEnv) {
-    throw new Error(
-      "⚠️  CRITICAL SECURITY ERROR: JWT_ES256_PRIVATE_KEY environment variable must be set when using ES256!\n" +
-        "This should contain the JSON Web Key (JWK) as a JSON string.\n" +
-        "Never commit private keys to version control.",
-    )
-  }
-
-  try {
-    ES256_PRIVATE_KEY_DATA = JSON.parse(privateKeyEnv)
-    ES256_KID = ES256_PRIVATE_KEY_DATA.kid
-
-    if (!ES256_KID) {
-      throw new Error("Private key JWK must have a 'kid' (key ID) field")
-    }
-
-    console.log(`[JWT] ES256 signing enabled with key ID: ${ES256_KID}`)
-  } catch (error) {
-    console.error("[JWT] Failed to parse ES256 private key:", error)
-    throw new Error("JWT_ES256_PRIVATE_KEY must be valid JWK JSON")
-  }
+// Configuration type
+type JwtConfig = {
+  secret: Secret
+  es256Enabled: boolean
+  es256PrivateKey: any
+  es256Kid: string | null
 }
 
-// Fail hard in production if JWT_SECRET not set (for HS256 mode)
-if (
-  !ES256_ENABLED &&
-  process.env.NODE_ENV === "production" &&
-  JWT_SECRET === "INSECURE_DEV_SECRET_CHANGE_IN_PRODUCTION"
-) {
-  throw new Error(
-    "⚠️  CRITICAL SECURITY ERROR: JWT_SECRET environment variable must be set in production!\n" +
-      "Generate a secure secret with: openssl rand -base64 32\n" +
-      "Then set JWT_SECRET in your environment.\n" +
-      "Or set JWT_ALGORITHM=ES256 to use asymmetric signing.",
-  )
+// Configuration state
+let jwtConfig: JwtConfig | null = null
+
+// Promise-based lock to prevent race conditions during initialization
+let jwtConfigPromise: Promise<JwtConfig> | null = null
+
+/**
+ * Initialize JWT configuration with lazy validation
+ * This runs on first use, not during module import
+ * Thread-safe: concurrent calls will wait for the first initialization to complete
+ */
+async function getJwtConfig() {
+  // Fast path: already initialized
+  if (jwtConfig) {
+    return jwtConfig
+  }
+
+  // Wait for in-progress initialization
+  if (jwtConfigPromise) {
+    return jwtConfigPromise
+  }
+
+  // Start initialization (only one caller will reach here)
+  jwtConfigPromise = (async () => {
+    try {
+      const JWT_SECRET: Secret = env.JWT_SECRET || "INSECURE_DEV_SECRET_CHANGE_IN_PRODUCTION"
+      const ES256_ENABLED = env.JWT_ALGORITHM === "ES256"
+      let ES256_PRIVATE_KEY_DATA: any = null
+      let ES256_KID: string | null = null
+
+      // Validate ES256 configuration if enabled
+      if (ES256_ENABLED) {
+        const privateKeyEnv = env.JWT_ES256_PRIVATE_KEY
+
+        if (!privateKeyEnv) {
+          throw new Error(
+            "⚠️  CRITICAL SECURITY ERROR: JWT_ES256_PRIVATE_KEY environment variable must be set when using ES256!\n" +
+              "This should contain the JSON Web Key (JWK) as a JSON string.\n" +
+              "Never commit private keys to version control.",
+          )
+        }
+
+        try {
+          ES256_PRIVATE_KEY_DATA = JSON.parse(privateKeyEnv)
+          ES256_KID = ES256_PRIVATE_KEY_DATA.kid
+
+          if (!ES256_KID) {
+            throw new Error("Private key JWK must have a 'kid' (key ID) field")
+          }
+
+          console.log(`[JWT] ES256 signing enabled with key ID: ${ES256_KID}`)
+        } catch (error) {
+          console.error("[JWT] Failed to parse ES256 private key:", error)
+          throw new Error("JWT_ES256_PRIVATE_KEY must be valid JWK JSON")
+        }
+      }
+
+      // Validate HS256 configuration in production
+      // This now runs lazily instead of at module load time
+      if (
+        !ES256_ENABLED &&
+        env.NODE_ENV === "production" &&
+        JWT_SECRET === "INSECURE_DEV_SECRET_CHANGE_IN_PRODUCTION"
+      ) {
+        throw new Error(
+          "⚠️  CRITICAL SECURITY ERROR: JWT_SECRET environment variable must be set in production!\n" +
+            "Generate a secure secret with: openssl rand -base64 32\n" +
+            "Then set JWT_SECRET in your environment.\n" +
+            "Or set JWT_ALGORITHM=ES256 to use asymmetric signing.",
+        )
+      }
+
+      // Cache the configuration
+      jwtConfig = {
+        secret: JWT_SECRET,
+        es256Enabled: ES256_ENABLED,
+        es256PrivateKey: ES256_PRIVATE_KEY_DATA,
+        es256Kid: ES256_KID,
+      }
+
+      return jwtConfig
+    } finally {
+      // Clear the promise so future calls use the fast path
+      jwtConfigPromise = null
+    }
+  })()
+
+  return jwtConfigPromise
 }
 
 export interface SessionPayload {
@@ -85,6 +144,9 @@ export async function createSessionToken(
   name: string | null,
   workspaces: string[],
 ): Promise<string> {
+  // Lazy load JWT configuration (validates env vars on first use)
+  const config = await getJwtConfig()
+
   // Security: Validate userId before creating token
   if (!userId || typeof userId !== "string") {
     throw new Error("[JWT] userId must be a non-empty string")
@@ -122,20 +184,20 @@ export async function createSessionToken(
   }
 
   // Use ES256 if enabled, otherwise fall back to HS256
-  if (ES256_ENABLED) {
-    const privateKey = await importJWK(ES256_PRIVATE_KEY_DATA, "ES256")
+  if (config.es256Enabled) {
+    const privateKey = await importJWK(config.es256PrivateKey, "ES256")
 
     return await new SignJWT(payload)
       .setProtectedHeader({
         alg: "ES256",
-        kid: ES256_KID!,
+        kid: config.es256Kid!,
         typ: "JWT",
       })
       .setIssuedAt()
       .setExpirationTime("30d")
       .sign(privateKey)
   } else {
-    return signHS256(payload, JWT_SECRET, { expiresIn: "30d" })
+    return signHS256(payload, config.secret, { expiresIn: "30d" })
   }
 }
 
@@ -147,6 +209,9 @@ export async function createSessionToken(
  */
 export async function verifySessionToken(token: string): Promise<SessionPayload | null> {
   try {
+    // Lazy load JWT configuration (validates env vars on first use)
+    const config = await getJwtConfig()
+
     if (!token || typeof token !== "string" || token.trim() === "") {
       return null
     }
@@ -154,10 +219,10 @@ export async function verifySessionToken(token: string): Promise<SessionPayload 
     let decoded: SessionPayload
 
     // Try ES256 verification first (if enabled)
-    if (ES256_ENABLED) {
+    if (config.es256Enabled) {
       try {
         // For verification, extract public key from JWK (remove 'd' parameter)
-        const publicKeyJWK = { ...ES256_PRIVATE_KEY_DATA }
+        const publicKeyJWK = { ...config.es256PrivateKey }
         delete publicKeyJWK.d
         const publicKey = await importJWK(publicKeyJWK, "ES256")
 
@@ -167,11 +232,11 @@ export async function verifySessionToken(token: string): Promise<SessionPayload 
         decoded = payload as SessionPayload
       } catch (_es256Error) {
         // If ES256 fails, try HS256 (for backward compatibility)
-        decoded = verifyHS256(token, JWT_SECRET) as SessionPayload
+        decoded = verifyHS256(token, config.secret) as SessionPayload
       }
     } else {
       // HS256 mode only
-      decoded = verifyHS256(token, JWT_SECRET) as SessionPayload
+      decoded = verifyHS256(token, config.secret) as SessionPayload
     }
 
     // Extract user ID from either 'sub' or 'userId' (backward compatibility)

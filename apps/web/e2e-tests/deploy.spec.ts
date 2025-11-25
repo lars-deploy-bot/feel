@@ -99,6 +99,7 @@ test.describe("Website Deployment with Authentication", () => {
     console.log("[Test] ✓ Unauthenticated request properly rejected")
   })
 
+  // TODO: Enable when safe to run actual deployments in E2E tests
   test.skip("deployment API allows authenticated requests without explicit orgId", async ({ authenticatedPage }) => {
     // Current API behavior: if orgId is not provided, a default org is created
     // This test verifies that authenticated users can deploy without explicit orgId
@@ -126,6 +127,7 @@ test.describe("Website Deployment with Authentication", () => {
     console.log("[Test] ✓ Authenticated user can deploy without explicit orgId")
   })
 
+  // TODO: Enable when safe to run actual deployments in E2E tests
   test.skip("can deploy with valid authentication and orgId - full flow", async ({
     authenticatedPage,
     workerTenant,
@@ -177,6 +179,7 @@ test.describe("Website Deployment with Authentication", () => {
     }
   })
 
+  // TODO: Remove - CLI deployment deprecated, replaced by site-controller API
   test.skip("CLI deployment works via bin/deploy.ts", async () => {
     // DEPRECATED: CLI deployment via bin/deploy.ts has been replaced by site-controller package
     // All deployments now go through POST /api/deploy-subdomain (tested above)

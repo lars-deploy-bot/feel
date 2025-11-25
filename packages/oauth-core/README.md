@@ -1,13 +1,15 @@
 # @webalive/oauth-core
 
-Secure, multi-tenant OAuth system using the Supabase lockbox pattern with AES-256-GCM encryption.
+Secure, multi-tenant OAuth system with instance-aware isolation using the Supabase lockbox pattern with AES-256-GCM encryption.
 
 ## Features
 
 - 🔐 **Secure**: AES-256-GCM encryption with 12-byte IV and 16-byte auth tag
 - 🏢 **Multi-tenant**: Separate provider configs per tenant
+- 🔄 **Instance-aware**: Complete isolation between OAuth instances with unique instance IDs
 - 📦 **Lockbox Pattern**: Utilizes `lockbox.user_secrets` schema in Supabase
-- 🔌 **Extensible**: Provider abstraction for GitHub, Google, etc.
+- ⏱️ **TTL Support**: Optional expiry times for automatic secret cleanup
+- 🔌 **Extensible**: Provider abstraction for GitHub, Linear, etc.
 - 🧪 **Type-safe**: Full TypeScript support
 - 🎯 **Zero Dependencies**: Only requires `@supabase/supabase-js` and `zod`
 
@@ -58,9 +60,66 @@ This creates:
 
 ## Usage
 
-### Basic Example
+### Instance-Aware Pattern (Recommended)
+
+The new instance-aware pattern provides complete isolation between OAuth instances, making it safe for multi-tenant, multi-environment, and E2E testing scenarios.
 
 ```typescript
+import { createOAuthManager, buildInstanceId, type OAuthManagerConfig } from '@webalive/oauth-core';
+
+// Create a properly configured instance
+const config: OAuthManagerConfig = {
+  provider: 'linear',
+  instanceId: buildInstanceId('linear', 'prod'),  // 'linear:prod'
+  namespace: 'oauth_connections',
+  environment: 'prod',
+  defaultTtlSeconds: undefined  // Or set for automatic cleanup
+};
+
+const oauthManager = createOAuthManager(config);
+
+// Use the instance
+const isConnected = await oauthManager.isConnected(userId, 'linear');
+const token = await oauthManager.getAccessToken(userId, 'linear');
+```
+
+#### E2E Testing Configuration
+
+```typescript
+// For E2E tests with complete isolation
+const instanceId = buildInstanceId(
+  'linear',           // provider
+  'test',             // environment
+  undefined,          // no tenant ID
+  runId,              // E2E run ID
+  workerIndex         // Playwright worker index
+);
+
+const testOAuth = createOAuthManager({
+  provider: 'linear',
+  instanceId,  // e.g., 'linear:test:E2E_2025-11-21:w0'
+  namespace: 'oauth_connections',
+  environment: 'test',
+  defaultTtlSeconds: 600  // 10-minute TTL for test secrets
+});
+```
+
+#### Multi-Tenant Configuration
+
+```typescript
+// Per-tenant OAuth instance
+const tenantOAuth = createOAuthManager({
+  provider: 'github',
+  instanceId: `github:prod:tenant-${tenantId}`,
+  namespace: 'oauth_connections',
+  environment: 'prod'
+});
+```
+
+### Basic Example (Legacy Pattern)
+
+```typescript
+// DEPRECATED: Use createOAuthManager() for new code
 import { oauth } from '@webalive/oauth-core';
 
 // 1. Configure OAuth provider (tenant setup)
@@ -150,8 +209,29 @@ await oauth.disconnect(userId, 'github');
 await oauth.revoke(tenantUserId, userId, 'github');
 ```
 
+## Instance ID Conventions
+
+Instance IDs should follow these patterns for consistent isolation:
+
+- **Production**: `{provider}:{environment}` (e.g., `linear:prod`)
+- **Multi-tenant**: `{provider}:{environment}:tenant-{id}` (e.g., `github:prod:tenant-123`)
+- **E2E Tests**: `{provider}:test:{runId}:w{workerIndex}` (e.g., `linear:test:E2E_2025:w0`)
+
+## Migration from Singleton
+
+To migrate from the singleton pattern to instance-aware:
+
+1. **Create explicit instances** with proper configuration
+2. **Replace imports**: Change `import { oauth }` to your configured instance
+3. **Ensure deterministic instance IDs** for your environment
+4. **Run database migrations** to add `instance_id` and indexes
+5. **Test thoroughly** in isolation before deploying
+
+Existing data will use `instance_id = 'default'` for backwards compatibility.
+
 ## Supported Providers
 
+- ✅ **Linear** - Linear OAuth
 - ✅ **GitHub** - OAuth Apps and GitHub Apps
 - 🔜 **Google** - Coming soon
 - 🔜 **Microsoft** - Coming soon
@@ -187,16 +267,23 @@ registerProvider('custom', new CustomProvider());
 
 ```
 lockbox.user_secrets
-├── secret_id (UUID)
-├── clerk_id (UUID FK to iam.users)
-├── namespace ('provider_config' | 'oauth_tokens')
+├── user_secret_id (UUID)
+├── user_id (UUID FK to iam.users)
+├── instance_id (TEXT - instance identifier for isolation)
+├── namespace ('provider_config' | 'oauth_tokens' | 'oauth_connections')
 ├── name (e.g., 'github_client_secret')
 ├── ciphertext (BYTEA - encrypted data)
 ├── iv (BYTEA - 12 bytes)
 ├── auth_tag (BYTEA - 16 bytes)
 ├── version (INT)
 ├── is_current (BOOLEAN)
+├── expires_at (TIMESTAMPTZ - optional TTL)
 └── created_at, updated_at
+
+-- Critical index for race condition prevention
+CREATE UNIQUE INDEX user_secrets_one_current_per_instance_idx
+ON lockbox.user_secrets (user_id, instance_id, namespace, name)
+WHERE is_current = true;
 ```
 
 ### Security Model

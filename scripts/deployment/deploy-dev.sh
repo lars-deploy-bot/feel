@@ -8,16 +8,16 @@ SCRIPT_DIR="$(dirname "$0")"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 ENV_CONFIG="$PROJECT_ROOT/packages/shared/environments.json"
 
-# Validate HOSTED_ENV is set
+# Auto-detect environment if not set
 if [ -z "$HOSTED_ENV" ]; then
-    echo "❌ Error: HOSTED_ENV environment variable is not set"
-    echo ""
-    echo "Please set HOSTED_ENV to either 'server' or 'computer':"
-    echo "  export HOSTED_ENV=server    # For production server with PM2"
-    echo "  export HOSTED_ENV=computer  # For local development"
-    echo ""
-    echo "Add to your shell profile (~/.bashrc, ~/.zshrc) or conductor.json to make it permanent."
-    exit 1
+    # Check if systemd is available and claude-bridge services exist
+    if systemctl list-unit-files claude-bridge-dev.service &> /dev/null; then
+        HOSTED_ENV="server"
+        echo "🔍 Auto-detected: server environment (systemd services available)"
+    else
+        HOSTED_ENV="computer"
+        echo "🔍 Auto-detected: computer environment (no systemd services)"
+    fi
 fi
 
 # Validate HOSTED_ENV value
@@ -46,12 +46,12 @@ if [ "$HOSTED_ENV" = "computer" ]; then
     exec bun run dev
 fi
 
-# Server environment - proceed with PM2 deployment
+# Server environment - proceed with systemd deployment
 echo "🖥️  Server environment detected (HOSTED_ENV=server)"
 
-# Read dev configuration
-DEV_PORT=$(jq -r '.environments.dev.port' "$ENV_CONFIG")
-DEV_PROCESS=$(jq -r '.environments.dev.processName' "$ENV_CONFIG")
+# Systemd service name for dev
+DEV_SERVICE="claude-bridge-dev"
+DEV_PORT=8997
 
 echo "🔄 Rebuilding packages and restarting dev environment..."
 
@@ -64,14 +64,21 @@ echo "✅ Images built"
 cd packages/tools && bun run build && cd ../..
 echo "✅ Tools built"
 
+# Stop systemd service before cleaning (prevents race condition with corrupted cache)
+echo "🛑 Stopping dev server..."
+systemctl stop "$DEV_SERVICE" 2>/dev/null || echo "  (service not running)"
+
 # Clean Next.js build cache to prevent corrupted manifest issues
 echo "🧹 Cleaning Next.js build cache..."
 rm -rf apps/web/.next
 echo "✅ Build cache cleaned"
 
-pm2 restart "$DEV_PROCESS" --update-env
-echo "✅ Dev server restarted"
+# Start fresh
+echo "🚀 Starting dev server on port $DEV_PORT..."
+systemctl start "$DEV_SERVICE"
+echo "✅ Dev server started"
 
+# Wait for server to initialize
 sleep 5
 
 echo "🔐 Verifying dev server is responding to API calls..."
@@ -81,7 +88,7 @@ curl -f -X POST "http://localhost:$DEV_PORT/api/login" \
   echo "✅ Dev server health check passed (API responding)" || \
   echo "⚠️  Dev server health check failed (API not responding)"
 
-pm2 describe "$DEV_PROCESS"
+systemctl status "$DEV_SERVICE" --no-pager | head -15
 
 # Rebuild and restart shell-server (shared across all environments)
 echo ""

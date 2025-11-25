@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronDown } from "lucide-react"
+import { Check, ChevronDown, Clock, Globe } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import { isWorkspacesResponse } from "@/lib/api/types"
 import { useFetch } from "@/lib/hooks/useFetch"
@@ -111,77 +111,122 @@ export function WorkspaceSwitcher({ currentWorkspace, onWorkspaceChange }: Works
             aria-label="Close dropdown"
             tabIndex={-1}
           />
-          <div className="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-[#1a1a1a] border border-black/10 dark:border-white/10 rounded-lg shadow-lg z-20 max-h-[400px] overflow-y-auto">
+          <div className="absolute top-full left-0 sm:left-0 -left-2 mt-2 w-[calc(100vw-2rem)] sm:w-72 max-w-[320px] bg-white dark:bg-zinc-900 border border-black/10 dark:border-white/10 rounded-xl shadow-xl shadow-black/10 dark:shadow-black/40 z-20 max-h-[60vh] sm:max-h-[400px] overflow-y-auto overflow-x-hidden">
             {loading ? (
-              <div className="px-3 py-3 flex items-center gap-2 text-xs text-black/50 dark:text-white/50">
-                <div className="w-3 h-3 border border-black/20 dark:border-white/20 border-t-black dark:border-t-white rounded-full animate-spin" />
-                Loading sites...
+              <div className="px-4 py-6 flex flex-col items-center gap-2 text-xs text-black/50 dark:text-white/50">
+                <div className="w-5 h-5 border-2 border-black/10 dark:border-white/10 border-t-black/60 dark:border-t-white/60 rounded-full animate-spin" />
+                <span>Loading spaces...</span>
               </div>
             ) : error ? (
-              <div className="px-3 py-4 space-y-2">
+              <div className="p-4 space-y-3">
                 <div className="text-xs text-red-600 dark:text-red-400 text-center">{error}</div>
                 <button
                   type="button"
                   onClick={retry}
-                  className="w-full px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded text-xs font-medium hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+                  className="w-full px-3 py-2 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 rounded-lg text-xs font-medium hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
                 >
                   Try Again
                 </button>
               </div>
             ) : (
-              <>
+              <div className="py-1.5">
                 {recentWorkspaces.length > 0 && (
-                  <>
-                    <div className="px-3 py-1.5 text-xs font-medium text-black/40 dark:text-white/40 uppercase tracking-wide border-b border-black/5 dark:border-white/5">
+                  <div className="mb-1">
+                    <div className="px-3 py-2 flex items-center gap-2 text-[11px] font-semibold text-black/40 dark:text-white/40 uppercase tracking-wider">
+                      <Clock size={12} />
                       Recent
                     </div>
-                    {recentWorkspaces.map(recent => (
-                      <button
-                        type="button"
-                        key={recent.domain}
-                        onClick={() => handleSelect(recent.domain)}
-                        className={`w-full px-3 py-2 text-left text-sm hover:bg-black/5 dark:hover:bg-white/5 transition-colors ${
-                          recent.domain === currentWorkspace
-                            ? "bg-black/5 dark:bg-white/5 text-black dark:text-white"
-                            : "text-black/70 dark:text-white/70"
-                        }`}
-                      >
-                        {recent.domain}
-                      </button>
-                    ))}
-                  </>
+                    {recentWorkspaces.map(recent => {
+                      const isSelected = recent.domain === currentWorkspace
+                      return (
+                        <button
+                          type="button"
+                          key={recent.domain}
+                          onClick={() => handleSelect(recent.domain)}
+                          className={`w-full px-3 py-3 sm:py-2.5 flex items-center gap-3 text-left transition-all active:bg-black/10 dark:active:bg-white/10 ${
+                            isSelected
+                              ? "bg-black/5 dark:bg-white/5"
+                              : "hover:bg-black/[0.03] dark:hover:bg-white/[0.03]"
+                          }`}
+                        >
+                          <div
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                              isSelected
+                                ? "bg-black dark:bg-white text-white dark:text-black"
+                                : "bg-black/5 dark:bg-white/5 text-black/40 dark:text-white/40"
+                            }`}
+                          >
+                            <Globe size={14} />
+                          </div>
+                          <span
+                            className={`text-sm truncate flex-1 ${
+                              isSelected ? "text-black dark:text-white font-medium" : "text-black/70 dark:text-white/70"
+                            }`}
+                          >
+                            {recent.domain}
+                          </span>
+                          {isSelected && <Check size={16} className="text-black dark:text-white flex-shrink-0" />}
+                        </button>
+                      )
+                    })}
+                  </div>
                 )}
 
                 {otherWorkspaces.length > 0 && (
-                  <>
+                  <div
+                    className={recentWorkspaces.length > 0 ? "border-t border-black/5 dark:border-white/5 pt-1" : ""}
+                  >
                     {recentWorkspaces.length > 0 && (
-                      <div className="px-3 py-1.5 text-xs font-medium text-black/40 dark:text-white/40 uppercase tracking-wide border-t border-black/5 dark:border-white/5">
-                        All Workspaces
+                      <div className="px-3 py-2 flex items-center gap-2 text-[11px] font-semibold text-black/40 dark:text-white/40 uppercase tracking-wider">
+                        <Globe size={12} />
+                        All Spaces
                       </div>
                     )}
-                    {otherWorkspaces.map(workspace => (
-                      <button
-                        type="button"
-                        key={workspace}
-                        onClick={() => handleSelect(workspace)}
-                        className={`w-full px-3 py-2 text-left text-sm hover:bg-black/5 dark:hover:bg-white/5 transition-colors ${
-                          workspace === currentWorkspace
-                            ? "bg-black/5 dark:bg-white/5 text-black dark:text-white"
-                            : "text-black/70 dark:text-white/70"
-                        }`}
-                      >
-                        {workspace}
-                      </button>
-                    ))}
-                  </>
+                    {otherWorkspaces.map(workspace => {
+                      const isSelected = workspace === currentWorkspace
+                      return (
+                        <button
+                          type="button"
+                          key={workspace}
+                          onClick={() => handleSelect(workspace)}
+                          className={`w-full px-3 py-3 sm:py-2.5 flex items-center gap-3 text-left transition-all active:bg-black/10 dark:active:bg-white/10 ${
+                            isSelected
+                              ? "bg-black/5 dark:bg-white/5"
+                              : "hover:bg-black/[0.03] dark:hover:bg-white/[0.03]"
+                          }`}
+                        >
+                          <div
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                              isSelected
+                                ? "bg-black dark:bg-white text-white dark:text-black"
+                                : "bg-black/5 dark:bg-white/5 text-black/40 dark:text-white/40"
+                            }`}
+                          >
+                            <Globe size={14} />
+                          </div>
+                          <span
+                            className={`text-sm truncate flex-1 ${
+                              isSelected ? "text-black dark:text-white font-medium" : "text-black/70 dark:text-white/70"
+                            }`}
+                          >
+                            {workspace}
+                          </span>
+                          {isSelected && <Check size={16} className="text-black dark:text-white flex-shrink-0" />}
+                        </button>
+                      )
+                    })}
+                  </div>
                 )}
 
                 {workspaces.length === 0 && !loading && !error && (
-                  <div className="px-3 py-4 text-xs text-black/50 dark:text-white/50 text-center">
-                    No sites in this organization
+                  <div className="px-4 py-8 text-center">
+                    <div className="w-10 h-10 rounded-full bg-black/5 dark:bg-white/5 flex items-center justify-center mx-auto mb-3">
+                      <Globe size={18} className="text-black/30 dark:text-white/30" />
+                    </div>
+                    <p className="text-sm text-black/50 dark:text-white/50">No spaces yet</p>
                   </div>
                 )}
-              </>
+              </div>
             )}
           </div>
         </>

@@ -4,16 +4,16 @@ import {
   Bot,
   Building2,
   ChevronDown,
-  ChevronUp,
   ClipboardList,
   Eye,
   EyeOff,
+  Globe,
+  Link,
   Moon,
   Settings,
   Sun,
   User,
   UserMinus,
-  Users,
   X,
 } from "lucide-react"
 import { useTheme } from "next-themes"
@@ -22,6 +22,7 @@ import toast from "react-hot-toast"
 import { AddWorkspaceModal } from "@/components/modals/AddWorkspaceModal"
 import { DeleteModal } from "@/components/modals/DeleteModal"
 import { PromptEditorModal } from "@/components/modals/PromptEditorModal"
+import { IntegrationsList } from "@/components/settings/integrations-list"
 import { MarkdownDisplay } from "@/components/ui/chat/format/MarkdownDisplay"
 import type { Organization } from "@/lib/api/types"
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
@@ -38,7 +39,7 @@ import {
 import { CLAUDE_MODELS, type ClaudeModel, useLLMStore } from "@/lib/stores/llmStore"
 import { useSelectedOrgId, useWorkspaceActions } from "@/lib/stores/workspaceStore"
 
-type SettingsTab = "account" | "appearance" | "llm" | "prompts" | "organization"
+type SettingsTab = "account" | "appearance" | "llm" | "prompts" | "organization" | "spaces" | "integrations"
 
 interface SettingsModalProps {
   onClose: () => void
@@ -51,6 +52,8 @@ const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
   { id: "llm", label: "AI", icon: <Bot size={16} /> },
   { id: "prompts", label: "Prompts", icon: <ClipboardList size={16} /> },
   { id: "organization", label: "Workspace", icon: <Building2 size={16} /> },
+  { id: "spaces", label: "Spaces", icon: <Globe size={16} /> },
+  { id: "integrations", label: "Integrations", icon: <Link size={16} /> },
 ]
 
 export function SettingsModal({ onClose, initialTab }: SettingsModalProps) {
@@ -58,7 +61,7 @@ export function SettingsModal({ onClose, initialTab }: SettingsModalProps) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center animate-in fade-in-0 duration-200"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in-0 duration-200"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -66,51 +69,46 @@ export function SettingsModal({ onClose, initialTab }: SettingsModalProps) {
       data-testid="settings-modal"
     >
       <div
-        className="bg-white dark:bg-[#1a1a1a] rounded-t-2xl sm:rounded-lg shadow-xl w-full sm:w-[95vw] sm:max-w-5xl h-[85vh] sm:h-[92vh] flex flex-col sm:flex-row overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 ease-out"
+        className="relative bg-white dark:bg-zinc-900 rounded-t-2xl sm:rounded-2xl w-full sm:w-[95vw] sm:max-w-5xl h-[85vh] sm:h-[92vh] flex flex-col sm:flex-row overflow-hidden shadow-2xl border border-black/10 dark:border-white/10 animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200"
         onClick={e => e.stopPropagation()}
         role="document"
       >
         {/* Mobile: Top Tabs | Desktop: Left Sidebar */}
-        <div className="sm:w-48 bg-black/[0.02] dark:bg-white/[0.02] border-b sm:border-b-0 sm:border-r border-black/10 dark:border-white/10 flex flex-col">
+        <div className="sm:w-56 bg-black/[0.02] dark:bg-white/[0.02] border-b sm:border-b-0 sm:border-r border-black/10 dark:border-white/10 flex flex-col">
           {/* Header */}
-          <div className="px-6 py-4 sm:py-6 border-b border-black/10 dark:border-white/10 animate-in fade-in-0 slide-in-from-left-2 duration-300 flex items-center justify-between">
+          <div className="px-6 py-5 sm:py-6 border-b border-black/10 dark:border-white/10 flex items-center justify-between">
             <h2
               id="settings-dialog-title"
-              className="text-lg font-medium text-black dark:text-white flex items-center gap-2"
+              className="text-lg font-semibold text-black dark:text-white flex items-center gap-2.5"
             >
-              <Settings size={18} className="animate-in spin-in-0 duration-500" />
-              Settings
+              <Settings size={18} />
+              <span>Settings</span>
             </h2>
-            {/* Mobile close button in header */}
+            {/* Mobile close button */}
             <button
               type="button"
               onClick={onClose}
-              className="sm:hidden p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded transition-all duration-200 active:scale-95"
+              className="sm:hidden p-2 hover:bg-black/10 dark:hover:bg-white/10 rounded-lg transition-colors active:scale-95"
               aria-label="Close settings"
             >
               <X size={18} className="text-black/60 dark:text-white/60" />
             </button>
           </div>
 
-          {/* Mobile: Horizontal scroll tabs | Desktop: Vertical list */}
-          <nav className="flex sm:flex-col flex-1 sm:p-3 px-4 sm:px-0 py-3 sm:py-0 gap-2 sm:gap-1 overflow-x-auto sm:overflow-x-visible overflow-y-hidden sm:overflow-y-auto scrollbar-hide">
-            {tabs.map((tab, index) => (
+          {/* Tabs Navigation */}
+          <nav className="flex sm:flex-col flex-1 sm:p-3 px-4 sm:px-0 py-3 sm:py-0 gap-1 overflow-x-auto sm:overflow-x-visible overflow-y-hidden sm:overflow-y-auto scrollbar-hide">
+            {tabs.map(tab => (
               <button
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-shrink-0 sm:flex-shrink flex items-center gap-2 sm:gap-3 px-3 sm:px-3 py-2 sm:py-2.5 rounded text-sm font-medium transition-all duration-200 whitespace-nowrap animate-in fade-in-0 slide-in-from-left-2 ${
+                className={`flex-shrink-0 sm:flex-shrink flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
                   activeTab === tab.id
                     ? "bg-black dark:bg-white text-white dark:text-black shadow-sm"
                     : "text-black/60 dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/5 hover:text-black dark:hover:text-white"
                 }`}
-                style={{
-                  animationDelay: `${100 + index * 50}ms`,
-                }}
               >
-                <span className={`transition-transform duration-200 ${activeTab === tab.id ? "scale-110" : ""}`}>
-                  {tab.icon}
-                </span>
+                {tab.icon}
                 <span className="hidden sm:inline">{tab.label}</span>
               </button>
             ))}
@@ -119,26 +117,16 @@ export function SettingsModal({ onClose, initialTab }: SettingsModalProps) {
 
         {/* Content Area */}
         <div className="flex-1 flex flex-col min-h-0">
-          {/* Desktop close button */}
-          <div className="hidden sm:flex items-center justify-end px-6 py-4 border-b border-black/10 dark:border-white/10 animate-in fade-in-0 slide-in-from-right-2 duration-300">
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded transition-all duration-200"
-              aria-label="Close settings"
-            >
-              <X size={18} className="text-black/60 dark:text-white/60" />
-            </button>
-          </div>
-
           {/* Scrollable Content */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-            <div className="animate-in fade-in-0 slide-in-from-bottom-3 duration-400">
-              {activeTab === "account" && <AccountSettings />}
-              {activeTab === "appearance" && <AppearanceSettings />}
-              {activeTab === "llm" && <LLMSettings />}
-              {activeTab === "prompts" && <UserPromptsSettings />}
-              {activeTab === "organization" && <WorkspaceSettings />}
+          <div className="flex-1 overflow-y-auto px-4 sm:px-6">
+            <div className="animate-in fade-in-0 duration-200">
+              {activeTab === "account" && <AccountSettings onClose={onClose} />}
+              {activeTab === "appearance" && <AppearanceSettings onClose={onClose} />}
+              {activeTab === "llm" && <LLMSettings onClose={onClose} />}
+              {activeTab === "prompts" && <UserPromptsSettings onClose={onClose} />}
+              {activeTab === "organization" && <WorkspaceSettings onClose={onClose} />}
+              {activeTab === "spaces" && <SpacesSettings onClose={onClose} />}
+              {activeTab === "integrations" && <IntegrationsListWithHeader onClose={onClose} />}
             </div>
           </div>
         </div>
@@ -147,7 +135,43 @@ export function SettingsModal({ onClose, initialTab }: SettingsModalProps) {
   )
 }
 
-function AppearanceSettings() {
+// Reusable layout wrapper for all settings tabs
+function SettingsTabLayout({
+  title,
+  description,
+  onClose,
+  children,
+}: {
+  title: string
+  description?: React.ReactNode
+  onClose: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <div>
+      {/* Header with title and close button */}
+      <div className="flex items-start justify-between gap-4 pt-4 sm:pt-5 pb-4">
+        <div className="flex-1 min-w-0">
+          <h3 className="text-lg font-medium text-black dark:text-white mb-1">{title}</h3>
+          {description && <p className="text-sm text-black/60 dark:text-white/60">{description}</p>}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex-shrink-0 p-1.5 hover:bg-black/10 dark:hover:bg-white/10 rounded-lg transition-colors active:scale-95"
+          aria-label="Close settings"
+        >
+          <X size={18} className="text-black/60 dark:text-white/60" />
+        </button>
+      </div>
+
+      {/* Content */}
+      <div className="pb-4 sm:pb-6">{children}</div>
+    </div>
+  )
+}
+
+function AppearanceSettings({ onClose }: { onClose: () => void }) {
   const { theme, setTheme, systemTheme } = useTheme()
 
   const handleThemeChange = (newTheme: "light" | "dark" | "system") => {
@@ -157,12 +181,7 @@ function AppearanceSettings() {
   const _currentTheme = theme === "system" ? systemTheme : theme
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="animate-in fade-in-0 slide-in-from-top-2 duration-300">
-        <h3 className="text-base sm:text-lg font-medium text-black dark:text-white mb-1">Appearance</h3>
-        <p className="text-xs sm:text-sm text-black/60 dark:text-white/60">Customize how the interface looks</p>
-      </div>
-
+    <SettingsTabLayout title="Appearance" description="Customize how the interface looks" onClose={onClose}>
       <div className="space-y-3 sm:space-y-4">
         <div className="animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-75">
           <p className="text-sm font-medium text-black dark:text-white mb-3">Theme</p>
@@ -209,7 +228,7 @@ function AppearanceSettings() {
           </div>
         </div>
       </div>
-    </div>
+    </SettingsTabLayout>
   )
 }
 
@@ -217,7 +236,7 @@ function isValidModel(value: string): value is ClaudeModel {
   return Object.values(CLAUDE_MODELS).includes(value as ClaudeModel)
 }
 
-function LLMSettings() {
+function LLMSettings({ onClose }: { onClose: () => void }) {
   const { apiKey, model, setApiKey, setModel, clearApiKey, error } = useLLMStore()
   const [showApiKey, setShowApiKey] = useState(false)
   const [apiKeyInput, setApiKeyInput] = useState("")
@@ -274,12 +293,7 @@ function LLMSettings() {
   const isKeyChanged = apiKeyInput !== (apiKey || "")
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="animate-in fade-in-0 slide-in-from-top-2 duration-300">
-        <h3 className="text-base sm:text-lg font-medium text-black dark:text-white mb-1">AI Model</h3>
-        <p className="text-xs sm:text-sm text-black/60 dark:text-white/60">Configure your AI settings</p>
-      </div>
-
+    <SettingsTabLayout title="AI Model" description="Configure your AI settings" onClose={onClose}>
       <div className="space-y-4 sm:space-y-6">
         {/* Credits Display - Only show when using workspace credits */}
         {!apiKey && (
@@ -375,18 +389,18 @@ function LLMSettings() {
           </select>
         </div>
 
-        <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800/50 animate-in fade-in-0 slide-in-from-bottom-2 duration-300 delay-150">
-          <p className="text-xs text-blue-900 dark:text-blue-300 leading-relaxed">
+        <div className="p-4 bg-black/5 dark:bg-white/5 rounded-lg border border-black/10 dark:border-white/10 animate-in fade-in-0 slide-in-from-bottom-2 duration-300 delay-150">
+          <p className="text-xs text-black/70 dark:text-white/70 leading-relaxed">
             Your API key is stored only in your browser (hidden from view). When you send messages, we use your key to
             call Anthropic&apos;s API—but we never save it on our servers.
           </p>
         </div>
       </div>
-    </div>
+    </SettingsTabLayout>
   )
 }
 
-function AccountSettings() {
+function AccountSettings({ onClose }: { onClose: () => void }) {
   const email = useEmail()
   const phoneNumber = usePhoneNumber()
   const { setEmail, setPhoneNumber } = useUserActions()
@@ -409,12 +423,7 @@ function AccountSettings() {
   const isChanged = emailInput !== (email || "") || phoneInput !== (phoneNumber || "")
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="animate-in fade-in-0 slide-in-from-top-2 duration-300">
-        <h3 className="text-base sm:text-lg font-medium text-black dark:text-white mb-1">Profile</h3>
-        <p className="text-xs sm:text-sm text-black/60 dark:text-white/60">Your account information</p>
-      </div>
-
+    <SettingsTabLayout title="Profile" description="Your account information" onClose={onClose}>
       <div className="space-y-4 sm:space-y-6">
         <div className="animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-75">
           <label htmlFor="email-address" className="block text-sm font-medium text-black dark:text-white mb-2">
@@ -464,7 +473,7 @@ function AccountSettings() {
           </div>
         )}
       </div>
-    </div>
+    </SettingsTabLayout>
   )
 }
 
@@ -721,7 +730,7 @@ function useWorkspaceSwitch() {
   }
 }
 
-function OrgSitesSection({ orgId }: { orgId: string }) {
+function _OrgSitesSection({ orgId }: { orgId: string }) {
   const { workspaces, loading, error, refetch } = useOrgWorkspaces(orgId)
   const { currentWorkspace, switchWorkspace } = useWorkspaceSwitch()
   const [showAddModal, setShowAddModal] = useState(false)
@@ -729,13 +738,13 @@ function OrgSitesSection({ orgId }: { orgId: string }) {
   return (
     <div className="mb-4">
       <div className="flex items-center justify-between mb-3">
-        <h5 className="text-sm font-medium text-black dark:text-white">Sites</h5>
+        <h5 className="text-sm font-medium text-black dark:text-white">Spaces</h5>
         <button
           type="button"
           onClick={() => setShowAddModal(true)}
           className="text-xs text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors"
         >
-          + Add Site
+          + Add Space
         </button>
       </div>
 
@@ -772,7 +781,7 @@ function WorkspacesGrid({
   if (loading) {
     return (
       <div className="px-3 py-4 text-xs text-black/40 dark:text-white/40 text-center rounded-md bg-black/5 dark:bg-white/5">
-        Loading sites...
+        Loading spaces...
       </div>
     )
   }
@@ -797,7 +806,7 @@ function WorkspacesGrid({
   if (workspaces.length === 0) {
     return (
       <div className="px-3 py-4 text-xs text-black/40 dark:text-white/40 text-center rounded-md bg-black/5 dark:bg-white/5">
-        No sites yet
+        No spaces yet
       </div>
     )
   }
@@ -843,7 +852,7 @@ function WorkspacesGrid({
   )
 }
 
-function WorkspaceSettings() {
+function WorkspaceSettings({ onClose }: { onClose: () => void }) {
   const { organizations, currentUserId, loading, error, refetch } = useOrganizations()
   const selectedOrgId = useSelectedOrgId()
   const { setSelectedOrg } = useWorkspaceActions()
@@ -852,6 +861,10 @@ function WorkspaceSettings() {
   const editor = useOrgEditor(refetch)
   const members = useOrgMembers()
   const leave = useOrgLeave()
+
+  // Invite state
+  const [inviteEmail, setInviteEmail] = useState("")
+  const [inviting, setInviting] = useState(false)
 
   const handleSelectOrg = (orgId: string) => {
     setSelectedOrg(orgId)
@@ -863,16 +876,24 @@ function WorkspaceSettings() {
     return org?.role || null
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="animate-in fade-in-0 slide-in-from-top-2 duration-300">
-        <h3 className="text-lg font-medium text-black dark:text-white mb-1">Workspace</h3>
-        <p className="text-sm text-black/60 dark:text-white/60">
-          Manage your organizations and switch between workspaces
-        </p>
-      </div>
+  const handleInvite = async () => {
+    if (!inviteEmail.trim() || !selectedOrgId) return
 
+    setInviting(true)
+    try {
+      // TODO: Implement actual invite API call
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      toast.success(`Invitation sent to ${inviteEmail}`)
+      setInviteEmail("")
+    } catch (_err) {
+      toast.error("Failed to send invitation")
+    } finally {
+      setInviting(false)
+    }
+  }
+
+  return (
+    <SettingsTabLayout title="Workspace" description="Invite teammates and manage your organization" onClose={onClose}>
       {/* Errors */}
       {error && (
         <div className="px-4 py-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/30 rounded-lg space-y-2">
@@ -913,7 +934,7 @@ function WorkspaceSettings() {
           </button>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-5">
           {/* Organization Selector */}
           <div className="flex flex-wrap gap-2">
             {organizations.map(org => (
@@ -932,189 +953,206 @@ function WorkspaceSettings() {
             ))}
           </div>
 
-          {/* Selected Organization Details */}
+          {/* Selected Organization Content */}
           {selectedOrgId &&
             (() => {
               const selectedOrg = organizations.find(org => org.org_id === selectedOrgId)
               if (!selectedOrg) return null
 
-              const isEditing = editor.editingOrgId === selectedOrgId
+              // Auto-fetch members when org is selected
+              if (!members.orgMembers[selectedOrg.org_id] && members.expandedOrgId !== selectedOrg.org_id) {
+                members.toggleMembers(selectedOrg.org_id)
+              }
 
               return (
-                <div className="rounded-lg border border-black/10 dark:border-white/10 p-4 bg-black/[0.02] dark:bg-white/[0.02]">
-                  {/* Header */}
-                  <div className="flex items-start justify-between gap-3 mb-4">
-                    <div className="flex-1 min-w-0">
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={editor.editOrgName}
-                          onChange={e => editor.setEditOrgName(e.target.value)}
-                          className="w-full px-2 py-1 text-base font-semibold bg-white dark:bg-[#2a2a2a] border border-black/20 dark:border-white/20 rounded text-black dark:text-white focus:outline-none focus:border-black dark:focus:border-white"
-                        />
-                      ) : (
-                        <>
-                          <h4 className="text-base font-semibold text-black dark:text-white truncate">
-                            {selectedOrg.name}
-                          </h4>
-                          <p className="text-xs text-black/50 dark:text-white/50 mt-0.5 font-mono truncate">
-                            {selectedOrg.org_id}
-                          </p>
-                        </>
-                      )}
-                    </div>
+                <div className="space-y-5">
+                  {/* Quick Summary Bar */}
+                  <div className="flex items-center gap-3 text-sm text-black/60 dark:text-white/60">
+                    <span>
+                      <strong className="text-black dark:text-white">{selectedOrg.credits.toFixed(2)}</strong> credits
+                    </span>
+                    <span>•</span>
+                    <span>
+                      <strong className="text-black dark:text-white">{selectedOrg.workspace_count || 0}</strong> spaces
+                    </span>
+                    <span>•</span>
+                    <span>
+                      <strong className="text-black dark:text-white">
+                        {members.orgMembers[selectedOrg.org_id]?.length || 0}
+                      </strong>{" "}
+                      members
+                    </span>
+                  </div>
 
-                    {/* Edit/Save Buttons */}
-                    {isEditing ? (
-                      <div className="flex gap-1">
-                        <button
-                          type="button"
-                          onClick={() => editor.saveEdit(selectedOrg.org_id)}
-                          disabled={!editor.editOrgName.trim() || editor.saving}
-                          className="px-2 py-1 bg-black dark:bg-white text-white dark:text-black rounded text-xs font-medium transition-colors disabled:opacity-50"
-                        >
-                          {editor.saving ? "..." : "Save"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={editor.cancelEdit}
-                          className="px-2 py-1 text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white rounded text-xs font-medium transition-colors"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
+                  {/* PRIMARY: Invite Section */}
+                  <div className="space-y-3">
+                    <div>
+                      <h4 className="text-sm font-medium text-black dark:text-white mb-1">Invite teammates</h4>
+                      <p className="text-xs text-black/60 dark:text-white/60">
+                        Give access to <strong>{selectedOrg.name}</strong> workspace and shared credits
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="email"
+                        value={inviteEmail}
+                        onChange={e => setInviteEmail(e.target.value)}
+                        onKeyDown={e => e.key === "Enter" && handleInvite()}
+                        placeholder="email@example.com"
+                        className="flex-1 px-3 py-2 bg-white dark:bg-zinc-800 border border-black/20 dark:border-white/20 rounded-lg text-sm text-black dark:text-white placeholder:text-black/40 dark:placeholder:text-white/40 focus:outline-none focus:border-black dark:focus:border-white transition-colors"
+                      />
                       <button
                         type="button"
-                        onClick={() => editor.startEdit(selectedOrg)}
-                        className="px-2 py-1 text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white rounded text-xs transition-all"
+                        onClick={handleInvite}
+                        disabled={!inviteEmail.trim() || inviting}
+                        className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg text-sm font-medium hover:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Rename
+                        {inviting ? "Sending..." : "Invite"}
                       </button>
-                    )}
-                  </div>
-
-                  {/* Stats Grid */}
-                  <div className="grid grid-cols-2 gap-2 mb-4">
-                    <div className="px-3 py-2 rounded-md bg-black/5 dark:bg-white/5">
-                      <div className="text-xs text-black/50 dark:text-white/50 mb-0.5">Credits</div>
-                      <div className="text-sm font-semibold text-black dark:text-white">
-                        {selectedOrg.credits.toFixed(2)}
-                      </div>
-                    </div>
-                    <div className="px-3 py-2 rounded-md bg-black/5 dark:bg-white/5">
-                      <div className="text-xs text-black/50 dark:text-white/50 mb-0.5">Sites</div>
-                      <div className="text-sm font-semibold text-black dark:text-white">
-                        {selectedOrg.workspace_count || 0}
-                      </div>
                     </div>
                   </div>
 
-                  {/* Sites Section */}
-                  <OrgSitesSection orgId={selectedOrg.org_id} />
+                  {/* Members List - Always Visible */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-medium text-black dark:text-white">Members</h4>
+                    </div>
 
-                  {/* Members Section */}
-                  <div className="mb-4">
-                    <button
-                      type="button"
-                      onClick={() => members.toggleMembers(selectedOrg.org_id)}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-md bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Users size={14} className="text-black/60 dark:text-white/60" />
-                        <span className="text-sm font-medium text-black dark:text-white">Members</span>
-                        {members.orgMembers[selectedOrg.org_id] && (
-                          <span className="text-xs text-black/50 dark:text-white/50">
-                            ({members.orgMembers[selectedOrg.org_id].length})
-                          </span>
-                        )}
+                    {members.loadingMembers[selectedOrg.org_id] ? (
+                      <div className="py-8 text-center">
+                        <div className="inline-block w-5 h-5 border-2 border-black/20 dark:border-white/20 border-t-black dark:border-t-white rounded-full animate-spin" />
                       </div>
-                      {members.expandedOrgId === selectedOrg.org_id ? (
-                        <ChevronUp size={14} className="text-black/60 dark:text-white/60" />
-                      ) : (
-                        <ChevronDown size={14} className="text-black/60 dark:text-white/60" />
-                      )}
-                    </button>
+                    ) : members.orgMembers[selectedOrg.org_id] && members.orgMembers[selectedOrg.org_id].length > 0 ? (
+                      <div className="space-y-2">
+                        {members.orgMembers[selectedOrg.org_id].map(member => {
+                          const currentUserRole = getCurrentUserRole(selectedOrg.org_id)
+                          const isCurrentUser = member.user_id === currentUserId
+                          const canRemove = canRemoveMember(currentUserRole, member.role, isCurrentUser)
 
-                    {/* Members List */}
-                    {members.expandedOrgId === selectedOrg.org_id && (
-                      <div className="mt-2 space-y-1">
-                        {members.loadingMembers[selectedOrg.org_id] ? (
-                          <div className="px-3 py-2 text-xs text-black/40 dark:text-white/40 text-center">
-                            Loading members...
-                          </div>
-                        ) : members.orgMembers[selectedOrg.org_id] &&
-                          members.orgMembers[selectedOrg.org_id].length > 0 ? (
-                          members.orgMembers[selectedOrg.org_id].map(member => {
-                            const currentUserRole = getCurrentUserRole(selectedOrg.org_id)
-                            const isCurrentUser = member.user_id === currentUserId
-                            const canRemove = canRemoveMember(currentUserRole, member.role, isCurrentUser)
-
-                            return (
-                              <div
-                                key={member.user_id}
-                                className="flex items-center justify-between px-3 py-2 rounded-md bg-black/5 dark:bg-white/5"
-                              >
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-sm text-black dark:text-white truncate">
-                                      {member.display_name || member.email}
-                                    </span>
-                                    <span
-                                      className={`text-xs px-1.5 py-0.5 rounded-full ${
-                                        member.role === "owner"
-                                          ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
-                                          : member.role === "admin"
-                                            ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                                            : "bg-gray-100 dark:bg-gray-800/30 text-gray-600 dark:text-gray-400"
-                                      }`}
-                                    >
-                                      {member.role}
-                                    </span>
-                                  </div>
-                                  {member.display_name && (
-                                    <div className="text-xs text-black/50 dark:text-white/50 truncate">
-                                      {member.email}
-                                    </div>
-                                  )}
-                                </div>
-
-                                {canRemove && (
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      members.requestRemoveMember(selectedOrg.org_id, member.user_id, member.email)
-                                    }
-                                    disabled={members.removingMember === member.user_id}
-                                    className="ml-2 p-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors disabled:opacity-50"
-                                    title="Remove member"
+                          return (
+                            <div
+                              key={member.user_id}
+                              className="flex items-center justify-between px-3 py-3 rounded-lg border border-black/10 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20 transition-colors"
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-0.5">
+                                  <span className="text-sm font-medium text-black dark:text-white truncate">
+                                    {member.display_name || member.email}
+                                    {isCurrentUser && (
+                                      <span className="ml-1.5 text-xs font-normal text-black/50 dark:text-white/50">
+                                        (you)
+                                      </span>
+                                    )}
+                                  </span>
+                                  <span
+                                    className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                      member.role === "owner"
+                                        ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
+                                        : member.role === "admin"
+                                          ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                                          : "bg-black/5 dark:bg-white/10 text-black/60 dark:text-white/60"
+                                    }`}
                                   >
-                                    <UserMinus size={14} />
-                                  </button>
-                                )}
+                                    {member.role}
+                                  </span>
+                                </div>
+                                <div className="text-xs text-black/50 dark:text-white/50 truncate">{member.email}</div>
                               </div>
-                            )
-                          })
-                        ) : (
-                          <div className="px-3 py-2 text-xs text-black/40 dark:text-white/40 text-center">
-                            No members found
-                          </div>
-                        )}
+
+                              {canRemove && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    members.requestRemoveMember(selectedOrg.org_id, member.user_id, member.email)
+                                  }
+                                  disabled={members.removingMember === member.user_id}
+                                  className="ml-3 p-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors disabled:opacity-50"
+                                  title="Remove member"
+                                >
+                                  <UserMinus size={16} />
+                                </button>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <div className="py-8 text-center text-sm text-black/40 dark:text-white/40">
+                        No members yet. Invite someone above!
                       </div>
                     )}
                   </div>
 
-                  {/* Leave Organization - Subtle footer link */}
-                  <div className="pt-3 border-t border-black/5 dark:border-white/5">
-                    <button
-                      type="button"
-                      onClick={() => leave.requestLeave(selectedOrg.org_id, selectedOrg.name)}
-                      disabled={leave.leavingOrg === selectedOrg.org_id}
-                      className="text-xs text-red-600/70 dark:text-red-400/70 hover:text-red-600 dark:hover:text-red-400 transition-colors disabled:opacity-50"
-                    >
-                      {leave.leavingOrg === selectedOrg.org_id ? "Leaving..." : "Leave organization"}
-                    </button>
-                  </div>
+                  {/* Advanced Actions */}
+                  <details className="group">
+                    <summary className="flex items-center justify-between px-3 py-2 rounded-lg bg-black/[0.02] dark:bg-white/[0.02] hover:bg-black/[0.04] dark:hover:bg-white/[0.04] cursor-pointer transition-colors">
+                      <span className="text-sm font-medium text-black dark:text-white">Advanced</span>
+                      <ChevronDown
+                        size={16}
+                        className="text-black/60 dark:text-white/60 group-open:rotate-180 transition-transform"
+                      />
+                    </summary>
+                    <div className="mt-3 space-y-3 px-1">
+                      {/* Rename Organization */}
+                      <div>
+                        <label
+                          htmlFor="org-name-input"
+                          className="block text-xs font-medium text-black dark:text-white mb-2"
+                        >
+                          Organization name
+                        </label>
+                        {editor.editingOrgId === selectedOrg.org_id ? (
+                          <div className="flex gap-2">
+                            <input
+                              id="org-name-input"
+                              type="text"
+                              value={editor.editOrgName}
+                              onChange={e => editor.setEditOrgName(e.target.value)}
+                              className="flex-1 px-3 py-2 bg-white dark:bg-zinc-800 border border-black/20 dark:border-white/20 rounded-lg text-sm text-black dark:text-white focus:outline-none focus:border-black dark:focus:border-white"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => editor.saveEdit(selectedOrg.org_id)}
+                              disabled={!editor.editOrgName.trim() || editor.saving}
+                              className="px-3 py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg text-xs font-medium hover:opacity-80 transition-opacity disabled:opacity-50"
+                            >
+                              {editor.saving ? "..." : "Save"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={editor.cancelEdit}
+                              className="px-3 py-2 text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white rounded-lg text-xs font-medium transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between px-3 py-2 bg-black/5 dark:bg-white/5 rounded-lg">
+                            <span className="text-sm text-black dark:text-white">{selectedOrg.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => editor.startEdit(selectedOrg)}
+                              className="text-xs text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors"
+                            >
+                              Rename
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Leave Organization */}
+                      <div className="pt-3 border-t border-black/10 dark:border-white/10">
+                        <button
+                          type="button"
+                          onClick={() => leave.requestLeave(selectedOrg.org_id, selectedOrg.name)}
+                          disabled={leave.leavingOrg === selectedOrg.org_id}
+                          className="text-xs text-red-600/70 dark:text-red-400/70 hover:text-red-600 dark:hover:text-red-400 transition-colors disabled:opacity-50"
+                        >
+                          {leave.leavingOrg === selectedOrg.org_id ? "Leaving..." : "Leave organization"}
+                        </button>
+                      </div>
+                    </div>
+                  </details>
                 </div>
               )
             })()}
@@ -1156,11 +1194,69 @@ function WorkspaceSettings() {
           onCancel={leave.cancelLeave}
         />
       )}
-    </div>
+    </SettingsTabLayout>
   )
 }
 
-function UserPromptsSettings() {
+function SpacesSettings({ onClose }: { onClose: () => void }) {
+  const selectedOrgId = useSelectedOrgId()
+  const { organizations } = useOrganizations()
+  const { workspaces, loading, error, refetch } = useOrgWorkspaces(selectedOrgId || "")
+  const { currentWorkspace, switchWorkspace } = useWorkspaceSwitch()
+  const [showAddModal, setShowAddModal] = useState(false)
+
+  const selectedOrg = organizations.find(org => org.org_id === selectedOrgId)
+
+  if (!selectedOrgId || !selectedOrg) {
+    return (
+      <SettingsTabLayout title="Spaces" description="Manage and switch between your workspaces" onClose={onClose}>
+        <div className="text-center py-12">
+          <Globe size={48} className="mx-auto mb-4 text-black/20 dark:text-white/20" />
+          <p className="text-sm text-black/60 dark:text-white/60">Select an organization in the Workspace tab first</p>
+        </div>
+      </SettingsTabLayout>
+    )
+  }
+
+  return (
+    <SettingsTabLayout
+      title="Spaces"
+      description={
+        <>
+          Switch between workspaces in <strong>{selectedOrg.name}</strong>
+        </>
+      }
+      onClose={onClose}
+    >
+      <div className="space-y-6">
+        {/* Spaces Grid */}
+        <WorkspacesGrid
+          workspaces={workspaces}
+          currentWorkspace={currentWorkspace}
+          loading={loading}
+          error={error}
+          onSwitch={switchWorkspace}
+          onRetry={refetch}
+        />
+
+        {/* Add Space Button */}
+        <div className="flex justify-start">
+          <button
+            type="button"
+            onClick={() => setShowAddModal(true)}
+            className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg text-sm font-medium hover:opacity-80 transition-opacity"
+          >
+            + Add Space
+          </button>
+        </div>
+
+        {showAddModal && <AddWorkspaceModal onClose={() => setShowAddModal(false)} onSuccess={refetch} />}
+      </div>
+    </SettingsTabLayout>
+  )
+}
+
+function UserPromptsSettings({ onClose }: { onClose: () => void }) {
   const prompts = useUserPrompts()
   const { addPrompt, updatePrompt, removePrompt } = useUserPromptsActions()
   const [editorState, setEditorState] = useState<{
@@ -1192,72 +1288,83 @@ function UserPromptsSettings() {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="animate-in fade-in-0 slide-in-from-top-2 duration-300">
-        <h3 className="text-base sm:text-lg font-medium text-black dark:text-white mb-1">User Prompts</h3>
-        <p className="text-xs sm:text-sm text-black/60 dark:text-white/60">
-          Manage your saved prompt templates that appear in the chat toolbar
-        </p>
-      </div>
+    <SettingsTabLayout
+      title="User Prompts"
+      description="Manage your saved prompt templates that appear in the chat toolbar"
+      onClose={onClose}
+    >
+      <div className="space-y-4 sm:space-y-6">
+        {/* Add New Prompt Button */}
+        <button
+          type="button"
+          onClick={() => handleOpenEditor("add")}
+          className="w-full px-4 py-2.5 border-2 border-dashed border-black/20 dark:border-white/20 rounded-lg text-sm font-medium text-black/60 dark:text-white/60 hover:border-black dark:hover:border-white hover:text-black dark:hover:text-white transition-colors"
+        >
+          + Add New Prompt
+        </button>
 
-      {/* Add New Prompt Button */}
-      <button
-        type="button"
-        onClick={() => handleOpenEditor("add")}
-        className="w-full px-4 py-2.5 border-2 border-dashed border-black/20 dark:border-white/20 rounded-lg text-sm font-medium text-black/60 dark:text-white/60 hover:border-black dark:hover:border-white hover:text-black dark:hover:text-white transition-colors"
-      >
-        + Add New Prompt
-      </button>
-
-      {/* Saved Prompts List */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        {prompts.map(prompt => (
-          <div
-            key={prompt.id}
-            className="px-4 py-3 rounded-lg border border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50/50 to-pink-50/50 dark:from-purple-950/20 dark:to-pink-950/20"
-          >
-            <div className="flex items-center justify-between gap-2 mb-3">
-              <span className="text-sm font-semibold text-purple-900 dark:text-purple-100">{prompt.displayName}</span>
-              <div className="flex gap-1">
-                <button
-                  type="button"
-                  onClick={() => handleOpenEditor("edit", prompt.id, prompt.displayName, prompt.data)}
-                  className="px-2 py-1 text-xs text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded transition-colors"
-                >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  onClick={() => removePrompt(prompt.id)}
-                  className="px-2 py-1 text-xs text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
-                >
-                  Delete
-                </button>
+        {/* Saved Prompts List */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          {prompts.map(prompt => (
+            <div
+              key={prompt.id}
+              className="px-4 py-3 rounded-lg border border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50/50 to-pink-50/50 dark:from-purple-950/20 dark:to-pink-950/20"
+            >
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <span className="text-sm font-semibold text-purple-900 dark:text-purple-100">{prompt.displayName}</span>
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEditor("edit", prompt.id, prompt.displayName, prompt.data)}
+                    className="px-2 py-1 text-xs text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded transition-colors"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removePrompt(prompt.id)}
+                    className="px-2 py-1 text-xs text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+              <div className="text-xs text-black/70 dark:text-white/70 line-clamp-6 overflow-hidden">
+                <MarkdownDisplay content={prompt.data} />
               </div>
             </div>
-            <div className="text-xs text-black/70 dark:text-white/70 line-clamp-6 overflow-hidden">
-              <MarkdownDisplay content={prompt.data} />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {prompts.length === 0 && (
-        <div className="text-center py-8 text-black/40 dark:text-white/40 text-sm">
-          No saved prompts yet. Click &quot;Add New Prompt&quot; to create one.
+          ))}
         </div>
-      )}
 
-      {/* Prompt Editor Modal */}
-      {editorState && (
-        <PromptEditorModal
-          mode={editorState.mode}
-          initialDisplayName={editorState.displayName}
-          initialData={editorState.data}
-          onSave={handleSavePrompt}
-          onCancel={handleCloseEditor}
-        />
-      )}
-    </div>
+        {prompts.length === 0 && (
+          <div className="text-center py-8 text-black/40 dark:text-white/40 text-sm">
+            No saved prompts yet. Click &quot;Add New Prompt&quot; to create one.
+          </div>
+        )}
+
+        {/* Prompt Editor Modal */}
+        {editorState && (
+          <PromptEditorModal
+            mode={editorState.mode}
+            initialDisplayName={editorState.displayName}
+            initialData={editorState.data}
+            onSave={handleSavePrompt}
+            onCancel={handleCloseEditor}
+          />
+        )}
+      </div>
+    </SettingsTabLayout>
+  )
+}
+
+function IntegrationsListWithHeader({ onClose }: { onClose: () => void }) {
+  return (
+    <SettingsTabLayout
+      title="Integrations"
+      description="Connect external services to enhance your workspace"
+      onClose={onClose}
+    >
+      <IntegrationsList />
+    </SettingsTabLayout>
   )
 }

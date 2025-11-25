@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
-# Load .env file if it exists
-if [ -f .env ]; then
+# Load .env.production file if it exists (contains all secrets)
+if [ -f .env.production ]; then
   set -a
-  source .env
+  source .env.production
   set +a
-  echo "[Test Server] Loaded environment from .env"
+  echo "[Test Server] Loaded environment from .env.production"
 fi
 
 export BRIDGE_ENV=local

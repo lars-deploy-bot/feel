@@ -5,7 +5,7 @@ import { createCorsErrorResponse, createCorsSuccessResponse } from "@/lib/api/re
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getAllFeedback } from "@/lib/feedback"
-import type { Database as AppDatabase } from "@/lib/supabase/app.types"
+import type { AppDatabase } from "@webalive/database"
 import { createIamClient } from "@/lib/supabase/iam"
 import { generateRequestId } from "@/lib/utils"
 

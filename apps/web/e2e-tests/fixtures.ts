@@ -5,8 +5,8 @@
  */
 
 import { test as base, type Page } from "@playwright/test"
-import jwt from "jsonwebtoken"
 import { TEST_CONFIG } from "@webalive/shared"
+import jwt from "jsonwebtoken"
 
 export interface TestUser {
   userId: string

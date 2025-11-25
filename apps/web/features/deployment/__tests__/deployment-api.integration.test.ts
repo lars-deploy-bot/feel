@@ -10,23 +10,31 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest"
 import type { DeploySubdomainResponse } from "@/features/deployment/types/deploy-subdomain"
 import type { TestUser } from "@/lib/test-helpers/auth-test-helper"
 import { cleanupTestUser, createTestUser } from "@/lib/test-helpers/auth-test-helper"
+import { assertSupabaseServiceEnv, assertSystemTestEnv } from "@/lib/test-helpers/integration-env"
 import { authenticatedFetch, callRouteHandler, loginAndGetSession } from "@/lib/test-helpers/test-auth-helpers"
 import { API_ENDPOINTS, TEST_CREDENTIALS } from "@/lib/test-helpers/test-constants"
 
+assertSystemTestEnv()
+assertSupabaseServiceEnv()
+
 describe("Deployment API Integration", () => {
-  let testUser: TestUser
+  let testUser!: TestUser
   let sessionCookie: string = ""
+  const createdUsers: TestUser[] = []
 
   beforeAll(async () => {
     // Create test user with organization and password (auto-generates internal test domain)
     testUser = await createTestUser(undefined, TEST_CREDENTIALS.CREDITS, TEST_CREDENTIALS.PASSWORD)
+    createdUsers.push(testUser)
 
     // Login to get real session cookie
     sessionCookie = await loginAndGetSession(testUser.email)
   })
 
   afterAll(async () => {
-    await cleanupTestUser(testUser.userId)
+    for (const user of createdUsers) {
+      await cleanupTestUser(user.userId)
+    }
   })
 
   describe("Authentication Layer", () => {

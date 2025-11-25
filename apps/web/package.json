@@ -13,7 +13,11 @@
     "tsc": "tsc --noEmit",
     "type-check": "tsc --noEmit",
     "pretest": "bun run scripts/check-error-patterns.ts && bun run scripts/check-test-imports.ts",
-    "test": "vitest run",
+    "test": "bun run test:unit",
+    "test:unit": "vitest run",
+    "test:db": "vitest run -c vitest.db.config.ts",
+    "test:sys": "vitest run -c vitest.system.config.ts",
+    "test:ci": "bun run test:unit && bun run test:db && bun run test:sys",
     "test:watch": "vitest watch",
     "test:ui": "vitest --ui",
     "test:e2e": "playwright test",
@@ -26,13 +30,12 @@
     "test:e2e:genuine:headed": "playwright test --config=playwright.genuine.config.ts --headed",
     "test:e2e:staging": "TEST_ENV=staging playwright test org-workspace-selection.spec.ts",
     "test:e2e:staging:ui": "TEST_ENV=staging playwright test org-workspace-selection.spec.ts --ui",
-    "test:gates": "playwright test smoke.spec.ts auth.spec.ts protection-verification.spec.ts org-workspace-selection.spec.ts chat.spec.ts deploy.spec.ts && playwright test --config=playwright.genuine.config.ts chat-genuine.spec.ts",
-    "gen:db": "../../scripts/database/generate-types.sh",
-    "gen:db:force": "rm -rf .tmp/supabase && bun run scripts/generate-db-types-improved.ts"
+    "test:gates": "playwright test smoke.spec.ts auth.spec.ts protection-verification.spec.ts org-workspace-selection.spec.ts chat.spec.ts deploy.spec.ts && playwright test --config=playwright.genuine.config.ts chat-genuine.spec.ts"
   },
   "dependencies": {
     "@alive-brug/images": "workspace:*",
     "@alive-brug/tools": "workspace:*",
+    "@webalive/env": "workspace:*",
     "@webalive/shared": "workspace:*",
     "@webalive/site-controller": "workspace:*",
     "@anthropic-ai/claude-agent-sdk": "^0.1.25",

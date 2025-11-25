@@ -49,7 +49,7 @@ function gitExec(args: string[], cwd: string = REPO_DIR): string {
 
     return result.stdout.trim()
   } catch (error) {
-    throw new DeploymentError(`Git command failed: ${error}`)
+    throw DeploymentError.generic(`Git command failed: ${error}`)
   }
 }
 
@@ -61,7 +61,7 @@ function fetchLatest(): void {
   try {
     gitExec(["fetch", "origin", "main"])
   } catch (error) {
-    throw new DeploymentError(`Failed to fetch from remote: ${error}`)
+    throw DeploymentError.generic(`Failed to fetch from remote: ${error}`)
   }
 }
 
@@ -78,7 +78,7 @@ function pullIfBehind(): void {
       gitExec(["pull", "origin", "main", "--no-rebase"])
     }
   } catch (error) {
-    throw new DeploymentError(`Failed to sync with remote: ${error}`)
+    throw DeploymentError.generic(`Failed to sync with remote: ${error}`)
   }
 }
 
@@ -90,7 +90,7 @@ function hasChanges(): boolean {
     const status = gitExec(["status", "--porcelain"])
     return status.length > 0
   } catch (error) {
-    throw new DeploymentError(`Failed to check repository status: ${error}`)
+    throw DeploymentError.generic(`Failed to check repository status: ${error}`)
   }
 }
 
@@ -137,7 +137,7 @@ function analyzeSites(): {
   }
 
   if (includedSites.length === 0 && skippedSites.length > 0) {
-    throw new DeploymentError("No sites to backup after filtering")
+    throw DeploymentError.generic("No sites to backup after filtering")
   }
 
   return { includedSites, skippedSites, fileCounts }
@@ -201,7 +201,7 @@ function stageFiles(includedSites: string[]): number {
     .filter(f => f.trim()).length
 
   if (stagedFiles === 0) {
-    throw new DeploymentError("No files staged for commit")
+    throw DeploymentError.generic("No files staged for commit")
   }
 
   console.log(`[Backup] Total files staged: ${stagedFiles}`)
@@ -228,7 +228,7 @@ function createCommit(skippedSites: string[]): void {
   try {
     gitExec(["commit", "-m", commitMsg], REPO_DIR)
   } catch (error) {
-    throw new DeploymentError(`Failed to create commit: ${error}`)
+    throw DeploymentError.generic(`Failed to create commit: ${error}`)
   }
 }
 
@@ -240,7 +240,7 @@ function pushToGitHub(): void {
   try {
     gitExec(["push", "origin", "main"], REPO_DIR)
   } catch (error) {
-    throw new DeploymentError(`Failed to push to GitHub: ${error}`)
+    throw DeploymentError.generic(`Failed to push to GitHub: ${error}`)
   }
 }
 
@@ -298,6 +298,6 @@ export async function backupWebsites(): Promise<BackupStats> {
     }
   } catch (error) {
     console.error("[Backup] Backup failed:", error)
-    throw error instanceof DeploymentError ? error : new DeploymentError(`Backup failed: ${error}`)
+    throw error instanceof DeploymentError ? error : DeploymentError.generic(`Backup failed: ${error}`)
   }
 }

@@ -3,7 +3,7 @@
 import { ChevronDown } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useFetch } from "@/lib/hooks/useFetch"
-import { type Organization, useSelectedOrgId, useWorkspaceActions } from "@/lib/stores/workspaceStore"
+import { type Organization, useSelectedOrgId, useWorkspaceActions, useHasHydrated } from "@/lib/stores/workspaceStore"
 
 interface OrganizationSwitcherProps {
   onOrgChange?: (orgId: string | null) => void
@@ -12,6 +12,7 @@ interface OrganizationSwitcherProps {
 export function OrganizationSwitcher({ onOrgChange }: OrganizationSwitcherProps) {
   const [isOpen, setIsOpen] = useState(false)
   const selectedOrgId = useSelectedOrgId()
+  const hasHydrated = useHasHydrated()
   const { setSelectedOrg } = useWorkspaceActions()
 
   const { data, loading, error, retry } = useFetch<{ ok: boolean; organizations: Organization[] }>({
@@ -23,13 +24,16 @@ export function OrganizationSwitcher({ onOrgChange }: OrganizationSwitcherProps)
   const organizations = data?.organizations || []
 
   // Auto-select first org if none selected
+  // IMPORTANT: Wait for Zustand hydration to complete before auto-selecting
+  // Otherwise we might override the persisted org selection from localStorage
   useEffect(() => {
+    if (!hasHydrated) return // Wait for localStorage to be loaded
     if (!loading && organizations.length > 0 && !selectedOrgId) {
       const firstOrg = organizations[0]
       setSelectedOrg(firstOrg.org_id)
       onOrgChange?.(firstOrg.org_id)
     }
-  }, [loading, organizations, selectedOrgId, setSelectedOrg, onOrgChange])
+  }, [hasHydrated, loading, organizations, selectedOrgId, setSelectedOrg, onOrgChange])
 
   function handleSelectOrg(orgId: string) {
     setSelectedOrg(orgId)

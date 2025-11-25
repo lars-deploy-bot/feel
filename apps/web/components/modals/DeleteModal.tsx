@@ -1,4 +1,4 @@
-import { Trash2 } from "lucide-react"
+import { AlertTriangle } from "lucide-react"
 import type { ReactNode } from "react"
 
 interface DeleteModalProps {
@@ -20,29 +20,36 @@ export function DeleteModal({
 }: DeleteModalProps) {
   return (
     <div
-      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4"
       onClick={onCancel}
       role="dialog"
       aria-modal="true"
       aria-labelledby="delete-dialog-title"
     >
       <div
-        className="bg-white rounded-3xl p-8 max-w-md w-full shadow-xl animate-in fade-in-0 zoom-in-95 duration-200"
+        className="bg-white dark:bg-zinc-900 rounded-t-2xl sm:rounded-xl p-6 sm:p-8 max-w-md w-full shadow-xl shadow-black/10 dark:shadow-black/40 border border-black/5 dark:border-white/10 animate-in fade-in-0 slide-in-from-bottom-4 sm:zoom-in-95 duration-200"
         onClick={e => e.stopPropagation()}
         role="document"
       >
-        <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
-          <Trash2 className="w-8 h-8 text-red-500" />
+        {/* Icon */}
+        <div className="w-14 h-14 bg-red-50 dark:bg-red-950/30 rounded-full flex items-center justify-center mx-auto mb-5">
+          <AlertTriangle className="w-7 h-7 text-red-500 dark:text-red-400" />
         </div>
-        <h3 id="delete-dialog-title" className="text-xl font-normal text-gray-800 mb-2 text-center">
+
+        {/* Title */}
+        <h3 id="delete-dialog-title" className="text-lg font-semibold text-black dark:text-white mb-2 text-center">
           {title}
         </h3>
-        <div className="text-gray-500 text-sm text-center mb-8">{message}</div>
-        <div className="flex gap-3">
+
+        {/* Message */}
+        <div className="text-sm text-black/60 dark:text-white/60 text-center mb-6 leading-relaxed">{message}</div>
+
+        {/* Actions */}
+        <div className="flex flex-col-reverse sm:flex-row gap-3">
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition-all cursor-pointer font-medium"
+            className="flex-1 px-5 py-3 sm:py-2.5 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-black dark:text-white rounded-lg transition-all font-medium text-sm active:scale-[0.98]"
             aria-label="Cancel deletion"
           >
             {cancelText}
@@ -50,7 +57,7 @@ export function DeleteModal({
           <button
             type="button"
             onClick={onConfirm}
-            className="flex-1 px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-full transition-all cursor-pointer font-medium"
+            className="flex-1 px-5 py-3 sm:py-2.5 bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-500 text-white rounded-lg transition-all font-medium text-sm active:scale-[0.98]"
             aria-label="Confirm deletion"
           >
             {confirmText}

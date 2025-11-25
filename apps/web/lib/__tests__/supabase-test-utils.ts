@@ -1,22 +1,27 @@
+import { assertSupabaseManagementEnv } from "@/lib/test-helpers/integration-env"
+
 /**
  * Supabase Test Utilities
  * Direct SQL execution for testing (bypasses REST API schema issues)
  */
 
-const SUPABASE_PROJECT_ID = process.env.SUPABASE_PROJECT_ID
-const SUPABASE_ACCESS_TOKEN = process.env.SUPABASE_ACCESS_TOKEN
-
-if (!SUPABASE_PROJECT_ID || !SUPABASE_ACCESS_TOKEN) {
-  throw new Error("Missing Supabase credentials for tests. Set SUPABASE_PROJECT_ID and SUPABASE_ACCESS_TOKEN in .env")
+function ensureManagementEnv() {
+  assertSupabaseManagementEnv()
 }
 
 async function executeSql(query: string) {
+  ensureManagementEnv()
+
+  // Read env values inside function to ensure validation and usage are in sync
+  const projectId = process.env.SUPABASE_PROJECT_ID!
+  const accessToken = process.env.SUPABASE_ACCESS_TOKEN!
+
   // Use globalThis.fetch to bypass Happy DOM's CORS restrictions
   const nodeFetch = globalThis.fetch
-  const response = await nodeFetch(`https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_ID}/database/query`, {
+  const response = await nodeFetch(`https://api.supabase.com/v1/projects/${projectId}/database/query`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${SUPABASE_ACCESS_TOKEN}`,
+      Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ query }),

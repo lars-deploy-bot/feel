@@ -2,7 +2,7 @@
 
 import { Building2, ChevronDown } from "lucide-react"
 import { useEffect, useState } from "react"
-import { type Organization, useSelectedOrgId, useWorkspaceActions } from "@/lib/stores/workspaceStore"
+import { type Organization, useSelectedOrgId, useWorkspaceActions, useHasHydrated } from "@/lib/stores/workspaceStore"
 
 interface OrganizationSelectorProps {
   onOrgChange?: (orgId: string | null) => void
@@ -13,6 +13,7 @@ export function OrganizationSelector({ onOrgChange }: OrganizationSelectorProps)
   const [loading, setLoading] = useState(true)
   const [isOpen, setIsOpen] = useState(false)
   const selectedOrgId = useSelectedOrgId()
+  const hasHydrated = useHasHydrated()
   const { setSelectedOrg } = useWorkspaceActions()
 
   // Fetch organizations on mount
@@ -21,13 +22,16 @@ export function OrganizationSelector({ onOrgChange }: OrganizationSelectorProps)
   }, [])
 
   // Auto-select first org if none selected
+  // IMPORTANT: Wait for Zustand hydration to complete before auto-selecting
+  // Otherwise we might override the persisted org selection from localStorage
   useEffect(() => {
+    if (!hasHydrated) return // Wait for localStorage to be loaded
     if (!loading && organizations.length > 0 && !selectedOrgId) {
       const firstOrg = organizations[0]
       setSelectedOrg(firstOrg.org_id)
       onOrgChange?.(firstOrg.org_id)
     }
-  }, [loading, organizations, selectedOrgId, setSelectedOrg, onOrgChange])
+  }, [hasHydrated, loading, organizations, selectedOrgId, setSelectedOrg, onOrgChange])
 
   async function fetchOrganizations() {
     try {

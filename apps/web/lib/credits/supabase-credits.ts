@@ -16,9 +16,8 @@ import { createClient } from "@supabase/supabase-js"
 import { llmTokensToCredits } from "@/lib/credits"
 import { getSupabaseCredentials } from "@/lib/env/server"
 import { createAppClient } from "@/lib/supabase/app"
-import type { Database as AppDatabase } from "@/lib/supabase/app.types"
 import { createIamClient } from "@/lib/supabase/iam"
-import type { Database as IamDatabase } from "@/lib/supabase/iam.types"
+import type { AppDatabase, IamDatabase } from "@webalive/database"
 
 // Test-aware client creation (bypasses Next.js cookies in tests)
 const isTestEnv = process.env.NODE_ENV === "test"
@@ -27,11 +26,8 @@ async function getIamClient() {
   if (isTestEnv) {
     const { url, key } = getSupabaseCredentials("service")
     return createClient<IamDatabase>(url, key, {
-      global: {
-        headers: {
-          "Accept-Profile": "iam",
-          "Content-Profile": "iam",
-        },
+      db: {
+        schema: "iam",
       },
     })
   }
@@ -43,11 +39,8 @@ async function getAppClient() {
   if (isTestEnv) {
     const { url, key } = getSupabaseCredentials("service")
     return createClient<AppDatabase>(url, key, {
-      global: {
-        headers: {
-          "Accept-Profile": "app",
-          "Content-Profile": "app",
-        },
+      db: {
+        schema: "app",
       },
     })
   }

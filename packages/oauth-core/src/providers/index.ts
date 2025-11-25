@@ -4,14 +4,18 @@
  * Central registry for all supported OAuth providers
  */
 
-import type { OAuthProvider } from './base.js';
-import { GitHubProvider } from './github.js';
+import type { OAuthProvider } from "./base"
+import { GitHubProvider } from "./github"
+import { LinearProvider } from "./linear"
+import { StripeProvider } from "./stripe"
 
 // Provider instances
-const providers = new Map<string, OAuthProvider>();
+const providers = new Map<string, OAuthProvider>()
 
 // Register built-in providers
-providers.set('github', new GitHubProvider());
+providers.set("github", new GitHubProvider())
+providers.set("linear", new LinearProvider())
+providers.set("stripe", new StripeProvider())
 
 /**
  * Gets a registered OAuth provider by name
@@ -21,16 +25,14 @@ providers.set('github', new GitHubProvider());
  * @throws Error if provider not found
  */
 export function getProvider(name: string): OAuthProvider {
-  const provider = providers.get(name.toLowerCase());
+  const provider = providers.get(name.toLowerCase())
 
   if (!provider) {
-    const available = Array.from(providers.keys()).join(', ');
-    throw new Error(
-      `OAuth provider '${name}' not supported. Available providers: ${available}`
-    );
+    const available = Array.from(providers.keys()).join(", ")
+    throw new Error(`OAuth provider '${name}' not supported. Available providers: ${available}`)
   }
 
-  return provider;
+  return provider
 }
 
 /**
@@ -40,7 +42,7 @@ export function getProvider(name: string): OAuthProvider {
  * @param provider - Provider implementation
  */
 export function registerProvider(name: string, provider: OAuthProvider): void {
-  providers.set(name.toLowerCase(), provider);
+  providers.set(name.toLowerCase(), provider)
 }
 
 /**
@@ -49,7 +51,7 @@ export function registerProvider(name: string, provider: OAuthProvider): void {
  * @returns Array of provider names
  */
 export function listProviders(): string[] {
-  return Array.from(providers.keys());
+  return Array.from(providers.keys())
 }
 
 /**
@@ -59,9 +61,9 @@ export function listProviders(): string[] {
  * @returns true if provider exists
  */
 export function hasProvider(name: string): boolean {
-  return providers.has(name.toLowerCase());
+  return providers.has(name.toLowerCase())
 }
 
 // Re-export types and implementations
-export { GitHubProvider };
-export type { OAuthProvider };
+export { GitHubProvider, LinearProvider, StripeProvider }
+export type { OAuthProvider }

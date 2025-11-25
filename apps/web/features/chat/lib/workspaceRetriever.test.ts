@@ -5,9 +5,14 @@
  * We test with existing workspaces to verify the full resolution flow.
  */
 
+import { existsSync } from "node:fs"
 import { describe, expect, it, vi } from "vitest"
 import { domainToSlug, normalizeDomain } from "@/features/manager/lib/domain-utils"
 import { getWorkspace } from "./workspaceRetriever"
+
+// Check if we're in an environment with actual workspace directories
+const workspacePath = process.env.TEST_WORKSPACE_PATH ?? "/srv/webalive/sites/demo-goalive-nl/user"
+const hasWorkspaces = existsSync(workspacePath)
 
 describe("Workspace Resolution", () => {
   describe("Domain to Slug Conversion (Unit)", () => {
@@ -45,7 +50,7 @@ describe("Workspace Resolution", () => {
   })
 
   describe("Integration with existing workspace", () => {
-    it("resolves demo-goalive-nl workspace correctly (legacy hyphenated format)", () => {
+    it.skipIf(!hasWorkspaces)("resolves demo-goalive-nl workspace correctly (legacy hyphenated format)", () => {
       const result = getWorkspace({
         host: "dev.terminal.goalive.nl",
         body: { workspace: "demo.goalive.nl" }, // User sends with dots
@@ -59,7 +64,7 @@ describe("Workspace Resolution", () => {
       }
     })
 
-    it("path always ends with /user", () => {
+    it.skipIf(!hasWorkspaces)("path always ends with /user", () => {
       const result = getWorkspace({
         host: "dev.terminal.goalive.nl",
         body: { workspace: "demo.goalive.nl" },
@@ -72,7 +77,7 @@ describe("Workspace Resolution", () => {
       }
     })
 
-    it("path always contains /webalive/sites/", () => {
+    it.skipIf(!hasWorkspaces)("path always contains /webalive/sites/", () => {
       const result = getWorkspace({
         host: "dev.terminal.goalive.nl",
         body: { workspace: "demo.goalive.nl" },
@@ -97,7 +102,7 @@ describe("Workspace Resolution", () => {
      * 1. New sites: domain.com → /srv/webalive/sites/domain.com/user
      * 2. Legacy sites: domain.com → /srv/webalive/sites/domain-com/user
      */
-    it("finds workspace with dots in directory name (new convention)", () => {
+    it.skipIf(!hasWorkspaces)("finds workspace with dots in directory name (new convention)", () => {
       // Test case: New sites like evermore.alive.best use dots in filesystem
       const result = getWorkspace({
         host: "dev.terminal.goalive.nl",
@@ -112,7 +117,7 @@ describe("Workspace Resolution", () => {
       }
     })
 
-    it("falls back to hyphens when dots directory doesn't exist (legacy)", () => {
+    it.skipIf(!hasWorkspaces)("falls back to hyphens when dots directory doesn't exist (legacy)", () => {
       // Test case: Legacy sites like demo.goalive.nl use hyphens in filesystem
       const result = getWorkspace({
         host: "dev.terminal.goalive.nl",
@@ -146,7 +151,7 @@ describe("Workspace Resolution", () => {
       }
     })
 
-    it("prefers dots over hyphens when both exist", () => {
+    it.skipIf(!hasWorkspaces)("prefers dots over hyphens when both exist", () => {
       // Edge case: If somehow both naming conventions exist, prefer new (dots)
       // This test documents the preference order
       const result = getWorkspace({

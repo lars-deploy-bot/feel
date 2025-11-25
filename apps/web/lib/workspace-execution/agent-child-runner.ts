@@ -20,6 +20,7 @@ interface AgentRequest {
   systemPrompt?: string | { type: "preset"; preset: "claude_code"; append?: string }
   apiKey?: string
   sessionCookie?: string // For authenticated API calls back to Bridge
+  stripeAccessToken?: string // User's Stripe OAuth token (if connected)
 }
 
 function getWorkspaceCredentials(workspaceRoot: string): WorkspaceCredentials {

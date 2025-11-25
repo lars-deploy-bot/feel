@@ -56,10 +56,10 @@ function ModeSelectionScreen({ onSelect }: ModeSelectionScreenProps) {
       className="w-full max-w-lg mx-auto"
     >
       <motion.div variants={itemVariants} className="text-center mb-12">
-        <h1 className="text-4xl font-bold tracking-tight text-gray-900 mb-4" data-testid="deploy-heading">
+        <h1 className="text-4xl font-bold tracking-tight text-black dark:text-white mb-4" data-testid="deploy-heading">
           Launch your site
         </h1>
-        <p className="text-lg text-gray-600 font-medium">Pick one to start:</p>
+        <p className="text-lg text-black/60 dark:text-white/60 font-medium">Pick one to start:</p>
       </motion.div>
 
       <motion.div variants={itemVariants} className="space-y-3">
@@ -203,32 +203,35 @@ export function DeployForm() {
                 resetForm()
                 setDeploymentMode("choose")
               }}
-              className="text-gray-400 hover:text-gray-600 text-xs font-medium mb-6 inline-block transition-colors uppercase tracking-wide"
+              className="text-black/40 dark:text-white/40 hover:text-black/60 dark:hover:text-white/60 text-xs font-medium mb-6 inline-block transition-colors uppercase tracking-wide"
             >
               ← Back to options
             </motion.button>
             <div>
-              <h1 className="text-5xl font-normal tracking-tight text-gray-900 mb-3">Custom domain</h1>
-              <p className="text-lg text-gray-500 font-normal max-w-md mx-auto leading-relaxed">
+              <h1 className="text-5xl font-normal tracking-tight text-black dark:text-white mb-3">Custom domain</h1>
+              <p className="text-lg text-black/50 dark:text-white/50 font-normal max-w-md mx-auto leading-relaxed">
                 Point your DNS to our server and launch immediately
               </p>
             </div>
           </motion.div>
 
           {/* DNS Info Banner */}
-          <motion.div variants={itemVariants} className="mb-6 p-4 rounded-lg bg-blue-50 border border-blue-200">
+          <motion.div
+            variants={itemVariants}
+            className="mb-6 p-4 rounded-lg bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10"
+          >
             <div className="flex gap-3">
-              <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <Info className="h-5 w-5 text-black/60 dark:text-white/60 flex-shrink-0 mt-0.5" />
               <div>
-                <h3 className="font-semibold text-blue-900 text-sm mb-1">Quick DNS setup</h3>
-                <p className="text-blue-800 text-xs mb-2">
+                <h3 className="font-semibold text-black dark:text-white text-sm mb-1">Quick DNS setup</h3>
+                <p className="text-black/60 dark:text-white/60 text-xs mb-2">
                   We'll guide you through pointing your domain to us. Just takes a minute.
                 </p>
                 <a
                   href="/docs/dns-setup"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-600 hover:text-blue-700 font-medium text-xs underline"
+                  className="text-black dark:text-white hover:text-black/70 dark:hover:text-white/70 font-medium text-xs underline"
                 >
                   Show me how →
                 </a>
@@ -239,15 +242,15 @@ export function DeployForm() {
           {/* Form Card */}
           <motion.div
             variants={itemVariants}
-            className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
+            className="bg-white dark:bg-zinc-900 rounded-2xl border border-black/10 dark:border-white/10 shadow-sm overflow-hidden"
           >
             <form onSubmit={deployWithDomainForm.handleSubmit(onSubmitWithDomain)} className="p-8 space-y-5">
               {/* Domain Field */}
               <motion.div variants={fieldVariants}>
-                <label htmlFor="domain" className="block text-sm font-semibold text-gray-900 mb-2">
+                <label htmlFor="domain" className="block text-sm font-semibold text-black dark:text-white mb-2">
                   Your domain
                 </label>
-                <p className="text-xs text-gray-500 mb-3">e.g., mysite.com or app.example.com</p>
+                <p className="text-xs text-black/50 dark:text-white/50 mb-3">e.g., mysite.com or app.example.com</p>
                 <div className="relative">
                   <motion.input
                     whileFocus="focus"
@@ -265,8 +268,8 @@ export function DeployForm() {
                     }}
                     className={`w-full px-4 py-3 rounded-lg border-2 transition-colors outline-none font-medium ${
                       deployWithDomainForm.formState.errors.domain
-                        ? "border-red-300 bg-red-50 text-gray-900"
-                        : "border-gray-200 bg-gray-50 text-gray-900 hover:border-gray-300 focus:border-blue-500 focus:bg-blue-50"
+                        ? "border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/30 text-black dark:text-white"
+                        : "border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 text-black dark:text-white hover:border-black/20 dark:hover:border-white/20 focus:border-black dark:focus:border-white focus:bg-black/[0.02] dark:focus:bg-white/[0.02]"
                     } disabled:opacity-50 disabled:cursor-not-allowed`}
                   />
                 </div>
@@ -274,7 +277,7 @@ export function DeployForm() {
                   <motion.p
                     initial={{ opacity: 0, y: -5 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="mt-1.5 text-red-600 text-xs font-medium"
+                    className="mt-1.5 text-red-600 dark:text-red-400 text-xs font-medium"
                   >
                     {deployWithDomainForm.formState.errors.domain?.message as string}
                   </motion.p>

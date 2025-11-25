@@ -8,8 +8,8 @@
  */
 
 import { describe, expectTypeOf, it } from "vitest"
-import type { Endpoint, Req, Res } from "../schemas"
 import type { ApiError } from "../api-client"
+import type { Endpoint, Req, Res } from "../schemas"
 
 describe("API Schema Type System", () => {
   describe("Endpoint type", () => {

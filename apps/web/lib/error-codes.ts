@@ -82,6 +82,13 @@ export const ErrorCodes = {
   SITE_DIRECTORY_NOT_FOUND: "SITE_DIRECTORY_NOT_FOUND",
   SITE_USER_NOT_FOUND: "SITE_USER_NOT_FOUND",
 
+  // OAuth/Integration errors (10xxx)
+  INVALID_PROVIDER: "INVALID_PROVIDER",
+  OAUTH_CONFIG_ERROR: "OAUTH_CONFIG_ERROR",
+  OAUTH_STATE_MISMATCH: "OAUTH_STATE_MISMATCH",
+  INTEGRATION_ERROR: "INTEGRATION_ERROR",
+  INTEGRATION_NOT_CONNECTED: "INTEGRATION_NOT_CONNECTED",
+
   // General errors
   INTERNAL_ERROR: "INTERNAL_ERROR",
   REQUEST_PROCESSING_FAILED: "REQUEST_PROCESSING_FAILED",
@@ -318,6 +325,27 @@ export function getErrorMessage(code: ErrorCode, details?: Record<string, any>):
       return details?.user
         ? `System user '${details.user}' does not exist. The site may not be properly configured.`
         : "System user for this site does not exist. The site may not be properly configured."
+
+    case ErrorCodes.INVALID_PROVIDER:
+      return details?.reason || "Invalid provider name. Please use a supported integration provider."
+
+    case ErrorCodes.OAUTH_CONFIG_ERROR:
+      return details?.provider
+        ? `${details.provider} integration is not configured. Please contact your administrator to set up the OAuth credentials.`
+        : "OAuth integration is not configured. Please contact your administrator to set up the OAuth credentials."
+
+    case ErrorCodes.OAUTH_STATE_MISMATCH:
+      return "OAuth security verification failed. This may be a security issue or an expired authorization. Please try connecting again."
+
+    case ErrorCodes.INTEGRATION_ERROR:
+      return details?.provider
+        ? `Failed to connect to ${details.provider}. ${details.reason || "Please try again."}`
+        : "Failed to connect to the integration. Please try again."
+
+    case ErrorCodes.INTEGRATION_NOT_CONNECTED:
+      return details?.provider
+        ? `You are not connected to ${details.provider}. Please connect your account first in Settings.`
+        : "You are not connected to this integration. Please connect your account first in Settings."
 
     case ErrorCodes.TEST_MODE_BLOCK:
       return "I'm in test mode right now and can't make real API calls. Please mock this endpoint in your test."

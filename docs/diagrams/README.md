@@ -8,6 +8,10 @@ Sequence diagrams, flow charts, and architectural visualizations for the Claude 
 
 - **[MCP Tool Authentication Flow](./mcp-tool-authentication-flow.md)** - Complete sequence diagram showing how session cookies are passed from browser through child process to MCP tool API calls. Includes root cause analysis of cookie name mismatch bug.
 
+### OAuth Integration
+
+- **[Linear OAuth Flow](./oauth/linear-oauth-flow.md)** - Complete OAuth2 flow for Linear integration including CSRF state management, token exchange, and automatic refresh. Shows all three phases: initial authorization, callback, and token refresh.
+
 ---
 
 ## Diagram Format

@@ -3,6 +3,7 @@ import { ExternalLink, Eye, EyeOff, Image, Layers, MessageCircle } from "lucide-
 import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
 import { FeedbackModal } from "@/components/modals/FeedbackModal"
+import { SessionExpiredModal } from "@/components/modals/SessionExpiredModal"
 import { SettingsModal } from "@/components/modals/SettingsModal"
 import { SuperTemplatesModal } from "@/components/modals/SuperTemplatesModal"
 import { PhotoMenu } from "@/components/ui/PhotoMenu"
@@ -40,6 +41,8 @@ import type { StructuredError } from "@/lib/error-codes"
 import { ErrorCodes, getErrorHelp, getErrorMessage } from "@/lib/error-codes"
 import { HttpError } from "@/lib/errors"
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
+import { authStore, useIsSessionExpired } from "@/lib/stores/authStore"
+import { validateOAuthToastParams } from "@/lib/integrations/toast-validation"
 import { isRetryableError, retryWithBackoff } from "@/lib/retry"
 import { useSidebarActions } from "@/lib/stores/conversationSidebarStore"
 import { isDevelopment, useDebugActions, useDebugVisible, useSandbox, useSSETerminal } from "@/lib/stores/debug-store"
@@ -107,14 +110,10 @@ function ChatPageContent() {
   const streamingActions = useStreamingActions()
 
   // Fetch organizations and auto-select if none selected
-  const { organizations, loading: orgsLoading, error: orgsError } = useOrganizations()
+  const { organizations, loading: orgsLoading } = useOrganizations()
 
-  // Auto-open settings modal on org loading error
-  useEffect(() => {
-    if (orgsError && settingsModalReason === null) {
-      setSettingsModalReason("error")
-    }
-  }, [orgsError, settingsModalReason])
+  // Check for session expiry (handled via auth store, not local error state)
+  const isSessionExpired = useIsSessionExpired()
 
   // Session management with workspace-scoped persistence
   const { conversationId, startNewConversation, switchConversation } = useConversationSession(workspace, mounted)
@@ -222,6 +221,28 @@ function ChatPageContent() {
       if (timeoutId) clearTimeout(timeoutId)
     }
   }, [messages, shouldForceScroll, userHasManuallyScrolled])
+
+  // Handle OAuth callback success/error params
+  // Track URL search params to catch OAuth redirects back to /chat
+  const urlSearchParams = typeof window !== "undefined" ? window.location.search : ""
+  useEffect(() => {
+    const params = new URLSearchParams(urlSearchParams)
+
+    // Validate and sanitize OAuth callback parameters
+    const validated = validateOAuthToastParams(params)
+
+    if (validated) {
+      if (validated.status === "success" && validated.successMessage) {
+        toast.success(validated.successMessage)
+      } else if (validated.status === "error" && validated.errorMessage) {
+        toast.error(validated.errorMessage)
+      }
+
+      // Clean URL params while preserving hash
+      const cleanUrl = window.location.pathname + window.location.hash
+      window.history.replaceState({}, "", cleanUrl)
+    }
+  }, [urlSearchParams]) // Re-run when URL params change
 
   const handleSubdomainInitialize = (initialMessage: string, initialWorkspace: string) => {
     setMsg(initialMessage)
@@ -638,6 +659,18 @@ function ChatPageContent() {
 
       // Show error message to user (unless it's a conversation busy error which has a toast)
       if (error instanceof Error && error.name !== "AbortError") {
+        // Handle 401/session errors - trigger session expiry modal
+        const isAuthError =
+          error instanceof HttpError &&
+          (error.status === 401 ||
+            error.errorCode === ErrorCodes.NO_SESSION ||
+            error.errorCode === ErrorCodes.AUTH_REQUIRED)
+
+        if (isAuthError) {
+          authStore.handleSessionExpired("Your session has expired. Please log in again to continue.")
+          return // Don't show error in chat - modal will handle it
+        }
+
         // Skip adding to chat for conversation busy error since toast already shows it
         const isConversationBusy = error instanceof HttpError && error.errorCode === ErrorCodes.CONVERSATION_BUSY
 
@@ -1076,8 +1109,8 @@ function ChatPageContent() {
           {mounted && (
             <div className="flex-shrink-0 border-b border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02]">
               <div className="px-6 py-3 mx-auto w-full md:max-w-2xl">
-                {/* Empty state messages - only show when no workspace and no error */}
-                {!workspace && !orgsError && (
+                {/* Empty state messages - only show when no workspace and session is valid */}
+                {!workspace && !isSessionExpired && (
                   <>
                     {totalDomainCount === 0 && (
                       <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
@@ -1243,6 +1276,9 @@ function ChatPageContent() {
       {showTemplatesModal && (
         <SuperTemplatesModal onClose={() => setShowTemplatesModal(false)} onInsertTemplate={handleInsertTemplate} />
       )}
+
+      {/* Session expiry modal - non-dismissable, requires login */}
+      {isSessionExpired && <SessionExpiredModal />}
     </div>
   )
 }

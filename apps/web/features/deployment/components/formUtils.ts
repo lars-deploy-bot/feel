@@ -1,4 +1,4 @@
-import { buildSubdomain } from "@/lib/config"
+import { buildSubdomain } from "@/lib/config.client"
 
 /**
  * Generate a random subdomain for quick deploy

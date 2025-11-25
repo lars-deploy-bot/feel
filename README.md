@@ -8,6 +8,9 @@ Claude Bridge enables developers to interact with Claude AI in the context of sp
 
 **📚 [Documentation →](./docs/README.md)** | **🚀 [Quick Start](./docs/GETTING_STARTED.md)** | **🏗️ [Architecture](./docs/architecture/README.md)** | **🔐 [Security](./docs/security/README.md)** | **🧪 [Testing](./docs/testing/README.md)**
 
+<!-- TODO: Download and host architecture diagram locally in docs/images/ to avoid external URL dependency -->
+![Claude Bridge Architecture Whiteboard](https://terminal.goalive.nl/_images/t/larss.alive.best/o/98ba3d55db2b679a/v/orig.webp)
+
 ## Architecture
 
 ### Multi-Tenant Design
@@ -41,7 +44,7 @@ Claude Bridge enables developers to interact with Claude AI in the context of sp
 - **Tool Tracking**: Advanced toolUseMap pattern for tracking tool invocations and results
 - **Conversation Locking**: Prevents concurrent requests for same conversation
 - **Automatic File Ownership**: Child process UID switching for systemd sites ensures proper file permissions
-- **Model Selection**: Credit users → Haiku 4.5 only; API key users → choose model (see [docs/architecture/CREDITS_AND_TOKENS.md](./docs/architecture/CREDITS_AND_TOKENS.md))
+- **Model Selection**: Credit users → DEFAULT_MODEL enforced; API key users → choose model (see [docs/architecture/CREDITS_AND_TOKENS.md](./docs/architecture/CREDITS_AND_TOKENS.md))
 
 ### 🔐 Security & Access Control
 - **JWT Authentication**: Secure 30-day JWT tokens in httpOnly cookies
@@ -88,7 +91,7 @@ JWT_SECRET=your-jwt-secret-min-32-chars
 
 # Optional
 BRIDGE_PASSCODE=your_manager_passcode  # For /manager admin panel access only
-CLAUDE_MODEL=claude-haiku-4-5  # Default model
+CLAUDE_MODEL=<model-id>  # Default model for API key users
 WORKSPACE_BASE=/srv/webalive/sites       # Base directory for workspaces (default: /srv/webalive/sites)
 
 # Auto-deployment (optional)

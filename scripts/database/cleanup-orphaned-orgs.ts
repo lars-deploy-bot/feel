@@ -9,8 +9,8 @@
 
 import { createClient } from "@supabase/supabase-js"
 import { getSupabaseCredentials } from "../apps/web/lib/env/server"
-import type { Database as IamDatabase } from "../apps/web/lib/supabase/iam.types"
-import type { Database as AppDatabase } from "../apps/web/lib/supabase/app.types"
+import type { IamDatabase } from "@webalive/database"
+import type { AppDatabase } from "@webalive/database"
 
 async function cleanupOrphanedOrgs(dryRun: boolean = true) {
   const { url, key } = getSupabaseCredentials("service")

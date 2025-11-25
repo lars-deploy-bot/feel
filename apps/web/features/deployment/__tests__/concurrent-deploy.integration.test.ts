@@ -15,9 +15,10 @@
 
 import { execSync } from "node:child_process"
 import { existsSync, readFileSync } from "node:fs"
+import { environments, PATHS } from "@webalive/shared"
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
-import { PATHS, environments } from "@webalive/shared"
 import { createTestUser } from "@/lib/test-helpers/auth-test-helper"
+import { assertSupabaseServiceEnv, assertSystemTestEnv } from "@/lib/test-helpers/integration-env"
 
 const BASE_URL = `http://localhost:${environments.production.port}`
 
@@ -35,6 +36,10 @@ interface TestSite {
 
 // Test domains - short slugs to avoid Linux username limits
 const TEST_SLUGS = ["cd1", "cd2", "cd3"] // cd = concurrent deploy
+const SUITE_NAME = "Concurrent Deployment - File Locking"
+
+assertSystemTestEnv()
+assertSupabaseServiceEnv()
 
 /**
  * Validate Caddyfile integrity
@@ -140,7 +145,7 @@ async function createAuthSession(email: string, password: string): Promise<strin
   return `auth_session=${match[1]}`
 }
 
-describe.skip("Concurrent Deployment - File Locking", () => {
+describe(SUITE_NAME, () => {
   let testSites: TestSite[] = []
 
   beforeAll(async () => {

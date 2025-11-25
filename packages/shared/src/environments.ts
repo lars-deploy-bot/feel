@@ -58,20 +58,20 @@ export const environments: Record<EnvironmentKey, Environment> = {
   production: {
     key: "production",
     displayName: "Production",
-    prefix: "prod",
+    prefix: "production",
     port: 9000,
     domain: "terminal.goalive.nl",
-    processName: "claude-bridge-prod",
+    processName: "claude-bridge-production",
     serviceType: "systemd",
-    systemdService: "claude-bridge-prod.service",
-    serverScript: ".builds/prod/current/standalone/apps/web/server.js",
-    buildPath: ".builds/prod",
+    systemdService: "claude-bridge-production.service",
+    serverScript: ".builds/production/current/standalone/apps/web/server.js",
+    buildPath: ".builds/production",
     workspacePath: PATHS.SITES_ROOT,
     isProduction: true,
     hasHotReload: false,
     deployCommand: "make wash-skip",
-    logsCommand: "journalctl -u claude-bridge-prod.service -f",
-    restartCommand: "systemctl restart claude-bridge-prod.service",
+    logsCommand: "journalctl -u claude-bridge-production.service -f",
+    restartCommand: "systemctl restart claude-bridge-production.service",
   },
   staging: {
     key: "staging",
@@ -98,13 +98,15 @@ export const environments: Record<EnvironmentKey, Environment> = {
     port: 8997,
     domain: "dev.terminal.goalive.nl",
     processName: "claude-bridge-dev",
+    serviceType: "systemd",
+    systemdService: "claude-bridge-dev.service",
     serverScript: "node_modules/.bin/next",
     workspacePath: PATHS.SITES_ROOT,
     isProduction: false,
     hasHotReload: true,
     deployCommand: "make dev",
-    logsCommand: "make logs-dev",
-    restartCommand: "pm2 restart claude-bridge-dev",
+    logsCommand: "journalctl -u claude-bridge-dev.service -f",
+    restartCommand: "systemctl restart claude-bridge-dev.service",
   },
 }
 
@@ -178,5 +180,3 @@ function validateEnvironments() {
 }
 
 validateEnvironments()
-
-export default environments

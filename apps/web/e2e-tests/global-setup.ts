@@ -15,12 +15,19 @@ async function verifyTenantReadiness(baseUrl: string, workers: number): Promise<
   const maxAttempts = 20 // 20 attempts at 200ms = 4s max
   const delayMs = 200
 
+  // Get test secret for staging/production E2E tests
+  const testSecret = process.env.E2E_TEST_SECRET
+  const headers: Record<string, string> = {}
+  if (testSecret) {
+    headers["x-test-secret"] = testSecret
+  }
+
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const results = await Promise.all(
       Array.from({ length: workers }).map(async (_, idx) => {
         const email = `${TEST_CONFIG.WORKER_EMAIL_PREFIX}${idx}@${TEST_CONFIG.EMAIL_DOMAIN}`
         try {
-          const res = await fetch(`${baseUrl}/api/test/verify-tenant?email=${encodeURIComponent(email)}`)
+          const res = await fetch(`${baseUrl}/api/test/verify-tenant?email=${encodeURIComponent(email)}`, { headers })
           const data = await res.json()
           return data.ready === true
         } catch {
@@ -57,6 +64,13 @@ export default async function globalSetup(config: FullConfig) {
   console.log(`\n🚀 [Global Setup] Bootstrapping ${workers} worker tenants`)
   console.log(`📝 [Global Setup] Run ID: ${runId}\n`)
 
+  // Get test secret for staging/production E2E tests
+  const testSecret = process.env.E2E_TEST_SECRET
+  const headers: Record<string, string> = { "Content-Type": "application/json" }
+  if (testSecret) {
+    headers["x-test-secret"] = testSecret
+  }
+
   try {
     await Promise.all(
       Array.from({ length: workers }).map(async (_, i) => {
@@ -65,7 +79,7 @@ export default async function globalSetup(config: FullConfig) {
 
         const res = await fetch(`${baseUrl}/api/test/bootstrap-tenant`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({
             runId,
             workerIndex: i,
@@ -74,6 +88,16 @@ export default async function globalSetup(config: FullConfig) {
             credits: TEST_CONFIG.DEFAULT_CREDITS,
           }),
         })
+
+        // Check if response is JSON before parsing
+        const contentType = res.headers.get("content-type")
+        if (!contentType?.includes("application/json")) {
+          const text = await res.text()
+          throw new Error(
+            `Worker ${i} bootstrap failed: Expected JSON, got ${contentType || "unknown"}. ` +
+              `Status: ${res.status}. Response: ${text.substring(0, 200)}`,
+          )
+        }
 
         const data = await res.json()
 

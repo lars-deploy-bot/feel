@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { isOrganizationsResponse, type Organization } from "@/lib/api/types"
+import { authStore } from "@/lib/stores/authStore"
 import { useWorkspaceActions } from "@/lib/stores/workspaceStore"
 
 interface UseOrganizationsOptions {
@@ -25,6 +26,13 @@ interface UseOrganizationsReturn {
  *
  * This is the single source of truth for organization fetching.
  * The Zustand store handles the auto-selection logic.
+ *
+ * ## Auth Integration
+ *
+ * This hook integrates with the auth store for 401 handling:
+ * - On 401: Calls `authStore.handleSessionExpired()` which triggers the SessionExpiredModal
+ * - On success: Calls `authStore.setAuthenticated()` to confirm valid session
+ * - Non-auth errors are still stored in local `error` state
  *
  * @example
  * ```tsx
@@ -53,9 +61,11 @@ export function useOrganizations(options: UseOrganizationsOptions = {}): UseOrga
       const response = await fetch("/api/auth/organizations", { credentials: "include" })
 
       if (!response.ok) {
-        // Handle 401 specifically with helpful message
+        // Handle 401 via auth store - triggers SessionExpiredModal
         if (response.status === 401) {
-          throw new Error("Session expired - please login again")
+          authStore.handleSessionExpired("Your session has expired. Please log in again to continue.")
+          // Don't set local error - the modal handles this
+          return
         }
         throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
@@ -66,6 +76,9 @@ export function useOrganizations(options: UseOrganizationsOptions = {}): UseOrga
       if (isOrganizationsResponse(data)) {
         setOrganizations(data.organizations)
         setCurrentUserId(data.current_user_id)
+
+        // Mark as authenticated on successful fetch
+        authStore.setAuthenticated()
 
         // Centralized cleanup: validates selected org and recent workspaces against new org list
         // This handles cases where user was kicked out, org was deleted, etc.

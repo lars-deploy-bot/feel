@@ -16,6 +16,10 @@
     "./environments": {
       "import": "./dist/environments.js",
       "types": "./dist/environments.d.ts"
+    },
+    "./database": {
+      "import": "./dist/database/index.js",
+      "types": "./dist/database/index.d.ts"
     }
   },
   "scripts": {
@@ -24,7 +28,8 @@
     "type-check": "tsc --noEmit",
     "lint": "biome lint .",
     "format": "biome format --write .",
-    "generate-json": "node dist/generate-environments-json.js"
+    "generate-json": "node dist/generate-environments-json.js",
+    "gen:types": "bun scripts/generate-database-types.ts"
   },
   "devDependencies": {
     "@types/node": "^22.5.2",

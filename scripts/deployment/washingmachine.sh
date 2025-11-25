@@ -20,7 +20,7 @@ echo "🚀 Starting production deployment..."
 # Pass SKIP_E2E flag if set
 if [ -n "$SKIP_E2E" ]; then
     echo "⚠️  Skipping E2E tests (SKIP_E2E=$SKIP_E2E)"
-    SKIP_E2E="$SKIP_E2E" "$PROJECT_ROOT/scripts/deployment/build-and-serve.sh" prod
+    SKIP_E2E="$SKIP_E2E" "$PROJECT_ROOT/scripts/deployment/build-and-serve.sh" production
 else
-    "$PROJECT_ROOT/scripts/deployment/build-and-serve.sh" prod
+    "$PROJECT_ROOT/scripts/deployment/build-and-serve.sh" production
 fi

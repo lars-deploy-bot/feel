@@ -43,7 +43,7 @@
     "react-markdown",
     "ws"
   ],
-  "ignoreBinaries": ["pm2", "go"],
+  "ignoreBinaries": ["pm2", "go", "husky", "docker-compose"],
   "ignoreExportsUsedInFile": true,
   "includeEntryExports": false,
   "rules": {

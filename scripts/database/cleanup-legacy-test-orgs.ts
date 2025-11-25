@@ -16,16 +16,11 @@
 
 import { createClient } from "@supabase/supabase-js"
 import { getSupabaseCredentials } from "../apps/web/lib/env/server"
-import type { Database as IamDatabase } from "../apps/web/lib/supabase/iam.types"
-import type { Database as AppDatabase } from "../apps/web/lib/supabase/app.types"
+import type { IamDatabase } from "@webalive/database"
+import type { AppDatabase } from "@webalive/database"
 
 // OLD test domains that we no longer allow (too generic, users might use them)
-const LEGACY_TEST_DOMAINS = [
-  "@test.com",
-  "@example.com",
-  "@localhost",
-  "@test.local",
-]
+const LEGACY_TEST_DOMAINS = ["@test.com", "@example.com", "@localhost", "@test.local"]
 
 async function cleanupLegacyTestOrgs(dryRun: boolean = true) {
   const { url, key } = getSupabaseCredentials("service")
@@ -40,10 +35,11 @@ async function cleanupLegacyTestOrgs(dryRun: boolean = true) {
   const { data: testUsers } = await iam.from("users").select("user_id, email").eq("is_test_env", true)
 
   // Filter to only legacy test domains
-  const legacyUsers = testUsers?.filter(u => {
-    const email = u.email || ""
-    return LEGACY_TEST_DOMAINS.some(domain => email.endsWith(domain))
-  }) || []
+  const legacyUsers =
+    testUsers?.filter(u => {
+      const email = u.email || ""
+      return LEGACY_TEST_DOMAINS.some(domain => email.endsWith(domain))
+    }) || []
 
   console.log(`📊 Found ${legacyUsers.length} legacy test users (old domains)`)
 

@@ -12,6 +12,7 @@ import { setupFilesystem } from "./executors/filesystem.js"
 import { buildSite } from "./executors/build.js"
 import { startService } from "./executors/service.js"
 import { configureCaddy, teardown } from "./executors/caddy.js"
+import { DeploymentError } from "./errors.js"
 
 /**
  * Site deployment orchestrator
@@ -36,10 +37,10 @@ export class SiteOrchestrator {
 
     // Validate domain format to prevent path traversal
     if (!/^[a-z0-9.-]+$/i.test(domain)) {
-      throw new Error(`Invalid domain format: ${domain}`)
+      throw DeploymentError.invalidDomain(domain)
     }
     if (domain.includes("..") || domain.startsWith("/")) {
-      throw new Error(`Path traversal detected in domain: ${domain}`)
+      throw DeploymentError.pathTraversal(domain)
     }
 
     const serviceName = getServiceName(slug)
@@ -52,7 +53,7 @@ export class SiteOrchestrator {
       console.log("[Phase 1/7] Validating DNS...")
       const dnsResult = await validateDns({ domain, serverIp, wildcardDomain })
       if (!dnsResult.valid) {
-        throw new Error(`DNS validation failed: ${dnsResult.message}`)
+        throw DeploymentError.dnsValidationFailed(dnsResult.message || "DNS does not point to server")
       }
       console.log("✓ DNS validation passed\n")
 
@@ -131,15 +132,23 @@ export class SiteOrchestrator {
       const errorMessage = error instanceof Error ? error.message : String(error)
       console.error(`\n✗ Deployment failed: ${errorMessage}\n`)
 
-      // Determine which phase failed
+      // Determine which phase failed from typed error code
       let failedPhase = "unknown"
-      if (errorMessage.includes("DNS")) failedPhase = "dns"
-      else if (errorMessage.includes("port")) failedPhase = "port"
-      else if (errorMessage.includes("user")) failedPhase = "user"
-      else if (errorMessage.includes("filesystem")) failedPhase = "filesystem"
-      else if (errorMessage.includes("build")) failedPhase = "build"
-      else if (errorMessage.includes("service")) failedPhase = "service"
-      else if (errorMessage.includes("Caddy")) failedPhase = "caddy"
+      if (error instanceof DeploymentError) {
+        const codeToPhase: Record<string, string> = {
+          DNS_VALIDATION_FAILED: "dns",
+          INVALID_DOMAIN: "validation",
+          PATH_TRAVERSAL: "validation",
+          SITE_EXISTS: "validation",
+          PORT_ASSIGNMENT_FAILED: "port",
+          USER_CREATION_FAILED: "user",
+          FILESYSTEM_ERROR: "filesystem",
+          BUILD_FAILED: "build",
+          SERVICE_START_FAILED: "service",
+          CADDY_CONFIG_FAILED: "caddy",
+        }
+        failedPhase = codeToPhase[error.code] || "unknown"
+      }
 
       // Attempt rollback if enabled
       if (rollbackOnFailure && deployedPort) {
@@ -156,6 +165,11 @@ export class SiteOrchestrator {
             `✗ Rollback failed: ${rollbackError instanceof Error ? rollbackError.message : String(rollbackError)}\n`,
           )
         }
+      }
+
+      // Re-throw typed errors, wrap others
+      if (error instanceof DeploymentError) {
+        throw error
       }
 
       return {

@@ -4,10 +4,16 @@
  * These tests verify that BOTH layers of protection work:
  * - Layer 1: Browser request monitoring
  * - Layer 2: Server-side blocking
+ *
+ * NOTE: Some tests require a local test environment with PLAYWRIGHT_TEST=true
+ * and BRIDGE_ENV=local set on the server. These are skipped on staging.
  */
-import { expect, test } from "./setup"
+
 import { login } from "./helpers"
 import { handlers } from "./lib/handlers"
+import { expect, test } from "./setup"
+
+const isStaging = process.env.TEST_ENV === "staging"
 
 test.describe("Protection System Verification", () => {
   test("Layer 1: Catches unmocked calls at browser level", async ({ page, tenant }) => {
@@ -46,7 +52,9 @@ test.describe("Protection System Verification", () => {
     expect(apiCalls[0]).toContain("/api/claude/stream")
   })
 
+  // This test requires PLAYWRIGHT_TEST=true on the server (local test env only)
   test("Layer 2: Server blocks calls when PLAYWRIGHT_TEST=true", async ({ page, tenant }) => {
+    test.skip(isStaging, "Requires local test server with PLAYWRIGHT_TEST=true")
     await login(page, tenant)
     await page.goto("/chat")
 
@@ -77,7 +85,9 @@ test.describe("Protection System Verification", () => {
     expect(response.body.message).toContain("test mode")
   })
 
+  // This test uses hardcoded test credentials that only work with BRIDGE_ENV=local
   test("Allows non-Claude API calls (login, verify, etc)", async ({ page }) => {
+    test.skip(isStaging, "Requires local test server with BRIDGE_ENV=local credentials")
     // Login should work - it's NOT a protected endpoint
     await page.goto("/")
     await page.getByTestId("email-input").fill("test@bridge.local")

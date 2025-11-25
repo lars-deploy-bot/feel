@@ -19,6 +19,7 @@ const MAX_RECENT_PER_ORG = 3
 interface WorkspaceState {
   selectedOrgId: string | null
   recentWorkspaces: RecentWorkspace[]
+  _hasHydrated: boolean // Track if localStorage has been loaded
 }
 
 // Actions interface - grouped under stable object (Guide §14.3)
@@ -156,6 +157,7 @@ const useWorkspaceStoreBase = create<WorkspaceStoreWithCompat>()(
       return {
         selectedOrgId: null,
         recentWorkspaces: [],
+        _hasHydrated: false,
         actions,
         // Legacy direct exports for backwards compatibility
         ...actions,
@@ -167,10 +169,16 @@ const useWorkspaceStoreBase = create<WorkspaceStoreWithCompat>()(
       partialize: state => ({
         selectedOrgId: state.selectedOrgId,
         recentWorkspaces: state.recentWorkspaces,
+        // Note: _hasHydrated is NOT persisted (runtime-only state)
       }),
       migrate: (persistedState: unknown, _version: number) => {
         // Simple pass-through migration - no schema changes needed
         return persistedState as WorkspaceState
+      },
+      onRehydrateStorage: () => () => {
+        // Called when hydration completes (localStorage loaded)
+        // Use setState to trigger re-renders in subscribed components
+        useWorkspaceStoreBase.setState({ _hasHydrated: true })
       },
     },
   ),
@@ -179,6 +187,7 @@ const useWorkspaceStoreBase = create<WorkspaceStoreWithCompat>()(
 // Atomic selectors (Guide §14.1)
 export const useSelectedOrgId = () => useWorkspaceStoreBase(state => state.selectedOrgId)
 export const useRecentWorkspaces = () => useWorkspaceStoreBase(state => state.recentWorkspaces)
+export const useHasHydrated = () => useWorkspaceStoreBase(state => state._hasHydrated)
 
 // Derived selector: get recent workspaces for a specific org
 export const useRecentForOrg = (orgId: string) =>

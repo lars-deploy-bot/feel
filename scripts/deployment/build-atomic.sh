@@ -1,11 +1,11 @@
 #!/bin/bash
-# Atomic build script - prevents PM2 from serving half-built files
+# Atomic build script - prevents systemd from serving half-built files
 # Builds to .builds/{env}/dist, moves to timestamped directory, then atomically swaps symlink
 #
 # Usage: ./scripts/build-atomic.sh [environment]
 # Examples:
-#   ./scripts/build-atomic.sh prod     # Build to .builds/prod/dist.TIMESTAMP → .builds/prod/current
-#   ./scripts/build-atomic.sh staging  # Build to .builds/staging/dist.TIMESTAMP → .builds/staging/current
+#   ./scripts/build-atomic.sh production  # Build to .builds/production/dist.TIMESTAMP → .builds/production/current
+#   ./scripts/build-atomic.sh staging     # Build to .builds/staging/dist.TIMESTAMP → .builds/staging/current
 #
 # NOTE: Dev environment uses hot-reload (next dev) and does NOT use this script
 
@@ -69,10 +69,10 @@ if ! command -v node &> /dev/null; then
 fi
 log_success "Required commands verified (bun, node)"
 
-# Get environment parameter (default: prod)
-ENV="${1:-prod}"
-if [[ ! "$ENV" =~ ^(prod|staging)$ ]]; then
-    log_error "Invalid environment: $ENV. Must be 'prod' or 'staging'"
+# Get environment parameter (default: production)
+ENV="${1:-production}"
+if [[ ! "$ENV" =~ ^(production|staging)$ ]]; then
+    log_error "Invalid environment: $ENV. Must be 'production' or 'staging'"
     log_error "Dev environment uses hot-reload (next dev) and does not use this script"
     exit 1
 fi
@@ -139,7 +139,7 @@ log_info "Building workspace dependencies..."
 
 # Remove circular symlinks created by bun workspace linking (causes Turbopack build failures)
 log_info "Removing circular symlinks in packages..."
-rm -f packages/template/template packages/site-controller/site-controller packages/images/images packages/tools/tools packages/shared/shared 2>/dev/null || true
+rm -f templates/site-template/site-template packages/site-controller/site-controller packages/images/images packages/tools/tools packages/shared/shared 2>/dev/null || true
 log_success "Cleaned up circular symlinks"
 
 # Build images package
@@ -266,7 +266,7 @@ mkdir -p "$STANDALONE_PACKAGES" || {
     exit 1
 }
 
-REQUIRED_PACKAGES=("tools" "images" "template" "site-controller")
+REQUIRED_PACKAGES=("tools" "images" "site-controller")
 COPIED_PACKAGES=0
 
 for pkg in "${REQUIRED_PACKAGES[@]}"; do
@@ -299,6 +299,32 @@ for pkg in "${REQUIRED_PACKAGES[@]}"; do
     log_success "Copied packages/$pkg to standalone (symlinks removed)"
 done
 
+# Copy template from new location (templates/site-template -> packages/template)
+if [ ! -d "templates/site-template" ]; then
+    log_error "Required template not found: templates/site-template"
+    log_error "Template must exist before building"
+    exit 1
+fi
+
+if [ -d "$STANDALONE_PACKAGES/template" ]; then
+    rm -rf "$STANDALONE_PACKAGES/template"
+fi
+
+if ! cp -r "templates/site-template" "$STANDALONE_PACKAGES/template"; then
+    log_error "Failed to copy templates/site-template to standalone"
+    exit 1
+fi
+
+find "$STANDALONE_PACKAGES/template" -type l -delete 2>/dev/null
+
+if [ ! -f "$STANDALONE_PACKAGES/template/package.json" ]; then
+    log_error "Template is missing package.json"
+    exit 1
+fi
+
+COPIED_PACKAGES=$((COPIED_PACKAGES + 1))
+log_success "Copied templates/site-template to standalone/packages/template (symlinks removed)"
+
 log_success "Verified and copied all $COPIED_PACKAGES required packages"
 
 # Create node_modules symlinks for workspace packages (required for Bun module resolution)
@@ -311,6 +337,7 @@ if ! mkdir -p "$STANDALONE_NODE_MODULES/@alive-brug"; then
 fi
 
 CREATED_LINKS=0
+# Link packages from REQUIRED_PACKAGES array
 for pkg in "${REQUIRED_PACKAGES[@]}"; do
     if [ -d "$STANDALONE_PACKAGES/$pkg" ]; then
         if ! ln -sf "../../../../packages/$pkg" "$STANDALONE_NODE_MODULES/@alive-brug/$pkg"; then
@@ -325,6 +352,19 @@ for pkg in "${REQUIRED_PACKAGES[@]}"; do
         exit 1
     fi
 done
+
+# Link template package (copied from templates/site-template)
+if [ -d "$STANDALONE_PACKAGES/template" ]; then
+    if ! ln -sf "../../../../packages/template" "$STANDALONE_NODE_MODULES/@alive-brug/template"; then
+        log_error "Failed to create symlink for package: template"
+        exit 1
+    fi
+    CREATED_LINKS=$((CREATED_LINKS + 1))
+    log_success "Linked @alive-brug/template -> ../../../../packages/template"
+else
+    log_error "Template package directory not found: $STANDALONE_PACKAGES/template"
+    exit 1
+fi
 
 log_success "Created $CREATED_LINKS package symlinks"
 
@@ -450,4 +490,4 @@ done
 cd "$PROJECT_ROOT"
 
 echo ""
-log_success "Atomic build complete! PM2 can now safely serve .builds/${ENV}/current"
+log_success "Atomic build complete! Systemd can now safely serve .builds/${ENV}/current"

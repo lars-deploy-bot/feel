@@ -12,19 +12,25 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest"
 import type { DeploySubdomainResponse } from "@/features/deployment/types/deploy-subdomain"
 import type { TestUser } from "@/lib/test-helpers/auth-test-helper"
 import { cleanupTestUser, createTestUser } from "@/lib/test-helpers/auth-test-helper"
+import { assertSupabaseServiceEnv, assertSystemTestEnv } from "@/lib/test-helpers/integration-env"
 import { authenticatedFetch, callRouteHandler, loginAndGetSession } from "@/lib/test-helpers/test-auth-helpers"
 import { API_ENDPOINTS, TEST_CREDENTIALS } from "@/lib/test-helpers/test-constants"
 
+assertSystemTestEnv()
+assertSupabaseServiceEnv()
+
 describe("Deployment API Security", () => {
-  let userA: TestUser
-  let userB: TestUser
+  let userA!: TestUser
+  let userB!: TestUser
   let sessionA: string = ""
   let _sessionB: string = ""
+  const createdUsers: TestUser[] = []
 
   beforeAll(async () => {
     // Create TWO users to test cross-user security
     userA = await createTestUser(undefined, TEST_CREDENTIALS.CREDITS, TEST_CREDENTIALS.PASSWORD)
     userB = await createTestUser(undefined, TEST_CREDENTIALS.CREDITS, TEST_CREDENTIALS.PASSWORD)
+    createdUsers.push(userA, userB)
 
     // Get session cookies for both
     sessionA = await loginAndGetSession(userA.email)
@@ -32,8 +38,9 @@ describe("Deployment API Security", () => {
   })
 
   afterAll(async () => {
-    await cleanupTestUser(userA.userId)
-    await cleanupTestUser(userB.userId)
+    for (const user of createdUsers) {
+      await cleanupTestUser(user.userId)
+    }
   })
 
   describe("Cross-User Security Boundary", () => {

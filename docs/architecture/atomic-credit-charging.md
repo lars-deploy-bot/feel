@@ -369,17 +369,19 @@ cd apps/web && bun test lib/credits/__tests__/atomic-deduction.integration.test.
 **File**: `scripts/test-atomic-credits.ts`
 
 Tests complete system including:
-- Domain lookup
-- Org ID resolution
+- Dynamic test user/org creation (using test helper infrastructure)
 - SQL function invocation
-- Balance restoration
+- Concurrent deduction verification
+- Automatic cleanup after tests
 
 ```bash
 cd apps/web && bun ../../scripts/test-atomic-credits.ts
-# ✓ Tests with real org (fabian.alive.best)
+# ✓ Creates test user + org automatically
 # ✓ Verifies concurrent race condition handling
-# ✓ Restores original balance after test
+# ✓ Cleans up test data after completion
 ```
+
+Uses `createTestUser()` from test helpers - no manual org ID needed.
 
 Use this before deploying to production.
 

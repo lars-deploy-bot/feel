@@ -3,12 +3,12 @@
 # Test server for GENUINE API integration tests
 # Does NOT set PLAYWRIGHT_TEST=true, allowing real API calls
 
-# Load .env file if it exists
-if [ -f .env ]; then
+# Load .env.production file if it exists (contains all secrets)
+if [ -f .env.production ]; then
   set -a
-  source .env
+  source .env.production
   set +a
-  echo "[Genuine Test Server] Loaded environment from .env"
+  echo "[Genuine Test Server] Loaded environment from .env.production"
 fi
 
 export BRIDGE_ENV=local

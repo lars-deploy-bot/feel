@@ -10,7 +10,7 @@ import { hash } from "bcrypt"
 import jwt from "jsonwebtoken"
 import { getUserDefaultOrgId } from "@/lib/deployment/org-resolver"
 import { getSupabaseCredentials } from "@/lib/env/server"
-import type { Database as IamDatabase } from "@/lib/supabase/iam.types"
+import type { IamDatabase } from "@webalive/database"
 import { generateTestEmail, validateTestEmail } from "./test-email-domains"
 
 export interface TestUser {

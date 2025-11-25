@@ -1,4 +1,4 @@
-.PHONY: help staging dev logs-prod logs-staging logs-dev status rollback wash wash-skip shell build\:shell test\:shell static-check
+.PHONY: help staging dev logs-production logs-staging logs-dev status rollback wash wash-skip shell build\:shell test\:shell static-check
 
 # Load environment variables from .env
 ifneq (,$(wildcard .env))
@@ -27,9 +27,9 @@ help:
 	@echo "  make static-check  Run type-check, lint, format, and unit tests (used by pre-push hook)"
 	@echo ""
 	@echo "$(GREEN)Logs:$(NC)"
-	@echo "  make logs-prod     View production logs (systemd)"
+	@echo "  make logs-production     View production logs (systemd)"
 	@echo "  make logs-staging  View staging logs (systemd)"
-	@echo "  make logs-dev      View dev logs (PM2)"
+	@echo "  make logs-dev      View dev logs (systemd)"
 	@echo ""
 	@echo "$(GREEN)Troubleshooting:$(NC)"
 	@echo "  make status        Show status of all environments"
@@ -44,8 +44,8 @@ staging:
 dev:
 	@./scripts/deployment/deploy-dev.sh
 
-logs-prod:
-	@./scripts/deployment/logs-prod.sh
+logs-production:
+	@./scripts/deployment/logs-production.sh
 
 logs-staging:
 	@./scripts/deployment/logs-staging.sh

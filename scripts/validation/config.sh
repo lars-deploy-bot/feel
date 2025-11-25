@@ -12,6 +12,7 @@ declare -a CHECKS=(
     "knip|Dead code detection (Knip)|check-knip.sh|false"
     "lint|Linting (Biome)|check-lint.sh|true"
     "types|Type checking (TypeScript)|check-types.sh|true"
+    "patterns|Error pattern validation|check-error-patterns.sh|true"
     "dependencies|Dependency architecture (depcruise)|check-dependencies.sh|true"
 )
 

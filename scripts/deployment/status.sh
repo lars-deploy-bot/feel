@@ -12,7 +12,7 @@ STAGING_PORT=$(jq -r '.environments.staging.port' "$ENV_CONFIG")
 DEV_PORT=$(jq -r '.environments.dev.port' "$ENV_CONFIG")
 PROD_SERVICE=$(jq -r '.environments.production.systemdService' "$ENV_CONFIG")
 STAGING_SERVICE=$(jq -r '.environments.staging.systemdService' "$ENV_CONFIG")
-DEV_PROCESS_NAME=$(jq -r '.environments.dev.processName' "$ENV_CONFIG")
+DEV_SERVICE=$(jq -r '.environments.dev.systemdService' "$ENV_CONFIG")
 
 echo "📊 Claude Bridge Environment Status"
 echo "=================================="
@@ -26,12 +26,12 @@ echo "Staging ($STAGING_PORT) - $STAGING_SERVICE:"
 systemctl status "$STAGING_SERVICE" --no-pager -l | head -3 || echo "  ❌ Not running"
 echo ""
 
-echo "Dev ($DEV_PORT) - $DEV_PROCESS_NAME:"
-pm2 describe "$DEV_PROCESS_NAME" 2>/dev/null || echo "  ❌ Not running"
+echo "Dev ($DEV_PORT) - $DEV_SERVICE:"
+systemctl status "$DEV_SERVICE" --no-pager -l | head -3 || echo "  ❌ Not running"
 echo ""
 
 echo "Active production build:"
-readlink /root/webalive/claude-bridge/.builds/prod/current 2>/dev/null || echo "  ❌ No active build"
+readlink /root/webalive/claude-bridge/.builds/production/current 2>/dev/null || echo "  ❌ No active build"
 echo ""
 
 echo "Active staging build:"

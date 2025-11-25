@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * Remove Domain from Supabase
- * Called by delete-site-systemd.sh to remove domains from Supabase
+ * Called by delete-site.sh to remove domains from Supabase
  *
  * Usage: bun scripts/remove-domain-from-supabase.ts <domain>
  */

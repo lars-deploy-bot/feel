@@ -1,0 +1,96 @@
+/**
+ * Server-side environment validation
+ *
+ * This file can safely use Node.js built-ins (fs, path, etc.)
+ * Only import this in server components, API routes, or server actions.
+ *
+ * @example
+ * ```typescript
+ * // In API route or server component
+ * import { env, loadEnvFile } from "@webalive/env/server"
+ *
+ * // Optional: explicitly load .env file (call once at app entry)
+ * loadEnvFile()
+ *
+ * // Use validated env vars
+ * const apiKey = env.ANTH_API_SECRET
+ * ```
+ */
+
+import { existsSync } from "node:fs"
+import { join } from "node:path"
+import { config as loadDotenv } from "dotenv"
+import { createEnv } from "@t3-oss/env-nextjs"
+import { serverSchema, clientSchema, runtimeEnv } from "./schema"
+
+/**
+ * Explicitly load environment file
+ *
+ * Call this at your app's entry point if you need dotenv loading.
+ * This is NOT called automatically on import (no side effects).
+ *
+ * @param nodeEnv - Environment name (defaults to NODE_ENV or "development")
+ * @returns true if file was loaded, false if not found
+ */
+export function loadEnvFile(nodeEnv?: string): boolean {
+  const envName = nodeEnv || process.env.NODE_ENV || "development"
+  const envFile = join(process.cwd(), `.env.${envName}`)
+
+  if (existsSync(envFile)) {
+    loadDotenv({ path: envFile, override: true })
+    return true
+  }
+
+  return false
+}
+
+/**
+ * Server-side validated environment variables
+ *
+ * Includes both server and client schemas for SSR compatibility.
+ * Validation runs on first access.
+ */
+export const env = createEnv({
+  server: serverSchema,
+  client: clientSchema,
+  runtimeEnv,
+
+  /**
+   * Skip validation in certain environments
+   */
+  skipValidation:
+    !!process.env.SKIP_ENV_VALIDATION ||
+    process.env.npm_lifecycle_event === "lint" ||
+    process.env.npm_lifecycle_event === "format",
+
+  /**
+   * Custom error handling
+   */
+  onValidationError: error => {
+    console.error("❌ Invalid environment variables:")
+    console.error(error.flatten().fieldErrors)
+    throw new Error("Invalid environment variables")
+  },
+
+  emptyStringAsUndefined: true,
+})
+
+/**
+ * Get Anthropic API key with fallback logic
+ *
+ * Accepts either ANTHROPIC_API_KEY (Claude Code) or ANTH_API_SECRET (.env)
+ * In local dev mode (BRIDGE_ENV=local), allows a mock key for testing.
+ */
+export function getAnthropicApiKey(): string {
+  const apiKey = env.ANTHROPIC_API_KEY || env.ANTH_API_SECRET
+  const isLocalDev = env.BRIDGE_ENV === "local"
+
+  if (!apiKey && !isLocalDev) {
+    throw new Error("ANTHROPIC_API_KEY or ANTH_API_SECRET is required (or set BRIDGE_ENV=local for development)")
+  }
+
+  return apiKey || "sk-ant-mock-key-for-local-development"
+}
+
+// Re-export schema types for convenience
+export type { serverSchema, clientSchema } from "./schema"

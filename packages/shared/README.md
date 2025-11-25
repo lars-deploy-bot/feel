@@ -35,14 +35,33 @@ const maxAge = SESSION_MAX_AGE // 2592000 (30 days in seconds)
 ## Development
 
 ```bash
-# Build
+# Build (generates DB types first, then compiles)
 bun run build
 
-# Type check
+# Type check (generates DB types first)
 bun run type-check
 
-# Watch mode
+# Watch mode (requires gen:types to be run first)
 bun run dev
+
+# Regenerate database types manually (after schema changes)
+bun run gen:types
+```
+
+### Database Types
+
+This package exports generated database types from Supabase schemas. These types are:
+- **Generated** by `bun run gen:types` from the live Supabase database
+- **Gitignored** (`src/database/*.generated.ts`) - not committed to the repo
+- **Auto-generated** before `build` and `type-check` commands
+
+**Requirements for type generation:**
+- `SUPABASE_ACCESS_TOKEN` environment variable (get via `supabase login`)
+- Or `apps/web/.env` file with Supabase credentials
+
+**After database schema changes:**
+```bash
+bun run gen:types
 ```
 
 ## Adding New Constants

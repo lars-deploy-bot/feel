@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs"
 import { DEFAULTS, DOMAINS, PATHS } from "@webalive/shared"
+import { DeploymentError } from "@webalive/site-controller"
 import { type NextRequest, NextResponse } from "next/server"
 import { createErrorResponse, requireSessionUser } from "@/features/auth/lib/auth"
 import { normalizeAndValidateDomain } from "@/features/manager/lib/domain-utils"
@@ -137,62 +138,33 @@ export async function POST(request: NextRequest) {
     const duration = Date.now() - startTime
     console.error(`💥 [DEPLOY API] Error after ${duration}ms:`, error)
 
-    // Parse different error types
     let errorMessage = "Deployment failed"
     let statusCode = 500
 
-    const errorCode = error && typeof error === "object" && "code" in error ? error.code : null
-
-    if (errorCode === "ETIMEDOUT") {
+    // Handle typed DeploymentError from site-controller (no string matching!)
+    if (error instanceof DeploymentError) {
+      statusCode = error.statusCode
+      switch (error.code) {
+        case "DNS_VALIDATION_FAILED":
+          errorMessage = `${error.message}. Please ensure your domain points to ${DEFAULTS.SERVER_IP}. See DNS setup guide: ${DOMAINS.BRIDGE_PROD}/docs/dns-setup`
+          break
+        case "INVALID_DOMAIN":
+        case "PATH_TRAVERSAL":
+        case "SITE_EXISTS":
+          errorMessage = error.message
+          break
+        default:
+          errorMessage = `Deployment failed: ${error.message}`
+      }
+    } else if (error instanceof DomainRegistrationError) {
+      errorMessage = error.message
+      // Map common error codes to HTTP status codes
+      statusCode = error.errorCode === "DOMAIN_ALREADY_EXISTS" ? 409 : 400
+    } else if (error && typeof error === "object" && "code" in error && error.code === "ETIMEDOUT") {
       errorMessage = "Deployment timed out (5 minutes)"
       statusCode = 408
-    } else if (errorCode === 2) {
-      errorMessage = "Invalid arguments provided to deployment script"
-      statusCode = 400
-    } else if (errorCode === 3) {
-      errorMessage = "Template directory not found - server configuration issue"
-      statusCode = 500
-    } else if (errorCode === 4) {
-      errorMessage = "Config generator not found - this site template is missing required scripts"
-      statusCode = 500
-    } else if (errorCode === 5) {
-      errorMessage = "Ecosystem config generation failed - deployment incomplete"
-      statusCode = 500
-    } else if (errorCode === 6) {
-      errorMessage = "Invalid ecosystem config - would cause PM2 crashes (missing bun script)"
-      statusCode = 500
-    } else if (errorCode === 7) {
-      errorMessage = "Dangerous ecosystem config - contains bash references that would crash the system"
-      statusCode = 500
-    } else if (errorCode === 8) {
-      errorMessage = "PM2 process failed to start"
-      statusCode = 500
-    } else if (errorCode === 9) {
-      errorMessage = "PM2 process not online after startup"
-      statusCode = 500
-    } else if (errorCode === 10) {
-      errorMessage = "PM2 process using wrong interpreter (bash instead of bun) - deployment blocked for safety"
-      statusCode = 500
-    } else if (errorCode === 11) {
-      errorMessage = "Site already exists. Remove it first or use update commands."
-      statusCode = 409 // Conflict
-    } else if (errorCode === 12) {
-      const errorStderr = error && typeof error === "object" && "stderr" in error ? String(error.stderr) : ""
-      // Check if the error message contains Cloudflare proxy detection
-      if (errorStderr.includes("CLOUDFLARE PROXY DETECTED")) {
-        errorMessage = `🚨 Cloudflare proxy detected! You must disable the orange cloud (proxy) in your Cloudflare DNS settings. Make the cloud icon GRAY (not orange) next to your A record, then try again. See DNS setup guide: ${DOMAINS.BRIDGE_PROD}/docs/dns-setup`
-      } else if (errorStderr.includes("No A record found")) {
-        errorMessage = `DNS Error: No A record found for ${domain}. You must create an A record with these settings: Type=A, Name/Host=@ (or ${domain}), Value/Points to=${DEFAULTS.SERVER_IP}, TTL=300. ALSO: Remove any AAAA records (IPv6) for ${domain}. See DNS setup guide: ${DOMAINS.BRIDGE_PROD}/docs/dns-setup`
-      } else {
-        errorMessage = `DNS Error: ${domain} does not point to our server (${DEFAULTS.SERVER_IP}). You need to update your A record with these settings: Type=A, Name/Host=@ (or ${domain}), Value/Points to=${DEFAULTS.SERVER_IP}, TTL=300. ALSO: Remove any AAAA records (IPv6) for ${domain}. See DNS setup guide: ${DOMAINS.BRIDGE_PROD}/docs/dns-setup`
-      }
-      statusCode = 400
-    } else if (error && typeof error === "object" && "stderr" in error) {
-      console.error("[Deploy] Script error:", error.stderr)
-      errorMessage = "Deployment script failed. Please check configuration and try again."
     } else if (error instanceof Error) {
-      console.error("[Deploy] Unexpected error:", error)
-      errorMessage = "Deployment failed. Please try again."
+      errorMessage = `Deployment failed: ${error.message}`
     }
 
     return NextResponse.json(

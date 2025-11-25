@@ -1,10 +1,36 @@
 {
+  "$schema": "https://turbo.build/schema.json",
+  "globalEnv": ["CI", "NODE_ENV", "VERCEL", "VERCEL_ENV", "VERCEL_URL"],
   "tasks": {
     "dev": {
-      "cache": false
+      "cache": false,
+      "env": ["ANTHROPIC_API_KEY", "ANTH_API_SECRET", "BRIDGE_ENV", "LOCAL_TEMPLATE_PATH", "PLAYWRIGHT_TEST"]
     },
     "build": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "env": [
+        "ANTHROPIC_API_KEY",
+        "ANTH_API_SECRET",
+        "SUPABASE_URL",
+        "SUPABASE_ANON_KEY",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "NEXT_PUBLIC_SUPABASE_URL",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+        "CLAUDE_MODEL",
+        "CLAUDE_MAX_TURNS",
+        "WORKSPACE_BASE",
+        "BRIDGE_PASSCODE",
+        "BRIDGE_ENV",
+        "GROQ_API_SECRET",
+        "GITHUB_WEBHOOK_SECRET",
+        "DEPLOY_BRANCH",
+        "LOCAL_TEMPLATE_PATH",
+        "JWT_SECRET",
+        "JWT_ES256_PRIVATE_KEY",
+        "INTERNAL_TOOLS_SECRET",
+        "IMAGES_SIGNATURE_SECRET",
+        "IMAGES_STORAGE_PATH"
+      ]
     },
     "start": {},
     "type-check": {

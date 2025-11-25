@@ -4,7 +4,7 @@ import { requireManagerAuth } from "@/features/manager/lib/api-helpers"
 import { createCorsErrorResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { ErrorCodes } from "@/lib/error-codes"
-import type { Database as AppDatabase } from "@/lib/supabase/app.types"
+import type { AppDatabase } from "@webalive/database"
 
 /**
  * Create App schema client

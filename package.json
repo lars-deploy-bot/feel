@@ -8,13 +8,17 @@
   ],
   "scripts": {
     "build": "turbo run build",
-    "dev": "HOSTED_ENV=computer ./scripts/deployment/deploy-dev.sh",
+    "dev": "cross-env HOSTED_ENV=computer ./scripts/deployment/deploy-dev.sh",
     "dev:turbo": "turbo run dev",
     "start": "turbo run start",
     "web": "cd apps/web && bun run dev",
     "format": "turbo run format",
     "lint": "turbo run lint",
     "type-check": "turbo run type-check",
+    "check:quick": "turbo run type-check lint",
+    "check:pre-push": "turbo run type-check lint format && bun run unit",
+    "check:comprehensive": "./scripts/validation/run-static-checks.sh",
+    "check:all": "bun run check:quick && bun run test && bun run check:comprehensive",
     "static-check": "turbo run type-check lint format && bun run unit",
     "knip": "knip --no-progress",
     "depcruise": "depcruise apps/web --config .dependency-cruiser.json",
@@ -26,7 +30,7 @@
     "prepare": "husky",
     "prepare:repo": "bun run setup:template && bun run build:libs",
     "setup:template": "cd templates/site-template/user && bun install",
-    "build:libs": "turbo run build --filter='!apps/*'",
+    "build:libs": "cross-env SKIP_ENV_VALIDATION=1 turbo run build --filter='!apps/*'",
     "setup": "./scripts/setup/copy-template.sh",
     "pull": "GIT_SSH_COMMAND='ssh -i ~/.ssh/alive_brug_deploy' git pull",
     "push": "GIT_SSH_COMMAND='ssh -i ~/.ssh/alive_brug_deploy' git push",
@@ -45,8 +49,8 @@
     "redis:cli": "bun --filter @alive-brug/redis cli",
     "redis:health": "bun --filter @alive-brug/redis health",
     "redis:test": "bun --filter @alive-brug/redis test",
-    "see": "pm2 logs claude-bridge --lines 1000",
-    "see:dev": "pm2 logs claude-bridge-dev --lines 1000"
+    "see": "journalctl -u claude-bridge-production -n 1000 -f",
+    "see:dev": "journalctl -u claude-bridge-dev -n 1000 -f"
   },
   "lint-staged": {
     "**/*.{ts,tsx,js,jsx,json,md}": [
@@ -57,6 +61,7 @@
     "@biomejs/biome": "^2.3.2",
     "@playwright/test": "^1.56.1",
     "@types/jsonwebtoken": "^9.0.10",
+    "cross-env": "^10.1.0",
     "dependency-cruiser": "^17.3.1",
     "dotenv": "^17.2.3",
     "husky": "^9.1.7",

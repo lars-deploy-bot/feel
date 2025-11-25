@@ -79,8 +79,15 @@ async function readStdinJson() {
     const request = await readStdinJson()
     console.error(`[runner] Received request: ${request.message?.substring(0, 50)}...`)
 
-    // Get workspace-specific allowed tools
-    const workspaceAllowedTools = getAllowedTools(targetCwd || process.cwd())
+    // Get user-specific access options
+    const stripeAccessToken = request.stripeAccessToken || null
+    const hasStripeConnection = !!stripeAccessToken
+    if (hasStripeConnection) {
+      console.error("[runner] User has Stripe OAuth connection")
+    }
+
+    // Get workspace and user-specific allowed tools
+    const workspaceAllowedTools = getAllowedTools(targetCwd || process.cwd(), { hasStripeConnection })
     console.error(`[runner] Allowed tools count: ${workspaceAllowedTools.length}`)
 
     /**
@@ -117,8 +124,8 @@ async function readStdinJson() {
     // MCP tools use process.cwd() which is set by process.chdir() above
     // No workspace injection needed - tools default to process.cwd()
 
-    // Get workspace-specific MCP servers (e.g., Stripe only for specific domains)
-    const workspaceMcpServers = getMcpServers(targetCwd || process.cwd())
+    // Get MCP servers with user-specific access (e.g., Stripe for connected users)
+    const workspaceMcpServers = getMcpServers(targetCwd || process.cwd(), { stripeAccessToken })
     console.error("[runner] MCP servers enabled:", Object.keys(workspaceMcpServers).join(", "))
 
     // Log available secrets for debugging (without revealing values)

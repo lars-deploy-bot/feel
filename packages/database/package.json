@@ -1,0 +1,25 @@
+{
+  "name": "@webalive/database",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "type-check": "tsc --noEmit",
+    "gen:types": "bun run scripts/generate-types.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.46.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.3",
+    "typescript": "^5.7.2"
+  }
+}

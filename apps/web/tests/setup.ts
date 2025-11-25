@@ -3,11 +3,21 @@ import { vi } from "vitest"
 
 process.env.TZ = "UTC"
 process.env.BRIDGE_ENV = "local"
+process.env.SKIP_ENV_VALIDATION = "1" // Skip @t3-oss/env validation in tests
 
-// Mock Supabase credentials for tests
+// Mock Supabase credentials for tests (server-side)
 process.env.SUPABASE_URL = process.env.SUPABASE_URL || "https://test.supabase.co"
-process.env.SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || "test-anon-key"
-process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "test-service-role-key"
+process.env.SUPABASE_ANON_KEY =
+  process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ0ZXN0Iiwicm9sZSI6ImFub24ifQ.test"
+process.env.SUPABASE_SERVICE_ROLE_KEY =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ0ZXN0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSJ9.test"
+
+// Mock Supabase credentials for tests (client-side - NEXT_PUBLIC_)
+process.env.NEXT_PUBLIC_SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://test.supabase.co"
+process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ0ZXN0Iiwicm9sZSI6ImFub24ifQ.test"
 
 if (process.env.CI) {
   process.env.FORCE_COLOR = "0"

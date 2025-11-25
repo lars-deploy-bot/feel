@@ -1,7 +1,6 @@
 import { headers } from "next/headers"
 import { NextResponse } from "next/server"
-import { createErrorResponse } from "@/features/auth/lib/auth"
-import { validateRequest } from "@/features/auth/lib/auth"
+import { createErrorResponse, validateRequest } from "@/features/auth/lib/auth"
 import { getWorkspace } from "@/features/chat/lib/workspaceRetriever"
 import { ErrorCodes } from "@/lib/error-codes"
 import { generateRequestId } from "@/lib/utils"

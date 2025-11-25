@@ -104,7 +104,7 @@ try {
 
 ### 5. Model Selection & Credits
 
-**CRITICAL**: Credit users restricted to Haiku for cost management.
+**CRITICAL**: Credit users restricted to DEFAULT_MODEL for cost management.
 
 See [docs/architecture/CREDITS_AND_TOKENS.md](./docs/architecture/CREDITS_AND_TOKENS.md) for model enforcement patterns.
 
@@ -288,11 +288,11 @@ if (result.success) {
 
 #### Updating Caddy Configuration
 
-**Location**: `/root/webalive/claude-bridge/Caddyfile`
+**Location**: `/root/webalive/claude-bridge/ops/caddy/Caddyfile`
 
 ```bash
 # 1. Edit Caddyfile (add domain block)
-nano /root/webalive/claude-bridge/Caddyfile
+nano /root/webalive/claude-bridge/ops/caddy/Caddyfile
 
 # 2. Reload (zero-downtime)
 systemctl reload caddy
@@ -301,7 +301,7 @@ systemctl reload caddy
 systemctl status caddy
 ```
 
-**Auto-sync architecture**: Main Caddyfile imports the webalive Caddyfile, no manual copying needed.
+**Auto-sync architecture**: Main `/etc/caddy/Caddyfile` imports the webalive Caddyfile via `import /root/webalive/claude-bridge/ops/caddy/Caddyfile`.
 
 ## Testing Guidelines
 

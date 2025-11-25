@@ -4,7 +4,7 @@
 #
 # Usage: ./scripts/build-and-serve.sh [environment]
 # Examples:
-#   ./scripts/build-and-serve.sh prod        # Deploy to port 9000 (systemd)
+#   ./scripts/build-and-serve.sh production  # Deploy to port 9000 (systemd)
 #   ./scripts/build-and-serve.sh staging     # Deploy to port 8998 (systemd)
 #
 # Dev environment uses hot-reload (next dev) - use ./scripts/deploy-dev.sh instead
@@ -52,23 +52,16 @@ if [ ! -f "$ENV_CONFIG" ]; then
     exit 1
 fi
 
-# Get environment parameter (default: prod)
-ENV="${1:-prod}"
-if [[ ! "$ENV" =~ ^(prod|staging)$ ]]; then
-    echo -e "${RED}[ERROR]${NC} Invalid environment: $ENV. Must be 'prod' or 'staging'"
+# Get environment parameter (default: production)
+ENV="${1:-production}"
+if [[ ! "$ENV" =~ ^(production|staging)$ ]]; then
+    echo -e "${RED}[ERROR]${NC} Invalid environment: $ENV. Must be 'production' or 'staging'"
     echo -e "${RED}[ERROR]${NC} Dev environment uses hot-reload (next dev) - use ./scripts/deploy-dev.sh instead"
     exit 1
 fi
 
-# Map environment names to config keys
-case "$ENV" in
-    prod)
-        CONFIG_KEY="production"
-        ;;
-    staging)
-        CONFIG_KEY="$ENV"
-        ;;
-esac
+# CONFIG_KEY matches ENV directly (no mapping needed)
+CONFIG_KEY="$ENV"
 
 # Extract port and app name from environments.json
 PORT=$(jq -r ".environments.${CONFIG_KEY}.port" "$ENV_CONFIG")
@@ -102,8 +95,6 @@ if [ "$ENV" = "staging" ]; then
 else
     MAX_WAIT=30  # Production expects fast startup
 fi
-
-STANDALONE_SERVER_PATH=".builds/${ENV}/current/standalone/apps/web/server.js"
 
 cd "$PROJECT_ROOT"
 
@@ -192,6 +183,77 @@ rollback_build() {
     return 0
 }
 
+# Perform full rollback with service restart and health check
+# Usage: perform_rollback "reason for rollback"
+perform_rollback() {
+    local reason="$1"
+
+    if [ -z "$PREVIOUS_BUILD" ]; then
+        log_error "No previous build to rollback to"
+        log_error "This was the first deployment - check logs: journalctl -u claude-bridge-${ENV}.service"
+        return 1
+    fi
+
+    log_warn "Rolling back due to: $reason"
+
+    if rollback_build "$DIST_SYMLINK" "$PREVIOUS_BUILD" "$ENV"; then
+        local service="claude-bridge-${ENV}.service"
+        if systemctl restart "$service" >/dev/null 2>&1; then
+            sleep 3
+            if curl -sf "http://localhost:$PORT/" >/dev/null 2>&1; then
+                log_success "Rollback successful - previous build is serving"
+                return 0
+            else
+                log_error "Rollback started but not responding - check logs: journalctl -u $service"
+                return 1
+            fi
+        else
+            log_error "Failed to restart after rollback - manual intervention required"
+            return 1
+        fi
+    else
+        log_error "Rollback failed - manual intervention required"
+        log_error "Check logs with: journalctl -u claude-bridge-${ENV}.service"
+        return 1
+    fi
+}
+
+# Clean up old builds, keeping the N most recent
+# Usage: cleanup_old_builds <env_dir> <keep_count>
+cleanup_old_builds() {
+    local env_dir="$1"
+    local keep_count="${2:-5}"  # Default: keep 5 builds
+    local builds_path="$PROJECT_ROOT/.builds/${env_dir}"
+
+    if [ ! -d "$builds_path" ]; then
+        return 0
+    fi
+
+    # List directories (excluding 'current' symlink), sort by name (timestamp), get oldest ones
+    local build_count=$(ls -1d "$builds_path"/dist.* 2>/dev/null | wc -l)
+
+    if [ "$build_count" -le "$keep_count" ]; then
+        log_step "Build cleanup: $build_count builds present (keeping $keep_count)"
+        return 0
+    fi
+
+    local to_delete=$((build_count - keep_count))
+    log_step "Cleaning up $to_delete old build(s)..."
+
+    # Get the oldest builds to delete (sorted ascending by name = timestamp)
+    ls -1d "$builds_path"/dist.* 2>/dev/null | sort | head -n "$to_delete" | while read dir; do
+        local build_name=$(basename "$dir")
+        # Safety: never delete the current symlink target
+        local current_target=$(readlink "$builds_path/current" 2>/dev/null || echo "")
+        if [ "$build_name" = "$current_target" ]; then
+            log_warn "Skipping current build: $build_name"
+            continue
+        fi
+        rm -rf "$dir"
+        log_step "Deleted old build: $build_name"
+    done
+}
+
 # Cleanup function
 cleanup() {
     rm -f "$LOCK_FILE"
@@ -222,8 +284,8 @@ echo "════════════════════════�
 start_phase "Validating environment"
 
 log_step "Checking .env files..."
-if [ ! -f "apps/web/.env" ] && [ ! -f "apps/web/.env.local" ]; then
-    log_warn "No .env file found in apps/web/"
+if [ ! -f "apps/web/.env" ] && [ ! -f "apps/web/.env.local" ] && [ ! -f "apps/web/.env.$ENV" ]; then
+    log_warn "No .env file found in apps/web/ (checked .env, .env.local, .env.$ENV)"
 fi
 
 log_step "Checking required commands (bun, node)..."
@@ -253,13 +315,22 @@ end_phase "success" "Environment validated"
 start_phase "Installing dependencies"
 log_step "Running bun install..."
 
-# Show output but filter excessive noise
-if bun install 2>&1 | grep -E "(error|warn|^$|packages installed)" || [ ${PIPESTATUS[0]} -ne 0 ]; then
-    if [ ${PIPESTATUS[0]} -ne 0 ]; then
-        end_phase "error" "Dependency installation failed"
-        exit 1
-    fi
+# Capture bun install output and exit code properly
+# Note: PIPESTATUS must be captured immediately after the pipe command
+set +e
+bun install 2>&1 | tee /tmp/bun-install-$$.log | grep -E "(error|warn|packages installed)" || true
+BUN_EXIT_CODE=${PIPESTATUS[0]}
+set -e
+
+if [ $BUN_EXIT_CODE -ne 0 ]; then
+    end_phase "error" "Dependency installation failed"
+    echo ""
+    log_error "bun install output:"
+    cat /tmp/bun-install-$$.log | tail -30
+    rm -f /tmp/bun-install-$$.log
+    exit 1
 fi
+rm -f /tmp/bun-install-$$.log
 
 end_phase "success" "Dependencies installed"
 
@@ -330,32 +401,6 @@ if [ $TEST_EXIT_CODE -ne 0 ]; then
 fi
 
 end_phase "success" "All unit tests passed"
-
-# Check if E2E tests should be skipped
-if [ "${SKIP_E2E:-0}" = "1" ]; then
-    log_warn "Skipping E2E tests (SKIP_E2E=1)"
-    TOTAL_PHASES=7  # Adjust total phases count
-else
-    start_phase "Running E2E tests"
-    log_step "Playwright tests (this may take 4-7 minutes)..."
-    echo ""
-
-    set +e
-    (cd apps/web && bun run test:e2e)
-    E2E_EXIT_CODE=$?
-    set -e
-
-    echo ""
-
-    if [ $E2E_EXIT_CODE -ne 0 ]; then
-        end_phase "error" "E2E tests failed"
-        echo ""
-        log_error "Fix E2E test failures before proceeding."
-        exit 1
-    fi
-
-    end_phase "success" "All E2E tests passed"
-fi
 
 start_phase "Building application"
 
@@ -438,41 +483,94 @@ if [ "$SERVER_READY" = true ]; then
     end_phase "success" "Server responding after ${WAITED}s"
 else
     end_phase "error" "Server failed health check after ${MAX_WAIT}s"
-
-    # Rollback to previous build if it exists
-    if [ -n "$PREVIOUS_BUILD" ]; then
-        log_warn "Attempting rollback to: $PREVIOUS_BUILD"
-
-        if rollback_build "$DIST_SYMLINK" "$PREVIOUS_BUILD" "$ENV"; then
-            # Restart systemd service with old build
-            SERVICE_NAME="claude-bridge-${ENV}.service"
-            if systemctl restart "$SERVICE_NAME" >/dev/null 2>&1; then
-                # Verify rollback is serving
-                sleep 3
-                if curl -sf http://localhost:$PORT/ >/dev/null 2>&1; then
-                    log_success "Rollback successful - previous build is serving"
-                else
-                    log_error "Rollback started but not responding - check logs: journalctl -u $SERVICE_NAME"
-                fi
-            else
-                log_error "Failed to restart after rollback - manual intervention required"
-            fi
-
-            log_error "Deploy failed - check logs: journalctl -u $SERVICE_NAME"
-        else
-            log_error "Rollback failed - manual intervention required"
-            log_error "Check logs with: journalctl -u claude-bridge-${ENV}.service"
-        fi
-    else
-        log_error "No previous build to rollback to"
-        log_error "This was the first deployment - check logs: journalctl -u claude-bridge-${ENV}.service"
-    fi
-
+    perform_rollback "health check failed after ${MAX_WAIT}s"
     exit 1
 fi
 
+# ============================================================================
+# E2E TESTS: Run against newly deployed server
+# ============================================================================
+if [ "${SKIP_E2E:-0}" = "1" ]; then
+    log_warn "Skipping E2E tests (SKIP_E2E=1)"
+    TOTAL_PHASES=7  # Adjust phase count when skipping E2E
+else
+    start_phase "Running E2E tests"
+    log_step "Playwright tests against deployed server (this may take 4-7 minutes)..."
+    echo ""
+
+    # Load E2E test secret from environment file for staging/production tests
+    E2E_ENV_FILE="$PROJECT_ROOT/apps/web/.env.${ENV}"
+    if [ -f "$E2E_ENV_FILE" ]; then
+        E2E_TEST_SECRET=$(grep '^E2E_TEST_SECRET=' "$E2E_ENV_FILE" | cut -d '=' -f2)
+    fi
+
+    # Verify E2E_TEST_SECRET is set - fail fast if missing
+    if [ -z "$E2E_TEST_SECRET" ]; then
+        end_phase "error" "E2E_TEST_SECRET not found in $E2E_ENV_FILE"
+        log_error "E2E tests require E2E_TEST_SECRET to authenticate test requests."
+        log_error "Add 'E2E_TEST_SECRET=<secure-random-value>' to $E2E_ENV_FILE"
+        log_error "Generate with: openssl rand -base64 32"
+        exit 1
+    fi
+    log_step "E2E_TEST_SECRET loaded from .env.${ENV}"
+
+    set +e
+    if [ "$ENV" = "staging" ]; then
+        # For staging, set TEST_ENV=staging and pass E2E_TEST_SECRET
+        (cd apps/web && TEST_ENV=staging E2E_TEST_SECRET="${E2E_TEST_SECRET}" bun run test:e2e)
+    else
+        # For production, set TEST_ENV=production and pass E2E_TEST_SECRET
+        (cd apps/web && TEST_ENV=production E2E_TEST_SECRET="${E2E_TEST_SECRET}" bun run test:e2e)
+    fi
+    E2E_EXIT_CODE=$?
+    set -e
+
+    echo ""
+
+    if [ $E2E_EXIT_CODE -ne 0 ]; then
+        end_phase "error" "E2E tests failed"
+        echo ""
+        log_error "E2E tests failed on newly deployed server."
+        perform_rollback "E2E tests failed"
+        log_error "Fix E2E test failures before proceeding."
+        exit 1
+    fi
+
+    end_phase "success" "All E2E tests passed"
+fi
+
+# ============================================================================
+# POST-DEPLOY: Shell-server rebuild, cleanup, Caddy reload
+# ============================================================================
+
+# Rebuild shell-server (shared across all environments)
+log_step "Rebuilding shell-server..."
+cd "$PROJECT_ROOT/apps/shell-server"
+if bun run build 2>&1 | tail -5; then
+    log_success "Shell-server built successfully"
+    if systemctl is-active --quiet shell-server; then
+        log_step "Restarting shell-server systemd service..."
+        systemctl restart shell-server
+        sleep 2
+        if systemctl is-active --quiet shell-server; then
+            log_success "Shell-server restarted successfully"
+        else
+            log_warn "Shell-server failed to start (check: journalctl -u shell-server -n 20)"
+        fi
+    else
+        log_warn "Shell-server systemd service not running, starting it..."
+        systemctl start shell-server
+    fi
+else
+    log_warn "Shell-server build failed, skipping restart"
+fi
+cd "$PROJECT_ROOT"
+
+# Clean up old builds (keep last 5)
+cleanup_old_builds "$ENV" 5
+
 # Reload Caddy to pick up any routing changes (skip for production)
-if [ "$ENV" != "prod" ]; then
+if [ "$ENV" != "production" ]; then
     if command -v systemctl &> /dev/null; then
         if systemctl is-active --quiet caddy 2>/dev/null; then
             log_step "Reloading Caddy configuration..."
@@ -502,32 +600,6 @@ echo -e "  Application:  ${CYAN}${APP_NAME}${NC}"
 echo -e "  Port:         ${CYAN}${PORT}${NC}"
 echo -e "  Build:        ${CYAN}${NEW_BUILD}${NC}"
 echo -e "  Total time:   ${BOLD}${TOTAL_TIME}${NC}"
-echo ""
-
-# ============================================================================
-# SHELL-SERVER: Rebuild and restart (shared across all environments)
-# ============================================================================
-log_step "Rebuilding shell-server..."
-cd "$PROJECT_ROOT/apps/shell-server"
-if bun run build; then
-    log_success "Shell-server built successfully"
-    if systemctl is-active --quiet shell-server; then
-        log_step "Restarting shell-server systemd service..."
-        systemctl restart shell-server
-        sleep 2
-        if systemctl is-active --quiet shell-server; then
-            log_success "Shell-server restarted successfully"
-        else
-            log_warn "Shell-server failed to start (check: journalctl -u shell-server -n 20)"
-        fi
-    else
-        log_warn "Shell-server systemd service not running, starting it..."
-        systemctl start shell-server
-    fi
-else
-    log_warn "Shell-server build failed, skipping restart"
-fi
-cd "$PROJECT_ROOT"
 echo ""
 
 SERVICE_NAME="claude-bridge-${ENV}.service"

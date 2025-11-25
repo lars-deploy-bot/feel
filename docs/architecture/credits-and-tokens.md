@@ -328,34 +328,28 @@ hasEnoughLLMTokens()        // Use hasEnoughCredits() instead
 
 ## Model Selection
 
-**Credit users**: Haiku 4.5 only (enforced in UI + backend)
-**API key users**: Can choose Sonnet 4.5 or Haiku 4.5
+**Credit users**: DEFAULT_MODEL enforced in UI + backend
+**API key users**: Can choose any available model
 
-### Why Haiku for Credit Users?
+### Model Cost Estimates
 
-- Haiku: ~0.125 credits/conversation (200 credits = ~1,600 conversations)
-- Sonnet: ~0.375 credits/conversation (200 credits = ~533 conversations)
+Credit costs vary by model. See `CLAUDE_MODELS` in `lib/models/claude-models.ts` for available models.
 
 ### Implementation
 
 **Models** (`lib/models/claude-models.ts`):
-```typescript
-export const CLAUDE_MODELS = {
-  SONNET_4_5: "claude-sonnet-4-5-20250929",
-  HAIKU_4_5: "claude-haiku-4-5",
-}
-```
+See the source file for available models and DEFAULT_MODEL configuration.
 
 **Backend** (`app/api/claude/stream/route.ts`):
 ```typescript
 const effectiveModel = tokenSource === "workspace"
-  ? CLAUDE_MODELS.HAIKU_4_5  // ENFORCED for credits
+  ? DEFAULT_MODEL  // ENFORCED for credits
   : (userModel || env.CLAUDE_MODEL)
 ```
 
 **UI** (`components/modals/SettingsModal.tsx`): Dropdown disabled when no API key
 
-**Store** (`lib/stores/llmStore.ts`): Resets to Haiku when API key cleared
+**Store** (`lib/stores/llmStore.ts`): Resets to default model when API key cleared
 
 ## See Also
 

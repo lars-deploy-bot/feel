@@ -5,32 +5,18 @@
  */
 
 import { createClient } from "@supabase/supabase-js"
-import { beforeAll, beforeEach, describe, expect, test } from "vitest"
+import { beforeEach, describe, expect, test } from "vitest"
 import { getSupabaseCredentials } from "@/lib/env/server"
-import type { Database as IamDatabase } from "@/lib/supabase/iam.types"
+import type { IamDatabase } from "@webalive/database"
+import { assertSupabaseServiceEnv } from "@/lib/test-helpers/integration-env"
 import { getUserDefaultOrgId, getUserOrganizations, validateUserOrgAccess } from "../org-resolver"
 
-// Test environment setup
 const TEST_EMAIL = "test-org-resolver@example.com"
 const TEST_EMAIL_2 = "test-org-resolver-2@example.com"
 
-// Check database permissions before running tests
-let hasPermissions = false
+assertSupabaseServiceEnv()
 
-beforeAll(async () => {
-  const { url, key } = getSupabaseCredentials("service")
-  const iam = createClient<IamDatabase>(url, key, { db: { schema: "iam" } })
-
-  const { error } = await iam.from("users").select("user_id").limit(1)
-  hasPermissions = !error
-
-  if (!hasPermissions) {
-    console.warn("\n⚠️  Skipping org-resolver tests - No database permissions")
-    console.warn("   Run: apps/web/docs/database/grant-service-role-permissions.sql\n")
-  }
-})
-
-describe.skipIf(!hasPermissions)("Organization Resolver", () => {
+describe("Organization Resolver", () => {
   let testUserId: string
   let _testOrgId: string
   let iam: ReturnType<typeof createClient<IamDatabase>>
@@ -47,10 +33,7 @@ describe.skipIf(!hasPermissions)("Organization Resolver", () => {
 
     if (existingUsers && existingUsers.length > 0) {
       for (const user of existingUsers) {
-        // Delete memberships
-        await iam.from("org_memberships").delete().eq("user_id", user.user_id)
-
-        // Get orgs to delete
+        // Get orgs to delete BEFORE deleting memberships
         const { data: orgs } = await iam
           .from("orgs")
           .select("org_id")

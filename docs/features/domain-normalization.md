@@ -32,8 +32,7 @@ Domain lowercasing is enforced at **every layer** to ensure robustness:
 
 #### 4. Infrastructure Layer (Bash Scripts)
 - **`deploy-site-systemd.sh`** - Transforms `$1` input immediately
-- **`delete-site-systemd.sh`** - Transforms `$1` input immediately
-- **`remove-site.sh`** - Transforms `$1` input immediately
+- **`delete-site.sh`** - Transforms `$1` input immediately
 
 ### Core Utility
 
@@ -94,9 +93,8 @@ curl -X POST http://localhost:8999/api/deploy \
 - `apps/web/features/chat/lib/workspaceRetriever.ts` (already used `normalizeDomain`)
 
 ### Scripts
-- `scripts/deploy-site-systemd.sh`
-- `scripts/delete-site-systemd.sh`
-- `scripts/remove-site.sh`
+- `scripts/sites/deploy-site-systemd.sh`
+- `scripts/sites/delete-site.sh`
 
 ## Related Documentation
 

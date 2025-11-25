@@ -6,8 +6,8 @@
 
 import { createClient } from "@supabase/supabase-js"
 import { getSupabaseCredentials } from "@/lib/env/server"
-import type { Database as AppDatabase } from "@/lib/supabase/app.types"
-import type { Database as IamDatabase } from "@/lib/supabase/iam.types"
+import type { AppDatabase } from "@webalive/database"
+import type { IamDatabase } from "@webalive/database"
 
 export default async function globalTeardown() {
   const runId = process.env.E2E_RUN_ID

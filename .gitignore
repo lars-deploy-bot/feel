@@ -7,14 +7,22 @@ pnpm-debug.log*
 .pnpm-debug.log*
 bun.lockb
 
-# Environment variables
+# Environment variables (all contain secrets - never commit!)
 .env
 .env.local
 .env.development
+.env.staging
 .env.test
 .env.production
 .env.*.local
-.env.example
+
+# Environment templates (safe to commit - no secrets)
+!.env.example
+!.env.*.example
+
+# Backup files (may contain secrets)
+*.backup
+*.bak
 
 # Next.js
 .next/

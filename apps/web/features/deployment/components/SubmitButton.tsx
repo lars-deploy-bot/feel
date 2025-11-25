@@ -32,8 +32,8 @@ export function SubmitButton({ isDeploying, isValid, label, countdown = 0 }: Sub
       data-testid="submit-button"
       className={`w-full py-4 px-6 rounded-xl font-bold text-base transition-all duration-300 flex items-center justify-center gap-2 ${
         isDeploying || !isValid
-          ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-          : "bg-gray-900 text-white hover:bg-black"
+          ? "bg-black/10 dark:bg-white/10 text-black/40 dark:text-white/40 cursor-not-allowed"
+          : "bg-black dark:bg-white text-white dark:text-black hover:bg-black/80 dark:hover:bg-white/80"
       }`}
     >
       {isDeploying ? (

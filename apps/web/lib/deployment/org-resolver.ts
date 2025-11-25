@@ -9,7 +9,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { createIamClient } from "@/lib/supabase/iam"
-import type { Database } from "@/lib/supabase/iam.types"
+import type { IamDatabase as Database } from "@webalive/database"
 
 export interface UserOrganization {
   orgId: string

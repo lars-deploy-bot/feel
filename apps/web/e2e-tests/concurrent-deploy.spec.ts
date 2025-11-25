@@ -159,6 +159,7 @@ test.describe("Concurrent Deployment - File Locking", () => {
     console.log("[E2E Cleanup] Complete")
   })
 
+  // TODO: Remove this test - moved to integration tests
   test.skip("deploys 3 sites concurrently without Caddyfile corruption", async ({ browser }) => {
     // DEPRECATED: This E2E test has been converted to an integration test
     // Location: features/deployment/__tests__/concurrent-deploy.integration.test.ts

@@ -5,6 +5,12 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "files": [
     "dist",
     "scripts/setup-schema.ts"
@@ -12,7 +18,10 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "type-check": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "clean": "rm -rf dist",
     "test": "vitest run",
     "test:watch": "vitest watch",
     "verify": "bun scripts/verify.ts",
@@ -28,6 +37,8 @@
   "author": "WebAlive",
   "license": "MIT",
   "dependencies": {
+    "@alive-brug/redis": "workspace:*",
+    "@webalive/database": "workspace:*",
     "@supabase/supabase-js": "^2.81.1",
     "zod": "^3.25.0"
   },

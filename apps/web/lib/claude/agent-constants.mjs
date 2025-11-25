@@ -72,20 +72,18 @@ const STRIPE_MCP_TOOLS = [
 ]
 
 /**
- * Get allowed tools based on workspace
+ * Get allowed tools based on workspace and user access
  *
  * @param {string} workspacePath - Path to workspace
+ * @param {Object} options - Additional options
+ * @param {boolean} [options.hasStripeConnection] - Whether user has connected Stripe OAuth
  * @returns {string[]} Allowed tools list
  */
-export function getAllowedTools(workspacePath) {
+export function getAllowedTools(_workspacePath, options = {}) {
   let mcpTools = [...BASE_MCP_TOOLS]
 
-  // Extract domain from workspace path
-  const domainMatch = workspacePath.match(/\/sites\/([^/]+)/)
-  const domain = domainMatch ? domainMatch[1] : null
-
-  // Add all Stripe MCP tools for workspaces in enabled list
-  if (domain && STRIPE_ENABLED_WORKSPACES.includes(domain)) {
+  // Add all Stripe MCP tools if user has connected Stripe
+  if (options.hasStripeConnection) {
     mcpTools = [...mcpTools, ...STRIPE_MCP_TOOLS]
   }
 
@@ -112,36 +110,28 @@ export const DISALLOWED_TOOLS = [
 ]
 
 /**
- * Configuration: Workspaces with Stripe MCP access
- * Add workspace domains here to enable Stripe integration
- */
-export const STRIPE_ENABLED_WORKSPACES = ["riggedwheel.alive.best"]
-
-/**
- * Get MCP servers configuration based on workspace
- * Allows workspace-specific MCP server access control
+ * Get MCP servers configuration based on workspace and user access
+ * Allows per-user MCP server access control
  *
- * @param {string} workspacePath - Path to workspace (e.g., /srv/webalive/sites/larsvandeneeeden.com/user)
+ * @param {string} workspacePath - Path to workspace (e.g., /srv/webalive/sites/example.com/user)
+ * @param {Object} options - Additional options
+ * @param {string} [options.stripeAccessToken] - User's Stripe OAuth access token (if connected)
  * @returns {Object} MCP servers configuration
  */
-export function getMcpServers(workspacePath) {
+export function getMcpServers(_workspacePath, options = {}) {
   const baseServers = {
     "alive-workspace": workspaceInternalMcp,
     "alive-tools": toolsInternalMcp,
   }
 
-  // Extract domain from workspace path
-  // Pattern: /srv/webalive/sites/{domain}/user or /root/webalive/sites/{domain}/user
-  const domainMatch = workspacePath.match(/\/sites\/([^/]+)/)
-  const domain = domainMatch ? domainMatch[1] : null
-
-  // Stripe MCP: Check if workspace is in enabled list
-  if (domain && STRIPE_ENABLED_WORKSPACES.includes(domain)) {
+  // Stripe MCP: Include if user has connected their Stripe account
+  // Token is fetched asynchronously in the stream route and passed here
+  if (options.stripeAccessToken) {
     baseServers.stripe = {
       type: "http",
       url: "https://mcp.stripe.com",
       headers: {
-        Authorization: `Bearer ${process.env.STRIPE_OAUTH_TOKEN || ""}`,
+        Authorization: `Bearer ${options.stripeAccessToken}`,
       },
     }
   }
@@ -150,18 +140,16 @@ export function getMcpServers(workspacePath) {
 }
 
 /**
- * Check if Stripe MCP is available for a workspace
+ * Check if Stripe MCP is available for a user
+ * DEPRECATED: This function was workspace-based. Now use user-based checks via OAuth.
  *
- * @param {string} workspacePath - Path to workspace or workspace domain
- * @returns {boolean} True if Stripe MCP is configured for this workspace
+ * @param {string} _workspacePath - Ignored (kept for backwards compatibility)
+ * @param {boolean} hasStripeConnection - Whether user has connected Stripe OAuth
+ * @returns {boolean} True if user has Stripe MCP access
  */
-export function hasStripeMcpAccess(workspacePath) {
-  // Extract domain from workspace path or use as-is if it's just a domain
-  const domainMatch = workspacePath.match(/\/sites\/([^/]+)/)
-  const domain = domainMatch ? domainMatch[1] : workspacePath
-
-  // Check if domain is in enabled list
-  return STRIPE_ENABLED_WORKSPACES.includes(domain)
+export function hasStripeMcpAccess(_workspacePath, hasStripeConnection = false) {
+  // Now based on user's OAuth connection, not workspace
+  return hasStripeConnection
 }
 
 export const PERMISSION_MODE = "default"

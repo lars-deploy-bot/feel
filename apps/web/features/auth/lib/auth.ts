@@ -5,6 +5,18 @@ import { type ErrorCode, ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 import { createAppClient } from "@/lib/supabase/app"
 import { createIamClient } from "@/lib/supabase/iam"
 import { verifySessionToken } from "./jwt"
+import { env } from "@webalive/env/server"
+
+/**
+ * Custom error class for authentication failures
+ * Allows callers to discriminate auth errors without relying on string matching
+ */
+export class AuthenticationError extends Error {
+  constructor(message = "Authentication required") {
+    super(message)
+    this.name = "AuthenticationError"
+  }
+}
 
 export interface SessionUser {
   id: string
@@ -16,12 +28,19 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   const jar = await cookies()
   const sessionCookie = jar.get(COOKIE_NAMES.SESSION)
 
+  console.log("[Auth] getSessionUser - Cookie lookup:", {
+    cookieName: COOKIE_NAMES.SESSION,
+    cookieFound: !!sessionCookie,
+    cookieValueLength: sessionCookie?.value?.length || 0,
+  })
+
   if (!sessionCookie?.value) {
+    console.log("[Auth] No session cookie found")
     return null
   }
 
   // Test mode
-  if (process.env.BRIDGE_ENV === "local" && sessionCookie.value === "test-user") {
+  if (env.BRIDGE_ENV === "local" && sessionCookie.value === "test-user") {
     return {
       id: "test-user",
       email: "test@bridge.local",
@@ -31,8 +50,14 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 
   // Verify JWT and extract user data (NO DATABASE QUERY - all data in JWT)
   const payload = await verifySessionToken(sessionCookie.value)
+  console.log("[Auth] JWT verification result:", {
+    hasPayload: !!payload,
+    userId: payload?.userId,
+    email: payload?.email,
+  })
+
   if (!payload?.userId) {
-    console.warn("[Auth] Invalid JWT token")
+    console.warn("[Auth] Invalid JWT token - no userId in payload")
     return null
   }
 
@@ -56,7 +81,7 @@ export async function isWorkspaceAuthenticated(workspace: string): Promise<boole
   }
 
   // Test mode allows all workspaces
-  if (process.env.BRIDGE_ENV === "local" && user.id === "test-user") {
+  if (env.BRIDGE_ENV === "local" && user.id === "test-user") {
     return true
   }
 
@@ -95,7 +120,7 @@ export async function getAuthenticatedWorkspaces(): Promise<string[]> {
   }
 
   // Test mode
-  if (process.env.BRIDGE_ENV === "local" && sessionCookie.value === "test-user") {
+  if (env.BRIDGE_ENV === "local" && sessionCookie.value === "test-user") {
     return []
   }
 
@@ -111,7 +136,7 @@ export async function getAuthenticatedWorkspaces(): Promise<string[]> {
 export async function requireSessionUser(): Promise<SessionUser> {
   const user = await getSessionUser()
   if (!user) {
-    throw new Error("Authentication required")
+    throw new AuthenticationError()
   }
   return user
 }
@@ -155,7 +180,7 @@ export async function getSafeSessionCookie(logPrefix = "[Auth]"): Promise<string
   }
 
   // Test mode special value
-  if (process.env.BRIDGE_ENV === "local" && sessionCookie.value === "test-user") {
+  if (env.BRIDGE_ENV === "local" && sessionCookie.value === "test-user") {
     return sessionCookie.value
   }
 
@@ -204,7 +229,7 @@ export async function verifyWorkspaceAccess(
   }
 
   // Test mode allows all workspaces
-  if (process.env.BRIDGE_ENV === "local" && user.id === "test-user") {
+  if (env.BRIDGE_ENV === "local" && user.id === "test-user") {
     return workspace
   }
 

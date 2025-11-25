@@ -36,15 +36,15 @@ Scripts for deploying and managing individual customer websites.
 
 **Key Scripts:**
 - `deploy-site-systemd.sh` - Deploy a new site with systemd isolation
-- `delete-site-systemd.sh` - Delete a systemd-managed site
-- `remove-site.sh` - Remove a site from deployment
+- `delete-site.sh` - Delete a site (stops service, removes files, updates Caddy)
 - `add-verification-files.sh` - Add bridge verification files to sites
 - `fix-file-ownership.sh` - Fix file permissions for site access
 
 **Usage:**
 ```bash
 scripts/sites/deploy-site-systemd.sh example.com
-scripts/sites/delete-site-systemd.sh example.com
+scripts/sites/delete-site.sh example.com           # Interactive
+scripts/sites/delete-site.sh example.com --force   # Non-interactive
 ```
 
 ### `database/` - Database Migration & Cleanup
@@ -160,7 +160,7 @@ make dev
 deploy-dev.sh
     ├─ Rebuild packages (images, tools)
     ├─ Run linter
-    └─ Restart PM2 (next dev --turbo)
+    └─ Restart systemd service (next dev --turbo)
 ```
 
 ## Best Practices

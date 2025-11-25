@@ -118,11 +118,27 @@ export const managerLoginRateLimiter = new RateLimiter({
   blockDurationMs: 15 * 60 * 1000, // 15 minutes
 })
 
+// Singleton instance for OAuth initiation (looser - users may retry)
+export const oauthInitiationRateLimiter = new RateLimiter({
+  maxAttempts: 20,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  blockDurationMs: 15 * 60 * 1000, // 15 minutes
+})
+
+// Singleton instance for OAuth callbacks and disconnects (stricter - should succeed once)
+export const oauthOperationRateLimiter = new RateLimiter({
+  maxAttempts: 10,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  blockDurationMs: 15 * 60 * 1000, // 15 minutes
+})
+
 // Cleanup old entries every 5 minutes
 if (typeof setInterval !== "undefined") {
   setInterval(
     () => {
       managerLoginRateLimiter.cleanup()
+      oauthInitiationRateLimiter.cleanup()
+      oauthOperationRateLimiter.cleanup()
     },
     5 * 60 * 1000,
   )
