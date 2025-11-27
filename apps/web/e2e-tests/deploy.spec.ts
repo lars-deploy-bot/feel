@@ -7,6 +7,7 @@
 import { execSync } from "node:child_process"
 import { existsSync } from "node:fs"
 import { expect, test } from "./fixtures"
+import { TIMEOUTS } from "./lib/test-env"
 
 const TEST_SLUG = "test-e2e"
 const TEST_DOMAIN = `${TEST_SLUG}.alive.best`
@@ -103,8 +104,7 @@ test.describe("Website Deployment with Authentication", () => {
   test.skip("deployment API allows authenticated requests without explicit orgId", async ({ authenticatedPage }) => {
     // Current API behavior: if orgId is not provided, a default org is created
     // This test verifies that authenticated users can deploy without explicit orgId
-    const isStaging = process.env.TEST_ENV === "staging"
-    test.setTimeout(isStaging ? 120000 : 60000) // 2 minutes for staging, 60s for local
+    test.setTimeout(TIMEOUTS.DEPLOYMENT)
 
     console.log("[Test] Testing API with authenticated user but no orgId")
 
@@ -133,9 +133,8 @@ test.describe("Website Deployment with Authentication", () => {
     workerTenant,
   }) => {
     // Full deployment test with authentication and explicit orgId
-    // Takes ~60s for actual deployment (local), longer for staging
-    const isStaging = process.env.TEST_ENV === "staging"
-    test.setTimeout(isStaging ? 180000 : 70000) // 3 minutes for staging, 70s for local
+    // Takes ~70s for actual deployment (local), longer for remote environments
+    test.setTimeout(TIMEOUTS.DEPLOYMENT)
 
     console.log("[Test] Full authenticated deployment flow with orgId")
 

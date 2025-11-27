@@ -33,6 +33,8 @@ export interface StreamingError {
 export interface ConversationStreamState {
   // Tool use tracking (per-conversation, not global)
   toolUseMap: Map<string, string>
+  // Tool input tracking - stores the input for each tool_use_id
+  toolInputMap: Map<string, unknown>
 
   // Error recovery
   consecutiveParseErrors: number
@@ -59,8 +61,9 @@ export interface StreamingStoreState {
     getConversationState: (conversationId: string) => ConversationStreamState
 
     // Tool use tracking
-    recordToolUse: (conversationId: string, toolUseId: string, toolName: string) => void
+    recordToolUse: (conversationId: string, toolUseId: string, toolName: string, toolInput?: unknown) => void
     getToolName: (conversationId: string, toolUseId: string) => string | undefined
+    getToolInput: (conversationId: string, toolUseId: string) => unknown | undefined
     clearToolUseMap: (conversationId: string) => void
 
     // Error tracking
@@ -91,6 +94,7 @@ export interface StreamingStoreState {
 
 const defaultConversationState: ConversationStreamState = {
   toolUseMap: new Map(),
+  toolInputMap: new Map(),
   consecutiveParseErrors: 0,
   recentErrors: [],
   maxRecentErrors: 10,
@@ -129,12 +133,16 @@ export const useStreamingStore = create<StreamingStoreState>((set, get) => {
         return existing
       },
 
-      recordToolUse: (conversationId: string, toolUseId: string, toolName: string): void => {
+      recordToolUse: (conversationId: string, toolUseId: string, toolName: string, toolInput?: unknown): void => {
         const state = get()
         const convState = state.conversations[conversationId] || { ...defaultConversationState }
         const newToolUseMap = new Map(convState.toolUseMap)
         newToolUseMap.set(toolUseId, toolName)
-        updateConversation(conversationId, { toolUseMap: newToolUseMap })
+        const newToolInputMap = new Map(convState.toolInputMap)
+        if (toolInput !== undefined) {
+          newToolInputMap.set(toolUseId, toolInput)
+        }
+        updateConversation(conversationId, { toolUseMap: newToolUseMap, toolInputMap: newToolInputMap })
       },
 
       getToolName: (conversationId: string, toolUseId: string): string | undefined => {
@@ -142,8 +150,13 @@ export const useStreamingStore = create<StreamingStoreState>((set, get) => {
         return state.conversations[conversationId]?.toolUseMap.get(toolUseId)
       },
 
+      getToolInput: (conversationId: string, toolUseId: string): unknown | undefined => {
+        const state = get()
+        return state.conversations[conversationId]?.toolInputMap.get(toolUseId)
+      },
+
       clearToolUseMap: (conversationId: string): void => {
-        updateConversation(conversationId, { toolUseMap: new Map() })
+        updateConversation(conversationId, { toolUseMap: new Map(), toolInputMap: new Map() })
       },
 
       recordError: (conversationId: string, error: Omit<StreamingError, "timestamp">): void => {

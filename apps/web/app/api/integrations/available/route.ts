@@ -16,12 +16,18 @@ import { ErrorCodes } from "@/lib/error-codes"
 import { createIntegrationsClient } from "@/lib/supabase/integrations"
 import { getOAuthInstance } from "@/lib/oauth/oauth-instances"
 
+export type TokenStatus = "valid" | "expired" | "needs_reauth" | "not_connected"
+
 export interface AvailableIntegration {
   provider_key: string
   display_name: string
   logo_path: string | null
   is_connected: boolean
   visibility_status: string
+  /** Token health status - helps UI show if reconnection is needed (optional for backwards compatibility) */
+  token_status?: TokenStatus
+  /** Human-readable status message */
+  status_message?: string
 }
 
 /**
@@ -61,17 +67,44 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    // 4. Transform and check actual connection status from lockbox
+    // 4. Transform and check actual connection status + token health from lockbox
     const availableIntegrations: AvailableIntegration[] = await Promise.all(
       (integrations || []).map(async (integration: any) => {
-        // Check actual connection status from oauth-core (lockbox.user_secrets)
+        // Check actual connection status and token health from oauth-core
         let isConnected = false
+        let tokenStatus: TokenStatus = "not_connected"
+        let statusMessage: string | undefined
+
         try {
           const oauthManager = getOAuthInstance(integration.provider_key)
           isConnected = await oauthManager.isConnected(user.id, integration.provider_key)
+
+          if (isConnected) {
+            // Token exists - now check if it's actually valid by trying to get it
+            // This will trigger auto-refresh if expired
+            try {
+              await oauthManager.getAccessToken(user.id, integration.provider_key)
+              tokenStatus = "valid"
+            } catch (tokenError) {
+              const errorMsg = tokenError instanceof Error ? tokenError.message : String(tokenError)
+
+              if (errorMsg.includes("revoked") || errorMsg.includes("invalid_grant")) {
+                tokenStatus = "needs_reauth"
+                statusMessage = "Connection expired. Please reconnect."
+              } else if (errorMsg.includes("expired") || errorMsg.includes("refresh")) {
+                tokenStatus = "needs_reauth"
+                statusMessage = "Token refresh failed. Please reconnect."
+              } else {
+                tokenStatus = "needs_reauth"
+                statusMessage = "Connection issue. Please reconnect."
+              }
+              console.warn(`[Integrations] ${integration.provider_key} token health check failed:`, errorMsg)
+            }
+          }
         } catch {
           // Provider not supported in oauth-core, use RPC result
           isConnected = integration.is_connected
+          tokenStatus = isConnected ? "valid" : "not_connected" // Assume valid if we can't check
         }
 
         return {
@@ -80,13 +113,19 @@ export async function GET(req: NextRequest) {
           logo_path: integration.logo_path,
           is_connected: isConnected,
           visibility_status: integration.visibility_status,
+          token_status: tokenStatus,
+          status_message: statusMessage,
         }
       }),
     )
 
     console.log(
       "[Integrations API] Returning integrations:",
-      availableIntegrations.map(i => ({ key: i.provider_key, connected: i.is_connected })),
+      availableIntegrations.map(i => ({
+        key: i.provider_key,
+        connected: i.is_connected,
+        status: i.token_status,
+      })),
     )
 
     return NextResponse.json(

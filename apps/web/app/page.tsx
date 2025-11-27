@@ -1,13 +1,16 @@
 "use client"
+import { Eye, EyeOff } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Suspense, useState } from "react"
 import { Button } from "@/components/ui/primitives/Button"
 import { Input } from "@/components/ui/primitives/Input"
+import { ThemeToggle } from "@/components/ui/ThemeToggle"
 import { authStore } from "@/lib/stores/authStore"
 
 function LoginPageContent() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [emailTouched, setEmailTouched] = useState(false)
@@ -48,7 +51,12 @@ function LoginPageContent() {
   }
 
   return (
-    <main className="min-h-screen bg-white dark:bg-zinc-950 flex items-center justify-center px-4">
+    <main className="min-h-screen bg-white dark:bg-zinc-950 flex items-center justify-center px-4 relative">
+      {/* Theme Toggle - Top Right */}
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
+
       <div className="w-full max-w-md">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-normal mb-3 text-black dark:text-white">Welcome back</h1>
@@ -77,7 +85,7 @@ function LoginPageContent() {
           <Input
             id="password"
             label="Password"
-            type="password"
+            type={showPassword ? "text" : "password"}
             value={password}
             onChange={e => {
               setPassword(e.target.value)
@@ -90,6 +98,17 @@ function LoginPageContent() {
             state={passwordTouched && !password.trim() ? "error" : "default"}
             errorMessage={passwordTouched && !password.trim() ? "Please enter your password" : undefined}
             data-testid="password-input"
+            suffix={
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white transition-colors"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-pressed={showPassword}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            }
           />
 
           {error && (
@@ -127,7 +146,12 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <main className="min-h-screen bg-white dark:bg-zinc-950 flex items-center justify-center px-4">
+        <main className="min-h-screen bg-white dark:bg-zinc-950 flex items-center justify-center px-4 relative">
+          {/* Theme Toggle - Top Right */}
+          <div className="absolute top-4 right-4">
+            <ThemeToggle />
+          </div>
+
           <div className="w-full max-w-md text-center">
             <div className="w-8 h-8 border-2 border-black dark:border-white border-t-transparent dark:border-t-transparent rounded-full animate-spin mx-auto mb-4" />
             <p className="text-black/50 dark:text-white/50 text-sm font-normal">Loading...</p>

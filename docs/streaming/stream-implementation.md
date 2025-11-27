@@ -29,10 +29,54 @@ Encoded as UTF-8 bytes via `new TextEncoder().encode()`
 ## Event Sequence
 
 1. **start** – Initialization with host, cwd, message, messageLength, isResume
-2. **message** – Repeats for each SDK message (messageCount, messageType, content)
-3. **session** – Once per query (sessionId extracted from system:init)
-4. **complete** – Final result (totalMessages, result)
-5. **error** – If error occurs instead of complete
+2. **warning** – OAuth token warnings (injected at stream start if tokens failed to refresh)
+3. **message** – Repeats for each SDK message (messageCount, messageType, content)
+4. **session** – Once per query (sessionId extracted from system:init)
+5. **complete** – Final result (totalMessages, result)
+6. **error** – If error occurs instead of complete
+
+### Warning Event (OAuth Token Failures)
+
+The `warning` event is a synthetic message injected when OAuth token refresh fails:
+
+```typescript
+// Warning event structure
+{
+  type: "bridge_message",
+  data: {
+    messageType: "bridge_warning",
+    content: {
+      type: "bridge_warning",
+      category: "oauth",
+      provider: "linear",  // or "stripe"
+      message: "Your Linear connection has expired. Please reconnect in Settings > Integrations.",
+      action: "Reconnect",
+      actionUrl: "/settings?tab=integrations"
+    }
+  }
+}
+```
+
+**When it occurs:**
+- User has connected OAuth provider (e.g., Linear)
+- Token has expired and refresh fails (revoked or invalid_grant)
+- Warning injected at stream start, before SDK messages
+
+**UI Handling:**
+- Chat page detects `bridge_warning` via `isWarningMessage()` type guard
+- Displays toast notification with action button
+- User can click "Reconnect" to fix the issue
+
+**Types** (from `@webalive/shared`):
+```typescript
+interface OAuthWarningContent {
+  category: "oauth" | "general"
+  provider?: OAuthMcpProviderKey
+  message: string
+  action?: string
+  actionUrl?: string
+}
+```
 
 ## Query Loop Example
 
@@ -126,6 +170,9 @@ curl -X POST http://localhost:8999/api/claude/stream \
 ```
 event: start
 data: {...}
+
+event: message
+data: {"messageType": "bridge_warning", ...}  (only if OAuth token refresh failed)
 
 event: message
 data: {...}

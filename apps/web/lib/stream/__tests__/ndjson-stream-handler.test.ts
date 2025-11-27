@@ -560,5 +560,68 @@ describe("NDJSON Stream Handler", () => {
       // Should have been called exactly once (in finally block)
       expect(onStreamComplete).toHaveBeenCalledTimes(1)
     })
+
+    it("should release lock EARLY when bridge_complete is received (before stream closes)", async () => {
+      // This test verifies the critical fix: the lock should be released AS SOON AS
+      // bridge_complete is received, NOT when the stream closes. This prevents the
+      // lock from being held during Claude SDK cleanup (MCP server shutdown, etc.)
+
+      let lockReleasedBeforeStreamClosed = false
+      let streamReadingComplete = false
+
+      const onStreamComplete = vi.fn(() => {
+        // Record whether lock was released before we finished reading the stream
+        if (!streamReadingComplete) {
+          lockReleasedBeforeStreamClosed = true
+        }
+      })
+
+      // Child stream that:
+      // 1. Sends bridge_complete event
+      // 2. Does NOT close immediately (simulates SDK cleanup delay)
+      const mockChildStream = new ReadableStream({
+        async start(controller) {
+          // Send the complete event
+          const completeEvent = JSON.stringify({
+            type: "bridge_complete",
+            totalMessages: 1,
+            result: { type: "result", is_error: false },
+          })
+          controller.enqueue(new TextEncoder().encode(`${completeEvent}\n`))
+
+          // Simulate SDK cleanup delay (don't close immediately)
+          await new Promise(resolve => setTimeout(resolve, 50))
+
+          // Now close the stream (after the "SDK cleanup")
+          controller.close()
+        },
+      })
+
+      const stream = createNDJSONStream({
+        childStream: mockChildStream,
+        conversationKey: "test-conv",
+        requestId: "test-early-release",
+        conversationWorkspace: "test-workspace",
+        tokenSource: "workspace",
+        cancelState: createCancelState(),
+        onStreamComplete,
+      })
+
+      // Read the stream to completion
+      const reader = stream.getReader()
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { done } = await reader.read()
+        if (done) {
+          streamReadingComplete = true
+          break
+        }
+      }
+
+      // The lock should have been released BEFORE the stream finished reading
+      // (i.e., as soon as bridge_complete was processed, not when stream closed)
+      expect(onStreamComplete).toHaveBeenCalledTimes(1)
+      expect(lockReleasedBeforeStreamClosed).toBe(true)
+    })
   })
 })

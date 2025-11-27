@@ -39,22 +39,16 @@ export function isValidWorkspacePath(workspace: string): boolean {
  * Validate workspace resolution result structure
  */
 export function isWorkspaceResolved(result: unknown): result is { success: true; workspace: string } {
-  return (
-    typeof result === "object" &&
-    result !== null &&
-    (result as any).success === true &&
-    typeof (result as any).workspace === "string"
-  )
+  if (typeof result !== "object" || result === null) return false
+  const r = result as Record<string, unknown>
+  return r.success === true && typeof r.workspace === "string"
 }
 
 /**
  * Check if workspace result has an error
  */
-export function isWorkspaceError(result: unknown): result is { success: false; response: any } {
-  return (
-    typeof result === "object" &&
-    result !== null &&
-    (result as any).success === false &&
-    (result as any).response !== undefined
-  )
+export function isWorkspaceError(result: unknown): result is { success: false; response: Response } {
+  if (typeof result !== "object" || result === null) return false
+  const r = result as Record<string, unknown>
+  return r.success === false && r.response !== undefined
 }

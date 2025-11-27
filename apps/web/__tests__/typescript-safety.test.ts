@@ -11,11 +11,14 @@ import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 
 describe("TypeScript Compilation Safety", () => {
-  it("CRITICAL: TypeScript catches undefined variables in components", () => {
-    // Create a test file with an undefined variable
-    const testFile = join(process.cwd(), "components/__test-undefined-var.tsx")
+  // Skip in local dev - this is covered by type-check in CI/pre-push
+  it.skipIf(!process.env.CI)(
+    "CRITICAL: TypeScript catches undefined variables in components",
+    () => {
+      // Create a test file with an undefined variable
+      const testFile = join(process.cwd(), "components/__test-undefined-var.tsx")
 
-    const badCode = `
+      const badCode = `
 export function TestComponent() {
   return (
     <div>
@@ -25,33 +28,35 @@ export function TestComponent() {
 }
 `
 
-    try {
-      writeFileSync(testFile, badCode)
-
-      // Try to compile it - should FAIL
-      // Pass strict flags inline (can't use --project with file path)
-      // Use local tsc binary for faster execution
       try {
-        execSync(`bun tsc --noEmit --strict --jsx react-jsx ${testFile}`, {
-          cwd: process.cwd(),
-          encoding: "utf-8",
-          stdio: "pipe",
-        })
+        writeFileSync(testFile, badCode)
 
-        // If we get here, TypeScript DIDN'T catch the error - BAD!
-        expect.fail("TypeScript should have caught the undefined variable but didn't!")
-      } catch (error: any) {
-        // Good! TypeScript caught it
-        const output = error.stdout || error.stderr || ""
-        expect(output).toContain("Cannot find name 'undefinedVariable'")
+        // Try to compile it - should FAIL
+        // Pass strict flags inline (can't use --project with file path)
+        // Use local tsc binary for faster execution
+        try {
+          execSync(`bun tsc --noEmit --strict --jsx react-jsx ${testFile}`, {
+            cwd: process.cwd(),
+            encoding: "utf-8",
+            stdio: "pipe",
+          })
+
+          // If we get here, TypeScript DIDN'T catch the error - BAD!
+          expect.fail("TypeScript should have caught the undefined variable but didn't!")
+        } catch (error: any) {
+          // Good! TypeScript caught it
+          const output = error.stdout || error.stderr || ""
+          expect(output).toContain("Cannot find name 'undefinedVariable'")
+        }
+      } finally {
+        // Clean up
+        try {
+          unlinkSync(testFile)
+        } catch {}
       }
-    } finally {
-      // Clean up
-      try {
-        unlinkSync(testFile)
-      } catch {}
-    }
-  }, 60000)
+    },
+    60000,
+  )
 
   it("CRITICAL: SettingsModal doesn't reference 'updateError'", () => {
     const settingsModalPath = join(process.cwd(), "components/modals/SettingsModal.tsx")

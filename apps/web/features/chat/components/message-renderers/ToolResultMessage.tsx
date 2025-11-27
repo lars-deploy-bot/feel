@@ -1,16 +1,27 @@
+/**
+ * Tool Result Message Renderer
+ *
+ * Displays tool results with:
+ * - Collapsed preview (from unified registry)
+ * - Auto-expand based on tool config
+ * - Custom renderers for rich UI
+ */
+
 import { useState } from "react"
 import { ToolOutputRouter } from "@/components/ui/chat/tools/ToolOutputRouter"
 import type { SDKUserMessage } from "@/features/chat/types/sdk-types"
 import { useDebugVisible } from "@/lib/stores/debug-store"
 import { getToolIcon } from "@/lib/tool-icons"
+import { shouldAutoExpand, getToolPreview, transformToolData } from "@/lib/tools/tool-registry"
 
-// Extended tool result type with our added tool_name
+// Extended tool result type with our added tool_name and tool_input
 interface ToolResultContent {
   type: "tool_result"
   tool_use_id: string
   content?: string
   is_error?: boolean
   tool_name?: string // Added by our parser
+  tool_input?: unknown // Added by our parser - the original tool input
 }
 
 // Type guard to check if a content block is a tool result
@@ -28,7 +39,7 @@ export function ToolResultMessage({ content }: ToolResultMessageProps) {
   return (
     <div className="mb-6">
       {Array.isArray(messageContent) &&
-        messageContent.map((result: any, index: number) => {
+        messageContent.map((result: unknown, index: number) => {
           if (isToolResult(result)) {
             return <ToolResult key={index} result={result} />
           }
@@ -39,163 +50,30 @@ export function ToolResultMessage({ content }: ToolResultMessageProps) {
 }
 
 function ToolResult({ result }: { result: ToolResultContent }) {
-  const [isExpanded, setIsExpanded] = useState(false)
+  const toolName = result.tool_name || "Tool Result"
   const isDebugMode = useDebugVisible()
 
-  // Use the tool name that was attached by the message parser
-  const toolName = result.tool_name || "Tool Result"
+  // Auto-expand based on tool config (errors always expand)
+  const [isExpanded, setIsExpanded] = useState(() => shouldAutoExpand(toolName, result.is_error ?? false))
+
   const Icon = getToolIcon(toolName)
 
-  // Parse the content to get structured tool output if it's JSON
-  const getDisplayContent = () => {
-    if (typeof result.content === "string") {
-      try {
-        return JSON.parse(result.content)
-      } catch {
-        return result.content
-      }
-    }
-    return result.content
-  }
+  // Parse the content to get structured tool output
+  const displayContent = parseContent(result.content)
 
-  const displayContent = getDisplayContent()
+  // Get preview text from unified registry
+  const transformedData = transformToolData(toolName, displayContent)
+  const preview = getToolPreview(toolName, transformedData, result.tool_input)
 
-  // Format tool output preview (collapsed state)
-  const formatToolOutputPreview = (toolName: string, content: any): string => {
-    const tool = toolName.toLowerCase()
-    let preview = ""
-
-    try {
-      switch (tool) {
-        case "read":
-          if (content.total_lines) preview = `read ${content.lines_returned || content.total_lines} lines`
-          else if (content.file_size) preview = "read image"
-          else if (content.total_pages) preview = "read pdf"
-          else if (content.cells) preview = "read notebook"
-          break
-        case "write":
-          if (content.bytes_written) preview = "wrote file"
-          break
-        case "edit":
-          if (content.replacements !== undefined) preview = `made ${content.replacements} changes`
-          break
-        case "grep":
-          if (content.count !== undefined) preview = `found ${content.count} files`
-          else if (content.total_matches !== undefined) preview = `found ${content.total_matches} matches`
-          else if (content.total !== undefined) preview = `found ${content.total} matches`
-          break
-        case "glob":
-          if (content.count !== undefined) preview = `found ${content.count} files`
-          break
-        case "bash":
-          if (content.exitCode !== undefined)
-            preview = content.exitCode === 0 ? "completed" : `failed (${content.exitCode})`
-          break
-        case "task":
-          preview = "completed"
-          break
-        case "mcp__stripe__list_subscriptions":
-          // Parse the JSON to count subscriptions
-          try {
-            let subscriptions = content
-            // Handle MCP text wrapper format
-            if (content[0]?.type === "text" && content[0]?.text) {
-              subscriptions = JSON.parse(content[0].text)
-            }
-            if (Array.isArray(subscriptions)) {
-              preview = `${subscriptions.length} subscription${subscriptions.length !== 1 ? "s" : ""}`
-            }
-          } catch {
-            preview = "subscriptions"
-          }
-          break
-        case "mcp__stripe__list_customers":
-          // Parse the JSON to count customers
-          try {
-            let data = content
-            // Handle MCP text wrapper format
-            if (content[0]?.type === "text" && content[0]?.text) {
-              data = JSON.parse(content[0].text)
-            }
-            const customers = data?.data || data
-            if (Array.isArray(customers)) {
-              preview = `${customers.length} customer${customers.length !== 1 ? "s" : ""}`
-            }
-          } catch {
-            preview = "customers"
-          }
-          break
-        case "mcp__stripe__fetch_stripe_resources":
-          // Parse the resources to count them
-          try {
-            if (Array.isArray(content)) {
-              const count = content.filter(item => item.type === "text").length
-              preview = `${count} resource${count !== 1 ? "s" : ""}`
-            }
-          } catch {
-            preview = "resources"
-          }
-          break
-        case "mcp__stripe__retrieve_balance":
-          preview = "balance"
-          break
-        case "mcp__stripe__get_stripe_account_info":
-          try {
-            if (content[0]?.type === "text" && content[0]?.text) {
-              const account = JSON.parse(content[0].text)
-              preview = account.display_name || "account info"
-            }
-          } catch {
-            preview = "account info"
-          }
-          break
-        case "mcp__stripe__list_payment_intents":
-          try {
-            if (content[0]?.type === "text" && content[0]?.text) {
-              const paymentIntents = JSON.parse(content[0].text)
-              if (Array.isArray(paymentIntents)) {
-                const succeeded = paymentIntents.filter(pi => pi.status === "succeeded").length
-                preview = `${paymentIntents.length} payment${paymentIntents.length !== 1 ? "s" : ""} (${succeeded} succeeded)`
-              }
-            }
-          } catch {
-            preview = "payment intents"
-          }
-          break
-        case "mcp__stripe__search_stripe_resources":
-          try {
-            if (content[0]?.type === "text" && content[0]?.text) {
-              const data = JSON.parse(content[0].text)
-              if (data.results && Array.isArray(data.results)) {
-                preview = `${data.results.length} result${data.results.length !== 1 ? "s" : ""}`
-              }
-            }
-          } catch {
-            preview = "search results"
-          }
-          break
-      }
-    } catch (_e) {
-      // Fall through
-    }
-
-    if (!preview) {
-      preview = toolName.toLowerCase()
-    }
-
-    // In debug mode, show both exact tool name and preview
-    if (isDebugMode) {
-      return `${toolName}: ${preview}`
-    }
-
-    return preview
-  }
+  // In debug mode, show both exact tool name and preview
+  const displayPreview = isDebugMode ? `${toolName}: ${preview}` : preview
 
   return (
     <div className="my-1">
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
+        aria-expanded={isExpanded}
         className={`text-xs font-normal transition-colors flex items-center gap-1.5 ${
           result.is_error
             ? "text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
@@ -204,15 +82,27 @@ function ToolResult({ result }: { result: ToolResultContent }) {
       >
         <Icon size={12} className="opacity-60" />
         <span>
-          {formatToolOutputPreview(toolName, displayContent)}
+          {displayPreview}
           {result.is_error && " error"}
         </span>
       </button>
       {isExpanded && (
         <div className="mt-1 max-w-full overflow-hidden">
-          <ToolOutputRouter toolName={toolName} content={displayContent} />
+          <ToolOutputRouter toolName={toolName} content={displayContent} toolInput={result.tool_input} />
         </div>
       )}
     </div>
   )
+}
+
+/** Parse string content as JSON if possible */
+function parseContent(content: unknown): unknown {
+  if (typeof content === "string") {
+    try {
+      return JSON.parse(content)
+    } catch {
+      return content
+    }
+  }
+  return content
 }

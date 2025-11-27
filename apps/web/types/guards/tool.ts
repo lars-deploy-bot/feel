@@ -8,6 +8,7 @@ export interface ToolResultContent {
 }
 
 // Type guard to check if a content block is a tool result
-export function isToolResult(content: any): content is ToolResultContent {
-  return content && content.type === "tool_result"
+export function isToolResult(content: unknown): content is ToolResultContent {
+  if (!content || typeof content !== "object") return false
+  return (content as Record<string, unknown>).type === "tool_result"
 }

@@ -1,3 +1,6 @@
+// FIRST: Load env file (side effect import - must be first!)
+import "./e2e-tests/lib/load-env"
+
 import { defineConfig } from "@playwright/test"
 
 /**

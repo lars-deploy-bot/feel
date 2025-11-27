@@ -20,7 +20,7 @@ import type {
   SDKSystemMessage,
   SDKUserMessage,
 } from "@/features/chat/types/sdk-types"
-import { getMessageComponentType, isErrorResultMessage, type UIMessage } from "./message-parser"
+import { COMPONENT_TYPE, getMessageComponentType, isErrorResultMessage, type UIMessage } from "./message-parser"
 
 export function renderMessage(message: UIMessage): React.ReactNode {
   return <MessageErrorBoundary messageId={message.id}>{renderMessageContent(message)}</MessageErrorBoundary>
@@ -35,12 +35,12 @@ function renderMessageContent(message: UIMessage): React.ReactNode {
   const componentType = getMessageComponentType(message)
 
   switch (componentType) {
-    case "user": {
+    case COMPONENT_TYPE.USER: {
       const userContent = typeof message.content === "string" ? message.content : JSON.stringify(message.content)
       return <UserMessage content={userContent} attachments={message.attachments} />
     }
 
-    case "start":
+    case COMPONENT_TYPE.START:
       return (
         <StartMessage
           data={message.content as BridgeStartMessage["data"]}
@@ -48,26 +48,26 @@ function renderMessageContent(message: UIMessage): React.ReactNode {
         />
       )
 
-    case "system":
+    case COMPONENT_TYPE.SYSTEM:
       return <SystemMessage content={message.content as SDKSystemMessage} />
 
-    case "assistant":
+    case COMPONENT_TYPE.ASSISTANT:
       return <AssistantMessage content={message.content as SDKAssistantMessage} />
 
-    case "tool_result":
+    case COMPONENT_TYPE.TOOL_RESULT:
       return <ToolResultMessage content={message.content as SDKUserMessage} />
 
-    case "result":
+    case COMPONENT_TYPE.RESULT:
       return <ResultMessage content={message.content as SDKResultMessage} />
 
-    case "complete":
+    case COMPONENT_TYPE.COMPLETE:
       return <CompleteMessage data={message.content as BridgeCompleteMessage["data"]} />
 
-    case "compact_boundary":
+    case COMPONENT_TYPE.COMPACT_BOUNDARY:
       // SDK system message with compact_boundary subtype - no typed interface in SDK
       return <CompactBoundaryMessage data={message.content as any} />
 
-    case "interrupt":
+    case COMPONENT_TYPE.INTERRUPT:
       return <InterruptMessage data={message.content as BridgeInterruptMessage["data"]} />
 
     default:

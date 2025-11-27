@@ -5,13 +5,40 @@
  * Handles port resolution, error formatting, and response parsing.
  */
 
-import { COOKIE_NAMES, environments } from "@webalive/shared"
+import { COOKIE_NAMES } from "@webalive/shared"
 import { validateWorkspacePath } from "./workspace-validator.js"
 
+/**
+ * Get internal API base URL for localhost calls.
+ *
+ * ⚠️  INTERNAL USE ONLY - for MCP tool → Bridge API calls on same server.
+ * DO NOT use for external URLs (use domain from environments.ts instead).
+ */
 function getApiBaseUrl(): string {
-  if (process.env.BRIDGE_API_URL) return process.env.BRIDGE_API_URL
-  if (process.env.BRIDGE_API_PORT) return `http://localhost:${process.env.BRIDGE_API_PORT}`
-  return `http://localhost:${environments.production.port}` // Default to production
+  // PORT is set by systemd and inherited by child process
+  const portEnv = process.env.PORT
+
+  // Defensive validation: PORT must exist
+  if (!portEnv) {
+    throw new Error("Invalid PORT environment variable: must be an integer between 1 and 65535")
+  }
+
+  // Defensive validation: trim and parse
+  const portStr = portEnv.trim()
+  const port = Number.parseInt(portStr, 10)
+
+  // Defensive validation: must be finite integer in valid range
+  if (!Number.isFinite(port) || port < 1 || port > 65535) {
+    throw new Error("Invalid PORT environment variable: must be an integer between 1 and 65535")
+  }
+
+  // Defensive validation: ensure input is a pure integer string (not "3000.0" or "3000port")
+  // parseInt is too lenient - it parses "3000.0" to 3000, "3000port" to 3000, etc.
+  if (portStr !== String(port)) {
+    throw new Error("Invalid PORT environment variable: must be an integer between 1 and 65535")
+  }
+
+  return `http://localhost:${port}`
 }
 
 export interface ToolResult {

@@ -9,6 +9,7 @@
 
 import type { SDKMessage, SDKResultMessage } from "@anthropic-ai/claude-agent-sdk"
 import type { ErrorCode } from "@/lib/error-codes"
+import type { OAuthWarningContent } from "@webalive/shared"
 
 /**
  * Bridge Stream Type Constants
@@ -33,6 +34,20 @@ export const BridgeSyntheticMessageType = {
 } as const
 
 export type BridgeSyntheticMessageType = (typeof BridgeSyntheticMessageType)[keyof typeof BridgeSyntheticMessageType]
+
+/**
+ * Type guard to check if a stream event is a warning message
+ */
+export function isWarningMessage(event: unknown): event is BridgeMessageEvent & {
+  data: { messageType: typeof BridgeSyntheticMessageType.WARNING; content: BridgeWarningContent }
+} {
+  if (!event || typeof event !== "object") return false
+  const e = event as Record<string, unknown>
+  if (e.type !== BridgeStreamType.MESSAGE) return false
+  const data = e.data
+  if (!data || typeof data !== "object") return false
+  return (data as Record<string, unknown>).messageType === BridgeSyntheticMessageType.WARNING
+}
 
 export type BridgeMessageType = SDKMessage["type"] | BridgeSyntheticMessageType
 
@@ -239,6 +254,33 @@ export function createInterruptMessage(requestId: string, source: InterruptSourc
     data: {
       message: "Response interrupted by user",
       source,
+    },
+  }
+}
+
+/**
+ * Bridge WARNING content - synthetic message for user-facing warnings
+ * Extends OAuthWarningContent with wire format discriminant
+ */
+export interface BridgeWarningContent extends OAuthWarningContent {
+  type: typeof BridgeSyntheticMessageType.WARNING
+}
+
+/**
+ * Create a synthetic warning message to inject into the stream
+ */
+export function createWarningMessage(requestId: string, warning: OAuthWarningContent): BridgeMessageEvent {
+  return {
+    type: BridgeStreamType.MESSAGE,
+    requestId,
+    timestamp: new Date().toISOString(),
+    data: {
+      messageCount: 0, // Warning messages don't count toward message count
+      messageType: BridgeSyntheticMessageType.WARNING,
+      content: {
+        type: BridgeSyntheticMessageType.WARNING,
+        ...warning,
+      },
     },
   }
 }

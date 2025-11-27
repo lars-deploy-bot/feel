@@ -5,6 +5,24 @@ import { persist } from "zustand/middleware"
 
 const isDev = process.env.NODE_ENV === "development"
 
+// Check if running on dev/staging environment (client-side check)
+function isDevOrStaging(): boolean {
+  if (typeof window === "undefined") return false
+  const hostname = window.location.hostname
+  return (
+    // Staging environments
+    hostname === "staging.terminal.goalive.nl" ||
+    hostname.endsWith(".staging.goalive.nl") ||
+    hostname.includes(".staging.") ||
+    // Dev environments
+    hostname === "dev.terminal.goalive.nl" ||
+    hostname.endsWith(".dev.goalive.nl") ||
+    hostname.startsWith("dev.") ||
+    // Localhost
+    hostname === "localhost"
+  )
+}
+
 // State interface
 interface DebugState {
   isDebugView: boolean
@@ -115,9 +133,10 @@ export const useSandboxMinimized = () => useDebugStoreBase(state => state.isSand
 // Actions hook - stable reference (Guide §14.3)
 export const useDebugActions = () => useDebugStoreBase(state => state.actions)
 
-// Helper: Check if debug view should be visible
+// Helper: Check if debug tools should be available
+// Available in development mode OR on dev/staging environments
 export function isDevelopment(): boolean {
-  return isDev
+  return isDev || isDevOrStaging()
 }
 
 /**

@@ -21,6 +21,7 @@ import { ThinkingSpinner } from "@/features/chat/components/ThinkingSpinner"
 import { ThreeDotsComplete } from "@/features/chat/components/ThreeDotsComplete"
 import { useConversationSession } from "@/features/chat/hooks/useConversationSession"
 import { useImageUpload } from "@/features/chat/hooks/useImageUpload"
+import { useStreamCancellation } from "@/features/chat/hooks/useStreamCancellation"
 import {
   ClientError,
   ClientRequest,
@@ -33,7 +34,7 @@ import { renderMessage } from "@/features/chat/lib/message-renderer"
 import { SandboxProvider } from "@/features/chat/lib/sandbox-context"
 import { sendClientError } from "@/features/chat/lib/send-client-error"
 import { isValidStreamEvent } from "@/features/chat/lib/stream-guards"
-import { BridgeInterruptSource } from "@/features/chat/lib/streaming/ndjson"
+import { isWarningMessage, type BridgeWarningContent } from "@/features/chat/lib/streaming/ndjson"
 import { isCompleteEvent, isDoneEvent, isErrorEvent } from "@/features/chat/types/stream"
 import { buildPromptWithAttachments } from "@/features/chat/utils/prompt-builder"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
@@ -109,6 +110,32 @@ function ChatPageContent() {
   const { apiKey: userApiKey, model: userModel } = useLLMStore()
   const streamingActions = useStreamingActions()
 
+  // Stream cancellation hook - handles Stop button with type-safe API calls
+  const { stopStreaming } = useStreamCancellation({
+    conversationId: storeConversationId ?? "",
+    workspace,
+    addMessage,
+    setBusy,
+    setShowCompletionDots,
+    abortControllerRef,
+    currentRequestIdRef,
+    isSubmittingRef: isSubmitting,
+    onDevEvent: isDevelopment()
+      ? event => {
+          addDevEvent({
+            eventName: ClientRequest.INTERRUPT,
+            event: {
+              type: ClientRequest.INTERRUPT,
+              requestId: storeConversationId ?? "unknown",
+              timestamp: new Date().toISOString(),
+              data: event.data,
+            },
+            rawSSE: JSON.stringify(event),
+          })
+        }
+      : undefined,
+  })
+
   // Fetch organizations and auto-select if none selected
   const { organizations, loading: orgsLoading } = useOrganizations()
 
@@ -157,7 +184,8 @@ function ChatPageContent() {
     // Log build version for deployment verification
     console.log(`%c[Chat] BUILD VERSION: ${BUILD_VERSION}`, "color: #00ff00; font-weight: bold; font-size: 14px")
 
-    if (window.location.hostname.includes("staging")) {
+    // Auto-enable SSE terminal (minimized) on dev/staging environments
+    if (isDevelopment()) {
       setSSETerminal(true)
       setSSETerminalMinimized(true)
       // Sandbox disabled by default - user can enable manually
@@ -501,6 +529,43 @@ function ChatPageContent() {
                 console.log("[Chat] Tracking requestId for cancellation:", eventData.requestId)
               }
 
+              // Handle warning messages with a toast (don't add to message history)
+              if (isWarningMessage(eventData)) {
+                const warning = eventData.data.content as BridgeWarningContent
+                console.log("[Chat] OAuth warning received:", warning.provider, warning.message)
+
+                // Show toast with action link
+                toast(
+                  t => (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-orange-500">⚠️</span>
+                        <span className="font-medium">{warning.message}</span>
+                      </div>
+                      {warning.action && warning.actionUrl && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            toast.dismiss(t.id)
+                            // Navigate to settings
+                            window.location.href = warning.actionUrl || "/settings?tab=integrations"
+                          }}
+                          className="text-sm text-blue-600 hover:text-blue-800 underline text-left"
+                        >
+                          {warning.action} →
+                        </button>
+                      )}
+                    </div>
+                  ),
+                  {
+                    duration: 10000,
+                    position: "top-center",
+                    className: "!bg-amber-100 !border !border-amber-500 !p-3 !max-w-md",
+                  },
+                )
+                continue // Don't add warning to messages
+              }
+
               // Valid message - capture to dev terminal and process
               // Note: Structure already validated by isValidStreamEvent() type guard
               if (isDevelopment()) {
@@ -524,7 +589,10 @@ function ChatPageContent() {
                 // Break on stream completion
                 if (isCompleteEvent(eventData) || isDoneEvent(eventData) || isErrorEvent(eventData)) {
                   receivedAnyMessage = true
+                  // Reset submission state immediately so user can send new messages
+                  // (don't wait for cleanup code to run)
                   setBusy(false)
+                  isSubmitting.current = false
                   // Show completion dots only for successful completion (not errors)
                   if ((isCompleteEvent(eventData) || isDoneEvent(eventData)) && !isErrorEvent(eventData)) {
                     setShowCompletionDots(true)
@@ -593,6 +661,15 @@ function ChatPageContent() {
           }
         }
       } catch (readerError) {
+        // If user cancelled, don't treat as error
+        if (abortController.signal.aborted) {
+          console.log("[Chat] Stream aborted by user")
+          if (conversationId) {
+            streamingActions.endStream(conversationId)
+          }
+          return
+        }
+
         if (conversationId) {
           streamingActions.recordError(conversationId, {
             type: "reader_error",
@@ -618,8 +695,8 @@ function ChatPageContent() {
         console.warn("[Chat] Stream interrupted after receiving some messages:", readerError)
       }
 
-      // Check if we received any response at all
-      if (!receivedAnyMessage) {
+      // Check if we received any response at all (but not if user cancelled)
+      if (!receivedAnyMessage && !abortController.signal.aborted) {
         throw new Error("Server closed connection without sending any response")
       }
 
@@ -778,117 +855,12 @@ function ChatPageContent() {
     }
     startNewConversation()
     clearForNewConversation()
+    // Focus the input after starting new chat
+    setTimeout(() => chatInputRef.current?.focus(), 0)
   }, [storeConversationId, streamingActions, startNewConversation, clearForNewConversation])
 
-  /**
-   * Stop active streaming response via explicit cancellation endpoint.
-   *
-   * === CANCELLATION ARCHITECTURE (CLIENT-SIDE) ===
-   *
-   * Two-path cancellation strategy (handles all timing scenarios):
-   *
-   * 1. PRIMARY PATH (99% of cases):
-   *    - Server sends X-Request-Id header immediately in HTTP response
-   *    - We store it in currentRequestIdRef (line 352)
-   *    - Call POST /api/claude/stream/cancel with { requestId }
-   *    - Server cancels via registry, releases lock instantly
-   *
-   * 2. FALLBACK PATH (super-early Stop, < 100ms):
-   *    - User clicks Stop before X-Request-Id header processed
-   *    - currentRequestIdRef is still null
-   *    - Call POST /api/claude/stream/cancel with { conversationId, workspace }
-   *    - Server searches registry by conversationKey, cancels stream
-   *    - Backup: abort() triggers stream.cancel() which releases lock via finally block
-   *
-   * Why both paths?
-   * - Primary path: Explicit cancellation with exact requestId (most reliable)
-   * - Fallback path: Handles race condition when Stop clicked before header arrives
-   * - abort(): Safety net that triggers finally block cleanup (super-early Stop)
-   *
-   * Cleanup sequence:
-   * 1. Cancel endpoint called (best-effort, continues even if fails)
-   * 2. abort() called (triggers stream.cancel() → finally block)
-   * 3. Interrupt message added (stops thinking animation)
-   * 4. State reset (busy = false, isSubmitting = false)
-   * 5. currentRequestIdRef cleared for next request
-   *
-   * Production behavior:
-   * - Works through Cloudflare → Caddy → Next.js proxy layers
-   * - req.signal.addEventListener("abort") NOT used (doesn't work in production)
-   * - Explicit HTTP endpoint is production-safe solution
-   *
-   * See docs/streaming/cancellation-architecture.md for server-side details.
-   */
-  async function stopStreaming() {
-    console.log("[Chat] stopStreaming called, currentRequestIdRef:", currentRequestIdRef.current)
-
-    if (isDevelopment()) {
-      const interruptEvent = {
-        type: ClientRequest.INTERRUPT,
-        requestId: conversationId,
-        timestamp: new Date().toISOString(),
-        data: {
-          message: "Response interrupted by user",
-          source: BridgeInterruptSource.CLIENT_CANCEL,
-        },
-      }
-      addDevEvent({
-        eventName: ClientRequest.INTERRUPT,
-        event: interruptEvent,
-        rawSSE: JSON.stringify(interruptEvent),
-      })
-    }
-
-    // Call explicit cancel endpoint (always, with fallback to conversationId)
-    try {
-      if (currentRequestIdRef.current) {
-        // Primary path: Cancel by requestId (received from X-Request-Id header)
-        console.log("[Chat] Calling cancel endpoint with requestId:", currentRequestIdRef.current)
-        await fetch("/api/claude/stream/cancel", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ requestId: currentRequestIdRef.current }),
-        })
-        console.log("[Chat] Cancel endpoint called successfully (by requestId)")
-        currentRequestIdRef.current = null
-      } else {
-        // Fallback path: Cancel by conversationId (super-early Stop, before X-Request-Id received)
-        console.log(
-          "[Chat] No requestId available - using conversationId fallback for super-early Stop:",
-          conversationId,
-        )
-        await fetch("/api/claude/stream/cancel", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ conversationId, workspace }),
-        })
-        console.log("[Chat] Cancel endpoint called successfully (by conversationId)")
-      }
-    } catch (error) {
-      console.error("[Chat] Failed to call cancel endpoint:", error)
-      // Continue with abort anyway - cancel endpoint is best-effort
-    }
-
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort()
-      abortControllerRef.current = null
-    }
-
-    // Add completion message to mark thinking group as complete
-    // Without this, the thinking group stays animated (isComplete: false)
-    const interruptMessage: UIMessage = {
-      id: Date.now().toString(),
-      type: "complete",
-      content: {},
-      timestamp: new Date(),
-    }
-    addMessage(interruptMessage)
-
-    // Reset state - request is truly stopped
-    setBusy(false)
-    setShowCompletionDots(true) // Show completion dots even on interrupt
-    isSubmitting.current = false
-  }
+  // Note: stopStreaming is now provided by useStreamCancellation hook (line 114)
+  // See docs/diagrams/messaging/cancellation.md for architecture details
 
   // Drag & drop handlers for entire chat area
   const handleChatDragEnter = useCallback((e: React.DragEvent) => {

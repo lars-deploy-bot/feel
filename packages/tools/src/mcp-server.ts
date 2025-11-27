@@ -7,6 +7,7 @@ import { searchToolsTool } from "./tools/meta/search-tools.js"
 import { generatePersonaTool } from "./tools/personas/generate-persona.js"
 import { getAliveSuperTemplateTool } from "./tools/templates/get-template.js"
 import { checkCodebaseTool } from "./tools/workspace/check-codebase.js"
+import { deleteFileTool } from "./tools/workspace/delete-file.js"
 import { installPackageTool } from "./tools/workspace/install-package.js"
 import { restartServerTool } from "./tools/workspace/restart-server.js"
 
@@ -59,11 +60,12 @@ export const toolsInternalMcp = createSdkMcpServer({
  * - restart_dev_server: Restart the systemd dev server for a workspace
  * - install_package: Install a package in the user's workspace using bun
  * - check_codebase: Run TypeScript and ESLint checks on the codebase
+ * - delete_file: Delete a file or directory from the workspace (with security protections)
  *
  * Tool names follow MCP pattern: mcp__alive-workspace__<tool_name>
  */
 export const workspaceInternalMcp = createSdkMcpServer({
   name: "alive-workspace",
   version: "1.0.0",
-  tools: [restartServerTool, installPackageTool, checkCodebaseTool],
+  tools: [restartServerTool, installPackageTool, checkCodebaseTool, deleteFileTool],
 })

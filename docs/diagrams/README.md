@@ -12,11 +12,17 @@ Sequence diagrams, flow charts, and architectural visualizations for the Claude 
 
 - **[Linear OAuth Flow](./oauth/linear-oauth-flow.md)** - Complete OAuth2 flow for Linear integration including CSRF state management, token exchange, and automatic refresh. Shows all three phases: initial authorization, callback, and token refresh.
 
+### Messaging System
+
+- **[Message Flow Architecture](./messaging/message-flow-architecture.md)** - Complete architecture diagram showing message flow from Claude SDK through stream processing to UI rendering. Covers message types, parsing pipeline, grouping logic, classification rules, tool correlation, and debug mode behavior.
+
 ---
 
 ## Diagram Format
 
-All diagrams use **Mermaid** syntax for easy rendering in GitHub, Markdown viewers, and documentation tools.
+Diagrams primarily use **Mermaid** syntax for easy rendering in GitHub, Markdown viewers, and documentation tools.
+
+For complex architectural flows with multiple layers of processing, **ASCII diagrams** are also acceptable when they provide better clarity for understanding system behavior.
 
 ### Viewing Diagrams
 
@@ -28,8 +34,8 @@ All diagrams use **Mermaid** syntax for easy rendering in GitHub, Markdown viewe
 
 When adding a new diagram:
 
-1. Create a `.md` file in this directory
-2. Use Mermaid syntax (```mermaid)
+1. Create a `.md` file in this directory (or appropriate subdirectory)
+2. Use Mermaid syntax (```mermaid) or ASCII art for complex flows
 3. Include context and explanation around the diagram
 4. Add reference to this README
 5. Link from relevant documentation

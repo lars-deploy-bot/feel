@@ -36,3 +36,20 @@ export {
   type Environment,
   type EnvironmentKey,
 } from "./environments.js"
+export {
+  OAUTH_MCP_PROVIDERS,
+  getOAuthMcpProviderKeys,
+  isValidOAuthMcpProviderKey,
+  isOAuthMcpTool,
+  type OAuthMcpProviderConfig,
+  type OAuthMcpProviderRegistry,
+  type OAuthMcpProviderKey,
+  type ProviderTokenMap,
+} from "./mcp-providers.js"
+export {
+  formatProviderName,
+  type OAuthWarning,
+  type OAuthWarningCategory,
+  type OAuthWarningContent,
+  type OAuthFetchResult,
+} from "./oauth-warnings.js"

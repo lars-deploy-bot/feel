@@ -11,15 +11,11 @@ import type { LLMTokenUsage } from "@/lib/tokens"
  */
 export function isBridgeMessageEvent(event: unknown): event is BridgeMessageEvent {
   if (typeof event !== "object" || event === null) return false
-  const e = event as any
-  return (
-    e.type === BridgeStreamType.MESSAGE &&
-    typeof e.data === "object" &&
-    e.data !== null &&
-    typeof e.data.messageCount === "number" &&
-    typeof e.data.messageType === "string" &&
-    "content" in e.data
-  )
+  const e = event as Record<string, unknown>
+  if (e.type !== BridgeStreamType.MESSAGE) return false
+  if (typeof e.data !== "object" || e.data === null) return false
+  const data = e.data as Record<string, unknown>
+  return typeof data.messageCount === "number" && typeof data.messageType === "string" && "content" in data
 }
 
 /**
@@ -41,11 +37,12 @@ export function isAssistantMessageWithUsage(
 ): event is BridgeMessageEvent & { data: { content: AssistantMessageContent } } {
   if (event.data.messageType !== "assistant") return false
 
-  const content = event.data.content as any
+  const content = event.data.content
   if (typeof content !== "object" || content === null) return false
-  if (typeof content.message !== "object" || content.message === null) return false
-  if (typeof content.message.usage !== "object" || content.message.usage === null) return false
-
-  const usage = content.message.usage
+  const c = content as Record<string, unknown>
+  if (typeof c.message !== "object" || c.message === null) return false
+  const msg = c.message as Record<string, unknown>
+  if (typeof msg.usage !== "object" || msg.usage === null) return false
+  const usage = msg.usage as Record<string, unknown>
   return typeof usage.input_tokens === "number" && typeof usage.output_tokens === "number"
 }

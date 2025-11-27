@@ -347,6 +347,28 @@ export const TOOL_REGISTRY: ToolMetadata[] = [
       },
     ],
   },
+  {
+    name: "delete_file",
+    category: "workspace",
+    description:
+      "Delete a file or directory from the workspace. Cannot delete protected files (index.ts, package.json) or directories (node_modules, .git).",
+    contextCost: "low",
+    enabled: true,
+    parameters: [
+      {
+        name: "path",
+        type: "string",
+        required: true,
+        description: "Path to the file or directory to delete, relative to workspace root",
+      },
+      {
+        name: "recursive",
+        type: "boolean",
+        required: false,
+        description: "Required for deleting directories. Set to true to delete directory and all contents.",
+      },
+    ],
+  },
 
   // External MCP Servers (workspace-specific)
   {

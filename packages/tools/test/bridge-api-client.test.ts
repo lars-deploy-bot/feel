@@ -15,6 +15,7 @@ import { COOKIE_NAMES } from "@webalive/shared"
  */
 
 // Store original env
+const originalPort = process.env.PORT
 const originalSecret = process.env.INTERNAL_TOOLS_SECRET
 const originalSessionCookie = process.env.BRIDGE_SESSION_COOKIE
 const _originalValidate = global.validateWorkspacePath
@@ -32,6 +33,7 @@ global.fetch = mockFetch as any
 
 describe("callBridgeApi - Internal Tools Secret Header", () => {
   beforeEach(() => {
+    process.env.PORT = "1234" // Fake port for tests (fetch is mocked)
     process.env.INTERNAL_TOOLS_SECRET = "test-secret-xyz"
     process.env.BRIDGE_SESSION_COOKIE = "test-session-abc"
     mockFetch.mockClear()
@@ -44,6 +46,11 @@ describe("callBridgeApi - Internal Tools Secret Header", () => {
   })
 
   afterEach(() => {
+    if (originalPort !== undefined) {
+      process.env.PORT = originalPort
+    } else {
+      delete process.env.PORT
+    }
     process.env.INTERNAL_TOOLS_SECRET = originalSecret
     process.env.BRIDGE_SESSION_COOKIE = originalSessionCookie
     vi.clearAllMocks()
@@ -237,6 +244,255 @@ describe("callBridgeApi - Internal Tools Secret Header", () => {
   })
 })
 
+/**
+ * PORT ENVIRONMENT VARIABLE VALIDATION TESTS
+ *
+ * These tests verify defensive validation of the PORT environment variable.
+ * The PORT must be a valid integer between 1 and 65535.
+ *
+ * Critical security/robustness checks:
+ * 1. PORT must exist (explicit error)
+ * 2. PORT must be parseable as integer
+ * 3. PORT must be finite (not NaN, Infinity)
+ * 4. PORT must be in valid range (1-65535)
+ * 5. Whitespace should be trimmed before parsing
+ */
+describe("callBridgeApi - PORT Environment Variable Validation", () => {
+  beforeEach(() => {
+    process.env.BRIDGE_SESSION_COOKIE = "test-session"
+    mockFetch.mockClear()
+
+    // Default mock response
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, message: "Success" }),
+    })
+  })
+
+  afterEach(() => {
+    if (originalPort !== undefined) {
+      process.env.PORT = originalPort
+    } else {
+      delete process.env.PORT
+    }
+    process.env.BRIDGE_SESSION_COOKIE = originalSessionCookie
+    vi.clearAllMocks()
+  })
+
+  /**
+   * THE MISSING PORT BUG TEST
+   * Missing PORT should return error result
+   */
+  it("should return error when PORT is undefined (THE MISSING PORT BUG)", async () => {
+    delete process.env.PORT
+
+    const result = await callBridgeApi({
+      endpoint: "/api/test",
+      body: {},
+    })
+
+    expect(result.isError).toBe(true)
+    expect(result.content[0].text).toContain(
+      "Invalid PORT environment variable: must be an integer between 1 and 65535",
+    )
+  })
+
+  /**
+   * THE EMPTY PORT BUG TEST
+   * Empty string PORT should return error
+   */
+  it("should return error when PORT is empty string (THE EMPTY PORT BUG)", async () => {
+    process.env.PORT = ""
+
+    const result = await callBridgeApi({
+      endpoint: "/api/test",
+      body: {},
+    })
+
+    expect(result.isError).toBe(true)
+    expect(result.content[0].text).toContain(
+      "Invalid PORT environment variable: must be an integer between 1 and 65535",
+    )
+  })
+
+  /**
+   * THE WHITESPACE-ONLY PORT BUG TEST
+   * Whitespace-only PORT should return error
+   */
+  it("should return error when PORT is whitespace-only (THE WHITESPACE PORT BUG)", async () => {
+    process.env.PORT = "   "
+
+    const result = await callBridgeApi({
+      endpoint: "/api/test",
+      body: {},
+    })
+
+    expect(result.isError).toBe(true)
+    expect(result.content[0].text).toContain(
+      "Invalid PORT environment variable: must be an integer between 1 and 65535",
+    )
+  })
+
+  /**
+   * THE NON-NUMERIC PORT BUG TEST
+   * Non-numeric PORT should return error
+   */
+  it("should return error when PORT is non-numeric (THE NON-NUMERIC PORT BUG)", async () => {
+    const invalidPorts = ["abc", "port3000", "3000port", "3.14.15", "0x1234", "NaN", "Infinity"]
+
+    for (const port of invalidPorts) {
+      process.env.PORT = port
+
+      const result = await callBridgeApi({
+        endpoint: "/api/test",
+        body: {},
+      })
+
+      expect(result.isError).toBe(true)
+      expect(result.content[0].text).toContain(
+        "Invalid PORT environment variable: must be an integer between 1 and 65535",
+      )
+    }
+  })
+
+  /**
+   * THE PORT OUT OF RANGE BUG TEST
+   * PORT must be between 1 and 65535
+   */
+  it("should return error when PORT is out of valid range (THE RANGE BUG)", async () => {
+    const invalidPorts = ["0", "-1", "-3000", "65536", "99999", "100000"]
+
+    for (const port of invalidPorts) {
+      process.env.PORT = port
+
+      const result = await callBridgeApi({
+        endpoint: "/api/test",
+        body: {},
+      })
+
+      expect(result.isError).toBe(true)
+      expect(result.content[0].text).toContain(
+        "Invalid PORT environment variable: must be an integer between 1 and 65535",
+      )
+    }
+  })
+
+  /**
+   * THE DECIMAL PORT BUG TEST
+   * Decimal numbers should be rejected (not truncated)
+   */
+  it("should return error when PORT has decimal value (THE DECIMAL BUG)", async () => {
+    const decimalPorts = ["3000.5", "3000.0", "8080.99"]
+
+    for (const port of decimalPorts) {
+      process.env.PORT = port
+
+      const result = await callBridgeApi({
+        endpoint: "/api/test",
+        body: {},
+      })
+
+      expect(result.isError).toBe(true)
+      expect(result.content[0].text).toContain(
+        "Invalid PORT environment variable: must be an integer between 1 and 65535",
+      )
+    }
+  })
+
+  /**
+   * THE WHITESPACE TRIMMING SUCCESS TEST
+   * PORT with leading/trailing whitespace should work after trimming
+   */
+  it("should trim whitespace from PORT value (THE WHITESPACE TRIMMING SUCCESS)", async () => {
+    const portsWithWhitespace = ["  3000", "3000  ", "  3000  ", "\t3000\n", " \t 8080 \n "]
+
+    for (const port of portsWithWhitespace) {
+      mockFetch.mockClear()
+      process.env.PORT = port
+
+      await callBridgeApi({
+        endpoint: "/api/test",
+        body: {},
+      })
+
+      expect(mockFetch).toHaveBeenCalledOnce()
+      const [url] = mockFetch.mock.calls[0]
+
+      // Should use trimmed port value
+      const expectedPort = port.trim()
+      expect(url).toMatch(new RegExp(`http://localhost:${expectedPort}/`))
+    }
+  })
+
+  /**
+   * THE VALID PORT RANGES TEST
+   * All valid port numbers should work
+   */
+  it("should accept all valid port numbers (THE VALID RANGE SUCCESS)", async () => {
+    const validPorts = ["1", "80", "443", "3000", "8080", "8888", "65535"]
+
+    for (const port of validPorts) {
+      mockFetch.mockClear()
+      process.env.PORT = port
+
+      await callBridgeApi({
+        endpoint: "/api/test",
+        body: {},
+      })
+
+      expect(mockFetch).toHaveBeenCalledOnce()
+      const [url] = mockFetch.mock.calls[0]
+
+      expect(url).toBe(`http://localhost:${port}/api/test`)
+    }
+  })
+
+  /**
+   * THE URL FORMAT PRESERVATION TEST
+   * Ensure validation doesn't change the URL format
+   */
+  it("should preserve URL format after validation (THE URL FORMAT TEST)", async () => {
+    process.env.PORT = "3000"
+
+    await callBridgeApi({
+      endpoint: "/api/test",
+      body: {},
+    })
+
+    const [url] = mockFetch.mock.calls[0]
+
+    // Exact format: http://localhost:{port}{endpoint}
+    expect(url).toBe("http://localhost:3000/api/test")
+    expect(url).toMatch(/^http:\/\/localhost:\d+\/api\//)
+
+    // Should NOT have trailing slashes, extra formatting, etc
+    expect(url).not.toContain("//api")
+    expect(url).not.toMatch(/:\d+\/\//)
+  })
+
+  /**
+   * THE INFINITY AND NAN BUG TEST
+   * Infinity and NaN string values should be rejected
+   */
+  it("should reject Infinity and NaN values (THE INFINITY/NAN BUG)", async () => {
+    const specialValues = ["Infinity", "-Infinity", "NaN", "+Infinity"]
+
+    for (const value of specialValues) {
+      process.env.PORT = value
+
+      const result = await callBridgeApi({
+        endpoint: "/api/test",
+        body: {},
+      })
+
+      expect(result.isError).toBe(true)
+      expect(result.content[0].text).toContain(
+        "Invalid PORT environment variable: must be an integer between 1 and 65535",
+      )
+    }
+  })
+})
+
 // Note: Workspace path validation is tested separately in workspace-validator.test.ts
 // We mock it here to focus on testing the secret header logic
 
@@ -257,6 +513,7 @@ describe("callBridgeApi - Internal Tools Secret Header", () => {
  */
 describe("callBridgeApi - Cookie Name Authentication (THE COOKIE NAME BUG)", () => {
   beforeEach(() => {
+    process.env.PORT = "1234" // Fake port for tests (fetch is mocked)
     process.env.BRIDGE_SESSION_COOKIE = "jwt-token-123"
     mockFetch.mockClear()
 
@@ -268,6 +525,11 @@ describe("callBridgeApi - Cookie Name Authentication (THE COOKIE NAME BUG)", () 
   })
 
   afterEach(() => {
+    if (originalPort !== undefined) {
+      process.env.PORT = originalPort
+    } else {
+      delete process.env.PORT
+    }
     process.env.BRIDGE_SESSION_COOKIE = originalSessionCookie
     vi.clearAllMocks()
   })

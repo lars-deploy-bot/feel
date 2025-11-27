@@ -9,7 +9,11 @@ import type {
 // Type guard for the specific system init message (the only SDKSystemMessage type)
 export function isSDKSystemMessage(msg: SDKMessage): msg is SDKSystemMessage {
   return (
-    msg.type === "system" && "subtype" in msg && (msg as any).subtype === "init" && "session_id" in msg && "uuid" in msg
+    msg.type === "system" &&
+    "subtype" in msg &&
+    (msg as SDKSystemMessage).subtype === "init" &&
+    "session_id" in msg &&
+    "uuid" in msg
   )
 }
 
@@ -26,8 +30,10 @@ export function isSDKResultMessage(msg: SDKMessage): msg is SDKResultMessage {
 }
 
 // Type guard for error result messages (client-side errors without duration_ms)
-export function isErrorResultMessage(msg: any): msg is { type: "result"; is_error: true; result: string } {
-  return msg?.type === "result" && msg?.is_error === true && typeof msg?.result === "string"
+export function isErrorResultMessage(msg: unknown): msg is { type: "result"; is_error: true; result: string } {
+  if (!msg || typeof msg !== "object") return false
+  const m = msg as Record<string, unknown>
+  return m.type === "result" && m.is_error === true && typeof m.result === "string"
 }
 
 // Helper to safely extract session ID from system init message

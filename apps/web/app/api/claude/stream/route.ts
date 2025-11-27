@@ -18,7 +18,7 @@ import { getSystemPrompt } from "@/features/chat/lib/systemPrompt"
 import { resolveWorkspace } from "@/features/workspace/lib/workspace-utils"
 import { COOKIE_NAMES } from "@/lib/auth/cookies"
 import { hasStripeMcpAccess } from "@/lib/claude/agent-constants.mjs"
-import { getStripeOAuth } from "@/lib/oauth/oauth-instances"
+import { fetchOAuthTokens } from "@/lib/oauth/fetch-oauth-tokens"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { env } from "@/lib/env"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
@@ -281,17 +281,15 @@ export async function POST(req: NextRequest) {
 
     logger.log("Max turns limit:", effectiveMaxTurns)
 
-    // Fetch user's Stripe OAuth token if connected
-    let stripeAccessToken: string | undefined
-    try {
-      const stripeOAuth = getStripeOAuth()
-      stripeAccessToken = await stripeOAuth.getAccessToken(user.id, "stripe")
-      logger.log("User has Stripe OAuth connection")
-    } catch {
-      // User not connected to Stripe - this is normal
-      stripeAccessToken = undefined
+    // Fetch all OAuth tokens for connected MCP providers (in parallel)
+    // Uses registry from @webalive/shared - add new providers there
+    const { tokens: oauthTokens, warnings: oauthWarnings } = await fetchOAuthTokens(user.id, logger)
+    const hasStripeConnection = !!oauthTokens.stripe
+
+    // Log warnings for debugging
+    if (oauthWarnings.length > 0) {
+      logger.log(`OAuth warnings: ${oauthWarnings.map(w => w.provider).join(", ")}`)
     }
-    const hasStripeConnection = !!stripeAccessToken
 
     const systemPrompt = getSystemPrompt({
       projectId,
@@ -354,7 +352,7 @@ export async function POST(req: NextRequest) {
       systemPrompt,
       apiKey: userApiKey || undefined,
       sessionCookie,
-      stripeAccessToken, // Pass user's Stripe OAuth token for MCP server
+      oauthTokens, // OAuth tokens for connected MCP providers (stripe, linear, etc.)
     })
 
     // Create NDJSON stream from child process output
@@ -366,6 +364,7 @@ export async function POST(req: NextRequest) {
       conversationWorkspace: resolvedWorkspaceName,
       tokenSource,
       cancelState, // Pass shared cancellation state
+      oauthWarnings, // OAuth warnings to inject into stream
       onStreamComplete: () => {
         // Guaranteed cleanup: unregister, unlock, callback
         unregisterCancellation(requestId)

@@ -1,4 +1,4 @@
-.PHONY: help staging dev logs-production logs-staging logs-dev status rollback wash wash-skip shell build\:shell test\:shell static-check
+.PHONY: help deploy-all-environments staging dev logs-production logs-staging logs-dev status rollback wash wash-skip shell build\:shell test\:shell static-check
 
 # Load environment variables from .env
 ifneq (,$(wildcard .env))
@@ -16,6 +16,7 @@ help:
 	@echo "$(BLUE)Claude Bridge Commands$(NC)"
 	@echo ""
 	@echo "$(GREEN)Development & Staging:$(NC)"
+	@echo "  make deploy-all-environments  ⚠️  Run dev → staging → wash (requires CONFIRM_PROD=yes)"
 	@echo "  make staging       Full staging deployment (port 8998)"
 	@echo "  make dev           Rebuild and restart dev environment (port 8997, hot-reload)"
 	@echo "  make dev:turbo     Run all monorepo dev servers with Turbo"
@@ -37,6 +38,38 @@ help:
 	@echo ""
 	@echo "$(RED)⚠️  Production deployment is intentionally hidden.$(NC)"
 	@echo ""
+
+# ⚠️  Full deployment pipeline: dev → staging → production
+# Stops immediately on any failure and outputs full logs
+# Each step must pass before proceeding to the next
+#
+# REQUIRES: CONFIRM_PROD=yes environment variable to proceed with production
+# Usage: CONFIRM_PROD=yes make deploy-all-environments
+deploy-all-environments:
+	@echo "$(RED)⚠️  WARNING: This will deploy to dev → staging → production$(NC)"
+	@echo ""
+	@echo "$(BLUE)Step 1/3: Running dev deployment...$(NC)"
+	@$(MAKE) dev || (echo "$(RED)✗ Dev deployment failed. Stopping.$(NC)" && exit 1)
+	@echo ""
+	@echo "$(GREEN)✓ Dev deployment passed$(NC)"
+	@echo ""
+	@echo "$(BLUE)Step 2/3: Running staging deployment...$(NC)"
+	@$(MAKE) staging || (echo "$(RED)✗ Staging deployment failed. Stopping.$(NC)" && exit 1)
+	@echo ""
+	@echo "$(GREEN)✓ Staging deployment passed$(NC)"
+	@echo ""
+	@if [ "$(CONFIRM_PROD)" != "yes" ]; then \
+		echo "$(RED)⚠️  Production deployment blocked!$(NC)"; \
+		echo "$(RED)To deploy to production, run:$(NC)"; \
+		echo "$(RED)  CONFIRM_PROD=yes make deploy-all-environments$(NC)"; \
+		echo ""; \
+		echo "$(GREEN)✓ Dev and staging deployed successfully. Production skipped.$(NC)"; \
+		exit 0; \
+	fi
+	@echo "$(BLUE)Step 3/3: Running production deployment (wash)...$(NC)"
+	@$(MAKE) wash || (echo "$(RED)✗ Production deployment failed. Stopping.$(NC)" && exit 1)
+	@echo ""
+	@echo "$(GREEN)✓✓✓ All deployments completed successfully! ✓✓✓$(NC)"
 
 staging:
 	@./scripts/deployment/deploy-staging.sh

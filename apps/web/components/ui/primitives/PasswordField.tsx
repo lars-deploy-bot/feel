@@ -34,10 +34,10 @@ export function PasswordField<T extends FieldValues>({
 
   return (
     <motion.div variants={fieldVariants}>
-      <label htmlFor={String(fieldName)} className="block text-base font-bold text-gray-900 mb-2">
+      <label htmlFor={String(fieldName)} className="block text-base font-bold text-black dark:text-white mb-2">
         {label}
       </label>
-      <p className="text-sm text-gray-600 mb-3 font-medium">{helperText}</p>
+      <p className="text-sm text-black/60 dark:text-white/60 mb-3 font-medium">{helperText}</p>
       <div className="relative">
         <motion.input
           whileFocus="focus"
@@ -50,10 +50,10 @@ export function PasswordField<T extends FieldValues>({
           data-lpignore
           data-testid="password-input"
           placeholder="••••••••"
-          className={`w-full px-4 py-3 rounded-lg border-2 transition-colors outline-none font-medium pr-12 ${
+          className={`w-full px-4 py-3 rounded-lg border transition-all outline-none font-normal pr-12 placeholder:text-black/40 dark:placeholder:text-white/40 ${
             fieldError
-              ? "border-red-300 bg-red-50 text-gray-900"
-              : "border-gray-200 bg-gray-50 text-gray-900 hover:border-gray-300 focus:border-blue-500 focus:bg-blue-50"
+              ? "border-red-500 dark:border-red-500 bg-red-50 dark:bg-red-950/20 text-black dark:text-white focus:ring-2 focus:ring-red-500/20"
+              : "border-black/20 dark:border-white/20 bg-white dark:bg-zinc-900 text-black dark:text-white hover:border-black/40 dark:hover:border-white/40 focus:border-black dark:focus:border-white focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10"
           } disabled:opacity-50 disabled:cursor-not-allowed`}
         />
         <motion.button
@@ -62,7 +62,7 @@ export function PasswordField<T extends FieldValues>({
           type="button"
           onClick={onTogglePassword}
           disabled={isDeploying}
-          className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 transition-colors"
+          className="absolute right-3 top-3 text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white transition-colors"
         >
           {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
         </motion.button>
@@ -73,7 +73,7 @@ export function PasswordField<T extends FieldValues>({
             <div
               key={i}
               className={`h-1 rounded-full flex-1 ${
-                watchPassword.length >= (i + 1) * (16 / 3) ? "bg-blue-500" : "bg-gray-200"
+                watchPassword.length >= (i + 1) * (16 / 3) ? "bg-black dark:bg-white" : "bg-black/20 dark:bg-white/20"
               }`}
             />
           ))}
@@ -83,7 +83,7 @@ export function PasswordField<T extends FieldValues>({
         <motion.p
           initial={{ opacity: 0, y: -5 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-2 text-red-600 text-sm font-bold"
+          className="mt-2 text-red-600 dark:text-red-400 text-sm font-bold"
         >
           {String(errorMessage)}
         </motion.p>

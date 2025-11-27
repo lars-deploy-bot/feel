@@ -77,6 +77,9 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
         }
       },
       clearAllAttachments: clearAttachments,
+      focus: () => {
+        document.querySelector<HTMLTextAreaElement>('[data-testid="message-input"]')?.focus()
+      },
     }),
     [
       addAttachment,

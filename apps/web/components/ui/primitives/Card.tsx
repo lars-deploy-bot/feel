@@ -13,7 +13,14 @@ const Card = forwardRef<HTMLDivElement | HTMLAnchorElement, CardProps>(
     const componentProps = as === "a" ? { href, ...props } : { ...props }
 
     return (
-      <Component {...((componentProps as any) || {})} className={cn("card", className)} ref={ref as any}>
+      <Component
+        {...((componentProps as any) || {})}
+        className={cn(
+          "rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-900 shadow-sm transition-colors",
+          className,
+        )}
+        ref={ref as any}
+      >
         {children}
       </Component>
     )

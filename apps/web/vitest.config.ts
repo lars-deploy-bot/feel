@@ -33,7 +33,9 @@ export const sharedConfig = {
   resolve: {
     preserveSymlinks: false,
     alias: {
-      "@alive-brug/tools": join(process.cwd(), "../../packages/tools"),
+      // Point to source, not dist - let TypeScript handle compilation
+      "@alive-brug/tools/display": join(process.cwd(), "../../packages/tools/src/display.ts"),
+      "@alive-brug/tools": join(process.cwd(), "../../packages/tools/src/index.ts"),
       "@webalive/site-controller": join(process.cwd(), "../../packages/site-controller"),
       "@alive-brug/images": join(process.cwd(), "../../packages/images"),
       "@alive-brug/template": join(process.cwd(), "../../packages/template"),
@@ -89,5 +91,6 @@ export default defineConfig({
     environment: "happy-dom",
     include: ["**/*.test.{ts,tsx}"],
     exclude: [...baseTestConfig.exclude, ...dbIntegrationGlobs, ...systemGlobs],
+    testTimeout: 10000, // Fail fast on slow tests
   },
 })

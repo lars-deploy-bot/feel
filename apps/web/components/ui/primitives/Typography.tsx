@@ -14,7 +14,7 @@ const Heading = forwardRef<HTMLHeadingElement, HeadingProps>(
 
     return (
       <Component
-        className={cn(`text-${weight}`, `text-${size}`, `text-${transform}`, className)}
+        className={cn(`text-${weight}`, `text-${size}`, `text-${transform}`, "text-black dark:text-white", className)}
         ref={ref}
         {...props}
       />
@@ -37,8 +37,15 @@ const Text = forwardRef<HTMLParagraphElement, TextProps>(
     { className, as = "p", weight = "light", size = "base", color = "primary", transform = "uppercase", ...props },
     ref,
   ) => {
+    const colorClasses =
+      color === "primary"
+        ? "text-black dark:text-white"
+        : color === "muted"
+          ? "text-black/60 dark:text-white/60"
+          : "text-black/40 dark:text-white/40"
+
     return createElement(as, {
-      className: cn(`text-${weight}`, `text-${size}`, `text-${color}`, `text-${transform}`, className),
+      className: cn(`text-${weight}`, `text-${size}`, `text-${transform}`, colorClasses, className),
       ref,
       ...props,
     })

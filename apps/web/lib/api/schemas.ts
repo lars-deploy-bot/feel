@@ -107,6 +107,36 @@ export const apiSchemas = {
       message: z.string().optional(),
     }),
   },
+
+  /**
+   * POST /api/claude/stream/cancel
+   * Cancel an active stream
+   *
+   * Two modes:
+   * - Primary: Cancel by requestId (when X-Request-Id header was received)
+   * - Fallback: Cancel by conversationId + workspace (super-early Stop)
+   *
+   * Note: Schema is permissive - server does its own validation.
+   * Either requestId OR (conversationId + workspace) must be provided.
+   */
+  "claude/stream/cancel": {
+    req: z
+      .object({
+        requestId: z.string().optional(),
+        conversationId: z.string().optional(),
+        workspace: z.string().optional(),
+      })
+      .refine(data => data.requestId || (data.conversationId && data.workspace), {
+        message: "Either requestId or (conversationId + workspace) must be provided",
+      })
+      .brand<"CancelStreamRequest">(),
+    res: z.object({
+      ok: z.boolean(),
+      status: z.enum(["cancelled", "already_complete"]),
+      requestId: z.string().optional(),
+      conversationId: z.string().optional(),
+    }),
+  },
 } as const
 
 // ============================================================================

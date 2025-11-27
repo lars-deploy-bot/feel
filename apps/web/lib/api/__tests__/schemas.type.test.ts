@@ -14,7 +14,7 @@ import type { Endpoint, Req, Res } from "../schemas"
 describe("API Schema Type System", () => {
   describe("Endpoint type", () => {
     it("should only allow defined endpoints", () => {
-      expectTypeOf<Endpoint>().toEqualTypeOf<"login" | "user" | "feedback">()
+      expectTypeOf<Endpoint>().toEqualTypeOf<"login" | "user" | "feedback" | "claude/stream/cancel">()
     })
 
     it("should be a union of string literals", () => {

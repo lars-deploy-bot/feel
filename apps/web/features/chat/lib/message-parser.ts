@@ -109,26 +109,28 @@ export function parseStreamEvent(
     }
 
     // Track tool uses per conversation (not globally)
+    // Also track tool inputs so we can display them in tool results (e.g., comment body)
     if (conversationId && streamingActions && isSDKAssistantMessage(content)) {
       const assistantMsg = content as SDKAssistantMessage
       if (assistantMsg.message?.content && Array.isArray(assistantMsg.message.content)) {
         assistantMsg.message.content.forEach(item => {
           if (item.type === "tool_use" && item.id && item.name) {
-            streamingActions.recordToolUse(conversationId, item.id, item.name)
+            streamingActions.recordToolUse(conversationId, item.id, item.name, item.input)
           }
         })
       }
     }
 
-    // Lookup tool names from per-conversation store
+    // Lookup tool names and inputs from per-conversation store
     if (conversationId && streamingActions && isSDKUserMessage(content)) {
       const userMsg = content as SDKUserMessage
       if (userMsg.message?.content && Array.isArray(userMsg.message.content)) {
         userMsg.message.content.forEach(item => {
           if (item.type === "tool_result" && item.tool_use_id) {
-            // Augment SDK ToolResultBlockParam with tool_name for UI rendering
-            // SDK doesn't include tool_name in tool_result, so we add it client-side
+            // Augment SDK ToolResultBlockParam with tool_name and tool_input for UI rendering
+            // SDK doesn't include these in tool_result, so we add them client-side
             ;(item as any).tool_name = streamingActions.getToolName(conversationId, item.tool_use_id) || "Tool"
+            ;(item as any).tool_input = streamingActions.getToolInput(conversationId, item.tool_use_id)
           }
         })
       }
@@ -235,24 +237,42 @@ export {
   isStartEvent,
 }
 
+/**
+ * Component types for message routing
+ */
+export const COMPONENT_TYPE = {
+  USER: "user",
+  START: "start",
+  COMPLETE: "complete",
+  COMPACT_BOUNDARY: "compact_boundary",
+  INTERRUPT: "interrupt",
+  SYSTEM: "system",
+  ASSISTANT: "assistant",
+  TOOL_RESULT: "tool_result",
+  RESULT: "result",
+  UNKNOWN: "unknown",
+} as const
+
+export type ComponentType = (typeof COMPONENT_TYPE)[keyof typeof COMPONENT_TYPE]
+
 // Get message component type for routing
-export function getMessageComponentType(message: UIMessage): string {
-  if (message.type === "user") return "user"
-  if (message.type === "start") return "start"
-  if (message.type === "complete") return "complete"
-  if (message.type === "compact_boundary") return "compact_boundary"
-  if (message.type === "interrupt") return "interrupt"
+export function getMessageComponentType(message: UIMessage): ComponentType {
+  if (message.type === "user") return COMPONENT_TYPE.USER
+  if (message.type === "start") return COMPONENT_TYPE.START
+  if (message.type === "complete") return COMPONENT_TYPE.COMPLETE
+  if (message.type === "compact_boundary") return COMPONENT_TYPE.COMPACT_BOUNDARY
+  if (message.type === "interrupt") return COMPONENT_TYPE.INTERRUPT
 
   if (message.type === "sdk_message") {
     const sdkMsg = message.content as SDKMessage
 
-    if (isSDKSystemMessage(sdkMsg)) return "system"
-    if (isSDKAssistantMessage(sdkMsg)) return "assistant"
-    if (isSDKUserMessage(sdkMsg)) return "tool_result"
-    if (isSDKResultMessage(sdkMsg)) return "result"
+    if (isSDKSystemMessage(sdkMsg)) return COMPONENT_TYPE.SYSTEM
+    if (isSDKAssistantMessage(sdkMsg)) return COMPONENT_TYPE.ASSISTANT
+    if (isSDKUserMessage(sdkMsg)) return COMPONENT_TYPE.TOOL_RESULT
+    if (isSDKResultMessage(sdkMsg)) return COMPONENT_TYPE.RESULT
   }
 
-  if (message.type === "result") return "result"
+  if (message.type === "result") return COMPONENT_TYPE.RESULT
 
-  return "unknown"
+  return COMPONENT_TYPE.UNKNOWN
 }

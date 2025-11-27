@@ -12,16 +12,104 @@ import { StripeSearchOutput } from "@/components/ui/chat/tools/stripe/StripeSear
 import { StripeSubscriptionsOutput } from "@/components/ui/chat/tools/stripe/StripeSubscriptionsOutput"
 import { TaskOutput } from "@/components/ui/chat/tools/task/TaskOutput"
 import { WriteOutput } from "@/components/ui/chat/tools/write/WriteOutput"
+import { getToolRenderer, validateToolData, transformToolData } from "@/lib/tools/tool-registry"
+// Register all tools (display, renderers, previews)
+import "@/lib/tools/register-tools"
 
 interface ToolOutputRouterProps {
   toolName: string
   // Tool output is dynamic JSON - SDK doesn't provide output types
   // Runtime structural validation ensures type safety
   content: any
+  // Original tool input - useful for renderers when output is empty (e.g., create_comment returns {})
+  toolInput?: unknown
 }
 
-export function ToolOutputRouter({ toolName, content }: ToolOutputRouterProps) {
+/**
+ * Unwrap MCP text wrapper format: [{type: "text", text: "..."}] → parsed JSON
+ * Also handles string content and nested wrappers.
+ */
+function unwrapMcp(content: unknown): unknown {
+  let data = content
+
+  // Handle MCP wrapper: [{type: "text", text: "..."}]
+  if (Array.isArray(data) && data[0]?.type === "text" && data[0]?.text) {
+    try {
+      data = JSON.parse(data[0].text)
+    } catch {
+      return content
+    }
+  }
+
+  // Handle string content
+  if (typeof data === "string") {
+    try {
+      data = JSON.parse(data)
+    } catch {
+      return content
+    }
+  }
+
+  // Handle nested wrapper (sometimes double-wrapped)
+  if (Array.isArray(data) && data[0]?.type === "text" && data[0]?.text) {
+    try {
+      data = JSON.parse(data[0].text)
+    } catch {
+      // Keep current data
+    }
+  }
+
+  return data
+}
+
+/**
+ * Check if content is MCP text format: [{type: "text", text: "..."}]
+ * Returns the extracted text(s) or null if not MCP format
+ */
+function extractMcpText(content: unknown): string[] | null {
+  if (!Array.isArray(content)) return null
+
+  const texts: string[] = []
+  for (const item of content) {
+    if (item?.type === "text" && typeof item?.text === "string") {
+      texts.push(item.text)
+    }
+  }
+
+  return texts.length > 0 ? texts : null
+}
+
+/**
+ * Simple renderer for MCP text responses
+ */
+function McpTextOutput({ texts }: { texts: string[] }) {
+  return (
+    <div className="mt-2 space-y-2">
+      {texts.map((text, i) => (
+        <div
+          key={i}
+          className="text-xs text-black/60 dark:text-white/60 font-diatype-mono whitespace-pre-wrap leading-relaxed px-3 py-2 bg-black/[0.02] dark:bg-white/[0.02] rounded-md border border-black/5 dark:border-white/5"
+        >
+          {text}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+export function ToolOutputRouter({ toolName, content, toolInput }: ToolOutputRouterProps) {
   const tool = toolName.toLowerCase()
+
+  // Check component registry for custom renderers
+  const Component = getToolRenderer(toolName)
+  if (Component) {
+    // Apply transform (handles MCP unwrapping if configured)
+    const data = transformToolData(toolName, content)
+    // Validate data is suitable for renderer
+    if (validateToolData(toolName, data)) {
+      return <Component data={data} toolName={toolName} toolInput={toolInput} />
+    }
+  }
 
   switch (tool) {
     case "bash":
@@ -88,146 +176,88 @@ export function ToolOutputRouter({ toolName, content }: ToolOutputRouterProps) {
       }
       break
 
-    case "mcp__stripe__list_subscriptions":
-      // Stripe MCP returns array of subscriptions in text field as JSON string
-      try {
-        let subscriptions = content
-
-        // Handle MCP wrapper format: [{type: "text", text: "[...]"}]
-        if (Array.isArray(content) && content[0]?.type === "text" && content[0]?.text) {
-          subscriptions = JSON.parse(content[0].text)
-        }
-
-        // Handle if content is already a string (pre-parsed by getDisplayContent)
-        if (typeof content === "string") {
-          subscriptions = JSON.parse(content)
-        }
-
-        // If we have an array of objects with type/text, extract from first
-        if (Array.isArray(subscriptions) && subscriptions[0]?.type === "text" && subscriptions[0]?.text) {
-          subscriptions = JSON.parse(subscriptions[0].text)
-        }
-
-        if (Array.isArray(subscriptions) && subscriptions.length > 0 && subscriptions[0].id) {
-          return <StripeSubscriptionsOutput subscriptions={subscriptions} />
-        }
-      } catch (e) {
-        console.error("Failed to parse Stripe subscriptions:", e)
+    case "mcp__stripe__list_subscriptions": {
+      const subscriptions = unwrapMcp(content)
+      if (Array.isArray(subscriptions) && subscriptions.length > 0 && subscriptions[0].id) {
+        return <StripeSubscriptionsOutput subscriptions={subscriptions} />
       }
       break
+    }
 
-    case "mcp__stripe__list_customers":
-      // Stripe MCP returns customers in text field as JSON string
-      try {
-        let data = content
-
-        // Handle MCP wrapper format: [{type: "text", text: "{...}"}]
-        if (Array.isArray(content) && content[0]?.type === "text" && content[0]?.text) {
-          data = JSON.parse(content[0].text)
-        }
-
-        // Handle if content is already a string
-        if (typeof content === "string") {
-          data = JSON.parse(content)
-        }
-
-        // Stripe API returns {object: "list", data: [...]}
-        const customers = data?.data || data
-
-        if (Array.isArray(customers) && customers.length > 0 && customers[0].id) {
-          return <StripeCustomersOutput customers={customers} />
-        }
-      } catch (e) {
-        console.error("Failed to parse Stripe customers:", e)
+    case "mcp__stripe__list_customers": {
+      const data = unwrapMcp(content) as Record<string, unknown> | unknown[]
+      // Stripe API returns {object: "list", data: [...]}
+      const customers = (data as Record<string, unknown>)?.data || data
+      if (Array.isArray(customers) && customers.length > 0 && (customers[0] as Record<string, unknown>).id) {
+        return <StripeCustomersOutput customers={customers} />
       }
       break
+    }
 
-    case "mcp__stripe__fetch_stripe_resources":
-      // Stripe MCP returns resources as [{type: "text", text: "{...}"}]
-      try {
-        const resources = []
-
-        if (Array.isArray(content)) {
-          for (const item of content) {
-            if (item.type === "text" && item.text) {
-              // Parse the JSON string in the text field
-              const parsed = JSON.parse(item.text)
-              resources.push(parsed)
+    case "mcp__stripe__fetch_stripe_resources": {
+      // This tool returns multiple text items, each needs parsing
+      const resources: any[] = []
+      if (Array.isArray(content)) {
+        for (const item of content) {
+          if (item.type === "text" && item.text) {
+            try {
+              resources.push(JSON.parse(item.text))
+            } catch {
+              // Skip unparseable items
             }
           }
         }
-
-        if (resources.length > 0) {
-          return <StripeResourcesOutput resources={resources} />
-        }
-      } catch (e) {
-        console.error("Failed to parse Stripe resources:", e)
+      }
+      if (resources.length > 0) {
+        return <StripeResourcesOutput resources={resources} />
       }
       break
+    }
 
-    case "mcp__stripe__retrieve_balance":
-      // Stripe balance: [{type: "text", text: "{...}"}]
-      try {
-        if (Array.isArray(content) && content[0]?.type === "text" && content[0]?.text) {
-          const balance = JSON.parse(content[0].text)
-          return <StripeBalanceOutput balance={balance} />
-        }
-      } catch (e) {
-        console.error("Failed to parse Stripe balance:", e)
+    case "mcp__stripe__retrieve_balance": {
+      const balance = unwrapMcp(content)
+      if (balance && typeof balance === "object") {
+        return <StripeBalanceOutput balance={balance} />
       }
       break
+    }
 
-    case "mcp__stripe__get_stripe_account_info":
-      // Stripe account: [{type: "text", text: "{...}"}]
-      try {
-        if (Array.isArray(content) && content[0]?.type === "text" && content[0]?.text) {
-          const account = JSON.parse(content[0].text)
-          return <StripeAccountOutput account={account} />
-        }
-      } catch (e) {
-        console.error("Failed to parse Stripe account:", e)
+    case "mcp__stripe__get_stripe_account_info": {
+      const account = unwrapMcp(content)
+      if (account && typeof account === "object") {
+        return <StripeAccountOutput account={account} />
       }
       break
+    }
 
-    case "mcp__stripe__list_payment_intents":
-      // Stripe payment intents: [{type: "text", text: "[...]"}]
-      try {
-        if (Array.isArray(content) && content[0]?.type === "text" && content[0]?.text) {
-          const paymentIntents = JSON.parse(content[0].text)
-          if (Array.isArray(paymentIntents)) {
-            return <StripePaymentIntentsOutput paymentIntents={paymentIntents} />
-          }
-        }
-      } catch (e) {
-        console.error("Failed to parse Stripe payment intents:", e)
+    case "mcp__stripe__list_payment_intents": {
+      const paymentIntents = unwrapMcp(content)
+      if (Array.isArray(paymentIntents) && paymentIntents.length > 0) {
+        return <StripePaymentIntentsOutput paymentIntents={paymentIntents} />
       }
       break
+    }
 
-    case "mcp__stripe__search_stripe_resources":
-      // Stripe search results: [{type: "text", text: "{\"results\":[...]}"}]
-      try {
-        if (Array.isArray(content) && content[0]?.type === "text" && content[0]?.text) {
-          const data = JSON.parse(content[0].text)
-          if (data.results && Array.isArray(data.results)) {
-            return <StripeSearchOutput results={data.results} />
-          }
-        }
-      } catch (e) {
-        console.error("Failed to parse Stripe search results:", e)
+    case "mcp__stripe__search_stripe_resources": {
+      const data = unwrapMcp(content) as Record<string, unknown> | null
+      if (data?.results && Array.isArray(data.results)) {
+        return <StripeSearchOutput results={data.results} />
       }
       break
+    }
 
     // Add other tools as needed
     default:
-      // Fallback to JSON for unknown tools
-      return (
-        <pre className="text-xs text-black/60 dark:text-white/60 font-diatype-mono leading-relaxed overflow-auto max-h-80 p-3 bg-black/[0.02] dark:bg-white/[0.02] border border-black/10 dark:border-white/10">
-          {typeof content === "string" ? content : JSON.stringify(content, null, 2)}
-        </pre>
-      )
+      break
   }
 
-  // Fallback if tool is recognized but content doesn't match expected schema
+  // Generic fallback: try to extract MCP text format first, then fall back to JSON
+  const mcpTexts = extractMcpText(content)
+  if (mcpTexts) {
+    return <McpTextOutput texts={mcpTexts} />
+  }
+
+  // Final fallback: raw JSON display
   return (
     <pre className="text-xs text-black/60 dark:text-white/60 font-diatype-mono leading-relaxed overflow-auto max-h-80 p-3 bg-black/[0.02] dark:bg-white/[0.02] border border-black/10 dark:border-white/10">
       {typeof content === "string" ? content : JSON.stringify(content, null, 2)}

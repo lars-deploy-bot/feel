@@ -205,6 +205,9 @@ bun run unit
 2. Import and use `getCookieUserId()` for authentication
 3. Validate workspace if file operations involved
 4. Return proper status codes (401, 400, 500, etc.)
+5. **Write tests in `app/api/[name]/__tests__/route.test.ts`** (MANDATORY!)
+   - See "When to Write Tests" section for minimum required tests
+   - File operations require additional security tests
 
 #### Modifying Claude Integration
 
@@ -307,7 +310,9 @@ systemctl status caddy
 
 **Documentation**: See [docs/testing/TESTING_GUIDE.md](./docs/testing/TESTING_GUIDE.md) for complete testing guide.
 
-### When to Write Tests (STRICT - This is MVP)
+### When to Write Tests (STRICT - MANDATORY)
+
+**⚠️ IMPORTANT: Tests are NOT optional. You MUST write tests before considering any API work complete.**
 
 **✅ MUST write tests for:**
 1. **Security-critical functions** (100% coverage required)
@@ -316,16 +321,29 @@ systemctl status caddy
    - Workspace boundary checks (`getWorkspace`)
    - Shell command sanitization (if executing shell commands)
    - Authentication logic
+   - **File operation endpoints** (Read, Write, Edit, Delete, etc.)
 
-2. **New API routes** (at minimum: happy path + one error case)
+2. **New API routes** (MANDATORY - not optional!)
    - Any new endpoint in `app/api/`
-   - Focus on authentication, validation, error handling
+   - **Minimum required tests:**
+     - Authentication check (401 without session)
+     - Happy path (successful operation)
+     - At least one error case (400/403/404/500)
+   - **For file operations, also test:**
+     - Path traversal blocked
+     - Protected files/dirs blocked (if applicable)
+     - Workspace boundary enforced
+
+3. **File operation endpoints** (CRITICAL - security boundary)
+- These handle user data and filesystem access
+- Must test all security checks work correctly
+- Example: `/api/files/delete` has 15 tests covering auth, traversal, protected files
 
 **⚠️ SHOULD write tests for:**
-3. **Complex business logic**
+4. **Complex business logic**
    - Workspace resolution (multiple branches, edge cases)
    - Stream handling (if modifying SSE logic)
-   - File operations with validation
+   - Credit/billing operations
 
 **❌ DON'T write tests for:**
 - Simple formatters/transforms

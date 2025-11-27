@@ -20,7 +20,7 @@ interface AgentRequest {
   systemPrompt?: string | { type: "preset"; preset: "claude_code"; append?: string }
   apiKey?: string
   sessionCookie?: string // For authenticated API calls back to Bridge
-  stripeAccessToken?: string // User's Stripe OAuth token (if connected)
+  oauthTokens?: Record<string, string> // OAuth tokens keyed by provider (stripe, linear, etc.)
 }
 
 function getWorkspaceCredentials(workspaceRoot: string): WorkspaceCredentials {
@@ -52,7 +52,7 @@ export function runAgentChild(workspaceRoot: string, payload: AgentRequest): Rea
 
   const child = spawn(process.execPath, [runnerPath], {
     env: {
-      ...process.env, // Inherit all environment variables
+      ...process.env, // Inherit all environment variables (includes PORT from systemd)
       // Override specific values for child process
       TARGET_UID: String(uid),
       TARGET_GID: String(gid),

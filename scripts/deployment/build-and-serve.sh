@@ -288,6 +288,46 @@ if [ ! -f "apps/web/.env" ] && [ ! -f "apps/web/.env.local" ] && [ ! -f "apps/we
     log_warn "No .env file found in apps/web/ (checked .env, .env.local, .env.$ENV)"
 fi
 
+# Check critical OAuth/security environment variables
+log_step "Checking critical security env vars..."
+ENV_FILE_TO_CHECK="apps/web/.env.$ENV"
+if [ -f "$ENV_FILE_TO_CHECK" ]; then
+    MISSING_VARS=()
+
+    # LOCKBOX_MASTER_KEY is required for OAuth token encryption/decryption
+    if ! grep -q "^LOCKBOX_MASTER_KEY=" "$ENV_FILE_TO_CHECK"; then
+        MISSING_VARS+=("LOCKBOX_MASTER_KEY")
+    fi
+
+    # Validate LOCKBOX_MASTER_KEY is 64 hex chars (32 bytes) if present
+    LOCKBOX_KEY=$(grep "^LOCKBOX_MASTER_KEY=" "$ENV_FILE_TO_CHECK" 2>/dev/null | cut -d '=' -f2-)
+    if [ -n "$LOCKBOX_KEY" ]; then
+        if ! [[ "$LOCKBOX_KEY" =~ ^[0-9a-fA-F]{64}$ ]]; then
+            end_phase "error" "LOCKBOX_MASTER_KEY must be 64 hex characters (32 bytes)"
+            log_error "Current value has ${#LOCKBOX_KEY} characters"
+            log_error "Generate with: openssl rand -hex 32"
+            exit 1
+        fi
+    fi
+
+    # Report any missing critical variables
+    if [ ${#MISSING_VARS[@]} -gt 0 ]; then
+        end_phase "error" "Missing critical environment variables in $ENV_FILE_TO_CHECK"
+        for var in "${MISSING_VARS[@]}"; do
+            log_error "  - $var"
+        done
+        log_error ""
+        log_error "LOCKBOX_MASTER_KEY is required for OAuth token encryption."
+        log_error "Without it, OAuth integrations (Linear, Stripe, etc.) will silently fail."
+        log_error ""
+        log_error "Generate with: openssl rand -hex 32"
+        exit 1
+    fi
+    log_step "Critical env vars: OK"
+else
+    log_warn "Environment file $ENV_FILE_TO_CHECK not found - skipping env var validation"
+fi
+
 log_step "Checking required commands (bun, node)..."
 for cmd in bun node; do
     if ! command -v "$cmd" &> /dev/null; then
@@ -499,9 +539,12 @@ else
     echo ""
 
     # Load E2E test secret from environment file for staging/production tests
+    # Initialize to avoid set -u unbound variable error if not in environment
+    E2E_TEST_SECRET="${E2E_TEST_SECRET:-}"
     E2E_ENV_FILE="$PROJECT_ROOT/apps/web/.env.${ENV}"
     if [ -f "$E2E_ENV_FILE" ]; then
-        E2E_TEST_SECRET=$(grep '^E2E_TEST_SECRET=' "$E2E_ENV_FILE" | cut -d '=' -f2)
+        # Use -f2- to preserve trailing '=' in base64-encoded secrets
+        E2E_TEST_SECRET=$(grep '^E2E_TEST_SECRET=' "$E2E_ENV_FILE" | cut -d '=' -f2-)
     fi
 
     # Verify E2E_TEST_SECRET is set - fail fast if missing
@@ -516,11 +559,11 @@ else
 
     set +e
     if [ "$ENV" = "staging" ]; then
-        # For staging, set TEST_ENV=staging and pass E2E_TEST_SECRET
-        (cd apps/web && TEST_ENV=staging E2E_TEST_SECRET="${E2E_TEST_SECRET}" bun run test:e2e)
+        # For staging, use .env.staging
+        (cd apps/web && ENV_FILE=.env.staging E2E_TEST_SECRET="${E2E_TEST_SECRET}" bun run test:e2e)
     else
-        # For production, set TEST_ENV=production and pass E2E_TEST_SECRET
-        (cd apps/web && TEST_ENV=production E2E_TEST_SECRET="${E2E_TEST_SECRET}" bun run test:e2e)
+        # For production, use .env.production
+        (cd apps/web && ENV_FILE=.env.production E2E_TEST_SECRET="${E2E_TEST_SECRET}" bun run test:e2e)
     fi
     E2E_EXIT_CODE=$?
     set -e

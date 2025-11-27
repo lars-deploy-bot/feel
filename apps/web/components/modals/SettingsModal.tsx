@@ -862,9 +862,9 @@ function WorkspaceSettings({ onClose }: { onClose: () => void }) {
   const members = useOrgMembers()
   const leave = useOrgLeave()
 
-  // Invite state
+  // Invite state (TODO: Wire up invite UI)
   const [inviteEmail, setInviteEmail] = useState("")
-  const [inviting, setInviting] = useState(false)
+  const [_inviting, setInviting] = useState(false)
 
   const handleSelectOrg = (orgId: string) => {
     setSelectedOrg(orgId)
@@ -876,7 +876,7 @@ function WorkspaceSettings({ onClose }: { onClose: () => void }) {
     return org?.role || null
   }
 
-  const handleInvite = async () => {
+  const _handleInvite = async () => {
     if (!inviteEmail.trim() || !selectedOrgId) return
 
     setInviting(true)
@@ -987,27 +987,32 @@ function WorkspaceSettings({ onClose }: { onClose: () => void }) {
                   {/* PRIMARY: Invite Section */}
                   <div className="space-y-3">
                     <div>
-                      <h4 className="text-sm font-medium text-black dark:text-white mb-1">Invite teammates</h4>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="text-sm font-medium text-black dark:text-white">Invite teammates</h4>
+                        <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-medium rounded">
+                          Coming soon
+                        </span>
+                      </div>
                       <p className="text-xs text-black/60 dark:text-white/60">
                         Give access to <strong>{selectedOrg.name}</strong> workspace and shared credits
                       </p>
+                      <p className="text-xs text-black/50 dark:text-white/50 mt-1">
+                        Contact us to enable team invitations for your organization
+                      </p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 opacity-50">
                       <input
                         type="email"
-                        value={inviteEmail}
-                        onChange={e => setInviteEmail(e.target.value)}
-                        onKeyDown={e => e.key === "Enter" && handleInvite()}
                         placeholder="email@example.com"
+                        disabled
                         className="flex-1 px-3 py-2 bg-white dark:bg-zinc-800 border border-black/20 dark:border-white/20 rounded-lg text-sm text-black dark:text-white placeholder:text-black/40 dark:placeholder:text-white/40 focus:outline-none focus:border-black dark:focus:border-white transition-colors"
                       />
                       <button
                         type="button"
-                        onClick={handleInvite}
-                        disabled={!inviteEmail.trim() || inviting}
+                        disabled
                         className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg text-sm font-medium hover:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {inviting ? "Sending..." : "Invite"}
+                        Invite
                       </button>
                     </div>
                   </div>

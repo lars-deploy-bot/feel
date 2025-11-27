@@ -46,6 +46,9 @@ export const ErrorCodes = {
   // File errors (6xxx)
   FILE_READ_ERROR: "FILE_READ_ERROR",
   FILE_WRITE_ERROR: "FILE_WRITE_ERROR",
+  FILE_DELETE_ERROR: "FILE_DELETE_ERROR",
+  FILE_PROTECTED: "FILE_PROTECTED",
+  FILE_NOT_FOUND: "FILE_NOT_FOUND",
 
   // Package management errors (6.5xxx)
   PACKAGE_INSTALL_FAILED: "PACKAGE_INSTALL_FAILED",
@@ -191,6 +194,17 @@ export function getErrorMessage(code: ErrorCode, details?: Record<string, any>):
       return details?.filePath
         ? `I cannot write to '${details.filePath}'. I might not have permission to modify it.`
         : "I cannot write to this file. I might not have permission to modify it."
+
+    case ErrorCodes.FILE_DELETE_ERROR:
+      return details?.filePath
+        ? `I cannot delete '${details.filePath}'. ${details.error || "I might not have permission."}`
+        : "I cannot delete this file. I might not have permission."
+
+    case ErrorCodes.FILE_PROTECTED:
+      return details?.reason ? `Cannot delete: ${details.reason}` : "This file is protected and cannot be deleted."
+
+    case ErrorCodes.FILE_NOT_FOUND:
+      return details?.filePath ? `The file '${details.filePath}' does not exist.` : "The file does not exist."
 
     case ErrorCodes.PACKAGE_INSTALL_FAILED:
       return details?.package
@@ -389,6 +403,15 @@ export function getErrorHelp(code: ErrorCode, details?: Record<string, any>): st
 
     case ErrorCodes.FILE_WRITE_ERROR:
       return "Make sure the file isn't locked by another program and that your workspace has write permissions."
+
+    case ErrorCodes.FILE_DELETE_ERROR:
+      return "Make sure the file isn't locked and you have permission to delete it."
+
+    case ErrorCodes.FILE_PROTECTED:
+      return "Some files like index.ts, package.json, and node_modules are protected to keep your site running."
+
+    case ErrorCodes.FILE_NOT_FOUND:
+      return "The file may have been moved or already deleted. Try refreshing the file list."
 
     case ErrorCodes.STREAM_PARSE_ERROR:
       return "This usually happens with network issues. Try refreshing the page or checking your connection."

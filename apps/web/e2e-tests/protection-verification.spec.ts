@@ -6,14 +6,14 @@
  * - Layer 2: Server-side blocking
  *
  * NOTE: Some tests require a local test environment with PLAYWRIGHT_TEST=true
- * and BRIDGE_ENV=local set on the server. These are skipped on staging.
+ * and BRIDGE_ENV=local set on the server. These are skipped on remote environments
+ * (staging and production).
  */
 
 import { login } from "./helpers"
 import { handlers } from "./lib/handlers"
+import { isLocalTestServer } from "./lib/test-env"
 import { expect, test } from "./setup"
-
-const isStaging = process.env.TEST_ENV === "staging"
 
 test.describe("Protection System Verification", () => {
   test("Layer 1: Catches unmocked calls at browser level", async ({ page, tenant }) => {
@@ -54,7 +54,7 @@ test.describe("Protection System Verification", () => {
 
   // This test requires PLAYWRIGHT_TEST=true on the server (local test env only)
   test("Layer 2: Server blocks calls when PLAYWRIGHT_TEST=true", async ({ page, tenant }) => {
-    test.skip(isStaging, "Requires local test server with PLAYWRIGHT_TEST=true")
+    test.skip(!isLocalTestServer, "Requires local test server with PLAYWRIGHT_TEST=true")
     await login(page, tenant)
     await page.goto("/chat")
 
@@ -87,7 +87,7 @@ test.describe("Protection System Verification", () => {
 
   // This test uses hardcoded test credentials that only work with BRIDGE_ENV=local
   test("Allows non-Claude API calls (login, verify, etc)", async ({ page }) => {
-    test.skip(isStaging, "Requires local test server with BRIDGE_ENV=local credentials")
+    test.skip(!isLocalTestServer, "Requires local test server with BRIDGE_ENV=local credentials")
     // Login should work - it's NOT a protected endpoint
     await page.goto("/")
     await page.getByTestId("email-input").fill("test@bridge.local")

@@ -21,6 +21,24 @@
  * ```
  */
 
+// MCP servers
 export { toolsInternalMcp, workspaceInternalMcp } from "./mcp-server.js"
 export { getEnabledMcpToolNames } from "./tools/meta/search-tools.js"
 export { SDK_TOOLS, type SDKTool } from "./tools/meta/tool-registry.js"
+
+// Tool name constants
+export { LINEAR, STRIPE, FILE_OPS, OTHER } from "./tool-names.js"
+export type { LinearTool, StripeTool, FileOpTool, OtherTool, ToolName } from "./tool-names.js"
+
+// Display configuration (non-React)
+export {
+  getDisplayConfig,
+  shouldAutoExpand,
+  isVisibleInNormalMode,
+  getPreview,
+  transformData,
+  registerDisplayConfig,
+  unwrapMcp,
+  plural,
+} from "./display-config.js"
+export type { ToolDisplayConfig } from "./display-config.js"

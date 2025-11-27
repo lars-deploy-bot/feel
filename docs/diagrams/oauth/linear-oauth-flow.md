@@ -4,10 +4,11 @@ This document contains sequence diagrams illustrating the Linear OAuth integrati
 
 ## Overview
 
-The Linear OAuth integration uses a three-phase flow:
+The Linear OAuth integration uses a four-phase flow:
 1. **Initial OAuth Flow**: User initiates authorization, state is validated via CSRF tokens
 2. **OAuth Callback Flow**: Linear redirects back with code, tokens are exchanged and stored
 3. **Token Refresh Flow**: Automatic token refresh when access token expires (with 5-min buffer)
+4. **Refresh Failure Flow**: Warning injection when refresh fails (revoked/invalid tokens)
 
 ## Architecture Components
 
@@ -126,15 +127,105 @@ sequenceDiagram
 - Refresh tokens rotated on each refresh (best practice)
 - 5-minute buffer prevents race conditions
 
+## Phase 4: Refresh Failure & Warning Flow
+
+**Trigger**: Token refresh fails due to revocation or invalid_grant error
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Browser
+    participant Stream Route
+    participant fetchOAuthTokens
+    participant OAuth Core
+    participant Linear
+    participant Chat UI
+
+    rect rgba(200, 100, 100, 0.2)
+    note over User,Chat UI: Token Refresh Failure Flow
+
+    User->>Browser: Send chat message
+    Browser->>Stream Route: POST /api/claude/stream
+    Stream Route->>fetchOAuthTokens: Fetch all OAuth tokens
+    fetchOAuthTokens->>OAuth Core: getAccessToken(userId, "linear")
+    OAuth Core->>OAuth Core: Token expired, attempt refresh
+    OAuth Core->>Linear: POST refresh endpoint
+    Linear-->>OAuth Core: {error: "invalid_grant", error_description: "Refresh token revoked"}
+    OAuth Core-->>fetchOAuthTokens: Throw error
+
+    fetchOAuthTokens->>fetchOAuthTokens: Catch error, create OAuthWarning
+    Note over fetchOAuthTokens: warning = {<br/>  provider: "linear",<br/>  message: "Your Linear connection has expired...",<br/>  needsReauth: true<br/>}
+    fetchOAuthTokens-->>Stream Route: {tokens: {}, warnings: [warning]}
+
+    Stream Route->>Stream Route: Inject bridge_warning into stream
+    Stream Route-->>Browser: NDJSON stream with warning
+
+    Browser->>Chat UI: Parse bridge_warning event
+    Chat UI->>Chat UI: Show toast notification
+    Note over Chat UI: "Your Linear connection has expired.<br/>Please reconnect in Settings > Integrations."<br/>[Reconnect] button
+    end
+```
+
+**Steps**:
+1. User sends chat message, triggering stream route
+2. Stream route calls `fetchOAuthTokens()` to get all provider tokens
+3. OAuth Core attempts to refresh expired Linear token
+4. Linear returns `invalid_grant` error (token revoked by user or expired)
+5. `fetchOAuthTokens` catches error, creates `OAuthWarning` object
+6. Warning returned alongside any successful tokens
+7. Stream route injects `bridge_warning` synthetic message into NDJSON stream
+8. Chat UI parses warning, displays toast with "Reconnect" action button
+
+**Error Detection**:
+- `invalid_grant` → Token revoked by user in Linear settings
+- `revoked` → Token explicitly revoked
+- `expired` / `refresh` → Refresh token expired (rare, ~30 days)
+
+**Warning Types** (from `@webalive/shared`):
+
+```typescript
+// Warning from token fetch
+interface OAuthWarning {
+  provider: OAuthMcpProviderKey  // "linear" | "stripe"
+  message: string                 // Human-readable message
+  needsReauth: boolean           // Always true for these errors
+}
+
+// Content injected into stream
+interface OAuthWarningContent {
+  category: "oauth" | "general"
+  provider?: OAuthMcpProviderKey
+  message: string
+  action?: string      // "Reconnect"
+  actionUrl?: string   // "/settings?tab=integrations"
+}
+```
+
+**User Recovery**:
+1. User sees toast notification in chat
+2. Clicks "Reconnect" button
+3. Redirected to Settings > Integrations
+4. Clicks "Connect" on Linear integration
+5. Completes OAuth flow (Phase 1 & 2)
+6. New tokens stored, future requests work
+
 ## Implementation Files
 
 - **Web API Routes**:
   - `apps/web/app/api/auth/linear/route.ts` (OAuth initiation + callback)
   - `apps/web/app/api/integrations/linear/route.ts` (API proxy with auto-refresh)
+  - `apps/web/app/api/claude/stream/route.ts` (Stream route with warning injection)
 
 - **OAuth Core Package**:
   - `packages/oauth-core/src/providers/linear.ts` (LinearProvider class)
   - `packages/oauth-core/src/core/BaseOAuthProvider.ts` (Base class with token management)
+
+- **Warning Flow**:
+  - `packages/shared/src/oauth-warnings.ts` (Shared types: OAuthWarning, OAuthWarningContent)
+  - `apps/web/lib/oauth/fetch-oauth-tokens.ts` (Token fetcher with warning collection)
+  - `apps/web/lib/stream/ndjson-stream-handler.ts` (Warning injection into stream)
+  - `apps/web/features/chat/lib/streaming/ndjson.ts` (BridgeWarningContent, isWarningMessage)
+  - `apps/web/app/chat/page.tsx` (Toast display for warnings)
 
 - **Storage**:
   - Supabase table: `iam.oauth_tokens` (tenant_id, provider, encrypted_tokens)

@@ -105,6 +105,26 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* Fix browser autofill background color */
+/* Note: Consider using CSS variables (--background, --foreground) for better design token consistency */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px white inset !important;
+  -webkit-text-fill-color: black !important;
+  caret-color: black !important;
+}
+
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:hover,
+.dark input:-webkit-autofill:focus,
+.dark input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px #18181b inset !important;
+  -webkit-text-fill-color: white !important;
+  caret-color: white !important;
+}
+
 /* Thinking Spinner Animation - Grow Pulse */
 @keyframes thinkingGrow {
   0%, 100% {

@@ -42,9 +42,10 @@ export async function checkCodebase(_params: CheckCodebaseParams): Promise<ToolR
     // - Validating package.json scripts before execution
     // - Using containerized checker
 
-    // Run TypeScript check - use bunx to run tsc directly from node_modules
+    // Run TypeScript check - use "bun x" to run tsc from node_modules
+    // (bunx is only in /root/.bun/bin, but "bun x" works from /usr/local/bin/bun)
     // Try tsconfig.app.json first (Vite projects), fall back to default tsconfig.json
-    const tscResult = spawnSync("bunx", ["tsc", "--project", "tsconfig.app.json", "--noEmit"], {
+    const tscResult = spawnSync("bun", ["x", "tsc", "--project", "tsconfig.app.json", "--noEmit"], {
       cwd: workspaceRoot,
       encoding: "utf-8",
       timeout: 120000,
@@ -62,6 +63,14 @@ export async function checkCodebase(_params: CheckCodebaseParams): Promise<ToolR
         error: tscResult.error,
       }),
     )
+
+    // Handle case where tsc command itself failed to run (e.g., bun not in PATH)
+    if (tscResult.error) {
+      return errorResult(
+        "Failed to run TypeScript check",
+        `Command failed: ${tscResult.error.message}\n\nThis usually means 'bun' or 'tsc' is not available. Try running 'bun install' first.`,
+      )
+    }
 
     // Run ESLint check
     const lintResult = spawnSync("bun", ["run", "lint"], {
@@ -83,19 +92,29 @@ export async function checkCodebase(_params: CheckCodebaseParams): Promise<ToolR
       }),
     )
 
+    // Handle case where lint command itself failed to run
+    if (lintResult.error) {
+      return errorResult(
+        "Failed to run lint check",
+        `Command failed: ${lintResult.error.message}\n\nMake sure 'bun run lint' works in this workspace.`,
+      )
+    }
+
     const tscPassed = tscResult.status === 0
     const lintPassed = lintResult.status === 0
 
     // All checks passed
     if (tscPassed && lintPassed) {
-      return successResult("All checks passed! Codebase is healthy. ✅")
+      return successResult(
+        "All checks passed! Codebase is healthy. ✅\n\nIf this is your last check, revise and see if you've done everything the user asked according to their needs. If not, continue.",
+      )
     }
 
     // Build detailed error report
     const errors: string[] = []
 
     if (!tscPassed) {
-      errors.push("❌ TypeScript Type Errors:\n")
+      errors.push("❌ TypeScript Type Errors (you should fix these before proceeding):\n")
 
       // Combine stdout and stderr for complete error output
       const tscOutput = [tscResult.stdout, tscResult.stderr].filter(Boolean).join("\n")
@@ -124,7 +143,7 @@ export async function checkCodebase(_params: CheckCodebaseParams): Promise<ToolR
     }
 
     if (!lintPassed) {
-      errors.push("\n\n❌ Linting Errors:\n")
+      errors.push("\n\n❌ Linting Errors (you should fix these before proceeding):\n")
 
       // Combine stdout and stderr for complete error output
       const lintOutput = [lintResult.stdout, lintResult.stderr].filter(Boolean).join("\n")

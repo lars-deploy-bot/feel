@@ -133,4 +133,5 @@ export interface ChatInputHandle {
   getAttachments: () => Attachment[]
   clearLibraryImages: () => void
   clearAllAttachments: () => void
+  focus: () => void
 }

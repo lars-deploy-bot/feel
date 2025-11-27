@@ -23,6 +23,7 @@ import {
   PERMISSION_MODE,
   SETTINGS_SOURCES,
 } from "../lib/claude/agent-constants.mjs"
+import { isOAuthMcpTool } from "@webalive/shared"
 
 async function readStdinJson() {
   const chunks = []
@@ -79,19 +80,20 @@ async function readStdinJson() {
     const request = await readStdinJson()
     console.error(`[runner] Received request: ${request.message?.substring(0, 50)}...`)
 
-    // Get user-specific access options
-    const stripeAccessToken = request.stripeAccessToken || null
-    const hasStripeConnection = !!stripeAccessToken
-    if (hasStripeConnection) {
-      console.error("[runner] User has Stripe OAuth connection")
+    // Get OAuth tokens for connected MCP providers
+    const oauthTokens = request.oauthTokens || {}
+    const connectedProviders = Object.keys(oauthTokens).filter(key => !!oauthTokens[key])
+    if (connectedProviders.length > 0) {
+      console.error(`[runner] Connected OAuth providers: ${connectedProviders.join(", ")}`)
     }
 
-    // Get workspace and user-specific allowed tools
-    const workspaceAllowedTools = getAllowedTools(targetCwd || process.cwd(), { hasStripeConnection })
-    console.error(`[runner] Allowed tools count: ${workspaceAllowedTools.length}`)
+    // Get base allowed tools (SDK + internal MCP tools)
+    // OAuth MCP tools are allowed dynamically in canUseTool
+    const baseAllowedTools = getAllowedTools(targetCwd || process.cwd())
+    console.error(`[runner] Base allowed tools count: ${baseAllowedTools.length}`)
 
     /**
-     * Tool permission handler - enforces workspace-specific ALLOWED_TOOLS whitelist and DISALLOWED_TOOLS blacklist
+     * Tool permission handler - enforces DISALLOWED_TOOLS blacklist and dynamic OAuth MCP tool permissions
      * @type {import('@anthropic-ai/claude-agent-sdk').CanUseTool}
      */
     const canUseTool = async (toolName, input, _options) => {
@@ -104,28 +106,41 @@ async function readStdinJson() {
         }
       }
 
-      // Check workspace-specific allow list
-      if (!workspaceAllowedTools.includes(toolName)) {
-        console.error(`[runner] SECURITY: Blocked unauthorized tool: ${toolName}`)
+      // Check base allowed tools (SDK + internal MCP tools)
+      if (baseAllowedTools.includes(toolName)) {
+        console.error(`[runner] Tool allowed (base): ${toolName}`)
         return {
-          behavior: "deny",
-          message: `Tool "${toolName}" is not in the allowed tools list. Only these tools are permitted: ${workspaceAllowedTools.join(", ")}`,
+          behavior: "allow",
+          updatedInput: input,
+          updatedPermissions: [],
         }
       }
 
-      console.error(`[runner] Tool allowed: ${toolName}`)
+      // Check OAuth MCP tools - auto-allowed if user has that provider connected
+      // Uses isOAuthMcpTool from @webalive/shared registry
+      if (isOAuthMcpTool(toolName, connectedProviders)) {
+        console.error(`[runner] Tool allowed (OAuth MCP): ${toolName}`)
+        return {
+          behavior: "allow",
+          updatedInput: input,
+          updatedPermissions: [],
+        }
+      }
+
+      // Tool not in any allowed list
+      console.error(`[runner] SECURITY: Blocked unauthorized tool: ${toolName}`)
       return {
-        behavior: "allow",
-        updatedInput: input,
-        updatedPermissions: [],
+        behavior: "deny",
+        message: `Tool "${toolName}" is not permitted. Connect the required integration in Settings to use this tool.`,
       }
     }
 
     // MCP tools use process.cwd() which is set by process.chdir() above
     // No workspace injection needed - tools default to process.cwd()
 
-    // Get MCP servers with user-specific access (e.g., Stripe for connected users)
-    const workspaceMcpServers = getMcpServers(targetCwd || process.cwd(), { stripeAccessToken })
+    // Get MCP servers with user-specific OAuth tokens
+    // Uses registry from @webalive/shared - add new providers there
+    const workspaceMcpServers = getMcpServers(targetCwd || process.cwd(), { oauthTokens })
     console.error("[runner] MCP servers enabled:", Object.keys(workspaceMcpServers).join(", "))
 
     // Log available secrets for debugging (without revealing values)
@@ -138,7 +153,7 @@ async function readStdinJson() {
         model: request.model,
         maxTurns: request.maxTurns || 25,
         permissionMode: PERMISSION_MODE,
-        allowedTools: workspaceAllowedTools,
+        allowedTools: baseAllowedTools, // OAuth MCP tools handled dynamically in canUseTool
         disallowedTools: DISALLOWED_TOOLS,
         canUseTool,
         settingSources: SETTINGS_SOURCES,
@@ -184,12 +199,14 @@ async function readStdinJson() {
         )
       }
 
-      // Filter system init message to only show workspace-allowed tools
+      // Filter system init message to only show allowed tools (base + connected OAuth MCP)
       let outputMessage = message
       if (message.type === "system" && message.subtype === "init" && message.tools) {
         outputMessage = {
           ...message,
-          tools: message.tools.filter(tool => workspaceAllowedTools.includes(tool)),
+          tools: message.tools.filter(
+            tool => baseAllowedTools.includes(tool) || isOAuthMcpTool(tool, connectedProviders),
+          ),
         }
       }
 
