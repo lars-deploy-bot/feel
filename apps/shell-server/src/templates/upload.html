@@ -6,412 +6,213 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <title>SHELL | Upload</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%231e1e1e'/%3E%3Ctext x='12' y='68' font-family='monospace' font-size='50' font-weight='bold' fill='%230dbc79'%3E%24_%3C/text%3E%3C/svg%3E">
+  <!-- Tailwind CSS v4 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'shell-bg': '#1e1e1e',
+            'shell-surface': '#2d2d2d',
+            'shell-border': '#444',
+            'shell-accent': '#0dbc79',
+            'shell-accent-hover': '#0aa868',
+            'shell-danger': '#f14c4c',
+            'shell-danger-hover': '#d43e3e',
+            'shell-text': '#d4d4d4',
+            'shell-text-muted': '#888',
+            'shell-blue': '#2472c8',
+            'shell-blue-hover': '#1e5fa8',
+            'shell-code-bg': '#0d1117',
+          }
+        }
+      }
+    }
+  </script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.16/themes/default-dark/style.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.16/jstree.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #1e1e1e;
-      min-height: 100vh;
-      padding: 20px;
-    }
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
-      transition: max-width 0.3s ease;
-    }
-    .container.expanded {
-      max-width: 1400px;
-    }
-    .main-content {
-      display: block;
-    }
-    .main-content.grid {
-      display: grid;
-      grid-template-columns: 1fr 400px;
-      gap: 20px;
-    }
-    .header {
-      background: #2d2d2d;
-      padding: 20px;
-      border-radius: 8px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
-    }
-    h1 {
-      color: #fff;
-      font-size: 24px;
-    }
-    .header-buttons {
-      display: flex;
-      gap: 8px;
-    }
-    .header-buttons button {
-      border: none;
-      padding: 8px 16px;
-      border-radius: 4px;
-      font-size: 14px;
-      cursor: pointer;
-    }
-    #back {
-      background: #0dbc79;
-      color: #fff;
-    }
-    #back:hover {
-      background: #0aa868;
-    }
-    #logout {
-      background: #f14c4c;
-      color: #fff;
-    }
-    #logout:hover {
-      background: #d43e3e;
-    }
-    .workspace-info {
-      background: #2d2d2d;
-      padding: 16px 20px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-      color: #d4d4d4;
-      font-size: 14px;
-    }
-    .workspace-info strong {
-      color: #0dbc79;
-    }
-    .upload-section {
-      background: #2d2d2d;
-      padding: 30px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-    }
-    .form-group {
-      margin-bottom: 20px;
-    }
-    .form-group label {
-      display: block;
-      color: #d4d4d4;
-      font-size: 14px;
-      margin-bottom: 8px;
-      font-weight: 500;
-    }
-    .form-group input[type="text"],
-    .form-group select {
-      width: 100%;
-      padding: 12px;
-      border: 1px solid #444;
-      background: #1e1e1e;
-      color: #fff;
-      border-radius: 4px;
-      font-size: 14px;
-    }
-    .form-group input:focus,
-    .form-group select:focus {
-      outline: none;
-      border-color: #0dbc79;
-    }
-    .form-group select option {
-      background: #1e1e1e;
-      color: #fff;
-    }
-    .form-group select optgroup {
-      background: #2d2d2d;
-      color: #888;
-    }
-    .destination-row {
-      display: flex;
-      gap: 8px;
-    }
-    .destination-row select {
-      flex: 1;
-    }
-    .list-btn {
-      padding: 12px 16px;
-      background: #2472c8;
-      color: #fff;
-      border: none;
-      border-radius: 4px;
-      font-size: 14px;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-    .list-btn:hover {
-      background: #1e5fa8;
-    }
-    .file-tree {
-      background: #2d2d2d;
-      border-radius: 8px;
-      display: none;
-      flex-direction: column;
-      height: 100%;
-      min-height: 400px;
-    }
-    .file-tree.show {
-      display: flex;
-    }
-    .file-tree .path-header {
-      color: #0dbc79;
-      padding: 12px 16px;
-      border-bottom: 1px solid #444;
-      font-size: 13px;
-      font-family: monospace;
-      flex-shrink: 0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .file-tree .close-btn {
-      background: #f14c4c;
-      color: #fff;
-      border: none;
-      border-radius: 4px;
-      padding: 4px 10px;
-      font-size: 12px;
-      cursor: pointer;
-    }
-    .file-tree .close-btn:hover {
-      background: #d43e3e;
-    }
-    #file-tree-content {
-      flex: 1;
-      overflow: auto;
-      background: #1e1e1e;
-      border-radius: 0 0 8px 8px;
-    }
-    .file-tree .jstree-container-ul {
-      padding: 8px !important;
-    }
-    .dropzone {
-      border: 2px dashed #444;
-      border-radius: 8px;
-      padding: 60px 20px;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.2s;
-      background: #1e1e1e;
-    }
-    .dropzone:hover, .dropzone.dragover {
-      border-color: #0dbc79;
-      background: #252525;
-    }
-    .dropzone-icon {
-      font-size: 48px;
-      margin-bottom: 16px;
-    }
-    .dropzone-text {
-      color: #d4d4d4;
-      font-size: 16px;
-      margin-bottom: 8px;
-    }
-    .dropzone-subtext {
-      color: #888;
-      font-size: 14px;
-    }
-    .file-input {
-      display: none;
-    }
-    .selected-file {
-      background: #1e1e1e;
-      padding: 16px;
-      border-radius: 4px;
-      margin-top: 16px;
-      display: none;
-    }
-    .selected-file.show {
-      display: block;
-    }
-    .selected-file-name {
-      color: #0dbc79;
-      font-size: 14px;
-      margin-bottom: 4px;
-    }
-    .selected-file-size {
-      color: #888;
-      font-size: 12px;
-    }
-    .check-button {
-      padding: 10px 20px;
-      background: #2472c8;
-      color: #fff;
-      border: none;
-      border-radius: 4px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      margin-top: 8px;
-    }
-    .check-button:hover:not(:disabled) {
-      background: #1e5fa8;
-    }
-    .check-button:disabled {
-      background: #666;
-      cursor: not-allowed;
-    }
-    .upload-button {
-      width: 100%;
-      padding: 14px;
-      background: #0dbc79;
-      color: #fff;
-      border: none;
-      border-radius: 4px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      margin-top: 20px;
-      display: none;
-    }
-    .upload-button.show {
-      display: block;
-    }
-    .upload-button:hover:not(:disabled) {
-      background: #0aa868;
-    }
-    .upload-button:disabled {
-      background: #666;
-      cursor: not-allowed;
-    }
-    .progress {
-      width: 100%;
-      height: 4px;
-      background: #444;
-      border-radius: 2px;
-      overflow: hidden;
-      margin-top: 12px;
-      display: none;
-    }
-    .progress.show {
-      display: block;
-    }
-    .progress-bar {
-      height: 100%;
-      background: #0dbc79;
-      transition: width 0.3s;
-      width: 0%;
-    }
-    .message {
-      padding: 16px;
-      border-radius: 4px;
-      margin-top: 20px;
-      display: none;
-      font-size: 14px;
-    }
-    .message.show {
-      display: block;
-    }
-    .message.success {
-      background: rgba(13, 188, 121, 0.1);
-      border: 1px solid #0dbc79;
-      color: #0dbc79;
-    }
-    .message.error {
-      background: rgba(241, 76, 76, 0.1);
-      border: 1px solid #f14c4c;
-      color: #f14c4c;
-    }
-    @media (max-width: 1024px) {
-      .main-content.grid {
-        grid-template-columns: 1fr;
-      }
-      .file-tree {
-        min-height: 300px;
-        max-height: 400px;
-      }
+    /* Dynamic grid layouts - need CSS for JS class toggling */
+    .main-content.grid-3col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+
+    /* jstree overrides */
+    .file-tree .jstree-container-ul { padding: 8px !important; }
+    .jstree-default-dark .jstree-clicked { background: #0dbc79 !important; color: #fff !important; }
+
+    /* highlight.js overrides */
+    .preview-content pre code, .preview-content .hljs { background: transparent !important; }
+    .preview-content pre code { padding: 0 !important; }
+
+    /* Responsive grid adjustments */
+    @media (max-width: 1200px) {
+      .main-content.grid-3col { grid-template-columns: 1fr 1fr; }
+      .file-preview { display: none !important; }
     }
     @media (max-width: 768px) {
-      body {
-        padding: 10px;
-      }
-      .header {
-        flex-direction: column;
-        gap: 12px;
-        align-items: stretch;
-      }
-      h1 {
-        font-size: 20px;
-      }
-      .header-buttons {
-        width: 100%;
-      }
-      .header-buttons button {
-        flex: 1;
-      }
-      .upload-section {
-        padding: 20px;
-      }
-      .dropzone {
-        padding: 40px 20px;
-      }
+      .main-content.grid-3col { grid-template-columns: 1fr; }
+      .file-tree-panel { display: none !important; }
     }
   </style>
 </head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>📦 Upload Files</h1>
-      <div class="header-buttons">
-        <button id="back">← Back</button>
-        <button id="logout">Logout</button>
+<body class="m-0 p-5 md:p-2.5 box-border font-sans bg-shell-bg min-h-screen">
+  <div class="container max-w-[1800px] mx-auto transition-all duration-300">
+    <!-- Header -->
+    <div class="bg-shell-surface p-5 rounded-lg flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3 mb-5">
+      <h1 class="text-white text-2xl md:text-xl font-semibold">Upload Files</h1>
+      <div class="flex gap-2 w-full md:w-auto">
+        <button
+          id="back"
+          class="flex-1 md:flex-none bg-shell-accent hover:bg-shell-accent-hover text-white border-none px-4 py-2 rounded text-sm cursor-pointer transition-colors"
+        >
+          Back
+        </button>
+        <button
+          id="logout"
+          class="flex-1 md:flex-none bg-shell-danger hover:bg-shell-danger-hover text-white border-none px-4 py-2 rounded text-sm cursor-pointer transition-colors"
+        >
+          Logout
+        </button>
       </div>
     </div>
 
-    <div class="main-content" id="main-content">
-      <div class="upload-section">
-        <div class="form-group">
-          <label for="destination">Upload destination</label>
-          <div class="destination-row">
-            <select id="destination">
-              <option value="root">{{UPLOAD_PATH}}</option>
-              <optgroup label="Websites" id="sites-group">
-                <option value="" disabled>Loading sites...</option>
-              </optgroup>
-            </select>
-            <button type="button" class="list-btn" id="list-files-btn">List Files</button>
+    <div class="main-content grid-3col" id="main-content">
+      <!-- Upload Section -->
+      <div class="bg-shell-surface p-8 md:p-5 rounded-lg">
+        <!-- Destination selector -->
+        <div class="mb-5 relative">
+          <label for="site-search" class="block text-shell-text text-sm mb-2 font-medium">Upload destination</label>
+          <div class="flex gap-2">
+            <div class="relative flex-1 z-10">
+              <input
+                type="text"
+                id="site-search"
+                placeholder="Search websites or type path..."
+                autocomplete="off"
+                class="w-full p-3 pr-9 border border-shell-border bg-shell-bg text-white rounded text-sm focus:outline-none focus:border-shell-accent placeholder:text-shell-text-muted"
+              />
+              <button
+                type="button"
+                id="site-search-clear"
+                class="absolute right-2.5 top-1/2 -translate-y-1/2 bg-transparent border-none text-shell-text-muted hover:text-white cursor-pointer text-base p-1 hidden"
+              >&times;</button>
+              <div
+                id="site-dropdown"
+                class="absolute top-full left-0 right-0 bg-shell-surface border border-shell-accent rounded max-h-72 overflow-y-auto z-[1000] hidden shadow-lg mt-1"
+              ></div>
+            </div>
+            <button
+              type="button"
+              id="list-files-btn"
+              class="px-4 py-3 bg-shell-blue hover:bg-shell-blue-hover text-white border-none rounded text-sm cursor-pointer whitespace-nowrap transition-colors"
+            >
+              List Files
+            </button>
           </div>
         </div>
 
-        <div class="form-group">
-          <label for="target-dir">Subdirectory (optional)</label>
-          <input type="text" id="target-dir" placeholder="Leave empty for root" value="" />
-          <button class="check-button" id="check-button">Check Directory</button>
+        <!-- Subdirectory input -->
+        <div class="mb-5">
+          <label for="target-dir" class="block text-shell-text text-sm mb-2 font-medium">Subdirectory (optional)</label>
+          <input
+            type="text"
+            id="target-dir"
+            placeholder="Leave empty for root"
+            class="w-full p-3 border border-shell-border bg-shell-bg text-white rounded text-sm focus:outline-none focus:border-shell-accent"
+          />
+          <button
+            id="check-button"
+            class="mt-2 px-5 py-2.5 bg-shell-blue hover:bg-shell-blue-hover disabled:bg-gray-600 disabled:cursor-not-allowed text-white border-none rounded text-sm font-semibold cursor-pointer transition-colors"
+          >
+            Check Directory
+          </button>
         </div>
 
-        <div class="dropzone" id="dropzone">
-          <div class="dropzone-icon">📦</div>
-          <div class="dropzone-text">Drag & drop a ZIP file here</div>
-          <div class="dropzone-subtext">or click to browse</div>
+        <!-- Dropzone -->
+        <div
+          id="dropzone"
+          class="border-2 border-dashed border-shell-border rounded-lg py-16 md:py-10 px-5 text-center cursor-pointer transition-all bg-shell-bg hover:border-shell-accent hover:bg-[#252525]"
+        >
+          <div class="text-5xl mb-4">📦</div>
+          <div class="text-shell-text text-base mb-2">Drag & drop a ZIP file here</div>
+          <div class="text-shell-text-muted text-sm">or click to browse</div>
         </div>
 
-        <input type="file" id="file-input" class="file-input" accept=".zip" />
+        <input type="file" id="file-input" class="hidden" accept=".zip" />
 
-        <div class="selected-file" id="selected-file">
-          <div class="selected-file-name" id="file-name"></div>
-          <div class="selected-file-size" id="file-size"></div>
+        <!-- Selected file info -->
+        <div id="selected-file" class="bg-shell-bg p-4 rounded mt-4 hidden">
+          <div id="file-name" class="text-shell-accent text-sm mb-1"></div>
+          <div id="file-size" class="text-shell-text-muted text-xs"></div>
         </div>
 
-        <button class="upload-button" id="upload-button">Upload & Extract</button>
+        <!-- Upload button -->
+        <button
+          id="upload-button"
+          class="w-full p-3.5 bg-shell-accent hover:bg-shell-accent-hover disabled:bg-gray-600 disabled:cursor-not-allowed text-white border-none rounded text-base font-semibold cursor-pointer mt-5 hidden transition-colors"
+        >
+          Upload & Extract
+        </button>
 
-        <div class="progress" id="progress">
-          <div class="progress-bar" id="progress-bar"></div>
+        <!-- Progress bar -->
+        <div id="progress" class="w-full h-1 bg-shell-border rounded overflow-hidden mt-3 hidden">
+          <div id="progress-bar" class="h-full bg-shell-accent transition-all duration-300 w-0"></div>
         </div>
 
-        <div class="message" id="message"></div>
+        <!-- Message -->
+        <div id="message" class="p-4 rounded mt-5 hidden text-sm"></div>
       </div>
 
-      <div class="file-tree" id="file-tree">
-        <div class="path-header">
-          <span id="file-tree-path"></span>
-          <button class="close-btn" id="close-tree-btn">Close</button>
+      <!-- File Tree Panel -->
+      <div id="file-tree" class="file-tree-panel bg-shell-surface rounded-lg flex flex-col h-full min-h-[400px]">
+        <div class="p-3 border-b border-shell-border shrink-0">
+          <div class="flex justify-between items-center mb-2">
+            <span id="file-tree-path" class="text-shell-accent text-sm font-mono"></span>
+            <button
+              id="close-tree-btn"
+              class="bg-shell-danger hover:bg-shell-danger-hover text-white border-none rounded px-2.5 py-1 text-xs cursor-pointer transition-colors"
+            >
+              Close
+            </button>
+          </div>
+          <!-- Delete action bar (inline) -->
+          <div id="delete-actions" class="flex items-center justify-between gap-2 pt-2 border-t border-shell-border hidden">
+            <span id="selected-item-name" class="text-yellow-400 text-xs truncate flex-1 font-mono"></span>
+            <button
+              id="delete-btn"
+              class="bg-shell-danger hover:bg-shell-danger-hover text-white border-none rounded px-3 py-1.5 text-xs cursor-pointer transition-colors whitespace-nowrap"
+            >
+              Delete
+            </button>
+          </div>
         </div>
-        <div id="file-tree-content"></div>
+        <div id="file-tree-content" class="flex-1 overflow-auto bg-shell-bg rounded-b-lg"></div>
+      </div>
+
+      <!-- File Preview Panel -->
+      <div id="file-preview" class="file-preview bg-shell-surface rounded-lg flex flex-col h-full min-h-[400px] max-h-[calc(100vh-200px)]">
+        <div class="text-shell-accent p-3 border-b border-shell-border text-sm font-mono flex justify-between items-center gap-3 shrink-0">
+          <span id="preview-filename" class="flex-1 overflow-hidden text-ellipsis whitespace-nowrap"></span>
+          <span id="preview-filesize" class="text-shell-text-muted text-xs shrink-0"></span>
+          <button
+            id="close-preview-btn"
+            class="bg-shell-danger hover:bg-shell-danger-hover text-white border-none rounded px-2.5 py-1 text-xs cursor-pointer shrink-0 transition-colors"
+          >
+            Close
+          </button>
+        </div>
+        <div id="preview-content" class="preview-content flex-1 overflow-auto bg-shell-code-bg rounded-b-lg">
+          <div class="flex items-center justify-center h-full text-shell-text-muted text-sm">Select a file to preview</div>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
-    // State management (React-like)
+    // State management
     const defaultUploadPath = '{{UPLOAD_PATH}}';
     const state = {
       workspace: 'root',
@@ -430,8 +231,9 @@
     const elements = {
       container: document.querySelector('.container'),
       mainContent: document.getElementById('main-content'),
-      destination: document.getElementById('destination'),
-      sitesGroup: document.getElementById('sites-group'),
+      siteSearch: document.getElementById('site-search'),
+      siteSearchClear: document.getElementById('site-search-clear'),
+      siteDropdown: document.getElementById('site-dropdown'),
       listFilesBtn: document.getElementById('list-files-btn'),
       fileTree: document.getElementById('file-tree'),
       closeTreeBtn: document.getElementById('close-tree-btn'),
@@ -447,25 +249,142 @@
       progressBar: document.getElementById('progress-bar'),
       message: document.getElementById('message'),
       backButton: document.getElementById('back'),
-      logoutButton: document.getElementById('logout')
+      logoutButton: document.getElementById('logout'),
+      filePreview: document.getElementById('file-preview'),
+      closePreviewBtn: document.getElementById('close-preview-btn'),
+      previewFilename: document.getElementById('preview-filename'),
+      previewFilesize: document.getElementById('preview-filesize'),
+      previewContent: document.getElementById('preview-content'),
+      deleteActions: document.getElementById('delete-actions'),
+      selectedItemName: document.getElementById('selected-item-name'),
+      deleteBtn: document.getElementById('delete-btn')
     };
 
-    // Utility functions
+    // Track selected item for deletion
+    let selectedItem = null;
+    let selectedItemType = null;
+
     function formatFileSize(bytes) {
       if (bytes < 1024) return bytes + ' B';
       if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
       return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
     }
 
-    function showFileTree(show) {
-      if (show) {
-        elements.fileTree.classList.add('show');
-        elements.mainContent.classList.add('grid');
-        elements.container.classList.add('expanded');
-      } else {
-        elements.fileTree.classList.remove('show');
-        elements.mainContent.classList.remove('grid');
-        elements.container.classList.remove('expanded');
+    function clearFileTree() {
+      document.getElementById('file-tree-path').textContent = 'No files loaded';
+      document.getElementById('file-tree-content').innerHTML = '<div class="flex items-center justify-center h-full text-shell-text-muted text-sm p-4">Click "List Files" to browse</div>';
+      hideDeleteActions();
+    }
+
+    function clearFilePreview() {
+      elements.previewFilename.textContent = 'No file selected';
+      elements.previewFilesize.textContent = '';
+      elements.previewContent.innerHTML = '<div class="flex items-center justify-center h-full text-shell-text-muted text-sm">Select a file to preview</div>';
+    }
+
+    function showDeleteActions(path, type) {
+      selectedItem = path;
+      selectedItemType = type;
+      elements.selectedItemName.textContent = path;
+      elements.deleteBtn.textContent = type === 'directory' ? 'Delete Folder' : 'Delete File';
+      elements.deleteActions.classList.remove('hidden');
+    }
+
+    function hideDeleteActions() {
+      selectedItem = null;
+      selectedItemType = null;
+      elements.deleteActions.classList.add('hidden');
+    }
+
+    async function deleteItem() {
+      if (!selectedItem) return;
+
+      const typeLabel = selectedItemType === 'directory' ? 'folder' : 'file';
+      const extraWarning = selectedItemType === 'directory' ? ' and all its contents' : '';
+      const confirmed = confirm(`Are you sure you want to delete "${selectedItem}"${extraWarning}?\n\nThis action cannot be undone.`);
+      if (!confirmed) return;
+
+      elements.deleteBtn.textContent = 'Deleting...';
+      elements.deleteBtn.disabled = true;
+
+      try {
+        const formData = new FormData();
+        formData.append('workspace', state.workspace);
+        formData.append('path', selectedItem);
+
+        const res = await fetch('/api/delete-folder', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          hideDeleteActions();
+          clearFilePreview();
+          loadFileTree();
+          setState({ message: data.message, messageType: 'success' });
+        } else {
+          setState({ message: data.error || 'Failed to delete ' + typeLabel, messageType: 'error' });
+        }
+      } catch (err) {
+        setState({ message: 'Delete failed: ' + err.message, messageType: 'error' });
+      }
+
+      elements.deleteBtn.textContent = selectedItemType === 'directory' ? 'Delete Folder' : 'Delete File';
+      elements.deleteBtn.disabled = false;
+    }
+
+    function getLanguageFromFilename(filename) {
+      const ext = filename.toLowerCase().split('.').pop();
+      const langMap = {
+        'js': 'javascript', 'jsx': 'javascript', 'ts': 'typescript', 'tsx': 'typescript',
+        'py': 'python', 'rb': 'ruby', 'go': 'go', 'rs': 'rust', 'java': 'java',
+        'c': 'c', 'cpp': 'cpp', 'h': 'c', 'hpp': 'cpp', 'cs': 'csharp', 'php': 'php',
+        'swift': 'swift', 'kt': 'kotlin', 'scala': 'scala',
+        'sh': 'bash', 'bash': 'bash', 'zsh': 'bash', 'fish': 'bash', 'ps1': 'powershell',
+        'sql': 'sql', 'html': 'html', 'htm': 'html', 'css': 'css',
+        'scss': 'scss', 'sass': 'scss', 'less': 'less',
+        'json': 'json', 'xml': 'xml', 'yaml': 'yaml', 'yml': 'yaml',
+        'toml': 'toml', 'ini': 'ini', 'conf': 'ini',
+        'md': 'markdown', 'markdown': 'markdown',
+        'dockerfile': 'dockerfile', 'makefile': 'makefile',
+        'graphql': 'graphql', 'gql': 'graphql', 'vue': 'html', 'svelte': 'html'
+      };
+      return langMap[ext] || 'plaintext';
+    }
+
+    async function loadFilePreview(filePath) {
+      elements.previewContent.innerHTML = '<div class="flex items-center justify-center h-full text-shell-text-muted text-sm">Loading...</div>';
+      elements.previewFilename.textContent = filePath.split('/').pop();
+      elements.previewFilesize.textContent = '';
+
+      try {
+        const formData = new FormData();
+        formData.append('workspace', state.workspace);
+        formData.append('path', filePath);
+
+        const res = await fetch('/api/read-file', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        if (!res.ok) {
+          const errorMsg = data.binary ? `Cannot preview binary file (${data.extension})` : (data.error || 'Failed to load file');
+          elements.previewContent.innerHTML = `<div class="flex items-center justify-center h-full text-shell-danger text-sm text-center p-5">${errorMsg}</div>`;
+          return;
+        }
+
+        elements.previewFilename.textContent = data.filename;
+        elements.previewFilesize.textContent = formatFileSize(data.size);
+
+        const language = getLanguageFromFilename(data.filename);
+        const pre = document.createElement('pre');
+        pre.className = 'm-0 p-4 font-mono text-sm leading-relaxed overflow-x-auto';
+        const code = document.createElement('code');
+        code.className = `language-${language}`;
+        code.textContent = data.content;
+        pre.appendChild(code);
+
+        elements.previewContent.innerHTML = '';
+        elements.previewContent.appendChild(pre);
+        hljs.highlightElement(code);
+      } catch (err) {
+        elements.previewContent.innerHTML = `<div class="flex items-center justify-center h-full text-shell-danger text-sm text-center p-5">Error: ${err.message}</div>`;
       }
     }
 
@@ -474,89 +393,62 @@
       render();
     }
 
-    // Render function (updates UI based on state)
     function render() {
-      // Target directory
       elements.targetDirInput.value = state.targetDir;
 
-      // Selected file
       if (state.file) {
-        elements.selectedFile.classList.add('show');
+        elements.selectedFile.classList.remove('hidden');
         elements.fileName.textContent = state.file.name;
         elements.fileSize.textContent = formatFileSize(state.file.size);
-        elements.uploadButton.classList.add('show');
+        elements.uploadButton.classList.remove('hidden');
       } else {
-        elements.selectedFile.classList.remove('show');
-        elements.uploadButton.classList.remove('show');
+        elements.selectedFile.classList.add('hidden');
+        elements.uploadButton.classList.add('hidden');
       }
 
-      // Check button
       elements.checkButton.disabled = state.checking || state.uploading;
       elements.checkButton.textContent = state.checking ? 'Checking...' : 'Check Directory';
 
-      // Upload button
       elements.uploadButton.disabled = state.uploading;
-      elements.uploadButton.textContent = state.uploading
-        ? `Uploading ${state.progress}%`
-        : 'Upload & Extract';
+      elements.uploadButton.textContent = state.uploading ? `Uploading ${state.progress}%` : 'Upload & Extract';
 
-      // Progress bar
       if (state.uploading) {
-        elements.progress.classList.add('show');
+        elements.progress.classList.remove('hidden');
         elements.progressBar.style.width = state.progress + '%';
       } else {
-        elements.progress.classList.remove('show');
+        elements.progress.classList.add('hidden');
       }
 
-      // Message
       if (state.message) {
-        elements.message.classList.add('show');
-        elements.message.classList.remove('success', 'error');
-        elements.message.classList.add(state.messageType);
+        elements.message.classList.remove('hidden');
+        elements.message.className = state.messageType === 'success'
+          ? 'p-4 rounded mt-5 text-sm bg-shell-accent/10 border border-shell-accent text-shell-accent'
+          : 'p-4 rounded mt-5 text-sm bg-shell-danger/10 border border-shell-danger text-shell-danger';
         elements.message.textContent = state.message;
       } else {
-        elements.message.classList.remove('show');
+        elements.message.classList.add('hidden');
       }
     }
 
-    // Event handlers
     function handleFile(file) {
       if (!file) return;
-
       if (!file.name.endsWith('.zip')) {
-        setState({
-          message: 'Please select a ZIP file',
-          messageType: 'error'
-        });
+        setState({ message: 'Please select a ZIP file', messageType: 'error' });
         return;
       }
-
-      setState({
-        file: file,
-        message: '',
-        messageType: ''
-      });
+      setState({ file, message: '', messageType: '' });
     }
 
     async function checkDirectory() {
       if (state.checking || state.uploading) return;
-
-      setState({
-        checking: true,
-        message: '',
-        messageType: ''
-      });
+      setState({ checking: true, message: '', messageType: '' });
 
       const formData = new FormData();
       formData.append('workspace', state.workspace);
       formData.append('targetDir', state.targetDir || './');
 
       try {
-        const response = await fetch('/api/check-directory', {
-          method: 'POST',
-          body: formData
-        });
-
+        const response = await fetch('/api/check-directory', { method: 'POST', body: formData });
         const result = await response.json();
 
         if (response.ok) {
@@ -566,30 +458,16 @@
             checking: false
           });
         } else {
-          setState({
-            message: result.error || 'Check failed',
-            messageType: 'error',
-            checking: false
-          });
+          setState({ message: result.error || 'Check failed', messageType: 'error', checking: false });
         }
       } catch (err) {
-        setState({
-          message: 'Check failed: ' + err.message,
-          messageType: 'error',
-          checking: false
-        });
+        setState({ message: 'Check failed: ' + err.message, messageType: 'error', checking: false });
       }
     }
 
     async function uploadFile() {
       if (!state.file || state.uploading) return;
-
-      setState({
-        uploading: true,
-        progress: 0,
-        message: '',
-        messageType: ''
-      });
+      setState({ uploading: true, progress: 0, message: '', messageType: '' });
 
       const formData = new FormData();
       formData.append('file', state.file);
@@ -598,135 +476,156 @@
 
       try {
         setState({ progress: 30 });
-
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData
-        });
-
+        const response = await fetch('/api/upload', { method: 'POST', body: formData });
         setState({ progress: 90 });
         const result = await response.json();
         setState({ progress: 100 });
 
         if (response.ok && result.success) {
-          setState({
-            message: result.message || 'Upload successful!',
-            messageType: 'success'
-          });
-
-          // Reset after 2 seconds
+          setState({ message: result.message || 'Upload successful!', messageType: 'success' });
           setTimeout(() => {
             elements.fileInput.value = '';
-            setState({
-              file: null,
-              progress: 0,
-              message: '',
-              messageType: ''
-            });
+            setState({ file: null, progress: 0, message: '', messageType: '' });
           }, 2000);
         } else {
-          setState({
-            message: result.error || 'Upload failed',
-            messageType: 'error',
-            uploading: false
-          });
+          setState({ message: result.error || 'Upload failed', messageType: 'error', uploading: false });
         }
       } catch (err) {
-        setState({
-          message: 'Upload failed: ' + err.message,
-          messageType: 'error',
-          uploading: false
-        });
+        setState({ message: 'Upload failed: ' + err.message, messageType: 'error', uploading: false });
       }
 
-      if (state.uploading) {
-        setState({ uploading: false });
-      }
+      if (state.uploading) setState({ uploading: false });
     }
 
     // Event listeners
-    elements.dropzone.addEventListener('click', () => {
-      elements.fileInput.click();
-    });
-
-    elements.fileInput.addEventListener('change', (e) => {
-      handleFile(e.target.files[0]);
-    });
-
-    elements.dropzone.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      elements.dropzone.classList.add('dragover');
-    });
-
-    elements.dropzone.addEventListener('dragleave', () => {
-      elements.dropzone.classList.remove('dragover');
-    });
-
-    elements.dropzone.addEventListener('drop', (e) => {
-      e.preventDefault();
-      elements.dropzone.classList.remove('dragover');
-      handleFile(e.dataTransfer.files[0]);
-    });
-
+    elements.dropzone.addEventListener('click', () => elements.fileInput.click());
+    elements.fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+    elements.dropzone.addEventListener('dragover', (e) => { e.preventDefault(); elements.dropzone.classList.add('border-shell-accent', 'bg-[#252525]'); });
+    elements.dropzone.addEventListener('dragleave', () => { elements.dropzone.classList.remove('border-shell-accent', 'bg-[#252525]'); });
+    elements.dropzone.addEventListener('drop', (e) => { e.preventDefault(); elements.dropzone.classList.remove('border-shell-accent', 'bg-[#252525]'); handleFile(e.dataTransfer.files[0]); });
     elements.checkButton.addEventListener('click', checkDirectory);
-
     elements.uploadButton.addEventListener('click', uploadFile);
+    elements.targetDirInput.addEventListener('input', (e) => setState({ targetDir: e.target.value }));
+    elements.backButton.addEventListener('click', () => window.location.href = '/dashboard');
+    elements.logoutButton.addEventListener('click', () => window.location.href = '/logout');
 
-    elements.targetDirInput.addEventListener('input', (e) => {
-      setState({ targetDir: e.target.value });
-    });
-
-    elements.backButton.addEventListener('click', () => {
-      window.location.href = '/dashboard';
-    });
-
-    elements.logoutButton.addEventListener('click', () => {
-      window.location.href = '/logout';
-    });
-
-    // Load sites into dropdown
+    // Searchable site combobox
     let sitesBasePath = '';
-    fetch('/api/sites')
-      .then(r => r.json())
-      .then(data => {
-        if (data.sitesPath) {
-          sitesBasePath = data.sitesPath;
-        }
-        if (data.sites && data.sites.length > 0) {
-          state.sites = data.sites;
-          elements.sitesGroup.innerHTML = data.sites
-            .map(site => `<option value="site:${site}">${site} → ${sitesBasePath}/${site}/user</option>`)
-            .join('');
-        } else {
-          elements.sitesGroup.innerHTML = '<option value="" disabled>No sites available</option>';
-        }
-      })
-      .catch(() => {
-        elements.sitesGroup.innerHTML = '<option value="" disabled>Failed to load sites</option>';
-      });
+    let allSites = [];
+    let highlightedIndex = -1;
 
-    // Handle destination change
-    elements.destination.addEventListener('change', (e) => {
-      const value = e.target.value;
+    function renderDropdown(filter = '') {
+      const searchTerm = filter.toLowerCase().trim();
+      let html = '';
+
+      const rootMatches = !searchTerm || 'root'.includes(searchTerm) || defaultUploadPath.toLowerCase().includes(searchTerm);
+      if (rootMatches) {
+        const isSelected = state.workspace === 'root';
+        html += `<div class="p-2.5 cursor-pointer border-b border-[#3a3a3a] transition-colors hover:bg-[#3a3a3a] ${isSelected ? 'bg-shell-accent' : ''}" data-value="root">
+          <div class="text-white text-sm mb-0.5">Root</div>
+          <div class="${isSelected ? 'text-white/80' : 'text-shell-text-muted'} text-xs">${defaultUploadPath}</div>
+        </div>`;
+      }
+
+      const filteredSites = allSites.filter(site => !searchTerm || site.toLowerCase().includes(searchTerm));
+
+      if (filteredSites.length > 0) {
+        html += `<div class="p-2 text-shell-text-muted text-xs font-semibold uppercase bg-[#252525] sticky top-0">Websites (${filteredSites.length})</div>`;
+        filteredSites.forEach(site => {
+          const isSelected = state.workspace === `site:${site}`;
+          html += `<div class="p-2.5 cursor-pointer border-b border-[#3a3a3a] last:border-b-0 transition-colors hover:bg-[#3a3a3a] ${isSelected ? 'bg-shell-accent' : ''}" data-value="site:${site}">
+            <div class="text-white text-sm mb-0.5">${site}</div>
+            <div class="${isSelected ? 'text-white/80' : 'text-shell-text-muted'} text-xs">${sitesBasePath}/${site}/user</div>
+          </div>`;
+        });
+      }
+
+      if (!html) html = `<div class="p-4 text-shell-text-muted text-center text-sm">No matching sites found</div>`;
+
+      elements.siteDropdown.innerHTML = html;
+      highlightedIndex = -1;
+    }
+
+    function selectSite(value) {
       showFileTree(false);
       if (value === 'root') {
         setState({ workspace: 'root', uploadPath: defaultUploadPath });
+        elements.siteSearch.value = 'Root - ' + defaultUploadPath;
       } else if (value.startsWith('site:')) {
         const siteName = value.slice(5);
-        setState({
-          workspace: value,
-          uploadPath: `${sitesBasePath}/${siteName}/user`
-        });
+        setState({ workspace: value, uploadPath: `${sitesBasePath}/${siteName}/user` });
+        elements.siteSearch.value = siteName;
+      }
+      elements.siteDropdown.classList.add('hidden');
+      elements.siteSearchClear.classList.remove('hidden');
+    }
+
+    function highlightItem(index) {
+      const items = elements.siteDropdown.querySelectorAll('[data-value]');
+      items.forEach((item, i) => item.classList.toggle('bg-[#3a3a3a]', i === index));
+      if (items[index]) items[index].scrollIntoView({ block: 'nearest' });
+    }
+
+    fetch('/api/sites')
+      .then(r => r.json())
+      .then(data => {
+        if (data.sitesPath) sitesBasePath = data.sitesPath;
+        if (data.sites && data.sites.length > 0) { allSites = data.sites; state.sites = data.sites; }
+        elements.siteSearch.value = 'Root - ' + defaultUploadPath;
+        elements.siteSearchClear.classList.remove('hidden');
+      })
+      .catch(() => console.error('Failed to load sites'));
+
+    elements.siteSearch.addEventListener('focus', () => {
+      elements.siteSearch.select();
+      renderDropdown('');
+      elements.siteDropdown.classList.remove('hidden');
+    });
+
+    elements.siteSearch.addEventListener('input', (e) => {
+      renderDropdown(e.target.value);
+      elements.siteDropdown.classList.remove('hidden');
+      elements.siteSearchClear.classList.toggle('hidden', e.target.value.length === 0);
+    });
+
+    elements.siteSearch.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (elements.siteDropdown.classList.contains('hidden')) {
+        renderDropdown('');
+        elements.siteDropdown.classList.remove('hidden');
       }
     });
 
-    // Close tree button
-    elements.closeTreeBtn.addEventListener('click', () => {
-      showFileTree(false);
+    elements.siteSearch.addEventListener('keydown', (e) => {
+      const items = elements.siteDropdown.querySelectorAll('[data-value]');
+      if (e.key === 'ArrowDown') { e.preventDefault(); highlightedIndex = Math.min(highlightedIndex + 1, items.length - 1); highlightItem(highlightedIndex); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); highlightedIndex = Math.max(highlightedIndex - 1, 0); highlightItem(highlightedIndex); }
+      else if (e.key === 'Enter') { e.preventDefault(); if (highlightedIndex >= 0 && items[highlightedIndex]) selectSite(items[highlightedIndex].dataset.value); else if (items.length > 0) selectSite(items[0].dataset.value); }
+      else if (e.key === 'Escape') { elements.siteDropdown.classList.add('hidden'); elements.siteSearch.blur(); }
     });
 
-    // List files button
-    elements.listFilesBtn.addEventListener('click', async () => {
+    elements.siteDropdown.addEventListener('click', (e) => {
+      const item = e.target.closest('[data-value]');
+      if (item) selectSite(item.dataset.value);
+    });
+
+    elements.siteSearchClear.addEventListener('click', () => {
+      elements.siteSearch.value = '';
+      elements.siteSearchClear.classList.add('hidden');
+      elements.siteSearch.focus();
+      renderDropdown('');
+      elements.siteDropdown.classList.remove('hidden');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.relative.flex-1.z-10')) elements.siteDropdown.classList.add('hidden');
+    });
+
+    elements.closeTreeBtn.addEventListener('click', () => clearFileTree());
+    elements.closePreviewBtn.addEventListener('click', () => clearFilePreview());
+    elements.deleteBtn.addEventListener('click', deleteItem);
+
+    async function loadFileTree() {
       elements.listFilesBtn.textContent = 'Loading...';
       elements.listFilesBtn.disabled = true;
 
@@ -741,37 +640,60 @@
           document.getElementById('file-tree-path').textContent = data.path;
           const treeContent = document.getElementById('file-tree-content');
 
-          // Destroy existing jstree if any
-          if ($.jstree.reference(treeContent)) {
-            $(treeContent).jstree('destroy');
-          }
+          if ($.jstree.reference(treeContent)) $(treeContent).jstree('destroy');
 
-          // Initialize jstree
           $(treeContent).jstree({
-            core: {
-              data: data.tree,
-              themes: { name: 'default-dark', dots: true, icons: true }
+            core: { data: data.tree, themes: { name: 'default-dark', dots: true, icons: true } }
+          });
+
+          $(treeContent).on('select_node.jstree', function(e, nodeData) {
+            const node = nodeData.node;
+            if (node.data && node.data.path) {
+              showDeleteActions(node.data.path, node.data.type);
+              if (node.data.type === 'file') {
+                loadFilePreview(node.data.path);
+              }
             }
           });
 
-          showFileTree(true);
+          // Auto-select first file for preview
+          $(treeContent).on('ready.jstree', function() {
+            const firstFile = findFirstFile(data.tree);
+            if (firstFile) loadFilePreview(firstFile);
+          });
         } else {
           document.getElementById('file-tree-path').textContent = 'Error: ' + (data.error || 'Failed to list files');
-          document.getElementById('file-tree-content').innerHTML = '';
-          showFileTree(true);
+          document.getElementById('file-tree-content').innerHTML = '<div class="flex items-center justify-center h-full text-shell-danger text-sm p-4">' + (data.error || 'Failed to list files') + '</div>';
         }
       } catch (err) {
         document.getElementById('file-tree-path').textContent = 'Error: ' + err.message;
-        document.getElementById('file-tree-content').innerHTML = '';
-        showFileTree(true);
+        document.getElementById('file-tree-content').innerHTML = '<div class="flex items-center justify-center h-full text-shell-danger text-sm p-4">' + err.message + '</div>';
       }
 
-      elements.listFilesBtn.textContent = 'List Files';
+      elements.listFilesBtn.textContent = 'Refresh';
       elements.listFilesBtn.disabled = false;
-    });
+    }
 
-    // Initial render
+    function findFirstFile(nodes) {
+      for (const node of nodes) {
+        if (node.data && node.data.type === 'file') return node.data.path;
+        if (node.children && node.children.length > 0) {
+          const found = findFirstFile(node.children);
+          if (found) return found;
+        }
+      }
+      return null;
+    }
+
+    elements.listFilesBtn.addEventListener('click', loadFileTree);
+
+    // Initialize
+    clearFileTree();
+    clearFilePreview();
     render();
+
+    // Auto-load files on page load
+    loadFileTree();
   </script>
 </body>
 </html>

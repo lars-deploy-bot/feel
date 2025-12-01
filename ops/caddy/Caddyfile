@@ -2440,7 +2440,7 @@ startup.alive.best {
     }
 }
 
-riggedwheel.alive.best {
+rotatewheel.com {
     import common_headers
     import image_serving
     reverse_proxy localhost:3372 {

@@ -16,6 +16,7 @@ export function Sandbox() {
     maxWidthPercent: 0.6, // Ensure chat area always has at least 40% of viewport
   })
   const iframeRef = useRef<HTMLIFrameElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const [path, setPath] = useState("/")
   const [isLoading, setIsLoading] = useState(true)
 
@@ -38,8 +39,6 @@ export function Sandbox() {
     }
   }, [isResizing, width, savedWidth, setSandboxWidth])
 
-  const inputRef = useRef<HTMLInputElement>(null)
-
   const handleRefresh = () => {
     if (iframeRef.current) {
       setIsLoading(true)
@@ -56,11 +55,17 @@ export function Sandbox() {
     setIsLoading(true)
   }, [path])
 
-  const handlePathChange = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      let newPath = e.currentTarget.value.trim()
+  const handlePathSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && inputRef.current) {
+      let newPath = inputRef.current.value.trim()
       if (!newPath.startsWith("/")) newPath = `/${newPath}`
       setPath(newPath)
+      inputRef.current.value = newPath
+      // Directly set iframe src to force navigation
+      if (iframeRef.current) {
+        setIsLoading(true)
+        iframeRef.current.src = `${baseUrl}${newPath}`
+      }
     }
   }
 
@@ -72,21 +77,20 @@ export function Sandbox() {
         setIsLoading(true)
         return
       }
-      // Navigation completed - update path (loading cleared by onLoad)
+      // Navigation completed - update path and input (only if input not focused)
       if (event.data?.type === PREVIEW_MESSAGES.NAVIGATION && typeof event.data.path === "string") {
         const newPath = event.data.path || "/"
-        if (newPath !== path) {
-          setPath(newPath)
-          if (inputRef.current) {
-            inputRef.current.value = newPath
-          }
+        setPath(newPath)
+        // Only update input if it's not focused (user not typing)
+        if (inputRef.current && document.activeElement !== inputRef.current) {
+          inputRef.current.value = newPath
         }
       }
     }
 
     window.addEventListener("message", handleMessage)
     return () => window.removeEventListener("message", handleMessage)
-  }, [path])
+  }, [])
 
   return (
     <div
@@ -137,7 +141,7 @@ export function Sandbox() {
             ref={inputRef}
             type="text"
             defaultValue={path}
-            onKeyDown={handlePathChange}
+            onKeyDown={handlePathSubmit}
             className="flex-1 bg-transparent text-[13px] text-neutral-300 outline-none placeholder:text-neutral-600"
             placeholder="/"
           />

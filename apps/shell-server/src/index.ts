@@ -554,9 +554,10 @@ app.post("/api/list-files", async c => {
       icon: string
       state?: { opened: boolean }
       children?: TreeNode[]
+      data?: { path: string; type: "file" | "directory" }
     }
 
-    function buildTree(dirPath: string, depth = 0): TreeNode[] {
+    function buildTree(dirPath: string, relativePath = "", depth = 0): TreeNode[] {
       if (depth >= maxDepth) return []
 
       const entries = readdirSync(dirPath, { withFileTypes: true }) as Dirent[]
@@ -569,18 +570,21 @@ app.post("/api/list-files", async c => {
         })
 
       return filtered.map(entry => {
+        const entryRelativePath = relativePath ? `${relativePath}/${entry.name}` : entry.name
         if (entry.isDirectory()) {
           const subPath = join(dirPath, entry.name)
           return {
             text: entry.name,
             icon: "jstree-folder",
             state: { opened: depth < 2 },
-            children: buildTree(subPath, depth + 1),
+            data: { path: entryRelativePath, type: "directory" as const },
+            children: buildTree(subPath, entryRelativePath, depth + 1),
           }
         }
         return {
           text: entry.name,
           icon: "jstree-file",
+          data: { path: entryRelativePath, type: "file" as const },
         }
       })
     }
@@ -590,6 +594,198 @@ app.post("/api/list-files", async c => {
   } catch (err) {
     console.error("[API] Failed to list files:", err)
     return c.json({ error: "Failed to list files" }, 500)
+  }
+})
+
+// API to read file contents (for preview)
+app.post("/api/read-file", async c => {
+  const cookies = cookie.parse(c.req.header("cookie") || "")
+  if (!cookies.shell_session || !sessions.has(cookies.shell_session)) {
+    return c.json({ error: "Unauthorized" }, 401)
+  }
+
+  try {
+    const body = await c.req.parseBody()
+    const workspace = body.workspace?.toString() || "root"
+    const filePath = body.path?.toString()
+
+    if (!filePath) {
+      return c.json({ error: "No file path provided" }, 400)
+    }
+
+    let basePath: string
+    if (workspace.startsWith("site:")) {
+      const siteName = workspace.slice(5)
+      basePath = `${resolvedSitesPath}/${siteName}/user`
+    } else if (workspace === "root") {
+      basePath = resolvedUploadCwd
+    } else {
+      basePath = `${resolvedSitesPath}/${workspace}`
+    }
+
+    // Resolve and validate path
+    const resolvedPath = resolve(basePath, filePath)
+    if (!resolvedPath.startsWith(basePath)) {
+      return c.json({ error: "Path traversal detected" }, 400)
+    }
+
+    if (!existsSync(resolvedPath)) {
+      return c.json({ error: "File not found" }, 404)
+    }
+
+    // Check file size (limit to 1MB for preview)
+    const { statSync } = await import("node:fs")
+    const stats = statSync(resolvedPath)
+    if (stats.size > 1024 * 1024) {
+      return c.json({ error: "File too large for preview (max 1MB)", size: stats.size }, 413)
+    }
+
+    // Check if binary (simple heuristic)
+    const binaryExtensions = new Set([
+      ".png",
+      ".jpg",
+      ".jpeg",
+      ".gif",
+      ".ico",
+      ".webp",
+      ".bmp",
+      ".svg",
+      ".pdf",
+      ".zip",
+      ".tar",
+      ".gz",
+      ".rar",
+      ".7z",
+      ".mp3",
+      ".mp4",
+      ".wav",
+      ".avi",
+      ".mov",
+      ".mkv",
+      ".exe",
+      ".dll",
+      ".so",
+      ".dylib",
+      ".woff",
+      ".woff2",
+      ".ttf",
+      ".eot",
+      ".otf",
+      ".node",
+      ".wasm",
+    ])
+    const ext = filePath.toLowerCase().slice(filePath.lastIndexOf("."))
+    if (binaryExtensions.has(ext)) {
+      return c.json({ error: "Binary file cannot be previewed", binary: true, extension: ext }, 415)
+    }
+
+    const content = readFileSync(resolvedPath, "utf-8")
+    const filename = filePath.split("/").pop() || filePath
+
+    return c.json({ content, path: resolvedPath, filename, size: stats.size })
+  } catch (err) {
+    console.error("[API] Failed to read file:", err)
+    return c.json({ error: "Failed to read file" }, 500)
+  }
+})
+
+// API to delete a folder (restricted to safe paths only)
+app.post("/api/delete-folder", async c => {
+  const cookies = cookie.parse(c.req.header("cookie") || "")
+  if (!cookies.shell_session || !sessions.has(cookies.shell_session)) {
+    return c.json({ error: "Unauthorized" }, 401)
+  }
+
+  try {
+    const body = await c.req.parseBody()
+    const workspace = body.workspace?.toString() || "root"
+    const folderPath = body.path?.toString()
+
+    if (!folderPath) {
+      return c.json({ error: "No folder path provided" }, 400)
+    }
+
+    // Prevent deleting root-level paths
+    if (folderPath === "" || folderPath === "/" || folderPath === ".") {
+      return c.json({ error: "Cannot delete root directory" }, 400)
+    }
+
+    // SECURITY: Validate folderPath doesn't contain suspicious patterns
+    if (folderPath.includes("..") || folderPath.startsWith("/")) {
+      return c.json({ error: "Invalid path" }, 400)
+    }
+
+    let basePath: string
+    let isRootWorkspace = false
+
+    if (workspace.startsWith("site:")) {
+      const siteName = workspace.slice(5)
+      // SECURITY: Validate site name - must be alphanumeric with dots/hyphens only (domain-like)
+      if (!/^[a-zA-Z0-9][a-zA-Z0-9.-]*[a-zA-Z0-9]$|^[a-zA-Z0-9]$/.test(siteName)) {
+        return c.json({ error: "Invalid site name" }, 400)
+      }
+      basePath = `${resolvedSitesPath}/${siteName}/user`
+    } else if (workspace === "root") {
+      basePath = resolvedUploadCwd
+      isRootWorkspace = true
+    } else {
+      // SECURITY: Reject unknown workspace types
+      return c.json({ error: "Invalid workspace" }, 400)
+    }
+
+    // Resolve and validate path
+    const resolvedPath = resolve(basePath, folderPath)
+
+    // SECURITY: Normalize basePath too for accurate comparison
+    const normalizedBasePath = resolve(basePath)
+
+    // Security check 1: Must be within normalized base path
+    if (!resolvedPath.startsWith(normalizedBasePath + "/")) {
+      return c.json({ error: "Path traversal detected" }, 400)
+    }
+
+    // Security check 2: For site workspaces, must be within sites directory AND not the /user folder itself
+    if (!isRootWorkspace) {
+      const normalizedSitesPath = resolve(resolvedSitesPath)
+      if (!resolvedPath.startsWith(normalizedSitesPath + "/")) {
+        return c.json({ error: "Path outside sites directory" }, 400)
+      }
+      if (resolvedPath === normalizedBasePath) {
+        return c.json({ error: "Cannot delete the user directory itself" }, 400)
+      }
+    }
+
+    // Security check 3: For root workspace, must be within /root/uploads
+    if (isRootWorkspace) {
+      const normalizedUploadCwd = resolve(resolvedUploadCwd)
+      if (!resolvedPath.startsWith(normalizedUploadCwd + "/")) {
+        return c.json({ error: "Can only delete folders within uploads directory" }, 400)
+      }
+    }
+
+    // Check if path exists
+    if (!existsSync(resolvedPath)) {
+      return c.json({ error: "Path not found" }, 404)
+    }
+
+    const { statSync } = await import("node:fs")
+    const stats = statSync(resolvedPath)
+    const isDirectory = stats.isDirectory()
+
+    // Delete the file or folder
+    console.log(`[DELETE] Deleting ${isDirectory ? "folder" : "file"}: ${resolvedPath}`)
+    await rm(resolvedPath, { recursive: true, force: true })
+
+    console.log(`[DELETE] Successfully deleted: ${resolvedPath}`)
+    return c.json({
+      success: true,
+      message: `Deleted ${isDirectory ? "folder" : "file"}: ${folderPath}`,
+      deletedPath: resolvedPath,
+      type: isDirectory ? "directory" : "file",
+    })
+  } catch (err) {
+    console.error("[API] Failed to delete folder:", err)
+    return c.json({ error: "Failed to delete folder" }, 500)
   }
 })
 

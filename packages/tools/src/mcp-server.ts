@@ -10,6 +10,7 @@ import { checkCodebaseTool } from "./tools/workspace/check-codebase.js"
 import { deleteFileTool } from "./tools/workspace/delete-file.js"
 import { installPackageTool } from "./tools/workspace/install-package.js"
 import { restartServerTool } from "./tools/workspace/restart-server.js"
+import { switchServeModeTool } from "./tools/workspace/switch-serve-mode.js"
 
 /**
  * Alive Tools MCP Server
@@ -67,5 +68,5 @@ export const toolsInternalMcp = createSdkMcpServer({
 export const workspaceInternalMcp = createSdkMcpServer({
   name: "alive-workspace",
   version: "1.0.0",
-  tools: [restartServerTool, installPackageTool, checkCodebaseTool, deleteFileTool],
+  tools: [restartServerTool, installPackageTool, checkCodebaseTool, deleteFileTool, switchServeModeTool],
 })

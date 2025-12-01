@@ -1,7 +1,6 @@
 "use client"
 import {
   ExternalLink,
-  Eye,
   FlaskConical,
   Image,
   Layers,
@@ -11,7 +10,7 @@ import {
   Radio,
   Settings,
 } from "lucide-react"
-import { AnimatePresence } from "framer-motion"
+import { AnimatePresence, motion } from "framer-motion"
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
 import { FeedbackModal } from "@/components/modals/FeedbackModal"
@@ -285,15 +284,16 @@ function ChatPageContent() {
     // Log build version for deployment verification
     console.log(`%c[Chat] BUILD VERSION: ${BUILD_VERSION}`, "color: #00ff00; font-weight: bold; font-size: 14px")
 
-    // Auto-enable panels on dev/staging environments (desktop only)
+    // Auto-enable SSE terminal on dev/staging environments only
     if (isDevelopment()) {
       setSSETerminal(true)
       setSSETerminalMinimized(true)
-      // Sandbox open by default on desktop only (side panel doesn't work on mobile)
-      if (window.innerWidth >= 768) {
-        setSandbox(true)
-        setSandboxMinimized(false)
-      }
+    }
+
+    // Sandbox open by default on desktop (all environments)
+    if (window.innerWidth >= 768) {
+      setSandbox(true)
+      setSandboxMinimized(false)
     }
   }, [setSSETerminal, setSSETerminalMinimized, setSandbox, setSandboxMinimized])
 
@@ -1119,21 +1119,19 @@ function ChatPageContent() {
                     <span>{isDebugView ? "Debug" : "Live"}</span>
                   </button>
                 )}
-                {isDevelopment() && (
-                  <button
-                    type="button"
-                    onClick={toggleSandbox}
-                    className={`hidden md:flex items-center gap-1.5 px-3 py-2 text-xs font-medium border transition-colors ${
-                      showSandbox
-                        ? "text-purple-600 border-purple-400 bg-purple-50 hover:bg-purple-100 dark:text-purple-400 dark:border-purple-600 dark:bg-purple-950/50 dark:hover:bg-purple-950"
-                        : "text-black/60 dark:text-white/60 border-black/20 dark:border-white/20 hover:bg-black/5 dark:hover:bg-white/5"
-                    }`}
-                    title={showSandbox ? "Hide preview panel" : "Show preview panel"}
-                  >
-                    <PanelRight size={14} />
-                    <span>Preview</span>
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={toggleSandbox}
+                  className={`hidden md:flex items-center gap-1.5 px-3 py-2 text-xs font-medium border transition-colors ${
+                    showSandbox
+                      ? "text-purple-600 border-purple-400 bg-purple-50 hover:bg-purple-100 dark:text-purple-400 dark:border-purple-600 dark:bg-purple-950/50 dark:hover:bg-purple-950"
+                      : "text-black/60 dark:text-white/60 border-black/20 dark:border-white/20 hover:bg-black/5 dark:hover:bg-white/5"
+                  }`}
+                  title={showSandbox ? "Hide preview panel" : "Show preview panel"}
+                >
+                  <PanelRight size={14} />
+                  <span>Preview</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => setShowFeedbackModal(true)}
@@ -1217,26 +1215,6 @@ function ChatPageContent() {
                       <ExternalLink size={10} />
                       <span className="hidden sm:inline">open</span>
                     </a>
-                    {/* Preview button - desktop only (mobile uses toolbar) */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (isDevelopment()) {
-                          toggleSandbox()
-                        } else {
-                          setShowMobilePreview(true)
-                        }
-                      }}
-                      className={`hidden sm:flex px-2 py-1 text-xs font-medium rounded transition-colors items-center gap-1 ${
-                        showSandbox || showMobilePreview
-                          ? "text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/50"
-                          : "text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5"
-                      }`}
-                      title="Preview site"
-                    >
-                      <Eye size={10} />
-                      preview
-                    </button>
                     <button
                       type="button"
                       onClick={handleNewConversation}
@@ -1348,35 +1326,52 @@ function ChatPageContent() {
       </div>
 
       {/* Side panel sandbox - desktop only (mobile uses overlay) */}
-      <div className="hidden md:block">{showSandbox && <Sandbox />}</div>
-      {showMobilePreview && (
-        <SandboxMobile
-          onClose={() => setShowMobilePreview(false)}
-          busy={busy}
-          statusText={statusText}
-          onStop={stopStreaming}
-        >
-          <ChatInput
-            ref={chatInputRef}
-            message={msg}
-            setMessage={setMsg}
-            busy={busy || !workspace}
-            isStopping={isStopping}
-            abortControllerRef={abortControllerRef}
-            onSubmit={sendMessage}
+      <AnimatePresence>
+        {showSandbox && (
+          <motion.div
+            key="desktop-sandbox"
+            initial={{ width: 0 }}
+            animate={{ width: "auto" }}
+            exit={{ width: 0 }}
+            transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+            className="hidden md:flex h-full overflow-hidden"
+          >
+            <Sandbox />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Mobile preview overlay */}
+      <AnimatePresence>
+        {showMobilePreview && (
+          <SandboxMobile
+            onClose={() => setShowMobilePreview(false)}
+            busy={busy}
+            statusText={statusText}
             onStop={stopStreaming}
-            hideToolbar
-            config={{
-              enableAttachments: true,
-              enableCamera: false,
-              maxAttachments: 5,
-              maxFileSize: 20 * 1024 * 1024,
-              placeholder: "Tell me what to change...",
-              onAttachmentUpload: handleAttachmentUpload,
-            }}
-          />
-        </SandboxMobile>
-      )}
+          >
+            <ChatInput
+              ref={chatInputRef}
+              message={msg}
+              setMessage={setMsg}
+              busy={busy || !workspace}
+              isStopping={isStopping}
+              abortControllerRef={abortControllerRef}
+              onSubmit={sendMessage}
+              onStop={stopStreaming}
+              hideToolbar
+              config={{
+                enableAttachments: true,
+                enableCamera: false,
+                maxAttachments: 5,
+                maxFileSize: 20 * 1024 * 1024,
+                placeholder: "Tell me what to change...",
+                onAttachmentUpload: handleAttachmentUpload,
+              }}
+            />
+          </SandboxMobile>
+        )}
+      </AnimatePresence>
       {showSSETerminal && <DevTerminal />}
       {showFeedbackModal && (
         <FeedbackModal

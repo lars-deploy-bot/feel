@@ -6,112 +6,59 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <title>SHELL | Dashboard</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%231e1e1e'/%3E%3Ctext x='12' y='68' font-family='monospace' font-size='50' font-weight='bold' fill='%230dbc79'%3E%24_%3C/text%3E%3C/svg%3E">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #1e1e1e;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      padding: 20px;
-    }
-    .container {
-      width: 100%;
-      max-width: 700px;
-    }
-    .header {
-      background: #2d2d2d;
-      padding: 20px;
-      border-radius: 8px 8px 0 0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    h1 {
-      color: #fff;
-      font-size: 24px;
-    }
-    h2 {
-      color: #fff;
-      font-size: 16px;
-      margin-bottom: 16px;
-    }
-    button {
-      background: #f14c4c;
-      color: #fff;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 4px;
-      font-size: 14px;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #d43e3e;
-    }
-    .options {
-      background: #2d2d2d;
-      padding: 30px 20px;
-      border-radius: 0 0 8px 8px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-    }
-    .option {
-      background: #1e1e1e;
-      border: 2px solid #444;
-      border-radius: 8px;
-      padding: 30px 16px;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.2s;
-      text-decoration: none;
-      color: inherit;
-      display: block;
-    }
-    .option:hover {
-      border-color: #0dbc79;
-      background: #252525;
-    }
-    .option-icon {
-      font-size: 48px;
-      margin-bottom: 16px;
-    }
-    .option-title {
-      color: #fff;
-      font-size: 18px;
-      font-weight: 600;
-      margin-bottom: 8px;
-    }
-    .option-desc {
-      color: #888;
-      font-size: 14px;
-      word-break: break-all;
-    }
-    @media (max-width: 768px) {
-      .options {
-        grid-template-columns: 1fr;
+  <!-- Tailwind CSS v4 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'shell-bg': '#1e1e1e',
+            'shell-surface': '#2d2d2d',
+            'shell-border': '#444',
+            'shell-accent': '#0dbc79',
+            'shell-accent-hover': '#0aa868',
+            'shell-danger': '#f14c4c',
+            'shell-danger-hover': '#d43e3e',
+            'shell-text': '#d4d4d4',
+            'shell-text-muted': '#888',
+          }
+        }
       }
     }
-  </style>
+  </script>
 </head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>Shell Dashboard</h1>
-      <button onclick="window.location.href='/logout'">Logout</button>
+<body class="m-0 p-5 box-border font-sans bg-shell-bg min-h-screen flex items-center justify-center">
+  <div class="w-full max-w-2xl">
+    <!-- Header -->
+    <div class="bg-shell-surface p-5 rounded-t-lg flex justify-between items-center">
+      <h1 class="text-white text-2xl font-semibold">Shell Dashboard</h1>
+      <button
+        onclick="window.location.href='/logout'"
+        class="bg-shell-danger hover:bg-shell-danger-hover text-white border-none px-4 py-2 rounded text-sm cursor-pointer transition-colors"
+      >
+        Logout
+      </button>
     </div>
-    <div class="options">
-      <a href="/shell?workspace=root" class="option">
-        <div class="option-icon">🖥️</div>
-        <div class="option-title">Shell Terminal</div>
-        <div class="option-desc">{{SHELL_DEFAULT_PATH}}</div>
+
+    <!-- Options Grid -->
+    <div class="bg-shell-surface p-6 rounded-b-lg grid grid-cols-1 md:grid-cols-2 gap-5">
+      <a
+        href="/shell?workspace=root"
+        class="bg-shell-bg border-2 border-shell-border rounded-lg py-8 px-4 text-center cursor-pointer transition-all hover:border-shell-accent hover:bg-[#252525] no-underline block"
+      >
+        <div class="text-5xl mb-4">🖥️</div>
+        <div class="text-white text-lg font-semibold mb-2">Shell Terminal</div>
+        <div class="text-shell-text-muted text-sm break-all">{{SHELL_DEFAULT_PATH}}</div>
       </a>
-      <a href="/upload?workspace=root" class="option">
-        <div class="option-icon">📦</div>
-        <div class="option-title">Upload Files</div>
-        <div class="option-desc">Choose destination on next page</div>
+
+      <a
+        href="/upload?workspace=root"
+        class="bg-shell-bg border-2 border-shell-border rounded-lg py-8 px-4 text-center cursor-pointer transition-all hover:border-shell-accent hover:bg-[#252525] no-underline block"
+      >
+        <div class="text-5xl mb-4">📦</div>
+        <div class="text-white text-lg font-semibold mb-2">Upload Files</div>
+        <div class="text-shell-text-muted text-sm break-all">Choose destination on next page</div>
       </a>
     </div>
   </div>

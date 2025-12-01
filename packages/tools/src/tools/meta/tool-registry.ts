@@ -369,6 +369,28 @@ export const TOOL_REGISTRY: ToolMetadata[] = [
       },
     ],
   },
+  {
+    name: "switch_serve_mode",
+    category: "workspace",
+    description:
+      "Switch between development server (hot reload) and production build serving. Use 'build' mode for faster page loads when testing, 'dev' mode for active development.",
+    contextCost: "low",
+    enabled: true,
+    parameters: [
+      {
+        name: "mode",
+        type: "string",
+        required: true,
+        description: "'dev' for development server (hot reload), 'build' for production build (faster, no hot reload)",
+      },
+      {
+        name: "build_first",
+        type: "boolean",
+        required: false,
+        description: "When switching to 'build' mode, run the build first (default: true)",
+      },
+    ],
+  },
 
   // External MCP Servers (workspace-specific)
   {

@@ -1,5 +1,6 @@
 "use client"
 import { Loader2, RotateCw, Square, X } from "lucide-react"
+import { motion } from "framer-motion"
 import type { ReactNode } from "react"
 import { useEffect, useRef, useState } from "react"
 import { PREVIEW_MESSAGES } from "@webalive/shared"
@@ -75,7 +76,13 @@ export function SandboxMobile({ onClose, children, busy, statusText, onStop }: S
   }, [onClose])
 
   return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col">
+    <motion.div
+      initial={{ y: "100%" }}
+      animate={{ y: 0 }}
+      exit={{ y: "100%" }}
+      transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+      className="fixed inset-0 z-50 bg-black flex flex-col"
+    >
       {/* Iframe content */}
       <div className="flex-1 overflow-hidden bg-white relative">
         {workspace && workspace.length > 0 && workspace.includes(".") ? (
@@ -151,6 +158,6 @@ export function SandboxMobile({ onClose, children, busy, statusText, onStop }: S
           children && <div className="border-t border-white/5 dark">{children}</div>
         )}
       </div>
-    </div>
+    </motion.div>
   )
 }

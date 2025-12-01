@@ -56,7 +56,8 @@ const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
 
 export function SettingsModal({ onClose, initialTab }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab || "account")
-  const [isDesktop, setIsDesktop] = useState(false)
+  // Default to true on SSR to avoid hydration mismatch causing wrong animation
+  const [isDesktop, setIsDesktop] = useState(true)
 
   useEffect(() => {
     const checkDesktop = () => setIsDesktop(window.innerWidth >= 640)
