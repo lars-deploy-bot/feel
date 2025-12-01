@@ -10,6 +10,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { createIamClient } from "@/lib/supabase/iam"
 import type { IamDatabase as Database } from "@webalive/database"
+import { FREE_CREDITS } from "@webalive/shared"
 
 export interface UserOrganization {
   orgId: string
@@ -82,16 +83,18 @@ export async function getUserOrganizations(
  *
  * @param userId - User ID from iam.users
  * @param userEmail - User email (for org naming if creating new org)
- * @param initialCredits - Credits for new org (default: 200)
+ * @param initialCredits - Credits for new org (default: FREE_CREDITS)
  * @param iamClient - Optional IAM client (for testing)
+ * @param isTestEnv - Whether this is a test org (default: false)
  * @returns Organization ID
  * @throws Error if database operations fail
  */
 export async function getUserDefaultOrgId(
   userId: string,
   userEmail: string,
-  initialCredits: number = 200,
+  initialCredits: number = FREE_CREDITS,
   iamClient?: SupabaseClient<Database>,
+  isTestEnv: boolean = false,
 ): Promise<string> {
   const iam = iamClient || (await createIamClient("service"))
 
@@ -122,6 +125,7 @@ export async function getUserDefaultOrgId(
     .insert({
       name: orgName,
       credits: initialCredits,
+      is_test_env: isTestEnv,
     })
     .select("org_id")
     .single()

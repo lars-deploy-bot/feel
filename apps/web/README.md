@@ -47,7 +47,7 @@ apps/web/
 ## Testing
 
 ```bash
-bun test              # Unit tests
+bun run test              # Unit tests
 bun run test:e2e      # E2E tests
 ```
 

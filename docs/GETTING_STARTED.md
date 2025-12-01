@@ -81,7 +81,7 @@ Local Mode (BRIDGE_ENV=local)
 ```bash
 bun run dev           # Start dev server (port 8999)
 bun run build         # Build for production
-bun test              # Run unit tests
+bun run test          # Run unit tests (always use "bun run test", never "bun run test")
 bun run test:e2e      # Run E2E tests (requires chromium: bunx playwright install chromium)
 bun run format        # Format code (Biome)
 bun run lint          # Lint code (Biome)

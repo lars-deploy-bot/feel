@@ -36,9 +36,6 @@
   "dependencies": {
     "@alive-brug/images": "workspace:*",
     "@alive-brug/tools": "workspace:*",
-    "@webalive/env": "workspace:*",
-    "@webalive/shared": "workspace:*",
-    "@webalive/site-controller": "workspace:*",
     "@anthropic-ai/claude-agent-sdk": "^0.1.25",
     "@anthropic-ai/sdk": "^0.67.0",
     "@hookform/resolvers": "^3.3.4",
@@ -48,6 +45,12 @@
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.81.1",
     "@types/bcrypt": "^6.0.0",
+    "@webalive/env": "workspace:*",
+    "@webalive/shared": "workspace:*",
+    "@webalive/site-controller": "workspace:*",
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/addon-web-links": "^0.11.0",
+    "@xterm/xterm": "^5.5.0",
     "bcrypt": "^6.0.0",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.44.7",
@@ -62,13 +65,11 @@
     "react-hot-toast": "^2.6.0",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
+    "swr": "^2.3.6",
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^4.1.15",
     "zod": "~3.25.0",
-    "zustand": "^4.5.2",
-    "@xterm/xterm": "^5.5.0",
-    "@xterm/addon-fit": "^0.10.0",
-    "@xterm/addon-web-links": "^0.11.0"
+    "zustand": "^4.5.2"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.2",

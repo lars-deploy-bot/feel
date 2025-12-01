@@ -219,7 +219,7 @@ When converting an E2E test to integration test:
 - [ ] Verify response status codes
 - [ ] Verify response structure
 - [ ] Add cleanup in `afterAll()`
-- [ ] Run new integration test: `bun test path/to/file.test.ts`
+- [ ] Run new integration test: `bun run test path/to/file.test.ts`
 - [ ] Verify E2E test still passes (if not fully removed)
 - [ ] Update E2E test to skip converted scenarios or delete if fully converted
 

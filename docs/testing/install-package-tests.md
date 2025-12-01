@@ -127,24 +127,24 @@ Comprehensive test suite for the package installation feature with automatic dev
 ### All install-package tests
 ```bash
 cd apps/web
-bun test lib/__tests__/install-package*.test.ts
+bun run test lib/__tests__/install-package*.test.ts
 ```
 
 ### Individual test files
 ```bash
 # Unit tests only
-bun test lib/__tests__/install-package.test.ts
+bun run test lib/__tests__/install-package.test.ts
 
 # Integration tests only
-bun test lib/__tests__/install-package-integration.test.ts
+bun run test lib/__tests__/install-package-integration.test.ts
 
 # E2E tests only
-bun test lib/__tests__/install-package-e2e.test.ts
+bun run test lib/__tests__/install-package-e2e.test.ts
 ```
 
 ### With watch mode
 ```bash
-bun test --watch lib/__tests__/install-package*.test.ts
+bun run test --watch lib/__tests__/install-package*.test.ts
 ```
 
 ## Key Test Scenarios
@@ -283,7 +283,7 @@ When adding new features or fixing bugs:
 2. **Add integration test** if changing API response structure
 3. **Add E2E test** if adding new workspace type or service manager
 4. **Update this document** with new test scenarios
-5. **Run full suite** before committing: `bun test lib/__tests__/install-package*.test.ts`
+5. **Run full suite** before committing: `bun run test lib/__tests__/install-package*.test.ts`
 
 ## Related Documentation
 

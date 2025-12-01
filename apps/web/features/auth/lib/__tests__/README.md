@@ -150,11 +150,11 @@ afterAll(async () => {
 
 ```bash
 # Run JWT tests (these work NOW)
-bun test features/auth/lib/__tests__/jwt.test.ts
+bun run test features/auth/lib/__tests__/jwt.test.ts
 # ✅ 22/22 pass - verified
 
 # Run RLS integration tests (requires migration FIRST)
-bun test features/auth/lib/__tests__/rls-integration.test.ts
+bun run test features/auth/lib/__tests__/rls-integration.test.ts
 # ⚠️ WILL FAIL until migration is complete
 ```
 
@@ -240,7 +240,7 @@ bun test features/auth/lib/__tests__/rls-integration.test.ts
 
 ### When Modifying Auth Code
 
-1. **Run tests first** (`bun test`)
+1. **Run tests first** (`bun run test`)
 2. **Make changes**
 3. **Run tests again**
 4. **If tests fail:** Fix code, not tests (tests prove security)

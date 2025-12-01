@@ -4,11 +4,10 @@ import { createNodeWebSocket } from "@hono/node-ws"
 import cookie from "cookie"
 import { randomBytes } from "node:crypto"
 import * as pty from "node-pty"
-import { readFileSync, writeFileSync, existsSync, writeFile, mkdirSync } from "node:fs"
+import { readFileSync, writeFileSync, existsSync, writeFile, mkdirSync, readdirSync, type Dirent } from "node:fs"
 import { mkdir, rm } from "node:fs/promises"
 import { join, resolve } from "node:path"
 import AdmZip from "adm-zip"
-import { PATHS } from "@webalive/site-controller"
 
 // Load configuration
 const configPath = join(__dirname, "..", "config.json")
@@ -20,6 +19,16 @@ const envConfig = config[env] || config.development
 const resolvedDefaultCwd = envConfig.defaultCwd.startsWith("/")
   ? envConfig.defaultCwd
   : join(process.cwd(), envConfig.defaultCwd)
+
+// Resolve uploadDefaultCwd for file uploads
+const resolvedUploadCwd = envConfig.uploadDefaultCwd?.startsWith("/")
+  ? envConfig.uploadDefaultCwd
+  : join(process.cwd(), envConfig.uploadDefaultCwd || envConfig.defaultCwd)
+
+// Resolve sitesPath for website uploads
+const resolvedSitesPath = envConfig.sitesPath?.startsWith("/")
+  ? envConfig.sitesPath
+  : join(process.cwd(), envConfig.sitesPath || "/srv/webalive/sites")
 
 // In development, ensure the workspace directory exists
 if (env === "development") {
@@ -91,7 +100,9 @@ function loadRateLimitState(): RateLimitState {
     if (existsSync(RATE_LIMIT_FILE)) {
       const data = readFileSync(RATE_LIMIT_FILE, "utf-8")
       const state = JSON.parse(data) as RateLimitState
-      console.log(`[SECURITY] Loaded rate limit state: ${state.failedAttempts.length} attempts, locked until: ${state.lockedUntil ? new Date(state.lockedUntil).toISOString() : "not locked"}`)
+      console.log(
+        `[SECURITY] Loaded rate limit state: ${state.failedAttempts.length} attempts, locked until: ${state.lockedUntil ? new Date(state.lockedUntil).toISOString() : "not locked"}`,
+      )
       return state
     }
   } catch (err) {
@@ -117,22 +128,25 @@ const failedAttempts: number[] = rateLimitState.failedAttempts
 let lockedUntil: number | null = rateLimitState.lockedUntil
 
 // Cleanup old failed attempts periodically (every 2 minutes)
-setInterval(() => {
-  const now = Date.now()
-  const cutoff = now - ATTEMPT_WINDOW
-  const beforeLength = failedAttempts.length
+setInterval(
+  () => {
+    const now = Date.now()
+    const cutoff = now - ATTEMPT_WINDOW
+    const beforeLength = failedAttempts.length
 
-  // Remove attempts older than the window
-  while (failedAttempts.length > 0 && failedAttempts[0] < cutoff) {
-    failedAttempts.shift()
-  }
+    // Remove attempts older than the window
+    while (failedAttempts.length > 0 && failedAttempts[0] < cutoff) {
+      failedAttempts.shift()
+    }
 
-  // Persist to disk if cleaned up any attempts
-  if (beforeLength !== failedAttempts.length) {
-    saveRateLimitState({ failedAttempts, lockedUntil })
-    console.log(`[SECURITY] Cleaned up ${beforeLength - failedAttempts.length} old attempts`)
-  }
-}, 2 * 60 * 1000)
+    // Persist to disk if cleaned up any attempts
+    if (beforeLength !== failedAttempts.length) {
+      saveRateLimitState({ failedAttempts, lockedUntil })
+      console.log(`[SECURITY] Cleaned up ${beforeLength - failedAttempts.length} old attempts`)
+    }
+  },
+  2 * 60 * 1000,
+)
 
 // Check if system is rate limited
 function isRateLimited(): { limited: boolean; waitTime?: number; attemptsRemaining?: number } {
@@ -200,7 +214,7 @@ function generateSessionToken(): string {
 }
 
 // Login page
-app.get("/", (c) => {
+app.get("/", c => {
   const cookies = cookie.parse(c.req.header("cookie") || "")
 
   // If already authenticated, redirect to dashboard
@@ -224,15 +238,12 @@ app.get("/", (c) => {
     }
   }
 
-  const html = loginTemplate.replace(
-    "{{ERROR_MESSAGE}}",
-    errorMessage ? `<p class="error">${errorMessage}</p>` : ""
-  )
+  const html = loginTemplate.replace("{{ERROR_MESSAGE}}", errorMessage ? `<p class="error">${errorMessage}</p>` : "")
   return c.html(html)
 })
 
 // Login handler
-app.post("/login", async (c) => {
+app.post("/login", async c => {
   // Check global rate limiting
   const rateLimitCheck = isRateLimited()
   if (rateLimitCheck.limited) {
@@ -265,14 +276,14 @@ app.post("/login", async (c) => {
       sameSite: "lax",
       maxAge: 60 * 60 * 24, // 24 hours
       path: "/",
-    })
+    }),
   )
 
   return c.redirect("/dashboard")
 })
 
 // Dashboard - choose between shell or upload
-app.get("/dashboard", (c) => {
+app.get("/dashboard", c => {
   const cookies = cookie.parse(c.req.header("cookie") || "")
 
   if (!cookies.shell_session || !sessions.has(cookies.shell_session)) {
@@ -284,11 +295,16 @@ app.get("/dashboard", (c) => {
     return c.redirect(`/shell?workspace=${envConfig.defaultWorkspace}`)
   }
 
-  return c.html(dashboardTemplate)
+  // Inject the default paths from config
+  const html = dashboardTemplate
+    .replace("{{SHELL_DEFAULT_PATH}}", resolvedDefaultCwd)
+    .replace("{{UPLOAD_DEFAULT_PATH}}", resolvedUploadCwd)
+
+  return c.html(html)
 })
 
 // Logout handler
-app.get("/logout", (c) => {
+app.get("/logout", c => {
   const cookies = cookie.parse(c.req.header("cookie") || "")
   if (cookies.shell_session) {
     sessions.delete(cookies.shell_session)
@@ -300,25 +316,32 @@ app.get("/logout", (c) => {
       httpOnly: true,
       expires: new Date(0),
       path: "/",
-    })
+    }),
   )
 
   return c.redirect("/")
 })
 
 // Shell page (protected)
-app.get("/shell", (c) => {
+app.get("/shell", c => {
   const cookies = cookie.parse(c.req.header("cookie") || "")
 
   if (!cookies.shell_session || !sessions.has(cookies.shell_session)) {
     return c.redirect("/")
   }
 
-  return c.html(shellTemplate)
+  // In production (no workspace selection), back button goes to logout
+  // In development, back button goes to dashboard to select workspace
+  const backUrl = envConfig.allowWorkspaceSelection ? "/dashboard" : "/logout"
+  const backLabel = envConfig.allowWorkspaceSelection ? "Back" : "Exit"
+
+  const html = shellTemplate.replace("{{BACK_URL}}", backUrl).replace("{{BACK_LABEL}}", backLabel)
+
+  return c.html(html)
 })
 
 // Upload page (protected)
-app.get("/upload", (c) => {
+app.get("/upload", c => {
   const cookies = cookie.parse(c.req.header("cookie") || "")
 
   if (!cookies.shell_session || !sessions.has(cookies.shell_session)) {
@@ -326,12 +349,22 @@ app.get("/upload", (c) => {
   }
 
   const workspace = c.req.query("workspace") || "root"
-  const html = uploadTemplate.replace(/\${workspace}/g, workspace)
+  // Resolve upload path based on workspace type
+  let uploadPath: string
+  if (workspace.startsWith("site:")) {
+    const siteName = workspace.slice(5) // Remove "site:" prefix
+    uploadPath = `${resolvedSitesPath}/${siteName}/user`
+  } else if (workspace === "root") {
+    uploadPath = resolvedUploadCwd
+  } else {
+    uploadPath = `${envConfig.workspaceBase}/${workspace}`
+  }
+  const html = uploadTemplate.replace(/\${workspace}/g, workspace).replace("{{UPLOAD_PATH}}", uploadPath)
   return c.html(html)
 })
 
 // Check directory API endpoint
-app.post("/api/check-directory", async (c) => {
+app.post("/api/check-directory", async c => {
   // Check authentication
   const cookies = cookie.parse(c.req.header("cookie") || "")
   if (!cookies.shell_session || !sessions.has(cookies.shell_session)) {
@@ -343,11 +376,16 @@ app.post("/api/check-directory", async (c) => {
     const workspace = body.workspace?.toString() || "root"
     const targetDir = body.targetDir?.toString() || "./"
 
-    // Validate workspace path using config
-    const baseCwd =
-      workspace !== "root"
-        ? `${envConfig.workspaceBase.replace(PATHS.WEBALIVE_ROOT, PATHS.SITES_ROOT)}/${workspace}`
-        : resolvedDefaultCwd
+    // Resolve base path based on workspace type
+    let baseCwd: string
+    if (workspace.startsWith("site:")) {
+      const siteName = workspace.slice(5)
+      baseCwd = `${resolvedSitesPath}/${siteName}/user`
+    } else if (workspace === "root") {
+      baseCwd = resolvedUploadCwd
+    } else {
+      baseCwd = `${resolvedSitesPath}/${workspace}`
+    }
 
     // Resolve target directory
     const resolvedTarget = resolve(baseCwd, targetDir)
@@ -361,9 +399,7 @@ app.post("/api/check-directory", async (c) => {
     return c.json({
       exists,
       path: resolvedTarget,
-      message: exists
-        ? `Directory exists: ${targetDir}`
-        : `Directory does not exist: ${targetDir}`
+      message: exists ? `Directory exists: ${targetDir}` : `Directory does not exist: ${targetDir}`,
     })
   } catch (err) {
     console.error("[CHECK] Directory check failed:", err)
@@ -372,7 +408,7 @@ app.post("/api/check-directory", async (c) => {
 })
 
 // Upload API endpoint
-app.post("/api/upload", async (c) => {
+app.post("/api/upload", async c => {
   // Check authentication
   const cookies = cookie.parse(c.req.header("cookie") || "")
   if (!cookies.shell_session || !sessions.has(cookies.shell_session)) {
@@ -395,11 +431,16 @@ app.post("/api/upload", async (c) => {
       return c.json({ error: "File too large (max 100MB)" }, 400)
     }
 
-    // Validate workspace path using config
-    const baseCwd =
-      workspace !== "root"
-        ? `${envConfig.workspaceBase.replace(PATHS.WEBALIVE_ROOT, PATHS.SITES_ROOT)}/${workspace}`
-        : resolvedDefaultCwd
+    // Resolve base path based on workspace type
+    let baseCwd: string
+    if (workspace.startsWith("site:")) {
+      const siteName = workspace.slice(5)
+      baseCwd = `${resolvedSitesPath}/${siteName}/user`
+    } else if (workspace === "root") {
+      baseCwd = resolvedUploadCwd
+    } else {
+      baseCwd = `${resolvedSitesPath}/${workspace}`
+    }
 
     // Resolve and validate target directory
     const resolvedTarget = resolve(baseCwd, targetDir)
@@ -413,7 +454,7 @@ app.post("/api/upload", async (c) => {
     const tempFile = `/tmp/upload-${Date.now()}-${randomBytes(8).toString("hex")}.zip`
     const buffer = await file.arrayBuffer()
     await new Promise<void>((resolve, reject) => {
-      writeFile(tempFile, Buffer.from(buffer), (err) => {
+      writeFile(tempFile, Buffer.from(buffer), err => {
         if (err) reject(err)
         else resolve()
       })
@@ -425,12 +466,28 @@ app.post("/api/upload", async (c) => {
       const zipEntries = zip.getEntries()
 
       // Validate ZIP contents (prevent malicious filenames)
+      const rootItems = new Set<string>()
       for (const entry of zipEntries) {
         const entryPath = resolve(resolvedTarget, entry.entryName)
         if (!entryPath.startsWith(resolvedTarget)) {
           await rm(tempFile, { force: true })
           return c.json({ error: "Malicious ZIP detected (path traversal in archive)" }, 400)
         }
+        const rootItem = entry.entryName.split("/")[0]
+        if (rootItem) rootItems.add(rootItem)
+      }
+
+      // Check if any root-level items already exist
+      const existingItems = [...rootItems].filter(item => existsSync(join(resolvedTarget, item)))
+      if (existingItems.length > 0) {
+        await rm(tempFile, { force: true })
+        return c.json(
+          {
+            error: `Already exists: ${existingItems.join(", ")}`,
+            existingItems,
+          },
+          409,
+        )
       }
 
       // Create target directory if it doesn't exist
@@ -462,12 +519,107 @@ app.post("/api/upload", async (c) => {
 })
 
 // Health check
-app.get("/health", (c) => c.json({ status: "ok" }))
+app.get("/health", c => c.json({ status: "ok" }))
+
+// API to list files in a directory (tree view)
+app.post("/api/list-files", async c => {
+  const cookies = cookie.parse(c.req.header("cookie") || "")
+  if (!cookies.shell_session || !sessions.has(cookies.shell_session)) {
+    return c.json({ error: "Unauthorized" }, 401)
+  }
+
+  try {
+    const body = await c.req.parseBody()
+    const workspace = body.workspace?.toString() || "root"
+
+    let basePath: string
+    if (workspace.startsWith("site:")) {
+      const siteName = workspace.slice(5)
+      basePath = `${resolvedSitesPath}/${siteName}/user`
+    } else if (workspace === "root") {
+      basePath = resolvedUploadCwd
+    } else {
+      basePath = `${resolvedSitesPath}/${workspace}`
+    }
+
+    if (!existsSync(basePath)) {
+      return c.json({ error: "Directory not found", path: basePath }, 404)
+    }
+
+    const excludeDirs = new Set(["node_modules", "dist", ".git", ".turbo"])
+    const maxDepth = 4
+
+    interface TreeNode {
+      text: string
+      icon: string
+      state?: { opened: boolean }
+      children?: TreeNode[]
+    }
+
+    function buildTree(dirPath: string, depth = 0): TreeNode[] {
+      if (depth >= maxDepth) return []
+
+      const entries = readdirSync(dirPath, { withFileTypes: true }) as Dirent[]
+      const filtered = entries
+        .filter(e => !excludeDirs.has(e.name))
+        .sort((a, b) => {
+          if (a.isDirectory() && !b.isDirectory()) return -1
+          if (!a.isDirectory() && b.isDirectory()) return 1
+          return a.name.localeCompare(b.name)
+        })
+
+      return filtered.map(entry => {
+        if (entry.isDirectory()) {
+          const subPath = join(dirPath, entry.name)
+          return {
+            text: entry.name,
+            icon: "jstree-folder",
+            state: { opened: depth < 2 },
+            children: buildTree(subPath, depth + 1),
+          }
+        }
+        return {
+          text: entry.name,
+          icon: "jstree-file",
+        }
+      })
+    }
+
+    const tree = buildTree(basePath)
+    return c.json({ path: basePath, tree })
+  } catch (err) {
+    console.error("[API] Failed to list files:", err)
+    return c.json({ error: "Failed to list files" }, 500)
+  }
+})
+
+// API to list available sites
+app.get("/api/sites", c => {
+  const cookies = cookie.parse(c.req.header("cookie") || "")
+  if (!cookies.shell_session || !sessions.has(cookies.shell_session)) {
+    return c.json({ error: "Unauthorized" }, 401)
+  }
+
+  try {
+    const entries = readdirSync(resolvedSitesPath, { withFileTypes: true }) as Dirent[]
+
+    const sites = entries
+      .filter(entry => entry.isDirectory() && !entry.isSymbolicLink())
+      .map(entry => entry.name)
+      .filter(name => existsSync(join(resolvedSitesPath, name, "user")))
+      .sort()
+
+    return c.json({ sites, sitesPath: resolvedSitesPath })
+  } catch (err) {
+    console.error("[API] Failed to list sites:", err)
+    return c.json({ error: "Failed to list sites" }, 500)
+  }
+})
 
 // WebSocket endpoint for shell
 app.get(
   "/ws",
-  upgradeWebSocket((c) => {
+  upgradeWebSocket(c => {
     // Check authentication
     const cookies = cookie.parse(c.req.header("cookie") || "")
 
@@ -482,12 +634,8 @@ app.get(
     const url = new URL(c.req.url)
     const workspace = url.searchParams.get("workspace") || "root"
 
-    // Determine shell and working directory using config
     const shell = process.platform === "win32" ? "powershell.exe" : "/bin/bash"
-    const cwd =
-      workspace !== "root"
-        ? `${envConfig.workspaceBase.replace(PATHS.WEBALIVE_ROOT, PATHS.SITES_ROOT)}/${workspace}`
-        : resolvedDefaultCwd
+    const cwd = workspace !== "root" ? `${resolvedSitesPath}/${workspace}` : resolvedDefaultCwd
 
     let ptyProcess: pty.IPty | null = null
 
@@ -511,7 +659,7 @@ app.get(
           console.log("[WS] Sent connected message")
 
           // Handle data from PTY
-          ptyProcess.onData((data) => {
+          ptyProcess.onData(data => {
             ws.send(JSON.stringify({ type: "data", data }))
           })
 
@@ -549,7 +697,7 @@ app.get(
         }
       },
     }
-  })
+  }),
 )
 
 // Start server with WebSocket support
@@ -558,9 +706,9 @@ const server = serve(
     fetch: app.fetch,
     port,
   },
-  (info) => {
+  info => {
     console.log(`🖥️  Shell server running on http://localhost:${info.port}`)
-  }
+  },
 )
 
 injectWebSocket(server)

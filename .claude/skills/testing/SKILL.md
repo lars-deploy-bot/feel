@@ -31,7 +31,7 @@ bunx vitest --project e2e         # e2e
 bunx vitest --project pkg-unit --watch    # watch mode
 bunx vitest --coverage --project pkg-unit # coverage
 ```
-Legacy: `bun test:smoke`, `bun test:gate` work.
+Legacy: `bun run test:smoke`, `bun run test:gate` work.
 
 ## Configuration
 **Root:** `vitest.config.ts` (multi-project)

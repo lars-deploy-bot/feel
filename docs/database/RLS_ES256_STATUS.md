@@ -90,10 +90,10 @@ const payload = await verifySessionToken(token)
 
 ```bash
 # Will fail until code is async
-bun test features/auth/lib/__tests__/jwt.test.ts
+bun run test features/auth/lib/__tests__/jwt.test.ts
 
 # Will fail until Supabase rotation complete
-bun test features/auth/lib/__tests__/rls-integration.test.ts
+bun run test features/auth/lib/__tests__/rls-integration.test.ts
 ```
 
 ### 4. Environment Variable
@@ -132,8 +132,8 @@ JWT_ALGORITHM=ES256
 3. Verify RLS works with custom auth users
 
 ### Phase 5: Verify (10 minutes)
-1. Run JWT tests: `bun test features/auth/lib/__tests__/jwt.test.ts`
-2. Run RLS tests: `bun test features/auth/lib/__tests__/rls-integration.test.ts`
+1. Run JWT tests: `bun run test features/auth/lib/__tests__/jwt.test.ts`
+2. Run RLS tests: `bun run test features/auth/lib/__tests__/rls-integration.test.ts`
 3. Test with real users
 
 ### Phase 6: Revoke Legacy Key (After 1+ hours)

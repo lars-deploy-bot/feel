@@ -6,11 +6,17 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function generateRequestId(): string {
-  // Use timestamp + random to ensure uniqueness
-  // Format: <base36-timestamp><random-suffix>
+  // Use crypto.randomUUID for guaranteed uniqueness
+  // Falls back to timestamp + longer random for environments without crypto
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+
+  // Fallback: timestamp + 12 random chars (36^12 = 4.7e18 combinations)
   const timestamp = Date.now().toString(36)
-  const random = Math.random().toString(36).substring(2, 8)
-  return `${timestamp}-${random}`
+  const random1 = Math.random().toString(36).substring(2, 8)
+  const random2 = Math.random().toString(36).substring(2, 8)
+  return `${timestamp}-${random1}${random2}`
 }
 
 /**

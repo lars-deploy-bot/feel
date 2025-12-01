@@ -1,5 +1,5 @@
 import type { BrowserContext, Page, Response } from "@playwright/test"
-import { TEST_CONFIG } from "@webalive/shared"
+import { COOKIE_NAMES, TEST_CONFIG, WORKSPACE_STORAGE, createWorkspaceStorageValue } from "@webalive/shared"
 import jwt from "jsonwebtoken"
 import type { TestUser } from "./fixtures"
 
@@ -12,13 +12,22 @@ interface LoginResult {
  * Login helper for e2e tests
  * Uses worker-specific tenant credentials
  */
-export async function login(page: Page, tenant: { email: string; workspace: string }): Promise<LoginResult> {
+export async function login(
+  page: Page,
+  tenant: { email: string; workspace: string; orgId?: string },
+): Promise<LoginResult> {
   await page.goto("/")
 
-  // Set workspace for this tenant
-  await page.evaluate(ws => {
-    sessionStorage.setItem("workspace", ws)
-  }, tenant.workspace)
+  // Set workspace in localStorage using typed helper from @webalive/shared
+  // This ensures E2E tests stay in sync with workspaceStore schema
+  await page.evaluate(({ key, value }) => localStorage.setItem(key, value), {
+    key: WORKSPACE_STORAGE.KEY,
+    value: createWorkspaceStorageValue(tenant.workspace, tenant.orgId || null),
+  })
+
+  // Reload to ensure Zustand hydrates with the localStorage state
+  // Without this, Zustand would have already hydrated with empty state
+  await page.reload()
 
   await page.getByTestId("email-input").fill(tenant.email)
   await page.getByTestId("password-input").fill(TEST_CONFIG.TEST_PASSWORD)
@@ -72,7 +81,7 @@ export async function setAuthCookie(user: TestUser, context: BrowserContext) {
   // Set auth cookie
   await context.addCookies([
     {
-      name: "auth_session",
+      name: COOKIE_NAMES.SESSION,
       value: token,
       domain: "localhost",
       path: "/",

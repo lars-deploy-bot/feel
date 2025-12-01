@@ -11,7 +11,7 @@ This package contains custom MCP tools that extend Claude's capabilities in the 
 
 **Why Tools Call localhost APIs:**
 - Child process = workspace user (no root access)
-- Parent PM2 process = root
+- Parent process = root
 - Tools call `localhost:8998/api/*` to execute privileged operations (systemctl, etc.)
 
 **MCP Tool Naming:**
@@ -279,10 +279,10 @@ The sync test ensures you didn't forget to update both the MCP server and tool r
 cd packages/tools
 
 # Run the sync test (catches missing registrations)
-bun test tool-registry-sync
+bun run test tool-registry-sync
 
 # Or run all tests
-bun test
+bun run test
 
 # Build the package
 bun run build
@@ -307,8 +307,7 @@ bun run lint
 
 ```bash
 # Restart staging to test
-cd apps/web
-pm2 restart claude-bridge-staging
+systemctl restart claude-bridge-staging
 ```
 
 ## Tool Response Format
@@ -399,7 +398,7 @@ bun remove zod && bun add zod@^3.25.0
 
 - Register tools in BOTH parent (`stream/route.ts`) AND child (`run-agent.mjs`)
 - Use `localhost:8998` for privileged operations
-- No sudo needed (APIs run as root via PM2)
+- No sudo needed (APIs run as root via systemd)
 - All code must pass TypeScript strict mode
 - Run `bun run lint` and `bun run format` before committing
 - Update `packages/tools/README.md` when adding new tools
@@ -408,7 +407,7 @@ bun remove zod && bun add zod@^3.25.0
 
 **Tool not appearing:**
 ```bash
-pm2 logs claude-bridge-staging --lines 50 | grep -i mcp
+journalctl -u claude-bridge-staging -n 50 | grep -i mcp
 # Check tool name: mcp__server-name__tool-name
 ```
 
@@ -420,7 +419,7 @@ curl -X POST http://localhost:8998/api/your-endpoint \
   -d '{"param": "value"}'
 
 # Check logs
-pm2 logs claude-bridge-staging | grep -i error
+journalctl -u claude-bridge-staging | grep -i error
 ```
 
 **Build issues:**

@@ -6,6 +6,7 @@
  * Philosophy: Test BEHAVIOR and BUSINESS LOGIC, not just "does it reject bad input"
  * These tests verify the deployment flow works end-to-end with real authentication
  */
+import { COOKIE_NAMES, TEST_CONFIG } from "@webalive/shared"
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
 import type { DeploySubdomainResponse } from "@/features/deployment/types/deploy-subdomain"
 import type { TestUser } from "@/lib/test-helpers/auth-test-helper"
@@ -61,7 +62,7 @@ describe("Deployment API Integration", () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Cookie: "auth_session=invalid.jwt.token",
+          Cookie: `${COOKIE_NAMES.SESSION}=invalid.jwt.token`,
         },
         body: JSON.stringify({
           slug: `test-${Date.now() % 10000}`,
@@ -81,7 +82,7 @@ describe("Deployment API Integration", () => {
           slug: `test-auto-org-${Date.now() % 10000}`,
           // orgId omitted - should auto-create default org
           siteIdeas: "Testing auto org creation",
-          selectedTemplate: "landing",
+          templateId: TEST_CONFIG.DEFAULT_TEMPLATE_ID,
         }),
       })
 

@@ -13,7 +13,27 @@
  * ```
  */
 
-export { COOKIE_NAMES, SESSION_MAX_AGE, ENV_VARS, TEST_CONFIG } from "./constants.js"
+export {
+  COOKIE_NAMES,
+  SESSION_MAX_AGE,
+  FREE_CREDITS,
+  ENV_VARS,
+  TEST_CONFIG,
+  WORKER_POOL,
+  BRIDGE_STREAM_TYPES,
+  BRIDGE_SYNTHETIC_MESSAGE_TYPES,
+  BRIDGE_INTERRUPT_SOURCES,
+  REFERRAL,
+  LIMITS,
+  WORKSPACE_STORAGE,
+  PREVIEW_MESSAGES,
+  createWorkspaceStorageValue,
+  type BridgeStreamType,
+  type WorkspaceStorageRecentItem,
+  type WorkspaceStorageState,
+  type WorkspaceStorageValue,
+} from "./constants.js"
+export { generateInviteCode } from "./invite-code.js"
 export {
   PATHS,
   DOMAINS,
@@ -21,6 +41,8 @@ export {
   TIMEOUTS,
   DEFAULTS,
   SECURITY,
+  BRIDGE_ENV,
+  type BridgeEnv,
   getServiceName,
   getSiteUser,
   getSiteHome,
@@ -37,14 +59,23 @@ export {
   type EnvironmentKey,
 } from "./environments.js"
 export {
+  // OAuth MCP providers (require authentication)
   OAUTH_MCP_PROVIDERS,
   getOAuthMcpProviderKeys,
   isValidOAuthMcpProviderKey,
   isOAuthMcpTool,
+  getMcpToolFriendlyName,
   type OAuthMcpProviderConfig,
   type OAuthMcpProviderRegistry,
   type OAuthMcpProviderKey,
   type ProviderTokenMap,
+  // Global MCP providers (always available, no auth required)
+  GLOBAL_MCP_PROVIDERS,
+  getGlobalMcpProviderKeys,
+  getGlobalMcpToolNames,
+  type GlobalMcpProviderConfig,
+  type GlobalMcpProviderRegistry,
+  type GlobalMcpProviderKey,
 } from "./mcp-providers.js"
 export {
   formatProviderName,
@@ -53,3 +84,8 @@ export {
   type OAuthWarningContent,
   type OAuthFetchResult,
 } from "./oauth-warnings.js"
+export {
+  isPathWithinWorkspace,
+  resolveAndValidatePath,
+  type PathValidationResult,
+} from "./path-security.js"

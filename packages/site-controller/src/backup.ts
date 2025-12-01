@@ -114,7 +114,8 @@ function analyzeSites(): {
     if (!line.trim()) continue
 
     const file = line.substring(3).trim()
-    const siteMatch = file.match(/^sites\/([^/]+)\//)
+    // Match both 'sites/name/' (files in dir) and 'sites/name' (untracked dir)
+    const siteMatch = file.match(/^sites\/([^/]+)(\/|$)/)
 
     if (!siteMatch) {
       // Non-site files are always included
@@ -200,10 +201,6 @@ function stageFiles(includedSites: string[]): number {
     .split("\n")
     .filter(f => f.trim()).length
 
-  if (stagedFiles === 0) {
-    throw DeploymentError.generic("No files staged for commit")
-  }
-
   console.log(`[Backup] Total files staged: ${stagedFiles}`)
   return stagedFiles
 }
@@ -277,10 +274,21 @@ export async function backupWebsites(): Promise<BackupStats> {
     // 5. Stage files
     const stagedFiles = stageFiles(includedSites)
 
-    // 6. Create commit
+    // 6. If no files staged, return early (nothing to commit)
+    if (stagedFiles === 0) {
+      console.log("[Backup] No files to commit after staging. Repository is up to date.")
+      return {
+        stagedFiles: 0,
+        includedSites: [],
+        skippedSites,
+        timestamp,
+      }
+    }
+
+    // 7. Create commit
     createCommit(skippedSites)
 
-    // 7. Push to GitHub
+    // 8. Push to GitHub
     pushToGitHub()
 
     console.log("[Backup] ✓ Backup completed successfully!")

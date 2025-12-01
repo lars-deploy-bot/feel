@@ -78,6 +78,7 @@ export interface ChatInputState {
 
   // Loading states
   busy: boolean
+  isStopping: boolean
   abortControllerRef: MutableRefObject<AbortController | null>
 
   // Validation
@@ -119,10 +120,13 @@ export interface ChatInputProps extends ChatInputActions {
   message: string
   setMessage: (msg: string) => void
   busy: boolean
+  isStopping?: boolean
   abortControllerRef: MutableRefObject<AbortController | null>
   config?: ChatInputConfig
   children?: ReactNode
   onOpenTemplates?: () => void
+  onOpenPreview?: () => void
+  hideToolbar?: boolean
 }
 
 export interface ChatInputHandle {

@@ -2,7 +2,7 @@
 
 import { MessageCircle } from "lucide-react"
 import { useId, useState } from "react"
-import { useEmail, useUserActions } from "@/lib/providers/UserStoreProvider"
+import { useAuth } from "@/features/deployment/hooks/useAuth"
 
 interface FeedbackModalProps {
   onClose: () => void
@@ -13,17 +13,11 @@ interface FeedbackModalProps {
 export function FeedbackModal({ onClose, workspace, conversationId }: FeedbackModalProps) {
   const titleId = useId()
   const textareaId = useId()
-  const emailId = useId()
-  const accountEmail = useEmail()
-  const { setEmail: setAccountEmail } = useUserActions()
+  const { user } = useAuth()
   const [feedback, setFeedback] = useState("")
-  const [feedbackEmail, setFeedbackEmail] = useState("")
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  // Use account email if set, otherwise use feedback email
-  const emailToSend = accountEmail || feedbackEmail
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -38,7 +32,7 @@ export function FeedbackModal({ onClose, workspace, conversationId }: FeedbackMo
         },
         body: JSON.stringify({
           feedback,
-          email: emailToSend || undefined,
+          email: user?.email,
           workspace,
           conversationId,
           userAgent: navigator.userAgent,
@@ -48,11 +42,6 @@ export function FeedbackModal({ onClose, workspace, conversationId }: FeedbackMo
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: "Failed to submit feedback" }))
         throw new Error(errorData.message || "Failed to submit feedback")
-      }
-
-      // Save feedback email to account if provided and account email not already set
-      if (feedbackEmail && !accountEmail) {
-        setAccountEmail(feedbackEmail)
       }
 
       setSuccess(true)
@@ -127,25 +116,6 @@ export function FeedbackModal({ onClose, workspace, conversationId }: FeedbackMo
               data-1p-ignore
             />
           </div>
-
-          {!accountEmail && (
-            <div>
-              <label htmlFor={emailId} className="block text-xs text-black/60 dark:text-white/60 mb-2 font-normal">
-                Email (optional)
-              </label>
-              <input
-                id={emailId}
-                type="email"
-                value={feedbackEmail}
-                onChange={e => setFeedbackEmail(e.target.value)}
-                placeholder="your@email.com"
-                className="w-full px-4 py-2.5 bg-white dark:bg-[#2a2a2a] border border-black/20 dark:border-white/20 rounded text-sm text-black dark:text-white focus:outline-none focus:border-black dark:focus:border-white transition-colors"
-                disabled={loading}
-                autoComplete="email"
-                data-1p-ignore
-              />
-            </div>
-          )}
 
           {error && (
             <div className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/30 rounded p-3">

@@ -135,7 +135,7 @@ Before committing error handling changes:
 
 ```bash
 # Run error handling tests
-bun test tests/api/error-handling.test.ts
+bun run test tests/api/error-handling.test.ts
 
 # Check consistency
 bun run lint

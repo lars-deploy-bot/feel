@@ -470,6 +470,42 @@ export type Database = {
           },
         ]
       }
+      templates: {
+        Row: {
+          ai_description: string | null
+          deploy_count: number | null
+          description: string | null
+          image_url: string | null
+          is_active: boolean | null
+          name: string
+          preview_url: string | null
+          source_path: string
+          template_id: string
+        }
+        Insert: {
+          ai_description?: string | null
+          deploy_count?: number | null
+          description?: string | null
+          image_url?: string | null
+          is_active?: boolean | null
+          name: string
+          preview_url?: string | null
+          source_path: string
+          template_id?: string
+        }
+        Update: {
+          ai_description?: string | null
+          deploy_count?: number | null
+          description?: string | null
+          image_url?: string | null
+          is_active?: boolean | null
+          name?: string
+          preview_url?: string | null
+          source_path?: string
+          template_id?: string
+        }
+        Relationships: []
+      }
       Workflow: {
         Row: {
           clerk_id: string | null

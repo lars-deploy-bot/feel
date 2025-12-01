@@ -996,9 +996,10 @@ Hypothesis 5: Browser State
 
 ### 4.3 External API Cost & Performance
 
-**Anthropic Claude API Pricing:**
-- Haiku: $0.003 per request (1K tokens)
-- Sonnet: $0.015 per request (1K tokens)
+**Anthropic Claude API Pricing (per MTok):**
+- Opus 4.5: Input $5, Output $25
+- Sonnet 4.5: Input $3 (≤200K) / $6 (>200K), Output $15 (≤200K) / $22.50 (>200K)
+- Haiku 4.5: Input $1, Output $5
 - Average test message: ~150 tokens
 - Cost per genuine test: ~$0.0005-$0.0025
 

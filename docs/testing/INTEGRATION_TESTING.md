@@ -568,17 +568,19 @@ testFn('should fetch real data', async () => {
 
 ```bash
 # Run all tests (includes integration)
-cd apps/web && bun test
+cd apps/web && bun run test
 
 # Run specific integration test
-bun test workspace.integration.test.ts
+bun run test workspace.integration.test.ts
 
 # Run with pattern
-bun test integration
+bun run test integration
 
 # With coverage
-bun test --coverage
+bun run test --coverage
 ```
+
+**Important:** Always use `bun run test`, never `bun test` directly. Do NOT use `npx vitest`.
 
 **Separate integration tests** (optional pattern):
 
@@ -747,10 +749,10 @@ describe('Config', () => {
 
 ```bash
 # Run with verbose output
-bun test --reporter=verbose
+bun run test --reporter=verbose
 
 # Run single test
-bun test workspace.integration.test.ts
+bun run test workspace.integration.test.ts
 
 # Add console.log
 it('test', async () => {

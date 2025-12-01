@@ -8,6 +8,25 @@ import type { FullConfig } from "@playwright/test"
 import { TEST_CONFIG } from "@webalive/shared"
 
 /**
+ * Warm up critical pages to trigger Next.js compilation before parallel tests start
+ * This prevents multiple workers from all waiting for initial compilation simultaneously
+ */
+async function warmupServer(baseUrl: string): Promise<void> {
+  const criticalPages = ["/", "/chat", "/deploy"]
+  console.log("🔥 [Global Setup] Warming up server pages...")
+
+  for (const page of criticalPages) {
+    try {
+      const start = Date.now()
+      await fetch(`${baseUrl}${page}`, { method: "GET" })
+      console.log(`   ✓ ${page} (${Date.now() - start}ms)`)
+    } catch (error) {
+      console.log(`   ⚠ ${page} warmup failed: ${error}`)
+    }
+  }
+}
+
+/**
  * Poll for tenant readiness with exponential backoff
  * Replaces arbitrary 2-second delay with explicit ready checks
  */
@@ -115,6 +134,10 @@ export default async function globalSetup(config: FullConfig) {
     console.log("⏳ Verifying tenant readiness...")
     await verifyTenantReadiness(baseUrl, workers)
     console.log("✅ All tenants verified\n")
+
+    // Warm up critical pages before parallel tests start
+    // This ensures Next.js has compiled all pages that tests will hit
+    await warmupServer(baseUrl)
   } catch (error) {
     console.error("\n❌ [Global Setup] Failed:", error)
     throw error

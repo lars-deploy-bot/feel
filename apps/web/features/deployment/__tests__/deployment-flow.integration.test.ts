@@ -6,6 +6,7 @@
  */
 import { execSync } from "node:child_process"
 import { existsSync, rmSync } from "node:fs"
+import { TEST_CONFIG } from "@webalive/shared"
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
 import type { TestUser } from "@/lib/test-helpers/auth-test-helper"
 import { cleanupTestUser, createTestUser } from "@/lib/test-helpers/auth-test-helper"
@@ -65,7 +66,7 @@ describe("Full Deployment Flow Integration", () => {
         slug: testSlug,
         orgId: testUser.orgId,
         siteIdeas: "",
-        selectedTemplate: "landing",
+        templateId: TEST_CONFIG.DEFAULT_TEMPLATE_ID,
       }),
     })
 
@@ -84,7 +85,7 @@ describe("Full Deployment Flow Integration", () => {
         slug: `${testSlug}-auto-org`,
         // orgId omitted - should auto-create default org
         siteIdeas: "",
-        selectedTemplate: "landing",
+        templateId: TEST_CONFIG.DEFAULT_TEMPLATE_ID,
       }),
     })
 
@@ -104,7 +105,7 @@ describe("Full Deployment Flow Integration", () => {
         slug: testSlug,
         orgId: testUser.orgId,
         siteIdeas: "",
-        selectedTemplate: "landing",
+        templateId: TEST_CONFIG.DEFAULT_TEMPLATE_ID,
       }),
     })
 

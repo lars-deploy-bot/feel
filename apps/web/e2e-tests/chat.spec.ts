@@ -1,6 +1,6 @@
 import { login } from "./helpers"
 import { handlers } from "./lib/handlers"
-import { expect, test } from "./setup"
+import { expect, test } from "./fixtures"
 
 test.beforeEach(async ({ page, tenant }) => {
   await login(page, tenant)

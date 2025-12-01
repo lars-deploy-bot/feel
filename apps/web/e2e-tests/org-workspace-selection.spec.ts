@@ -1,5 +1,6 @@
+import { WORKSPACE_STORAGE, type WorkspaceStorageValue } from "@webalive/shared"
 import { login } from "./helpers"
-import { expect, test } from "./setup"
+import { expect, test } from "./fixtures"
 
 /**
  * Organization and Workspace Selection - Worker Isolated
@@ -8,35 +9,27 @@ import { expect, test } from "./setup"
  */
 
 test.describe("Organization and Workspace Selection", () => {
-  test("loads workspace after authentication", async ({ page, tenant }) => {
+  test("workspace loads and chat interface is functional", async ({ page, tenant }) => {
     await login(page, tenant)
     await page.goto("/chat")
 
-    // Wait for chat interface
-    await expect(page.locator('[data-testid="message-input"]')).toBeVisible({ timeout: 10000 })
+    // Wait for BOTH critical elements upfront (prevents timeout accumulation)
+    // These run concurrently via Promise.all pattern in Playwright's auto-waiting
+    const messageInput = page.locator('[data-testid="message-input"]')
+    const workspaceReady = page.locator('[data-testid="workspace-ready"]')
 
-    // Verify workspace is set (from fixture)
-    const workspace = await page.evaluate(() => sessionStorage.getItem("workspace"))
-    expect(workspace).toBe(tenant.workspace)
+    await expect(messageInput).toBeVisible({ timeout: 20000 })
+    await expect(workspaceReady).toBeAttached({ timeout: 5000 }) // Should be ready by now
 
-    // Check workspace section displays correct workspace
-    const workspaceSection = page.getByTestId("workspace-section")
-    if (await workspaceSection.isVisible()) {
-      await expect(workspaceSection).toContainText(tenant.workspace)
-    }
-  })
+    // Verify workspace is set using typed constants from @webalive/shared
+    const storageValue = await page.evaluate(key => localStorage.getItem(key), WORKSPACE_STORAGE.KEY)
+    expect(storageValue).not.toBeNull()
+    const parsed = JSON.parse(storageValue!) as WorkspaceStorageValue
+    expect(parsed.state.currentWorkspace).toBe(tenant.workspace)
 
-  test("chat interface is functional with workspace", async ({ page, tenant }) => {
-    await login(page, tenant)
-    await page.goto("/chat")
-
-    const messageInput = page.getByTestId("message-input")
-    await expect(messageInput).toBeVisible()
-    await expect(messageInput).toBeEnabled()
-
-    // Send button should be enabled when workspace is set
+    // Fill message and verify send button is enabled (proves workspace is set)
     await messageInput.fill("test message")
     const sendButton = page.getByTestId("send-button")
-    await expect(sendButton).toBeEnabled()
+    await expect(sendButton).toBeEnabled({ timeout: 5000 })
   })
 })

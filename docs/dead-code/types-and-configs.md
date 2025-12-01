@@ -624,7 +624,7 @@ grep -r "isVerifyResponse" . --exclude-dir=node_modules
 grep -r "isFeedbackResponse" . --exclude-dir=node_modules
 
 # Run tests after cleanup
-bun test
+bun run test
 bun run test:e2e
 ```
 

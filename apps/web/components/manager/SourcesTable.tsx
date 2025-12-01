@@ -7,9 +7,10 @@ import type { PortConsistency, SourceData } from "@/types/sources"
 interface SourcesTableProps {
   sources: SourceData[]
   loading: boolean
+  onDelete?: (domain: string) => void
 }
 
-export function SourcesTable({ sources, loading }: SourcesTableProps) {
+export function SourcesTable({ sources, loading, onDelete }: SourcesTableProps) {
   const [restarting, setRestarting] = useState<string | null>(null)
 
   const handleRestart = async (domain: string) => {
@@ -187,17 +188,31 @@ export function SourcesTable({ sources, loading }: SourcesTableProps) {
                     )}
                   </td>
                   <td className="py-2 px-4 text-center" rowSpan={3}>
-                    <button
-                      type="button"
-                      onClick={e => {
-                        e.stopPropagation()
-                        handleRestart(domain.domain)
-                      }}
-                      disabled={restarting === domain.domain}
-                      className="inline-flex items-center px-2 py-1 text-xs font-medium text-white bg-blue-600 dark:bg-blue-500 rounded hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {restarting === domain.domain ? "Restarting..." : "Restart"}
-                    </button>
+                    <div className="flex flex-col gap-1.5 items-center">
+                      <button
+                        type="button"
+                        onClick={e => {
+                          e.stopPropagation()
+                          handleRestart(domain.domain)
+                        }}
+                        disabled={restarting === domain.domain}
+                        className="inline-flex items-center px-2 py-1 text-xs font-medium text-white bg-blue-600 dark:bg-blue-500 rounded hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {restarting === domain.domain ? "Restarting..." : "Restart"}
+                      </button>
+                      {onDelete && (
+                        <button
+                          type="button"
+                          onClick={e => {
+                            e.stopPropagation()
+                            onDelete(domain.domain)
+                          }}
+                          className="inline-flex items-center px-2 py-1 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded hover:bg-red-100 dark:bg-red-950/30 dark:text-red-300 dark:border-red-800 dark:hover:bg-red-900/40 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1 transition-colors"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
 

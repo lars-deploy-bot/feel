@@ -549,20 +549,22 @@ describe('Workspace Name Validation', () => {
 
 ```bash
 # All unit tests
-cd apps/web && bun test
+cd apps/web && bun run test
 
 # Watch mode (re-run on file changes)
-bun test --watch
+bun run test --watch
 
 # Specific file
-bun test security.test.ts
+bun run test security.test.ts
 
 # With coverage
-bun test --coverage
+bun run test --coverage
 
 # Verbose output
-bun test --reporter=verbose
+bun run test --reporter=verbose
 ```
+
+**Important:** Always use `bun run test`, never `bun test` directly. Do NOT use `npx vitest`.
 
 ---
 

@@ -266,5 +266,3 @@ export function validateLinearComment(data: unknown): boolean {
 export function validateLinearComments(data: unknown): boolean {
   return Array.isArray(data)
 }
-
-export default LinearCommentResult

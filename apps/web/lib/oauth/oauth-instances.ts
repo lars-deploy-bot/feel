@@ -2,10 +2,13 @@
  * OAuth Instance Factory
  *
  * Provides properly configured OAuth manager instances for different providers
- * and environments, replacing the singleton pattern with explicit instances.
+ * and environments. Uses a generic factory pattern - no per-provider boilerplate.
+ *
+ * SINGLE SOURCE OF TRUTH: packages/shared/src/mcp-providers.ts
  */
 
 import { createOAuthManager, buildInstanceId, type OAuthManagerConfig } from "@webalive/oauth-core"
+import { OAUTH_MCP_PROVIDERS, type OAuthMcpProviderKey } from "@webalive/shared"
 
 /**
  * Get the current environment from environment variables
@@ -52,50 +55,14 @@ function getDefaultTtl(environment: string): number | undefined {
 }
 
 /**
- * Create a Linear OAuth manager instance
+ * Generic factory to create OAuth manager for any provider
  */
-export function createLinearOAuthManager(): ReturnType<typeof createOAuthManager> {
+function createProviderOAuthManager(provider: OAuthMcpProviderKey): ReturnType<typeof createOAuthManager> {
   const environment = getCurrentEnvironment()
-  const instanceId = buildInstanceId("linear", environment)
+  const instanceId = buildInstanceId(provider, environment)
 
   const config: OAuthManagerConfig = {
-    provider: "linear",
-    instanceId,
-    namespace: "oauth_connections",
-    environment,
-    defaultTtlSeconds: getDefaultTtl(environment),
-  }
-
-  return createOAuthManager(config)
-}
-
-/**
- * Create a GitHub OAuth manager instance
- */
-export function createGitHubOAuthManager(): ReturnType<typeof createOAuthManager> {
-  const environment = getCurrentEnvironment()
-  const instanceId = buildInstanceId("github", environment)
-
-  const config: OAuthManagerConfig = {
-    provider: "github",
-    instanceId,
-    namespace: "oauth_connections",
-    environment,
-    defaultTtlSeconds: getDefaultTtl(environment),
-  }
-
-  return createOAuthManager(config)
-}
-
-/**
- * Create a Stripe OAuth manager instance
- */
-export function createStripeOAuthManager(): ReturnType<typeof createOAuthManager> {
-  const environment = getCurrentEnvironment()
-  const instanceId = buildInstanceId("stripe", environment)
-
-  const config: OAuthManagerConfig = {
-    provider: "stripe",
+    provider,
     instanceId,
     namespace: "oauth_connections",
     environment,
@@ -144,65 +111,36 @@ export function createTenantOAuthManager(provider: string, tenantId: string): Re
   return createOAuthManager(config)
 }
 
-// Singleton instances for backward compatibility
-// These are created once and reused throughout the application
-let linearInstance: ReturnType<typeof createOAuthManager> | null = null
-let githubInstance: ReturnType<typeof createOAuthManager> | null = null
-let stripeInstance: ReturnType<typeof createOAuthManager> | null = null
+// Dynamic singleton map - instances created on demand
+const instances = new Map<OAuthMcpProviderKey, ReturnType<typeof createOAuthManager>>()
 
 /**
- * Get the Linear OAuth manager instance (singleton within the app)
+ * Get OAuth manager instance for any provider (singleton per provider)
+ *
+ * @param provider - Provider key (e.g., 'linear', 'stripe')
+ * @returns OAuth manager instance
+ * @throws Error if provider is not in OAUTH_MCP_PROVIDERS
  */
-export function getLinearOAuth(): ReturnType<typeof createOAuthManager> {
-  if (!linearInstance) {
-    linearInstance = createLinearOAuthManager()
+export function getOAuthInstance(provider: string): ReturnType<typeof createOAuthManager> {
+  const key = provider.toLowerCase() as OAuthMcpProviderKey
+  if (!instances.has(key)) {
+    if (!(key in OAUTH_MCP_PROVIDERS)) {
+      throw new Error(
+        `Unsupported OAuth provider: ${provider}. Valid providers: ${Object.keys(OAUTH_MCP_PROVIDERS).join(", ")}`,
+      )
+    }
+    instances.set(key, createProviderOAuthManager(key))
   }
-  return linearInstance
+  return instances.get(key)!
 }
 
-/**
- * Get the GitHub OAuth manager instance (singleton within the app)
- */
-export function getGitHubOAuth(): ReturnType<typeof createOAuthManager> {
-  if (!githubInstance) {
-    githubInstance = createGitHubOAuthManager()
-  }
-  return githubInstance
-}
-
-/**
- * Get the Stripe OAuth manager instance (singleton within the app)
- */
-export function getStripeOAuth(): ReturnType<typeof createOAuthManager> {
-  if (!stripeInstance) {
-    stripeInstance = createStripeOAuthManager()
-  }
-  return stripeInstance
-}
+// Backward-compatible named exports for existing code
+export const getLinearOAuth = () => getOAuthInstance("linear")
+export const getStripeOAuth = () => getOAuthInstance("stripe")
 
 // Re-export client-safe provider constants
 export { SUPPORTED_OAUTH_PROVIDERS, isOAuthProviderSupported } from "./providers"
 export type { OAuthProvider } from "./providers"
-
-/**
- * Get OAuth manager instance for any provider (generic factory)
- *
- * @param provider - Provider key (e.g., 'linear', 'github')
- * @returns OAuth manager instance
- * @throws Error if provider is not supported
- */
-export function getOAuthInstance(provider: string): ReturnType<typeof createOAuthManager> {
-  switch (provider.toLowerCase()) {
-    case "linear":
-      return getLinearOAuth()
-    case "github":
-      return getGitHubOAuth()
-    case "stripe":
-      return getStripeOAuth()
-    default:
-      throw new Error(`Unsupported OAuth provider: ${provider}`)
-  }
-}
 
 // Export environment helper for debugging
 export { getCurrentEnvironment }

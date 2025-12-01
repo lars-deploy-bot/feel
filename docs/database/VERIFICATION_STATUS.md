@@ -18,7 +18,7 @@
 ### 2. Tests Verified
 - ✅ **JWT tests:** 22/22 pass
   ```bash
-  bun test features/auth/lib/__tests__/jwt.test.ts
+  bun run test features/auth/lib/__tests__/jwt.test.ts
   # ✅ All pass - verified 2025-11-17
   ```
 
@@ -55,7 +55,7 @@ Without this, Supabase can't verify our custom JWT tokens.
 
 ### 3. RLS Tests NOT Verified
 ```bash
-bun test features/auth/lib/__tests__/rls-integration.test.ts
+bun run test features/auth/lib/__tests__/rls-integration.test.ts
 # ⚠️ NOT RUN - will FAIL until migration is complete
 # Tests expect iam.current_user_id() to use public.sub()
 ```
@@ -76,7 +76,7 @@ Can't verify:
 ### JWT Security ✅
 ```bash
 cd apps/web
-bun test features/auth/lib/__tests__/jwt.test.ts
+bun run test features/auth/lib/__tests__/jwt.test.ts
 ```
 
 **Expected:** 22/22 pass
@@ -101,7 +101,7 @@ bunx biome check features/auth/lib/
 
 ### RLS Integration ⚠️
 ```bash
-bun test features/auth/lib/__tests__/rls-integration.test.ts
+bun run test features/auth/lib/__tests__/rls-integration.test.ts
 ```
 
 **Current state:** Tests will FAIL because:
@@ -163,7 +163,7 @@ Because RLS can't read the JWT yet.
 
 ### Step 4: Verify RLS Tests
 ```bash
-bun test features/auth/lib/__tests__/rls-integration.test.ts
+bun run test features/auth/lib/__tests__/rls-integration.test.ts
 ```
 
 **Expected after migration:** 10/10 pass

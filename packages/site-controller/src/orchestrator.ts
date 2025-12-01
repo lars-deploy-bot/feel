@@ -80,7 +80,6 @@ export class SiteOrchestrator {
         domain,
         targetDir: siteHome,
         templatePath,
-        legacySitesRoot: PATHS.LEGACY_SITES_ROOT,
       })
       console.log(`✓ Filesystem ready: ${siteHome}\n`)
 

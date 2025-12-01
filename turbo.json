@@ -17,7 +17,6 @@
         "NEXT_PUBLIC_SUPABASE_URL",
         "NEXT_PUBLIC_SUPABASE_ANON_KEY",
         "CLAUDE_MODEL",
-        "CLAUDE_MAX_TURNS",
         "WORKSPACE_BASE",
         "BRIDGE_PASSCODE",
         "BRIDGE_ENV",

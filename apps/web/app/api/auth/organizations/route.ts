@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto"
 import { type NextRequest, NextResponse } from "next/server"
+import { SECURITY } from "@webalive/shared"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { createCorsErrorResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { COOKIE_NAMES, getClearCookieOptions } from "@/lib/auth/cookies"
@@ -26,7 +27,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Test mode
-    if (process.env.BRIDGE_ENV === "local" && user.id === "test-user") {
+    if (process.env.BRIDGE_ENV === "local" && user.id === SECURITY.LOCAL_TEST.SESSION_VALUE) {
       return createCorsSuccessResponse(origin, {
         organizations: [
           {

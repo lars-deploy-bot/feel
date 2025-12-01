@@ -301,13 +301,13 @@ See [SECURITY.md](./SECURITY.md) for detailed security information.
 
 ```bash
 # Run tests
-bun test
+bun run test
 
 # Watch mode
 bun run test:watch
 
 # With coverage
-bun test --coverage
+bun run test --coverage
 ```
 
 ### Verification Script

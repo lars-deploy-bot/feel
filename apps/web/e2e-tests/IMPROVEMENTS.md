@@ -23,8 +23,10 @@ export default async function globalSetup() {
 
   // Login once
   await page.goto('/')
-  await page.evaluate(() => {
-    sessionStorage.setItem('workspace', 'test.bridge.local')
+  // Set workspace using typed helper from @webalive/shared
+  await page.evaluate(({ key, value }) => localStorage.setItem(key, value), {
+    key: WORKSPACE_STORAGE.KEY,
+    value: createWorkspaceStorageValue('test.bridge.local', orgId),
   })
   await page.getByPlaceholder('you@example.com').fill('test@bridge.local')
   await page.getByPlaceholder('Enter your password').fill('test')

@@ -27,7 +27,6 @@
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.1.25",
     "@webalive/shared": "workspace:*",
-    "groq-sdk": "^0.34.0",
     "zod": "^3.25.0"
   },
   "devDependencies": {

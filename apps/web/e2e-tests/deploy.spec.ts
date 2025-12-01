@@ -6,6 +6,7 @@
 
 import { execSync } from "node:child_process"
 import { existsSync } from "node:fs"
+import { TEST_CONFIG } from "@webalive/shared"
 import { expect, test } from "./fixtures"
 import { TIMEOUTS } from "./lib/test-env"
 
@@ -90,7 +91,7 @@ test.describe("Website Deployment with Authentication", () => {
         slug: TEST_SLUG,
         orgId: "org_fake123", // Fake org ID - doesn't matter for unauthenticated test
         siteIdeas: "",
-        selectedTemplate: "landing",
+        templateId: TEST_CONFIG.DEFAULT_TEMPLATE_ID,
       },
     })
 
@@ -115,7 +116,7 @@ test.describe("Website Deployment with Authentication", () => {
         // No email needed - authenticated via cookie
         // No orgId provided - should use default org
         siteIdeas: "Test deployment without explicit orgId",
-        selectedTemplate: "landing",
+        templateId: TEST_CONFIG.DEFAULT_TEMPLATE_ID,
       },
     })
 
@@ -146,7 +147,7 @@ test.describe("Website Deployment with Authentication", () => {
         // No email needed - authenticated via cookie
         orgId: workerTenant.orgId,
         siteIdeas: "E2E test deployment with authentication",
-        selectedTemplate: "landing",
+        templateId: TEST_CONFIG.DEFAULT_TEMPLATE_ID,
       },
     })
 

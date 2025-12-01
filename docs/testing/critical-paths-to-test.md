@@ -314,11 +314,11 @@ test("SessionUser includes workspaces array", async () => {
 ```bash
 # Run security tests
 cd apps/web
-bun test workspace-api-handler.test.ts
-bun test auth.test.ts
+bun run test workspace-api-handler.test.ts
+bun run test auth.test.ts
 
 # Run integration tests
-bun test:e2e critical-paths.spec.ts
+bun run test:e2e critical-paths.spec.ts
 
 # Manual verification
 curl -X POST http://localhost:8999/api/restart-workspace \

@@ -1,10 +1,26 @@
-import { describe, expect, it, vi } from "vitest"
+import { describe, expect, it, vi, beforeEach } from "vitest"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
-import * as fsPromises from "node:fs/promises"
 import type { GetWorkflowParams, WorkflowCategory } from "../src/tools/meta/get-workflow.js"
-import { getWorkflow } from "../src/tools/meta/get-workflow.js"
 import { TOOL_REGISTRY } from "../src/tools/meta/tool-registry.js"
+
+// Create a hoisted mock for fs/promises
+const { readFileMock } = vi.hoisted(() => ({
+  readFileMock: vi.fn(),
+}))
+
+// Mock fs/promises with actual implementation by default
+vi.mock("node:fs/promises", async importOriginal => {
+  const actual = await importOriginal<typeof import("node:fs/promises")>()
+  return {
+    ...actual,
+    readFile: readFileMock,
+  }
+})
+
+// Import after mocking
+import * as fsPromises from "node:fs/promises"
+import { getWorkflow } from "../src/tools/meta/get-workflow.js"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -16,7 +32,17 @@ const FILE_MAP: Record<WorkflowCategory, string> = {
   "package-installation": "03-package-installation.md",
 }
 
+// Keep reference to actual readFile for tests that need real file reads
+const actualReadFile = vi.importActual<typeof import("node:fs/promises")>("node:fs/promises").then(m => m.readFile)
+
 describe("getWorkflow", () => {
+  beforeEach(async () => {
+    // Reset mock and use actual implementation by default
+    readFileMock.mockReset()
+    const realReadFile = await actualReadFile
+    readFileMock.mockImplementation(realReadFile)
+  })
+
   it("returns full content for bug-debugging workflow", async () => {
     const params: GetWorkflowParams = { workflow_type: "bug-debugging" }
     const result = await getWorkflow(params)
@@ -93,17 +119,15 @@ describe("getWorkflow", () => {
   })
 
   it("returns error when file read fails (I/O error path)", async () => {
-    const spy = vi.spyOn(fsPromises, "readFile").mockRejectedValueOnce(new Error("simulated read error"))
-    try {
-      const result = await getWorkflow({ workflow_type: "bug-debugging" })
-      expect(result.isError).toBe(true)
-      const text = result.content[0].text
-      expect(text).toContain("# Workflow Retrieval Failed")
-      expect(text).toContain('**Workflow:** "bug-debugging"')
-      expect(text).toContain("Available workflows: bug-debugging, new-feature, package-installation")
-    } finally {
-      spy.mockRestore()
-    }
+    // Override mock to simulate I/O error
+    readFileMock.mockRejectedValueOnce(new Error("simulated read error"))
+
+    const result = await getWorkflow({ workflow_type: "bug-debugging" })
+    expect(result.isError).toBe(true)
+    const text = result.content[0].text
+    expect(text).toContain("# Workflow Retrieval Failed")
+    expect(text).toContain('**Workflow:** "bug-debugging"')
+    expect(text).toContain("Available workflows: bug-debugging, new-feature, package-installation")
   })
 
   it("registry metadata should expose only workflow_type parameter (no detail_level)", () => {

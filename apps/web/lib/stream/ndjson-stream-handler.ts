@@ -22,10 +22,11 @@ import { SessionStoreMemory } from "@/features/auth/lib/sessionStore"
 import type { BridgeErrorMessage, StreamMessage } from "@/features/chat/lib/streaming/ndjson"
 import { BridgeStreamType, createWarningMessage, encodeNDJSON } from "@/features/chat/lib/streaming/ndjson"
 import { isAssistantMessageWithUsage, isBridgeMessageEvent } from "@/features/chat/types/guards"
-import { llmTokensToCredits } from "@/lib/credits"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
+import type { ClaudeModel } from "@/lib/models/claude-models"
+import { calculateCreditsToCharge } from "@/lib/models/model-pricing"
 import type { OAuthWarning } from "@webalive/shared"
-import { calculateLLMTokenCost, chargeTokensFromCredits, WORKSPACE_CREDIT_DISCOUNT } from "@/lib/tokens"
+import { chargeCreditsDirectly } from "@/lib/tokens"
 
 /**
  * Event types emitted by child process
@@ -70,6 +71,11 @@ interface StreamHandlerConfig {
    */
   tokenSource: "workspace" | "user_provided"
   /**
+   * The Claude model being used (for pricing calculation)
+   * Required for accurate cost calculation based on model-specific pricing
+   */
+  model: ClaudeModel
+  /**
    * Called when a session ID is received from the child process
    * Allows caller to store session ID or perform other session setup
    */
@@ -90,45 +96,55 @@ interface StreamHandlerConfig {
    * Shows user-facing warnings for expired/revoked tokens
    */
   oauthWarnings?: OAuthWarning[]
+  /**
+   * Called for each message sent to client (for buffering/persistence)
+   * Receives the raw NDJSON line before encoding
+   */
+  onMessage?: (message: StreamMessage | BridgeErrorMessage) => void
 }
 
 /**
- * Charge credits for assistant message based on LLM token usage
+ * Charge credits for assistant message based on model-specific pricing
  * Only charges when using workspace credits (not user API key)
- * Conversion from LLM tokens to credits happens inside chargeTokensFromCredits
+ *
+ * Pricing (per MTok, 1 USD = 10 credits):
+ * - Opus 4.5: $5 input, $25 output
+ * - Sonnet 4.5: $3/$6 input (≤200K/>200K), $15/$22.50 output
+ * - Haiku 4.5: $1 input, $5 output
  *
  * ATOMIC OPERATION: Uses Supabase RPC to atomically deduct credits.
  * Returns null if insufficient credits (prevents negative balances).
  *
  * @returns { success: boolean, newBalance: number | null, insufficientCredits: boolean }
  */
-async function chargeTokensForMessage(
+async function chargeCreditsForMessage(
   message: StreamMessage,
   workspace: string,
   requestId: string,
+  model: ClaudeModel,
 ): Promise<{ success: boolean; newBalance: number | null; insufficientCredits: boolean }> {
   if (!isBridgeMessageEvent(message) || !isAssistantMessageWithUsage(message)) {
     return { success: false, newBalance: null, insufficientCredits: false }
   }
 
   const usage = message.data.content.message.usage
-  const llmTokensUsed = calculateLLMTokenCost(usage)
-  const creditsUsed = llmTokensToCredits(llmTokensUsed)
-  const chargedCredits = Math.floor(creditsUsed * WORKSPACE_CREDIT_DISCOUNT * 100) / 100
+
+  // Calculate credits based on model-specific pricing
+  // Note: For Sonnet tiered pricing, we assume under 200K threshold for now
+  // TODO: Track cumulative prompt tokens per conversation for accurate Sonnet pricing
+  const creditsToCharge = calculateCreditsToCharge(model, usage.input_tokens, usage.output_tokens)
 
   try {
-    const newBalance = await chargeTokensFromCredits(workspace, llmTokensUsed)
+    const newBalance = await chargeCreditsDirectly(workspace, creditsToCharge)
 
     if (newBalance !== null) {
       console.log(
-        `[NDJSON Stream ${requestId}] Charged ${chargedCredits} credits (LLM tokens: ${llmTokensUsed}, input: ${usage.input_tokens}, output: ${usage.output_tokens}), new balance: ${newBalance} credits`,
+        `[NDJSON Stream ${requestId}] Charged ${creditsToCharge} credits (model: ${model}, input: ${usage.input_tokens}, output: ${usage.output_tokens}), new balance: ${newBalance} credits`,
       )
       return { success: true, newBalance, insufficientCredits: false }
     } else {
       // Atomic deduction returned null = insufficient credits
-      console.warn(
-        `[NDJSON Stream ${requestId}] Insufficient credits to charge ${chargedCredits} credits (LLM tokens: ${llmTokensUsed})`,
-      )
+      console.warn(`[NDJSON Stream ${requestId}] Insufficient credits to charge ${creditsToCharge} credits`)
       return { success: false, newBalance: null, insufficientCredits: true }
     }
   } catch (error) {
@@ -152,14 +168,20 @@ async function processChildEvent(
   conversationKey: string,
   workspace: string,
   tokenSource: "workspace" | "user_provided",
+  model: ClaudeModel,
   onSessionIdReceived: ((sessionId: string) => Promise<void>) | undefined,
   controller: ReadableStreamDefaultController<Uint8Array>,
+  onMessage?: (message: StreamMessage | BridgeErrorMessage) => void,
 ): Promise<{ isComplete: boolean }> {
   // Handle session ID storage (server-side only)
   if (childEvent.type === "bridge_session" && childEvent.sessionId) {
-    console.log(`[NDJSON Stream ${requestId}] Storing session ID: ${childEvent.sessionId}`)
+    console.log(
+      `[NDJSON Stream ${requestId}] [SESSION DEBUG] Received bridge_session event, sessionId: ${childEvent.sessionId}`,
+    )
+    console.log(`[NDJSON Stream ${requestId}] [SESSION DEBUG] Storing to key: ${conversationKey}`)
     try {
       await SessionStoreMemory.set(conversationKey, childEvent.sessionId)
+      console.log(`[NDJSON Stream ${requestId}] [SESSION DEBUG] Session stored successfully`)
       if (onSessionIdReceived) {
         await onSessionIdReceived(childEvent.sessionId)
       }
@@ -175,14 +197,14 @@ async function processChildEvent(
   // Build message and send to client
   const message = buildStreamMessage(childEvent, requestId)
 
-  // Only charge LLM tokens if using workspace credits (not user API key)
+  // Only charge credits if using workspace credits (not user API key)
   if (tokenSource === "workspace") {
     // Non-blocking credit charge with atomic deduction
     // Note: We don't stop the stream on charge failure because:
     // 1. The message was already generated by Claude (we owe them)
     // 2. Better UX to complete current request, show warning
     // 3. Next request will be blocked at the upfront check
-    chargeTokensForMessage(message, workspace, requestId)
+    chargeCreditsForMessage(message, workspace, requestId, model)
       .then(result => {
         if (result.insufficientCredits) {
           console.warn(
@@ -194,6 +216,9 @@ async function processChildEvent(
         console.error(`[NDJSON Stream ${requestId}] Credit charging failed:`, error)
       })
   }
+
+  // Notify listener before sending (for buffering)
+  onMessage?.(message)
 
   controller.enqueue(encodeNDJSON(message))
 
@@ -261,10 +286,12 @@ export function createNDJSONStream(config: StreamHandlerConfig): ReadableStream<
     requestId,
     conversationWorkspace,
     tokenSource,
+    model,
     onSessionIdReceived,
     onStreamComplete,
     cancelState,
     oauthWarnings,
+    onMessage,
   } = config
 
   const decoder = new TextDecoder()
@@ -284,7 +311,6 @@ export function createNDJSONStream(config: StreamHandlerConfig): ReadableStream<
             provider: warning.provider,
             message: warning.message,
             action: "Reconnect",
-            actionUrl: "/settings?tab=integrations",
           })
           controller.enqueue(encodeNDJSON(warningMessage))
           console.log(`[NDJSON Stream ${requestId}] Injected OAuth warning for ${warning.provider}`)
@@ -293,14 +319,10 @@ export function createNDJSONStream(config: StreamHandlerConfig): ReadableStream<
 
       try {
         while (true) {
-          // Check if explicitly cancelled via cancel endpoint
+          // Check if explicitly cancelled via cancel endpoint or client abort
+          // Just break - the finally block will release the lock after abort completes
           if (cancelState.requested) {
-            console.log(`[NDJSON Stream ${requestId}] Breaking loop due to explicit cancellation`)
-            // CRITICAL: Release lock immediately, don't wait for child process to finish
-            if (!cleanupCalled) {
-              onStreamComplete?.()
-              cleanupCalled = true
-            }
+            console.log(`[NDJSON Stream ${requestId}] Breaking loop due to cancellation`)
             break
           }
 
@@ -317,13 +339,9 @@ export function createNDJSONStream(config: StreamHandlerConfig): ReadableStream<
           // Process each complete NDJSON line
           for (const line of lines) {
             // Check for cancellation during processing for better responsiveness
+            // Just break - the finally block will release the lock after abort completes
             if (cancelState.requested) {
               console.log(`[NDJSON Stream ${requestId}] Cancelled during line processing`)
-              // CRITICAL: Release lock immediately
-              if (!cleanupCalled) {
-                onStreamComplete?.()
-                cleanupCalled = true
-              }
               break
             }
 
@@ -337,8 +355,10 @@ export function createNDJSONStream(config: StreamHandlerConfig): ReadableStream<
                 conversationKey,
                 conversationWorkspace,
                 tokenSource,
+                model,
                 onSessionIdReceived,
                 controller,
+                onMessage,
               )
 
               // EARLY LOCK RELEASE: Release lock immediately when complete event is received
@@ -372,8 +392,10 @@ export function createNDJSONStream(config: StreamHandlerConfig): ReadableStream<
               conversationKey,
               conversationWorkspace,
               tokenSource,
+              model,
               onSessionIdReceived,
               controller,
+              onMessage,
             )
 
             // EARLY LOCK RELEASE: Same pattern as in the main loop
@@ -405,7 +427,17 @@ export function createNDJSONStream(config: StreamHandlerConfig): ReadableStream<
       } finally {
         // Guaranteed cleanup: runs on success, error, or cancellation
         // Close the stream so client knows we're done
-        controller.close()
+        // NOTE: When stream is cancelled, controller may already be closed. Wrap in try-catch
+        // to ensure onStreamComplete() is ALWAYS called (critical for lock release).
+        try {
+          controller.close()
+        } catch (closeError) {
+          // Expected when stream was cancelled - controller is already closed
+          console.log(
+            `[NDJSON Stream ${requestId}] Controller already closed (expected on cancel):`,
+            closeError instanceof Error ? closeError.message : String(closeError),
+          )
+        }
 
         // Release conversation lock and perform any other cleanup
         // Only call if not already called during explicit cancellation
@@ -421,18 +453,28 @@ export function createNDJSONStream(config: StreamHandlerConfig): ReadableStream<
     /**
      * Called when stream is cancelled (client abort)
      * Propagates cancellation to child process for graceful shutdown
+     *
+     * IMPORTANT: We do NOT release the lock here! The abort signal needs to reach
+     * the worker pool first, and the worker pool's cleanup timeout (500ms) will
+     * reset the worker's busy state. Only after that should the lock be released.
+     * The finally block in start() handles lock release after the abort completes.
+     *
+     * Flow:
+     * 1. Client aborts fetch
+     * 2. cancel() is called → triggers abort signal via reader.cancel()
+     * 3. childStream.cancel() → workerAbortController.abort()
+     * 4. Worker pool manager receives abort, sends cancel to worker, sets 500ms timeout
+     * 5. After worker responds or timeout fires, worker state is reset to "ready"
+     * 6. reader.cancel() completes → start() loop exits → finally block releases lock
      */
     cancel() {
-      console.log(`[NDJSON Stream ${requestId}] Stream cancelled by client (abort), releasing lock immediately`)
-      // CRITICAL: Release lock immediately on abort (super-early Stop case)
-      // Only call if not already called
-      if (!cleanupCalled) {
-        onStreamComplete?.()
-        cleanupCalled = true
-      }
+      console.log(`[NDJSON Stream ${requestId}] Stream cancelled by client (abort)`)
 
-      // Cancel the reader instead of the stream (avoids "locked" error)
-      // The reader is stored in cancelState and used in the start() loop
+      // Set cancellation flag so start() loop can exit cleanly
+      cancelState.requested = true
+
+      // Cancel the reader - this propagates to childStream.cancel() which aborts the worker
+      // The lock will be released by the finally block in start() after the abort completes
       if (cancelState.reader) {
         cancelState.reader.cancel().catch(error => {
           console.error(`[NDJSON Stream ${requestId}] Failed to cancel reader:`, error)

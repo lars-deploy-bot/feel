@@ -1,4 +1,5 @@
 import NextTopLoader from "nextjs-toploader"
+import { AuthModal } from "@/components/modals/AuthModal"
 import { ThemeProvider } from "@/components/providers/theme-provider"
 import { UserPromptsStoreProvider } from "@/lib/providers/UserPromptsStoreProvider"
 import { UserStoreProvider } from "@/lib/providers/UserStoreProvider"
@@ -22,7 +23,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <NextTopLoader color="#000" height={2} showSpinner={false} />
         <ThemeProvider>
           <UserStoreProvider>
-            <UserPromptsStoreProvider>{children}</UserPromptsStoreProvider>
+            <UserPromptsStoreProvider>
+              {children}
+              <AuthModal />
+            </UserPromptsStoreProvider>
           </UserStoreProvider>
         </ThemeProvider>
       </body>

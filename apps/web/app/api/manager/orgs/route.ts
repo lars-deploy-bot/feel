@@ -40,11 +40,12 @@ export async function GET(req: NextRequest) {
 
     const iam = await createIamClient("service")
 
-    // Fetch all orgs
+    // Fetch all orgs (excluding test orgs)
     const orgsStart = performance.now()
     const { data: orgs, error: orgsError } = await iam
       .from("orgs")
       .select("*")
+      .eq("is_test_env", false)
       .order("created_at", { ascending: false })
     timings.orgs_fetch = performance.now() - orgsStart
 

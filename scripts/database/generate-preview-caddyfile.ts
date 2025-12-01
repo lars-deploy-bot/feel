@@ -104,6 +104,8 @@ function generatePreviewBlock(mapping: DomainMapping): string {
 
   return `
 ${previewHost} {
+    import image_serving
+
     reverse_proxy localhost:${mapping.port} {
         header_up Host localhost
     }
@@ -111,7 +113,7 @@ ${previewHost} {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server

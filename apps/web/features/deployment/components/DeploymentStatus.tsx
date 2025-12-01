@@ -6,15 +6,23 @@ import { useEffect, useState } from "react"
 
 type StatusType = "success" | "error" | "loading"
 
+import type { SiteLimitDetails } from "@/features/deployment/types/deploy-subdomain"
+
 interface DeploymentStatusProps {
   status: StatusType | null
   domain?: string | null
   error?: string | null
+  errorCode?: string | null
   errorDetails?: string[] | null
+  details?: SiteLimitDetails | string | null
   chatUrl?: string | null
 }
 
-export function DeploymentStatus({ status, domain, error, errorDetails }: DeploymentStatusProps) {
+function isSiteLimitDetails(details: SiteLimitDetails | string | null | undefined): details is SiteLimitDetails {
+  return typeof details === "object" && details !== null
+}
+
+export function DeploymentStatus({ status, domain, error, errorCode, errorDetails, details }: DeploymentStatusProps) {
   const [countdown, setCountdown] = useState(30)
   const [_copied, setCopied] = useState(false)
 
@@ -228,6 +236,47 @@ export function DeploymentStatus({ status, domain, error, errorDetails }: Deploy
   }
 
   if (status === "error") {
+    // Special friendly message for site limit exceeded
+    if (errorCode === "SITE_LIMIT_EXCEEDED") {
+      return (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          data-testid="deployment-status-error"
+          className="w-full max-w-md mx-auto px-0"
+        >
+          <div className="p-5 rounded-xl bg-amber-50/80 border border-amber-200/60">
+            <div className="flex gap-3">
+              <div className="flex-shrink-0 mt-0.5">
+                <svg className="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="font-medium text-amber-900 mb-2">You've reached your site limit</h3>
+                <p className="text-amber-800 text-sm leading-relaxed">
+                  Hey, we've seen you have {isSiteLimitDetails(details) ? details.currentCount : "a few"} websites now.
+                  That's awesome!
+                </p>
+                <p className="text-amber-800 text-sm leading-relaxed mt-2">
+                  If you'd like to create more, you can get an additional website for just 5 euro. Drop us a message at{" "}
+                  <a href="mailto:team@goalive.nl" className="font-medium underline hover:no-underline">
+                    team@goalive.nl
+                  </a>{" "}
+                  and we'll sort it out for you.
+                </p>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )
+    }
+
     return (
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}

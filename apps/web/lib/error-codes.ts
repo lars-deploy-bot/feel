@@ -78,6 +78,11 @@ export const ErrorCodes = {
   DEPLOYMENT_FAILED: "DEPLOYMENT_FAILED",
   EMAIL_ALREADY_REGISTERED: "EMAIL_ALREADY_REGISTERED",
   ORG_NOT_FOUND: "ORG_NOT_FOUND",
+  SITE_LIMIT_EXCEEDED: "SITE_LIMIT_EXCEEDED",
+
+  // Template errors (9.2xxx)
+  INVALID_TEMPLATE: "INVALID_TEMPLATE",
+  TEMPLATE_NOT_FOUND: "TEMPLATE_NOT_FOUND",
 
   // Permission errors (9.5xxx)
   PERMISSION_CHECK_FAILED: "PERMISSION_CHECK_FAILED",
@@ -91,6 +96,13 @@ export const ErrorCodes = {
   OAUTH_STATE_MISMATCH: "OAUTH_STATE_MISMATCH",
   INTEGRATION_ERROR: "INTEGRATION_ERROR",
   INTEGRATION_NOT_CONNECTED: "INTEGRATION_NOT_CONNECTED",
+
+  // Referral errors (11xxx)
+  REFERRAL_INVALID_CODE: "REFERRAL_INVALID_CODE",
+  REFERRAL_ALREADY_INVITED: "REFERRAL_ALREADY_INVITED",
+  REFERRAL_NOT_FOUND: "REFERRAL_NOT_FOUND",
+  REFERRAL_CREDIT_FAILED: "REFERRAL_CREDIT_FAILED",
+  USER_NOT_FOUND: "USER_NOT_FOUND",
 
   // General errors
   INTERNAL_ERROR: "INTERNAL_ERROR",
@@ -320,6 +332,21 @@ export function getErrorMessage(code: ErrorCode, details?: Record<string, any>):
         ? `The organization '${details.orgId}' was not found or is not accessible.`
         : "The specified organization was not found or is not accessible."
 
+    case ErrorCodes.SITE_LIMIT_EXCEEDED:
+      return details?.limit
+        ? `You have reached the maximum limit of ${details.limit} sites. Please delete an existing site to create a new one.`
+        : "You have reached the maximum number of sites. Please delete an existing site to create a new one."
+
+    case ErrorCodes.INVALID_TEMPLATE:
+      return details?.templateId
+        ? `Invalid template '${details.templateId}'. Available templates: ${details.available || "blank, gallery, business, saas, event"}.`
+        : `Invalid template. Available templates: ${details?.available || "blank, gallery, business, saas, event"}.`
+
+    case ErrorCodes.TEMPLATE_NOT_FOUND:
+      return details?.templateId
+        ? `Template '${details.templateId}' exists but its source directory is missing at '${details.path || "unknown path"}'. Please contact support.`
+        : "Template source directory is missing. Please contact support."
+
     case ErrorCodes.PERMISSION_CHECK_FAILED:
       return details?.domain
         ? `Failed to check file permissions for ${details.domain}. ${details.reason || "Please try again."}`
@@ -363,6 +390,23 @@ export function getErrorMessage(code: ErrorCode, details?: Record<string, any>):
 
     case ErrorCodes.TEST_MODE_BLOCK:
       return "I'm in test mode right now and can't make real API calls. Please mock this endpoint in your test."
+
+    case ErrorCodes.REFERRAL_INVALID_CODE:
+      return "The invite code is invalid or has expired."
+
+    case ErrorCodes.REFERRAL_ALREADY_INVITED:
+      return details?.email
+        ? `An invitation has already been sent to ${details.email}.`
+        : "An invitation has already been sent to this email."
+
+    case ErrorCodes.REFERRAL_NOT_FOUND:
+      return "No pending referral was found."
+
+    case ErrorCodes.REFERRAL_CREDIT_FAILED:
+      return "Failed to award referral credits. Please contact support."
+
+    case ErrorCodes.USER_NOT_FOUND:
+      return details?.userId ? `User '${details.userId}' was not found.` : "User not found."
 
     case ErrorCodes.INTERNAL_ERROR:
       return "Something went wrong on my end. This is usually temporary - please try again in a moment."

@@ -178,7 +178,7 @@ Submit user feedback.
 
 Run tests:
 ```bash
-cd apps/web && bun test lib/__tests__/feedback.test.ts
+cd apps/web && bun run test lib/__tests__/feedback.test.ts
 ```
 
 Tests cover:

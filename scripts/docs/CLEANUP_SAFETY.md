@@ -220,7 +220,7 @@ Summary:
 4. **Verify after cleanup**: Check the counts in the summary
 5. **Keep test patterns updated**: Add new test domain patterns to the cleanup script as needed
 6. **Monitor logs**: Check cron logs regularly if using automated cleanup
-7. **Run tests to verify**: `bun test lib/test-helpers/__tests__/test-email-enforcement.test.ts`
+7. **Run tests to verify**: `bun run test lib/test-helpers/__tests__/test-email-enforcement.test.ts`
 
 ## Files
 

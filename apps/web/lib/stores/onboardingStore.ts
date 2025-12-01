@@ -6,17 +6,17 @@ import { persist } from "zustand/middleware"
 interface OnboardingState {
   // User selections
   siteIdea: string
-  selectedTemplate: "landing" | "recipe" | null
+  templateId: string | null
 
   // Actions
   setSiteIdea: (idea: string) => void
-  setSelectedTemplate: (template: "landing" | "recipe" | null) => void
+  setTemplateId: (templateId: string | null) => void
   reset: () => void
 }
 
-const initialState = {
+const initialState: Pick<OnboardingState, "siteIdea" | "templateId"> = {
   siteIdea: "",
-  selectedTemplate: null as "landing" | "recipe" | null,
+  templateId: null,
 }
 
 export const useOnboardingStore = create<OnboardingState>()(
@@ -25,7 +25,7 @@ export const useOnboardingStore = create<OnboardingState>()(
       ...initialState,
 
       setSiteIdea: (idea: string) => set({ siteIdea: idea }),
-      setSelectedTemplate: (template: "landing" | "recipe" | null) => set({ selectedTemplate: template }),
+      setTemplateId: (templateId: string | null) => set({ templateId }),
       reset: () => set(initialState),
     }),
     {
@@ -36,10 +36,10 @@ export const useOnboardingStore = create<OnboardingState>()(
 
 // Atomic selector hooks
 export const useSiteIdea = () => useOnboardingStore(state => state.siteIdea)
-export const useSelectedTemplate = () => useOnboardingStore(state => state.selectedTemplate)
+export const useTemplateId = () => useOnboardingStore(state => state.templateId)
 export const useOnboardingActions = () =>
   useOnboardingStore(state => ({
     setSiteIdea: state.setSiteIdea,
-    setSelectedTemplate: state.setSelectedTemplate,
+    setTemplateId: state.setTemplateId,
     reset: state.reset,
   }))

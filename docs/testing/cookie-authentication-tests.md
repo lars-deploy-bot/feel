@@ -150,14 +150,14 @@ expect(sourceCode).not.toMatch(/Cookie:\s*`session=/)
 ### Run All Cookie Tests
 ```bash
 cd packages/tools
-bun test cookie
+bun run test cookie
 ```
 
 ### Run Specific Test Files
 ```bash
-bun test bridge-api-client.test.ts
-bun test cookie-name-sync.test.ts
-bun test cookie-name.test.ts
+bun run test bridge-api-client.test.ts
+bun run test cookie-name-sync.test.ts
+bun run test cookie-name.test.ts
 ```
 
 ### Test Results
@@ -229,7 +229,7 @@ These tests run automatically:
 
 ```bash
 # Package-level tests
-cd packages/tools && bun test
+cd packages/tools && bun run test
 
 # Monorepo-level tests
 bun run test

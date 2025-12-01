@@ -9,6 +9,7 @@ AI assistant guidelines for working on Claude Bridge.
 1. **NEVER COMMIT** - Never create commits
 2. **ALWAYS USE BUN** - Runtime and package manager
 3. **GIT HOOKS** - Pre-push hooks run automatically; if they fail, fix the issues (don't force-push)
+4. **NO RANDOM ENV VARS** - Don't add environment variables unless absolutely necessary. Use existing config, constants, or code-level defaults instead. Adding .env variables creates deployment complexity and hidden dependencies.
 
 ## Project Overview
 
@@ -35,8 +36,7 @@ Claude Bridge is a **multi-tenant development platform** that enables Claude AI 
 - Pattern in `lib/workspace-execution/`
 
 **Workspace locations:**
-- New sites: `/srv/webalive/sites/[domain]/` (systemd-managed, secure)
-- Legacy sites: `/root/webalive/sites/[domain]/` (PM2-managed, should migrate)
+- Sites: `/srv/webalive/sites/[domain]/` (systemd-managed, secure)
 
 **Path validation:**
 ```typescript
@@ -231,8 +231,8 @@ bun run unit
 1. ✅ Document the migration plan
 2. ✅ Search for ALL references: `grep -r "old-file" .`
 3. ✅ Validate before deleting: `./scripts/validate-no-deleted-refs.sh old-file`
-4. ✅ Test service restarts: `pm2 restart && pm2 logs`
-5. ✅ Run full test suite: `bun test && bun run test:e2e`
+4. ✅ Test service restarts: `systemctl restart claude-bridge-dev && journalctl -u claude-bridge-dev -n 20`
+5. ✅ Run full test suite: `bun run test && bun run test:e2e`
 
 **Never**:
 - ❌ Delete files before updating all references
@@ -286,8 +286,6 @@ if (result.success) {
 - Package: `packages/site-controller/README.md`
 - Scripts: `packages/site-controller/scripts/*.sh`
 - Architecture: `docs/architecture/README.md`
-
-**Never use PM2 for new sites** - it lacks security isolation.
 
 #### Updating Caddy Configuration
 
@@ -356,14 +354,24 @@ systemctl status caddy
 
 ```bash
 # Run unit tests
-cd apps/web && bun test
+cd apps/web && bun run test
 
 # Run E2E tests (first time: bunx playwright install chromium)
 bun run test:e2e
 
 # Run specific test
-bun test security.test.ts
+bun run test security.test.ts
 ```
+
+**Testing Notes:**
+- Always use `bun run test`, never `bun test` directly
+- Do NOT use `npx vitest` - npx and vitest don't work well together in this codebase
+
+**E2E Test Best Practices** (see [postmortem](./docs/postmortems/2025-11-30-e2e-test-flakiness.md)):
+- Tests should only wait for what they actually need (API tests don't need UI)
+- Use `toBeAttached` instead of `toBeVisible` when you just need DOM presence
+- Budget timeouts for parallel execution (4 workers = 2-3x slower)
+- Avoid timeout accumulation: put longest wait first, then quick confirmations
 
 ### Local Development Setup
 
@@ -390,7 +398,7 @@ bun run dev
 ### Before Committing
 
 **Automated checks:**
-- [ ] Tests pass: `bun test && bun run test:e2e` (if you wrote tests)
+- [ ] Tests pass: `bun run test && bun run test:e2e` (if you wrote tests)
 - [ ] Format: `bun run format`
 - [ ] Lint: `bun run lint`
 
@@ -560,7 +568,7 @@ All documentation in `/docs` with clean, nested organization:
 ## Important Notes
 
 1. **Never bypass security**: All file operations must be workspace-scoped
-2. **Systemd for sites, PM2 for bridge**: Don't mix process managers
+2. **Systemd for everything**: All processes managed by systemd
 3. **User-based authentication**: Users have ONE account password that works across all their sites
 4. **Session persistence**: Current in-memory store is NOT production-ready
 5. **Terminal mode**: Allows custom workspace, verify before use

@@ -23,9 +23,9 @@ make staging
 
 **Monitor:**
 ```bash
-make logs-staging     # logs
-pm2 list              # status
-pm2 restart claude-bridge-staging
+make logs-staging                            # logs
+systemctl status claude-bridge-staging       # status
+systemctl restart claude-bridge-staging      # restart
 ```
 
 ## Dev
@@ -42,9 +42,9 @@ make dev
 
 **Monitor:**
 ```bash
-make logs-dev
-pm2 list
-pm2 restart claude-bridge-dev
+make logs-dev                           # logs
+systemctl status claude-bridge-dev      # status
+systemctl restart claude-bridge-dev     # restart
 ```
 
 ## Network
@@ -101,7 +101,7 @@ Builds isolated in `.builds/v{n}/`, old version remains running until new build 
 After deployment:
 
 - [ ] Site responds: `curl -H "Host: terminal.goalive.nl" localhost:8999`
-- [ ] PM2 shows running: `pm2 list | grep claude-bridge`
+- [ ] Systemd shows running: `systemctl status claude-bridge-staging`
 - [ ] Logs clean: `bun run see | grep -i error` (no errors)
 - [ ] Caddy active: `systemctl status caddy`
 - [ ] Public domain works: `curl https://terminal.goalive.nl`
@@ -110,8 +110,8 @@ After deployment:
 
 **Port already in use:**
 - `lsof -i :8999` - find process
-- `pm2 kill` - stop all PM2 processes
-- `pm2 list` - verify clean
+- `systemctl stop claude-bridge` - stop the service
+- `fuser -k 8999/tcp` - kill the port if still in use
 
 **Build fails atomically:**
 - Old version still running (safe)

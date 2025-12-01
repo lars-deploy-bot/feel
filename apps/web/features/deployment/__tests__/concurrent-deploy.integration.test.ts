@@ -15,7 +15,7 @@
 
 import { execSync } from "node:child_process"
 import { existsSync, readFileSync } from "node:fs"
-import { environments, PATHS } from "@webalive/shared"
+import { COOKIE_NAMES, environments, PATHS, TEST_CONFIG } from "@webalive/shared"
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
 import { createTestUser } from "@/lib/test-helpers/auth-test-helper"
 import { assertSupabaseServiceEnv, assertSystemTestEnv } from "@/lib/test-helpers/integration-env"
@@ -137,12 +137,13 @@ async function createAuthSession(email: string, password: string): Promise<strin
   }
 
   // Parse cookie (format: "auth_session=token; Path=/; HttpOnly")
-  const match = setCookie.match(/auth_session=([^;]+)/)
+  const cookiePattern = new RegExp(`${COOKIE_NAMES.SESSION}=([^;]+)`)
+  const match = setCookie.match(cookiePattern)
   if (!match) {
     throw new Error("Failed to parse session cookie")
   }
 
-  return `auth_session=${match[1]}`
+  return `${COOKIE_NAMES.SESSION}=${match[1]}`
 }
 
 describe(SUITE_NAME, () => {
@@ -155,8 +156,8 @@ describe(SUITE_NAME, () => {
     const users = await Promise.all(
       TEST_SLUGS.map(async slug => {
         const email = `${slug}@bridge-vitest.internal`
-        const password = "test-password-123"
-        const user = await createTestUser(email, 500, password)
+        const password = TEST_CONFIG.TEST_PASSWORD
+        const user = await createTestUser(email, TEST_CONFIG.DEFAULT_CREDITS, password)
 
         // Get session cookie
         const sessionCookie = await createAuthSession(email, password)
@@ -219,7 +220,7 @@ describe(SUITE_NAME, () => {
         body: JSON.stringify({
           slug: site.slug,
           siteIdeas: "Test site for concurrent deployment testing",
-          selectedTemplate: "landing",
+          templateId: TEST_CONFIG.DEFAULT_TEMPLATE_ID,
         }),
       })
 

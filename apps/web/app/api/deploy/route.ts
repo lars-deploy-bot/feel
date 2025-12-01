@@ -8,11 +8,14 @@ import { deploySite } from "@/lib/deployment/deploy-site"
 import { DomainRegistrationError, registerDomain } from "@/lib/deployment/domain-registry"
 import { validateUserOrgAccess } from "@/lib/deployment/org-resolver"
 import { validateSSLCertificate } from "@/lib/deployment/ssl-validation"
+import { validateTemplateFromDb } from "@/lib/deployment/template-validation"
+import { getUserQuota } from "@/lib/deployment/user-quotas"
 import { ErrorCodes } from "@/lib/error-codes"
 
 interface DeployRequest {
   domain: string
   orgId: string // REQUIRED: Organization to deploy to (user must explicitly select)
+  templateId?: string // Optional: Template to use (defaults to "blank")
 }
 
 interface DeployResponse {
@@ -71,10 +74,39 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ [DEPLOY API] User has access to organization ${orgId}`)
 
-    console.log(`📋 [DEPLOY API] Request: domain=${body.domain} → normalized: ${domain}`)
+    // Check site creation limit
+    const quota = await getUserQuota(user.id)
+    if (!quota.canCreateSite) {
+      console.error(
+        `❌ [DEPLOY API] User ${user.email} has reached site limit (${quota.currentSites}/${quota.maxSites})`,
+      )
+      return createErrorResponse(ErrorCodes.SITE_LIMIT_EXCEEDED, 403, {
+        limit: quota.maxSites,
+        currentCount: quota.currentSites,
+      })
+    }
+
+    // Validate and get selected template from database
+    const templateValidation = await validateTemplateFromDb(body.templateId)
+    if (!templateValidation.valid || !templateValidation.template) {
+      const error = templateValidation.error!
+      console.error(`❌ [DEPLOY API] Template validation failed: ${error.code}`, error)
+      return createErrorResponse(
+        error.code === "INVALID_TEMPLATE" ? ErrorCodes.INVALID_TEMPLATE : ErrorCodes.TEMPLATE_NOT_FOUND,
+        400,
+        {
+          templateId: error.templateId,
+          message: error.message,
+        },
+      )
+    }
+    const template = templateValidation.template
+    console.log(
+      `📋 [DEPLOY API] Request: domain=${body.domain} → normalized: ${domain}, template: ${template.template_id}`,
+    )
 
     // Check if site already exists
-    const sitePath = `${PATHS.LEGACY_SITES_ROOT}/${domain}`
+    const sitePath = `${PATHS.SITES_ROOT}/${domain}`
     const siteExists = existsSync(sitePath)
 
     if (siteExists) {
@@ -88,7 +120,7 @@ export async function POST(request: NextRequest) {
       domain,
       email: user.email, // User email (authenticated)
       orgId, // Organization to deploy to
-      // Note: No password needed - user is already authenticated
+      templatePath: template.source_path, // Template to copy from
     })
 
     // Register domain in Supabase with deployment info

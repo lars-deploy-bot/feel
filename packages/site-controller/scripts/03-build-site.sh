@@ -40,9 +40,23 @@ if [[ "$SKIP_BUILD" == "true" ]] && [[ -d "$TEST_CACHE_DIR/node_modules" ]]; the
     chown -R "$SITE_USER:$SITE_USER" "$TARGET_DIR"
     log_success "Skipped build (using cache)"
 else
+    # Determine where package.json is located
+    # Original templates have package.json at root with workspaces
+    # Deployed sites used as templates have package.json only in user/
+    if [[ -f "${TARGET_DIR}/package.json" ]]; then
+        BUILD_DIR="$TARGET_DIR"
+        log_info "Found package.json at root (workspace template)"
+    elif [[ -f "${TARGET_DIR}/user/package.json" ]]; then
+        BUILD_DIR="${TARGET_DIR}/user"
+        log_info "Found package.json in user/ (deployed site template)"
+    else
+        log_error "No package.json found in $TARGET_DIR or $TARGET_DIR/user"
+        exit 13
+    fi
+
     # Install dependencies
-    log_info "Installing dependencies..."
-    cd "$TARGET_DIR"
+    log_info "Installing dependencies in $BUILD_DIR..."
+    cd "$BUILD_DIR"
     if ! sudo -u "$SITE_USER" bun install; then
         log_error "Failed to install dependencies"
         exit 13

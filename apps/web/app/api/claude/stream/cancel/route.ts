@@ -27,13 +27,19 @@ import { cancelStream, cancelStreamByConversationKey } from "@/lib/stream/cancel
  */
 
 export async function POST(req: NextRequest) {
+  console.log("[Cancel Stream] ===== CANCEL ENDPOINT HIT =====")
   try {
     // Get authenticated user
     const user = await requireSessionUser()
+    console.log("[Cancel Stream] User authenticated:", user.id)
 
     // Parse request body
     const body = await req.json()
     const { requestId, conversationId } = body
+    console.log(
+      "[Cancel Stream] Request body:",
+      JSON.stringify({ requestId, conversationId, workspace: body.workspace }),
+    )
 
     // Validate: must have either requestId OR (conversationId + workspace)
     if (requestId && typeof requestId === "string") {
@@ -41,10 +47,11 @@ export async function POST(req: NextRequest) {
       console.log(`[Cancel Stream] User ${user.id} cancelling request: ${requestId}`)
 
       try {
-        const cancelled = cancelStream(requestId, user.id)
+        // Await cancel - Promise resolves when cleanup is complete (lock released)
+        const cancelled = await cancelStream(requestId, user.id)
 
         if (cancelled) {
-          console.log(`[Cancel Stream] Successfully cancelled: ${requestId}`)
+          console.log(`[Cancel Stream] Successfully cancelled and cleanup complete: ${requestId}`)
           return NextResponse.json({ ok: true, status: "cancelled", requestId })
         } else {
           // Not found - likely already completed
@@ -75,13 +82,18 @@ export async function POST(req: NextRequest) {
         workspace: verifiedWorkspace,
         conversationId,
       })
+      console.log(
+        `[Cancel Stream] Building convKey with: userId=${user.id}, workspace=${verifiedWorkspace}, conversationId=${conversationId}`,
+      )
+      console.log(`[Cancel Stream] Result convKey: ${convKey}`)
       console.log(`[Cancel Stream] User ${user.id} cancelling by conversationKey (super-early Stop): ${convKey}`)
 
       try {
-        const cancelled = cancelStreamByConversationKey(convKey, user.id)
+        // Await cancel - Promise resolves when cleanup is complete (lock released)
+        const cancelled = await cancelStreamByConversationKey(convKey, user.id)
 
         if (cancelled) {
-          console.log(`[Cancel Stream] Successfully cancelled by conversationKey: ${convKey}`)
+          console.log(`[Cancel Stream] Successfully cancelled by conversationKey and cleanup complete: ${convKey}`)
           return NextResponse.json({ ok: true, status: "cancelled", conversationId })
         } else {
           // Not found - likely already completed or never started

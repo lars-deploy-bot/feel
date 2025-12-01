@@ -8,7 +8,7 @@
  */
 
 interface CancelEntry {
-  cancel: () => void
+  cancel: () => void | Promise<void>
   userId: string
   conversationKey: string
   createdAt: number
@@ -22,27 +22,34 @@ const registry = new Map<string, CancelEntry>()
 
 /**
  * Register a stream for cancellation
+ * The cancel callback can return a Promise that resolves when cleanup is complete
  */
 export function registerCancellation(
   requestId: string,
   userId: string,
   conversationKey: string,
-  cancel: () => void,
+  cancel: () => void | Promise<void>,
 ): void {
+  console.log(`[CancellationRegistry] REGISTER: requestId=${requestId}, convKey=${conversationKey}, userId=${userId}`)
+  console.log(`[CancellationRegistry] Registry size before: ${registry.size}`)
   registry.set(requestId, {
     cancel,
     userId,
     conversationKey,
     createdAt: Date.now(),
   })
+  console.log(`[CancellationRegistry] Registry size after: ${registry.size}`)
 }
 
 /**
  * Cancel a stream by requestId
  * Returns true if stream was found and cancelled, false if not found
  * Automatically unregisters after cancelling to prevent double-cancellation
+ *
+ * If the cancel callback returns a Promise, this function awaits it.
+ * This allows the caller to wait for cleanup to complete before proceeding.
  */
-export function cancelStream(requestId: string, userId: string): boolean {
+export async function cancelStream(requestId: string, userId: string): Promise<boolean> {
   const entry = registry.get(requestId)
 
   if (!entry) {
@@ -54,7 +61,8 @@ export function cancelStream(requestId: string, userId: string): boolean {
     throw new Error("Unauthorized: cannot cancel another user's stream")
   }
 
-  entry.cancel()
+  // Await the cancel callback (may return Promise for cleanup completion)
+  await entry.cancel()
   registry.delete(requestId) // Auto-cleanup after cancel
   return true
 }
@@ -63,8 +71,20 @@ export function cancelStream(requestId: string, userId: string): boolean {
  * Cancel a stream by conversationKey (fallback when requestId not available yet)
  * Handles super-early Stop case where user clicks Stop before receiving requestId
  * Returns true if stream was found and cancelled, false if not found
+ *
+ * If the cancel callback returns a Promise, this function awaits it.
  */
-export function cancelStreamByConversationKey(conversationKey: string, userId: string): boolean {
+export async function cancelStreamByConversationKey(conversationKey: string, userId: string): Promise<boolean> {
+  console.log(`[CancellationRegistry] Looking for conversationKey: ${conversationKey}`)
+  console.log(`[CancellationRegistry] Registry size: ${registry.size}`)
+
+  // Log all entries for debugging
+  for (const [reqId, entry] of registry.entries()) {
+    console.log(
+      `[CancellationRegistry] Entry: requestId=${reqId}, convKey=${entry.conversationKey}, userId=${entry.userId}`,
+    )
+  }
+
   // Find the entry with matching conversationKey
   for (const [requestId, entry] of registry.entries()) {
     if (entry.conversationKey === conversationKey) {
@@ -73,12 +93,15 @@ export function cancelStreamByConversationKey(conversationKey: string, userId: s
         throw new Error("Unauthorized: cannot cancel another user's stream")
       }
 
-      entry.cancel()
+      console.log(`[CancellationRegistry] Found match! Cancelling requestId=${requestId}`)
+      // Await the cancel callback (may return Promise for cleanup completion)
+      await entry.cancel()
       registry.delete(requestId) // Auto-cleanup after cancel
       return true
     }
   }
 
+  console.log(`[CancellationRegistry] No match found for conversationKey: ${conversationKey}`)
   return false // No active stream found for this conversation
 }
 
@@ -86,7 +109,11 @@ export function cancelStreamByConversationKey(conversationKey: string, userId: s
  * Unregister a stream (called when stream completes)
  */
 export function unregisterCancellation(requestId: string): void {
+  const existed = registry.has(requestId)
+  console.log(`[CancellationRegistry] UNREGISTER: requestId=${requestId}, existed=${existed}`)
+  console.log(`[CancellationRegistry] Registry size before: ${registry.size}`)
   registry.delete(requestId)
+  console.log(`[CancellationRegistry] Registry size after: ${registry.size}`)
 }
 
 /**
@@ -94,6 +121,36 @@ export function unregisterCancellation(requestId: string): void {
  */
 export function getRegistrySize(): number {
   return registry.size
+}
+
+/**
+ * Debug function: Get full registry state
+ * Returns array of all registered entries with their metadata
+ */
+export function getRegistryState(): Array<{
+  requestId: string
+  userId: string
+  conversationKey: string
+  ageMs: number
+}> {
+  const now = Date.now()
+  const entries: Array<{
+    requestId: string
+    userId: string
+    conversationKey: string
+    ageMs: number
+  }> = []
+
+  for (const [requestId, entry] of registry.entries()) {
+    entries.push({
+      requestId,
+      userId: entry.userId,
+      conversationKey: entry.conversationKey,
+      ageMs: now - entry.createdAt,
+    })
+  }
+
+  return entries
 }
 
 /**

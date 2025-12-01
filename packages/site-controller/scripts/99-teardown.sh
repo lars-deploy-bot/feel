@@ -40,20 +40,37 @@ if [[ -n "${CADDYFILE_PATH:-}" ]] && [[ -f "$CADDYFILE_PATH" ]]; then
     # Escape dots in domain for regex matching
     ESCAPED_DOMAIN=$(echo "$SITE_DOMAIN" | sed 's/\./\\./g')
 
-    # Remove domain block
+    # Generate preview subdomain (e.g., windowsxp.alive.best -> windowsxp-alive-best.preview.terminal.goalive.nl)
+    PREVIEW_LABEL=$(echo "$SITE_DOMAIN" | tr '.' '-')
+    PREVIEW_DOMAIN="${PREVIEW_LABEL}.preview.terminal.goalive.nl"
+    ESCAPED_PREVIEW=$(echo "$PREVIEW_DOMAIN" | sed 's/\./\\./g')
+
+    CADDY_CHANGED=false
+
+    # Remove main domain block
     if grep -q "^${SITE_DOMAIN} {" "$CADDYFILE_PATH"; then
-        # Use sed to remove domain block (from "domain {" to next "}")
         sed -i "/^${ESCAPED_DOMAIN} {/,/^}/d" "$CADDYFILE_PATH"
-
-        # Remove any empty lines left behind
-        sed -i '/^$/N;/^\n$/d' "$CADDYFILE_PATH"
-
-        log_success "Removed from Caddyfile"
-
-        # Reload Caddy
-        systemctl reload caddy || log_warn "Failed to reload Caddy"
+        log_success "Removed main domain from Caddyfile"
+        CADDY_CHANGED=true
     else
-        log_info "Domain not found in Caddyfile"
+        log_info "Main domain not found in Caddyfile"
+    fi
+
+    # Remove preview subdomain block
+    if grep -q "^${PREVIEW_DOMAIN} {" "$CADDYFILE_PATH"; then
+        sed -i "/^${ESCAPED_PREVIEW} {/,/^}/d" "$CADDYFILE_PATH"
+        log_success "Removed preview subdomain from Caddyfile"
+        CADDY_CHANGED=true
+    else
+        log_info "Preview subdomain not found in Caddyfile"
+    fi
+
+    # Remove any empty lines left behind
+    sed -i '/^$/N;/^\n$/d' "$CADDYFILE_PATH"
+
+    # Reload Caddy if changes were made
+    if [[ "$CADDY_CHANGED" == "true" ]]; then
+        systemctl reload caddy || log_warn "Failed to reload Caddy"
     fi
 
     flock -u 200

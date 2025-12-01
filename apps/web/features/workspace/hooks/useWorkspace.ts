@@ -1,58 +1,56 @@
 import { useRouter } from "next/navigation"
-import { useCallback, useEffect, useState } from "react"
-
-interface WorkspaceState {
-  workspace: string | null
-  isTerminal: boolean
-  mounted: boolean
-}
+import { useCallback, useEffect } from "react"
+import { useCurrentWorkspace, useHasHydrated, useWorkspaceActions } from "@/lib/stores/workspaceStore"
 
 interface UseWorkspaceOptions {
   redirectOnMissing?: string | null
   allowEmpty?: boolean
 }
 
-interface UseWorkspaceReturn extends WorkspaceState {
-  setWorkspace: (workspace: string) => void
+interface UseWorkspaceReturn {
+  workspace: string | null
+  isTerminal: boolean
+  mounted: boolean
+  setWorkspace: (workspace: string, orgId?: string) => void
 }
 
+/**
+ * Hook for accessing and managing the current workspace.
+ *
+ * Uses the workspaceStore as the single source of truth.
+ * The workspace is persisted to localStorage and survives browser restarts.
+ */
 export function useWorkspace(options: UseWorkspaceOptions = {}): UseWorkspaceReturn {
   const { redirectOnMissing = "/", allowEmpty = false } = options
   const router = useRouter()
-  const [state, setState] = useState<WorkspaceState>({
-    workspace: null,
-    isTerminal: false,
-    mounted: false,
-  })
 
+  // Read from store (single source of truth)
+  const workspace = useCurrentWorkspace()
+  const hasHydrated = useHasHydrated()
+  const { setCurrentWorkspace } = useWorkspaceActions()
+
+  // Derive mounted directly from hasHydrated - no extra state/render cycle
+  const mounted = hasHydrated
+
+  // Handle redirect separately (side effect only)
   useEffect(() => {
-    // Always terminal mode
-    const terminal = true
-    let workspace: string | null = null
-
-    const savedWorkspace = sessionStorage.getItem("workspace")
-    if (savedWorkspace) {
-      workspace = savedWorkspace
-    } else if (!allowEmpty && redirectOnMissing) {
+    if (!hasHydrated) return
+    if (!workspace && !allowEmpty && redirectOnMissing) {
       router.push(redirectOnMissing)
-      return
     }
-
-    setState({ mounted: true, isTerminal: terminal, workspace })
-  }, [router, redirectOnMissing, allowEmpty])
+  }, [hasHydrated, workspace, allowEmpty, redirectOnMissing, router])
 
   const setWorkspace = useCallback(
-    (workspace: string) => {
-      setState(prev => {
-        // Use prev state to avoid dependency on state
-        if (prev.isTerminal) {
-          sessionStorage.setItem("workspace", workspace)
-        }
-        return { ...prev, workspace }
-      })
+    (newWorkspace: string, orgId?: string) => {
+      setCurrentWorkspace(newWorkspace, orgId)
     },
-    [], // No dependencies needed - uses prev state
+    [setCurrentWorkspace],
   )
 
-  return { ...state, setWorkspace }
+  return {
+    workspace,
+    isTerminal: true, // Always terminal mode now
+    mounted,
+    setWorkspace,
+  }
 }

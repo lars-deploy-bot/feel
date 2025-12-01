@@ -119,3 +119,21 @@ if (typeof setInterval !== "undefined") {
   setInterval(cleanupStaleLocks, 60 * 1000)
   console.log("[Session] Started periodic lock cleanup (every 60s)")
 }
+
+/**
+ * Debug function: Get all currently locked conversations
+ * Returns array of lock keys with their ages
+ */
+export function getLockedConversations(): Array<{ key: string; ageMs: number }> {
+  const now = Date.now()
+  const locks: Array<{ key: string; ageMs: number }> = []
+
+  for (const [key, timestamp] of conversationLockTimestamps.entries()) {
+    locks.push({
+      key,
+      ageMs: now - timestamp,
+    })
+  }
+
+  return locks
+}

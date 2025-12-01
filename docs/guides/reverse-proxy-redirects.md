@@ -64,7 +64,7 @@ The base `.env` file should NOT set `LINEAR_REDIRECT_URI` or `NEXT_PUBLIC_APP_UR
 
 Tests are in `/lib/request-url.test.ts` - run with:
 ```bash
-cd apps/web && bun test request-url.test.ts
+cd apps/web && bun run test request-url.test.ts
 ```
 
 ## Examples in Codebase

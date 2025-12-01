@@ -310,7 +310,7 @@ rm packages/tools/src/lib/ask-ai.ts
 **Verification:**
 ```bash
 # Check nothing broke
-bun test packages/tools
+bun run test packages/tools
 ```
 
 ---
@@ -342,7 +342,7 @@ grep -r "askAI" packages/ --exclude-dir=node_modules
 grep -r "getScriptDir" packages/ --exclude-dir=node_modules
 
 # Run tests after cleanup
-bun test
+bun run test
 ```
 
 ---

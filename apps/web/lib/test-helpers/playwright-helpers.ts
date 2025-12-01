@@ -5,13 +5,15 @@
  */
 
 import type { BrowserContext, Page } from "@playwright/test"
+import { COOKIE_NAMES, TEST_CONFIG } from "@webalive/shared"
 
 /**
  * Authentication cookie configuration
  * Centralized to ensure consistency across all tests
+ * Uses COOKIE_NAMES.SESSION from @webalive/shared as single source of truth
  */
 export const AUTH_COOKIE_CONFIG = {
-  name: "auth_session",
+  name: COOKIE_NAMES.SESSION,
   domain: "localhost",
   path: "/",
   httpOnly: true,
@@ -24,9 +26,9 @@ export const AUTH_COOKIE_CONFIG = {
  *
  * @param page - Playwright page object
  * @param token - JWT session token
- * @param baseURL - Base URL for the test server (defaults to localhost:9547)
+ * @param baseURL - Base URL for the test server (defaults to TEST_CONFIG.BASE_URL)
  */
-export async function setAuthCookie(page: Page, token: string, baseURL = "http://localhost:9547"): Promise<void> {
+export async function setAuthCookie(page: Page, token: string, baseURL = TEST_CONFIG.BASE_URL): Promise<void> {
   await page.context().addCookies([
     {
       name: AUTH_COOKIE_CONFIG.name,

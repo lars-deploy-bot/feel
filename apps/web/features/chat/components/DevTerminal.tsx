@@ -83,7 +83,7 @@ export function DevTerminal() {
 
   return (
     <div
-      className={`relative bg-black text-green-400 font-mono text-xs flex flex-col border-l border-green-700/30 ${
+      className={`relative bg-black text-green-400 font-mono text-xs hidden md:flex flex-col border-l border-green-700/30 ${
         isMinimized ? "w-12" : "h-full"
       } ${isResizing ? "select-none" : ""}`}
       style={!isMinimized ? { width: `${width}px` } : undefined}

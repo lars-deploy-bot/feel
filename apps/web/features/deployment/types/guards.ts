@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { DEFAULTS } from "@webalive/shared"
 
 /**
  * Reserved slugs that cannot be used for deployments
@@ -70,7 +71,12 @@ export const DeploySubdomainSchema = z.object({
     .transform(val => val || "")
     .optional()
     .default(""),
-  selectedTemplate: z.enum(["landing", "recipe"]).optional(),
+  templateId: z
+    .string()
+    .refine(val => val.startsWith(DEFAULTS.TEMPLATE_ID_PREFIX), {
+      message: `Template ID must start with '${DEFAULTS.TEMPLATE_ID_PREFIX}'`,
+    })
+    .optional(),
 })
 
 export type DeploySubdomainRequest = z.infer<typeof DeploySubdomainSchema>

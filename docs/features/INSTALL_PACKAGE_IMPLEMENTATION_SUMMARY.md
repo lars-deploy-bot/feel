@@ -312,14 +312,14 @@ Domain extraction (3000 operations): 3ms
 ### Run All Tests
 ```bash
 cd apps/web
-bun test lib/__tests__/install-package*.test.ts
+bun run test lib/__tests__/install-package*.test.ts
 ```
 
 ### Run Specific Test Suite
 ```bash
-bun test lib/__tests__/install-package.test.ts           # Unit tests
-bun test lib/__tests__/install-package-integration.test.ts  # Integration
-bun test lib/__tests__/install-package-e2e.test.ts       # E2E
+bun run test lib/__tests__/install-package.test.ts           # Unit tests
+bun run test lib/__tests__/install-package-integration.test.ts  # Integration
+bun run test lib/__tests__/install-package-e2e.test.ts       # E2E
 ```
 
 ### Build Verification

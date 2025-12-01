@@ -26,6 +26,8 @@ export interface ModalProps {
   className?: string
   /** Z-index value (default: 50) */
   zIndex?: number
+  /** Inline styles for modal content */
+  style?: React.CSSProperties
 }
 
 const sizeClasses = {
@@ -64,6 +66,7 @@ export function Modal({
   size = "md",
   className = "",
   zIndex = 50,
+  style,
 }: ModalProps) {
   // Handle ESC key press
   const handleKeyDown = useCallback(
@@ -129,6 +132,7 @@ export function Modal({
             animate-in fade-in-0 zoom-in-95 duration-300
             ${className}
           `}
+          style={style}
           onClick={e => e.stopPropagation()}
           role="dialog"
           aria-modal="true"

@@ -75,6 +75,7 @@ export const dbIntegrationGlobs = [
   "lib/credits/__tests__/credit-system-supabase.test.ts",
   "lib/__tests__/credit-system-supabase.test.ts",
   "lib/deployment/__tests__/org-resolver.test.ts",
+  "lib/deployment/__tests__/user-quotas.test.ts",
   "features/auth/lib/__tests__/rls-integration.test.ts",
 ]
 

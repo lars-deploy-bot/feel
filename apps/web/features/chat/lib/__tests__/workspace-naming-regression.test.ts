@@ -10,6 +10,7 @@
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { describe, expect, it } from "vitest"
+import { DOMAINS } from "@webalive/shared"
 import { getWorkspace } from "../workspaceRetriever"
 
 describe("Workspace Naming Bug - Regression Test", () => {
@@ -31,7 +32,7 @@ describe("Workspace Naming Bug - Regression Test", () => {
     }
 
     const result = getWorkspace({
-      host: "dev.terminal.goalive.nl",
+      host: DOMAINS.BRIDGE_DEV_HOST,
       body: { workspace: "evermore.alive.best" },
       requestId: "regression-test",
     })
@@ -55,7 +56,7 @@ describe("Workspace Naming Bug - Regression Test", () => {
     }
 
     const result = getWorkspace({
-      host: "dev.terminal.goalive.nl",
+      host: DOMAINS.BRIDGE_DEV_HOST,
       body: { workspace: "demo.goalive.nl" }, // User provides dots
       requestId: "legacy-test",
     })
@@ -70,7 +71,7 @@ describe("Workspace Naming Bug - Regression Test", () => {
 
   it("CRITICAL: error message shows BOTH paths when workspace not found", async () => {
     const result = getWorkspace({
-      host: "dev.terminal.goalive.nl",
+      host: DOMAINS.BRIDGE_DEV_HOST,
       body: { workspace: "this-site-definitely-does-not-exist.com" },
       requestId: "error-test",
     })

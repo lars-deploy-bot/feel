@@ -41,26 +41,26 @@ describe("useStreamCancellation", () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.useFakeTimers()
   })
 
   afterEach(() => {
     vi.clearAllMocks()
+    vi.useRealTimers()
   })
 
   describe("isStopping behavior", () => {
     /**
-     * IMPORTANT: The isStopping value is only useful for the internal guard.
-     *
-     * Since stopStreaming() is fully synchronous and resets isStopping at the end,
-     * consumers CANNOT observe isStopping=true between React renders.
-     * React batches state updates, so setIsStopping(true) followed by
-     * setIsStopping(false) in the same tick means consumers only see false.
+     * IMPORTANT: The isStopping state prevents double-clicks and stays true
+     * until the backend confirms cancellation (or 5-second timeout).
+     * This ensures users can't spam the stop button while the backend is cleaning up.
      *
      * This test verifies:
      * 1. isStopping is properly typed as boolean (not a ref object)
-     * 2. The double-click guard works via the internal ref
+     * 2. isStopping becomes true immediately after stopStreaming
+     * 3. isStopping resets to false after cancel request completes
      */
-    it("should expose isStopping as a boolean that starts and ends as false", () => {
+    it("should expose isStopping as a boolean that resets after cancel completes", async () => {
       const options = createMockOptions()
       const { result } = renderHook(() => useStreamCancellation(options))
 
@@ -68,61 +68,65 @@ describe("useStreamCancellation", () => {
       expect(typeof result.current.isStopping).toBe("boolean")
       expect(result.current.isStopping).toBe(false)
 
-      // After stopStreaming (which is synchronous and resets at end)
+      // After stopStreaming - should be true (waiting for backend cleanup)
       act(() => {
         result.current.stopStreaming()
       })
 
-      // Still false because stopStreaming resets it synchronously
+      // isStopping is true during the cleanup period
+      expect(result.current.isStopping).toBe(true)
+
+      // After cancel request completes (mocked postty resolves immediately)
+      await act(async () => {
+        await vi.runAllTimersAsync()
+      })
       expect(result.current.isStopping).toBe(false)
     })
 
-    it("should guard against RE-ENTRY (not sequential calls)", () => {
-      // IMPORTANT: The guard protects against recursive/re-entrant calls,
-      // NOT sequential calls. Since stopStreaming is fully synchronous,
-      // it completes (including guard reset) before any second call starts.
-      //
-      // This test documents that sequential calls both execute - this is
-      // the expected behavior for a synchronous function.
-      let callCount = 0
-      const setBusy = vi.fn(() => {
-        callCount++
-      })
-
-      const options = {
-        ...createMockOptions(),
-        setBusy,
-      }
+    it("should guard against sequential calls during cleanup", async () => {
+      // IMPORTANT: The guard stays active until backend confirms cancellation.
+      // This prevents users from spamming the stop button while backend is cleaning up.
+      // Note: addMessage is only called once per stopStreaming (unlike setShowCompletionDots
+      // which is called twice - once true at start, once false at finish).
+      const options = createMockOptions()
       const { result } = renderHook(() => useStreamCancellation(options))
 
-      // Sequential calls - BOTH will execute because each completes fully
-      // before the next starts
+      // Sequential calls during cleanup period - only FIRST executes
       act(() => {
-        result.current.stopStreaming() // Completes, resets guard
-        result.current.stopStreaming() // Guard is reset, so this executes
+        result.current.stopStreaming() // Starts cleanup
+        result.current.stopStreaming() // Blocked by guard
       })
 
-      // Both calls execute (this is correct for sync functions)
-      expect(callCount).toBe(2)
+      // Only first call executes (addMessage called once per stopStreaming)
+      expect(options.addMessage).toHaveBeenCalledTimes(1)
+
+      // After cancel completes, guard resets
+      await act(async () => {
+        await vi.runAllTimersAsync()
+      })
+
+      // Now another call would work
+      act(() => {
+        result.current.stopStreaming()
+      })
+      expect(options.addMessage).toHaveBeenCalledTimes(2)
     })
 
     it("should guard against re-entry during execution", () => {
       // This tests the ACTUAL purpose of the guard: preventing re-entry
       // if a callback called during stopStreaming tried to call stopStreaming again
       let reEntryAttempted = false
-      let _reEntrySucceeded = false
 
-      const setBusy = vi.fn(() => {
+      const setShowCompletionDots = vi.fn(() => {
         if (!reEntryAttempted) {
           reEntryAttempted = true
           // Try to call stopStreaming from WITHIN stopStreaming
           // This simulates a callback that might trigger another stop
           result.current.stopStreaming()
-          _reEntrySucceeded = true // If we get here, re-entry wasn't blocked
         }
       })
 
-      const options = { ...createMockOptions(), setBusy }
+      const options = { ...createMockOptions(), setShowCompletionDots }
       const { result } = renderHook(() => useStreamCancellation(options))
 
       act(() => {
@@ -132,72 +136,81 @@ describe("useStreamCancellation", () => {
       // Re-entry was attempted
       expect(reEntryAttempted).toBe(true)
       // But it should have been blocked by the guard
-      // (setBusy only called once means re-entry was blocked)
-      expect(setBusy).toHaveBeenCalledTimes(1)
+      // (setShowCompletionDots only called once means re-entry was blocked)
+      expect(setShowCompletionDots).toHaveBeenCalledTimes(1)
     })
 
-    it("should allow subsequent calls after guard resets", () => {
-      let callCount = 0
-      const setBusy = vi.fn(() => {
-        callCount++
-      })
-
-      const options = {
-        ...createMockOptions(),
-        setBusy,
-      }
+    it("should allow subsequent calls after guard resets (after cancel completes)", async () => {
+      // Note: addMessage is only called once per stopStreaming (unlike setShowCompletionDots
+      // which is called twice - once true at start, once false at finish).
+      const options = createMockOptions()
       const { result } = renderHook(() => useStreamCancellation(options))
 
       // First call
       act(() => {
         result.current.stopStreaming()
       })
-      expect(callCount).toBe(1)
+      expect(options.addMessage).toHaveBeenCalledTimes(1)
 
-      // Second call in NEW act() - guard has reset, should execute
+      // Guard is still active during cleanup - second call blocked
       act(() => {
         result.current.stopStreaming()
       })
-      expect(callCount).toBe(2)
+      expect(options.addMessage).toHaveBeenCalledTimes(1)
+
+      // After cancel completes, guard resets
+      await act(async () => {
+        await vi.runAllTimersAsync()
+      })
+
+      // Now second call in NEW act() - guard has reset, should execute
+      act(() => {
+        result.current.stopStreaming()
+      })
+      expect(options.addMessage).toHaveBeenCalledTimes(2)
     })
 
     /**
      * This test captures isStopping DURING execution via a callback.
-     * It verifies that the internal state is true when setBusy is called
-     * (setBusy is called BEFORE the state resets to false).
+     * isStopping stays true until backend confirms cancellation.
      */
-    it("should have isStopping=true during execution (captured via callback)", () => {
-      let capturedIsStopping: boolean | undefined
-
-      const setBusy = vi.fn(() => {
-        // This callback runs BEFORE isStopping is reset to false
-        // Capture what a component would see if it could read during execution
-        capturedIsStopping = result.current.isStopping
-      })
-
-      const options = { ...createMockOptions(), setBusy }
+    it("should have isStopping=true during execution and reset after cancel completes", async () => {
+      const options = createMockOptions()
       const { result } = renderHook(() => useStreamCancellation(options))
+
+      // Before stop
+      expect(result.current.isStopping).toBe(false)
 
       act(() => {
         result.current.stopStreaming()
       })
 
-      // NOTE: Due to React's state batching, this will actually be false
-      // because setIsStopping(true) hasn't triggered a re-render yet.
-      // This test documents the ACTUAL behavior, not ideal behavior.
-      // If this ever becomes true, it means React's batching changed or
-      // we found a way to flush state synchronously.
-      expect(capturedIsStopping).toBe(false) // Documents actual behavior
+      // After stop, during cleanup period - should be true
+      expect(result.current.isStopping).toBe(true)
+
+      // After cancel completes, should reset
+      await act(async () => {
+        await vi.runAllTimersAsync()
+      })
+      expect(result.current.isStopping).toBe(false)
     })
   })
 
   describe("UI state management", () => {
-    it("should reset busy state to false", () => {
+    it("should reset busy state to false after cancel completes", async () => {
       const options = createMockOptions()
       const { result } = renderHook(() => useStreamCancellation(options))
 
       act(() => {
         result.current.stopStreaming()
+      })
+
+      // setBusy(false) is called when cancel request completes, not immediately
+      expect(options.setBusy).not.toHaveBeenCalled()
+
+      // After cancel request completes
+      await act(async () => {
+        await vi.runAllTimersAsync()
       })
 
       expect(options.setBusy).toHaveBeenCalledWith(false)
@@ -214,13 +227,21 @@ describe("useStreamCancellation", () => {
       expect(options.setShowCompletionDots).toHaveBeenCalledWith(true)
     })
 
-    it("should reset isSubmittingRef to false", () => {
+    it("should reset isSubmittingRef to false after cancel completes", async () => {
       const options = createMockOptions()
       options.isSubmittingRef.current = true
       const { result } = renderHook(() => useStreamCancellation(options))
 
       act(() => {
         result.current.stopStreaming()
+      })
+
+      // Still true during cleanup period
+      expect(options.isSubmittingRef.current).toBe(true)
+
+      // After cancel request completes
+      await act(async () => {
+        await vi.runAllTimersAsync()
       })
 
       expect(options.isSubmittingRef.current).toBe(false)
@@ -369,6 +390,36 @@ describe("useStreamCancellation", () => {
       })
 
       expect(postty).not.toHaveBeenCalled()
+    })
+
+    it("should reset states via fallback timeout if cancel request hangs", async () => {
+      const { postty } = await import("@/lib/api/api-client")
+      // Make postty hang forever (never resolve)
+      ;(postty as Mock).mockImplementation(() => new Promise(() => {}))
+
+      const options = createMockOptions()
+      const { result } = renderHook(() => useStreamCancellation(options))
+
+      act(() => {
+        result.current.stopStreaming()
+      })
+
+      // isStopping should be true while waiting
+      expect(result.current.isStopping).toBe(true)
+      expect(options.setBusy).not.toHaveBeenCalled()
+
+      // Advance past the 5-second fallback timeout
+      await act(async () => {
+        vi.advanceTimersByTime(5000)
+      })
+
+      // States should be reset via fallback timeout
+      expect(result.current.isStopping).toBe(false)
+      expect(options.setBusy).toHaveBeenCalledWith(false)
+      expect(options.isSubmittingRef.current).toBe(false)
+
+      // Reset mock for other tests
+      ;(postty as Mock).mockResolvedValue({})
     })
   })
 

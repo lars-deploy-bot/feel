@@ -1,4 +1,4 @@
-import { expect, test } from "./setup"
+import { expect, test } from "./fixtures"
 
 /**
  * Browser Polling Tests
@@ -75,40 +75,38 @@ test.describe("Browser Polling Mechanism", () => {
   test("polling loop retries and detects success", async ({ page }) => {
     await page.goto("/deploy")
 
-    // Test the polling loop pattern used in SubdomainDeployForm.tsx
-    // This verifies: retry logic, success detection, interval cleanup
+    // Test the sequential polling pattern used in SubdomainDeployForm.tsx
+    // This verifies: retry logic, success detection, timeout handling
+    //
+    // Pattern: await each fetch before starting the next one.
+    // This prevents race conditions when fetches take longer than the interval.
     const result = await page.evaluate(async (): Promise<PollingTestResult> => {
-      return new Promise(resolve => {
-        let attempts = 0
-        let success = false
+      const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+      const maxAttempts = 10
+      let attempts = 0
 
-        const pollInterval = setInterval(async () => {
-          attempts++
+      while (attempts < maxAttempts) {
+        attempts++
 
-          // Timeout after reasonable attempts
-          if (attempts > 10) {
-            clearInterval(pollInterval)
-            resolve({ success, attempts, error: "Timeout after 10 attempts" })
-            return
+        try {
+          // Poll same-origin endpoint (exists and returns 200)
+          const response = await fetch("/", {
+            method: "GET",
+            cache: "no-store",
+          })
+
+          if (response.ok) {
+            return { success: true, attempts, error: null }
           }
+        } catch (_error) {
+          // Expected behavior: continue polling on error
+        }
 
-          try {
-            // Poll same-origin endpoint (exists and returns 200)
-            const response = await fetch("/", {
-              method: "GET",
-              cache: "no-store",
-            })
+        // Wait before next attempt (sequential, not overlapping)
+        await sleep(100)
+      }
 
-            if (response.ok) {
-              success = true
-              clearInterval(pollInterval)
-              resolve({ success, attempts, error: null })
-            }
-          } catch (_error) {
-            // Expected behavior: continue polling on error
-          }
-        }, 100) // Short interval for fast tests
-      })
+      return { success: false, attempts, error: "Timeout after 10 attempts" }
     })
 
     console.log("[Polling Loop Test] Result:", result)

@@ -584,11 +584,11 @@ export function createTestImageFile(): File
 **Run tests:**
 ```bash
 # All chat feature tests
-bun test features/chat
+bun run test features/chat
 
 # Specific test files
-bun test features/chat/__tests__/prompt-builder.test.ts
-bun test features/chat/__tests__/file-upload-flow.test.ts
+bun run test features/chat/__tests__/prompt-builder.test.ts
+bun run test features/chat/__tests__/file-upload-flow.test.ts
 
 # Expected: 15 tests pass, 42 assertions, ~31ms
 ```
@@ -719,7 +719,7 @@ bun test features/chat/__tests__/file-upload-flow.test.ts
 
 Before deploying changes to upload flow:
 
-- [ ] Unit tests pass (`bun test features/chat`)
+- [ ] Unit tests pass (`bun run test features/chat`)
 - [ ] Build succeeds (`bun run build`)
 - [ ] Upload API returns `key` field
 - [ ] `imageKey` format validated (`domain/hash` split check)

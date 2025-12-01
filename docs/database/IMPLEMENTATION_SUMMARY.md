@@ -128,7 +128,7 @@ bunx biome check features/auth/lib/jwt.ts app/api/test-rls/route.ts
 
 ### Tests
 ```bash
-bun test features/auth/lib/__tests__/jwt.test.ts
+bun run test features/auth/lib/__tests__/jwt.test.ts
 ```
 **Result:** ✅ 9 tests pass (added 1 new test for `sub` claim)
 

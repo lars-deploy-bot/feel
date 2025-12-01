@@ -15,6 +15,35 @@ export type Database = {
   }
   iam: {
     Tables: {
+      email_invites: {
+        Row: {
+          email: string
+          email_invite_id: string
+          sender_id: string
+          sent_at: string
+        }
+        Insert: {
+          email: string
+          email_invite_id?: string
+          sender_id: string
+          sent_at?: string
+        }
+        Update: {
+          email?: string
+          email_invite_id?: string
+          sender_id?: string
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_invites_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       org_invites: {
         Row: {
           accepted_at: string | null
@@ -132,6 +161,51 @@ export type Database = {
         }
         Relationships: []
       }
+      referrals: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          credits_awarded: number
+          referral_id: string
+          referred_id: string
+          referrer_id: string
+          status: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          credits_awarded?: number
+          referral_id?: string
+          referred_id: string
+          referrer_id: string
+          status?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          credits_awarded?: number
+          referral_id?: string
+          referred_id?: string
+          referrer_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_referred_id_fkey"
+            columns: ["referred_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "referrals_referrer_id_fkey"
+            columns: ["referrer_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       sessions: {
         Row: {
           conversation_id: string
@@ -180,6 +254,8 @@ export type Database = {
           created_at: string
           display_name: string | null
           email: string | null
+          email_verified: boolean | null
+          invite_code: string | null
           is_test_env: boolean
           metadata: Json
           password_hash: string | null
@@ -194,6 +270,8 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           email?: string | null
+          email_verified?: boolean | null
+          invite_code?: string | null
           is_test_env?: boolean
           metadata?: Json
           password_hash?: string | null
@@ -208,6 +286,8 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           email?: string | null
+          email_verified?: boolean | null
+          invite_code?: string | null
           is_test_env?: boolean
           metadata?: Json
           password_hash?: string | null
@@ -223,10 +303,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_credits: {
+        Args: { p_amount: number; p_org_id: string }
+        Returns: number
+      }
       current_clerk_id: { Args: never; Returns: string }
       deduct_credits: {
         Args: { p_amount: number; p_org_id: string }
         Returns: number
+      }
+      generate_invite_code: { Args: never; Returns: string }
+      get_or_create_invite_code: {
+        Args: { p_new_code: string; p_user_id: string }
+        Returns: string
       }
       is_org_admin: { Args: { p_org_id: string }; Returns: boolean }
       is_org_member: { Args: { p_org_id: string }; Returns: boolean }

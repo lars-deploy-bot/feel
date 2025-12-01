@@ -117,7 +117,7 @@ Run the RLS integration tests:
 
 ```bash
 cd /root/webalive/claude-bridge/apps/web
-bun test features/auth/lib/__tests__/rls-integration.test.ts
+bun run test features/auth/lib/__tests__/rls-integration.test.ts
 ```
 
 **Expected:** 10/10 tests pass

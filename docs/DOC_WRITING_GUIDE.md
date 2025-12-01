@@ -61,7 +61,7 @@ Best practices for writing technical documentation in the WebAlive/Claude Bridge
 ### Language Rules
 
 1. **Use active voice**: "The system validates credentials" not "Credentials are validated"
-2. **Use imperative for instructions**: "Run `bun test`" not "You should run `bun test`"
+2. **Use imperative for instructions**: "Run `bun run test`" not "You should run `bun run test`"
 3. **Be precise**: "Fails silently" not "doesn't work properly"
 4. **Avoid hedging**: "This causes X" not "This might potentially cause X"
 5. **No fluff**: "Fast" not "lightning-fast", "Secure" not "military-grade secure"
@@ -329,7 +329,7 @@ The credit system is implemented in `apps/web/lib/credits/supabase-credits.ts:18
 
 ```bash
 # From project root
-cd apps/web && bun test
+cd apps/web && bun run test
 
 # From anywhere (absolute path)
 bun /root/webalive/claude-bridge/apps/web/test

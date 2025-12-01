@@ -1,3 +1,4 @@
+import { COOKIE_NAMES, DOMAINS } from "@webalive/shared"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { POST as loginPOST } from "../../login/route"
 import { POST as logoutPOST } from "../route"
@@ -71,7 +72,7 @@ function createMockRequest(url: string, options?: RequestInit) {
   const req = new Request(url, options) as any
   req.nextUrl = urlObj
   req.headers.get = (name: string) => {
-    if (name === "origin") return "https://terminal.goalive.nl"
+    if (name === "origin") return DOMAINS.BRIDGE_PROD
     return null
   }
   return req
@@ -250,11 +251,11 @@ describe("POST /api/logout - Cookie Configuration Consistency", () => {
 
     // Parse both cookies (auth_session and manager_session)
     const cookies = setCookieHeaders.split(",").map(parseCookieHeader)
-    const sessionCookie = cookies.find(c => c.name === "auth_session")
-    const managerCookie = cookies.find(c => c.name === "manager_session")
+    const sessionCookie = cookies.find(c => c.name === COOKIE_NAMES.SESSION)
+    const managerCookie = cookies.find(c => c.name === COOKIE_NAMES.MANAGER_SESSION)
 
     if (!sessionCookie || !managerCookie) {
-      throw new Error("Missing auth_session or manager_session cookie")
+      throw new Error(`Missing ${COOKIE_NAMES.SESSION} or ${COOKIE_NAMES.MANAGER_SESSION} cookie`)
     }
 
     // Both should have identical attributes
@@ -272,12 +273,12 @@ describe("POST /api/logout - Cookie Configuration Consistency", () => {
 
   /**
    * THE SECURE FLAG BUG TEST
-   * In production, secure should be true (HTTPS only)
-   * In development, secure should be false (HTTP works)
+   * On deployed servers (BRIDGE_ENV !== "local"), secure should be true (HTTPS only)
+   * In local development (BRIDGE_ENV === "local"), secure should be false (HTTP works)
    */
-  it("should set secure flag based on NODE_ENV (THE SECURE FLAG BUG)", async () => {
-    // Production: secure should be TRUE
-    vi.stubEnv("NODE_ENV", "production")
+  it("should set secure flag based on BRIDGE_ENV (THE SECURE FLAG BUG)", async () => {
+    // Deployed server (BRIDGE_ENV !== "local"): secure should be TRUE
+    vi.stubEnv("BRIDGE_ENV", "production")
     let req = createMockRequest("http://localhost/api/logout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -286,8 +287,8 @@ describe("POST /api/logout - Cookie Configuration Consistency", () => {
     let setCookie = res.headers.get("set-cookie")
     expect(setCookie).toContain("Secure")
 
-    // Development: secure should be FALSE
-    vi.stubEnv("NODE_ENV", "development")
+    // Local development (BRIDGE_ENV === "local"): secure should be FALSE
+    vi.stubEnv("BRIDGE_ENV", "local")
     req = createMockRequest("http://localhost/api/logout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

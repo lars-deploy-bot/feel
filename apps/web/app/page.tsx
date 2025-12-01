@@ -1,11 +1,12 @@
 "use client"
-import { Eye, EyeOff } from "lucide-react"
+import { Eye, EyeOff, Rocket } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Suspense, useState } from "react"
 import { Button } from "@/components/ui/primitives/Button"
 import { Input } from "@/components/ui/primitives/Input"
 import { ThemeToggle } from "@/components/ui/ThemeToggle"
 import { authStore } from "@/lib/stores/authStore"
+import { FREE_CREDITS } from "@webalive/shared"
 
 function LoginPageContent() {
   const [email, setEmail] = useState("")
@@ -58,11 +59,36 @@ function LoginPageContent() {
       </div>
 
       <div className="w-full max-w-md">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-normal mb-3 text-black dark:text-white">Welcome back</h1>
-          <p className="text-black/50 dark:text-white/50 text-base font-normal">Sign in to continue</p>
+        {/* New User CTA */}
+        <div className="mb-12 p-6 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 border border-emerald-200 dark:border-emerald-800/30 rounded-2xl">
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-emerald-100 dark:bg-emerald-900/50 rounded-xl">
+              <Rocket className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-lg font-semibold text-emerald-900 dark:text-emerald-100 mb-1">New here?</h2>
+              <p className="text-sm text-emerald-700 dark:text-emerald-300 mb-4">
+                Deploy your first website with {FREE_CREDITS} free credits.
+              </p>
+              <Button
+                type="button"
+                onClick={() => router.push("/deploy")}
+                className="bg-emerald-600! hover:bg-emerald-700! text-white! border-0! font-medium! text-sm! py-2.5! px-5! rounded-lg! transition-all! normal-case! tracking-normal!"
+              >
+                Get Started Free
+              </Button>
+            </div>
+          </div>
         </div>
 
+        {/* Divider */}
+        <div className="flex items-center gap-4 mb-8">
+          <div className="flex-1 h-px bg-black/10 dark:bg-white/10" />
+          <span className="text-sm text-black/40 dark:text-white/40 font-medium">or sign in</span>
+          <div className="flex-1 h-px bg-black/10 dark:bg-white/10" />
+        </div>
+
+        {/* Login Form */}
         <form onSubmit={login} className="space-y-6" autoComplete="off">
           <Input
             id="email"
@@ -125,18 +151,23 @@ function LoginPageContent() {
             className="!bg-black dark:!bg-white !text-white dark:!text-black hover:!bg-black/90 dark:hover:!bg-white/90 !border-0 !font-medium !text-base !py-3 !rounded-lg !transition-all"
             data-testid="login-button"
           >
-            {loading ? "Signing in..." : "Continue"}
+            {loading ? "Signing in..." : "Sign In"}
           </Button>
         </form>
+      </div>
+    </main>
+  )
+}
 
-        <div className="mt-8 text-center">
-          <p className="text-black/50 dark:text-white/50 text-sm font-normal">
-            Don't have a site yet?{" "}
-            <a href="/deploy" className="text-black dark:text-white font-medium hover:underline">
-              Deploy one now
-            </a>
-          </p>
-        </div>
+function LoadingFallback() {
+  return (
+    <main className="min-h-screen bg-white dark:bg-zinc-950 flex items-center justify-center px-4 relative">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
+      <div className="w-full max-w-md text-center">
+        <div className="w-8 h-8 border-2 border-black dark:border-white border-t-transparent dark:border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-black/50 dark:text-white/50 text-sm font-normal">Loading...</p>
       </div>
     </main>
   )
@@ -144,21 +175,7 @@ function LoginPageContent() {
 
 export default function LoginPage() {
   return (
-    <Suspense
-      fallback={
-        <main className="min-h-screen bg-white dark:bg-zinc-950 flex items-center justify-center px-4 relative">
-          {/* Theme Toggle - Top Right */}
-          <div className="absolute top-4 right-4">
-            <ThemeToggle />
-          </div>
-
-          <div className="w-full max-w-md text-center">
-            <div className="w-8 h-8 border-2 border-black dark:border-white border-t-transparent dark:border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-black/50 dark:text-white/50 text-sm font-normal">Loading...</p>
-          </div>
-        </main>
-      }
-    >
+    <Suspense fallback={<LoadingFallback />}>
       <LoginPageContent />
     </Suspense>
   )

@@ -37,7 +37,7 @@ make logs-dev                # View dev logs
 
 # Status
 make status                  # Show all environments
-pm2 list                     # List all PM2 processes
+systemctl list-units 'claude-bridge*'  # List bridge services
 
 # Rollback
 make rollback                # Interactive rollback to previous build
@@ -82,7 +82,7 @@ journalctl -u site@example-com.service -n 50 -f
 make status
 
 # Specific environment
-pm2 describe claude-bridge-staging
+systemctl status claude-bridge-staging
 
 # Specific site
 systemctl status site@example-com.service
@@ -92,14 +92,16 @@ systemctl status site@example-com.service
 
 ```bash
 # Dev environment
-pm2 restart claude-bridge-dev
+systemctl restart claude-bridge-dev
 
 # Staging environment
-pm2 restart claude-bridge-staging
+systemctl restart claude-bridge-staging
 
 # Individual site
 systemctl restart site@example-com.service
 ```
+
+All services are managed by systemd.
 
 ## Troubleshooting
 
@@ -107,7 +109,7 @@ systemctl restart site@example-com.service
 
 **Solution:**
 ```bash
-bun test                     # See failures
+bun run test                     # See failures
 # Fix tests
 make dev                     # Retry
 ```

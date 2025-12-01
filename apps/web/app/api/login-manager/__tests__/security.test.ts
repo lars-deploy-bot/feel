@@ -1,3 +1,4 @@
+import { COOKIE_NAMES, DOMAINS } from "@webalive/shared"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { ErrorCodes } from "@/lib/error-codes"
 
@@ -24,7 +25,7 @@ function createMockRequest(url: string, options?: RequestInit & { cookies?: Reco
   const req = new Request(url, options) as any
   req.nextUrl = urlObj
   req.headers.get = (name: string) => {
-    if (name === "origin") return "https://terminal.goalive.nl"
+    if (name === "origin") return DOMAINS.BRIDGE_PROD
     if (name === "cookie" && options?.cookies) {
       return Object.entries(options.cookies)
         .map(([k, v]) => `${k}=${v}`)
@@ -147,10 +148,10 @@ describe("Manager Login Security Tests", () => {
     expect(setCookie).toBeTruthy()
 
     // Token should NOT be "1" (the old insecure value)
-    expect(setCookie).not.toContain("manager_session=1")
+    expect(setCookie).not.toContain(`${COOKIE_NAMES.MANAGER_SESSION}=1`)
 
     // Token should be long and random (base64url encoded)
-    const tokenMatch = setCookie?.match(/manager_session=([A-Za-z0-9_-]+)/)
+    const tokenMatch = setCookie?.match(new RegExp(`${COOKIE_NAMES.MANAGER_SESSION}=([A-Za-z0-9_-]+)`))
     expect(tokenMatch).toBeTruthy()
     expect(tokenMatch![1].length).toBeGreaterThan(20) // crypto.randomBytes(32).toString('base64url') produces ~43 chars
 

@@ -83,7 +83,7 @@ const TEST_SITES = [
 ```bash
 # Run enforcement tests
 cd apps/web
-bun test lib/test-helpers/__tests__/test-email-enforcement.test.ts
+bun run test lib/test-helpers/__tests__/test-email-enforcement.test.ts
 ```
 
 All tests must pass before committing.
@@ -95,7 +95,7 @@ If you need to add a new test domain:
 1. Edit `apps/web/lib/test-helpers/test-email-domains.ts`
 2. Add to `ALLOWED_TEST_EMAIL_DOMAINS` array
 3. Update this documentation
-4. Run tests to verify: `bun test lib/test-helpers/__tests__/test-email-enforcement.test.ts`
+4. Run tests to verify: `bun run test lib/test-helpers/__tests__/test-email-enforcement.test.ts`
 
 **WARNING:** Only add **fake/test** domains, NEVER real domains!
 

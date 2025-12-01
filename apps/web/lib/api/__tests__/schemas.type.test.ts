@@ -4,7 +4,7 @@
  * These tests verify compile-time type safety using Vitest's expectTypeOf.
  * They are PURE TYPE TESTS - they verify types without executing code.
  *
- * Run: bun test schemas.type.test.ts
+ * Run: bun run test schemas.type.test.ts
  */
 
 import { describe, expectTypeOf, it } from "vitest"
@@ -14,7 +14,16 @@ import type { Endpoint, Req, Res } from "../schemas"
 describe("API Schema Type System", () => {
   describe("Endpoint type", () => {
     it("should only allow defined endpoints", () => {
-      expectTypeOf<Endpoint>().toEqualTypeOf<"login" | "user" | "feedback" | "claude/stream/cancel">()
+      expectTypeOf<Endpoint>().toEqualTypeOf<
+        | "login"
+        | "user"
+        | "feedback"
+        | "claude/stream/cancel"
+        | "manager/templates"
+        | "manager/templates/create"
+        | "manager/templates/update"
+        | "manager/templates/delete"
+      >()
     })
 
     it("should be a union of string literals", () => {

@@ -20,7 +20,7 @@ This server provides a browser-based terminal interface with:
 
 ### Production Deployment
 
-The shell-server runs as a **systemd service** (not PM2) for:
+The shell-server runs as a **systemd service** for:
 - ✅ Automatic restarts on failure
 - ✅ Boot-time auto-start
 - ✅ Resource limits (500MB memory, 100 tasks)

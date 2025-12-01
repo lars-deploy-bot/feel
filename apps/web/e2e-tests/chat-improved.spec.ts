@@ -9,7 +9,7 @@ import { login } from "./helpers"
 import { expectWorkspaceReady } from "./helpers/assertions"
 import { handlers } from "./lib/handlers"
 import { ChatPage } from "./pages/ChatPage"
-import { expect, test } from "./setup"
+import { expect, test } from "./fixtures"
 
 test("has chat interface", async ({ page, tenant }) => {
   await login(page, tenant)

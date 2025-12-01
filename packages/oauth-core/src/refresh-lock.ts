@@ -325,7 +325,3 @@ export function createRefreshLockManager(options?: {
       return new InMemoryRefreshLockManager(true) // Warn about multi-instance limitation
   }
 }
-
-// Legacy class export for backwards compatibility
-// DEPRECATED: Use InMemoryRefreshLockManager or RedisRefreshLockManager
-export const RefreshLockManager = InMemoryRefreshLockManager

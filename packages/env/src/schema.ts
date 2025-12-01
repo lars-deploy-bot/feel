@@ -51,7 +51,7 @@ export const serverSchema = {
 
   // Claude configuration
   CLAUDE_MODEL: z.string().default("claude-sonnet-4-5-20250929"),
-  CLAUDE_MAX_TURNS: z.coerce.number().default(25),
+  // Note: CLAUDE_MAX_TURNS is not an env var - use DEFAULTS.CLAUDE_MAX_TURNS from @webalive/shared
 
   // Optional integrations
   GROQ_API_SECRET: z.string().optional(),
@@ -61,6 +61,7 @@ export const serverSchema = {
   STRIPE_CLIENT_ID: z.string().optional(), // Stripe Connect Client ID (ca_xxx)
   STRIPE_CLIENT_SECRET: z.string().optional(), // Platform API secret key
   STRIPE_REDIRECT_URI: z.string().optional(), // Optional, derived from baseUrl
+  FLOWGLAD_SECRET_KEY: z.string().min(1, "FLOWGLAD_SECRET_KEY is required"), // Flowglad billing/payment integration
   LINEAR_CLIENT_ID: z.string().optional(),
   LINEAR_CLIENT_SECRET: z.string().optional(),
   LINEAR_REDIRECT_URI: z.string().optional(),
@@ -78,6 +79,17 @@ export const serverSchema = {
 
   // Infrastructure (optional)
   WILDCARD_TLD: z.string().optional(),
+
+  // Redis configuration
+  // REQUIRED in production/staging, optional in local dev (BRIDGE_ENV=local)
+  // Validated at runtime by getRedisUrl() helper
+  REDIS_URL: z
+    .string()
+    .refine(
+      url => url.startsWith("redis://") || url.startsWith("rediss://"),
+      "Must be a valid Redis URL (redis:// or rediss://)",
+    )
+    .optional(),
 
   // Node environment
   NODE_ENV: z.enum(["development", "test", "production"]).default("production"),
@@ -121,6 +133,7 @@ export const runtimeEnv = {
   STRIPE_CLIENT_ID: process.env.STRIPE_CLIENT_ID,
   STRIPE_CLIENT_SECRET: process.env.STRIPE_CLIENT_SECRET,
   STRIPE_REDIRECT_URI: process.env.STRIPE_REDIRECT_URI,
+  FLOWGLAD_SECRET_KEY: process.env.FLOWGLAD_SECRET_KEY,
   LINEAR_CLIENT_ID: process.env.LINEAR_CLIENT_ID,
   LINEAR_CLIENT_SECRET: process.env.LINEAR_CLIENT_SECRET,
   LINEAR_REDIRECT_URI: process.env.LINEAR_REDIRECT_URI,
@@ -132,6 +145,7 @@ export const runtimeEnv = {
   IMAGES_SIGNATURE_SECRET: process.env.IMAGES_SIGNATURE_SECRET,
   IMAGES_STORAGE_PATH: process.env.IMAGES_STORAGE_PATH,
   WILDCARD_TLD: process.env.WILDCARD_TLD,
+  REDIS_URL: process.env.REDIS_URL,
   NODE_ENV: process.env.NODE_ENV,
 
   // Client

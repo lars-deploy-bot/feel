@@ -35,8 +35,9 @@ bun run deploy-site <domain.com>  # Deploy a website to the infrastructure
 ### Verify Dev/Staging
 
 ```bash
-curl -I http://localhost:8997/    # Test dev environment
-pm2 describe claude-bridge-dev    # Check dev process status
+curl -I http://localhost:8997/              # Test dev environment
+systemctl status claude-bridge-dev          # Check dev process status
+journalctl -u claude-bridge-dev -n 50       # View dev logs
 ```
 
 ## Dev Environment Troubleshooting
@@ -50,7 +51,7 @@ pm2 describe claude-bridge-dev    # Check dev process status
 **Solution:**
 ```bash
 # Run tests locally to see failures
-bun test
+bun run test
 
 # Fix failing tests
 # [make your fixes]
@@ -59,7 +60,7 @@ bun test
 make dev
 ```
 
-**Prevention:** Always run `bun test` locally before testing.
+**Prevention:** Always run `bun run test` locally before testing.
 
 ### CSS Not Loading in Dev (404)
 
@@ -78,15 +79,15 @@ make dev  # Full rebuild
 
 **Symptom:** `ERROR: Port 8997 is in use by another process`
 
-**Cause:** Non-PM2 process on port 8997
+**Cause:** Stale process on port 8997 (deploy script now auto-kills these)
 
 **Solution:**
 ```bash
 # Check what's using the port
-lsof -i :8997
+fuser 8997/tcp
 
-# If it's not PM2, kill it
-kill <PID>
+# Kill it
+fuser -k 8997/tcp
 
 # Restart dev
 make dev
@@ -100,7 +101,7 @@ make dev
 
 **Solution:**
 ```bash
-pm2 restart claude-bridge-dev  # Regenerates dev files
+systemctl restart claude-bridge-dev  # Regenerates dev files
 # or
 make dev
 ```
@@ -131,22 +132,26 @@ ls -dt dist.* | tail -n +4 | xargs rm -rf
 
 ### Build Paths
 ```
-.builds/current/standalone/apps/web/server.js  # PM2 entry point
+.builds/current/standalone/apps/web/server.js  # Production entry point
 apps/web/.next/                                # Build source
-apps/web/.next/dev/                            # Staging dev server
 ```
 
-### PM2
+### Systemd Services
 ```bash
-# Production (port 8999)
-script: .builds/current/standalone/apps/web/server.js
-interpreter: bun
-cwd: /root/webalive/claude-bridge
+# Dev (port 8997) - hot reload
+systemctl status claude-bridge-dev
+journalctl -u claude-bridge-dev -f
 
 # Staging (port 8998)
-script: bunx next dev --turbo -p 8998
-cwd: /root/webalive/claude-bridge/apps/web
+systemctl status claude-bridge-staging
+journalctl -u claude-bridge-staging -f
+
+# Production (port 8999)
+systemctl status claude-bridge
+journalctl -u claude-bridge -f
 ```
+
+All services are managed by systemd.
 
 ### Disk Usage
 ```

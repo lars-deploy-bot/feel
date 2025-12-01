@@ -38,7 +38,6 @@ drwx------ site-example-com:site-example-com /srv/webalive/sites/example.com
 
 ```
 /root/webalive/sites/
-├── existing-site.com/        # PM2-managed (insecure, migrate to systemd)
 └── custom-project/           # Manual workspace (terminal mode only)
 ```
 

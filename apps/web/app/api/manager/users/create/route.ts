@@ -87,6 +87,7 @@ export async function POST(req: NextRequest) {
           org_id: newOrgId,
           name: orgName,
           credits: 0,
+          is_test_env: false,
           metadata: {},
         })
         .select("org_id")

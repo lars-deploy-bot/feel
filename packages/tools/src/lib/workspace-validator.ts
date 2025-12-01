@@ -7,7 +7,7 @@
 
 import { existsSync } from "node:fs"
 import { resolve } from "node:path"
-import { SECURITY } from "@webalive/site-controller"
+import { SECURITY } from "@webalive/shared"
 
 const ALLOWED_WORKSPACE_BASES = SECURITY.ALLOWED_WORKSPACE_BASES
 

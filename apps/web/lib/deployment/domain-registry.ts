@@ -200,6 +200,7 @@ async function getOrCreateUserId(email: string, password?: string): Promise<stri
         status: "active",
         is_test_env: false,
         metadata: {},
+        email_verified: true, // Enable referral rewards immediately (MVP: skip email verification)
       })
       .select("user_id")
       .single()
@@ -264,6 +265,7 @@ async function createDomainEntry(hostname: string, port: number, orgId: string):
     hostname,
     port,
     org_id: orgId,
+    is_test_env: false,
   })
 
   if (domainError) {

@@ -34,7 +34,7 @@ Why this migration is needed
 - New: `path/to/new-file.ts`
 
 ## Affected Services
-- [ ] Dev server (PM2)
+- [ ] Dev server (systemd)
 - [ ] Staging server
 - [ ] Production server
 - [ ] CLI tools

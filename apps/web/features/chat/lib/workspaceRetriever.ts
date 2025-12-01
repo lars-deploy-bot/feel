@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs"
 import path from "node:path"
-import { PATHS } from "@webalive/shared"
+import { PATHS, TEST_CONFIG } from "@webalive/shared"
 import { NextResponse } from "next/server"
 import { domainToSlug, normalizeDomain } from "@/features/manager/lib/domain-utils"
 import { ErrorCodes } from "@/lib/error-codes"
@@ -56,7 +56,8 @@ function getTerminalWorkspace(body: any, requestId: string): WorkspaceResult {
 
   // Allow "test" or "test.bridge.local" workspace in local development mode (for E2E tests)
   // Test workspace is created by e2e-tests/genuine-setup.ts
-  if (process.env.BRIDGE_ENV === "local" && (customWorkspace === "test" || customWorkspace === "test.bridge.local")) {
+  const testWorkspace = `test.${TEST_CONFIG.EMAIL_DOMAIN}`
+  if (process.env.BRIDGE_ENV === "local" && (customWorkspace === "test" || customWorkspace === testWorkspace)) {
     console.log(`[Workspace ${requestId}] Using test workspace in local mode`)
     return {
       success: true,

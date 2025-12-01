@@ -23,7 +23,7 @@ import {
   PERMISSION_MODE,
   SETTINGS_SOURCES,
 } from "../lib/claude/agent-constants.mjs"
-import { isOAuthMcpTool } from "@webalive/shared"
+import { isOAuthMcpTool, DEFAULTS } from "@webalive/shared"
 
 async function readStdinJson() {
   const chunks = []
@@ -151,7 +151,7 @@ async function readStdinJson() {
       options: {
         cwd: process.cwd(),
         model: request.model,
-        maxTurns: request.maxTurns || 25,
+        maxTurns: request.maxTurns || DEFAULTS.CLAUDE_MAX_TURNS,
         permissionMode: PERMISSION_MODE,
         allowedTools: baseAllowedTools, // OAuth MCP tools handled dynamically in canUseTool
         disallowedTools: DISALLOWED_TOOLS,

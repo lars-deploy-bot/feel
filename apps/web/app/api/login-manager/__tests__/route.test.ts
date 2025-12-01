@@ -1,3 +1,4 @@
+import { COOKIE_NAMES, DOMAINS } from "@webalive/shared"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { ErrorCodes } from "@/lib/error-codes"
 
@@ -137,7 +138,7 @@ function createMockRequest(url: string, options?: RequestInit) {
   const req = new Request(url, options) as any
   req.nextUrl = urlObj
   req.headers.get = (name: string) => {
-    if (name === "origin") return "https://terminal.goalive.nl"
+    if (name === "origin") return DOMAINS.BRIDGE_PROD
     return null
   }
   return req
@@ -177,16 +178,18 @@ describe("POST /api/login-manager", () => {
     // Check manager_session cookie is set
     const setCookie = res.headers.get("set-cookie")
     expect(setCookie).toBeTruthy()
-    expect(setCookie).toContain("manager_session=")
+    expect(setCookie).toContain(`${COOKIE_NAMES.MANAGER_SESSION}=`)
     // Verify token is not the old insecure "1"
-    expect(setCookie).not.toContain("manager_session=1")
+    expect(setCookie).not.toContain(`${COOKIE_NAMES.MANAGER_SESSION}=1`)
     // Verify token exists and is base64url format (alphanumeric + - _)
-    const tokenMatch = setCookie?.match(/manager_session=([A-Za-z0-9_-]+)/)
+    const tokenMatch = setCookie?.match(new RegExp(`${COOKIE_NAMES.MANAGER_SESSION}=([A-Za-z0-9_-]+)`))
     expect(tokenMatch).toBeTruthy()
     expect(tokenMatch![1].length).toBeGreaterThan(20) // At least 20 chars
     expect(setCookie).toContain("HttpOnly")
     // Case-insensitive check for SameSite
-    expect(setCookie?.toLowerCase()).toContain("samesite=lax")
+    // In production: samesite=none (for cross-origin iframe support)
+    // In development: samesite=lax
+    expect(setCookie?.toLowerCase()).toMatch(/samesite=(lax|none)/)
   })
 
   /**
@@ -274,9 +277,9 @@ describe("POST /api/login-manager", () => {
 
     // Check manager_session cookie is set with secure token (not the test value "1")
     const setCookie = res.headers.get("set-cookie")
-    expect(setCookie).toContain("manager_session=")
-    expect(setCookie).not.toContain("manager_session=1;") // Should not be exactly "1"
-    expect(setCookie).not.toContain("manager_session=1 ") // Alternative format check
+    expect(setCookie).toContain(`${COOKIE_NAMES.MANAGER_SESSION}=`)
+    expect(setCookie).not.toContain(`${COOKIE_NAMES.MANAGER_SESSION}=1;`) // Should not be exactly "1"
+    expect(setCookie).not.toContain(`${COOKIE_NAMES.MANAGER_SESSION}=1 `) // Alternative format check
   })
 
   /**
@@ -360,10 +363,10 @@ describe("POST /api/login-manager", () => {
 
     const logoutCookieStrings = splitSetCookieHeaders(logoutSetCookie)
     const logoutCookies = logoutCookieStrings.map(parseCookieHeader)
-    const managerCookie = logoutCookies.find(c => c.name === "manager_session")
+    const managerCookie = logoutCookies.find(c => c.name === COOKIE_NAMES.MANAGER_SESSION)
 
     if (!managerCookie) {
-      throw new Error("Logout didn't clear manager_session")
+      throw new Error(`Logout didn't clear ${COOKIE_NAMES.MANAGER_SESSION}`)
     }
 
     // Assert cookie attributes match (except value)
@@ -418,10 +421,10 @@ describe("POST /api/login-manager", () => {
 
     const logoutCookieStrings = splitSetCookieHeaders(logoutSetCookie)
     const logoutCookies = logoutCookieStrings.map(parseCookieHeader)
-    const managerCookie = logoutCookies.find(c => c.name === "manager_session")
+    const managerCookie = logoutCookies.find(c => c.name === COOKIE_NAMES.MANAGER_SESSION)
 
     if (!managerCookie) {
-      throw new Error("Logout didn't clear manager_session")
+      throw new Error(`Logout didn't clear ${COOKIE_NAMES.MANAGER_SESSION}`)
     }
 
     // Assert attributes match
@@ -433,11 +436,12 @@ describe("POST /api/login-manager", () => {
 
   /**
    * SECURE FLAG TEST
-   * In production: secure=true, in development: secure=false
+   * In deployed server: secure=true, in local dev: secure=false
+   * Cookie implementation uses BRIDGE_ENV (not NODE_ENV)
    */
-  it("should set secure flag based on NODE_ENV", async () => {
-    // Production: secure should be TRUE
-    vi.stubEnv("NODE_ENV", "production")
+  it("should set secure flag based on BRIDGE_ENV", async () => {
+    // Deployed server (BRIDGE_ENV !== "local"): secure should be TRUE
+    vi.stubEnv("BRIDGE_ENV", "production")
     let req = createMockRequest("http://localhost/api/login-manager", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -447,8 +451,8 @@ describe("POST /api/login-manager", () => {
     let setCookie = res.headers.get("set-cookie")
     expect(setCookie).toContain("Secure")
 
-    // Development: secure should be FALSE
-    vi.stubEnv("NODE_ENV", "development")
+    // Local development (BRIDGE_ENV === "local"): secure should be FALSE
+    vi.stubEnv("BRIDGE_ENV", "local")
     req = createMockRequest("http://localhost/api/login-manager", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

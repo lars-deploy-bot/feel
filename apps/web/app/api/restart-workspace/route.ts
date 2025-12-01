@@ -23,25 +23,30 @@ export async function POST(req: Request) {
       const serviceName = `site@${serviceSlug}.service`
 
       try {
-        // Clear Vite cache to prevent stale dependency issues
+        // Clear all dev caches to prevent stale dependency/compilation issues
         // IMPORTANT: Run as workspace user to ensure correct file ownership
-        try {
-          const result = await runAsWorkspaceUser({
-            command: "rm",
-            args: ["-rf", "node_modules/.vite"],
-            workspaceRoot,
-            timeout: 5000,
-          })
+        const cachePaths = [
+          "node_modules/.vite", // Vite dependency optimization cache
+          "node_modules/.cache", // Babel, ESLint, and other tool caches
+          ".swc", // SWC compiler cache (used by @vitejs/plugin-react-swc)
+          "tsconfig.tsbuildinfo", // TypeScript incremental build cache
+        ]
 
-          if (!result.success) {
-            console.warn(`[restart-workspace ${requestId}] Failed to clear Vite cache:`, result.stderr)
-            // Continue with restart anyway - cache clear is optional
-          } else {
-            console.log(`[restart-workspace ${requestId}] Vite cache cleared`)
+        for (const cachePath of cachePaths) {
+          try {
+            const result = await runAsWorkspaceUser({
+              command: "rm",
+              args: ["-rf", cachePath],
+              workspaceRoot,
+              timeout: 5000,
+            })
+
+            if (result.success) {
+              console.log(`[restart-workspace ${requestId}] Cleared cache: ${cachePath}`)
+            }
+          } catch {
+            // Cache might not exist, continue
           }
-        } catch (cacheError) {
-          // Cache might not exist or command failed, continue with restart
-          console.warn(`[restart-workspace ${requestId}] Cache clear error:`, cacheError)
         }
 
         // Restart the systemd service (runs as root - system operation)
@@ -53,7 +58,7 @@ export async function POST(req: Request) {
         return NextResponse.json({
           ok: true,
           service: serviceName,
-          message: `Vite cache cleared and dev server restarted: ${serviceName}`,
+          message: `Dev caches cleared and server restarted: ${serviceName}`,
           requestId,
         })
       } catch (error) {

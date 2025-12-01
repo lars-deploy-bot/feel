@@ -1,11 +1,15 @@
 "use client"
 
+import type { AppDatabase } from "@webalive/database"
 import { useCallback, useEffect, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
+import { ApiError, delly, getty, postty, putty } from "@/lib/api/api-client"
+import { validateRequest } from "@/lib/api/schemas"
 import { FeedbackList } from "@/components/manager/FeedbackList"
 import { OrganizationsList } from "@/components/manager/OrganizationsList"
 import { SettingsPanel } from "@/components/manager/SettingsPanel"
 import { SourcesTable } from "@/components/manager/SourcesTable"
+import { TemplatesList } from "@/components/manager/TemplatesList"
 import { UsersPanel } from "@/components/manager/UsersPanel"
 import { ConfirmModal } from "@/components/modals/ConfirmModal"
 import { DeleteModal } from "@/components/modals/DeleteModal"
@@ -20,6 +24,7 @@ import type { FeedbackEntry } from "@/types/feedback"
 import type { SourceData } from "@/types/sources"
 
 type DomainPasswords = Record<string, DomainConfigClient>
+type Template = AppDatabase["app"]["Tables"]["templates"]["Row"]
 
 export default function ManagerPage() {
   const [domains, setDomains] = useState<DomainPasswords>({})
@@ -38,7 +43,9 @@ export default function ManagerPage() {
   const [newPassword, setNewPassword] = useState("")
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<"domains" | "feedback" | "organizations" | "users" | "settings">("domains")
+  const [activeTab, setActiveTab] = useState<
+    "domains" | "feedback" | "organizations" | "users" | "templates" | "settings"
+  >("domains")
 
   // Sources state (multi-source domain data)
   const [sources, setSources] = useState<SourceData[]>([])
@@ -47,6 +54,12 @@ export default function ManagerPage() {
   // Feedback state
   const [feedback, setFeedback] = useState<FeedbackEntry[]>([])
   const [feedbackLoading, setFeedbackLoading] = useState(false)
+
+  // Templates state
+  const [templates, setTemplates] = useState<Template[]>([])
+  const [templatesLoading, setTemplatesLoading] = useState(false)
+  const [savingTemplate, setSavingTemplate] = useState<string | null>(null)
+  const [deletingTemplate, setDeletingTemplate] = useState<string | null>(null)
 
   // Users state
   const [_creatingUser, setCreatingUser] = useState(false)
@@ -97,6 +110,8 @@ export default function ManagerPage() {
     newOwnerId: string
     newOwnerName: string
   } | null>(null)
+  const [confirmDeleteTemplate, setConfirmDeleteTemplate] = useState<{ id: string; name: string } | null>(null)
+  const [confirmDeleteDomain, setConfirmDeleteDomain] = useState<string | null>(null)
 
   const fetchFeedback = useCallback(async () => {
     setFeedbackLoading(true)
@@ -214,6 +229,21 @@ export default function ManagerPage() {
     }
   }, [])
 
+  const fetchTemplates = useCallback(async () => {
+    setTemplatesLoading(true)
+    try {
+      const data = await getty("manager/templates")
+      if (data.ok) {
+        setTemplates(data.templates)
+      }
+    } catch (error) {
+      console.error("Failed to fetch templates:", error)
+      toast.error(error instanceof ApiError ? error.message : "Failed to fetch templates")
+    } finally {
+      setTemplatesLoading(false)
+    }
+  }, [])
+
   const fetchDomains = useCallback(async () => {
     try {
       const response = await fetch("/api/manager")
@@ -262,6 +292,12 @@ export default function ManagerPage() {
       fetchOrgs()
     }
   }, [activeTab, authenticated, fetchOrgs])
+
+  useEffect(() => {
+    if (activeTab === "templates" && authenticated) {
+      fetchTemplates()
+    }
+  }, [activeTab, authenticated, fetchTemplates])
 
   const checkAuthentication = async () => {
     try {
@@ -353,6 +389,8 @@ export default function ManagerPage() {
           delete newStatuses[domain]
           return newStatuses
         })
+        // Refresh sources table
+        fetchSources()
       },
     })
   }
@@ -737,6 +775,73 @@ export default function ManagerPage() {
     })
   }
 
+  // Template handlers
+  const handleSaveTemplate = async (template: Partial<Template> & { template_id: string }) => {
+    setSavingTemplate(template.template_id)
+    try {
+      const validated = validateRequest("manager/templates/update", template)
+      const data = await putty("manager/templates/update", validated, undefined, "/api/manager/templates")
+      if (data.ok) {
+        toast.success("Template saved")
+        setTemplates(prev => prev.map(t => (t.template_id === template.template_id ? data.template : t)))
+      }
+    } catch (error) {
+      console.error("Failed to save template:", error)
+      toast.error(error instanceof ApiError ? error.message : "Failed to save template")
+    } finally {
+      setSavingTemplate(null)
+    }
+  }
+
+  const handleDeleteTemplate = (templateId: string) => {
+    const template = templates.find(t => t.template_id === templateId)
+    setConfirmDeleteTemplate({ id: templateId, name: template?.name || templateId })
+  }
+
+  const executeDeleteTemplate = async (templateId: string) => {
+    setConfirmDeleteTemplate(null)
+    setDeletingTemplate(templateId)
+    try {
+      const data = await delly(
+        "manager/templates/delete",
+        undefined,
+        `/api/manager/templates?template_id=${templateId}`,
+      )
+      if (data.ok) {
+        toast.success("Template deleted")
+        setTemplates(prev => prev.filter(t => t.template_id !== templateId))
+      }
+    } catch (error) {
+      console.error("Failed to delete template:", error)
+      toast.error(error instanceof ApiError ? error.message : "Failed to delete template")
+    } finally {
+      setDeletingTemplate(null)
+    }
+  }
+
+  const handleAddTemplate = async (template: Omit<Template, "template_id"> & { template_id?: string }) => {
+    try {
+      const validated = validateRequest("manager/templates/create", template)
+      const data = await postty("manager/templates/create", validated, undefined, "/api/manager/templates")
+      if (data.ok) {
+        toast.success("Template added")
+        setTemplates(prev => [...prev, data.template])
+      }
+    } catch (error) {
+      console.error("Failed to add template:", error)
+      toast.error(error instanceof ApiError ? error.message : "Failed to add template")
+    }
+  }
+
+  const handleDeleteDomain = (domain: string) => {
+    setConfirmDeleteDomain(domain)
+  }
+
+  const executeDeleteDomain = async (domain: string) => {
+    setConfirmDeleteDomain(null)
+    await deleteDomain(domain)
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#1a1a1a]">
       <div className="max-w-7xl mx-auto px-6 py-12">
@@ -838,6 +943,25 @@ export default function ManagerPage() {
               </button>
               <button
                 type="button"
+                onClick={() => setActiveTab("templates")}
+                className={`relative py-4 px-1 mr-8 text-sm font-medium transition-colors ${
+                  activeTab === "templates"
+                    ? "text-indigo-600 dark:text-indigo-400"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                Templates
+                {activeTab === "templates" && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400" />
+                )}
+                {templates.length > 0 && (
+                  <span className="ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded">
+                    {templates.length}
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
                 onClick={() => setActiveTab("settings")}
                 className={`relative py-4 px-1 mr-8 text-sm font-medium transition-colors ${
                   activeTab === "settings"
@@ -853,7 +977,9 @@ export default function ManagerPage() {
             </nav>
           </div>
 
-          {activeTab === "domains" && <SourcesTable sources={sources} loading={sourcesLoading} />}
+          {activeTab === "domains" && (
+            <SourcesTable sources={sources} loading={sourcesLoading} onDelete={handleDeleteDomain} />
+          )}
 
           {activeTab === "feedback" && (
             <FeedbackList feedback={feedback} loading={feedbackLoading} onRefresh={fetchFeedback} />
@@ -885,6 +1011,19 @@ export default function ManagerPage() {
 
           {activeTab === "users" && <UsersPanel orgs={orgs} onSuccess={fetchOrgs} onLoading={setCreatingUser} />}
 
+          {activeTab === "templates" && (
+            <TemplatesList
+              templates={templates}
+              loading={templatesLoading}
+              onRefresh={fetchTemplates}
+              onSave={handleSaveTemplate}
+              onDelete={handleDeleteTemplate}
+              onAdd={handleAddTemplate}
+              saving={savingTemplate}
+              deleting={deletingTemplate}
+            />
+          )}
+
           {activeTab === "settings" && (
             <SettingsPanel
               serviceStatus={serviceStatus}
@@ -906,6 +1045,9 @@ export default function ManagerPage() {
 
       <Toaster
         position="top-right"
+        containerStyle={{
+          zIndex: 9999,
+        }}
         toastOptions={{
           duration: 3000,
           style: {
@@ -1438,7 +1580,43 @@ export default function ManagerPage() {
         />
       )}
 
-      <Toaster position="top-right" />
+      {confirmDeleteTemplate && (
+        <DeleteModal
+          title="Delete Template?"
+          message={
+            <div className="space-y-2">
+              <p>
+                Are you sure you want to delete <strong>{confirmDeleteTemplate.name}</strong>?
+              </p>
+              <p className="text-sm">
+                This will remove the template from the database. The source files will not be affected.
+              </p>
+            </div>
+          }
+          onConfirm={() => executeDeleteTemplate(confirmDeleteTemplate.id)}
+          onCancel={() => setConfirmDeleteTemplate(null)}
+        />
+      )}
+
+      {confirmDeleteDomain && (
+        <DeleteModal
+          title={`Delete ${confirmDeleteDomain}?`}
+          message={
+            <div className="space-y-2">
+              <p>This will permanently remove:</p>
+              <ul className="text-left inline-block">
+                <li>• Systemd service</li>
+                <li>• Site directory and files</li>
+                <li>• Caddy configuration</li>
+                <li>• Database records</li>
+              </ul>
+              <p className="font-medium text-red-600 mt-4">This action cannot be undone.</p>
+            </div>
+          }
+          onConfirm={() => executeDeleteDomain(confirmDeleteDomain)}
+          onCancel={() => setConfirmDeleteDomain(null)}
+        />
+      )}
     </div>
   )
 }

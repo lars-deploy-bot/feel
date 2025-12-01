@@ -88,7 +88,7 @@ bun run build
 bun run typecheck
 
 # Run tests
-bun test
+bun run test
 \`\`\`
 
 ## Migration from old deploy-scripts

@@ -1,18 +1,16 @@
 import { tool } from "@anthropic-ai/claude-agent-sdk"
 import { z } from "zod"
 
-import { getGroqClient, withRetry } from "../../lib/groq-client.js"
+import { askAI } from "../../lib/ask-ai.js"
 
 async function getPersonaMarkdown(
-  query: string,
+  taskQuery: string,
   stylePreferences: string,
   extraContext: string | undefined,
 ): Promise<string> {
-  const groq = await getGroqClient()
-
   const prompt = `Find the ideal famous person to approach this task. Not someone fictional - a real, recognizable person who embodies what's needed.
 
-**The Task:** ${query}
+**The Task:** ${taskQuery}
 
 **Style Preferences:** ${stylePreferences}
 
@@ -68,28 +66,11 @@ Format the response as Markdown with these sections:
 ### Red Flags
 - [What they would immediately reject as not good enough]
 - [What they would immediately reject as not good enough]
-...`
+...
 
-  const message = await withRetry(async () => {
-    return await groq.chat.completions.create({
-      messages: [
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-      model: "openai/gpt-oss-20b",
-      temperature: 1,
-      max_tokens: 2048,
-    })
-  })
+IMPORTANT: Only output the markdown. Do not use any tools. Just respond with the persona description.`
 
-  const responseText = message.choices[0]?.message?.content
-  if (!responseText) {
-    throw new Error("No response from Groq - the service may be temporarily unavailable")
-  }
-
-  return responseText
+  return askAI({ question: prompt })
 }
 
 export const generatePersonaParamsSchema = {
@@ -130,15 +111,10 @@ export async function generatePersona(params: GeneratePersonaParams): Promise<Ge
     const errorMessage = error instanceof Error ? error.message : String(error)
 
     let userMessage = "Something went wrong while generating the persona."
-    if (
-      errorMessage.includes("GROQ_API_SECRET") ||
-      errorMessage.includes("API") ||
-      errorMessage.includes("authentication")
-    ) {
-      userMessage =
-        "Unable to reach the AI service. Please try again in a moment, or check that the API key is configured correctly."
-    } else if (errorMessage.includes("No response")) {
-      userMessage = "The AI service didn't respond. This sometimes happens - feel free to try again."
+    if (errorMessage.includes("No response")) {
+      userMessage = "Claude didn't respond. This sometimes happens - feel free to try again."
+    } else if (errorMessage.includes("rate") || errorMessage.includes("limit")) {
+      userMessage = "Rate limit reached. Please try again in a moment."
     }
 
     return {

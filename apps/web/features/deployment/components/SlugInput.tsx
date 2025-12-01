@@ -2,21 +2,26 @@
 
 import { motion } from "framer-motion"
 import { useEffect, useRef, useState } from "react"
-import type { FieldErrors, UseFormRegister } from "react-hook-form"
+import type { FieldErrors, FieldValues, Path, UseFormRegister } from "react-hook-form"
 import { checkSlugAvailability } from "@/features/deployment/lib/slug-api"
 import { isValidSlug } from "@/features/deployment/lib/slug-utils"
 import { fieldVariants } from "@/lib/animations"
 import { WILDCARD_DOMAIN } from "@/lib/config.client"
-import type { DeploySubdomainForm } from "../types/deploy-subdomain"
 
-interface SlugInputProps {
-  register: UseFormRegister<DeploySubdomainForm>
-  errors: FieldErrors<DeploySubdomainForm>
+// Generic interface that works with any form containing a 'slug' field
+interface SlugInputProps<T extends FieldValues & { slug: string }> {
+  register: UseFormRegister<T>
+  errors: FieldErrors<T>
   watchSlug: string
   isDeploying: boolean
 }
 
-export function SlugInput({ register, errors, watchSlug, isDeploying }: SlugInputProps) {
+export function SlugInput<T extends FieldValues & { slug: string }>({
+  register,
+  errors,
+  watchSlug,
+  isDeploying,
+}: SlugInputProps<T>) {
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null)
   const [isChecking, setIsChecking] = useState(false)
   const inputRef = useRef<HTMLInputElement | null>(null)
@@ -69,11 +74,11 @@ export function SlugInput({ register, errors, watchSlug, isDeploying }: SlugInpu
         <motion.input
           whileFocus="focus"
           variants={fieldVariants}
-          {...register("slug", {
+          {...register("slug" as Path<T>, {
             setValueAs: value => value.toLowerCase(),
           })}
           ref={e => {
-            register("slug").ref(e)
+            register("slug" as Path<T>).ref(e)
             inputRef.current = e
           }}
           disabled={isDeploying}
@@ -114,7 +119,7 @@ export function SlugInput({ register, errors, watchSlug, isDeploying }: SlugInpu
           transition={{ duration: 0.5 }}
           className="mt-2 text-red-600 text-sm font-bold"
         >
-          {errors.slug.message}
+          {errors.slug.message as string}
         </motion.p>
       )}
 

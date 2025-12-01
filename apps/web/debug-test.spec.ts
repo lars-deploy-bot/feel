@@ -1,4 +1,5 @@
 import { test } from "@playwright/test"
+import { SECURITY, TEST_CONFIG } from "@webalive/shared"
 
 test("debug chat page error", async ({ page }) => {
   // Capture console errors
@@ -17,9 +18,9 @@ test("debug chat page error", async ({ page }) => {
   })
 
   // Login first
-  await page.goto("http://localhost:9547/")
-  await page.getByTestId("email-input").fill("test@bridge.local")
-  await page.getByTestId("password-input").fill("test")
+  await page.goto(TEST_CONFIG.BASE_URL)
+  await page.getByTestId("email-input").fill(SECURITY.LOCAL_TEST.EMAIL)
+  await page.getByTestId("password-input").fill(SECURITY.LOCAL_TEST.PASSWORD)
   await page.getByTestId("login-button").click()
 
   // Wait for navigation

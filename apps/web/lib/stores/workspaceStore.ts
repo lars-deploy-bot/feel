@@ -1,7 +1,9 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
+import { WORKSPACE_STORAGE } from "@webalive/shared"
 import type { Organization } from "@/lib/api/types"
 
 // Re-export Organization type for backwards compatibility
@@ -13,10 +15,11 @@ export interface RecentWorkspace {
   orgId: string
 }
 
-const MAX_RECENT_PER_ORG = 3
+const MAX_RECENT_PER_ORG = 6
 
 // State interface
 interface WorkspaceState {
+  currentWorkspace: string | null // The active workspace (persisted)
   selectedOrgId: string | null
   recentWorkspaces: RecentWorkspace[]
   _hasHydrated: boolean // Track if localStorage has been loaded
@@ -25,6 +28,7 @@ interface WorkspaceState {
 // Actions interface - grouped under stable object (Guide §14.3)
 interface WorkspaceActions {
   actions: {
+    setCurrentWorkspace: (workspace: string | null, orgId?: string) => void
     setSelectedOrg: (orgId: string | null) => void
     autoSelectOrg: (organizations: Organization[]) => void
     validateAndCleanup: (organizations: Organization[]) => void
@@ -39,6 +43,7 @@ interface WorkspaceActions {
 type WorkspaceStoreWithCompat = WorkspaceState &
   WorkspaceActions & {
     // Legacy direct action exports for backwards compatibility
+    setCurrentWorkspace: (workspace: string | null, orgId?: string) => void
     setSelectedOrg: (orgId: string | null) => void
     autoSelectOrg: (organizations: Organization[]) => void
     validateAndCleanup: (organizations: Organization[]) => void
@@ -52,6 +57,19 @@ const useWorkspaceStoreBase = create<WorkspaceStoreWithCompat>()(
   persist(
     set => {
       const actions = {
+        /**
+         * Set the current active workspace.
+         * This is the single source of truth for which workspace is active.
+         * Also updates recentWorkspaces if orgId is provided.
+         */
+        setCurrentWorkspace: (workspace: string | null, orgId?: string) => {
+          set({ currentWorkspace: workspace })
+          // Also track in recent workspaces for history
+          if (workspace && orgId) {
+            actions.addRecentWorkspace(workspace, orgId)
+          }
+        },
+
         setSelectedOrg: (orgId: string | null) => {
           set({ selectedOrgId: orgId })
         },
@@ -109,11 +127,8 @@ const useWorkspaceStoreBase = create<WorkspaceStoreWithCompat>()(
         },
 
         setSelectedWorkspace: (workspace: string | null, orgId?: string) => {
-          // Backward compatibility: just add to recent workspaces
-          // The actual selected workspace is managed by useWorkspace hook (sessionStorage)
-          if (workspace && orgId) {
-            actions.addRecentWorkspace(workspace, orgId)
-          }
+          // Backward compatibility: delegates to setCurrentWorkspace
+          actions.setCurrentWorkspace(workspace, orgId)
         },
 
         addRecentWorkspace: (domain: string, orgId: string) => {
@@ -155,6 +170,7 @@ const useWorkspaceStoreBase = create<WorkspaceStoreWithCompat>()(
       }
 
       return {
+        currentWorkspace: null,
         selectedOrgId: null,
         recentWorkspaces: [],
         _hasHydrated: false,
@@ -164,30 +180,73 @@ const useWorkspaceStoreBase = create<WorkspaceStoreWithCompat>()(
       }
     },
     {
-      name: "workspace-storage",
-      version: 2, // Incremented due to state shape change
-      partialize: state => ({
+      name: WORKSPACE_STORAGE.KEY,
+      version: WORKSPACE_STORAGE.VERSION, // See @webalive/shared for history
+      partialize: (state): Omit<WorkspaceState, "_hasHydrated"> => ({
+        currentWorkspace: state.currentWorkspace,
         selectedOrgId: state.selectedOrgId,
         recentWorkspaces: state.recentWorkspaces,
-        // Note: _hasHydrated is NOT persisted (runtime-only state)
       }),
-      migrate: (persistedState: unknown, _version: number) => {
-        // Simple pass-through migration - no schema changes needed
-        return persistedState as WorkspaceState
+      migrate: (persistedState: unknown, version: number): WorkspaceState => {
+        const state = persistedState as Partial<WorkspaceState>
+        // Migration from older versions: add currentWorkspace field (v3+)
+        if (version < WORKSPACE_STORAGE.VERSION) {
+          return {
+            currentWorkspace: null,
+            selectedOrgId: state.selectedOrgId ?? null,
+            recentWorkspaces: state.recentWorkspaces ?? [],
+            _hasHydrated: false,
+          }
+        }
+        return {
+          currentWorkspace: state.currentWorkspace ?? null,
+          selectedOrgId: state.selectedOrgId ?? null,
+          recentWorkspaces: state.recentWorkspaces ?? [],
+          _hasHydrated: false,
+        }
       },
-      onRehydrateStorage: () => () => {
+      onRehydrateStorage: () => state => {
         // Called when hydration completes (localStorage loaded)
-        // Use setState to trigger re-renders in subscribed components
-        useWorkspaceStoreBase.setState({ _hasHydrated: true })
+        // state is the rehydrated state (or undefined if error)
+        console.log("[WorkspaceStore] Hydration complete, state:", !!state)
       },
     },
   ),
 )
 
 // Atomic selectors (Guide §14.1)
+export const useCurrentWorkspace = () => useWorkspaceStoreBase(state => state.currentWorkspace)
 export const useSelectedOrgId = () => useWorkspaceStoreBase(state => state.selectedOrgId)
 export const useRecentWorkspaces = () => useWorkspaceStoreBase(state => state.recentWorkspaces)
-export const useHasHydrated = () => useWorkspaceStoreBase(state => state._hasHydrated)
+
+// Use persist.hasHydrated() for SSR-safe hydration checking
+// This is the recommended pattern for Next.js - don't use internal state
+export const useHasHydrated = () => {
+  // Always start with false on SSR, check persist.hasHydrated() on client only
+  const [hydrated, setHydrated] = useState(false)
+
+  useEffect(() => {
+    // persist API is only available on client
+    const persist = useWorkspaceStoreBase.persist
+
+    // Check if already hydrated
+    if (persist.hasHydrated()) {
+      setHydrated(true)
+      return
+    }
+
+    // Subscribe to hydration completion
+    const unsub = persist.onFinishHydration(() => {
+      setHydrated(true)
+    })
+
+    return () => {
+      unsub()
+    }
+  }, [])
+
+  return hydrated
+}
 
 // Derived selector: get recent workspaces for a specific org
 export const useRecentForOrg = (orgId: string) =>

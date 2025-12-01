@@ -1,7 +1,6 @@
 "use client"
 
 import { Settings } from "lucide-react"
-import { useRouter } from "next/navigation"
 import { useState } from "react"
 
 interface SettingsDropdownProps {
@@ -18,22 +17,6 @@ export function SettingsDropdown({
   onOpenSettings,
 }: SettingsDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const router = useRouter()
-
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/logout", {
-        method: "POST",
-        credentials: "include",
-      })
-      // Clear session storage
-      sessionStorage.removeItem("workspace")
-      // Redirect to login
-      router.push("/")
-    } catch (error) {
-      console.error("Logout failed:", error)
-    }
-  }
 
   const handleAction = (action: () => void) => {
     setIsOpen(false)
@@ -96,14 +79,6 @@ export function SettingsDropdown({
           >
             <Settings size={16} />
             Settings
-          </button>
-          <button
-            onClick={handleLogout}
-            className="w-full px-4 py-2.5 text-left text-sm text-black/60 dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/5 transition-colors font-medium"
-            type="button"
-            data-testid="logout-button"
-          >
-            Logout
           </button>
         </div>
       </div>

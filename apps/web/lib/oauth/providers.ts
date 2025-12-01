@@ -1,11 +1,18 @@
 /**
  * OAuth Provider Constants (Client-Safe)
  *
- * This file contains ONLY static constants - no server-side imports.
+ * This file derives OAuth configuration from the shared MCP providers registry.
  * Safe to import from both client and server components.
  *
- * SINGLE SOURCE OF TRUTH for OAuth routes and configuration.
+ * SINGLE SOURCE OF TRUTH: packages/shared/src/mcp-providers.ts
  */
+
+import { OAUTH_MCP_PROVIDERS, type OAuthMcpProviderKey } from "@webalive/shared"
+
+/**
+ * Supported OAuth providers - derived from shared registry
+ */
+export type OAuthProvider = OAuthMcpProviderKey
 
 /**
  * The base path for all OAuth routes
@@ -34,49 +41,19 @@ export function buildOAuthRedirectUri(baseUrl: string, provider: OAuthProvider):
 }
 
 /**
- * Provider-specific configuration
+ * Re-export the shared config for backward compatibility
+ * Use OAUTH_MCP_PROVIDERS directly for new code
  */
-export interface OAuthProviderConfig {
-  /** Display name for UI */
-  displayName: string
-  /** Default scopes (comma-separated for Linear, space-separated for GitHub) */
-  defaultScopes: string
-  /** Environment variable prefix for credentials */
-  envPrefix: string
-}
+export const OAUTH_PROVIDER_CONFIG = OAUTH_MCP_PROVIDERS
 
 /**
- * Configuration for each supported OAuth provider
+ * List of supported OAuth providers - derived from shared registry
  */
-export const OAUTH_PROVIDER_CONFIG: Record<OAuthProvider, OAuthProviderConfig> = {
-  linear: {
-    displayName: "Linear",
-    defaultScopes: "read,write,issues:create",
-    envPrefix: "LINEAR",
-  },
-  github: {
-    displayName: "GitHub",
-    defaultScopes: "read:user user:email",
-    envPrefix: "GITHUB",
-  },
-  stripe: {
-    displayName: "Stripe",
-    defaultScopes: "read_write",
-    envPrefix: "STRIPE",
-  },
-} as const
-
-/**
- * Supported OAuth providers
- * Single source of truth for which providers have OAuth implementations
- */
-export const SUPPORTED_OAUTH_PROVIDERS = Object.keys(OAUTH_PROVIDER_CONFIG) as OAuthProvider[]
-
-export type OAuthProvider = "linear" | "github" | "stripe"
+export const SUPPORTED_OAUTH_PROVIDERS = Object.keys(OAUTH_MCP_PROVIDERS) as OAuthProvider[]
 
 /**
  * Check if a provider is supported
  */
 export function isOAuthProviderSupported(provider: string): provider is OAuthProvider {
-  return provider.toLowerCase() in OAUTH_PROVIDER_CONFIG
+  return provider.toLowerCase() in OAUTH_MCP_PROVIDERS
 }

@@ -81,13 +81,12 @@ describe("Utility Functions", () => {
       const uniqueIds = new Set(ids)
       expect(uniqueIds.size).toBe(ids.length)
 
-      // Each ID should have both timestamp and random parts
+      // Each ID should be a valid format (UUID or timestamp-random)
       for (const id of ids) {
-        expect(id).toMatch(/^[0-9a-z]+-[0-9a-z]+$/i)
-        const [timestamp, random] = id.split("-")
-        expect(timestamp).toBeTruthy()
-        expect(random).toBeTruthy()
-        expect(random.length).toBeGreaterThanOrEqual(6)
+        // Either UUID format (8-4-4-4-12) or legacy format (timestamp-random)
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+        const isLegacy = /^[0-9a-z]+-[0-9a-z]+$/i.test(id)
+        expect(isUuid || isLegacy).toBe(true)
       }
     })
 

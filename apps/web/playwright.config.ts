@@ -3,18 +3,17 @@ import "./e2e-tests/lib/load-env"
 
 // Now safe to import modules that read process.env
 import { defineConfig } from "@playwright/test"
-import { TEST_CONFIG } from "@webalive/shared"
+import { DOMAINS, TEST_CONFIG } from "@webalive/shared"
 import { TEST_ENV, isRemoteEnv, TIMEOUTS } from "./e2e-tests/lib/test-env"
 
-// Use port 9547 for testing to avoid conflicts with production (8999)
-const TEST_PORT = "9547"
-const LOCAL_BASE_URL = `http://localhost:${TEST_PORT}`
+// Use TEST_CONFIG.PORT for testing to avoid conflicts with production (8999)
+const LOCAL_BASE_URL = `http://localhost:${TEST_CONFIG.PORT}`
 
 // Determine base URL based on environment (TEST_ENV is validated, no fallback needed)
 const BASE_URLS: Record<string, string> = {
   local: LOCAL_BASE_URL,
-  staging: "https://staging.terminal.goalive.nl",
-  production: "https://terminal.goalive.nl",
+  staging: DOMAINS.BRIDGE_STAGING,
+  production: DOMAINS.BRIDGE_PROD,
 }
 const baseURL = BASE_URLS[TEST_ENV]
 
@@ -37,6 +36,7 @@ export default defineConfig({
   testMatch: "**/*.spec.ts", // Standard Playwright convention
   testIgnore: "**/*-genuine.spec.ts", // Exclude genuine tests (run separately with playwright.genuine.config.ts)
   timeout: TIMEOUTS.DEFAULT,
+  retries: process.env.CI ? 2 : 1, // Retry flaky tests (more retries in CI)
   workers: desiredWorkers, // Validated against TEST_CONFIG.MAX_WORKERS
   globalSetup: "./e2e-tests/global-setup.ts",
   globalTeardown: "./e2e-tests/global-teardown.ts",

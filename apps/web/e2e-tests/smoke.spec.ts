@@ -1,4 +1,4 @@
-import { expect, test } from "./setup"
+import { expect, test } from "./fixtures"
 
 test("homepage loads", async ({ page }) => {
   await page.goto("/")

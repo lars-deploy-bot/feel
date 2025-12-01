@@ -268,7 +268,7 @@ MemoryDenyWriteExecute=yes
 
 ```bash
 # Fuzz native modules
-AFL_USE_ASAN=1 afl-fuzz -i input/ -o output/ -- bun test
+AFL_USE_ASAN=1 afl-fuzz -i input/ -o output/ -- bun run test
 
 # Check for memory leaks
 valgrind --leak-check=full bun run dev

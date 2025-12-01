@@ -1,6 +1,6 @@
 "use client"
 
-import { ClipboardList, Layers, Plus } from "lucide-react"
+import { ClipboardList, Eye, Plus } from "lucide-react"
 import type { RefObject } from "react"
 import { useState } from "react"
 import { useUserPrompts } from "@/lib/providers/UserPromptsStoreProvider"
@@ -9,10 +9,11 @@ import { useChatInput } from "./ChatInputContext"
 interface ToolbarProps {
   fileInputRef: RefObject<HTMLInputElement | null>
   onOpenTemplates?: () => void
+  onOpenPreview?: () => void
   onAddUserPrompt?: (promptType: string, data: any, displayName: string, userFacingDescription?: string) => void
 }
 
-export function Toolbar({ fileInputRef, onOpenTemplates, onAddUserPrompt }: ToolbarProps) {
+export function Toolbar({ fileInputRef, onOpenPreview, onAddUserPrompt }: ToolbarProps) {
   const { config } = useChatInput()
   const [showPromptMenu, setShowPromptMenu] = useState(false)
   const prompts = useUserPrompts()
@@ -98,15 +99,16 @@ export function Toolbar({ fileInputRef, onOpenTemplates, onAddUserPrompt }: Tool
         )}
       </div>
 
-      {onOpenTemplates && (
+      {/* Preview button - mobile only */}
+      {onOpenPreview && (
         <button
           type="button"
-          onClick={onOpenTemplates}
-          className="flex items-center justify-center w-10 h-10 rounded-md hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors"
-          aria-label="Components"
-          title="Components"
+          onClick={onOpenPreview}
+          className="flex sm:hidden items-center justify-center w-10 h-10 rounded-md hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors"
+          aria-label="Preview site"
+          title="Preview site"
         >
-          <Layers className="size-5" />
+          <Eye className="size-5" />
         </button>
       )}
       <button

@@ -5,13 +5,12 @@
  * Uses centralized constants from @webalive/site-controller
  */
 
-import { DEFAULTS, PATHS } from "@webalive/shared"
+import { PATHS } from "@webalive/shared"
 import { DEFAULT_MODEL } from "./models/claude-models"
 
 interface Env {
   ANTH_API_SECRET: string
   CLAUDE_MODEL: string
-  CLAUDE_MAX_TURNS: string
   NODE_ENV: string
   WORKSPACE_BASE: string
   BRIDGE_PASSCODE?: string
@@ -44,7 +43,6 @@ function validateEnv(): Env {
   return {
     ANTH_API_SECRET: apiKey || "sk-mock-key-for-development",
     CLAUDE_MODEL: process.env.CLAUDE_MODEL ?? DEFAULT_MODEL,
-    CLAUDE_MAX_TURNS: process.env.CLAUDE_MAX_TURNS ?? String(DEFAULTS.CLAUDE_MAX_TURNS),
     NODE_ENV: process.env.NODE_ENV ?? "production",
     WORKSPACE_BASE: process.env.WORKSPACE_BASE ?? PATHS.SITES_ROOT,
     BRIDGE_PASSCODE: process.env.BRIDGE_PASSCODE,

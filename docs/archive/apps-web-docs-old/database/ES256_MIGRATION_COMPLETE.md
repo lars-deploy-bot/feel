@@ -67,7 +67,7 @@
 
 ### Testing
 
-Run JWT tests: `bun test features/auth/lib/__tests__/jwt.test.ts`
+Run JWT tests: `bun run test features/auth/lib/__tests__/jwt.test.ts`
 
 Result: **22/22 passing** ✅
 

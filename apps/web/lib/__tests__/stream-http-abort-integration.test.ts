@@ -1,12 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { SECURITY } from "@webalive/shared"
 import {
   isConversationLocked,
   sessionKey,
   tryLockConversation,
   unlockConversation,
 } from "@/features/auth/lib/sessionStore"
+import { CLAUDE_MODELS } from "@/lib/models/claude-models"
 import { setupAbortHandler } from "@/lib/stream/abort-handler"
 import { createNDJSONStream } from "@/lib/stream/ndjson-stream-handler"
+
+// Default test model
+const TEST_MODEL = CLAUDE_MODELS.HAIKU_4_5
 
 /**
  * HTTP Abort Integration Test
@@ -23,7 +28,7 @@ import { createNDJSONStream } from "@/lib/stream/ndjson-stream-handler"
  */
 
 describe("HTTP Abort → Second Message (Production Flow)", () => {
-  const userId = "test-user"
+  const userId = SECURITY.LOCAL_TEST.SESSION_VALUE
   const workspace = "test-workspace"
   const conversationId = "http-abort-test"
   const convKey = sessionKey({ userId, conversationId })
@@ -67,6 +72,7 @@ describe("HTTP Abort → Second Message (Production Flow)", () => {
       requestId: "http-abort-1",
       conversationWorkspace: workspace,
       tokenSource: "user_provided",
+      model: TEST_MODEL,
       onStreamComplete: () => {
         unlockConversation(convKey)
       },
@@ -116,6 +122,7 @@ describe("HTTP Abort → Second Message (Production Flow)", () => {
         requestId: `http-cycle-${i}`,
         conversationWorkspace: workspace,
         tokenSource: "user_provided",
+        model: TEST_MODEL,
         onStreamComplete: () => {
           unlockConversation(convKey)
         },
@@ -154,6 +161,7 @@ describe("HTTP Abort → Second Message (Production Flow)", () => {
       requestId: "multi-abort",
       conversationWorkspace: workspace,
       tokenSource: "user_provided",
+      model: TEST_MODEL,
       onStreamComplete: () => {
         _callbackFired = true
         unlockConversation(convKey)
@@ -194,6 +202,7 @@ describe("HTTP Abort → Second Message (Production Flow)", () => {
         requestId: "stop-button",
         conversationWorkspace: workspace,
         tokenSource: "user_provided",
+        model: TEST_MODEL,
         onStreamComplete: () => {
           unlockConversation(convKey)
         },
@@ -229,6 +238,7 @@ describe("HTTP Abort → Second Message (Production Flow)", () => {
         requestId: "browser-close",
         conversationWorkspace: workspace,
         tokenSource: "user_provided",
+        model: TEST_MODEL,
         onStreamComplete: () => {
           unlockConversation(convKey)
         },
@@ -271,6 +281,7 @@ describe("HTTP Abort → Second Message (Production Flow)", () => {
       requestId: "user-flow-1",
       conversationWorkspace: workspace,
       tokenSource: "user_provided",
+      model: TEST_MODEL,
       onStreamComplete: () => {
         console.log("Stream 1: onStreamComplete called")
         unlockConversation(convKey)

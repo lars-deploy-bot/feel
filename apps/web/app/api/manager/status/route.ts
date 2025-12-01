@@ -101,11 +101,7 @@ async function checkCaddyConfigured(domain: string): Promise<boolean> {
 
 async function checkSiteDirectory(domain: string): Promise<boolean> {
   try {
-    const possiblePaths = [
-      `${PATHS.SITES_ROOT}/${domain}`,
-      `${PATHS.SITES_ROOT}/${domain.replace(/\./g, "-")}`,
-      `${PATHS.LEGACY_SITES_ROOT}/${domain}`,
-    ]
+    const possiblePaths = [`${PATHS.SITES_ROOT}/${domain}`, `${PATHS.SITES_ROOT}/${domain.replace(/\./g, "-")}`]
 
     for (const path of possiblePaths) {
       const { stdout } = await execAsync(`test -d ${path} && echo "exists" || echo "missing"`)

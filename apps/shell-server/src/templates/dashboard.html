@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>Dashboard</title>
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+  <title>SHELL | Dashboard</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%231e1e1e'/%3E%3Ctext x='12' y='68' font-family='monospace' font-size='50' font-weight='bold' fill='%230dbc79'%3E%24_%3C/text%3E%3C/svg%3E">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -19,7 +19,7 @@
     }
     .container {
       width: 100%;
-      max-width: 600px;
+      max-width: 700px;
     }
     .header {
       background: #2d2d2d;
@@ -33,6 +33,11 @@
       color: #fff;
       font-size: 24px;
     }
+    h2 {
+      color: #fff;
+      font-size: 16px;
+      margin-bottom: 16px;
+    }
     button {
       background: #f14c4c;
       color: #fff;
@@ -44,30 +49,6 @@
     }
     button:hover {
       background: #d43e3e;
-    }
-    .workspace-selector {
-      background: #2d2d2d;
-      padding: 20px;
-      border-top: 1px solid #444;
-    }
-    .workspace-selector label {
-      color: #d4d4d4;
-      font-size: 14px;
-      display: block;
-      margin-bottom: 8px;
-    }
-    .workspace-selector input {
-      width: 100%;
-      padding: 12px;
-      border: 1px solid #444;
-      background: #1e1e1e;
-      color: #fff;
-      border-radius: 4px;
-      font-size: 14px;
-    }
-    .workspace-selector input:focus {
-      outline: none;
-      border-color: #0dbc79;
     }
     .options {
       background: #2d2d2d;
@@ -81,7 +62,7 @@
       background: #1e1e1e;
       border: 2px solid #444;
       border-radius: 8px;
-      padding: 40px 20px;
+      padding: 30px 16px;
       text-align: center;
       cursor: pointer;
       transition: all 0.2s;
@@ -106,6 +87,7 @@
     .option-desc {
       color: #888;
       font-size: 14px;
+      word-break: break-all;
     }
     @media (max-width: 768px) {
       .options {
@@ -115,25 +97,21 @@
   </style>
 </head>
 <body>
-  <div class="container" x-data="{ workspace: 'root' }">
+  <div class="container">
     <div class="header">
       <h1>Shell Dashboard</h1>
       <button onclick="window.location.href='/logout'">Logout</button>
     </div>
-    <div class="workspace-selector">
-      <label for="workspace">Workspace (optional, leave empty for root)</label>
-      <input type="text" x-model="workspace" placeholder="e.g., example.com or root" />
-    </div>
     <div class="options">
-      <a :href="`/shell?workspace=${encodeURIComponent(workspace || 'root')}`" class="option">
+      <a href="/shell?workspace=root" class="option">
         <div class="option-icon">🖥️</div>
         <div class="option-title">Shell Terminal</div>
-        <div class="option-desc">Access command line</div>
+        <div class="option-desc">{{SHELL_DEFAULT_PATH}}</div>
       </a>
-      <a :href="`/upload?workspace=${encodeURIComponent(workspace || 'root')}`" class="option">
+      <a href="/upload?workspace=root" class="option">
         <div class="option-icon">📦</div>
         <div class="option-title">Upload Files</div>
-        <div class="option-desc">Upload & extract ZIP</div>
+        <div class="option-desc">Choose destination on next page</div>
       </a>
     </div>
   </div>

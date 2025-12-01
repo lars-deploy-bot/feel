@@ -15,6 +15,13 @@ export interface LockboxAdapterConfig {
   defaultTtlSeconds?: number // Default TTL for secrets
 }
 
+type SecretKey = {
+  user_id: string
+  instance_id: string
+  namespace: SecretNamespace
+  name: string
+}
+
 export class LockboxAdapter {
   private supabase: SupabaseClient<Database, "lockbox", "lockbox">
   private instanceId: string
@@ -22,72 +29,93 @@ export class LockboxAdapter {
 
   constructor(config?: LockboxAdapterConfig) {
     const appConfig = getConfig()
-    // Service key required to write to protected lockbox schema (bypasses RLS)
     this.supabase = createClient<Database, "lockbox">(appConfig.SUPABASE_URL, appConfig.SUPABASE_SERVICE_KEY, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-      db: {
-        schema: "lockbox",
-      },
+      auth: { autoRefreshToken: false, persistSession: false },
+      db: { schema: "lockbox" },
     })
-
-    // Use provided instance ID or default for backwards compatibility
     this.instanceId = config?.instanceId || "default"
     this.defaultTtlSeconds = config?.defaultTtlSeconds
   }
 
-  /**
-   * Saves an encrypted secret to the lockbox with instance isolation
-   * Uses atomic rotation pattern: INSERT first, then UPDATE to prevent gaps
-   *
-   * @param userId - User ID (user_id foreign key to iam.users)
-   * @param namespace - Type of secret (provider_config or oauth_tokens)
-   * @param name - Secret identifier (e.g., "github_client_secret")
-   * @param value - Plaintext value to encrypt and store
-   */
-  async save(userId: string, namespace: SecretNamespace, name: string, value: string): Promise<void> {
-    const { ciphertext, iv, authTag } = Security.encrypt(value)
+  /** Creates the common key matcher for a secret */
+  private secretKey(userId: string, namespace: SecretNamespace, name: string): SecretKey {
+    return { user_id: userId, instance_id: this.instanceId, namespace, name }
+  }
 
-    // Calculate expiry if TTL is configured
-    const expiresAt = this.defaultTtlSeconds
-      ? new Date(Date.now() + this.defaultTtlSeconds * 1000).toISOString()
-      : undefined
+  /** Formats error messages consistently */
+  private logTag(name: string): string {
+    return `[Lockbox] '${name}' (instance: ${this.instanceId})`
+  }
 
-    // Get the next version number for this secret
-    const { data: versionData, error: versionError } = await this.supabase
+  /** Demotes current secret before inserting a new version */
+  private async demoteCurrent(key: SecretKey, userId: string): Promise<void> {
+    const { error } = await this.supabase
+      .from("user_secrets")
+      .update({
+        is_current: false,
+        updated_at: new Date().toISOString(),
+        updated_by: userId,
+      })
+      .match({ ...key, is_current: true })
+
+    if (error) {
+      console.warn(`${this.logTag(key.name)}: Failed to demote current secret:`, error)
+    }
+  }
+
+  /** Demotes old versions after inserting a new current secret */
+  private async demoteOldVersions(key: SecretKey, userId: string, excludeId: string): Promise<void> {
+    const { error } = await this.supabase
+      .from("user_secrets")
+      .update({
+        is_current: false,
+        updated_at: new Date().toISOString(),
+        updated_by: userId,
+      })
+      .match({ ...key, is_current: true })
+      .neq("user_secret_id", excludeId)
+
+    if (error) {
+      console.error(`${this.logTag(key.name)}: Failed to demote old versions:`, error)
+    }
+  }
+
+  /** Gets the next version number for a secret */
+  private async getNextVersion(key: SecretKey): Promise<number> {
+    const { data, error } = await this.supabase
       .from("user_secrets")
       .select("version")
-      .match({
-        user_id: userId,
-        instance_id: this.instanceId,
-        namespace,
-        name,
-      })
+      .match(key)
       .order("version", { ascending: false })
       .limit(1)
       .single()
 
-    // PGRST116 = no rows returned (expected for new secrets)
-    // Any other error indicates a real storage problem that should surface
-    if (versionError && versionError.code !== "PGRST116") {
-      throw new Error(
-        `[Lockbox] Failed to read current version for '${name}' (instance: ${this.instanceId}): ${versionError.message}`,
-      )
+    // PGRST116 = no rows (expected for new secrets)
+    if (error && error.code !== "PGRST116") {
+      throw new Error(`${this.logTag(key.name)}: Failed to read version: ${error.message}`)
     }
 
-    const nextVersion = versionData ? versionData.version + 1 : 1
+    return data ? data.version + 1 : 1
+  }
 
-    // STEP 1: Insert new version with is_current = true
-    // The unique index will prevent race conditions if two inserts happen simultaneously
+  /**
+   * Saves an encrypted secret using atomic rotation pattern
+   */
+  async save(userId: string, namespace: SecretNamespace, name: string, value: string): Promise<void> {
+    const key = this.secretKey(userId, namespace, name)
+    const { ciphertext, iv, authTag } = Security.encrypt(value)
+    const expiresAt = this.defaultTtlSeconds
+      ? new Date(Date.now() + this.defaultTtlSeconds * 1000).toISOString()
+      : undefined
+
+    const nextVersion = await this.getNextVersion(key)
+
+    // Demote current secret first to prevent unique constraint violation
+    await this.demoteCurrent(key, userId)
     const { data: newSecret, error: insertError } = await this.supabase
       .from("user_secrets")
       .insert({
-        user_id: userId,
-        instance_id: this.instanceId,
-        namespace,
-        name,
+        ...key,
         ciphertext,
         iv,
         auth_tag: authTag,
@@ -101,115 +129,60 @@ export class LockboxAdapter {
       .single()
 
     if (insertError) {
-      // Check if it's a unique constraint violation (race condition caught!)
       if (insertError.code === "23505") {
-        throw new Error(
-          `[Lockbox] Concurrent rotation detected for '${name}' (instance: ${this.instanceId}). Please retry.`,
-        )
+        throw new Error(`${this.logTag(name)}: Concurrent rotation detected. Please retry.`)
       }
-      throw new Error(
-        `[Lockbox] Save failed for '${name}' (instance: ${this.instanceId}): ${insertError.message} (Code: ${insertError.code})`,
-      )
+      throw new Error(`${this.logTag(name)}: Save failed: ${insertError.message}`)
     }
 
-    // STEP 2: Demote older versions (scoped by instance_id)
-    // This happens AFTER insert to ensure we always have at least one current secret
+    // Demote old versions after successful insert
     if (newSecret) {
-      const { error: updateError } = await this.supabase
-        .from("user_secrets")
-        .update({
-          is_current: false,
-          updated_at: new Date().toISOString(),
-          updated_by: userId,
-        })
-        .match({
-          user_id: userId,
-          instance_id: this.instanceId,
-          namespace,
-          name,
-          is_current: true,
-        })
-        .neq("user_secret_id", newSecret.user_secret_id)
-
-      if (updateError) {
-        console.error(
-          `[Lockbox] Warning: Failed to demote old versions for '${name}' (instance: ${this.instanceId}):`,
-          updateError,
-        )
-        // Note: We don't throw here because the new secret was successfully inserted
-        // The unique index ensures only one can be current anyway
-      }
+      await this.demoteOldVersions(key, userId, newSecret.user_secret_id)
     }
   }
 
   /**
-   * Retrieves and decrypts a secret from the lockbox with instance isolation
-   *
-   * @param userId - User ID
-   * @param namespace - Type of secret
-   * @param name - Secret identifier
-   * @returns Decrypted plaintext value, or null if not found
+   * Retrieves and decrypts a secret
    */
   async get(userId: string, namespace: SecretNamespace, name: string): Promise<string | null> {
     const { data, error } = await this.supabase
       .from("user_secrets")
       .select("ciphertext, iv, auth_tag")
-      .match({
-        user_id: userId,
-        instance_id: this.instanceId,
-        namespace,
-        name,
-        is_current: true,
-      })
+      .match({ ...this.secretKey(userId, namespace, name), is_current: true })
       .limit(1)
       .single()
 
     if (error) {
-      // Not found is expected for missing secrets
-      if (error.code === "PGRST116") {
-        return null
-      }
-      throw new Error(`[Lockbox] Get failed for '${name}' (instance: ${this.instanceId}): ${error.message}`)
+      if (error.code === "PGRST116") return null
+      throw new Error(`${this.logTag(name)}: Get failed: ${error.message}`)
     }
 
-    if (!data) {
-      return null
-    }
+    if (!data) return null
 
     try {
       return Security.decrypt(data.ciphertext, data.iv, data.auth_tag)
-    } catch (error) {
-      console.error(`[Lockbox] Decryption failed for '${name}' (instance: ${this.instanceId}):`, error)
+    } catch {
+      console.error(`${this.logTag(name)}: Decryption failed`)
       return null
     }
   }
 
   /**
-   * Deletes all versions of a secret from the lockbox with instance isolation
-   *
-   * @param userId - User ID
-   * @param namespace - Type of secret
-   * @param name - Secret identifier
+   * Deletes all versions of a secret
    */
   async delete(userId: string, namespace: SecretNamespace, name: string): Promise<void> {
-    const { error } = await this.supabase.from("user_secrets").delete().match({
-      user_id: userId,
-      instance_id: this.instanceId,
-      namespace,
-      name,
-    })
+    const { error } = await this.supabase
+      .from("user_secrets")
+      .delete()
+      .match(this.secretKey(userId, namespace, name))
 
     if (error) {
-      throw new Error(`[Lockbox] Delete failed for '${name}' (instance: ${this.instanceId}): ${error.message}`)
+      throw new Error(`${this.logTag(name)}: Delete failed: ${error.message}`)
     }
   }
 
   /**
-   * Lists all current secrets for a user in a namespace (metadata only) with instance isolation
-   *
-   * @param userId - User ID
-   * @param namespace - Type of secret
-   * @returns Array of secret metadata (no decrypted values)
+   * Lists all current secrets for a user in a namespace (metadata only)
    */
   async list(userId: string, namespace: SecretNamespace): Promise<UserSecret[]> {
     const { data, error } = await this.supabase
@@ -231,34 +204,19 @@ export class LockboxAdapter {
   }
 
   /**
-   * Checks if a secret exists without decrypting it with instance isolation
-   *
-   * @param userId - User ID
-   * @param namespace - Type of secret
-   * @param name - Secret identifier
-   * @returns true if secret exists
+   * Checks if a secret exists without decrypting it
    */
   async exists(userId: string, namespace: SecretNamespace, name: string): Promise<boolean> {
     const { data, error } = await this.supabase
       .from("user_secrets")
       .select("user_secret_id")
-      .match({
-        user_id: userId,
-        instance_id: this.instanceId,
-        namespace,
-        name,
-        is_current: true,
-      })
+      .match({ ...this.secretKey(userId, namespace, name), is_current: true })
       .limit(1)
       .single()
 
     if (error) {
-      // PGRST116 = no rows returned, which means secret doesn't exist
-      if (error.code === "PGRST116") {
-        return false
-      }
-      // Real errors should be thrown, not hidden
-      throw new Error(`[Lockbox] Exists check failed for '${name}' (instance: ${this.instanceId}): ${error.message}`)
+      if (error.code === "PGRST116") return false
+      throw new Error(`${this.logTag(name)}: Exists check failed: ${error.message}`)
     }
 
     return !!data

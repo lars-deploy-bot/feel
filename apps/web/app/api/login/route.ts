@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { SECURITY } from "@webalive/shared"
 import { z } from "zod"
 import { createSessionToken } from "@/features/auth/lib/jwt"
 import { createCorsResponse, createCorsSuccessResponse } from "@/lib/api/responses"
@@ -38,9 +39,13 @@ export async function POST(req: NextRequest) {
   const { email, password } = result.data
 
   // Test mode
-  if (process.env.BRIDGE_ENV === "local" && email === "test@bridge.local" && password === "test") {
+  if (
+    process.env.BRIDGE_ENV === "local" &&
+    email === SECURITY.LOCAL_TEST.EMAIL &&
+    password === SECURITY.LOCAL_TEST.PASSWORD
+  ) {
     const res = createCorsSuccessResponse(origin, {})
-    res.cookies.set(COOKIE_NAMES.SESSION, "test-user", getSessionCookieOptions())
+    res.cookies.set(COOKIE_NAMES.SESSION, SECURITY.LOCAL_TEST.SESSION_VALUE, getSessionCookieOptions())
     return res
   }
 

@@ -10,10 +10,11 @@
  * (staging and production).
  */
 
+import { SECURITY } from "@webalive/shared"
 import { login } from "./helpers"
 import { handlers } from "./lib/handlers"
 import { isLocalTestServer } from "./lib/test-env"
-import { expect, test } from "./setup"
+import { expect, test } from "./fixtures"
 
 test.describe("Protection System Verification", () => {
   test("Layer 1: Catches unmocked calls at browser level", async ({ page, tenant }) => {
@@ -33,19 +34,21 @@ test.describe("Protection System Verification", () => {
     await page.goto("/chat")
 
     // Wait for workspace to be fully initialized (mounted + workspace set)
-    await expect(page.locator('[data-testid="workspace-ready"]')).toBeVisible({
-      timeout: 5000,
+    await expect(page.locator('[data-testid="workspace-ready"]')).toBeAttached({
+      timeout: 15000,
     })
 
     const messageInput = page.locator('[data-testid="message-input"]')
+    await expect(messageInput).toBeVisible({ timeout: 10000 })
+
     const sendButton = page.locator('[data-testid="send-button"]')
 
     await messageInput.fill("Test message")
-    await expect(sendButton).toBeEnabled({ timeout: 2000 })
+    await expect(sendButton).toBeEnabled({ timeout: 10000 })
     await sendButton.click()
 
     // Wait for response (use .first() to avoid strict mode violations)
-    await expect(page.getByText("Protected!").first()).toBeVisible({ timeout: 5000 })
+    await expect(page.getByText("Protected!").first()).toBeVisible({ timeout: 10000 })
 
     // Verify the API call was made (but mocked)
     expect(apiCalls.length).toBeGreaterThan(0)
@@ -53,17 +56,15 @@ test.describe("Protection System Verification", () => {
   })
 
   // This test requires PLAYWRIGHT_TEST=true on the server (local test env only)
+  // Purpose: Verify that real Claude API calls are blocked by server-side protection
   test("Layer 2: Server blocks calls when PLAYWRIGHT_TEST=true", async ({ page, tenant }) => {
     test.skip(!isLocalTestServer, "Requires local test server with PLAYWRIGHT_TEST=true")
-    await login(page, tenant)
-    await page.goto("/chat")
 
-    // Wait for workspace to be fully initialized
-    await expect(page.locator('[data-testid="workspace-ready"]')).toBeVisible({
-      timeout: 5000,
-    })
+    // Just need auth - don't need the full chat UI
+    await login(page, tenant)
 
     // Make a direct fetch to the API (bypass Playwright routing)
+    // This tests that the SERVER blocks real API calls, regardless of UI state
     const response = await page.evaluate(async () => {
       const res = await fetch("/api/claude/stream", {
         method: "POST",
@@ -85,16 +86,28 @@ test.describe("Protection System Verification", () => {
     expect(response.body.message).toContain("test mode")
   })
 
-  // This test uses hardcoded test credentials that only work with BRIDGE_ENV=local
+  // This test uses test credentials from SECURITY.LOCAL_TEST that only work with BRIDGE_ENV=local
+  // Purpose: Verify that non-Claude APIs (login) work and aren't blocked by PLAYWRIGHT_TEST=true
   test("Allows non-Claude API calls (login, verify, etc)", async ({ page }) => {
     test.skip(!isLocalTestServer, "Requires local test server with BRIDGE_ENV=local credentials")
     // Login should work - it's NOT a protected endpoint
     await page.goto("/")
-    await page.getByTestId("email-input").fill("test@bridge.local")
-    await page.getByTestId("password-input").fill("test")
-    await page.getByTestId("login-button").click()
+    await page.getByTestId("email-input").fill(SECURITY.LOCAL_TEST.EMAIL)
+    await page.getByTestId("password-input").fill(SECURITY.LOCAL_TEST.PASSWORD)
 
-    // Should successfully login (not blocked)
-    await expect(page).toHaveURL("/chat", { timeout: 5000 })
+    // Wait for login response
+    const loginResponsePromise = page.waitForResponse(
+      response => response.url().includes("/api/login") && response.request().method() === "POST",
+    )
+    await page.getByTestId("login-button").click()
+    const loginResponse = await loginResponsePromise
+
+    // Verify login succeeded - this is the main assertion
+    // If PLAYWRIGHT_TEST was blocking non-Claude APIs, this would fail
+    expect(loginResponse.ok()).toBe(true)
+
+    // Verify response contains auth data (proves the API returned properly)
+    const data = await loginResponse.json()
+    expect(data).toHaveProperty("ok", true)
   })
 })

@@ -8,6 +8,7 @@
  *
  * Test philosophy: Test behavior, not implementation. Test what MATTERS.
  */
+import { COOKIE_NAMES, TEST_CONFIG } from "@webalive/shared"
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
 import type { DeploySubdomainResponse } from "@/features/deployment/types/deploy-subdomain"
 import type { TestUser } from "@/lib/test-helpers/auth-test-helper"
@@ -54,7 +55,7 @@ describe("Deployment API Security", () => {
           slug: `breach-attempt-${Date.now() % 10000}`,
           orgId: userB.orgId, // ❌ Trying to deploy to User B's org
           siteIdeas: "Hacking attempt",
-          selectedTemplate: "landing",
+          templateId: TEST_CONFIG.DEFAULT_TEMPLATE_ID,
         }),
       })
 
@@ -72,7 +73,7 @@ describe("Deployment API Security", () => {
           slug: `fake-org-${Date.now() % 10000}`,
           orgId: "org_nonexistent_12345", // Fake org
           siteIdeas: "",
-          selectedTemplate: "landing",
+          templateId: TEST_CONFIG.DEFAULT_TEMPLATE_ID,
         }),
       })
 
@@ -170,13 +171,17 @@ describe("Deployment API Security", () => {
 
   describe("Authentication Edge Cases", () => {
     test("rejects request with tampered session cookie", async () => {
-      const response = await authenticatedFetch(API_ENDPOINTS.DEPLOY_SUBDOMAIN, "auth_session=tampered.jwt.token", {
-        method: "POST",
-        body: JSON.stringify({
-          slug: `test-${Date.now() % 10000}`,
-          orgId: userA.orgId,
-        }),
-      })
+      const response = await authenticatedFetch(
+        API_ENDPOINTS.DEPLOY_SUBDOMAIN,
+        `${COOKIE_NAMES.SESSION}=tampered.jwt.token`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            slug: `test-${Date.now() % 10000}`,
+            orgId: userA.orgId,
+          }),
+        },
+      )
 
       expect(response.status).toBe(401)
       const result = (await response.json()) as DeploySubdomainResponse
@@ -184,7 +189,7 @@ describe("Deployment API Security", () => {
     })
 
     test("rejects request with empty session cookie", async () => {
-      const response = await authenticatedFetch(API_ENDPOINTS.DEPLOY_SUBDOMAIN, "auth_session=", {
+      const response = await authenticatedFetch(API_ENDPOINTS.DEPLOY_SUBDOMAIN, `${COOKIE_NAMES.SESSION}=`, {
         method: "POST",
         body: JSON.stringify({
           slug: `test-${Date.now() % 10000}`,

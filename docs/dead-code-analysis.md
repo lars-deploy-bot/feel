@@ -223,7 +223,7 @@ grep -r "import.*FUNCTION_NAME" apps/web packages/
 grep -r "FUNCTION_NAME" apps/web packages/ --exclude-dir=node_modules
 
 # Run tests to ensure nothing breaks
-bun test
+bun run test
 bun run test:e2e
 ```
 

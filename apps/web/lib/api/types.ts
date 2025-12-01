@@ -87,6 +87,48 @@ export interface FeedbackResponse {
   timestamp: number
 }
 
+// ============================================================================
+// Referral API Types
+// ============================================================================
+
+export interface ReferralData {
+  inviteCode: string
+  inviteLink: string
+  stats: {
+    totalReferrals: number
+    creditsEarned: number
+  }
+}
+
+export interface ReferralHistoryItem {
+  id: string
+  status: "pending" | "completed" | "failed"
+  creditsAwarded: number
+  createdAt: string
+  completedAt: string | null
+  referredEmail?: string
+  referredName?: string
+}
+
+export interface ReferralMeResponse {
+  ok: true
+  data: ReferralData
+}
+
+export interface ReferralRedeemResponse {
+  ok: true
+  status: "pending" | "completed"
+  creditsAwarded?: number
+  message?: string
+}
+
+export interface ReferralHistoryResponse {
+  ok: true
+  data: {
+    referrals: ReferralHistoryItem[]
+  }
+}
+
 // Note: Deploy, Sites, and Images APIs use different response formats
 // with { success: boolean } or have endpoint-specific structures.
 // These are defined locally in their respective route files.
@@ -174,6 +216,22 @@ export function isTokensResponse(data: unknown): data is TokensResponse {
     "workspace" in data &&
     typeof (data as TokensResponse).tokens === "number" &&
     typeof (data as TokensResponse).credits === "number"
+  )
+}
+
+/**
+ * Type guard for ReferralData
+ */
+export function isReferralData(data: unknown): data is ReferralData {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "inviteCode" in data &&
+    typeof (data as ReferralData).inviteCode === "string" &&
+    "inviteLink" in data &&
+    typeof (data as ReferralData).inviteLink === "string" &&
+    "stats" in data &&
+    typeof (data as ReferralData).stats === "object"
   )
 }
 

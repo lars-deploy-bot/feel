@@ -96,7 +96,7 @@ export { [toolName], [ToolNameSchema] from "./tools/[category]/[tool-name]";
 ### Step 4: Register in Web App (Parent Process)
 File: `apps/web/app/api/claude/stream/route.ts`
 
-The parent process (PM2 root) needs access to tool definitions.
+The parent process needs access to tool definitions.
 
 ### Step 5: Register in Web App (Child Process)
 File: `apps/web/scripts/run-agent.mjs`
@@ -113,7 +113,7 @@ bun run dev
 
 **Critical**: Understand that tools run in a two-process model:
 
-- **Parent (PM2 root)**: Has elevated privileges, handles system operations
+- **Parent (root)**: Has elevated privileges, handles system operations
 - **Child (workspace user)**: Runs in sandboxed workspace, calls parent APIs
 
 Your tool may need to call localhost APIs for privileged operations.

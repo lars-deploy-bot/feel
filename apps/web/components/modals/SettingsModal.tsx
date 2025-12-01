@@ -9,17 +9,22 @@ import {
   EyeOff,
   Globe,
   Link,
+  LogOut,
   Moon,
+  Search,
   Settings,
   Sun,
   User,
   UserMinus,
   X,
 } from "lucide-react"
+import { motion } from "framer-motion"
 import { useTheme } from "next-themes"
+import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
 import toast from "react-hot-toast"
 import { AddWorkspaceModal } from "@/components/modals/AddWorkspaceModal"
+import { useAuth } from "@/features/deployment/hooks/useAuth"
 import { DeleteModal } from "@/components/modals/DeleteModal"
 import { PromptEditorModal } from "@/components/modals/PromptEditorModal"
 import { IntegrationsList } from "@/components/settings/integrations-list"
@@ -28,18 +33,12 @@ import type { Organization } from "@/lib/api/types"
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
 import { canRemoveMember } from "@/lib/permissions/org-permissions"
 import { useUserPrompts, useUserPromptsActions } from "@/lib/providers/UserPromptsStoreProvider"
-import {
-  useCredits,
-  useCreditsError,
-  useCreditsLoading,
-  useEmail,
-  usePhoneNumber,
-  useUserActions,
-} from "@/lib/providers/UserStoreProvider"
-import { CLAUDE_MODELS, type ClaudeModel, useLLMStore } from "@/lib/stores/llmStore"
-import { useSelectedOrgId, useWorkspaceActions } from "@/lib/stores/workspaceStore"
+import { useCredits, useCreditsError, useCreditsLoading, useUserActions } from "@/lib/providers/UserStoreProvider"
+import { getModelDisplayName } from "@/lib/models/claude-models"
+import { CLAUDE_MODELS, type ClaudeModel, DEFAULT_MODEL, useLLMStore } from "@/lib/stores/llmStore"
+import { useCurrentWorkspace, useSelectedOrgId, useWorkspaceActions } from "@/lib/stores/workspaceStore"
 
-type SettingsTab = "account" | "appearance" | "llm" | "prompts" | "organization" | "spaces" | "integrations"
+type SettingsTab = "account" | "llm" | "prompts" | "organization" | "websites" | "integrations"
 
 interface SettingsModalProps {
   onClose: () => void
@@ -48,38 +47,58 @@ interface SettingsModalProps {
 
 const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
   { id: "account", label: "Profile", icon: <User size={16} /> },
-  { id: "appearance", label: "Appearance", icon: <Sun size={16} /> },
   { id: "llm", label: "AI", icon: <Bot size={16} /> },
   { id: "prompts", label: "Prompts", icon: <ClipboardList size={16} /> },
   { id: "organization", label: "Workspace", icon: <Building2 size={16} /> },
-  { id: "spaces", label: "Spaces", icon: <Globe size={16} /> },
+  { id: "websites", label: "Websites", icon: <Globe size={16} /> },
   { id: "integrations", label: "Integrations", icon: <Link size={16} /> },
 ]
 
 export function SettingsModal({ onClose, initialTab }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab || "account")
+  const [isDesktop, setIsDesktop] = useState(false)
+
+  useEffect(() => {
+    const checkDesktop = () => setIsDesktop(window.innerWidth >= 640)
+    checkDesktop()
+    window.addEventListener("resize", checkDesktop)
+    return () => window.removeEventListener("resize", checkDesktop)
+  }, [])
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in-0 duration-200"
+    <motion.div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-labelledby="settings-dialog-title"
       data-testid="settings-modal"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
     >
-      <div
-        className="relative bg-white dark:bg-zinc-900 rounded-t-2xl sm:rounded-2xl w-full sm:w-[95vw] sm:max-w-5xl h-[85vh] sm:h-[92vh] flex flex-col sm:flex-row overflow-hidden shadow-2xl border border-black/10 dark:border-white/10 animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200"
+      <motion.div
+        className="relative bg-white dark:bg-zinc-900 rounded-t-2xl sm:rounded-2xl w-full sm:w-[95vw] sm:max-w-5xl h-[90vh] sm:min-h-[500px] sm:max-h-[680px] flex flex-col sm:flex-row overflow-hidden shadow-2xl border border-black/10 dark:border-white/10"
         onClick={e => e.stopPropagation()}
         role="document"
+        initial={isDesktop ? { clipPath: "inset(50% 50% 50% 50%)" } : { y: "100%" }}
+        animate={isDesktop ? { clipPath: "inset(0% 0% 0% 0%)" } : { y: 0 }}
+        exit={isDesktop ? { clipPath: "inset(50% 50% 50% 50%)" } : { y: "100%" }}
+        transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
       >
+        {/* Mobile pull indicator */}
+        <div className="sm:hidden w-full flex justify-center pt-2 pb-1">
+          <div className="w-10 h-1 bg-black/20 dark:bg-white/20 rounded-full" />
+        </div>
+
         {/* Mobile: Top Tabs | Desktop: Left Sidebar */}
         <div className="sm:w-56 bg-black/[0.02] dark:bg-white/[0.02] border-b sm:border-b-0 sm:border-r border-black/10 dark:border-white/10 flex flex-col">
           {/* Header */}
-          <div className="px-6 py-5 sm:py-6 border-b border-black/10 dark:border-white/10 flex items-center justify-between">
+          <div className="px-4 sm:px-6 py-3 sm:py-6 border-b border-black/10 dark:border-white/10 flex items-center justify-between">
             <h2
               id="settings-dialog-title"
-              className="text-lg font-semibold text-black dark:text-white flex items-center gap-2.5"
+              className="text-base sm:text-lg font-semibold text-black dark:text-white flex items-center gap-2"
             >
               <Settings size={18} />
               <span>Settings</span>
@@ -88,31 +107,37 @@ export function SettingsModal({ onClose, initialTab }: SettingsModalProps) {
             <button
               type="button"
               onClick={onClose}
-              className="sm:hidden p-2 hover:bg-black/10 dark:hover:bg-white/10 rounded-lg transition-colors active:scale-95"
+              className="sm:hidden p-2 -mr-1 hover:bg-black/10 dark:hover:bg-white/10 rounded-lg transition-colors active:scale-95"
               aria-label="Close settings"
             >
-              <X size={18} className="text-black/60 dark:text-white/60" />
+              <X size={20} className="text-black/60 dark:text-white/60" />
             </button>
           </div>
 
-          {/* Tabs Navigation */}
-          <nav className="flex sm:flex-col flex-1 sm:p-3 px-4 sm:px-0 py-3 sm:py-0 gap-1 overflow-x-auto sm:overflow-x-visible overflow-y-hidden sm:overflow-y-auto scrollbar-hide">
-            {tabs.map(tab => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex-shrink-0 sm:flex-shrink flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
-                  activeTab === tab.id
-                    ? "bg-black dark:bg-white text-white dark:text-black shadow-sm"
-                    : "text-black/60 dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/5 hover:text-black dark:hover:text-white"
-                }`}
-              >
-                {tab.icon}
-                <span className="hidden sm:inline">{tab.label}</span>
-              </button>
-            ))}
-          </nav>
+          {/* Tabs Navigation - Mobile: horizontal scroll with labels, Desktop: vertical sidebar */}
+          <div className="relative sm:flex-1">
+            {/* Fade indicators for mobile horizontal scroll */}
+            <div className="sm:hidden absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-white dark:from-zinc-900 to-transparent z-10 pointer-events-none" />
+            <div className="sm:hidden absolute right-0 top-0 bottom-0 w-4 bg-gradient-to-l from-white dark:from-zinc-900 to-transparent z-10 pointer-events-none" />
+
+            <nav className="flex sm:flex-col sm:flex-1 sm:p-3 px-2 sm:px-0 py-2 sm:py-0 gap-1.5 sm:gap-1 overflow-x-auto sm:overflow-x-visible overflow-y-hidden sm:overflow-y-auto scrollbar-hide">
+              {tabs.map(tab => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex-shrink-0 sm:flex-shrink flex flex-col sm:flex-row items-center gap-1 sm:gap-3 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap min-w-[56px] sm:min-w-0 ${
+                    activeTab === tab.id
+                      ? "bg-black dark:bg-white text-white dark:text-black shadow-sm"
+                      : "text-black/60 dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/5 hover:text-black dark:hover:text-white"
+                  }`}
+                >
+                  <span className="[&>svg]:w-[18px] [&>svg]:h-[18px] sm:[&>svg]:w-4 sm:[&>svg]:h-4">{tab.icon}</span>
+                  <span className="text-[10px] sm:text-sm leading-tight">{tab.label}</span>
+                </button>
+              ))}
+            </nav>
+          </div>
         </div>
 
         {/* Content Area */}
@@ -121,17 +146,16 @@ export function SettingsModal({ onClose, initialTab }: SettingsModalProps) {
           <div className="flex-1 overflow-y-auto px-4 sm:px-6">
             <div className="animate-in fade-in-0 duration-200">
               {activeTab === "account" && <AccountSettings onClose={onClose} />}
-              {activeTab === "appearance" && <AppearanceSettings onClose={onClose} />}
               {activeTab === "llm" && <LLMSettings onClose={onClose} />}
               {activeTab === "prompts" && <UserPromptsSettings onClose={onClose} />}
               {activeTab === "organization" && <WorkspaceSettings onClose={onClose} />}
-              {activeTab === "spaces" && <SpacesSettings onClose={onClose} />}
+              {activeTab === "websites" && <WebsitesSettings onClose={onClose} />}
               {activeTab === "integrations" && <IntegrationsListWithHeader onClose={onClose} />}
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }
 
@@ -149,16 +173,18 @@ function SettingsTabLayout({
 }) {
   return (
     <div>
-      {/* Header with title and close button */}
-      <div className="flex items-start justify-between gap-4 pt-4 sm:pt-5 pb-4">
+      {/* Header with title and close button (close button hidden on mobile - use main header) */}
+      <div className="flex items-start justify-between gap-4 pt-4 sm:pt-5 pb-3 sm:pb-4">
         <div className="flex-1 min-w-0">
-          <h3 className="text-lg font-medium text-black dark:text-white mb-1">{title}</h3>
-          {description && <p className="text-sm text-black/60 dark:text-white/60">{description}</p>}
+          <h3 className="text-base sm:text-lg font-medium text-black dark:text-white mb-0.5 sm:mb-1">{title}</h3>
+          {description && (
+            <p className="text-xs sm:text-sm text-black/60 dark:text-white/60 leading-relaxed">{description}</p>
+          )}
         </div>
         <button
           type="button"
           onClick={onClose}
-          className="flex-shrink-0 p-1.5 hover:bg-black/10 dark:hover:bg-white/10 rounded-lg transition-colors active:scale-95"
+          className="hidden sm:flex flex-shrink-0 p-1.5 hover:bg-black/10 dark:hover:bg-white/10 rounded-lg transition-colors active:scale-95"
           aria-label="Close settings"
         >
           <X size={18} className="text-black/60 dark:text-white/60" />
@@ -166,69 +192,8 @@ function SettingsTabLayout({
       </div>
 
       {/* Content */}
-      <div className="pb-4 sm:pb-6">{children}</div>
+      <div className="pb-6 sm:pb-6">{children}</div>
     </div>
-  )
-}
-
-function AppearanceSettings({ onClose }: { onClose: () => void }) {
-  const { theme, setTheme, systemTheme } = useTheme()
-
-  const handleThemeChange = (newTheme: "light" | "dark" | "system") => {
-    setTheme(newTheme)
-  }
-
-  const _currentTheme = theme === "system" ? systemTheme : theme
-
-  return (
-    <SettingsTabLayout title="Appearance" description="Customize how the interface looks" onClose={onClose}>
-      <div className="space-y-3 sm:space-y-4">
-        <div className="animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-75">
-          <p className="text-sm font-medium text-black dark:text-white mb-3">Theme</p>
-          <div className="grid grid-cols-3 gap-2 sm:gap-3">
-            <button
-              type="button"
-              onClick={() => handleThemeChange("light")}
-              className={`flex flex-col items-center justify-center gap-1.5 sm:gap-2 p-3 sm:p-4 border rounded transition-all duration-200 min-h-[80px] sm:min-h-[96px] ${
-                theme === "light"
-                  ? "border-black dark:border-white bg-black/5 dark:bg-white/5 shadow-sm"
-                  : "border-black/20 dark:border-white/20 hover:border-black dark:hover:border-white hover:shadow-sm"
-              }`}
-            >
-              <Sun size={18} className="sm:w-5 sm:h-5 text-black dark:text-white" />
-              <span className="text-xs text-black/60 dark:text-white/60 text-center">Light</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleThemeChange("dark")}
-              className={`flex flex-col items-center justify-center gap-1.5 sm:gap-2 p-3 sm:p-4 border rounded transition-all duration-200 min-h-[80px] sm:min-h-[96px] ${
-                theme === "dark"
-                  ? "border-black dark:border-white bg-black/5 dark:bg-white/5 shadow-sm"
-                  : "border-black/20 dark:border-white/20 hover:border-black dark:hover:border-white hover:shadow-sm"
-              }`}
-            >
-              <Moon size={18} className="sm:w-5 sm:h-5 text-black dark:text-white" />
-              <span className="text-xs text-black/60 dark:text-white/60 text-center">Dark</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleThemeChange("system")}
-              className={`flex flex-col items-center justify-center gap-1.5 sm:gap-2 p-3 sm:p-4 border rounded transition-all duration-200 min-h-[80px] sm:min-h-[96px] ${
-                theme === "system"
-                  ? "border-2 border-black dark:border-white bg-black/5 dark:bg-white/5 shadow-sm"
-                  : "border border-black/20 dark:border-white/20 hover:border-black dark:hover:border-white hover:shadow-sm"
-              }`}
-            >
-              <div className="flex items-center gap-1">
-                <Sun size={11} className="sm:w-3 sm:h-3 text-black dark:text-white" />
-                <Moon size={11} className="sm:w-3 sm:h-3 text-black dark:text-white" />
-              </div>
-              <span className="text-xs font-medium text-black dark:text-white text-center">System</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </SettingsTabLayout>
   )
 }
 
@@ -248,17 +213,23 @@ function LLMSettings({ onClose }: { onClose: () => void }) {
   const creditsError = useCreditsError()
   const { fetchCredits } = useUserActions()
 
+  // Check if user can select any model (server-side flag based on UNRESTRICTED_MODEL_EMAILS env var)
+  const { user: sessionUser } = useAuth()
+  const canSelectAnyModel = sessionUser?.canSelectAnyModel ?? false
+
+  // Get current workspace from store
+  const workspace = useCurrentWorkspace()
+
   useEffect(() => {
     setApiKeyInput(apiKey || "")
   }, [apiKey])
 
   // Fetch credits when component mounts
   useEffect(() => {
-    const workspace = sessionStorage.getItem("workspace")
     if (workspace && !apiKey) {
       fetchCredits(workspace)
     }
-  }, [fetchCredits, apiKey])
+  }, [fetchCredits, apiKey, workspace])
 
   const handleSaveApiKey = () => {
     const trimmedKey = apiKeyInput.trim()
@@ -346,7 +317,7 @@ function LLMSettings({ onClose }: { onClose: () => void }) {
                 type="button"
                 onClick={handleSaveApiKey}
                 disabled={!isKeyChanged}
-                className="flex-1 px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded text-sm font-medium hover:bg-black/80 dark:hover:bg-white/80 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-3 sm:py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg sm:rounded text-sm font-medium hover:bg-black/80 dark:hover:bg-white/80 active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSaved ? "Saved!" : "Save API Key"}
               </button>
@@ -354,7 +325,7 @@ function LLMSettings({ onClose }: { onClose: () => void }) {
                 <button
                   type="button"
                   onClick={handleClearApiKey}
-                  className="px-4 py-2 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/50 rounded text-sm font-medium hover:bg-red-100 dark:hover:bg-red-950/50 transition-colors duration-200"
+                  className="px-4 py-3 sm:py-2 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/50 rounded-lg sm:rounded text-sm font-medium hover:bg-red-100 dark:hover:bg-red-950/50 active:scale-[0.98] transition-all duration-200"
                 >
                   Clear
                 </button>
@@ -374,16 +345,19 @@ function LLMSettings({ onClose }: { onClose: () => void }) {
             Model
           </label>
           <p className="text-xs text-black/60 dark:text-white/60 mb-3">
-            {apiKey ? "Choose which Claude model to use" : "Currently using Claude Haiku 4.5"}
+            {apiKey || canSelectAnyModel
+              ? "Choose which Claude model to use"
+              : `Currently using ${getModelDisplayName(DEFAULT_MODEL)}`}
           </p>
           <select
             id="claude-model"
             value={model}
             onChange={handleModelChange}
-            disabled={!apiKey}
+            disabled={!apiKey && !canSelectAnyModel}
             className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-white dark:bg-[#2a2a2a] border border-black/20 dark:border-white/20 rounded text-sm text-black dark:text-white focus:outline-none focus:border-black dark:focus:border-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Claude Model Selection"
           >
+            <option value={CLAUDE_MODELS.OPUS_4_5}>Claude Opus 4.5</option>
             <option value={CLAUDE_MODELS.SONNET_4_5}>Claude Sonnet 4.5 (Recommended)</option>
             <option value={CLAUDE_MODELS.HAIKU_4_5}>Claude Haiku 4.5</option>
           </select>
@@ -401,77 +375,101 @@ function LLMSettings({ onClose }: { onClose: () => void }) {
 }
 
 function AccountSettings({ onClose }: { onClose: () => void }) {
-  const email = useEmail()
-  const phoneNumber = usePhoneNumber()
-  const { setEmail, setPhoneNumber } = useUserActions()
-  const [emailInput, setEmailInput] = useState(email || "")
-  const [phoneInput, setPhoneInput] = useState(phoneNumber || "")
-  const [isSaved, setIsSaved] = useState(false)
+  // Get email from auth session (read-only)
+  const { user } = useAuth()
+  const router = useRouter()
+  const { setCurrentWorkspace } = useWorkspaceActions()
 
-  useEffect(() => {
-    setEmailInput(email || "")
-    setPhoneInput(phoneNumber || "")
-  }, [email, phoneNumber])
+  // Theme state
+  const { theme, setTheme } = useTheme()
 
-  const handleSave = () => {
-    setEmail(emailInput)
-    setPhoneNumber(phoneInput)
-    setIsSaved(true)
-    setTimeout(() => setIsSaved(false), 2000)
+  const handleThemeChange = (newTheme: "light" | "dark" | "system") => {
+    setTheme(newTheme)
   }
 
-  const isChanged = emailInput !== (email || "") || phoneInput !== (phoneNumber || "")
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/logout", {
+        method: "POST",
+        credentials: "include",
+      })
+      // Clear workspace from store
+      setCurrentWorkspace(null)
+      // Redirect to login
+      router.push("/")
+    } catch (error) {
+      console.error("Logout failed:", error)
+    }
+  }
 
   return (
-    <SettingsTabLayout title="Profile" description="Your account information" onClose={onClose}>
+    <SettingsTabLayout title="Profile" description="Your account information and preferences" onClose={onClose}>
       <div className="space-y-4 sm:space-y-6">
         <div className="animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-75">
-          <label htmlFor="email-address" className="block text-sm font-medium text-black dark:text-white mb-2">
-            Email Address
-          </label>
-          <input
-            id="email-address"
-            type="email"
-            value={emailInput}
-            onChange={e => setEmailInput(e.target.value)}
-            placeholder="your@email.com"
-            className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-white dark:bg-[#2a2a2a] border border-black/20 dark:border-white/20 rounded text-sm text-black dark:text-white focus:outline-none focus:border-black dark:focus:border-white transition-colors"
-            aria-label="Email Address"
-          />
+          <p className="text-sm font-medium text-black dark:text-white mb-2">Email Address</p>
+          <div className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded text-sm text-black dark:text-white">
+            {user?.email || "—"}
+          </div>
         </div>
 
-        <div className="animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-100">
-          <label htmlFor="phone-number" className="block text-sm font-medium text-black dark:text-white mb-2">
-            Phone Number
-          </label>
-          <input
-            id="phone-number"
-            type="tel"
-            value={phoneInput}
-            onChange={e => setPhoneInput(e.target.value)}
-            placeholder="+1 (555) 123-4567"
-            className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-white dark:bg-[#2a2a2a] border border-black/20 dark:border-white/20 rounded text-sm text-black dark:text-white focus:outline-none focus:border-black dark:focus:border-white transition-colors"
-            aria-label="Phone Number"
-          />
+        {/* Theme Section */}
+        <div className="pt-4 border-t border-black/10 dark:border-white/10 animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-175">
+          <p className="text-sm font-medium text-black dark:text-white mb-3">Theme</p>
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={() => handleThemeChange("light")}
+              className={`flex flex-col items-center justify-center gap-1.5 sm:gap-2 p-3 sm:p-4 border rounded transition-all duration-200 min-h-[80px] sm:min-h-[96px] ${
+                theme === "light"
+                  ? "border-black dark:border-white bg-black/5 dark:bg-white/5 shadow-sm"
+                  : "border-black/20 dark:border-white/20 hover:border-black dark:hover:border-white hover:shadow-sm"
+              }`}
+            >
+              <Sun size={18} className="sm:w-5 sm:h-5 text-black dark:text-white" />
+              <span className="text-xs text-black/60 dark:text-white/60 text-center">Light</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleThemeChange("dark")}
+              className={`flex flex-col items-center justify-center gap-1.5 sm:gap-2 p-3 sm:p-4 border rounded transition-all duration-200 min-h-[80px] sm:min-h-[96px] ${
+                theme === "dark"
+                  ? "border-black dark:border-white bg-black/5 dark:bg-white/5 shadow-sm"
+                  : "border-black/20 dark:border-white/20 hover:border-black dark:hover:border-white hover:shadow-sm"
+              }`}
+            >
+              <Moon size={18} className="sm:w-5 sm:h-5 text-black dark:text-white" />
+              <span className="text-xs text-black/60 dark:text-white/60 text-center">Dark</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleThemeChange("system")}
+              className={`flex flex-col items-center justify-center gap-1.5 sm:gap-2 p-3 sm:p-4 border rounded transition-all duration-200 min-h-[80px] sm:min-h-[96px] ${
+                theme === "system"
+                  ? "border-2 border-black dark:border-white bg-black/5 dark:bg-white/5 shadow-sm"
+                  : "border border-black/20 dark:border-white/20 hover:border-black dark:hover:border-white hover:shadow-sm"
+              }`}
+            >
+              <div className="flex items-center gap-1">
+                <Sun size={11} className="sm:w-3 sm:h-3 text-black dark:text-white" />
+                <Moon size={11} className="sm:w-3 sm:h-3 text-black dark:text-white" />
+              </div>
+              <span className="text-xs font-medium text-black dark:text-white text-center">System</span>
+            </button>
+          </div>
         </div>
 
-        <div className="animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-125">
+        {/* Logout Section */}
+        <div className="pt-4 border-t border-black/10 dark:border-white/10 animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-200">
           <button
             type="button"
-            onClick={handleSave}
-            disabled={!isChanged}
-            className="w-full px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded text-sm font-medium hover:bg-black/80 dark:hover:bg-white/80 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors"
+            data-testid="logout-button"
           >
-            {isSaved ? "Saved!" : "Save Changes"}
+            <LogOut size={16} />
+            Log out
           </button>
         </div>
-
-        {(email || phoneNumber) && (
-          <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400 animate-in fade-in-0 slide-in-from-bottom-2 duration-300 delay-150">
-            <div className="w-2 h-2 bg-green-600 dark:bg-green-400 rounded-full" />
-            Account information saved in browser
-          </div>
-        )}
       </div>
     </SettingsTabLayout>
   )
@@ -709,23 +707,29 @@ function useOrgWorkspaces(orgId: string) {
   return { workspaces, loading, error, refetch: fetchWorkspaces }
 }
 
-// Custom hook for optimistic workspace switching
+// Custom hook for workspace switching
+// Uses the store as the single source of truth
 function useWorkspaceSwitch() {
-  const actualCurrent = typeof window !== "undefined" ? sessionStorage.getItem("workspace") : null
-  const [optimisticCurrent, setOptimisticCurrent] = useState<string | null>(null)
+  const currentWorkspace = useCurrentWorkspace()
+  const { setCurrentWorkspace } = useWorkspaceActions()
+  const [optimisticWorkspace, setOptimisticWorkspace] = useState<string | null>(null)
 
-  const switchWorkspace = useCallback((workspace: string) => {
-    if (typeof window === "undefined") return
-
-    setOptimisticCurrent(workspace)
-    sessionStorage.setItem("workspace", workspace)
-    setTimeout(() => {
-      window.location.href = "/chat"
-    }, 100)
-  }, [])
+  const switchWorkspace = useCallback(
+    (workspace: string, orgId: string) => {
+      // Optimistic update for immediate feedback
+      setOptimisticWorkspace(workspace)
+      // Update the store (single source of truth)
+      setCurrentWorkspace(workspace, orgId)
+      // Navigate to chat
+      setTimeout(() => {
+        window.location.href = "/chat"
+      }, 100)
+    },
+    [setCurrentWorkspace],
+  )
 
   return {
-    currentWorkspace: optimisticCurrent || actualCurrent,
+    currentWorkspace: optimisticWorkspace || currentWorkspace,
     switchWorkspace,
   }
 }
@@ -734,6 +738,14 @@ function _OrgSitesSection({ orgId }: { orgId: string }) {
   const { workspaces, loading, error, refetch } = useOrgWorkspaces(orgId)
   const { currentWorkspace, switchWorkspace } = useWorkspaceSwitch()
   const [showAddModal, setShowAddModal] = useState(false)
+
+  // Wrap switchWorkspace to include orgId
+  const handleSwitch = useCallback(
+    (workspace: string) => {
+      switchWorkspace(workspace, orgId)
+    },
+    [switchWorkspace, orgId],
+  )
 
   return (
     <div className="mb-4">
@@ -753,7 +765,7 @@ function _OrgSitesSection({ orgId }: { orgId: string }) {
         currentWorkspace={currentWorkspace}
         loading={loading}
         error={error}
-        onSwitch={switchWorkspace}
+        onSwitch={handleSwitch}
         onRetry={refetch}
       />
 
@@ -781,7 +793,7 @@ function WorkspacesGrid({
   if (loading) {
     return (
       <div className="px-3 py-4 text-xs text-black/40 dark:text-white/40 text-center rounded-md bg-black/5 dark:bg-white/5">
-        Loading spaces...
+        Loading websites...
       </div>
     )
   }
@@ -806,19 +818,19 @@ function WorkspacesGrid({
   if (workspaces.length === 0) {
     return (
       <div className="px-3 py-4 text-xs text-black/40 dark:text-white/40 text-center rounded-md bg-black/5 dark:bg-white/5">
-        No spaces yet
+        No websites yet
       </div>
     )
   }
 
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
       {workspaces.map(workspace => {
         const isCurrent = workspace === currentWorkspace
         return (
           <div
             key={workspace}
-            className={`px-3 py-2.5 rounded border transition-all ${
+            className={`px-3 py-3 sm:py-2.5 rounded-lg sm:rounded border transition-all active:scale-[0.98] ${
               isCurrent
                 ? "border-black dark:border-white bg-black/5 dark:bg-white/5"
                 : "border-black/20 dark:border-white/20 hover:border-black dark:hover:border-white cursor-pointer"
@@ -833,16 +845,16 @@ function WorkspacesGrid({
               }
             }}
           >
-            <div className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-black dark:text-white truncate" title={workspace}>
+            <div className="flex items-center sm:flex-col sm:items-start justify-between sm:justify-start gap-2 sm:gap-1.5">
+              <span className="text-sm font-medium text-black dark:text-white truncate flex-1" title={workspace}>
                 {workspace}
               </span>
               {isCurrent ? (
-                <span className="text-xs px-2 py-0.5 bg-black dark:bg-white text-white dark:text-black rounded self-start">
+                <span className="text-xs px-2 py-0.5 bg-black dark:bg-white text-white dark:text-black rounded flex-shrink-0">
                   Current
                 </span>
               ) : (
-                <span className="text-xs text-black/50 dark:text-white/50">Click to switch</span>
+                <span className="text-xs text-black/50 dark:text-white/50 flex-shrink-0">Tap to switch</span>
               )}
             </div>
           </div>
@@ -967,15 +979,16 @@ function WorkspaceSettings({ onClose }: { onClose: () => void }) {
               return (
                 <div className="space-y-5">
                   {/* Quick Summary Bar */}
-                  <div className="flex items-center gap-3 text-sm text-black/60 dark:text-white/60">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-black/60 dark:text-white/60">
                     <span>
                       <strong className="text-black dark:text-white">{selectedOrg.credits.toFixed(2)}</strong> credits
                     </span>
-                    <span>•</span>
+                    <span className="hidden sm:inline">•</span>
                     <span>
-                      <strong className="text-black dark:text-white">{selectedOrg.workspace_count || 0}</strong> spaces
+                      <strong className="text-black dark:text-white">{selectedOrg.workspace_count || 0}</strong>{" "}
+                      websites
                     </span>
-                    <span>•</span>
+                    <span className="hidden sm:inline">•</span>
                     <span>
                       <strong className="text-black dark:text-white">
                         {members.orgMembers[selectedOrg.org_id]?.length || 0}
@@ -1037,20 +1050,20 @@ function WorkspaceSettings({ onClose }: { onClose: () => void }) {
                           return (
                             <div
                               key={member.user_id}
-                              className="flex items-center justify-between px-3 py-3 rounded-lg border border-black/10 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20 transition-colors"
+                              className="flex items-start sm:items-center justify-between px-3 py-3 rounded-lg border border-black/10 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20 transition-colors gap-2"
                             >
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-0.5">
-                                  <span className="text-sm font-medium text-black dark:text-white truncate">
+                                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-0.5">
+                                  <span className="text-sm font-medium text-black dark:text-white truncate max-w-[180px] sm:max-w-none">
                                     {member.display_name || member.email}
                                     {isCurrentUser && (
-                                      <span className="ml-1.5 text-xs font-normal text-black/50 dark:text-white/50">
+                                      <span className="ml-1 text-xs font-normal text-black/50 dark:text-white/50">
                                         (you)
                                       </span>
                                     )}
                                   </span>
                                   <span
-                                    className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                    className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
                                       member.role === "owner"
                                         ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
                                         : member.role === "admin"
@@ -1071,10 +1084,10 @@ function WorkspaceSettings({ onClose }: { onClose: () => void }) {
                                     members.requestRemoveMember(selectedOrg.org_id, member.user_id, member.email)
                                   }
                                   disabled={members.removingMember === member.user_id}
-                                  className="ml-3 p-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors disabled:opacity-50"
+                                  className="flex-shrink-0 p-2 sm:p-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg sm:rounded transition-colors disabled:opacity-50"
                                   title="Remove member"
                                 >
-                                  <UserMinus size={16} />
+                                  <UserMinus size={18} className="sm:w-4 sm:h-4" />
                                 </button>
                               )}
                             </div>
@@ -1203,55 +1216,212 @@ function WorkspaceSettings({ onClose }: { onClose: () => void }) {
   )
 }
 
-function SpacesSettings({ onClose }: { onClose: () => void }) {
-  const selectedOrgId = useSelectedOrgId()
-  const { organizations } = useOrganizations()
-  const { workspaces, loading, error, refetch } = useOrgWorkspaces(selectedOrgId || "")
+// Hook to fetch workspaces for all organizations
+function useAllOrgWorkspaces(organizations: Organization[]) {
+  const [allWorkspaces, setAllWorkspaces] = useState<Record<string, string[]>>({})
+  const [loading, setLoading] = useState(true)
+
+  const fetchAll = useCallback(async () => {
+    if (organizations.length === 0) {
+      setLoading(false)
+      return
+    }
+
+    setLoading(true)
+    const results: Record<string, string[]> = {}
+
+    await Promise.all(
+      organizations.map(async org => {
+        const cached = orgSitesCache.get(org.org_id)
+        if (cached) {
+          results[org.org_id] = cached
+          return
+        }
+
+        try {
+          const res = await fetch(`/api/auth/workspaces?org_id=${org.org_id}`)
+          const data = res.ok ? await res.json() : null
+          const workspaces = data?.ok ? data.workspaces : []
+          results[org.org_id] = workspaces
+          if (workspaces.length) orgSitesCache.set(org.org_id, workspaces)
+        } catch {
+          results[org.org_id] = []
+        }
+      }),
+    )
+
+    setAllWorkspaces(results)
+    setLoading(false)
+  }, [organizations])
+
+  useEffect(() => {
+    fetchAll()
+  }, [fetchAll])
+
+  return { allWorkspaces, loading, refetch: fetchAll }
+}
+
+// Search input with clear button
+function SearchInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string
+  onChange: (value: string) => void
+  placeholder: string
+}) {
+  return (
+    <div className="relative">
+      <Search
+        size={16}
+        className="absolute left-3 sm:left-3 top-1/2 -translate-y-1/2 text-black/40 dark:text-white/40"
+      />
+      <input
+        type="text"
+        placeholder={placeholder}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="w-full pl-9 pr-10 py-3 sm:py-2.5 bg-white dark:bg-zinc-800 border border-black/20 dark:border-white/20 rounded-lg text-sm text-black dark:text-white placeholder:text-black/40 dark:placeholder:text-white/40 focus:outline-none focus:border-black dark:focus:border-white transition-colors"
+      />
+      {value && (
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 rounded transition-colors"
+        >
+          <X size={16} />
+        </button>
+      )}
+    </div>
+  )
+}
+
+// Organization group header with workspace grid
+function OrgWebsitesGroup({
+  org,
+  workspaces,
+  currentWorkspace,
+  onSwitch,
+}: {
+  org: Organization
+  workspaces: string[]
+  currentWorkspace: string | null
+  onSwitch: (workspace: string, orgId: string) => void
+}) {
+  // Wrap onSwitch to include orgId
+  const handleSwitch = useCallback(
+    (workspace: string) => {
+      onSwitch(workspace, org.org_id)
+    },
+    [onSwitch, org.org_id],
+  )
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-3">
+        <Building2 size={14} className="text-black/40 dark:text-white/40" />
+        <h4 className="text-sm font-medium text-black dark:text-white">{org.name}</h4>
+        <span className="text-xs text-black/40 dark:text-white/40">
+          ({workspaces.length} website{workspaces.length !== 1 ? "s" : ""})
+        </span>
+      </div>
+      <WorkspacesGrid
+        workspaces={workspaces}
+        currentWorkspace={currentWorkspace}
+        loading={false}
+        error={null}
+        onSwitch={handleSwitch}
+      />
+    </div>
+  )
+}
+
+// Empty state component
+function EmptyState({ icon: Icon, message }: { icon: typeof Globe; message: string }) {
+  return (
+    <div className="text-center py-12">
+      <Icon size={48} className="mx-auto mb-4 text-black/20 dark:text-white/20" />
+      <p className="text-sm text-black/60 dark:text-white/60">{message}</p>
+    </div>
+  )
+}
+
+// Loading spinner
+function LoadingSpinner({ message }: { message: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-12 gap-3">
+      <div className="w-8 h-8 border-2 border-black/20 dark:border-white/20 border-t-black dark:border-t-white rounded-full animate-spin" />
+      <p className="text-sm text-black/40 dark:text-white/40">{message}</p>
+    </div>
+  )
+}
+
+function WebsitesSettings({ onClose }: { onClose: () => void }) {
+  const { organizations, loading: orgsLoading } = useOrganizations()
+  const { allWorkspaces, loading: websitesLoading, refetch } = useAllOrgWorkspaces(organizations)
   const { currentWorkspace, switchWorkspace } = useWorkspaceSwitch()
   const [showAddModal, setShowAddModal] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
 
-  const selectedOrg = organizations.find(org => org.org_id === selectedOrgId)
+  const loading = orgsLoading || websitesLoading
+  const query = searchQuery.toLowerCase()
 
-  if (!selectedOrgId || !selectedOrg) {
+  // Filter workspaces by search
+  const filteredGroups = organizations
+    .map(org => ({
+      org,
+      workspaces: (allWorkspaces[org.org_id] || []).filter(w => !query || w.toLowerCase().includes(query)),
+    }))
+    .filter(g => g.workspaces.length > 0 || !query)
+
+  const totalWebsites = Object.values(allWorkspaces).reduce((sum, ws) => sum + ws.length, 0)
+  const filteredCount = filteredGroups.reduce((sum, g) => sum + g.workspaces.length, 0)
+
+  const renderContent = () => {
+    if (loading) return <LoadingSpinner message="Loading websites..." />
+    if (organizations.length === 0) return <EmptyState icon={Globe} message="No organizations found" />
+    if (filteredCount === 0 && query) return <EmptyState icon={Search} message={`No websites match "${searchQuery}"`} />
+
     return (
-      <SettingsTabLayout title="Spaces" description="Manage and switch between your workspaces" onClose={onClose}>
-        <div className="text-center py-12">
-          <Globe size={48} className="mx-auto mb-4 text-black/20 dark:text-white/20" />
-          <p className="text-sm text-black/60 dark:text-white/60">Select an organization in the Workspace tab first</p>
-        </div>
-      </SettingsTabLayout>
+      <div className="space-y-6">
+        {filteredGroups.map(({ org, workspaces }) => (
+          <OrgWebsitesGroup
+            key={org.org_id}
+            org={org}
+            workspaces={workspaces}
+            currentWorkspace={currentWorkspace}
+            onSwitch={switchWorkspace}
+          />
+        ))}
+      </div>
     )
   }
 
   return (
     <SettingsTabLayout
-      title="Spaces"
-      description={
-        <>
-          Switch between workspaces in <strong>{selectedOrg.name}</strong>
-        </>
-      }
+      title="Websites"
+      description={`All your websites across ${organizations.length} organization${organizations.length !== 1 ? "s" : ""}`}
       onClose={onClose}
     >
-      <div className="space-y-6">
-        {/* Spaces Grid */}
-        <WorkspacesGrid
-          workspaces={workspaces}
-          currentWorkspace={currentWorkspace}
-          loading={loading}
-          error={error}
-          onSwitch={switchWorkspace}
-          onRetry={refetch}
-        />
+      <div className="space-y-5">
+        <SearchInput value={searchQuery} onChange={setSearchQuery} placeholder="Search websites..." />
 
-        {/* Add Space Button */}
-        <div className="flex justify-start">
+        {query && (
+          <p className="text-xs text-black/50 dark:text-white/50">
+            {filteredCount} of {totalWebsites} websites match &quot;{searchQuery}&quot;
+          </p>
+        )}
+
+        {renderContent()}
+
+        <div className="flex justify-start pt-2">
           <button
             type="button"
             onClick={() => setShowAddModal(true)}
-            className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg text-sm font-medium hover:opacity-80 transition-opacity"
+            className="w-full sm:w-auto px-4 py-3 sm:py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg text-sm font-medium hover:opacity-80 active:scale-[0.98] transition-all"
           >
-            + Add Space
+            + Add Website
           </button>
         </div>
 
@@ -1303,13 +1473,13 @@ function UserPromptsSettings({ onClose }: { onClose: () => void }) {
         <button
           type="button"
           onClick={() => handleOpenEditor("add")}
-          className="w-full px-4 py-2.5 border-2 border-dashed border-black/20 dark:border-white/20 rounded-lg text-sm font-medium text-black/60 dark:text-white/60 hover:border-black dark:hover:border-white hover:text-black dark:hover:text-white transition-colors"
+          className="w-full px-4 py-3 sm:py-2.5 border-2 border-dashed border-black/20 dark:border-white/20 rounded-lg text-sm font-medium text-black/60 dark:text-white/60 hover:border-black dark:hover:border-white hover:text-black dark:hover:text-white active:scale-[0.99] transition-all"
         >
           + Add New Prompt
         </button>
 
         {/* Saved Prompts List */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
           {prompts.map(prompt => (
             <div
               key={prompt.id}

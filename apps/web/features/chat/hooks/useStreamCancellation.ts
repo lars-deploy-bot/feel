@@ -98,36 +98,57 @@ export function useStreamCancellation({
       },
     })
 
-    // Fire-and-forget cancel request (non-blocking)
+    // Capture requestId BEFORE nulling it
     const requestIdToCancel = currentRequestIdRef.current
+    console.log(
+      "[useStreamCancellation] requestIdToCancel:",
+      requestIdToCancel,
+      "conversationId:",
+      conversationId,
+      "workspace:",
+      workspace,
+    )
 
-    if (requestIdToCancel) {
-      // Primary path: Cancel by requestId
-      console.log("[useStreamCancellation] Firing cancel with requestId:", requestIdToCancel)
-      try {
-        const validatedRequest = validateRequest("claude/stream/cancel", { requestId: requestIdToCancel })
-        void postty("claude/stream/cancel", validatedRequest).catch(error => {
-          console.error("[useStreamCancellation] Cancel request failed (non-blocking):", error)
-        })
-      } catch (validationError) {
-        console.error("[useStreamCancellation] Request validation failed:", validationError)
-      }
-    } else if (conversationId.length > 0 && workspace) {
-      // Fallback path: Cancel by conversationId (super-early Stop)
-      console.log("[useStreamCancellation] Firing cancel with conversationId fallback:", conversationId)
-      try {
-        const validatedRequest = validateRequest("claude/stream/cancel", { conversationId, workspace })
-        void postty("claude/stream/cancel", validatedRequest).catch(error => {
-          console.error("[useStreamCancellation] Cancel request failed (non-blocking):", error)
-        })
-      } catch (validationError) {
-        console.error("[useStreamCancellation] Request validation failed:", validationError)
-      }
-    } else {
-      console.warn("[useStreamCancellation] No requestId or conversationId available - relying on abort() only")
+    // Helper to reset all states after cancellation completes
+    // No delay needed - cancel endpoint now waits for lock release before responding
+    const finishCancellation = () => {
+      setBusy(false)
+      isSubmittingRef.current = false
+      isStoppingRef.current = false
+      setIsStopping(false)
+      setShowCompletionDots(false)
+      console.log("[useStreamCancellation] Cancellation complete, states reset")
     }
 
-    // Immediately abort and reset UI (don't wait for cancel endpoint)
+    // Send cancel request and wait for confirmation
+    // Backend now waits for cleanup to complete before responding, so response = safe to send new message
+    const sendCancelRequest = async () => {
+      try {
+        if (requestIdToCancel) {
+          // Primary path: Cancel by requestId
+          console.log("[useStreamCancellation] Sending cancel with requestId:", requestIdToCancel)
+          const validatedRequest = validateRequest("claude/stream/cancel", { requestId: requestIdToCancel })
+          const response = await postty("claude/stream/cancel", validatedRequest)
+          console.log("[useStreamCancellation] Cancel response:", JSON.stringify(response))
+        } else if (conversationId.length > 0 && workspace) {
+          // Fallback path: Cancel by conversationId (super-early Stop)
+          console.log("[useStreamCancellation] Sending cancel with conversationId fallback:", conversationId)
+          const validatedRequest = validateRequest("claude/stream/cancel", { conversationId, workspace })
+          const response = await postty("claude/stream/cancel", validatedRequest)
+          console.log("[useStreamCancellation] Cancel response (fallback):", JSON.stringify(response))
+        } else {
+          console.warn("[useStreamCancellation] No requestId or conversationId available - relying on abort() only")
+        }
+      } catch (error) {
+        console.error("[useStreamCancellation] Cancel request failed:", error)
+        // Continue anyway - the abort() should have worked
+      }
+
+      // Backend confirmed (or failed) - finish cancellation
+      finishCancellation()
+    }
+
+    // Immediately abort the client-side stream
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
       abortControllerRef.current = null
@@ -148,12 +169,19 @@ export function useStreamCancellation({
     }
     addMessage(interruptMessage)
 
-    // Reset UI state
-    setBusy(false)
+    // Show completion dots while waiting for backend confirmation
     setShowCompletionDots(true)
-    isSubmittingRef.current = false
-    isStoppingRef.current = false
-    setIsStopping(false)
+
+    // Send cancel request (async, but we don't await in the callback)
+    // Use timeout as fallback in case request hangs
+    const timeoutId = setTimeout(() => {
+      console.warn("[useStreamCancellation] Cancel request timed out after 5s, forcing finish")
+      finishCancellation()
+    }, 5000)
+
+    sendCancelRequest().finally(() => {
+      clearTimeout(timeoutId)
+    })
   }, [
     conversationId,
     workspace,

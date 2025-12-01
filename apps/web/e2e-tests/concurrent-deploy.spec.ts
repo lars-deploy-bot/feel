@@ -1,7 +1,7 @@
 import { execSync } from "node:child_process"
 import { existsSync, readFileSync, rmSync } from "node:fs"
 import { PATHS } from "@webalive/shared"
-import { expect, test } from "./setup"
+import { expect, test } from "./fixtures"
 
 // Test domains - using short names to avoid Linux username length limits (32 chars)
 // IMPORTANT: Emails MUST use INTERNAL test domains (@bridge-playwright.internal)

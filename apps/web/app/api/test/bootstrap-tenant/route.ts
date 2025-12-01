@@ -75,11 +75,104 @@ export async function POST(req: Request) {
       .eq("user_id", existingUser.user_id)
       .single()
 
+    // Handle orphaned user (user exists but membership was deleted by teardown)
+    // PGRST116 = "The result contains 0 rows" - means no membership exists
+    if (membershipError && membershipError.code === "PGRST116") {
+      console.log("[Bootstrap] Orphaned user detected, recreating org and membership:", {
+        userId: existingUser.user_id,
+        email,
+        runId,
+      })
+
+      // Create new org for orphaned user
+      const newOrgId = randomUUID()
+      const { error: newOrgError } = await iam.from("orgs").insert({
+        org_id: newOrgId,
+        name: `E2E Worker ${workerIndex}`,
+        credits,
+        is_test_env: true,
+        test_run_id: runId,
+      })
+
+      if (newOrgError) {
+        console.error("[Bootstrap] Failed to create org for orphaned user:", newOrgError)
+        return createErrorResponse(ErrorCodes.INTERNAL_ERROR, 500)
+      }
+
+      // Create membership for orphaned user
+      const { error: newMembershipError } = await iam.from("org_memberships").insert({
+        user_id: existingUser.user_id,
+        org_id: newOrgId,
+        role: "owner",
+      })
+
+      if (newMembershipError) {
+        console.error("[Bootstrap] Failed to create membership for orphaned user:", newMembershipError)
+        // Cleanup the org we just created
+        await iam.from("orgs").delete().eq("org_id", newOrgId)
+        return createErrorResponse(ErrorCodes.INTERNAL_ERROR, 500)
+      }
+
+      // Update user's test_run_id and create domain
+      const [userUpdate, domainUpsert] = await Promise.all([
+        iam
+          .from("users")
+          .update({
+            test_run_id: runId,
+            password_hash: passwordHash,
+            is_test_env: true,
+          })
+          .eq("user_id", existingUser.user_id),
+        app.from("domains").upsert(
+          {
+            hostname: workspace,
+            org_id: newOrgId,
+            port,
+            is_test_env: true,
+            test_run_id: runId,
+          },
+          { onConflict: "hostname" },
+        ),
+      ])
+
+      if (userUpdate.error || domainUpsert.error) {
+        console.error("[Bootstrap] Failed to update orphaned user tenant:", {
+          userUpdate: userUpdate.error,
+          domainUpsert: domainUpsert.error,
+        })
+        return createErrorResponse(ErrorCodes.INTERNAL_ERROR, 500)
+      }
+
+      return Response.json({
+        ok: true,
+        tenant: {
+          userId: existingUser.user_id,
+          email: existingUser.email,
+          orgId: newOrgId,
+          orgName: `E2E Worker ${workerIndex}`,
+          workspace,
+          workerIndex,
+        },
+      })
+    }
+
+    // Non-PGRST116 membership error (unexpected error)
     if (membershipError) {
+      console.error("[Bootstrap] Membership lookup failed:", {
+        error: membershipError,
+        userId: existingUser.user_id,
+        email,
+        runId,
+      })
       return createErrorResponse(ErrorCodes.INTERNAL_ERROR, 500)
     }
 
     if (!membership) {
+      console.error("[Bootstrap] No membership found for existing user:", {
+        userId: existingUser.user_id,
+        email,
+        runId,
+      })
       return createErrorResponse(ErrorCodes.INTERNAL_ERROR, 500)
     }
 
@@ -90,6 +183,12 @@ export async function POST(req: Request) {
       .single()
 
     if (orgError) {
+      console.error("[Bootstrap] Org lookup failed:", {
+        error: orgError,
+        orgId: membership.org_id,
+        userId: existingUser.user_id,
+        runId,
+      })
       return createErrorResponse(ErrorCodes.INTERNAL_ERROR, 500)
     }
 
@@ -185,6 +284,7 @@ export async function POST(req: Request) {
     is_test_env: true,
     test_run_id: runId,
     metadata: { workerIndex },
+    email_verified: true, // Test users are always verified
   })
 
   if (userError) {

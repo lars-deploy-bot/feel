@@ -41,6 +41,7 @@ describe("Supabase Credit System Integration", () => {
       org_id: TEST_ORG_ID,
       name: "Test Organization",
       credits: INITIAL_CREDITS,
+      is_test_env: true,
     })
 
     if (orgError) {
@@ -53,6 +54,7 @@ describe("Supabase Credit System Integration", () => {
       hostname: TEST_DOMAIN,
       port: 9999,
       org_id: TEST_ORG_ID,
+      is_test_env: true,
     })
 
     if (domainError) {

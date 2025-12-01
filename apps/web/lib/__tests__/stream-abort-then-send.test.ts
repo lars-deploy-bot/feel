@@ -1,12 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { SECURITY } from "@webalive/shared"
 import {
   isConversationLocked,
   sessionKey,
   tryLockConversation,
   unlockConversation,
 } from "@/features/auth/lib/sessionStore"
+import { CLAUDE_MODELS } from "@/lib/models/claude-models"
 import { setupAbortHandler } from "@/lib/stream/abort-handler"
 import { createNDJSONStream } from "@/lib/stream/ndjson-stream-handler"
+
+// Default test model - using Haiku for tests since it's cheapest
+const TEST_MODEL = CLAUDE_MODELS.HAIKU_4_5
 
 /**
  * Stream Abort → Immediate Send Integration Test
@@ -32,7 +37,7 @@ import { createNDJSONStream } from "@/lib/stream/ndjson-stream-handler"
  */
 
 describe("Stream Abort → Send Integration (REAL)", () => {
-  const userId = "test-user"
+  const userId = SECURITY.LOCAL_TEST.SESSION_VALUE
   const workspace = "test-workspace"
   const conversationId = "test-conv-abort"
   const convKey = sessionKey({ userId, conversationId })
@@ -109,6 +114,7 @@ describe("Stream Abort → Send Integration (REAL)", () => {
         requestId: "test-1",
         conversationWorkspace: workspace,
         tokenSource: "user_provided",
+        model: TEST_MODEL,
         onStreamComplete: () => {
           // Verify lock is still held when callback fires
           lockWasHeld = isConversationLocked(convKey)
@@ -153,6 +159,7 @@ describe("Stream Abort → Send Integration (REAL)", () => {
         requestId: "test-2",
         conversationWorkspace: workspace,
         tokenSource: "user_provided",
+        model: TEST_MODEL,
         onStreamComplete: () => {
           callbackFired = true
           unlockConversation(convKey)
@@ -186,6 +193,7 @@ describe("Stream Abort → Send Integration (REAL)", () => {
         requestId: "test-3",
         conversationWorkspace: workspace,
         tokenSource: "user_provided",
+        model: TEST_MODEL,
         onStreamComplete: () => {
           callbackFired = true
           unlockConversation(convKey)
@@ -224,6 +232,7 @@ describe("Stream Abort → Send Integration (REAL)", () => {
         requestId: "test-4",
         conversationWorkspace: workspace,
         tokenSource: "user_provided",
+        model: TEST_MODEL,
         onStreamComplete: () => {
           _callbackFired = true
           unlockConversation(convKey)
@@ -263,6 +272,7 @@ describe("Stream Abort → Send Integration (REAL)", () => {
         requestId: "test-5",
         conversationWorkspace: workspace,
         tokenSource: "user_provided",
+        model: TEST_MODEL,
         onStreamComplete: () => {
           unlockConversation(convKey)
         },
@@ -305,6 +315,7 @@ describe("Stream Abort → Send Integration (REAL)", () => {
         requestId: "test-6",
         conversationWorkspace: workspace,
         tokenSource: "user_provided",
+        model: TEST_MODEL,
         onStreamComplete: () => {
           callbackFired = true
           unlockConversation(convKey)
@@ -344,6 +355,7 @@ describe("Stream Abort → Send Integration (REAL)", () => {
         requestId: "req-1",
         conversationWorkspace: workspace,
         tokenSource: "user_provided",
+        model: TEST_MODEL,
         onStreamComplete: () => {
           callback1Fired = true
           unlockConversation(convKey)
@@ -373,6 +385,7 @@ describe("Stream Abort → Send Integration (REAL)", () => {
         requestId: "req-2",
         conversationWorkspace: workspace,
         tokenSource: "user_provided",
+        model: TEST_MODEL,
         onStreamComplete: () => {
           callback2Fired = true
           unlockConversation(convKey)
@@ -404,6 +417,7 @@ describe("Stream Abort → Send Integration (REAL)", () => {
         requestId: "req-abort-1",
         conversationWorkspace: workspace,
         tokenSource: "user_provided",
+        model: TEST_MODEL,
         onStreamComplete: () => {
           unlockConversation(convKey)
         },
@@ -439,6 +453,7 @@ describe("Stream Abort → Send Integration (REAL)", () => {
         requestId: "req-abort-2",
         conversationWorkspace: workspace,
         tokenSource: "user_provided",
+        model: TEST_MODEL,
         onStreamComplete: () => {
           callback2Fired = true
           unlockConversation(convKey)
@@ -470,6 +485,7 @@ describe("Stream Abort → Send Integration (REAL)", () => {
           requestId: `req-rapid-${i}`,
           conversationWorkspace: workspace,
           tokenSource: "user_provided",
+          model: TEST_MODEL,
           onStreamComplete: () => {
             unlockConversation(convKey)
           },
@@ -517,6 +533,7 @@ describe("Stream Abort → Send Integration (REAL)", () => {
         requestId: "conv-1-req",
         conversationWorkspace: workspace,
         tokenSource: "user_provided",
+        model: TEST_MODEL,
         onStreamComplete: () => {
           unlockConversation(conv1Key)
         },
@@ -573,6 +590,7 @@ describe("Stream Abort → Send Integration (REAL)", () => {
         requestId: "test-order",
         conversationWorkspace: workspace,
         tokenSource: "user_provided",
+        model: TEST_MODEL,
         onStreamComplete: () => {
           executionOrder.push("callback-fired")
           unlockConversation(convKey)
@@ -600,6 +618,7 @@ describe("Stream Abort → Send Integration (REAL)", () => {
         requestId: "test-double",
         conversationWorkspace: workspace,
         tokenSource: "user_provided",
+        model: TEST_MODEL,
         onStreamComplete: () => {
           callCount++
           unlockConversation(convKey)
@@ -625,6 +644,7 @@ describe("Stream Abort → Send Integration (REAL)", () => {
         requestId: "test-no-callback",
         conversationWorkspace: workspace,
         tokenSource: "user_provided",
+        model: TEST_MODEL,
         // No onStreamComplete
         cancelState: { requested: false, reader: null },
       })

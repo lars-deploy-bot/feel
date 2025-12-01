@@ -22,6 +22,14 @@ export const COOKIE_NAMES = {
 export const SESSION_MAX_AGE = 30 * 24 * 60 * 60 // 30 days in seconds
 
 /**
+ * Free Credits - Single Source of Truth
+ *
+ * Credits given to new users when they sign up.
+ * DO NOT hardcode this value anywhere else.
+ */
+export const FREE_CREDITS = 100
+
+/**
  * Environment Variable Names
  *
  * Used for passing configuration to child processes and MCP tools.
@@ -45,9 +53,205 @@ export const TEST_CONFIG = {
   WORKER_EMAIL_PREFIX: "e2e_w", // e2e_w0@bridge.local
   WORKSPACE_PREFIX: "e2e-w", // e2e-w0.bridge.local
   TEST_PASSWORD: "test-password-123", // Password for all E2E test users
+  JWT_SECRET: "test-jwt-secret-for-e2e-tests", // JWT secret for E2E tests (must match .env.test)
+  DEFAULT_TEMPLATE_ID: "tmpl_landing", // Default template for deployment tests (must exist in Supabase)
 
   // Worker port configuration (single source of truth)
   // Allow env override for CI environments with port conflicts
   WORKER_PORT_BASE: Number(process.env.TEST_WORKER_PORT_BASE) || 9100, // Base port for virtual worker domains
   MAX_WORKERS: 20, // Maximum parallel Playwright workers
+} as const
+
+/**
+ * Bridge Stream Types - Single Source of Truth
+ *
+ * Event types for NDJSON streaming protocol between:
+ * - Claude Agent SDK child process (producer)
+ * - Bridge API routes (consumer/transformer)
+ * - Frontend chat page (consumer)
+ *
+ * All packages MUST import from here. DO NOT duplicate.
+ */
+export const BRIDGE_STREAM_TYPES = {
+  START: "bridge_start",
+  SESSION: "bridge_session",
+  MESSAGE: "bridge_message",
+  COMPLETE: "bridge_complete",
+  ERROR: "bridge_error",
+  PING: "bridge_ping",
+  DONE: "bridge_done",
+  INTERRUPT: "bridge_interrupt",
+} as const
+
+export type BridgeStreamType = (typeof BRIDGE_STREAM_TYPES)[keyof typeof BRIDGE_STREAM_TYPES]
+
+/**
+ * Bridge Synthetic Message Types
+ *
+ * Additional message types created by the Bridge (not from SDK).
+ */
+export const BRIDGE_SYNTHETIC_MESSAGE_TYPES = {
+  WARNING: "bridge_warning",
+} as const
+
+/**
+ * Bridge Interrupt Sources
+ *
+ * Sources that can trigger stream interruption.
+ */
+export const BRIDGE_INTERRUPT_SOURCES = {
+  HTTP_ABORT: "bridge_http_abort",
+  CLIENT_CANCEL: "bridge_client_cancel",
+} as const
+
+/**
+ * Worker Pool Configuration
+ *
+ * Controls the persistent worker pool for Claude Agent SDK.
+ * Workers stay alive between requests for faster response times.
+ */
+export const WORKER_POOL = {
+  /** Feature flag: Enable persistent workers (false = spawn-per-request) */
+  ENABLED: false,
+
+  /** Maximum number of workers to keep alive (~100MB memory per worker) */
+  MAX_WORKERS: 20,
+
+  /** Time in ms before idle worker is terminated */
+  INACTIVITY_TIMEOUT_MS: 15 * 60 * 1000, // 15 minutes
+
+  /** Maximum age in ms before worker is forced to restart */
+  MAX_AGE_MS: 60 * 60 * 1000, // 1 hour
+
+  /** Eviction strategy when at capacity: "lru" | "oldest" | "least_used" */
+  EVICTION_STRATEGY: "lru" as const,
+
+  /** Directory for Unix sockets */
+  SOCKET_DIR: "/tmp/claude-workers",
+
+  /** Timeout for worker to become ready (ms) */
+  READY_TIMEOUT_MS: 30_000,
+
+  /** Timeout for graceful shutdown (ms) */
+  SHUTDOWN_TIMEOUT_MS: 10_000,
+
+  /** Timeout for cancel to complete before forcing cleanup (ms)
+   *  IMPORTANT: Keep this SHORT (<1s) for good UX - users shouldn't wait long after clicking Stop
+   *  The SDK may block on API calls that don't respect abort signals, so we force cleanup quickly */
+  CANCEL_TIMEOUT_MS: 500,
+} as const
+
+/**
+ * Referral System Configuration
+ *
+ * Used by API routes, database schema defaults, and frontend.
+ * SQL schema DEFAULT values must be kept in sync manually.
+ */
+export const REFERRAL = {
+  /** Feature flag - set to false to hide all referral UI */
+  ENABLED: false,
+  /** Credits awarded to both referrer and referred user */
+  CREDITS: 500,
+  /** Days before stored referral code expires in localStorage */
+  EXPIRY_DAYS: 30,
+  /** Maximum invite emails per user per day */
+  EMAIL_DAILY_LIMIT: 10,
+  /** Max account age (ms) to redeem referral - prevents existing user exploit */
+  ACCOUNT_AGE_LIMIT_MS: 24 * 60 * 60 * 1000, // 24 hours
+} as const
+
+/**
+ * User Limits - Default quotas for site creation
+ *
+ * These are default values. Per-user limits are stored in app.user_quotas
+ * and can be adjusted per user for upgrades/special cases.
+ */
+export const LIMITS = {
+  /** Default maximum sites per user (across all owned organizations) */
+  MAX_SITES_PER_USER: 2,
+} as const
+
+/**
+ * Workspace Storage Configuration - Single Source of Truth
+ *
+ * Used by Zustand persist middleware in workspaceStore.ts
+ * and E2E tests (fixtures.ts, helpers.ts) that need to set workspace state.
+ *
+ * CRITICAL: This is the ONLY place these values should be defined.
+ * If you change the storage format, update both WORKSPACE_STORAGE and
+ * the migration logic in workspaceStore.ts.
+ */
+export const WORKSPACE_STORAGE = {
+  /** localStorage key for workspace state */
+  KEY: "workspace-storage",
+  /** Current schema version - increment when changing state structure */
+  VERSION: 3,
+} as const
+
+/**
+ * Workspace Storage State Types
+ *
+ * Matches the Zustand persist partialize output in workspaceStore.ts
+ */
+export interface WorkspaceStorageRecentItem {
+  domain: string
+  lastAccessed: number
+  orgId: string
+}
+
+export interface WorkspaceStorageState {
+  currentWorkspace: string | null
+  selectedOrgId: string | null
+  recentWorkspaces: WorkspaceStorageRecentItem[]
+}
+
+export interface WorkspaceStorageValue {
+  state: WorkspaceStorageState
+  version: number
+}
+
+/**
+ * Create a properly typed workspace storage value for localStorage
+ *
+ * Use this in E2E tests to set workspace state without fragile raw object manipulation.
+ *
+ * @example
+ * ```typescript
+ * import { WORKSPACE_STORAGE, createWorkspaceStorageValue } from "@webalive/shared"
+ *
+ * await page.evaluate(
+ *   ({ key, value }) => localStorage.setItem(key, value),
+ *   {
+ *     key: WORKSPACE_STORAGE.KEY,
+ *     value: createWorkspaceStorageValue("example.com", "org-123"),
+ *   }
+ * )
+ * ```
+ */
+export function createWorkspaceStorageValue(workspace: string, orgId: string | null): string {
+  const storageValue: WorkspaceStorageValue = {
+    state: {
+      currentWorkspace: workspace,
+      selectedOrgId: orgId,
+      recentWorkspaces: [],
+    },
+    version: WORKSPACE_STORAGE.VERSION,
+  }
+  return JSON.stringify(storageValue)
+}
+
+/**
+ * Preview Navigation Messages - Single Source of Truth
+ *
+ * PostMessage types used for communication between preview iframes
+ * and the Sandbox component. Used by:
+ * - Preview router script injection (apps/web/app/api/preview-router)
+ * - Vite plugin in site template (templates/site-template)
+ * - Sandbox components (apps/web/features/chat/components)
+ */
+export const PREVIEW_MESSAGES = {
+  /** Sent when navigation starts (before page unloads) */
+  NAVIGATION_START: "preview-navigation-start",
+  /** Sent when navigation completes (with new path) */
+  NAVIGATION: "preview-navigation",
 } as const

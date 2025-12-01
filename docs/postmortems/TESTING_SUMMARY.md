@@ -73,7 +73,7 @@ it("should be idempotent (safe to call multiple times)")
 ## Test Results
 
 ```bash
-$ bun test ndjson-stream-handler.test.ts sessionStore.test.ts
+$ bun run test ndjson-stream-handler.test.ts sessionStore.test.ts
 
  46 pass
  0 fail
@@ -115,13 +115,13 @@ $ bun test ndjson-stream-handler.test.ts sessionStore.test.ts
 
 ```bash
 # Just the regression tests
-bun test ndjson-stream-handler.test.ts
+bun run test ndjson-stream-handler.test.ts
 
 # With coverage for stream handler
-bun test --coverage lib/stream
+bun run test --coverage lib/stream
 
 # All tests
-bun test
+bun run test
 ```
 
 ## Test Documentation in Code

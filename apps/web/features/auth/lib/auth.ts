@@ -1,5 +1,6 @@
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
+import { SECURITY } from "@webalive/shared"
 import { COOKIE_NAMES } from "@/lib/auth/cookies"
 import { type ErrorCode, ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 import { createAppClient } from "@/lib/supabase/app"
@@ -22,6 +23,18 @@ export interface SessionUser {
   id: string
   email: string
   name: string | null
+  /** Whether user can select any model without their own API key */
+  canSelectAnyModel: boolean
+}
+
+/**
+ * Hardcoded list of emails that can select any model without their own API key.
+ * Server-side only - never exposed to client code.
+ */
+const UNRESTRICTED_MODEL_EMAILS = ["eedenlars@gmail.com", "barendbootsma@gmail.com"]
+
+function isUnrestrictedModelUser(email: string): boolean {
+  return UNRESTRICTED_MODEL_EMAILS.some(e => e.toLowerCase() === email.toLowerCase())
 }
 
 export async function getSessionUser(): Promise<SessionUser | null> {
@@ -40,11 +53,13 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   }
 
   // Test mode
-  if (env.BRIDGE_ENV === "local" && sessionCookie.value === "test-user") {
+  if (env.BRIDGE_ENV === "local" && sessionCookie.value === SECURITY.LOCAL_TEST.SESSION_VALUE) {
+    const testEmail = SECURITY.LOCAL_TEST.EMAIL
     return {
-      id: "test-user",
-      email: "test@bridge.local",
+      id: SECURITY.LOCAL_TEST.SESSION_VALUE,
+      email: testEmail,
       name: "Test User",
+      canSelectAnyModel: isUnrestrictedModelUser(testEmail),
     }
   }
 
@@ -67,6 +82,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     id: payload.userId,
     email: payload.email,
     name: payload.name,
+    canSelectAnyModel: isUnrestrictedModelUser(payload.email),
   }
 }
 
@@ -81,7 +97,7 @@ export async function isWorkspaceAuthenticated(workspace: string): Promise<boole
   }
 
   // Test mode allows all workspaces
-  if (env.BRIDGE_ENV === "local" && user.id === "test-user") {
+  if (env.BRIDGE_ENV === "local" && user.id === SECURITY.LOCAL_TEST.SESSION_VALUE) {
     return true
   }
 
@@ -120,7 +136,7 @@ export async function getAuthenticatedWorkspaces(): Promise<string[]> {
   }
 
   // Test mode
-  if (env.BRIDGE_ENV === "local" && sessionCookie.value === "test-user") {
+  if (env.BRIDGE_ENV === "local" && sessionCookie.value === SECURITY.LOCAL_TEST.SESSION_VALUE) {
     return []
   }
 
@@ -180,7 +196,7 @@ export async function getSafeSessionCookie(logPrefix = "[Auth]"): Promise<string
   }
 
   // Test mode special value
-  if (env.BRIDGE_ENV === "local" && sessionCookie.value === "test-user") {
+  if (env.BRIDGE_ENV === "local" && sessionCookie.value === SECURITY.LOCAL_TEST.SESSION_VALUE) {
     return sessionCookie.value
   }
 
@@ -229,7 +245,7 @@ export async function verifyWorkspaceAccess(
   }
 
   // Test mode allows all workspaces
-  if (env.BRIDGE_ENV === "local" && user.id === "test-user") {
+  if (env.BRIDGE_ENV === "local" && user.id === SECURITY.LOCAL_TEST.SESSION_VALUE) {
     return workspace
   }
 

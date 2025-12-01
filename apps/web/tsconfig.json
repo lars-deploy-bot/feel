@@ -20,6 +20,7 @@
       "@/features/*": ["./features/*"],
       "@/components/*": ["./components/*"],
       "@/lib/*": ["./lib/*"],
+      "@/config/*": ["./config/*"],
       "@/types/*": ["./types/*"],
       "@/hooks/*": ["./hooks/*"],
       "@/tools/*": ["./tools/*"],
@@ -39,7 +40,8 @@
     "**/*.ts",
     "**/*.tsx",
     ".next-test/types/**/*.ts",
-    ".next-test/dev/types/**/*.ts"
+    ".next-test/dev/types/**/*.ts",
+    ".next-test/dev/dev/types/**/*.ts"
   ],
   "exclude": ["node_modules"]
 }

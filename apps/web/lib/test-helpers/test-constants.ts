@@ -5,6 +5,7 @@
  * NEVER hardcode these values in tests - always import from here
  */
 
+import { COOKIE_NAMES, TEST_CONFIG } from "@webalive/shared"
 import { environments } from "@webalive/shared/environments"
 
 /**
@@ -29,16 +30,18 @@ export const API_ENDPOINTS = {
 /**
  * Test user credentials
  * Used consistently across all tests
+ * Uses TEST_CONFIG from @webalive/shared as single source of truth
  */
 export const TEST_CREDENTIALS = {
-  PASSWORD: "test-password-123",
-  CREDITS: 500,
+  PASSWORD: TEST_CONFIG.TEST_PASSWORD,
+  CREDITS: TEST_CONFIG.DEFAULT_CREDITS,
 } as const
 
 /**
  * Session cookie configuration
+ * Uses COOKIE_NAMES.SESSION from @webalive/shared as single source of truth
  */
 export const SESSION_COOKIE = {
-  NAME: "auth_session",
-  PATTERN: /auth_session=([^;]+)/,
+  NAME: COOKIE_NAMES.SESSION,
+  PATTERN: new RegExp(`${COOKIE_NAMES.SESSION}=([^;]+)`),
 } as const

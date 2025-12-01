@@ -597,5 +597,3 @@ export function validateLinearIssues(data: unknown): boolean {
   const first = data[0]
   return typeof first === "object" && first !== null && "identifier" in first && "title" in first
 }
-
-export default LinearIssuesResult

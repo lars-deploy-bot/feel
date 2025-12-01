@@ -15,6 +15,30 @@ export type Database = {
   }
   app: {
     Tables: {
+      conversations: {
+        Row: {
+          conversation_id: string
+          created_at: string | null
+          title: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          conversation_id?: string
+          created_at?: string | null
+          title?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string | null
+          title?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       domains: {
         Row: {
           created_at: string
@@ -147,6 +171,42 @@ export type Database = {
         }
         Relationships: []
       }
+      templates: {
+        Row: {
+          ai_description: string | null
+          deploy_count: number | null
+          description: string | null
+          image_url: string | null
+          is_active: boolean | null
+          name: string
+          preview_url: string | null
+          source_path: string
+          template_id: string
+        }
+        Insert: {
+          ai_description?: string | null
+          deploy_count?: number | null
+          description?: string | null
+          image_url?: string | null
+          is_active?: boolean | null
+          name: string
+          preview_url?: string | null
+          source_path: string
+          template_id?: string
+        }
+        Update: {
+          ai_description?: string | null
+          deploy_count?: number | null
+          description?: string | null
+          image_url?: string | null
+          is_active?: boolean | null
+          name?: string
+          preview_url?: string | null
+          source_path?: string
+          template_id?: string
+        }
+        Relationships: []
+      }
       user_onboarding: {
         Row: {
           approval_rules: Json
@@ -252,6 +312,36 @@ export type Database = {
           created_at?: string
           goals?: string | null
           user_profile_id?: string
+        }
+        Relationships: []
+      }
+      user_quotas: {
+        Row: {
+          created_at: string
+          max_custom_domains: number | null
+          max_monthly_builds: number | null
+          max_sites: number
+          max_storage_mb: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          max_custom_domains?: number | null
+          max_monthly_builds?: number | null
+          max_sites?: number
+          max_storage_mb?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          max_custom_domains?: number | null
+          max_monthly_builds?: number | null
+          max_sites?: number
+          max_storage_mb?: number | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

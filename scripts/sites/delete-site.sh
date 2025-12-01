@@ -209,13 +209,18 @@ else
     log_skip "Environment file does not exist"
 fi
 
-# 7. Reload Caddy
+# 7. Reload Caddy (with timeout to prevent hanging)
 log_info "Reloading Caddy..."
-if systemctl reload caddy 2>/dev/null; then
+if timeout 10 systemctl reload caddy 2>/dev/null; then
     log_success "Caddy reloaded"
 else
-    log_warn "Failed to reload Caddy"
-    ((ERRORS++)) || true
+    log_warn "Failed to reload Caddy (timed out or error) - trying restart"
+    if timeout 15 systemctl restart caddy 2>/dev/null; then
+        log_success "Caddy restarted"
+    else
+        log_warn "Failed to restart Caddy"
+        ((ERRORS++)) || true
+    fi
 fi
 
 # 8. Verification

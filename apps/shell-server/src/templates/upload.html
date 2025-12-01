@@ -4,7 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>Upload Files</title>
+  <title>SHELL | Upload</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%231e1e1e'/%3E%3Ctext x='12' y='68' font-family='monospace' font-size='50' font-weight='bold' fill='%230dbc79'%3E%24_%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.16/themes/default-dark/style.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.16/jstree.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -16,6 +20,18 @@
     .container {
       max-width: 800px;
       margin: 0 auto;
+      transition: max-width 0.3s ease;
+    }
+    .container.expanded {
+      max-width: 1400px;
+    }
+    .main-content {
+      display: block;
+    }
+    .main-content.grid {
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      gap: 20px;
     }
     .header {
       background: #2d2d2d;
@@ -82,7 +98,8 @@
       margin-bottom: 8px;
       font-weight: 500;
     }
-    .form-group input[type="text"] {
+    .form-group input[type="text"],
+    .form-group select {
       width: 100%;
       padding: 12px;
       border: 1px solid #444;
@@ -91,9 +108,81 @@
       border-radius: 4px;
       font-size: 14px;
     }
-    .form-group input:focus {
+    .form-group input:focus,
+    .form-group select:focus {
       outline: none;
       border-color: #0dbc79;
+    }
+    .form-group select option {
+      background: #1e1e1e;
+      color: #fff;
+    }
+    .form-group select optgroup {
+      background: #2d2d2d;
+      color: #888;
+    }
+    .destination-row {
+      display: flex;
+      gap: 8px;
+    }
+    .destination-row select {
+      flex: 1;
+    }
+    .list-btn {
+      padding: 12px 16px;
+      background: #2472c8;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .list-btn:hover {
+      background: #1e5fa8;
+    }
+    .file-tree {
+      background: #2d2d2d;
+      border-radius: 8px;
+      display: none;
+      flex-direction: column;
+      height: 100%;
+      min-height: 400px;
+    }
+    .file-tree.show {
+      display: flex;
+    }
+    .file-tree .path-header {
+      color: #0dbc79;
+      padding: 12px 16px;
+      border-bottom: 1px solid #444;
+      font-size: 13px;
+      font-family: monospace;
+      flex-shrink: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .file-tree .close-btn {
+      background: #f14c4c;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 10px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .file-tree .close-btn:hover {
+      background: #d43e3e;
+    }
+    #file-tree-content {
+      flex: 1;
+      overflow: auto;
+      background: #1e1e1e;
+      border-radius: 0 0 8px 8px;
+    }
+    .file-tree .jstree-container-ul {
+      padding: 8px !important;
     }
     .dropzone {
       border: 2px dashed #444;
@@ -222,6 +311,15 @@
       border: 1px solid #f14c4c;
       color: #f14c4c;
     }
+    @media (max-width: 1024px) {
+      .main-content.grid {
+        grid-template-columns: 1fr;
+      }
+      .file-tree {
+        min-height: 300px;
+        max-height: 400px;
+      }
+    }
     @media (max-width: 768px) {
       body {
         padding: 10px;
@@ -259,56 +357,84 @@
       </div>
     </div>
 
-    <div class="workspace-info">
-      Workspace: <strong id="workspace-display"></strong>
-    </div>
+    <div class="main-content" id="main-content">
+      <div class="upload-section">
+        <div class="form-group">
+          <label for="destination">Upload destination</label>
+          <div class="destination-row">
+            <select id="destination">
+              <option value="root">{{UPLOAD_PATH}}</option>
+              <optgroup label="Websites" id="sites-group">
+                <option value="" disabled>Loading sites...</option>
+              </optgroup>
+            </select>
+            <button type="button" class="list-btn" id="list-files-btn">List Files</button>
+          </div>
+        </div>
 
-    <div class="upload-section">
-      <div class="form-group">
-        <label for="target-dir">Target Directory (relative to workspace)</label>
-        <input type="text" id="target-dir" placeholder="./ (current directory)" value="./" />
-        <button class="check-button" id="check-button">Check Directory</button>
+        <div class="form-group">
+          <label for="target-dir">Subdirectory (optional)</label>
+          <input type="text" id="target-dir" placeholder="Leave empty for root" value="" />
+          <button class="check-button" id="check-button">Check Directory</button>
+        </div>
+
+        <div class="dropzone" id="dropzone">
+          <div class="dropzone-icon">📦</div>
+          <div class="dropzone-text">Drag & drop a ZIP file here</div>
+          <div class="dropzone-subtext">or click to browse</div>
+        </div>
+
+        <input type="file" id="file-input" class="file-input" accept=".zip" />
+
+        <div class="selected-file" id="selected-file">
+          <div class="selected-file-name" id="file-name"></div>
+          <div class="selected-file-size" id="file-size"></div>
+        </div>
+
+        <button class="upload-button" id="upload-button">Upload & Extract</button>
+
+        <div class="progress" id="progress">
+          <div class="progress-bar" id="progress-bar"></div>
+        </div>
+
+        <div class="message" id="message"></div>
       </div>
 
-      <div class="dropzone" id="dropzone">
-        <div class="dropzone-icon">📦</div>
-        <div class="dropzone-text">Drag & drop a ZIP file here</div>
-        <div class="dropzone-subtext">or click to browse</div>
+      <div class="file-tree" id="file-tree">
+        <div class="path-header">
+          <span id="file-tree-path"></span>
+          <button class="close-btn" id="close-tree-btn">Close</button>
+        </div>
+        <div id="file-tree-content"></div>
       </div>
-
-      <input type="file" id="file-input" class="file-input" accept=".zip" />
-
-      <div class="selected-file" id="selected-file">
-        <div class="selected-file-name" id="file-name"></div>
-        <div class="selected-file-size" id="file-size"></div>
-      </div>
-
-      <button class="upload-button" id="upload-button">Upload & Extract</button>
-
-      <div class="progress" id="progress">
-        <div class="progress-bar" id="progress-bar"></div>
-      </div>
-
-      <div class="message" id="message"></div>
     </div>
   </div>
 
   <script>
     // State management (React-like)
+    const defaultUploadPath = '{{UPLOAD_PATH}}';
     const state = {
-      workspace: new URLSearchParams(window.location.search).get('workspace') || 'root',
-      targetDir: './',
+      workspace: 'root',
+      uploadPath: defaultUploadPath,
+      targetDir: '',
       file: null,
       uploading: false,
       checking: false,
       progress: 0,
       message: '',
-      messageType: ''
+      messageType: '',
+      sites: []
     };
 
     // DOM references
     const elements = {
-      workspaceDisplay: document.getElementById('workspace-display'),
+      container: document.querySelector('.container'),
+      mainContent: document.getElementById('main-content'),
+      destination: document.getElementById('destination'),
+      sitesGroup: document.getElementById('sites-group'),
+      listFilesBtn: document.getElementById('list-files-btn'),
+      fileTree: document.getElementById('file-tree'),
+      closeTreeBtn: document.getElementById('close-tree-btn'),
       targetDirInput: document.getElementById('target-dir'),
       checkButton: document.getElementById('check-button'),
       dropzone: document.getElementById('dropzone'),
@@ -331,6 +457,18 @@
       return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
     }
 
+    function showFileTree(show) {
+      if (show) {
+        elements.fileTree.classList.add('show');
+        elements.mainContent.classList.add('grid');
+        elements.container.classList.add('expanded');
+      } else {
+        elements.fileTree.classList.remove('show');
+        elements.mainContent.classList.remove('grid');
+        elements.container.classList.remove('expanded');
+      }
+    }
+
     function setState(updates) {
       Object.assign(state, updates);
       render();
@@ -338,9 +476,6 @@
 
     // Render function (updates UI based on state)
     function render() {
-      // Workspace display
-      elements.workspaceDisplay.textContent = state.workspace;
-
       // Target directory
       elements.targetDirInput.value = state.targetDir;
 
@@ -547,6 +682,92 @@
 
     elements.logoutButton.addEventListener('click', () => {
       window.location.href = '/logout';
+    });
+
+    // Load sites into dropdown
+    let sitesBasePath = '';
+    fetch('/api/sites')
+      .then(r => r.json())
+      .then(data => {
+        if (data.sitesPath) {
+          sitesBasePath = data.sitesPath;
+        }
+        if (data.sites && data.sites.length > 0) {
+          state.sites = data.sites;
+          elements.sitesGroup.innerHTML = data.sites
+            .map(site => `<option value="site:${site}">${site} → ${sitesBasePath}/${site}/user</option>`)
+            .join('');
+        } else {
+          elements.sitesGroup.innerHTML = '<option value="" disabled>No sites available</option>';
+        }
+      })
+      .catch(() => {
+        elements.sitesGroup.innerHTML = '<option value="" disabled>Failed to load sites</option>';
+      });
+
+    // Handle destination change
+    elements.destination.addEventListener('change', (e) => {
+      const value = e.target.value;
+      showFileTree(false);
+      if (value === 'root') {
+        setState({ workspace: 'root', uploadPath: defaultUploadPath });
+      } else if (value.startsWith('site:')) {
+        const siteName = value.slice(5);
+        setState({
+          workspace: value,
+          uploadPath: `${sitesBasePath}/${siteName}/user`
+        });
+      }
+    });
+
+    // Close tree button
+    elements.closeTreeBtn.addEventListener('click', () => {
+      showFileTree(false);
+    });
+
+    // List files button
+    elements.listFilesBtn.addEventListener('click', async () => {
+      elements.listFilesBtn.textContent = 'Loading...';
+      elements.listFilesBtn.disabled = true;
+
+      const formData = new FormData();
+      formData.append('workspace', state.workspace);
+
+      try {
+        const res = await fetch('/api/list-files', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        if (res.ok && data.tree) {
+          document.getElementById('file-tree-path').textContent = data.path;
+          const treeContent = document.getElementById('file-tree-content');
+
+          // Destroy existing jstree if any
+          if ($.jstree.reference(treeContent)) {
+            $(treeContent).jstree('destroy');
+          }
+
+          // Initialize jstree
+          $(treeContent).jstree({
+            core: {
+              data: data.tree,
+              themes: { name: 'default-dark', dots: true, icons: true }
+            }
+          });
+
+          showFileTree(true);
+        } else {
+          document.getElementById('file-tree-path').textContent = 'Error: ' + (data.error || 'Failed to list files');
+          document.getElementById('file-tree-content').innerHTML = '';
+          showFileTree(true);
+        }
+      } catch (err) {
+        document.getElementById('file-tree-path').textContent = 'Error: ' + err.message;
+        document.getElementById('file-tree-content').innerHTML = '';
+        showFileTree(true);
+      }
+
+      elements.listFilesBtn.textContent = 'List Files';
+      elements.listFilesBtn.disabled = false;
     });
 
     // Initial render

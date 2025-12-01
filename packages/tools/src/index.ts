@@ -42,3 +42,6 @@ export {
   plural,
 } from "./display-config.js"
 export type { ToolDisplayConfig } from "./display-config.js"
+
+// AI utilities
+export { askAI, CLAUDE_MODELS, type AskAIOptions, type ClaudeModel } from "./lib/ask-ai.js"

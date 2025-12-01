@@ -39,11 +39,17 @@ export function useResizablePanel(options: UseResizablePanelOptions = {}) {
     isDraggingRef.current = true
     setIsResizing(true)
 
+    // Capture starting position and width to track delta
+    const startX = e.clientX
+    const startWidth = width
+
     const handleMouseMove = (moveEvent: MouseEvent) => {
       // Guard: only resize if still dragging
       if (!isDraggingRef.current) return
 
-      const newWidth = window.innerWidth - moveEvent.clientX
+      // Calculate delta from start position (moving left = larger, moving right = smaller)
+      const delta = startX - moveEvent.clientX
+      const newWidth = startWidth + delta
       const maxWidth = window.innerWidth * maxWidthPercent
       const clampedWidth = Math.max(minWidth, Math.min(newWidth, maxWidth))
 
@@ -73,6 +79,7 @@ export function useResizablePanel(options: UseResizablePanelOptions = {}) {
 
   return {
     width,
+    setWidth,
     isResizing,
     handleMouseDown,
   }

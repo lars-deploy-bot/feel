@@ -189,5 +189,3 @@ export function validateLinearIssue(data: unknown): boolean {
   const issue = data as Record<string, unknown>
   return "identifier" in issue && "title" in issue
 }
-
-export default LinearIssueResult

@@ -123,9 +123,17 @@ describe("Organization Resolver", () => {
 
     test("returns first org if user has multiple orgs", async () => {
       // Manually create 2 orgs for user
-      const { data: org1 } = await iam.from("orgs").insert({ name: "Org 1", credits: 100 }).select("org_id").single()
+      const { data: org1 } = await iam
+        .from("orgs")
+        .insert({ name: "Org 1", credits: 100, is_test_env: true })
+        .select("org_id")
+        .single()
 
-      const { data: org2 } = await iam.from("orgs").insert({ name: "Org 2", credits: 200 }).select("org_id").single()
+      const { data: org2 } = await iam
+        .from("orgs")
+        .insert({ name: "Org 2", credits: 200, is_test_env: true })
+        .select("org_id")
+        .single()
 
       if (!org1 || !org2) throw new Error("Failed to create test orgs")
 
@@ -184,9 +192,17 @@ describe("Organization Resolver", () => {
 
     test("returns multiple orgs if user has them", async () => {
       // Create 2 orgs
-      const { data: org1 } = await iam.from("orgs").insert({ name: "Personal", credits: 100 }).select("org_id").single()
+      const { data: org1 } = await iam
+        .from("orgs")
+        .insert({ name: "Personal", credits: 100, is_test_env: true })
+        .select("org_id")
+        .single()
 
-      const { data: org2 } = await iam.from("orgs").insert({ name: "Work", credits: 200 }).select("org_id").single()
+      const { data: org2 } = await iam
+        .from("orgs")
+        .insert({ name: "Work", credits: 200, is_test_env: true })
+        .select("org_id")
+        .single()
 
       if (!org1 || !org2) throw new Error("Failed to create orgs")
 

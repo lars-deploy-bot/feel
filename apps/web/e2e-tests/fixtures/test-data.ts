@@ -8,12 +8,12 @@
  * - Self-documenting
  */
 
-import { SECURITY, TIMEOUTS } from "@webalive/shared"
+import { SECURITY, TEST_CONFIG, TIMEOUTS } from "@webalive/shared"
 
 export const TEST_USER = {
   email: SECURITY.LOCAL_TEST.EMAIL,
   password: SECURITY.LOCAL_TEST.PASSWORD,
-  workspace: "test.bridge.local",
+  workspace: `test.${TEST_CONFIG.EMAIL_DOMAIN}`,
 } as const
 
 export const TEST_MESSAGES = {
@@ -51,5 +51,5 @@ export const TEST_WORKSPACE = {
   /** Physical path where test workspace is created */
   path: "/tmp/test-workspace",
   /** Workspace name used in API requests */
-  name: "test.bridge.local",
+  name: `test.${TEST_CONFIG.EMAIL_DOMAIN}`,
 } as const

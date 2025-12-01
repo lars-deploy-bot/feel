@@ -6,6 +6,7 @@
 
 import { randomUUID } from "node:crypto"
 import { createClient } from "@supabase/supabase-js"
+import { TEST_CONFIG } from "@webalive/shared"
 import { hash } from "bcrypt"
 import jwt from "jsonwebtoken"
 import { getUserDefaultOrgId } from "@/lib/deployment/org-resolver"
@@ -33,15 +34,15 @@ export interface TestUser {
  * DO NOT use @test.com, @example.com, etc. - real users might use these!
  *
  * @param email - Test user email (default: auto-generated with @bridge-vitest.internal)
- * @param credits - Initial credits for org (default: 500)
- * @param password - Plain text password to hash and store (default: "test-password-123")
+ * @param credits - Initial credits for org (default: TEST_CONFIG.DEFAULT_CREDITS)
+ * @param password - Plain text password to hash and store (default: TEST_CONFIG.TEST_PASSWORD)
  * @returns Test user with userId and orgId
  * @throws Error if email doesn't use an allowed internal test domain
  */
 export async function createTestUser(
   email?: string,
-  credits: number = 500,
-  password: string = "test-password-123",
+  credits: number = TEST_CONFIG.DEFAULT_CREDITS,
+  password: string = TEST_CONFIG.TEST_PASSWORD,
 ): Promise<TestUser> {
   const testEmail = email || generateTestEmail()
 
@@ -76,6 +77,7 @@ export async function createTestUser(
         status: "active",
         is_test_env: true,
         metadata: {},
+        email_verified: true, // Test users are always verified
       })
       .select("user_id")
       .single()
@@ -87,8 +89,8 @@ export async function createTestUser(
     userId = newUser.user_id
   }
 
-  // Get or create default organization
-  const orgId = await getUserDefaultOrgId(userId, testEmail, credits, iam)
+  // Get or create default organization (with is_test_env: true)
+  const orgId = await getUserDefaultOrgId(userId, testEmail, credits, iam, true)
 
   // Get org name
   const { data: org } = await iam.from("orgs").select("name").eq("org_id", orgId).single()

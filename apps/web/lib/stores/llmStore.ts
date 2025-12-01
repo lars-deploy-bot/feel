@@ -69,8 +69,7 @@ const useLLMStoreBase = create<LLMStore>()(
           if (!key) {
             try {
               removeApiKey()
-              // Reset to default model when clearing API key (credit users get default)
-              set({ apiKey: null, error: null, model: DEFAULT_MODEL })
+              set({ apiKey: null, error: null })
             } catch (error) {
               const errorMessage = error instanceof Error ? error.message : "Failed to clear API key"
               set({ error: errorMessage })
@@ -106,8 +105,7 @@ const useLLMStoreBase = create<LLMStore>()(
         clearApiKey: () => {
           try {
             removeApiKey()
-            // Reset to default model when clearing API key (credit users get default)
-            set({ apiKey: null, error: null, model: DEFAULT_MODEL })
+            set({ apiKey: null, error: null })
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "Failed to clear API key"
             set({ error: errorMessage })
@@ -137,20 +135,12 @@ const useLLMStoreBase = create<LLMStore>()(
         }
 
         // Load API key from secure storage
+        // Note: Model enforcement is handled by the backend (unrestricted users can choose any model)
         try {
           state.apiKey = loadApiKey()
-
-          // Force default model for credit users (no API key)
-          // This handles existing users who previously selected a different model
-          if (!state.apiKey && state.model !== DEFAULT_MODEL) {
-            console.log(`No API key found, forcing model to default (was: ${state.model})`)
-            state.model = DEFAULT_MODEL
-          }
         } catch (error) {
           console.error("Failed to load API key:", error)
           state.apiKey = null
-          // Ensure default model on error
-          state.model = DEFAULT_MODEL
         }
       },
     },

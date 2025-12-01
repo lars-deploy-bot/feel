@@ -5,7 +5,7 @@ set -e
 source "$(dirname "$0")/lib/common.sh"
 
 # Validate required environment variables
-require_var SITE_USER SITE_DOMAIN TARGET_DIR TEMPLATE_PATH LEGACY_SITES_ROOT
+require_var SITE_USER SITE_DOMAIN TARGET_DIR TEMPLATE_PATH
 
 log_info "Setting up filesystem for: $SITE_DOMAIN"
 
@@ -13,21 +13,16 @@ log_info "Setting up filesystem for: $SITE_DOMAIN"
 log_info "Creating directory: $TARGET_DIR"
 mkdir -p "$TARGET_DIR"
 
-# Check if this is a migration from legacy location
-LEGACY_PATH="${LEGACY_SITES_ROOT}/${SITE_DOMAIN}"
-if [[ -d "$LEGACY_PATH" ]]; then
-    log_info "Migrating from legacy location: $LEGACY_PATH"
-    # Copy all files except node_modules and .git
-    rsync -av --exclude='node_modules' --exclude='.git' "${LEGACY_PATH}/" "${TARGET_DIR}/"
-else
-    log_info "Copying from template: $TEMPLATE_PATH"
-    # Copy entire template directory (includes user/, scripts/, and root files)
-    # Exclude node_modules, .git, and symlinks to prevent issues
-    rsync -av --exclude='node_modules' --exclude='.git' --exclude='template' "${TEMPLATE_PATH}/" "${TARGET_DIR}/"
+# Copy from template
+log_info "Copying from template: $TEMPLATE_PATH"
+# Copy entire template directory (includes user/, scripts/, and root files)
+# Exclude node_modules, .git, and symlinks to prevent issues
+# Use --no-owner --no-group to not preserve source ownership (we'll chown after)
+rsync -av --no-owner --no-group --exclude='node_modules' --exclude='.git' --exclude='template' "${TEMPLATE_PATH}/" "${TARGET_DIR}/"
 
-    # Create site-specific Caddyfile (overwrite template's generic one)
-    log_info "Creating site-specific Caddyfile..."
-    cat > "${TARGET_DIR}/Caddyfile" <<EOF
+# Create site-specific Caddyfile (overwrite template's generic one)
+log_info "Creating site-specific Caddyfile..."
+cat > "${TARGET_DIR}/Caddyfile" <<EOF
 # Auto-generated Caddyfile for ${SITE_DOMAIN}
 # Port: __PORT__
 
@@ -42,7 +37,6 @@ ${SITE_DOMAIN} {
     }
 }
 EOF
-fi
 
 # Set ownership
 log_info "Setting ownership to: $SITE_USER:$SITE_USER"

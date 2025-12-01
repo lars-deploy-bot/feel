@@ -86,7 +86,7 @@ import { env } from "@webalive/env/server"  // Will fail with node:fs error
 
 **Claude Configuration:**
 - `CLAUDE_MODEL` - Claude model to use (default: `claude-sonnet-4-5-20250929`)
-- `CLAUDE_MAX_TURNS` - Max conversation turns (default: `25`)
+- Note: `CLAUDE_MAX_TURNS` is not an env var - use `DEFAULTS.CLAUDE_MAX_TURNS` from `@webalive/shared`
 
 **Integrations:**
 - `GROQ_API_SECRET` - Groq API key

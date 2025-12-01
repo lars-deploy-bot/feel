@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { CLAUDE_MODELS } from "@/lib/models/claude-models"
 import { type CancelState, createNDJSONStream } from "../ndjson-stream-handler"
+
+// Default test model - using Haiku for tests
+const TEST_MODEL = CLAUDE_MODELS.HAIKU_4_5
 
 /**
  * NDJSON Stream Handler Tests
@@ -41,6 +45,7 @@ describe("NDJSON Stream Handler", () => {
         requestId: "test-req-1",
         conversationWorkspace: "test-workspace",
         tokenSource: "user_provided",
+        model: TEST_MODEL,
         cancelState: createCancelState(),
       })
 
@@ -63,6 +68,7 @@ describe("NDJSON Stream Handler", () => {
         requestId: "test-req-2",
         conversationWorkspace: "test-workspace",
         tokenSource: "workspace",
+        model: TEST_MODEL,
         cancelState: createCancelState(),
         onSessionIdReceived: sessionCallback,
       })
@@ -83,6 +89,7 @@ describe("NDJSON Stream Handler", () => {
         requestId: "test-req-3",
         conversationWorkspace: "test-workspace",
         tokenSource: "workspace",
+        model: TEST_MODEL,
         cancelState: createCancelState(),
       })
 
@@ -102,6 +109,7 @@ describe("NDJSON Stream Handler", () => {
         requestId: "test-req-4",
         conversationWorkspace: "test-workspace",
         tokenSource: "user_provided",
+        model: TEST_MODEL,
         cancelState: createCancelState(),
       })
 
@@ -123,6 +131,7 @@ describe("NDJSON Stream Handler", () => {
         requestId: "test-req-5",
         conversationWorkspace: "test-workspace",
         tokenSource: "user_provided",
+        model: TEST_MODEL,
         cancelState: createCancelState(),
       })
 
@@ -143,6 +152,7 @@ describe("NDJSON Stream Handler", () => {
         requestId: "test-req-6",
         conversationWorkspace: "test-workspace",
         tokenSource: "user_provided",
+        model: TEST_MODEL,
         cancelState: createCancelState(),
       })
 
@@ -168,6 +178,7 @@ describe("NDJSON Stream Handler", () => {
           requestId: "test-req",
           conversationWorkspace: "test-workspace",
           tokenSource: "user_provided",
+          model: TEST_MODEL,
           cancelState: createCancelState(),
         })
 
@@ -191,6 +202,7 @@ describe("NDJSON Stream Handler", () => {
           requestId: id,
           conversationWorkspace: "test-workspace",
           tokenSource: "user_provided",
+          model: TEST_MODEL,
           cancelState: createCancelState(),
         })
 
@@ -214,6 +226,7 @@ describe("NDJSON Stream Handler", () => {
           requestId: "test-req",
           conversationWorkspace: workspace,
           tokenSource: "user_provided",
+          model: TEST_MODEL,
           cancelState: createCancelState(),
         })
 
@@ -236,6 +249,7 @@ describe("NDJSON Stream Handler", () => {
         requestId: "test-req-7",
         conversationWorkspace: "test-workspace",
         tokenSource: "user_provided",
+        model: TEST_MODEL,
         cancelState: createCancelState(),
       })
 
@@ -257,6 +271,7 @@ describe("NDJSON Stream Handler", () => {
         requestId: "test-req-8",
         conversationWorkspace: "test-workspace",
         tokenSource: "user_provided",
+        model: TEST_MODEL,
         cancelState: createCancelState(),
       })
 
@@ -280,6 +295,7 @@ describe("NDJSON Stream Handler", () => {
         requestId: "test-req-error-1",
         conversationWorkspace: "test-workspace",
         tokenSource: "user_provided",
+        model: TEST_MODEL,
         cancelState: createCancelState(),
       })
 
@@ -300,6 +316,7 @@ describe("NDJSON Stream Handler", () => {
           requestId: "test-req-error-2",
           conversationWorkspace: "test-workspace",
           tokenSource: "user_provided",
+          model: TEST_MODEL,
           cancelState: createCancelState(),
         })
       }).not.toThrow()
@@ -320,6 +337,7 @@ describe("NDJSON Stream Handler", () => {
         requestId: "test-req-type-1",
         conversationWorkspace: "test-workspace",
         tokenSource: "user_provided",
+        model: TEST_MODEL,
         cancelState: createCancelState(),
       })
 
@@ -347,6 +365,7 @@ describe("NDJSON Stream Handler", () => {
         requestId: "req-1",
         conversationWorkspace: "ws-1",
         tokenSource: "user_provided",
+        model: TEST_MODEL,
         cancelState: createCancelState(),
       })
 
@@ -356,6 +375,7 @@ describe("NDJSON Stream Handler", () => {
         requestId: "req-2",
         conversationWorkspace: "ws-2",
         tokenSource: "workspace",
+        model: TEST_MODEL,
         cancelState: createCancelState(),
       })
 
@@ -388,6 +408,7 @@ describe("NDJSON Stream Handler", () => {
         requestId: "test-cleanup-1",
         conversationWorkspace: "test-workspace",
         tokenSource: "workspace",
+        model: TEST_MODEL,
         cancelState: createCancelState(),
         onStreamComplete,
       })
@@ -420,6 +441,7 @@ describe("NDJSON Stream Handler", () => {
         requestId: "test-cleanup-2",
         conversationWorkspace: "test-workspace",
         tokenSource: "workspace",
+        model: TEST_MODEL,
         cancelState: createCancelState(),
         onStreamComplete,
       })
@@ -453,6 +475,7 @@ describe("NDJSON Stream Handler", () => {
         requestId: "test-cleanup-3",
         conversationWorkspace: "test-workspace",
         tokenSource: "workspace",
+        model: TEST_MODEL,
         cancelState: createCancelState(),
         onStreamComplete,
       })
@@ -489,6 +512,7 @@ describe("NDJSON Stream Handler", () => {
         requestId: "test-close-1",
         conversationWorkspace: "test-workspace",
         tokenSource: "workspace",
+        model: TEST_MODEL,
         cancelState: createCancelState(),
       })
 
@@ -524,6 +548,7 @@ describe("NDJSON Stream Handler", () => {
         requestId: "test-no-callback",
         conversationWorkspace: "test-workspace",
         tokenSource: "workspace",
+        model: TEST_MODEL,
         cancelState: createCancelState(),
         // No onStreamComplete provided
       })
@@ -549,6 +574,7 @@ describe("NDJSON Stream Handler", () => {
         requestId: "test-once",
         conversationWorkspace: "test-workspace",
         tokenSource: "workspace",
+        model: TEST_MODEL,
         cancelState: createCancelState(),
         onStreamComplete,
       })
@@ -603,6 +629,7 @@ describe("NDJSON Stream Handler", () => {
         requestId: "test-early-release",
         conversationWorkspace: "test-workspace",
         tokenSource: "workspace",
+        model: TEST_MODEL,
         cancelState: createCancelState(),
         onStreamComplete,
       })

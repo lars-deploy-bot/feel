@@ -9,6 +9,11 @@ require_var SITE_DOMAIN SITE_PORT CADDYFILE_PATH CADDY_LOCK_PATH FLOCK_TIMEOUT
 
 log_info "Configuring Caddy for: $SITE_DOMAIN"
 
+# Generate preview subdomain label (e.g., windowsxp.alive.best -> windowsxp-alive-best)
+PREVIEW_LABEL=$(echo "$SITE_DOMAIN" | tr '.' '-')
+PREVIEW_DOMAIN="${PREVIEW_LABEL}.preview.terminal.goalive.nl"
+log_info "Preview subdomain: $PREVIEW_DOMAIN"
+
 # Acquire lock on Caddyfile (30 second timeout)
 log_info "Acquiring Caddyfile lock..."
 exec 200>"$CADDY_LOCK_PATH"
@@ -37,8 +42,18 @@ else
     cat >> "$TMP_FILE" <<EOF
 
 ${SITE_DOMAIN} {
-    import common_headers
     import image_serving
+
+    header {
+        # Security headers (embeddable - allows iframe preview)
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
     reverse_proxy localhost:${SITE_PORT} {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
@@ -52,7 +67,49 @@ EOF
     mv "$TMP_FILE" "$CADDYFILE_PATH"
 fi
 
-log_success "Caddyfile updated"
+# Also add/update preview subdomain block
+ESCAPED_PREVIEW=$(echo "$PREVIEW_DOMAIN" | sed 's/\./\\./g')
+
+if grep -q "^${PREVIEW_DOMAIN} {" "$CADDYFILE_PATH"; then
+    log_info "Preview block exists, updating port..."
+    sed -i "/^${ESCAPED_PREVIEW} {/,/^}/ s/reverse_proxy localhost:[0-9]*/reverse_proxy localhost:${SITE_PORT}/" "$CADDYFILE_PATH"
+else
+    log_info "Creating preview subdomain block..."
+
+    TMP_FILE="${CADDYFILE_PATH}.tmp.$$"
+    cp "$CADDYFILE_PATH" "$TMP_FILE"
+
+    cat >> "$TMP_FILE" <<EOF
+
+${PREVIEW_DOMAIN} {
+    import image_serving
+
+    reverse_proxy localhost:${SITE_PORT} {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+EOF
+
+    mv "$TMP_FILE" "$CADDYFILE_PATH"
+fi
+
+log_success "Caddyfile updated (main + preview)"
 
 # Release lock
 flock -u 200

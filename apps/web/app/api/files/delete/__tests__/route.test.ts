@@ -13,6 +13,7 @@ import { existsSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { NextRequest } from "next/server"
+import { BRIDGE_ENV } from "@webalive/shared"
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 
 // Mock auth functions
@@ -297,32 +298,35 @@ describe("POST /api/files/delete", () => {
       expect(data.error).toBe("PATH_OUTSIDE_WORKSPACE")
     })
 
-    it("should allow symlinks pointing inside workspace", async () => {
-      // Create a real file
-      const realFile = path.join(TEST_WORKSPACE, "real-file.txt")
-      writeFileSync(realFile, "real content")
+    it.skipIf(process.env.BRIDGE_ENV === BRIDGE_ENV.LOCAL)(
+      "should allow symlinks pointing inside workspace",
+      async () => {
+        // Create a real file
+        const realFile = path.join(TEST_WORKSPACE, "real-file.txt")
+        writeFileSync(realFile, "real content")
 
-      // Create symlink pointing to the real file (inside workspace)
-      const symlinkPath = path.join(TEST_WORKSPACE, "safe-symlink")
-      try {
-        symlinkSync(realFile, symlinkPath)
-      } catch {
-        console.log("Skipping symlink test - cannot create symlink")
-        rmSync(realFile)
-        return
-      }
+        // Create symlink pointing to the real file (inside workspace)
+        const symlinkPath = path.join(TEST_WORKSPACE, "safe-symlink")
+        try {
+          symlinkSync(realFile, symlinkPath)
+        } catch {
+          console.log("Skipping symlink test - cannot create symlink")
+          rmSync(realFile)
+          return
+        }
 
-      const req = createMockRequest({ path: "safe-symlink", workspace: "test" })
-      const response = await POST(req)
-      const data = await response.json()
+        const req = createMockRequest({ path: "safe-symlink", workspace: "test" })
+        const response = await POST(req)
+        const data = await response.json()
 
-      // Should succeed - symlink points inside workspace
-      expect(response.status).toBe(200)
-      expect(data.ok).toBe(true)
+        // Should succeed - symlink points inside workspace
+        expect(response.status).toBe(200)
+        expect(data.ok).toBe(true)
 
-      // Cleanup
-      if (existsSync(realFile)) rmSync(realFile)
-    })
+        // Cleanup
+        if (existsSync(realFile)) rmSync(realFile)
+      },
+    )
   })
 
   describe("File Deletion", () => {

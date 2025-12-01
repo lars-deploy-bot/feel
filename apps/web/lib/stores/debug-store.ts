@@ -2,6 +2,7 @@
 
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
+import { DOMAINS } from "@webalive/shared"
 
 const isDev = process.env.NODE_ENV === "development"
 
@@ -11,12 +12,12 @@ function isDevOrStaging(): boolean {
   const hostname = window.location.hostname
   return (
     // Staging environments
-    hostname === "staging.terminal.goalive.nl" ||
-    hostname.endsWith(".staging.goalive.nl") ||
+    hostname === DOMAINS.BRIDGE_STAGING_HOST ||
+    hostname.endsWith(DOMAINS.STAGING_SUFFIX) ||
     hostname.includes(".staging.") ||
     // Dev environments
-    hostname === "dev.terminal.goalive.nl" ||
-    hostname.endsWith(".dev.goalive.nl") ||
+    hostname === DOMAINS.BRIDGE_DEV_HOST ||
+    hostname.endsWith(DOMAINS.DEV_SUFFIX) ||
     hostname.startsWith("dev.") ||
     // Localhost
     hostname === "localhost"
@@ -30,6 +31,7 @@ interface DebugState {
   isSSETerminalMinimized: boolean
   showSandbox: boolean
   isSandboxMinimized: boolean
+  sandboxWidth: number | null // null = use default (half viewport)
 }
 
 // Actions interface - grouped under stable object (Guide §14.3)
@@ -45,6 +47,7 @@ interface DebugActions {
     setSSETerminalMinimized: (minimized: boolean) => void
     setSandbox: (show: boolean) => void
     setSandboxMinimized: (minimized: boolean) => void
+    setSandboxWidth: (width: number) => void
   }
 }
 
@@ -62,6 +65,7 @@ export type DebugStore = DebugState &
     setSSETerminalMinimized: (minimized: boolean) => void
     setSandbox: (show: boolean) => void
     setSandboxMinimized: (minimized: boolean) => void
+    setSandboxWidth: (width: number) => void
   }
 
 /**
@@ -80,7 +84,14 @@ const useDebugStoreBase = create<DebugStore>()(
         toggleView: () => set(state => ({ isDebugView: !state.isDebugView })),
         toggleSSETerminal: () => set(state => ({ showSSETerminal: !state.showSSETerminal })),
         toggleSSETerminalMinimized: () => set(state => ({ isSSETerminalMinimized: !state.isSSETerminalMinimized })),
-        toggleSandbox: () => set(state => ({ showSandbox: !state.showSandbox })),
+        toggleSandbox: () =>
+          set(state => ({
+            showSandbox: !state.showSandbox,
+            // When opening sandbox, always show it expanded (not minimized)
+            // Also minimize SSE terminal to avoid both panels competing for space
+            isSandboxMinimized: state.showSandbox ? state.isSandboxMinimized : false,
+            isSSETerminalMinimized: state.showSandbox ? state.isSSETerminalMinimized : true,
+          })),
         toggleSandboxMinimized: () => set(state => ({ isSandboxMinimized: !state.isSandboxMinimized })),
         setDebugView: (show: boolean) => set({ isDebugView: show }),
         setSSETerminal: (show: boolean) => set({ showSSETerminal: show }),
@@ -90,6 +101,7 @@ const useDebugStoreBase = create<DebugStore>()(
         setSandbox: (show: boolean) => set({ showSandbox: show }),
         setSandboxMinimized: (minimized: boolean) =>
           set({ isSandboxMinimized: minimized, isSSETerminalMinimized: minimized ? minimized : true }),
+        setSandboxWidth: (width: number) => set({ sandboxWidth: width }),
       }
       return {
         isDebugView: false,
@@ -97,19 +109,21 @@ const useDebugStoreBase = create<DebugStore>()(
         isSSETerminalMinimized: false,
         showSandbox: false,
         isSandboxMinimized: false,
+        sandboxWidth: null,
         actions,
         // Legacy direct exports for backwards compatibility
         ...actions,
       }
     },
     {
-      name: "claude-bridge-debug-view-v5",
+      name: "claude-bridge-debug-view-v6",
       partialize: state => ({
         isDebugView: state.isDebugView,
         showSSETerminal: state.showSSETerminal,
         isSSETerminalMinimized: state.isSSETerminalMinimized,
         showSandbox: state.showSandbox,
         isSandboxMinimized: state.isSandboxMinimized,
+        sandboxWidth: state.sandboxWidth,
       }),
     },
   ),
@@ -129,6 +143,9 @@ export const useSandbox = () => useDebugStoreBase(state => state.showSandbox)
 
 // Atomic selector: Sandbox minimized state (Guide §14.1)
 export const useSandboxMinimized = () => useDebugStoreBase(state => state.isSandboxMinimized)
+
+// Atomic selector: Sandbox width (Guide §14.1)
+export const useSandboxWidth = () => useDebugStoreBase(state => state.sandboxWidth)
 
 // Actions hook - stable reference (Guide §14.3)
 export const useDebugActions = () => useDebugStoreBase(state => state.actions)

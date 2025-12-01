@@ -37,13 +37,8 @@
     "*.config.{js,ts}",
     "apps/web/lib/agent-workspace-helpers.mjs"
   ],
-  "ignoreDependencies": [
-    "groq-sdk",
-    "msgpackr",
-    "react-markdown",
-    "ws"
-  ],
-  "ignoreBinaries": ["pm2", "go", "husky", "docker-compose"],
+  "ignoreDependencies": ["groq-sdk", "msgpackr", "react-markdown", "ws"],
+  "ignoreBinaries": ["go", "docker-compose", "journalctl"],
   "ignoreExportsUsedInFile": true,
   "includeEntryExports": false,
   "rules": {

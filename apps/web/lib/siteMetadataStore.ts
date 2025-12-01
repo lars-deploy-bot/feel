@@ -8,7 +8,9 @@ export interface SiteMetadata {
   workspace: string
   email?: string // Optional for backward compatibility with old sites
   siteIdeas: string
-  selectedTemplate?: "landing" | "recipe" // Optional, added for template selection
+  templateId?: string // Template ID from Supabase (e.g., "tmpl_gallery")
+  /** @deprecated Use templateId instead */
+  selectedTemplate?: "landing" | "recipe" // Kept for backward compatibility
   createdAt: number
   port?: number
 }

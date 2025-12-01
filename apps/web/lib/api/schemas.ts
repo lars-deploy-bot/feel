@@ -137,6 +137,110 @@ export const apiSchemas = {
       conversationId: z.string().optional(),
     }),
   },
+  /**
+   * GET /api/manager/templates
+   * Get all templates (manager auth required)
+   */
+  "manager/templates": {
+    req: z.undefined().brand<"ManagerTemplatesGetRequest">(),
+    res: z.object({
+      ok: z.boolean(),
+      templates: z.array(
+        z.object({
+          template_id: z.string(),
+          name: z.string(),
+          description: z.string().nullable(),
+          ai_description: z.string().nullable(),
+          source_path: z.string(),
+          preview_url: z.string().nullable(),
+          image_url: z.string().nullable(),
+          is_active: z.boolean().nullable(),
+          deploy_count: z.number().nullable(),
+        }),
+      ),
+      count: z.number(),
+    }),
+  },
+
+  /**
+   * POST /api/manager/templates
+   * Create a new template (manager auth required)
+   */
+  "manager/templates/create": {
+    req: z
+      .object({
+        template_id: z.string().optional(),
+        name: z.string().min(1),
+        description: z.string().nullable().optional(),
+        ai_description: z.string().nullable().optional(),
+        source_path: z.string().min(1),
+        preview_url: z.string().nullable().optional(),
+        image_url: z.string().nullable().optional(),
+        is_active: z.boolean().optional(),
+      })
+      .brand<"ManagerTemplatesCreateRequest">(),
+    res: z.object({
+      ok: z.boolean(),
+      template: z.object({
+        template_id: z.string(),
+        name: z.string(),
+        description: z.string().nullable(),
+        ai_description: z.string().nullable(),
+        source_path: z.string(),
+        preview_url: z.string().nullable(),
+        image_url: z.string().nullable(),
+        is_active: z.boolean().nullable(),
+        deploy_count: z.number().nullable(),
+      }),
+    }),
+  },
+
+  /**
+   * PUT /api/manager/templates
+   * Update an existing template (manager auth required)
+   */
+  "manager/templates/update": {
+    req: z
+      .object({
+        template_id: z.string(),
+        name: z.string().optional(),
+        description: z.string().nullable().optional(),
+        ai_description: z.string().nullable().optional(),
+        source_path: z.string().optional(),
+        preview_url: z.string().nullable().optional(),
+        image_url: z.string().nullable().optional(),
+        is_active: z.boolean().optional(),
+        deploy_count: z.number().optional(),
+      })
+      .brand<"ManagerTemplatesUpdateRequest">(),
+    res: z.object({
+      ok: z.boolean(),
+      template: z.object({
+        template_id: z.string(),
+        name: z.string(),
+        description: z.string().nullable(),
+        ai_description: z.string().nullable(),
+        source_path: z.string(),
+        preview_url: z.string().nullable(),
+        image_url: z.string().nullable(),
+        is_active: z.boolean().nullable(),
+        deploy_count: z.number().nullable(),
+      }),
+    }),
+  },
+
+  /**
+   * DELETE /api/manager/templates?template_id=xxx
+   * Delete a template (manager auth required)
+   */
+  "manager/templates/delete": {
+    req: z.undefined().brand<"ManagerTemplatesDeleteRequest">(),
+    res: z.object({
+      ok: z.boolean(),
+      deleted: z.boolean(),
+      template_id: z.string(),
+    }),
+  },
 } as const
 
 // ============================================================================

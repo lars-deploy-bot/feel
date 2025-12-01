@@ -1,13 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { SECURITY } from "@webalive/shared"
 import {
   isConversationLocked,
   sessionKey,
   tryLockConversation,
   unlockConversation,
 } from "@/features/auth/lib/sessionStore"
+import { CLAUDE_MODELS } from "@/lib/models/claude-models"
 import { cancelStream, registerCancellation } from "@/lib/stream/cancellation-registry"
 import type { CancelState } from "@/lib/stream/ndjson-stream-handler"
 import { createNDJSONStream } from "@/lib/stream/ndjson-stream-handler"
+
+// Default test model
+const TEST_MODEL = CLAUDE_MODELS.HAIKU_4_5
 
 /**
  * STRICT Integration Tests for Explicit Cancellation
@@ -26,7 +31,7 @@ import { createNDJSONStream } from "@/lib/stream/ndjson-stream-handler"
  */
 
 describe("Explicit Cancellation Integration (STRICT)", () => {
-  const userId = "test-user"
+  const userId = SECURITY.LOCAL_TEST.SESSION_VALUE
   const workspace = "test-workspace"
   const conversationId = "explicit-cancel-test"
   const convKey = sessionKey({ userId, conversationId })
@@ -42,6 +47,11 @@ describe("Explicit Cancellation Integration (STRICT)", () => {
   /**
    * THE 409 BUG TEST
    * This is THE test that matters. If this passes, the bug is fixed.
+   *
+   * IMPORTANT: In production, cancelState.reader is set to the childStream's reader
+   * inside createNDJSONStream(). We should NOT overwrite it in tests.
+   * Instead, we cancel the ndjsonStream's reader, which triggers the stream's
+   * cancel() method, which then cancels the childStream's reader.
    */
   describe("The 409 Bug - Second Request Must Succeed After Cancel", () => {
     it("should allow second request after explicit cancellation (THE BUG)", async () => {
@@ -52,9 +62,13 @@ describe("Explicit Cancellation Integration (STRICT)", () => {
       const cancelState: CancelState = { requested: false, reader: null }
 
       // Create a stream that never ends (simulates long-running request)
+      // Use a controller so we can close it when cancelled
       const childStream = new ReadableStream({
-        start() {
-          // Never close - simulates child process still running
+        start(_controller) {
+          // Controller stored for potential use
+        },
+        cancel() {
+          // Child stream cancelled - this is called when cancelState.reader.cancel() is invoked
         },
       })
 
@@ -66,6 +80,7 @@ describe("Explicit Cancellation Integration (STRICT)", () => {
         requestId: "req-1",
         conversationWorkspace: workspace,
         tokenSource: "user_provided",
+        model: TEST_MODEL,
         onStreamComplete: () => {
           lock1Released = true
           unlockConversation(convKey)
@@ -74,13 +89,13 @@ describe("Explicit Cancellation Integration (STRICT)", () => {
       })
 
       const reader1 = stream1.getReader()
-      cancelState.reader = reader1
+      // NOTE: Do NOT overwrite cancelState.reader - it's set to childStream's reader inside createNDJSONStream
 
-      // USER CLICKS STOP (production does both of these)
+      // USER CLICKS STOP - cancel the ndjsonStream (triggers cancel() method)
       cancelState.requested = true
-      reader1.cancel() // Unblock the read
+      reader1.cancel() // This triggers ndjsonStream.cancel() which cancels childStream reader
 
-      // Wait for lock to be released
+      // Wait for lock to be released (finally block runs after abort completes)
       await new Promise(resolve => {
         const checkLock = setInterval(() => {
           if (lock1Released) {
@@ -109,7 +124,6 @@ describe("Explicit Cancellation Integration (STRICT)", () => {
 
       // Cleanup
       unlockConversation(convKey)
-      reader1.releaseLock()
     })
 
     it("should handle rapid Stop → Send cycles without 409 errors", async () => {
@@ -129,6 +143,9 @@ describe("Explicit Cancellation Integration (STRICT)", () => {
           start() {
             // Infinite stream
           },
+          cancel() {
+            // Child stream cancelled
+          },
         })
 
         let lockReleased = false
@@ -139,6 +156,7 @@ describe("Explicit Cancellation Integration (STRICT)", () => {
           requestId: `rapid-${i}`,
           conversationWorkspace: workspace,
           tokenSource: "user_provided",
+          model: TEST_MODEL,
           onStreamComplete: () => {
             lockReleased = true
             unlockConversation(convKey)
@@ -147,11 +165,11 @@ describe("Explicit Cancellation Integration (STRICT)", () => {
         })
 
         const reader = stream.getReader()
-        cancelState.reader = reader
+        // NOTE: Do NOT overwrite cancelState.reader
 
-        // User clicks Stop (production does both)
+        // User clicks Stop
         cancelState.requested = true
-        reader.cancel() // Unblock the read
+        reader.cancel() // Triggers ndjsonStream.cancel() which cancels childStream reader
 
         // Wait for lock release (with timeout)
         await new Promise(resolve => {
@@ -170,8 +188,6 @@ describe("Explicit Cancellation Integration (STRICT)", () => {
 
         expect(lockReleased).toBe(true)
         expect(isConversationLocked(convKey)).toBe(false)
-
-        reader.releaseLock()
       }
     })
   })
@@ -207,6 +223,7 @@ describe("Explicit Cancellation Integration (STRICT)", () => {
         requestId: "cancel-during",
         conversationWorkspace: workspace,
         tokenSource: "user_provided",
+        model: TEST_MODEL,
         onStreamComplete: () => {
           lockReleased = true
           unlockConversation(convKey)
@@ -259,6 +276,9 @@ describe("Explicit Cancellation Integration (STRICT)", () => {
         start() {
           // Infinite
         },
+        cancel() {
+          // Child stream cancelled
+        },
       })
 
       let cleanupCallCount = 0
@@ -269,6 +289,7 @@ describe("Explicit Cancellation Integration (STRICT)", () => {
         requestId: "double-unlock",
         conversationWorkspace: workspace,
         tokenSource: "user_provided",
+        model: TEST_MODEL,
         onStreamComplete: () => {
           cleanupCallCount++
           unlockConversation(convKey)
@@ -277,14 +298,14 @@ describe("Explicit Cancellation Integration (STRICT)", () => {
       })
 
       const reader = stream.getReader()
-      cancelState.reader = reader
+      // NOTE: Do NOT overwrite cancelState.reader
 
       // Trigger explicit cancel (which internally calls reader.cancel())
       cancelState.requested = true
       reader.cancel()
 
-      // Wait for cleanup
-      await new Promise(resolve => setTimeout(resolve, 100))
+      // Wait for cleanup (finally block to run)
+      await new Promise(resolve => setTimeout(resolve, 200))
 
       // CRITICAL: Must be called exactly ONCE even though we called reader.cancel()
       // which triggers the cancel() method in addition to the explicit flag
@@ -296,6 +317,10 @@ describe("Explicit Cancellation Integration (STRICT)", () => {
   /**
    * REGISTRY INTEGRATION
    * Full flow: registry → cancelState → lock release
+   *
+   * NOTE: In production, the cancel callback does NOT release the lock.
+   * It just triggers the abort, and the NDJSON handler's finally block
+   * releases the lock after the abort completes.
    */
   describe("Full Registry Integration", () => {
     it("should integrate registry → cancelState → lock release → second request succeeds", async () => {
@@ -308,26 +333,32 @@ describe("Explicit Cancellation Integration (STRICT)", () => {
       const cancelState: CancelState = { requested: false, reader: null }
 
       // Register cancellation (route handler does this)
-      // Production API: registerCancellation(requestId, userId, convKey, cancelCallback)
+      // NOTE: In production, this callback just sets the flag and cancels the reader
+      // The lock is released by the NDJSON handler's finally block
       registerCancellation(requestId, userId, convKey, () => {
         cancelState.requested = true
-        cancelState.reader?.cancel() // Unblock any waiting read
+        cancelState.reader?.cancel() // Unblock any waiting read - triggers finally block
       })
 
       const childStream = new ReadableStream({
         start() {
           // Infinite
         },
+        cancel() {
+          // Child stream cancelled
+        },
       })
 
       let lock1Released = false
 
-      const stream = createNDJSONStream({
+      // Create stream but don't read from it - test uses registry cancel callback
+      createNDJSONStream({
         childStream,
         conversationKey: convKey,
         requestId,
         conversationWorkspace: workspace,
         tokenSource: "user_provided",
+        model: TEST_MODEL,
         onStreamComplete: () => {
           lock1Released = true
           unlockConversation(convKey)
@@ -335,17 +366,14 @@ describe("Explicit Cancellation Integration (STRICT)", () => {
         cancelState,
       })
 
-      const reader = stream.getReader()
-      cancelState.reader = reader
-
       // User clicks Stop → calls cancel endpoint
-      const cancelResult = cancelStream(requestId, userId)
+      const cancelResult = await cancelStream(requestId, userId)
       expect(cancelResult).toBe(true)
 
       // Verify cancelState was updated by registry callback
       expect(cancelState.requested).toBe(true)
 
-      // Wait for lock release
+      // Wait for lock release (finally block to run)
       await new Promise(resolve => {
         const check = setInterval(() => {
           if (lock1Released) {
@@ -367,7 +395,6 @@ describe("Explicit Cancellation Integration (STRICT)", () => {
 
       // Cleanup
       unlockConversation(convKey)
-      reader.releaseLock()
     })
 
     it("should handle cancel endpoint called multiple times (idempotent)", async () => {
@@ -387,16 +414,21 @@ describe("Explicit Cancellation Integration (STRICT)", () => {
         start() {
           // Infinite
         },
+        cancel() {
+          // Child stream cancelled
+        },
       })
 
       let lockReleased = false
 
-      const stream = createNDJSONStream({
+      // Create stream but don't read from it - test uses registry cancel callback
+      createNDJSONStream({
         childStream,
         conversationKey: convKey,
         requestId,
         conversationWorkspace: workspace,
         tokenSource: "user_provided",
+        model: TEST_MODEL,
         onStreamComplete: () => {
           lockReleased = true
           unlockConversation(convKey)
@@ -404,19 +436,16 @@ describe("Explicit Cancellation Integration (STRICT)", () => {
         cancelState,
       })
 
-      const reader = stream.getReader()
-      cancelState.reader = reader
-
       // Call cancel multiple times
-      const result1 = cancelStream(requestId, userId)
-      const result2 = cancelStream(requestId, userId)
-      const result3 = cancelStream(requestId, userId)
+      const result1 = await cancelStream(requestId, userId)
+      const result2 = await cancelStream(requestId, userId)
+      const result3 = await cancelStream(requestId, userId)
 
       expect(result1).toBe(true) // First succeeds
       expect(result2).toBe(false) // Already cancelled (auto-unregistered)
       expect(result3).toBe(false) // Already cancelled
 
-      // Wait for cleanup
+      // Wait for cleanup (finally block to run)
       await new Promise(resolve => {
         const check = setInterval(() => {
           if (lockReleased) {
@@ -435,7 +464,6 @@ describe("Explicit Cancellation Integration (STRICT)", () => {
 
       // Cleanup
       unlockConversation(convKey)
-      reader.releaseLock()
     })
   })
 
@@ -454,6 +482,9 @@ describe("Explicit Cancellation Integration (STRICT)", () => {
         start() {
           // Infinite
         },
+        cancel() {
+          // Child stream cancelled
+        },
       })
 
       let lockReleased = false
@@ -464,6 +495,7 @@ describe("Explicit Cancellation Integration (STRICT)", () => {
         requestId: "early-cancel",
         conversationWorkspace: workspace,
         tokenSource: "user_provided",
+        model: TEST_MODEL,
         onStreamComplete: () => {
           lockReleased = true
           unlockConversation(convKey)
@@ -472,23 +504,23 @@ describe("Explicit Cancellation Integration (STRICT)", () => {
       })
 
       const reader = stream.getReader()
-      cancelState.reader = reader
+      // NOTE: Do NOT overwrite cancelState.reader
 
-      // Cancel BEFORE we start consuming
+      // Cancel BEFORE we start consuming (simulates super-early Stop)
       cancelState.requested = true
-      reader.cancel() // Unblock
+      reader.cancel() // Triggers ndjsonStream.cancel() which cancels childStream reader
 
-      // Try to consume (should finish immediately)
+      // Try to consume (should finish immediately due to cancel)
       try {
         while (true) {
           const { done } = await reader.read()
           if (done) break
         }
       } catch {
-        // Expected
+        // Expected when stream is cancelled
       }
 
-      // Wait for cleanup
+      // Wait for cleanup (finally block to run)
       await new Promise(resolve => {
         const check = setInterval(() => {
           if (lockReleased) {
@@ -529,6 +561,7 @@ describe("Explicit Cancellation Integration (STRICT)", () => {
         requestId: "error-test",
         conversationWorkspace: workspace,
         tokenSource: "user_provided",
+        model: TEST_MODEL,
         onStreamComplete: () => {
           lockReleased = true
           unlockConversation(convKey)

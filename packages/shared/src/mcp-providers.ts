@@ -1,18 +1,31 @@
 /**
- * OAuth MCP Providers Registry
+ * MCP Providers Registry
  *
- * Single source of truth for OAuth-authenticated MCP servers.
- * Adding a new provider here automatically enables:
- * - Token fetching in stream route
- * - MCP server configuration
- * - Tool permission (mcp__<provider>__* tools auto-allowed)
+ * Contains two types of MCP providers:
  *
- * @example Adding a new provider:
+ * 1. OAUTH_MCP_PROVIDERS - Require OAuth authentication per user
+ *    - Token fetching in stream route
+ *    - MCP server configuration with auth headers
+ *    - Tool permission (mcp__<provider>__* tools auto-allowed when connected)
+ *
+ * 2. GLOBAL_MCP_PROVIDERS - Always available to all users, no auth required
+ *    - MCP server configured in worker
+ *    - Tools added to allowed list
+ *
+ * @example Adding a new OAuth provider:
  * ```typescript
  * export const OAUTH_MCP_PROVIDERS = {
  *   ...existing,
- *   github: { url: "https://mcp.github.com", oauthKey: "github" },
+ *   github: { url: "https://mcp.github.com", oauthKey: "github", friendlyName: "GitHub" },
  * } as const satisfies OAuthMcpProviderRegistry
+ * ```
+ *
+ * @example Adding a new global provider:
+ * ```typescript
+ * export const GLOBAL_MCP_PROVIDERS = {
+ *   ...existing,
+ *   newProvider: { url: "http://localhost:9000/mcp", friendlyName: "New Provider", knownTools: [...] },
+ * } as const satisfies GlobalMcpProviderRegistry
  * ```
  */
 
@@ -27,6 +40,19 @@ export interface OAuthMcpProviderConfig {
    * Used to fetch the user's access token
    */
   oauthKey: string
+  /**
+   * Human-readable name for display in UI (e.g., "Stripe", "Linear")
+   */
+  friendlyName: string
+  /**
+   * Default OAuth scopes to request
+   * Format varies by provider (comma-separated for Linear, space-separated for others)
+   */
+  defaultScopes: string
+  /**
+   * Environment variable prefix for credentials (e.g., "LINEAR" for LINEAR_CLIENT_ID)
+   */
+  envPrefix: string
   /**
    * Known tools provided by this MCP server (for documentation)
    * Tools are auto-discovered at runtime, this is just for reference
@@ -51,6 +77,9 @@ export const OAUTH_MCP_PROVIDERS = {
   stripe: {
     url: "https://mcp.stripe.com",
     oauthKey: "stripe",
+    friendlyName: "Stripe",
+    defaultScopes: "read_write",
+    envPrefix: "STRIPE",
     knownTools: [
       // Account & Balance
       "mcp__stripe__get_stripe_account_info",
@@ -94,6 +123,9 @@ export const OAUTH_MCP_PROVIDERS = {
   linear: {
     url: "https://mcp.linear.app/mcp",
     oauthKey: "linear",
+    friendlyName: "Linear",
+    defaultScopes: "read,write,issues:create",
+    envPrefix: "LINEAR",
     knownTools: [
       // Comments
       "mcp__linear__list_comments",
@@ -179,4 +211,117 @@ export function isOAuthMcpTool(toolName: string, connectedProviders: Set<string>
   }
 
   return false
+}
+
+/**
+ * Get friendly name for an MCP tool
+ *
+ * @param toolName - The tool name (e.g., "mcp__stripe__list_customers")
+ * @returns Object with provider friendly name and action, or null if not an MCP tool
+ *
+ * @example
+ * getMcpToolFriendlyName("mcp__stripe__list_customers")
+ * // Returns: { provider: "Stripe", action: "list_customers" }
+ */
+export function getMcpToolFriendlyName(toolName: string): { provider: string; action: string } | null {
+  if (!toolName.startsWith("mcp__")) return null
+
+  // Check OAuth providers first
+  for (const [providerKey, config] of Object.entries(OAUTH_MCP_PROVIDERS)) {
+    const prefix = `mcp__${providerKey}__`
+    if (toolName.startsWith(prefix)) {
+      const action = toolName.slice(prefix.length)
+      return {
+        provider: config.friendlyName,
+        action: action.replace(/_/g, " "),
+      }
+    }
+  }
+
+  // Check global providers
+  for (const [providerKey, config] of Object.entries(GLOBAL_MCP_PROVIDERS)) {
+    const prefix = `mcp__${providerKey}__`
+    if (toolName.startsWith(prefix)) {
+      const action = toolName.slice(prefix.length)
+      return {
+        provider: config.friendlyName,
+        action: action.replace(/-/g, " "),
+      }
+    }
+  }
+
+  // Unknown MCP provider - extract what we can
+  const parts = toolName.split("__")
+  if (parts.length >= 3) {
+    return {
+      provider: parts[1].charAt(0).toUpperCase() + parts[1].slice(1),
+      action: parts.slice(2).join(" ").replace(/_/g, " "),
+    }
+  }
+
+  return null
+}
+
+// =============================================================================
+// Global MCP Providers (always available, no authentication required)
+// =============================================================================
+
+/**
+ * Configuration for a global (unauthenticated) MCP provider
+ */
+export interface GlobalMcpProviderConfig {
+  /** MCP server URL */
+  url: string
+  /** Human-readable name for display in UI */
+  friendlyName: string
+  /**
+   * Known tools provided by this MCP server (for documentation)
+   * Tools are auto-discovered at runtime, this is just for reference
+   */
+  knownTools: readonly string[]
+}
+
+/**
+ * Type for the global provider registry
+ */
+export type GlobalMcpProviderRegistry = Record<string, GlobalMcpProviderConfig>
+
+/**
+ * Registry of global (always-available) MCP providers
+ *
+ * These servers are available to ALL users without authentication.
+ * To add a new provider:
+ * 1. Add entry here with url and knownTools
+ * 2. Add tools to CONTEXT7_TOOLS in agent-constants.mjs
+ * 3. Add server config in worker-entry.mjs
+ */
+export const GLOBAL_MCP_PROVIDERS = {
+  context7: {
+    url: "http://localhost:8082/mcp",
+    friendlyName: "Context7",
+    knownTools: ["mcp__context7__resolve-library-id", "mcp__context7__get-library-docs"] as const,
+  },
+} as const satisfies GlobalMcpProviderRegistry
+
+/**
+ * Type for global provider keys (e.g., "context7")
+ */
+export type GlobalMcpProviderKey = keyof typeof GLOBAL_MCP_PROVIDERS
+
+/**
+ * Get all global provider keys
+ */
+export function getGlobalMcpProviderKeys(): GlobalMcpProviderKey[] {
+  return Object.keys(GLOBAL_MCP_PROVIDERS) as GlobalMcpProviderKey[]
+}
+
+/**
+ * Get all tool names from global MCP providers
+ */
+export function getGlobalMcpToolNames(): string[] {
+  const tools: string[] = []
+  for (const config of Object.values(GLOBAL_MCP_PROVIDERS)) {
+    tools.push(...config.knownTools)
+  }
+  return tools
 }

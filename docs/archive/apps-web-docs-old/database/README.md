@@ -39,7 +39,7 @@ apps/web/docs/database/grant-service-role-permissions.sql
 After running the script, test with:
 
 ```bash
-bun test lib/__tests__/credit-system-supabase.test.ts
+bun run test lib/__tests__/credit-system-supabase.test.ts
 ```
 
 All 25 tests should pass (not skip).

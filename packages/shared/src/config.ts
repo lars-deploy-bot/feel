@@ -28,11 +28,8 @@ export const PATHS = {
   /** Claude Bridge root directory */
   BRIDGE_ROOT: "/root/webalive/claude-bridge",
 
-  /** Secure site directory (systemd) */
+  /** Site directory (systemd-managed) */
   SITES_ROOT: "/srv/webalive/sites",
-
-  /** Legacy site directory (PM2) - should migrate to SITES_ROOT */
-  LEGACY_SITES_ROOT: "/root/webalive/sites",
 
   /** Template directory for new sites */
   TEMPLATE_PATH: "/root/webalive/claude-bridge/templates/site-template",
@@ -72,20 +69,41 @@ export const DOMAINS = {
   /** Main platform domain */
   MAIN: "goalive.nl",
 
+  /** Main domain suffix for CORS/origin checks */
+  MAIN_SUFFIX: ".goalive.nl",
+
   /** Production bridge URL */
   BRIDGE_PROD: "https://terminal.goalive.nl",
+
+  /** Production bridge hostname */
+  BRIDGE_PROD_HOST: "terminal.goalive.nl",
 
   /** Development bridge URL */
   BRIDGE_DEV: "https://dev.terminal.goalive.nl",
 
-  /** Staging bridge URL (same host as dev, different port) */
-  BRIDGE_STAGING: "https://dev.terminal.goalive.nl",
+  /** Development bridge hostname */
+  BRIDGE_DEV_HOST: "dev.terminal.goalive.nl",
 
-  /** Preview subdomain base */
+  /** Staging bridge URL */
+  BRIDGE_STAGING: "https://staging.terminal.goalive.nl",
+
+  /** Staging bridge hostname */
+  BRIDGE_STAGING_HOST: "staging.terminal.goalive.nl",
+
+  /** Staging domain suffix */
+  STAGING_SUFFIX: ".staging.goalive.nl",
+
+  /** Dev domain suffix */
+  DEV_SUFFIX: ".dev.goalive.nl",
+
+  /** Preview subdomain base (e.g., windowsxp-alive-best.preview.terminal.goalive.nl) */
   PREVIEW_BASE: "preview.terminal.goalive.nl",
 
   /** Authentication forward endpoint for previews */
   PREVIEW_AUTH: "https://dev.terminal.goalive.nl/api/auth/preview-guard",
+
+  /** Cookie domain for cross-subdomain sharing (leading dot allows *.terminal.goalive.nl) */
+  COOKIE_DOMAIN: ".terminal.goalive.nl",
 } as const
 
 /**
@@ -173,10 +191,13 @@ export const DEFAULTS = {
   CLAUDE_MODEL: "claude-sonnet-4-5-20250929",
 
   /** Default Claude max turns */
-  CLAUDE_MAX_TURNS: 25,
+  CLAUDE_MAX_TURNS: 50,
 
   /** Default fallback origin for CORS */
   FALLBACK_ORIGIN: "https://terminal.goalive.nl",
+
+  /** Template ID prefix - all template IDs must start with this */
+  TEMPLATE_ID_PREFIX: "tmpl_",
 } as const
 
 /**
@@ -198,8 +219,23 @@ export const SECURITY = {
   LOCAL_TEST: {
     EMAIL: "test@bridge.local",
     PASSWORD: "test",
+    /** Session cookie value for local test mode (bypasses JWT verification) */
+    SESSION_VALUE: "test-user",
   },
 } as const
+
+/**
+ * Bridge environment values
+ * Must match the zod enum in @webalive/env schema
+ */
+export const BRIDGE_ENV = {
+  LOCAL: "local",
+  DEV: "dev",
+  STAGING: "staging",
+  PRODUCTION: "production",
+} as const
+
+export type BridgeEnv = (typeof BRIDGE_ENV)[keyof typeof BRIDGE_ENV]
 
 /**
  * Generate systemd service name from slug

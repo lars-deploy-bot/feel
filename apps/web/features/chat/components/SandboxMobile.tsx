@@ -1,0 +1,156 @@
+"use client"
+import { Loader2, RotateCw, Square, X } from "lucide-react"
+import type { ReactNode } from "react"
+import { useEffect, useRef, useState } from "react"
+import { PREVIEW_MESSAGES } from "@webalive/shared"
+import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
+import { getPreviewUrl } from "@/lib/preview-utils"
+
+interface SandboxMobileProps {
+  onClose: () => void
+  children?: ReactNode
+  busy?: boolean
+  statusText?: string
+  onStop?: () => void
+}
+
+export function SandboxMobile({ onClose, children, busy, statusText, onStop }: SandboxMobileProps) {
+  const { workspace } = useWorkspace({ allowEmpty: true })
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+  const [path, setPath] = useState("/")
+  const [isLoading, setIsLoading] = useState(true)
+
+  const baseUrl = workspace ? getPreviewUrl(workspace).replace(/\/$/, "") : ""
+  const fullUrl = `${baseUrl}${path}`
+
+  const handleRefresh = () => {
+    if (iframeRef.current) {
+      setIsLoading(true)
+      // Force reload by adding cache-busting param
+      const url = new URL(fullUrl)
+      url.searchParams.set("_t", Date.now().toString())
+      iframeRef.current.src = url.toString()
+    }
+  }
+
+  const handleIframeLoad = () => {
+    setIsLoading(false)
+  }
+
+  // Reset loading state when path changes
+  useEffect(() => {
+    setIsLoading(true)
+  }, [path])
+
+  // Listen for postMessage from iframe (preview sites send navigation events)
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // Navigation started - show loading
+      if (event.data?.type === PREVIEW_MESSAGES.NAVIGATION_START) {
+        setIsLoading(true)
+        return
+      }
+      // Navigation completed - update path (loading cleared by onLoad)
+      if (event.data?.type === PREVIEW_MESSAGES.NAVIGATION && typeof event.data.path === "string") {
+        const newPath = event.data.path || "/"
+        if (newPath !== path) {
+          setPath(newPath)
+        }
+      }
+    }
+
+    window.addEventListener("message", handleMessage)
+    return () => window.removeEventListener("message", handleMessage)
+  }, [path])
+
+  // Close on escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose()
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [onClose])
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black flex flex-col">
+      {/* Iframe content */}
+      <div className="flex-1 overflow-hidden bg-white relative">
+        {workspace && workspace.length > 0 && workspace.includes(".") ? (
+          <>
+            {/* Loading overlay */}
+            {isLoading && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-neutral-900">
+                <div className="flex flex-col items-center gap-3">
+                  <Loader2 size={24} className="animate-spin text-purple-400" />
+                  <span className="text-sm text-neutral-400">Loading preview...</span>
+                </div>
+              </div>
+            )}
+            <iframe
+              ref={iframeRef}
+              src={fullUrl}
+              className="w-full h-full border-0"
+              title={`Preview: ${workspace}`}
+              referrerPolicy="no-referrer-when-downgrade"
+              onLoad={handleIframeLoad}
+            />
+          </>
+        ) : (
+          <div className="flex items-center justify-center h-full text-neutral-700 bg-neutral-900">
+            <div className="text-center">
+              <div className="mb-2">{workspace ? "Invalid workspace format" : "No workspace selected"}</div>
+              <div className="text-xs text-neutral-600">Workspace must be a domain (e.g., example.com)</div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Bottom bar with URL controls and chat input */}
+      <div className="bg-neutral-950 border-t border-white/10">
+        {/* URL bar row - compact on mobile */}
+        <div className="flex items-center gap-2 px-3 py-2">
+          <button
+            type="button"
+            onClick={handleRefresh}
+            className="p-2.5 text-neutral-400 hover:text-white active:bg-white/10 rounded-lg transition-colors"
+            title="Refresh"
+          >
+            <RotateCw size={20} strokeWidth={2} />
+          </button>
+          <span className="flex-1 text-sm text-neutral-500 truncate">{path}</span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2.5 text-neutral-400 hover:text-white active:bg-white/10 rounded-lg transition-colors"
+            aria-label="Close preview"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Status or chat input area */}
+        {busy ? (
+          <div className="border-t border-white/5 px-4 py-3 flex items-center gap-2">
+            <Loader2 size={14} className="animate-spin text-neutral-400 flex-shrink-0" />
+            <span className="text-sm text-neutral-300 truncate flex-1">{statusText || "Working..."}</span>
+            {onStop && (
+              <button
+                type="button"
+                onClick={onStop}
+                className="flex-shrink-0 p-2 rounded-md bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-colors"
+                aria-label="Stop"
+              >
+                <Square size={14} fill="currentColor" />
+              </button>
+            )}
+          </div>
+        ) : (
+          children && <div className="border-t border-white/5 dark">{children}</div>
+        )}
+      </div>
+    </div>
+  )
+}

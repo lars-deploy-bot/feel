@@ -274,6 +274,85 @@ export async function chargeTokensFromCredits(domain: string, llmTokensUsed: num
 }
 
 /**
+ * Charge credits directly to organization balance (model-based pricing)
+ *
+ * Use this function when credits have already been calculated based on
+ * model-specific pricing (via calculateCreditsToCharge from model-pricing.ts).
+ *
+ * NO DISCOUNT APPLIED - credits charged exactly as provided.
+ *
+ * ATOMIC OPERATION: Uses Supabase RPC to perform atomic deduction.
+ * Prevents race conditions and negative balances.
+ *
+ * @param domain - Domain identifier
+ * @param creditsToCharge - Credits to deduct (already calculated from USD cost)
+ * @returns New credit balance, or null if operation failed (insufficient credits or error)
+ */
+export async function chargeCreditsDirectly(domain: string, creditsToCharge: number): Promise<number | null> {
+  if (creditsToCharge < 0) {
+    console.error("[Supabase Credits] Cannot charge negative amount:", creditsToCharge)
+    return null
+  }
+
+  if (creditsToCharge === 0) {
+    // No charge needed, just return current balance
+    return await getOrgCredits(domain)
+  }
+
+  // Step 1: Get org ID from domain
+  const orgId = await getOrgIdForDomain(domain)
+  if (!orgId) {
+    console.error("[Supabase Credits] Domain not found:", domain)
+    return null
+  }
+
+  // Step 2: Atomic deduction using Supabase RPC
+  // This prevents race conditions by performing the check and update atomically in the database
+  const iam = await getIamClient()
+  const { data, error } = await iam.rpc("deduct_credits", {
+    p_org_id: orgId,
+    p_amount: creditsToCharge,
+  })
+
+  if (error) {
+    console.error("[Supabase Credits] Failed to deduct credits:", {
+      domain,
+      orgId,
+      creditsToCharge,
+      error: error.message,
+    })
+    return null
+  }
+
+  // data will be null if insufficient credits (WHERE clause failed)
+  if (data === null) {
+    console.error("[Supabase Credits] Insufficient balance:", {
+      domain,
+      orgId,
+      requested: creditsToCharge,
+    })
+    return null
+  }
+
+  // Supabase RPC returns numeric values as unknown, verify it's a number
+  if (typeof data !== "number") {
+    console.error("[Supabase Credits] Unexpected return type from deduct_credits:", typeof data)
+    return null
+  }
+
+  const newBalance = data
+
+  console.log("[Supabase Credits] Charged credits (model-based):", {
+    domain,
+    orgId,
+    creditsCharged: creditsToCharge,
+    newBalance,
+  })
+
+  return newBalance
+}
+
+/**
  * Verify domain has credits available for API call
  *
  * @param domain - Domain identifier

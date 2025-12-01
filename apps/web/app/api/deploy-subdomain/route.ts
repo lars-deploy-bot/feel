@@ -1,24 +1,24 @@
 import { existsSync } from "node:fs"
-import { PATHS } from "@webalive/shared"
+import { cookies } from "next/headers"
+import { COOKIE_NAMES, PATHS } from "@webalive/shared"
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
+import { createSessionToken, verifySessionToken } from "@/features/auth/lib/jwt"
 import type { DeploySubdomainResponse } from "@/features/deployment/types/deploy-subdomain"
 import { validateDeploySubdomainRequest } from "@/features/deployment/types/guards"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { buildSubdomain } from "@/lib/config"
 import { deploySite } from "@/lib/deployment/deploy-site"
+import { incrementTemplateDeployCount } from "@/lib/deployment/template-stats"
+import { validateTemplateFromDb } from "@/lib/deployment/template-validation"
 import { DomainRegistrationError, registerDomain } from "@/lib/deployment/domain-registry"
 import { validateUserOrgAccess } from "@/lib/deployment/org-resolver"
 import { validateSSLCertificate } from "@/lib/deployment/ssl-validation"
+import { getUserQuota, getUserQuotaByEmail } from "@/lib/deployment/user-quotas"
 import { ErrorCodes } from "@/lib/error-codes"
 import { siteMetadataStore } from "@/lib/siteMetadataStore"
 import { loadDomainPasswords } from "@/types/guards/api"
 
-/**
- * Get port for domain from domain-passwords.json registry
- * This file is updated by the TypeScript deployment package during deployment
- * Uses loadDomainPasswords() which handles fallback paths correctly
- */
 function getPortFromRegistry(domain: string): number | null {
   try {
     const registry = loadDomainPasswords()
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const { slug, siteIdeas, selectedTemplate, orgId, email, password } = parseResult.data
+    const { slug, siteIdeas, templateId, orgId, email, password } = parseResult.data
 
     // Ensure email is always a string (authenticated users get it from session, anonymous users must provide it)
     const deploymentEmail = sessionUser?.email || email
@@ -88,6 +88,25 @@ export async function POST(request: NextRequest) {
         return structuredErrorResponse(ErrorCodes.ORG_ACCESS_DENIED, {
           status: 403,
           details: { message: "You do not have access to this organization" },
+        })
+      }
+    }
+
+    // Check site creation limit
+    if (sessionUser) {
+      const quota = await getUserQuota(sessionUser.id)
+      if (!quota.canCreateSite) {
+        return structuredErrorResponse(ErrorCodes.SITE_LIMIT_EXCEEDED, {
+          status: 403,
+          details: { limit: quota.maxSites, currentCount: quota.currentSites },
+        })
+      }
+    } else if (email) {
+      const quota = await getUserQuotaByEmail(email)
+      if (quota && !quota.canCreateSite) {
+        return structuredErrorResponse(ErrorCodes.SITE_LIMIT_EXCEEDED, {
+          status: 403,
+          details: { limit: quota.maxSites, currentCount: quota.currentSites },
         })
       }
     }
@@ -113,13 +132,30 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Execute deployment script (systemd + Caddy setup + port assignment)
-    // The bash script handles port assignment and updates domain-passwords.json
+    // Validate template exists in database and on disk
+    const templateValidation = await validateTemplateFromDb(templateId)
+    if (!templateValidation.valid || !templateValidation.template) {
+      const error = templateValidation.error!
+      return structuredErrorResponse(
+        error.code === "INVALID_TEMPLATE" ? ErrorCodes.INVALID_TEMPLATE : ErrorCodes.TEMPLATE_NOT_FOUND,
+        {
+          status: 400,
+          details: {
+            templateId: error.templateId,
+            message: error.message,
+          },
+        },
+      )
+    }
+    const template = templateValidation.template
+
+    // Execute deployment (systemd + Caddy setup + port assignment)
     await deploySite({
       domain: fullDomain,
-      email: deploymentEmail, // Guaranteed to be non-empty string
-      password: sessionUser ? undefined : password, // Only pass password for new account creation
-      orgId, // Pass organization ID
+      email: deploymentEmail,
+      password: sessionUser ? undefined : password,
+      orgId,
+      templatePath: template.source_path,
     })
 
     // Read the port that was assigned by the bash script
@@ -134,14 +170,12 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Register domain in Supabase (in request context, safe to use createIamClient)
+    // Register domain in Supabase
     try {
-      const registrationPassword = sessionUser ? undefined : password
-
       await registerDomain({
         hostname: fullDomain,
-        email: deploymentEmail, // Use guaranteed non-empty email
-        password: registrationPassword,
+        email: deploymentEmail,
+        password: sessionUser ? undefined : password,
         port,
         orgId,
       })
@@ -158,24 +192,29 @@ export async function POST(request: NextRequest) {
       throw registrationError
     }
 
-    // Save metadata immediately after deployment completes
+    // Save metadata
     await siteMetadataStore.setSite(slug, {
       slug,
       domain: fullDomain,
       workspace: fullDomain,
-      email: deploymentEmail, // Use guaranteed non-empty email
+      email: deploymentEmail,
       siteIdeas,
-      selectedTemplate,
+      templateId: template.template_id,
       createdAt: Date.now(),
     })
+
+    // Increment template deploy count (fire and forget - don't block deployment)
+    if (templateId) {
+      incrementTemplateDeployCount(templateId).catch(err => {
+        console.error("[Deploy-Subdomain] Failed to increment template deploy count:", err)
+      })
+    }
 
     // Validate SSL certificate (skip in test mode for speed)
     if (process.env.SKIP_SSL_VALIDATION !== "true") {
       await validateSSLCertificate(fullDomain)
       // Still continue if validation fails - deployment succeeded, cert might just be slow
     }
-
-    const sessionId = crypto.randomUUID()
 
     const response: DeploySubdomainResponse = {
       ok: true,
@@ -187,61 +226,55 @@ export async function POST(request: NextRequest) {
 
     const res = NextResponse.json(response, { status: 200 })
 
-    res.cookies.set("auth_session", sessionId, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "none",
-      path: "/",
-    })
+    // For authenticated users: regenerate JWT with the new workspace included
+    // For anonymous users: don't set session - they'll log in after account creation
+    if (sessionUser) {
+      const jar = await cookies()
+      const sessionCookie = jar.get(COOKIE_NAMES.SESSION)
 
-    return res
-  } catch (error: unknown) {
-    let errorMessage = "Deployment failed"
-    let statusCode = 500
+      if (sessionCookie?.value) {
+        // Get current workspaces from JWT and add the new domain
+        const payload = await verifySessionToken(sessionCookie.value)
+        if (payload) {
+          const updatedWorkspaces = [...payload.workspaces, fullDomain]
+          const newToken = await createSessionToken(
+            sessionUser.id,
+            sessionUser.email,
+            sessionUser.name,
+            updatedWorkspaces,
+          )
 
-    // Check for authentication errors first
-    if (error instanceof Error && error.message === "Authentication required") {
-      errorMessage = "Authentication required"
-      statusCode = 401
-    } else {
-      const isNodeError = error instanceof Error && "code" in error
-      const errorCode = isNodeError ? (error as Error & { code?: string | number }).code : undefined
-      const stderr = isNodeError && "stderr" in error ? (error as Error & { stderr?: string }).stderr : undefined
-
-      if (errorCode === "ETIMEDOUT") {
-        errorMessage = "Deployment timed out (5 minutes). Please try again."
-        statusCode = 408
-      } else if (errorCode === 12) {
-        errorMessage = "DNS validation failed. Please check your wildcard DNS setup."
-        statusCode = 400
-      } else if (stderr) {
-        if (stderr.includes("User.*already exists")) {
-          errorMessage = "System user conflict. Slug might be partially deployed. Please try a different slug."
-        } else if (stderr.includes("exists in Caddyfile")) {
-          errorMessage = "Domain already exists in configuration. Please try a different slug."
-        } else {
-          console.error("[Deploy-Subdomain] Script error:", stderr)
-          errorMessage = "Deployment script failed. Please check configuration and try again."
+          res.cookies.set(COOKIE_NAMES.SESSION, newToken, {
+            httpOnly: true,
+            secure: true,
+            sameSite: "none",
+            path: "/",
+          })
         }
-        statusCode = 400
-      } else if (error instanceof Error && error.message) {
-        console.error("[Deploy-Subdomain] Unexpected error:", error)
-        errorMessage = "Deployment failed. Please try again."
       }
     }
 
-    const deploymentError: DeploySubdomainResponse = {
-      ok: false,
-      message: errorMessage,
-      error: ErrorCodes.DEPLOYMENT_FAILED,
+    return res
+  } catch (error: unknown) {
+    console.error("[Deploy-Subdomain] Unexpected error:", error)
+
+    // Determine appropriate status code based on error type
+    let status = 500
+    const nodeError = error as { code?: string | number; stderr?: string }
+
+    if (nodeError.code === "ETIMEDOUT") {
+      status = 408 // Request Timeout
+    } else if (nodeError.code === 12 || nodeError.stderr) {
+      status = 400 // Bad Request (DNS validation, script errors)
+    }
+
+    return structuredErrorResponse(ErrorCodes.DEPLOYMENT_FAILED, {
+      status,
       details:
         process.env.NODE_ENV === "development"
-          ? error instanceof Error
-            ? error.toString()
-            : String(error)
+          ? { error: error instanceof Error ? error.toString() : String(error) }
           : undefined,
-    }
-    return NextResponse.json(deploymentError, { status: statusCode })
+    })
   }
 }
 

@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs"
+import { DEFAULTS } from "@webalive/shared"
 import { describe, expect, it } from "vitest"
 import { extractDomainFromWorkspace, restartSystemdService } from "@/lib/workspace-service-manager"
 
@@ -72,7 +73,7 @@ describe("install-package E2E", () => {
       const sitesPath = "/srv/webalive/sites"
 
       // Check which sites are actually deployed
-      const deployedSites = ["startup.alive.best", "two.goalive.nl", "staging.goalive.nl", "alive.best"]
+      const deployedSites = ["startup.alive.best", "two.goalive.nl", "staging.goalive.nl", DEFAULTS.WILDCARD_DOMAIN]
 
       for (const site of deployedSites) {
         const workspacePath = `${sitesPath}/${site}/user`

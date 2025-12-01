@@ -17,6 +17,7 @@
 // Re-export Supabase credit functions
 export {
   calculateLLMTokenCost,
+  chargeCreditsDirectly,
   chargeTokensFromCredits,
   ensureSufficientCredits,
   getAllOrganizationCredits,

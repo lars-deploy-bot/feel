@@ -10,20 +10,21 @@
  */
 
 // Import new utilities to test
+import { SECURITY, TEST_CONFIG } from "@webalive/shared"
 import { TEST_MESSAGES, TEST_SELECTORS, TEST_TIMEOUTS, TEST_USER } from "./fixtures/test-data"
 import { login } from "./helpers"
 import { expectChatMessage, expectSendButtonEnabled, expectWorkspaceReady } from "./helpers/assertions"
 import { handlers } from "./lib/handlers"
 import { ChatPage } from "./pages/ChatPage"
-import { expect, test } from "./setup"
+import { expect, test } from "./fixtures"
 
 test.describe("E2E Utilities Validation", () => {
   test("test-data constants are accessible and have correct types", async () => {
     // This test doesn't need page/login - just validates constants
-    // Validate TEST_USER
-    expect(TEST_USER.email).toBe("test@bridge.local")
-    expect(TEST_USER.password).toBe("test")
-    expect(TEST_USER.workspace).toBe("test.bridge.local")
+    // Validate TEST_USER - values come from SECURITY.LOCAL_TEST and TEST_CONFIG
+    expect(TEST_USER.email).toBe(SECURITY.LOCAL_TEST.EMAIL)
+    expect(TEST_USER.password).toBe(SECURITY.LOCAL_TEST.PASSWORD)
+    expect(TEST_USER.workspace).toBe(`test.${TEST_CONFIG.EMAIL_DOMAIN}`)
     expect(typeof TEST_USER.email).toBe("string")
 
     // Validate TEST_MESSAGES

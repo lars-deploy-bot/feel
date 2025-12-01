@@ -24,7 +24,19 @@ import type { ChatInputConfig, ChatInputContextValue, ChatInputHandle, ChatInput
  * - Exposes addAttachment via ref for parent drag handling
  */
 export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "children">>(function ChatInput(
-  { message, setMessage, busy, abortControllerRef, onSubmit, onStop, config: userConfig = {}, onOpenTemplates },
+  {
+    message,
+    setMessage,
+    busy,
+    isStopping = false,
+    abortControllerRef,
+    onSubmit,
+    onStop,
+    config: userConfig = {},
+    onOpenTemplates,
+    onOpenPreview,
+    hideToolbar = false,
+  },
   ref,
 ) {
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -129,6 +141,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
       addAttachment,
       removeAttachment,
       busy,
+      isStopping,
       abortControllerRef,
       canSubmit,
       onSubmit: handleSubmit,
@@ -142,6 +155,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
       addAttachment,
       removeAttachment,
       busy,
+      isStopping,
       abortControllerRef,
       canSubmit,
       handleSubmit,
@@ -182,13 +196,20 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
       />
 
       <section
-        className="relative flex-shrink-0 p-4 safe-area-inset-bottom"
+        className="relative flex-shrink-0 px-4 pb-4 mt-4 safe-area-inset-bottom"
         aria-label="Chat input"
         onPaste={handlePaste}
       >
         <div className="relative">
-          {/* Camera button above input */}
-          <Toolbar fileInputRef={fileInputRef} onOpenTemplates={onOpenTemplates} onAddUserPrompt={addUserPrompt} />
+          {/* Toolbar above input */}
+          {!hideToolbar && (
+            <Toolbar
+              fileInputRef={fileInputRef}
+              onOpenTemplates={onOpenTemplates}
+              onOpenPreview={onOpenPreview}
+              onAddUserPrompt={addUserPrompt}
+            />
+          )}
 
           <InputContainer>
             {/* Attachments */}

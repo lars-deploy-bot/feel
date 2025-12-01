@@ -92,5 +92,32 @@ export function getAnthropicApiKey(): string {
   return apiKey || "sk-ant-mock-key-for-local-development"
 }
 
+/**
+ * Default Redis URL for local development only
+ */
+const LOCAL_DEV_REDIS_URL = "redis://:dev_password_only@127.0.0.1:6379"
+
+/**
+ * Get Redis URL with environment-aware validation
+ *
+ * - Production/Staging: REDIS_URL is REQUIRED (throws if missing)
+ * - Local dev (BRIDGE_ENV=local): Falls back to default dev password
+ *
+ * This prevents auth mismatches in production while allowing easy local dev.
+ */
+export function getRedisUrl(): string {
+  const redisUrl = env.REDIS_URL
+  const isLocalDev = env.BRIDGE_ENV === "local"
+
+  if (!redisUrl && !isLocalDev) {
+    throw new Error(
+      "REDIS_URL is required in production/staging. " +
+        "Set REDIS_URL environment variable or use BRIDGE_ENV=local for development.",
+    )
+  }
+
+  return redisUrl || LOCAL_DEV_REDIS_URL
+}
+
 // Re-export schema types for convenience
 export type { serverSchema, clientSchema } from "./schema"

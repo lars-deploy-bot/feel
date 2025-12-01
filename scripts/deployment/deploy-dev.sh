@@ -68,6 +68,13 @@ echo "✅ Tools built"
 echo "🛑 Stopping dev server..."
 systemctl stop "$DEV_SERVICE" 2>/dev/null || echo "  (service not running)"
 
+# Kill any stale process on the port (in case another process is holding it)
+if fuser "$DEV_PORT/tcp" >/dev/null 2>&1; then
+    echo "⚠️  Port $DEV_PORT still in use, killing stale process..."
+    fuser -k "$DEV_PORT/tcp" 2>/dev/null || true
+    sleep 1
+fi
+
 # Clean Next.js build cache to prevent corrupted manifest issues
 echo "🧹 Cleaning Next.js build cache..."
 rm -rf apps/web/.next

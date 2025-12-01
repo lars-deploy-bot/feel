@@ -132,6 +132,13 @@ export const oauthOperationRateLimiter = new RateLimiter({
   blockDurationMs: 15 * 60 * 1000, // 15 minutes
 })
 
+// Singleton instance for email check endpoint (prevent email enumeration)
+export const emailCheckRateLimiter = new RateLimiter({
+  maxAttempts: 15,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  blockDurationMs: 15 * 60 * 1000, // 15 minutes
+})
+
 // Cleanup old entries every 5 minutes
 if (typeof setInterval !== "undefined") {
   setInterval(
@@ -139,6 +146,7 @@ if (typeof setInterval !== "undefined") {
       managerLoginRateLimiter.cleanup()
       oauthInitiationRateLimiter.cleanup()
       oauthOperationRateLimiter.cleanup()
+      emailCheckRateLimiter.cleanup()
     },
     5 * 60 * 1000,
   )

@@ -32,13 +32,13 @@ This directory contains tests for the deployment infrastructure.
 **Running**:
 ```bash
 # Run this specific test
-bun test features/deployment/__tests__/concurrent-deploy.integration.test.ts
+bun run test features/deployment/__tests__/concurrent-deploy.integration.test.ts
 
 # Run all deployment tests
-bun test features/deployment/__tests__/
+bun run test features/deployment/__tests__/
 
 # Run with verbose output
-bun test features/deployment/__tests__/concurrent-deploy.integration.test.ts --reporter=verbose
+bun run test features/deployment/__tests__/concurrent-deploy.integration.test.ts --reporter=verbose
 ```
 
 **Debugging**:

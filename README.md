@@ -27,10 +27,6 @@ Claude Bridge enables developers to interact with Claude AI in the context of sp
 └── demo.site.com/     # Owned by site-demo-site-com user
     └── user/          # Application files
 
-# Legacy location (existing sites)
-/root/webalive/sites/
-├── existing-site.com/ # Legacy PM2 (insecure)
-└── custom-project/    # Manual workspace (terminal mode)
 ```
 
 ## Features
@@ -76,9 +72,8 @@ Claude Bridge enables developers to interact with Claude AI in the context of sp
 ### Prerequisites
 - Node.js 18+
 - Bun package manager (1.2.22+)
-- systemd (for secure site isolation)
+- systemd (for process management and secure site isolation)
 - Caddy (for reverse proxy)
-- PM2 (for Claude Bridge process management)
 - Biome (for code formatting and linting)
 
 ### Environment Variables
@@ -331,14 +326,18 @@ Non-streaming endpoint returning full response as JSON.
 
 ```bash
 # Run unit tests
-cd apps/web && bun test
+cd apps/web && bun run test
 
 # Run E2E tests (requires setup)
 bun run test:e2e
 
 # Run with coverage
-cd apps/web && bun test --coverage
+cd apps/web && bun run test --coverage
 ```
+
+**Testing Notes:**
+- Always use `bun run test`, never `bun test` directly
+- Do NOT use `npx vitest` - npx and vitest don't work well together in this codebase
 
 **First time setup for E2E tests:**
 ```bash
@@ -357,7 +356,7 @@ bun run web          # Start web app only
 bun run widget       # Start widget server (Go-based)
 
 # Testing
-bun test             # Run unit tests (from apps/web)
+bun run test         # Run unit tests (from apps/web)
 bun run test:e2e     # Run E2E tests
 
 # Deployment (Dev & Staging via Makefile)
@@ -517,7 +516,7 @@ Messages are batched into groups for optimal UI rendering:
 
 ### Infrastructure ✅
 - [x] Configure Caddy reverse proxy with HTTPS/TLS (auto-HTTPS enabled)
-- [x] Set up PM2 process manager for high availability
+- [x] Set up systemd process manager for high availability
 - [x] Validate all required environment variables
 - [x] Test domain routing for both standard and terminal modes
 - [x] Atomic build system with rollback capability

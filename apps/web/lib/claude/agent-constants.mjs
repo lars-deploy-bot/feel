@@ -1,25 +1,14 @@
 import { getEnabledMcpToolNames, toolsInternalMcp, workspaceInternalMcp } from "@alive-brug/tools"
-import { OAUTH_MCP_PROVIDERS } from "@webalive/shared"
+import {
+  OAUTH_MCP_PROVIDERS,
+  getGlobalMcpToolNames,
+  BRIDGE_STREAM_TYPES,
+  BRIDGE_SYNTHETIC_MESSAGE_TYPES,
+  BRIDGE_INTERRUPT_SOURCES,
+} from "@webalive/shared"
 
-export const BRIDGE_STREAM_TYPES = {
-  START: "bridge_start",
-  SESSION: "bridge_session",
-  MESSAGE: "bridge_message",
-  COMPLETE: "bridge_complete",
-  ERROR: "bridge_error",
-  PING: "bridge_ping",
-  DONE: "bridge_done",
-  INTERRUPT: "bridge_interrupt",
-}
-
-export const BRIDGE_SYNTHETIC_MESSAGE_TYPES = {
-  WARNING: "bridge_warning",
-}
-
-export const BRIDGE_INTERRUPT_SOURCES = {
-  HTTP_ABORT: "bridge_http_abort",
-  CLIENT_CANCEL: "bridge_client_cancel",
-}
+// Re-export from canonical source (@webalive/shared)
+export { BRIDGE_STREAM_TYPES, BRIDGE_SYNTHETIC_MESSAGE_TYPES, BRIDGE_INTERRUPT_SOURCES }
 
 /**
  * SDK built-in tools we ALLOW in the Bridge.
@@ -57,8 +46,12 @@ export const ALLOWED_SDK_TOOLS = [
 // To enable/disable tools, set enabled=true/false in TOOL_REGISTRY - this list updates automatically
 const BASE_MCP_TOOLS = getEnabledMcpToolNames()
 
+// Global MCP tools (from GLOBAL_MCP_PROVIDERS in @webalive/shared)
+// These are always available to all users without authentication
+const GLOBAL_MCP_TOOLS = getGlobalMcpToolNames()
+
 // Export for use in tool-permissions.ts
-export const ALLOWED_MCP_TOOLS = BASE_MCP_TOOLS
+export const ALLOWED_MCP_TOOLS = [...BASE_MCP_TOOLS, ...GLOBAL_MCP_TOOLS]
 
 /**
  * Get base allowed tools (SDK tools + internal MCP tools)
@@ -71,9 +64,9 @@ export const ALLOWED_MCP_TOOLS = BASE_MCP_TOOLS
  * @returns {string[]} Base allowed tools list
  */
 export function getAllowedTools(_workspacePath) {
-  // Base tools: SDK built-ins + internal MCP tools
+  // Base tools: SDK built-ins + all MCP tools (internal + global)
   // OAuth MCP tools are allowed dynamically in canUseTool based on connected providers
-  return [...ALLOWED_SDK_TOOLS, ...BASE_MCP_TOOLS]
+  return [...ALLOWED_SDK_TOOLS, ...ALLOWED_MCP_TOOLS]
 }
 
 /**
@@ -125,6 +118,35 @@ export function getMcpServers(_workspacePath, options = {}) {
   // Add OAuth MCP servers for connected providers
   // Uses registry from @webalive/shared - add new providers there, not here
   const { oauthTokens = {} } = options
+  for (const [providerKey, config] of Object.entries(OAUTH_MCP_PROVIDERS)) {
+    const token = oauthTokens[providerKey]
+    if (token) {
+      servers[providerKey] = {
+        type: "http",
+        url: config.url,
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    }
+  }
+
+  return servers
+}
+
+/**
+ * Get ONLY the OAuth MCP servers (HTTP-based, serializable via JSON).
+ *
+ * Used by the worker pool: internal MCP servers (alive-workspace, alive-tools) are
+ * created locally in the worker because createSdkMcpServer returns function objects
+ * that cannot be serialized via IPC.
+ *
+ * @param {Record<string, string>} [oauthTokens] - OAuth tokens keyed by provider
+ * @returns {Object} OAuth MCP servers configuration (serializable)
+ */
+export function getOAuthMcpServers(oauthTokens = {}) {
+  const servers = {}
+
   for (const [providerKey, config] of Object.entries(OAUTH_MCP_PROVIDERS)) {
     const token = oauthTokens[providerKey]
     if (token) {

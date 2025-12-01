@@ -1,17 +1,19 @@
 "use client"
 
 import { AnimatePresence, motion } from "framer-motion"
-import { MessageSquare, Plus, Trash2, X } from "lucide-react"
+import { ChevronRight, Heart, PanelLeftClose, Settings2, Trash2 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
+import { REFERRAL } from "@webalive/shared"
 import { useSidebarActions, useSidebarOpen } from "@/lib/stores/conversationSidebarStore"
 import type { Conversation } from "@/lib/stores/messageStore"
 import { useConversations, useCurrentConversationId } from "@/lib/stores/messageStore"
 
 interface ConversationSidebarProps {
   workspace: string | null
-  onNewConversation: () => void
   onConversationSelect: (conversationId: string) => void
   onDeleteConversation: (conversationId: string) => void
+  onOpenSettings: () => void
+  onOpenInvite: () => void
 }
 
 /**
@@ -27,9 +29,10 @@ interface ConversationSidebarProps {
  */
 export function ConversationSidebar({
   workspace,
-  onNewConversation,
   onConversationSelect,
   onDeleteConversation,
+  onOpenSettings,
+  onOpenInvite,
 }: ConversationSidebarProps) {
   const isOpen = useSidebarOpen()
   const { closeSidebar } = useSidebarActions()
@@ -91,10 +94,6 @@ export function ConversationSidebar({
     setConversationToDelete(null)
   }
 
-  const handleNewConversation = () => {
-    onNewConversation()
-  }
-
   // Format timestamp as relative time
   const formatTimestamp = (timestamp: number): string => {
     const now = Date.now()
@@ -122,19 +121,16 @@ export function ConversationSidebar({
         aria-label="Conversation history"
       >
         <div className="flex flex-col h-full min-w-[280px]">
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-4 border-b border-black/10 dark:border-white/10">
-            <h2 className="text-sm font-medium text-black dark:text-white flex items-center gap-2">
-              <MessageSquare size={16} />
-              <span>Conversations</span>
-            </h2>
+          {/* Header - h-14 matches chat header height */}
+          <div className="h-14 flex items-center justify-between px-4 border-b border-black/10 dark:border-white/10">
+            <h2 className="text-sm font-medium text-black dark:text-white">Conversations</h2>
             <button
               type="button"
               onClick={closeSidebar}
-              className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded transition-colors"
+              className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 rounded transition-colors"
               aria-label="Close sidebar"
             >
-              <X size={16} className="text-black/60 dark:text-white/60" />
+              <PanelLeftClose size={18} className="text-black/40 dark:text-white/40" />
             </button>
           </div>
 
@@ -162,15 +158,34 @@ export function ConversationSidebar({
             )}
           </div>
 
-          {/* New conversation button */}
-          <div className="border-t border-black/10 dark:border-white/10 p-3">
+          {/* Share section */}
+          <div className="border-t border-black/10 dark:border-white/10 px-3 pt-3 pb-2.5 space-y-2.5">
+            {REFERRAL.ENABLED && (
+              <button
+                type="button"
+                onClick={onOpenInvite}
+                className="w-full flex items-center gap-3 px-3 py-2.5 border border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5 transition-colors group"
+              >
+                <Heart
+                  size={18}
+                  className="text-black/40 dark:text-white/40 group-hover:text-black/60 dark:group-hover:text-white/60 flex-shrink-0"
+                />
+                <div className="flex-1 min-w-0 text-left">
+                  <div className="text-sm text-black dark:text-white truncate">Share Alive</div>
+                  <div className="text-xs text-black/40 dark:text-white/40 truncate">with someone you love</div>
+                </div>
+                <ChevronRight size={14} className="text-black/30 dark:text-white/30 flex-shrink-0" />
+              </button>
+            )}
+
+            {/* Settings button */}
             <button
               type="button"
-              onClick={handleNewConversation}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-black text-white dark:bg-white dark:text-black hover:bg-black/90 dark:hover:bg-white/90 transition-colors text-sm font-medium"
+              onClick={onOpenSettings}
+              className="flex items-center justify-center size-8 hover:bg-black/5 dark:hover:bg-white/5 rounded transition-colors"
+              aria-label="Settings"
             >
-              <Plus size={16} />
-              <span>New conversation</span>
+              <Settings2 size={18} className="text-black/40 dark:text-white/40" />
             </button>
           </div>
         </div>

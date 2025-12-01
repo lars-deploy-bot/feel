@@ -417,7 +417,7 @@ The package includes unit tests for configuration validation:
 
 ```bash
 cd packages/site-controller
-bun test
+bun run test
 ```
 
 For integration testing with real Caddy operations, use a test environment with proper permissions.

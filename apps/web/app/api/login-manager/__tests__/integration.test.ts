@@ -10,7 +10,7 @@ describe("Manager Login Integration", () => {
   /**
    * CRITICAL: Verify BRIDGE_PASSCODE environment variable is set
    *
-   * This test caught the production bug where PM2 wasn't loading .env
+   * This test caught a production bug where the process manager wasn't loading .env
    * Unit tests passed because they mocked env, but real login failed.
    */
   it("should have BRIDGE_PASSCODE environment variable configured", () => {
@@ -27,12 +27,12 @@ describe("Manager Login Integration", () => {
 
     // This test will fail if:
     // - .env file doesn't have BRIDGE_PASSCODE
-    // - PM2/process manager didn't load .env
+    // - Process manager didn't load .env
     // - Environment variables weren't passed correctly
 
     // To fix:
     // 1. Add BRIDGE_PASSCODE=your_password to .env
-    // 2. If using PM2: pm2 delete app && pm2 start ecosystem.config.js
+    // 2. Restart the systemd service: systemctl restart claude-bridge-dev
     // 3. If using bun dev: restart the dev server
   })
 

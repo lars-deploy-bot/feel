@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
+import { DEFAULTS, DOMAINS } from "@webalive/shared"
 
 /**
  * Authentication and CORS guards
@@ -48,7 +49,7 @@ export function isOriginInAllowedDomains(origin: string): boolean {
  * Check if an origin matches the allowed domain pattern (.goalive.nl)
  */
 export function isOriginGoaliveNLDomain(origin: string): boolean {
-  return origin.endsWith(".goalive.nl")
+  return origin.endsWith(DOMAINS.MAIN_SUFFIX)
 }
 
 /**
@@ -63,17 +64,15 @@ export function isOriginAllowed(origin: string): boolean {
  * Returns matched origin or sensible fallback
  */
 export function getAllowedOrigin(requestOrigin: string | null): string {
-  const fallback = "https://terminal.goalive.nl"
-
   if (!requestOrigin) {
-    return fallback
+    return DEFAULTS.FALLBACK_ORIGIN
   }
 
   if (isOriginAllowed(requestOrigin)) {
     return requestOrigin
   }
 
-  return fallback
+  return DEFAULTS.FALLBACK_ORIGIN
 }
 
 /**

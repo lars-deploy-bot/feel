@@ -374,19 +374,19 @@ describe("POST /api/deploy-subdomain", () => {
 
 ```bash
 # Run all vitest tests
-bun test
+bun run test
 
 # Run with explicit vitest (avoids Playwright conflicts)
 bunx vitest run
 
 # Run specific test file
-bun test path/to/file.test.ts
+bun run test path/to/file.test.ts
 
 # Run in watch mode
-bun test --watch
+bun run test --watch
 
 # Run with coverage
-bun test --coverage
+bun run test --coverage
 ```
 
 ### E2E Tests

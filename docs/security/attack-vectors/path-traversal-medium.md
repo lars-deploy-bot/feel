@@ -206,7 +206,7 @@ path.normalize(...) // catches it
 
 ```bash
 # Unit tests
-cd apps/web && bun test security.test.ts
+cd apps/web && bun run test security.test.ts
 
 # Manual testing
 curl -X POST http://localhost:8999/api/claude/stream \

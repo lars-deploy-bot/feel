@@ -1,13 +1,25 @@
 "use client"
-import { ExternalLink, Eye, EyeOff, Image, Layers, MessageCircle } from "lucide-react"
-import { Suspense, useCallback, useEffect, useRef, useState } from "react"
+import {
+  ExternalLink,
+  Eye,
+  FlaskConical,
+  Image,
+  Layers,
+  MessageCircle,
+  PanelLeft,
+  PanelRight,
+  Radio,
+  Settings,
+} from "lucide-react"
+import { AnimatePresence } from "framer-motion"
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
 import { FeedbackModal } from "@/components/modals/FeedbackModal"
+import { InviteModal } from "@/components/modals/InviteModal"
 import { SessionExpiredModal } from "@/components/modals/SessionExpiredModal"
 import { SettingsModal } from "@/components/modals/SettingsModal"
 import { SuperTemplatesModal } from "@/components/modals/SuperTemplatesModal"
 import { PhotoMenu } from "@/components/ui/PhotoMenu"
-import { SettingsDropdown } from "@/components/ui/SettingsDropdown"
 import { WorkspaceSwitcher } from "@/components/workspace/WorkspaceSwitcher"
 import { ChatDropOverlay } from "@/features/chat/components/ChatDropOverlay"
 import { ChatInput } from "@/features/chat/components/ChatInput"
@@ -15,6 +27,7 @@ import type { ChatInputHandle } from "@/features/chat/components/ChatInput/types
 import { ConversationSidebar } from "@/features/chat/components/ConversationSidebar"
 import { DevTerminal } from "@/features/chat/components/DevTerminal"
 import { Sandbox } from "@/features/chat/components/Sandbox"
+import { SandboxMobile } from "@/features/chat/components/SandboxMobile"
 import { SubdomainInitializer } from "@/features/chat/components/SubdomainInitializer"
 import { ThinkingGroup } from "@/features/chat/components/ThinkingGroup"
 import { ThinkingSpinner } from "@/features/chat/components/ThinkingSpinner"
@@ -22,6 +35,7 @@ import { ThreeDotsComplete } from "@/features/chat/components/ThreeDotsComplete"
 import { useConversationSession } from "@/features/chat/hooks/useConversationSession"
 import { useImageUpload } from "@/features/chat/hooks/useImageUpload"
 import { useStreamCancellation } from "@/features/chat/hooks/useStreamCancellation"
+import { useRedeemReferral } from "@/hooks/useRedeemReferral"
 import {
   ClientError,
   ClientRequest,
@@ -45,11 +59,12 @@ import { useOrganizations } from "@/lib/hooks/useOrganizations"
 import { authStore, useIsSessionExpired } from "@/lib/stores/authStore"
 import { validateOAuthToastParams } from "@/lib/integrations/toast-validation"
 import { isRetryableError, retryWithBackoff } from "@/lib/retry"
-import { useSidebarActions } from "@/lib/stores/conversationSidebarStore"
+import { useSidebarActions, useSidebarOpen } from "@/lib/stores/conversationSidebarStore"
 import { isDevelopment, useDebugActions, useDebugVisible, useSandbox, useSSETerminal } from "@/lib/stores/debug-store"
 import { useLLMStore } from "@/lib/stores/llmStore"
 import { useCurrentConversationId, useMessageActions, useMessages } from "@/lib/stores/messageStore"
 import { useStreamingActions } from "@/lib/stores/streamingStore"
+import { getMcpToolFriendlyName } from "@webalive/shared"
 
 // Build version for deployment verification
 const BUILD_VERSION = "2025-11-12-direct-execution"
@@ -66,18 +81,21 @@ function ChatPageContent() {
     deleteConversation,
   } = useMessageActions()
   const { toggleSidebar } = useSidebarActions()
+  const isSidebarOpen = useSidebarOpen()
   const [busy, setBusy] = useState(false)
   const [useStreaming, _setUseStreaming] = useState(true)
   const [shouldForceScroll, setShouldForceScroll] = useState(false)
   const [userHasManuallyScrolled, setUserHasManuallyScrolled] = useState(false)
   const [subdomainInitialized, setSubdomainInitialized] = useState(false)
   const [showFeedbackModal, setShowFeedbackModal] = useState(false)
+  const [showInviteModal, setShowInviteModal] = useState(false)
 
-  // Settings modal: null (closed), 'manual' (user-opened), 'error' (auto-opened for error)
-  const [settingsModalReason, setSettingsModalReason] = useState<"manual" | "error" | null>(null)
+  // Settings modal: null (closed), 'manual' (user-opened), 'error' (auto-opened for error), 'websites' (from workspace switcher)
+  const [settingsModalReason, setSettingsModalReason] = useState<"manual" | "error" | "websites" | null>(null)
 
   const [showTemplatesModal, setShowTemplatesModal] = useState(false)
   const [showPhotoMenu, setShowPhotoMenu] = useState(false)
+  const [showMobilePreview, setShowMobilePreview] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [showCompletionDots, setShowCompletionDots] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -99,7 +117,8 @@ function ChatPageContent() {
   const chatInputRef = useRef<ChatInputHandle>(null)
   const dragCounter = useRef(0)
   const photoButtonRef = useRef<HTMLButtonElement>(null)
-  const { toggleView, setSSETerminal, setSSETerminalMinimized, setSandbox, setSandboxMinimized } = useDebugActions()
+  const { toggleView, toggleSandbox, setSSETerminal, setSSETerminalMinimized, setSandbox, setSandboxMinimized } =
+    useDebugActions()
   const isDebugView = useDebugVisible()
   const showSSETerminal = useSSETerminal()
   const showSandbox = useSandbox()
@@ -110,8 +129,90 @@ function ChatPageContent() {
   const { apiKey: userApiKey, model: userModel } = useLLMStore()
   const streamingActions = useStreamingActions()
 
+  // Derive status text from last assistant message when busy
+  const statusText = useMemo(() => {
+    if (!busy || messages.length === 0) return undefined
+
+    // Find the last assistant message (not user/tool_result)
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i]
+      if (msg?.type === "sdk_message" && msg.content) {
+        const content = msg.content as {
+          type?: string
+          message?: { content?: unknown[] }
+        }
+
+        if (content.type !== "assistant") continue
+
+        const blocks = content.message?.content
+        if (!Array.isArray(blocks) || blocks.length === 0) continue
+
+        const lastBlock = blocks[blocks.length - 1] as {
+          type?: string
+          name?: string
+          input?: { file_path?: string; path?: string; pattern?: string; command?: string }
+        }
+
+        if (lastBlock?.type === "tool_use" && lastBlock.name) {
+          const input = lastBlock.input
+          const toolName = lastBlock.name
+
+          // Format based on tool type
+          if (toolName === "Read" && input?.file_path) {
+            const fileName = input.file_path.split("/").pop()
+            return `Reading ${fileName}`
+          }
+          if (toolName === "Edit" && input?.file_path) {
+            const fileName = input.file_path.split("/").pop()
+            return `Editing ${fileName}`
+          }
+          if (toolName === "Write" && input?.file_path) {
+            const fileName = input.file_path.split("/").pop()
+            return `Writing ${fileName}`
+          }
+          if (toolName === "Glob" && input?.pattern) {
+            return `Searching ${input.pattern}`
+          }
+          if (toolName === "Grep" && input?.pattern) {
+            return `Grep: ${input.pattern.slice(0, 20)}${input.pattern.length > 20 ? "..." : ""}`
+          }
+          if (toolName === "Bash" && input?.command) {
+            const cmd = input.command.split(" ")[0]
+            return `Running ${cmd}`
+          }
+          // Check for MCP tools - show friendly name
+          const mcpFriendly = getMcpToolFriendlyName(toolName)
+          if (mcpFriendly) {
+            return `${mcpFriendly.provider}: ${mcpFriendly.action}`
+          }
+          return `${toolName}...`
+        }
+        if (lastBlock?.type === "thinking") {
+          return "Thinking..."
+        }
+        // Found an assistant message but no actionable block, keep looking
+      }
+    }
+    return "Working..."
+  }, [busy, messages])
+
+  // Redeem referral code if stored (from invite link flow)
+  useRedeemReferral()
+
+  // Update page title with workspace name
+  useEffect(() => {
+    if (workspace) {
+      // Extract project name (first part before dot) and capitalize
+      const projectName = workspace.split(".")[0]
+      const capitalized = projectName.charAt(0).toUpperCase() + projectName.slice(1)
+      document.title = `${capitalized} - Alive`
+    } else {
+      document.title = "Alive"
+    }
+  }, [workspace])
+
   // Stream cancellation hook - handles Stop button with type-safe API calls
-  const { stopStreaming } = useStreamCancellation({
+  const { stopStreaming, isStopping } = useStreamCancellation({
     conversationId: storeConversationId ?? "",
     workspace,
     addMessage,
@@ -137,7 +238,7 @@ function ChatPageContent() {
   })
 
   // Fetch organizations and auto-select if none selected
-  const { organizations, loading: orgsLoading } = useOrganizations()
+  const { organizations } = useOrganizations()
 
   // Check for session expiry (handled via auth store, not local error state)
   const isSessionExpired = useIsSessionExpired()
@@ -184,11 +285,15 @@ function ChatPageContent() {
     // Log build version for deployment verification
     console.log(`%c[Chat] BUILD VERSION: ${BUILD_VERSION}`, "color: #00ff00; font-weight: bold; font-size: 14px")
 
-    // Auto-enable SSE terminal (minimized) on dev/staging environments
+    // Auto-enable panels on dev/staging environments (desktop only)
     if (isDevelopment()) {
       setSSETerminal(true)
       setSSETerminalMinimized(true)
-      // Sandbox disabled by default - user can enable manually
+      // Sandbox open by default on desktop only (side panel doesn't work on mobile)
+      if (window.innerWidth >= 768) {
+        setSandbox(true)
+        setSandboxMinimized(false)
+      }
     }
   }, [setSSETerminal, setSSETerminalMinimized, setSandbox, setSandboxMinimized])
 
@@ -289,8 +394,9 @@ function ChatPageContent() {
   }
 
   async function sendMessage() {
-    // Simple: Block if already submitting or no message
-    if (isSubmitting.current || busy || !msg.trim()) return
+    // Block if: already submitting, busy, no message, OR cancel in progress
+    // The isStopping check prevents sending while backend is cleaning up from Stop
+    if (isSubmitting.current || busy || isStopping || !msg.trim()) return
 
     // Lock submission immediately
     isSubmitting.current = true
@@ -322,6 +428,15 @@ function ChatPageContent() {
         await sendRegular(userMessage)
       }
     } finally {
+      // Reset busy state when request completes (success or error)
+      // BUT skip if Stop was clicked - finishCancellation() will handle it after delay
+      // Check abortControllerRef: null means Stop was clicked (it's nulled immediately in stopStreaming)
+      // AND the finally block in sendStreaming hasn't run yet (which also nulls it)
+      // For Stop: abortControllerRef is null BEFORE sendStreaming runs
+      // For errors: abortControllerRef is set, then nulled by sendStreaming finally
+      // So we check: if ref was already null at start of sendStreaming, it's a Stop
+      // But we can't easily track that... so just always reset here and let finishCancellation
+      // handle the Stop case (double-call is safe)
       setBusy(false)
       isSubmitting.current = false
     }
@@ -529,40 +644,10 @@ function ChatPageContent() {
                 console.log("[Chat] Tracking requestId for cancellation:", eventData.requestId)
               }
 
-              // Handle warning messages with a toast (don't add to message history)
+              // Handle warning messages silently (don't add to message history)
               if (isWarningMessage(eventData)) {
                 const warning = eventData.data.content as BridgeWarningContent
                 console.log("[Chat] OAuth warning received:", warning.provider, warning.message)
-
-                // Show toast with action link
-                toast(
-                  t => (
-                    <div className="flex flex-col gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-orange-500">⚠️</span>
-                        <span className="font-medium">{warning.message}</span>
-                      </div>
-                      {warning.action && warning.actionUrl && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            toast.dismiss(t.id)
-                            // Navigate to settings
-                            window.location.href = warning.actionUrl || "/settings?tab=integrations"
-                          }}
-                          className="text-sm text-blue-600 hover:text-blue-800 underline text-left"
-                        >
-                          {warning.action} →
-                        </button>
-                      )}
-                    </div>
-                  ),
-                  {
-                    duration: 10000,
-                    position: "top-center",
-                    className: "!bg-amber-100 !border !border-amber-500 !p-3 !max-w-md",
-                  },
-                )
                 continue // Don't add warning to messages
               }
 
@@ -935,14 +1020,6 @@ function ChatPageContent() {
     [deleteConversation, conversationId, startNewConversation],
   )
 
-  const handleSwitchWorkspace = useCallback(
-    (newWorkspace: string) => {
-      setWorkspace(newWorkspace)
-      handleNewConversation()
-    },
-    [setWorkspace, handleNewConversation],
-  )
-
   const handleOpenSettings = useCallback(() => {
     setSettingsModalReason("manual")
   }, [])
@@ -964,10 +1041,23 @@ function ChatPageContent() {
       {/* Conversation Sidebar - Static, not overlay */}
       <ConversationSidebar
         workspace={workspace}
-        onNewConversation={handleNewConversation}
         onConversationSelect={handleConversationSelect}
         onDeleteConversation={handleDeleteConversation}
+        onOpenSettings={handleOpenSettings}
+        onOpenInvite={() => setShowInviteModal(true)}
       />
+
+      {/* Fixed top-left button to open sidebar when closed */}
+      {!isSidebarOpen && (
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          className="fixed top-3 left-3 z-50 p-2 border border-black/20 dark:border-white/20 hover:bg-black/5 dark:hover:bg-white/5 transition-colors hidden md:flex"
+          aria-label="Open conversations"
+        >
+          <PanelLeft size={18} className="text-black/70 dark:text-white/70" />
+        </button>
+      )}
 
       {/* Main chat area - flex grows to fill remaining space */}
       <div
@@ -989,9 +1079,9 @@ function ChatPageContent() {
           />
         </Suspense>
         <div className="flex-1 min-h-0 flex flex-col">
-          {/* Header */}
-          <div className="flex-shrink-0 border-b border-black/10 dark:border-white/10">
-            <div className="flex items-center justify-between px-6 py-4 mx-auto w-full md:max-w-2xl">
+          {/* Header - h-14 matches sidebar header height */}
+          <div className="h-14 flex-shrink-0 border-b border-black/10 dark:border-white/10">
+            <div className="h-full flex items-center justify-between px-6 mx-auto w-full md:max-w-2xl">
               <div className="flex items-center gap-3">
                 <a
                   href="https://alive.best"
@@ -1009,28 +1099,39 @@ function ChatPageContent() {
                     className="text-black dark:text-white"
                   >
                     <circle cx="12" cy="12" r="10" fill="currentColor" fillOpacity="0.1" className="alive-logo-outer" />
-                    <circle cx="12" cy="12" r="4" fill="currentColor" className="alive-logo-inner" />
                   </svg>
                 </a>
-                <button
-                  type="button"
-                  onClick={toggleSidebar}
-                  className="text-lg font-medium text-black dark:text-white hover:opacity-80 transition-opacity"
-                  aria-label="Toggle conversation sidebar"
-                >
-                  {mounted && isTerminal ? "Chat" : "Chat"}
-                </button>
+                <span className="text-lg font-medium text-black dark:text-white">Chat</span>
               </div>
               <div className="flex items-center gap-2">
                 {isDevelopment() && (
                   <button
                     type="button"
                     onClick={toggleView}
-                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium border transition-colors text-black/60 hover:text-black/80 border-black/20 hover:border-black/40 dark:text-white/60 dark:hover:text-white/80 dark:border-white/20 dark:hover:border-white/40"
-                    title={isDebugView ? "Hide debug details" : "Show debug details"}
+                    className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border transition-colors ${
+                      isDebugView
+                        ? "text-amber-600 border-amber-400 bg-amber-50 hover:bg-amber-100 dark:text-amber-400 dark:border-amber-600 dark:bg-amber-950/50 dark:hover:bg-amber-950"
+                        : "text-emerald-600 border-emerald-400 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-600 dark:hover:bg-emerald-950/30"
+                    }`}
+                    title={isDebugView ? "Switch to live view" : "Switch to debug view"}
                   >
-                    {isDebugView ? <Eye size={14} /> : <EyeOff size={14} />}
+                    {isDebugView ? <FlaskConical size={14} /> : <Radio size={14} />}
                     <span>{isDebugView ? "Debug" : "Live"}</span>
+                  </button>
+                )}
+                {isDevelopment() && (
+                  <button
+                    type="button"
+                    onClick={toggleSandbox}
+                    className={`hidden md:flex items-center gap-1.5 px-3 py-2 text-xs font-medium border transition-colors ${
+                      showSandbox
+                        ? "text-purple-600 border-purple-400 bg-purple-50 hover:bg-purple-100 dark:text-purple-400 dark:border-purple-600 dark:bg-purple-950/50 dark:hover:bg-purple-950"
+                        : "text-black/60 dark:text-white/60 border-black/20 dark:border-white/20 hover:bg-black/5 dark:hover:bg-white/5"
+                    }`}
+                    title={showSandbox ? "Hide preview panel" : "Show preview panel"}
+                  >
+                    <PanelRight size={14} />
+                    <span>Preview</span>
                   </button>
                 )}
                 <button
@@ -1068,83 +1169,87 @@ function ChatPageContent() {
                     triggerRef={photoButtonRef}
                   />
                 </div>
-                <SettingsDropdown
-                  onNewChat={handleNewConversation}
-                  currentWorkspace={workspace ?? undefined}
-                  onSwitchWorkspace={handleSwitchWorkspace}
-                  onOpenSettings={handleOpenSettings}
-                />
+                <button
+                  type="button"
+                  onClick={handleOpenSettings}
+                  className="inline-flex items-center justify-center px-3 py-2 text-black dark:text-white border border-black/20 dark:border-white/20 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors active:scale-90 [&>svg]:transition-transform [&>svg]:duration-300 [&>svg]:ease-out hover:[&>svg]:rotate-90"
+                  aria-label="Settings"
+                  data-testid="settings-button"
+                >
+                  <Settings size={14} />
+                </button>
               </div>
             </div>
           </div>
 
-          {mounted && (
-            <div className="flex-shrink-0 border-b border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02]">
-              <div className="px-6 py-3 mx-auto w-full md:max-w-2xl">
-                {/* Empty state messages - only show when no workspace and session is valid */}
-                {!workspace && !isSessionExpired && (
-                  <>
-                    {totalDomainCount === 0 && (
-                      <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                        <p className="text-sm text-blue-900 dark:text-blue-100 mb-2 font-medium">
-                          Welcome! You don't have any domains yet.
-                        </p>
-                        <a
-                          href="/deploy"
-                          className="inline-block px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors"
-                        >
-                          Deploy your first site
-                        </a>
-                      </div>
-                    )}
-                    {!orgsLoading && totalDomainCount > 0 && (
-                      <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                        <p className="text-xs text-blue-900 dark:text-blue-100">Loading workspace...</p>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {/* Workspace info bar - always visible */}
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-6">
-                    <div className="flex items-center" data-testid="workspace-section">
-                      <span className="text-black/50 dark:text-white/50 font-medium" data-testid="workspace-label">
-                        site
-                      </span>
-                      {isTerminal ? (
-                        <WorkspaceSwitcher currentWorkspace={workspace} onWorkspaceChange={setWorkspace} />
-                      ) : (
-                        <span className="ml-3 font-diatype-mono font-medium text-black/80 dark:text-white/80">
-                          {workspace || "loading..."}
-                        </span>
-                      )}
-                    </div>
-                    {workspace && (
-                      <a
-                        href={`https://${workspace}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-2 py-1 text-xs font-medium text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 rounded transition-colors flex items-center gap-1"
-                      >
-                        open
-                        <ExternalLink size={10} />
-                      </a>
-                    )}
-                  </div>
-                  {workspace && (
+          <div className="flex-shrink-0 border-b border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02]">
+            <div className="px-4 md:px-6 py-3 mx-auto w-full md:max-w-2xl">
+              {/* Workspace info bar - always visible */}
+              <div className="flex items-center justify-between text-xs gap-2">
+                {/* Left: site name (truncated on mobile) */}
+                <div className="flex items-center min-w-0 flex-shrink" data-testid="workspace-section">
+                  <span
+                    className="text-black/50 dark:text-white/50 font-medium flex-shrink-0"
+                    data-testid="workspace-label"
+                  >
+                    site
+                  </span>
+                  {isTerminal ? (
+                    <WorkspaceSwitcher
+                      currentWorkspace={workspace}
+                      onOpenSettings={() => setSettingsModalReason("websites")}
+                    />
+                  ) : (
+                    <span className="ml-2 md:ml-3 font-diatype-mono font-medium text-black/80 dark:text-white/80 truncate">
+                      {workspace || "loading..."}
+                    </span>
+                  )}
+                </div>
+                {/* Right: action buttons */}
+                {workspace && (
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <a
+                      href={`https://${workspace}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2 py-1 text-xs font-medium text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 rounded transition-colors flex items-center gap-1"
+                    >
+                      <ExternalLink size={10} />
+                      <span className="hidden sm:inline">open</span>
+                    </a>
+                    {/* Preview button - desktop only (mobile uses toolbar) */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isDevelopment()) {
+                          toggleSandbox()
+                        } else {
+                          setShowMobilePreview(true)
+                        }
+                      }}
+                      className={`hidden sm:flex px-2 py-1 text-xs font-medium rounded transition-colors items-center gap-1 ${
+                        showSandbox || showMobilePreview
+                          ? "text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/50"
+                          : "text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5"
+                      }`}
+                      title="Preview site"
+                    >
+                      <Eye size={10} />
+                      preview
+                    </button>
                     <button
                       type="button"
                       onClick={handleNewConversation}
                       className="px-2 py-1 text-xs font-medium text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 rounded transition-colors"
                     >
-                      new chat
+                      <span className="sm:hidden">new</span>
+                      <span className="hidden sm:inline">new chat</span>
                     </button>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             </div>
-          )}
+          </div>
 
           {/* Messages */}
           <div className="flex-1 min-h-0 overflow-y-auto">
@@ -1155,9 +1260,7 @@ function ChatPageContent() {
                   <div className="max-w-md text-center space-y-6">
                     {workspace ? (
                       <>
-                        <p className="text-lg text-black/90 dark:text-white/90 font-medium">
-                          Tell me what to build and I'll update your site
-                        </p>
+                        <p className="text-lg text-black/90 dark:text-white/90 font-medium">What's next?</p>
                         <div className="pt-2">
                           <button
                             type="button"
@@ -1168,11 +1271,23 @@ function ChatPageContent() {
                           </button>
                         </div>
                       </>
+                    ) : totalDomainCount === 0 ? (
+                      <>
+                        <p className="text-lg text-black/90 dark:text-white/90 font-medium">
+                          Welcome! You don't have any sites yet.
+                        </p>
+                        <div className="pt-2">
+                          <a
+                            href="/deploy"
+                            className="inline-block px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
+                          >
+                            Deploy your first site
+                          </a>
+                        </div>
+                      </>
                     ) : (
                       <p className="text-lg text-black/60 dark:text-white/60 font-medium">
-                        {totalDomainCount === 0
-                          ? "Deploy your first site to get started"
-                          : "Select a site above to start chatting"}
+                        Select a site above to start chatting
                       </p>
                     )}
                   </div>
@@ -1213,10 +1328,12 @@ function ChatPageContent() {
               message={msg}
               setMessage={setMsg}
               busy={busy || !workspace}
+              isStopping={isStopping}
               abortControllerRef={abortControllerRef}
               onSubmit={sendMessage}
               onStop={stopStreaming}
               onOpenTemplates={() => setShowTemplatesModal(true)}
+              onOpenPreview={() => setShowMobilePreview(true)}
               config={{
                 enableAttachments: true,
                 enableCamera: true,
@@ -1230,7 +1347,36 @@ function ChatPageContent() {
         </div>
       </div>
 
-      {showSandbox && <Sandbox />}
+      {/* Side panel sandbox - desktop only (mobile uses overlay) */}
+      <div className="hidden md:block">{showSandbox && <Sandbox />}</div>
+      {showMobilePreview && (
+        <SandboxMobile
+          onClose={() => setShowMobilePreview(false)}
+          busy={busy}
+          statusText={statusText}
+          onStop={stopStreaming}
+        >
+          <ChatInput
+            ref={chatInputRef}
+            message={msg}
+            setMessage={setMsg}
+            busy={busy || !workspace}
+            isStopping={isStopping}
+            abortControllerRef={abortControllerRef}
+            onSubmit={sendMessage}
+            onStop={stopStreaming}
+            hideToolbar
+            config={{
+              enableAttachments: true,
+              enableCamera: false,
+              maxAttachments: 5,
+              maxFileSize: 20 * 1024 * 1024,
+              placeholder: "Tell me what to change...",
+              onAttachmentUpload: handleAttachmentUpload,
+            }}
+          />
+        </SandboxMobile>
+      )}
       {showSSETerminal && <DevTerminal />}
       {showFeedbackModal && (
         <FeedbackModal
@@ -1239,15 +1385,24 @@ function ChatPageContent() {
           conversationId={conversationId}
         />
       )}
-      {settingsModalReason && (
-        <SettingsModal
-          onClose={handleCloseSettings}
-          initialTab={settingsModalReason === "error" ? "organization" : undefined}
-        />
-      )}
+      <AnimatePresence>
+        {settingsModalReason && (
+          <SettingsModal
+            onClose={handleCloseSettings}
+            initialTab={
+              settingsModalReason === "error"
+                ? "organization"
+                : settingsModalReason === "websites"
+                  ? "websites"
+                  : undefined
+            }
+          />
+        )}
+      </AnimatePresence>
       {showTemplatesModal && (
         <SuperTemplatesModal onClose={() => setShowTemplatesModal(false)} onInsertTemplate={handleInsertTemplate} />
       )}
+      {showInviteModal && <InviteModal onClose={() => setShowInviteModal(false)} />}
 
       {/* Session expiry modal - non-dismissable, requires login */}
       {isSessionExpired && <SessionExpiredModal />}

@@ -11,7 +11,7 @@ describe("Cancellation Registry", () => {
   // Note: Registry is global, so we need to be careful about test isolation
   // In a real scenario, we'd want to add a clearRegistry() function for testing
 
-  test("should register and cancel a stream", () => {
+  test("should register and cancel a stream", async () => {
     let cancelled = false
     const requestId = "test-request-1"
     const userId = "user-123"
@@ -23,17 +23,17 @@ describe("Cancellation Registry", () => {
 
     expect(getRegistrySize()).toBeGreaterThanOrEqual(1)
 
-    const result = cancelStream(requestId, userId)
+    const result = await cancelStream(requestId, userId)
     expect(result).toBe(true)
     expect(cancelled).toBe(true)
   })
 
-  test("should return false when cancelling non-existent stream", () => {
-    const result = cancelStream("non-existent-id", "user-123")
+  test("should return false when cancelling non-existent stream", async () => {
+    const result = await cancelStream("non-existent-id", "user-123")
     expect(result).toBe(false)
   })
 
-  test("should throw error when cancelling another user's stream", () => {
+  test("should throw error when cancelling another user's stream", async () => {
     let cancelled = false
     const requestId = "test-request-2"
     const ownerUserId = "user-owner"
@@ -44,9 +44,7 @@ describe("Cancellation Registry", () => {
       cancelled = true
     })
 
-    expect(() => {
-      cancelStream(requestId, attackerUserId)
-    }).toThrow("Unauthorized")
+    await expect(cancelStream(requestId, attackerUserId)).rejects.toThrow("Unauthorized")
 
     expect(cancelled).toBe(false)
 
@@ -54,7 +52,7 @@ describe("Cancellation Registry", () => {
     unregisterCancellation(requestId)
   })
 
-  test("should unregister a stream", () => {
+  test("should unregister a stream", async () => {
     const requestId = "test-request-3"
     const userId = "user-123"
     const convKey = "user-123::workspace::conv-3"
@@ -68,19 +66,25 @@ describe("Cancellation Registry", () => {
     expect(sizeAfter).toBe(sizeBefore - 1)
 
     // Should return false when trying to cancel after unregister
-    const result = cancelStream(requestId, userId)
+    const result = await cancelStream(requestId, userId)
     expect(result).toBe(false)
   })
 
-  test("should handle multiple registrations", () => {
+  test("should handle multiple registrations", async () => {
     const cancellations: string[] = []
 
-    registerCancellation("req-1", "user-1", "user-1::ws::conv-1", () => cancellations.push("req-1"))
-    registerCancellation("req-2", "user-1", "user-1::ws::conv-2", () => cancellations.push("req-2"))
-    registerCancellation("req-3", "user-2", "user-2::ws::conv-3", () => cancellations.push("req-3"))
+    registerCancellation("req-1", "user-1", "user-1::ws::conv-1", () => {
+      cancellations.push("req-1")
+    })
+    registerCancellation("req-2", "user-1", "user-1::ws::conv-2", () => {
+      cancellations.push("req-2")
+    })
+    registerCancellation("req-3", "user-2", "user-2::ws::conv-3", () => {
+      cancellations.push("req-3")
+    })
 
-    cancelStream("req-1", "user-1")
-    cancelStream("req-3", "user-2")
+    await cancelStream("req-1", "user-1")
+    await cancelStream("req-3", "user-2")
 
     expect(cancellations).toEqual(["req-1", "req-3"])
 
@@ -90,7 +94,7 @@ describe("Cancellation Registry", () => {
     unregisterCancellation("req-3")
   })
 
-  test("should be idempotent for cancellation", () => {
+  test("should be idempotent for cancellation", async () => {
     let cancelCount = 0
     const requestId = "test-request-4"
     const userId = "user-123"
@@ -101,18 +105,18 @@ describe("Cancellation Registry", () => {
     })
 
     // First cancel should work
-    expect(cancelStream(requestId, userId)).toBe(true)
+    expect(await cancelStream(requestId, userId)).toBe(true)
     expect(cancelCount).toBe(1)
 
     // Second cancel should return false (not found)
-    expect(cancelStream(requestId, userId)).toBe(false)
+    expect(await cancelStream(requestId, userId)).toBe(false)
     expect(cancelCount).toBe(1) // Should not increment
 
     // Cleanup
     unregisterCancellation(requestId)
   })
 
-  test("should cancel stream by conversationKey (super-early Stop fallback)", () => {
+  test("should cancel stream by conversationKey (super-early Stop fallback)", async () => {
     let cancelled = false
     const requestId = "test-request-5"
     const userId = "user-123"
@@ -123,17 +127,17 @@ describe("Cancellation Registry", () => {
     })
 
     // Cancel by conversationKey instead of requestId
-    const result = cancelStreamByConversationKey(convKey, userId)
+    const result = await cancelStreamByConversationKey(convKey, userId)
     expect(result).toBe(true)
     expect(cancelled).toBe(true)
   })
 
-  test("should return false when cancelling non-existent conversationKey", () => {
-    const result = cancelStreamByConversationKey("non-existent-key", "user-123")
+  test("should return false when cancelling non-existent conversationKey", async () => {
+    const result = await cancelStreamByConversationKey("non-existent-key", "user-123")
     expect(result).toBe(false)
   })
 
-  test("should throw error when cancelling another user's stream by conversationKey", () => {
+  test("should throw error when cancelling another user's stream by conversationKey", async () => {
     let cancelled = false
     const requestId = "test-request-6"
     const ownerUserId = "user-owner"
@@ -144,9 +148,7 @@ describe("Cancellation Registry", () => {
       cancelled = true
     })
 
-    expect(() => {
-      cancelStreamByConversationKey(convKey, attackerUserId)
-    }).toThrow("Unauthorized")
+    await expect(cancelStreamByConversationKey(convKey, attackerUserId)).rejects.toThrow("Unauthorized")
 
     expect(cancelled).toBe(false)
 
@@ -154,21 +156,27 @@ describe("Cancellation Registry", () => {
     unregisterCancellation(requestId)
   })
 
-  test("should handle multiple streams with same conversationKey prefix", () => {
+  test("should handle multiple streams with same conversationKey prefix", async () => {
     const cancellations: string[] = []
 
     // Different conversations but similar keys
-    registerCancellation("req-1", "user-1", "user-1::ws::conv-abc", () => cancellations.push("req-1"))
-    registerCancellation("req-2", "user-1", "user-1::ws::conv-abcd", () => cancellations.push("req-2"))
-    registerCancellation("req-3", "user-2", "user-2::ws::conv-abc", () => cancellations.push("req-3"))
+    registerCancellation("req-1", "user-1", "user-1::ws::conv-abc", () => {
+      cancellations.push("req-1")
+    })
+    registerCancellation("req-2", "user-1", "user-1::ws::conv-abcd", () => {
+      cancellations.push("req-2")
+    })
+    registerCancellation("req-3", "user-2", "user-2::ws::conv-abc", () => {
+      cancellations.push("req-3")
+    })
 
     // Cancel by exact conversationKey match
-    const result1 = cancelStreamByConversationKey("user-1::ws::conv-abc", "user-1")
+    const result1 = await cancelStreamByConversationKey("user-1::ws::conv-abc", "user-1")
     expect(result1).toBe(true)
     expect(cancellations).toEqual(["req-1"])
 
     // Other streams should still be active
-    const result2 = cancelStreamByConversationKey("user-1::ws::conv-abcd", "user-1")
+    const result2 = await cancelStreamByConversationKey("user-1::ws::conv-abcd", "user-1")
     expect(result2).toBe(true)
     expect(cancellations).toEqual(["req-1", "req-2"])
 
@@ -176,5 +184,28 @@ describe("Cancellation Registry", () => {
     unregisterCancellation("req-1")
     unregisterCancellation("req-2")
     unregisterCancellation("req-3")
+  })
+
+  test("should await async cancel callback before returning", async () => {
+    let cleanupCompleted = false
+    const requestId = "test-request-async"
+    const userId = "user-123"
+    const convKey = "user-123::workspace::conv-async"
+
+    // Register with an async cancel callback
+    registerCancellation(requestId, userId, convKey, () => {
+      return new Promise<void>(resolve => {
+        // Simulate async cleanup
+        setTimeout(() => {
+          cleanupCompleted = true
+          resolve()
+        }, 50)
+      })
+    })
+
+    // cancelStream should await the async callback
+    const result = await cancelStream(requestId, userId)
+    expect(result).toBe(true)
+    expect(cleanupCompleted).toBe(true) // Should be true because we awaited
   })
 })

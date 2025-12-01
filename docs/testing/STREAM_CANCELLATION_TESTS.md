@@ -174,17 +174,17 @@ Unit tests achieve better coverage with:
 ### Run Stream Tests Only
 ```bash
 cd apps/web
-bun test lib/stream/__tests__/ndjson-stream-handler.test.ts lib/stream/__tests__/abort-handler.test.ts
+bun run test lib/stream/__tests__/ndjson-stream-handler.test.ts lib/stream/__tests__/abort-handler.test.ts
 ```
 
 ### Run All Tests
 ```bash
-bun test
+bun run test
 ```
 
 ### Run with Watch Mode
 ```bash
-bun test --watch
+bun run test --watch
 ```
 
 ---
@@ -309,7 +309,7 @@ For production readiness, add:
 bun run format
 
 # Run tests
-bun test lib/stream/__tests__/
+bun run test lib/stream/__tests__/
 
 # Check for lint issues
 bun run lint
