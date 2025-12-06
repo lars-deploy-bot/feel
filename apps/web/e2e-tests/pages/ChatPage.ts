@@ -15,9 +15,10 @@ export class ChatPage {
 
   /**
    * Navigate to chat page
+   * Uses domcontentloaded for fast navigation, then waitForReady handles React hydration
    */
   async goto() {
-    await this.page.goto("/chat")
+    await this.page.goto("/chat", { waitUntil: "domcontentloaded" })
   }
 
   /**

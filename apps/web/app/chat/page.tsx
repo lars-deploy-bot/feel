@@ -42,11 +42,12 @@ import {
   useDevTerminal,
 } from "@/features/chat/lib/dev-terminal-context"
 import { groupMessages } from "@/features/chat/lib/message-grouper"
-import { parseStreamEvent, type UIMessage } from "@/features/chat/lib/message-parser"
+import { parseStreamEvent, type AgentManagerContent, type UIMessage } from "@/features/chat/lib/message-parser"
 import { renderMessage } from "@/features/chat/lib/message-renderer"
 import { SandboxProvider } from "@/features/chat/lib/sandbox-context"
 import { sendClientError } from "@/features/chat/lib/send-client-error"
 import { isValidStreamEvent } from "@/features/chat/lib/stream-guards"
+import { formatMessagesAsText } from "@/features/chat/utils/format-messages"
 import { isWarningMessage, type BridgeWarningContent } from "@/features/chat/lib/streaming/ndjson"
 import { isCompleteEvent, isDoneEvent, isErrorEvent } from "@/features/chat/types/stream"
 import { buildPromptWithAttachments } from "@/features/chat/utils/prompt-builder"
@@ -60,10 +61,12 @@ import { validateOAuthToastParams } from "@/lib/integrations/toast-validation"
 import { isRetryableError, retryWithBackoff } from "@/lib/retry"
 import { useSidebarActions, useSidebarOpen } from "@/lib/stores/conversationSidebarStore"
 import { isDevelopment, useDebugActions, useDebugVisible, useSandbox, useSSETerminal } from "@/lib/stores/debug-store"
-import { useLLMStore } from "@/lib/stores/llmStore"
-import { useCurrentConversationId, useMessageActions, useMessages } from "@/lib/stores/messageStore"
+import { useApiKey, useModel } from "@/lib/stores/llmStore"
+import { useCurrentConversationId, useMessageActions, useMessages, useMessageStore } from "@/lib/stores/messageStore"
 import { useStreamingActions } from "@/lib/stores/streamingStore"
+import { useGoal, useBuilding, useTargetUsers } from "@/lib/stores/goalStore"
 import { getMcpToolFriendlyName } from "@webalive/shared"
+import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
 
 // Build version for deployment verification
 const BUILD_VERSION = "2025-11-12-direct-execution"
@@ -97,9 +100,19 @@ function ChatPageContent() {
   const [showMobilePreview, setShowMobilePreview] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [showCompletionDots, setShowCompletionDots] = useState(false)
+  const [isEvaluatingProgress, setIsEvaluatingProgress] = useState(false)
+  const prGoal = useGoal()
+  const building = useBuilding()
+  const targetUsers = useTargetUsers()
+
+  // Feature flags
+  const agentSupervisorEnabled = useFeatureFlag("AGENT_SUPERVISOR")
+  const autoCopyOnCompleteEnabled = useFeatureFlag("AUTO_COPY_ON_COMPLETE")
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const isAutoScrolling = useRef(false)
   const abortControllerRef = useRef<AbortController | null>(null)
+  const agentManagerAbortRef = useRef<AbortController | null>(null)
+  const agentManagerTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   /**
    * Tracks the requestId for explicit stream cancellation.
@@ -125,7 +138,8 @@ function ChatPageContent() {
   const { workspace, isTerminal, mounted, setWorkspace } = useWorkspace({
     allowEmpty: true,
   })
-  const { apiKey: userApiKey, model: userModel } = useLLMStore()
+  const userApiKey = useApiKey()
+  const userModel = useModel()
   const streamingActions = useStreamingActions()
 
   // Derive status text from last assistant message when busy
@@ -393,10 +407,11 @@ function ChatPageContent() {
     return buildPromptWithAttachments(userMessage.content as string, userMessage.attachments || [])
   }
 
-  async function sendMessage() {
+  async function sendMessage(overrideMessage?: string) {
+    const messageToSend = overrideMessage ?? msg
     // Block if: already submitting, busy, no message, OR cancel in progress
     // The isStopping check prevents sending while backend is cleaning up from Stop
-    if (isSubmitting.current || busy || isStopping || !msg.trim()) return
+    if (isSubmitting.current || busy || isStopping || !messageToSend.trim()) return
 
     // Lock submission immediately
     isSubmitting.current = true
@@ -409,12 +424,12 @@ function ChatPageContent() {
     const userMessage: UIMessage = {
       id: Date.now().toString(),
       type: "user",
-      content: msg, // Original message (not augmented)
+      content: messageToSend, // Original message (not augmented)
       timestamp: new Date(),
       attachments: attachments.length > 0 ? attachments : undefined,
     }
     addMessage(userMessage)
-    setMsg("")
+    setMsg("") // Clear input regardless of how message was provided
 
     // Clear all attachments (they're stored in the message now)
     chatInputRef.current?.clearAllAttachments()
@@ -509,6 +524,7 @@ function ChatPageContent() {
           const res = await fetch("/api/claude/stream", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            credentials: "include",
             body: JSON.stringify(requestBody),
             signal: abortController.signal,
           })
@@ -681,6 +697,110 @@ function ChatPageContent() {
                   // Show completion dots only for successful completion (not errors)
                   if ((isCompleteEvent(eventData) || isDoneEvent(eventData)) && !isErrorEvent(eventData)) {
                     setShowCompletionDots(true)
+
+                    // Get formatted messages for both features
+                    const state = useMessageStore.getState()
+                    const currentConvo = state.conversationId ? state.conversations[state.conversationId] : null
+                    const formattedMessages = currentConvo?.messages ? formatMessagesAsText(currentConvo.messages) : ""
+
+                    // Feature flag: Agent Supervisor - evaluate progress and suggest next action
+                    if (agentSupervisorEnabled && prGoal && workspace && formattedMessages) {
+                      setIsEvaluatingProgress(true)
+                      // Create abort controller for this evaluation
+                      const agentAbort = new AbortController()
+                      agentManagerAbortRef.current = agentAbort
+                      // Fire and forget - don't block the UI
+                      fetch("/api/evaluate-progress", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "include",
+                        signal: agentAbort.signal,
+                        body: JSON.stringify({
+                          conversation: formattedMessages,
+                          prGoal,
+                          workspace,
+                          building,
+                          targetUsers,
+                          model: userModel,
+                        }),
+                      })
+                        .then(res => res.json())
+                        .then(data => {
+                          if (data.ok && data.nextAction) {
+                            const action = data.nextAction.toUpperCase()
+
+                            // Check if PR goal is complete (DONE can appear anywhere due to LLM preamble)
+                            // Match "DONE" at start or after common preamble patterns
+                            const isDone = /^DONE\b|:\s*DONE\b|is:\s*DONE\b/i.test(action)
+                            if (isDone) {
+                              // Extract the actual message after DONE
+                              const doneMatch = data.nextAction.match(/DONE[\s\-:]*(.*)$/is)
+                              const message = doneMatch?.[1]?.trim() || "PR goal complete!"
+                              // Add agent manager message to chat
+                              const doneMessage: UIMessage = {
+                                id: `agent-manager-done-${Date.now()}`,
+                                type: "agent_manager",
+                                content: {
+                                  status: "done",
+                                  message,
+                                } satisfies AgentManagerContent,
+                                timestamp: new Date(),
+                              }
+                              addMessage(doneMessage)
+                              return
+                            }
+
+                            // Check if supervisor wants to stop (STOP can appear anywhere due to LLM preamble)
+                            const isStop = /^STOP\b|:\s*STOP\b|is:\s*STOP\b/i.test(action)
+                            if (isStop) {
+                              // Extract the actual message after STOP
+                              const stopMatch = data.nextAction.match(/STOP[\s\-:]*(.*)$/is)
+                              const message = stopMatch?.[1]?.trim() || "Agent needs input"
+                              // Add agent manager message to chat
+                              const stopMessage: UIMessage = {
+                                id: `agent-manager-stop-${Date.now()}`,
+                                type: "agent_manager",
+                                content: {
+                                  status: "stop",
+                                  message,
+                                } satisfies AgentManagerContent,
+                                timestamp: new Date(),
+                              }
+                              addMessage(stopMessage)
+                              setMsg("") // Clear any pending message
+                              return
+                            }
+                            // Show the message in input first for user visibility
+                            const agentMessage = `agentmanager> ${data.nextAction}`
+                            setMsg(agentMessage)
+                            // Auto-send with the message directly (avoids closure issue)
+                            // Store timeout ref so we can cancel it
+                            agentManagerTimeoutRef.current = setTimeout(() => {
+                              agentManagerTimeoutRef.current = null
+                              sendMessage(agentMessage)
+                            }, 4000)
+                            if (!data.onTrack) {
+                              toast("Supervisor: Course correction suggested", { icon: "🎯" })
+                            }
+                          }
+                        })
+                        .catch(err => {
+                          // Don't log abort errors (user cancelled)
+                          if (err instanceof Error && err.name !== "AbortError") {
+                            console.error("[AgentSupervisor] Error:", err)
+                          }
+                        })
+                        .finally(() => {
+                          setIsEvaluatingProgress(false)
+                          agentManagerAbortRef.current = null
+                        })
+                    }
+                    // Feature flag: auto-fill input with formatted messages on completion
+                    else if (autoCopyOnCompleteEnabled && formattedMessages) {
+                      // Trim and collapse newlines to single spaces for cleaner input
+                      const trimmed = formattedMessages.replace(/\n+/g, " ").trim()
+                      setMsg(trimmed)
+                    }
                   }
                   shouldStopReading = true
                   break
@@ -867,6 +987,7 @@ function ChatPageContent() {
       const r = await fetch("/api/claude", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(requestBody),
       })
 
@@ -1164,6 +1285,7 @@ function ChatPageContent() {
                   <PhotoMenu
                     isOpen={showPhotoMenu}
                     onClose={() => setShowPhotoMenu(false)}
+                    onSelectImage={imageKey => chatInputRef.current?.addPhotobookImage(imageKey)}
                     triggerRef={photoButtonRef}
                   />
                 </div>
@@ -1295,6 +1417,48 @@ function ChatPageContent() {
               )}
               {/* Show completion dots after successful completion (non-debug mode only) */}
               {showCompletionDots && !isDebugView && !busy && messages.length > 0 && <ThreeDotsComplete />}
+              {/* Agent Manager loading indicator */}
+              {isEvaluatingProgress && (
+                <div className="my-4 flex items-center gap-3 text-xs text-purple-600 dark:text-purple-400">
+                  <div className="flex items-center gap-2">
+                    <div className="flex gap-1">
+                      <span className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                      <span className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                      <span className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce" />
+                    </div>
+                    <span className="font-medium">Agent Manager evaluating...</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Abort the client-side fetch request
+                      agentManagerAbortRef.current?.abort()
+                      // Send cancel request to server to stop server-side processing
+                      if (workspace) {
+                        fetch(`/api/evaluate-progress?workspace=${encodeURIComponent(workspace)}`, {
+                          method: "DELETE",
+                          credentials: "include",
+                        }).catch(() => {
+                          // Ignore errors - best effort cancellation
+                        })
+                      }
+                      // Clear any pending auto-send timeout
+                      if (agentManagerTimeoutRef.current) {
+                        clearTimeout(agentManagerTimeoutRef.current)
+                        agentManagerTimeoutRef.current = null
+                      }
+                      // Clear the input if it has agentmanager content
+                      if (msg.startsWith("agentmanager>")) {
+                        setMsg("")
+                      }
+                      setIsEvaluatingProgress(false)
+                    }}
+                    className="px-2 py-1 text-xs font-medium text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/30 hover:bg-purple-200 dark:hover:bg-purple-900/50 rounded transition-colors"
+                  >
+                    Stop
+                  </button>
+                </div>
+              )}
               <div ref={messagesEndRef} />
             </div>
           </div>

@@ -12,7 +12,7 @@
  * Both frontend (apps/web) and backend tools (packages/tools) use these.
  */
 export const COOKIE_NAMES = {
-  SESSION: "auth_session",
+  SESSION: "auth_session_v2", // v2: changed sameSite from "none" to "lax" for mobile Safari ITP
   MANAGER_SESSION: "manager_session",
 } as const
 
@@ -255,3 +255,43 @@ export const PREVIEW_MESSAGES = {
   /** Sent when navigation completes (with new path) */
   NAVIGATION: "preview-navigation",
 } as const
+
+/**
+ * Feature Flag Definition
+ */
+export interface FeatureFlagDefinition {
+  /** Default value when no override is set */
+  defaultValue: boolean
+  /** Human-readable description for admin UI */
+  description: string
+}
+
+/**
+ * Feature Flags - Single Source of Truth
+ *
+ * Central configuration for feature toggles across the application.
+ * Admin users can override these per-account via Settings > Flags.
+ */
+export const FEATURE_FLAGS = {
+  /**
+   * Auto-fill message input with formatted conversation on completion.
+   * When enabled, after Claude finishes responding, the conversation
+   * is formatted and placed in the message input for easy copying/editing.
+   */
+  AUTO_COPY_ON_COMPLETE: {
+    defaultValue: true,
+    description: "Auto-fill message input with formatted conversation on completion",
+  },
+
+  /**
+   * Agent Supervisor - Analyze conversation progress and suggest next action.
+   * When enabled and a PR goal is set, uses askAIFull + Groq to evaluate
+   * progress and suggest the optimal next message after Claude completes.
+   */
+  AGENT_SUPERVISOR: {
+    defaultValue: false,
+    description: "Agent Supervisor: Analyze progress and suggest next actions",
+  },
+} as const satisfies Record<string, FeatureFlagDefinition>
+
+export type FeatureFlagKey = keyof typeof FEATURE_FLAGS

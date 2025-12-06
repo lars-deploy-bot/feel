@@ -99,7 +99,7 @@ export const TOOL_REGISTRY: ToolMetadata[] = [
     name: "get_workflow",
     category: "meta",
     description:
-      "Retrieves full workflow decision trees for common development tasks (bug debugging, new features, package installation). Returns the complete workflow content.",
+      "Retrieves full workflow decision trees for common development tasks (bug debugging, new features, package installation, website shippable check, functionality check). Returns the complete workflow content.",
     contextCost: "medium",
     enabled: true,
     parameters: [
@@ -107,7 +107,8 @@ export const TOOL_REGISTRY: ToolMetadata[] = [
         name: "workflow_type",
         type: "string",
         required: true,
-        description: "Type of workflow: bug-debugging, new-feature, package-installation",
+        description:
+          "Type of workflow: bug-debugging, new-feature, package-installation, website-shippable-check, functionality-check",
       },
     ],
   },
@@ -388,6 +389,28 @@ export const TOOL_REGISTRY: ToolMetadata[] = [
         type: "boolean",
         required: false,
         description: "When switching to 'build' mode, run the build first (default: true)",
+      },
+    ],
+  },
+  {
+    name: "copy_shared_asset",
+    category: "workspace",
+    description:
+      "Copy shared assets (fonts, icons) to workspace with correct file ownership. Available: fonts/satoshi.",
+    contextCost: "low",
+    enabled: true,
+    parameters: [
+      {
+        name: "asset",
+        type: "string",
+        required: true,
+        description: "Asset to copy (e.g., 'fonts/satoshi')",
+      },
+      {
+        name: "dest",
+        type: "string",
+        required: false,
+        description: "Destination path relative to workspace root (default: asset's suggested destination)",
       },
     ],
   },

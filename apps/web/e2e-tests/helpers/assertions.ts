@@ -10,12 +10,22 @@ import { expect, type Page } from "@playwright/test"
 import { TEST_SELECTORS, TEST_TIMEOUTS } from "../fixtures/test-data"
 
 /**
+ * Navigate to chat page and wait for React to hydrate
+ * Uses domcontentloaded for fast navigation, then waits for workspace-ready
+ * This handles concurrent test load where networkidle would timeout
+ */
+export async function gotoChat(page: Page) {
+  await page.goto("/chat", { waitUntil: "domcontentloaded" })
+  await expectWorkspaceReady(page)
+}
+
+/**
  * Wait for workspace to be fully initialized
  * - Waits for both mounted and workspace state to be set
  * - Required before any chat interactions
  */
 export async function expectWorkspaceReady(page: Page) {
-  await expect(page.locator(TEST_SELECTORS.workspaceReady)).toBeVisible({
+  await expect(page.locator(TEST_SELECTORS.workspaceReady)).toBeAttached({
     timeout: TEST_TIMEOUTS.slow,
   })
 }

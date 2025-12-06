@@ -3,17 +3,21 @@
  * Used by both client and server for type safety
  */
 
+/**
+ * Port registry entry - maps domain to port assignment
+ * Legacy fields (passwordHash, tenantId, email, credits) removed 2024-12-01
+ * All user/auth data now in Supabase
+ */
 export interface DomainConfig {
-  tenantId?: string
-  passwordHash: string
   port: number
   createdAt?: string
-  email?: string
-  credits: number
 }
 
+/**
+ * Domain info for client/manager UI
+ * Populated from Supabase, not from port registry
+ */
 export interface DomainConfigClient {
-  tenantId?: string
   port?: number
   orphaned?: boolean
   createdAt?: string
@@ -39,6 +43,7 @@ export interface DomainStatus {
   viteExpectedPort: number
   viteActualPort: number | null
   hasSystemdPortOverride: boolean
+  serveMode: "dev" | "build" | "unknown"
   createdAt: string | null
   lastChecked: number
 }

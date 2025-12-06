@@ -1,5 +1,6 @@
 import { WORKSPACE_STORAGE, type WorkspaceStorageValue } from "@webalive/shared"
 import { login } from "./helpers"
+import { gotoChat } from "./helpers/assertions"
 import { expect, test } from "./fixtures"
 
 /**
@@ -11,15 +12,11 @@ import { expect, test } from "./fixtures"
 test.describe("Organization and Workspace Selection", () => {
   test("workspace loads and chat interface is functional", async ({ page, tenant }) => {
     await login(page, tenant)
-    await page.goto("/chat")
+    await gotoChat(page)
 
-    // Wait for BOTH critical elements upfront (prevents timeout accumulation)
-    // These run concurrently via Promise.all pattern in Playwright's auto-waiting
+    // Workspace-ready already confirmed by gotoChat, just verify UI elements
     const messageInput = page.locator('[data-testid="message-input"]')
-    const workspaceReady = page.locator('[data-testid="workspace-ready"]')
-
-    await expect(messageInput).toBeVisible({ timeout: 20000 })
-    await expect(workspaceReady).toBeAttached({ timeout: 5000 }) // Should be ready by now
+    await expect(messageInput).toBeVisible({ timeout: 5000 })
 
     // Verify workspace is set using typed constants from @webalive/shared
     const storageValue = await page.evaluate(key => localStorage.getItem(key), WORKSPACE_STORAGE.KEY)

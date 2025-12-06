@@ -27,8 +27,11 @@ export {
   LIMITS,
   WORKSPACE_STORAGE,
   PREVIEW_MESSAGES,
+  FEATURE_FLAGS,
   createWorkspaceStorageValue,
   type BridgeStreamType,
+  type FeatureFlagDefinition,
+  type FeatureFlagKey,
   type WorkspaceStorageRecentItem,
   type WorkspaceStorageState,
   type WorkspaceStorageValue,
@@ -89,3 +92,33 @@ export {
   resolveAndValidatePath,
   type PathValidationResult,
 } from "./path-security.js"
+export {
+  // SDK tool constants
+  BRIDGE_ALLOWED_SDK_TOOLS,
+  BRIDGE_DISALLOWED_SDK_TOOLS,
+  BRIDGE_PERMISSION_MODE,
+  BRIDGE_SETTINGS_SOURCES,
+  type BridgeAllowedSDKTool,
+  type BridgeDisallowedSDKTool,
+  // Helper functions
+  getBridgeAllowedTools,
+  getBridgeMcpServers,
+  createBridgeCanUseTool,
+  getWorkspacePath,
+  type BridgeMcpServerConfig,
+} from "./bridge-tools.js"
+export {
+  // Claude models - SINGLE SOURCE OF TRUTH
+  CLAUDE_MODELS,
+  DEFAULT_CLAUDE_MODEL,
+  isValidClaudeModel,
+  getModelDisplayName,
+  type ClaudeModel,
+} from "./models.js"
+export {
+  // Output limiting utilities
+  truncateOutput,
+  DEFAULT_MAX_CHARS,
+  DEFAULT_MAX_LINES,
+  type TruncateOptions,
+} from "./output-limits.js"

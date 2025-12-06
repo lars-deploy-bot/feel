@@ -530,7 +530,6 @@ export {
   createRefreshLockManager,
   InMemoryRefreshLockManager,
   RedisRefreshLockManager,
-  RefreshLockManager,
   type IRefreshLockManager,
   type LockStrategy,
 } from "./refresh-lock"

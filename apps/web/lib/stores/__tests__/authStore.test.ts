@@ -1,13 +1,15 @@
-import { act, renderHook } from "@testing-library/react"
+/**
+ * authStore unit tests
+ *
+ * Tests Zustand store directly without React rendering to avoid
+ * React version mismatch issues in monorepo workspace.
+ */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import {
-  authStore,
-  useAuthActions,
-  useAuthStatus,
-  useIsSessionExpired,
-  useSessionExpiredAt,
-  useSessionExpiredReason,
-} from "../authStore"
+import { authStore } from "../authStore"
+
+// Access the store's internal state and actions directly
+const getState = () => authStore.getState()
+const getActions = () => authStore.getState().actions
 
 describe("authStore", () => {
   // Track location changes via global mock
@@ -15,46 +17,38 @@ describe("authStore", () => {
 
   beforeEach(() => {
     // Reset store before each test
-    authStore.getState().actions.reset()
+    getActions().reset()
     locationHref = ""
 
     // Mock window.location for redirect tests
-    // Note: happy-dom provides window, but we need to mock location.href behavior
-    if (typeof window !== "undefined") {
+    if (typeof globalThis !== "undefined") {
       // Create a mock that tracks href changes
-      const mockLocation = Object.create(
-        {},
-        {
-          href: {
-            get() {
-              return locationHref
-            },
-            set(value: string) {
-              locationHref = value
-            },
-            configurable: true,
-          },
-          ancestorOrigins: { value: {} as DOMStringList },
-          hash: { value: "", writable: true },
-          host: { value: "localhost" },
-          hostname: { value: "localhost" },
-          origin: { value: "http://localhost" },
-          pathname: { value: "/" },
-          port: { value: "" },
-          protocol: { value: "http:" },
-          search: { value: "" },
-          assign: { value: vi.fn() },
-          reload: { value: vi.fn() },
-          replace: { value: vi.fn() },
-          toString: { value: () => locationHref },
+      const mockLocation = {
+        get href() {
+          return locationHref
         },
-      ) as Location
+        set href(value: string) {
+          locationHref = value
+        },
+        ancestorOrigins: {} as DOMStringList,
+        hash: "",
+        host: "localhost",
+        hostname: "localhost",
+        origin: "http://localhost",
+        pathname: "/",
+        port: "",
+        protocol: "http:",
+        search: "",
+        assign: vi.fn(),
+        reload: vi.fn(),
+        replace: vi.fn(),
+        toString: () => locationHref,
+      } as unknown as Location
 
-      Object.defineProperty(window, "location", {
-        value: mockLocation,
-        writable: true,
-        configurable: true,
-      })
+      // @ts-expect-error - mocking window for tests
+      globalThis.window = {
+        location: mockLocation,
+      }
     }
   })
 
@@ -64,191 +58,131 @@ describe("authStore", () => {
 
   describe("initial state", () => {
     it("should start with unknown status", () => {
-      const { result } = renderHook(() => useAuthStatus())
-      expect(result.current).toBe("unknown")
+      const state = getState()
+      expect(state.status).toBe("unknown")
     })
 
     it("should not be session expired initially", () => {
-      const { result } = renderHook(() => useIsSessionExpired())
-      expect(result.current).toBe(false)
+      const state = getState()
+      expect(state.status === "session_expired").toBe(false)
     })
 
     it("should have no expired reason initially", () => {
-      const { result } = renderHook(() => useSessionExpiredReason())
-      expect(result.current).toBeNull()
+      const state = getState()
+      expect(state.expiredReason).toBeNull()
     })
   })
 
   describe("setAuthenticated", () => {
     it("should set status to authenticated", () => {
-      const { result: statusResult } = renderHook(() => useAuthStatus())
-      const { result: actionsResult } = renderHook(() => useAuthActions())
+      getActions().setAuthenticated()
 
-      act(() => {
-        actionsResult.current.setAuthenticated()
-      })
-
-      expect(statusResult.current).toBe("authenticated")
+      const state = getState()
+      expect(state.status).toBe("authenticated")
     })
 
     it("should clear expired state when authenticated", () => {
-      const { result: expiredResult } = renderHook(() => useIsSessionExpired())
-      const { result: actionsResult } = renderHook(() => useAuthActions())
+      // First expire
+      getActions().handleSessionExpired("Test reason")
+      expect(getState().status).toBe("session_expired")
 
-      // First expire, then authenticate
-      act(() => {
-        actionsResult.current.handleSessionExpired("Test reason")
-      })
-      expect(expiredResult.current).toBe(true)
-
-      act(() => {
-        actionsResult.current.setAuthenticated()
-      })
-      expect(expiredResult.current).toBe(false)
+      // Then authenticate
+      getActions().setAuthenticated()
+      expect(getState().status).toBe("authenticated")
+      expect(getState().sessionExpiredAt).toBeNull()
+      expect(getState().expiredReason).toBeNull()
     })
   })
 
   describe("handleSessionExpired", () => {
     it("should set status to session_expired", () => {
-      const { result: statusResult } = renderHook(() => useAuthStatus())
-      const { result: actionsResult } = renderHook(() => useAuthActions())
+      getActions().handleSessionExpired()
 
-      act(() => {
-        actionsResult.current.handleSessionExpired()
-      })
-
-      expect(statusResult.current).toBe("session_expired")
+      expect(getState().status).toBe("session_expired")
     })
 
     it("should set isSessionExpired to true", () => {
-      const { result: expiredResult } = renderHook(() => useIsSessionExpired())
-      const { result: actionsResult } = renderHook(() => useAuthActions())
+      getActions().handleSessionExpired()
 
-      act(() => {
-        actionsResult.current.handleSessionExpired()
-      })
-
-      expect(expiredResult.current).toBe(true)
+      expect(getState().status === "session_expired").toBe(true)
     })
 
     it("should store the expiry reason", () => {
-      const { result: reasonResult } = renderHook(() => useSessionExpiredReason())
-      const { result: actionsResult } = renderHook(() => useAuthActions())
+      getActions().handleSessionExpired("Custom expiry reason")
 
-      act(() => {
-        actionsResult.current.handleSessionExpired("Custom expiry reason")
-      })
-
-      expect(reasonResult.current).toBe("Custom expiry reason")
+      expect(getState().expiredReason).toBe("Custom expiry reason")
     })
 
     it("should use default reason when none provided", () => {
-      const { result: reasonResult } = renderHook(() => useSessionExpiredReason())
-      const { result: actionsResult } = renderHook(() => useAuthActions())
+      getActions().handleSessionExpired()
 
-      act(() => {
-        actionsResult.current.handleSessionExpired()
-      })
-
-      expect(reasonResult.current).toBe("Your session has expired. Please log in again.")
+      expect(getState().expiredReason).toBe("Your session has expired. Please log in again.")
     })
 
     it("should record expiry timestamp", () => {
-      const { result: timestampResult } = renderHook(() => useSessionExpiredAt())
-      const { result: actionsResult } = renderHook(() => useAuthActions())
-
       const before = Date.now()
-      act(() => {
-        actionsResult.current.handleSessionExpired()
-      })
+      getActions().handleSessionExpired()
       const after = Date.now()
 
-      expect(timestampResult.current).toBeGreaterThanOrEqual(before)
-      expect(timestampResult.current).toBeLessThanOrEqual(after)
+      const timestamp = getState().sessionExpiredAt
+      expect(timestamp).toBeGreaterThanOrEqual(before)
+      expect(timestamp).toBeLessThanOrEqual(after)
     })
 
     it("should not reset timestamp on repeated calls (idempotent)", () => {
-      const { result: timestampResult } = renderHook(() => useSessionExpiredAt())
-      const { result: actionsResult } = renderHook(() => useAuthActions())
+      getActions().handleSessionExpired("First call")
+      const firstTimestamp = getState().sessionExpiredAt
 
-      act(() => {
-        actionsResult.current.handleSessionExpired("First call")
-      })
-      const firstTimestamp = timestampResult.current
+      // Second call - timestamp should remain the same
+      getActions().handleSessionExpired("Second call")
 
-      // Small delay to ensure timestamp would be different if not idempotent
-      act(() => {
-        actionsResult.current.handleSessionExpired("Second call")
-      })
-
-      expect(timestampResult.current).toBe(firstTimestamp)
+      expect(getState().sessionExpiredAt).toBe(firstTimestamp)
+      // Reason should also remain unchanged (idempotent)
+      expect(getState().expiredReason).toBe("First call")
     })
   })
 
   describe("redirectToLogin", () => {
     it("should redirect to login page", () => {
-      const { result: actionsResult } = renderHook(() => useAuthActions())
-
-      act(() => {
-        actionsResult.current.redirectToLogin()
-      })
+      getActions().redirectToLogin()
 
       expect(locationHref).toBe("/?reason=session_expired")
     })
 
     it("should clear session expired state", () => {
-      const { result: statusResult } = renderHook(() => useAuthStatus())
-      const { result: actionsResult } = renderHook(() => useAuthActions())
-
       // First expire
-      act(() => {
-        actionsResult.current.handleSessionExpired()
-      })
-      expect(statusResult.current).toBe("session_expired")
+      getActions().handleSessionExpired()
+      expect(getState().status).toBe("session_expired")
 
       // Then redirect
-      act(() => {
-        actionsResult.current.redirectToLogin()
-      })
-      expect(statusResult.current).toBe("unauthenticated")
+      getActions().redirectToLogin()
+      expect(getState().status).toBe("unauthenticated")
     })
 
     it("should clear expiry reason and timestamp", () => {
-      const { result: reasonResult } = renderHook(() => useSessionExpiredReason())
-      const { result: timestampResult } = renderHook(() => useSessionExpiredAt())
-      const { result: actionsResult } = renderHook(() => useAuthActions())
+      getActions().handleSessionExpired("Test reason")
+      expect(getState().expiredReason).toBe("Test reason")
+      expect(getState().sessionExpiredAt).not.toBeNull()
 
-      act(() => {
-        actionsResult.current.handleSessionExpired("Test reason")
-      })
+      getActions().redirectToLogin()
 
-      act(() => {
-        actionsResult.current.redirectToLogin()
-      })
-
-      expect(reasonResult.current).toBeNull()
-      expect(timestampResult.current).toBeNull()
+      expect(getState().expiredReason).toBeNull()
+      expect(getState().sessionExpiredAt).toBeNull()
     })
   })
 
   describe("reset", () => {
     it("should reset to initial state", () => {
-      const { result: statusResult } = renderHook(() => useAuthStatus())
-      const { result: expiredResult } = renderHook(() => useIsSessionExpired())
-      const { result: actionsResult } = renderHook(() => useAuthActions())
-
-      // Expire first
-      act(() => {
-        actionsResult.current.handleSessionExpired()
-      })
+      // Change state first
+      getActions().handleSessionExpired("Test reason")
+      expect(getState().status).toBe("session_expired")
 
       // Then reset
-      act(() => {
-        actionsResult.current.reset()
-      })
+      getActions().reset()
 
-      expect(statusResult.current).toBe("unknown")
-      expect(expiredResult.current).toBe(false)
+      expect(getState().status).toBe("unknown")
+      expect(getState().sessionExpiredAt).toBeNull()
+      expect(getState().expiredReason).toBeNull()
     })
   })
 

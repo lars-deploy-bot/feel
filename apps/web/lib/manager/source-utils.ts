@@ -11,7 +11,7 @@ export function createEmptySourceData(domain: string): SourceData {
     json: { exists: false, port: null },
     filesystem: { exists: false, path: null },
     dns: { resolves: false, ips: [], matchesServer: false },
-    systemd: { exists: false, active: false },
+    systemd: { exists: false, active: false, serveMode: "unknown" },
   }
 }
 

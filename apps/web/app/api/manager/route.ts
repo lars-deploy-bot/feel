@@ -68,7 +68,6 @@ export async function GET(req: NextRequest) {
     }
 
     sanitizedDomains[domainInfo.hostname] = {
-      tenantId: domainInfo.hostname,
       port: domainInfo.port,
       email: domainInfo.ownerEmail,
       orgId: domainInfo.orgId,

@@ -38,26 +38,42 @@ function previewNavSync(): Plugin {
   }
 }
 
+// In dev: Vite is the main server on PORT, API runs on internal port (PORT+1000)
+// In prod: API server handles everything
+const PORT = Number(process.env.PORT) || 8080
+const API_PORT = PORT + 1000
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  root: "client",
+  publicDir: "../public",
+  build: {
+    outDir: "../dist/client",
+    emptyOutDir: true,
+  },
   server: {
     host: "::",
-    port: 8080,
-    allowedHosts: true,
+    port: PORT,
+    allowedHosts: ["localhost", ".alive.best", ".preview.terminal.goalive.nl"],
     headers: {
       "X-Frame-Options": "ALLOWALL",
     },
+    hmr: {
+      // For reverse proxy (Caddy) with HTTPS - connect via public domain
+      protocol: "wss",
+      clientPort: 443,
+    },
     proxy: {
       "/api": {
-        target: `http://localhost:${process.env.API_PORT || 4000}`,
+        target: `http://localhost:${API_PORT}`,
         changeOrigin: true,
       },
     },
   },
   preview: {
     host: "::",
-    port: 8080,
-    allowedHosts: true,
+    port: PORT,
+    allowedHosts: ["localhost", ".alive.best", ".preview.terminal.goalive.nl"],
     headers: {
       "X-Frame-Options": "ALLOWALL",
     },
@@ -65,7 +81,7 @@ export default defineConfig(({ mode }) => ({
   plugins: [previewNavSync(), react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      "@": path.resolve(__dirname, "./client"),
     },
   },
 }))

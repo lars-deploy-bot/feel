@@ -124,12 +124,12 @@ ExecStart=${execStart}
 
         const explanation =
           mode === "dev"
-            ? "Your site now updates live as you make changes."
-            : "Your site is now serving the optimized production version."
+            ? "Changes you make will appear instantly on the site."
+            : "Your site is now running the fast, optimized version."
 
         return NextResponse.json({
           ok: true,
-          message: `✓ Switched to ${mode} mode - ${explanation}`,
+          message: `✓ ${mode === "dev" ? "Development" : "Production"} mode active. ${explanation}`,
           requestId,
         })
       } catch (error) {

@@ -82,7 +82,7 @@ export default function PhotobookPage() {
 
   return (
     <main
-      className={`min-h-screen bg-white text-black transition-all ${dragActive ? "bg-blue-50" : ""}`}
+      className={`min-h-screen bg-white dark:bg-zinc-950 text-black dark:text-white transition-all ${dragActive ? "bg-blue-50 dark:bg-blue-950/30" : ""}`}
       onDragEnter={handleDrag}
       onDragLeave={handleDrag}
       onDragOver={handleDrag}
@@ -95,14 +95,16 @@ export default function PhotobookPage() {
             <button
               type="button"
               onClick={() => router.push("/chat")}
-              className="p-2 text-black/30 hover:text-black transition-colors cursor-pointer"
+              className="p-2 text-black/30 dark:text-white/30 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
               aria-label="Back to chat"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <h1 className="text-2xl font-semibold">Photos</h1>
           </div>
-          <p className="text-base text-gray-700 font-medium">Copy photo links and paste them in chat</p>
+          <p className="text-base text-gray-700 dark:text-gray-300 font-medium">
+            Copy photo links and paste them in chat
+          </p>
         </header>
 
         {/* Hidden file input */}
@@ -119,12 +121,12 @@ export default function PhotobookPage() {
         {/* Drag overlay */}
         {dragActive && (
           <div className="fixed inset-0 bg-blue-500/10 backdrop-blur-sm z-50 flex items-center justify-center">
-            <div className="bg-white rounded-xl shadow-xl p-10 border-4 border-dashed border-blue-500">
+            <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-xl p-10 border-4 border-dashed border-blue-500">
               <div className="flex flex-col items-center">
                 <div className="w-16 h-16 rounded-full bg-blue-500 flex items-center justify-center mb-3">
                   <Upload className="w-8 h-8 text-white" />
                 </div>
-                <p className="text-xl font-semibold text-gray-900">Drop to upload</p>
+                <p className="text-xl font-semibold text-gray-900 dark:text-white">Drop to upload</p>
               </div>
             </div>
           </div>
@@ -142,12 +144,12 @@ export default function PhotobookPage() {
               onClick={() => fileInputRef.current?.click()}
               className="inline-flex flex-col items-center cursor-pointer group"
             >
-              <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-blue-100 mb-6 group-hover:bg-blue-200 transition-colors">
-                <Upload className="w-12 h-12 text-blue-600" />
+              <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-blue-100 dark:bg-blue-900 mb-6 group-hover:bg-blue-200 dark:group-hover:bg-blue-800 transition-colors">
+                <Upload className="w-12 h-12 text-blue-600 dark:text-blue-400" />
               </div>
-              <h2 className="text-3xl font-semibold text-gray-900 mb-3">Drop photos here</h2>
-              <p className="text-lg text-gray-600 mb-2">Drag files from your computer</p>
-              <p className="text-base text-blue-600">or click to browse</p>
+              <h2 className="text-3xl font-semibold text-gray-900 dark:text-white mb-3">Drop photos here</h2>
+              <p className="text-lg text-gray-600 dark:text-gray-400 mb-2">Drag files from your computer</p>
+              <p className="text-base text-blue-600 dark:text-blue-400">or click to browse</p>
             </button>
           </div>
         ) : loadingImages ? (
@@ -177,16 +179,16 @@ export default function PhotobookPage() {
 
             {/* Add photos block - always first in grid */}
             <div className="masonry-item group">
-              <div className="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
+              <div className="bg-white dark:bg-zinc-800 rounded-3xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full aspect-square border-3 border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 hover:border-gray-400 transition-all cursor-pointer flex flex-col items-center justify-center gap-3"
+                  className="w-full aspect-square border-3 border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-zinc-900 hover:bg-gray-100 dark:hover:bg-zinc-800 hover:border-gray-400 dark:hover:border-gray-500 transition-all cursor-pointer flex flex-col items-center justify-center gap-3"
                 >
-                  <div className="w-16 h-16 rounded-full bg-gray-200 group-hover:bg-gray-300 flex items-center justify-center transition-all">
-                    <Upload className="w-8 h-8 text-gray-600" />
+                  <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-zinc-700 group-hover:bg-gray-300 dark:group-hover:bg-zinc-600 flex items-center justify-center transition-all">
+                    <Upload className="w-8 h-8 text-gray-600 dark:text-gray-400" />
                   </div>
-                  <span className="text-base font-semibold text-gray-700 group-hover:text-gray-900 transition-all">
+                  <span className="text-base font-semibold text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-all">
                     Add Photos
                   </span>
                 </button>

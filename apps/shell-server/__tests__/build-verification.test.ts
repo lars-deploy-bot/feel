@@ -38,20 +38,16 @@ describe("Shell Server Build Verification", () => {
     expect(templatesContent).not.toContain("templates")
   })
 
-  test("shell.html template literals should not be escaped", () => {
-    const shellTemplatePath = join(TEMPLATES_DIR, "shell.html")
-    expect(existsSync(shellTemplatePath)).toBe(true)
+  test("shell terminal JS should be bundled in client directory", () => {
+    // Terminal JS is now bundled as shell-term.js instead of inline in shell.html
+    const shellTermPath = join(DIST_DIR, "client", "shell-term.js")
+    expect(existsSync(shellTermPath)).toBe(true)
 
-    const content = readFileSync(shellTemplatePath, "utf-8")
+    const content = readFileSync(shellTermPath, "utf-8")
 
-    // Check that template literals are NOT escaped (no backslash before backticks)
-    // The WebSocket URL line should use proper template literals
-    expect(content).toContain("new WebSocket(`${protocol}")
-    expect(content).not.toContain("new WebSocket(\\`\\${protocol}")
-
-    // Check the exit code message also uses proper template literals
-    expect(content).toContain("Process exited with code ${msg.exitCode}")
-    expect(content).not.toContain("Process exited with code \\${msg.exitCode}")
+    // Check that the bundled JS contains terminal functionality
+    expect(content).toContain("WebSocket")
+    expect(content).toContain("xterm")
   })
 
   test("config.json should have production environment", () => {
@@ -62,7 +58,7 @@ describe("Shell Server Build Verification", () => {
 
     expect(config.production).toBeDefined()
     expect(config.production.port).toBe(3888)
-    expect(config.production.allowWorkspaceSelection).toBe(false)
+    expect(config.production.allowWorkspaceSelection).toBe(true)
   })
 
   test("build script should clean templates before copy", () => {
@@ -70,13 +66,17 @@ describe("Shell Server Build Verification", () => {
     const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"))
 
     const buildScript = packageJson.scripts.build
+    const buildServerScript = packageJson.scripts["build:server"]
 
     // Should remove old templates directory before copying
     expect(buildScript).toContain("rm -rf dist/templates")
 
-    // Should define NODE_ENV at build time
-    expect(buildScript).toContain("--define process.env.NODE_ENV")
-    expect(buildScript).toContain('"production"')
+    // Should define NODE_ENV at build time (in build:server subscript)
+    expect(buildServerScript).toContain("--define process.env.NODE_ENV")
+    expect(buildServerScript).toContain('"production"')
+
+    // Main build script should call build:server
+    expect(buildScript).toContain("build:server")
   })
 
   test("systemd service file should use MemoryMax not MemoryLimit", () => {

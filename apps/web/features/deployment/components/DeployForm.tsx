@@ -2,14 +2,20 @@
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { AnimatePresence, motion } from "framer-motion"
-import { Globe, Info, Zap } from "lucide-react"
+import { Info, Zap } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { PasswordField } from "@/components/ui/primitives/PasswordField"
 import { containerVariants, fieldVariants, itemVariants } from "@/lib/animations"
-import { useDeployStore } from "@/lib/stores/deployStore"
+import {
+  useDeployDomain,
+  useDeployPassword,
+  useDeploymentStatus,
+  useFormActions,
+  useStatusActions,
+} from "@/lib/stores/deployStore"
 import { FREE_CREDITS } from "@webalive/shared"
 import { DeploymentStatus } from "./DeploymentStatus"
 import { generateRandomDomain } from "./formUtils"
@@ -54,16 +60,16 @@ function ModeSelectionScreen({ onSelect }: ModeSelectionScreenProps) {
       animate="visible"
       exit="hidden"
       variants={containerVariants}
-      className="w-full max-w-lg mx-auto"
+      className="w-full max-w-lg mx-auto min-h-[60vh] flex flex-col justify-center"
     >
       <motion.div variants={itemVariants} className="text-center mb-12">
         <h1 className="text-4xl font-bold tracking-tight text-black dark:text-white mb-4" data-testid="deploy-heading">
           Launch your site
         </h1>
-        <p className="text-lg text-black/60 dark:text-white/60 font-medium">Pick one to start:</p>
+        <p className="text-lg text-black/60 dark:text-white/60 font-medium">Get started in under a minute</p>
       </motion.div>
 
-      <motion.div variants={itemVariants} className="space-y-3">
+      <motion.div variants={itemVariants} className="flex justify-center">
         <ModeOption
           icon={Zap}
           title="Quick Launch"
@@ -73,7 +79,6 @@ function ModeSelectionScreen({ onSelect }: ModeSelectionScreenProps) {
           testId="mode-option-quick-launch"
           onClick={() => onSelect("deploy-only")}
         />
-        <ModeOption icon={Globe} title="Custom Domain" description="Coming soon" time="" disabled onClick={() => {}} />
       </motion.div>
     </motion.div>
   )
@@ -88,8 +93,11 @@ export function DeployForm() {
   const [deploymentMode, setDeploymentModeState] = useState<"choose" | DeploymentMode>("choose")
 
   // Stores and hooks
-  const { domain, password, setDomain, setPassword, resetForm, setDeploymentStatus, deploymentStatus } =
-    useDeployStore()
+  const domain = useDeployDomain()
+  const password = useDeployPassword()
+  const deploymentStatus = useDeploymentStatus()
+  const { setDomain, setPassword, resetForm } = useFormActions()
+  const { setDeploymentStatus } = useStatusActions()
   const { deploy, isDeploying, deploymentDomain, deploymentErrors } = useDeployment()
 
   // Sync mode with URL

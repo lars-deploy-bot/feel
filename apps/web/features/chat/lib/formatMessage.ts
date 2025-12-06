@@ -158,8 +158,19 @@ export async function isInputSafeWithDebug(input: string): Promise<{
       })
     })
 
-    const response = chatCompletion.choices[0]?.message?.content?.trim().toLowerCase()
-    const result = response === "safe" ? "safe" : ("unsafe" as const)
+    const rawResponse = chatCompletion.choices[0]?.message?.content || ""
+    const response = rawResponse.trim().toLowerCase()
+
+    // Check for "unsafe" first (takes precedence), then check for "safe"
+    // This handles reasoning models that may include chain-of-thought
+    const hasUnsafe = response.includes("unsafe")
+    const hasSafe = response.includes("safe")
+    const result = hasUnsafe ? "unsafe" : hasSafe ? "safe" : ("unsafe" as const)
+
+    // Log unexpected responses (neither safe nor unsafe mentioned)
+    if (!hasUnsafe && !hasSafe) {
+      console.warn(`[isInputSafe] Unexpected response from safety model: "${rawResponse.slice(0, 200)}"`)
+    }
 
     return {
       result,

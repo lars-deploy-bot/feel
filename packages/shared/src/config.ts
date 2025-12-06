@@ -187,8 +187,8 @@ export const DEFAULTS = {
   /** Default password for new deployments (development only) */
   PASSWORD: "supersecret",
 
-  /** Default Claude model */
-  CLAUDE_MODEL: "claude-sonnet-4-5-20250929",
+  /** Default Claude model - uses short name from models.ts */
+  CLAUDE_MODEL: "claude-sonnet-4-5" as const,
 
   /** Default Claude max turns */
   CLAUDE_MAX_TURNS: 50,

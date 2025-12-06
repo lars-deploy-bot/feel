@@ -9,16 +9,23 @@
  * which become inaccessible after privilege drop, and ensures subprocess can
  * write to /tmp.
  *
- * **Use this for all subprocess execution in workspace tools.**
+ * **PREFER using `safeSpawnSync()` instead** - it calls this automatically and
+ * also sets secure defaults (maxBuffer, shell: false, encoding).
  *
  * @returns Sanitized environment object safe for subprocess execution
  *
  * @example
  * ```typescript
+ * // Preferred: use safeSpawnSync (auto-sanitizes env)
+ * import { safeSpawnSync } from "./safe-spawn.js"
+ * const result = safeSpawnSync("bun", ["add", "lodash"], { cwd: workspaceRoot })
+ *
+ * // Direct usage (only if you can't use safeSpawnSync)
  * const result = spawnSync("bun", ["add", "lodash"], {
  *   cwd: workspaceRoot,
  *   env: sanitizeSubprocessEnv(),
  *   shell: false,
+ *   maxBuffer: 10 * 1024 * 1024, // Don't forget this!
  * })
  * ```
  */

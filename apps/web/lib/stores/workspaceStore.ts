@@ -39,21 +39,9 @@ interface WorkspaceActions {
   }
 }
 
-// Extended type for backwards compatibility
-type WorkspaceStoreWithCompat = WorkspaceState &
-  WorkspaceActions & {
-    // Legacy direct action exports for backwards compatibility
-    setCurrentWorkspace: (workspace: string | null, orgId?: string) => void
-    setSelectedOrg: (orgId: string | null) => void
-    autoSelectOrg: (organizations: Organization[]) => void
-    validateAndCleanup: (organizations: Organization[]) => void
-    setSelectedWorkspace: (workspace: string | null, orgId?: string) => void
-    addRecentWorkspace: (domain: string, orgId: string) => void
-    clearRecentWorkspaces: () => void
-    getRecentForOrg: (orgId: string) => RecentWorkspace[]
-  }
+type WorkspaceStore = WorkspaceState & WorkspaceActions
 
-const useWorkspaceStoreBase = create<WorkspaceStoreWithCompat>()(
+const useWorkspaceStoreBase = create<WorkspaceStore>()(
   persist(
     set => {
       const actions = {
@@ -175,8 +163,6 @@ const useWorkspaceStoreBase = create<WorkspaceStoreWithCompat>()(
         recentWorkspaces: [],
         _hasHydrated: false,
         actions,
-        // Legacy direct exports for backwards compatibility
-        ...actions,
       }
     },
     {
@@ -256,6 +242,3 @@ export const useRecentForOrg = (orgId: string) =>
 
 // Actions hook - stable reference (Guide §14.3)
 export const useWorkspaceActions = () => useWorkspaceStoreBase(state => state.actions)
-
-// Legacy export for backwards compatibility
-export const useWorkspaceStore = useWorkspaceStoreBase

@@ -1,0 +1,568 @@
+package main
+
+import (
+	"archive/zip"
+	"bytes"
+	"crypto/tls"
+	"encoding/json"
+	"io"
+	"mime/multipart"
+	"net/http"
+	"net/http/cookiejar"
+	"net/http/httptest"
+	"net/url"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/gorilla/websocket"
+
+	"shell-server-go/internal/config"
+	"shell-server-go/internal/handlers"
+	"shell-server-go/internal/logger"
+	"shell-server-go/internal/middleware"
+	"shell-server-go/internal/ratelimit"
+	"shell-server-go/internal/session"
+)
+
+// testServer holds the test server and dependencies
+type testServer struct {
+	server     *httptest.Server
+	sessions   *session.Store
+	wsHandler  *handlers.WSHandler
+	config     *config.AppConfig
+	tempDir    string
+	sessionsFile string
+}
+
+// setupTestServer creates a fully configured test server
+func setupTestServer(t *testing.T) *testServer {
+	t.Helper()
+
+	// Initialize logger for tests
+	logger.Init(logger.Config{
+		Output:   io.Discard, // Suppress logs in tests
+		MinLevel: logger.ERROR,
+		UseColor: false,
+	})
+
+	// Create temp directories
+	tempDir, err := os.MkdirTemp("", "shell-server-test-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+
+	workspaceDir := filepath.Join(tempDir, "workspace")
+	sitesDir := filepath.Join(tempDir, "sites")
+	uploadsDir := filepath.Join(tempDir, "uploads")
+	templatesDir := filepath.Join(tempDir, "templates")
+
+	for _, dir := range []string{workspaceDir, sitesDir, uploadsDir, templatesDir} {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			t.Fatalf("Failed to create dir %s: %v", dir, err)
+		}
+	}
+
+	// Create minimal template files
+	shellTemplate := `<!DOCTYPE html><html><body>Shell</body></html>`
+	for _, name := range []string{"login.html", "dashboard.html", "shell.html", "upload.html", "edit.html"} {
+		if err := os.WriteFile(filepath.Join(templatesDir, name), []byte(shellTemplate), 0644); err != nil {
+			t.Fatalf("Failed to create template %s: %v", name, err)
+		}
+	}
+
+	// Create test config
+	cfg := &config.AppConfig{
+		Env:                     "test",
+		Port:                    0, // Will use random port
+		DefaultWorkspace:        "root",
+		ResolvedDefaultCwd:      workspaceDir,
+		ResolvedUploadCwd:       uploadsDir,
+		ResolvedSitesPath:       sitesDir,
+		WorkspaceBase:           tempDir,
+		AllowWorkspaceSelection: true,
+		EditableDirectories:     []config.EditableDirectory{},
+		ShellPassword:           "testpassword123",
+		TemplatesDir:            templatesDir,
+		ClientDir:               templatesDir,
+	}
+
+	// Initialize session store
+	sessionsFile := filepath.Join(tempDir, ".sessions.json")
+	sessions := session.NewStore(sessionsFile)
+
+	// Initialize rate limiter
+	rateLimitFile := filepath.Join(tempDir, ".rate-limit-state.json")
+	limiter := ratelimit.NewLimiter(rateLimitFile)
+
+	// Load templates
+	templates, err := handlers.LoadTemplates(cfg.TemplatesDir)
+	if err != nil {
+		t.Fatalf("Failed to load templates: %v", err)
+	}
+
+	// Create handlers
+	authHandler := handlers.NewAuthHandler(cfg, sessions, limiter, templates)
+	pageHandler := handlers.NewPageHandler(cfg, templates)
+	fileHandler := handlers.NewFileHandler(cfg)
+	wsHandler := handlers.NewWSHandler(cfg, sessions)
+
+	// Create router
+	mux := http.NewServeMux()
+	authMiddleware := middleware.Auth(sessions)
+	authAPIMiddleware := middleware.AuthAPI(sessions)
+
+	// Routes
+	mux.HandleFunc("/", authHandler.LoginPage)
+	mux.HandleFunc("POST /login", authHandler.Login)
+	mux.HandleFunc("/logout", authHandler.Logout)
+	mux.HandleFunc("/health", fileHandler.Health)
+	mux.Handle("/dashboard", authMiddleware(http.HandlerFunc(pageHandler.Dashboard)))
+	mux.Handle("/shell", authMiddleware(http.HandlerFunc(pageHandler.Shell)))
+	mux.HandleFunc("/ws", wsHandler.Handle)
+	mux.Handle("POST /api/upload", authAPIMiddleware(http.HandlerFunc(fileHandler.Upload)))
+	mux.Handle("POST /api/read-file", authAPIMiddleware(http.HandlerFunc(fileHandler.ReadFile)))
+	mux.Handle("POST /api/delete-folder", authAPIMiddleware(http.HandlerFunc(fileHandler.DeleteFolder)))
+
+	// Use TLS server so Secure cookies work
+	server := httptest.NewTLSServer(mux)
+
+	return &testServer{
+		server:       server,
+		sessions:     sessions,
+		wsHandler:    wsHandler,
+		config:       cfg,
+		tempDir:      tempDir,
+		sessionsFile: sessionsFile,
+	}
+}
+
+// cleanup removes temp files and stops the server
+func (ts *testServer) cleanup() {
+	ts.server.Close()
+	ts.sessions.Stop()
+	os.RemoveAll(ts.tempDir)
+}
+
+// login authenticates and returns a cookie jar with session
+func (ts *testServer) login(t *testing.T) *cookiejar.Jar {
+	t.Helper()
+
+	jar, _ := cookiejar.New(nil)
+
+	// Don't follow redirects - we want to capture the Set-Cookie header
+	// Skip TLS verification for test server
+	client := &http.Client{
+		Jar: jar,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
+	// Login
+	form := strings.NewReader("password=" + ts.config.ShellPassword)
+	resp, err := client.Post(ts.server.URL+"/login", "application/x-www-form-urlencoded", form)
+	if err != nil {
+		t.Fatalf("Login request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Should redirect to dashboard on success (303 See Other)
+	if resp.StatusCode != http.StatusSeeOther {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("Login failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	// Check response Set-Cookie header directly
+	setCookie := resp.Header.Get("Set-Cookie")
+	if setCookie == "" {
+		t.Fatalf("No Set-Cookie header in login response")
+	}
+	t.Logf("Set-Cookie header: %s", setCookie)
+
+	// Manually set the cookie on the jar since httptest can have issues
+	serverURL, _ := url.Parse(ts.server.URL)
+	jar.SetCookies(serverURL, resp.Cookies())
+
+	// Verify we got the session cookie
+	cookies := jar.Cookies(serverURL)
+	hasSession := false
+	for _, c := range cookies {
+		if c.Name == "shell_session" {
+			hasSession = true
+			t.Logf("Got session cookie: %s...", c.Value[:16])
+			break
+		}
+	}
+	if !hasSession {
+		t.Fatalf("No session cookie received after login. Cookies: %v", cookies)
+	}
+
+	return jar
+}
+
+// ==============================================================================
+// TEST 1: WebSocket Terminal Session E2E
+// ==============================================================================
+// This test validates the complete terminal flow:
+// 1. Authentication via login
+// 2. WebSocket upgrade with session cookie
+// 3. PTY session creation and "connected" message
+// 4. Sending a command and receiving output
+// 5. Graceful disconnection
+// ==============================================================================
+
+func TestE2E_WebSocketTerminalSession(t *testing.T) {
+	ts := setupTestServer(t)
+	defer ts.cleanup()
+
+	// Step 1: Login and get session
+	jar := ts.login(t)
+
+	// Step 2: Connect WebSocket with session cookie
+	wsURL := "wss" + strings.TrimPrefix(ts.server.URL, "https") + "/ws?workspace=root"
+
+	// Build cookie header from jar
+	cookies := jar.Cookies(mustParseURL(ts.server.URL))
+	cookieHeader := ""
+	for _, c := range cookies {
+		if cookieHeader != "" {
+			cookieHeader += "; "
+		}
+		cookieHeader += c.Name + "=" + c.Value
+	}
+
+	// Use TLS config that skips verification for test server
+	dialer := websocket.Dialer{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	header := http.Header{}
+	header.Set("Cookie", cookieHeader)
+
+	conn, resp, err := dialer.Dial(wsURL, header)
+	if err != nil {
+		t.Fatalf("WebSocket dial failed: %v (response: %v)", err, resp)
+	}
+	defer conn.Close()
+
+	// Step 3: Expect "connected" message
+	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	_, msg, err := conn.ReadMessage()
+	if err != nil {
+		t.Fatalf("Failed to read connected message: %v", err)
+	}
+
+	var connectedMsg map[string]interface{}
+	if err := json.Unmarshal(msg, &connectedMsg); err != nil {
+		t.Fatalf("Failed to parse connected message: %v", err)
+	}
+	if connectedMsg["type"] != "connected" {
+		t.Fatalf("Expected 'connected' message, got: %s", string(msg))
+	}
+	t.Log("Received 'connected' message from PTY")
+
+	// Step 4: Send a command and wait for output
+	testCommand := "echo HELLO_E2E_TEST\n"
+	inputMsg := map[string]string{"type": "input", "data": testCommand}
+	inputBytes, _ := json.Marshal(inputMsg)
+
+	if err := conn.WriteMessage(websocket.TextMessage, inputBytes); err != nil {
+		t.Fatalf("Failed to send command: %v", err)
+	}
+
+	// Read output until we see our marker or timeout
+	foundOutput := false
+	deadline := time.Now().Add(10 * time.Second)
+	var allOutput strings.Builder
+
+	for time.Now().Before(deadline) {
+		conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+		_, msg, err := conn.ReadMessage()
+		if err != nil {
+			// Timeout is OK, we might have all output
+			break
+		}
+
+		var dataMsg map[string]interface{}
+		if err := json.Unmarshal(msg, &dataMsg); err != nil {
+			continue
+		}
+
+		if dataMsg["type"] == "data" {
+			if data, ok := dataMsg["data"].(string); ok {
+				allOutput.WriteString(data)
+				if strings.Contains(allOutput.String(), "HELLO_E2E_TEST") {
+					foundOutput = true
+					break
+				}
+			}
+		}
+	}
+
+	if !foundOutput {
+		t.Fatalf("Did not receive expected output 'HELLO_E2E_TEST'. Got: %s", allOutput.String())
+	}
+	t.Log("Command executed successfully, received expected output")
+
+	// Step 5: Test resize
+	resizeMsg := map[string]interface{}{"type": "resize", "cols": 120, "rows": 40}
+	resizeBytes, _ := json.Marshal(resizeMsg)
+	if err := conn.WriteMessage(websocket.TextMessage, resizeBytes); err != nil {
+		t.Fatalf("Failed to send resize: %v", err)
+	}
+	t.Log("Resize message sent successfully")
+
+	// Step 6: Send exit and verify clean disconnect
+	exitMsg := map[string]string{"type": "input", "data": "exit\n"}
+	exitBytes, _ := json.Marshal(exitMsg)
+	if err := conn.WriteMessage(websocket.TextMessage, exitBytes); err != nil {
+		t.Fatalf("Failed to send exit: %v", err)
+	}
+
+	// Wait for exit message
+	exitReceived := false
+	for i := 0; i < 10; i++ {
+		conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+		_, msg, err := conn.ReadMessage()
+		if err != nil {
+			break
+		}
+		var exitRespMsg map[string]interface{}
+		if err := json.Unmarshal(msg, &exitRespMsg); err != nil {
+			continue
+		}
+		if exitRespMsg["type"] == "exit" {
+			exitReceived = true
+			t.Logf("Received exit message with code: %v", exitRespMsg["exitCode"])
+			break
+		}
+	}
+
+	if !exitReceived {
+		t.Log("Warning: Did not receive explicit exit message (may have closed cleanly)")
+	}
+
+	t.Log("WebSocket terminal session E2E test PASSED")
+}
+
+// ==============================================================================
+// TEST 2: File Operations with Security E2E
+// ==============================================================================
+// This test validates file operations and security:
+// 1. Authentication required (401 without session)
+// 2. ZIP file upload
+// 3. File read-back verification
+// 4. Path traversal attack blocked
+// 5. Symlink attack blocked (if possible to create)
+// 6. File deletion
+// ==============================================================================
+
+func TestE2E_FileOperationsWithSecurity(t *testing.T) {
+	ts := setupTestServer(t)
+	defer ts.cleanup()
+
+	// Step 1: Verify authentication is required
+	t.Run("AuthRequired", func(t *testing.T) {
+		// Try to upload without auth (need TLS skip for test server)
+		noAuthClient := &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			},
+		}
+		resp, err := noAuthClient.Post(ts.server.URL+"/api/upload", "multipart/form-data", nil)
+		if err != nil {
+			t.Fatalf("Request failed: %v", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusUnauthorized {
+			t.Fatalf("Expected 401 Unauthorized, got %d", resp.StatusCode)
+		}
+		t.Log("Unauthenticated request correctly rejected with 401")
+	})
+
+	// Login for remaining tests
+	jar := ts.login(t)
+	client := &http.Client{
+		Jar: jar,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
+
+	// Step 2: Create and upload a ZIP file
+	t.Run("ZIPUpload", func(t *testing.T) {
+		// Create a ZIP in memory
+		var buf bytes.Buffer
+		zipWriter := zip.NewWriter(&buf)
+
+		// Add a test file
+		testContent := "Hello from E2E test!"
+		w, err := zipWriter.Create("test-folder/test-file.txt")
+		if err != nil {
+			t.Fatalf("Failed to create zip entry: %v", err)
+		}
+		w.Write([]byte(testContent))
+		zipWriter.Close()
+
+		// Create multipart form
+		var formBuf bytes.Buffer
+		formWriter := multipart.NewWriter(&formBuf)
+		formWriter.WriteField("workspace", "root")
+		formWriter.WriteField("targetDir", "./")
+
+		part, err := formWriter.CreateFormFile("file", "test.zip")
+		if err != nil {
+			t.Fatalf("Failed to create form file: %v", err)
+		}
+		part.Write(buf.Bytes())
+		formWriter.Close()
+
+		// Upload
+		req, _ := http.NewRequest("POST", ts.server.URL+"/api/upload", &formBuf)
+		req.Header.Set("Content-Type", formWriter.FormDataContentType())
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("Upload request failed: %v", err)
+		}
+		defer resp.Body.Close()
+
+		body, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("Upload failed with status %d: %s", resp.StatusCode, string(body))
+		}
+
+		var result map[string]interface{}
+		json.Unmarshal(body, &result)
+		if result["success"] != true {
+			t.Fatalf("Upload did not return success: %s", string(body))
+		}
+		t.Logf("ZIP uploaded successfully: %v files", result["fileCount"])
+	})
+
+	// Step 3: Read back the uploaded file
+	t.Run("FileReadback", func(t *testing.T) {
+		form := strings.NewReader("workspace=root&path=test-folder/test-file.txt")
+		req, _ := http.NewRequest("POST", ts.server.URL+"/api/read-file", form)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("Read request failed: %v", err)
+		}
+		defer resp.Body.Close()
+
+		body, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("Read failed with status %d: %s", resp.StatusCode, string(body))
+		}
+
+		var result map[string]interface{}
+		json.Unmarshal(body, &result)
+		content, ok := result["content"].(string)
+		if !ok || content != "Hello from E2E test!" {
+			t.Fatalf("File content mismatch. Expected 'Hello from E2E test!', got: %v", result["content"])
+		}
+		t.Log("File read back successfully with correct content")
+	})
+
+	// Step 4: Path traversal attack should be blocked
+	t.Run("PathTraversalBlocked", func(t *testing.T) {
+		// Try to read /etc/passwd via path traversal
+		form := strings.NewReader("workspace=root&path=../../../etc/passwd")
+		req, _ := http.NewRequest("POST", ts.server.URL+"/api/read-file", form)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("Request failed: %v", err)
+		}
+		defer resp.Body.Close()
+
+		// Should be blocked (400 Bad Request)
+		if resp.StatusCode != http.StatusBadRequest {
+			body, _ := io.ReadAll(resp.Body)
+			t.Fatalf("Path traversal was NOT blocked! Status: %d, Body: %s", resp.StatusCode, string(body))
+		}
+		t.Log("Path traversal attack correctly blocked")
+	})
+
+	// Step 5: Test symlink attack (create symlink, try to read through it)
+	t.Run("SymlinkAttackBlocked", func(t *testing.T) {
+		// Create a symlink pointing outside workspace
+		symlinkPath := filepath.Join(ts.config.ResolvedUploadCwd, "evil-symlink")
+		err := os.Symlink("/etc/passwd", symlinkPath)
+		if err != nil {
+			t.Skip("Cannot create symlink (might need privileges)")
+		}
+
+		// Try to read through the symlink
+		form := strings.NewReader("workspace=root&path=evil-symlink")
+		req, _ := http.NewRequest("POST", ts.server.URL+"/api/read-file", form)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("Request failed: %v", err)
+		}
+		defer resp.Body.Close()
+
+		// Should be blocked
+		if resp.StatusCode == http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			var result map[string]interface{}
+			json.Unmarshal(body, &result)
+			if content, ok := result["content"].(string); ok && strings.Contains(content, "root:") {
+				t.Fatalf("Symlink attack succeeded! Read /etc/passwd content")
+			}
+		}
+		t.Log("Symlink attack correctly blocked or symlink not readable")
+	})
+
+	// Step 6: Delete the uploaded folder
+	t.Run("FileDelete", func(t *testing.T) {
+		form := strings.NewReader("workspace=root&path=test-folder")
+		req, _ := http.NewRequest("POST", ts.server.URL+"/api/delete-folder", form)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("Delete request failed: %v", err)
+		}
+		defer resp.Body.Close()
+
+		body, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("Delete failed with status %d: %s", resp.StatusCode, string(body))
+		}
+
+		var result map[string]interface{}
+		json.Unmarshal(body, &result)
+		if result["success"] != true {
+			t.Fatalf("Delete did not return success: %s", string(body))
+		}
+		t.Log("File deleted successfully")
+
+		// Verify it's gone
+		deletedPath := filepath.Join(ts.config.ResolvedUploadCwd, "test-folder")
+		if _, err := os.Stat(deletedPath); !os.IsNotExist(err) {
+			t.Fatalf("Folder still exists after delete!")
+		}
+		t.Log("Verified folder is deleted from filesystem")
+	})
+
+	t.Log("File operations with security E2E test PASSED")
+}
+
+// ==============================================================================
+// Helper functions
+// ==============================================================================
+
+func mustParseURL(rawURL string) *url.URL {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		panic(err)
+	}
+	return u
+}

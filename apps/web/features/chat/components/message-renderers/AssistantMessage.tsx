@@ -136,7 +136,7 @@ function DebugToolItem({
   inlineDetail,
 }: {
   toolItem: { name: string; input: Record<string, unknown> }
-  icon: React.ComponentType<{ size: number; className?: string }>
+  icon: React.ComponentType<{ size?: string | number; className?: string }>
   actionLabel: string
   inlineDetail: string | null
 }) {

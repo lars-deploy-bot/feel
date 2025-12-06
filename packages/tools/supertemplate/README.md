@@ -164,5 +164,5 @@ Before adding a new template:
 
 ---
 
-**Last Updated:** 2025-11-09
-**Total Templates:** 5
+**Last Updated:** 2025-12-05
+**Total Templates:** 7

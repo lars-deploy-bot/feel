@@ -24,17 +24,7 @@ interface LLMActions {
   }
 }
 
-// Extended type for backwards compatibility
-type LLMStoreWithCompat = LLMState &
-  LLMActions & {
-    // Legacy direct action exports for backwards compatibility
-    setApiKey: (key: string | null) => void
-    setModel: (model: ClaudeModel) => void
-    setError: (error: string | null) => void
-    clearApiKey: () => void
-  }
-
-export type LLMStore = LLMStoreWithCompat
+export type LLMStore = LLMState & LLMActions
 
 const API_KEY_STORAGE_KEY = "llm-api-key-obf"
 
@@ -118,8 +108,6 @@ const useLLMStoreBase = create<LLMStore>()(
         model: DEFAULT_MODEL, // Default model for credit users
         error: null,
         actions,
-        // Legacy direct exports for backwards compatibility
-        ...actions,
       }
     },
     {
@@ -159,5 +147,27 @@ export const useLLMError = () => useLLMStoreBase(state => state.error)
 // Actions hook - stable reference (Guide §14.3)
 export const useLLMActions = () => useLLMStoreBase(state => state.actions)
 
-// Legacy export for backwards compatibility
-export const useLLMStore = useLLMStoreBase
+// Combined hook for components that need multiple values
+// Returns flattened object with state + actions for convenience
+export const useLLMStore = () => {
+  const apiKey = useLLMStoreBase(state => state.apiKey)
+  const model = useLLMStoreBase(state => state.model)
+  const error = useLLMStoreBase(state => state.error)
+  const actions = useLLMStoreBase(state => state.actions)
+
+  return {
+    apiKey,
+    model,
+    error,
+    ...actions,
+  }
+}
+
+// Direct store access for getState() calls
+useLLMStore.getState = () => {
+  const state = useLLMStoreBase.getState()
+  return {
+    ...state,
+    ...state.actions,
+  }
+}

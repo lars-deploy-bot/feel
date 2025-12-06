@@ -12,7 +12,7 @@ import { COOKIE_NAMES } from "@webalive/shared"
  *
  * BUG HISTORY:
  * - MCP tools hardcoded "session" as cookie name
- * - API expected "auth_session" from COOKIE_NAMES.SESSION
+ * - API expected "auth_session_v2" from COOKIE_NAMES.SESSION
  * - Result: 401 Unauthorized for all MCP tool API calls
  *
  * THESE TESTS PREVENT:
@@ -24,7 +24,7 @@ import { COOKIE_NAMES } from "@webalive/shared"
  * HOW IT WORKS:
  * - Tests verify source code IMPORTS COOKIE_NAMES from @webalive/shared
  * - Tests verify source code USES the constant (not hardcoded string)
- * - Tests verify constant value matches expected "auth_session"
+ * - Tests verify constant value matches expected "auth_session_v2"
  */
 
 describe("Cookie Name Synchronization - Prevent Hardcoding", () => {
@@ -33,7 +33,7 @@ describe("Cookie Name Synchronization - Prevent Hardcoding", () => {
    */
   it("should export COOKIE_NAMES.SESSION from @webalive/shared", () => {
     expect(COOKIE_NAMES).toBeDefined()
-    expect(COOKIE_NAMES.SESSION).toBe("auth_session")
+    expect(COOKIE_NAMES.SESSION).toBe("auth_session_v2")
     expect(COOKIE_NAMES.MANAGER_SESSION).toBe("manager_session")
   })
 
@@ -63,7 +63,7 @@ describe("Cookie Name Synchronization - Prevent Hardcoding", () => {
   })
 
   /**
-   * Verify no hardcoded "auth_session" strings (must use constant)
+   * Verify no hardcoded "auth_session_v2" strings (must use constant)
    */
   it("should not hardcode 'auth_session' string in bridge-api-client.ts", () => {
     const sourcePath = join(__dirname, "../src/lib/bridge-api-client.ts")
@@ -75,19 +75,19 @@ describe("Cookie Name Synchronization - Prevent Hardcoding", () => {
       .filter(line => !line.includes("import"))
       .join("\n")
 
-    // Should NOT have "auth_session" hardcoded in the code logic
+    // Should NOT have "auth_session_v2" hardcoded in the code logic
     // (Comments and strings for tests are okay, but not in Cookie header construction)
-    const hardcodedAuthSession = /Cookie:\s*["`]auth_session=/
+    const hardcodedAuthSession = /Cookie:\s*["`]auth_session_v2=/
     expect(codeWithoutImports).not.toMatch(hardcodedAuthSession)
 
-    // If this test FAILS, someone hardcoded "auth_session" instead of using the constant
+    // If this test FAILS, someone hardcoded "auth_session_v2" instead of using the constant
   })
 
   /**
    * Verify constant value is correct
    */
   it("should use 'auth_session' as the session cookie name", () => {
-    expect(COOKIE_NAMES.SESSION).toBe("auth_session")
+    expect(COOKIE_NAMES.SESSION).toBe("auth_session_v2")
 
     // This value must match what Next.js cookies() expects
     // If this value changes, it's a breaking change requiring coordination
@@ -127,7 +127,7 @@ describe("Cookie Name Synchronization - Cross-Package Consistency", () => {
    */
   it("should use valid HTTP cookie name format", () => {
     // Cookie names should be alphanumeric with underscores/hyphens
-    const validCookieNamePattern = /^[a-z_-]+$/i
+    const validCookieNamePattern = /^[a-z0-9_-]+$/i
     expect(COOKIE_NAMES.SESSION).toMatch(validCookieNamePattern)
 
     // No spaces, special chars, or invalid characters
@@ -162,7 +162,7 @@ describe("Cookie Name Usage - Runtime Verification", () => {
     const testToken = "test-jwt-123"
     const expectedHeader = `${COOKIE_NAMES.SESSION}=${testToken}`
 
-    expect(expectedHeader).toBe("auth_session=test-jwt-123")
+    expect(expectedHeader).toBe("auth_session_v2=test-jwt-123")
 
     // This is the EXACT format that will be sent in fetch() calls
     // API expects this exact format to parse with Next.js cookies()
@@ -173,8 +173,8 @@ describe("Cookie Name Usage - Runtime Verification", () => {
    */
   it("should match cookie name expected by Next.js API routes", () => {
     // Next.js cookies() will look for this exact name
-    // apps/web expects COOKIE_NAMES.SESSION = "auth_session"
-    expect(COOKIE_NAMES.SESSION).toBe("auth_session")
+    // apps/web expects COOKIE_NAMES.SESSION = "auth_session_v2"
+    expect(COOKIE_NAMES.SESSION).toBe("auth_session_v2")
 
     // If this doesn't match, API route auth will fail
   })

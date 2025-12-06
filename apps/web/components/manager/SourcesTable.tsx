@@ -89,6 +89,9 @@ export function SourcesTable({ sources, loading, onDelete }: SourcesTableProps) 
             <th className="py-2 px-4 text-center text-xs font-medium text-slate-600 dark:text-slate-400 uppercase">
               Service
             </th>
+            <th className="py-2 px-4 text-center text-xs font-medium text-slate-600 dark:text-slate-400 uppercase">
+              Mode
+            </th>
             <th className="py-2 px-4 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase">
               Org / Email
             </th>
@@ -170,6 +173,21 @@ export function SourcesTable({ sources, loading, onDelete }: SourcesTableProps) 
                         }
                       >
                         {domain.systemd.active ? "✓" : "✗"}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 dark:text-slate-500">—</span>
+                    )}
+                  </td>
+                  <td className="py-2 px-4 text-sm text-center" rowSpan={3}>
+                    {domain.systemd.exists ? (
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                          domain.systemd.serveMode === "build"
+                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300"
+                            : "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
+                        }`}
+                      >
+                        {domain.systemd.serveMode}
                       </span>
                     ) : (
                       <span className="text-slate-400 dark:text-slate-500">—</span>

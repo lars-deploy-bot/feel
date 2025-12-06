@@ -83,6 +83,7 @@ export const createUserStore = (initState: UserState = defaultInitState) => {
 
             try {
               const response = await fetch("/api/tokens", {
+                credentials: "include",
                 headers: {
                   "X-Workspace": workspace,
                 },

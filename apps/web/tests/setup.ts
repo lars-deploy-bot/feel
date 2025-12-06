@@ -1,9 +1,29 @@
-import { AsyncLocalStorage } from "node:async_hooks"
 import { vi } from "vitest"
 
+// Only import AsyncLocalStorage in node environment (not happy-dom)
+let AsyncLocalStorage: typeof import("node:async_hooks").AsyncLocalStorage | null = null
+try {
+  const asyncHooks = await import("node:async_hooks")
+  AsyncLocalStorage = asyncHooks.AsyncLocalStorage
+} catch {
+  // In happy-dom environment, node:async_hooks is not available
+}
+
 process.env.TZ = "UTC"
+// Note: NODE_ENV is read-only in some environments, only set if needed
+if (process.env.NODE_ENV !== "test") {
+  try {
+    ;(process.env as Record<string, string>).NODE_ENV = "test"
+  } catch {
+    // NODE_ENV may be frozen in production builds, ignore
+  }
+}
 process.env.BRIDGE_ENV = "local"
 process.env.SKIP_ENV_VALIDATION = "1" // Skip @t3-oss/env validation in tests
+
+// Mock security credentials for tests
+process.env.JWT_SECRET = process.env.JWT_SECRET || "test-jwt-secret-for-unit-tests-only-32chars"
+process.env.BRIDGE_PASSCODE = process.env.BRIDGE_PASSCODE || "test-passcode"
 
 // Mock Supabase credentials for tests (server-side)
 process.env.SUPABASE_URL = process.env.SUPABASE_URL || "https://test.supabase.co"
@@ -23,12 +43,16 @@ if (process.env.CI) {
   process.env.FORCE_COLOR = "0"
 }
 
-// AsyncLocalStorage for test request context
-const testRequestContext = new AsyncLocalStorage<Request>()
+// AsyncLocalStorage for test request context (only available in node environment)
+const testRequestContext = AsyncLocalStorage ? new AsyncLocalStorage<Request>() : null
 
 // Export function to run code with request context
 export function runWithRequestContext<T>(request: Request, fn: () => T | Promise<T>): Promise<T> {
-  return Promise.resolve(testRequestContext.run(request, fn))
+  if (testRequestContext) {
+    return Promise.resolve(testRequestContext.run(request, fn))
+  }
+  // Fallback for happy-dom environment
+  return Promise.resolve(fn())
 }
 
 // Helper to parse cookie strings
@@ -43,11 +67,11 @@ function parseCookies(cookieString: string) {
   return cookies
 }
 
-// Mock Next.js cookies() to read from AsyncLocalStorage
+// Mock Next.js cookies() to read from AsyncLocalStorage (when available)
 vi.mock("next/headers", () => {
   return {
     cookies: async () => {
-      const request = testRequestContext.getStore()
+      const request = testRequestContext?.getStore() ?? null
       const cookieHeader = request?.headers?.get("cookie") || ""
       const cookieMap = parseCookies(cookieHeader)
 
@@ -62,7 +86,7 @@ vi.mock("next/headers", () => {
       }
     },
     headers: async () => {
-      const request = testRequestContext.getStore()
+      const request = testRequestContext?.getStore() ?? null
       return {
         get: (name: string) => request?.headers?.get(name) || null,
         has: (name: string) => request?.headers?.has(name) || false,

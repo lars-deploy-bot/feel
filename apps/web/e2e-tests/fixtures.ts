@@ -5,7 +5,7 @@
  */
 
 import { test as base, type Page } from "@playwright/test"
-import { COOKIE_NAMES, TEST_CONFIG, WORKSPACE_STORAGE, createWorkspaceStorageValue } from "@webalive/shared"
+import { COOKIE_NAMES, DOMAINS, TEST_CONFIG, WORKSPACE_STORAGE, createWorkspaceStorageValue } from "@webalive/shared"
 import jwt from "jsonwebtoken"
 
 export interface TestUser {
@@ -30,7 +30,35 @@ type WorkerFixtures = {
   workerStorageState: TestUser
 }
 
+/**
+ * Mock HTML for preview iframe - loads instantly instead of real sites
+ */
+const MOCK_PREVIEW_HTML = `<!DOCTYPE html>
+<html>
+<head><title>Mock Preview</title></head>
+<body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh;background:#1a1a1a;color:#666;font-family:system-ui">
+  <div style="text-align:center">
+    <div style="font-size:48px;margin-bottom:16px">🧪</div>
+    <div>E2E Test Preview</div>
+  </div>
+</body>
+</html>`
+
 export const test = base.extend<TestFixtures, WorkerFixtures>({
+  // Override page fixture to mock preview iframe requests
+  page: async ({ page }, use) => {
+    // Mock all requests to preview subdomains - these are slow to load and not needed for tests
+    await page.route(`**/*.${DOMAINS.PREVIEW_BASE}/**`, route => {
+      route.fulfill({
+        status: 200,
+        contentType: "text/html",
+        body: MOCK_PREVIEW_HTML,
+      })
+    })
+
+    await use(page)
+  },
+
   // Worker-scoped: fetch tenant once per worker
   workerStorageState: [
     // biome-ignore lint/correctness/noEmptyPattern: Playwright requires destructuring even when no fixtures are used

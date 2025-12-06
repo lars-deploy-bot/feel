@@ -2,6 +2,40 @@
 
 Workflow decision trees for handling specific request types using Alive's tools.
 
+## For New Developers
+
+### What are these files?
+
+Workflow files are **markdown decision trees** that the AI agent retrieves at runtime via the `get_workflow` MCP tool. When a user asks something like "is this ready to ship?" or "debug this error", the agent calls `get_workflow({ workflow_type: "website-shippable-check" })` and receives the full markdown content with step-by-step instructions.
+
+### How they work
+
+1. **Location**: `packages/tools/workflows/*.md`
+2. **Registration**: Each workflow must be registered in `src/tools/meta/get-workflow.ts`:
+   - Add to `WORKFLOW_CATEGORIES` array
+   - Add filename mapping to `WORKFLOW_FILE_MAP`
+3. **Discovery**: Also update `src/tools/meta/list-workflows.ts` so `list_workflows` shows the new type
+4. **Rebuild**: Run `make dev` to rebuild the tools package after changes
+
+### File permissions
+
+**IMPORTANT**: Workflow files must have `644` permissions (`rw-r--r--`) so the MCP server process can read them. If you create a new file and get `EACCES: permission denied` errors:
+
+```bash
+chmod 644 packages/tools/workflows/your-new-workflow.md
+```
+
+### Adding new workflows
+
+We expect to add more workflows over time. Follow the pattern:
+1. Create `XX-workflow-name.md` (increment the number)
+2. Register in `get-workflow.ts` (WORKFLOW_CATEGORIES + WORKFLOW_FILE_MAP)
+3. Update `list-workflows.ts` description
+4. `chmod 644` the new file
+5. `make dev` to rebuild
+
+---
+
 ## Purpose
 
 These workflows guide the AI agent through step-by-step processes for common tasks. They use **Alive's actual tools** (not Lovable's) and are tailored to our multi-workspace architecture.
@@ -22,6 +56,30 @@ These workflows guide the AI agent through step-by-step processes for common tas
    - Installing npm packages
    - Handling type definitions
    - Verifying installations
+
+4. **Website Shippable Check** (`04-website-shippable-check.md`)
+   - Pre-launch quality gate checklist
+   - Visual quality (no gradients, no scale animations, no emojis)
+   - Responsive, typography, spacing, color checks
+   - AI garbage detection (console.log, localhost URLs, placeholder images)
+   - Technical requirements (favicon, meta tags, semantic HTML)
+
+5. **Functionality Check** (`05-functionality-check.md`)
+   - Verify everything actually WORKS (not just looks good)
+   - Pages exist (no 404s, no "Coming Soon" placeholders)
+   - Buttons do something (no empty onClick handlers)
+   - Forms submit (no fake submissions)
+   - Links go somewhere (no href="#")
+   - No placeholder content (Lorem ipsum, John Doe, 555-1234, example.com)
+   - User flows work end-to-end (signup, login, contact, checkout)
+   - "Pissed user" mindset - find everything that would make users leave
+
+6. **Server Setup Guides** (`server-setup/`)
+   - Complete guides for Hono + TanStack Router + Vite architecture
+   - [README.md](./server-setup/README.md) - Index and quick start
+   - [00-complete-guide.md](./server-setup/00-complete-guide.md) - Comprehensive everything-in-one reference
+   - [01-migration.md](./server-setup/01-migration.md) - Quick migration for existing sites
+   - [02-tanstack-router.md](./server-setup/02-tanstack-router.md) - File-based routing deep dive
 
 ## Tool Categories
 
@@ -58,6 +116,8 @@ get_workflow({
 - `bug-debugging` - Debugging workflows
 - `new-feature` - Feature implementation workflows
 - `package-installation` - Package installation workflows
+- `website-shippable-check` - Pre-launch quality checklist
+- `functionality-check` - Verify everything actually works
 
 **Detail Levels:**
 - `minimal` - Overview only

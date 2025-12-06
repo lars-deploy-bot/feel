@@ -98,11 +98,28 @@ export async function fetchFilesystemSources(results: Map<string, SourceData>): 
 }
 
 /**
+ * Check serve mode from systemd override file
+ */
+async function checkServeMode(slug: string): Promise<"dev" | "build" | "unknown"> {
+  const overridePath = `/etc/systemd/system/site@${slug}.service.d/override.conf`
+  try {
+    const { stdout } = await execAsync(`cat "${overridePath}" 2>/dev/null || echo ""`)
+    if (stdout.includes("preview")) return "build"
+    if (stdout.includes("dev") || stdout.trim() === "") return "dev"
+    return "dev"
+  } catch {
+    return "dev"
+  }
+}
+
+/**
  * Fetch systemd service status for domains
  */
 export async function fetchSystemdSources(results: Map<string, SourceData>): Promise<void> {
   const { stdout: services } = await execAsync("systemctl list-units 'site@*.service' --no-legend --no-pager")
   const serviceMatches = services.matchAll(/site@([a-zA-Z0-9-]+)\.service\s+loaded\s+(\w+)/g)
+
+  const updates: Promise<void>[] = []
 
   for (const match of serviceMatches) {
     const slug = match[1]
@@ -113,13 +130,20 @@ export async function fetchSystemdSources(results: Map<string, SourceData>): Pro
 
     // Only update if domain already exists (systemd doesn't create new domains)
     if (results.has(domain)) {
-      const domainData = results.get(domain)!
-      domainData.systemd = {
-        exists: true,
-        active: state === "active",
-      }
+      updates.push(
+        checkServeMode(slug).then(serveMode => {
+          const domainData = results.get(domain)!
+          domainData.systemd = {
+            exists: true,
+            active: state === "active",
+            serveMode,
+          }
+        }),
+      )
     }
   }
+
+  await Promise.all(updates)
 }
 
 /**

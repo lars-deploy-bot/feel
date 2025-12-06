@@ -34,6 +34,7 @@ export interface DnsSource {
 export interface SystemdSource {
   exists: boolean
   active: boolean
+  serveMode: "dev" | "build" | "unknown"
 }
 
 export interface SourceData {

@@ -15,25 +15,17 @@
  * // With custom model and max turns
  * const response2 = await askAI({
  *   question: "Explain quantum computing",
- *   model: "claude-sonnet-4-5-20250929",
+ *   model: CLAUDE_MODELS.SONNET_4_5,  // "claude-sonnet-4-5"
  *   maxTurns: 3,
  * })
  * ```
  */
 
 import { query } from "@anthropic-ai/claude-agent-sdk"
-import { DEFAULTS } from "@webalive/shared"
+import { DEFAULTS, CLAUDE_MODELS, type ClaudeModel } from "@webalive/shared"
 
-/**
- * Available Claude models
- */
-export const CLAUDE_MODELS = {
-  SONNET: "claude-sonnet-4-5-20250929",
-  HAIKU: "claude-haiku-4-5-20250929",
-  OPUS: "claude-opus-4-5-20250929",
-} as const
-
-export type ClaudeModel = (typeof CLAUDE_MODELS)[keyof typeof CLAUDE_MODELS]
+// Re-export from shared for backwards compatibility
+export { CLAUDE_MODELS, type ClaudeModel }
 
 export interface AskAIOptions {
   /** The question or prompt to send to Claude */

@@ -10,6 +10,15 @@ export function isTextMessage(message: UIMessage): boolean {
   // User messages are always text
   if (message.type === "user") return true
 
+  // Agent manager messages should be displayed prominently (not collapsed)
+  if (message.type === "agent_manager") return true
+
+  // Interrupt messages (user stopped) should be visible
+  if (message.type === "interrupt") return true
+
+  // Context compaction notices should be visible
+  if (message.type === "compact_boundary") return true
+
   // Assistant messages with only text content (no tools)
   if (message.type === "sdk_message") {
     const sdkContent = message.content as SDKMessage

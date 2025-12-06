@@ -37,6 +37,7 @@ async function api<E extends Endpoint>(endpoint: E, init?: ApiInit<E>, pathOverr
       ...init,
       method,
       headers,
+      credentials: "include",
       body: hasBody && init?.body !== undefined ? JSON.stringify(init.body) : undefined,
     })
   } catch (e) {

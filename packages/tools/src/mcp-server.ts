@@ -7,6 +7,7 @@ import { searchToolsTool } from "./tools/meta/search-tools.js"
 import { generatePersonaTool } from "./tools/personas/generate-persona.js"
 import { getAliveSuperTemplateTool } from "./tools/templates/get-template.js"
 import { checkCodebaseTool } from "./tools/workspace/check-codebase.js"
+import { copySharedAssetTool } from "./tools/workspace/copy-shared-asset.js"
 import { deleteFileTool } from "./tools/workspace/delete-file.js"
 import { installPackageTool } from "./tools/workspace/install-package.js"
 import { restartServerTool } from "./tools/workspace/restart-server.js"
@@ -68,5 +69,12 @@ export const toolsInternalMcp = createSdkMcpServer({
 export const workspaceInternalMcp = createSdkMcpServer({
   name: "alive-workspace",
   version: "1.0.0",
-  tools: [restartServerTool, installPackageTool, checkCodebaseTool, deleteFileTool, switchServeModeTool],
+  tools: [
+    restartServerTool,
+    installPackageTool,
+    checkCodebaseTool,
+    deleteFileTool,
+    switchServeModeTool,
+    copySharedAssetTool,
+  ],
 })

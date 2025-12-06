@@ -27,6 +27,7 @@ export function FeedbackModal({ onClose, workspace, conversationId }: FeedbackMo
     try {
       const response = await fetch("/api/feedback", {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },

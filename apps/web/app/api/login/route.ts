@@ -124,7 +124,10 @@ export async function POST(req: NextRequest) {
 
   console.log(`[Login] Successfully authenticated: ${user.email} (${workspaces.length} workspaces)`)
 
-  const res = createCorsSuccessResponse(origin, { userId: user.user_id })
+  // Return workspaces so client can validate localStorage selection
+  const res = createCorsSuccessResponse(origin, { userId: user.user_id, workspaces })
+
+  // Set session cookie (cookie name is versioned to avoid conflicts with old cookies)
   res.cookies.set(COOKIE_NAMES.SESSION, sessionToken, getSessionCookieOptions())
   return res
 }

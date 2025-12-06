@@ -30,6 +30,8 @@ const FILE_MAP: Record<WorkflowCategory, string> = {
   "bug-debugging": "01-bug-debugging-request.md",
   "new-feature": "02-new-feature-request.md",
   "package-installation": "03-package-installation.md",
+  "website-shippable-check": "04-website-shippable-check.md",
+  "functionality-check": "05-functionality-check.md",
 }
 
 // Keep reference to actual readFile for tests that need real file reads
@@ -116,6 +118,8 @@ describe("getWorkflow", () => {
     expect(text).toContain("- bug-debugging")
     expect(text).toContain("- new-feature")
     expect(text).toContain("- package-installation")
+    expect(text).toContain("- website-shippable-check")
+    expect(text).toContain("- functionality-check")
   })
 
   it("returns error when file read fails (I/O error path)", async () => {
@@ -127,7 +131,9 @@ describe("getWorkflow", () => {
     const text = result.content[0].text
     expect(text).toContain("# Workflow Retrieval Failed")
     expect(text).toContain('**Workflow:** "bug-debugging"')
-    expect(text).toContain("Available workflows: bug-debugging, new-feature, package-installation")
+    expect(text).toContain(
+      "Available workflows: bug-debugging, new-feature, package-installation, website-shippable-check, functionality-check",
+    )
   })
 
   it("registry metadata should expose only workflow_type parameter (no detail_level)", () => {

@@ -166,8 +166,14 @@ function LoadingFallback() {
         <ThemeToggle />
       </div>
       <div className="w-full max-w-md text-center">
-        <div className="w-8 h-8 border-2 border-black dark:border-white border-t-transparent dark:border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-black/50 dark:text-white/50 text-sm font-normal">Loading...</p>
+        {/* Friendly breathing animation instead of spinner */}
+        <div className="relative w-16 h-16 mx-auto mb-6">
+          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-emerald-400/20 to-teal-400/20 alive-logo-outer" />
+          <div className="absolute inset-2 rounded-full bg-gradient-to-br from-emerald-400/30 to-teal-400/30 alive-logo-inner" />
+          <div className="absolute inset-4 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500" />
+        </div>
+        <p className="text-black/70 dark:text-white/70 text-base font-medium mb-1">Just a moment</p>
+        <p className="text-black/40 dark:text-white/40 text-sm">Getting everything ready for you</p>
       </div>
     </main>
   )

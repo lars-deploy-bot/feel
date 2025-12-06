@@ -1,0 +1,123 @@
+package handlers
+
+import (
+	"fmt"
+	"net/http"
+	"os"
+	"time"
+
+	"shell-server-go/internal/config"
+	"shell-server-go/internal/middleware"
+	"shell-server-go/internal/ratelimit"
+	"shell-server-go/internal/session"
+)
+
+// AuthHandler handles authentication routes
+type AuthHandler struct {
+	config    *config.AppConfig
+	sessions  *session.Store
+	limiter   *ratelimit.Limiter
+	templates *Templates
+}
+
+// NewAuthHandler creates a new auth handler
+func NewAuthHandler(cfg *config.AppConfig, sessions *session.Store, limiter *ratelimit.Limiter, templates *Templates) *AuthHandler {
+	return &AuthHandler{
+		config:    cfg,
+		sessions:  sessions,
+		limiter:   limiter,
+		templates: templates,
+	}
+}
+
+// LoginPage renders the login page
+func (h *AuthHandler) LoginPage(w http.ResponseWriter, r *http.Request) {
+	// Check if already authenticated
+	if middleware.IsAuthenticated(r, h.sessions) {
+		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+		return
+	}
+
+	// Get error from query params
+	errorType := r.URL.Query().Get("error")
+	wait := r.URL.Query().Get("wait")
+	remaining := r.URL.Query().Get("remaining")
+
+	var errorMessage string
+	if errorType == "rate_limit" {
+		if wait == "" {
+			wait = "15"
+		}
+		errorMessage = fmt.Sprintf(`<p class="error">Too many failed attempts. Please wait %s minutes.</p>`, wait)
+	} else if errorType == "invalid" {
+		if remaining != "" {
+			errorMessage = fmt.Sprintf(`<p class="error">Invalid password (%s attempts remaining)</p>`, remaining)
+		} else {
+			errorMessage = `<p class="error">Invalid password</p>`
+		}
+	}
+
+	h.templates.RenderLogin(w, errorMessage)
+}
+
+// Login handles login form submission
+func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
+	// Check rate limiting
+	result := h.limiter.Check()
+	if result.Limited {
+		http.Redirect(w, r, fmt.Sprintf("/?error=rate_limit&wait=%d", result.WaitMinutes), http.StatusSeeOther)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Redirect(w, r, "/?error=invalid", http.StatusSeeOther)
+		return
+	}
+
+	password := r.FormValue("password")
+	if password != h.config.ShellPassword {
+		remaining := h.limiter.RecordFailure()
+		http.Redirect(w, r, fmt.Sprintf("/?error=invalid&remaining=%d", remaining), http.StatusSeeOther)
+		return
+	}
+
+	// Clear failed attempts on success
+	h.limiter.Clear()
+
+	// Create session
+	token := h.sessions.Generate()
+
+	// Set cookie
+	secure := os.Getenv("NODE_ENV") == "production"
+	http.SetCookie(w, &http.Cookie{
+		Name:     middleware.CookieName,
+		Value:    token,
+		Path:     "/",
+		MaxAge:   86400, // 24 hours
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+}
+
+// Logout handles logout
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	// Delete session
+	token := middleware.GetSessionToken(r)
+	if token != "" {
+		h.sessions.Delete(token)
+	}
+
+	// Clear cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     middleware.CookieName,
+		Value:    "",
+		Path:     "/",
+		Expires:  time.Unix(0, 0),
+		HttpOnly: true,
+	})
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}

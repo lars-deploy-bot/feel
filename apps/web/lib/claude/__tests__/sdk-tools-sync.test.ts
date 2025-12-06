@@ -15,7 +15,7 @@ describe("SDK Tools Sync", () => {
     })
 
     it("should not have extra tools that are not in SDK", () => {
-      const allSDK = new Set(SDK_TOOL_NAMES)
+      const allSDK = new Set<string>(SDK_TOOL_NAMES)
 
       const extraInAllowed = ALLOWED_SDK_TOOLS.filter(t => !allSDK.has(t))
       const extraInDisallowed = DISALLOWED_SDK_TOOLS.filter(t => !allSDK.has(t))

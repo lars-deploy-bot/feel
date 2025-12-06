@@ -24,5 +24,7 @@
     ],
     "deny": ["Bash(rm -rf :*)", "Bash(bun test)"],
     "ask": []
-  }
+  },
+  "enabledMcpjsonServers": ["supabase"],
+  "enableAllProjectMcpServers": true
 }

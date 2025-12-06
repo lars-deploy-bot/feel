@@ -3,6 +3,26 @@
 
 @variant dark (.dark &);
 
+/* Satoshi Variable Font - for headings */
+@font-face {
+  font-display: swap;
+  font-family: "Satoshi";
+  src: url("/fonts/Satoshi-Variable.woff2") format("woff2-variations"),
+       url("/fonts/Satoshi-Variable.woff") format("woff");
+  font-style: normal;
+  font-weight: 300 900;
+}
+
+/* Satoshi Bold - static fallback */
+@font-face {
+  font-display: swap;
+  font-family: "Satoshi";
+  src: url("/fonts/Satoshi-Bold.woff2") format("woff2"),
+       url("/fonts/Satoshi-Bold.woff") format("woff");
+  font-style: normal;
+  font-weight: 700;
+}
+
 /* Diatype Variable Font */
 @font-face {
   font-display: block;
@@ -83,17 +103,14 @@ body {
   font-family: "Diatype Semi-Mono Variable", monospace;
 }
 
-/* Headings use normal case with proper weight */
-h1 {
-  font-weight: 600;
+.font-satoshi {
+  font-family: "Satoshi", "Inter", Arial, sans-serif;
 }
 
-h2 {
-  font-weight: 550;
-}
-
-h3 {
-  font-weight: 500;
+/* Headings use Satoshi Bold */
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Satoshi", "Inter", Arial, sans-serif;
+  font-weight: 700;
 }
 
 /* Global button styles */

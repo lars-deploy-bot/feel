@@ -325,7 +325,7 @@ export function SubdomainDeployForm() {
             <motion.div variants={itemVariants} className="xl:w-1/2">
               {templatesLoading ? (
                 <div className="flex items-center justify-center h-64">
-                  <span className="text-2xl font-mono text-gray-400">{loadingDots || "."}</span>
+                  <span className="text-2xl font-mono text-gray-400 dark:text-gray-500">{loadingDots || "."}</span>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-2 gap-4">

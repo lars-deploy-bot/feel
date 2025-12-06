@@ -1,14 +1,23 @@
+---
+name: Zustand State Management
+description: Best practices for Zustand in Vite + React with vanilla stores, Providers, performance patterns, and persistence.
+category: setup
+complexity: 2
+files: 4
+dependencies:
+  - zustand@^5.0.0
+estimatedTime: 10-15 minutes
+estimatedTokens: 60
+tags: [zustand, state, react, vite, typescript]
+requires:
+  - Vite 5+
+  - React 18+
+  - Node 18+
+previewImage: /templates/previews/placeholder.svg
+available: true
+---
+
 # Zustand State Management - Best Practices for React + Vite
-
-**Category:** Frontend
-**Complexity:** Medium
-**Files:** 4
-**Dependencies:** zustand
-**Estimated Time:** 10-15 minutes
-**Framework:** Vite 5+ / React 18+
-**Min Node Version:** 18.0.0
-
-## Description
 
 Best practices for using Zustand in Vite + React applications with vanilla stores, Providers, performance patterns, and persistence. Includes both simple direct stores and advanced Provider patterns for maximum flexibility.
 

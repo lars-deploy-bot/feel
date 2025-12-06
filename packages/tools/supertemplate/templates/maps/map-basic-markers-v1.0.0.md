@@ -1,12 +1,22 @@
+---
+name: Interactive Map with Markers
+description: Leaflet map with custom markers and popups. Click markers to see location details.
+category: components
+complexity: 2
+files: 4
+dependencies:
+  - leaflet@^1.9.0
+  - react-leaflet@^4.2.0
+estimatedTime: 4-5 minutes
+estimatedTokens: 20
+tags: [leaflet, maps, markers]
+requires:
+  - React 18+
+previewImage: https://terminal.goalive.nl/_images/t/protino.alive.best/o/5db9ecf5ddb7e5e7/v/orig.webp
+available: true
+---
+
 # Interactive Map with Markers
-
-**Category:** Maps
-**Complexity:** Medium
-**Files:** 2
-**Dependencies:** leaflet, @types/leaflet
-**Estimated Time:** 4-5 minutes
-
-## Description
 
 An interactive Leaflet map with custom markers and popups. Click markers to see location details. Uses vanilla Leaflet with React refs (not react-leaflet, which has React 18 compatibility issues).
 

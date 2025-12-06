@@ -4,26 +4,15 @@ import { X } from "lucide-react"
 import { useEffect, useState } from "react"
 import { SuperTemplateCard } from "@/components/ui/SuperTemplateCard"
 import { SuperTemplatePreview } from "@/components/ui/SuperTemplatePreview"
-import { getTemplatesByCategory, type Template } from "@/data/templates"
+import { TEMPLATE_CATEGORIES, getTemplatesByCategory, type Template, type TemplateCategory } from "@/data/templates"
 
 interface SuperTemplatesModalProps {
   onClose: () => void
   onInsertTemplate: (prompt: string) => void
 }
 
-type Category = "sliders" | "maps" | "file-upload" | "backend" | "content-management" | "frontend"
-
-const categoryLabels: Record<Category, string> = {
-  sliders: "Photo Sliders",
-  maps: "Maps",
-  "file-upload": "File Upload",
-  backend: "Backend",
-  "content-management": "Content Management",
-  frontend: "Frontend",
-}
-
 export function SuperTemplatesModal({ onClose, onInsertTemplate }: SuperTemplatesModalProps) {
-  const [activeCategory, setActiveCategory] = useState<Category>("sliders")
+  const [activeCategory, setActiveCategory] = useState<TemplateCategory>("components")
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null)
 
   const currentTemplates = getTemplatesByCategory(activeCategory)
@@ -122,7 +111,7 @@ export function SuperTemplatesModal({ onClose, onInsertTemplate }: SuperTemplate
 
                 <div className="overflow-x-auto scrollbar-hide px-6 -mx-6">
                   <div className="flex gap-3 px-6 pb-1">
-                    {(Object.keys(categoryLabels) as Category[]).map(category => {
+                    {(Object.keys(TEMPLATE_CATEGORIES) as TemplateCategory[]).map(category => {
                       const count = getTemplatesByCategory(category).length
                       const isActive = activeCategory === category
 
@@ -138,7 +127,7 @@ export function SuperTemplatesModal({ onClose, onInsertTemplate }: SuperTemplate
                                 : "bg-black/[0.06] dark:bg-white/[0.06] text-black dark:text-white active:bg-black/10 dark:active:bg-white/10"
                             }`}
                         >
-                          {categoryLabels[category]}
+                          {TEMPLATE_CATEGORIES[category]}
                           <span className={`ml-2 text-sm font-[300] ${isActive ? "opacity-75" : "opacity-50"}`}>
                             {count}
                           </span>
@@ -151,7 +140,7 @@ export function SuperTemplatesModal({ onClose, onInsertTemplate }: SuperTemplate
 
               {/* Desktop: Minimal tabs */}
               <div className="hidden md:flex gap-1 px-8 pt-6">
-                {(Object.keys(categoryLabels) as Category[]).map(category => {
+                {(Object.keys(TEMPLATE_CATEGORIES) as TemplateCategory[]).map(category => {
                   const count = getTemplatesByCategory(category).length
                   const isActive = activeCategory === category
 
@@ -167,7 +156,7 @@ export function SuperTemplatesModal({ onClose, onInsertTemplate }: SuperTemplate
                             : "text-black/40 dark:text-white/40 hover:text-black/60 dark:hover:text-white/60"
                         }`}
                     >
-                      {categoryLabels[category]}
+                      {TEMPLATE_CATEGORIES[category]}
                       <span className="ml-2 text-xs font-[200]">({count})</span>
                     </button>
                   )

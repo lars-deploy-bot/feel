@@ -50,16 +50,9 @@ interface ImageActions {
   }
 }
 
-// Extended type for backwards compatibility
-type ImageStoreWithCompat = ImageState &
-  ImageActions & {
-    // Legacy direct action export for backwards compatibility
-    loadImages: (workspace?: string) => Promise<void>
-    uploadImages: (files: FileList, workspace?: string) => Promise<{ success: boolean; error?: string }>
-    deleteImage: (key: string, workspace?: string) => Promise<void>
-  }
+type ImageStore = ImageState & ImageActions
 
-const useImageStoreBase = create<ImageStoreWithCompat>((set, get) => {
+const useImageStoreBase = create<ImageStore>((set, get) => {
   const loadImages = async (workspace?: string) => {
     const currentState = get()
     if (currentState.loading) return
@@ -72,7 +65,7 @@ const useImageStoreBase = create<ImageStoreWithCompat>((set, get) => {
         url.searchParams.set("workspace", workspace)
       }
 
-      const response = await fetch(url.toString())
+      const response = await fetch(url.toString(), { credentials: "include" })
       if (!response.ok) {
         throw new Error("Failed to load images")
       }
@@ -145,6 +138,7 @@ const useImageStoreBase = create<ImageStoreWithCompat>((set, get) => {
 
       const response = await fetch("/api/images/delete", {
         method: "DELETE",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       })
@@ -176,8 +170,6 @@ const useImageStoreBase = create<ImageStoreWithCompat>((set, get) => {
     uploading: false,
     error: null,
     actions,
-    // Legacy direct export for backwards compatibility
-    ...actions,
   }
 })
 
@@ -195,6 +187,3 @@ export const useImagesError = () => useImageStoreBase(state => state.error)
 
 // Actions hook - stable reference (Guide §14.3)
 export const useImageActions = () => useImageStoreBase(state => state.actions)
-
-// Legacy export for backwards compatibility
-export const useImageStore = useImageStoreBase

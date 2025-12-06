@@ -1,14 +1,22 @@
+---
+name: Add a Database & Server
+description: Turn your website into a full app with its own database. Save data, load data, and create your own server routes.
+category: setup
+complexity: 2
+files: 4
+dependencies:
+  - better-sqlite3@^11.0.0
+estimatedTime: 8-12 minutes
+estimatedTokens: 85
+tags: [backend, database, server, api, sqlite]
+requires:
+  - Vite 5+
+  - Node 18+
+previewImage: https://terminal.goalive.nl/_images/t/alive.best/o/1b98911009639b0d/v/orig.webp
+available: true
+---
+
 # Vite API Plugin - Backend Server in Vite Dev Server
-
-**Category:** Backend
-**Complexity:** Medium
-**Files:** 4
-**Dependencies:** better-sqlite3
-**Estimated Time:** 10-15 minutes (includes project analysis)
-**Framework:** Vite 5+
-**Min Node Version:** 18.0.0
-
-## Description
 
 Add a full backend API to your Vite project without needing a separate server. This plugin runs API endpoints directly inside Vite's dev server using custom middleware, enabling full-stack development in a single process. Perfect for prototypes, small apps, or projects that need simple backend functionality without Express/Fastify complexity.
 

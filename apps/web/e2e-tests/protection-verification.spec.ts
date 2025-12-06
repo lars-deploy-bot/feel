@@ -31,7 +31,7 @@ test.describe("Protection System Verification", () => {
     // Register handler - Layer 1 should allow this through
     await page.route("**/api/claude/stream", handlers.text("Protected!"))
 
-    await page.goto("/chat")
+    await page.goto("/chat", { waitUntil: "domcontentloaded" })
 
     // Wait for workspace to be fully initialized (mounted + workspace set)
     await expect(page.locator('[data-testid="workspace-ready"]')).toBeAttached({

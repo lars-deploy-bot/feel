@@ -51,6 +51,7 @@ export function InviteModal({ onClose }: InviteModalProps) {
     try {
       const res = await fetch("/api/referrals/send-invite", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim() }),
       })

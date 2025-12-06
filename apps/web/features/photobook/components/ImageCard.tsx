@@ -26,7 +26,7 @@ export const ImageCard = memo(function ImageCard({ image, onDelete, onZoom, onCo
 
   return (
     <div className="masonry-item group">
-      <div className="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
+      <div className="bg-white dark:bg-zinc-800 rounded-3xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
         <div className="relative">
           <button
             type="button"
@@ -52,7 +52,7 @@ export const ImageCard = memo(function ImageCard({ image, onDelete, onZoom, onCo
           <button
             type="button"
             onClick={() => onDelete(image.key)}
-            className="absolute top-4 right-4 p-3 md:p-2 bg-white/90 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 md:group-hover:opacity-100 sm:opacity-100 transition-all cursor-pointer min-w-[44px] min-h-[44px] md:min-w-auto md:min-h-auto flex items-center justify-center"
+            className="absolute top-4 right-4 p-3 md:p-2 bg-white/90 dark:bg-zinc-800/90 hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 md:group-hover:opacity-100 sm:opacity-100 transition-all cursor-pointer min-w-[44px] min-h-[44px] md:min-w-auto md:min-h-auto flex items-center justify-center"
             aria-label="Delete image"
           >
             <Trash2 className="w-5 h-5 md:w-4 md:h-4" />
@@ -64,7 +64,9 @@ export const ImageCard = memo(function ImageCard({ image, onDelete, onZoom, onCo
             type="button"
             onClick={() => onCopy(imageUrl, image.key)}
             className={`w-full py-3 rounded-2xl transition-all cursor-pointer text-sm font-medium ${
-              isCopied ? "bg-black text-white" : "bg-gray-100 hover:bg-gray-200 text-gray-700"
+              isCopied
+                ? "bg-black dark:bg-white text-white dark:text-black"
+                : "bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 text-gray-700 dark:text-gray-300"
             }`}
             aria-label={isCopied ? "Link copied" : "Copy image link"}
           >

@@ -54,16 +54,16 @@ export function SlugInput<T extends FieldValues & { slug: string }>({
 
   return (
     <motion.div variants={fieldVariants}>
-      <label htmlFor="slug" className="block text-base font-bold text-gray-900 mb-2">
+      <label htmlFor="slug" className="block text-base font-bold text-gray-900 dark:text-white mb-2">
         Choose your site name
       </label>
       <div className="flex items-center justify-between mb-3">
-        <p className="text-sm text-gray-600 font-medium">Pick your unique name.</p>
+        <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">Pick your unique name.</p>
         {watchSlug && (
           <motion.span
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="text-xs text-gray-500 font-semibold"
+            className="text-xs text-gray-500 dark:text-gray-400 font-semibold"
           >
             {watchSlug.length}/20
           </motion.span>
@@ -90,10 +90,10 @@ export function SlugInput<T extends FieldValues & { slug: string }>({
           data-testid="slug-input"
           className={`w-full px-4 py-3 rounded-lg border-2 transition-colors outline-none font-bold text-lg pr-32 ${
             errors.slug
-              ? "border-red-300 bg-red-50 text-gray-900"
+              ? "border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/30 text-gray-900 dark:text-white"
               : isAvailable === true
-                ? "border-green-300 bg-green-50 text-gray-900"
-                : "border-gray-200 bg-gray-50 text-gray-900 hover:border-gray-300 focus:border-purple-500 focus:bg-purple-50 focus:border-purple-400"
+                ? "border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/30 text-gray-900 dark:text-white"
+                : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-zinc-800 text-gray-900 dark:text-white hover:border-gray-300 dark:hover:border-gray-600 focus:border-purple-500 dark:focus:border-purple-400 focus:bg-purple-50 dark:focus:bg-purple-950/30"
           } disabled:opacity-50 disabled:cursor-not-allowed`}
         />
 
@@ -101,10 +101,10 @@ export function SlugInput<T extends FieldValues & { slug: string }>({
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-600 whitespace-nowrap"
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap"
           >
-            <span className="text-gray-900 font-bold">{watchSlug}</span>
-            <span className="text-gray-500 font-medium">.{WILDCARD_DOMAIN}</span>
+            <span className="text-gray-900 dark:text-white font-bold">{watchSlug}</span>
+            <span className="text-gray-500 dark:text-gray-400 font-medium">.{WILDCARD_DOMAIN}</span>
           </motion.div>
         )}
       </motion.div>
@@ -117,7 +117,7 @@ export function SlugInput<T extends FieldValues & { slug: string }>({
             x: [0, -10, 10, -10, 10, 0],
           }}
           transition={{ duration: 0.5 }}
-          className="mt-2 text-red-600 text-sm font-bold"
+          className="mt-2 text-red-600 dark:text-red-400 text-sm font-bold"
         >
           {errors.slug.message as string}
         </motion.p>
@@ -127,12 +127,12 @@ export function SlugInput<T extends FieldValues & { slug: string }>({
         <motion.p
           initial={{ opacity: 0, y: -5 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-2 text-gray-600 text-sm font-semibold flex items-center gap-2"
+          className="mt-2 text-gray-600 dark:text-gray-400 text-sm font-semibold flex items-center gap-2"
         >
           <motion.span
             animate={{ rotate: 360 }}
             transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-            className="inline-block w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full"
+            className="inline-block w-3 h-3 border-2 border-gray-400 dark:border-gray-500 border-t-transparent rounded-full"
           />
           Checking...
         </motion.p>
@@ -142,7 +142,7 @@ export function SlugInput<T extends FieldValues & { slug: string }>({
         <motion.p
           initial={{ opacity: 0, y: -5, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          className="mt-2 text-green-600 text-sm font-bold"
+          className="mt-2 text-green-600 dark:text-green-400 text-sm font-bold"
         >
           Available! It's yours!
         </motion.p>
@@ -152,7 +152,7 @@ export function SlugInput<T extends FieldValues & { slug: string }>({
         <motion.p
           initial={{ opacity: 0, y: -5 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-2 text-red-600 text-sm font-bold"
+          className="mt-2 text-red-600 dark:text-red-400 text-sm font-bold"
         >
           ✗ Already taken
         </motion.p>

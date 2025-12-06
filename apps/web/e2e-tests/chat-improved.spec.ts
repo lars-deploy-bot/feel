@@ -36,7 +36,7 @@ test("can send a message and receive response", async ({ page, tenant }) => {
 
 test("send button disabled when no workspace", async ({ page }) => {
   // Use unauthenticated page - no workspace setup
-  await page.goto("/chat")
+  await page.goto("/chat", { waitUntil: "domcontentloaded" })
   const chat = new ChatPage(page)
   await chat.expectSendButtonDisabled()
 })

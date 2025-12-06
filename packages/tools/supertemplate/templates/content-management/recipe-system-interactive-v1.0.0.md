@@ -1,14 +1,25 @@
+---
+name: Interactive Recipe System
+description: Professional recipe management with clickable ingredient tooltips, click-to-hide ingredients, localStorage persistence.
+category: components
+complexity: 3
+files: 7
+dependencies:
+  - "@radix-ui/react-tooltip@^1.0.0"
+  - react-router-dom@^6.20.0
+estimatedTime: 25-30 minutes
+estimatedTokens: 120
+tags: [recipes, food, content, interactive, tooltips]
+requires:
+  - React 18+
+  - TypeScript
+  - Vite
+  - Node 18+
+previewImage: https://terminal.goalive.nl/_images/t/riggedwheel.alive.best/o/8360a2eb511f1141/v/orig.webp
+available: true
+---
+
 # Interactive Recipe System with Chef Workflow
-
-**Category:** Content Management
-**Complexity:** 3 (Complex)
-**Files:** 7
-**Dependencies:** @radix-ui/react-tooltip (included), react-router-dom (included)
-**Estimated Time:** 25-30 minutes
-**Framework:** React 18+ with TypeScript, Vite
-**Node Version:** 18+
-
-## Description
 
 A professional recipe management system with interactive features: clickable ingredients in instructions show tooltips with full measurements, ingredients can be marked as "gathered" (persisted in localStorage), and includes a comprehensive chef's workflow document for writing high-quality recipes. Perfect for food blogs, personal recipe collections, or cooking websites.
 

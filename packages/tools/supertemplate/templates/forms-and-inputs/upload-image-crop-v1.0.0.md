@@ -1,12 +1,22 @@
+---
+name: Image Upload with Crop
+description: Upload images with built-in cropping tool. Crop to specific aspect ratios before upload.
+category: components
+complexity: 3
+files: 6
+dependencies:
+  - react-dropzone@^14.2.0
+  - react-easy-crop@^5.0.0
+estimatedTime: 7-8 minutes
+estimatedTokens: 28
+tags: [react, image, crop, upload]
+requires:
+  - React 18+
+previewImage: /templates/previews/placeholder.svg
+available: true
+---
+
 # Image Upload with Crop
-
-**Category:** File Upload
-**Complexity:** Complex
-**Files:** 6
-**Dependencies:** react-dropzone, react-easy-crop
-**Estimated Time:** 7-8 minutes
-
-## Description
 
 Upload images with built-in cropping tool. Crop to specific aspect ratios before upload.
 

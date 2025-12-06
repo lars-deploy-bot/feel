@@ -1,10 +1,9 @@
-import { spawnSync } from "node:child_process"
 import { existsSync } from "node:fs"
 import { join } from "node:path"
 import { tool } from "@anthropic-ai/claude-agent-sdk"
 import { z } from "zod"
 import { errorResult, successResult, type ToolResult } from "../../lib/bridge-api-client.js"
-import { sanitizeSubprocessEnv } from "../../lib/env-sanitizer.js"
+import { safeSpawnSync } from "../../lib/safe-spawn.js"
 import { validateWorkspacePath } from "../../lib/workspace-validator.js"
 
 export const installPackageParamsSchema = {
@@ -66,13 +65,9 @@ export async function installPackage(params: InstallPackageParams): Promise<Tool
 
     // Execute bun install directly - we're already running as workspace user
     // after privilege drop (setuid/setgid in run-agent.mjs)
-    const result = spawnSync("bun", args, {
+    const result = safeSpawnSync("bun", args, {
       cwd: workspaceRoot,
-      encoding: "utf-8",
       timeout: 60000,
-      shell: false,
-      // Sanitize environment to prevent inherited root-owned paths from causing failures
-      env: sanitizeSubprocessEnv(),
     })
 
     if (result.status !== 0) {

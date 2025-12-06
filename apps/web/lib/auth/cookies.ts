@@ -37,18 +37,19 @@ function isDeployedServer(): boolean {
  * Get standard cookie options for session cookies
  * Automatically handles production vs development secure flag
  *
- * Uses sameSite: "none" to allow cross-origin requests from preview iframes
- * (e.g., preview.terminal.goalive.nl embedded in terminal.goalive.nl)
+ * Uses sameSite: "lax" for mobile browser compatibility.
+ * "none" causes issues on mobile Safari due to ITP (Intelligent Tracking Prevention).
+ * "lax" works for same-origin requests and top-level navigations.
  */
 export function getSessionCookieOptions(): CookieOptions {
   const isDeployed = isDeployedServer()
   return {
     httpOnly: true,
-    secure: isDeployed, // Required for sameSite: "none"
-    sameSite: isDeployed ? "none" : "lax", // "none" allows cross-origin iframe requests
+    secure: isDeployed,
+    sameSite: "lax", // "lax" for mobile compatibility - "none" breaks Safari ITP
     path: "/",
     maxAge: SESSION_MAX_AGE,
-    // Domain set to allow cookie on preview subdomains (*.preview.terminal.goalive.nl)
+    // Domain set to allow cookie on subdomains (*.terminal.goalive.nl)
     ...(isDeployed && { domain: DOMAINS.COOKIE_DOMAIN }),
   }
 }
@@ -62,7 +63,7 @@ export function getClearCookieOptions(): CookieOptions {
   return {
     httpOnly: true,
     secure: isDeployed,
-    sameSite: isDeployed ? "none" : "lax",
+    sameSite: "lax", // Must match getSessionCookieOptions
     path: "/",
     expires: new Date(0), // Expire immediately
     ...(isDeployed && { domain: DOMAINS.COOKIE_DOMAIN }),

@@ -52,7 +52,7 @@ export async function switchServeMode(params: SwitchServeModeParams): Promise<To
       content: [
         {
           type: "text",
-          text: `✗ Could not find your site. Make sure you're in the right workspace.\n\nTechnical: ${errorMessage}`,
+          text: `✗ Could not find your site folder.\n\nTechnical: ${errorMessage}`,
         },
       ],
       isError: true,
@@ -104,7 +104,7 @@ export async function switchServeMode(params: SwitchServeModeParams): Promise<To
       content: [
         {
           type: "text",
-          text: `✗ Could not switch modes. There might be errors in your code that need fixing first.\n\nTechnical details:\n${technicalDetails}`,
+          text: `✗ Build failed. There may be errors in the code that need fixing.\n\nBuild output:\n${technicalDetails}`,
         },
       ],
       isError: true,
@@ -117,7 +117,7 @@ export async function switchServeMode(params: SwitchServeModeParams): Promise<To
         content: [
           {
             type: "text",
-            text: "✗ The build is taking too long (over 2 minutes). Your code might have an issue, or there's a lot to compile.\n\nTechnical: Request timed out after 120 seconds",
+            text: "✗ Build timed out after 2 minutes. The code may have an infinite loop or very large dependencies.\n\nTry running 'bun run build' manually to see detailed progress.",
           },
         ],
         isError: true,
@@ -128,7 +128,7 @@ export async function switchServeMode(params: SwitchServeModeParams): Promise<To
       content: [
         {
           type: "text",
-          text: `✗ Could not connect to your site's server. This is usually temporary - please try again.\n\nTechnical: ${errorMessage}`,
+          text: `✗ Could not reach the server. Please try again in a moment.\n\nTechnical: ${errorMessage}`,
         },
       ],
       isError: true,
@@ -138,24 +138,22 @@ export async function switchServeMode(params: SwitchServeModeParams): Promise<To
 
 export const switchServeModeTool = tool(
   "switch_serve_mode",
-  `Switch the workspace between development server and production build serving.
+  `Switch between development and production mode for the user's website.
 
-- **dev**: Hot reload, faster rebuilds, better for development
-- **build**: Serves pre-built production bundle, faster page loads, no hot reload
+**Modes:**
+- **dev**: Changes appear instantly as you edit (live reload). Best while making changes.
+- **build**: Compiles everything into a fast production version. Best when done editing.
 
-Use 'build' mode when:
-- The site is ready for production/preview
-- You want faster page loads for testing
-- Hot reload is not needed
+**When to use each:**
+- Use "build" when the user wants to see the final, fast version of their site
+- Use "dev" when actively making code changes (edits show up immediately)
 
-Use 'dev' mode when:
-- Actively developing and need hot reload
-- Making frequent changes
+**Important:** After making code changes, run this tool again with mode: "build" to rebuild. The production version won't update automatically.
 
-Examples:
-- switch_serve_mode({ mode: "build" }) - Build and serve production
-- switch_serve_mode({ mode: "build", build_first: false }) - Serve existing build (skip rebuild)
-- switch_serve_mode({ mode: "dev" }) - Switch back to dev server`,
+**Examples:**
+- Deploy to production: switch_serve_mode({ mode: "build" })
+- Skip rebuild (serve existing): switch_serve_mode({ mode: "build", build_first: false })
+- Go back to editing mode: switch_serve_mode({ mode: "dev" })`,
   switchServeModeParamsSchema,
   async args => {
     return switchServeMode(args)

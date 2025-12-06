@@ -7,13 +7,16 @@ import {
   ClipboardList,
   Eye,
   EyeOff,
+  Flag,
   Globe,
   Link,
   LogOut,
   Moon,
+  RotateCcw,
   Search,
   Settings,
   Sun,
+  Target,
   User,
   UserMinus,
   X,
@@ -22,6 +25,7 @@ import { motion } from "framer-motion"
 import { useTheme } from "next-themes"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
+import { useIsDesktop } from "@/hooks/useMediaQuery"
 import toast from "react-hot-toast"
 import { AddWorkspaceModal } from "@/components/modals/AddWorkspaceModal"
 import { useAuth } from "@/features/deployment/hooks/useAuth"
@@ -29,42 +33,63 @@ import { DeleteModal } from "@/components/modals/DeleteModal"
 import { PromptEditorModal } from "@/components/modals/PromptEditorModal"
 import { IntegrationsList } from "@/components/settings/integrations-list"
 import { MarkdownDisplay } from "@/components/ui/chat/format/MarkdownDisplay"
+import { EmptyState } from "@/components/ui/EmptyState"
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner"
+import { SearchInput } from "@/components/ui/SearchInput"
+import { Toggle } from "@/components/ui/Toggle"
 import type { Organization } from "@/lib/api/types"
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
 import { canRemoveMember } from "@/lib/permissions/org-permissions"
 import { useUserPrompts, useUserPromptsActions } from "@/lib/providers/UserPromptsStoreProvider"
 import { useCredits, useCreditsError, useCreditsLoading, useUserActions } from "@/lib/providers/UserStoreProvider"
 import { getModelDisplayName } from "@/lib/models/claude-models"
+import { useBuilding, useGoal, useGoalActions, useTargetUsers } from "@/lib/stores/goalStore"
 import { CLAUDE_MODELS, type ClaudeModel, DEFAULT_MODEL, useLLMStore } from "@/lib/stores/llmStore"
 import { useCurrentWorkspace, useSelectedOrgId, useWorkspaceActions } from "@/lib/stores/workspaceStore"
+import {
+  useFeatureFlag,
+  useFeatureFlagActions,
+  useFeatureFlagOverrides,
+  useHasOverride,
+  getFeatureFlagKeys,
+} from "@/lib/stores/featureFlagStore"
+import { FEATURE_FLAGS, type FeatureFlagKey } from "@webalive/shared"
 
-type SettingsTab = "account" | "llm" | "prompts" | "organization" | "websites" | "integrations"
+type SettingsTab = "account" | "llm" | "goal" | "prompts" | "organization" | "websites" | "integrations" | "flags"
 
 interface SettingsModalProps {
   onClose: () => void
   initialTab?: SettingsTab // Defaults to "account", use "organization" for error states
 }
 
-const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
+interface TabDefinition {
+  id: SettingsTab
+  label: string
+  icon: React.ReactNode
+  adminOnly?: boolean
+}
+
+const allTabs: TabDefinition[] = [
   { id: "account", label: "Profile", icon: <User size={16} /> },
   { id: "llm", label: "AI", icon: <Bot size={16} /> },
+  { id: "goal", label: "Project", icon: <Target size={16} /> },
   { id: "prompts", label: "Prompts", icon: <ClipboardList size={16} /> },
   { id: "organization", label: "Workspace", icon: <Building2 size={16} /> },
   { id: "websites", label: "Websites", icon: <Globe size={16} /> },
   { id: "integrations", label: "Integrations", icon: <Link size={16} /> },
+  { id: "flags", label: "Flags", icon: <Flag size={16} />, adminOnly: true },
 ]
 
 export function SettingsModal({ onClose, initialTab }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab || "account")
-  // Default to true on SSR to avoid hydration mismatch causing wrong animation
-  const [isDesktop, setIsDesktop] = useState(true)
+  const isDesktop = useIsDesktop()
+  const { user } = useAuth()
 
-  useEffect(() => {
-    const checkDesktop = () => setIsDesktop(window.innerWidth >= 640)
-    checkDesktop()
-    window.addEventListener("resize", checkDesktop)
-    return () => window.removeEventListener("resize", checkDesktop)
-  }, [])
+  // Filter tabs based on admin status
+  const tabs = allTabs.filter(tab => !tab.adminOnly || user?.isAdmin)
+
+  // Don't render until we know viewport size to prevent animation mismatch
+  if (isDesktop === null) return null
 
   return (
     <motion.div
@@ -148,10 +173,12 @@ export function SettingsModal({ onClose, initialTab }: SettingsModalProps) {
             <div className="animate-in fade-in-0 duration-200">
               {activeTab === "account" && <AccountSettings onClose={onClose} />}
               {activeTab === "llm" && <LLMSettings onClose={onClose} />}
+              {activeTab === "goal" && <GoalSettings onClose={onClose} />}
               {activeTab === "prompts" && <UserPromptsSettings onClose={onClose} />}
               {activeTab === "organization" && <WorkspaceSettings onClose={onClose} />}
               {activeTab === "websites" && <WebsitesSettings onClose={onClose} />}
               {activeTab === "integrations" && <IntegrationsListWithHeader onClose={onClose} />}
+              {activeTab === "flags" && <FlagsSettings onClose={onClose} />}
             </div>
           </div>
         </div>
@@ -368,6 +395,81 @@ function LLMSettings({ onClose }: { onClose: () => void }) {
           <p className="text-xs text-black/70 dark:text-white/70 leading-relaxed">
             Your API key is stored only in your browser (hidden from view). When you send messages, we use your key to
             call Anthropic&apos;s API—but we never save it on our servers.
+          </p>
+        </div>
+      </div>
+    </SettingsTabLayout>
+  )
+}
+
+function GoalSettings({ onClose }: { onClose: () => void }) {
+  const goal = useGoal()
+  const building = useBuilding()
+  const targetUsers = useTargetUsers()
+  const { setGoal, setBuilding, setTargetUsers } = useGoalActions()
+
+  return (
+    <SettingsTabLayout
+      title="Project Context"
+      description="Help the Agent Manager understand your project to give better suggestions"
+      onClose={onClose}
+    >
+      <div className="space-y-4 sm:space-y-5">
+        {/* PR Goal */}
+        <div className="animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-50">
+          <label htmlFor="pr-goal" className="block text-sm font-medium text-black dark:text-white mb-2">
+            PR Goal
+          </label>
+          <p className="text-xs text-black/60 dark:text-white/60 mb-2">
+            What should the agent accomplish this session?
+          </p>
+          <textarea
+            id="pr-goal"
+            value={goal}
+            onChange={e => setGoal(e.target.value)}
+            placeholder="e.g., Build a landing page for a plumbing business with hero, services, and contact form"
+            rows={3}
+            className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-white dark:bg-[#2a2a2a] border border-black/20 dark:border-white/20 rounded text-sm text-black dark:text-white focus:outline-none focus:border-black dark:focus:border-white transition-colors resize-none"
+          />
+        </div>
+
+        {/* What we're building */}
+        <div className="animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-100">
+          <label htmlFor="building" className="block text-sm font-medium text-black dark:text-white mb-2">
+            What are you building?
+          </label>
+          <p className="text-xs text-black/60 dark:text-white/60 mb-2">Describe the business/project in one sentence</p>
+          <input
+            id="building"
+            type="text"
+            value={building}
+            onChange={e => setBuilding(e.target.value)}
+            placeholder="e.g., Emergency plumbing service website for Amsterdam"
+            className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-white dark:bg-[#2a2a2a] border border-black/20 dark:border-white/20 rounded text-sm text-black dark:text-white focus:outline-none focus:border-black dark:focus:border-white transition-colors"
+          />
+        </div>
+
+        {/* Target Users */}
+        <div className="animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-150">
+          <label htmlFor="target-users" className="block text-sm font-medium text-black dark:text-white mb-2">
+            Who are the target users?
+          </label>
+          <p className="text-xs text-black/60 dark:text-white/60 mb-2">Who will visit this site? Be specific.</p>
+          <input
+            id="target-users"
+            type="text"
+            value={targetUsers}
+            onChange={e => setTargetUsers(e.target.value)}
+            placeholder="e.g., Homeowners in Randstad needing urgent plumbing repairs"
+            className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-white dark:bg-[#2a2a2a] border border-black/20 dark:border-white/20 rounded text-sm text-black dark:text-white focus:outline-none focus:border-black dark:focus:border-white transition-colors"
+          />
+        </div>
+
+        {/* Info Box */}
+        <div className="p-4 bg-purple-50/50 dark:bg-purple-950/20 rounded-lg border border-purple-200 dark:border-purple-800/50 animate-in fade-in-0 slide-in-from-bottom-2 duration-300 delay-200">
+          <p className="text-xs text-purple-700 dark:text-purple-300 leading-relaxed">
+            <strong>Why this matters:</strong> The Agent Manager uses this context to evaluate progress, make
+            user-focused suggestions, and keep the project on track. Clear context = better AI guidance.
           </p>
         </div>
       </div>
@@ -677,7 +779,7 @@ function useOrgWorkspaces(orgId: string) {
     if (!orgSitesCache.has(orgId)) setLoading(true)
     setError(null)
 
-    fetch(`/api/auth/workspaces?org_id=${orgId}`)
+    fetch(`/api/auth/workspaces?org_id=${orgId}`, { credentials: "include" })
       .then(res => (res.ok ? res.json() : Promise.reject(new Error(`Failed to load sites (${res.status})`))))
       .then(data => {
         if (data.ok && data.workspaces) {
@@ -1240,7 +1342,7 @@ function useAllOrgWorkspaces(organizations: Organization[]) {
         }
 
         try {
-          const res = await fetch(`/api/auth/workspaces?org_id=${org.org_id}`)
+          const res = await fetch(`/api/auth/workspaces?org_id=${org.org_id}`, { credentials: "include" })
           const data = res.ok ? await res.json() : null
           const workspaces = data?.ok ? data.workspaces : []
           results[org.org_id] = workspaces
@@ -1260,42 +1362,6 @@ function useAllOrgWorkspaces(organizations: Organization[]) {
   }, [fetchAll])
 
   return { allWorkspaces, loading, refetch: fetchAll }
-}
-
-// Search input with clear button
-function SearchInput({
-  value,
-  onChange,
-  placeholder,
-}: {
-  value: string
-  onChange: (value: string) => void
-  placeholder: string
-}) {
-  return (
-    <div className="relative">
-      <Search
-        size={16}
-        className="absolute left-3 sm:left-3 top-1/2 -translate-y-1/2 text-black/40 dark:text-white/40"
-      />
-      <input
-        type="text"
-        placeholder={placeholder}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        className="w-full pl-9 pr-10 py-3 sm:py-2.5 bg-white dark:bg-zinc-800 border border-black/20 dark:border-white/20 rounded-lg text-sm text-black dark:text-white placeholder:text-black/40 dark:placeholder:text-white/40 focus:outline-none focus:border-black dark:focus:border-white transition-colors"
-      />
-      {value && (
-        <button
-          type="button"
-          onClick={() => onChange("")}
-          className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 rounded transition-colors"
-        >
-          <X size={16} />
-        </button>
-      )}
-    </div>
-  )
 }
 
 // Organization group header with workspace grid
@@ -1334,26 +1400,6 @@ function OrgWebsitesGroup({
         error={null}
         onSwitch={handleSwitch}
       />
-    </div>
-  )
-}
-
-// Empty state component
-function EmptyState({ icon: Icon, message }: { icon: typeof Globe; message: string }) {
-  return (
-    <div className="text-center py-12">
-      <Icon size={48} className="mx-auto mb-4 text-black/20 dark:text-white/20" />
-      <p className="text-sm text-black/60 dark:text-white/60">{message}</p>
-    </div>
-  )
-}
-
-// Loading spinner
-function LoadingSpinner({ message }: { message: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-12 gap-3">
-      <div className="w-8 h-8 border-2 border-black/20 dark:border-white/20 border-t-black dark:border-t-white rounded-full animate-spin" />
-      <p className="text-sm text-black/40 dark:text-white/40">{message}</p>
     </div>
   )
 }
@@ -1541,6 +1587,99 @@ function IntegrationsListWithHeader({ onClose }: { onClose: () => void }) {
       onClose={onClose}
     >
       <IntegrationsList />
+    </SettingsTabLayout>
+  )
+}
+
+function FeatureFlagToggle({ flagKey }: { flagKey: FeatureFlagKey }) {
+  const value = useFeatureFlag(flagKey)
+  const hasOverride = useHasOverride(flagKey)
+  const { setOverride } = useFeatureFlagActions()
+  const flagDef = FEATURE_FLAGS[flagKey]
+
+  const handleToggle = (newValue: boolean) => {
+    setOverride(flagKey, newValue)
+  }
+
+  const handleReset = () => {
+    setOverride(flagKey, null)
+  }
+
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4 p-4 rounded-lg border border-black/10 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20 transition-colors">
+      <div className="flex-1 min-w-0">
+        <div className="flex flex-wrap items-center gap-2 mb-1">
+          <span className="text-sm font-medium text-black dark:text-white font-mono break-all">{flagKey}</span>
+          {hasOverride && (
+            <span className="text-xs px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded">
+              overridden
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-black/60 dark:text-white/60">{flagDef.description}</p>
+        <p className="text-xs text-black/40 dark:text-white/40 mt-1">
+          Default: <span className="font-mono">{flagDef.defaultValue ? "true" : "false"}</span>
+        </p>
+      </div>
+      <div className="flex items-center gap-3 sm:gap-2 flex-shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-black/5 dark:border-white/5 ml-auto">
+        {hasOverride && (
+          <button
+            type="button"
+            onClick={handleReset}
+            className="flex items-center gap-1.5 px-3 py-2 sm:p-1.5 text-sm sm:text-xs text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 rounded-lg sm:rounded transition-colors"
+            title="Reset to default"
+          >
+            <RotateCcw size={16} className="sm:w-3.5 sm:h-3.5" />
+            <span className="sm:hidden">Reset</span>
+          </button>
+        )}
+        <Toggle checked={value} onChange={handleToggle} aria-label={`Toggle ${flagKey}`} />
+      </div>
+    </div>
+  )
+}
+
+function FlagsSettings({ onClose }: { onClose: () => void }) {
+  const { clearAllOverrides } = useFeatureFlagActions()
+  const overrides = useFeatureFlagOverrides()
+  const hasAnyOverrides = Object.keys(overrides).length > 0
+  const flagKeys = getFeatureFlagKeys()
+
+  return (
+    <SettingsTabLayout
+      title="Feature Flags"
+      description="Toggle experimental features. Overrides persist in your browser."
+      onClose={onClose}
+    >
+      <div className="space-y-4">
+        {/* Clear all button */}
+        {hasAnyOverrides && (
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={clearAllOverrides}
+              className="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors"
+            >
+              Reset all to defaults
+            </button>
+          </div>
+        )}
+
+        {/* Flag toggles */}
+        <div className="space-y-3">
+          {flagKeys.map(flagKey => (
+            <FeatureFlagToggle key={flagKey} flagKey={flagKey} />
+          ))}
+        </div>
+
+        {/* Info box */}
+        <div className="p-4 bg-amber-50/50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800/50">
+          <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
+            <strong>Admin only:</strong> These settings are stored in your browser and only affect your account. Changes
+            take effect immediately.
+          </p>
+        </div>
+      </div>
     </SettingsTabLayout>
   )
 }

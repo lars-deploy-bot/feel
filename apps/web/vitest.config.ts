@@ -32,6 +32,8 @@ export const sharedConfig = {
   plugins: [tsconfigPaths() as Plugin],
   resolve: {
     preserveSymlinks: false,
+    // Use development builds for testing (required for React act() and testing-library)
+    conditions: ["development", "browser"],
     alias: {
       // Point to source, not dist - let TypeScript handle compilation
       "@alive-brug/tools/display": join(process.cwd(), "../../packages/tools/src/display.ts"),
@@ -40,7 +42,15 @@ export const sharedConfig = {
       "@alive-brug/images": join(process.cwd(), "../../packages/images"),
       "@alive-brug/template": join(process.cwd(), "../../packages/template"),
       "@alive-brug/guides": join(process.cwd(), "../../packages/guides"),
+      // Ensure single React copy for DOM testing environments (prevents "Invalid hook call" errors)
+      // All workspace packages now use React 19
+      react: join(process.cwd(), "../../node_modules/react"),
+      "react-dom": join(process.cwd(), "../../node_modules/react-dom"),
     },
+  },
+  // Dedupe React to prevent multiple copies
+  optimizeDeps: {
+    include: ["react", "react-dom"],
   },
   ssr: {
     noExternal: [
@@ -49,6 +59,9 @@ export const sharedConfig = {
       "@alive-brug/images",
       "@alive-brug/template",
       "@alive-brug/guides",
+      // Process React in SSR for proper jsdom integration
+      "react",
+      "react-dom",
     ],
   },
 } satisfies ViteUserConfig
@@ -89,7 +102,9 @@ export default defineConfig({
   ...sharedConfig,
   test: {
     ...baseTestConfig,
-    environment: "happy-dom",
+    // Vitest 4.x: Use 'node' environment by default for Node.js built-ins (AsyncLocalStorage)
+    // Tests that need DOM can use: // @vitest-environment happy-dom
+    environment: "node",
     include: ["**/*.test.{ts,tsx}"],
     exclude: [...baseTestConfig.exclude, ...dbIntegrationGlobs, ...systemGlobs],
     testTimeout: 10000, // Fail fast on slow tests

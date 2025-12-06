@@ -1,9 +1,12 @@
 "use client"
 
-import { ClipboardList, Eye, Plus } from "lucide-react"
+import { ClipboardList, Copy, Eye, Plus } from "lucide-react"
 import type { RefObject } from "react"
 import { useState } from "react"
+import toast from "react-hot-toast"
+import { formatMessagesAsText } from "@/features/chat/utils/format-messages"
 import { useUserPrompts } from "@/lib/providers/UserPromptsStoreProvider"
+import { useMessages } from "@/lib/stores/messageStore"
 import { useChatInput } from "./ChatInputContext"
 
 interface ToolbarProps {
@@ -17,6 +20,7 @@ export function Toolbar({ fileInputRef, onOpenPreview, onAddUserPrompt }: Toolba
   const { config } = useChatInput()
   const [showPromptMenu, setShowPromptMenu] = useState(false)
   const prompts = useUserPrompts()
+  const messages = useMessages()
 
   if (!config.enableCamera) {
     return null
@@ -32,8 +36,35 @@ export function Toolbar({ fileInputRef, onOpenPreview, onAddUserPrompt }: Toolba
     setShowPromptMenu(false)
   }
 
+  const handleCopyMessages = async () => {
+    if (messages.length === 0) {
+      toast.error("No messages to copy")
+      return
+    }
+
+    const formatted = formatMessagesAsText(messages)
+
+    try {
+      await navigator.clipboard.writeText(formatted)
+      toast.success("Messages copied")
+    } catch {
+      toast.error("Failed to copy")
+    }
+  }
+
   return (
     <div className="absolute -top-12 right-0 flex items-center gap-2">
+      {/* Copy Messages */}
+      <button
+        type="button"
+        onClick={handleCopyMessages}
+        className="flex items-center justify-center w-10 h-10 rounded-md hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors"
+        aria-label="Copy messages"
+        title="Copy messages"
+      >
+        <Copy className="size-5" />
+      </button>
+
       {/* User Prompts Menu */}
       <div className="relative">
         <button

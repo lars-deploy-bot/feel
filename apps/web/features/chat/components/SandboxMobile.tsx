@@ -90,9 +90,13 @@ export function SandboxMobile({ onClose, children, busy, statusText, onStop }: S
             {/* Loading overlay */}
             {isLoading && (
               <div className="absolute inset-0 z-10 flex items-center justify-center bg-neutral-900">
-                <div className="flex flex-col items-center gap-3">
-                  <Loader2 size={24} className="animate-spin text-purple-400" />
-                  <span className="text-sm text-neutral-400">Loading preview...</span>
+                <div className="flex flex-col items-center gap-4">
+                  <div className="relative w-12 h-12">
+                    <div className="absolute inset-0 rounded-full bg-emerald-400/20 alive-logo-outer" />
+                    <div className="absolute inset-1.5 rounded-full bg-emerald-400/30 alive-logo-inner" />
+                    <div className="absolute inset-3 rounded-full bg-emerald-400" />
+                  </div>
+                  <span className="text-sm font-semibold text-neutral-300">Opening your site</span>
                 </div>
               </div>
             )}

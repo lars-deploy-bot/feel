@@ -5,7 +5,13 @@ import { tool } from "@anthropic-ai/claude-agent-sdk"
 import { z } from "zod"
 
 // Define workflow categories based on existing workflow files
-export const WORKFLOW_CATEGORIES = ["bug-debugging", "new-feature", "package-installation"] as const
+export const WORKFLOW_CATEGORIES = [
+  "bug-debugging",
+  "new-feature",
+  "package-installation",
+  "website-shippable-check",
+  "functionality-check",
+] as const
 
 export type WorkflowCategory = (typeof WORKFLOW_CATEGORIES)[number]
 
@@ -14,6 +20,8 @@ const WORKFLOW_FILE_MAP: Record<WorkflowCategory, string> = {
   "bug-debugging": "01-bug-debugging-request.md",
   "new-feature": "02-new-feature-request.md",
   "package-installation": "03-package-installation.md",
+  "website-shippable-check": "04-website-shippable-check.md",
+  "functionality-check": "05-functionality-check.md",
 }
 
 export const getWorkflowParamsSchema = {
@@ -101,11 +109,15 @@ Available workflows:
 - bug-debugging: Step-by-step debugging process (logs, errors, fixes)
 - new-feature: Feature implementation workflow (planning, context, execution)
 - package-installation: Package installation and verification workflow
+- website-shippable-check: Pre-launch checklist (no gradients, no scale animations, emojis, CLAUDE.md quality, favicon, title)
+- functionality-check: Verify everything actually works (buttons, forms, links, no hardcoded data)
 
 Examples:
 - get_workflow({ workflow_type: "bug-debugging" }) - Bug debugging workflow
 - get_workflow({ workflow_type: "new-feature" }) - Feature implementation workflow
-- get_workflow({ workflow_type: "package-installation" }) - Package installation workflow`,
+- get_workflow({ workflow_type: "package-installation" }) - Package installation workflow
+- get_workflow({ workflow_type: "website-shippable-check" }) - Pre-launch quality checklist
+- get_workflow({ workflow_type: "functionality-check" }) - Verify site actually works`,
   getWorkflowParamsSchema,
   async args => {
     return getWorkflow(args)

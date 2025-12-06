@@ -7,6 +7,8 @@ interface User {
   name: string | null
   /** Whether user can select any model without their own API key */
   canSelectAnyModel: boolean
+  /** Whether user has admin privileges (can toggle feature flags, etc.) */
+  isAdmin: boolean
 }
 
 /**

@@ -58,10 +58,19 @@ export interface StreamEvent {
     | InterruptEventData
 }
 
+// Agent Manager message status types
+export type AgentManagerStatus = "stop" | "done" | "suggestion"
+
+// Agent Manager message content
+export interface AgentManagerContent {
+  status: AgentManagerStatus
+  message: string
+}
+
 // Message types for UI
 export type UIMessage = {
   id: string
-  type: "user" | "start" | "sdk_message" | "result" | "complete" | "compact_boundary" | "interrupt"
+  type: "user" | "start" | "sdk_message" | "result" | "complete" | "compact_boundary" | "interrupt" | "agent_manager"
   content: unknown
   timestamp: Date
   isStreaming?: boolean
@@ -250,6 +259,7 @@ export const COMPONENT_TYPE = {
   ASSISTANT: "assistant",
   TOOL_RESULT: "tool_result",
   RESULT: "result",
+  AGENT_MANAGER: "agent_manager",
   UNKNOWN: "unknown",
 } as const
 
@@ -262,6 +272,7 @@ export function getMessageComponentType(message: UIMessage): ComponentType {
   if (message.type === "complete") return COMPONENT_TYPE.COMPLETE
   if (message.type === "compact_boundary") return COMPONENT_TYPE.COMPACT_BOUNDARY
   if (message.type === "interrupt") return COMPONENT_TYPE.INTERRUPT
+  if (message.type === "agent_manager") return COMPONENT_TYPE.AGENT_MANAGER
 
   if (message.type === "sdk_message") {
     const sdkMsg = message.content as SDKMessage

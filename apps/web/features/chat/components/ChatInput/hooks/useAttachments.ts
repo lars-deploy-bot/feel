@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react"
 import { createPreviewUrl, getAttachmentType, validateFile } from "@/features/chat/utils/file-validation"
-import { useImageStore } from "@/lib/stores/imageStore"
+import { useImages } from "@/lib/stores/imageStore"
 import { hashFile } from "@/lib/utils/file-hash"
 import type {
   Attachment,
@@ -43,7 +43,7 @@ function revokeBlobUrl(url: string | undefined): void {
 
 export function useAttachments(config: ChatInputConfig) {
   const [attachments, setAttachments] = useState<Attachment[]>([])
-  const images = useImageStore(state => state.images)
+  const images = useImages()
 
   const addAttachment = useCallback(
     async (file: File) => {

@@ -1,0 +1,226 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"net/http"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"strings"
+	"syscall"
+	"time"
+
+	"shell-server-go/internal/config"
+	"shell-server-go/internal/handlers"
+	"shell-server-go/internal/logger"
+	"shell-server-go/internal/middleware"
+	"shell-server-go/internal/ratelimit"
+	"shell-server-go/internal/session"
+)
+
+const (
+	// ShutdownTimeout is how long to wait for graceful shutdown
+	ShutdownTimeout = 30 * time.Second
+	// ReadTimeout is the maximum duration for reading the entire request
+	ReadTimeout = 30 * time.Second
+	// WriteTimeout is the maximum duration before timing out writes of the response
+	WriteTimeout = 60 * time.Second
+	// IdleTimeout is the maximum amount of time to wait for the next request
+	IdleTimeout = 120 * time.Second
+)
+
+func main() {
+	// Initialize logger
+	logger.Init(logger.Config{
+		Output:   os.Stdout,
+		MinLevel: logger.INFO,
+		UseColor: true,
+	})
+
+	log := logger.WithComponent("MAIN")
+
+	// Find config path
+	cwd, _ := os.Getwd()
+	configPath := filepath.Join(cwd, "config.json")
+
+	// Also check if running from cmd/server directory
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		configPath = filepath.Join(cwd, "..", "..", "config.json")
+	}
+
+	// Load configuration
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		if errors.Is(err, config.ErrMissingPassword) {
+			log.Error("SHELL_PASSWORD environment variable is required")
+			os.Exit(1)
+		}
+		log.Error("Failed to load config: %v", err)
+		os.Exit(1)
+	}
+
+	log.Info("Environment: %s", cfg.Env)
+	log.Info("Port: %d", cfg.Port)
+	log.Info("Default workspace: %s", cfg.ResolvedDefaultCwd)
+	log.Info("Workspace selection: %v", cfg.AllowWorkspaceSelection)
+
+	// Print editable directories
+	for _, dir := range cfg.EditableDirectories {
+		if _, err := os.Stat(dir.Path); err == nil {
+			log.Info("Editable directory: %s -> %s", dir.Label, dir.Path)
+		} else {
+			log.Warn("Directory not found: %s -> %s", dir.Label, dir.Path)
+		}
+	}
+
+	// Initialize session store
+	sessionsFile := filepath.Join(cwd, ".sessions.json")
+	sessions := session.NewStore(sessionsFile)
+	log.Info("Loaded %d sessions from disk", sessions.Count())
+
+	// Initialize rate limiter
+	rateLimitFile := filepath.Join(cwd, ".rate-limit-state.json")
+	limiter := ratelimit.NewLimiter(rateLimitFile)
+
+	// Load templates
+	templates, err := handlers.LoadTemplates(cfg.TemplatesDir)
+	if err != nil {
+		log.Error("Failed to load templates from %s: %v", cfg.TemplatesDir, err)
+		os.Exit(1)
+	}
+	log.Info("Templates loaded from: %s", cfg.TemplatesDir)
+
+	// Create handlers
+	authHandler := handlers.NewAuthHandler(cfg, sessions, limiter, templates)
+	pageHandler := handlers.NewPageHandler(cfg, templates)
+	fileHandler := handlers.NewFileHandler(cfg)
+	editorHandler := handlers.NewEditorHandler(cfg)
+	wsHandler := handlers.NewWSHandler(cfg, sessions)
+
+	// Create router
+	mux := http.NewServeMux()
+
+	// Auth middleware helper
+	authMiddleware := middleware.Auth(sessions)
+	authAPIMiddleware := middleware.AuthAPI(sessions)
+
+	// Public routes
+	mux.HandleFunc("/", authHandler.LoginPage)
+	mux.HandleFunc("POST /login", authHandler.Login)
+	mux.HandleFunc("/logout", authHandler.Logout)
+	mux.HandleFunc("/health", fileHandler.Health)
+
+	// Protected page routes
+	mux.Handle("/dashboard", authMiddleware(http.HandlerFunc(pageHandler.Dashboard)))
+	mux.Handle("/shell", authMiddleware(http.HandlerFunc(pageHandler.Shell)))
+	mux.Handle("/upload", authMiddleware(http.HandlerFunc(pageHandler.Upload)))
+	mux.Handle("/edit", authMiddleware(http.HandlerFunc(pageHandler.Edit)))
+
+	// WebSocket (handles its own auth)
+	mux.HandleFunc("/ws", wsHandler.Handle)
+
+	// File API routes (protected)
+	mux.Handle("POST /api/check-directory", authAPIMiddleware(http.HandlerFunc(fileHandler.CheckDirectory)))
+	mux.Handle("POST /api/upload", authAPIMiddleware(http.HandlerFunc(fileHandler.Upload)))
+	mux.Handle("POST /api/list-files", authAPIMiddleware(http.HandlerFunc(fileHandler.ListFiles)))
+	mux.Handle("POST /api/read-file", authAPIMiddleware(http.HandlerFunc(fileHandler.ReadFile)))
+	mux.Handle("POST /api/delete-folder", authAPIMiddleware(http.HandlerFunc(fileHandler.DeleteFolder)))
+	mux.Handle("GET /api/sites", authAPIMiddleware(http.HandlerFunc(fileHandler.ListSites)))
+
+	// Editor API routes (protected)
+	mux.Handle("POST /api/edit/list-files", authAPIMiddleware(http.HandlerFunc(editorHandler.ListFiles)))
+	mux.Handle("POST /api/edit/read-file", authAPIMiddleware(http.HandlerFunc(editorHandler.ReadFile)))
+	mux.Handle("POST /api/edit/write-file", authAPIMiddleware(http.HandlerFunc(editorHandler.WriteFile)))
+	mux.Handle("POST /api/edit/check-mtimes", authAPIMiddleware(http.HandlerFunc(editorHandler.CheckMtimes)))
+	mux.Handle("POST /api/edit/delete", authAPIMiddleware(http.HandlerFunc(editorHandler.Delete)))
+	mux.Handle("POST /api/edit/copy", authAPIMiddleware(http.HandlerFunc(editorHandler.Copy)))
+
+	// Static file serving (client assets)
+	clientDir := cfg.ClientDir
+	log.Info("Client files served from: %s", clientDir)
+
+	// Serve client files
+	mux.HandleFunc("/client/", func(w http.ResponseWriter, r *http.Request) {
+		// Remove /client/ prefix
+		path := strings.TrimPrefix(r.URL.Path, "/client/")
+		if strings.Contains(path, "..") {
+			http.NotFound(w, r)
+			return
+		}
+
+		filePath := filepath.Join(clientDir, path)
+		if _, err := os.Stat(filePath); os.IsNotExist(err) {
+			http.NotFound(w, r)
+			return
+		}
+
+		// Set content type
+		contentType := "text/plain"
+		if strings.HasSuffix(path, ".js") {
+			contentType = "application/javascript"
+		} else if strings.HasSuffix(path, ".css") {
+			contentType = "text/css"
+		} else if strings.HasSuffix(path, ".html") {
+			contentType = "text/html"
+		}
+
+		w.Header().Set("Content-Type", contentType)
+		http.ServeFile(w, r, filePath)
+	})
+
+	// Create server with timeouts
+	addr := fmt.Sprintf(":%d", cfg.Port)
+	server := &http.Server{
+		Addr:         addr,
+		Handler:      mux,
+		ReadTimeout:  ReadTimeout,
+		WriteTimeout: WriteTimeout,
+		IdleTimeout:  IdleTimeout,
+	}
+
+	// Start server in goroutine
+	serverErr := make(chan error, 1)
+	go func() {
+		log.Info("Shell server (Go) starting on http://localhost%s", addr)
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			serverErr <- err
+		}
+	}()
+
+	// Setup signal handling for graceful shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	// Wait for shutdown signal or server error
+	select {
+	case err := <-serverErr:
+		log.Error("Server error: %v", err)
+		os.Exit(1)
+	case sig := <-quit:
+		log.Info("Received signal %v, initiating graceful shutdown...", sig)
+	}
+
+	// Create shutdown context with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), ShutdownTimeout)
+	defer cancel()
+
+	// Shutdown WebSocket connections first
+	log.Info("Closing WebSocket connections...")
+	wsHandler.Shutdown(ctx)
+
+	// Shutdown HTTP server
+	log.Info("Shutting down HTTP server...")
+	if err := server.Shutdown(ctx); err != nil {
+		log.Error("Server shutdown error: %v", err)
+	}
+
+	// Stop rate limiter cleanup goroutine
+	limiter.Stop()
+
+	// Stop session cleanup goroutine
+	sessions.Stop()
+
+	log.Info("Server stopped gracefully")
+}

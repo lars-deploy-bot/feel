@@ -5,8 +5,8 @@ interface MessageBannerProps {
 
 export function MessageBanner({ message, type }: MessageBannerProps) {
   const styles = {
-    error: "text-red-600 bg-red-50",
-    success: "text-green-700 bg-green-50 font-medium",
+    error: "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50",
+    success: "text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/50 font-medium",
   }
 
   return (

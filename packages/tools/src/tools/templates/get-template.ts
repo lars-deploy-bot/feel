@@ -8,20 +8,6 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
 /**
- * Template categories available in the system
- */
-export const TEMPLATE_CATEGORIES = [
-  "sliders",
-  "maps",
-  "file-upload",
-  "backend",
-  "content-management",
-  "frontend",
-] as const
-
-export type TemplateCategory = (typeof TEMPLATE_CATEGORIES)[number]
-
-/**
  * Zod schema for get_template parameters (raw shape, not z.object())
  */
 export const getTemplateParamsSchema = {
@@ -51,6 +37,32 @@ function isPathWithinBase(resolvedPath: string, basePath: string): boolean {
   const normalizedPath = resolve(resolvedPath)
   const normalizedBase = resolve(basePath)
   return normalizedPath.startsWith(`${normalizedBase}/`) || normalizedPath === normalizedBase
+}
+
+/**
+ * Check if a template is marked as available via YAML frontmatter.
+ * Templates with `available: false` in frontmatter are unavailable.
+ * Returns true if no frontmatter or `available` field not specified.
+ */
+function isTemplateAvailable(content: string): boolean {
+  if (!content.startsWith("---")) {
+    return true // No frontmatter = available
+  }
+
+  const endIndex = content.indexOf("---", 3)
+  if (endIndex === -1) {
+    return true // Malformed frontmatter = available
+  }
+
+  const frontmatter = content.slice(3, endIndex)
+
+  // Look for "available: false" or "available:false" (case-insensitive)
+  const availableMatch = frontmatter.match(/^available:\s*(true|false)\s*$/im)
+  if (availableMatch) {
+    return availableMatch[1].toLowerCase() === "true"
+  }
+
+  return true // Not specified = available
 }
 
 /**
@@ -174,6 +186,19 @@ export async function getTemplate(params: GetTemplateParams, templatesBasePath: 
     }
 
     const { path: templatePath, content } = result
+
+    // Check if template is marked as unavailable
+    if (!isTemplateAvailable(content)) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Template "${id}" is not available.`,
+          },
+        ],
+        isError: true,
+      }
+    }
 
     // Security: Resolve real path and verify it's within templates directory
     const resolvedBase = resolve(templatesBasePath)

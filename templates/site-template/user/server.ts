@@ -1,6 +1,7 @@
 import { Hono } from "hono"
-import { serve } from "@hono/node-server"
+import { serveStatic } from "hono/bun"
 import { cors } from "hono/cors"
+import { logger } from "hono/logger"
 import { init, id } from "@instantdb/admin"
 
 // Initialize InstantDB Admin
@@ -15,16 +16,17 @@ const db = init({
 
 const app = new Hono()
 
-// CORS for dev (Vite on different port)
-app.use(
-  "/api/*",
-  cors({
-    origin: origin => origin,
-    credentials: true,
-  }),
-)
+// In dev: use API_PORT (internal), in prod: use PORT (exposed)
+const PORT = process.env.API_PORT || process.env.PORT || 8080
 
-// Health check
+// Middleware
+app.use("*", logger())
+app.use("/api/*", cors({ origin: origin => origin, credentials: true }))
+
+// =============================================================================
+// API Routes
+// =============================================================================
+
 app.get("/api/health", c => {
   return c.json({ status: "ok", timestamp: new Date().toISOString() })
 })
@@ -64,10 +66,25 @@ app.get("/api/health", c => {
 //   }
 // })
 
-// ============================================
+// =============================================================================
+// Static Files (Production Only)
+// =============================================================================
 
-const port = parseInt(process.env.API_PORT || "4000")
+if (process.env.NODE_ENV === "production") {
+  // Serve built frontend assets
+  app.use("/*", serveStatic({ root: "./dist/client" }))
 
-serve({ fetch: app.fetch, port }, () => {
-  console.log(`🚀 API server running on http://localhost:${port}`)
-})
+  // SPA fallback - serve index.html for client-side routing
+  app.get("*", serveStatic({ path: "./dist/client/index.html" }))
+}
+
+// =============================================================================
+// Export for Bun
+// =============================================================================
+
+console.log(`Server running on http://localhost:${PORT}`)
+
+export default {
+  port: PORT,
+  fetch: app.fetch,
+}

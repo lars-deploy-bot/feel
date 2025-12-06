@@ -4,16 +4,16 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "dev:api": "bun server.ts",
-    "dev:all": "bun run dev:api & bun run dev",
+    "dev": "concurrently -k -n api,vite -c blue,green \"bun dev:api\" \"bun dev:client\"",
+    "dev:api": "API_PORT=$((${PORT:-8080} + 1000)) bun --watch server.ts",
+    "dev:client": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
+    "start": "NODE_ENV=production bun server.ts",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@hono/node-server": "^1.13.7",
     "@hookform/resolvers": "^3.10.0",
     "@instantdb/admin": "^0.22.73",
     "@instantdb/react": "^0.22.73",
@@ -69,6 +69,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
+    "concurrently": "^9.2.1",
     "@swc/core": "1.13.5",
     "@tailwindcss/typography": "^0.5.16",
     "@types/node": "^22.16.5",

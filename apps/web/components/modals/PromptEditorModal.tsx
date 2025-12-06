@@ -1,7 +1,8 @@
 "use client"
 
-import { X } from "lucide-react"
-import { useState } from "react"
+import { Check, Copy, X } from "lucide-react"
+import { useEffect, useState } from "react"
+import { createPortal } from "react-dom"
 
 interface PromptEditorModalProps {
   mode: "add" | "edit"
@@ -20,6 +21,24 @@ export function PromptEditorModal({
 }: PromptEditorModalProps) {
   const [displayName, setDisplayName] = useState(initialDisplayName)
   const [data, setData] = useState(initialData)
+  const [mounted, setMounted] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+    return () => setMounted(false)
+  }, [])
+
+  const handleCopy = async () => {
+    if (!data.trim()) return
+    try {
+      await navigator.clipboard.writeText(data)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error("Failed to copy:", err)
+    }
+  }
 
   const handleSave = () => {
     if (displayName.trim() && data.trim()) {
@@ -42,22 +61,30 @@ export function PromptEditorModal({
 
   const canSave = displayName.trim() && data.trim()
 
-  return (
+  // Don't render on server
+  if (!mounted) return null
+
+  return createPortal(
     <div
-      className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4 animate-in fade-in-0 duration-200"
+      className="fixed inset-0 bg-black/70 z-[100] flex items-end sm:items-center justify-center sm:p-4 animate-in fade-in-0 duration-200"
       onClick={onCancel}
       role="dialog"
       aria-modal="true"
       aria-labelledby="prompt-editor-title"
     >
       <div
-        className="bg-white dark:bg-[#1a1a1a] rounded-xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300"
+        className="bg-white dark:bg-[#1a1a1a] rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-xl h-[85vh] sm:h-auto sm:max-h-[80vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-300"
         onClick={e => e.stopPropagation()}
         onKeyDown={handleKeyDown}
         role="document"
       >
+        {/* Mobile pull indicator */}
+        <div className="sm:hidden w-full flex justify-center pt-2 pb-1">
+          <div className="w-10 h-1 bg-black/20 dark:bg-white/20 rounded-full" />
+        </div>
+
         {/* Header */}
-        <div className="px-6 py-4 border-b border-black/10 dark:border-white/10 flex items-center justify-between bg-gradient-to-br from-purple-50/50 to-pink-50/50 dark:from-purple-950/20 dark:to-pink-950/20">
+        <div className="px-5 py-3 border-b border-black/10 dark:border-white/10 flex items-center justify-between bg-gradient-to-br from-amber-50/50 to-yellow-50/50 dark:from-amber-950/20 dark:to-yellow-950/20">
           <div>
             <h2 id="prompt-editor-title" className="text-xl font-semibold text-black dark:text-white">
               {mode === "add" ? "Add New Prompt" : "Edit Prompt"}
@@ -78,8 +105,8 @@ export function PromptEditorModal({
         </div>
 
         {/* Prompt Name */}
-        <div className="px-6 py-4 border-b border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02]">
-          <label htmlFor="prompt-name" className="block text-sm font-medium text-black dark:text-white mb-2">
+        <div className="px-5 py-3 border-b border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02]">
+          <label htmlFor="prompt-name" className="block text-sm font-medium text-black dark:text-white mb-1.5">
             Prompt Name
           </label>
           <input
@@ -87,50 +114,71 @@ export function PromptEditorModal({
             type="text"
             value={displayName}
             onChange={e => setDisplayName(e.target.value)}
-            placeholder="e.g., 'Revise Code', 'Fix Bugs', 'Write Tests'"
-            className="w-full px-4 py-2.5 bg-white dark:bg-[#2a2a2a] border border-black/20 dark:border-white/20 rounded-lg text-sm text-black dark:text-white focus:outline-none focus:border-purple-500 dark:focus:border-purple-400 transition-colors"
+            placeholder="e.g., 'Revise Code', 'Fix Bugs'"
+            className="w-full px-3 py-2 bg-white dark:bg-[#2a2a2a] border border-black/20 dark:border-white/20 rounded-lg text-sm text-black dark:text-white focus:outline-none focus:border-amber-500 dark:focus:border-amber-400 transition-colors"
           />
         </div>
 
         {/* Editor */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="px-6 py-3 border-b border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02]">
+        <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+          <div className="px-5 py-2 border-b border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02] flex items-center justify-between">
             <label htmlFor="prompt-content" className="text-sm font-medium text-black dark:text-white">
               Prompt Content
             </label>
+            <button
+              type="button"
+              onClick={handleCopy}
+              disabled={!data.trim()}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
+                copied
+                  ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                  : "bg-black/5 dark:bg-white/5 text-black/60 dark:text-white/60 hover:bg-black/10 dark:hover:bg-white/10 hover:text-black dark:hover:text-white"
+              } disabled:opacity-40 disabled:cursor-not-allowed`}
+            >
+              {copied ? (
+                <>
+                  <Check size={14} />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Copy size={14} />
+                  Copy
+                </>
+              )}
+            </button>
           </div>
-          <div className="flex-1 p-6 overflow-y-auto">
+          <div className="flex-1 p-4 overflow-y-auto">
             <textarea
               id="prompt-content"
               value={data}
               onChange={e => setData(e.target.value)}
               placeholder="Enter your prompt text here"
-              className="w-full h-full min-h-[400px] px-4 py-3 bg-white dark:bg-[#2a2a2a] border border-black/20 dark:border-white/20 rounded-lg text-sm text-black dark:text-white focus:outline-none focus:border-purple-500 dark:focus:border-purple-400 transition-colors resize-none font-mono leading-relaxed"
+              className="w-full h-full min-h-[200px] px-3 py-2.5 bg-white dark:bg-[#2a2a2a] border border-black/20 dark:border-white/20 rounded-lg text-sm text-black dark:text-white focus:outline-none focus:border-amber-500 dark:focus:border-amber-400 transition-colors resize-none font-mono leading-relaxed"
             />
           </div>
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02] flex items-center justify-end gap-4">
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="px-4 py-2 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-black dark:text-white rounded-lg text-sm font-medium transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={!canSave}
-              className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-purple-600"
-            >
-              {mode === "add" ? "Add Prompt" : "Save Changes"}
-            </button>
-          </div>
+        <div className="px-5 py-3 border-t border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02] flex items-center justify-end gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-4 py-2 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-black dark:text-white rounded-lg text-sm font-medium transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={!canSave}
+            className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-amber-600"
+          >
+            {mode === "add" ? "Add Prompt" : "Save Changes"}
+          </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

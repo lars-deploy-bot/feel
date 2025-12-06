@@ -1,12 +1,21 @@
+---
+name: Carousel with Thumbnails
+description: Advanced carousel with thumbnail navigation below. Click thumbnails to jump to slides.
+category: components
+complexity: 2
+files: 4
+dependencies:
+  - swiper@^11.0.0
+estimatedTime: 4-5 minutes
+estimatedTokens: 18
+tags: [react, carousel, thumbnails, slider]
+requires:
+  - React 18+
+previewImage: https://terminal.goalive.nl/_images/t/protino.alive.best/o/d15b2037bf21c90e/v/orig.webp
+available: true
+---
+
 # Auto-Scrolling Carousel
-
-**Category:** Photo Sliders
-**Complexity:** Medium
-**Files:** 1
-**Dependencies:** None (custom implementation)
-**Estimated Time:** 4-5 minutes
-
-## Description
 
 Smooth auto-scrolling carousel that continuously moves images from right to left in an infinite loop. Perfect for showcasing image galleries with a modern, hands-free scrolling experience.
 

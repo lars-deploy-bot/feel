@@ -31,6 +31,7 @@ export function useRedeemReferral() {
 
     fetch("/api/referrals/redeem", {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code }),
     })

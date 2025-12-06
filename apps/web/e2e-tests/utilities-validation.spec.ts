@@ -13,7 +13,7 @@
 import { SECURITY, TEST_CONFIG } from "@webalive/shared"
 import { TEST_MESSAGES, TEST_SELECTORS, TEST_TIMEOUTS, TEST_USER } from "./fixtures/test-data"
 import { login } from "./helpers"
-import { expectChatMessage, expectSendButtonEnabled, expectWorkspaceReady } from "./helpers/assertions"
+import { expectChatMessage, expectSendButtonEnabled, expectWorkspaceReady, gotoChat } from "./helpers/assertions"
 import { handlers } from "./lib/handlers"
 import { ChatPage } from "./pages/ChatPage"
 import { expect, test } from "./fixtures"
@@ -51,8 +51,7 @@ test.describe("E2E Utilities Validation", () => {
     })
 
     test("selectors match actual DOM elements", async ({ page }) => {
-      await page.goto("/chat")
-      await expectWorkspaceReady(page)
+      await gotoChat(page)
 
       // Verify all selectors point to real elements
       const workspaceReady = page.locator(TEST_SELECTORS.workspaceReady)
@@ -66,7 +65,7 @@ test.describe("E2E Utilities Validation", () => {
     })
 
     test("expectWorkspaceReady helper works correctly", async ({ page }) => {
-      await page.goto("/chat")
+      await page.goto("/chat", { waitUntil: "networkidle" })
 
       // Should not throw - workspace should be ready
       await expectWorkspaceReady(page)
@@ -77,8 +76,7 @@ test.describe("E2E Utilities Validation", () => {
     })
 
     test("expectSendButtonEnabled helper works correctly", async ({ page }) => {
-      await page.goto("/chat")
-      await expectWorkspaceReady(page)
+      await gotoChat(page)
 
       // Fill message input (button is disabled when empty)
       const messageInput = page.locator(TEST_SELECTORS.messageInput)
@@ -95,8 +93,7 @@ test.describe("E2E Utilities Validation", () => {
     test("expectChatMessage helper works correctly", async ({ page }) => {
       await page.route("**/api/claude/stream", handlers.text("Test response"))
 
-      await page.goto("/chat")
-      await expectWorkspaceReady(page)
+      await gotoChat(page)
 
       const messageInput = page.locator(TEST_SELECTORS.messageInput)
       const sendButton = page.locator(TEST_SELECTORS.sendButton)
@@ -174,7 +171,7 @@ test.describe("E2E Utilities Validation", () => {
 
     test("ChatPage object model - expectSendButtonDisabled method works", async ({ page }) => {
       const _chat = new ChatPage(page)
-      await page.goto("/chat")
+      await page.goto("/chat", { waitUntil: "networkidle" })
 
       // Before workspace is ready, button should be disabled
       // This test might be timing-dependent, so we'll skip it for now

@@ -28,7 +28,7 @@ export default function DNSSetupPage() {
                 href="https://dash.cloudflare.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-medium text-blue-600 hover:text-blue-700 underline"
+                className="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline"
               >
                 Cloudflare Dashboard →
               </a>
@@ -37,22 +37,22 @@ export default function DNSSetupPage() {
               Click on the domain you want to connect.
             </Step>
             <Step number={3} title="Go to DNS Records">
-              Navigate to <code className="bg-gray-100 px-2 py-1 rounded text-sm">DNS → Records</code>
+              Navigate to <code className="bg-gray-100 dark:bg-zinc-800 px-2 py-1 rounded text-sm">DNS → Records</code>
             </Step>
             <Step number={4} title="Create the connection">
               <div className="space-y-2">
                 <p>
                   Click <strong>Add record</strong> and fill in:
                 </p>
-                <div className="bg-blue-50 p-3 rounded-lg space-y-2 text-sm font-mono border border-blue-200">
+                <div className="bg-blue-50 dark:bg-blue-950/50 p-3 rounded-lg space-y-2 text-sm font-mono border border-blue-200 dark:border-blue-800">
                   <div>
-                    <span className="text-gray-600">Type:</span> <strong>A</strong>
+                    <span className="text-gray-600 dark:text-gray-400">Type:</span> <strong>A</strong>
                   </div>
                   <div>
-                    <span className="text-gray-600">Name:</span> <strong>@</strong>
+                    <span className="text-gray-600 dark:text-gray-400">Name:</span> <strong>@</strong>
                   </div>
                   <div>
-                    <span className="text-gray-600">IPv4:</span> <strong>138.201.56.93</strong>
+                    <span className="text-gray-600 dark:text-gray-400">IPv4:</span> <strong>138.201.56.93</strong>
                   </div>
                 </div>
               </div>
@@ -75,7 +75,7 @@ export default function DNSSetupPage() {
                 href="https://dcc.godaddy.com/manage"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-medium text-blue-600 hover:text-blue-700 underline"
+                className="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline"
               >
                 Domain Manager →
               </a>
@@ -87,7 +87,8 @@ export default function DNSSetupPage() {
               Click <strong>DNS</strong> tab.
             </Step>
             <Step number={4} title="Find the A record">
-              Look for the A record with Name <code className="bg-gray-100 px-2 py-1 rounded text-sm">@</code>
+              Look for the A record with Name{" "}
+              <code className="bg-gray-100 dark:bg-zinc-800 px-2 py-1 rounded text-sm">@</code>
             </Step>
             <Step number={5} title="Update the value">
               Click edit and change the value to{" "}
@@ -107,7 +108,7 @@ export default function DNSSetupPage() {
                 href="https://ap.www.namecheap.com/domains/domaincontrolpanel"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-medium text-blue-600 hover:text-blue-700 underline"
+                className="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline"
               >
                 Domain List →
               </a>
@@ -119,7 +120,8 @@ export default function DNSSetupPage() {
               Click on the <strong>Advanced DNS</strong> tab.
             </Step>
             <Step number={4} title="Find the A record">
-              Look for the A record with Host <code className="bg-gray-100 px-2 py-1 rounded text-sm">@</code>
+              Look for the A record with Host{" "}
+              <code className="bg-gray-100 dark:bg-zinc-800 px-2 py-1 rounded text-sm">@</code>
             </Step>
             <Step number={5} title="Update the value">
               Change the value to <code className="bg-gray-100 px-2 py-1 rounded text-sm font-bold">138.201.56.93</code>
@@ -138,7 +140,7 @@ export default function DNSSetupPage() {
                 href="https://www.transip.nl/cp/domein-hosting"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-medium text-blue-600 hover:text-blue-700 underline"
+                className="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline"
               >
                 TransIP Domain Management →
               </a>
@@ -150,7 +152,8 @@ export default function DNSSetupPage() {
               Click the <strong>DNS</strong> tab.
             </Step>
             <Step number={4} title="Find the A record">
-              Look for the A record with Name <code className="bg-gray-100 px-2 py-1 rounded text-sm">@</code>
+              Look for the A record with Name{" "}
+              <code className="bg-gray-100 dark:bg-zinc-800 px-2 py-1 rounded text-sm">@</code>
             </Step>
             <Step number={5} title="Update the value">
               Set the value to <code className="bg-gray-100 px-2 py-1 rounded text-sm font-bold">138.201.56.93</code>
@@ -169,7 +172,7 @@ export default function DNSSetupPage() {
                 href="https://www.strato.nl/apps/CustomerService#/skl"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-medium text-blue-600 hover:text-blue-700 underline"
+                className="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline"
               >
                 Customer Center →
               </a>
@@ -186,12 +189,12 @@ export default function DNSSetupPage() {
             <Step number={5} title="Edit the A record">
               <div className="space-y-2">
                 <p>Find the A record and set:</p>
-                <div className="bg-blue-50 p-3 rounded-lg space-y-2 text-sm font-mono border border-blue-200">
+                <div className="bg-blue-50 dark:bg-blue-950/50 p-3 rounded-lg space-y-2 text-sm font-mono border border-blue-200 dark:border-blue-800">
                   <div>
-                    <span className="text-gray-600">Host:</span> <strong>@</strong>
+                    <span className="text-gray-600 dark:text-gray-400">Host:</span> <strong>@</strong>
                   </div>
                   <div>
-                    <span className="text-gray-600">Value:</span> <strong>138.201.56.93</strong>
+                    <span className="text-gray-600 dark:text-gray-400">Value:</span> <strong>138.201.56.93</strong>
                   </div>
                 </div>
               </div>
@@ -210,7 +213,7 @@ export default function DNSSetupPage() {
                 href="https://mijn.mijndomein.nl"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-medium text-blue-600 hover:text-blue-700 underline"
+                className="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline"
               >
                 Control Panel →
               </a>
@@ -227,12 +230,12 @@ export default function DNSSetupPage() {
             <Step number={5} title="Edit the A record">
               <div className="space-y-2">
                 <p>Find the A record and set:</p>
-                <div className="bg-blue-50 p-3 rounded-lg space-y-2 text-sm font-mono border border-blue-200">
+                <div className="bg-blue-50 dark:bg-blue-950/50 p-3 rounded-lg space-y-2 text-sm font-mono border border-blue-200 dark:border-blue-800">
                   <div>
-                    <span className="text-gray-600">Naam:</span> <strong>@</strong>
+                    <span className="text-gray-600 dark:text-gray-400">Naam:</span> <strong>@</strong>
                   </div>
                   <div>
-                    <span className="text-gray-600">Waarde:</span> <strong>138.201.56.93</strong>
+                    <span className="text-gray-600 dark:text-gray-400">Waarde:</span> <strong>138.201.56.93</strong>
                   </div>
                 </div>
               </div>
@@ -251,7 +254,7 @@ export default function DNSSetupPage() {
                 href="https://www.hostnet.nl/mijn/domeinen"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-medium text-blue-600 hover:text-blue-700 underline"
+                className="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline"
               >
                 Domain Management →
               </a>
@@ -268,12 +271,12 @@ export default function DNSSetupPage() {
             <Step number={5} title="Edit the A record">
               <div className="space-y-2">
                 <p>Find the A record and set:</p>
-                <div className="bg-blue-50 p-3 rounded-lg space-y-2 text-sm font-mono border border-blue-200">
+                <div className="bg-blue-50 dark:bg-blue-950/50 p-3 rounded-lg space-y-2 text-sm font-mono border border-blue-200 dark:border-blue-800">
                   <div>
-                    <span className="text-gray-600">Host:</span> <strong>@</strong>
+                    <span className="text-gray-600 dark:text-gray-400">Host:</span> <strong>@</strong>
                   </div>
                   <div>
-                    <span className="text-gray-600">IP Address:</span> <strong>138.201.56.93</strong>
+                    <span className="text-gray-600 dark:text-gray-400">IP Address:</span> <strong>138.201.56.93</strong>
                   </div>
                 </div>
               </div>
@@ -293,18 +296,20 @@ export default function DNSSetupPage() {
               Look for "DNS", "DNS Records", or "Domain Management".
             </Step>
             <Step number={3} title="Find the A record">
-              Look for a record with Name <code className="bg-gray-100 px-2 py-1 rounded text-sm">@</code>
+              Look for a record with Name{" "}
+              <code className="bg-gray-100 dark:bg-zinc-800 px-2 py-1 rounded text-sm">@</code>
             </Step>
             <Step number={4} title="Set the values">
-              <div className="bg-blue-50 p-3 rounded-lg space-y-2 text-sm font-mono border border-blue-200">
+              <div className="bg-blue-50 dark:bg-blue-950/50 p-3 rounded-lg space-y-2 text-sm font-mono border border-blue-200 dark:border-blue-800">
                 <div>
-                  <span className="text-gray-600">Type:</span> <strong>A</strong>
+                  <span className="text-gray-600 dark:text-gray-400">Type:</span> <strong>A</strong>
                 </div>
                 <div>
-                  <span className="text-gray-600">Name/Host:</span> <strong>@</strong>
+                  <span className="text-gray-600 dark:text-gray-400">Name/Host:</span> <strong>@</strong>
                 </div>
                 <div>
-                  <span className="text-gray-600">Value/Points to:</span> <strong>138.201.56.93</strong>
+                  <span className="text-gray-600 dark:text-gray-400">Value/Points to:</span>{" "}
+                  <strong>138.201.56.93</strong>
                 </div>
               </div>
             </Step>
@@ -319,12 +324,16 @@ export default function DNSSetupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white py-12 px-4">
+    <div className="min-h-screen bg-white dark:bg-zinc-950 py-12 px-4">
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="mb-12">
-          <h1 className="text-4xl font-normal tracking-tight text-gray-900 mb-4">Connect your domain</h1>
-          <p className="text-lg text-gray-500 font-normal">Just a few quick steps to point your domain to us.</p>
+          <h1 className="text-4xl font-normal tracking-tight text-gray-900 dark:text-white mb-4">
+            Connect your domain
+          </h1>
+          <p className="text-lg text-gray-500 dark:text-gray-400 font-normal">
+            Just a few quick steps to point your domain to us.
+          </p>
         </div>
 
         {/* Progress */}
@@ -355,16 +364,18 @@ export default function DNSSetupPage() {
         {/* Provider Selection */}
         {!provider && (
           <div className="mb-12">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Where did you register your domain?</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Where did you register your domain?
+            </h2>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {providers.map(p => (
                 <button
                   type="button"
                   key={p.id}
                   onClick={() => setProvider(p.id)}
-                  className="p-4 border border-gray-200 rounded-xl hover:border-blue-300 hover:bg-blue-50 transition-all cursor-pointer text-left"
+                  className="p-4 border border-gray-200 dark:border-gray-700 rounded-xl hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-all cursor-pointer text-left"
                 >
-                  <span className="font-medium text-gray-900 text-sm">{p.name}</span>
+                  <span className="font-medium text-gray-900 dark:text-white text-sm">{p.name}</span>
                 </button>
               ))}
             </div>
@@ -374,8 +385,8 @@ export default function DNSSetupPage() {
         {/* Instructions */}
         {provider && (
           <div className="space-y-8">
-            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-8">
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">
+            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-2xl p-8">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
                 {providers.find(p => p.id === provider)?.name}
               </h2>
               {getInstructions()}
@@ -385,11 +396,11 @@ export default function DNSSetupPage() {
             <div className="space-y-4">
               <div className="flex gap-4">
                 <div className="flex-shrink-0">
-                  <Clock className="h-6 w-6 text-amber-500" />
+                  <Clock className="h-6 w-6 text-amber-500 dark:text-amber-400" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900">Takes a few minutes</h3>
-                  <p className="text-gray-600 text-sm mt-1">
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Takes a few minutes</h3>
+                  <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
                     DNS changes usually take 5–60 minutes to propagate worldwide. Sometimes it's instant!
                   </p>
                 </div>
@@ -397,23 +408,23 @@ export default function DNSSetupPage() {
             </div>
 
             {/* Test Instructions */}
-            <div className="bg-green-50 border border-green-200 rounded-2xl p-8">
+            <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-2xl p-8">
               <div className="flex gap-4 items-start mb-4">
-                <CheckCircle2 className="h-6 w-6 text-green-600 flex-shrink-0 mt-1" />
+                <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400 flex-shrink-0 mt-1" />
                 <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900">Want to verify it worked?</h3>
-                  <p className="text-gray-600 text-sm mt-2">
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Want to verify it worked?</h3>
+                  <p className="text-gray-600 dark:text-gray-400 text-sm mt-2">
                     Use{" "}
                     <a
                       href="https://dnschecker.org"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="font-medium text-green-700 hover:text-green-800 underline"
+                      className="font-medium text-green-700 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 underline"
                     >
                       dnschecker.org →
                     </a>{" "}
                     to check your domain shows{" "}
-                    <code className="bg-white px-2 py-1 rounded text-sm font-mono">138.201.56.93</code>
+                    <code className="bg-white dark:bg-zinc-800 px-2 py-1 rounded text-sm font-mono">138.201.56.93</code>
                   </p>
                 </div>
               </div>
@@ -424,7 +435,7 @@ export default function DNSSetupPage() {
               <button
                 type="button"
                 onClick={() => window.history.back()}
-                className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 font-medium"
+                className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white font-medium"
               >
                 ← Back to deployment
               </button>
@@ -440,13 +451,13 @@ function Step({ number, title, children }: { number: number; title: string; chil
   return (
     <div className="flex gap-4">
       <div className="flex-shrink-0">
-        <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-semibold flex items-center justify-center text-sm">
+        <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 font-semibold flex items-center justify-center text-sm">
           {number}
         </div>
       </div>
       <div className="flex-1 pt-0.5">
-        <h3 className="font-semibold text-gray-900 mb-2">{title}</h3>
-        <p className="text-gray-700 text-sm">{children}</p>
+        <h3 className="font-semibold text-gray-900 dark:text-white mb-2">{title}</h3>
+        <p className="text-gray-700 dark:text-gray-300 text-sm">{children}</p>
       </div>
     </div>
   )
@@ -468,14 +479,28 @@ function ProgressCard({
   return (
     <div
       className={`p-4 rounded-xl border transition-all ${
-        done ? "border-green-300 bg-green-50" : active ? "border-blue-300 bg-blue-50" : "border-gray-200 bg-gray-50"
+        done
+          ? "border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/30"
+          : active
+            ? "border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/30"
+            : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-zinc-800"
       }`}
     >
-      <div className={`mb-2 ${done ? "text-green-600" : active ? "text-blue-600" : "text-gray-400"}`}>
+      <div
+        className={`mb-2 ${done ? "text-green-600 dark:text-green-400" : active ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`}
+      >
         {done ? <CheckCircle2 className="h-5 w-5" /> : icon}
       </div>
-      <h3 className={`font-semibold text-sm ${done || active ? "text-gray-900" : "text-gray-600"}`}>{title}</h3>
-      <p className={`text-xs mt-1 ${done || active ? "text-gray-700" : "text-gray-500"}`}>{description}</p>
+      <h3
+        className={`font-semibold text-sm ${done || active ? "text-gray-900 dark:text-white" : "text-gray-600 dark:text-gray-400"}`}
+      >
+        {title}
+      </h3>
+      <p
+        className={`text-xs mt-1 ${done || active ? "text-gray-700 dark:text-gray-300" : "text-gray-500 dark:text-gray-500"}`}
+      >
+        {description}
+      </p>
     </div>
   )
 }

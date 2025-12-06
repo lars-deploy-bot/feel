@@ -46,23 +46,7 @@ interface HistorySlice {
   }
 }
 
-// Extended type for backwards compatibility
-type DeployStoreWithCompat = FormSlice &
-  StatusSlice &
-  HistorySlice & {
-    // Legacy direct action exports for backwards compatibility
-    setDomain: (domain: string) => void
-    setPassword: (password: string) => void
-    resetForm: () => void
-    setIsDeploying: (isDeploying: boolean) => void
-    setDeploymentStatus: (status: DeploymentStatus) => void
-    setDeploymentDomain: (domain: string | null) => void
-    setDeploymentErrors: (errors: string[]) => void
-    addToHistory: (entry: DeploymentHistory) => void
-    clearHistory: () => void
-  }
-
-export type DeployStore = DeployStoreWithCompat
+export type DeployStore = FormSlice & StatusSlice & HistorySlice
 
 const createFormSlice: StateCreator<DeployStore, [], [], FormSlice> = (set, _get, _api) => {
   const formActions = {
@@ -74,8 +58,6 @@ const createFormSlice: StateCreator<DeployStore, [], [], FormSlice> = (set, _get
     domain: "",
     password: "",
     formActions,
-    // Legacy direct exports for backwards compatibility
-    ...formActions,
   }
 }
 
@@ -92,15 +74,13 @@ const createStatusSlice: StateCreator<DeployStore, [], [], StatusSlice> = (set, 
     deploymentDomain: null,
     deploymentErrors: [],
     statusActions,
-    // Legacy direct exports for backwards compatibility
-    ...statusActions,
   }
 }
 
 const createHistorySlice: StateCreator<DeployStore, [], [], HistorySlice> = (set, _get, _api) => {
   const historyActions = {
     addToHistory: (entry: DeploymentHistory) =>
-      set((state: DeployStoreWithCompat) => ({
+      set((state: DeployStore) => ({
         history: [entry, ...state.history].slice(0, 50),
       })),
     clearHistory: () => set({ history: [] }),
@@ -108,8 +88,6 @@ const createHistorySlice: StateCreator<DeployStore, [], [], HistorySlice> = (set
   return {
     history: [],
     historyActions,
-    // Legacy direct exports for backwards compatibility
-    ...historyActions,
   }
 }
 

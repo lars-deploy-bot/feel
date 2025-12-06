@@ -4,10 +4,24 @@ import { createNodeWebSocket } from "@hono/node-ws"
 import cookie from "cookie"
 import { randomBytes } from "node:crypto"
 import * as pty from "node-pty"
-import { readFileSync, writeFileSync, existsSync, writeFile, mkdirSync, readdirSync, type Dirent } from "node:fs"
+import {
+  readFileSync,
+  writeFileSync,
+  existsSync,
+  writeFile,
+  mkdirSync,
+  readdirSync,
+  chmodSync,
+  type Dirent,
+} from "node:fs"
 import { mkdir, rm } from "node:fs/promises"
-import { join, resolve } from "node:path"
+import { join, resolve, dirname } from "node:path"
+import { fileURLToPath } from "node:url"
 import AdmZip from "adm-zip"
+
+// Get proper __dirname for ESM
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 // Load configuration
 const configPath = join(__dirname, "..", "config.json")
@@ -63,6 +77,50 @@ const loginTemplate = readFileSync(join(templatesDir, "login.html"), "utf-8")
 const dashboardTemplate = readFileSync(join(templatesDir, "dashboard.html"), "utf-8")
 const shellTemplate = readFileSync(join(templatesDir, "shell.html"), "utf-8")
 const uploadTemplate = readFileSync(join(templatesDir, "upload.html"), "utf-8")
+const editTemplate = readFileSync(join(templatesDir, "edit.html"), "utf-8")
+
+// Editable directories configuration
+// Each entry has an id, label, and absolute path
+interface EditableDirectory {
+  id: string
+  label: string
+  path: string
+}
+
+// __dirname in dist is apps/shell-server/dist, so we go up to claude-bridge root
+const claudeBridgeRoot = resolve(__dirname, "..", "..", "..")
+
+const EDITABLE_DIRECTORIES: EditableDirectory[] = [
+  {
+    id: "workflows",
+    label: "Workflows",
+    path: join(claudeBridgeRoot, "packages", "tools", "workflows"),
+  },
+  {
+    id: "uploads",
+    label: "Uploads",
+    path: "/root/uploads",
+  },
+  {
+    id: "sites",
+    label: "Sites",
+    path: resolvedSitesPath,
+  },
+]
+
+// Validate editable directories exist
+for (const dir of EDITABLE_DIRECTORIES) {
+  if (existsSync(dir.path)) {
+    console.log(`[EDIT] Editable directory: ${dir.label} -> ${dir.path}`)
+  } else {
+    console.warn(`[EDIT] Warning: Directory not found: ${dir.path}`)
+  }
+}
+
+// Helper to get editable directory by ID
+function getEditableDirectory(id: string): EditableDirectory | undefined {
+  return EDITABLE_DIRECTORIES.find(d => d.id === id)
+}
 
 const app = new Hono()
 const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app })
@@ -77,8 +135,32 @@ if (!SHELL_PASSWORD) {
   process.exit(1)
 }
 
-// Session store (in-memory for now)
-const sessions = new Set<string>()
+// Session store - persisted to disk to survive restarts
+const SESSIONS_FILE = join(process.cwd(), ".sessions.json")
+
+function loadSessions(): Set<string> {
+  try {
+    if (existsSync(SESSIONS_FILE)) {
+      const data = readFileSync(SESSIONS_FILE, "utf-8")
+      const arr = JSON.parse(data) as string[]
+      console.log(`[SESSION] Loaded ${arr.length} sessions from disk`)
+      return new Set(arr)
+    }
+  } catch (err) {
+    console.error("[SESSION] Failed to load sessions:", err)
+  }
+  return new Set()
+}
+
+function saveSessions(): void {
+  try {
+    writeFileSync(SESSIONS_FILE, JSON.stringify([...sessions]), "utf-8")
+  } catch (err) {
+    console.error("[SESSION] Failed to save sessions:", err)
+  }
+}
+
+const sessions = loadSessions()
 
 // Rate limiting: Track all failed login attempts globally (timeframe-based)
 // Persisted to disk to survive restarts
@@ -247,7 +329,7 @@ app.post("/login", async c => {
   // Check global rate limiting
   const rateLimitCheck = isRateLimited()
   if (rateLimitCheck.limited) {
-    console.log(`[SECURITY] Rate limit active - login blocked`)
+    console.log("[SECURITY] Rate limit active - login blocked")
     return c.redirect(`/?error=rate_limit&wait=${rateLimitCheck.waitTime}`)
   }
 
@@ -266,6 +348,7 @@ app.post("/login", async c => {
   // Create session
   const sessionToken = generateSessionToken()
   sessions.add(sessionToken)
+  saveSessions()
 
   // Set cookie and redirect
   c.header(
@@ -308,6 +391,7 @@ app.get("/logout", c => {
   const cookies = cookie.parse(c.req.header("cookie") || "")
   if (cookies.shell_session) {
     sessions.delete(cookies.shell_session)
+    saveSessions()
   }
 
   c.header(
@@ -360,6 +444,24 @@ app.get("/upload", c => {
     uploadPath = `${envConfig.workspaceBase}/${workspace}`
   }
   const html = uploadTemplate.replace(/\${workspace}/g, workspace).replace("{{UPLOAD_PATH}}", uploadPath)
+  return c.html(html)
+})
+
+// Edit page (protected)
+app.get("/edit", c => {
+  const cookies = cookie.parse(c.req.header("cookie") || "")
+
+  if (!cookies.shell_session || !sessions.has(cookies.shell_session)) {
+    return c.redirect("/")
+  }
+
+  // Generate directory list as JSON for the Preact app
+  const directories = EDITABLE_DIRECTORIES.filter(dir => existsSync(dir.path)).map(dir => ({
+    id: dir.id,
+    label: dir.label,
+  }))
+
+  const html = editTemplate.replace("{{EDITABLE_DIRECTORIES}}", JSON.stringify(directories))
   return c.html(html)
 })
 
@@ -481,10 +583,24 @@ app.post("/api/upload", async c => {
       const existingItems = [...rootItems].filter(item => existsSync(join(resolvedTarget, item)))
       if (existingItems.length > 0) {
         await rm(tempFile, { force: true })
+        const { statSync } = await import("node:fs")
+        const details = existingItems.map(item => {
+          const fullPath = join(resolvedTarget, item)
+          try {
+            const stats = statSync(fullPath)
+            return `${item} (${stats.isDirectory() ? "folder" : "file"}, ${stats.size} bytes) at ${fullPath}`
+          } catch {
+            return `${item} at ${fullPath}`
+          }
+        })
         return c.json(
           {
-            error: `Already exists: ${existingItems.join(", ")}`,
+            error: "Cannot extract - items already exist in target",
             existingItems,
+            details,
+            targetDir: resolvedTarget,
+            zipContents: [...rootItems],
+            hint: "Delete existing items first or remove them from ZIP",
           },
           409,
         )
@@ -520,6 +636,41 @@ app.post("/api/upload", async c => {
 
 // Health check
 app.get("/health", c => c.json({ status: "ok" }))
+
+// Serve client chunks (for Vite code splitting) - must come before /client/:file
+app.get("/client/chunks/:file", async c => {
+  const file = c.req.param("file")
+  if (!file || file.includes("..")) {
+    return c.text("Not found", 404)
+  }
+  const clientDir = join(__dirname, "client", "chunks")
+  const filePath = join(clientDir, file)
+  if (!existsSync(filePath)) {
+    return c.text("Not found", 404)
+  }
+  const content = readFileSync(filePath, "utf-8")
+  let contentType = "text/plain"
+  if (file.endsWith(".js")) contentType = "application/javascript"
+  return c.text(content, 200, { "Content-Type": contentType })
+})
+
+// Serve client bundle
+app.get("/client/:file", async c => {
+  const file = c.req.param("file")
+  if (!file || file.includes("..")) {
+    return c.text("Not found", 404)
+  }
+  const clientDir = join(__dirname, "client")
+  const filePath = join(clientDir, file)
+  if (!existsSync(filePath)) {
+    return c.text("Not found", 404)
+  }
+  const content = readFileSync(filePath, "utf-8")
+  let contentType = "text/plain"
+  if (file.endsWith(".js")) contentType = "application/javascript"
+  else if (file.endsWith(".css")) contentType = "text/css"
+  return c.text(content, 200, { "Content-Type": contentType })
+})
 
 // API to list files in a directory (tree view)
 app.post("/api/list-files", async c => {
@@ -809,6 +960,483 @@ app.get("/api/sites", c => {
   } catch (err) {
     console.error("[API] Failed to list sites:", err)
     return c.json({ error: "Failed to list sites" }, 500)
+  }
+})
+
+// ============================================================================
+// FILE EDITOR API ENDPOINTS
+// ============================================================================
+
+// API to list files in an editable directory
+app.post("/api/edit/list-files", async c => {
+  const cookies = cookie.parse(c.req.header("cookie") || "")
+  if (!cookies.shell_session || !sessions.has(cookies.shell_session)) {
+    return c.json({ error: "Unauthorized" }, 401)
+  }
+
+  try {
+    const body = await c.req.json()
+    const directoryId = body.directory
+
+    if (!directoryId) {
+      return c.json({ error: "No directory specified" }, 400)
+    }
+
+    const editableDir = getEditableDirectory(directoryId)
+    if (!editableDir) {
+      return c.json({ error: "Invalid directory" }, 400)
+    }
+
+    if (!existsSync(editableDir.path)) {
+      return c.json({ error: "Directory not found", path: editableDir.path }, 404)
+    }
+
+    const excludeDirs = new Set(["node_modules", "dist", ".git", ".turbo", "__pycache__"])
+    const maxDepth = 5
+
+    interface EditTreeNode {
+      name: string
+      path: string
+      type: "file" | "directory"
+      children?: EditTreeNode[]
+    }
+
+    function buildEditTree(dirPath: string, relativePath = "", depth = 0): EditTreeNode[] {
+      if (depth >= maxDepth) return []
+
+      const entries = readdirSync(dirPath, { withFileTypes: true }) as Dirent[]
+      const filtered = entries
+        .filter(e => !excludeDirs.has(e.name) && !e.name.startsWith("."))
+        .sort((a, b) => {
+          if (a.isDirectory() && !b.isDirectory()) return -1
+          if (!a.isDirectory() && b.isDirectory()) return 1
+          return a.name.localeCompare(b.name)
+        })
+
+      return filtered.map(entry => {
+        const entryRelativePath = relativePath ? `${relativePath}/${entry.name}` : entry.name
+        if (entry.isDirectory()) {
+          const subPath = join(dirPath, entry.name)
+          return {
+            name: entry.name,
+            path: entryRelativePath,
+            type: "directory" as const,
+            children: buildEditTree(subPath, entryRelativePath, depth + 1),
+          }
+        }
+        return {
+          name: entry.name,
+          path: entryRelativePath,
+          type: "file" as const,
+        }
+      })
+    }
+
+    const tree = buildEditTree(editableDir.path)
+    return c.json({ path: editableDir.path, label: editableDir.label, tree })
+  } catch (err) {
+    console.error("[EDIT API] Failed to list files:", err)
+    return c.json({ error: "Failed to list files" }, 500)
+  }
+})
+
+// API to read a file from an editable directory
+app.post("/api/edit/read-file", async c => {
+  const cookies = cookie.parse(c.req.header("cookie") || "")
+  if (!cookies.shell_session || !sessions.has(cookies.shell_session)) {
+    return c.json({ error: "Unauthorized" }, 401)
+  }
+
+  try {
+    const body = await c.req.json()
+    const directoryId = body.directory
+    const filePath = body.path
+
+    if (!directoryId) {
+      return c.json({ error: "No directory specified" }, 400)
+    }
+
+    if (!filePath) {
+      return c.json({ error: "No file path provided" }, 400)
+    }
+
+    const editableDir = getEditableDirectory(directoryId)
+    if (!editableDir) {
+      return c.json({ error: "Invalid directory" }, 400)
+    }
+
+    // SECURITY: Validate path doesn't contain traversal
+    if (filePath.includes("..") || filePath.startsWith("/")) {
+      return c.json({ error: "Invalid path" }, 400)
+    }
+
+    // Resolve and validate path
+    const resolvedPath = resolve(editableDir.path, filePath)
+    if (!resolvedPath.startsWith(editableDir.path)) {
+      return c.json({ error: "Path traversal detected" }, 400)
+    }
+
+    if (!existsSync(resolvedPath)) {
+      return c.json({ error: "File not found" }, 404)
+    }
+
+    // Check file size (limit to 2MB for editing)
+    const { statSync } = await import("node:fs")
+    const stats = statSync(resolvedPath)
+    if (stats.size > 2 * 1024 * 1024) {
+      return c.json({ error: "File too large for editing (max 2MB)", size: stats.size }, 413)
+    }
+
+    // Check file type
+    const imageExtensions = new Set([".png", ".jpg", ".jpeg", ".gif", ".ico", ".webp", ".bmp", ".svg"])
+    const binaryExtensions = new Set([
+      ".pdf",
+      ".zip",
+      ".tar",
+      ".gz",
+      ".rar",
+      ".7z",
+      ".mp3",
+      ".mp4",
+      ".wav",
+      ".avi",
+      ".mov",
+      ".mkv",
+      ".exe",
+      ".dll",
+      ".so",
+      ".dylib",
+      ".woff",
+      ".woff2",
+      ".ttf",
+      ".eot",
+      ".otf",
+      ".node",
+      ".wasm",
+    ])
+    const ext = filePath.toLowerCase().slice(filePath.lastIndexOf("."))
+
+    // Handle image files - return base64 encoded
+    if (imageExtensions.has(ext)) {
+      const imageData = readFileSync(resolvedPath)
+      const base64 = imageData.toString("base64")
+      const mimeType =
+        ext === ".svg"
+          ? "image/svg+xml"
+          : ext === ".ico"
+            ? "image/x-icon"
+            : `image/${ext.slice(1).replace("jpg", "jpeg")}`
+
+      console.log(`[EDIT API] Read image: ${resolvedPath} (${stats.size} bytes)`)
+      return c.json({
+        image: true,
+        dataUrl: `data:${mimeType};base64,${base64}`,
+        path: resolvedPath,
+        filename: filePath.split("/").pop() || filePath,
+        size: stats.size,
+        mtime: stats.mtimeMs,
+      })
+    }
+
+    if (binaryExtensions.has(ext)) {
+      return c.json({ error: "Binary file cannot be edited", binary: true, extension: ext }, 415)
+    }
+
+    const content = readFileSync(resolvedPath, "utf-8")
+    const filename = filePath.split("/").pop() || filePath
+
+    console.log(`[EDIT API] Read file: ${resolvedPath} (${stats.size} bytes)`)
+    return c.json({ content, path: resolvedPath, filename, size: stats.size, mtime: stats.mtimeMs })
+  } catch (err) {
+    console.error("[EDIT API] Failed to read file:", err)
+    return c.json({ error: "Failed to read file" }, 500)
+  }
+})
+
+// API to check mtimes for multiple files (for auto-refresh on focus)
+app.post("/api/edit/check-mtimes", async c => {
+  const cookies = cookie.parse(c.req.header("cookie") || "")
+  if (!cookies.shell_session || !sessions.has(cookies.shell_session)) {
+    return c.json({ error: "Unauthorized" }, 401)
+  }
+
+  try {
+    const body = await c.req.json()
+    const directoryId = body.directory
+    const files: Array<{ path: string; mtime: number }> = body.files
+
+    if (!directoryId) {
+      return c.json({ error: "No directory specified" }, 400)
+    }
+
+    if (!files || !Array.isArray(files)) {
+      return c.json({ error: "No files specified" }, 400)
+    }
+
+    const editableDir = getEditableDirectory(directoryId)
+    if (!editableDir) {
+      return c.json({ error: "Invalid directory" }, 400)
+    }
+
+    const { statSync } = await import("node:fs")
+    const results: Array<{ path: string; changed: boolean; mtime: number; deleted?: boolean }> = []
+
+    for (const file of files) {
+      // SECURITY: Validate path doesn't contain traversal
+      if (file.path.includes("..") || file.path.startsWith("/")) {
+        continue
+      }
+
+      const resolvedPath = resolve(editableDir.path, file.path)
+      if (!resolvedPath.startsWith(editableDir.path)) {
+        continue
+      }
+
+      if (!existsSync(resolvedPath)) {
+        results.push({ path: file.path, changed: true, mtime: 0, deleted: true })
+        continue
+      }
+
+      try {
+        const stats = statSync(resolvedPath)
+        const currentMtime = stats.mtimeMs
+        results.push({
+          path: file.path,
+          changed: currentMtime !== file.mtime,
+          mtime: currentMtime,
+        })
+      } catch {
+        results.push({ path: file.path, changed: true, mtime: 0, deleted: true })
+      }
+    }
+
+    return c.json({ results })
+  } catch (err) {
+    console.error("[EDIT API] Failed to check mtimes:", err)
+    return c.json({ error: "Failed to check mtimes" }, 500)
+  }
+})
+
+// API to write a file to an editable directory
+app.post("/api/edit/write-file", async c => {
+  const cookies = cookie.parse(c.req.header("cookie") || "")
+  if (!cookies.shell_session || !sessions.has(cookies.shell_session)) {
+    return c.json({ error: "Unauthorized" }, 401)
+  }
+
+  try {
+    const body = await c.req.json()
+    const directoryId = body.directory
+    const filePath = body.path
+    const content = body.content
+
+    if (!directoryId) {
+      return c.json({ error: "No directory specified" }, 400)
+    }
+
+    if (!filePath) {
+      return c.json({ error: "No file path provided" }, 400)
+    }
+
+    if (typeof content !== "string") {
+      return c.json({ error: "No content provided" }, 400)
+    }
+
+    const editableDir = getEditableDirectory(directoryId)
+    if (!editableDir) {
+      return c.json({ error: "Invalid directory" }, 400)
+    }
+
+    // SECURITY: Validate path doesn't contain traversal
+    if (filePath.includes("..") || filePath.startsWith("/")) {
+      return c.json({ error: "Invalid path" }, 400)
+    }
+
+    // Resolve and validate path
+    const resolvedPath = resolve(editableDir.path, filePath)
+    if (!resolvedPath.startsWith(editableDir.path)) {
+      return c.json({ error: "Path traversal detected" }, 400)
+    }
+
+    // Check content size (limit to 2MB)
+    const contentSize = Buffer.byteLength(content, "utf-8")
+    if (contentSize > 2 * 1024 * 1024) {
+      return c.json({ error: "Content too large (max 2MB)", size: contentSize }, 413)
+    }
+
+    // Ensure parent directory exists
+    const parentDir = dirname(resolvedPath)
+    if (!existsSync(parentDir)) {
+      mkdirSync(parentDir, { recursive: true })
+    }
+
+    // Write the file with 644 permissions (rw-r--r--)
+    writeFileSync(resolvedPath, content, { encoding: "utf-8", mode: 0o644 })
+    // Ensure permissions are set correctly (in case file existed)
+    chmodSync(resolvedPath, 0o644)
+
+    // Get new mtime after write
+    const { statSync } = await import("node:fs")
+    const stats = statSync(resolvedPath)
+
+    console.log(`[EDIT API] Wrote file: ${resolvedPath} (${contentSize} bytes, mode 644)`)
+    return c.json({
+      success: true,
+      message: `Saved ${filePath}`,
+      path: resolvedPath,
+      size: contentSize,
+      mtime: stats.mtimeMs,
+    })
+  } catch (err) {
+    console.error("[EDIT API] Failed to write file:", err)
+    return c.json({ error: "Failed to write file" }, 500)
+  }
+})
+
+// API to delete a file or folder from an editable directory
+app.post("/api/edit/delete", async c => {
+  const cookies = cookie.parse(c.req.header("cookie") || "")
+  if (!cookies.shell_session || !sessions.has(cookies.shell_session)) {
+    return c.json({ error: "Unauthorized" }, 401)
+  }
+
+  try {
+    const body = await c.req.json()
+    const directoryId = body.directory
+    const itemPath = body.path
+
+    if (!directoryId) {
+      return c.json({ error: "No directory specified" }, 400)
+    }
+
+    if (!itemPath) {
+      return c.json({ error: "No path provided" }, 400)
+    }
+
+    // Prevent deleting root
+    if (itemPath === "" || itemPath === "/" || itemPath === ".") {
+      return c.json({ error: "Cannot delete root directory" }, 400)
+    }
+
+    const editableDir = getEditableDirectory(directoryId)
+    if (!editableDir) {
+      return c.json({ error: "Invalid directory" }, 400)
+    }
+
+    // SECURITY: Validate path doesn't contain traversal
+    if (itemPath.includes("..") || itemPath.startsWith("/")) {
+      return c.json({ error: "Invalid path" }, 400)
+    }
+
+    // Resolve and validate path
+    const resolvedPath = resolve(editableDir.path, itemPath)
+    if (!resolvedPath.startsWith(editableDir.path + "/")) {
+      return c.json({ error: "Path traversal detected" }, 400)
+    }
+
+    // Cannot delete the editable directory itself
+    if (resolvedPath === editableDir.path) {
+      return c.json({ error: "Cannot delete the root directory" }, 400)
+    }
+
+    if (!existsSync(resolvedPath)) {
+      return c.json({ error: "Path not found" }, 404)
+    }
+
+    const { statSync } = await import("node:fs")
+    const stats = statSync(resolvedPath)
+    const isDirectory = stats.isDirectory()
+
+    // Delete the file or folder
+    console.log(`[EDIT API] Deleting ${isDirectory ? "folder" : "file"}: ${resolvedPath}`)
+    await rm(resolvedPath, { recursive: true, force: true })
+
+    console.log(`[EDIT API] Successfully deleted: ${resolvedPath}`)
+    return c.json({
+      success: true,
+      message: `Deleted ${isDirectory ? "folder" : "file"}: ${itemPath}`,
+      deletedPath: itemPath,
+      type: isDirectory ? "directory" : "file",
+    })
+  } catch (err) {
+    console.error("[EDIT API] Failed to delete:", err)
+    return c.json({ error: "Failed to delete" }, 500)
+  }
+})
+
+// API to copy a file in an editable directory
+app.post("/api/edit/copy", async c => {
+  const cookies = cookie.parse(c.req.header("cookie") || "")
+  if (!cookies.shell_session || !sessions.has(cookies.shell_session)) {
+    return c.json({ error: "Unauthorized" }, 401)
+  }
+
+  try {
+    const body = await c.req.json()
+    const directoryId = body.directory
+    const sourcePath = body.source
+    const destPath = body.destination
+
+    if (!directoryId) {
+      return c.json({ error: "No directory specified" }, 400)
+    }
+
+    if (!sourcePath || !destPath) {
+      return c.json({ error: "Source and destination paths required" }, 400)
+    }
+
+    const editableDir = getEditableDirectory(directoryId)
+    if (!editableDir) {
+      return c.json({ error: "Invalid directory" }, 400)
+    }
+
+    // SECURITY: Validate paths don't contain traversal
+    if (sourcePath.includes("..") || sourcePath.startsWith("/")) {
+      return c.json({ error: "Invalid source path" }, 400)
+    }
+    if (destPath.includes("..") || destPath.startsWith("/")) {
+      return c.json({ error: "Invalid destination path" }, 400)
+    }
+
+    // Resolve and validate paths
+    const resolvedSource = resolve(editableDir.path, sourcePath)
+    const resolvedDest = resolve(editableDir.path, destPath)
+
+    if (!resolvedSource.startsWith(editableDir.path + "/")) {
+      return c.json({ error: "Source path traversal detected" }, 400)
+    }
+    if (!resolvedDest.startsWith(editableDir.path + "/")) {
+      return c.json({ error: "Destination path traversal detected" }, 400)
+    }
+
+    if (!existsSync(resolvedSource)) {
+      return c.json({ error: "Source file not found" }, 404)
+    }
+
+    if (existsSync(resolvedDest)) {
+      return c.json({ error: "Destination already exists" }, 409)
+    }
+
+    // Ensure parent directory exists
+    const parentDir = dirname(resolvedDest)
+    if (!existsSync(parentDir)) {
+      mkdirSync(parentDir, { recursive: true })
+    }
+
+    // Copy the file
+    const { copyFileSync } = await import("node:fs")
+    copyFileSync(resolvedSource, resolvedDest)
+
+    console.log(`[EDIT API] Copied file: ${resolvedSource} -> ${resolvedDest}`)
+    return c.json({
+      success: true,
+      message: `Copied to ${destPath}`,
+      sourcePath,
+      destPath,
+    })
+  } catch (err) {
+    console.error("[EDIT API] Failed to copy:", err)
+    return c.json({ error: "Failed to copy file" }, 500)
   }
 })
 

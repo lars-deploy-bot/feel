@@ -1,4 +1,5 @@
 import { tool } from "@anthropic-ai/claude-agent-sdk"
+import { truncateOutput } from "@webalive/shared"
 import { z } from "zod"
 import { callBridgeApi } from "../../lib/bridge-api-client.js"
 
@@ -133,7 +134,7 @@ export async function readServerLogs(params: ReadServerLogsParams): Promise<Read
       content: [
         {
           type: "text" as const,
-          text: output,
+          text: truncateOutput(output),
         },
       ],
       isError: false,

@@ -1,4 +1,5 @@
 import { MessageErrorBoundary } from "@/features/chat/components/MessageErrorBoundary"
+import { AgentManagerMessage } from "@/features/chat/components/message-renderers/AgentManagerMessage"
 import { AssistantMessage } from "@/features/chat/components/message-renderers/AssistantMessage"
 import { CompactBoundaryMessage } from "@/features/chat/components/message-renderers/CompactBoundaryMessage"
 import { CompleteMessage } from "@/features/chat/components/message-renderers/CompleteMessage"
@@ -20,7 +21,13 @@ import type {
   SDKSystemMessage,
   SDKUserMessage,
 } from "@/features/chat/types/sdk-types"
-import { COMPONENT_TYPE, getMessageComponentType, isErrorResultMessage, type UIMessage } from "./message-parser"
+import {
+  COMPONENT_TYPE,
+  getMessageComponentType,
+  isErrorResultMessage,
+  type AgentManagerContent,
+  type UIMessage,
+} from "./message-parser"
 
 export function renderMessage(message: UIMessage): React.ReactNode {
   return <MessageErrorBoundary messageId={message.id}>{renderMessageContent(message)}</MessageErrorBoundary>
@@ -69,6 +76,11 @@ function renderMessageContent(message: UIMessage): React.ReactNode {
 
     case COMPONENT_TYPE.INTERRUPT:
       return <InterruptMessage data={message.content as BridgeInterruptMessage["data"]} />
+
+    case COMPONENT_TYPE.AGENT_MANAGER: {
+      const content = message.content as AgentManagerContent
+      return <AgentManagerMessage status={content.status} message={content.message} />
+    }
 
     default:
       return (

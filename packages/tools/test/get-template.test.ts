@@ -1,3 +1,4 @@
+import { readFile, readdir, stat } from "node:fs/promises"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
@@ -7,7 +8,263 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 const templatesPath = join(__dirname, "../supertemplate/templates")
 
+interface TemplateFrontmatter {
+  name?: string
+  description?: string
+  category?: string
+  complexity?: number
+  files?: number
+  dependencies?: string[]
+  estimatedTime?: string
+  estimatedTokens?: number
+  tags?: string[]
+  requires?: string[]
+  previewImage?: string
+  available?: boolean
+}
+
+/**
+ * Parse YAML frontmatter from a template file.
+ * Returns null if no valid frontmatter found.
+ */
+function parseFrontmatter(content: string): TemplateFrontmatter | null {
+  if (!content.startsWith("---")) {
+    return null
+  }
+
+  const endIndex = content.indexOf("---", 3)
+  if (endIndex === -1) {
+    return null
+  }
+
+  const frontmatter = content.slice(3, endIndex).trim()
+  const result: TemplateFrontmatter = {}
+
+  // Simple YAML parsing for our known fields
+  for (const line of frontmatter.split("\n")) {
+    const colonIndex = line.indexOf(":")
+    if (colonIndex === -1) continue
+
+    const key = line.slice(0, colonIndex).trim()
+    const value = line.slice(colonIndex + 1).trim()
+
+    // Skip array items (lines starting with -)
+    if (key.startsWith("-")) continue
+
+    switch (key) {
+      case "name":
+      case "description":
+      case "category":
+      case "estimatedTime":
+      case "previewImage":
+        result[key] = value
+        break
+      case "complexity":
+      case "files":
+      case "estimatedTokens":
+        result[key] = Number.parseInt(value, 10)
+        break
+      case "available":
+        result.available = value.toLowerCase() === "true"
+        break
+      case "tags":
+        // Parse inline array [a, b, c]
+        if (value.startsWith("[")) {
+          result.tags = value
+            .slice(1, -1)
+            .split(",")
+            .map(s => s.trim())
+        }
+        break
+      case "dependencies":
+        // If inline array
+        if (value.startsWith("[")) {
+          result.dependencies = value
+            .slice(1, -1)
+            .split(",")
+            .map(s => s.trim())
+            .filter(Boolean)
+        } else if (!value) {
+          // Multi-line array follows, parse next lines
+          result.dependencies = []
+        }
+        break
+      case "requires":
+        if (!value) {
+          result.requires = []
+        }
+        break
+    }
+  }
+
+  // Parse multi-line arrays (dependencies, requires)
+  const lines = frontmatter.split("\n")
+  let currentArray: "dependencies" | "requires" | null = null
+
+  for (const line of lines) {
+    if (line.match(/^dependencies:\s*$/)) {
+      currentArray = "dependencies"
+      result.dependencies = []
+    } else if (line.match(/^requires:\s*$/)) {
+      currentArray = "requires"
+      result.requires = []
+    } else if (line.match(/^\s+-\s+/)) {
+      if (currentArray && result[currentArray]) {
+        const value = line
+          .replace(/^\s+-\s+/, "")
+          .trim()
+          .replace(/^["']|["']$/g, "")
+        ;(result[currentArray] as string[]).push(value)
+      }
+    } else if (!line.startsWith(" ") && !line.startsWith("\t") && line.includes(":")) {
+      currentArray = null
+    }
+  }
+
+  return result
+}
+
+/**
+ * Check if a template is marked as available via YAML frontmatter.
+ * Templates with `available: false` in frontmatter are unavailable.
+ * Defaults to true if no frontmatter or not specified.
+ */
+async function isTemplateAvailable(filePath: string): Promise<boolean> {
+  const content = await readFile(filePath, "utf-8")
+  const frontmatter = parseFrontmatter(content)
+  return frontmatter?.available !== false
+}
+
+/**
+ * Recursively find all .md template files in the templates directory.
+ * Returns array of { filePath, category, id } for each template.
+ */
+async function findAllTemplateFiles(): Promise<Array<{ filePath: string; category: string; id: string }>> {
+  const results: Array<{ filePath: string; category: string; id: string }> = []
+  const categories = await readdir(templatesPath, { withFileTypes: true })
+
+  for (const entry of categories) {
+    if (!entry.isDirectory()) continue
+    const category = entry.name
+    const categoryPath = join(templatesPath, category)
+    const files = await readdir(categoryPath)
+
+    for (const file of files) {
+      if (!file.endsWith(".md")) continue
+      const id = file.replace(".md", "")
+      results.push({
+        filePath: join(categoryPath, file),
+        category,
+        id,
+      })
+    }
+  }
+  return results
+}
+
 describe("getTemplate", () => {
+  describe("All template files accessible", () => {
+    it("should have at least one template file", async () => {
+      const templates = await findAllTemplateFiles()
+      expect(templates.length).toBeGreaterThan(0)
+    })
+
+    it("all template files should be world-readable (catches permission issues)", async () => {
+      const templates = await findAllTemplateFiles()
+      const errors: string[] = []
+
+      for (const template of templates) {
+        const fileStat = await stat(template.filePath)
+        const mode = fileStat.mode
+
+        // Check if file has "others read" permission (0o004)
+        // This catches files with 600 permissions even when running as root
+        const othersCanRead = (mode & 0o004) !== 0
+
+        if (!othersCanRead) {
+          const octalMode = (mode & 0o777).toString(8)
+          errors.push(`${template.category}/${template.id}.md - mode ${octalMode}, missing world-read permission`)
+        }
+      }
+
+      if (errors.length > 0) {
+        throw new Error(`Template files with permission issues:\n${errors.join("\n")}\n\nFix with: chmod 644 <file>`)
+      }
+    })
+
+    it("all available templates should be retrievable via getTemplate()", async () => {
+      const templates = await findAllTemplateFiles()
+      const errors: string[] = []
+      let skipped = 0
+
+      for (const template of templates) {
+        const available = await isTemplateAvailable(template.filePath)
+        if (!available) {
+          skipped++
+          continue
+        }
+
+        const result = await getTemplate({ id: template.id }, templatesPath)
+        if (result.isError) {
+          errors.push(`${template.id}: ${result.content[0].text}`)
+        }
+      }
+
+      if (errors.length > 0) {
+        throw new Error(`Templates that failed to load:\n${errors.join("\n")}`)
+      }
+
+      // Sanity check: we should have tested at least one template
+      const tested = templates.length - skipped
+      expect(tested).toBeGreaterThan(0)
+    })
+
+    it("unavailable templates should return error when retrieved", async () => {
+      const templates = await findAllTemplateFiles()
+      let unavailableCount = 0
+
+      for (const template of templates) {
+        const available = await isTemplateAvailable(template.filePath)
+        if (!available) {
+          unavailableCount++
+          // Verify the actual getTemplate function returns an error
+          const result = await getTemplate({ id: template.id }, templatesPath)
+          expect(result.isError).toBe(true)
+          expect(result.content[0].text).toContain("not available")
+        }
+      }
+
+      // We expect at least one unavailable template (template-browser-v1.0.0)
+      expect(unavailableCount).toBeGreaterThanOrEqual(1)
+    })
+
+    it("all templates should have valid frontmatter", async () => {
+      const templates = await findAllTemplateFiles()
+      const errors: string[] = []
+      const requiredFields = ["name", "description", "category", "complexity", "available"]
+
+      for (const template of templates) {
+        const content = await readFile(template.filePath, "utf-8")
+        const frontmatter = parseFrontmatter(content)
+
+        if (!frontmatter) {
+          errors.push(`${template.category}/${template.id}.md - missing frontmatter`)
+          continue
+        }
+
+        for (const field of requiredFields) {
+          if (frontmatter[field as keyof TemplateFrontmatter] === undefined) {
+            errors.push(`${template.category}/${template.id}.md - missing required field: ${field}`)
+          }
+        }
+      }
+
+      if (errors.length > 0) {
+        throw new Error(`Templates with invalid frontmatter:\n${errors.join("\n")}`)
+      }
+    })
+  })
+
   describe("Valid template retrieval", () => {
     it("should retrieve carousel template by valid versioned ID", async () => {
       const params: GetTemplateParams = {
@@ -20,7 +277,7 @@ describe("getTemplate", () => {
       expect(result.content).toHaveLength(1)
       expect(result.content[0].type).toBe("text")
       expect(result.content[0].text).toContain("Auto-Scrolling Carousel")
-      expect(result.content[0].text).toContain("Photo Sliders")
+      expect(result.content[0].text).toContain("category: components")
       expect(result.content[0].text).toContain("Ready to implement this template")
     })
 

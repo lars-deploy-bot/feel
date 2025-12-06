@@ -51,22 +51,7 @@ interface DebugActions {
   }
 }
 
-// Extended type for backwards compatibility
-export type DebugStore = DebugState &
-  DebugActions & {
-    // Legacy direct action exports for backwards compatibility
-    toggleView: () => void
-    toggleSSETerminal: () => void
-    toggleSSETerminalMinimized: () => void
-    toggleSandbox: () => void
-    toggleSandboxMinimized: () => void
-    setDebugView: (show: boolean) => void
-    setSSETerminal: (show: boolean) => void
-    setSSETerminalMinimized: (minimized: boolean) => void
-    setSandbox: (show: boolean) => void
-    setSandboxMinimized: (minimized: boolean) => void
-    setSandboxWidth: (width: number) => void
-  }
+export type DebugStore = DebugState & DebugActions
 
 /**
  * Persisted store for debug UI visibility.
@@ -111,8 +96,6 @@ const useDebugStoreBase = create<DebugStore>()(
         isSandboxMinimized: false,
         sandboxWidth: null,
         actions,
-        // Legacy direct exports for backwards compatibility
-        ...actions,
       }
     },
     {

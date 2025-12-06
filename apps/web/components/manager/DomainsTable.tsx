@@ -105,6 +105,12 @@ export function DomainsTable({
               >
                 Port
               </th>
+              <th
+                scope="col"
+                className="py-3.5 px-6 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider"
+              >
+                Mode
+              </th>
               <th scope="col" className="relative py-3.5 px-6">
                 <span className="sr-only">Actions</span>
               </th>
@@ -152,6 +158,21 @@ export function DomainsTable({
                 </td>
                 <td className="py-4 px-6 text-sm text-slate-700 dark:text-slate-300">
                   {config.orphaned ? <span className="text-slate-400 dark:text-slate-500">—</span> : config.port}
+                </td>
+                <td className="py-4 px-6 text-sm">
+                  {statuses[domain]?.serveMode ? (
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                        statuses[domain].serveMode === "build"
+                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300"
+                          : "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
+                      }`}
+                    >
+                      {statuses[domain].serveMode}
+                    </span>
+                  ) : (
+                    <span className="text-slate-400 dark:text-slate-500">—</span>
+                  )}
                 </td>
                 <td className="py-4 px-6 text-sm text-right">
                   <div className="flex items-center justify-end gap-2">

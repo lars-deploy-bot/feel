@@ -44,6 +44,7 @@ function getApiBaseUrl(): string {
 export interface ToolResult {
   content: Array<{ type: "text"; text: string }>
   isError: boolean
+  [key: string]: unknown
 }
 
 export interface ApiCallOptions {

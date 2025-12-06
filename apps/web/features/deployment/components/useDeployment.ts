@@ -1,21 +1,24 @@
 import { useCallback } from "react"
 import toast from "react-hot-toast"
 import type { DeployResponse } from "@/features/deployment/types/deploy-subdomain"
-import { useDeployStore } from "@/lib/stores/deployStore"
+import {
+  useDeployIsDeploying,
+  useDeploymentStatus,
+  useDeploymentDomain,
+  useDeploymentErrors,
+  useFormActions,
+  useStatusActions,
+  useHistoryActions,
+} from "@/lib/stores/deployStore"
 
 export function useDeployment() {
-  const {
-    isDeploying,
-    deploymentStatus,
-    deploymentDomain,
-    deploymentErrors,
-    setIsDeploying,
-    setDeploymentStatus,
-    setDeploymentDomain,
-    setDeploymentErrors,
-    addToHistory,
-    resetForm,
-  } = useDeployStore()
+  const isDeploying = useDeployIsDeploying()
+  const deploymentStatus = useDeploymentStatus()
+  const deploymentDomain = useDeploymentDomain()
+  const deploymentErrors = useDeploymentErrors()
+  const { resetForm } = useFormActions()
+  const { setIsDeploying, setDeploymentStatus, setDeploymentDomain, setDeploymentErrors } = useStatusActions()
+  const { addToHistory } = useHistoryActions()
 
   const deploy = useCallback(
     async (domain: string, password: string): Promise<void> => {

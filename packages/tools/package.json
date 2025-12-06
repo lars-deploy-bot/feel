@@ -15,7 +15,7 @@
     }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && cp -r src/assets dist/",
     "dev": "tsc --watch",
     "type-check": "tsc --noEmit",
     "lint": "biome lint .",

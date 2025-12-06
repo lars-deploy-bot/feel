@@ -1,4 +1,5 @@
 import { login } from "./helpers"
+import { gotoChat } from "./helpers/assertions"
 import { handlers } from "./lib/handlers"
 import { expect, test } from "./fixtures"
 
@@ -7,7 +8,7 @@ test.beforeEach(async ({ page, tenant }) => {
 })
 
 test("has chat interface", async ({ page }) => {
-  await page.goto("/chat")
+  await gotoChat(page)
 
   await expect(page.locator('[data-testid="message-input"]')).toBeVisible()
   await expect(page.locator('[data-testid="send-button"]')).toBeVisible()
@@ -17,12 +18,7 @@ test("can send a message and receive response", async ({ page }) => {
   // Register mock BEFORE navigating to page
   await page.route("**/api/claude/stream", handlers.text("Hi there! How can I help you today?"))
 
-  await page.goto("/chat")
-
-  // Wait for workspace to be fully initialized (mounted + workspace set)
-  await expect(page.locator('[data-testid="workspace-ready"]')).toBeVisible({
-    timeout: 5000,
-  })
+  await gotoChat(page)
 
   const messageInput = page.locator('[data-testid="message-input"]')
   const sendButton = page.locator('[data-testid="send-button"]')

@@ -93,12 +93,11 @@ function getDomainPasswordsPath(): string {
 }
 
 /**
- * Load domain registry from domain-passwords.json
+ * Load port registry from domain-passwords.json
  *
- * Currently used for port assignment lookups. Legacy fields (passwordHash, email, credits)
- * are no longer written but may exist in old entries. All user data is now in Supabase.
+ * Only used for port assignment lookups. All user/auth data is in Supabase.
  *
- * @returns Domain registry object (domain → {port, ...legacy fields})
+ * @returns Port registry object (domain → {port, createdAt})
  */
 export function loadDomainPasswords(): DomainPasswords {
   try {

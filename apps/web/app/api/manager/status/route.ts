@@ -180,6 +180,24 @@ async function checkDnsResolution(
   }
 }
 
+async function checkServeMode(domain: string): Promise<"dev" | "build" | "unknown"> {
+  const slug = domain.replace(/\./g, "-")
+  const overridePath = `/etc/systemd/system/site@${slug}.service.d/override.conf`
+
+  try {
+    const { stdout } = await execAsync(`cat "${overridePath}" 2>/dev/null || echo ""`)
+    if (stdout.includes("preview")) {
+      return "build"
+    }
+    if (stdout.includes("dev") || stdout.trim() === "") {
+      return "dev"
+    }
+    return "dev" // Default to dev if no override
+  } catch {
+    return "dev" // Default to dev
+  }
+}
+
 async function checkViteConfigPort(
   domain: string,
   expectedPort: number,
@@ -253,6 +271,7 @@ export async function GET(req: NextRequest) {
       siteDirectoryExists,
       dnsCheck,
       vitePortCheck,
+      serveMode,
     ] = await Promise.all([
       checkPortListening(port),
       checkHttpAccessible(domain),
@@ -262,6 +281,7 @@ export async function GET(req: NextRequest) {
       checkSiteDirectory(domain),
       checkDnsResolution(domain, serverIp),
       checkViteConfigPort(domain, port),
+      checkServeMode(domain),
     ])
 
     return {
@@ -281,6 +301,7 @@ export async function GET(req: NextRequest) {
       viteExpectedPort: port,
       viteActualPort: vitePortCheck.actualPort,
       hasSystemdPortOverride: vitePortCheck.hasSystemdOverride,
+      serveMode,
       createdAt: domainInfo.createdAt || null,
       lastChecked: Date.now(),
     }

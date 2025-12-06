@@ -19,7 +19,9 @@ Use \`get_workflow({ workflow_type: "<type>" })\` to retrieve a specific workflo
 **Available types:**
 - bug-debugging
 - new-feature
-- package-installation`
+- package-installation
+- website-shippable-check
+- functionality-check`
 
     return {
       content: [
@@ -49,7 +51,7 @@ export const listWorkflowsTool = tool(
   "list_workflows",
   `Lists all available workflow decision trees. Use this to discover what workflows exist before retrieving a specific one with get_workflow.
 
-Returns a simple list of available workflow types (bug-debugging, new-feature, package-installation).`,
+Returns a simple list of available workflow types (bug-debugging, new-feature, package-installation, website-shippable-check, functionality-check).`,
   {},
   async () => {
     return listWorkflows()

@@ -14,6 +14,7 @@ import {
   useAuthModalTitle,
 } from "@/lib/stores/authModalStore"
 import { authStore } from "@/lib/stores/authStore"
+import { useCurrentWorkspace, useWorkspaceActions } from "@/lib/stores/workspaceStore"
 
 /**
  * AuthModal - Email-first authentication modal
@@ -34,6 +35,10 @@ export function AuthModal() {
   const customTitle = useAuthModalTitle()
   const customDescription = useAuthModalDescription()
   const { close, setMode, setEmail: setStoredEmail, handleSuccess } = useAuthModalActions()
+
+  // Workspace validation after login
+  const currentWorkspace = useCurrentWorkspace()
+  const { setCurrentWorkspace } = useWorkspaceActions()
 
   // Form state
   const [email, setEmail] = useState("")
@@ -165,6 +170,13 @@ export function AuthModal() {
 
       // Update auth store
       authStore.setAuthenticated()
+
+      // Validate current workspace against JWT workspaces
+      // If the localStorage workspace isn't in the JWT, clear it to force re-selection
+      if (currentWorkspace && data.workspaces && !data.workspaces.includes(currentWorkspace)) {
+        console.log(`[AuthModal] Clearing invalid workspace: ${currentWorkspace} (not in JWT)`)
+        setCurrentWorkspace(null)
+      }
 
       // Call success callback
       handleSuccess({ id: data.userId, email: email.trim() })

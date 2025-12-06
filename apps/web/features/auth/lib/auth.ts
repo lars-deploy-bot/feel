@@ -25,64 +25,60 @@ export interface SessionUser {
   name: string | null
   /** Whether user can select any model without their own API key */
   canSelectAnyModel: boolean
+  /** Whether user has admin privileges (can toggle feature flags, etc.) */
+  isAdmin: boolean
 }
 
 /**
- * Hardcoded list of emails that can select any model without their own API key.
+ * Hardcoded list of admin emails.
+ * These users can:
+ * - Select any model without their own API key
+ * - Toggle feature flags in Settings
  * Server-side only - never exposed to client code.
  */
-const UNRESTRICTED_MODEL_EMAILS = ["eedenlars@gmail.com", "barendbootsma@gmail.com"]
+const ADMIN_EMAILS = ["eedenlars@gmail.com", "barendbootsma@gmail.com"]
 
-function isUnrestrictedModelUser(email: string): boolean {
-  return UNRESTRICTED_MODEL_EMAILS.some(e => e.toLowerCase() === email.toLowerCase())
+function isAdminUser(email: string): boolean {
+  return ADMIN_EMAILS.some(e => e.toLowerCase() === email.toLowerCase())
 }
 
 export async function getSessionUser(): Promise<SessionUser | null> {
   const jar = await cookies()
   const sessionCookie = jar.get(COOKIE_NAMES.SESSION)
 
-  console.log("[Auth] getSessionUser - Cookie lookup:", {
-    cookieName: COOKIE_NAMES.SESSION,
-    cookieFound: !!sessionCookie,
-    cookieValueLength: sessionCookie?.value?.length || 0,
-  })
-
   if (!sessionCookie?.value) {
-    console.log("[Auth] No session cookie found")
     return null
   }
 
   // Test mode
   if (env.BRIDGE_ENV === "local" && sessionCookie.value === SECURITY.LOCAL_TEST.SESSION_VALUE) {
     const testEmail = SECURITY.LOCAL_TEST.EMAIL
+    const isAdmin = isAdminUser(testEmail)
     return {
       id: SECURITY.LOCAL_TEST.SESSION_VALUE,
       email: testEmail,
       name: "Test User",
-      canSelectAnyModel: isUnrestrictedModelUser(testEmail),
+      canSelectAnyModel: isAdmin,
+      isAdmin,
     }
   }
 
   // Verify JWT and extract user data (NO DATABASE QUERY - all data in JWT)
   const payload = await verifySessionToken(sessionCookie.value)
-  console.log("[Auth] JWT verification result:", {
-    hasPayload: !!payload,
-    userId: payload?.userId,
-    email: payload?.email,
-  })
 
   if (!payload?.userId) {
-    console.warn("[Auth] Invalid JWT token - no userId in payload")
     return null
   }
 
   // Return user data directly from JWT (eliminates iam.users query)
   // Old tokens without email/workspaces will be rejected by verifySessionToken
+  const isAdmin = isAdminUser(payload.email)
   return {
     id: payload.userId,
     email: payload.email,
     name: payload.name,
-    canSelectAnyModel: isUnrestrictedModelUser(payload.email),
+    canSelectAnyModel: isAdmin,
+    isAdmin,
   }
 }
 
