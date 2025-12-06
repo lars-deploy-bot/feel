@@ -1,0 +1,87 @@
+/**
+ * Google Maps Search - Core Logic
+ *
+ * Searches Google Maps for business information using Puppeteer.
+ * Supports both single business pages and multi-result feeds.
+ */
+
+import type { GoogleMapsBusiness, GoogleMapsOptions, GoogleMapsResult, SearchInput } from "./types.js"
+import {
+  cleanupBrowser,
+  detectFeed,
+  navigateToGoogleMaps,
+  normalizeHostname,
+  sanitizeJSON,
+  setupPage,
+} from "./utils.js"
+import { searchSingleBusiness } from "./extractors/detail.js"
+import { handleMultipleFeed } from "./extractors/multiple.js"
+
+export type SearchResult = { success: true; data: GoogleMapsResult } | { success: false; error: string }
+
+/**
+ * Search Google Maps for business information.
+ *
+ * @param input - Search configuration (query, mode, result count)
+ * @param options - Additional options (logging, website filter, concurrency)
+ * @returns Search result with businesses and HTML
+ */
+export async function searchGoogleMaps(input: SearchInput, options: GoogleMapsOptions = {}): Promise<SearchResult> {
+  const { onlyIncludeWithWebsite, concurrency = 3 } = options
+
+  const { browser, page } = await setupPage()
+
+  try {
+    if (input.mode === "url") {
+      await page.goto(input.url, { waitUntil: "networkidle2" })
+    } else {
+      await navigateToGoogleMaps(page, input.query)
+    }
+  } catch (err) {
+    await cleanupBrowser(browser)
+    return {
+      success: false,
+      error: `Navigation failed: ${err instanceof Error ? err.message : String(err)}`,
+    }
+  }
+
+  const isFeed = input.mode !== "url" && (await detectFeed(page))
+
+  if (isFeed) {
+    return await handleMultipleFeed({
+      page,
+      browser,
+      input,
+      onlyIncludeWithWebsite,
+      concurrency,
+    })
+  }
+
+  // Single business page
+  const html = await page.content()
+  const singleRes = await searchSingleBusiness(html, page.url())
+  await cleanupBrowser(browser)
+
+  if (!singleRes.success) {
+    return singleRes
+  }
+
+  let bizArr: GoogleMapsBusiness[] =
+    singleRes.data.businesses.length > 0
+      ? [sanitizeJSON<GoogleMapsBusiness>(singleRes.data.businesses[0] as Record<string, unknown>)]
+      : []
+
+  if (onlyIncludeWithWebsite) {
+    bizArr = bizArr.filter(
+      b => b.bizWebsite && normalizeHostname(b.bizWebsite) === normalizeHostname(onlyIncludeWithWebsite),
+    )
+  }
+
+  return {
+    success: true,
+    data: {
+      businesses: bizArr,
+      html,
+    },
+  }
+}

@@ -1,0 +1,26 @@
+[Unit]
+Description=Google Scraper MCP Server
+Documentation=https://github.com/anthropics/claude-code
+After=network.target
+
+[Service]
+Type=simple
+User=claude-bridge
+Group=claude-bridge
+WorkingDirectory=/root/webalive/claude-bridge/apps/mcp-servers/google-scraper
+ExecStart=/usr/bin/node dist/index.js
+Restart=always
+RestartSec=5
+
+# Security hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/tmp
+
+# Environment
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

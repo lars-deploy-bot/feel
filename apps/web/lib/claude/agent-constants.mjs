@@ -113,6 +113,11 @@ export function getMcpServers(_workspacePath, options = {}) {
   const servers = {
     "alive-workspace": workspaceInternalMcp,
     "alive-tools": toolsInternalMcp,
+    // Google Maps scraper - runs as separate process for isolation
+    "google-scraper": {
+      command: "node",
+      args: ["./apps/mcp-servers/google-scraper/dist/index.js"],
+    },
   }
 
   // Add OAuth MCP servers for connected providers
