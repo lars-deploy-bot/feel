@@ -15,7 +15,7 @@ requires:
   - TypeScript
   - Vite
   - Node 18+
-previewImage: https://terminal.goalive.nl/_images/t/riggedwheel.alive.best/o/8360a2eb511f1141/v/orig.webp
+previewImage: https://terminal.goalive.nl/_images/t/alive.best/o/2fa4c3e6ac7f134e/v/orig.webp
 available: true
 ---
 

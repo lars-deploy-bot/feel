@@ -291,11 +291,13 @@ if (result.success) {
 
 **Location**: `/root/webalive/claude-bridge/ops/caddy/Caddyfile`
 
+**⚠️ WARNING**: Reloading Caddy will terminate any active Claude Code sessions (including this one if you're reading this in Claude Code). Save your work and be prepared to restart the session after reload.
+
 ```bash
 # 1. Edit Caddyfile (add domain block)
 nano /root/webalive/claude-bridge/ops/caddy/Caddyfile
 
-# 2. Reload (zero-downtime)
+# 2. Reload (zero-downtime for HTTP, but kills SSE connections)
 systemctl reload caddy
 
 # 3. Verify

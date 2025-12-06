@@ -164,9 +164,28 @@ const categories = [...new Set(templates.map(t => t.category))]
 | `dependencies` | `dependencies` | Strip versions for display? |
 
 ## Testing Checklist
-- [ ] `bun run test` passes in packages/tools
+- [x] `bun run test` passes in packages/tools
 - [ ] `bun run test` passes in apps/web
 - [ ] SuperTemplatesModal shows all available templates
 - [ ] Categories filter works
 - [ ] Template preview shows correct data
 - [ ] "Use template" triggers correct template ID
+
+## Implementation Complete (2024-12-06)
+
+All 8 steps have been completed:
+1. Created `packages/tools/src/lib/template-frontmatter.ts` - Shared parser
+2. Created `packages/tools/src/tools/templates/list-templates.ts` - List function
+3. Updated `packages/tools/src/tools/templates/get-template.ts` - Uses shared parser
+4. Updated `packages/tools/test/get-template.test.ts` - Imports shared parser
+5. Updated `packages/tools/src/index.ts` - Exports new functions
+6. Created `apps/web/app/api/templates/list/route.ts` - API endpoint
+7. Updated UI components to use API:
+   - `apps/web/types/templates.ts` - New types file
+   - `apps/web/components/modals/SuperTemplatesModal.tsx` - Fetches from API
+   - `apps/web/components/ui/SuperTemplateCard.tsx` - Updated imports
+   - `apps/web/components/ui/SuperTemplatePreview.tsx` - Updated imports
+   - `apps/web/components/modals/SuperTemplateConfirmDialog.tsx` - Updated imports
+8. Deleted legacy files:
+   - `apps/web/data/templates.ts`
+   - `apps/web/data/template-ids.ts`

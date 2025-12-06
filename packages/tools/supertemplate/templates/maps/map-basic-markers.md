@@ -12,7 +12,7 @@ estimatedTokens: 20
 tags: [leaflet, maps, markers]
 requires:
   - React 18+
-previewImage: https://terminal.goalive.nl/_images/t/protino.alive.best/o/5db9ecf5ddb7e5e7/v/orig.webp
+previewImage: https://terminal.goalive.nl/_images/t/alive.best/o/b3b8acdfe5207a6a/v/orig.webp
 available: true
 ---
 

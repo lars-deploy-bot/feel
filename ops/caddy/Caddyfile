@@ -191,9 +191,9 @@ six.goalive.nl {
 # Claude Bridge staging and dev environments
 # (Now defined in /etc/caddy/Caddyfile.staging)
 
-# Terminal app (standalone Hono server with automatic WebSocket support)
+# Terminal app (Go shell server)
 shell.terminal.goalive.nl {
-    reverse_proxy localhost:3888
+    reverse_proxy localhost:3889
 }
 
 go.goalive.nl {
@@ -201,7 +201,7 @@ go.goalive.nl {
 }
 
 sk.goalive.nl {
-    reverse_proxy localhost:3888
+    reverse_proxy localhost:3889
 }
 
 # NOTE: alive.best subdomain entries are added dynamically by @webalive/site-controller

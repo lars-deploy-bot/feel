@@ -13,7 +13,7 @@ requires:
   - Vite 5+
   - React 18+
   - Node 18+
-previewImage: /templates/previews/placeholder.svg
+previewImage: https://terminal.goalive.nl/_images/t/alive.best/o/dd3feda2810fc19a/v/orig.webp
 available: true
 ---
 

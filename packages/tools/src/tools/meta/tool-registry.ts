@@ -248,7 +248,7 @@ export const TOOL_REGISTRY: ToolMetadata[] = [
         name: "template_id",
         type: "string",
         required: true,
-        description: "Template ID (e.g., 'carousel-thumbnails-v1.0.0')",
+        description: "Template ID (e.g., 'carousel-thumbnails')",
       },
     ],
   },

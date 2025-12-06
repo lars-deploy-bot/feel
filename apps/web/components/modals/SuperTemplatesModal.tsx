@@ -1,10 +1,10 @@
 "use client"
 
 import { X } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { SuperTemplateCard } from "@/components/ui/SuperTemplateCard"
 import { SuperTemplatePreview } from "@/components/ui/SuperTemplatePreview"
-import { TEMPLATE_CATEGORIES, getTemplatesByCategory, type Template, type TemplateCategory } from "@/data/templates"
+import { TEMPLATE_CATEGORIES, type Template, type TemplateCategory } from "@/types/templates"
 
 interface SuperTemplatesModalProps {
   onClose: () => void
@@ -12,8 +12,32 @@ interface SuperTemplatesModalProps {
 }
 
 export function SuperTemplatesModal({ onClose, onInsertTemplate }: SuperTemplatesModalProps) {
+  const [templates, setTemplates] = useState<Template[]>([])
+  const [loading, setLoading] = useState(true)
   const [activeCategory, setActiveCategory] = useState<TemplateCategory>("components")
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null)
+
+  // Fetch templates from API
+  useEffect(() => {
+    async function fetchTemplates() {
+      try {
+        const res = await fetch("/api/templates/list")
+        const data = await res.json()
+        setTemplates(data.templates || [])
+      } catch (error) {
+        console.error("Failed to fetch templates:", error)
+        setTemplates([])
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchTemplates()
+  }, [])
+
+  const getTemplatesByCategory = useCallback(
+    (category: TemplateCategory) => templates.filter(t => t.category === category),
+    [templates],
+  )
 
   const currentTemplates = getTemplatesByCategory(activeCategory)
 
@@ -169,6 +193,10 @@ export function SuperTemplatesModal({ onClose, onInsertTemplate }: SuperTemplate
           <div className="flex-1 overflow-y-auto p-6 md:p-8">
             {selectedTemplate ? (
               <SuperTemplatePreview template={selectedTemplate} onBack={handleBack} onInsert={handleInsertClick} />
+            ) : loading ? (
+              <div className="flex flex-col items-center justify-center h-full text-center">
+                <p className="text-base font-[200] text-black/40 dark:text-white/40">Loading templates...</p>
+              </div>
             ) : currentTemplates.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <p className="text-base font-[200] text-black/40 dark:text-white/40">

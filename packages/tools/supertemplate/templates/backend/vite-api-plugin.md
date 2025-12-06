@@ -12,7 +12,7 @@ tags: [backend, database, server, api, sqlite]
 requires:
   - Vite 5+
   - Node 18+
-previewImage: https://terminal.goalive.nl/_images/t/alive.best/o/1b98911009639b0d/v/orig.webp
+previewImage: https://terminal.goalive.nl/_images/t/alive.best/o/3e51d4885e323647/v/orig.webp
 available: true
 ---
 

@@ -12,7 +12,7 @@ requires:
   - Vite 5+
   - React 18+
   - TailwindCSS
-previewImage: /templates/previews/placeholder.svg
+previewImage: https://terminal.goalive.nl/_images/t/alive.best/o/e6aa1a718bcfd3dc/v/orig.webp
 available: true
 ---
 

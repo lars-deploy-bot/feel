@@ -1,6 +1,6 @@
 "use client"
 
-import type { Template } from "@/data/templates"
+import type { Template } from "@/types/templates"
 
 interface SuperTemplateConfirmDialogProps {
   template: Template

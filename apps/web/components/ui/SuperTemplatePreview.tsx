@@ -1,7 +1,7 @@
 "use client"
 
 import { ArrowLeft } from "lucide-react"
-import type { Template } from "@/data/templates"
+import type { Template } from "@/types/templates"
 
 interface SuperTemplatePreviewProps {
   template: Template

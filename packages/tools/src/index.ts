@@ -59,3 +59,21 @@ export {
   type PermissionMode,
   type SettingsSource,
 } from "./lib/ask-ai-full.js"
+
+// Template utilities
+export {
+  listTemplates,
+  getTemplatesByCategory,
+  getTemplateById,
+  TEMPLATE_CATEGORIES,
+  type TemplateListItem,
+  type TemplateCategory,
+} from "./tools/templates/list-templates.js"
+export {
+  parseFrontmatter,
+  isTemplateAvailable,
+  validateFrontmatter,
+  REQUIRED_FRONTMATTER_FIELDS,
+  type TemplateFrontmatter,
+  type PartialTemplateFrontmatter,
+} from "./lib/template-frontmatter.js"

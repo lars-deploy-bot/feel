@@ -3,6 +3,7 @@ import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { tool } from "@anthropic-ai/claude-agent-sdk"
 import { z } from "zod"
+import { isTemplateAvailable } from "../../lib/template-frontmatter.js"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -14,8 +15,7 @@ export const getTemplateParamsSchema = {
   id: z
     .string()
     .describe(
-      "Versioned template ID in format {name}-v{major}.{minor}.{patch}. " +
-        "Examples: 'carousel-thumbnails-v1.0.0', 'map-basic-markers-v1.0.0'. " +
+      "Template ID (e.g., 'carousel-thumbnails', 'map-basic-markers'). " +
         "CRITICAL: Only use when user message contains EXACT phrase 'Use template: {template-id}'. " +
         "Do NOT call for natural language requests like 'build a carousel' or 'create a map'.",
     ),
@@ -37,32 +37,6 @@ function isPathWithinBase(resolvedPath: string, basePath: string): boolean {
   const normalizedPath = resolve(resolvedPath)
   const normalizedBase = resolve(basePath)
   return normalizedPath.startsWith(`${normalizedBase}/`) || normalizedPath === normalizedBase
-}
-
-/**
- * Check if a template is marked as available via YAML frontmatter.
- * Templates with `available: false` in frontmatter are unavailable.
- * Returns true if no frontmatter or `available` field not specified.
- */
-function isTemplateAvailable(content: string): boolean {
-  if (!content.startsWith("---")) {
-    return true // No frontmatter = available
-  }
-
-  const endIndex = content.indexOf("---", 3)
-  if (endIndex === -1) {
-    return true // Malformed frontmatter = available
-  }
-
-  const frontmatter = content.slice(3, endIndex)
-
-  // Look for "available: false" or "available:false" (case-insensitive)
-  const availableMatch = frontmatter.match(/^available:\s*(true|false)\s*$/im)
-  if (availableMatch) {
-    return availableMatch[1].toLowerCase() === "true"
-  }
-
-  return true // Not specified = available
 }
 
 /**
@@ -140,26 +114,13 @@ export async function getTemplate(params: GetTemplateParams, templatesBasePath: 
       }
     }
 
-    // Security: Validate characters (only alphanumeric, hyphens, dots)
-    if (!/^[a-z0-9.-]+$/i.test(id)) {
+    // Security: Validate characters (only alphanumeric and hyphens)
+    if (!/^[a-z0-9-]+$/i.test(id)) {
       return {
         content: [
           {
             type: "text" as const,
-            text: "Invalid template ID: contains invalid characters. Only alphanumeric, hyphens, and dots are allowed.",
-          },
-        ],
-        isError: true,
-      }
-    }
-
-    // Validate template ID format (should end with -vX.Y.Z)
-    if (!id.match(/^[a-z0-9-]+-v\d+\.\d+\.\d+$/i)) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `Invalid template ID format: "${id}". Template IDs should match pattern: {name}-v{major}.{minor}.{patch} (e.g., "carousel-thumbnails-v1.0.0").`,
+            text: "Invalid template ID: contains invalid characters. Only alphanumeric characters and hyphens are allowed.",
           },
         ],
         isError: true,
@@ -304,7 +265,7 @@ export async function getTemplate(params: GetTemplateParams, templatesBasePath: 
 export const getAliveSuperTemplateTool = tool(
   "get_alive_super_template",
   "Retrieves implementation instructions for a specific Alive Super Template. " +
-    "CRITICAL TRIGGER: Only call when user message contains EXACT phrase 'Use template: carousel-thumbnails-v1.0.0' (or similar template ID). " +
+    "CRITICAL TRIGGER: Only call when user message contains EXACT phrase 'Use template: carousel-thumbnails' (or similar template ID). " +
     "This phrase is sent by the UI when user clicks a template button. " +
     "DO NOT call for natural language requests like 'build a carousel', 'create a map', or 'I need file upload'. " +
     "For those, implement from scratch - do NOT try to find a matching template. " +
