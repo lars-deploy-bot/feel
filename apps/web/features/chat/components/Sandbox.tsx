@@ -1,10 +1,10 @@
 "use client"
 import { ExternalLink, RotateCw } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { PREVIEW_MESSAGES } from "@webalive/shared"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
 import { useResizablePanel } from "@/lib/hooks/useResizablePanel"
-import { getPreviewUrl } from "@/lib/preview-utils"
+import { getPreviewUrl, getSiteUrl } from "@/lib/preview-utils"
 import { useDebugActions, useSandboxWidth } from "@/lib/stores/debug-store"
 
 export function Sandbox() {
@@ -19,9 +19,49 @@ export function Sandbox() {
   const inputRef = useRef<HTMLInputElement>(null)
   const [path, setPath] = useState("/")
   const [isLoading, setIsLoading] = useState(true)
+  const [previewToken, setPreviewToken] = useState<string | null>(null)
+  const tokenFetchRef = useRef<AbortController | null>(null)
 
-  const baseUrl = workspace ? getPreviewUrl(workspace).replace(/\/$/, "") : ""
-  const fullUrl = `${baseUrl}${path}`
+  // Preview URL with token for iframe (bypasses third-party cookie blocking)
+  const previewUrl = workspace ? getPreviewUrl(workspace, { path, token: previewToken ?? undefined }) : ""
+
+  // Fetch preview token for iframe authentication
+  const fetchPreviewToken = useCallback(async () => {
+    // Cancel any in-flight request
+    tokenFetchRef.current?.abort()
+    tokenFetchRef.current = new AbortController()
+
+    try {
+      const response = await fetch("/api/auth/preview-token", {
+        method: "POST",
+        signal: tokenFetchRef.current.signal,
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setPreviewToken(data.token)
+      }
+    } catch (error) {
+      // Ignore abort errors
+      if (error instanceof Error && error.name !== "AbortError") {
+        console.error("[Sandbox] Failed to fetch preview token:", error)
+      }
+    }
+  }, [])
+
+  // Fetch token on mount and when workspace changes
+  useEffect(() => {
+    if (workspace) {
+      fetchPreviewToken()
+    }
+    return () => tokenFetchRef.current?.abort()
+  }, [workspace, fetchPreviewToken])
+
+  // Refresh token every 4 minutes (tokens expire in 5 minutes)
+  useEffect(() => {
+    if (!workspace) return
+    const interval = setInterval(fetchPreviewToken, 4 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [workspace, fetchPreviewToken])
 
   // Set to half viewport on first open (when no saved preference)
   useEffect(() => {
@@ -42,7 +82,7 @@ export function Sandbox() {
   const handleRefresh = () => {
     if (iframeRef.current) {
       setIsLoading(true)
-      iframeRef.current.src = fullUrl
+      iframeRef.current.src = previewUrl
     }
   }
 
@@ -57,14 +97,25 @@ export function Sandbox() {
 
   const handlePathSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && inputRef.current) {
-      let newPath = inputRef.current.value.trim()
+      const inputValue = inputRef.current.value.trim()
+
+      // Check if it's an external URL - open in new tab instead of preview
+      const lowerInput = inputValue.toLowerCase()
+      if (lowerInput.startsWith("http://") || lowerInput.startsWith("https://")) {
+        window.open(inputValue, "_blank", "noopener,noreferrer")
+        // Reset input to current path
+        inputRef.current.value = path
+        return
+      }
+
+      let newPath = inputValue
       if (!newPath.startsWith("/")) newPath = `/${newPath}`
       setPath(newPath)
       inputRef.current.value = newPath
-      // Directly set iframe src to force navigation
-      if (iframeRef.current) {
+      // Directly set iframe src to force navigation (include preview_token for auth)
+      if (iframeRef.current && workspace) {
         setIsLoading(true)
-        iframeRef.current.src = `${baseUrl}${newPath}`
+        iframeRef.current.src = getPreviewUrl(workspace, { path: newPath, token: previewToken ?? undefined })
       }
     }
   }
@@ -146,7 +197,7 @@ export function Sandbox() {
             placeholder="/"
           />
           <a
-            href={fullUrl}
+            href={workspace ? getSiteUrl(workspace, path) : "#"}
             target="_blank"
             rel="noopener noreferrer"
             className="text-neutral-500 hover:text-neutral-300 transition-colors"
@@ -161,8 +212,8 @@ export function Sandbox() {
       <div className="flex-1 overflow-hidden bg-white relative">
         {workspace && workspace.length > 0 && workspace.includes(".") ? (
           <>
-            {/* Loading overlay */}
-            {isLoading && (
+            {/* Loading overlay - show while fetching token or loading iframe */}
+            {(isLoading || !previewToken) && (
               <div className="absolute inset-0 z-10 flex items-center justify-center bg-neutral-900">
                 <div className="flex flex-col items-center gap-4">
                   <div className="relative w-12 h-12">
@@ -174,14 +225,17 @@ export function Sandbox() {
                 </div>
               </div>
             )}
-            <iframe
-              ref={iframeRef}
-              src={fullUrl}
-              className="w-full h-full border-0"
-              title={`Preview: ${workspace}`}
-              referrerPolicy="no-referrer-when-downgrade"
-              onLoad={handleIframeLoad}
-            />
+            {/* Only render iframe after preview token is ready to avoid 401 race condition */}
+            {previewToken && (
+              <iframe
+                ref={iframeRef}
+                src={previewUrl}
+                className="w-full h-full border-0"
+                title={`Preview: ${workspace}`}
+                referrerPolicy="no-referrer-when-downgrade"
+                onLoad={handleIframeLoad}
+              />
+            )}
           </>
         ) : (
           <div className="flex items-center justify-center h-full text-neutral-700 bg-neutral-900">

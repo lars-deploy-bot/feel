@@ -113,7 +113,7 @@ ${previewHost} {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -151,7 +151,7 @@ function generatePreviewSection(mappings: DomainMapping[]): string {
 # Features:
 # - Host header set to "localhost" for Vite dev server compatibility
 # - X-Frame-Options removed to allow iframe embedding
-# - CSP frame-ancestors restricts to terminal.goalive.nl domains only
+# - CSP frame-ancestors restricts to terminal.goalive.nl and app.alive.best
 # - forward_auth enforces session authentication at Caddy edge
 # ============================================================================
 

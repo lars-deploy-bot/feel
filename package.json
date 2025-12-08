@@ -42,7 +42,7 @@
     "setup-webhook": "./scripts/maintenance/setup-webhook.sh",
     "update-cors": "./scripts/maintenance/update-cors-domains.sh",
     "widget": "cd apps/widget-server && ./build.sh && go run main.go",
-    "redis:install": "bun --filter @alive-brug/redis install",
+    "redis:setup": "bun --filter @alive-brug/redis setup",
     "redis:start": "bun --filter @alive-brug/redis start",
     "redis:stop": "bun --filter @alive-brug/redis stop",
     "redis:status": "bun --filter @alive-brug/redis status",

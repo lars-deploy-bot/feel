@@ -51,9 +51,6 @@ export async function login(
   console.log(`[Login Debug] Email: ${tenant.email}, Status: ${loginResponse.status()}`)
 
   // Don't wait for redirect - tests handle their own navigation
-  // The login page may call router.push("/chat") but client-side navigation
-  // doesn't always trigger Playwright's navigation detection reliably
-
   return { loginResponse, loginData }
 }
 

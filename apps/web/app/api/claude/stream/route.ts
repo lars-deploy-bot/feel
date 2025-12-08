@@ -30,7 +30,7 @@ import {
 import { fetchOAuthTokens } from "@/lib/oauth/fetch-oauth-tokens"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { env } from "@/lib/env"
-import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
+import { ErrorCodes } from "@/lib/error-codes"
 import { logInput } from "@/lib/input-logger"
 import { type ClaudeModel, DEFAULT_MODEL, isValidClaudeModel } from "@/lib/models/claude-models"
 import { createRequestLogger } from "@/lib/request-logger"
@@ -178,19 +178,10 @@ export async function POST(req: NextRequest) {
       // Guard: reject if no sufficient credits AND no API key
       if (orgCredits < COST_ESTIMATE && !userApiKey) {
         logger.log(`Insufficient credits (${orgCredits}/${COST_ESTIMATE} required) and no fallback API key`)
-        return NextResponse.json(
-          {
-            ok: false,
-            error: ErrorCodes.INSUFFICIENT_TOKENS,
-            message:
-              orgCredits <= 0
-                ? "Organization credits exhausted. Add your API key in Settings to continue using Claude."
-                : `Insufficient credits (${orgCredits}/${COST_ESTIMATE} required). Add your API key in Settings as a fallback.`,
-            workspace: resolvedWorkspaceName,
-            requestId,
-          },
-          { status: 402 },
-        )
+        return createErrorResponse(ErrorCodes.INSUFFICIENT_TOKENS, 402, {
+          workspace: resolvedWorkspaceName,
+          requestId,
+        })
       }
 
       // Cases 1 & 2: We're guaranteed to have either org credits or a user API key
@@ -203,20 +194,15 @@ export async function POST(req: NextRequest) {
       }
     } catch (workspaceError) {
       logger.error("Workspace resolution failed:", workspaceError)
-      return NextResponse.json(
-        {
-          ok: false,
-          error: ErrorCodes.WORKSPACE_NOT_FOUND,
-          message: getErrorMessage(ErrorCodes.WORKSPACE_NOT_FOUND, { host: requestWorkspace || host }),
-          details: {
-            host,
-            requestWorkspace,
-            error: workspaceError instanceof Error ? workspaceError.message : "Unknown error",
-          },
-          requestId,
+      return createErrorResponse(ErrorCodes.WORKSPACE_NOT_FOUND, 404, {
+        host: requestWorkspace || host,
+        details: {
+          host,
+          requestWorkspace,
+          error: workspaceError instanceof Error ? workspaceError.message : "Unknown error",
         },
-        { status: 404 },
-      )
+        requestId,
+      })
     }
 
     logInput({
@@ -240,15 +226,10 @@ export async function POST(req: NextRequest) {
 
     if (!domainRecord) {
       logger.error("Domain not found in database:", resolvedWorkspaceName)
-      return NextResponse.json(
-        {
-          ok: false,
-          error: ErrorCodes.WORKSPACE_NOT_FOUND,
-          message: getErrorMessage(ErrorCodes.WORKSPACE_NOT_FOUND, { host: resolvedWorkspaceName }),
-          requestId,
-        },
-        { status: 404 },
-      )
+      return createErrorResponse(ErrorCodes.WORKSPACE_NOT_FOUND, 404, {
+        host: resolvedWorkspaceName,
+        requestId,
+      })
     }
 
     convKey = sessionKey({
@@ -262,15 +243,7 @@ export async function POST(req: NextRequest) {
 
     if (!tryLockConversation(convKey)) {
       logger.log("❌ LOCK FAILED - Conversation already in progress for key:", convKey)
-      return NextResponse.json(
-        {
-          ok: false,
-          error: ErrorCodes.CONVERSATION_BUSY,
-          message: getErrorMessage(ErrorCodes.CONVERSATION_BUSY),
-          requestId,
-        },
-        { status: 409 },
-      )
+      return createErrorResponse(ErrorCodes.CONVERSATION_BUSY, 409, { requestId })
     }
 
     lockAcquired = true
@@ -562,16 +535,10 @@ export async function POST(req: NextRequest) {
     }
 
     const origin = req.headers.get("origin")
-    const errorRes = NextResponse.json(
-      {
-        ok: false,
-        error: ErrorCodes.REQUEST_PROCESSING_FAILED,
-        message: "Failed to process streaming request",
-        details: { message: outerError instanceof Error ? outerError.message : "Unknown error" },
-        requestId,
-      },
-      { status: 500 },
-    )
+    const errorRes = createErrorResponse(ErrorCodes.REQUEST_PROCESSING_FAILED, 500, {
+      details: { message: outerError instanceof Error ? outerError.message : "Unknown error" },
+      requestId,
+    })
     addCorsHeaders(errorRes, origin)
     return errorRes
   }

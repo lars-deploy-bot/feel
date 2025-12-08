@@ -12,43 +12,38 @@
 
 import { SECURITY } from "@webalive/shared"
 import { login } from "./helpers"
+import { gotoChatFast } from "./helpers/assertions"
 import { handlers } from "./lib/handlers"
 import { isLocalTestServer } from "./lib/test-env"
 import { expect, test } from "./fixtures"
 
 test.describe("Protection System Verification", () => {
-  test("Layer 1: Catches unmocked calls at browser level", async ({ page, tenant }) => {
-    await login(page, tenant)
-
+  test("Layer 1: Catches unmocked calls at browser level", async ({ authenticatedPage, workerTenant }) => {
     // Register our own request monitor to verify Layer 1 works
     const apiCalls: string[] = []
-    page.on("request", req => {
+    authenticatedPage.on("request", req => {
       if (req.url().includes("/api/claude")) {
         apiCalls.push(req.url())
       }
     })
 
     // Register handler - Layer 1 should allow this through
-    await page.route("**/api/claude/stream", handlers.text("Protected!"))
+    await authenticatedPage.route("**/api/claude/stream", handlers.text("Protected!"))
 
-    await page.goto("/chat", { waitUntil: "domcontentloaded" })
+    // Use fast navigation with pre-injected state
+    await gotoChatFast(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
 
-    // Wait for workspace to be fully initialized (mounted + workspace set)
-    await expect(page.locator('[data-testid="workspace-ready"]')).toBeAttached({
-      timeout: 15000,
-    })
+    const messageInput = authenticatedPage.locator('[data-testid="message-input"]')
+    await expect(messageInput).toBeVisible({ timeout: 2000 })
 
-    const messageInput = page.locator('[data-testid="message-input"]')
-    await expect(messageInput).toBeVisible({ timeout: 10000 })
-
-    const sendButton = page.locator('[data-testid="send-button"]')
+    const sendButton = authenticatedPage.locator('[data-testid="send-button"]')
 
     await messageInput.fill("Test message")
-    await expect(sendButton).toBeEnabled({ timeout: 10000 })
+    await expect(sendButton).toBeEnabled({ timeout: 2000 })
     await sendButton.click()
 
     // Wait for response (use .first() to avoid strict mode violations)
-    await expect(page.getByText("Protected!").first()).toBeVisible({ timeout: 10000 })
+    await expect(authenticatedPage.getByText("Protected!").first()).toBeVisible({ timeout: 3000 })
 
     // Verify the API call was made (but mocked)
     expect(apiCalls.length).toBeGreaterThan(0)

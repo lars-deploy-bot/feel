@@ -30,6 +30,7 @@ function getClientIdentifier(req: NextRequest): string {
 export async function POST(req: NextRequest) {
   const requestId = generateRequestId()
   const origin = req.headers.get("origin")
+  const host = req.headers.get("host") || undefined
   const clientId = getClientIdentifier(req)
 
   // Rate limiting check
@@ -68,7 +69,7 @@ export async function POST(req: NextRequest) {
     const sessionToken = await createSessionToken("manager", "manager@system", "Manager", [])
 
     const res = createCorsSuccessResponse(origin, { requestId })
-    res.cookies.set(COOKIE_NAMES.MANAGER_SESSION, sessionToken, getSessionCookieOptions())
+    res.cookies.set(COOKIE_NAMES.MANAGER_SESSION, sessionToken, getSessionCookieOptions(host))
     return res
   }
 
@@ -94,7 +95,7 @@ export async function POST(req: NextRequest) {
 
   // Set manager session cookie with JWT token
   const res = createCorsSuccessResponse(origin, { requestId })
-  res.cookies.set(COOKIE_NAMES.MANAGER_SESSION, sessionToken, getSessionCookieOptions())
+  res.cookies.set(COOKIE_NAMES.MANAGER_SESSION, sessionToken, getSessionCookieOptions(host))
   return res
 }
 

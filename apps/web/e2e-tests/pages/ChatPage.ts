@@ -22,6 +22,26 @@ export class ChatPage {
   }
 
   /**
+   * FAST: Navigate to chat with workspace pre-injected
+   *
+   * IMPORTANT: Must be used with authenticatedPage fixture which sets up
+   * localStorage via context.addInitScript before any navigation.
+   *
+   * The workspace/orgId params are kept for API compatibility but unused -
+   * the fixture handles localStorage injection at context level.
+   */
+  async gotoFast(_workspace: string, _orgId: string) {
+    // Navigate to chat - localStorage is already set via fixture's context.addInitScript
+    await this.page.goto("/chat", { waitUntil: "domcontentloaded" })
+
+    // Wait for workspace ready with generous timeout
+    // Zustand persist hydration can be very slow under parallel load
+    await expect(this.page.locator(TEST_SELECTORS.workspaceReady)).toBeAttached({
+      timeout: TEST_TIMEOUTS.max, // 15s - hydration under load can be very slow
+    })
+  }
+
+  /**
    * Wait for workspace to be fully initialized
    * Should be called before any chat interactions
    */

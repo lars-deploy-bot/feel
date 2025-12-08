@@ -90,8 +90,22 @@
       opacity: 1;
       background: #5a5a5a;
     }
+    #add-claude-btn {
+      margin: 8px 12px 4px;
+      padding: 8px;
+      background: #c678dd;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: background 0.15s;
+    }
+    #add-claude-btn:hover {
+      background: #b060cc;
+    }
     #add-tab-btn {
-      margin: 8px 12px;
+      margin: 4px 12px 8px;
       padding: 8px;
       background: #0dbc79;
       color: #fff;
@@ -262,6 +276,27 @@
       body { -webkit-user-select: none; user-select: none; }
       .terminal-wrapper { -webkit-user-select: text; user-select: text; }
     }
+    /* Light mode */
+    @media (prefers-color-scheme: light) {
+      body { background: #f5f5f5; }
+      #header { background: #e8e8e8; border-bottom-color: #d0d0d0; }
+      #header h1 { color: #222; }
+      #loading { color: #333; }
+      #tab-sidebar { background: #e8e8e8; border-right-color: #d0d0d0; }
+      .tab-item { color: #555; }
+      .tab-item:hover { background: #ddd; color: #222; }
+      .tab-item.active { background: #fff; color: #222; }
+      .tab-item .tab-close:hover { background: #ccc; }
+      #add-claude-btn { background: #a855f7; }
+      #add-claude-btn:hover { background: #9333ea; }
+      #mobile-toolbar { background: #e8e8e8; border-top-color: #d0d0d0; }
+      #mobile-toolbar button { background: #d0d0d0; color: #333; }
+      #mobile-toolbar button:active { background: #bbb; }
+      #mobile-tabs { background: #e8e8e8; border-bottom-color: #d0d0d0; }
+      .mobile-tab { background: #d0d0d0; color: #555; }
+      .mobile-tab.active { background: #0dbc79; color: #fff; }
+      .mobile-add-tab { background: #ddd; }
+    }
   </style>
 </head>
 <body class="m-0 p-0 box-border font-sans bg-shell-bg">
@@ -293,6 +328,7 @@
     <!-- Tab sidebar (desktop) -->
     <div id="tab-sidebar">
       <div id="tab-list"></div>
+      <button id="add-claude-btn">+ Claude</button>
       <button id="add-tab-btn">+ New Tab</button>
     </div>
 

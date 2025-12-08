@@ -125,7 +125,7 @@ That's it! Your app can now connect to Redis.
 From the monorepo root, you can also use the convenience scripts:
 
 ```bash
-bun run redis:install   # Install Redis
+bun run redis:setup     # Setup Redis (requires Docker)
 bun run redis:start     # Start Redis
 bun run redis:stop      # Stop Redis
 bun run redis:status    # Check status

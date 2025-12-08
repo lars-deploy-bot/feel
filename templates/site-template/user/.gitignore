@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# User uploads (temporary files for Claude analysis)
+.uploads/

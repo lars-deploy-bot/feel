@@ -1,0 +1,33 @@
+# Main Caddy Configuration
+# ARCHITECTURE: nginx (port 443/80) -> SNI routing -> this instance (port 8444/8081)
+# See: /root/webalive/claude-bridge/docs/architecture/nginx-sni-router.md
+
+{
+    # Bind to internal ports (nginx handles external 80/443)
+    http_port 8081
+    https_port 8444
+
+    # Admin API on default port 2019
+    admin localhost:2019
+}
+
+# Production configuration (manual changes only)
+import /etc/caddy/Caddyfile.prod
+
+# Staging & dev configuration (auto-reload safe)
+import /etc/caddy/Caddyfile.staging
+
+# WebAlive sites (auto-reload safe)
+import /root/webalive/claude-bridge/ops/caddy/Caddyfile
+
+# Homecatch services (separate project - only API endpoint)
+api.homecatch.nl {
+    reverse_proxy localhost:1234
+    header {
+        Access-Control-Allow-Origin *
+        Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+        Access-Control-Allow-Headers "Content-Type, Authorization"
+    }
+    @options method OPTIONS
+    respond @options 204
+}

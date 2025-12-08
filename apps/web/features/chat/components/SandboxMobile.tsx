@@ -21,14 +21,13 @@ export function SandboxMobile({ onClose, children, busy, statusText, onStop }: S
   const [path, setPath] = useState("/")
   const [isLoading, setIsLoading] = useState(true)
 
-  const baseUrl = workspace ? getPreviewUrl(workspace).replace(/\/$/, "") : ""
-  const fullUrl = `${baseUrl}${path}`
+  const previewUrl = workspace ? getPreviewUrl(workspace, { path }) : ""
 
   const handleRefresh = () => {
     if (iframeRef.current) {
       setIsLoading(true)
       // Force reload by adding cache-busting param
-      const url = new URL(fullUrl)
+      const url = new URL(previewUrl)
       url.searchParams.set("_t", Date.now().toString())
       iframeRef.current.src = url.toString()
     }
@@ -102,7 +101,7 @@ export function SandboxMobile({ onClose, children, busy, statusText, onStop }: S
             )}
             <iframe
               ref={iframeRef}
-              src={fullUrl}
+              src={previewUrl}
               className="w-full h-full border-0"
               title={`Preview: ${workspace}`}
               referrerPolicy="no-referrer-when-downgrade"

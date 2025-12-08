@@ -93,8 +93,24 @@ body {
   background: #5a5a5a;
 }
 
+#add-claude-btn {
+  margin: 8px 12px 4px;
+  padding: 8px;
+  background: #c678dd;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.15s;
+}
+
+#add-claude-btn:hover {
+  background: #b060cc;
+}
+
 #add-tab-btn {
-  margin: 8px 12px;
+  margin: 4px 12px 8px;
   padding: 8px;
   background: #0dbc79;
   color: #fff;
@@ -106,6 +122,41 @@ body {
 }
 
 #add-tab-btn:hover {
+  background: #0fa96d;
+}
+
+/* React component button styles */
+.shell-add-claude {
+  margin: 8px 12px 4px;
+  padding: 8px;
+  background: #c678dd;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.15s;
+  width: calc(100% - 24px);
+}
+
+.shell-add-claude:hover {
+  background: #b060cc;
+}
+
+.shell-add-tab {
+  margin: 4px 12px 8px;
+  padding: 8px;
+  background: #0dbc79;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.15s;
+  width: calc(100% - 24px);
+}
+
+.shell-add-tab:hover {
   background: #0fa96d;
 }
 
@@ -344,5 +395,94 @@ body {
   .terminal-wrapper {
     -webkit-user-select: text;
     user-select: text;
+  }
+}
+
+/* Light mode */
+@media (prefers-color-scheme: light) {
+  body {
+    background: #f5f5f5;
+  }
+
+  #tab-sidebar {
+    background: #e8e8e8;
+    border-right-color: #d0d0d0;
+  }
+
+  .tab-item {
+    color: #555;
+  }
+
+  .tab-item:hover {
+    background: #ddd;
+    color: #222;
+  }
+
+  .tab-item.active {
+    background: #fff;
+    color: #222;
+    border-left-color: #0dbc79;
+  }
+
+  .tab-item .tab-close:hover {
+    background: #ccc;
+  }
+
+  #add-claude-btn {
+    background: #a855f7;
+  }
+
+  #add-claude-btn:hover {
+    background: #9333ea;
+  }
+
+  .shell-add-claude {
+    background: #a855f7;
+  }
+
+  .shell-add-claude:hover {
+    background: #9333ea;
+  }
+
+  #mobile-toolbar {
+    background: #e8e8e8;
+    border-top-color: #d0d0d0;
+  }
+
+  #mobile-toolbar button {
+    background: #d0d0d0;
+    color: #333;
+  }
+
+  #mobile-toolbar button:active {
+    background: #bbb;
+  }
+
+  #mobile-tabs {
+    background: #e8e8e8;
+    border-bottom-color: #d0d0d0;
+  }
+
+  .mobile-tab {
+    background: #d0d0d0;
+    color: #555;
+  }
+
+  .mobile-tab.active {
+    background: #0dbc79;
+    color: #fff;
+  }
+
+  .mobile-add-tab {
+    background: #ddd;
+    color: #0dbc79;
+  }
+
+  .scroll-bottom-btn {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+
+  #swipe-indicator {
+    background: rgba(13, 188, 121, 0.95);
   }
 }

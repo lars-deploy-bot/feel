@@ -179,6 +179,48 @@ export function parseHours(hoursTableHtml: string | null): {
 // Browser Setup
 // ============================================================================
 
+/**
+ * Check if the browser is available for launching.
+ * Logs a warning if not installed.
+ */
+export async function checkBrowserAvailability(): Promise<boolean> {
+  try {
+    puppeteer.use(StealthPlugin())
+
+    const launchOptions: Record<string, unknown> = {
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+    }
+
+    if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+      launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH
+    }
+
+    const browser = await puppeteer.launch(launchOptions)
+    await browser.close()
+    return true
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+
+    console.error("=".repeat(70))
+    console.error("WARNING: Browser not available for Google Maps scraper")
+    console.error("=".repeat(70))
+    console.error("")
+    console.error("The Google Maps scraper requires a browser to be installed.")
+    console.error("")
+    console.error("To install the browser, run:")
+    console.error("  npx puppeteer browsers install chrome")
+    console.error("")
+    console.error("Or if using Playwright:")
+    console.error("  bunx playwright install chromium")
+    console.error("")
+    console.error(`Error details: ${errorMessage}`)
+    console.error("=".repeat(70))
+
+    return false
+  }
+}
+
 export async function setupBrowser(proxy?: ProxyConfig): Promise<{ browser: Browser }> {
   puppeteer.use(StealthPlugin())
 

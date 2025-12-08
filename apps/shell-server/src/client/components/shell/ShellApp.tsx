@@ -13,7 +13,7 @@ interface TerminalTab {
 
 const MAX_TABS = 10
 
-const terminalTheme = {
+const darkTheme = {
   background: "#1e1e1e",
   foreground: "#d4d4d4",
   cursor: "#0dbc79",
@@ -37,6 +37,33 @@ const terminalTheme = {
   brightWhite: "#ffffff",
 }
 
+const lightTheme = {
+  background: "#ffffff",
+  foreground: "#383a42",
+  cursor: "#0dbc79",
+  cursorAccent: "#ffffff",
+  selectionBackground: "rgba(13, 188, 121, 0.3)",
+  black: "#383a42",
+  red: "#e45649",
+  green: "#50a14f",
+  yellow: "#c18401",
+  blue: "#4078f2",
+  magenta: "#a626a4",
+  cyan: "#0184bc",
+  white: "#383a42",
+  brightBlack: "#686b77",
+  brightRed: "#e45649",
+  brightGreen: "#50a14f",
+  brightYellow: "#c18401",
+  brightBlue: "#4078f2",
+  brightMagenta: "#a626a4",
+  brightCyan: "#0184bc",
+  brightWhite: "#383a42",
+}
+
+const prefersDark = window.matchMedia("(prefers-color-scheme: dark)")
+const getTerminalTheme = () => (prefersDark.matches ? darkTheme : lightTheme)
+
 // Get URL params
 const params = new URLSearchParams(window.location.search)
 const workspace = params.get("workspace") || "root"
@@ -56,68 +83,77 @@ export function ShellApp() {
   const tabCounter = useRef(0)
   const terminalRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
-  const createTab = useCallback(() => {
-    if (tabs.length >= MAX_TABS) {
-      alert(`Maximum ${MAX_TABS} tabs allowed`)
-      return null
-    }
-
-    tabCounter.current++
-    const id = `tab-${tabCounter.current}`
-    const name = `Terminal ${tabCounter.current}`
-
-    const term = new Terminal({
-      cursorBlink: true,
-      fontSize,
-      fontFamily: "'JetBrains Mono', 'Fira Code', Menlo, Monaco, 'Courier New', monospace",
-      scrollback: 1000,
-      theme: terminalTheme,
-    })
-
-    const fitAddon = new FitAddon()
-    const webLinksAddon = new WebLinksAddon()
-    term.loadAddon(fitAddon)
-    term.loadAddon(webLinksAddon)
-
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
-    const ws = new WebSocket(`${protocol}//${window.location.host}/ws?workspace=${workspace}`)
-
-    ws.onopen = () => {
-      setLoading(false)
-      ws.send(JSON.stringify({ type: "resize", cols: term.cols, rows: term.rows }))
-    }
-
-    ws.onmessage = event => {
-      const msg = JSON.parse(event.data)
-      if (msg.type === "data") {
-        term.write(msg.data)
-      } else if (msg.type === "exit") {
-        term.write(`\r\n\r\n[Process exited with code ${msg.exitCode}]\r\n`)
+  const createTab = useCallback(
+    (options?: { initialCommand?: string; name?: string }) => {
+      if (tabs.length >= MAX_TABS) {
+        alert(`Maximum ${MAX_TABS} tabs allowed`)
+        return null
       }
-    }
 
-    ws.onerror = () => {
-      setLoading(false)
-      term.write("\r\n\x1b[31mConnection error\x1b[0m\r\n")
-    }
+      tabCounter.current++
+      const id = `tab-${tabCounter.current}`
+      const name = options?.name || `Terminal ${tabCounter.current}`
 
-    ws.onclose = () => {
-      term.write("\r\n\x1b[33mConnection closed\x1b[0m\r\n")
-    }
+      const term = new Terminal({
+        cursorBlink: true,
+        fontSize,
+        fontFamily: "'JetBrains Mono', 'Fira Code', Menlo, Monaco, 'Courier New', monospace",
+        scrollback: 1000,
+        theme: getTerminalTheme(),
+      })
 
-    term.onData(data => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: "input", data }))
+      const fitAddon = new FitAddon()
+      const webLinksAddon = new WebLinksAddon()
+      term.loadAddon(fitAddon)
+      term.loadAddon(webLinksAddon)
+
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
+      const ws = new WebSocket(`${protocol}//${window.location.host}/ws?workspace=${workspace}`)
+
+      ws.onopen = () => {
+        setLoading(false)
+        ws.send(JSON.stringify({ type: "resize", cols: term.cols, rows: term.rows }))
+        // Send initial command after a brief delay to let the shell initialize
+        if (options?.initialCommand) {
+          setTimeout(() => {
+            ws.send(JSON.stringify({ type: "input", data: options.initialCommand + "\n" }))
+          }, 100)
+        }
       }
-    })
 
-    const newTab: TerminalTab = { id, name, terminal: term, fitAddon, ws }
+      ws.onmessage = event => {
+        const msg = JSON.parse(event.data)
+        if (msg.type === "data") {
+          term.write(msg.data)
+        } else if (msg.type === "exit") {
+          term.write(`\r\n\r\n[Process exited with code ${msg.exitCode}]\r\n`)
+        }
+      }
 
-    setTabs(prev => [...prev, newTab])
-    setActiveTabId(id)
+      ws.onerror = () => {
+        setLoading(false)
+        term.write("\r\n\x1b[31mConnection error\x1b[0m\r\n")
+      }
 
-    return newTab
-  }, [tabs.length])
+      ws.onclose = () => {
+        term.write("\r\n\x1b[33mConnection closed\x1b[0m\r\n")
+      }
+
+      term.onData(data => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: "input", data }))
+        }
+      })
+
+      const newTab: TerminalTab = { id, name, terminal: term, fitAddon, ws }
+
+      setTabs(prev => [...prev, newTab])
+      setActiveTabId(id)
+
+      return newTab
+    },
+    [tabs.length],
+  )
 
   const closeTab = useCallback(
     (id: string) => {
@@ -271,6 +307,18 @@ export function ShellApp() {
     return () => window.removeEventListener("keydown", handleKeydown)
   }, [tabs, activeTabId, createTab, closeTab, switchTab])
 
+  // Listen for system theme changes
+  useEffect(() => {
+    const handleThemeChange = () => {
+      const newTheme = getTerminalTheme()
+      tabs.forEach(tab => {
+        tab.terminal.options.theme = newTheme
+      })
+    }
+    prefersDark.addEventListener("change", handleThemeChange)
+    return () => prefersDark.removeEventListener("change", handleThemeChange)
+  }, [tabs])
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -329,6 +377,9 @@ export function ShellApp() {
               </div>
             ))}
           </div>
+          <button className="shell-add-claude" onClick={() => createTab({ initialCommand: "claude", name: "Claude" })}>
+            + Claude
+          </button>
           <button className="shell-add-tab" onClick={() => createTab()}>
             + New Tab
           </button>

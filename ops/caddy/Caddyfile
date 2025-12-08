@@ -191,18 +191,11 @@ six.goalive.nl {
 # Claude Bridge staging and dev environments
 # (Now defined in /etc/caddy/Caddyfile.staging)
 
-# Terminal app (Go shell server)
-shell.terminal.goalive.nl {
-    reverse_proxy localhost:3889
-}
-
-go.goalive.nl {
-    reverse_proxy localhost:3889
-}
-
-sk.goalive.nl {
-    reverse_proxy localhost:3889
-}
+# Go shell server domains (shell.terminal.goalive.nl, go.goalive.nl, sk.goalive.nl)
+# MOVED to /etc/caddy/Caddyfile.shell - separate Caddy instance to preserve
+# long-lived SSE connections during main Caddy reloads
+# Service: caddy-shell.service
+# Docs: docs/operations/CADDY_SHELL_ISOLATION.md
 
 # NOTE: alive.best subdomain entries are added dynamically by @webalive/site-controller
 # When a new subdomain is deployed, the script adds an entry like:
@@ -374,7 +367,7 @@ taxi.alive.best {
 # Features:
 # - Host header set to "localhost" for Vite dev server compatibility
 # - X-Frame-Options removed to allow iframe embedding
-# - CSP frame-ancestors restricts to terminal.goalive.nl domains only
+# - CSP frame-ancestors restricts to terminal.goalive.nl and app.alive.best
 # - forward_auth enforces session authentication at Caddy edge
 # ============================================================================
 
@@ -388,7 +381,7 @@ demo-goalive-nl.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -407,7 +400,7 @@ crazywebsite-nl.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -426,7 +419,7 @@ riggedgpt-com.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -445,7 +438,7 @@ wheelpickername-com.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -464,7 +457,7 @@ kranazilie-nl.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -483,7 +476,7 @@ barendbootsma-com.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -502,7 +495,7 @@ larsvandeneeden-com.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -521,7 +514,7 @@ two-goalive-nl.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -540,7 +533,7 @@ three-goalive-nl.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -559,7 +552,7 @@ four-goalive-nl.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -578,7 +571,7 @@ one-goalive-nl.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -597,7 +590,7 @@ five-goalive-nl.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -616,7 +609,7 @@ six-goalive-nl.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -635,7 +628,7 @@ sk-goalive-nl.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -654,7 +647,7 @@ larss-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -673,7 +666,7 @@ template1-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -692,7 +685,7 @@ dreammachinetest-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -711,7 +704,7 @@ emilewaterkeyn-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -730,7 +723,7 @@ larry-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -749,7 +742,7 @@ protino-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -768,7 +761,7 @@ lars-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -787,7 +780,7 @@ julieleclercq-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -806,7 +799,7 @@ hendricus-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -825,7 +818,7 @@ feedback-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -844,7 +837,7 @@ meditationtimer-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -863,7 +856,7 @@ components-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -882,7 +875,7 @@ alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -901,7 +894,7 @@ hellopage-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -920,7 +913,7 @@ flip-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -939,7 +932,7 @@ blogtemplate-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -958,7 +951,7 @@ startup-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -977,7 +970,7 @@ riggedwheel-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -996,7 +989,7 @@ mealsnap-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1015,7 +1008,7 @@ larsondj-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1034,7 +1027,7 @@ djlarson-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1053,7 +1046,7 @@ rmk2000test-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1072,7 +1065,7 @@ roefapp-nl.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1091,7 +1084,7 @@ tester-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1110,7 +1103,7 @@ larsprive-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1129,7 +1122,7 @@ windowsxp-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1148,7 +1141,7 @@ emailpay-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1167,7 +1160,7 @@ customers-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1186,7 +1179,7 @@ huurmatcher-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1205,7 +1198,7 @@ fabian-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1224,7 +1217,7 @@ khalid-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1243,7 +1236,7 @@ testkhalid-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1262,7 +1255,7 @@ kapper-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1281,7 +1274,7 @@ alessandro-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1300,7 +1293,7 @@ notion-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1319,7 +1312,7 @@ loodgieter-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1338,7 +1331,7 @@ test3-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1357,7 +1350,7 @@ blabla-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1376,7 +1369,7 @@ awan-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1395,7 +1388,7 @@ dogs-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1414,7 +1407,7 @@ test-flow-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1433,7 +1426,7 @@ gekkewebsite-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1452,7 +1445,7 @@ test123-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1471,7 +1464,7 @@ api-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1490,7 +1483,7 @@ hallohallo-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1509,7 +1502,7 @@ test-hallohallo-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1528,7 +1521,7 @@ verify-fix-test-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1547,7 +1540,7 @@ verify-fix-final-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1566,7 +1559,7 @@ deploy-1713-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1585,7 +1578,7 @@ test-wrong-812-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1604,7 +1597,7 @@ newtest-847-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1623,7 +1616,7 @@ wrongpass-860-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1642,7 +1635,7 @@ test1-93-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1661,7 +1654,7 @@ test2-09-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1680,7 +1673,7 @@ geeskitchen-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1699,7 +1692,7 @@ evermore-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1718,7 +1711,7 @@ mp4-to-mp3-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1737,7 +1730,7 @@ saaslanding-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1756,7 +1749,7 @@ test-e2e-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1775,7 +1768,7 @@ test-cli-e2e-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1794,7 +1787,7 @@ asdf-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1813,7 +1806,7 @@ larrysgarden-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1832,7 +1825,7 @@ geesjeskitchen-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1851,7 +1844,7 @@ larrylar-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1870,7 +1863,7 @@ asdfadsfadsf-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1889,7 +1882,7 @@ larryd-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1908,7 +1901,7 @@ alivecustomers-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1927,7 +1920,7 @@ schoenen-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1946,7 +1939,7 @@ thomascooking-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1965,7 +1958,7 @@ testdeploy-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -1999,6 +1992,18 @@ alive.best {
         header_up X-Real-IP {remote_host}
         header_up X-Forwarded-For {remote_host}
         header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+# Claude Bridge at app.alive.best
+app.alive.best {
+    handle_path /_images/* {
+        root * /srv/webalive/storage
+        header Cache-Control "public, max-age=31536000, immutable"
+        file_server
+    }
+    handle {
+        reverse_proxy localhost:9000
     }
 }
 
@@ -2659,9 +2664,9 @@ johnvm-alive-best.preview.terminal.goalive.nl {
         -X-Powered-By
     }
 
-    # Auth check via forward_auth
+    # Auth check via forward_auth (passes query params for preview_token auth)
     forward_auth localhost:8998 {
-        uri /api/auth/preview-guard
+        uri /api/auth/preview-guard?{query}
         copy_headers Cookie
     }
 }
@@ -2692,9 +2697,9 @@ wfclientoutreach-alive-best.preview.terminal.goalive.nl {
         -X-Powered-By
     }
 
-    # Auth check via forward_auth
+    # Auth check via forward_auth (passes query params for preview_token auth)
     forward_auth localhost:8998 {
-        uri /api/auth/preview-guard
+        uri /api/auth/preview-guard?{query}
         copy_headers Cookie
     }
 }
@@ -2725,9 +2730,9 @@ evo-alive-best.preview.terminal.goalive.nl {
         -X-Powered-By
     }
 
-    # Auth check via forward_auth
+    # Auth check via forward_auth (passes query params for preview_token auth)
     forward_auth localhost:8998 {
-        uri /api/auth/preview-guard
+        uri /api/auth/preview-guard?{query}
         copy_headers Cookie
     }
 }
@@ -2758,9 +2763,9 @@ checkcheck-alive-best.preview.terminal.goalive.nl {
         -X-Powered-By
     }
 
-    # Auth check via forward_auth
+    # Auth check via forward_auth (passes query params for preview_token auth)
     forward_auth localhost:8998 {
-        uri /api/auth/preview-guard
+        uri /api/auth/preview-guard?{query}
         copy_headers Cookie
     }
 }
@@ -2803,9 +2808,9 @@ blank-alive-best.preview.terminal.goalive.nl {
         -X-Powered-By
     }
 
-    # Auth check via forward_auth
+    # Auth check via forward_auth (passes query params for preview_token auth)
     forward_auth localhost:8998 {
-        uri /api/auth/preview-guard
+        uri /api/auth/preview-guard?{query}
         copy_headers Cookie
     }
 }
@@ -2848,9 +2853,9 @@ oki-alive-best.preview.terminal.goalive.nl {
         -X-Powered-By
     }
 
-    # Auth check via forward_auth
+    # Auth check via forward_auth (passes query params for preview_token auth)
     forward_auth localhost:8998 {
-        uri /api/auth/preview-guard
+        uri /api/auth/preview-guard?{query}
         copy_headers Cookie
     }
 }
@@ -2893,9 +2898,9 @@ webtest-alive-best.preview.terminal.goalive.nl {
         -X-Powered-By
     }
 
-    # Auth check via forward_auth
+    # Auth check via forward_auth (passes query params for preview_token auth)
     forward_auth localhost:8998 {
-        uri /api/auth/preview-guard
+        uri /api/auth/preview-guard?{query}
         copy_headers Cookie
     }
 }
@@ -2938,9 +2943,9 @@ migratetest-alive-best.preview.terminal.goalive.nl {
         -X-Powered-By
     }
 
-    # Auth check via forward_auth
+    # Auth check via forward_auth (passes query params for preview_token auth)
     forward_auth localhost:8998 {
-        uri /api/auth/preview-guard
+        uri /api/auth/preview-guard?{query}
         copy_headers Cookie
     }
 }
@@ -2983,9 +2988,9 @@ stekker-alive-best.preview.terminal.goalive.nl {
         -X-Powered-By
     }
 
-    # Auth check via forward_auth
+    # Auth check via forward_auth (passes query params for preview_token auth)
     forward_auth localhost:8998 {
-        uri /api/auth/preview-guard
+        uri /api/auth/preview-guard?{query}
         copy_headers Cookie
     }
 }
@@ -3007,9 +3012,279 @@ taxi-alive-best.preview.terminal.goalive.nl {
         -X-Powered-By
     }
 
-    # Auth check via forward_auth
+    # Auth check via forward_auth (passes query params for preview_token auth)
     forward_auth localhost:8998 {
-        uri /api/auth/preview-guard
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie
+    }
+}
+
+test-deploy-123.alive.best {
+    import image_serving
+
+    header {
+        # Security headers (embeddable - allows iframe preview)
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    reverse_proxy localhost:3605 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+test-deploy-123-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3605 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (passes query params for preview_token auth)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie
+    }
+}
+
+testdeploy123.alive.best {
+    import image_serving
+
+    header {
+        # Security headers (embeddable - allows iframe preview)
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    reverse_proxy localhost:3606 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+testdeploy123-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3606 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (passes query params for preview_token auth)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie
+    }
+}
+
+topi.alive.best {
+    import image_serving
+
+    header {
+        # Security headers (embeddable - allows iframe preview)
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    reverse_proxy localhost:3607 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+topi-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3607 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (passes query params for preview_token auth)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie
+    }
+}
+
+nami.alive.best {
+    import image_serving
+
+    header {
+        # Security headers (embeddable - allows iframe preview)
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    reverse_proxy localhost:3608 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+nami-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3608 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (passes query params for preview_token auth)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie
+    }
+}
+
+webbb.alive.best {
+    import image_serving
+
+    header {
+        # Security headers (embeddable - allows iframe preview)
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    reverse_proxy localhost:3609 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+webbb-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3609 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (passes query params for preview_token auth)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie
+    }
+}
+
+cafecomcacao.alive.best {
+    import image_serving
+
+    header {
+        # Security headers (embeddable - allows iframe preview)
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    reverse_proxy localhost:3610 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+cafecomcacao-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3610 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (passes query params for preview_token auth)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard?{query}
         copy_headers Cookie
     }
 }

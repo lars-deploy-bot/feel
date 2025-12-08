@@ -129,12 +129,10 @@ export async function listTemplates(templatesPath?: string): Promise<TemplateLis
             }
           } catch {
             // Skip files that can't be read
-            continue
           }
         }
       } catch {
         // Skip categories that can't be read
-        continue
       }
     }
   } catch {

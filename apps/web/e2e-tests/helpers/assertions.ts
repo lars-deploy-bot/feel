@@ -20,13 +20,30 @@ export async function gotoChat(page: Page) {
 }
 
 /**
+ * FAST: Navigate to chat with workspace pre-injected
+ *
+ * IMPORTANT: Must be used with authenticatedPage fixture which sets up
+ * localStorage via context.addInitScript before any navigation.
+ */
+export async function gotoChatFast(page: Page, _workspace: string, _orgId: string) {
+  // Navigate to chat - localStorage is already set via fixture's context.addInitScript
+  await page.goto("/chat", { waitUntil: "domcontentloaded" })
+
+  // Wait for workspace to be ready with generous timeout
+  // Zustand persist hydration can be slow under parallel load
+  await expect(page.locator(TEST_SELECTORS.workspaceReady)).toBeAttached({
+    timeout: TEST_TIMEOUTS.max, // 15s - hydration under load can be very slow
+  })
+}
+
+/**
  * Wait for workspace to be fully initialized
  * - Waits for both mounted and workspace state to be set
  * - Required before any chat interactions
  */
 export async function expectWorkspaceReady(page: Page) {
   await expect(page.locator(TEST_SELECTORS.workspaceReady)).toBeAttached({
-    timeout: TEST_TIMEOUTS.slow,
+    timeout: TEST_TIMEOUTS.max, // 15s - hydration under load can be very slow
   })
 }
 

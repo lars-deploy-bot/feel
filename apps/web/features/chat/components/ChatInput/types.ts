@@ -39,7 +39,21 @@ export interface UserPromptAttachment extends BaseAttachment {
   userFacingDescription?: string // Short description shown to user in UI (instead of full prompt)
 }
 
-export type Attachment = FileUploadAttachment | LibraryImageAttachment | SuperTemplateAttachment | UserPromptAttachment
+// File uploaded to workspace for SDK Read tool access
+export interface UploadedFileAttachment extends BaseAttachment {
+  kind: "uploaded-file"
+  workspacePath: string // Path relative to workspace root, e.g., ".uploads/design-1234.png"
+  originalName: string // Original filename before sanitization
+  mimeType: string // MIME type for icon/preview hints
+  size: number // File size in bytes
+}
+
+export type Attachment =
+  | FileUploadAttachment
+  | LibraryImageAttachment
+  | SuperTemplateAttachment
+  | UserPromptAttachment
+  | UploadedFileAttachment
 
 // Type guards
 export function isFileUpload(attachment: Attachment): attachment is FileUploadAttachment {
@@ -58,12 +72,21 @@ export function isUserPromptAttachment(attachment: Attachment): attachment is Us
   return attachment.kind === "user-prompt"
 }
 
+export function isUploadedFile(attachment: Attachment): attachment is UploadedFileAttachment {
+  return attachment.kind === "uploaded-file"
+}
+
 export function isImageAttachment(attachment: Attachment): boolean {
-  return attachment.kind === "library-image" || (attachment.kind === "file-upload" && attachment.category === "image")
+  if (attachment.kind === "library-image") return true
+  if (attachment.kind === "file-upload" && attachment.category === "image") return true
+  if (attachment.kind === "uploaded-file" && attachment.mimeType.startsWith("image/")) return true
+  return false
 }
 
 export function isDocumentAttachment(attachment: Attachment): boolean {
-  return attachment.kind === "file-upload" && attachment.category === "document"
+  if (attachment.kind === "file-upload" && attachment.category === "document") return true
+  if (attachment.kind === "uploaded-file" && !attachment.mimeType.startsWith("image/")) return true
+  return false
 }
 
 export interface ChatInputState {
@@ -134,6 +157,7 @@ export interface ChatInputHandle {
   addPhotobookImage: (imageKey: string) => void
   addSuperTemplateAttachment: (templateId: string, name: string, preview: string) => void
   addUserPrompt: (promptType: string, data: string, displayName: string, userFacingDescription?: string) => void
+  addFileForAnalysis: (file: File, workspace?: string) => Promise<void>
   getAttachments: () => Attachment[]
   clearLibraryImages: () => void
   clearAllAttachments: () => void

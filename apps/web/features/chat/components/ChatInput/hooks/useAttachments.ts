@@ -10,9 +10,16 @@ import type {
   FileUploadAttachment,
   LibraryImageAttachment,
   SuperTemplateAttachment,
+  UploadedFileAttachment,
   UserPromptAttachment,
 } from "../types"
-import { isFileUpload, isLibraryImage, isSuperTemplateAttachment, isUserPromptAttachment } from "../types"
+import {
+  isFileUpload,
+  isLibraryImage,
+  isSuperTemplateAttachment,
+  isUploadedFile,
+  isUserPromptAttachment,
+} from "../types"
 
 /**
  * Converts file-upload attachment to library-image attachment.
@@ -33,11 +40,71 @@ function convertToLibraryImage(
 }
 
 /**
+ * Converts file-upload attachment to uploaded-file attachment.
+ * Used when uploading files to workspace for Claude SDK Read tool access.
+ */
+function convertToUploadedFile(
+  fileUploadAttachment: FileUploadAttachment,
+  workspacePath: string,
+  originalName: string,
+  mimeType: string,
+  size: number,
+): UploadedFileAttachment {
+  return {
+    kind: "uploaded-file",
+    id: fileUploadAttachment.id,
+    workspacePath,
+    originalName,
+    mimeType,
+    size,
+    preview: fileUploadAttachment.preview, // Keep blob preview for UI
+    uploadProgress: 100,
+  }
+}
+
+/**
  * Safely revokes a blob URL if it's valid.
  */
 function revokeBlobUrl(url: string | undefined): void {
   if (url?.startsWith("blob:")) {
     URL.revokeObjectURL(url)
+  }
+}
+
+/**
+ * Upload file to workspace for SDK Read tool access.
+ * Returns the workspace-relative path on success.
+ */
+async function uploadToWorkspace(
+  file: File,
+  workspace: string | undefined,
+): Promise<{ path: string; originalName: string; size: number; mimeType: string }> {
+  const formData = new FormData()
+  formData.append("file", file)
+  if (workspace) {
+    formData.append("workspace", workspace)
+  }
+
+  const response = await fetch("/api/files/upload", {
+    method: "POST",
+    body: formData,
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: "Upload failed" }))
+    throw new Error(error.message || `Upload failed: ${response.status}`)
+  }
+
+  const result = await response.json()
+  if (!result.ok) {
+    throw new Error(result.message || "Upload failed")
+  }
+
+  return {
+    path: result.path,
+    originalName: result.originalName,
+    size: result.size,
+    mimeType: result.mimeType,
   }
 }
 
@@ -256,6 +323,84 @@ export function useAttachments(config: ChatInputConfig) {
     [attachments, config],
   )
 
+  /**
+   * Add a file for Claude to analyze via SDK Read tool.
+   * Uploads the file to the workspace's .uploads/ directory.
+   */
+  const addFileForAnalysis = useCallback(
+    async (file: File, workspace?: string) => {
+      // Validate file (use same validation as regular attachments)
+      const validation = validateFile(file, {
+        maxFileSize: config.maxFileSize,
+        allowedFileTypes: config.allowedFileTypes,
+      })
+
+      if (!validation.valid) {
+        config.onMessage?.(validation.error || "Invalid file", "error")
+        return
+      }
+
+      // Check if same file already attached for analysis
+      if (attachments.some(a => isUploadedFile(a) && a.originalName === file.name && a.size === file.size)) {
+        config.onMessage?.("File already attached for analysis", "error")
+        return
+      }
+
+      // Check max attachments
+      if (config.maxAttachments && attachments.length >= config.maxAttachments) {
+        config.onMessage?.(`Maximum ${config.maxAttachments} attachments allowed`, "error")
+        return
+      }
+
+      // Create temporary file-upload attachment for immediate UI feedback
+      const tempAttachment: FileUploadAttachment = {
+        kind: "file-upload",
+        id: crypto.randomUUID(),
+        file,
+        category: getAttachmentType(file),
+        preview: createPreviewUrl(file),
+        uploadProgress: 0,
+      }
+
+      setAttachments(prev => [...prev, tempAttachment])
+
+      try {
+        // Update progress to show upload started
+        setAttachments(prev => prev.map(a => (a.id === tempAttachment.id ? { ...a, uploadProgress: 50 } : a)))
+
+        // Upload to workspace
+        const result = await uploadToWorkspace(file, workspace)
+
+        // Convert to uploaded-file attachment
+        setAttachments(prev =>
+          prev.map(a =>
+            a.id === tempAttachment.id && isFileUpload(a)
+              ? convertToUploadedFile(a, result.path, result.originalName, result.mimeType, result.size)
+              : a,
+          ),
+        )
+
+        config.onMessage?.(`Uploaded ${file.name} for analysis`, "success")
+      } catch (error) {
+        // Set error state on attachment
+        setAttachments(prev =>
+          prev.map(a =>
+            a.id === tempAttachment.id
+              ? {
+                  ...a,
+                  error: error instanceof Error ? error.message : "Upload failed",
+                  uploadProgress: 0,
+                }
+              : a,
+          ),
+        )
+
+        config.onMessage?.(error instanceof Error ? error.message : "Upload failed", "error")
+      }
+    },
+    [attachments.length, config],
+  )
+
   const removeAttachment = useCallback(
     (id: string) => {
       // Find and revoke blob URL before updating state (outside state updater for purity)
@@ -286,6 +431,7 @@ export function useAttachments(config: ChatInputConfig) {
     addPhotobookImage,
     addSuperTemplateAttachment,
     addUserPrompt,
+    addFileForAnalysis,
     removeAttachment,
     clearAttachments,
   }

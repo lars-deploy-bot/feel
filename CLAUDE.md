@@ -455,6 +455,7 @@ curl -X POST https://terminal.goalive.nl/api/deploy-subdomain \
 - **TailwindCSS**: 4.1.15 (utility-first CSS)
 
 ### Infrastructure Packages
+- **@webalive/database**: Supabase schema types - `iam` schema (users, orgs, org_memberships, sessions), `app` schema (domains, user_quotas, feedback, templates)
 - **@webalive/site-controller**: Site deployment orchestration (Shell-Operator Pattern)
 - **@webalive/oauth-core**: Multi-tenant OAuth with AES-256-GCM encryption
 - **@alive-brug/redis**: Redis client with automatic retry and error handling

@@ -142,6 +142,14 @@ export function getBridgeMcpServers<T>(
     }
   }
 
+  // Add global MCP servers (always available, no auth required)
+  for (const [providerKey, config] of Object.entries(GLOBAL_MCP_PROVIDERS)) {
+    servers[providerKey] = {
+      type: "http",
+      url: config.url,
+    }
+  }
+
   return servers
 }
 

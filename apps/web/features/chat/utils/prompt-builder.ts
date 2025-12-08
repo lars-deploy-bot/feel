@@ -1,12 +1,14 @@
-import type { Attachment } from "../components/ChatInput/types"
+import type { Attachment, UploadedFileAttachment } from "../components/ChatInput/types"
 
 /**
  * Builds the final prompt with attachments:
  * - User prompts: Prepended to the message
+ * - Uploaded files: Instructions to use Read tool to analyze
  * - Library images: Wrapped with structured context and usage instructions
  * - Supertemplates: Appended as MCP tool triggers
  */
 export function buildPromptWithAttachments(message: string, attachments: Attachment[]): string {
+  const uploadedFiles = attachments.filter((a): a is UploadedFileAttachment => a.kind === "uploaded-file")
   const libraryImages = attachments.filter(a => a.kind === "library-image")
   const supertemplates = attachments.filter(a => a.kind === "supertemplate")
   const userPrompts = attachments.filter(a => a.kind === "user-prompt")
@@ -18,6 +20,26 @@ export function buildPromptWithAttachments(message: string, attachments: Attachm
   if (userPrompts.length > 0) {
     const promptTexts = userPrompts.map(p => p.data).join("\n\n")
     prompt = message.trim() ? `${promptTexts}\n\n${prompt}` : promptTexts
+  }
+
+  // Add uploaded files context - these can be read with the Read tool
+  if (uploadedFiles.length > 0) {
+    const filesList = uploadedFiles
+      .map(f => `  - ${f.originalName}: \`${f.workspacePath}\` (${f.mimeType}, ${formatFileSize(f.size)})`)
+      .join("\n")
+
+    prompt = `<uploaded_files>
+The user has uploaded ${uploadedFiles.length} file${uploadedFiles.length > 1 ? "s" : ""} for you to analyze:
+
+${filesList}
+
+Use the Read tool to access and analyze these files. For example:
+  Read({ file_path: "${uploadedFiles[0].workspacePath}" })
+
+The Read tool supports images (visual analysis), PDFs (text extraction), and text files.
+</uploaded_files>
+
+${prompt}`
   }
 
   // Wrap with library images context if any exist
@@ -62,4 +84,15 @@ ${prompt}
   }
 
   return prompt
+}
+
+/**
+ * Format file size in human-readable format
+ */
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return "0 B"
+  const k = 1024
+  const sizes = ["B", "KB", "MB", "GB"]
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return `${Number.parseFloat((bytes / k ** i).toFixed(1))} ${sizes[i]}`
 }

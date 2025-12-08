@@ -50,6 +50,7 @@ export type SignupErrorResponse = {
 export async function POST(req: NextRequest) {
   const requestId = generateRequestId()
   const origin = req.headers.get("origin")
+  const host = req.headers.get("host") || undefined
 
   let body: unknown
   try {
@@ -174,7 +175,7 @@ export async function POST(req: NextRequest) {
     }
 
     const res = createCorsSuccessResponse(origin, response)
-    res.cookies.set(COOKIE_NAMES.SESSION, sessionToken, getSessionCookieOptions())
+    res.cookies.set(COOKIE_NAMES.SESSION, sessionToken, getSessionCookieOptions(host))
     return res
   } catch (error) {
     console.error("[Signup] Unexpected error:", error)

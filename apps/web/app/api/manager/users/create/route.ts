@@ -66,7 +66,6 @@ export async function POST(req: NextRequest) {
         display_name: displayName || null,
         status: "active",
         is_test_env: false,
-        metadata: {},
       })
       .select("user_id")
       .single()
@@ -88,7 +87,6 @@ export async function POST(req: NextRequest) {
           name: orgName,
           credits: 0,
           is_test_env: false,
-          metadata: {},
         })
         .select("org_id")
         .single()

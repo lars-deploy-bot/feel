@@ -1,0 +1,201 @@
+/**
+ * Health Check Endpoint
+ *
+ * Provides comprehensive health status for monitoring and alerting.
+ * Checks connectivity to all critical dependencies.
+ *
+ * GET /api/health - Returns health status of all services
+ *
+ * Response format:
+ * {
+ *   status: "healthy" | "degraded" | "unhealthy",
+ *   services: { redis: {...}, database: {...} },
+ *   system: { uptime: number, memory: {...} },
+ *   timestamp: string,
+ *   responseTimeMs: number
+ * }
+ */
+
+import { createRedisClient } from "@alive-brug/redis"
+import { createClient } from "@supabase/supabase-js"
+import { getSupabaseCredentials } from "@/lib/env/server"
+import { getRedisUrl } from "@webalive/env/server"
+
+// Types
+type ServiceStatus = "connected" | "disconnected" | "error"
+type OverallStatus = "healthy" | "degraded" | "unhealthy"
+
+interface ServiceHealth {
+  status: ServiceStatus
+  responseTimeMs: number
+  error?: string
+  details?: Record<string, unknown>
+}
+
+interface HealthResponse {
+  status: OverallStatus
+  services: {
+    redis: ServiceHealth
+    database: ServiceHealth
+  }
+  system: {
+    uptime: number
+    memory: {
+      used: number
+      total: number
+      percentUsed: number
+    }
+    nodeVersion: string
+  }
+  timestamp: string
+  responseTimeMs: number
+}
+
+// Singleton Redis client for health checks (reuse connection)
+let healthCheckRedis: ReturnType<typeof createRedisClient> | null = null
+
+function getHealthCheckRedis() {
+  if (!healthCheckRedis) {
+    healthCheckRedis = createRedisClient(getRedisUrl())
+  }
+  return healthCheckRedis
+}
+
+// For testing: reset singleton
+export function _resetHealthCheckRedis() {
+  healthCheckRedis = null
+}
+
+/**
+ * Check Redis connectivity
+ */
+async function checkRedis(): Promise<ServiceHealth> {
+  const start = performance.now()
+  try {
+    const redis = getHealthCheckRedis()
+    const result = await redis.ping()
+    const responseTimeMs = Math.round(performance.now() - start)
+
+    if (result === "PONG") {
+      return {
+        status: "connected",
+        responseTimeMs,
+        details: {
+          state: redis.status,
+        },
+      }
+    }
+
+    return {
+      status: "error",
+      responseTimeMs,
+      error: `Unexpected ping response: ${result}`,
+    }
+  } catch (error) {
+    const responseTimeMs = Math.round(performance.now() - start)
+    return {
+      status: "disconnected",
+      responseTimeMs,
+      error: error instanceof Error ? error.message : String(error),
+    }
+  }
+}
+
+/**
+ * Check Supabase/PostgreSQL connectivity
+ */
+async function checkDatabase(): Promise<ServiceHealth> {
+  const start = performance.now()
+  try {
+    const { url, key } = getSupabaseCredentials("service")
+    const supabase = createClient(url, key, {
+      db: { schema: "iam" },
+    })
+
+    // Simple query to verify connection - count users (fast operation)
+    const { error } = await supabase.from("users").select("id", { count: "exact", head: true })
+    const responseTimeMs = Math.round(performance.now() - start)
+
+    if (error) {
+      return {
+        status: "error",
+        responseTimeMs,
+        error: error.message,
+      }
+    }
+
+    return {
+      status: "connected",
+      responseTimeMs,
+    }
+  } catch (error) {
+    const responseTimeMs = Math.round(performance.now() - start)
+    return {
+      status: "disconnected",
+      responseTimeMs,
+      error: error instanceof Error ? error.message : String(error),
+    }
+  }
+}
+
+/**
+ * Get system information
+ */
+function getSystemInfo() {
+  const memUsage = process.memoryUsage()
+  const totalMem = memUsage.heapTotal
+  const usedMem = memUsage.heapUsed
+
+  return {
+    uptime: Math.round(process.uptime()),
+    memory: {
+      used: Math.round(usedMem / 1024 / 1024), // MB
+      total: Math.round(totalMem / 1024 / 1024), // MB
+      percentUsed: Math.round((usedMem / totalMem) * 100),
+    },
+    nodeVersion: process.version,
+  }
+}
+
+/**
+ * Determine overall health status
+ */
+function determineOverallStatus(redis: ServiceHealth, database: ServiceHealth): OverallStatus {
+  const allConnected = redis.status === "connected" && database.status === "connected"
+  const anyDisconnected = redis.status === "disconnected" || database.status === "disconnected"
+
+  if (allConnected) return "healthy"
+  if (anyDisconnected) return "unhealthy"
+  return "degraded"
+}
+
+export async function GET() {
+  const start = performance.now()
+
+  // Check all services in parallel
+  const [redis, database] = await Promise.all([checkRedis(), checkDatabase()])
+
+  const responseTimeMs = Math.round(performance.now() - start)
+  const status = determineOverallStatus(redis, database)
+
+  const response: HealthResponse = {
+    status,
+    services: {
+      redis,
+      database,
+    },
+    system: getSystemInfo(),
+    timestamp: new Date().toISOString(),
+    responseTimeMs,
+  }
+
+  // Return 503 if unhealthy (useful for load balancers)
+  const httpStatus = status === "unhealthy" ? 503 : 200
+
+  return Response.json(response, {
+    status: httpStatus,
+    headers: {
+      "Cache-Control": "no-store, no-cache, must-revalidate",
+    },
+  })
+}

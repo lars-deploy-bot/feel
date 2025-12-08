@@ -5,12 +5,13 @@ import { addCorsHeaders } from "@/lib/cors-utils"
 
 export async function POST(req: NextRequest) {
   const origin = req.headers.get("origin")
+  const host = req.headers.get("host") || undefined
 
   const res = createCorsSuccessResponse(origin, { message: "Logged out successfully" })
 
   // Clear both session cookies
-  res.cookies.set(COOKIE_NAMES.SESSION, "", getClearCookieOptions())
-  res.cookies.set(COOKIE_NAMES.MANAGER_SESSION, "", getClearCookieOptions())
+  res.cookies.set(COOKIE_NAMES.SESSION, "", getClearCookieOptions(host))
+  res.cookies.set(COOKIE_NAMES.MANAGER_SESSION, "", getClearCookieOptions(host))
 
   return res
 }

@@ -1,33 +1,28 @@
 /**
- * Chat E2E Tests - Worker Isolated Version
+ * Chat E2E Tests - Fast Version
  *
- * Each worker gets dedicated tenant, no shared state.
+ * Uses authenticatedPage fixture + gotoFast for speed.
+ * No login flow, state pre-injected before navigation.
  */
 
 import { TEST_MESSAGES } from "./fixtures/test-data"
-import { login } from "./helpers"
-import { expectWorkspaceReady } from "./helpers/assertions"
 import { handlers } from "./lib/handlers"
 import { ChatPage } from "./pages/ChatPage"
 import { expect, test } from "./fixtures"
 
-test("has chat interface", async ({ page, tenant }) => {
-  await login(page, tenant)
-  const chat = new ChatPage(page)
-  await chat.goto()
-  await expectWorkspaceReady(page)
+test("has chat interface", async ({ authenticatedPage, workerTenant }) => {
+  const chat = new ChatPage(authenticatedPage)
+  await chat.gotoFast(workerTenant.workspace, workerTenant.orgId)
 
-  await expect(chat.messageInput).toBeVisible()
-  await expect(chat.sendButton).toBeVisible()
+  await expect(chat.messageInput).toBeVisible({ timeout: 2000 })
+  await expect(chat.sendButton).toBeVisible({ timeout: 1000 })
 })
 
-test("can send a message and receive response", async ({ page, tenant }) => {
-  await page.route("**/api/claude/stream", handlers.text("Hi there! How can I help you today?"))
-  await login(page, tenant)
+test("can send a message and receive response", async ({ authenticatedPage, workerTenant }) => {
+  await authenticatedPage.route("**/api/claude/stream", handlers.text("Hi there! How can I help you today?"))
 
-  const chat = new ChatPage(page)
-  await chat.goto()
-  await chat.waitForReady()
+  const chat = new ChatPage(authenticatedPage)
+  await chat.gotoFast(workerTenant.workspace, workerTenant.orgId)
 
   await chat.sendMessage(TEST_MESSAGES.simple)
   await chat.expectMessage(TEST_MESSAGES.simple)
@@ -41,13 +36,11 @@ test("send button disabled when no workspace", async ({ page }) => {
   await chat.expectSendButtonDisabled()
 })
 
-test("can send multiple messages", async ({ page, tenant }) => {
-  await page.route("**/api/claude/stream", handlers.text("Response received"))
-  await login(page, tenant)
+test("can send multiple messages", async ({ authenticatedPage, workerTenant }) => {
+  await authenticatedPage.route("**/api/claude/stream", handlers.text("Response received"))
 
-  const chat = new ChatPage(page)
-  await chat.goto()
-  await chat.waitForReady()
+  const chat = new ChatPage(authenticatedPage)
+  await chat.gotoFast(workerTenant.workspace, workerTenant.orgId)
 
   // First message
   await chat.sendMessage(TEST_MESSAGES.simple)

@@ -15,8 +15,8 @@ const isMobile =
 // Same font size on both - 14 is readable and saves space on mobile
 const fontSize = 14
 
-// Terminal theme
-const terminalTheme = {
+// Terminal themes
+const darkTheme = {
   background: "#1e1e1e",
   foreground: "#d4d4d4",
   cursor: "#0dbc79",
@@ -40,6 +40,34 @@ const terminalTheme = {
   brightWhite: "#ffffff",
 }
 
+const lightTheme = {
+  background: "#ffffff",
+  foreground: "#383a42",
+  cursor: "#0dbc79",
+  cursorAccent: "#ffffff",
+  selectionBackground: "rgba(13, 188, 121, 0.3)",
+  black: "#383a42",
+  red: "#e45649",
+  green: "#50a14f",
+  yellow: "#c18401",
+  blue: "#4078f2",
+  magenta: "#a626a4",
+  cyan: "#0184bc",
+  white: "#383a42",
+  brightBlack: "#686b77",
+  brightRed: "#e45649",
+  brightGreen: "#50a14f",
+  brightYellow: "#c18401",
+  brightBlue: "#4078f2",
+  brightMagenta: "#a626a4",
+  brightCyan: "#0184bc",
+  brightWhite: "#383a42",
+}
+
+// Detect system preference
+const prefersDark = window.matchMedia("(prefers-color-scheme: dark)")
+const getTerminalTheme = () => (prefersDark.matches ? darkTheme : lightTheme)
+
 // Tab management
 interface TerminalTab {
   id: string
@@ -59,6 +87,7 @@ const MAX_TABS = 10
 const shellContainer = document.getElementById("shell-container")
 const tabList = document.getElementById("tab-list")
 const addTabBtn = document.getElementById("add-tab-btn")
+const addClaudeBtn = document.getElementById("add-claude-btn")
 const loadingEl = document.getElementById("loading")
 const errorEl = document.getElementById("error")
 const mobileTabsInner = document.getElementById("mobile-tabs-inner")
@@ -68,7 +97,12 @@ if (!shellContainer || !tabList || !addTabBtn) {
   throw new Error("Required elements not found")
 }
 
-function createTab(): TerminalTab | null {
+interface CreateTabOptions {
+  initialCommand?: string
+  name?: string
+}
+
+function createTab(options?: CreateTabOptions): TerminalTab | null {
   if (tabs.length >= MAX_TABS) {
     alert(`Maximum ${MAX_TABS} tabs allowed`)
     return null
@@ -76,7 +110,7 @@ function createTab(): TerminalTab | null {
 
   tabCounter++
   const id = `tab-${tabCounter}`
-  const name = `Terminal ${tabCounter}`
+  const name = options?.name || `Terminal ${tabCounter}`
 
   // Create terminal wrapper element
   const wrapper = document.createElement("div")
@@ -97,7 +131,7 @@ function createTab(): TerminalTab | null {
     fontSize,
     fontFamily: "'JetBrains Mono', 'Fira Code', Menlo, Monaco, 'Courier New', monospace",
     scrollback: isMobile ? 2000 : 1000,
-    theme: terminalTheme,
+    theme: getTerminalTheme(),
     // Mobile scroll improvements
     smoothScrollDuration: isMobile ? 100 : 0,
     scrollSensitivity: isMobile ? 3 : 1,
@@ -126,6 +160,12 @@ function createTab(): TerminalTab | null {
         rows: term.rows,
       }),
     )
+    // Send initial command after a brief delay to let the shell initialize
+    if (options?.initialCommand) {
+      setTimeout(() => {
+        ws.send(JSON.stringify({ type: "input", data: options.initialCommand + "\n" }))
+      }, 100)
+    }
   }
 
   ws.onmessage = event => {
@@ -409,6 +449,11 @@ addTabBtn.addEventListener("click", () => {
   createTab()
 })
 
+// Add Claude button click handler
+addClaudeBtn?.addEventListener("click", () => {
+  createTab({ initialCommand: "claude", name: "Claude" })
+})
+
 // Handle beforeunload
 window.addEventListener("beforeunload", () => {
   tabs.forEach(tab => tab.ws.close())
@@ -578,6 +623,14 @@ function setupSwipeGestures() {
 // Initialize mobile features
 setupMobileToolbar()
 setupSwipeGestures()
+
+// Listen for system theme changes and update all terminals
+prefersDark.addEventListener("change", () => {
+  const newTheme = getTerminalTheme()
+  tabs.forEach(tab => {
+    tab.terminal.options.theme = newTheme
+  })
+})
 
 // Create initial tab
 createTab()

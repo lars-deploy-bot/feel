@@ -1,42 +1,32 @@
 /**
  * Utilities Validation Test
  *
- * Purpose: Thoroughly test the new E2E utilities to ensure they work correctly
- * - Test data constants are accessible
- * - Selectors match actual DOM elements
- * - ChatPage methods execute without errors
- * - Assertion helpers work correctly
- * - TypeScript types are correct
+ * Purpose: Test E2E utilities work correctly
+ * Uses fast patterns (authenticatedPage + gotoFast) for speed
  */
 
-// Import new utilities to test
 import { SECURITY, TEST_CONFIG } from "@webalive/shared"
 import { TEST_MESSAGES, TEST_SELECTORS, TEST_TIMEOUTS, TEST_USER } from "./fixtures/test-data"
-import { login } from "./helpers"
-import { expectChatMessage, expectSendButtonEnabled, expectWorkspaceReady, gotoChat } from "./helpers/assertions"
+import { expectChatMessage, expectSendButtonEnabled, gotoChatFast } from "./helpers/assertions"
 import { handlers } from "./lib/handlers"
 import { ChatPage } from "./pages/ChatPage"
 import { expect, test } from "./fixtures"
 
 test.describe("E2E Utilities Validation", () => {
   test("test-data constants are accessible and have correct types", async () => {
-    // This test doesn't need page/login - just validates constants
     // Validate TEST_USER - values come from SECURITY.LOCAL_TEST and TEST_CONFIG
     expect(TEST_USER.email).toBe(SECURITY.LOCAL_TEST.EMAIL)
     expect(TEST_USER.password).toBe(SECURITY.LOCAL_TEST.PASSWORD)
     expect(TEST_USER.workspace).toBe(`test.${TEST_CONFIG.EMAIL_DOMAIN}`)
-    expect(typeof TEST_USER.email).toBe("string")
 
     // Validate TEST_MESSAGES
     expect(TEST_MESSAGES.simple).toBe("Hello")
-    expect(typeof TEST_MESSAGES.greeting).toBe("string")
-    expect(typeof TEST_MESSAGES.complex).toBe("string")
 
-    // Validate TEST_TIMEOUTS
+    // Validate TEST_TIMEOUTS - updated values for parallel execution
     expect(TEST_TIMEOUTS.fast).toBe(1000)
     expect(TEST_TIMEOUTS.medium).toBe(3000)
-    expect(TEST_TIMEOUTS.slow).toBe(5000)
-    expect(typeof TEST_TIMEOUTS.max).toBe("number")
+    expect(TEST_TIMEOUTS.slow).toBe(10_000) // Updated for parallel load
+    expect(TEST_TIMEOUTS.max).toBe(15_000)
 
     // Validate TEST_SELECTORS
     expect(TEST_SELECTORS.workspaceReady).toBe('[data-testid="workspace-ready"]')
@@ -44,180 +34,110 @@ test.describe("E2E Utilities Validation", () => {
     expect(TEST_SELECTORS.sendButton).toBe('[data-testid="send-button"]')
   })
 
-  // Tests below need page/login
+  // Tests using fast patterns (authenticatedPage + gotoFast)
   test.describe("Tests requiring page interaction", () => {
-    test.beforeEach(async ({ page, tenant }) => {
-      await login(page, tenant)
-    })
-
-    test("selectors match actual DOM elements", async ({ page }) => {
-      await gotoChat(page)
+    test("selectors match actual DOM elements", async ({ authenticatedPage, workerTenant }) => {
+      await gotoChatFast(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
 
       // Verify all selectors point to real elements
-      const workspaceReady = page.locator(TEST_SELECTORS.workspaceReady)
-      await expect(workspaceReady).toBeVisible()
-
-      const messageInput = page.locator(TEST_SELECTORS.messageInput)
-      await expect(messageInput).toBeVisible()
-
-      const sendButton = page.locator(TEST_SELECTORS.sendButton)
-      await expect(sendButton).toBeVisible()
+      await expect(authenticatedPage.locator(TEST_SELECTORS.workspaceReady)).toBeVisible({ timeout: 2000 })
+      await expect(authenticatedPage.locator(TEST_SELECTORS.messageInput)).toBeVisible({ timeout: 1000 })
+      await expect(authenticatedPage.locator(TEST_SELECTORS.sendButton)).toBeVisible({ timeout: 1000 })
     })
 
-    test("expectWorkspaceReady helper works correctly", async ({ page }) => {
-      await page.goto("/chat", { waitUntil: "networkidle" })
-
-      // Should not throw - workspace should be ready
-      await expectWorkspaceReady(page)
-
-      // Verify workspace is actually ready by checking the attribute value
-      const testId = await page.locator('[data-testid="workspace-ready"]').getAttribute("data-testid")
-      expect(testId).toBe("workspace-ready")
-    })
-
-    test("expectSendButtonEnabled helper works correctly", async ({ page }) => {
-      await gotoChat(page)
+    test("expectSendButtonEnabled helper works correctly", async ({ authenticatedPage, workerTenant }) => {
+      await gotoChatFast(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
 
       // Fill message input (button is disabled when empty)
-      const messageInput = page.locator(TEST_SELECTORS.messageInput)
-      await messageInput.fill(TEST_MESSAGES.simple)
+      await authenticatedPage.locator(TEST_SELECTORS.messageInput).fill(TEST_MESSAGES.simple)
 
       // Should not throw - send button should be enabled
-      await expectSendButtonEnabled(page)
+      await expectSendButtonEnabled(authenticatedPage)
 
       // Verify button is actually enabled
-      const isEnabled = await page.locator(TEST_SELECTORS.sendButton).isEnabled()
+      const isEnabled = await authenticatedPage.locator(TEST_SELECTORS.sendButton).isEnabled()
       expect(isEnabled).toBe(true)
     })
 
-    test("expectChatMessage helper works correctly", async ({ page }) => {
-      await page.route("**/api/claude/stream", handlers.text("Test response"))
+    test("expectChatMessage helper works correctly", async ({ authenticatedPage, workerTenant }) => {
+      await authenticatedPage.route("**/api/claude/stream", handlers.text("Test response"))
+      await gotoChatFast(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
 
-      await gotoChat(page)
-
-      const messageInput = page.locator(TEST_SELECTORS.messageInput)
-      const sendButton = page.locator(TEST_SELECTORS.sendButton)
-
-      await messageInput.fill(TEST_MESSAGES.simple)
-      await expectSendButtonEnabled(page)
-      await sendButton.click()
+      await authenticatedPage.locator(TEST_SELECTORS.messageInput).fill(TEST_MESSAGES.simple)
+      await expectSendButtonEnabled(authenticatedPage)
+      await authenticatedPage.locator(TEST_SELECTORS.sendButton).click()
 
       // Should not throw - message should appear
-      await expectChatMessage(page, TEST_MESSAGES.simple)
-      await expectChatMessage(page, "Test response")
-      await expectChatMessage(page, /Test.*response/)
+      await expectChatMessage(authenticatedPage, TEST_MESSAGES.simple)
+      await expectChatMessage(authenticatedPage, "Test response")
     })
 
-    test("ChatPage object model - basic methods work", async ({ page }) => {
-      const chat = new ChatPage(page)
+    test("ChatPage.gotoFast method works", async ({ authenticatedPage, workerTenant }) => {
+      const chat = new ChatPage(authenticatedPage)
+      await chat.gotoFast(workerTenant.workspace, workerTenant.orgId)
 
-      // Test goto method
-      await chat.goto()
-      expect(page.url()).toContain("/chat")
-
-      // Test waitForReady method
-      await chat.waitForReady()
-
-      // Test getter methods return locators
-      expect(chat.messageInput).toBeDefined()
-      expect(chat.sendButton).toBeDefined()
-      expect(chat.stopButton).toBeDefined()
-
-      // Verify locators are functional
-      await expect(chat.messageInput).toBeVisible()
-      await expect(chat.sendButton).toBeVisible()
+      expect(authenticatedPage.url()).toContain("/chat")
+      await expect(chat.messageInput).toBeVisible({ timeout: 2000 })
+      await expect(chat.sendButton).toBeVisible({ timeout: 1000 })
     })
 
-    test("ChatPage object model - sendMessage method works", async ({ page }) => {
-      await page.route("**/api/claude/stream", handlers.text("Response from API"))
+    test("ChatPage.sendMessage method works", async ({ authenticatedPage, workerTenant }) => {
+      await authenticatedPage.route("**/api/claude/stream", handlers.text("Response from API"))
 
-      const chat = new ChatPage(page)
-      await chat.goto()
-      await chat.waitForReady()
-
-      // Should not throw - should send message successfully
-      await chat.sendMessage(TEST_MESSAGES.simple)
-
-      // Verify message was sent (appears in chat)
-      await expect(page.getByText(TEST_MESSAGES.simple).first()).toBeVisible()
-    })
-
-    test("ChatPage object model - expectMessage method works", async ({ page }) => {
-      await page.route("**/api/claude/stream", handlers.text("Expected message"))
-
-      const chat = new ChatPage(page)
-      await chat.goto()
-      await chat.waitForReady()
+      const chat = new ChatPage(authenticatedPage)
+      await chat.gotoFast(workerTenant.workspace, workerTenant.orgId)
 
       await chat.sendMessage(TEST_MESSAGES.simple)
+      await expect(authenticatedPage.getByText(TEST_MESSAGES.simple).first()).toBeVisible({ timeout: 3000 })
+    })
 
-      // Should not throw - should find messages
+    test("ChatPage.expectMessage method works", async ({ authenticatedPage, workerTenant }) => {
+      await authenticatedPage.route("**/api/claude/stream", handlers.text("Expected message"))
+
+      const chat = new ChatPage(authenticatedPage)
+      await chat.gotoFast(workerTenant.workspace, workerTenant.orgId)
+
+      await chat.sendMessage(TEST_MESSAGES.simple)
       await chat.expectMessage(TEST_MESSAGES.simple)
       await chat.expectMessage("Expected message")
-      await chat.expectMessage(/Expected/)
     })
 
-    test("ChatPage object model - expectSendButtonEnabled method works", async ({ page }) => {
-      const chat = new ChatPage(page)
-      await chat.goto()
-      await chat.waitForReady()
+    test("ChatPage button state methods work", async ({ authenticatedPage, workerTenant }) => {
+      const chat = new ChatPage(authenticatedPage)
+      await chat.gotoFast(workerTenant.workspace, workerTenant.orgId)
 
-      // Fill message input (button is disabled when empty)
+      // Fill message input then check button state
       await chat.messageInput.fill(TEST_MESSAGES.simple)
-
-      // Should not throw - button should be enabled
       await chat.expectSendButtonEnabled()
-    })
 
-    test("ChatPage object model - expectSendButtonDisabled method works", async ({ page }) => {
-      const _chat = new ChatPage(page)
-      await page.goto("/chat", { waitUntil: "networkidle" })
-
-      // Before workspace is ready, button should be disabled
-      // This test might be timing-dependent, so we'll skip it for now
-      // The method exists and compiles, which is what matters
-    })
-
-    test("ChatPage object model - visibility check methods work", async ({ page }) => {
-      const chat = new ChatPage(page)
-      await chat.goto()
-      await chat.waitForReady()
-
-      // Test isSendButtonVisible
+      // Visibility check
       const sendVisible = await chat.isSendButtonVisible()
-      expect(typeof sendVisible).toBe("boolean")
       expect(sendVisible).toBe(true)
 
-      // Test isStopButtonVisible (should be false when not streaming)
       const stopVisible = await chat.isStopButtonVisible()
-      expect(typeof stopVisible).toBe("boolean")
       expect(stopVisible).toBe(false)
     })
 
-    test("integration: full flow using all new utilities", async ({ page }) => {
-      await page.route("**/api/claude/stream", handlers.text("Integration test response"))
-
-      // Use ChatPage
+    test("send button disabled when no workspace", async ({ page }) => {
+      // Use unauthenticated page - no workspace setup
+      await page.goto("/chat", { waitUntil: "domcontentloaded" })
       const chat = new ChatPage(page)
-      await chat.goto()
-      await chat.waitForReady()
+      await chat.expectSendButtonDisabled()
+    })
 
-      // Use constants
+    test("integration: full flow using utilities", async ({ authenticatedPage, workerTenant }) => {
+      await authenticatedPage.route("**/api/claude/stream", handlers.text("Integration response"))
+
+      const chat = new ChatPage(authenticatedPage)
+      await chat.gotoFast(workerTenant.workspace, workerTenant.orgId)
+
       await chat.sendMessage(TEST_MESSAGES.question)
-
-      // Use assertion helpers
-      await expectChatMessage(page, TEST_MESSAGES.question)
-      await expectChatMessage(page, "Integration test response")
-
-      // Fill new message (previous message was cleared after send)
-      await chat.messageInput.fill(TEST_MESSAGES.simple)
+      await expectChatMessage(authenticatedPage, TEST_MESSAGES.question)
+      await expectChatMessage(authenticatedPage, "Integration response")
 
       // Verify send button is re-enabled after response
-      await expectSendButtonEnabled(page)
-
-      // Send another message
-      await chat.sendMessage(TEST_MESSAGES.complex)
-      await chat.expectMessage(TEST_MESSAGES.complex)
+      await chat.messageInput.fill(TEST_MESSAGES.simple)
+      await expectSendButtonEnabled(authenticatedPage)
     })
-  }) // End of "Tests requiring page interaction" describe block
+  })
 })

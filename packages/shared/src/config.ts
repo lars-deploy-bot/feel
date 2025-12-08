@@ -213,6 +213,8 @@ export const SECURITY = {
     "http://127.0.0.1:3000",
     "https://terminal.goalive.nl",
     "https://dev.terminal.goalive.nl",
+    "https://staging.terminal.goalive.nl",
+    "https://app.alive.best",
   ] as readonly string[],
 
   /** Environment-specific test credentials */

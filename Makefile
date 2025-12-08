@@ -1,4 +1,4 @@
-.PHONY: help deploy-all-environments staging dev logs-production logs-staging logs-dev status rollback wash wash-skip shell build\:shell test\:shell static-check
+.PHONY: help deploy-all-environments staging dev deploy-go logs-production logs-staging logs-dev status rollback wash wash-skip shell build\:shell test\:shell static-check
 
 # Load environment variables from .env
 ifneq (,$(wildcard .env))
@@ -20,9 +20,10 @@ help:
 	@echo "  make staging       Full staging deployment (port 8998)"
 	@echo "  make dev           Rebuild and restart dev environment (port 8997, hot-reload)"
 	@echo "  make dev:turbo     Run all monorepo dev servers with Turbo"
-	@echo "  make shell         Run shell-server locally (port 3500)"
-	@echo "  make build:shell   Build, test, and restart shell-server"
-	@echo "  make test:shell    Run shell-server build verification tests"
+	@echo "  make deploy-go     Deploy shell-server-go separately (not included in staging/production)"
+	@echo "  make shell         Run shell-server-go locally (port 3500)"
+	@echo "  make build:shell   Build, test, and restart shell-server-go"
+	@echo "  make test:shell    Run shell-server-go tests"
 	@echo ""
 	@echo "$(GREEN)Quality Checks:$(NC)"
 	@echo "  make static-check  Run type-check, lint, format, and unit tests (used by pre-push hook)"
@@ -77,6 +78,9 @@ staging:
 dev:
 	@./scripts/deployment/deploy-dev.sh
 
+deploy-go:
+	@./scripts/deployment/deploy-go-server.sh
+
 logs-production:
 	@./scripts/deployment/logs-production.sh
 
@@ -96,21 +100,21 @@ dev\:turbo:
 	@bun run dev:turbo
 
 build\:shell:
-	@echo "$(BLUE)Building shell-server...$(NC)"
-	@cd apps/shell-server && bun run build
-	@echo "$(GREEN)✓ Shell-server built successfully$(NC)"
-	@echo "$(BLUE)Running build verification tests...$(NC)"
-	@cd apps/shell-server && bun run test
+	@echo "$(BLUE)Building shell-server-go...$(NC)"
+	@cd apps/shell-server-go && make build
+	@echo "$(GREEN)✓ Shell-server-go built successfully$(NC)"
+	@echo "$(BLUE)Running tests...$(NC)"
+	@cd apps/shell-server-go && make test
 	@echo "$(GREEN)✓ All tests passed$(NC)"
-	@echo "$(BLUE)Restarting shell-server service...$(NC)"
-	@systemctl restart shell-server
+	@echo "$(BLUE)Restarting shell-server-go service...$(NC)"
+	@systemctl restart shell-server-go
 	@sleep 1
 	@echo "$(GREEN)✓ Service restarted$(NC)"
-	@systemctl status shell-server --no-pager -l | head -8
+	@systemctl status shell-server-go --no-pager -l | head -8
 
 test\:shell:
-	@echo "$(BLUE)Running shell-server tests...$(NC)"
-	@cd apps/shell-server && bun run test
+	@echo "$(BLUE)Running shell-server-go tests...$(NC)"
+	@cd apps/shell-server-go && make test
 
 static-check:
 	@echo "$(BLUE)Running static checks (type-check, lint, format, unit tests)...$(NC)"
@@ -126,19 +130,11 @@ wash-skip:
 .DEFAULT_GOAL := help
 
 shell:
-	@echo "$(GREEN)Starting shell-server locally...$(NC)"
-	@if [ ! -f apps/shell-server/.env.local ]; then \
-		echo "$(BLUE)Creating .env.local for local development...$(NC)"; \
-		echo "PORT=3500" > apps/shell-server/.env.local; \
-		echo "SHELL_PASSWORD=devpassword" >> apps/shell-server/.env.local; \
-		echo "NODE_ENV=development" >> apps/shell-server/.env.local; \
-		echo "$(GREEN)✓ Created .env.local$(NC)"; \
-	fi
-	@echo "$(BLUE)Building shell-server...$(NC)"
-	@cd apps/shell-server && bun run build
+	@echo "$(GREEN)Starting shell-server-go locally...$(NC)"
+	@echo "$(BLUE)Building shell-server-go...$(NC)"
+	@cd apps/shell-server-go && make build
 	@echo "$(GREEN)✓ Build complete$(NC)"
-	@echo "$(BLUE)Running shell-server on http://localhost:3500$(NC)"
+	@echo "$(BLUE)Running shell-server-go on http://localhost:3500$(NC)"
 	@echo "$(BLUE)Password: devpassword$(NC)"
-	@echo "$(BLUE)Workspace: .alive/shell-server (auto-created)$(NC)"
 	@echo ""
-	@PORT=3500 SHELL_PASSWORD=devpassword NODE_ENV=development node apps/shell-server/dist/index.js
+	@cd apps/shell-server-go && PORT=3500 SHELL_PASSWORD=devpassword ./bin/shell-server

@@ -1,0 +1,43 @@
+# Caddy instance for Go Shell - NEVER auto-reloaded
+# This instance is isolated from main Caddy to preserve long-lived SSE connections
+# Only reload manually when shell config actually changes
+#
+# ARCHITECTURE: nginx (port 443) -> SNI routing -> this instance (port 8443)
+# See: /root/webalive/claude-bridge/docs/architecture/nginx-sni-router.md
+
+{
+    # Use different admin port to avoid conflict with main Caddy
+    admin localhost:2020
+
+    # Use different storage to avoid conflicts
+    storage file_system {
+        root /var/lib/caddy-shell
+    }
+
+    # Disable automatic HTTPS redirects (nginx handles external ports)
+    # This prevents Caddy from trying to bind to port 80
+    auto_https disable_redirects
+
+    # HTTP port is unused but needed to prevent binding to 80
+    http_port 8089
+}
+
+# Go Shell server - handles Claude Code SSE connections
+shell.terminal.goalive.nl:8443 {
+    reverse_proxy localhost:3889 {
+        # Extra safety: delay stream close on the rare manual reload
+        stream_close_delay 5m
+    }
+}
+
+go.goalive.nl:8443 {
+    reverse_proxy localhost:3889 {
+        stream_close_delay 5m
+    }
+}
+
+sk.goalive.nl:8443 {
+    reverse_proxy localhost:3889 {
+        stream_close_delay 5m
+    }
+}

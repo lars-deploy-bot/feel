@@ -29,5 +29,24 @@ export type { AppDatabase }
 // Re-export the main Database type for backward compatibility
 export type Database = PublicDatabase
 
+// ============================================
+// Convenience type exports for common tables
+// ============================================
+
+// IAM Schema Types
+export type IamUser = IamDatabase["iam"]["Tables"]["users"]["Row"]
+export type IamUserInsert = IamDatabase["iam"]["Tables"]["users"]["Insert"]
+export type IamOrg = IamDatabase["iam"]["Tables"]["orgs"]["Row"]
+export type IamOrgInsert = IamDatabase["iam"]["Tables"]["orgs"]["Insert"]
+export type IamOrgMembership = IamDatabase["iam"]["Tables"]["org_memberships"]["Row"]
+export type IamOrgMembershipInsert = IamDatabase["iam"]["Tables"]["org_memberships"]["Insert"]
+
+// App Schema Types
+export type AppDomain = AppDatabase["app"]["Tables"]["domains"]["Row"]
+export type AppDomainInsert = AppDatabase["app"]["Tables"]["domains"]["Insert"]
+export type AppDomainUpdate = AppDatabase["app"]["Tables"]["domains"]["Update"]
+export type AppUserQuota = AppDatabase["app"]["Tables"]["user_quotas"]["Row"]
+export type AppUserQuotaInsert = AppDatabase["app"]["Tables"]["user_quotas"]["Insert"]
+
 // Export database client creators
 export * from "./client"

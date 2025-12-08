@@ -301,6 +301,11 @@ export const GLOBAL_MCP_PROVIDERS = {
     friendlyName: "Context7",
     knownTools: ["mcp__context7__resolve-library-id", "mcp__context7__get-library-docs"] as const,
   },
+  "google-scraper": {
+    url: "http://localhost:8083/mcp",
+    friendlyName: "Google Maps",
+    knownTools: ["mcp__google-scraper__search_google_maps"] as const,
+  },
 } as const satisfies GlobalMcpProviderRegistry
 
 /**

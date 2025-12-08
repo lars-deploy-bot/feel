@@ -24,15 +24,32 @@ export const TEST_MESSAGES = {
   protected: "Protected!",
 } as const
 
+/**
+ * Test timeouts calibrated for parallel execution (4 workers)
+ *
+ * Rule of thumb: if a single test needs X seconds, budget 3X for parallel.
+ * These values are intentionally higher than "feels necessary" because:
+ * 1. Parallel workers share server resources
+ * 2. React hydration can be slow under load
+ * 3. Flaky tests waste more time than generous timeouts
+ *
+ * @see docs/postmortems/2025-11-30-e2e-test-flakiness.md
+ */
 export const TEST_TIMEOUTS = {
-  /** Fast UI operations (button clicks, input fills) */
-  fast: TIMEOUTS.TEST.SHORT,
+  /** Fast UI operations (button clicks, input fills) - should be instant */
+  fast: TIMEOUTS.TEST.SHORT, // 1s
+
   /** Medium operations (API responses, DOM updates) */
-  medium: TIMEOUTS.TEST.MEDIUM,
-  /** Slow operations (page loads, workspace initialization) */
-  slow: 5000,
-  /** Maximum timeout for any operation */
-  max: TIMEOUTS.TEST.LONG,
+  medium: TIMEOUTS.TEST.MEDIUM, // 3s
+
+  /**
+   * Slow operations (React hydration, workspace initialization)
+   * This is the PRIMARY wait - put it first, then use fast/medium for confirmations
+   */
+  slow: 10_000, // 10s - accounts for parallel load
+
+  /** Maximum timeout for any single assertion */
+  max: 15_000, // 15s - escape hatch, investigate if hit regularly
 } as const
 
 export const TEST_SELECTORS = {

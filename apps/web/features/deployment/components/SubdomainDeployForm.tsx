@@ -13,7 +13,7 @@ import { checkSlugAvailability } from "@/features/deployment/lib/slug-api"
 import type { DeploySubdomainResponse } from "@/features/deployment/types/deploy-subdomain"
 import { WILDCARD_DOMAIN } from "@/lib/config.client"
 import { useAuthModalActions } from "@/lib/stores/authModalStore"
-import { useOnboardingActions, useOnboardingStore } from "@/lib/stores/onboardingStore"
+import { useOnboardingStore } from "@/lib/stores/onboardingStore"
 import { DeploymentStatus } from "./DeploymentStatus"
 import { SlugInput } from "./SlugInput"
 import { SubmitButton } from "./SubmitButton"
@@ -50,7 +50,11 @@ export function SubdomainDeployForm() {
   const [isDeploying, setIsDeploying] = useState(false)
   const [deploymentStatus, setDeploymentStatus] = useState<DeploySubdomainResponse | null>(null)
   const [elapsedTime, setElapsedTime] = useState(0)
-  const [showIdeaConfirmation, setShowIdeaConfirmation] = useState(true)
+  // Onboarding store - need early access for initial state
+  const onboardingState = useOnboardingStore()
+
+  // Skip template selection if user already picked one (persisted in store)
+  const [showIdeaConfirmation, setShowIdeaConfirmation] = useState(() => !onboardingState.templateId)
   const [pendingSubmit, setPendingSubmit] = useState<DeploySubdomainForm | null>(null)
   const [iframeLoading, setIframeLoading] = useState(false)
   const [loadingDots, setLoadingDots] = useState("")
@@ -64,9 +68,8 @@ export function SubdomainDeployForm() {
   // Auth modal
   const { open: openAuthModal } = useAuthModalActions()
 
-  // Onboarding store
-  const { siteIdea, templateId } = useOnboardingStore()
-  const { setSiteIdea, setTemplateId } = useOnboardingActions()
+  // Get values and actions from the store (store accessed early for initial state)
+  const { siteIdea, templateId, setSiteIdea, setTemplateId } = onboardingState
 
   // Extract the 'q' search parameter for site ideas
   const siteIdeasFromUrl = searchParams.get("q") || ""
@@ -96,15 +99,23 @@ export function SubdomainDeployForm() {
     }
   }, [siteIdeasFromUrl, siteIdea, setSiteIdea])
 
-  // Sync URL with current state
+  // Skip template selection if store rehydrates with a selected template
+  useEffect(() => {
+    if (templateId && showIdeaConfirmation) {
+      setShowIdeaConfirmation(false)
+    }
+  }, [templateId, showIdeaConfirmation])
+
+  // Sync URL with current state (preserve existing params like 'mode')
   useEffect(() => {
     if (showIdeaConfirmation && (siteIdea || templateId)) {
       const params = new URLSearchParams(window.location.search)
       if (siteIdea) params.set("q", siteIdea)
       if (templateId) params.set("template", templateId)
 
-      const newUrl = `/deploy?${params.toString()}`
-      if (window.location.search !== `?${params.toString()}`) {
+      const newSearch = params.toString()
+      const newUrl = newSearch ? `/deploy?${newSearch}` : "/deploy"
+      if (window.location.search !== `?${newSearch}`) {
         window.history.replaceState({}, "", newUrl)
       }
     }

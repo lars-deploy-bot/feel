@@ -60,7 +60,14 @@ import { authStore, useIsSessionExpired } from "@/lib/stores/authStore"
 import { validateOAuthToastParams } from "@/lib/integrations/toast-validation"
 import { isRetryableError, retryWithBackoff } from "@/lib/retry"
 import { useSidebarActions, useSidebarOpen } from "@/lib/stores/conversationSidebarStore"
-import { isDevelopment, useDebugActions, useDebugVisible, useSandbox, useSSETerminal } from "@/lib/stores/debug-store"
+import {
+  isDevelopment,
+  useDebugActions,
+  useDebugView,
+  useDebugVisible,
+  useSandbox,
+  useSSETerminal,
+} from "@/lib/stores/debug-store"
 import { useApiKey, useModel } from "@/lib/stores/llmStore"
 import { useCurrentConversationId, useMessageActions, useMessages, useMessageStore } from "@/lib/stores/messageStore"
 import { useStreamingActions } from "@/lib/stores/streamingStore"
@@ -131,7 +138,8 @@ function ChatPageContent() {
   const photoButtonRef = useRef<HTMLButtonElement>(null)
   const { toggleView, toggleSandbox, setSSETerminal, setSSETerminalMinimized, setSandbox, setSandboxMinimized } =
     useDebugActions()
-  const isDebugView = useDebugVisible()
+  const debugModeEnabled = useDebugView() // Raw state for button visual
+  const isDebugView = useDebugVisible() // Only true when NODE_ENV=development + debugView enabled
   const showSSETerminal = useSSETerminal()
   const showSandbox = useSandbox()
   const { addEvent: addDevEvent } = useDevTerminal()
@@ -1230,14 +1238,14 @@ function ChatPageContent() {
                     type="button"
                     onClick={toggleView}
                     className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border transition-colors ${
-                      isDebugView
+                      debugModeEnabled
                         ? "text-amber-600 border-amber-400 bg-amber-50 hover:bg-amber-100 dark:text-amber-400 dark:border-amber-600 dark:bg-amber-950/50 dark:hover:bg-amber-950"
                         : "text-emerald-600 border-emerald-400 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-600 dark:hover:bg-emerald-950/30"
                     }`}
-                    title={isDebugView ? "Switch to live view" : "Switch to debug view"}
+                    title={debugModeEnabled ? "Switch to live view" : "Switch to debug view"}
                   >
-                    {isDebugView ? <FlaskConical size={14} /> : <Radio size={14} />}
-                    <span>{isDebugView ? "Debug" : "Live"}</span>
+                    {debugModeEnabled ? <FlaskConical size={14} /> : <Radio size={14} />}
+                    <span>{debugModeEnabled ? "Debug" : "Live"}</span>
                   </button>
                 )}
                 <button

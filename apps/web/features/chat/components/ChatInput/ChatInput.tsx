@@ -66,6 +66,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
     addPhotobookImage,
     addSuperTemplateAttachment,
     addUserPrompt,
+    addFileForAnalysis,
     removeAttachment,
     clearAttachments,
   } = useAttachments(config)
@@ -81,6 +82,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
       addPhotobookImage,
       addSuperTemplateAttachment,
       addUserPrompt,
+      addFileForAnalysis,
       getAttachments: () => attachments,
       clearLibraryImages: () => {
         const libraryImages = attachments.filter(a => a.kind === "library-image")
@@ -98,6 +100,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
       addPhotobookImage,
       addSuperTemplateAttachment,
       addUserPrompt,
+      addFileForAnalysis,
       attachments,
       removeAttachment,
       clearAttachments,

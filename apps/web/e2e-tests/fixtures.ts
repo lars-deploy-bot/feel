@@ -64,7 +64,9 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     // biome-ignore lint/correctness/noEmptyPattern: Playwright requires destructuring even when no fixtures are used
     async ({}, use, workerInfo) => {
       const runId = process.env.E2E_RUN_ID
-      const workerIndex = workerInfo.workerIndex
+      // Wrap workerIndex to stay within configured worker slots
+      // Playwright can assign high indices on retries, but we only have MAX_WORKERS slots
+      const workerIndex = workerInfo.workerIndex % TEST_CONFIG.MAX_WORKERS
 
       if (!runId) {
         throw new Error("E2E_RUN_ID not set - global setup not run?")
@@ -124,6 +126,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   },
 
   // Test-scoped: authenticated page for each test
+  // Sets JWT cookie AND localStorage via context-level init script
   authenticatedPage: async ({ page, context, workerStorageState, baseURL }, use) => {
     // Determine if we're running against a remote environment
     const isRemote = baseURL?.startsWith("https://") ?? false
@@ -162,16 +165,15 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
       },
     ])
 
-    // Set workspace in localStorage using typed helper from @webalive/shared
-    // This ensures E2E tests stay in sync with workspaceStore schema
-    await page.goto("/")
-    await page.evaluate(({ key, value }) => localStorage.setItem(key, value), {
-      key: WORKSPACE_STORAGE.KEY,
-      value: createWorkspaceStorageValue(workerStorageState.workspace, workerStorageState.orgId),
-    })
-
-    // Reload page to pick up the localStorage state
-    await page.reload()
+    // Pre-inject workspace into localStorage via context-level init script
+    // This runs BEFORE any page JavaScript, ensuring Zustand hydrates correctly
+    const storageValue = createWorkspaceStorageValue(workerStorageState.workspace, workerStorageState.orgId)
+    await context.addInitScript(
+      ({ key, value }) => {
+        localStorage.setItem(key, value)
+      },
+      { key: WORKSPACE_STORAGE.KEY, value: storageValue },
+    )
 
     await use(page)
   },

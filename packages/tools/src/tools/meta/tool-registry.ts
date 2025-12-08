@@ -2,8 +2,10 @@
  * Tool Registry
  *
  * Central registry of all MCP tools with their metadata.
- * This is the single source of truth for enabled/disabled tools.
+ * Internal tools are defined here. External MCP entries are auto-generated
+ * from GLOBAL_MCP_PROVIDERS and OAUTH_MCP_PROVIDERS in @webalive/shared.
  */
+import { GLOBAL_MCP_PROVIDERS, OAUTH_MCP_PROVIDERS } from "@webalive/shared"
 
 /**
  * SDK Built-in Tools
@@ -60,7 +62,7 @@ export interface ToolMetadata {
   }[]
 }
 
-export const TOOL_REGISTRY: ToolMetadata[] = [
+const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
   // Meta tools (tool discovery)
   {
     name: "search_tools",
@@ -415,13 +417,49 @@ export const TOOL_REGISTRY: ToolMetadata[] = [
     ],
   },
 
-  // External MCP Servers (workspace-specific)
-  {
-    name: "stripe",
-    category: "external-mcp",
-    description:
-      "Stripe payment integration (larsvandeneeden.com only). Access to Stripe API for payments, customers, subscriptions, etc.",
-    contextCost: "medium",
-    enabled: false, // Only available for specific workspaces, dynamically enabled
-  },
+  // External MCP entries are auto-generated below from shared registries
 ]
+
+/**
+ * Auto-generate external MCP entries from shared registries.
+ * Single source of truth - no manual duplication needed.
+ */
+function generateExternalMcpEntries(): ToolMetadata[] {
+  const entries: ToolMetadata[] = []
+
+  // From GLOBAL_MCP_PROVIDERS (always available, no auth)
+  for (const [key, config] of Object.entries(GLOBAL_MCP_PROVIDERS)) {
+    entries.push({
+      name: key.replace(/-/g, "_"), // Convert to snake_case for consistency
+      category: "external-mcp",
+      description: `${config.friendlyName} integration (always available)`,
+      contextCost: "medium",
+      enabled: false, // External HTTP server, not registered in internal MCP
+    })
+  }
+
+  // From OAUTH_MCP_PROVIDERS (requires user authentication)
+  for (const [key, config] of Object.entries(OAUTH_MCP_PROVIDERS)) {
+    entries.push({
+      name: key,
+      category: "external-mcp",
+      description: `${config.friendlyName} integration (requires OAuth connection)`,
+      contextCost: "medium",
+      enabled: false, // External HTTP server, not registered in internal MCP
+    })
+  }
+
+  return entries
+}
+
+/**
+ * Complete tool registry including auto-generated external MCP entries.
+ * Use this for search_tools and other discovery functions.
+ */
+export const FULL_TOOL_REGISTRY: ToolMetadata[] = [...INTERNAL_TOOL_REGISTRY, ...generateExternalMcpEntries()]
+
+/**
+ * @deprecated Use FULL_TOOL_REGISTRY for complete list including external MCPs
+ * Kept for backwards compatibility - points to full registry
+ */
+export const TOOL_REGISTRY = FULL_TOOL_REGISTRY

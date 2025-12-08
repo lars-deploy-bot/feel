@@ -34,38 +34,61 @@ function isDeployedServer(): boolean {
 }
 
 /**
+ * Get cookie domain based on request host
+ * Supports multiple domains: terminal.goalive.nl, alive.best
+ */
+function getCookieDomain(host?: string): string | undefined {
+  if (!host) return DOMAINS.COOKIE_DOMAIN
+
+  // alive.best and subdomains
+  if (host.endsWith("alive.best") || host === "alive.best") {
+    return ".alive.best"
+  }
+
+  // terminal.goalive.nl and subdomains (default)
+  return DOMAINS.COOKIE_DOMAIN
+}
+
+/**
  * Get standard cookie options for session cookies
  * Automatically handles production vs development secure flag
  *
  * Uses sameSite: "lax" for mobile browser compatibility.
  * "none" causes issues on mobile Safari due to ITP (Intelligent Tracking Prevention).
  * "lax" works for same-origin requests and top-level navigations.
+ *
+ * @param host - Optional request host to determine cookie domain
  */
-export function getSessionCookieOptions(): CookieOptions {
+export function getSessionCookieOptions(host?: string): CookieOptions {
   const isDeployed = isDeployedServer()
   return {
     httpOnly: true,
     secure: isDeployed,
-    sameSite: "lax", // "lax" for mobile compatibility - "none" breaks Safari ITP
+    // "none" required for iframe preview auth (cross-origin subresource requests)
+    // Safari ITP issue was mitigated by cookie name change (auth_session_v2)
+    // If Safari breaks again, implement preview-specific token auth
+    sameSite: isDeployed ? "none" : "lax",
     path: "/",
     maxAge: SESSION_MAX_AGE,
-    // Domain set to allow cookie on subdomains (*.terminal.goalive.nl)
-    ...(isDeployed && { domain: DOMAINS.COOKIE_DOMAIN }),
+    // Domain set dynamically based on request host
+    ...(isDeployed && { domain: getCookieDomain(host) }),
   }
 }
 
 /**
  * Get cookie options for clearing a cookie
  * Must match the original cookie's attributes except value/expiry
+ *
+ * @param host - Optional request host to determine cookie domain
  */
-export function getClearCookieOptions(): CookieOptions {
+export function getClearCookieOptions(host?: string): CookieOptions {
   const isDeployed = isDeployedServer()
   return {
     httpOnly: true,
     secure: isDeployed,
-    sameSite: "lax", // Must match getSessionCookieOptions
+    sameSite: isDeployed ? "none" : "lax", // Must match getSessionCookieOptions
     path: "/",
     expires: new Date(0), // Expire immediately
-    ...(isDeployed && { domain: DOMAINS.COOKIE_DOMAIN }),
+    ...(isDeployed && { domain: getCookieDomain(host) }),
   }
 }

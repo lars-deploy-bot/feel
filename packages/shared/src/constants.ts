@@ -279,7 +279,7 @@ export const FEATURE_FLAGS = {
    * is formatted and placed in the message input for easy copying/editing.
    */
   AUTO_COPY_ON_COMPLETE: {
-    defaultValue: true,
+    defaultValue: false,
     description: "Auto-fill message input with formatted conversation on completion",
   },
 

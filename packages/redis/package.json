@@ -14,7 +14,7 @@
   "scripts": {
     "build": "tsup src/index.ts --dts --format esm,cjs",
     "dev": "tsup src/index.ts --dts --format esm,cjs --watch",
-    "install": "bash scripts/install.sh",
+    "setup": "bash scripts/install.sh",
     "start": "bash scripts/start.sh",
     "stop": "bash scripts/stop.sh",
     "status": "docker-compose ps redis",

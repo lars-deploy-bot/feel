@@ -53,10 +53,17 @@ export function isOriginGoaliveNLDomain(origin: string): boolean {
 }
 
 /**
+ * Check if an origin matches the alive.best domain pattern
+ */
+export function isOriginAliveBestDomain(origin: string): boolean {
+  return origin.endsWith(".alive.best") || origin === "https://alive.best"
+}
+
+/**
  * Check if an origin is allowed (file check + fallback pattern check)
  */
 export function isOriginAllowed(origin: string): boolean {
-  return isOriginInAllowedDomains(origin) || isOriginGoaliveNLDomain(origin)
+  return isOriginInAllowedDomains(origin) || isOriginGoaliveNLDomain(origin) || isOriginAliveBestDomain(origin)
 }
 
 /**

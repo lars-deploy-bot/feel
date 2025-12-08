@@ -1,6 +1,6 @@
 # Claude Bridge Systemd Services
 
-Service files for running claude-bridge environments.
+Service files for running claude-bridge environments and infrastructure.
 
 ## Installation
 
@@ -14,6 +14,7 @@ sudo systemctl daemon-reload
 # Enable services (start on boot)
 sudo systemctl enable claude-bridge-production
 sudo systemctl enable claude-bridge-staging
+sudo systemctl enable caddy-shell
 ```
 
 ## Usage
@@ -31,14 +32,22 @@ journalctl -u claude-bridge-staging -n 50
 
 ## Ports
 
-| Environment | Port |
-|-------------|------|
-| Production  | 9000 |
-| Staging     | 8998 |
-| Dev         | 8997 |
+| Service | Port | Purpose |
+|---------|------|---------|
+| Production | 9000 | Claude Bridge production |
+| Staging | 8998 | Claude Bridge staging |
+| Dev | 8997 | Claude Bridge dev |
+| caddy-shell | 8443 | Isolated Caddy for shell SSE connections |
 
-## Notes
+## Services
 
+### Claude Bridge Services
 - Production/staging run from `.builds/{env}/current/standalone`
 - Dev runs directly from source with `bun run dev`
 - All services use EnvironmentFile for secrets (not committed to git)
+
+### caddy-shell.service
+Isolated Caddy instance for Go shell domains (shell.terminal.goalive.nl, go.goalive.nl, sk.goalive.nl).
+This instance is **never auto-reloaded** to preserve long-lived SSE connections.
+
+See [CADDY_SHELL_ISOLATION.md](../docs/operations/CADDY_SHELL_ISOLATION.md) for full documentation.

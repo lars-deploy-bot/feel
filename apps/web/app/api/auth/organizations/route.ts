@@ -11,6 +11,7 @@ import { createIamClient } from "@/lib/supabase/iam"
 
 export async function GET(req: NextRequest) {
   const origin = req.headers.get("origin")
+  const host = req.headers.get("host") || undefined
   const requestId = randomUUID()
 
   try {
@@ -21,7 +22,7 @@ export async function GET(req: NextRequest) {
       const res = createCorsErrorResponse(origin, ErrorCodes.UNAUTHORIZED, 401, { requestId })
 
       // Clear invalid session cookie (auto-cleanup for stuck mobile sessions)
-      res.cookies.set(COOKIE_NAMES.SESSION, "", getClearCookieOptions())
+      res.cookies.set(COOKIE_NAMES.SESSION, "", getClearCookieOptions(host))
 
       return res
     }

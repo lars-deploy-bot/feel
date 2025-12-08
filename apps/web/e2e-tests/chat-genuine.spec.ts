@@ -12,8 +12,7 @@
  * - ANTHROPIC_API_KEY in .env
  */
 
-import type { Page, Request, Response } from "@playwright/test"
-import { expect, test } from "@playwright/test"
+import { type Page, type Request, type Response, expect, test } from "@playwright/test"
 import { PATTERNS, TEST_API, TEST_MESSAGES, TEST_MODELS } from "./fixtures/test-constants"
 import { TEST_TIMEOUTS, TEST_USER } from "./fixtures/test-data"
 
@@ -41,6 +40,8 @@ interface ErrorResponse {
  * Login helper for genuine tests
  * Uses TEST_USER fixture for consistent credentials
  *
+ * Waits for specific elements instead of networkidle (which is flaky under load)
+ *
  * @param page - Playwright page object
  */
 async function loginGenuine(page: Page): Promise<void> {
@@ -52,8 +53,11 @@ async function loginGenuine(page: Page): Promise<void> {
   // Wait for navigation to /chat (event-based, not timeout)
   await page.waitForURL("/chat", { timeout: TEST_TIMEOUTS.max })
 
-  // Wait for workspace to be ready (data-testid or network idle)
-  await page.waitForLoadState("networkidle")
+  // Wait for workspace to be ready - use specific element, not networkidle
+  // networkidle is flaky: "no network for 500ms" can fail if anything fires at 501ms
+  await expect(page.locator('[data-testid="workspace-ready"]')).toBeAttached({
+    timeout: TEST_TIMEOUTS.slow,
+  })
 }
 
 test.describe("Chat API - Request Validation", () => {

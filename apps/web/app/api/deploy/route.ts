@@ -199,14 +199,10 @@ export async function POST(request: NextRequest) {
       errorMessage = `Deployment failed: ${error.message}`
     }
 
-    return NextResponse.json(
-      {
-        ok: false,
-        message: errorMessage,
-        errors: process.env.NODE_ENV === "development" ? [String(error)] : undefined,
-      } as DeployResponse,
-      { status: statusCode },
-    )
+    return createErrorResponse(ErrorCodes.DEPLOYMENT_FAILED, statusCode, {
+      deploymentError: errorMessage,
+      errors: process.env.NODE_ENV === "development" ? [String(error)] : undefined,
+    })
   }
 }
 

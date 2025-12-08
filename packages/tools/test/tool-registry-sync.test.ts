@@ -89,8 +89,8 @@ describe("Tool Registry Sync", () => {
       expect(tool.contextCost).toMatch(/^(low|medium|high)$/)
       expect(typeof tool.enabled).toBe("boolean")
 
-      // Test name format (snake_case)
-      expect(tool.name).toMatch(/^[a-z_]+$/)
+      // Test name format (snake_case, may include digits for external providers like context7)
+      expect(tool.name).toMatch(/^[a-z0-9_]+$/)
     }
   })
 

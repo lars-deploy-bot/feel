@@ -71,14 +71,12 @@ test.describe("Website Deployment with Authentication", () => {
 
   test("deploy page is accessible without authentication", async ({ page }) => {
     console.log("[Test] Navigate to /deploy without authentication")
-    await page.goto("/deploy")
+    await page.goto("/deploy", { waitUntil: "domcontentloaded" })
 
-    // Should show deploy form (not redirect to login)
-    await page.waitForLoadState("networkidle")
-
-    // Should see the deployment mode selection screen
-    await expect(page.getByTestId("deploy-heading")).toBeVisible()
-    await expect(page.getByTestId("mode-option-quick-launch")).toBeVisible()
+    // Wait for the element we actually care about - not network activity
+    // networkidle is flaky: if any request fires after the 500ms window, test fails
+    await expect(page.getByTestId("deploy-heading")).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByTestId("mode-option-quick-launch")).toBeVisible({ timeout: 3_000 })
 
     console.log("[Test] ✓ Deploy page accessible without authentication")
   })

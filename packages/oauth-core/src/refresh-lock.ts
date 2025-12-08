@@ -294,8 +294,13 @@ export class RedisRefreshLockManager implements IRefreshLockManager {
   }
 }
 
+// Singleton instances for lock managers
+let redisLockManagerInstance: RedisRefreshLockManager | null = null
+let memoryLockManagerInstance: InMemoryRefreshLockManager | null = null
+
 /**
- * Factory function to create the appropriate lock manager based on configuration
+ * Factory function to create the appropriate lock manager based on configuration.
+ * Uses singleton pattern to avoid creating multiple Redis connections.
  */
 export function createRefreshLockManager(options?: {
   strategy?: LockStrategy
@@ -309,19 +314,31 @@ export function createRefreshLockManager(options?: {
       if (!redisUrl) {
         throw new Error("[RefreshLock] REFRESH_LOCK_STRATEGY=redis requires REDIS_URL to be set")
       }
-      console.log("[RefreshLock] Using Redis distributed locks")
-      return new RedisRefreshLockManager(redisUrl)
+      if (!redisLockManagerInstance) {
+        console.log("[RefreshLock] Using Redis distributed locks")
+        redisLockManagerInstance = new RedisRefreshLockManager(redisUrl)
+      }
+      return redisLockManagerInstance
 
     case "memory":
-      console.log("[RefreshLock] Using in-memory locks (single-instance mode)")
-      return new InMemoryRefreshLockManager(false) // No warning, user explicitly chose this
+      if (!memoryLockManagerInstance) {
+        console.log("[RefreshLock] Using in-memory locks (single-instance mode)")
+        memoryLockManagerInstance = new InMemoryRefreshLockManager(false)
+      }
+      return memoryLockManagerInstance
 
     default:
       if (redisUrl) {
-        console.log("[RefreshLock] Auto-detected Redis, using distributed locks")
-        return new RedisRefreshLockManager(redisUrl)
+        if (!redisLockManagerInstance) {
+          console.log("[RefreshLock] Auto-detected Redis, using distributed locks")
+          redisLockManagerInstance = new RedisRefreshLockManager(redisUrl)
+        }
+        return redisLockManagerInstance
       }
       // Fall back to memory with warning
-      return new InMemoryRefreshLockManager(true) // Warn about multi-instance limitation
+      if (!memoryLockManagerInstance) {
+        memoryLockManagerInstance = new InMemoryRefreshLockManager(true)
+      }
+      return memoryLockManagerInstance
   }
 }

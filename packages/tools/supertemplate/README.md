@@ -19,8 +19,10 @@ supertemplate/
     │   └── vite-api-plugin-v1.0.0.md
     ├── content-management/         # Recipe systems, blogs, CMS
     │   └── recipe-system-interactive-v1.0.0.md
-    └── ui-components/              # Buttons, modals, accordions, UI patterns
-        └── template-browser-v1.0.0.md
+    ├── ui-components/              # Buttons, modals, accordions, UI patterns
+    │   └── template-browser-v1.0.0.md
+    └── landing/                    # Landing page components (hero, backgrounds, CTAs)
+        └── hero-background-v1.0.0.md
 ```
 
 ## Template Categories
@@ -66,6 +68,10 @@ Reusable interface components and patterns.
 - Modals and dialogs
 - Navigation components
 - Card layouts
+
+### Landing Pages
+Landing page components for startups and marketing sites.
+- Interactive hero backgrounds (WebGL, brand-tailored)
 
 ## Using Templates
 
@@ -164,5 +170,5 @@ Before adding a new template:
 
 ---
 
-**Last Updated:** 2025-12-05
-**Total Templates:** 7
+**Last Updated:** 2025-12-07
+**Total Templates:** 8

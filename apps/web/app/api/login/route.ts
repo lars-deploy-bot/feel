@@ -19,6 +19,7 @@ const LoginSchema = z.object({
 export async function POST(req: NextRequest) {
   const requestId = generateRequestId()
   const origin = req.headers.get("origin")
+  const host = req.headers.get("host") || undefined
   const body = await req.json().catch(() => ({}))
   const result = LoginSchema.safeParse(body)
 
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
     password === SECURITY.LOCAL_TEST.PASSWORD
   ) {
     const res = createCorsSuccessResponse(origin, {})
-    res.cookies.set(COOKIE_NAMES.SESSION, SECURITY.LOCAL_TEST.SESSION_VALUE, getSessionCookieOptions())
+    res.cookies.set(COOKIE_NAMES.SESSION, SECURITY.LOCAL_TEST.SESSION_VALUE, getSessionCookieOptions(host))
     return res
   }
 
@@ -128,7 +129,7 @@ export async function POST(req: NextRequest) {
   const res = createCorsSuccessResponse(origin, { userId: user.user_id, workspaces })
 
   // Set session cookie (cookie name is versioned to avoid conflicts with old cookies)
-  res.cookies.set(COOKIE_NAMES.SESSION, sessionToken, getSessionCookieOptions())
+  res.cookies.set(COOKIE_NAMES.SESSION, sessionToken, getSessionCookieOptions(host))
   return res
 }
 

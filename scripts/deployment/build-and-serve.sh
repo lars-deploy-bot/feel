@@ -583,31 +583,9 @@ else
 fi
 
 # ============================================================================
-# POST-DEPLOY: Shell-server rebuild, cleanup, Caddy reload
+# POST-DEPLOY: Cleanup, Caddy reload
 # ============================================================================
-
-# Rebuild shell-server (shared across all environments)
-log_step "Rebuilding shell-server..."
-cd "$PROJECT_ROOT/apps/shell-server"
-if bun run build 2>&1 | tail -5; then
-    log_success "Shell-server built successfully"
-    if systemctl is-active --quiet shell-server; then
-        log_step "Restarting shell-server systemd service..."
-        systemctl restart shell-server
-        sleep 2
-        if systemctl is-active --quiet shell-server; then
-            log_success "Shell-server restarted successfully"
-        else
-            log_warn "Shell-server failed to start (check: journalctl -u shell-server -n 20)"
-        fi
-    else
-        log_warn "Shell-server systemd service not running, starting it..."
-        systemctl start shell-server
-    fi
-else
-    log_warn "Shell-server build failed, skipping restart"
-fi
-cd "$PROJECT_ROOT"
+# Note: shell-server-go is deployed separately via 'make deploy-go'
 
 # Clean up old builds (keep last 5)
 cleanup_old_builds "$ENV" 5
