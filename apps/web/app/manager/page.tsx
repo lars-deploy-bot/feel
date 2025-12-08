@@ -844,22 +844,22 @@ export default function ManagerPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#1a1a1a]">
-      <div className="max-w-7xl mx-auto px-6 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
         {/* Header */}
-        <div className="mb-10">
-          <div className="flex items-center justify-between">
+        <div className="mb-6 sm:mb-10">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Manager</h1>
+              <h1 className="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-white">Manager</h1>
               <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
                 Manage domains, organizations, and system configuration
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <button
                 type="button"
                 onClick={fetchStatuses}
                 disabled={loadingStatus}
-                className="inline-flex items-center px-3.5 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-[#2a2a2a] border border-slate-300 dark:border-white/10 rounded-md hover:bg-slate-50 dark:hover:bg-[#333] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="inline-flex items-center px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-[#2a2a2a] border border-slate-300 dark:border-white/10 rounded-md hover:bg-slate-50 dark:hover:bg-[#333] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {loadingStatus ? "Refreshing..." : "Refresh status"}
               </button>
@@ -867,7 +867,7 @@ export default function ManagerPage() {
                 type="button"
                 onClick={handleLogout}
                 disabled={loggingOut}
-                className="inline-flex items-center px-3.5 py-2 text-sm font-medium text-white dark:text-black bg-slate-900 dark:bg-white border border-transparent rounded-md hover:bg-slate-800 dark:hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900 dark:focus:ring-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="inline-flex items-center px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-white dark:text-black bg-slate-900 dark:bg-white border border-transparent rounded-md hover:bg-slate-800 dark:hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900 dark:focus:ring-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {loggingOut ? "Logging out..." : "Logout"}
               </button>
@@ -879,11 +879,11 @@ export default function ManagerPage() {
         <div className="bg-white dark:bg-[#2a2a2a] rounded-lg border border-slate-200 dark:border-white/10">
           {/* Tabs */}
           <div className="border-b border-slate-200 dark:border-white/10">
-            <nav className="flex px-6" aria-label="Tabs">
+            <nav className="flex px-4 sm:px-6 overflow-x-auto scrollbar-hide -mb-px" aria-label="Tabs">
               <button
                 type="button"
                 onClick={() => setActiveTab("domains")}
-                className={`relative py-4 px-1 mr-8 text-sm font-medium transition-colors ${
+                className={`relative py-3 sm:py-4 px-1 mr-4 sm:mr-8 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
                   activeTab === "domains"
                     ? "text-indigo-600 dark:text-indigo-400"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -897,7 +897,7 @@ export default function ManagerPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab("feedback")}
-                className={`relative py-4 px-1 mr-8 text-sm font-medium transition-colors ${
+                className={`relative py-3 sm:py-4 px-1 mr-4 sm:mr-8 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
                   activeTab === "feedback"
                     ? "text-indigo-600 dark:text-indigo-400"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -911,18 +911,18 @@ export default function ManagerPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab("organizations")}
-                className={`relative py-4 px-1 mr-8 text-sm font-medium transition-colors ${
+                className={`relative py-3 sm:py-4 px-1 mr-4 sm:mr-8 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
                   activeTab === "organizations"
                     ? "text-indigo-600 dark:text-indigo-400"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
-                Organizations
+                Orgs
                 {activeTab === "organizations" && (
                   <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400" />
                 )}
                 {orgs.length > 0 && (
-                  <span className="ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded">
+                  <span className="ml-1.5 sm:ml-2 inline-flex items-center px-1.5 sm:px-2 py-0.5 text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded">
                     {orgs.length}
                   </span>
                 )}
@@ -930,7 +930,7 @@ export default function ManagerPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab("users")}
-                className={`relative py-4 px-1 mr-8 text-sm font-medium transition-colors ${
+                className={`relative py-3 sm:py-4 px-1 mr-4 sm:mr-8 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
                   activeTab === "users"
                     ? "text-indigo-600 dark:text-indigo-400"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -944,7 +944,7 @@ export default function ManagerPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab("templates")}
-                className={`relative py-4 px-1 mr-8 text-sm font-medium transition-colors ${
+                className={`relative py-3 sm:py-4 px-1 mr-4 sm:mr-8 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
                   activeTab === "templates"
                     ? "text-indigo-600 dark:text-indigo-400"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -955,7 +955,7 @@ export default function ManagerPage() {
                   <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400" />
                 )}
                 {templates.length > 0 && (
-                  <span className="ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded">
+                  <span className="ml-1.5 sm:ml-2 inline-flex items-center px-1.5 sm:px-2 py-0.5 text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded">
                     {templates.length}
                   </span>
                 )}
@@ -963,7 +963,7 @@ export default function ManagerPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab("settings")}
-                className={`relative py-4 px-1 mr-8 text-sm font-medium transition-colors ${
+                className={`relative py-3 sm:py-4 px-1 mr-4 sm:mr-8 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
                   activeTab === "settings"
                     ? "text-indigo-600 dark:text-indigo-400"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -1069,7 +1069,7 @@ export default function ManagerPage() {
 
       {dialogOpen && (
         <div
-          className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4"
           role="dialog"
           aria-modal="true"
           onClick={closeDialog}
@@ -1078,7 +1078,7 @@ export default function ManagerPage() {
           }}
         >
           <div
-            className="bg-white dark:bg-[#2a2a2a] rounded-lg shadow-xl w-full max-w-lg p-8"
+            className="bg-white dark:bg-[#2a2a2a] rounded-lg shadow-xl w-full max-w-lg p-6 sm:p-8"
             role="document"
             onClick={e => e.stopPropagation()}
           >
@@ -1164,7 +1164,7 @@ export default function ManagerPage() {
 
       {permissionsModal && (
         <div
-          className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4"
           role="dialog"
           aria-modal="true"
           onClick={closePermissionsModal}
@@ -1173,7 +1173,7 @@ export default function ManagerPage() {
           }}
         >
           <div
-            className="bg-white dark:bg-[#2a2a2a] rounded-lg shadow-xl w-full max-w-2xl p-6 max-h-[80vh] overflow-y-auto"
+            className="bg-white dark:bg-[#2a2a2a] rounded-lg shadow-xl w-full max-w-2xl p-4 sm:p-6 max-h-[80vh] overflow-y-auto"
             role="document"
             onClick={e => e.stopPropagation()}
           >
@@ -1350,7 +1350,7 @@ export default function ManagerPage() {
 
       {selectedOrg && (
         <div
-          className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4"
           role="dialog"
           aria-modal="true"
           onClick={() => {
@@ -1365,7 +1365,7 @@ export default function ManagerPage() {
           }}
         >
           <div
-            className="bg-white dark:bg-[#2a2a2a] rounded-lg shadow-xl w-full max-w-lg p-8"
+            className="bg-white dark:bg-[#2a2a2a] rounded-lg shadow-xl w-full max-w-lg p-6 sm:p-8"
             role="document"
             onClick={e => e.stopPropagation()}
           >
@@ -1443,7 +1443,7 @@ export default function ManagerPage() {
 
       {addMemberOrgId && (
         <div
-          className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4"
           role="dialog"
           aria-modal="true"
           onClick={() => {
@@ -1460,7 +1460,7 @@ export default function ManagerPage() {
           }}
         >
           <div
-            className="bg-white dark:bg-[#2a2a2a] rounded-lg shadow-xl w-full max-w-lg p-8"
+            className="bg-white dark:bg-[#2a2a2a] rounded-lg shadow-xl w-full max-w-lg p-6 sm:p-8"
             role="document"
             onClick={e => e.stopPropagation()}
           >

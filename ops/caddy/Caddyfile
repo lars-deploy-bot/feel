@@ -2657,7 +2657,7 @@ johnvm-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -2665,7 +2665,7 @@ johnvm-alive-best.preview.terminal.goalive.nl {
     }
 
     # Auth check via forward_auth (passes query params for preview_token auth)
-    forward_auth localhost:8998 {
+    forward_auth localhost:9000 {
         uri /api/auth/preview-guard?{query}
         copy_headers Cookie
     }
@@ -2690,7 +2690,7 @@ wfclientoutreach-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -2698,7 +2698,7 @@ wfclientoutreach-alive-best.preview.terminal.goalive.nl {
     }
 
     # Auth check via forward_auth (passes query params for preview_token auth)
-    forward_auth localhost:8998 {
+    forward_auth localhost:9000 {
         uri /api/auth/preview-guard?{query}
         copy_headers Cookie
     }
@@ -2723,7 +2723,7 @@ evo-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -2731,7 +2731,7 @@ evo-alive-best.preview.terminal.goalive.nl {
     }
 
     # Auth check via forward_auth (passes query params for preview_token auth)
-    forward_auth localhost:8998 {
+    forward_auth localhost:9000 {
         uri /api/auth/preview-guard?{query}
         copy_headers Cookie
     }
@@ -2756,7 +2756,7 @@ checkcheck-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -2764,7 +2764,7 @@ checkcheck-alive-best.preview.terminal.goalive.nl {
     }
 
     # Auth check via forward_auth (passes query params for preview_token auth)
-    forward_auth localhost:8998 {
+    forward_auth localhost:9000 {
         uri /api/auth/preview-guard?{query}
         copy_headers Cookie
     }
@@ -2801,7 +2801,7 @@ blank-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -2809,7 +2809,7 @@ blank-alive-best.preview.terminal.goalive.nl {
     }
 
     # Auth check via forward_auth (passes query params for preview_token auth)
-    forward_auth localhost:8998 {
+    forward_auth localhost:9000 {
         uri /api/auth/preview-guard?{query}
         copy_headers Cookie
     }
@@ -2846,7 +2846,7 @@ oki-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -2854,7 +2854,7 @@ oki-alive-best.preview.terminal.goalive.nl {
     }
 
     # Auth check via forward_auth (passes query params for preview_token auth)
-    forward_auth localhost:8998 {
+    forward_auth localhost:9000 {
         uri /api/auth/preview-guard?{query}
         copy_headers Cookie
     }
@@ -2891,7 +2891,7 @@ webtest-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -2899,7 +2899,7 @@ webtest-alive-best.preview.terminal.goalive.nl {
     }
 
     # Auth check via forward_auth (passes query params for preview_token auth)
-    forward_auth localhost:8998 {
+    forward_auth localhost:9000 {
         uri /api/auth/preview-guard?{query}
         copy_headers Cookie
     }
@@ -2936,7 +2936,7 @@ migratetest-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -2944,7 +2944,7 @@ migratetest-alive-best.preview.terminal.goalive.nl {
     }
 
     # Auth check via forward_auth (passes query params for preview_token auth)
-    forward_auth localhost:8998 {
+    forward_auth localhost:9000 {
         uri /api/auth/preview-guard?{query}
         copy_headers Cookie
     }
@@ -2981,7 +2981,7 @@ stekker-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -2989,7 +2989,7 @@ stekker-alive-best.preview.terminal.goalive.nl {
     }
 
     # Auth check via forward_auth (passes query params for preview_token auth)
-    forward_auth localhost:8998 {
+    forward_auth localhost:9000 {
         uri /api/auth/preview-guard?{query}
         copy_headers Cookie
     }
@@ -3005,7 +3005,7 @@ taxi-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -3013,7 +3013,7 @@ taxi-alive-best.preview.terminal.goalive.nl {
     }
 
     # Auth check via forward_auth (passes query params for preview_token auth)
-    forward_auth localhost:8998 {
+    forward_auth localhost:9000 {
         uri /api/auth/preview-guard?{query}
         copy_headers Cookie
     }
@@ -3050,7 +3050,7 @@ test-deploy-123-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -3058,7 +3058,7 @@ test-deploy-123-alive-best.preview.terminal.goalive.nl {
     }
 
     # Auth check via forward_auth (passes query params for preview_token auth)
-    forward_auth localhost:8998 {
+    forward_auth localhost:9000 {
         uri /api/auth/preview-guard?{query}
         copy_headers Cookie
     }
@@ -3095,7 +3095,7 @@ testdeploy123-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -3103,7 +3103,7 @@ testdeploy123-alive-best.preview.terminal.goalive.nl {
     }
 
     # Auth check via forward_auth (passes query params for preview_token auth)
-    forward_auth localhost:8998 {
+    forward_auth localhost:9000 {
         uri /api/auth/preview-guard?{query}
         copy_headers Cookie
     }
@@ -3140,7 +3140,7 @@ topi-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -3148,7 +3148,7 @@ topi-alive-best.preview.terminal.goalive.nl {
     }
 
     # Auth check via forward_auth (passes query params for preview_token auth)
-    forward_auth localhost:8998 {
+    forward_auth localhost:9000 {
         uri /api/auth/preview-guard?{query}
         copy_headers Cookie
     }
@@ -3185,7 +3185,7 @@ nami-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -3193,7 +3193,7 @@ nami-alive-best.preview.terminal.goalive.nl {
     }
 
     # Auth check via forward_auth (passes query params for preview_token auth)
-    forward_auth localhost:8998 {
+    forward_auth localhost:9000 {
         uri /api/auth/preview-guard?{query}
         copy_headers Cookie
     }
@@ -3230,7 +3230,7 @@ webbb-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -3238,7 +3238,7 @@ webbb-alive-best.preview.terminal.goalive.nl {
     }
 
     # Auth check via forward_auth (passes query params for preview_token auth)
-    forward_auth localhost:8998 {
+    forward_auth localhost:9000 {
         uri /api/auth/preview-guard?{query}
         copy_headers Cookie
     }
@@ -3275,7 +3275,7 @@ cafecomcacao-alive-best.preview.terminal.goalive.nl {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -3283,8 +3283,61 @@ cafecomcacao-alive-best.preview.terminal.goalive.nl {
     }
 
     # Auth check via forward_auth (passes query params for preview_token auth)
-    forward_auth localhost:8998 {
+    forward_auth localhost:9000 {
         uri /api/auth/preview-guard?{query}
         copy_headers Cookie
+    }
+}
+
+pokemon.alive.best {
+    import image_serving
+
+    header {
+        # Security headers (embeddable - allows iframe preview)
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    reverse_proxy localhost:3611 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+pokemon-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (passes query params for preview_token auth)
+    # Using production (9000) since this is a production preview domain
+    # copy_headers X-Preview-Set-Cookie copies the cookie header from auth response to request
+    forward_auth localhost:9000 {
+        uri /api/auth/preview-guard?{query}
+        copy_headers Cookie X-Preview-Set-Cookie
+    }
+
+    # Set the preview session cookie if auth returned X-Preview-Set-Cookie
+    # This header was copied from the auth response by forward_auth
+    header ?Set-Cookie {header.X-Preview-Set-Cookie}
+
+    reverse_proxy localhost:3611 {
+        header_up Host localhost
+        # Remove X-Preview-Set-Cookie from request to upstream (cleanup)
+        header_up -X-Preview-Set-Cookie
     }
 }

@@ -18,7 +18,7 @@ interface FeedbackListProps {
 export function FeedbackList({ feedback, loading, onRefresh }: FeedbackListProps) {
   return (
     <>
-      <div className="px-6 py-5 border-b border-slate-200 dark:border-white/10">
+      <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-200 dark:border-white/10">
         <div className="flex items-center justify-between">
           <div className="text-sm text-slate-600 dark:text-slate-400">
             {feedback.length} feedback {feedback.length !== 1 ? "entries" : "entry"}
@@ -27,9 +27,9 @@ export function FeedbackList({ feedback, loading, onRefresh }: FeedbackListProps
             type="button"
             onClick={onRefresh}
             disabled={loading}
-            className="text-xs px-2.5 py-1.5 text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-50 dark:bg-[#333] dark:text-slate-300 dark:border-white/20 dark:hover:bg-[#444] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="text-xs px-2 sm:px-2.5 py-1 sm:py-1.5 text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-50 dark:bg-[#333] dark:text-slate-300 dark:border-white/20 dark:hover:bg-[#444] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {loading ? "Refreshing..." : "Refresh"}
+            {loading ? "..." : "Refresh"}
           </button>
         </div>
       </div>
@@ -46,10 +46,12 @@ export function FeedbackList({ feedback, loading, onRefresh }: FeedbackListProps
           </div>
         ) : (
           feedback.map(entry => (
-            <div key={entry.id} className="px-6 py-5 hover:bg-slate-50 dark:hover:bg-[#333]">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <span className="font-medium text-slate-900 dark:text-white">{entry.workspace}</span>
+            <div key={entry.id} className="px-4 sm:px-6 py-4 sm:py-5 hover:bg-slate-50 dark:hover:bg-[#333]">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                  <span className="font-medium text-sm text-slate-900 dark:text-white truncate max-w-[200px] sm:max-w-none">
+                    {entry.workspace}
+                  </span>
                   <span className="text-xs text-slate-500 dark:text-slate-400">
                     {new Date(entry.timestamp).toLocaleString("en-US", {
                       month: "short",
@@ -61,13 +63,13 @@ export function FeedbackList({ feedback, loading, onRefresh }: FeedbackListProps
                   </span>
                 </div>
                 {entry.conversationId && (
-                  <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-300 rounded">
+                  <span className="text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-300 rounded self-start">
                     Has conversation
                   </span>
                 )}
               </div>
 
-              <div className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap mb-3">
+              <div className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap mb-3 break-words">
                 {entry.feedback}
               </div>
 

@@ -44,12 +44,13 @@ if (!existsSync(ENV_CONFIG_PATH)) {
 }
 
 const envConfigRaw = JSON.parse(readFileSync(ENV_CONFIG_PATH, "utf-8"))
-const staging = envConfigRaw?.environments?.staging
-if (!staging || typeof staging.port !== "number") {
-  console.error(`Error: environments.staging.port must be defined and numeric in ${ENV_CONFIG_PATH}`)
+const production = envConfigRaw?.environments?.production
+if (!production || typeof production.port !== "number") {
+  console.error(`Error: environments.production.port must be defined and numeric in ${ENV_CONFIG_PATH}`)
   process.exit(1)
 }
-const STAGING_PORT = staging.port
+// Use production port for forward_auth since preview domains are accessed by production users
+const AUTH_PORT = production.port
 
 interface DomainMapping {
   domain: string
@@ -120,9 +121,9 @@ ${previewHost} {
         -X-Powered-By
     }
 
-    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
-    forward_auth localhost:${STAGING_PORT} {
-        uri /api/auth/preview-guard
+    # Auth check via forward_auth (passes query params for preview_token auth)
+    forward_auth localhost:${AUTH_PORT} {
+        uri /api/auth/preview-guard?{query}
         copy_headers Cookie
     }
 }
@@ -170,7 +171,7 @@ function main() {
   console.error("Configuration:")
   console.error(`  Caddyfile: ${CADDYFILE_PATH}`)
   console.error(`  Environments: ${ENV_CONFIG_PATH}`)
-  console.error(`  Staging port: ${STAGING_PORT}`)
+  console.error(`  Auth port (production): ${AUTH_PORT}`)
   console.error("")
 
   // Check if Caddyfile exists

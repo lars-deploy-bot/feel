@@ -51,7 +51,7 @@ export function OrganizationsList({
 
   return (
     <>
-      <div className="px-6 py-5 border-b border-slate-200 dark:border-white/10">
+      <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-200 dark:border-white/10">
         <div className="flex items-center justify-between">
           <div className="text-sm text-slate-600 dark:text-slate-400">
             {orgs.length} organization{orgs.length !== 1 ? "s" : ""}
@@ -84,17 +84,19 @@ export function OrganizationsList({
             {orgs.map(org => (
               <div key={org.org_id} className="hover:bg-slate-50 dark:hover:bg-[#333]">
                 {/* Organization Header */}
-                <div className="px-6 py-5">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
+                <div className="px-4 sm:px-6 py-4 sm:py-5">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+                    <div className="flex-1 min-w-0">
                       <button
                         type="button"
                         onClick={() => setExpandedOrg(expandedOrg === org.org_id ? null : org.org_id)}
                         className="text-left hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
                       >
-                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">{org.name}</h3>
+                        <h3 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white truncate">
+                          {org.name}
+                        </h3>
                       </button>
-                      <div className="flex items-center gap-4 mt-2 text-sm text-slate-600 dark:text-slate-400">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400">
                         <span>
                           Credits:{" "}
                           <span className="font-medium text-slate-900 dark:text-white">{org.credits.toFixed(2)}</span>
@@ -102,34 +104,34 @@ export function OrganizationsList({
                         <span>Members: {org.member_count}</span>
                         <span>Projects: {org.domain_count}</span>
                       </div>
-                      <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-slate-500 dark:text-slate-400 mt-1">
                         <span>Created {new Date(org.created_at).toLocaleDateString()}</span>
-                        <span className="text-slate-400 dark:text-slate-500">•</span>
-                        <span className="font-mono text-xs">{org.org_id}</span>
+                        <span className="hidden sm:inline text-slate-400 dark:text-slate-500">•</span>
+                        <span className="font-mono text-xs truncate max-w-[120px] sm:max-w-none">{org.org_id}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <button
                         type="button"
                         onClick={() => onEditCredits(org.org_id, org.credits)}
-                        className="text-xs px-2.5 py-1.5 text-indigo-700 bg-indigo-50 border border-indigo-200 rounded hover:bg-indigo-100 dark:bg-indigo-950/30 dark:text-indigo-300 dark:border-indigo-800 dark:hover:bg-indigo-900/40 transition-colors"
+                        className="text-xs px-2 sm:px-2.5 py-1 sm:py-1.5 text-indigo-700 bg-indigo-50 border border-indigo-200 rounded hover:bg-indigo-100 dark:bg-indigo-950/30 dark:text-indigo-300 dark:border-indigo-800 dark:hover:bg-indigo-900/40 transition-colors"
                       >
-                        Edit credits
+                        Credits
                       </button>
                       <button
                         type="button"
                         onClick={() => onDelete(org.org_id)}
                         disabled={deleting === org.org_id}
-                        className="text-xs px-2.5 py-1.5 text-red-700 bg-red-50 border border-red-200 rounded hover:bg-red-100 dark:bg-red-950/30 dark:text-red-300 dark:border-red-800 dark:hover:bg-red-900/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="text-xs px-2 sm:px-2.5 py-1 sm:py-1.5 text-red-700 bg-red-50 border border-red-200 rounded hover:bg-red-100 dark:bg-red-950/30 dark:text-red-300 dark:border-red-800 dark:hover:bg-red-900/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
-                        {deleting === org.org_id ? "Deleting..." : "Delete"}
+                        {deleting === org.org_id ? "..." : "Delete"}
                       </button>
                       <button
                         type="button"
                         onClick={() => setExpandedOrg(expandedOrg === org.org_id ? null : org.org_id)}
-                        className="text-xs px-2.5 py-1.5 text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-50 dark:bg-[#333] dark:text-slate-300 dark:border-white/20 dark:hover:bg-[#444] transition-colors"
+                        className="text-xs px-2 sm:px-2.5 py-1 sm:py-1.5 text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-50 dark:bg-[#333] dark:text-slate-300 dark:border-white/20 dark:hover:bg-[#444] transition-colors"
                       >
-                        {expandedOrg === org.org_id ? "Collapse" : "Expand"}
+                        {expandedOrg === org.org_id ? "−" : "+"}
                       </button>
                     </div>
                   </div>
@@ -137,7 +139,7 @@ export function OrganizationsList({
 
                 {/* Expanded Details */}
                 {expandedOrg === org.org_id && (
-                  <div className="px-6 py-5 bg-white dark:bg-[#2a2a2a] border-t border-slate-200 dark:border-white/10 space-y-6">
+                  <div className="px-4 sm:px-6 py-4 sm:py-5 bg-white dark:bg-[#2a2a2a] border-t border-slate-200 dark:border-white/10 space-y-5 sm:space-y-6">
                     {/* Projects */}
                     <div>
                       <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Projects</h4>
@@ -148,14 +150,14 @@ export function OrganizationsList({
                           {org.domains.map((domain: any) => (
                             <div
                               key={domain.domain_id}
-                              className="px-3 py-2 bg-slate-50 dark:bg-[#333] rounded flex items-center justify-between gap-3"
+                              className="px-3 py-2 bg-slate-50 dark:bg-[#333] rounded flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3"
                             >
                               <button
                                 type="button"
-                                className="flex-1 text-left cursor-pointer hover:opacity-80 transition-opacity"
+                                className="flex-1 text-left cursor-pointer hover:opacity-80 transition-opacity min-w-0"
                                 onClick={() => window.open(`https://${domain.hostname}`, "_blank")}
                               >
-                                <div className="font-medium text-blue-600 dark:text-blue-400 text-sm">
+                                <div className="font-medium text-blue-600 dark:text-blue-400 text-sm truncate">
                                   {domain.hostname}
                                 </div>
                                 <div className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
@@ -170,9 +172,9 @@ export function OrganizationsList({
                                   setTransferModalOpen(true)
                                 }}
                                 disabled={transferringDomain === domain.hostname}
-                                className="text-xs px-2 py-1 text-indigo-700 bg-indigo-50 border border-indigo-200 rounded hover:bg-indigo-100 dark:bg-indigo-950/30 dark:text-indigo-300 dark:border-indigo-800 dark:hover:bg-indigo-900/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                                className="text-xs px-2 py-1 text-indigo-700 bg-indigo-50 border border-indigo-200 rounded hover:bg-indigo-100 dark:bg-indigo-950/30 dark:text-indigo-300 dark:border-indigo-800 dark:hover:bg-indigo-900/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0 self-start sm:self-center"
                               >
-                                {transferringDomain === domain.hostname ? "Transferring..." : "Transfer"}
+                                {transferringDomain === domain.hostname ? "..." : "Transfer"}
                               </button>
                             </div>
                           ))}
@@ -187,9 +189,9 @@ export function OrganizationsList({
                         <button
                           type="button"
                           onClick={() => onAddMember(org.org_id)}
-                          className="text-xs px-2.5 py-1.5 text-emerald-700 bg-emerald-50 border border-emerald-200 rounded hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800 dark:hover:bg-emerald-900/40 transition-colors"
+                          className="text-xs px-2 sm:px-2.5 py-1 sm:py-1.5 text-emerald-700 bg-emerald-50 border border-emerald-200 rounded hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800 dark:hover:bg-emerald-900/40 transition-colors"
                         >
-                          Add member
+                          Add
                         </button>
                       </div>
                       {org.members.length === 0 ? (
@@ -197,50 +199,49 @@ export function OrganizationsList({
                       ) : (
                         <div className="space-y-2">
                           {org.members.map((member: any) => (
-                            <div
-                              key={member.user_id}
-                              className="px-3 py-2 bg-slate-50 dark:bg-[#333] rounded flex items-center justify-between"
-                            >
-                              <div className="min-w-0 flex-1">
-                                <div className="text-sm font-medium text-slate-900 dark:text-white truncate">
-                                  {member.display_name || member.email}
-                                </div>
-                                {member.display_name && (
-                                  <div className="text-xs text-slate-600 dark:text-slate-400 truncate">
-                                    {member.email}
+                            <div key={member.user_id} className="px-3 py-2 bg-slate-50 dark:bg-[#333] rounded">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-sm font-medium text-slate-900 dark:text-white truncate">
+                                    {member.display_name || member.email}
                                   </div>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 ml-4 flex-shrink-0">
-                                <span className="text-xs px-2 py-1 bg-white dark:bg-[#444] border border-slate-200 dark:border-white/20 rounded text-slate-700 dark:text-slate-300 font-medium">
-                                  {member.role}
-                                </span>
-                                {member.role !== "owner" && (
-                                  <>
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        onTransferOwnership(
-                                          org.org_id,
-                                          member.user_id,
-                                          member.display_name || member.email,
-                                        )
-                                      }
-                                      disabled={transferring === member.user_id}
-                                      className="text-xs px-2 py-1 text-indigo-700 bg-indigo-50 border border-indigo-200 rounded hover:bg-indigo-100 dark:bg-indigo-950/30 dark:text-indigo-300 dark:border-indigo-800 dark:hover:bg-indigo-900/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                    >
-                                      {transferring === member.user_id ? "..." : "Make owner"}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => onRemoveMember(org.org_id, member.user_id)}
-                                      disabled={removing === member.user_id}
-                                      className="text-xs px-2 py-1 text-red-700 bg-red-50 border border-red-200 rounded hover:bg-red-100 dark:bg-red-950/30 dark:text-red-300 dark:border-red-800 dark:hover:bg-red-900/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                    >
-                                      {removing === member.user_id ? "..." : "Remove"}
-                                    </button>
-                                  </>
-                                )}
+                                  {member.display_name && (
+                                    <div className="text-xs text-slate-600 dark:text-slate-400 truncate">
+                                      {member.email}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 flex-shrink-0">
+                                  <span className="text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 bg-white dark:bg-[#444] border border-slate-200 dark:border-white/20 rounded text-slate-700 dark:text-slate-300 font-medium">
+                                    {member.role}
+                                  </span>
+                                  {member.role !== "owner" && (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          onTransferOwnership(
+                                            org.org_id,
+                                            member.user_id,
+                                            member.display_name || member.email,
+                                          )
+                                        }
+                                        disabled={transferring === member.user_id}
+                                        className="text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 text-indigo-700 bg-indigo-50 border border-indigo-200 rounded hover:bg-indigo-100 dark:bg-indigo-950/30 dark:text-indigo-300 dark:border-indigo-800 dark:hover:bg-indigo-900/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                      >
+                                        {transferring === member.user_id ? "..." : "Owner"}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => onRemoveMember(org.org_id, member.user_id)}
+                                        disabled={removing === member.user_id}
+                                        className="text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 text-red-700 bg-red-50 border border-red-200 rounded hover:bg-red-100 dark:bg-red-950/30 dark:text-red-300 dark:border-red-800 dark:hover:bg-red-900/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                      >
+                                        {removing === member.user_id ? "..." : "×"}
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           ))}
@@ -257,8 +258,8 @@ export function OrganizationsList({
 
       {/* Transfer Domain Modal */}
       {transferModalOpen && selectedDomain && (
-        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-[#1a1a1a] rounded-lg shadow-xl max-w-md w-full mx-4">
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-[#1a1a1a] rounded-lg shadow-xl max-w-md w-full">
             <div className="px-6 py-4 border-b border-slate-200 dark:border-white/10">
               <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Transfer Domain</h3>
             </div>

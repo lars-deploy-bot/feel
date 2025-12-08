@@ -4,7 +4,7 @@
  */
 
 export async function transferDomain(
-  domain: string,
+  hostname: string,
   targetOrgId: string,
 ): Promise<{
   success: boolean
@@ -13,12 +13,12 @@ export async function transferDomain(
   const response = await fetch("/api/manager/domains/transfer", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ domain, targetOrgId }),
+    body: JSON.stringify({ hostname, targetOrgId }),
   })
 
   const data = await response.json()
 
-  if (!response.ok || !data.success) {
+  if (!response.ok || !data.ok) {
     throw new Error(data.message || "Failed to transfer domain")
   }
 

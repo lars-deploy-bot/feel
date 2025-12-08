@@ -116,7 +116,7 @@ export function TemplatesList({
 
   return (
     <>
-      <div className="px-6 py-5 border-b border-slate-200 dark:border-white/10">
+      <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-200 dark:border-white/10">
         <div className="flex items-center justify-between">
           <div className="text-sm text-slate-600 dark:text-slate-400">
             {templates.length} template{templates.length !== 1 ? "s" : ""}
@@ -125,17 +125,17 @@ export function TemplatesList({
             <button
               type="button"
               onClick={() => setShowAddForm(true)}
-              className="text-xs px-2.5 py-1.5 text-green-700 bg-green-50 border border-green-300 rounded hover:bg-green-100 dark:bg-green-950/30 dark:text-green-300 dark:border-green-800 dark:hover:bg-green-900/40 transition-colors"
+              className="text-xs px-2 sm:px-2.5 py-1 sm:py-1.5 text-green-700 bg-green-50 border border-green-300 rounded hover:bg-green-100 dark:bg-green-950/30 dark:text-green-300 dark:border-green-800 dark:hover:bg-green-900/40 transition-colors"
             >
-              Add Template
+              Add
             </button>
             <button
               type="button"
               onClick={onRefresh}
               disabled={loading}
-              className="text-xs px-2.5 py-1.5 text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-50 dark:bg-[#333] dark:text-slate-300 dark:border-white/20 dark:hover:bg-[#444] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="text-xs px-2 sm:px-2.5 py-1 sm:py-1.5 text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-50 dark:bg-[#333] dark:text-slate-300 dark:border-white/20 dark:hover:bg-[#444] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {loading ? "Refreshing..." : "Refresh"}
+              {loading ? "..." : "Refresh"}
             </button>
           </div>
         </div>
@@ -143,9 +143,9 @@ export function TemplatesList({
 
       {/* Add Template Form */}
       {showAddForm && (
-        <div className="px-6 py-5 border-b border-slate-200 dark:border-white/10 bg-green-50/50 dark:bg-green-950/20">
+        <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-200 dark:border-white/10 bg-green-50/50 dark:bg-green-950/20">
           <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">Add New Template</h3>
-          <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
             <label className="block">
               <span className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Template ID (e.g. {TEMPLATE_PREFIX}gallery)
@@ -232,7 +232,7 @@ export function TemplatesList({
                 className={ADD_INPUT_CLASSES}
               />
             </label>
-            <label className="col-span-2 block">
+            <label className="sm:col-span-2 block">
               <span className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                 AI Description (for matching)
               </span>
@@ -293,15 +293,18 @@ export function TemplatesList({
         ) : templates.length === 0 ? (
           <div className="text-center py-12 px-6">
             <p className="text-sm text-slate-600 dark:text-slate-400">No templates found</p>
-            <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">Click "Add Template" to create one</p>
+            <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">Click "Add" to create one</p>
           </div>
         ) : (
           templates.map(template => (
-            <div key={template.template_id} className="px-6 py-5 hover:bg-slate-50 dark:hover:bg-[#333]">
+            <div
+              key={template.template_id}
+              className="px-4 sm:px-6 py-4 sm:py-5 hover:bg-slate-50 dark:hover:bg-[#333]"
+            >
               {editingId === template.template_id ? (
                 // Edit Mode
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <label className="block">
                       <span className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Name</span>
                       <input
@@ -368,7 +371,7 @@ export function TemplatesList({
                         className={EDIT_INPUT_CLASSES}
                       />
                     </label>
-                    <label className="col-span-2 block">
+                    <label className="sm:col-span-2 block">
                       <span className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                         AI Description
                       </span>
@@ -415,18 +418,20 @@ export function TemplatesList({
                 </div>
               ) : (
                 // View Mode
-                <div className="flex items-start justify-between">
-                  <div className="flex gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 flex-1 min-w-0">
                     {/* Image Preview */}
                     {template.image_url && (
-                      <div className="w-24 h-16 rounded overflow-hidden bg-slate-100 dark:bg-slate-800 flex-shrink-0">
+                      <div className="w-20 h-14 sm:w-24 sm:h-16 rounded overflow-hidden bg-slate-100 dark:bg-slate-800 flex-shrink-0">
                         <img src={template.image_url} alt={template.name} className="w-full h-full object-cover" />
                       </div>
                     )}
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-medium text-slate-900 dark:text-white">{template.name}</h3>
-                        <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <h3 className="font-medium text-sm sm:text-base text-slate-900 dark:text-white">
+                          {template.name}
+                        </h3>
+                        <span className="text-xs font-mono text-slate-500 dark:text-slate-400 truncate max-w-[100px] sm:max-w-none">
                           {template.template_id}
                         </span>
                         {!template.is_active && (
@@ -436,9 +441,11 @@ export function TemplatesList({
                         )}
                       </div>
                       {template.description && (
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">{template.description}</p>
+                        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mb-1 line-clamp-2">
+                          {template.description}
+                        </p>
                       )}
-                      <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-slate-500 dark:text-slate-400">
                         <span>Deploys: {template.deploy_count ?? 0}</span>
                         {template.preview_url && (
                           <a
@@ -450,22 +457,25 @@ export function TemplatesList({
                             Preview
                           </a>
                         )}
-                        <span className="font-mono truncate max-w-[200px]" title={template.source_path}>
+                        <span
+                          className="font-mono truncate max-w-[120px] sm:max-w-[200px]"
+                          title={template.source_path}
+                        >
                           {template.source_path}
                         </span>
                       </div>
                       {template.ai_description && (
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 italic line-clamp-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 italic line-clamp-1 hidden sm:block">
                           AI: {template.ai_description}
                         </p>
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-shrink-0">
                     <button
                       type="button"
                       onClick={() => startEdit(template)}
-                      className="text-xs px-2.5 py-1.5 text-indigo-700 bg-indigo-50 border border-indigo-200 rounded hover:bg-indigo-100 dark:bg-indigo-950/30 dark:text-indigo-300 dark:border-indigo-800 dark:hover:bg-indigo-900/40 transition-colors"
+                      className="text-xs px-2 sm:px-2.5 py-1 sm:py-1.5 text-indigo-700 bg-indigo-50 border border-indigo-200 rounded hover:bg-indigo-100 dark:bg-indigo-950/30 dark:text-indigo-300 dark:border-indigo-800 dark:hover:bg-indigo-900/40 transition-colors"
                     >
                       Edit
                     </button>
@@ -473,9 +483,9 @@ export function TemplatesList({
                       type="button"
                       onClick={() => onDelete(template.template_id)}
                       disabled={deleting === template.template_id}
-                      className="text-xs px-2.5 py-1.5 text-red-700 bg-red-50 border border-red-200 rounded hover:bg-red-100 dark:bg-red-950/30 dark:text-red-300 dark:border-red-800 dark:hover:bg-red-900/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="text-xs px-2 sm:px-2.5 py-1 sm:py-1.5 text-red-700 bg-red-50 border border-red-200 rounded hover:bg-red-100 dark:bg-red-950/30 dark:text-red-300 dark:border-red-800 dark:hover:bg-red-900/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
-                      {deleting === template.template_id ? "Deleting..." : "Delete"}
+                      {deleting === template.template_id ? "..." : "Delete"}
                     </button>
                   </div>
                 </div>

@@ -185,28 +185,28 @@ export function UsersPanel({ orgs, onSuccess, onLoading }: UsersPanelProps) {
 
   return (
     <div className="bg-white dark:bg-[#1a1a1a]">
-      <div className="px-8 py-8">
+      <div className="px-4 sm:px-8 py-6 sm:py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Users</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">Users</h2>
             <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Manage user accounts and site quotas</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               type="button"
               onClick={fetchUsers}
               disabled={usersLoading}
-              className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-[#333] border border-gray-300 dark:border-white/20 rounded-lg hover:bg-gray-50 dark:hover:bg-[#444] disabled:opacity-50 transition-colors"
+              className="px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-[#333] border border-gray-300 dark:border-white/20 rounded-lg hover:bg-gray-50 dark:hover:bg-[#444] disabled:opacity-50 transition-colors"
             >
-              {usersLoading ? "Refreshing..." : "Refresh"}
+              {usersLoading ? "..." : "Refresh"}
             </button>
             <button
               type="button"
               onClick={() => setShowCreateForm(!showCreateForm)}
-              className="px-3 py-2 text-sm font-medium text-white bg-gray-900 dark:bg-white dark:text-gray-900 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
+              className="px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-white bg-gray-900 dark:bg-white dark:text-gray-900 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
             >
-              {showCreateForm ? "Hide Form" : "Create User"}
+              {showCreateForm ? "Hide" : "Create"}
             </button>
           </div>
         </div>
@@ -226,10 +226,10 @@ export function UsersPanel({ orgs, onSuccess, onLoading }: UsersPanelProps) {
 
         {/* Create User Form (collapsible) */}
         {showCreateForm && (
-          <div className="mb-8 p-6 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg border border-gray-200 dark:border-white/10">
-            <h3 className="text-md font-semibold text-gray-900 dark:text-white mb-4">Create new user</h3>
+          <div className="mb-6 sm:mb-8 p-4 sm:p-6 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg border border-gray-200 dark:border-white/10">
+            <h3 className="text-sm sm:text-md font-semibold text-gray-900 dark:text-white mb-4">Create new user</h3>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-900 dark:text-white mb-1">
                     Email
@@ -261,7 +261,7 @@ export function UsersPanel({ orgs, onSuccess, onLoading }: UsersPanelProps) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="password" className="block text-sm font-medium text-gray-900 dark:text-white mb-1">
                     Password
@@ -281,7 +281,7 @@ export function UsersPanel({ orgs, onSuccess, onLoading }: UsersPanelProps) {
                   <label htmlFor="orgSelect" className="block text-sm font-medium text-gray-900 dark:text-white mb-1">
                     Organization
                   </label>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <select
                       value={orgType}
                       onChange={e => {
@@ -328,14 +328,14 @@ export function UsersPanel({ orgs, onSuccess, onLoading }: UsersPanelProps) {
                   type="button"
                   onClick={() => setShowCreateForm(false)}
                   disabled={isSubmitting}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-[#333] border border-gray-300 dark:border-white/20 rounded-lg hover:bg-gray-50 dark:hover:bg-[#444] disabled:opacity-50 transition-colors"
+                  className="px-3 sm:px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-[#333] border border-gray-300 dark:border-white/20 rounded-lg hover:bg-gray-50 dark:hover:bg-[#444] disabled:opacity-50 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-4 py-2 text-sm font-medium text-white bg-gray-900 dark:bg-white dark:text-gray-900 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-100 disabled:opacity-50 transition-colors"
+                  className="px-3 sm:px-4 py-2 text-sm font-medium text-white bg-gray-900 dark:bg-white dark:text-gray-900 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-100 disabled:opacity-50 transition-colors"
                 >
                   {isSubmitting ? "Creating..." : "Create"}
                 </button>
@@ -355,8 +355,114 @@ export function UsersPanel({ orgs, onSuccess, onLoading }: UsersPanelProps) {
           />
         </div>
 
-        {/* Users Table */}
-        <div className="border border-gray-200 dark:border-white/10 rounded-lg overflow-hidden">
+        {/* Users - Mobile Cards */}
+        <div className="sm:hidden space-y-3">
+          {usersLoading ? (
+            <div className="py-8 text-center text-gray-500 dark:text-gray-400">Loading users...</div>
+          ) : filteredUsers.length === 0 ? (
+            <div className="py-8 text-center text-gray-500 dark:text-gray-400">
+              {searchQuery ? "No users match your search" : "No users found"}
+            </div>
+          ) : (
+            filteredUsers.map(user => (
+              <div
+                key={user.user_id}
+                className="border border-gray-200 dark:border-white/10 rounded-lg p-3 bg-white dark:bg-[#2a2a2a]"
+              >
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                      {user.email || "No email"}
+                    </div>
+                    {user.display_name && (
+                      <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.display_name}</div>
+                    )}
+                  </div>
+                  <span
+                    className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium flex-shrink-0 ${
+                      user.status === "active"
+                        ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300"
+                        : "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300"
+                    }`}
+                  >
+                    {user.status}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
+                    <span>
+                      Sites:{" "}
+                      <span
+                        className={
+                          user.site_count >= user.max_sites
+                            ? "text-red-600 dark:text-red-400 font-medium"
+                            : "font-medium text-gray-900 dark:text-white"
+                        }
+                      >
+                        {user.site_count}
+                      </span>
+                    </span>
+                    <span>
+                      Quota:{" "}
+                      {editingQuota === user.user_id ? (
+                        <span className="inline-flex items-center gap-1">
+                          <input
+                            ref={quotaInputRef}
+                            type="number"
+                            min="0"
+                            value={newQuotaValue}
+                            onChange={e => setNewQuotaValue(e.target.value)}
+                            className="w-14 px-1 py-0.5 text-xs border border-gray-300 dark:border-white/20 rounded bg-white dark:bg-[#333] text-gray-900 dark:text-white"
+                            onKeyDown={e => {
+                              if (e.key === "Enter") handleUpdateQuota(user.user_id)
+                              if (e.key === "Escape") {
+                                setEditingQuota(null)
+                                setNewQuotaValue("")
+                              }
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateQuota(user.user_id)}
+                            disabled={savingQuota}
+                            className="text-green-600"
+                          >
+                            ✓
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingQuota(null)
+                              setNewQuotaValue("")
+                            }}
+                            className="text-gray-500"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ) : (
+                        <span className="font-medium text-gray-900 dark:text-white">{user.max_sites}</span>
+                      )}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingQuota(user.user_id)
+                      setNewQuotaValue(String(user.max_sites))
+                    }}
+                    className="text-xs text-indigo-600 dark:text-indigo-400"
+                  >
+                    Edit
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Users Table - Desktop */}
+        <div className="hidden sm:block border border-gray-200 dark:border-white/10 rounded-lg overflow-hidden">
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-[#2a2a2a]">
               <tr>
