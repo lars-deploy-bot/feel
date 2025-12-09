@@ -16,9 +16,9 @@ mkdir -p "$TARGET_DIR"
 # Copy from template
 log_info "Copying from template: $TEMPLATE_PATH"
 # Copy entire template directory (includes user/, scripts/, and root files)
-# Exclude node_modules, .git, and symlinks to prevent issues
+# Exclude node_modules, .git, .bun cache, and symlinks to prevent issues
 # Use --no-owner --no-group to not preserve source ownership (we'll chown after)
-rsync -av --no-owner --no-group --exclude='node_modules' --exclude='.git' --exclude='template' "${TEMPLATE_PATH}/" "${TARGET_DIR}/"
+rsync -av --no-owner --no-group --exclude='node_modules' --exclude='.bun' --exclude='.git' --exclude='template' "${TEMPLATE_PATH}/" "${TARGET_DIR}/"
 
 # Create site-specific Caddyfile (overwrite template's generic one)
 log_info "Creating site-specific Caddyfile..."
