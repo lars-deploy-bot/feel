@@ -125,6 +125,7 @@ three.goalive.nl {
 }
 
 four.goalive.nl {
+    # Port fixed from 3349 to 3345
     import image_serving
 
     header {
@@ -137,7 +138,7 @@ four.goalive.nl {
         -X-Powered-By
     }
 
-    reverse_proxy localhost:3349 {
+    reverse_proxy localhost:3345 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
         header_up X-Forwarded-For {remote_host}
@@ -545,7 +546,7 @@ three-goalive-nl.preview.terminal.goalive.nl {
 four-goalive-nl.preview.terminal.goalive.nl {
     import image_serving
 
-    reverse_proxy localhost:3349 {
+    reverse_proxy localhost:3345 {
         header_up Host localhost
     }
 
@@ -3380,4 +3381,129 @@ clash-alive-best.preview.terminal.goalive.nl {
         -X-Powered-By
     }
 
+}
+
+test5397.alive.best {
+    import image_serving
+
+    header {
+        # Security headers (embeddable - allows iframe preview)
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    reverse_proxy localhost:3618 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+test5397-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3618 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+}
+
+testgal496.alive.best {
+    import image_serving
+
+    header {
+        # Security headers (embeddable - allows iframe preview)
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    reverse_proxy localhost:3619 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+testgal496-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3619 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+}
+
+# Added missing sites
+eventtemplate.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3334 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+larshallo.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3602 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+migrateapp.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3601 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+riggedwheel.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3372 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
 }

@@ -541,6 +541,37 @@ const { data } = await iam.rpc('deduct_credits', {
 
 **Documentation**: `docs/architecture/atomic-credit-charging.md`
 
+### Template Sites Maintenance
+
+**Template sites** are live sites used as deployment sources. They need `node_modules` to run their previews, but these MUST NOT be copied during deployment.
+
+**Template sites** (in Supabase `app.templates`):
+- `blank.alive.best` - Minimal starter
+- `template1.alive.best` - Gallery template
+- `four.goalive.nl` - Event template
+- `one.goalive.nl` - SaaS template
+- `loodgieter.alive.best` - Business template
+
+**Key points:**
+1. **rsync excludes** `node_modules` and `.bun` (see `02-setup-fs.sh`)
+2. Template sites need their `node_modules` for previews to work
+3. If template preview returns 502, reinstall deps and restart:
+```bash
+# For template with root package.json
+cd /srv/webalive/sites/blank.alive.best
+sudo -u site-blank-alive-best bun install
+systemctl restart site@blank-alive-best.service
+
+# For template with user/package.json
+cd /srv/webalive/sites/four.goalive.nl/user
+sudo -u site-four-goalive-nl bun install
+systemctl restart site@four-goalive-nl.service
+```
+
+**IMPORTANT:** When updating `@alive-game/alive-tagger` or similar packages:
+- Update both `vite.config.ts` AND `package.json` in all sites
+- The `generate-config.js` script generates vite configs - keep it in sync
+
 ## Git Workflow
 
 **Custom SSH Key**: Uses `alive_brug_deploy` for GitHub
