@@ -33,8 +33,6 @@
     "setup:template": "cd templates/site-template/user && bun install",
     "build:libs": "cross-env SKIP_ENV_VALIDATION=1 turbo run build --filter='!apps/*'",
     "setup": "./scripts/setup/copy-template.sh",
-    "pull": "GIT_SSH_COMMAND='ssh -i ~/.ssh/alive_brug_deploy' git pull",
-    "push": "GIT_SSH_COMMAND='ssh -i ~/.ssh/alive_brug_deploy' git push",
     "cleanup-test-db": "bun scripts/database/cleanup-test-database.ts",
     "superclean": "bun scripts/database/superclean.ts",
     "gen:db": "./scripts/database/generate-types.sh",
