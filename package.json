@@ -56,7 +56,7 @@
   },
   "lint-staged": {
     "**/*.{ts,tsx,js,jsx,json,md}": [
-      "./node_modules/.bin/biome format --write"
+      "biome format --write"
     ]
   },
   "devDependencies": {
