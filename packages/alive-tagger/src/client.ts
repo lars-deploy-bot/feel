@@ -1,12 +1,12 @@
 /**
  * Alive Tagger Client
  *
- * Client-side script for element selection in the preview iframe.
- * Handles Cmd/Ctrl+Click detection and sends element context to parent frame.
+ * Beautiful element selection UI for the Claude Bridge sandbox.
+ * Inspired by React Grab's polished visual design.
  *
  * Usage:
  * - Hold Cmd (Mac) or Ctrl (Windows/Linux)
- * - Hover over elements to see highlights
+ * - Hover over elements to see highlights with crosshair
  * - Click to select and send context to Claude Bridge
  */
 
@@ -21,11 +21,142 @@ import {
 /** Maximum length for HTML snippet */
 const MAX_HTML_LENGTH = 500
 
-/** Highlight color */
-const HIGHLIGHT_COLOR = "#10b981" // Emerald green
+/** Brand colors - purple/pink gradient like React Grab */
+const COLORS = {
+  primary: "#d239c0", // Vibrant pink/purple
+  primaryMuted: "rgba(210, 57, 192, 0.4)",
+  primaryBg: "rgba(210, 57, 192, 0.08)",
+  secondary: "#b21c8e", // Deeper purple
+  success: "#10b981", // Emerald for selection confirmation
+  labelBg: "#1a1a1a",
+  labelText: "#ffffff",
+  labelMuted: "#a0a0a0",
+}
 
-/** Selection flash color */
-const SELECTION_COLOR = "#3b82f6" // Blue
+/** CSS styles injected into the page */
+const STYLES = `
+@keyframes alive-tagger-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes alive-tagger-flash {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.02); opacity: 0.9; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+#alive-tagger-overlay {
+  position: fixed;
+  pointer-events: none;
+  z-index: 2147483646;
+  border: 2px solid ${COLORS.primary};
+  border-radius: 4px;
+  background: ${COLORS.primaryBg};
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  display: none;
+  will-change: transform, width, height;
+  box-shadow: 0 0 0 1px ${COLORS.primaryMuted};
+}
+
+#alive-tagger-overlay.flash {
+  animation: alive-tagger-flash 0.3s ease-out;
+  border-color: ${COLORS.success};
+  background: rgba(16, 185, 129, 0.15);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+}
+
+#alive-tagger-label {
+  position: fixed;
+  pointer-events: none;
+  z-index: 2147483647;
+  display: none;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  filter: drop-shadow(0px 2px 8px rgba(0, 0, 0, 0.3));
+}
+
+#alive-tagger-label-inner {
+  background: ${COLORS.labelBg};
+  color: ${COLORS.labelText};
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  max-width: 400px;
+  backdrop-filter: blur(8px);
+}
+
+#alive-tagger-label-arrow {
+  position: absolute;
+  left: 12px;
+  bottom: -6px;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid ${COLORS.labelBg};
+}
+
+#alive-tagger-label .component-name {
+  color: ${COLORS.primary};
+  font-weight: 600;
+}
+
+#alive-tagger-label .file-path {
+  color: ${COLORS.labelMuted};
+  margin-left: 6px;
+}
+
+#alive-tagger-label .line-number {
+  color: ${COLORS.labelText};
+  opacity: 0.7;
+}
+
+#alive-tagger-crosshair-h,
+#alive-tagger-crosshair-v {
+  position: fixed;
+  pointer-events: none;
+  z-index: 2147483645;
+  background: ${COLORS.primary};
+  opacity: 0.3;
+  display: none;
+}
+
+#alive-tagger-crosshair-h {
+  height: 1px;
+  left: 0;
+  right: 0;
+}
+
+#alive-tagger-crosshair-v {
+  width: 1px;
+  top: 0;
+  bottom: 0;
+}
+
+#alive-tagger-coords {
+  position: fixed;
+  pointer-events: none;
+  z-index: 2147483647;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 10px;
+  color: ${COLORS.labelMuted};
+  background: ${COLORS.labelBg};
+  padding: 2px 6px;
+  border-radius: 3px;
+  display: none;
+  opacity: 0.8;
+}
+
+body.alive-tagger-active {
+  cursor: crosshair !important;
+}
+
+body.alive-tagger-active * {
+  cursor: crosshair !important;
+}
+`
 
 /**
  * Get source info from an element, walking up the tree if needed
@@ -98,59 +229,78 @@ function sendToParent(context: ElementSelectedContext): void {
 
   try {
     window.parent.postMessage(message, "*")
-    console.log("[alive-tagger] Sent element context:", context.fileName + ":" + context.lineNumber)
+    console.log("[alive-tagger] Selected:", context.displayName, "at", context.fileName + ":" + context.lineNumber)
   } catch (error) {
     console.error("[alive-tagger] Failed to send message:", error)
   }
 }
 
 /**
- * Create and manage the highlight overlay
+ * Inject styles into the page
  */
-function createHighlightOverlay(): {
-  show: (element: Element) => void
+function injectStyles(): HTMLStyleElement {
+  const style = document.createElement("style")
+  style.id = "alive-tagger-styles"
+  style.textContent = STYLES
+  document.head.appendChild(style)
+  return style
+}
+
+/**
+ * Create the UI elements
+ */
+function createUI(): {
+  overlay: HTMLDivElement
+  label: HTMLDivElement
+  crosshairH: HTMLDivElement
+  crosshairV: HTMLDivElement
+  coords: HTMLDivElement
+  show: (element: Element, mouseX: number, mouseY: number) => void
   hide: () => void
-  flash: (element: Element) => void
+  flash: () => void
 } {
-  // Create overlay element
+  // Overlay box
   const overlay = document.createElement("div")
   overlay.id = "alive-tagger-overlay"
-  overlay.style.cssText = `
-		position: fixed;
-		pointer-events: none;
-		z-index: 999999;
-		border: 2px solid ${HIGHLIGHT_COLOR};
-		border-radius: 4px;
-		background: ${HIGHLIGHT_COLOR}10;
-		transition: all 0.1s ease-out;
-		display: none;
-	`
 
-  // Create label element
+  // Label with component info
   const label = document.createElement("div")
   label.id = "alive-tagger-label"
-  label.style.cssText = `
-		position: fixed;
-		pointer-events: none;
-		z-index: 999999;
-		background: ${HIGHLIGHT_COLOR};
-		color: white;
-		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-		font-size: 11px;
-		padding: 2px 6px;
-		border-radius: 3px;
-		white-space: nowrap;
-		display: none;
-		max-width: 400px;
-		overflow: hidden;
-		text-overflow: ellipsis;
+  label.innerHTML = `
+		<div id="alive-tagger-label-inner">
+			<span class="component-name"></span>
+			<span class="file-path"></span>
+			<span class="line-number"></span>
+		</div>
+		<div id="alive-tagger-label-arrow"></div>
 	`
 
+  // Crosshair lines
+  const crosshairH = document.createElement("div")
+  crosshairH.id = "alive-tagger-crosshair-h"
+
+  const crosshairV = document.createElement("div")
+  crosshairV.id = "alive-tagger-crosshair-v"
+
+  // Coordinate display
+  const coords = document.createElement("div")
+  coords.id = "alive-tagger-coords"
+
+  // Add to DOM
   document.body.appendChild(overlay)
   document.body.appendChild(label)
+  document.body.appendChild(crosshairH)
+  document.body.appendChild(crosshairV)
+  document.body.appendChild(coords)
 
   return {
-    show(element: Element) {
+    overlay,
+    label,
+    crosshairH,
+    crosshairV,
+    coords,
+
+    show(element: Element, mouseX: number, mouseY: number) {
       const rect = element.getBoundingClientRect()
       const source = getSourceInfo(element)
 
@@ -160,16 +310,35 @@ function createHighlightOverlay(): {
       overlay.style.width = `${rect.width}px`
       overlay.style.height = `${rect.height}px`
       overlay.style.display = "block"
-      overlay.style.borderColor = HIGHLIGHT_COLOR
-      overlay.style.background = `${HIGHLIGHT_COLOR}10`
+      overlay.classList.remove("flash")
 
-      // Position and update label
+      // Position crosshairs
+      crosshairH.style.top = `${mouseY}px`
+      crosshairH.style.display = "block"
+      crosshairV.style.left = `${mouseX}px`
+      crosshairV.style.display = "block"
+
+      // Position coords
+      coords.textContent = `${Math.round(mouseX)}, ${Math.round(mouseY)}`
+      coords.style.left = `${mouseX + 15}px`
+      coords.style.top = `${mouseY + 15}px`
+      coords.style.display = "block"
+
+      // Update label
       if (source) {
-        label.textContent = `${source.displayName} · ${source.fileName}:${source.lineNumber}`
-        label.style.left = `${rect.left}px`
-        label.style.top = `${Math.max(0, rect.top - 24)}px`
+        const componentName = label.querySelector(".component-name") as HTMLElement
+        const filePath = label.querySelector(".file-path") as HTMLElement
+        const lineNumber = label.querySelector(".line-number") as HTMLElement
+
+        componentName.textContent = source.displayName
+        filePath.textContent = source.fileName
+        lineNumber.textContent = `:${source.lineNumber}`
+
+        // Position label above element
+        const labelTop = Math.max(8, rect.top - 40)
+        label.style.left = `${Math.max(8, rect.left)}px`
+        label.style.top = `${labelTop}px`
         label.style.display = "block"
-        label.style.background = HIGHLIGHT_COLOR
       } else {
         label.style.display = "none"
       }
@@ -178,23 +347,16 @@ function createHighlightOverlay(): {
     hide() {
       overlay.style.display = "none"
       label.style.display = "none"
+      crosshairH.style.display = "none"
+      crosshairV.style.display = "none"
+      coords.style.display = "none"
     },
 
-    flash(element: Element) {
-      const rect = element.getBoundingClientRect()
-
-      overlay.style.left = `${rect.left}px`
-      overlay.style.top = `${rect.top}px`
-      overlay.style.width = `${rect.width}px`
-      overlay.style.height = `${rect.height}px`
-      overlay.style.borderColor = SELECTION_COLOR
-      overlay.style.background = `${SELECTION_COLOR}20`
-      overlay.style.display = "block"
-
+    flash() {
+      overlay.classList.add("flash")
       setTimeout(() => {
-        overlay.style.borderColor = HIGHLIGHT_COLOR
-        overlay.style.background = `${HIGHLIGHT_COLOR}10`
-      }, 200)
+        overlay.classList.remove("flash")
+      }, 300)
     },
   }
 }
@@ -218,23 +380,28 @@ export function initAliveTagger(): () => void {
 
   console.log("[alive-tagger] Initializing element selector")
 
+  // Inject styles
+  const styleEl = injectStyles()
+
+  // Create UI elements
+  const ui = createUI()
+
   let isActive = false
   let hoveredElement: Element | null = null
-  const highlight = createHighlightOverlay()
 
   // Track modifier key state
   function handleKeyDown(e: KeyboardEvent): void {
     if ((e.metaKey || e.ctrlKey) && !isActive) {
       isActive = true
-      document.body.style.cursor = "crosshair"
+      document.body.classList.add("alive-tagger-active")
     }
   }
 
   function handleKeyUp(e: KeyboardEvent): void {
     if (!e.metaKey && !e.ctrlKey && isActive) {
       isActive = false
-      document.body.style.cursor = ""
-      highlight.hide()
+      document.body.classList.remove("alive-tagger-active")
+      ui.hide()
       hoveredElement = null
     }
   }
@@ -245,17 +412,31 @@ export function initAliveTagger(): () => void {
 
     const target = e.target as Element
 
-    // Skip if same element
-    if (target === hoveredElement) return
+    // Update crosshair position even if same element
+    if (hoveredElement === target) {
+      // Just update crosshair and coords
+      const crosshairH = document.getElementById("alive-tagger-crosshair-h")
+      const crosshairV = document.getElementById("alive-tagger-crosshair-v")
+      const coords = document.getElementById("alive-tagger-coords")
+
+      if (crosshairH) crosshairH.style.top = `${e.clientY}px`
+      if (crosshairV) crosshairV.style.left = `${e.clientX}px`
+      if (coords) {
+        coords.textContent = `${Math.round(e.clientX)}, ${Math.round(e.clientY)}`
+        coords.style.left = `${e.clientX + 15}px`
+        coords.style.top = `${e.clientY + 15}px`
+      }
+      return
+    }
 
     // Check if element has source info
     const source = getSourceInfo(target)
     if (source) {
       hoveredElement = target
-      highlight.show(target)
+      ui.show(target, e.clientX, e.clientY)
     } else {
       hoveredElement = null
-      highlight.hide()
+      ui.hide()
     }
   }
 
@@ -271,7 +452,7 @@ export function initAliveTagger(): () => void {
       e.stopPropagation()
 
       // Flash effect
-      highlight.flash(target)
+      ui.flash()
 
       // Build and send context
       const context = buildContext(target, source)
@@ -282,8 +463,8 @@ export function initAliveTagger(): () => void {
   // Handle window blur (deactivate when losing focus)
   function handleBlur(): void {
     isActive = false
-    document.body.style.cursor = ""
-    highlight.hide()
+    document.body.classList.remove("alive-tagger-active")
+    ui.hide()
     hoveredElement = null
   }
 
@@ -294,7 +475,7 @@ export function initAliveTagger(): () => void {
   document.addEventListener("click", handleClick, true)
   window.addEventListener("blur", handleBlur)
 
-  console.log("[alive-tagger] Element selector ready. Hold Cmd/Ctrl and click to select.")
+  console.log("[alive-tagger] Ready! Hold Cmd/Ctrl and click to select elements.")
 
   // Return cleanup function
   return () => {
@@ -304,10 +485,15 @@ export function initAliveTagger(): () => void {
     document.removeEventListener("click", handleClick, true)
     window.removeEventListener("blur", handleBlur)
 
-    // Remove overlay elements
+    // Remove UI elements
+    styleEl.remove()
     document.getElementById("alive-tagger-overlay")?.remove()
     document.getElementById("alive-tagger-label")?.remove()
+    document.getElementById("alive-tagger-crosshair-h")?.remove()
+    document.getElementById("alive-tagger-crosshair-v")?.remove()
+    document.getElementById("alive-tagger-coords")?.remove()
 
+    document.body.classList.remove("alive-tagger-active")
     ;(window as unknown as Record<string, boolean>).__aliveTaggerInitialized = false
     console.log("[alive-tagger] Cleaned up")
   }
