@@ -120,7 +120,7 @@ export function Sandbox() {
     }
   }
 
-  // Listen for postMessage from iframe (preview sites send navigation events)
+  // Listen for postMessage from iframe (preview sites send navigation events + element selection)
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       // Navigation started - show loading
@@ -136,6 +136,13 @@ export function Sandbox() {
         if (inputRef.current && document.activeElement !== inputRef.current) {
           inputRef.current.value = newPath
         }
+        return
+      }
+      // Element selected via alive-tagger (Cmd+Click in dev mode)
+      if (event.data?.type === "alive-element-selected" && event.data.context) {
+        const ctx = event.data.context
+        console.log("[Sandbox] Element selected:", ctx.displayName, "at", `${ctx.fileName}:${ctx.lineNumber}`, ctx)
+        // TODO: Insert into chat input or show UI indicator
       }
     }
 

@@ -42,7 +42,7 @@ export function SandboxMobile({ onClose, children, busy, statusText, onStop }: S
     setIsLoading(true)
   }, [path])
 
-  // Listen for postMessage from iframe (preview sites send navigation events)
+  // Listen for postMessage from iframe (preview sites send navigation events + element selection)
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       // Navigation started - show loading
@@ -56,6 +56,19 @@ export function SandboxMobile({ onClose, children, busy, statusText, onStop }: S
         if (newPath !== path) {
           setPath(newPath)
         }
+        return
+      }
+      // Element selected via alive-tagger (Cmd+Click in dev mode)
+      if (event.data?.type === "alive-element-selected" && event.data.context) {
+        const ctx = event.data.context
+        console.log(
+          "[SandboxMobile] Element selected:",
+          ctx.displayName,
+          "at",
+          `${ctx.fileName}:${ctx.lineNumber}`,
+          ctx,
+        )
+        // TODO: Insert into chat input or show UI indicator
       }
     }
 
