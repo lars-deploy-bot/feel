@@ -5,6 +5,7 @@ import type { ReactNode } from "react"
 import { useEffect, useRef, useState } from "react"
 import { PREVIEW_MESSAGES } from "@webalive/shared"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
+import { useSandboxContext } from "@/features/chat/lib/sandbox-context"
 import { getPreviewUrl } from "@/lib/preview-utils"
 
 interface SandboxMobileProps {
@@ -17,6 +18,7 @@ interface SandboxMobileProps {
 
 export function SandboxMobile({ onClose, children, busy, statusText, onStop }: SandboxMobileProps) {
   const { workspace } = useWorkspace({ allowEmpty: true })
+  const { setSelectedElement } = useSandboxContext()
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [path, setPath] = useState("/")
   const [isLoading, setIsLoading] = useState(true)
@@ -68,13 +70,18 @@ export function SandboxMobile({ onClose, children, busy, statusText, onStop }: S
           `${ctx.fileName}:${ctx.lineNumber}`,
           ctx,
         )
-        // TODO: Insert into chat input or show UI indicator
+        setSelectedElement({
+          displayName: ctx.displayName,
+          fileName: ctx.fileName,
+          lineNumber: ctx.lineNumber,
+          columnNumber: ctx.columnNumber,
+        })
       }
     }
 
     window.addEventListener("message", handleMessage)
     return () => window.removeEventListener("message", handleMessage)
-  }, [path])
+  }, [path, setSelectedElement])
 
   // Close on escape key
   useEffect(() => {

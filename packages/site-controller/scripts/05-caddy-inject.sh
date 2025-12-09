@@ -98,11 +98,6 @@ ${PREVIEW_DOMAIN} {
         -X-Powered-By
     }
 
-    # Auth check via forward_auth
-    forward_auth localhost:8998 {
-        uri /api/auth/preview-guard
-        copy_headers Cookie
-    }
 }
 EOF
 

@@ -3,12 +3,14 @@ import { ExternalLink, RotateCw } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { PREVIEW_MESSAGES } from "@webalive/shared"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
+import { useSandboxContext } from "@/features/chat/lib/sandbox-context"
 import { useResizablePanel } from "@/lib/hooks/useResizablePanel"
 import { getPreviewUrl, getSiteUrl } from "@/lib/preview-utils"
 import { useDebugActions, useSandboxWidth } from "@/lib/stores/debug-store"
 
 export function Sandbox() {
   const { workspace } = useWorkspace({ allowEmpty: true })
+  const { setSelectedElement } = useSandboxContext()
   const savedWidth = useSandboxWidth()
   const { setSandboxWidth } = useDebugActions()
   const { width, setWidth, isResizing, handleMouseDown } = useResizablePanel({
@@ -142,13 +144,18 @@ export function Sandbox() {
       if (event.data?.type === "alive-element-selected" && event.data.context) {
         const ctx = event.data.context
         console.log("[Sandbox] Element selected:", ctx.displayName, "at", `${ctx.fileName}:${ctx.lineNumber}`, ctx)
-        // TODO: Insert into chat input or show UI indicator
+        setSelectedElement({
+          displayName: ctx.displayName,
+          fileName: ctx.fileName,
+          lineNumber: ctx.lineNumber,
+          columnNumber: ctx.columnNumber,
+        })
       }
     }
 
     window.addEventListener("message", handleMessage)
     return () => window.removeEventListener("message", handleMessage)
-  }, [])
+  }, [setSelectedElement])
 
   return (
     <div

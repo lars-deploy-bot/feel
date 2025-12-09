@@ -197,6 +197,26 @@ const cleanup = initAliveTagger()
 | **Env requirement** | None (dev mode auto) | None | `LOVABLE_DEV_SERVER=true` |
 | **Designed for** | Claude Bridge iframe | Claude Code CLI | Lovable.dev |
 
+## Integration with Claude Bridge
+
+The alive-tagger is integrated with Claude Bridge's sandbox preview. When a user Cmd+Clicks an element:
+
+1. **Sandbox receives postMessage**: `Sandbox.tsx` and `SandboxMobile.tsx` listen for `alive-element-selected` messages
+2. **Context propagates via SandboxContext**: The selection is passed through `useSandboxContext()`
+3. **Chat input auto-fills**: The selected element is formatted as `@ComponentName in src/path/file.tsx:lineNumber` and inserted into the chat input
+4. **User can send to Claude**: The reference helps Claude understand exactly which element/component to modify
+
+### Key files:
+- `apps/web/features/chat/lib/sandbox-context.tsx` - Context with `setSelectedElement` and `registerElementSelectHandler`
+- `apps/web/features/chat/components/Sandbox.tsx` - Listens for postMessage, calls `setSelectedElement`
+- `apps/web/app/chat/page.tsx` - Registers handler to insert selection into chat input
+
+### Caddy Configuration
+
+For HMR to work properly in the sandbox iframe, the preview domain **must NOT** use `forward_auth`. The auth check interferes with WebSocket connections and causes the iframe to flash/reload every few seconds.
+
+The site-controller at `packages/site-controller/scripts/05-caddy-inject.sh` generates preview domain configs WITHOUT `forward_auth` to avoid this issue.
+
 ## Development
 
 ```bash
@@ -208,6 +228,9 @@ bun run dev
 
 # Type check
 bun run type-check
+
+# Run tests
+bun run test
 ```
 
 ## Files

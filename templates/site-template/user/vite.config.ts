@@ -1,65 +1,20 @@
 import path from "node:path"
 import react from "@vitejs/plugin-react-swc"
-import { aliveTagger } from "@webalive/alive-tagger"
-import { defineConfig, type Plugin } from "vite"
-
-// Plugin to inject preview navigation sync script for Claude Bridge sandbox
-// IMPORTANT: Message types MUST match PREVIEW_MESSAGES in @webalive/shared/constants.ts
-// - NAVIGATION_START = "preview-navigation-start"
-// - NAVIGATION = "preview-navigation"
-function previewNavSync(): Plugin {
-  return {
-    name: "preview-nav-sync",
-    transformIndexHtml(html) {
-      const script = `<script>
-(function() {
-  if (window.parent === window) return;
-  function sendStart() {
-    window.parent.postMessage({ type: 'preview-navigation-start' }, '*');
-  }
-  function sendPath() {
-    window.parent.postMessage({ type: 'preview-navigation', path: location.pathname }, '*');
-  }
-  sendPath();
-  var origPush = history.pushState, origReplace = history.replaceState;
-  history.pushState = function() { sendStart(); origPush.apply(this, arguments); sendPath(); };
-  history.replaceState = function() { sendStart(); origReplace.apply(this, arguments); sendPath(); };
-  window.addEventListener('popstate', function() { sendStart(); sendPath(); });
-  document.addEventListener('click', function(e) {
-    var a = e.target.closest('a[href]');
-    if (a && a.href && !a.target && a.origin === location.origin) sendStart();
-  }, true);
-  window.addEventListener('beforeunload', sendStart);
-})();
-</script>`
-      // Inject at very start of head (before Vite's scripts)
-      return html.replace("<head>", `<head>${script}`)
-    },
-  }
-}
+import { aliveTagger } from "@alive-game/alive-tagger"
+import { defineConfig } from "vite"
 
 // In dev: Vite is the main server on PORT, API runs on internal port (PORT+1000)
-// In prod: API server handles everything
 const PORT = Number(process.env.PORT) || 8080
 const API_PORT = PORT + 1000
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  root: "client",
-  publicDir: "../public",
-  build: {
-    outDir: "../dist/client",
-    emptyOutDir: true,
-  },
   server: {
     host: "::",
     port: PORT,
-    allowedHosts: ["localhost", ".alive.best", ".preview.terminal.goalive.nl"],
-    headers: {
-      "X-Frame-Options": "ALLOWALL",
-    },
+    allowedHosts: ["localhost", ".alive.best", ".goalive.nl", ".preview.terminal.goalive.nl"],
     hmr: {
-      // For reverse proxy (Caddy) with HTTPS - connect via public domain
+      // For reverse proxy (Caddy) with HTTPS
       protocol: "wss",
       clientPort: 443,
     },
@@ -73,15 +28,12 @@ export default defineConfig(({ mode }) => ({
   preview: {
     host: "::",
     port: PORT,
-    allowedHosts: ["localhost", ".alive.best", ".preview.terminal.goalive.nl"],
-    headers: {
-      "X-Frame-Options": "ALLOWALL",
-    },
+    allowedHosts: ["localhost", ".alive.best", ".goalive.nl", ".preview.terminal.goalive.nl"],
   },
-  plugins: [previewNavSync(), react(), mode === "development" && aliveTagger()].filter(Boolean),
+  plugins: [react(), mode === "development" && aliveTagger()].filter(Boolean),
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./client"),
+      "@": path.resolve(__dirname, "./src"),
     },
   },
 }))

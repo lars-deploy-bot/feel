@@ -44,7 +44,7 @@ import {
 import { groupMessages } from "@/features/chat/lib/message-grouper"
 import { parseStreamEvent, type AgentManagerContent, type UIMessage } from "@/features/chat/lib/message-parser"
 import { renderMessage } from "@/features/chat/lib/message-renderer"
-import { SandboxProvider } from "@/features/chat/lib/sandbox-context"
+import { SandboxProvider, useSandboxContext } from "@/features/chat/lib/sandbox-context"
 import { sendClientError } from "@/features/chat/lib/send-client-error"
 import { isValidStreamEvent } from "@/features/chat/lib/stream-guards"
 import { formatMessagesAsText } from "@/features/chat/utils/format-messages"
@@ -149,6 +149,27 @@ function ChatPageContent() {
   const userApiKey = useApiKey()
   const userModel = useModel()
   const streamingActions = useStreamingActions()
+  const { registerElementSelectHandler } = useSandboxContext()
+
+  // Register element selection handler to insert selected element into chat input
+  useEffect(() => {
+    registerElementSelectHandler(element => {
+      // Format: @ComponentName in path/to/file.tsx:lineNumber
+      const shortPath = element.fileName.replace(/^.*\/src\//, "src/")
+      const reference = `@${element.displayName} in ${shortPath}:${element.lineNumber}`
+
+      // Append to existing message or set new
+      setMsg(prev => {
+        if (prev.trim()) {
+          return `${prev} ${reference}`
+        }
+        return reference
+      })
+
+      // Focus the input
+      setTimeout(() => chatInputRef.current?.focus(), 0)
+    })
+  }, [registerElementSelectHandler])
 
   // Derive status text from last assistant message when busy
   const statusText = useMemo(() => {

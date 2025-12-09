@@ -1,9 +1,9 @@
-import { defineConfig } from "vite"
+import { defineConfig, type PluginOption } from "vite"
 import react from "@vitejs/plugin-react"
 import { resolve } from "path"
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react() as PluginOption],
   build: {
     outDir: "dist/client",
     emptyOutDir: true,

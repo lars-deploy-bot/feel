@@ -5,14 +5,7 @@ import globals from "globals"
 import tseslint from "typescript-eslint"
 
 export default tseslint.config(
-  { ignores: [
-    "dist",
-    "node_modules",
-    "build",
-    "**/*.min.js",
-    "**/*.bundle.js",
-    "**/vendor/**",
-  ] },
+  { ignores: ["dist", "node_modules", "build", "**/*.min.js", "**/*.bundle.js", "**/vendor/**"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],

@@ -1,64 +1,78 @@
 # Project Architecture Documentation
 
-## Framework: React + Vite + Hono + TypeScript
+⚠️ **IMPORTANT**: You MUST update this CLAUDE.md file whenever:
+- Creating a new site from this template
+- Making significant architectural changes to the project
+- Adding new frameworks, libraries, or major features
+- Changing the file structure or development workflow
 
-This is a **React frontend** with a **Hono API backend**, built with Vite and TypeScript.
+## Framework: React + Vite + TypeScript
+
+This is a **React application** built with Vite and TypeScript. The architecture follows modern React patterns.
+
+## 🚨 CRITICAL: Where Content Lives
+
+**FOR CONTENT CHANGES, EDIT THESE FILES:**
+- `src/pages/Index.tsx` - Main page content (THIS IS WHERE THE REAL CONTENT IS)
+- `src/pages/` - Other page components
+- `src/components/` - Reusable UI components
+
+**DO NOT EDIT THESE FILES FOR CONTENT:**
+- `index.html` - Just a shell/entry point, not the actual page content
+- `src/index.html` - If it exists, it's also just an entry point
 
 ## Architecture Overview
 
 ```
 user/
-├── client/                 ← Frontend (React)
-│   ├── index.html          ← Entry point
-│   ├── main.tsx            ← App initialization
-│   ├── pages/              ← Page components
-│   │   └── Index.tsx       ← MAIN CONTENT
-│   ├── components/         ← Reusable components
-│   └── lib/                ← Utilities
-├── public/                 ← Static assets (robots.txt, favicons, etc.)
-├── server.ts               ← Backend (Hono API)
-├── vite.config.ts          ← Vite config (root: "client")
-└── dist/                   ← Build output
-    └── client/             ← Built frontend
+├── index.html          ← Entry point only (loads React app)
+├── src/
+│   ├── main.tsx        ← App initialization
+│   ├── pages/
+│   │   └── Index.tsx   ← MAIN CONTENT LIVES HERE
+│   ├── components/     ← Reusable components
+│   └── lib/           ← Utilities
+├── package.json        ← Dependencies
+└── vite.config.ts     ← Build configuration
 ```
-
-## Where Content Lives
-
-**Frontend (React):**
-- `client/pages/Index.tsx` - Main page content
-- `client/pages/` - Other page components
-- `client/components/` - Reusable UI components
-
-**Backend (Hono):**
-- `server.ts` - API routes under `/api/*`
-
-**Static Assets:**
-- `public/` - robots.txt, favicons, etc. (copied to dist on build)
 
 ## Development
 
-```bash
-bun run dev        # Start dev server (Vite + API)
-bun run build      # Build for production
-bun run preview    # Preview production build
-```
+- **Start dev server:** `bun run dev`
+- **Build:** `bun run build`
+- **Live reload:** Automatic via Vite HMR
 
 ## Common Tasks
 
-1. **Edit page content:** `client/pages/Index.tsx`
-2. **Add components:** `client/components/`
-3. **Add API routes:** `server.ts`
-4. **Add static files:** `public/`
+1. **Change page content:** Edit `src/pages/Index.tsx`
+2. **Add components:** Create in `src/components/`
+3. **Add routing:** Use React Router in `src/main.tsx`
+4. **Style changes:** Edit component files or global CSS
+
+## Project Purpose
+
+[REPLACE THIS: Describe what this specific website/project does]
 
 ## Navigation
 
-Uses React Router's `<Link>` components:
+Uses React Router's `<Link>` components for client-side navigation:
 - **DO NOT** use `<a href="...">` (causes page reloads)
 - **DO** use `<Link to="...">` for internal navigation
 
 ## Important Notes
 
-- Frontend root is `client/` (vite.config has `root: "client"`)
-- Public assets in `public/` (vite.config has `publicDir: "../public"`)
-- Build output in `dist/client/`
-- API served from same server in production
+- This uses Vite for fast development and building
+- Hot Module Replacement (HMR) provides instant updates
+- TypeScript provides type safety
+- Tailwind CSS for styling (if configured)
+- Client-side routing with react-router-dom prevents page reloads
+
+## [Claude Planning Mode]
+
+**ALWAYS use this systematic planning approach for any task:**
+
+**Boxes to Tick:** 1,2,3,4 (max 8)...
+**Questions to Answer:** same
+**Proof Strategy:** 1,2,... 8 to get the proof how you fix my prompt
+
+This ensures systematic problem-solving with clear deliverables and verification steps.
