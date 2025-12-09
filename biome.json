@@ -59,6 +59,9 @@
       "suspicious": {
         "noExplicitAny": "off",
         "noArrayIndexKey": "off"
+      },
+      "performance": {
+        "noImgElement": "off"
       }
     }
   },
