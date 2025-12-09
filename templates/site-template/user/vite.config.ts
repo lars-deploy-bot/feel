@@ -1,6 +1,6 @@
 import path from "node:path"
 import react from "@vitejs/plugin-react-swc"
-import { componentTagger } from "lovable-tagger"
+import { aliveTagger } from "@webalive/alive-tagger"
 import { defineConfig, type Plugin } from "vite"
 
 // Plugin to inject preview navigation sync script for Claude Bridge sandbox
@@ -78,7 +78,7 @@ export default defineConfig(({ mode }) => ({
       "X-Frame-Options": "ALLOWALL",
     },
   },
-  plugins: [previewNavSync(), react(), mode === "development" && componentTagger()].filter(Boolean),
+  plugins: [previewNavSync(), react(), mode === "development" && aliveTagger()].filter(Boolean),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./client"),
