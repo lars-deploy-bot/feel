@@ -11,7 +11,7 @@
  * 4. Source info is attached to DOM nodes via Symbol
  */
 
-import * as React from "react"
+import type * as React from "react"
 import * as ReactJSXDevRuntime from "react/jsx-dev-runtime"
 
 // Original jsxDEV from React

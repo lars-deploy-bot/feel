@@ -22,10 +22,13 @@ export async function restartServer(_params: RestartServerParams): Promise<ToolR
   const workspaceRoot = process.cwd()
 
   // callBridgeApi automatically validates workspaceRoot and includes session cookie
-  return callBridgeApi({
+  const result = await callBridgeApi({
     endpoint: "/api/restart-workspace",
     body: { workspaceRoot },
   })
+
+  // The API now returns mode info - pass through the improved message
+  return result
 }
 
 export const restartServerTool = tool(

@@ -56,7 +56,6 @@ describe("aliveTagger plugin", () => {
     it("respects debug option", () => {
       const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {})
       const plugin = aliveTagger({ debug: true })
-
       ;(plugin.configResolved as (config: ResolvedConfig) => void)({
         mode: "development",
       } as ResolvedConfig)

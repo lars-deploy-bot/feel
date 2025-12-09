@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process"
-import { existsSync, mkdirSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { basename, dirname, join } from "node:path"
 import { NextResponse } from "next/server"
 import { z } from "zod"
@@ -7,6 +7,28 @@ import { createErrorResponse } from "@/features/auth/lib/auth"
 import { ErrorCodes } from "@/lib/error-codes"
 import { handleWorkspaceApi } from "@/lib/workspace-api-handler"
 import { runAsWorkspaceUser } from "@/lib/workspace-execution/command-runner"
+
+type ServeMode = "dev" | "build" | "unknown"
+
+/**
+ * Detect the current serve mode by reading the systemd override file.
+ */
+function detectCurrentMode(serviceName: string): ServeMode {
+  const overrideConf = `/etc/systemd/system/${serviceName}.d/override.conf`
+  try {
+    const content = readFileSync(overrideConf, "utf-8")
+    if (content.includes("bun run dev")) {
+      return "dev"
+    }
+    if (content.includes("bun run preview")) {
+      return "build"
+    }
+    return "unknown"
+  } catch {
+    // No override file means default (dev mode)
+    return "dev"
+  }
+}
 
 const SwitchServeModeSchema = z.object({
   workspaceRoot: z.string(),
@@ -70,7 +92,11 @@ export async function POST(req: Request) {
       const overrideDir = `/etc/systemd/system/${serviceName}.d`
       const overrideConf = join(overrideDir, "override.conf")
 
-      console.log(`[switch-serve-mode ${requestId}] Switching ${domain} to ${mode} mode`)
+      // Detect current mode before switching
+      const previousMode = detectCurrentMode(serviceName)
+      const alreadyInMode = previousMode === mode
+
+      console.log(`[switch-serve-mode ${requestId}] Switching ${domain} from ${previousMode} to ${mode} mode`)
 
       try {
         // If switching to build mode and buildFirst is true, run the build
@@ -122,14 +148,33 @@ ExecStart=${execStart}
 
         console.log(`[switch-serve-mode ${requestId}] Service restarted in ${mode} mode`)
 
-        const explanation =
-          mode === "dev"
-            ? "Changes you make will appear instantly on the site."
-            : "Your site is now running the fast, optimized version."
+        // Build informative message based on previous state
+        const modeLabel = mode === "dev" ? "Development" : "Production"
+        const previousLabel =
+          previousMode === "dev" ? "development" : previousMode === "build" ? "production" : "unknown"
+
+        let message: string
+        if (alreadyInMode) {
+          // Already in this mode - still restart, but inform user
+          const explanation =
+            mode === "dev"
+              ? "Server restarted. Changes will appear instantly (hot reload)."
+              : "Server restarted with existing production build."
+          message = `✓ Already in ${modeLabel.toLowerCase()} mode. ${explanation}`
+        } else {
+          // Switched modes
+          const explanation =
+            mode === "dev"
+              ? "Changes you make will appear instantly on the site."
+              : "Your site is now running the fast, optimized version."
+          message = `✓ Switched from ${previousLabel} to ${modeLabel.toLowerCase()} mode. ${explanation}`
+        }
 
         return NextResponse.json({
           ok: true,
-          message: `✓ ${mode === "dev" ? "Development" : "Production"} mode active. ${explanation}`,
+          message,
+          previousMode,
+          currentMode: mode,
           requestId,
         })
       } catch (error) {

@@ -188,7 +188,7 @@ function getParentComponents(element: Element, maxDepth = 5): string[] {
 
   while (current && depth < maxDepth) {
     const source = (current as unknown as Record<symbol, SourceInfo>)[SOURCE_KEY]
-    if (source && source.displayName) {
+    if (source?.displayName) {
       // Only include React components (capitalized names), skip HTML tags
       if (source.displayName[0] === source.displayName[0].toUpperCase() && !/^[a-z]+$/.test(source.displayName)) {
         components.push(source.displayName)
@@ -229,7 +229,7 @@ function sendToParent(context: ElementSelectedContext): void {
 
   try {
     window.parent.postMessage(message, "*")
-    console.log("[alive-tagger] Selected:", context.displayName, "at", context.fileName + ":" + context.lineNumber)
+    console.log("[alive-tagger] Selected:", context.displayName, "at", `${context.fileName}:${context.lineNumber}`)
   } catch (error) {
     console.error("[alive-tagger] Failed to send message:", error)
   }
