@@ -67,10 +67,42 @@ export interface AgentManagerContent {
   message: string
 }
 
+// Tool progress message content (from SDK)
+export interface ToolProgressContent {
+  type: "tool_progress"
+  tool_use_id: string
+  tool_name: string
+  parent_tool_use_id: string | null
+  elapsed_time_seconds: number
+  uuid: string
+  session_id: string
+}
+
+// Auth status message content (from SDK)
+export interface AuthStatusContent {
+  type: "auth_status"
+  isAuthenticating: boolean
+  output: string[]
+  error?: string
+  uuid: string
+  session_id: string
+}
+
 // Message types for UI
 export type UIMessage = {
   id: string
-  type: "user" | "start" | "sdk_message" | "result" | "complete" | "compact_boundary" | "interrupt" | "agent_manager"
+  type:
+    | "user"
+    | "start"
+    | "sdk_message"
+    | "result"
+    | "complete"
+    | "compact_boundary"
+    | "compacting"
+    | "tool_progress"
+    | "auth_status"
+    | "interrupt"
+    | "agent_manager"
   content: unknown
   timestamp: Date
   isStreaming?: boolean
@@ -101,7 +133,7 @@ export function parseStreamEvent(
   if (isMessageEvent(event)) {
     const content = event.data.content as SDKMessage
 
-    // Check for system message with compact_boundary subtype
+    // Check for system message with compact_boundary or status subtype
     if (content.type === "system") {
       const systemMsg = content as any // SDK system messages may have subtype for context compaction
       if (systemMsg.subtype === "compact_boundary") {
@@ -114,6 +146,37 @@ export function parseStreamEvent(
           content: content,
           ...baseMessage,
         }
+      }
+      // Handle status messages (e.g., compacting in progress)
+      if (systemMsg.subtype === "status" && systemMsg.status === "compacting") {
+        return {
+          id: `${event.requestId}-compacting-${systemMsg.uuid}`,
+          type: "compacting",
+          content: content,
+          ...baseMessage,
+        }
+      }
+    }
+
+    // Handle tool_progress messages (elapsed time for long-running tools)
+    if (content.type === "tool_progress") {
+      const progressMsg = content as ToolProgressContent
+      return {
+        id: `${event.requestId}-progress-${progressMsg.tool_use_id}-${progressMsg.elapsed_time_seconds}`,
+        type: "tool_progress",
+        content: progressMsg,
+        ...baseMessage,
+      }
+    }
+
+    // Handle auth_status messages (OAuth authentication progress)
+    if (content.type === "auth_status") {
+      const authMsg = content as AuthStatusContent
+      return {
+        id: `${event.requestId}-auth-${authMsg.uuid}`,
+        type: "auth_status",
+        content: authMsg,
+        ...baseMessage,
       }
     }
 
@@ -254,6 +317,9 @@ export const COMPONENT_TYPE = {
   START: "start",
   COMPLETE: "complete",
   COMPACT_BOUNDARY: "compact_boundary",
+  COMPACTING: "compacting",
+  TOOL_PROGRESS: "tool_progress",
+  AUTH_STATUS: "auth_status",
   INTERRUPT: "interrupt",
   SYSTEM: "system",
   ASSISTANT: "assistant",
@@ -271,6 +337,9 @@ export function getMessageComponentType(message: UIMessage): ComponentType {
   if (message.type === "start") return COMPONENT_TYPE.START
   if (message.type === "complete") return COMPONENT_TYPE.COMPLETE
   if (message.type === "compact_boundary") return COMPONENT_TYPE.COMPACT_BOUNDARY
+  if (message.type === "compacting") return COMPONENT_TYPE.COMPACTING
+  if (message.type === "tool_progress") return COMPONENT_TYPE.TOOL_PROGRESS
+  if (message.type === "auth_status") return COMPONENT_TYPE.AUTH_STATUS
   if (message.type === "interrupt") return COMPONENT_TYPE.INTERRUPT
   if (message.type === "agent_manager") return COMPONENT_TYPE.AGENT_MANAGER
 

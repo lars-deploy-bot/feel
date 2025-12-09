@@ -10,6 +10,7 @@ AI assistant guidelines for working on Claude Bridge.
 2. **ALWAYS USE BUN** - Runtime and package manager
 3. **GIT HOOKS** - Pre-push hooks run automatically; if they fail, fix the issues (don't force-push)
 4. **NO RANDOM ENV VARS** - Don't add environment variables unless absolutely necessary. Use existing config, constants, or code-level defaults instead. Adding .env variables creates deployment complexity and hidden dependencies.
+5. **NO EXPLORE AGENT** - Never use `Task(subagent_type=Explore)`. Use Glob and Grep directly instead - they're faster and more precise for this codebase.
 
 ## Project Overview
 

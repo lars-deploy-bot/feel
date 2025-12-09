@@ -1,13 +1,16 @@
 import { MessageErrorBoundary } from "@/features/chat/components/MessageErrorBoundary"
 import { AgentManagerMessage } from "@/features/chat/components/message-renderers/AgentManagerMessage"
 import { AssistantMessage } from "@/features/chat/components/message-renderers/AssistantMessage"
+import { AuthStatusMessage } from "@/features/chat/components/message-renderers/AuthStatusMessage"
 import { CompactBoundaryMessage } from "@/features/chat/components/message-renderers/CompactBoundaryMessage"
+import { CompactingMessage } from "@/features/chat/components/message-renderers/CompactingMessage"
 import { CompleteMessage } from "@/features/chat/components/message-renderers/CompleteMessage"
 import { ErrorResultMessage } from "@/features/chat/components/message-renderers/ErrorResultMessage"
 import { InterruptMessage } from "@/features/chat/components/message-renderers/InterruptMessage"
 import { ResultMessage } from "@/features/chat/components/message-renderers/ResultMessage"
 import { StartMessage } from "@/features/chat/components/message-renderers/StartMessage"
 import { SystemMessage } from "@/features/chat/components/message-renderers/SystemMessage"
+import { ToolProgressMessage } from "@/features/chat/components/message-renderers/ToolProgressMessage"
 import { ToolResultMessage } from "@/features/chat/components/message-renderers/ToolResultMessage"
 import { UserMessage } from "@/features/chat/components/message-renderers/UserMessage"
 import type {
@@ -26,6 +29,8 @@ import {
   getMessageComponentType,
   isErrorResultMessage,
   type AgentManagerContent,
+  type AuthStatusContent,
+  type ToolProgressContent,
   type UIMessage,
 } from "./message-parser"
 
@@ -73,6 +78,15 @@ function renderMessageContent(message: UIMessage): React.ReactNode {
     case COMPONENT_TYPE.COMPACT_BOUNDARY:
       // SDK system message with compact_boundary subtype - no typed interface in SDK
       return <CompactBoundaryMessage data={message.content as any} />
+
+    case COMPONENT_TYPE.COMPACTING:
+      return <CompactingMessage />
+
+    case COMPONENT_TYPE.TOOL_PROGRESS:
+      return <ToolProgressMessage content={message.content as ToolProgressContent} />
+
+    case COMPONENT_TYPE.AUTH_STATUS:
+      return <AuthStatusMessage content={message.content as AuthStatusContent} />
 
     case COMPONENT_TYPE.INTERRUPT:
       return <InterruptMessage data={message.content as BridgeInterruptMessage["data"]} />
