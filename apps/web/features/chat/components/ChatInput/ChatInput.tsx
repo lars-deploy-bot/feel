@@ -34,7 +34,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
     onStop,
     config: userConfig = {},
     onOpenTemplates,
-    onOpenPreview,
     hideToolbar = false,
   },
   ref,
@@ -206,12 +205,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
         <div className="relative">
           {/* Toolbar above input */}
           {!hideToolbar && (
-            <Toolbar
-              fileInputRef={fileInputRef}
-              onOpenTemplates={onOpenTemplates}
-              onOpenPreview={onOpenPreview}
-              onAddUserPrompt={addUserPrompt}
-            />
+            <Toolbar fileInputRef={fileInputRef} onOpenTemplates={onOpenTemplates} onAddUserPrompt={addUserPrompt} />
           )}
 
           <InputContainer>

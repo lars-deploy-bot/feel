@@ -12,7 +12,7 @@ export function GlobOutput({ matches, count, search_path }: GlobOutputProps) {
       </div>
       <div className="space-y-1 max-h-80 overflow-auto">
         {matches.map((match, index) => (
-          <div key={index} className="text-xs text-black/60 dark:text-white/60 font-diatype-mono">
+          <div key={index} className="text-xs text-black/60 dark:text-white/60 font-diatype-mono break-all">
             {match}
           </div>
         ))}

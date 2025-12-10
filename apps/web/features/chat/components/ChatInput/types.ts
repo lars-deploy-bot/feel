@@ -148,7 +148,6 @@ export interface ChatInputProps extends ChatInputActions {
   config?: ChatInputConfig
   children?: ReactNode
   onOpenTemplates?: () => void
-  onOpenPreview?: () => void
   hideToolbar?: boolean
 }
 

@@ -14,6 +14,7 @@ declare -a CHECKS=(
     "types|Type checking (TypeScript)|check-types.sh|true"
     "patterns|Error pattern validation|check-error-patterns.sh|true"
     "dependencies|Dependency architecture (depcruise)|check-dependencies.sh|true"
+    "file-length|File length limits|check-file-length.sh|true"
 )
 
 # Get enabled checks

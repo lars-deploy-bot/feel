@@ -15,7 +15,7 @@ function formatElapsedTime(seconds: number): string {
 
 export function ToolProgressMessage({ content }: ToolProgressMessageProps) {
   return (
-    <div className="py-2 flex items-center justify-center">
+    <div className="py-1 flex items-center justify-center">
       <div className="flex items-center gap-3 px-4 py-2 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-2">
           <svg className="w-4 h-4 text-gray-500 dark:text-gray-400 animate-spin" fill="none" viewBox="0 0 24 24">

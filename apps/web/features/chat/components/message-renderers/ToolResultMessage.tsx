@@ -37,7 +37,7 @@ export function ToolResultMessage({ content }: ToolResultMessageProps) {
   const messageContent = content.message.content
 
   return (
-    <div className="mb-6">
+    <div className="mb-6 min-w-0 max-w-full">
       {Array.isArray(messageContent) &&
         messageContent.map((result: unknown, index: number) => {
           if (isToolResult(result)) {
@@ -69,19 +69,19 @@ function ToolResult({ result }: { result: ToolResultContent }) {
   const displayPreview = isDebugMode ? `${toolName}: ${preview}` : preview
 
   return (
-    <div className="my-1">
+    <div className="my-0.5 min-w-0">
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
         aria-expanded={isExpanded}
-        className={`text-xs font-normal transition-colors flex items-center gap-1.5 ${
+        className={`text-xs font-normal transition-colors flex items-center gap-1.5 max-w-full ${
           result.is_error
             ? "text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
             : "text-black/35 dark:text-white/35 hover:text-black/50 dark:hover:text-white/50"
         }`}
       >
-        <Icon size={12} className="opacity-60" />
-        <span>
+        <Icon size={12} className="opacity-60 flex-shrink-0" />
+        <span className="truncate">
           {displayPreview}
           {result.is_error && " error"}
         </span>

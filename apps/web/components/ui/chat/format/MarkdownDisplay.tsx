@@ -22,13 +22,13 @@ const components: Components = {
     }
 
     return (
-      <div className="my-3 rounded-md bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 overflow-hidden">
+      <div className="my-3 rounded-md bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 overflow-hidden max-w-full">
         {language && (
           <div className="px-3 py-1 text-[10px] text-black/40 dark:text-white/40 border-b border-black/10 dark:border-white/10 font-mono">
             {language}
           </div>
         )}
-        <pre className="p-3 overflow-x-auto">{children}</pre>
+        <pre className="p-3 overflow-x-auto max-w-full">{children}</pre>
       </div>
     )
   },
@@ -59,7 +59,7 @@ const components: Components = {
   // Lists
   ul: ({ children }) => <ul className="list-disc ml-6 my-2">{children}</ul>,
   ol: ({ children }) => <ol className="list-decimal ml-6 my-2">{children}</ol>,
-  li: ({ children }) => <li className="mb-1">{children}</li>,
+  li: ({ children }) => <li className="mb-0.5">{children}</li>,
 
   // Blockquotes
   blockquote: ({ children }) => (
@@ -123,7 +123,9 @@ const components: Components = {
  */
 export function MarkdownDisplay({ content, className = "" }: MarkdownDisplayProps) {
   return (
-    <div className={`text-black dark:text-white font-medium leading-relaxed ${className}`}>
+    <div
+      className={`text-black dark:text-white font-medium leading-relaxed min-w-0 max-w-full overflow-hidden ${className}`}
+    >
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
         {content}
       </ReactMarkdown>

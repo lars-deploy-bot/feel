@@ -1,10 +1,12 @@
 import { useRouter } from "next/navigation"
-import { useCallback, useEffect } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import { useCurrentWorkspace, useHasHydrated, useWorkspaceActions } from "@/lib/stores/workspaceStore"
 
 interface UseWorkspaceOptions {
   redirectOnMissing?: string | null
   allowEmpty?: boolean
+  /** If true, auto-select the most recently accessed workspace when none is selected */
+  autoSelect?: boolean
 }
 
 interface UseWorkspaceReturn {
@@ -21,16 +23,28 @@ interface UseWorkspaceReturn {
  * The workspace is persisted to localStorage and survives browser restarts.
  */
 export function useWorkspace(options: UseWorkspaceOptions = {}): UseWorkspaceReturn {
-  const { redirectOnMissing = "/", allowEmpty = false } = options
+  const { redirectOnMissing = "/", allowEmpty = false, autoSelect = true } = options
   const router = useRouter()
+  const hasAttemptedAutoSelect = useRef(false)
 
   // Read from store (single source of truth)
   const workspace = useCurrentWorkspace()
   const hasHydrated = useHasHydrated()
-  const { setCurrentWorkspace } = useWorkspaceActions()
+  const { setCurrentWorkspace, autoSelectWorkspace } = useWorkspaceActions()
 
   // Derive mounted directly from hasHydrated - no extra state/render cycle
   const mounted = hasHydrated
+
+  // Auto-select workspace after hydration (runs once)
+  useEffect(() => {
+    if (!hasHydrated || hasAttemptedAutoSelect.current) return
+    hasAttemptedAutoSelect.current = true
+
+    // Only auto-select if enabled and no workspace is currently selected
+    if (autoSelect && !workspace) {
+      autoSelectWorkspace()
+    }
+  }, [hasHydrated, workspace, autoSelect, autoSelectWorkspace])
 
   // Handle redirect separately (side effect only)
   useEffect(() => {

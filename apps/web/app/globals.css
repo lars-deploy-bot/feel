@@ -218,3 +218,50 @@ input:-webkit-autofill:active {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* Prevent all zoom on mobile */
+html {
+  touch-action: manipulation;
+}
+
+/* Disable double-tap zoom on interactive elements */
+button,
+a,
+input,
+textarea,
+select,
+[role="button"] {
+  touch-action: manipulation;
+}
+
+/* Mobile-specific fixes */
+@media (max-width: 767px) {
+  /* Prevent iOS Safari from zooming on input focus (requires 16px minimum) */
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+
+  /* Force word breaking for long content on mobile */
+  .whitespace-pre-wrap {
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  /* Ensure monospace content wraps */
+  .font-diatype-mono {
+    word-break: break-all;
+    overflow-wrap: break-word;
+  }
+
+  /* Prevent code blocks from causing horizontal scroll */
+  pre {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  code {
+    word-break: break-word;
+  }
+}

@@ -72,6 +72,8 @@ export type GoogleMapsOptions = {
   concurrency?: number
   includeReviews?: boolean
   maxReviews?: number
+  /** Overall timeout for the search operation in milliseconds (default: 45000) */
+  timeoutMs?: number
 }
 
 export type ProxyConfig = {

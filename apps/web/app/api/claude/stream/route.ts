@@ -28,6 +28,7 @@ import {
   BRIDGE_STREAM_TYPES,
 } from "@/lib/claude/agent-constants.mjs"
 import { fetchOAuthTokens } from "@/lib/oauth/fetch-oauth-tokens"
+import { fetchUserEnvKeys } from "@/lib/oauth/fetch-user-env-keys"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { env } from "@/lib/env"
 import { ErrorCodes } from "@/lib/error-codes"
@@ -328,13 +329,19 @@ export async function POST(req: NextRequest) {
       logger.log("🔓 SUPERADMIN MODE: Bridge workspace access granted")
     }
 
-    const maxTurns = DEFAULTS.CLAUDE_MAX_TURNS
+    // Admins (and superadmins who inherit admin) get 2x maxTurns
+    const maxTurns = user.isAdmin ? DEFAULTS.CLAUDE_MAX_TURNS * 2 : DEFAULTS.CLAUDE_MAX_TURNS
 
-    logger.log("Max turns limit:", maxTurns)
+    logger.log("Max turns limit:", maxTurns, user.isAdmin ? "(admin 2x)" : "")
 
-    // Fetch all OAuth tokens for connected MCP providers (in parallel)
-    // Uses registry from @webalive/shared - add new providers there
-    const { tokens: oauthTokens, warnings: oauthWarnings } = await fetchOAuthTokens(user.id, logger)
+    // Fetch OAuth tokens and user env keys in parallel for performance
+    const [oauthResult, userEnvKeysResult] = await Promise.all([
+      fetchOAuthTokens(user.id, logger),
+      fetchUserEnvKeys(user.id, logger),
+    ])
+
+    const { tokens: oauthTokens, warnings: oauthWarnings } = oauthResult
+    const { envKeys: userEnvKeys } = userEnvKeysResult
     const hasStripeConnection = !!oauthTokens.stripe
 
     // Log warnings for debugging
@@ -440,6 +447,7 @@ export async function POST(req: NextRequest) {
                 systemPrompt,
                 apiKey: userApiKey || undefined,
                 oauthTokens,
+                userEnvKeys, // User-defined environment keys for MCP servers
                 agentConfig,
                 sessionCookie, // Required for MCP tools to authenticate API calls
               },

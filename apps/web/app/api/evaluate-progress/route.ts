@@ -410,31 +410,40 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, cancelled: true })
     }
 
-    // Step 2: Use Groq to format the output
-    const groqPrompt = GROQ_PROMPT.replace("{analysis}", askResult.text)
+    let nextAction: string
+    let groqTime = 0
 
-    logToFile("GROQ_PROMPT", groqPrompt)
+    // Superadmins skip Groq - use raw analysis directly
+    if (user.isSuperadmin) {
+      logToFile("SKIP_GROQ", { reason: "superadmin", userId: user.id })
+      nextAction = askResult.text
+    } else {
+      // Step 2: Use Groq to format the output
+      const groqPrompt = GROQ_PROMPT.replace("{analysis}", askResult.text)
 
-    const groqStart = Date.now()
+      logToFile("GROQ_PROMPT", groqPrompt)
 
-    const groq = await getGroqClient()
-    const groqResponse = await withRetry(async () => {
-      return groq.chat.completions.create({
-        model: "llama-3.3-70b-versatile",
-        messages: [{ role: "user", content: groqPrompt }],
-        max_tokens: 500,
-        temperature: 0.3, // Lower temperature for more focused output
+      const groqStart = Date.now()
+
+      const groq = await getGroqClient()
+      const groqResponse = await withRetry(async () => {
+        return groq.chat.completions.create({
+          model: "llama-3.3-70b-versatile",
+          messages: [{ role: "user", content: groqPrompt }],
+          max_tokens: 500,
+          temperature: 0.3, // Lower temperature for more focused output
+        })
       })
-    })
 
-    const groqTime = Date.now() - groqStart
-    const nextAction = groqResponse.choices[0]?.message?.content?.trim() || ""
+      groqTime = Date.now() - groqStart
+      nextAction = groqResponse.choices[0]?.message?.content?.trim() || ""
 
-    logToFile("GROQ_RESULT", {
-      nextAction,
-      timing: groqTime,
-      usage: groqResponse.usage,
-    })
+      logToFile("GROQ_RESULT", {
+        nextAction,
+        timing: groqTime,
+        usage: groqResponse.usage,
+      })
+    }
 
     // Determine if on track based on analysis
     const analysisLower = askResult.text.toLowerCase()

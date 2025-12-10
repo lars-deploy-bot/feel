@@ -44,7 +44,7 @@ function isOAuthError(text: string): boolean {
 
 export function AssistantMessage({ content }: AssistantMessageProps) {
   return (
-    <div className="mb-6">
+    <div className="mb-6 min-w-0 max-w-full overflow-hidden">
       {content.message.content.map((item, index) => (
         <ToolUseItem key={index} item={item} />
       ))}
@@ -67,7 +67,11 @@ function ToolUseItem({ item }: { item: ContentItem }): React.ReactNode {
       return <MarkdownDisplay content={text} />
     }
 
-    return <div className="whitespace-pre-wrap text-black dark:text-white font-medium leading-relaxed">{text}</div>
+    return (
+      <div className="whitespace-pre-wrap break-words text-black dark:text-white font-medium leading-relaxed">
+        {text}
+      </div>
+    )
   }
 
   if (isToolUseBlock(item)) {

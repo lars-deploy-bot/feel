@@ -87,6 +87,7 @@ Claude Bridge is a **multi-tenant development platform** that enables Claude AI 
 - **TURBOREPO Next.js 16 + React 19**: Modern App Router architecture using **Turborepo** for building and deploying the project.
 - **SSE streaming**: Real-time Claude responses via Server-Sent Events
 - **Tool-based interaction**: Limited to safe file operations (Read, Write, Edit, Glob, Grep)
+- **Superadmin access**: `eedenlars@gmail.com` can edit this repo via the frontend (workspace: `claude-bridge`, runs as root, all tools enabled)
 
 ## Core Architecture Patterns
 
@@ -487,6 +488,7 @@ For troubleshooting, inspecting production, and dev/staging work, see `docs/depl
 ```bash
 make staging     # Full staging deployment (port 8998)
 make dev         # Rebuild tools + restart dev server (port 8997)
+make devchat     # Restart dev server via systemctl (safe from chat)
 make logs-staging # View staging logs
 make logs-dev    # View dev environment logs
 

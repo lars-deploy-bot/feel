@@ -19,6 +19,10 @@ const nextConfig = {
   experimental: {
     serverActions: { bodySizeLimit: "2mb" },
   },
+  // Turbopack: Set root to monorepo root for proper package resolution
+  turbopack: {
+    root: path.join(import.meta.dirname, "../../"),
+  },
   // Monorepo: trace from project root (two directories up)
   outputFileTracingRoot: path.join(import.meta.dirname, "../../"),
   outputFileTracingIncludes: {

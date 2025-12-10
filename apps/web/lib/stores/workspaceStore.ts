@@ -31,6 +31,7 @@ interface WorkspaceActions {
     setCurrentWorkspace: (workspace: string | null, orgId?: string) => void
     setSelectedOrg: (orgId: string | null) => void
     autoSelectOrg: (organizations: Organization[]) => void
+    autoSelectWorkspace: () => boolean // Returns true if a workspace was auto-selected
     validateAndCleanup: (organizations: Organization[]) => void
     setSelectedWorkspace: (workspace: string | null, orgId?: string) => void
     addRecentWorkspace: (domain: string, orgId: string) => void
@@ -75,6 +76,33 @@ const useWorkspaceStoreBase = create<WorkspaceStore>()(
             }
             return state
           })
+        },
+
+        /**
+         * Auto-select the most recently accessed workspace if none is currently selected.
+         * Returns true if a workspace was auto-selected, false otherwise.
+         */
+        autoSelectWorkspace: () => {
+          const state = useWorkspaceStoreBase.getState()
+
+          // Only auto-select if no workspace currently selected
+          if (state.currentWorkspace) {
+            return false
+          }
+
+          // Find the most recently accessed workspace
+          if (state.recentWorkspaces.length > 0) {
+            const sorted = [...state.recentWorkspaces].sort((a, b) => b.lastAccessed - a.lastAccessed)
+            const mostRecent = sorted[0]
+            console.log("[WorkspaceStore] Auto-selecting most recent workspace:", mostRecent.domain)
+            set({
+              currentWorkspace: mostRecent.domain,
+              selectedOrgId: mostRecent.orgId,
+            })
+            return true
+          }
+
+          return false
         },
 
         /**

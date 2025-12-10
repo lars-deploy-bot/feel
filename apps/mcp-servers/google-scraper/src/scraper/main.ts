@@ -20,6 +20,9 @@ import { handleMultipleFeed } from "./extractors/multiple.js"
 
 export type SearchResult = { success: true; data: GoogleMapsResult } | { success: false; error: string }
 
+// Default timeout for entire search operation (45 seconds)
+const DEFAULT_SEARCH_TIMEOUT_MS = 45000
+
 /**
  * Search Google Maps for business information.
  *
@@ -28,7 +31,39 @@ export type SearchResult = { success: true; data: GoogleMapsResult } | { success
  * @returns Search result with businesses and HTML
  */
 export async function searchGoogleMaps(input: SearchInput, options: GoogleMapsOptions = {}): Promise<SearchResult> {
-  const { onlyIncludeWithWebsite, concurrency = 3, includeReviews = false, maxReviews = 5 } = options
+  const {
+    onlyIncludeWithWebsite,
+    concurrency = 3,
+    includeReviews = false,
+    maxReviews = 5,
+    timeoutMs = DEFAULT_SEARCH_TIMEOUT_MS,
+  } = options
+
+  // Wrap entire operation in a timeout
+  const timeoutPromise = new Promise<SearchResult>((_, reject) => {
+    setTimeout(() => reject(new Error(`Search timed out after ${timeoutMs}ms`)), timeoutMs)
+  })
+
+  const searchPromise = executeSearch(input, {
+    onlyIncludeWithWebsite,
+    concurrency,
+    includeReviews,
+    maxReviews,
+  })
+
+  return Promise.race([searchPromise, timeoutPromise])
+}
+
+async function executeSearch(
+  input: SearchInput,
+  options: {
+    onlyIncludeWithWebsite?: string
+    concurrency: number
+    includeReviews: boolean
+    maxReviews: number
+  },
+): Promise<SearchResult> {
+  const { onlyIncludeWithWebsite, concurrency, includeReviews, maxReviews } = options
 
   const { browser, page } = await setupPage()
 

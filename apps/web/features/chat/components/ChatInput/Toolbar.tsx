@@ -1,6 +1,6 @@
 "use client"
 
-import { ClipboardList, Copy, Eye, Plus } from "lucide-react"
+import { Camera, ClipboardList, Copy } from "lucide-react"
 import type { RefObject } from "react"
 import { useState } from "react"
 import toast from "react-hot-toast"
@@ -12,11 +12,10 @@ import { useChatInput } from "./ChatInputContext"
 interface ToolbarProps {
   fileInputRef: RefObject<HTMLInputElement | null>
   onOpenTemplates?: () => void
-  onOpenPreview?: () => void
   onAddUserPrompt?: (promptType: string, data: any, displayName: string, userFacingDescription?: string) => void
 }
 
-export function Toolbar({ fileInputRef, onOpenPreview, onAddUserPrompt }: ToolbarProps) {
+export function Toolbar({ fileInputRef, onAddUserPrompt }: ToolbarProps) {
   const { config } = useChatInput()
   const [showPromptMenu, setShowPromptMenu] = useState(false)
   const prompts = useUserPrompts()
@@ -54,11 +53,11 @@ export function Toolbar({ fileInputRef, onOpenPreview, onAddUserPrompt }: Toolba
 
   return (
     <div className="absolute -top-12 right-0 flex items-center gap-2">
-      {/* Copy Messages */}
+      {/* Copy Messages - hidden for now */}
       <button
         type="button"
         onClick={handleCopyMessages}
-        className="flex items-center justify-center w-10 h-10 rounded-md hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors"
+        className="hidden items-center justify-center w-10 h-10 rounded-md hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors"
         aria-label="Copy messages"
         title="Copy messages"
       >
@@ -130,25 +129,13 @@ export function Toolbar({ fileInputRef, onOpenPreview, onAddUserPrompt }: Toolba
         )}
       </div>
 
-      {/* Preview button - mobile only */}
-      {onOpenPreview && (
-        <button
-          type="button"
-          onClick={onOpenPreview}
-          className="flex sm:hidden items-center justify-center w-10 h-10 rounded-md hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors"
-          aria-label="Preview site"
-          title="Preview site"
-        >
-          <Eye className="size-5" />
-        </button>
-      )}
       <button
         type="button"
         onClick={handleClick}
         className="flex items-center justify-center w-10 h-10 rounded-md hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors"
         aria-label="Upload photo"
       >
-        <Plus className="size-5" />
+        <Camera className="size-5" />
       </button>
     </div>
   )

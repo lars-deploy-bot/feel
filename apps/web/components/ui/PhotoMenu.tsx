@@ -24,16 +24,20 @@ export function PhotoMenu({ isOpen, onClose, onSelectImage, triggerRef }: PhotoM
   const { uploadImages, loadImages, deleteImage } = useImageActions()
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
+  const [isFilePickerOpen, setIsFilePickerOpen] = useState(false)
 
   // Desktop: click outside to close
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
+      // Don't close if file picker is open (prevents closing on mobile when native picker opens)
+      if (isFilePickerOpen) return
       if (!(event.target instanceof Node)) return
 
       const clickedMenu = menuRef.current?.contains(event.target)
       const clickedTrigger = triggerRef?.current?.contains(event.target)
+      const clickedFileInput = fileInputRef.current?.contains(event.target)
 
-      if (!clickedMenu && !clickedTrigger) {
+      if (!clickedMenu && !clickedTrigger && !clickedFileInput) {
         onClose()
       }
     }
@@ -45,7 +49,7 @@ export function PhotoMenu({ isOpen, onClose, onSelectImage, triggerRef }: PhotoM
     return () => {
       document.removeEventListener("mousedown", handleClickOutside)
     }
-  }, [isOpen, onClose, triggerRef])
+  }, [isOpen, onClose, triggerRef, isFilePickerOpen])
 
   // Prevent body scroll on mobile when open
   useEffect(() => {
@@ -68,6 +72,7 @@ export function PhotoMenu({ isOpen, onClose, onSelectImage, triggerRef }: PhotoM
   }, [isOpen, mounted, isTerminal, workspace, loadImages])
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    setIsFilePickerOpen(false) // File picker closed (user selected or cancelled)
     const files = event.target.files
     if (!files || files.length === 0) return
 
@@ -81,6 +86,7 @@ export function PhotoMenu({ isOpen, onClose, onSelectImage, triggerRef }: PhotoM
   }
 
   const handleUploadClick = () => {
+    setIsFilePickerOpen(true) // Prevent closing while native file picker is open
     fileInputRef.current?.click()
   }
 
@@ -220,7 +226,12 @@ export function PhotoMenu({ isOpen, onClose, onSelectImage, triggerRef }: PhotoM
       {/* Mobile: Bottom sheet */}
       <div className="sm:hidden fixed inset-0 z-50">
         {/* Backdrop */}
-        <button type="button" className="absolute inset-0 bg-black/40" onClick={onClose} aria-label="Close" />
+        <button
+          type="button"
+          className="absolute inset-0 bg-black/40"
+          onClick={() => !isFilePickerOpen && onClose()}
+          aria-label="Close"
+        />
 
         {/* Bottom sheet */}
         <div className="absolute bottom-0 left-0 right-0 h-[85vh] bg-white dark:bg-[#1a1a1a] rounded-t-2xl flex flex-col overflow-hidden">
@@ -229,7 +240,7 @@ export function PhotoMenu({ isOpen, onClose, onSelectImage, triggerRef }: PhotoM
             <h2 className="text-base font-medium text-black dark:text-white">Photos</h2>
             <button
               type="button"
-              onClick={onClose}
+              onClick={() => !isFilePickerOpen && onClose()}
               className="p-2 -mr-2 text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white"
               aria-label="Close"
             >

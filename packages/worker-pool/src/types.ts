@@ -144,6 +144,12 @@ export interface AgentRequest {
   /** User's API key (if they have their own) */
   apiKey?: string
   oauthTokens?: Record<string, string | undefined>
+  /**
+   * User-defined environment keys (custom API keys stored in lockbox).
+   * These are passed to MCP servers via process.env.
+   * Keys are prefixed with USER_ to avoid conflicts.
+   */
+  userEnvKeys?: Record<string, string>
   /** Agent configuration - passed from parent, not imported in worker */
   agentConfig: AgentConfig
   /**

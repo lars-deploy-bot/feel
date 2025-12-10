@@ -19,7 +19,7 @@ fi
 echo "🔍 Running type-check (turbo cached)..."
 
 # Quick type check using turbo (handles monorepo correctly, uses cache)
-if ! bunx turbo run type-check --filter='./apps/*' --filter='./packages/*'; then
+if ! /usr/local/bin/bun x turbo run type-check --filter='./apps/*' --filter='./packages/*'; then
     echo ""
     echo "❌ Type errors found! Fix them before committing."
     echo "Run 'bun run type-check' to see all errors"

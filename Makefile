@@ -1,4 +1,4 @@
-.PHONY: help deploy-all-environments staging dev deploy-go logs-production logs-staging logs-dev status rollback wash wash-skip shell build\:shell test\:shell static-check
+.PHONY: help deploy-all-environments staging dev devchat deploy-go logs-production logs-staging logs-dev status rollback wash wash-skip shell build\:shell test\:shell static-check
 
 # Load environment variables from .env
 ifneq (,$(wildcard .env))
@@ -19,6 +19,7 @@ help:
 	@echo "  make deploy-all-environments  ⚠️  Run dev → staging → wash (requires CONFIRM_PROD=yes)"
 	@echo "  make staging       Full staging deployment (port 8998)"
 	@echo "  make dev           Rebuild and restart dev environment (port 8997, hot-reload)"
+	@echo "  make devchat       Restart dev server via systemctl (safe from chat)"
 	@echo "  make dev:turbo     Run all monorepo dev servers with Turbo"
 	@echo "  make deploy-go     Deploy shell-server-go separately (not included in staging/production)"
 	@echo "  make shell         Run shell-server-go locally (port 3500)"
@@ -77,6 +78,14 @@ staging:
 
 dev:
 	@./scripts/deployment/deploy-dev.sh
+
+# Safe to run from chat - restarts via systemctl instead of taking over terminal
+devchat:
+	@echo "$(BLUE)Restarting dev server via systemctl...$(NC)"
+	@systemctl restart claude-bridge-dev
+	@sleep 2
+	@echo "$(GREEN)✓ Dev server restarted$(NC)"
+	@systemctl status claude-bridge-dev --no-pager | head -15
 
 deploy-go:
 	@./scripts/deployment/deploy-go-server.sh

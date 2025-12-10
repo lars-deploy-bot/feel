@@ -37,15 +37,21 @@ export function GrepOutput(props: GrepOutputProps) {
                 {match.file.split("/").pop()} {match.line_number && `:${match.line_number}`}
               </div>
               {match.before_context?.map((line, i) => (
-                <div key={`before-${i}`} className="text-xs text-black/30 dark:text-white/30 font-diatype-mono pl-2">
+                <div
+                  key={`before-${i}`}
+                  className="text-xs text-black/30 dark:text-white/30 font-diatype-mono pl-2 break-all"
+                >
                   {line}
                 </div>
               ))}
-              <div className="text-xs text-black/80 dark:text-white/80 font-diatype-mono pl-2 bg-yellow-50 dark:bg-yellow-900/30">
+              <div className="text-xs text-black/80 dark:text-white/80 font-diatype-mono pl-2 bg-yellow-50 dark:bg-yellow-900/30 break-all">
                 {match.line}
               </div>
               {match.after_context?.map((line, i) => (
-                <div key={`after-${i}`} className="text-xs text-black/30 dark:text-white/30 font-diatype-mono pl-2">
+                <div
+                  key={`after-${i}`}
+                  className="text-xs text-black/30 dark:text-white/30 font-diatype-mono pl-2 break-all"
+                >
                   {line}
                 </div>
               ))}
@@ -63,7 +69,7 @@ export function GrepOutput(props: GrepOutputProps) {
         <div className="text-xs text-black/40 dark:text-white/40 font-normal">{props.count} files</div>
         <div className="space-y-1 max-h-80 overflow-auto">
           {props.files.map((file, index) => (
-            <div key={index} className="text-xs text-black/60 dark:text-white/60 font-diatype-mono">
+            <div key={index} className="text-xs text-black/60 dark:text-white/60 font-diatype-mono break-all">
               {file}
             </div>
           ))}

@@ -8,7 +8,13 @@ import { LockboxAdapter, type LockboxAdapterConfig } from "./storage"
 import { getProvider } from "./providers/index"
 import { createRefreshLockManager, type IRefreshLockManager } from "./refresh-lock"
 import { isRefreshable, isRevocable } from "./providers/base"
-import { OAUTH_TOKENS_NAMESPACE, type OAuthTokens, type ProviderConfig, type OAuthManagerConfig } from "./types"
+import {
+  OAUTH_TOKENS_NAMESPACE,
+  USER_ENV_KEYS_NAMESPACE,
+  type OAuthTokens,
+  type ProviderConfig,
+  type OAuthManagerConfig,
+} from "./types"
 
 export class OAuthManager {
   private storage: LockboxAdapter
@@ -428,6 +434,96 @@ export class OAuthManager {
   }
 
   // ------------------------------------------------------------------
+  // USER ENVIRONMENT KEYS
+  // ------------------------------------------------------------------
+
+  /**
+   * Saves a custom environment key for a user
+   * These keys can be used by MCP servers for user-provided API keys
+   *
+   * @param userId - User ID
+   * @param keyName - Key name (e.g., "OPENAI_API_KEY", "MY_SERVICE_TOKEN")
+   * @param keyValue - The secret value to store
+   *
+   * @example
+   * await oauth.setUserEnvKey('user-123', 'OPENAI_API_KEY', 'sk-...');
+   */
+  async setUserEnvKey(userId: string, keyName: string, keyValue: string): Promise<void> {
+    // Validate key name format (alphanumeric + underscores, must start with letter)
+    if (!/^[A-Z][A-Z0-9_]*$/.test(keyName)) {
+      throw new Error(
+        `Invalid key name '${keyName}'. Must be uppercase, start with a letter, and contain only letters, numbers, and underscores.`,
+      )
+    }
+
+    await this.storage.save(userId, USER_ENV_KEYS_NAMESPACE, keyName, keyValue)
+  }
+
+  /**
+   * Gets a specific environment key for a user
+   *
+   * @param userId - User ID
+   * @param keyName - Key name (e.g., "OPENAI_API_KEY")
+   * @returns The key value or null if not found
+   */
+  async getUserEnvKey(userId: string, keyName: string): Promise<string | null> {
+    return this.storage.get(userId, USER_ENV_KEYS_NAMESPACE, keyName)
+  }
+
+  /**
+   * Gets all environment keys for a user (values decrypted)
+   *
+   * @param userId - User ID
+   * @returns Map of key names to values
+   */
+  async getAllUserEnvKeys(userId: string): Promise<Record<string, string>> {
+    const secrets = await this.storage.list(userId, USER_ENV_KEYS_NAMESPACE)
+    const result: Record<string, string> = {}
+
+    // Fetch and decrypt each key value
+    for (const secret of secrets) {
+      const value = await this.storage.get(userId, USER_ENV_KEYS_NAMESPACE, secret.name)
+      if (value) {
+        result[secret.name] = value
+      }
+    }
+
+    return result
+  }
+
+  /**
+   * Lists environment key names for a user (without values)
+   *
+   * @param userId - User ID
+   * @returns Array of key names
+   */
+  async listUserEnvKeyNames(userId: string): Promise<string[]> {
+    const secrets = await this.storage.list(userId, USER_ENV_KEYS_NAMESPACE)
+    return secrets.map(s => s.name)
+  }
+
+  /**
+   * Deletes an environment key for a user
+   *
+   * @param userId - User ID
+   * @param keyName - Key name to delete
+   */
+  async deleteUserEnvKey(userId: string, keyName: string): Promise<void> {
+    await this.storage.delete(userId, USER_ENV_KEYS_NAMESPACE, keyName)
+  }
+
+  /**
+   * Checks if a user has a specific environment key
+   *
+   * @param userId - User ID
+   * @param keyName - Key name
+   * @returns true if the key exists
+   */
+  async hasUserEnvKey(userId: string, keyName: string): Promise<boolean> {
+    return this.storage.exists(userId, USER_ENV_KEYS_NAMESPACE, keyName)
+  }
+
+  // ------------------------------------------------------------------
   // UTILITIES
   // ------------------------------------------------------------------
 
@@ -539,3 +635,4 @@ export { isRefreshable, isRevocable } from "./providers/base"
 export { GitHubProvider } from "./providers/github"
 export { LINEAR_SCOPES, LinearProvider } from "./providers/linear"
 export { STRIPE_SCOPES, StripeProvider, type StripeTokenResponse } from "./providers/stripe"
+export { OAUTH_TOKENS_NAMESPACE, USER_ENV_KEYS_NAMESPACE } from "./types"

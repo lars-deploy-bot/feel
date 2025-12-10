@@ -4,13 +4,19 @@
 
 import type { IRefreshLockManager, LockStrategy } from "./refresh-lock"
 
-export type SecretNamespace = "provider_config" | "oauth_tokens" | "oauth_connections"
+export type SecretNamespace = "provider_config" | "oauth_tokens" | "oauth_connections" | "user_env_keys"
 
 /**
  * Namespace for OAuth token storage
  * MUST match what the integrations.get_available_integrations RPC expects
  */
 export const OAUTH_TOKENS_NAMESPACE: SecretNamespace = "oauth_connections"
+
+/**
+ * Namespace for user-defined environment keys
+ * Used for custom API keys (e.g., OpenAI, custom services) that users want MCPs to access
+ */
+export const USER_ENV_KEYS_NAMESPACE: SecretNamespace = "user_env_keys"
 
 /**
  * Lock manager configuration options

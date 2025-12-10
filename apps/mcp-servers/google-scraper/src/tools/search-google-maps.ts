@@ -2,6 +2,7 @@
  * Search Google Maps Tool
  *
  * MCP tool definition for searching Google Maps.
+ * Simplified interface - good defaults, no confusing options.
  */
 
 import { z } from "zod"
@@ -12,83 +13,37 @@ export const searchGoogleMapsSchema = z.object({
     .string()
     .min(1)
     .max(500)
-    .describe("Search query for Google Maps (e.g., 'coffee shops in Amsterdam', 'Albert Heijn Den Bosch')"),
-  maxResults: z.number().min(1).max(20).default(10).describe("Maximum number of results to return (1-20, default: 10)"),
-  domainFilter: z
-    .string()
-    .optional()
-    .describe(
-      "Optional: Filter results to only include businesses with websites matching this domain (e.g., 'albertheijn.nl', 'starbucks.com'). Use only the domain.tld format.",
-    ),
-  includeDetails: z
-    .boolean()
-    .default(false)
-    .describe(
-      "Whether to fetch full details (hours, phone, full address) for each result. Slower but more complete. Default: false",
-    ),
-  includeReviews: z
-    .boolean()
-    .default(false)
-    .describe("Whether to include user reviews for each result. Requires includeDetails=true. Default: false"),
-  maxReviews: z
+    .describe("Search query for Google Maps (e.g., 'restaurants in Itacaré Brazil', 'coffee shops Amsterdam')"),
+  maxResults: z
     .number()
     .min(1)
-    .max(10)
+    .max(20)
     .default(5)
-    .describe("Maximum number of reviews per business (1-10, default: 5). Only used if includeReviews=true"),
+    .describe("Number of results (1-20, default: 5). Use 5-10 for quick lookups, up to 20 for comprehensive lists."),
 })
 
 export type SearchGoogleMapsInput = z.infer<typeof searchGoogleMapsSchema>
 
 export const searchGoogleMapsTool = {
   name: "search_google_maps",
-  description: `Search Google Maps for business information including addresses, phone numbers, opening hours, ratings, and websites.
+  description: `Search Google Maps for businesses - restaurants, shops, services, etc.
 
-USE CASES:
-- Find physical store locations for a business
-- Get contact information for local businesses
-- Find opening hours and ratings
-- Search for specific types of businesses in an area
-
-LIMITATIONS:
-- Maximum 20 results per search
-- Cannot interact with map elements or click buttons
-- Cannot handle pages requiring authentication
-- Rate limited to avoid blocking
+Returns: name, address, phone, website, rating, category.
 
 TIPS:
-- Use specific queries for better results (e.g., "Starbucks Amsterdam Centraal" instead of just "Starbucks")
-- Use domainFilter to find locations of a specific chain (e.g., domainFilter="starbucks.com")
-- Enable includeDetails for complete information (slower but includes hours, full address)`,
+- Be specific: "sushi restaurant Amsterdam Centrum" > "sushi Amsterdam"
+- Include location: city, neighborhood, or landmark
+- Takes 5-15 seconds (scrapes live data)`,
   inputSchema: {
     type: "object",
     properties: {
       query: {
         type: "string",
-        description: "Search query for Google Maps",
+        description: "Search query (e.g., 'Italian restaurants near Central Station Amsterdam')",
       },
       maxResults: {
         type: "number",
-        description: "Maximum number of results (1-20, default: 10)",
-        default: 10,
-      },
-      domainFilter: {
-        type: "string",
-        description: "Filter by website domain (e.g., 'albertheijn.nl')",
-      },
-      includeDetails: {
-        type: "boolean",
-        description: "Fetch complete details including hours (slower, default: false)",
-        default: false,
-      },
-      includeReviews: {
-        type: "boolean",
-        description: "Include user reviews (requires includeDetails=true, default: false)",
-        default: false,
-      },
-      maxReviews: {
-        type: "number",
-        description: "Max reviews per business (1-10, default: 5)",
+        description: "Number of results (1-20, default: 5)",
         default: 5,
       },
     },
@@ -99,17 +54,7 @@ TIPS:
 export async function executeSearchGoogleMaps(
   params: SearchGoogleMapsInput,
 ): Promise<{ content: Array<{ type: "text"; text: string }>; isError?: boolean }> {
-  const {
-    query,
-    maxResults = 10,
-    domainFilter,
-    includeDetails = false,
-    includeReviews = false,
-    maxReviews = 5,
-  } = params
-
-  // Reviews require details to be fetched
-  const shouldIncludeReviews = includeReviews && includeDetails
+  const { query, maxResults = 5 } = params
 
   try {
     const result = await searchGoogleMaps(
@@ -117,19 +62,40 @@ export async function executeSearchGoogleMaps(
         mode: "auto",
         query,
         resultCount: maxResults,
-        includeDetails,
+        includeDetails: false, // Fast mode - basic info from feed
       },
       {
-        onlyIncludeWithWebsite: domainFilter,
         concurrency: 3,
-        includeReviews: shouldIncludeReviews,
-        maxReviews,
       },
     )
 
     if (!result.success) {
+      // Make error messages user-friendly
+      const errorMsg = result.error
+      if (errorMsg.includes("timed out")) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Search timed out. Google Maps took too long to respond. Try:\n- A more specific query\n- Fewer results\n- Try again in a moment`,
+            },
+          ],
+          isError: true,
+        }
+      }
+      if (errorMsg.includes("Navigation failed")) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Could not reach Google Maps. This might be a temporary issue - try again.`,
+            },
+          ],
+          isError: true,
+        }
+      }
       return {
-        content: [{ type: "text", text: `Error: ${result.error}` }],
+        content: [{ type: "text", text: `Search failed: ${errorMsg}` }],
         isError: true,
       }
     }
@@ -139,62 +105,54 @@ export async function executeSearchGoogleMaps(
         content: [
           {
             type: "text",
-            text: `No businesses found for query "${query}"${domainFilter ? ` with domain filter "${domainFilter}"` : ""}.`,
+            text: `No results found for "${query}". Try a different search term or location.`,
           },
         ],
       }
     }
 
-    // Format the results
+    // Format results cleanly
     const formattedResults = result.data.businesses.map((biz, i) => {
-      const parts = [`${i + 1}. ${biz.storeName || "Unknown Business"}`]
+      const lines = [`${i + 1}. **${biz.storeName || "Unknown Business"}**`]
 
-      if (biz.address) parts.push(`   Address: ${biz.address}`)
-      if (biz.phone) parts.push(`   Phone: ${biz.phone}`)
-      if (biz.bizWebsite) parts.push(`   Website: ${biz.bizWebsite}`)
-      if (biz.category) parts.push(`   Category: ${biz.category}`)
-      if (biz.stars) parts.push(`   Rating: ${biz.stars} stars (${biz.numberOfReviews ?? 0} reviews)`)
-      if (biz.status) parts.push(`   Status: ${biz.status}`)
+      if (biz.category) lines.push(`   ${biz.category}`)
+      if (biz.stars) lines.push(`   ⭐ ${biz.stars} (${biz.numberOfReviews ?? 0} reviews)`)
+      if (biz.address) lines.push(`   📍 ${biz.address}`)
+      if (biz.phone) lines.push(`   📞 ${biz.phone}`)
+      if (biz.bizWebsite) lines.push(`   🌐 ${biz.bizWebsite}`)
 
-      if (biz.hours) {
-        const hoursStr = Object.entries(biz.hours)
-          .filter(([, v]) => v)
-          .map(([day, hours]) => `${day}: ${hours}`)
-          .join(", ")
-        if (hoursStr) parts.push(`   Hours: ${hoursStr}`)
-      }
-
-      // Add reviews if present
-      if (biz.reviews && biz.reviews.length > 0) {
-        parts.push("   Reviews:")
-        for (const review of biz.reviews) {
-          const ratingStr = review.rating ? `${review.rating}★` : ""
-          const header = [review.author, ratingStr, review.time].filter(Boolean).join(" - ")
-          parts.push(`     • ${header}`)
-          if (review.text) {
-            const truncated = review.text.length > 200 ? `${review.text.slice(0, 200)}...` : review.text
-            parts.push(`       "${truncated}"`)
-          }
-        }
-      }
-
-      return parts.join("\n")
+      return lines.join("\n")
     })
 
     return {
       content: [
         {
           type: "text",
-          text: `Found ${result.data.businesses.length} business(es) for "${query}":\n\n${formattedResults.join("\n\n")}`,
+          text: `Found ${result.data.businesses.length} result(s) for "${query}":\n\n${formattedResults.join("\n\n")}`,
         },
       ],
     }
   } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error)
+
+    // Timeout errors
+    if (errorMsg.includes("timed out")) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Search timed out after 45 seconds. Google Maps was too slow. Try a more specific query or fewer results.`,
+          },
+        ],
+        isError: true,
+      }
+    }
+
     return {
       content: [
         {
           type: "text",
-          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+          text: `Search failed: ${errorMsg}`,
         },
       ],
       isError: true,

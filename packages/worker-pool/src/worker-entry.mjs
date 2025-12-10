@@ -384,6 +384,9 @@ async function handleQuery(ipc, requestId, payload) {
   if (payload.oauthTokens !== undefined && (typeof payload.oauthTokens !== "object" || payload.oauthTokens === null)) {
     validationErrors.push("oauthTokens must be an object")
   }
+  if (payload.userEnvKeys !== undefined && (typeof payload.userEnvKeys !== "object" || payload.userEnvKeys === null)) {
+    validationErrors.push("userEnvKeys must be an object")
+  }
 
   if (validationErrors.length > 0) {
     ipc.send({ type: "error", requestId, error: `Invalid payload: ${validationErrors.join(", ")}` })
@@ -399,6 +402,26 @@ async function handleQuery(ipc, requestId, payload) {
     // This prevents cookie leakage between requests from different users
     // If payload has cookie, use it; otherwise clear any previous value
     process.env.BRIDGE_SESSION_COOKIE = payload.sessionCookie || ""
+
+    // Set user-defined environment keys (custom API keys from lockbox)
+    // These are prefixed with USER_ to avoid conflicts with system env vars
+    // SECURITY: Clear any previous user env keys before setting new ones
+    for (const key of Object.keys(process.env)) {
+      if (key.startsWith("USER_")) {
+        delete process.env[key]
+      }
+    }
+    const userEnvKeys = payload.userEnvKeys || {}
+    const userEnvKeyCount = Object.keys(userEnvKeys).length
+    if (userEnvKeyCount > 0) {
+      for (const [keyName, keyValue] of Object.entries(userEnvKeys)) {
+        // Only set if the key name is valid format (uppercase alphanumeric + underscore)
+        if (/^[A-Z][A-Z0-9_]*$/.test(keyName)) {
+          process.env[`USER_${keyName}`] = keyValue
+        }
+      }
+      console.error(`[worker] Set ${userEnvKeyCount} user environment key(s)`)
+    }
 
     // Get OAuth tokens for connected MCP providers
     const oauthTokens = payload.oauthTokens || {}

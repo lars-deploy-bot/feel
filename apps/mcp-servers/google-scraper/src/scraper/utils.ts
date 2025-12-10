@@ -268,45 +268,60 @@ export async function detectFeed(page: Page): Promise<boolean> {
   return (await page.$('div[role="feed"]')) !== null
 }
 
-export async function autoScroll(page: Page): Promise<void> {
-  await page.evaluate(async () => {
-    const wrapper = document.querySelector('div[role="feed"]')
+export async function autoScroll(page: Page, maxTimeoutMs = 15000, maxIterations = 50): Promise<void> {
+  await page.evaluate(
+    async (maxTimeout: number, maxIter: number) => {
+      const wrapper = document.querySelector('div[role="feed"]')
 
-    await new Promise<void>(resolve => {
-      let totalHeight = 0
-      const distance = 1000
-      const scrollDelay = 2000
-      let noChangeCount = 0
+      await new Promise<void>(resolve => {
+        let totalHeight = 0
+        const distance = 1000
+        const scrollDelay = 1000
+        let noChangeCount = 0
+        let iterations = 0
+        const startTime = Date.now()
 
-      const timer = setInterval(async () => {
-        const scrollHeightBefore = wrapper?.scrollHeight ?? 0
-        wrapper?.scrollBy(0, distance)
-        totalHeight += distance
+        const timer = setInterval(async () => {
+          iterations++
 
-        if (totalHeight >= scrollHeightBefore && scrollHeightBefore !== undefined) {
-          totalHeight = 0
-          await new Promise(r => setTimeout(r, scrollDelay))
-
-          const scrollHeightAfter = wrapper?.scrollHeight
-
-          if (
-            scrollHeightAfter !== undefined &&
-            scrollHeightBefore !== undefined &&
-            scrollHeightAfter > scrollHeightBefore
-          ) {
-            noChangeCount = 0
+          // Hard limits: timeout or max iterations
+          if (Date.now() - startTime > maxTimeout || iterations > maxIter) {
+            clearInterval(timer)
+            resolve()
             return
           }
 
-          noChangeCount++
-          if (noChangeCount >= 3) {
-            clearInterval(timer)
-            resolve()
+          const scrollHeightBefore = wrapper?.scrollHeight ?? 0
+          wrapper?.scrollBy(0, distance)
+          totalHeight += distance
+
+          if (totalHeight >= scrollHeightBefore && scrollHeightBefore !== undefined) {
+            totalHeight = 0
+            await new Promise(r => setTimeout(r, scrollDelay))
+
+            const scrollHeightAfter = wrapper?.scrollHeight
+
+            if (
+              scrollHeightAfter !== undefined &&
+              scrollHeightBefore !== undefined &&
+              scrollHeightAfter > scrollHeightBefore
+            ) {
+              noChangeCount = 0
+              return
+            }
+
+            noChangeCount++
+            if (noChangeCount >= 3) {
+              clearInterval(timer)
+              resolve()
+            }
           }
-        }
-      }, 200)
-    })
-  })
+        }, 200)
+      })
+    },
+    maxTimeoutMs,
+    maxIterations,
+  )
 }
 
 // ============================================================================
