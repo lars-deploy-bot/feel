@@ -106,6 +106,15 @@
       "linter": {
         "enabled": false
       }
+    },
+    {
+      "includes": ["**/google-scraper/test-html/**"],
+      "linter": {
+        "enabled": false
+      },
+      "formatter": {
+        "enabled": false
+      }
     }
   ]
 }
