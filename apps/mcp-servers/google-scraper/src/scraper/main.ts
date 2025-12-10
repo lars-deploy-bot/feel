@@ -27,7 +27,7 @@ export type SearchResult = { success: true; data: GoogleMapsResult } | { success
  * @returns Search result with businesses and HTML
  */
 export async function searchGoogleMaps(input: SearchInput, options: GoogleMapsOptions = {}): Promise<SearchResult> {
-  const { onlyIncludeWithWebsite, concurrency = 3 } = options
+  const { onlyIncludeWithWebsite, concurrency = 3, includeReviews = false, maxReviews = 5 } = options
 
   const { browser, page } = await setupPage()
 
@@ -54,12 +54,37 @@ export async function searchGoogleMaps(input: SearchInput, options: GoogleMapsOp
       input,
       onlyIncludeWithWebsite,
       concurrency,
+      includeReviews,
+      maxReviews,
     })
   }
 
-  // Single business page
+  // Single business page - if we need reviews, click the tab first
+  if (includeReviews) {
+    const reviewTabSelectors = [
+      'button[aria-label*="Reviews"]',
+      'button[aria-label*="reviews"]',
+      'button[aria-label*="Avaliações"]',
+      'button[data-tab-index="1"]',
+    ]
+
+    for (const selector of reviewTabSelectors) {
+      const tab = await page.$(selector)
+      if (tab) {
+        await tab.click()
+        await page.waitForNetworkIdle({ idleTime: 1000, timeout: 8000 }).catch(() => {})
+        await page.evaluate(() => {
+          const scrollable = document.querySelector("div.m6QErb.DxyBCb.kA9KIf.dS8AEf")
+          scrollable?.scrollBy(0, 500)
+        })
+        await page.waitForNetworkIdle({ idleTime: 500, timeout: 3000 }).catch(() => {})
+        break
+      }
+    }
+  }
+
   const html = await page.content()
-  const singleRes = await searchSingleBusiness(html, page.url())
+  const singleRes = await searchSingleBusiness(html, page.url(), { includeReviews, maxReviews })
   await cleanupBrowser(browser)
 
   if (!singleRes.success) {

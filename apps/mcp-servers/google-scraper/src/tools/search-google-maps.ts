@@ -26,6 +26,16 @@ export const searchGoogleMapsSchema = z.object({
     .describe(
       "Whether to fetch full details (hours, phone, full address) for each result. Slower but more complete. Default: false",
     ),
+  includeReviews: z
+    .boolean()
+    .default(false)
+    .describe("Whether to include user reviews for each result. Requires includeDetails=true. Default: false"),
+  maxReviews: z
+    .number()
+    .min(1)
+    .max(10)
+    .default(5)
+    .describe("Maximum number of reviews per business (1-10, default: 5). Only used if includeReviews=true"),
 })
 
 export type SearchGoogleMapsInput = z.infer<typeof searchGoogleMapsSchema>
@@ -71,6 +81,16 @@ TIPS:
         description: "Fetch complete details including hours (slower, default: false)",
         default: false,
       },
+      includeReviews: {
+        type: "boolean",
+        description: "Include user reviews (requires includeDetails=true, default: false)",
+        default: false,
+      },
+      maxReviews: {
+        type: "number",
+        description: "Max reviews per business (1-10, default: 5)",
+        default: 5,
+      },
     },
     required: ["query"],
   },
@@ -79,7 +99,17 @@ TIPS:
 export async function executeSearchGoogleMaps(
   params: SearchGoogleMapsInput,
 ): Promise<{ content: Array<{ type: "text"; text: string }>; isError?: boolean }> {
-  const { query, maxResults = 10, domainFilter, includeDetails = false } = params
+  const {
+    query,
+    maxResults = 10,
+    domainFilter,
+    includeDetails = false,
+    includeReviews = false,
+    maxReviews = 5,
+  } = params
+
+  // Reviews require details to be fetched
+  const shouldIncludeReviews = includeReviews && includeDetails
 
   try {
     const result = await searchGoogleMaps(
@@ -92,6 +122,8 @@ export async function executeSearchGoogleMaps(
       {
         onlyIncludeWithWebsite: domainFilter,
         concurrency: 3,
+        includeReviews: shouldIncludeReviews,
+        maxReviews,
       },
     )
 
@@ -130,6 +162,20 @@ export async function executeSearchGoogleMaps(
           .map(([day, hours]) => `${day}: ${hours}`)
           .join(", ")
         if (hoursStr) parts.push(`   Hours: ${hoursStr}`)
+      }
+
+      // Add reviews if present
+      if (biz.reviews && biz.reviews.length > 0) {
+        parts.push("   Reviews:")
+        for (const review of biz.reviews) {
+          const ratingStr = review.rating ? `${review.rating}★` : ""
+          const header = [review.author, ratingStr, review.time].filter(Boolean).join(" - ")
+          parts.push(`     • ${header}`)
+          if (review.text) {
+            const truncated = review.text.length > 200 ? `${review.text.slice(0, 200)}...` : review.text
+            parts.push(`       "${truncated}"`)
+          }
+        }
       }
 
       return parts.join("\n")

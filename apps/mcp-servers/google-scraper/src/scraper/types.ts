@@ -1,4 +1,14 @@
 /**
+ * A single user review from Google Maps.
+ */
+export type GoogleMapsReview = {
+  author: string
+  rating: number | null
+  text: string
+  time: string
+}
+
+/**
  * Google Maps Business Type
  *
  * Represents a business scraped from Google Maps search results.
@@ -25,6 +35,7 @@ export type GoogleMapsBusiness = {
     saturday?: string
     sunday?: string
   } | null
+  reviews?: GoogleMapsReview[]
 }
 
 export type GoogleMapsResult = {
@@ -59,6 +70,8 @@ export type GoogleMapsOptions = {
   enableLogging?: boolean
   onlyIncludeWithWebsite?: string
   concurrency?: number
+  includeReviews?: boolean
+  maxReviews?: number
 }
 
 export type ProxyConfig = {

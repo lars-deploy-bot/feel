@@ -1,13 +1,146 @@
 import * as cheerio from "cheerio"
-import type { GoogleMapsBusiness, GoogleMapsResult, ProxyConfig } from "../types.js"
+import type { GoogleMapsBusiness, GoogleMapsResult, GoogleMapsReview, ProxyConfig } from "../types.js"
 import { parseHours, parseNumber, sanitizeJSON, setupPage, cleanupBrowser } from "../utils.js"
 
 type ExtractResult = { success: true; data: GoogleMapsResult } | { success: false; error: string }
 
 /**
+ * Parse star rating from aria-label like "5 Sterne", "4 stars", "3 estrelas"
+ */
+function parseStarRating(label: string | undefined): number | null {
+  if (!label) return null
+  const match = label.match(/(\d+)/)
+  return match ? parseInt(match[1], 10) : null
+}
+
+/**
+ * Extract reviews from HTML using stable selectors.
+ *
+ * Strategy (in order of stability):
+ * 1. Class-based selectors (most reliable for structure, may need updates)
+ * 2. data-review-id for deduplication
+ * 3. aria-label for ratings (accessibility requirement = stable)
+ */
+function extractReviews($: cheerio.CheerioAPI, maxReviews = 5): GoogleMapsReview[] {
+  const reviews: GoogleMapsReview[] = []
+  const seenTexts = new Set<string>()
+
+  // Primary strategy: Use class-based selectors (jftiEf is the review container)
+  // These may change but are the most reliable for structure
+  $("div.jftiEf").each((_i, el) => {
+    if (reviews.length >= maxReviews) return false
+
+    const $review = $(el)
+
+    // Author - try class first, then aria-label fallback
+    let author = $review.find(".d4r55").text().trim()
+    if (!author) {
+      const authorLabel = $review.find('button[aria-label*="Photo"], button[aria-label*="Foto"]').attr("aria-label")
+      if (authorLabel) {
+        // Extract name from "Photo of: Name" or "Foto von: Name"
+        author = authorLabel.replace(/^(Photo of|Foto von|Foto de):\s*/i, "").trim()
+      }
+    }
+
+    // Rating - use aria-label (stable accessibility requirement)
+    const ratingLabel = $review.find('[role="img"][aria-label]').attr("aria-label")
+    const rating = parseStarRating(ratingLabel)
+
+    // Time - class first, then pattern matching fallback
+    let time = $review.find(".rsqaWe").text().trim()
+    if (!time) {
+      $review.find("span").each((_, span) => {
+        const text = $(span).text().trim()
+        if (
+          /\d+\s*(month|week|day|year|Monat|Woche|Tag|Jahr|mes|semana)/i.test(text) ||
+          /vor\s+(einem?|einer|\d+)/i.test(text) ||
+          /ago$/i.test(text)
+        ) {
+          time = text
+          return false
+        }
+      })
+    }
+
+    // Review text - try multiple class selectors
+    const text = $review.find(".wiI7pd, .MyEned").first().text().trim()
+
+    // Deduplicate by text content
+    if (text && seenTexts.has(text)) return
+    if (text) seenTexts.add(text)
+
+    if (author || text) {
+      reviews.push({
+        author: author || "Anonymous",
+        rating,
+        text: text || "",
+        time: time || "",
+      })
+    }
+  })
+
+  // Fallback: If no reviews found via classes, try data-review-id approach
+  if (reviews.length === 0) {
+    const reviewIds = new Set<string>()
+
+    $("[data-review-id]").each((_, el) => {
+      if (reviews.length >= maxReviews) return false
+
+      const reviewId = $(el).attr("data-review-id")
+      if (!reviewId || reviewIds.has(reviewId)) return
+      reviewIds.add(reviewId)
+
+      // Walk up to find container with review content
+      let $container = $(el)
+      for (let j = 0; j < 8; j++) {
+        const $parent = $container.parent()
+        if ($parent.length === 0) break
+        const hasRating = $parent.find('[role="img"][aria-label]').length > 0
+        const textLen = $parent.find("span, div").text().length
+        if (hasRating && textLen > 100) {
+          $container = $parent
+          break
+        }
+        $container = $parent
+      }
+
+      const ratingLabel = $container.find('[role="img"][aria-label]').first().attr("aria-label")
+      const rating = parseStarRating(ratingLabel)
+
+      // Find the longest text block as review content
+      let text = ""
+      $container.find("span").each((_, span) => {
+        const content = $(span).text().trim()
+        if (content.length > text.length && content.length > 30 && !content.includes("star")) {
+          text = content
+        }
+      })
+
+      if (text && !seenTexts.has(text)) {
+        seenTexts.add(text)
+        reviews.push({
+          author: "Anonymous",
+          rating,
+          text,
+          time: "",
+        })
+      }
+    })
+  }
+
+  return reviews
+}
+
+/**
  * Extract business data from a single Google Maps business page.
  */
-export async function searchSingleBusiness(html: string, pageUrl: string): Promise<ExtractResult> {
+export async function searchSingleBusiness(
+  html: string,
+  pageUrl: string,
+  options: { includeReviews?: boolean; maxReviews?: number } = {},
+): Promise<ExtractResult> {
+  const { includeReviews = false, maxReviews = 5 } = options
+
   try {
     const $ = cheerio.load(html)
 
@@ -40,6 +173,9 @@ export async function searchSingleBusiness(html: string, pageUrl: string): Promi
 
     const googleUrl = $('a[href^="https://www.google.com/maps/place"]').attr("href") || pageUrl || null
 
+    // Extract reviews if requested
+    const reviews = includeReviews ? extractReviews($, maxReviews) : undefined
+
     const business: GoogleMapsBusiness = {
       placeId: placeId || undefined,
       storeName: storeName || undefined,
@@ -54,6 +190,7 @@ export async function searchSingleBusiness(html: string, pageUrl: string): Promi
       phone: phone || undefined,
       mainImage: mainImage || undefined,
       hours: parseHours(hoursTable),
+      reviews,
     }
 
     return {
@@ -77,12 +214,41 @@ export async function searchSingleBusiness(html: string, pageUrl: string): Promi
 export async function scrapeDetailPage(
   googleUrl: string,
   proxy?: ProxyConfig,
+  options: { includeReviews?: boolean; maxReviews?: number } = {},
 ): Promise<{ originalUrl: string; business: GoogleMapsBusiness | null }> {
+  const { includeReviews = false, maxReviews = 5 } = options
+
   try {
     const { browser, page } = await setupPage(proxy)
     await page.goto(googleUrl, { waitUntil: "networkidle2" })
+
+    // If we need reviews, click the Reviews tab and wait for content
+    if (includeReviews) {
+      const reviewTabSelectors = [
+        'button[aria-label*="Reviews"]',
+        'button[aria-label*="reviews"]',
+        'button[aria-label*="Avaliações"]',
+        'button[data-tab-index="1"]',
+      ]
+
+      for (const selector of reviewTabSelectors) {
+        const tab = await page.$(selector)
+        if (tab) {
+          await tab.click()
+          await page.waitForNetworkIdle({ idleTime: 1000, timeout: 8000 }).catch(() => {})
+          // Scroll to load reviews
+          await page.evaluate(() => {
+            const scrollable = document.querySelector("div.m6QErb.DxyBCb.kA9KIf.dS8AEf")
+            scrollable?.scrollBy(0, 500)
+          })
+          await page.waitForNetworkIdle({ idleTime: 500, timeout: 3000 }).catch(() => {})
+          break
+        }
+      }
+    }
+
     const html = await page.content()
-    const result = await searchSingleBusiness(html, googleUrl)
+    const result = await searchSingleBusiness(html, googleUrl, { includeReviews, maxReviews })
     await cleanupBrowser(browser)
 
     if (result.success && result.data.businesses.length > 0) {

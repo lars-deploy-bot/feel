@@ -109,6 +109,7 @@ async function enrichWithDetails(
   list: GoogleMapsBusiness[],
   proxy?: ProxyConfig,
   concurrency = 3,
+  options: { includeReviews?: boolean; maxReviews?: number } = {},
 ): Promise<GoogleMapsBusiness[]> {
   const googleUrls = list.map(b => b.googleUrl).filter((url): url is string => Boolean(url) && !isNullish(url))
 
@@ -117,7 +118,7 @@ async function enrichWithDetails(
 
   for (let i = 0; i < googleUrls.length; i += batchSize) {
     const batch = googleUrls.slice(i, i + batchSize)
-    const batchPromises = batch.map(googleUrl => scrapeDetailPage(googleUrl, proxy))
+    const batchPromises = batch.map(googleUrl => scrapeDetailPage(googleUrl, proxy, options))
     const batchResults = await Promise.allSettled(batchPromises)
     results.push(...batchResults)
 
@@ -147,6 +148,8 @@ export async function handleMultipleFeed({
   proxy,
   onlyIncludeWithWebsite,
   concurrency = 3,
+  includeReviews = false,
+  maxReviews = 5,
 }: {
   page: Page
   browser: Browser
@@ -154,6 +157,8 @@ export async function handleMultipleFeed({
   proxy?: ProxyConfig
   onlyIncludeWithWebsite?: string
   concurrency?: number
+  includeReviews?: boolean
+  maxReviews?: number
 }): Promise<{ success: true; data: GoogleMapsResult } | { success: false; error: string }> {
   try {
     await autoScroll(page)
@@ -168,7 +173,9 @@ export async function handleMultipleFeed({
 
     const initial = parse.data.businesses
     const filtered = filterByWebsite(initial, onlyIncludeWithWebsite)
-    const final = input.includeDetails ? await enrichWithDetails(filtered, proxy, concurrency) : filtered
+    const final = input.includeDetails
+      ? await enrichWithDetails(filtered, proxy, concurrency, { includeReviews, maxReviews })
+      : filtered
 
     await cleanupBrowser(browser)
 
