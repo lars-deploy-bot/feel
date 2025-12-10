@@ -91,7 +91,7 @@ ${PREVIEW_DOMAIN} {
     header {
         # Security headers (embeddable variant)
         -X-Frame-Options
-        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
@@ -116,17 +116,42 @@ if ! systemctl reload caddy; then
     exit 17
 fi
 
-# Wait for Caddy to reload
-log_info "Waiting for Caddy to reload..."
-sleep 2
+# Wait for SSL certificates to be provisioned
+# Caddy auto-provisions certs on first request, but this takes 5-10 seconds
+log_info "Waiting for SSL certificates to be provisioned..."
 
-# Verify site is accessible (allow failure for new domains)
-log_info "Testing HTTPS endpoint: https://$SITE_DOMAIN"
-if curl -f -s -I --max-time 10 "https://$SITE_DOMAIN" &>/dev/null; then
-    log_success "Site is accessible via HTTPS"
+# Function to check if HTTPS endpoint is ready
+check_https_ready() {
+    local domain="$1"
+    local max_attempts=15
+    local attempt=1
+
+    while [ $attempt -le $max_attempts ]; do
+        if curl -f -s -o /dev/null -w "%{http_code}" --max-time 5 "https://$domain/" 2>/dev/null | grep -q "^[23]"; then
+            return 0
+        fi
+        log_info "  Attempt $attempt/$max_attempts - waiting for SSL cert..."
+        sleep 2
+        attempt=$((attempt + 1))
+    done
+    return 1
+}
+
+# Check main domain first
+log_info "Checking main domain: https://$SITE_DOMAIN"
+if check_https_ready "$SITE_DOMAIN"; then
+    log_success "Main domain SSL ready"
 else
-    log_warn "Site not yet accessible via HTTPS (may take time for DNS/SSL)"
-    log_warn "This is normal for new domains, SSL certificate will be provisioned automatically"
+    log_warn "Main domain not yet accessible (DNS may not be configured)"
+fi
+
+# Check preview domain (this one should always work since DNS is already set up)
+log_info "Checking preview domain: https://$PREVIEW_DOMAIN"
+if check_https_ready "$PREVIEW_DOMAIN"; then
+    log_success "Preview domain SSL ready"
+else
+    log_warn "Preview domain not yet accessible"
+    log_warn "This is unexpected - check Caddy logs: journalctl -u caddy -n 50"
 fi
 
 log_success "Caddy configuration complete"

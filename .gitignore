@@ -174,3 +174,4 @@ packages/*/template
 packages/*/tools
 apps/web/.env.save
 apps/shell-server/.env*
+ops/caddy/Caddyfile
