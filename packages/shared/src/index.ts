@@ -96,12 +96,17 @@ export {
   // SDK tool constants
   BRIDGE_ALLOWED_SDK_TOOLS,
   BRIDGE_DISALLOWED_SDK_TOOLS,
+  BRIDGE_ADMIN_ONLY_SDK_TOOLS,
+  BRIDGE_ALWAYS_DISALLOWED_SDK_TOOLS,
   BRIDGE_PERMISSION_MODE,
   BRIDGE_SETTINGS_SOURCES,
   type BridgeAllowedSDKTool,
   type BridgeDisallowedSDKTool,
+  type BridgeAdminOnlySDKTool,
+  type BridgeAlwaysDisallowedSDKTool,
   // Helper functions
   getBridgeAllowedTools,
+  getBridgeDisallowedTools,
   getBridgeMcpServers,
   createBridgeCanUseTool,
   getWorkspacePath,

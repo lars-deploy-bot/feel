@@ -66,16 +66,51 @@ export type BridgeAllowedSDKTool =
   | "AskUserQuestion"
 
 /**
- * SDK tools we DISALLOW in the Bridge.
+ * Admin-only SDK tools.
+ *
+ * These tools are dangerous but useful for admins:
+ * - Bash: Shell command execution
+ * - BashOutput: Read output from background shell
+ * - KillShell: Kill a background shell process
+ */
+export const BRIDGE_ADMIN_ONLY_SDK_TOOLS = ["Bash", "BashOutput", "KillShell"] as const
+export type BridgeAdminOnlySDKTool = (typeof BRIDGE_ADMIN_ONLY_SDK_TOOLS)[number]
+
+/**
+ * SDK tools we ALWAYS DISALLOW in the Bridge (even for admins).
  *
  * Why disallowed:
- * - Bash/BashOutput/KillShell: Shell access - security risk, could escape workspace
  * - Task: Subagent spawning - not supported in Bridge architecture
  * - WebSearch: External web access - not needed, cost concerns
  */
-export const BRIDGE_DISALLOWED_SDK_TOOLS: string[] = ["Bash", "BashOutput", "KillShell", "Task", "WebSearch"]
+export const BRIDGE_ALWAYS_DISALLOWED_SDK_TOOLS = ["Task", "WebSearch"] as const
+export type BridgeAlwaysDisallowedSDKTool = (typeof BRIDGE_ALWAYS_DISALLOWED_SDK_TOOLS)[number]
 
-export type BridgeDisallowedSDKTool = "Bash" | "BashOutput" | "KillShell" | "Task" | "WebSearch"
+/**
+ * Get disallowed SDK tools based on admin status.
+ *
+ * @param isAdmin - Whether the user is an admin
+ * @returns Array of disallowed tool names
+ */
+export function getBridgeDisallowedTools(isAdmin: boolean): string[] {
+  if (isAdmin) {
+    // Admins only have Task and WebSearch blocked
+    return [...BRIDGE_ALWAYS_DISALLOWED_SDK_TOOLS]
+  }
+  // Non-admins have Bash tools + always-disallowed blocked
+  return [...BRIDGE_ADMIN_ONLY_SDK_TOOLS, ...BRIDGE_ALWAYS_DISALLOWED_SDK_TOOLS]
+}
+
+/**
+ * @deprecated Use getBridgeDisallowedTools(isAdmin) instead
+ * Kept for backwards compatibility - returns full list (non-admin behavior)
+ */
+export const BRIDGE_DISALLOWED_SDK_TOOLS: string[] = [
+  ...BRIDGE_ADMIN_ONLY_SDK_TOOLS,
+  ...BRIDGE_ALWAYS_DISALLOWED_SDK_TOOLS,
+]
+
+export type BridgeDisallowedSDKTool = BridgeAdminOnlySDKTool | BridgeAlwaysDisallowedSDKTool
 
 /**
  * Default permission mode for Bridge
@@ -95,12 +130,14 @@ export const BRIDGE_SETTINGS_SOURCES = ["project"] as const
  * Get all allowed tools for Bridge mode (SDK + MCP tools).
  *
  * @param getEnabledMcpToolNames - Function to get enabled MCP tool names from @alive-brug/tools
+ * @param isAdmin - Whether the user is an admin (enables Bash tools)
  * @returns Array of allowed tool names
  */
-export function getBridgeAllowedTools(getEnabledMcpToolNames: () => string[]): string[] {
+export function getBridgeAllowedTools(getEnabledMcpToolNames: () => string[], isAdmin = false): string[] {
   const mcpTools = getEnabledMcpToolNames()
   const globalMcpTools = Object.values(GLOBAL_MCP_PROVIDERS).flatMap(p => [...p.knownTools])
-  return [...BRIDGE_ALLOWED_SDK_TOOLS, ...mcpTools, ...globalMcpTools]
+  const adminTools = isAdmin ? [...BRIDGE_ADMIN_ONLY_SDK_TOOLS] : []
+  return [...BRIDGE_ALLOWED_SDK_TOOLS, ...adminTools, ...mcpTools, ...globalMcpTools]
 }
 
 /**
@@ -158,11 +195,13 @@ export function getBridgeMcpServers<T>(
  *
  * @param baseAllowedTools - Base allowed tools array
  * @param connectedProviders - Array of connected OAuth provider keys
+ * @param isAdmin - Whether the user is an admin (enables Bash tools)
  * @returns Permission handler function
  */
 export function createBridgeCanUseTool(
   baseAllowedTools: string[],
   connectedProviders: string[],
+  isAdmin = false,
 ): (
   toolName: string,
   input: Record<string, unknown>,
@@ -172,16 +211,19 @@ export function createBridgeCanUseTool(
   updatedInput?: Record<string, unknown>
   updatedPermissions?: unknown[]
 }> {
+  // Get disallowed tools based on admin status
+  const disallowedTools = getBridgeDisallowedTools(isAdmin)
+
   return async (toolName, input) => {
-    // Explicit deny list takes precedence
-    if (BRIDGE_DISALLOWED_SDK_TOOLS.includes(toolName)) {
+    // Explicit deny list takes precedence (respects admin status)
+    if (disallowedTools.includes(toolName)) {
       return {
         behavior: "deny",
         message: `Tool "${toolName}" is not available in site builder mode.`,
       }
     }
 
-    // Check base allowed tools (SDK + internal MCP tools)
+    // Check base allowed tools (SDK + internal MCP tools + admin tools if applicable)
     if (baseAllowedTools.includes(toolName)) {
       return {
         behavior: "allow",

@@ -21,8 +21,8 @@ import { COOKIE_NAMES } from "@/lib/auth/cookies"
 import {
   hasStripeMcpAccess,
   getAllowedTools,
+  getDisallowedTools,
   getOAuthMcpServers,
-  DISALLOWED_TOOLS,
   PERMISSION_MODE,
   SETTINGS_SOURCES,
   BRIDGE_STREAM_TYPES,
@@ -375,12 +375,13 @@ export async function POST(req: NextRequest) {
       // in the worker because createSdkMcpServer returns function objects that cannot
       // be serialized via IPC. Only OAuth HTTP servers are passed here.
       const agentConfig = {
-        allowedTools: getAllowedTools(cwd),
-        disallowedTools: DISALLOWED_TOOLS,
+        allowedTools: getAllowedTools(cwd, user.isAdmin),
+        disallowedTools: getDisallowedTools(user.isAdmin),
         permissionMode: PERMISSION_MODE,
         settingSources: SETTINGS_SOURCES,
         oauthMcpServers: getOAuthMcpServers(oauthTokens) as Record<string, unknown>,
         bridgeStreamTypes: BRIDGE_STREAM_TYPES,
+        isAdmin: user.isAdmin, // Pass to worker for permission checks
       }
 
       const pool = getWorkerPool()

@@ -11,6 +11,7 @@ import {
   BRIDGE_PERMISSION_MODE,
   BRIDGE_SETTINGS_SOURCES,
   getBridgeAllowedTools,
+  getBridgeDisallowedTools,
   getBridgeMcpServers,
 } from "@webalive/shared"
 
@@ -19,6 +20,7 @@ export { BRIDGE_STREAM_TYPES, BRIDGE_SYNTHETIC_MESSAGE_TYPES, BRIDGE_INTERRUPT_S
 
 // Re-export SDK tools from shared (single source of truth)
 export const ALLOWED_SDK_TOOLS = BRIDGE_ALLOWED_SDK_TOOLS
+/** @deprecated Use getDisallowedTools(isAdmin) instead */
 export const DISALLOWED_TOOLS = BRIDGE_DISALLOWED_SDK_TOOLS
 export const PERMISSION_MODE = BRIDGE_PERMISSION_MODE
 /** @type {import('@anthropic-ai/claude-agent-sdk').SettingSource[]} */
@@ -32,10 +34,20 @@ export const ALLOWED_MCP_TOOLS = [...BASE_MCP_TOOLS, ...GLOBAL_MCP_TOOLS]
 /**
  * Get base allowed tools (SDK tools + internal MCP tools)
  * @param {string} _workspacePath - Path to workspace (unused, kept for backwards compat)
+ * @param {boolean} [isAdmin=false] - Whether the user is an admin (enables Bash tools)
  * @returns {string[]} Base allowed tools list
  */
-export function getAllowedTools(_workspacePath) {
-  return getBridgeAllowedTools(getEnabledMcpToolNames)
+export function getAllowedTools(_workspacePath, isAdmin = false) {
+  return getBridgeAllowedTools(getEnabledMcpToolNames, isAdmin)
+}
+
+/**
+ * Get disallowed tools based on admin status
+ * @param {boolean} [isAdmin=false] - Whether the user is an admin
+ * @returns {string[]} Disallowed tools list
+ */
+export function getDisallowedTools(isAdmin = false) {
+  return getBridgeDisallowedTools(isAdmin)
 }
 
 /**

@@ -130,6 +130,8 @@ export interface AgentConfig {
   oauthMcpServers: Record<string, unknown>
   /** Bridge stream type constants (from @webalive/shared) */
   bridgeStreamTypes: typeof BRIDGE_STREAM_TYPES
+  /** Whether the user is an admin (enables Bash tools) */
+  isAdmin?: boolean
 }
 
 /** Request payload for Claude Agent SDK query */
