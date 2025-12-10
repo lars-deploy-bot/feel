@@ -12,5 +12,8 @@
     "build:dev": "cd user && bun run build:dev",
     "lint": "cd user && bun run lint",
     "preview": "cd user && bun run preview"
+  },
+  "devDependencies": {
+    "@alive-game/alive-tagger": "0.1.1"
   }
 }

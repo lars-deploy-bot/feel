@@ -6,6 +6,7 @@ interface SystemPromptParams {
   workspaceFolder?: string
   hasStripeMcpAccess?: boolean
   additionalContext?: string
+  isProduction?: boolean
 }
 
 export function getSystemPrompt(params: SystemPromptParams = {}): string {

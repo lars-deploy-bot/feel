@@ -30,7 +30,6 @@ import { SandboxMobile } from "@/features/chat/components/SandboxMobile"
 import { SubdomainInitializer } from "@/features/chat/components/SubdomainInitializer"
 import { ThinkingGroup } from "@/features/chat/components/ThinkingGroup"
 import { ThinkingSpinner } from "@/features/chat/components/ThinkingSpinner"
-import { ThreeDotsComplete } from "@/features/chat/components/ThreeDotsComplete"
 import { useConversationSession } from "@/features/chat/hooks/useConversationSession"
 import { useImageUpload } from "@/features/chat/hooks/useImageUpload"
 import { useStreamCancellation } from "@/features/chat/hooks/useStreamCancellation"
@@ -106,7 +105,7 @@ function ChatPageContent() {
   const [showPhotoMenu, setShowPhotoMenu] = useState(false)
   const [showMobilePreview, setShowMobilePreview] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
-  const [showCompletionDots, setShowCompletionDots] = useState(false)
+  const [_showCompletionDots, setShowCompletionDots] = useState(false)
   const [isEvaluatingProgress, setIsEvaluatingProgress] = useState(false)
   const prGoal = useGoal()
   const building = useBuilding()
@@ -139,7 +138,7 @@ function ChatPageContent() {
   const { toggleView, toggleSandbox, setSSETerminal, setSSETerminalMinimized, setSandbox, setSandboxMinimized } =
     useDebugActions()
   const debugModeEnabled = useDebugView() // Raw state for button visual
-  const isDebugView = useDebugVisible() // Only true when NODE_ENV=development + debugView enabled
+  const _isDebugView = useDebugVisible() // Only true when NODE_ENV=development + debugView enabled
   const showSSETerminal = useSSETerminal()
   const showSandbox = useSandbox()
   const { addEvent: addDevEvent } = useDevTerminal()
@@ -1444,8 +1443,6 @@ function ChatPageContent() {
                   </div>
                 </div>
               )}
-              {/* Show completion dots after successful completion (non-debug mode only) */}
-              {showCompletionDots && !isDebugView && !busy && messages.length > 0 && <ThreeDotsComplete />}
               {/* Agent Manager loading indicator */}
               {isEvaluatingProgress && (
                 <div className="my-4 flex items-center gap-3 text-xs text-purple-600 dark:text-purple-400">

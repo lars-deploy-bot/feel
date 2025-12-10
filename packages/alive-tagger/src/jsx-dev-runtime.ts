@@ -145,6 +145,12 @@ export function jsxDEV(
     return _jsxDEV(type, props, key, isStatic, source, self)
   }
 
+  // Only attach refs to intrinsic HTML elements (strings like "div", "span", etc.)
+  // Function components and class components cannot receive refs unless they use forwardRef
+  if (typeof type !== "string") {
+    return _jsxDEV(type, props, key, isStatic, source, self)
+  }
+
   const lineNumber = source.lineNumber
   const columnNumber = source.columnNumber || 0
   const displayName = getTypeName(type)
