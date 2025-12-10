@@ -201,6 +201,21 @@ export const DEFAULTS = {
 } as const
 
 /**
+ * Superadmin configuration
+ * Superadmins can edit the Claude Bridge repository itself
+ */
+export const SUPERADMIN = {
+  /** Emails with superadmin access (can edit Bridge itself) */
+  EMAILS: ["eedenlars@gmail.com"] as readonly string[],
+
+  /** Special workspace name for Bridge editing */
+  WORKSPACE_NAME: "claude-bridge",
+
+  /** Path to Bridge repository */
+  WORKSPACE_PATH: "/root/webalive/claude-bridge",
+} as const
+
+/**
  * Security constants
  */
 export const SECURITY = {

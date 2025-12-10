@@ -3,6 +3,10 @@ import puppeteerExtra from "puppeteer-extra"
 import StealthPlugin from "puppeteer-extra-plugin-stealth"
 import * as cheerio from "cheerio"
 import type { ProxyConfig } from "./types.js"
+import { REVIEW_TAB_SELECTORS, DAY_MAP } from "./i18n.js"
+
+// Re-export i18n utilities for convenience
+export { REVIEW_TAB_SELECTORS, isRelativeTime, extractAuthorFromLabel } from "./i18n.js"
 
 // Cast to proper type - puppeteer-extra types don't fully expose the API
 const puppeteer = puppeteerExtra as unknown as {
@@ -92,40 +96,8 @@ export function parseHours(hoursTableHtml: string | null): {
     sunday?: string
   } = {}
 
-  const dayMap: Record<string, keyof typeof hours> = {
-    // English
-    monday: "monday",
-    tuesday: "tuesday",
-    wednesday: "wednesday",
-    thursday: "thursday",
-    friday: "friday",
-    saturday: "saturday",
-    sunday: "sunday",
-    // German
-    montag: "monday",
-    dienstag: "tuesday",
-    mittwoch: "wednesday",
-    donnerstag: "thursday",
-    freitag: "friday",
-    samstag: "saturday",
-    sonntag: "sunday",
-    // French
-    lundi: "monday",
-    mardi: "tuesday",
-    mercredi: "wednesday",
-    jeudi: "thursday",
-    vendredi: "friday",
-    samedi: "saturday",
-    dimanche: "sunday",
-    // Dutch
-    maandag: "monday",
-    dinsdag: "tuesday",
-    woensdag: "wednesday",
-    donderdag: "thursday",
-    vrijdag: "friday",
-    zaterdag: "saturday",
-    zondag: "sunday",
-  }
+  // Use shared day map from i18n
+  const dayMap = DAY_MAP
 
   const rowData = rows
     .map(row => {
@@ -361,4 +333,38 @@ export function sanitizeJSON<T>(json: Record<string, unknown>): T {
 
 export function isNullish(value: unknown): boolean {
   return value === null || value === undefined || value === ""
+}
+
+// ============================================================================
+// Reviews - Click & Wait
+// ============================================================================
+
+const REVIEW_CONTENT_SELECTOR = ".jftiEf, .wiI7pd, [data-review-id]"
+const SCROLL_CONTAINERS = ["div.m6QErb.DxyBCb.kA9KIf.dS8AEf", "div.m6QErb.DxyBCb", 'div[role="main"] div.m6QErb']
+
+export async function clickReviewsTabAndWait(page: Page): Promise<boolean> {
+  for (const selector of REVIEW_TAB_SELECTORS) {
+    const tab = await page.$(selector)
+    if (tab) {
+      await tab.click()
+      await page.waitForNetworkIdle({ idleTime: 1500, timeout: 15000 }).catch(() => {})
+      await page.waitForSelector(REVIEW_CONTENT_SELECTOR, { timeout: 10000 }).catch(() => {})
+
+      // Scroll to load more
+      for (let i = 0; i < 3; i++) {
+        await page.evaluate((containers: string[]) => {
+          for (const sel of containers) {
+            const el = document.querySelector(sel)
+            if (el) {
+              el.scrollBy(0, 600)
+              return
+            }
+          }
+        }, SCROLL_CONTAINERS)
+        await page.waitForNetworkIdle({ idleTime: 800, timeout: 4000 }).catch(() => {})
+      }
+      return true
+    }
+  }
+  return false
 }

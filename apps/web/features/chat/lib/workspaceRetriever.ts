@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs"
 import path from "node:path"
-import { PATHS, TEST_CONFIG } from "@webalive/shared"
+import { PATHS, TEST_CONFIG, SUPERADMIN } from "@webalive/shared"
 import { NextResponse } from "next/server"
 import { domainToSlug, normalizeDomain } from "@/features/manager/lib/domain-utils"
 import { ErrorCodes } from "@/lib/error-codes"
@@ -28,9 +28,26 @@ export type WorkspaceResult =
  * - Expects 'workspace' parameter in request body
  * - Must start with 'webalive/sites/' (or will be auto-prepended)
  * - Returns full path: /srv/{workspace}
+ *
+ * Special case: claude-bridge workspace for superadmins
+ * - Returns SUPERADMIN.WORKSPACE_PATH directly
+ * - Auth layer MUST verify superadmin status before this is called
+ * - This function does NOT verify permissions (that's done in verifyWorkspaceAccess)
  */
 export function getWorkspace({ host, body, requestId }: GetWorkspaceParams): WorkspaceResult {
   console.log(`[Workspace ${requestId}] Resolving workspace for host: ${host}`)
+
+  // Special case: claude-bridge workspace
+  // SECURITY NOTE: This only resolves the path - auth layer (verifyWorkspaceAccess)
+  // MUST verify the user is a superadmin before this function is called.
+  // This function trusts that auth has already been verified.
+  if (body?.workspace === SUPERADMIN.WORKSPACE_NAME) {
+    console.log(`[Workspace ${requestId}] Resolving superadmin Bridge workspace path: ${SUPERADMIN.WORKSPACE_PATH}`)
+    return {
+      success: true,
+      workspace: SUPERADMIN.WORKSPACE_PATH,
+    }
+  }
 
   // Always terminal mode - resolve workspace from request body
   return getTerminalWorkspace(body, requestId)

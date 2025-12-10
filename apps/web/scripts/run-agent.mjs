@@ -56,13 +56,19 @@ async function readStdinJson() {
       console.error(`[runner] Copied credentials to ${tempHome}`)
     }
 
-    if (targetGid && process.setgid) {
-      process.setgid(targetGid)
-      console.error(`[runner] Dropped to GID: ${targetGid}`)
-    }
-    if (targetUid && process.setuid) {
-      process.setuid(targetUid)
-      console.error(`[runner] Dropped to UID: ${targetUid}`)
+    // SUPERADMIN MODE: uid/gid = 0 means skip privilege drop (run as root)
+    // This is only set when user is superadmin AND workspace is claude-bridge
+    if (targetUid === 0 && targetGid === 0) {
+      console.error("[runner] 🔓 SUPERADMIN MODE: Skipping privilege drop (running as root)")
+    } else {
+      if (targetGid && process.setgid) {
+        process.setgid(targetGid)
+        console.error(`[runner] Dropped to GID: ${targetGid}`)
+      }
+      if (targetUid && process.setuid) {
+        process.setuid(targetUid)
+        console.error(`[runner] Dropped to UID: ${targetUid}`)
+      }
     }
 
     process.umask(0o022)
@@ -87,17 +93,25 @@ async function readStdinJson() {
       console.error(`[runner] Connected OAuth providers: ${connectedProviders.join(", ")}`)
     }
 
-    // Check admin status from request payload
+    // Check admin/superadmin status from request payload
     const isAdmin = request.isAdmin === true
-    console.error(`[runner] isAdmin: ${isAdmin}`)
+    const isSuperadmin = request.isSuperadmin === true
+    console.error(`[runner] isAdmin: ${isAdmin}, isSuperadmin: ${isSuperadmin}`)
 
     // Get base allowed tools (SDK + internal MCP tools)
     // OAuth MCP tools are allowed dynamically in canUseTool
     // Admin users get Bash, BashOutput, KillShell tools
-    const baseAllowedTools = getAllowedTools(targetCwd || process.cwd(), isAdmin)
-    const disallowedTools = getDisallowedTools(isAdmin)
+    // Superadmin users get ALL tools (Task, WebSearch included)
+    const baseAllowedTools = getAllowedTools(targetCwd || process.cwd(), isAdmin, isSuperadmin)
+    const disallowedTools = getDisallowedTools(isAdmin, isSuperadmin)
     console.error(`[runner] Base allowed tools count: ${baseAllowedTools.length}`)
-    if (isAdmin) {
+    if (isSuperadmin) {
+      const hasTask = baseAllowedTools.includes("Task")
+      const hasWebSearch = baseAllowedTools.includes("WebSearch")
+      console.error(
+        `[runner] 🔓 SUPERADMIN tools: Task=${hasTask}, WebSearch=${hasWebSearch}, disallowed=${disallowedTools.length}`,
+      )
+    } else if (isAdmin) {
       const hasBash = baseAllowedTools.includes("Bash")
       console.error(`[runner] Admin tools: Bash=${hasBash}, disallowed=${disallowedTools.length}`)
     }

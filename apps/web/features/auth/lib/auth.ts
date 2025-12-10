@@ -1,6 +1,6 @@
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
-import { SECURITY } from "@webalive/shared"
+import { SECURITY, SUPERADMIN } from "@webalive/shared"
 import { COOKIE_NAMES } from "@/lib/auth/cookies"
 import { type ErrorCode, ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 import { createAppClient } from "@/lib/supabase/app"
@@ -27,6 +27,8 @@ export interface SessionUser {
   canSelectAnyModel: boolean
   /** Whether user has admin privileges (can toggle feature flags, etc.) */
   isAdmin: boolean
+  /** Whether user is a superadmin (can edit Bridge repo itself) */
+  isSuperadmin: boolean
 }
 
 /**
@@ -42,6 +44,14 @@ function isAdminUser(email: string): boolean {
   return ADMIN_EMAILS.some(e => e.toLowerCase() === email.toLowerCase())
 }
 
+/**
+ * Check if user is a superadmin (can edit Bridge repo).
+ * Uses SUPERADMIN.EMAILS from @webalive/shared.
+ */
+function isSuperadminUser(email: string): boolean {
+  return SUPERADMIN.EMAILS.some((e: string) => e.toLowerCase() === email.toLowerCase())
+}
+
 export async function getSessionUser(): Promise<SessionUser | null> {
   const jar = await cookies()
   const sessionCookie = jar.get(COOKIE_NAMES.SESSION)
@@ -54,12 +64,14 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   if (env.BRIDGE_ENV === "local" && sessionCookie.value === SECURITY.LOCAL_TEST.SESSION_VALUE) {
     const testEmail = SECURITY.LOCAL_TEST.EMAIL
     const isAdmin = isAdminUser(testEmail)
+    const isSuperadmin = isSuperadminUser(testEmail)
     return {
       id: SECURITY.LOCAL_TEST.SESSION_VALUE,
       email: testEmail,
       name: "Test User",
       canSelectAnyModel: isAdmin,
       isAdmin,
+      isSuperadmin,
     }
   }
 
@@ -73,12 +85,14 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   // Return user data directly from JWT (eliminates iam.users query)
   // Old tokens without email/workspaces will be rejected by verifySessionToken
   const isAdmin = isAdminUser(payload.email)
+  const isSuperadmin = isSuperadminUser(payload.email)
   return {
     id: payload.userId,
     email: payload.email,
     name: payload.name,
     canSelectAnyModel: isAdmin,
     isAdmin,
+    isSuperadmin,
   }
 }
 
@@ -240,7 +254,19 @@ export async function verifyWorkspaceAccess(
     return null
   }
 
-  // Test mode allows all workspaces
+  // SECURITY: claude-bridge workspace requires SUPERADMIN status
+  // This is defense-in-depth - even if someone adds claude-bridge to their org,
+  // they cannot access it without being a superadmin
+  if (workspace === SUPERADMIN.WORKSPACE_NAME) {
+    if (!user.isSuperadmin) {
+      console.log(`${logPrefix} ⛔ BLOCKED: Non-superadmin attempted claude-bridge access: ${user.email}`)
+      return null
+    }
+    console.log(`${logPrefix} ✅ Superadmin access granted for claude-bridge: ${user.email}`)
+    return workspace
+  }
+
+  // Test mode allows all workspaces (except claude-bridge which is checked above)
   if (env.BRIDGE_ENV === "local" && user.id === SECURITY.LOCAL_TEST.SESSION_VALUE) {
     return workspace
   }

@@ -1,6 +1,7 @@
 import * as cheerio from "cheerio"
 import type { GoogleMapsBusiness, GoogleMapsResult, GoogleMapsReview, ProxyConfig } from "../types.js"
-import { parseHours, parseNumber, sanitizeJSON, setupPage, cleanupBrowser } from "../utils.js"
+import { parseHours, parseNumber, sanitizeJSON, setupPage, cleanupBrowser, clickReviewsTabAndWait } from "../utils.js"
+import { isRelativeTime, extractAuthorFromLabel } from "../i18n.js"
 
 type ExtractResult = { success: true; data: GoogleMapsResult } | { success: false; error: string }
 
@@ -37,8 +38,7 @@ function extractReviews($: cheerio.CheerioAPI, maxReviews = 5): GoogleMapsReview
     if (!author) {
       const authorLabel = $review.find('button[aria-label*="Photo"], button[aria-label*="Foto"]').attr("aria-label")
       if (authorLabel) {
-        // Extract name from "Photo of: Name" or "Foto von: Name"
-        author = authorLabel.replace(/^(Photo of|Foto von|Foto de):\s*/i, "").trim()
+        author = extractAuthorFromLabel(authorLabel)
       }
     }
 
@@ -46,16 +46,12 @@ function extractReviews($: cheerio.CheerioAPI, maxReviews = 5): GoogleMapsReview
     const ratingLabel = $review.find('[role="img"][aria-label]').attr("aria-label")
     const rating = parseStarRating(ratingLabel)
 
-    // Time - class first, then pattern matching fallback
+    // Time - class first, then pattern matching fallback using shared utility
     let time = $review.find(".rsqaWe").text().trim()
     if (!time) {
       $review.find("span").each((_, span) => {
         const text = $(span).text().trim()
-        if (
-          /\d+\s*(month|week|day|year|Monat|Woche|Tag|Jahr|mes|semana)/i.test(text) ||
-          /vor\s+(einem?|einer|\d+)/i.test(text) ||
-          /ago$/i.test(text)
-        ) {
+        if (isRelativeTime(text)) {
           time = text
           return false
         }
@@ -224,27 +220,7 @@ export async function scrapeDetailPage(
 
     // If we need reviews, click the Reviews tab and wait for content
     if (includeReviews) {
-      const reviewTabSelectors = [
-        'button[aria-label*="Reviews"]',
-        'button[aria-label*="reviews"]',
-        'button[aria-label*="Avaliações"]',
-        'button[data-tab-index="1"]',
-      ]
-
-      for (const selector of reviewTabSelectors) {
-        const tab = await page.$(selector)
-        if (tab) {
-          await tab.click()
-          await page.waitForNetworkIdle({ idleTime: 1000, timeout: 8000 }).catch(() => {})
-          // Scroll to load reviews
-          await page.evaluate(() => {
-            const scrollable = document.querySelector("div.m6QErb.DxyBCb.kA9KIf.dS8AEf")
-            scrollable?.scrollBy(0, 500)
-          })
-          await page.waitForNetworkIdle({ idleTime: 500, timeout: 3000 }).catch(() => {})
-          break
-        }
-      }
+      await clickReviewsTabAndWait(page)
     }
 
     const html = await page.content()

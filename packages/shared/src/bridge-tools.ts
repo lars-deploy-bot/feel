@@ -82,17 +82,24 @@ export type BridgeAdminOnlySDKTool = (typeof BRIDGE_ADMIN_ONLY_SDK_TOOLS)[number
  * Why disallowed:
  * - Task: Subagent spawning - not supported in Bridge architecture
  * - WebSearch: External web access - not needed, cost concerns
+ *
+ * Note: Superadmins get ALL tools including these.
  */
 export const BRIDGE_ALWAYS_DISALLOWED_SDK_TOOLS = ["Task", "WebSearch"] as const
 export type BridgeAlwaysDisallowedSDKTool = (typeof BRIDGE_ALWAYS_DISALLOWED_SDK_TOOLS)[number]
 
 /**
- * Get disallowed SDK tools based on admin status.
+ * Get disallowed SDK tools based on admin/superadmin status.
  *
  * @param isAdmin - Whether the user is an admin
+ * @param isSuperadmin - Whether the user is a superadmin (gets ALL tools)
  * @returns Array of disallowed tool names
  */
-export function getBridgeDisallowedTools(isAdmin: boolean): string[] {
+export function getBridgeDisallowedTools(isAdmin: boolean, isSuperadmin = false): string[] {
+  // Superadmins have nothing blocked
+  if (isSuperadmin) {
+    return []
+  }
   if (isAdmin) {
     // Admins only have Task and WebSearch blocked
     return [...BRIDGE_ALWAYS_DISALLOWED_SDK_TOOLS]
@@ -122,11 +129,28 @@ export const BRIDGE_SETTINGS_SOURCES = ["project"] as const
  *
  * @param getEnabledMcpToolNames - Function to get enabled MCP tool names from @alive-brug/tools
  * @param isAdmin - Whether the user is an admin (enables Bash tools)
+ * @param isSuperadmin - Whether the user is a superadmin (gets ALL tools)
  * @returns Array of allowed tool names
  */
-export function getBridgeAllowedTools(getEnabledMcpToolNames: () => string[], isAdmin = false): string[] {
+export function getBridgeAllowedTools(
+  getEnabledMcpToolNames: () => string[],
+  isAdmin = false,
+  isSuperadmin = false,
+): string[] {
   const mcpTools = getEnabledMcpToolNames()
   const globalMcpTools = Object.values(GLOBAL_MCP_PROVIDERS).flatMap(p => [...p.knownTools])
+
+  // Superadmins get ALL tools (including Task, WebSearch)
+  if (isSuperadmin) {
+    return [
+      ...BRIDGE_ALLOWED_SDK_TOOLS,
+      ...BRIDGE_ADMIN_ONLY_SDK_TOOLS,
+      ...BRIDGE_ALWAYS_DISALLOWED_SDK_TOOLS, // Task, WebSearch enabled for superadmin
+      ...mcpTools,
+      ...globalMcpTools,
+    ]
+  }
+
   const adminTools = isAdmin ? [...BRIDGE_ADMIN_ONLY_SDK_TOOLS] : []
   return [...BRIDGE_ALLOWED_SDK_TOOLS, ...adminTools, ...mcpTools, ...globalMcpTools]
 }

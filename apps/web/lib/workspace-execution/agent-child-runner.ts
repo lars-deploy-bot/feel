@@ -22,6 +22,7 @@ interface AgentRequest {
   sessionCookie?: string // For authenticated API calls back to Bridge
   oauthTokens?: Record<string, string> // OAuth tokens keyed by provider (stripe, linear, etc.)
   isAdmin?: boolean // Whether the user is an admin (enables Bash tools)
+  isSuperadmin?: boolean // Whether the user is a superadmin (all tools, runs as root)
 }
 
 function getWorkspaceCredentials(workspaceRoot: string): WorkspaceCredentials {
@@ -44,8 +45,21 @@ export function shouldUseChildProcess(workspaceRoot: string): boolean {
 }
 
 export function runAgentChild(workspaceRoot: string, payload: AgentRequest): ReadableStream<Uint8Array> {
-  const { uid, gid } = getWorkspaceCredentials(workspaceRoot)
   const runnerPath = resolve(process.cwd(), "scripts/run-agent.mjs")
+
+  // SUPERADMIN: Skip privilege drop - run as root
+  // Only applies when user is superadmin AND workspace is claude-bridge
+  let uid: number
+  let gid: number
+  if (payload.isSuperadmin) {
+    uid = 0
+    gid = 0
+    console.log("[agent-child] 🔓 SUPERADMIN MODE: Running as root (no privilege drop)")
+  } else {
+    const creds = getWorkspaceCredentials(workspaceRoot)
+    uid = creds.uid
+    gid = creds.gid
+  }
 
   console.log(`[agent-child] Spawning runner as UID:${uid} GID:${gid}`)
   console.log(`[agent-child] Runner: ${runnerPath}`)
@@ -55,6 +69,7 @@ export function runAgentChild(workspaceRoot: string, payload: AgentRequest): Rea
     env: {
       ...process.env, // Inherit all environment variables (includes PORT from systemd)
       // Override specific values for child process
+      // SUPERADMIN: uid/gid = 0 means run-agent.mjs will skip setuid/setgid
       TARGET_UID: String(uid),
       TARGET_GID: String(gid),
       TARGET_CWD: workspaceRoot,
@@ -66,7 +81,7 @@ export function runAgentChild(workspaceRoot: string, payload: AgentRequest): Rea
     stdio: ["pipe", "pipe", "pipe"],
   })
 
-  console.log(`[agent-child] Spawned as root (will drop to ${uid}:${gid}): PID ${child.pid}`)
+  console.log(`[agent-child] Spawned: PID ${child.pid} (uid=${uid}, gid=${gid})`)
 
   const requestJson = JSON.stringify(payload)
   child.stdin.write(requestJson)

@@ -44,6 +44,7 @@ export {
   TIMEOUTS,
   DEFAULTS,
   SECURITY,
+  SUPERADMIN,
   BRIDGE_ENV,
   type BridgeEnv,
   getServiceName,

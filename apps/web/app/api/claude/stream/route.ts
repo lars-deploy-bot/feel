@@ -49,7 +49,7 @@ import { generateRequestId } from "@/lib/utils"
 import { runAgentChild } from "@/lib/workspace-execution/agent-child-runner"
 import { detectServeMode } from "@/lib/workspace-execution/command-runner"
 import { BodySchema } from "@/types/guards/api"
-import { DEFAULTS, WORKER_POOL } from "@webalive/shared"
+import { DEFAULTS, WORKER_POOL, SUPERADMIN } from "@webalive/shared"
 import { getWorkerPool, type WorkerToParentMessage } from "@webalive/worker-pool"
 
 export const runtime = "nodejs"
@@ -320,6 +320,13 @@ export async function POST(req: NextRequest) {
     }
     logger.log("Claude model:", effectiveModel)
     logger.log("User isAdmin:", user.isAdmin)
+    logger.log("User isSuperadmin:", user.isSuperadmin)
+
+    // Check if this is a superadmin accessing the Bridge workspace
+    const isSuperadminWorkspace = resolvedWorkspaceName === SUPERADMIN.WORKSPACE_NAME && user.isSuperadmin
+    if (isSuperadminWorkspace) {
+      logger.log("🔓 SUPERADMIN MODE: Bridge workspace access granted")
+    }
 
     const maxTurns = DEFAULTS.CLAUDE_MAX_TURNS
 
@@ -363,23 +370,41 @@ export async function POST(req: NextRequest) {
       logger.log("Using persistent worker pool")
 
       // Get workspace credentials from directory ownership
-      const st = statSync(cwd)
-      const credentials = {
-        uid: st.uid,
-        gid: st.gid,
-        cwd,
-        workspaceKey: resolvedWorkspaceName,
+      // SUPERADMIN: Skip credentials - run as root (uid/gid = 0)
+      let credentials: { uid: number; gid: number; cwd: string; workspaceKey: string }
+      if (isSuperadminWorkspace) {
+        logger.log("🔓 SUPERADMIN: Running as root (uid=0, gid=0)")
+        credentials = {
+          uid: 0,
+          gid: 0,
+          cwd,
+          workspaceKey: resolvedWorkspaceName,
+        }
+      } else {
+        const st = statSync(cwd)
+        credentials = {
+          uid: st.uid,
+          gid: st.gid,
+          cwd,
+          workspaceKey: resolvedWorkspaceName,
+        }
       }
 
       // Build agent config to pass to worker (worker doesn't import from apps/web)
       // Note: Internal MCP servers (alive-workspace, alive-tools) are created locally
       // in the worker because createSdkMcpServer returns function objects that cannot
       // be serialized via IPC. Only OAuth HTTP servers are passed here.
-      const allowedTools = getAllowedTools(cwd, user.isAdmin)
-      const disallowedTools = getDisallowedTools(user.isAdmin)
+      const allowedTools = getAllowedTools(cwd, user.isAdmin, isSuperadminWorkspace)
+      const disallowedTools = getDisallowedTools(user.isAdmin, isSuperadminWorkspace)
 
-      // Log admin-specific tools for debugging
-      if (user.isAdmin) {
+      // Log admin/superadmin tools for debugging
+      if (isSuperadminWorkspace) {
+        const hasTask = allowedTools.includes("Task")
+        const hasWebSearch = allowedTools.includes("WebSearch")
+        logger.log(
+          `🔓 SUPERADMIN tools: Task=${hasTask}, WebSearch=${hasWebSearch}, allowedCount=${allowedTools.length}, disallowedCount=${disallowedTools.length}`,
+        )
+      } else if (user.isAdmin) {
         const hasBash = allowedTools.includes("Bash")
         logger.log(
           `Admin tools: Bash=${hasBash}, allowedCount=${allowedTools.length}, disallowedCount=${disallowedTools.length}`,
@@ -394,6 +419,7 @@ export async function POST(req: NextRequest) {
         oauthMcpServers: getOAuthMcpServers(oauthTokens) as Record<string, unknown>,
         bridgeStreamTypes: BRIDGE_STREAM_TYPES,
         isAdmin: user.isAdmin, // Pass to worker for permission checks
+        isSuperadmin: isSuperadminWorkspace, // Superadmin has all tools, runs as root
       }
 
       const pool = getWorkerPool()
@@ -461,7 +487,9 @@ export async function POST(req: NextRequest) {
     } else {
       // === SPAWN-PER-REQUEST (LEGACY) ===
       logger.log("Spawning child process runner")
-      if (user.isAdmin) {
+      if (isSuperadminWorkspace) {
+        logger.log("🔓 SUPERADMIN tools (legacy): isSuperadmin=true")
+      } else if (user.isAdmin) {
         logger.log(`Admin tools (legacy): isAdmin=${user.isAdmin}`)
       }
 
@@ -475,6 +503,7 @@ export async function POST(req: NextRequest) {
         sessionCookie,
         oauthTokens, // OAuth tokens for connected MCP providers (stripe, linear, etc.)
         isAdmin: user.isAdmin, // Enable Bash tools for admins
+        isSuperadmin: isSuperadminWorkspace, // Superadmin has all tools, runs as root
       })
     }
 

@@ -8,6 +8,7 @@
 import type { GoogleMapsBusiness, GoogleMapsOptions, GoogleMapsResult, SearchInput } from "./types.js"
 import {
   cleanupBrowser,
+  clickReviewsTabAndWait,
   detectFeed,
   navigateToGoogleMaps,
   normalizeHostname,
@@ -61,26 +62,7 @@ export async function searchGoogleMaps(input: SearchInput, options: GoogleMapsOp
 
   // Single business page - if we need reviews, click the tab first
   if (includeReviews) {
-    const reviewTabSelectors = [
-      'button[aria-label*="Reviews"]',
-      'button[aria-label*="reviews"]',
-      'button[aria-label*="Avaliações"]',
-      'button[data-tab-index="1"]',
-    ]
-
-    for (const selector of reviewTabSelectors) {
-      const tab = await page.$(selector)
-      if (tab) {
-        await tab.click()
-        await page.waitForNetworkIdle({ idleTime: 1000, timeout: 8000 }).catch(() => {})
-        await page.evaluate(() => {
-          const scrollable = document.querySelector("div.m6QErb.DxyBCb.kA9KIf.dS8AEf")
-          scrollable?.scrollBy(0, 500)
-        })
-        await page.waitForNetworkIdle({ idleTime: 500, timeout: 3000 }).catch(() => {})
-        break
-      }
-    }
+    await clickReviewsTabAndWait(page)
   }
 
   const html = await page.content()

@@ -38,8 +38,8 @@ const (
 	// PingInterval is how often to send ping messages
 	PingInterval = 30 * time.Second
 
-	// PongTimeout is how long to wait for pong response
-	PongTimeout = 60 * time.Second
+	// PongTimeout is how long to wait for pong response (5 min to survive brief internet outages)
+	PongTimeout = 5 * time.Minute
 
 	// PTYReadBufferSize is the buffer size for reading from PTY
 	PTYReadBufferSize = 8192
@@ -64,6 +64,7 @@ type connInfo struct {
 	pid        int
 	startTime  time.Time
 	cancelFunc context.CancelFunc
+	writeMu    sync.Mutex // Protects concurrent writes to websocket
 }
 
 // WSMessage represents a WebSocket message
@@ -203,7 +204,7 @@ func (h *WSHandler) runPTYSession(ctx context.Context, conn *websocket.Conn, cwd
 	ptmx, err := pty.Start(cmd)
 	if err != nil {
 		wsLog.Error("Failed to start PTY: %v", err)
-		h.sendMessage(conn, WSMessage{Type: "error", Message: "Failed to start shell"})
+		h.sendMessage(conn, info, WSMessage{Type: "error", Message: "Failed to start shell"})
 		return
 	}
 
@@ -216,7 +217,7 @@ func (h *WSHandler) runPTYSession(ctx context.Context, conn *websocket.Conn, cwd
 	}
 
 	// Send connected message
-	h.sendMessage(conn, WSMessage{Type: "connected"})
+	h.sendMessage(conn, info, WSMessage{Type: "connected"})
 
 	// Create channels for coordination
 	ptyClosed := make(chan struct{})
@@ -243,7 +244,7 @@ func (h *WSHandler) runPTYSession(ctx context.Context, conn *websocket.Conn, cwd
 				return
 			}
 			if n > 0 {
-				if err := h.sendMessage(conn, WSMessage{Type: "data", Data: string(buf[:n])}); err != nil {
+				if err := h.sendMessage(conn, info, WSMessage{Type: "data", Data: string(buf[:n])}); err != nil {
 					wsLog.Debug("WebSocket write failed: %v | pid=%d", err, info.pid)
 					return
 				}
@@ -286,7 +287,7 @@ func (h *WSHandler) runPTYSession(ctx context.Context, conn *websocket.Conn, cwd
 					}
 				}
 			case "ping":
-				h.sendMessage(conn, WSMessage{Type: "pong"})
+				h.sendMessage(conn, info, WSMessage{Type: "pong"})
 			}
 		}
 	}()
@@ -299,8 +300,7 @@ func (h *WSHandler) runPTYSession(ctx context.Context, conn *websocket.Conn, cwd
 		for {
 			select {
 			case <-pingTicker.C:
-				conn.SetWriteDeadline(time.Now().Add(WriteTimeout))
-				if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				if err := h.sendPing(conn, info); err != nil {
 					wsLog.Debug("Ping failed: %v | pid=%d", err, info.pid)
 					return
 				}
@@ -351,10 +351,12 @@ func (h *WSHandler) runPTYSession(ctx context.Context, conn *websocket.Conn, cwd
 
 	// Send exit message
 	wsLog.Debug("PTY exited | pid=%d exitCode=%d", info.pid, exitCode)
-	h.sendMessage(conn, WSMessage{Type: "exit", ExitCode: exitCode})
+	h.sendMessage(conn, info, WSMessage{Type: "exit", ExitCode: exitCode})
 
-	// Send close message to WebSocket
+	// Send close message to WebSocket (protected by mutex)
+	info.writeMu.Lock()
 	conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+	info.writeMu.Unlock()
 
 	// Wait for goroutines with timeout
 	select {
@@ -367,14 +369,24 @@ func (h *WSHandler) runPTYSession(ctx context.Context, conn *websocket.Conn, cwd
 	}
 }
 
-// sendMessage sends a WebSocket message with proper error handling
-func (h *WSHandler) sendMessage(conn *websocket.Conn, msg WSMessage) error {
+// sendMessage sends a WebSocket message with proper error handling (thread-safe)
+func (h *WSHandler) sendMessage(conn *websocket.Conn, info *connInfo, msg WSMessage) error {
 	data, err := json.Marshal(msg)
 	if err != nil {
 		return err
 	}
+	info.writeMu.Lock()
+	defer info.writeMu.Unlock()
 	conn.SetWriteDeadline(time.Now().Add(WriteTimeout))
 	return conn.WriteMessage(websocket.TextMessage, data)
+}
+
+// sendPing sends a ping message (thread-safe)
+func (h *WSHandler) sendPing(conn *websocket.Conn, info *connInfo) error {
+	info.writeMu.Lock()
+	defer info.writeMu.Unlock()
+	conn.SetWriteDeadline(time.Now().Add(WriteTimeout))
+	return conn.WriteMessage(websocket.PingMessage, nil)
 }
 
 // ActiveConnections returns the number of active WebSocket connections

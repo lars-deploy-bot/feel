@@ -42,6 +42,7 @@ User credits converted from LLM tokens at charge time.
 | Site deployment | ✅ Production | [Deployment](../deployment/README.md) |
 | DNS verification | ✅ Production | See original docs |
 | Alive Super Templates | ✅ Production | See `packages/tools/supertemplate/` |
+| Claude SDK Execution | ✅ Production | [Execution Flow](./claude-sdk-execution-flow.md) |
 
 ## Feature Implementation Notes
 
