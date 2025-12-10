@@ -77,7 +77,10 @@ export async function executeSearchGoogleMaps(
           content: [
             {
               type: "text",
-              text: `Search timed out. Google Maps took too long to respond. Try:\n- A more specific query\n- Fewer results\n- Try again in a moment`,
+              text: `Search timed out. Google Maps took too long to respond. Try:
+- A more specific query
+- Fewer results
+- Try again in a moment`,
             },
           ],
           isError: true,
@@ -88,7 +91,7 @@ export async function executeSearchGoogleMaps(
           content: [
             {
               type: "text",
-              text: `Could not reach Google Maps. This might be a temporary issue - try again.`,
+              text: "Could not reach Google Maps. This might be a temporary issue - please try again.",
             },
           ],
           isError: true,
@@ -141,7 +144,7 @@ export async function executeSearchGoogleMaps(
         content: [
           {
             type: "text",
-            text: `Search timed out after 45 seconds. Google Maps was too slow. Try a more specific query or fewer results.`,
+            text: "Search timed out after 45 seconds. Google Maps was too slow. Please try a more specific query or fewer results.",
           },
         ],
         isError: true,
