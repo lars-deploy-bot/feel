@@ -10,7 +10,7 @@ interface SystemPromptParams {
 }
 
 export function getSystemPrompt(params: SystemPromptParams = {}): string {
-  const { projectId, userId, workspaceFolder, hasStripeMcpAccess, additionalContext } = params
+  const { projectId, userId, workspaceFolder, hasStripeMcpAccess, additionalContext, isProduction } = params
 
   // Get current date in clear format (e.g., "10 January 2025")
   const now = new Date()
@@ -64,6 +64,12 @@ export function getSystemPrompt(params: SystemPromptParams = {}): string {
 
   if (additionalContext) {
     prompt += ` Additional context: ${additionalContext}`
+  }
+
+  // Production mode warning - site is serving a static build, not live dev server
+  if (isProduction) {
+    prompt +=
+      " ⚠️ PRODUCTION MODE: This site is running in production mode (serving a static build). The preview the user sees is NOT live - your code changes will NOT be visible until you run switch_serve_mode({ mode: 'build' }) to rebuild. Consider: (1) Make all your changes first, (2) Then rebuild once at the end, (3) Or switch to dev mode with switch_serve_mode({ mode: 'dev' }) for live editing."
   }
 
   prompt += ` ${coreInstructionsReminder}`

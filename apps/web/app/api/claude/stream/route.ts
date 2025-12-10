@@ -47,6 +47,7 @@ import type { TokenSource } from "@/lib/tokens"
 import { getOrgCredits } from "@/lib/tokens"
 import { generateRequestId } from "@/lib/utils"
 import { runAgentChild } from "@/lib/workspace-execution/agent-child-runner"
+import { detectServeMode } from "@/lib/workspace-execution/command-runner"
 import { BodySchema } from "@/types/guards/api"
 import { DEFAULTS, WORKER_POOL } from "@webalive/shared"
 import { getWorkerPool, type WorkerToParentMessage } from "@webalive/worker-pool"
@@ -333,12 +334,18 @@ export async function POST(req: NextRequest) {
       logger.log(`OAuth warnings: ${oauthWarnings.map(w => w.provider).join(", ")}`)
     }
 
+    // Detect if workspace is running in production mode (build) vs dev mode
+    const serveMode = detectServeMode(cwd)
+    const isProductionMode = serveMode === "build"
+    logger.log(`Serve mode: ${serveMode} (isProduction: ${isProductionMode})`)
+
     const systemPrompt = getSystemPrompt({
       projectId,
       userId,
       workspaceFolder: cwd,
       hasStripeMcpAccess: hasStripeMcpAccess(resolvedWorkspaceName, hasStripeConnection),
       additionalContext,
+      isProduction: isProductionMode,
     })
 
     logger.log("Spawning child process runner")

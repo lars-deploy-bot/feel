@@ -11,8 +11,8 @@
  */
 
 import { spawn } from "node:child_process"
-import { statSync } from "node:fs"
-import { resolve } from "node:path"
+import { readFileSync, statSync } from "node:fs"
+import { basename, dirname, resolve } from "node:path"
 
 interface WorkspaceCredentials {
   uid: number
@@ -45,6 +45,37 @@ function getWorkspaceCredentials(workspaceRoot: string): WorkspaceCredentials {
   }
 
   return { uid: st.uid, gid: st.gid }
+}
+
+export type ServeMode = "dev" | "build" | "unknown"
+
+/**
+ * Detect the current serve mode for a workspace by reading its systemd override file.
+ *
+ * @param workspacePath - The workspace path (e.g., /srv/webalive/sites/example.com/user)
+ * @returns "dev" if running Vite dev server, "build" if running production build, "unknown" otherwise
+ */
+export function detectServeMode(workspacePath: string): ServeMode {
+  // Extract domain from workspace path: /srv/webalive/sites/example.com/user -> example.com
+  const sitePath = dirname(workspacePath)
+  const domain = basename(sitePath)
+  const serviceSlug = domain.replace(/\./g, "-")
+  const serviceName = `site@${serviceSlug}.service`
+  const overrideConf = `/etc/systemd/system/${serviceName}.d/override.conf`
+
+  try {
+    const content = readFileSync(overrideConf, "utf-8")
+    if (content.includes("bun run dev")) {
+      return "dev"
+    }
+    if (content.includes("bun run preview")) {
+      return "build"
+    }
+    return "unknown"
+  } catch {
+    // No override file means default (dev mode)
+    return "dev"
+  }
 }
 
 /**
