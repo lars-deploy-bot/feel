@@ -319,6 +319,7 @@ export async function POST(req: NextRequest) {
       logger.log(`Model override: User requested ${userModel} but forcing ${DEFAULT_MODEL} for org credits`)
     }
     logger.log("Claude model:", effectiveModel)
+    logger.log("User isAdmin:", user.isAdmin)
 
     const maxTurns = DEFAULTS.CLAUDE_MAX_TURNS
 
@@ -374,9 +375,20 @@ export async function POST(req: NextRequest) {
       // Note: Internal MCP servers (alive-workspace, alive-tools) are created locally
       // in the worker because createSdkMcpServer returns function objects that cannot
       // be serialized via IPC. Only OAuth HTTP servers are passed here.
+      const allowedTools = getAllowedTools(cwd, user.isAdmin)
+      const disallowedTools = getDisallowedTools(user.isAdmin)
+
+      // Log admin-specific tools for debugging
+      if (user.isAdmin) {
+        const hasBash = allowedTools.includes("Bash")
+        logger.log(
+          `Admin tools: Bash=${hasBash}, allowedCount=${allowedTools.length}, disallowedCount=${disallowedTools.length}`,
+        )
+      }
+
       const agentConfig = {
-        allowedTools: getAllowedTools(cwd, user.isAdmin),
-        disallowedTools: getDisallowedTools(user.isAdmin),
+        allowedTools,
+        disallowedTools,
         permissionMode: PERMISSION_MODE,
         settingSources: SETTINGS_SOURCES,
         oauthMcpServers: getOAuthMcpServers(oauthTokens) as Record<string, unknown>,
@@ -449,6 +461,9 @@ export async function POST(req: NextRequest) {
     } else {
       // === SPAWN-PER-REQUEST (LEGACY) ===
       logger.log("Spawning child process runner")
+      if (user.isAdmin) {
+        logger.log(`Admin tools (legacy): isAdmin=${user.isAdmin}`)
+      }
 
       childStream = runAgentChild(cwd, {
         message,
@@ -459,6 +474,7 @@ export async function POST(req: NextRequest) {
         apiKey: userApiKey || undefined,
         sessionCookie,
         oauthTokens, // OAuth tokens for connected MCP providers (stripe, linear, etc.)
+        isAdmin: user.isAdmin, // Enable Bash tools for admins
       })
     }
 

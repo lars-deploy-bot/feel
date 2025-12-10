@@ -17,8 +17,8 @@ import process from "node:process"
 import { query } from "@anthropic-ai/claude-agent-sdk"
 import {
   BRIDGE_STREAM_TYPES,
-  DISALLOWED_TOOLS,
   getAllowedTools,
+  getDisallowedTools,
   getMcpServers,
   PERMISSION_MODE,
   SETTINGS_SOURCES,
@@ -87,18 +87,28 @@ async function readStdinJson() {
       console.error(`[runner] Connected OAuth providers: ${connectedProviders.join(", ")}`)
     }
 
+    // Check admin status from request payload
+    const isAdmin = request.isAdmin === true
+    console.error(`[runner] isAdmin: ${isAdmin}`)
+
     // Get base allowed tools (SDK + internal MCP tools)
     // OAuth MCP tools are allowed dynamically in canUseTool
-    const baseAllowedTools = getAllowedTools(targetCwd || process.cwd())
+    // Admin users get Bash, BashOutput, KillShell tools
+    const baseAllowedTools = getAllowedTools(targetCwd || process.cwd(), isAdmin)
+    const disallowedTools = getDisallowedTools(isAdmin)
     console.error(`[runner] Base allowed tools count: ${baseAllowedTools.length}`)
+    if (isAdmin) {
+      const hasBash = baseAllowedTools.includes("Bash")
+      console.error(`[runner] Admin tools: Bash=${hasBash}, disallowed=${disallowedTools.length}`)
+    }
 
     /**
-     * Tool permission handler - enforces DISALLOWED_TOOLS blacklist and dynamic OAuth MCP tool permissions
+     * Tool permission handler - enforces disallowedTools blacklist and dynamic OAuth MCP tool permissions
      * @type {import('@anthropic-ai/claude-agent-sdk').CanUseTool}
      */
     const canUseTool = async (toolName, input, _options) => {
-      // Explicit deny list takes precedence
-      if (DISALLOWED_TOOLS.includes(toolName)) {
+      // Explicit deny list takes precedence (respects admin status)
+      if (disallowedTools.includes(toolName)) {
         console.error(`[runner] SECURITY: Blocked explicitly disallowed tool: ${toolName}`)
         return {
           behavior: "deny",
@@ -154,7 +164,7 @@ async function readStdinJson() {
         maxTurns: request.maxTurns || DEFAULTS.CLAUDE_MAX_TURNS,
         permissionMode: PERMISSION_MODE,
         allowedTools: baseAllowedTools, // OAuth MCP tools handled dynamically in canUseTool
-        disallowedTools: DISALLOWED_TOOLS,
+        disallowedTools, // Dynamic based on admin status
         canUseTool,
         settingSources: SETTINGS_SOURCES,
         mcpServers: workspaceMcpServers,

@@ -101,15 +101,6 @@ export function getBridgeDisallowedTools(isAdmin: boolean): string[] {
   return [...BRIDGE_ADMIN_ONLY_SDK_TOOLS, ...BRIDGE_ALWAYS_DISALLOWED_SDK_TOOLS]
 }
 
-/**
- * @deprecated Use getBridgeDisallowedTools(isAdmin) instead
- * Kept for backwards compatibility - returns full list (non-admin behavior)
- */
-export const BRIDGE_DISALLOWED_SDK_TOOLS: string[] = [
-  ...BRIDGE_ADMIN_ONLY_SDK_TOOLS,
-  ...BRIDGE_ALWAYS_DISALLOWED_SDK_TOOLS,
-]
-
 export type BridgeDisallowedSDKTool = BridgeAdminOnlySDKTool | BridgeAlwaysDisallowedSDKTool
 
 /**

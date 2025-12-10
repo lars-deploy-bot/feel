@@ -38,10 +38,10 @@ import {
 import {
   DEFAULTS,
   getBridgeAllowedTools,
+  getBridgeDisallowedTools,
   getBridgeMcpServers,
   createBridgeCanUseTool,
   getWorkspacePath,
-  BRIDGE_DISALLOWED_SDK_TOOLS,
   BRIDGE_PERMISSION_MODE,
   BRIDGE_SETTINGS_SOURCES,
 } from "@webalive/shared"
@@ -171,9 +171,11 @@ export async function askAIFull(options: AskAIFullOptions): Promise<AskAIFullRes
     permissionMode = permissionMode ?? BRIDGE_PERMISSION_MODE
     settingSources = [...BRIDGE_SETTINGS_SOURCES]
 
-    const baseAllowedTools = getBridgeAllowedTools(getEnabledMcpToolNames)
+    // Note: ask-ai-full is used by MCP tools, not by admin users
+    // Always use non-admin tools (isAdmin=false)
+    const baseAllowedTools = getBridgeAllowedTools(getEnabledMcpToolNames, false)
     allowedTools = baseAllowedTools
-    disallowedTools = BRIDGE_DISALLOWED_SDK_TOOLS
+    disallowedTools = getBridgeDisallowedTools(false)
 
     mcpServers = getBridgeMcpServers(
       { "alive-workspace": workspaceInternalMcp, "alive-tools": toolsInternalMcp },
@@ -181,7 +183,7 @@ export async function askAIFull(options: AskAIFullOptions): Promise<AskAIFullRes
     )
 
     const connectedProviders = Object.keys(oauthTokens).filter(k => !!oauthTokens[k])
-    canUseTool = createBridgeCanUseTool(baseAllowedTools, connectedProviders) as CanUseTool
+    canUseTool = createBridgeCanUseTool(baseAllowedTools, connectedProviders, false) as CanUseTool
   } else {
     permissionMode = permissionMode ?? "bypassPermissions"
   }

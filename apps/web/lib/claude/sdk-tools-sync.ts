@@ -33,16 +33,23 @@ import type {
 // Import from shared - single source of truth
 import {
   BRIDGE_ALLOWED_SDK_TOOLS,
-  BRIDGE_DISALLOWED_SDK_TOOLS,
+  BRIDGE_ADMIN_ONLY_SDK_TOOLS,
+  BRIDGE_ALWAYS_DISALLOWED_SDK_TOOLS,
+  getBridgeDisallowedTools,
   type BridgeAllowedSDKTool,
   type BridgeDisallowedSDKTool,
 } from "@webalive/shared"
 
-// Re-export for backwards compatibility
+// Re-export for use in tests
 export const ALLOWED_SDK_TOOLS = BRIDGE_ALLOWED_SDK_TOOLS
-export const DISALLOWED_SDK_TOOLS = BRIDGE_DISALLOWED_SDK_TOOLS
+// Combined list for tests (all disallowed for non-admin = full list)
+export const DISALLOWED_SDK_TOOLS = getBridgeDisallowedTools(false)
 export type AllowedSDKTool = BridgeAllowedSDKTool
 export type DisallowedSDKTool = BridgeDisallowedSDKTool
+
+// Export granular lists for advanced use cases
+export const ADMIN_ONLY_SDK_TOOLS = BRIDGE_ADMIN_ONLY_SDK_TOOLS
+export const ALWAYS_DISALLOWED_SDK_TOOLS = BRIDGE_ALWAYS_DISALLOWED_SDK_TOOLS
 
 /**
  * Maps SDK Input types to their tool names.

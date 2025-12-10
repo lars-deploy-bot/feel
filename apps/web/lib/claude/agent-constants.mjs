@@ -7,7 +7,6 @@ import {
   BRIDGE_INTERRUPT_SOURCES,
   // Single source of truth for Bridge tool configuration
   BRIDGE_ALLOWED_SDK_TOOLS,
-  BRIDGE_DISALLOWED_SDK_TOOLS,
   BRIDGE_PERMISSION_MODE,
   BRIDGE_SETTINGS_SOURCES,
   getBridgeAllowedTools,
@@ -20,8 +19,6 @@ export { BRIDGE_STREAM_TYPES, BRIDGE_SYNTHETIC_MESSAGE_TYPES, BRIDGE_INTERRUPT_S
 
 // Re-export SDK tools from shared (single source of truth)
 export const ALLOWED_SDK_TOOLS = BRIDGE_ALLOWED_SDK_TOOLS
-/** @deprecated Use getDisallowedTools(isAdmin) instead */
-export const DISALLOWED_TOOLS = BRIDGE_DISALLOWED_SDK_TOOLS
 export const PERMISSION_MODE = BRIDGE_PERMISSION_MODE
 /** @type {import('@anthropic-ai/claude-agent-sdk').SettingSource[]} */
 export const SETTINGS_SOURCES = BRIDGE_SETTINGS_SOURCES

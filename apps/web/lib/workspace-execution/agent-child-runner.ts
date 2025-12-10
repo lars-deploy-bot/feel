@@ -21,6 +21,7 @@ interface AgentRequest {
   apiKey?: string
   sessionCookie?: string // For authenticated API calls back to Bridge
   oauthTokens?: Record<string, string> // OAuth tokens keyed by provider (stripe, linear, etc.)
+  isAdmin?: boolean // Whether the user is an admin (enables Bash tools)
 }
 
 function getWorkspaceCredentials(workspaceRoot: string): WorkspaceCredentials {
