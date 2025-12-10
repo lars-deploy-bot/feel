@@ -11,6 +11,72 @@ AI assistant guidelines for working on Claude Bridge.
 3. **GIT HOOKS** - Pre-push hooks run automatically; if they fail, fix the issues (don't force-push)
 4. **NO RANDOM ENV VARS** - Don't add environment variables unless absolutely necessary. Use existing config, constants, or code-level defaults instead. Adding .env variables creates deployment complexity and hidden dependencies.
 5. **NO EXPLORE AGENT** - Never use `Task(subagent_type=Explore)`. Use Glob and Grep directly instead - they're faster and more precise for this codebase.
+6. **USE THE BRAIN** - Query `use_this_to_remember.db` for past decisions, insights, and context before starting work. Store important learnings when you're done.
+7. **ARCHITECTURE SMELL DETECTOR** - Warn when you see these anti-patterns:
+   - Adding more tools/features to solve a problem (instead of one core constraint)
+   - "Let the AI figure it out" instead of clear success criteria
+   - Flexibility/options when opinionated defaults would work
+   - Integrating everything instead of doing one thing exceptionally well
+   - Complex autonomy when simple rules would suffice
+   - Building for "power users" that don't exist yet
+   - Asking users what they want instead of telling them how it works
+
+   **What winners did:**
+   - Linear: speed as the constraint. Everything keyboard-first, opinionated, no plugins.
+   - Figma: multiplayer as the constraint. Every feature designed for "5 people in this file."
+   - Superhuman: $30/mo email with NO features. Just fast. Trained users how to use it.
+   - Discord: communities as the constraint. Servers/roles, not "workplace collaboration."
+
+   **The pattern:** Strong opinions, great defaults, ONE core constraint that drives every decision.
+
+   **Our core constraint: Agents do what they promise. No mistakes.**
+   - Can't promise what it can't verify
+   - Must know when to STOP, not try and break things
+   - Small scope = verifiable scope
+
+   If you spot the anti-patterns, say: **"⚠️ Architecture smell: [pattern]. Does this help agents do exactly what they promise, or does it add ways to fail?"**
+
+## Agent Memory (IMPORTANT)
+
+**`use_this_to_remember.db`** - SQLite database at project root containing persistent knowledge across conversations.
+
+**ALWAYS check this first** when working on unfamiliar areas:
+```bash
+sqlite3 use_this_to_remember.db "SELECT topic, content FROM memories WHERE topic LIKE '%your-topic%'"
+```
+
+**Store important learnings** when you discover something:
+```bash
+sqlite3 use_this_to_remember.db "INSERT INTO memories (id, type, topic, content, context, tags) VALUES (lower(hex(randomblob(16))), 'insight', 'topic-name', 'what you learned', 'why it matters', '[\"tag1\",\"tag2\"]')"
+```
+
+**Memory types:** `decision` | `insight` | `pattern` | `todo` | `question` | `context` | `preference`
+
+**Quick queries:**
+```bash
+# All decisions
+sqlite3 use_this_to_remember.db "SELECT topic, content FROM memories WHERE type='decision'"
+
+# Search everything
+sqlite3 use_this_to_remember.db "SELECT * FROM memories WHERE content LIKE '%keyword%'"
+
+# Recent memories
+sqlite3 use_this_to_remember.db "SELECT topic, type, substr(content,1,100) FROM memories ORDER BY created_at DESC LIMIT 10"
+```
+
+**User shortcut:** When the user says `usemem`, query recent memories to recall what we were working on:
+```bash
+sqlite3 use_this_to_remember.db "SELECT type, topic, content, context FROM memories ORDER BY created_at DESC LIMIT 10"
+```
+
+**Conversation summaries:** Store summaries of completed sessions for continuity:
+```bash
+# Read recent conversation summaries
+sqlite3 use_this_to_remember.db "SELECT title, summary, next_steps FROM conversations ORDER BY created_at DESC LIMIT 5"
+
+# Store a conversation summary when ending a session
+sqlite3 use_this_to_remember.db "INSERT INTO conversations (id, title, summary, key_decisions, next_steps) VALUES (lower(hex(randomblob(16))), 'Brief title', 'What we accomplished', 'Key decisions made', 'What to do next')"
+```
 
 ## Project Overview
 
