@@ -1,6 +1,6 @@
 "use client"
 
-import { AlertTriangle, ExternalLink, Eye } from "lucide-react"
+import { AlertTriangle, ChevronDown, ChevronUp, ExternalLink, Eye } from "lucide-react"
 import { WorkspaceSwitcher } from "@/components/workspace/WorkspaceSwitcher"
 
 interface WorkspaceInfoBarProps {
@@ -11,6 +11,9 @@ interface WorkspaceInfoBarProps {
   onSelectSite: () => void
   onNewConversation: () => void
   onMobilePreview: () => void
+  onToggleTabs?: () => void
+  showTabsToggle?: boolean
+  tabsExpanded?: boolean
 }
 
 export function WorkspaceInfoBar({
@@ -21,6 +24,9 @@ export function WorkspaceInfoBar({
   onSelectSite,
   onNewConversation,
   onMobilePreview,
+  onToggleTabs,
+  showTabsToggle = false,
+  tabsExpanded = false,
 }: WorkspaceInfoBarProps) {
   return (
     <div
@@ -91,6 +97,22 @@ export function WorkspaceInfoBar({
                 <span className="sm:hidden">new</span>
                 <span className="hidden sm:inline">new chat</span>
               </button>
+              {/* Tabs toggle button - desktop only */}
+              {showTabsToggle && onToggleTabs && (
+                <button
+                  type="button"
+                  onClick={onToggleTabs}
+                  className={`hidden md:flex items-center gap-1 px-2 py-1 text-xs font-medium rounded transition-colors ${
+                    tabsExpanded
+                      ? "text-black dark:text-white bg-black/5 dark:bg-white/5"
+                      : "text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5"
+                  }`}
+                  title={tabsExpanded ? "Hide tabs" : "Show tabs"}
+                >
+                  <span>tabs</span>
+                  {tabsExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                </button>
+              )}
             </div>
           )}
         </div>

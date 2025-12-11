@@ -54,10 +54,10 @@ import { useStreamingActions } from "@/lib/stores/streamingStore"
 import { useGoal, useBuilding, useTargetUsers } from "@/lib/stores/goalStore"
 import { SUPERADMIN } from "@webalive/shared"
 import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
-
+import { useAuth } from "@/features/deployment/hooks/useAuth"
 // Local components
-import { ChatHeader, WorkspaceInfoBar, ChatEmptyState, AgentManagerIndicator } from "./components"
-import { useStatusText, useChatDragDrop } from "./hooks"
+import { ChatHeader, WorkspaceInfoBar, ChatEmptyState, AgentManagerIndicator, TabBar } from "./components"
+import { useStatusText, useChatDragDrop, useTabsManagement } from "./hooks"
 
 // Build version for deployment verification
 const BUILD_VERSION = "2025-11-12-direct-execution"
@@ -94,6 +94,12 @@ function ChatPageContent() {
 
   // Feature flags
   const agentSupervisorEnabled = useFeatureFlag("AGENT_SUPERVISOR")
+  const tabsEnabled = useFeatureFlag("TABS")
+  const { user } = useAuth()
+  const isAdmin = user?.isAdmin ?? false
+
+  // Tabs are admin-only feature: requires both admin status AND feature flag
+  const showTabs = isAdmin && tabsEnabled
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const isAutoScrolling = useRef(false)
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -185,6 +191,31 @@ function ChatPageContent() {
 
   // Session management with workspace-scoped persistence
   const { conversationId, startNewConversation, switchConversation } = useConversationSession(workspace, mounted)
+
+  // Tab management - combined switch handler for both conversation hooks
+  const handleSwitchConversationForTabs = useCallback(
+    (id: string) => {
+      switchConversation(id)
+      switchConversationInMessageStore(id)
+    },
+    [switchConversation, switchConversationInMessageStore],
+  )
+
+  const {
+    tabs,
+    activeTab,
+    tabsExpanded,
+    handleAddTab,
+    handleTabSelect,
+    handleTabClose,
+    handleTabRename,
+    handleToggleTabs,
+  } = useTabsManagement({
+    workspace,
+    conversationId,
+    onSwitchConversation: handleSwitchConversationForTabs,
+    onInitializeConversation: initializeConversation,
+  })
 
   // Initialize message store when conversation OR workspace changes
   useEffect(() => {
@@ -873,7 +904,22 @@ function ChatPageContent() {
             onSelectSite={() => setSettingsModalReason("websites")}
             onNewConversation={handleNewConversation}
             onMobilePreview={() => setShowMobilePreview(true)}
+            onToggleTabs={handleToggleTabs}
+            showTabsToggle={showTabs && !!workspace}
+            tabsExpanded={tabsExpanded}
           />
+
+          {/* Tabs - shown when expanded (desktop only, admin-only feature) */}
+          {showTabs && tabsExpanded && (
+            <TabBar
+              tabs={tabs}
+              activeTabId={activeTab?.id ?? null}
+              onTabSelect={handleTabSelect}
+              onTabClose={handleTabClose}
+              onTabRename={handleTabRename}
+              onAddTab={handleAddTab}
+            />
+          )}
 
           {/* Messages */}
           <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">

@@ -282,6 +282,16 @@ export const FEATURE_FLAGS = {
     defaultValue: false,
     description: "Agent Supervisor: Analyze progress and suggest next actions",
   },
+
+  /**
+   * Tabs - Multiple conversation tabs per workspace.
+   * Admin-only feature (off by default). When enabled, shows a tab bar
+   * allowing users to work on multiple conversations simultaneously.
+   */
+  TABS: {
+    defaultValue: false,
+    description: "Tabs: Multiple conversation tabs per workspace (admin-only)",
+  },
 } as const satisfies Record<string, FeatureFlagDefinition>
 
 export type FeatureFlagKey = keyof typeof FEATURE_FLAGS
