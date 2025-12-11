@@ -116,7 +116,11 @@ export async function GET(req: NextRequest) {
       db: { schema: "app" },
     })
 
-    const { data: domains } = await app.from("domains").select("*").order("created_at", { ascending: false })
+    const { data: domains } = await app
+      .from("domains")
+      .select("*")
+      .eq("is_test_env", false)
+      .order("created_at", { ascending: false })
 
     // Group domains by org_id
     const domainsByOrg = domains?.reduce(

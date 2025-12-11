@@ -141,9 +141,7 @@ Rules:
 ```typescript
 // packages/shared/src/constants.ts
 FEATURE_FLAGS: {
-  AUTO_COPY_ON_COMPLETE: boolean,      // Existing
-  AGENT_SUPERVISOR: boolean,           // New - enables this feature
-  AGENT_SUPERVISOR_AUTO: boolean,      // Auto-run vs manual trigger
+  AGENT_SUPERVISOR: boolean,           // Enables this feature
 }
 ```
 

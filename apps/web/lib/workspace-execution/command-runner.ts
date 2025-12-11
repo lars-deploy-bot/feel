@@ -68,7 +68,8 @@ export function detectServeMode(workspacePath: string): ServeMode {
     if (content.includes("bun run dev")) {
       return "dev"
     }
-    if (content.includes("bun run preview")) {
+    // "bun run preview" and "bun run start" are both production modes
+    if (content.includes("bun run preview") || content.includes("bun run start")) {
       return "build"
     }
     return "unknown"

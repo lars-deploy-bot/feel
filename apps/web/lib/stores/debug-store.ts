@@ -2,7 +2,8 @@
 
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
-import { DOMAINS } from "@webalive/shared"
+import { DOMAINS, SUPERADMIN } from "@webalive/shared"
+import { useCurrentWorkspace } from "@/lib/stores/workspaceStore"
 
 const isDev = process.env.NODE_ENV === "development"
 
@@ -141,9 +142,13 @@ export function isDevelopment(): boolean {
 
 /**
  * Check if debug view should be visible
- * Only shows in development mode when user has enabled debug view
+ * Shows when:
+ * - In development mode AND user has enabled debug view, OR
+ * - In superadmin workspace (claude-bridge) AND user has enabled debug view
  */
 export function useDebugVisible(): boolean {
   const debugView = useDebugView()
-  return isDev && debugView
+  const workspace = useCurrentWorkspace()
+  const isSuperadminWorkspace = workspace === SUPERADMIN.WORKSPACE_NAME
+  return debugView && (isDev || isSuperadminWorkspace)
 }

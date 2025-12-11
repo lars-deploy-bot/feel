@@ -1,34 +1,11 @@
 import { execSync } from "node:child_process"
-import { readFileSync } from "node:fs"
 import { basename, dirname } from "node:path"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { createErrorResponse } from "@/features/auth/lib/auth"
 import { ErrorCodes } from "@/lib/error-codes"
 import { handleWorkspaceApi } from "@/lib/workspace-api-handler"
-import { runAsWorkspaceUser } from "@/lib/workspace-execution/command-runner"
-
-type ServeMode = "dev" | "build" | "unknown"
-
-/**
- * Detect the current serve mode by reading the systemd override file.
- */
-function detectCurrentMode(serviceName: string): ServeMode {
-  const overrideConf = `/etc/systemd/system/${serviceName}.d/override.conf`
-  try {
-    const content = readFileSync(overrideConf, "utf-8")
-    if (content.includes("bun run dev")) {
-      return "dev"
-    }
-    if (content.includes("bun run preview")) {
-      return "build"
-    }
-    return "unknown"
-  } catch {
-    // No override file means default (dev mode)
-    return "dev"
-  }
-}
+import { detectServeMode, runAsWorkspaceUser } from "@/lib/workspace-execution/command-runner"
 
 const RestartSchema = z.object({
   workspaceRoot: z.string(),
@@ -46,7 +23,7 @@ export async function POST(req: Request) {
       const serviceName = `site@${serviceSlug}.service`
 
       // Detect current mode before restart
-      const currentMode = detectCurrentMode(serviceName)
+      const currentMode = detectServeMode(workspaceRoot)
 
       try {
         // Clear all dev caches to prevent stale dependency/compilation issues
@@ -82,7 +59,7 @@ export async function POST(req: Request) {
         })
 
         // Build mode-aware message
-        const modeLabel = currentMode === "dev" ? "development" : currentMode === "build" ? "production" : "unknown"
+        const modeLabel = currentMode === "dev" ? "development" : currentMode === "build" ? "production" : null
         const modeHint =
           currentMode === "dev"
             ? "Changes will appear instantly (hot reload active)."
@@ -90,11 +67,16 @@ export async function POST(req: Request) {
               ? "Running production build. Use switch_serve_mode to change."
               : ""
 
+        // If we couldn't detect mode, just say server restarted without mode info
+        const message = modeLabel
+          ? `✓ Server restarted in ${modeLabel} mode. ${modeHint}`.trim()
+          : "✓ Server restarted."
+
         return NextResponse.json({
           ok: true,
           service: serviceName,
           mode: currentMode,
-          message: `✓ Server restarted in ${modeLabel} mode. ${modeHint}`.trim(),
+          message,
           requestId,
         })
       } catch (error) {

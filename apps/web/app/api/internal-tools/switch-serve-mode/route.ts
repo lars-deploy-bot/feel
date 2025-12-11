@@ -1,34 +1,12 @@
 import { execSync } from "node:child_process"
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, writeFileSync } from "node:fs"
 import { basename, dirname, join } from "node:path"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { createErrorResponse } from "@/features/auth/lib/auth"
 import { ErrorCodes } from "@/lib/error-codes"
 import { handleWorkspaceApi } from "@/lib/workspace-api-handler"
-import { runAsWorkspaceUser } from "@/lib/workspace-execution/command-runner"
-
-type ServeMode = "dev" | "build" | "unknown"
-
-/**
- * Detect the current serve mode by reading the systemd override file.
- */
-function detectCurrentMode(serviceName: string): ServeMode {
-  const overrideConf = `/etc/systemd/system/${serviceName}.d/override.conf`
-  try {
-    const content = readFileSync(overrideConf, "utf-8")
-    if (content.includes("bun run dev")) {
-      return "dev"
-    }
-    if (content.includes("bun run preview")) {
-      return "build"
-    }
-    return "unknown"
-  } catch {
-    // No override file means default (dev mode)
-    return "dev"
-  }
-}
+import { detectServeMode, runAsWorkspaceUser } from "@/lib/workspace-execution/command-runner"
 
 const SwitchServeModeSchema = z.object({
   workspaceRoot: z.string(),
@@ -93,7 +71,7 @@ export async function POST(req: Request) {
       const overrideConf = join(overrideDir, "override.conf")
 
       // Detect current mode before switching
-      const previousMode = detectCurrentMode(serviceName)
+      const previousMode = detectServeMode(workspaceRoot)
       const alreadyInMode = previousMode === mode
 
       console.log(`[switch-serve-mode ${requestId}] Switching ${domain} from ${previousMode} to ${mode} mode`)
@@ -150,8 +128,8 @@ ExecStart=${execStart}
 
         // Build informative message based on previous state
         const modeLabel = mode === "dev" ? "Development" : "Production"
-        const previousLabel =
-          previousMode === "dev" ? "development" : previousMode === "build" ? "production" : "unknown"
+        // If previous mode is unknown, don't mention it - just say we switched to the new mode
+        const previousLabel = previousMode === "dev" ? "development" : previousMode === "build" ? "production" : null
 
         let message: string
         if (alreadyInMode) {
@@ -167,7 +145,10 @@ ExecStart=${execStart}
             mode === "dev"
               ? "Changes you make will appear instantly on the site."
               : "Your site is now running the fast, optimized version."
-          message = `✓ Switched from ${previousLabel} to ${modeLabel.toLowerCase()} mode. ${explanation}`
+          // If we couldn't detect previous mode, just say we enabled the new mode
+          message = previousLabel
+            ? `✓ Switched from ${previousLabel} to ${modeLabel.toLowerCase()} mode. ${explanation}`
+            : `✓ ${modeLabel} mode enabled. ${explanation}`
         }
 
         return NextResponse.json({

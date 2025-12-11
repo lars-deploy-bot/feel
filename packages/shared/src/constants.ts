@@ -274,16 +274,6 @@ export interface FeatureFlagDefinition {
  */
 export const FEATURE_FLAGS = {
   /**
-   * Auto-fill message input with formatted conversation on completion.
-   * When enabled, after Claude finishes responding, the conversation
-   * is formatted and placed in the message input for easy copying/editing.
-   */
-  AUTO_COPY_ON_COMPLETE: {
-    defaultValue: false,
-    description: "Auto-fill message input with formatted conversation on completion",
-  },
-
-  /**
    * Agent Supervisor - Analyze conversation progress and suggest next action.
    * When enabled and a PR goal is set, uses askAIFull + Groq to evaluate
    * progress and suggest the optimal next message after Claude completes.

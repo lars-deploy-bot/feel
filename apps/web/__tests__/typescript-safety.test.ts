@@ -58,9 +58,10 @@ export function TestComponent() {
     60000,
   )
 
-  it("CRITICAL: SettingsModal doesn't reference 'updateError'", () => {
-    const settingsModalPath = join(process.cwd(), "components/modals/SettingsModal.tsx")
-    const content = readFileSync(settingsModalPath, "utf-8")
+  it("CRITICAL: WorkspaceSettings doesn't reference 'updateError'", () => {
+    // Note: Error handling was moved from SettingsModal.tsx to WorkspaceSettings.tsx
+    const workspaceSettingsPath = join(process.cwd(), "components/settings/tabs/WorkspaceSettings.tsx")
+    const content = readFileSync(workspaceSettingsPath, "utf-8")
 
     // Should NOT contain updateError
     if (content.includes("updateError")) {
@@ -73,7 +74,7 @@ export function TestComponent() {
       if (usageLines.length > 0) {
         const locations = usageLines.map(l => `Line ${l.index}: ${l.line.trim()}`).join("\n")
         expect.fail(
-          `Found 'updateError' usage in SettingsModal.tsx:\n${locations}\n\nShould use 'editor.error' instead!`,
+          `Found 'updateError' usage in WorkspaceSettings.tsx:\n${locations}\n\nShould use 'editor.error' instead!`,
         )
       }
     }
@@ -83,8 +84,9 @@ export function TestComponent() {
   })
 
   it("CRITICAL: All hook return values are used correctly", () => {
-    const settingsModalPath = join(process.cwd(), "components/modals/SettingsModal.tsx")
-    const content = readFileSync(settingsModalPath, "utf-8")
+    // Note: useOrgEditor was moved from SettingsModal.tsx to WorkspaceSettings.tsx
+    const workspaceSettingsPath = join(process.cwd(), "components/settings/tabs/WorkspaceSettings.tsx")
+    const content = readFileSync(workspaceSettingsPath, "utf-8")
 
     // Check that useOrgEditor is destructured correctly
     const editorHookMatch = content.match(/const\s+(\w+)\s*=\s*useOrgEditor/)

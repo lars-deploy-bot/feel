@@ -114,11 +114,15 @@ if [ -d "$WEB_NEXT_DIR/dev" ]; then
     mv "$WEB_NEXT_DIR/dev" "$DEV_BACKUP"
 fi
 
-# Clean up any existing production .next build
+# Clean up any existing production .next build and turbo cache for web
+# This ensures turbo doesn't serve a cached build when .next doesn't exist
 if [ -d "$WEB_NEXT_DIR" ]; then
     log_info "Removing existing production .next build..."
     rm -rf "$WEB_NEXT_DIR"
 fi
+log_info "Clearing turbo cache for web app..."
+rm -rf "$PROJECT_ROOT/.turbo"
+rm -rf "$PROJECT_ROOT/node_modules/.cache/turbo"
 
 # Clean up stale dist directory if it exists (prevents type validation errors)
 if [ -d "$WEB_DIR/dist" ]; then
@@ -134,73 +138,22 @@ if ! "$SCRIPT_DIR/../validation/detect-workspace-issues.sh"; then
 fi
 log_success "Workspace validation passed"
 
-# Build dependencies first (images + tools packages)
-log_info "Building workspace dependencies..."
-
 # Remove circular symlinks created by bun workspace linking (causes Turbopack build failures)
 log_info "Removing circular symlinks in packages..."
 rm -f templates/site-template/site-template packages/site-controller/site-controller packages/images/images packages/tools/tools packages/shared/shared 2>/dev/null || true
 log_success "Cleaned up circular symlinks"
 
-# Build images package
-if [ ! -d "packages/images" ]; then
-    log_error "Package not found: packages/images"
-    exit 1
-fi
-log_info "Building packages/images..."
-cd packages/images
-if ! bun run build; then
-    log_error "Failed to build images package"
-    cd "$PROJECT_ROOT"
-    exit 1
-fi
-cd "$PROJECT_ROOT"
-log_success "Built packages/images"
-
-# Build tools package
-if [ ! -d "packages/tools" ]; then
-    log_error "Package not found: packages/tools"
-    exit 1
-fi
-log_info "Building packages/tools..."
-cd packages/tools
-if ! bun run build; then
-    log_error "Failed to build tools package"
-    cd "$PROJECT_ROOT"
-    exit 1
-fi
-cd "$PROJECT_ROOT"
-log_success "Built packages/tools"
-
-# Build site-controller package
-if [ ! -d "packages/site-controller" ]; then
-    log_error "Package not found: packages/site-controller"
-    exit 1
-fi
-log_info "Building packages/site-controller..."
-cd packages/site-controller
-if ! bun run build; then
-    log_error "Failed to build site-controller package"
-    cd "$PROJECT_ROOT"
-    exit 1
-fi
-cd "$PROJECT_ROOT"
-log_success "Built packages/site-controller"
-
-log_success "All workspace dependencies built successfully"
-
-# Build web app to temp location
-log_info "Building web app..."
+# Build web app using turbo with --force to ensure fresh build
+# Turbo handles building dependencies (images, tools, site-controller, shared) automatically
+log_info "Building web app (turbo --force)..."
 BUILD_START=$(date +%s)
 
-cd "$WEB_DIR"
-if ! bun run build; then
+# Run turbo build with --force to bypass cache and get fresh .next output
+# Direct `next build` fails with "generate is not a function" due to monorepo resolution issues
+if ! bun run build --filter=web --force; then
     log_error "Build failed"
-    cd "$PROJECT_ROOT"
     exit 1
 fi
-
-cd "$PROJECT_ROOT"
 BUILD_END=$(date +%s)
 BUILD_TIME=$((BUILD_END - BUILD_START))
 log_success "Build completed in ${BUILD_TIME}s"

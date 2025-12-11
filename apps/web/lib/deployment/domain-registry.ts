@@ -75,21 +75,30 @@ async function getAppClient() {
 /**
  * Get all domains with full information
  * Joins domains → orgs → users to get complete picture
+ * @param includeTestData - If true, includes test domains (default: false)
  */
-export async function getAllDomains(): Promise<DomainInfo[]> {
+export async function getAllDomains(includeTestData = false): Promise<DomainInfo[]> {
   const app = await getAppClient()
   const iam = await getIamClient()
 
-  // Get all domains with org IDs
-  const { data: domains, error: domainsError } = await app.from("domains").select("hostname, port, org_id, created_at")
+  // Get all domains with org IDs (excluding test domains by default)
+  let query = app.from("domains").select("hostname, port, org_id, created_at")
+  if (!includeTestData) {
+    query = query.eq("is_test_env", false)
+  }
+  const { data: domains, error: domainsError } = await query
 
   if (domainsError || !domains) {
     console.error("[Domain Registry] Failed to fetch domains:", domainsError)
     return []
   }
 
-  // Get all orgs
-  const { data: orgs, error: orgsError } = await iam.from("orgs").select("org_id, name, credits")
+  // Get all orgs (excluding test orgs by default)
+  let orgsQuery = iam.from("orgs").select("org_id, name, credits")
+  if (!includeTestData) {
+    orgsQuery = orgsQuery.eq("is_test_env", false)
+  }
+  const { data: orgs, error: orgsError } = await orgsQuery
 
   if (orgsError || !orgs) {
     console.error("[Domain Registry] Failed to fetch orgs:", orgsError)

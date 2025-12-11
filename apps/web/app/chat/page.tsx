@@ -94,7 +94,6 @@ function ChatPageContent() {
 
   // Feature flags
   const agentSupervisorEnabled = useFeatureFlag("AGENT_SUPERVISOR")
-  const autoCopyOnCompleteEnabled = useFeatureFlag("AUTO_COPY_ON_COMPLETE")
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const isAutoScrolling = useRef(false)
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -711,9 +710,6 @@ function ChatPageContent() {
           setIsEvaluatingProgress(false)
           agentManagerAbortRef.current = null
         })
-    } else if (autoCopyOnCompleteEnabled && formattedMessages) {
-      const trimmed = formattedMessages.replace(/\n+/g, " ").trim()
-      setMsg(trimmed)
     }
   }
 

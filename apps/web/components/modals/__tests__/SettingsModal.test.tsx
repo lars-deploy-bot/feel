@@ -37,11 +37,14 @@ describe("SettingsModal", () => {
       expect(hasWindowCheck).toBe(false)
     })
 
-    it("has separate mobile and desktop modal containers", () => {
-      // Mobile container should be hidden on sm+ screens
+    it("uses useIsDesktop hook for animation decisions", () => {
+      // The refactored modal uses useIsDesktop() which returns null during SSR
+      // This prevents animation mismatch by not rendering until viewport is known
+      expect(source).toContain("useIsDesktop()")
+      // Should return null during SSR to prevent wrong animation
+      expect(source).toContain("if (isDesktop === null) return null")
+      // Mobile-specific elements should be hidden on sm+ screens
       expect(source).toContain('className="sm:hidden')
-      // Desktop container should be hidden below sm, visible on sm+
-      expect(source).toContain('className="hidden sm:flex')
     })
   })
 })

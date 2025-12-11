@@ -137,17 +137,21 @@ export async function POST(req: NextRequest) {
       logger.log("Using user-selected model:", userModel)
     }
 
-    // Check input safety
-    logger.log("Checking input safety...")
-    const safetyCheck = await isInputSafe(message)
-    if (safetyCheck === "unsafe") {
-      logger.log("Input flagged as unsafe")
-      return createErrorResponse(ErrorCodes.INVALID_REQUEST, 400, {
-        message: "Your message contains inappropriate content. Please keep it professional and appropriate.",
-        requestId,
-      })
+    // Check input safety (skip for superadmins - they should never be interrupted)
+    if (!user.isSuperadmin) {
+      logger.log("Checking input safety...")
+      const safetyCheck = await isInputSafe(message)
+      if (safetyCheck === "unsafe") {
+        logger.log("Input flagged as unsafe")
+        return createErrorResponse(ErrorCodes.INVALID_REQUEST, 400, {
+          message: "Your message contains inappropriate content. Please keep it professional and appropriate.",
+          requestId,
+        })
+      }
+      logger.log("Input safety check passed")
+    } else {
+      logger.log("Skipping input safety check (superadmin)")
     }
-    logger.log("Input safety check passed")
 
     const host = (await headers()).get("host") || "localhost"
     const origin = req.headers.get("origin")
