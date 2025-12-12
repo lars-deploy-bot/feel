@@ -161,7 +161,7 @@ switch (cmd) {
           const visibleTexts: string[] = []
           parent.querySelectorAll("span").forEach(span => {
             const text = span.textContent?.trim()
-            if (text && text.match(/\(\d+\)|\d+\s*(review|rezension|avalia)/i)) {
+            if (text?.match(/\(\d+\)|\d+\s*(review|rezension|avalia)/i)) {
               visibleTexts.push(text)
             }
           })

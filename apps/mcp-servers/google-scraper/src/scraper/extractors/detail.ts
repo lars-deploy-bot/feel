@@ -1,7 +1,7 @@
 import * as cheerio from "cheerio"
 import type { GoogleMapsBusiness, GoogleMapsResult, GoogleMapsReview, ProxyConfig } from "../types.js"
-import { parseHours, parseNumber, sanitizeJSON, setupPage, cleanupBrowser, clickReviewsTabAndWait } from "../utils.js"
-import { isRelativeTime, extractAuthorFromLabel, parseRatingText } from "../i18n.js"
+import { parseHours, sanitizeJSON, setupPage, cleanupBrowser, clickReviewsTabAndWait } from "../utils.js"
+import { isRelativeTime, extractAuthorFromLabel, } from "../i18n.js"
 
 type ExtractResult = { success: true; data: GoogleMapsResult } | { success: false; error: string }
 
@@ -147,12 +147,12 @@ export async function searchSingleBusiness(
 
     // 2. Rating & reviews - try multiple selectors for i18n support
     // Google changes class names frequently, so try multiple approaches
-    let stars =
+    const stars =
       $(".fontDisplayLarge").text() || // Old selector
       $(".F7nice span[aria-hidden='true']").first().text() || // New selector
       $("span.ceNzKf")
         .attr("aria-label")
-        ?.match(/[\d,\.]+/)?.[0] || // From aria-label
+        ?.match(/[\d,.]+/)?.[0] || // From aria-label
       null
 
     // Try to find review count from various aria-labels (reviews, Rezensionen, Reseñas, etc.)
@@ -171,7 +171,7 @@ export async function searchSingleBusiness(
         if (match) {
           const cleanNum = match[0].replace(/[\s.]/g, "").replace(",", "")
           const parsed = parseInt(cleanNum, 10)
-          if (!isNaN(parsed)) {
+          if (!Number.isNaN(parsed)) {
             numberOfReviews = parsed
           }
         }
@@ -207,12 +207,12 @@ export async function searchSingleBusiness(
           /^([\d.,]+)\s*(?:K)?\s*(?:Google-)?(?:Rezension(?:en)?|reviews?|avalia(?:ções|ção)?|avis|recensi(?:oni|one)?|beoordel(?:ingen)?)/i,
         )
         if (match) {
-          let numStr = match[1].replace(/[\s.]/g, "").replace(",", "")
+          const numStr = match[1].replace(/[\s.]/g, "").replace(",", "")
           let num = parseInt(numStr, 10)
           if (match[0].includes("K") || match[0].includes("k")) {
             num *= 1000
           }
-          if (!isNaN(num)) {
+          if (!Number.isNaN(num)) {
             numberOfReviews = num
           }
         }
@@ -314,7 +314,7 @@ export async function scrapeDetailPage(
         if (match) {
           const numStr = match[1].replace(/[\s.]/g, "").replace(",", "")
           const num = parseInt(numStr, 10)
-          if (!isNaN(num) && num > 0) {
+          if (!Number.isNaN(num) && num > 0) {
             return num
           }
         }

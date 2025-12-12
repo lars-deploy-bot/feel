@@ -1,5 +1,5 @@
-import { setupPage, cleanupBrowser, clickReviewsTabAndWait, REVIEW_TAB_SELECTORS } from "./src/scraper/utils.js"
-import * as fs from "fs"
+import { setupPage, cleanupBrowser, REVIEW_TAB_SELECTORS } from "./src/scraper/utils.js"
+import * as fs from "node:fs"
 
 // Test using the debug.ts capture which worked earlier
 import { navigateToGoogleMaps, detectFeed } from "./src/scraper/utils.js"
@@ -121,18 +121,18 @@ if (!result.success) {
 }
 
 for (const biz of result.data.businesses) {
-  console.log("\n" + "=".repeat(60))
+  console.log(`\n${"=".repeat(60)}`)
   console.log(biz.storeName)
-  console.log("Rating: " + (biz.stars || "N/A") + " (" + (biz.numberOfReviews || 0) + " reviews)")
+  console.log(`Rating: ${biz.stars || "N/A"} (${biz.numberOfReviews || 0} reviews)`)
   console.log("Has reviews field:", "reviews" in biz, "| Length:", biz.reviews?.length)
 
   if (biz.reviews && biz.reviews.length > 0) {
     console.log("\nReviews:")
     for (const r of biz.reviews) {
-      console.log("  * " + r.author + " (" + (r.rating || "?") + " stars) - " + r.time)
+      console.log(`  * ${r.author} (${r.rating || "?"} stars) - ${r.time}`)
       if (r.text) {
-        const preview = r.text.length > 150 ? r.text.slice(0, 150) + "..." : r.text
-        console.log('    "' + preview + '"')
+        const preview = r.text.length > 150 ? `${r.text.slice(0, 150)}...` : r.text
+        console.log(`    "${preview}"`)
       }
     }
   }

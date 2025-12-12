@@ -143,7 +143,7 @@ export function parseRatingText(ratingText: string | undefined): {
     const parts = ratingText.split(starsRegex)
     if (parts[0]) {
       // Extract rating number (handles both "4.5" and "4,5")
-      const ratingMatch = parts[0].match(/[\d,\.]+/)
+      const ratingMatch = parts[0].match(/[\d,.]+/)
       if (ratingMatch) {
         stars = ratingMatch[0].replace(",", ".")
       }
@@ -157,7 +157,7 @@ export function parseRatingText(ratingText: string | undefined): {
         // Remove spaces and dots used as thousand separators, keep only digits
         const cleanNum = reviewMatch[0].replace(/[\s.]/g, "").replace(",", "")
         const parsed = parseInt(cleanNum, 10)
-        if (!isNaN(parsed)) {
+        if (!Number.isNaN(parsed)) {
           numberOfReviews = parsed
         }
       }
