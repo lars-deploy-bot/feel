@@ -123,6 +123,7 @@ func main() {
 
 	// File API routes (protected)
 	mux.Handle("POST /api/check-directory", authAPIMiddleware(http.HandlerFunc(fileHandler.CheckDirectory)))
+	mux.Handle("POST /api/create-directory", authAPIMiddleware(http.HandlerFunc(fileHandler.CreateDirectory)))
 	mux.Handle("POST /api/upload", authAPIMiddleware(http.HandlerFunc(fileHandler.Upload)))
 	mux.Handle("POST /api/list-files", authAPIMiddleware(http.HandlerFunc(fileHandler.ListFiles)))
 	mux.Handle("POST /api/read-file", authAPIMiddleware(http.HandlerFunc(fileHandler.ReadFile)))

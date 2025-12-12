@@ -48,11 +48,11 @@ describe("tool-display-config", () => {
   })
 
   describe("shouldAutoExpand", () => {
-    it("returns true for errors regardless of tool config", () => {
-      // Linear list_issues is configured as autoExpand: false
-      expect(shouldAutoExpand("mcp__linear__list_issues", true)).toBe(true)
-      // Unknown tool
-      expect(shouldAutoExpand("unknown_tool", true)).toBe(true)
+    it("returns config value for errors (errors stay collapsed)", () => {
+      // Linear list_issues is configured as autoExpand: false - stays collapsed even on error
+      expect(shouldAutoExpand("mcp__linear__list_issues", true)).toBe(false)
+      // Unknown tool defaults to collapsed
+      expect(shouldAutoExpand("unknown_tool", true)).toBe(false)
     })
 
     it("returns config value when not an error", () => {

@@ -1,12 +1,30 @@
 # Plan Part 2: Database Schema
 
-Supabase tables and Dexie.js IndexedDB schema for message storage.
+Supabase tables and Dexie.js IndexedDB schema for message storage with stream tracking.
 
 ## Supabase Tables
 
 **IMPORTANT**: The Supabase client MUST be configured with `schema: "app"`. See client setup below.
 
 ```sql
+-- Streams (tracks streaming sessions for idempotency and billing)
+CREATE TABLE app.streams (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  request_id TEXT NOT NULL UNIQUE,                    -- Client-generated idempotency key
+  org_id UUID NOT NULL REFERENCES iam.orgs(org_id),
+  user_id UUID NOT NULL REFERENCES iam.users(user_id),
+  workspace TEXT NOT NULL,
+  tab_id UUID NOT NULL,
+  status TEXT NOT NULL DEFAULT 'running',             -- 'running' | 'complete' | 'interrupted' | 'error'
+  started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  ended_at TIMESTAMPTZ,
+  total_input_tokens INT,
+  total_output_tokens INT,
+  error_code TEXT,
+
+  CONSTRAINT valid_status CHECK (status IN ('running', 'complete', 'interrupted', 'error'))
+);
+
 -- Conversations (all conversations stored server-side)
 CREATE TABLE app.conversations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -44,26 +62,31 @@ CREATE TABLE app.conversation_tabs (
 );
 
 -- Messages (belong to tabs, not conversations)
+-- Only FINALIZED messages are stored here (not streaming partials)
 CREATE TABLE app.messages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tab_id UUID NOT NULL REFERENCES app.conversation_tabs(id) ON DELETE CASCADE,
+  stream_id UUID REFERENCES app.streams(id),            -- NEW: parent stream (nullable for user messages)
+  seq INT,                                              -- NEW: position within stream (for ordering)
   type TEXT NOT NULL,                                   -- 'user' | 'assistant' | 'tool_use' | 'tool_result' | 'thinking' | 'system'
   content JSONB NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),        -- Track streaming updates
-  -- Message lifecycle (sync streaming state to teammates)
-  status TEXT NOT NULL DEFAULT 'complete',              -- 'streaming' | 'complete' | 'interrupted' | 'error'
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  -- Message lifecycle (final state only - no 'streaming' status in DB)
+  status TEXT NOT NULL DEFAULT 'complete',              -- 'complete' | 'interrupted' | 'error'
   aborted_at TIMESTAMPTZ,                               -- When user hit stop
   error_code TEXT,                                      -- Error code if status = 'error'
   -- Message origin (for debugging and migrations)
   origin TEXT NOT NULL DEFAULT 'local',                 -- 'local' | 'remote' | 'migration'
 
   CONSTRAINT valid_type CHECK (type IN ('user', 'assistant', 'tool_use', 'tool_result', 'thinking', 'system')),
-  CONSTRAINT valid_status CHECK (status IN ('streaming', 'complete', 'interrupted', 'error')),
+  CONSTRAINT valid_status CHECK (status IN ('complete', 'interrupted', 'error')),
   CONSTRAINT valid_origin CHECK (origin IN ('local', 'remote', 'migration'))
 );
 
 -- Indexes
+CREATE INDEX idx_streams_request_id ON app.streams(request_id);
+CREATE INDEX idx_streams_org_status ON app.streams(org_id, status);
 CREATE INDEX idx_conversations_workspace ON app.conversations(workspace, updated_at DESC);
 CREATE INDEX idx_conversations_creator ON app.conversations(creator_id, updated_at DESC);
 CREATE INDEX idx_conversations_org_shared ON app.conversations(org_id, visibility, updated_at DESC)
@@ -72,13 +95,24 @@ CREATE INDEX idx_conversations_org_shared ON app.conversations(org_id, visibilit
 CREATE INDEX idx_conversations_active ON app.conversations(workspace, updated_at DESC)
   WHERE deleted_at IS NULL AND archived_at IS NULL;
 CREATE INDEX idx_messages_tab ON app.messages(tab_id, created_at);
-CREATE INDEX idx_messages_tab_status ON app.messages(tab_id, status);
+CREATE INDEX idx_messages_stream_seq ON app.messages(stream_id, seq);  -- NEW: for ordering
 CREATE INDEX idx_tabs_conversation ON app.conversation_tabs(conversation_id, position);
 
 -- RLS Policies
+ALTER TABLE app.streams ENABLE ROW LEVEL SECURITY;
 ALTER TABLE app.conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE app.messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE app.conversation_tabs ENABLE ROW LEVEL SECURITY;
+
+-- Streams: only creator can see their streams
+CREATE POLICY "Users can view their own streams"
+  ON app.streams FOR SELECT
+  USING (user_id = auth.uid());
+
+CREATE POLICY "Broker can manage streams"
+  ON app.streams FOR ALL
+  USING (true)  -- Broker uses service role, bypasses RLS
+  WITH CHECK (true);
 
 -- Conversations: creator can do everything, org members can view shared
 CREATE POLICY "Users can manage their own conversations"
@@ -169,8 +203,8 @@ export const createClient = () =>
     }
   )
 
-// IMPORTANT: The table names in code ("conversations", "messages", "conversation_tabs")
-// refer to app.conversations, app.messages, app.conversation_tabs.
+// IMPORTANT: The table names in code ("conversations", "messages", "conversation_tabs", "streams")
+// refer to app.conversations, app.messages, app.conversation_tabs, app.streams.
 // Do NOT change without updating the migrations.
 ```
 
@@ -196,7 +230,8 @@ export function getMessageDbName(userId: string): string {
 
 export type ConversationVisibility = "private" | "shared"
 export type DbMessageType = "user" | "assistant" | "tool_use" | "tool_result" | "thinking" | "system"
-export type DbMessageStatus = "streaming" | "complete" | "interrupted" | "error"
+// Note: "streaming" is NOT a valid status for Dexie - streaming happens in memory only
+export type DbMessageStatus = "complete" | "interrupted" | "error"
 export type DbMessageOrigin = "local" | "remote" | "migration"
 
 // Discriminated union for type-safe content
@@ -240,19 +275,21 @@ export interface DbConversation {
 export interface DbMessage {
   id: string
   tabId: string  // Messages belong to tabs, NOT conversations (critical!)
+  streamId?: string  // NEW: parent stream (for ordering)
+  seq?: number       // NEW: position within stream
   type: DbMessageType
   content: DbMessageContent  // Structured content
   createdAt: number
-  updatedAt: number  // Updated on each snapshot during streaming
+  updatedAt: number
   version: number  // Schema version for future migrations (current: 1)
-  status: DbMessageStatus  // Message lifecycle status
+  status: DbMessageStatus  // Final status only - no "streaming"
   origin: DbMessageOrigin  // Where message came from (debugging/migrations)
   // Interruption metadata (optional)
   abortedAt?: number  // Timestamp when user stopped the stream
   errorCode?: string  // Error code if status === "error"
   // Sync metadata
   syncedAt?: number
-  pendingSync?: boolean  // IMPORTANT: false during streaming, true only when finalized
+  pendingSync?: boolean
 }
 
 export interface DbTab {
@@ -277,32 +314,14 @@ class MessageDatabase extends Dexie {
   constructor(userId: string) {
     super(getMessageDbName(userId))
 
-    // Version 1: Initial schema
+    // Version 1: Initial schema with stream support
     this.version(1).stores({
       // Composite indexes for efficient queries
-      // Index for "all conversations for this user across workspaces"
       conversations: "id, [workspace+updatedAt], [workspace+creatorId], [orgId+visibility+updatedAt], [creatorId+updatedAt], pendingSync, deletedAt",
-      // Index for efficient pending sync queries per tab
-      messages: "id, [tabId+createdAt], [tabId+pendingSync], pendingSync",
+      // Index includes streamId+seq for ordering
+      messages: "id, [tabId+createdAt], [tabId+pendingSync], [streamId+seq], pendingSync",
       tabs: "id, [conversationId+position], pendingSync",
     })
-
-    // Version 2: Placeholder for future migrations
-    // IMPORTANT: Add migrations here, don't redefine version(1) or you'll nuke data
-    this.version(2)
-      .stores({
-        // Same schema - just demonstrating upgrade pattern
-        conversations: "id, [workspace+updatedAt], [workspace+creatorId], [orgId+visibility+updatedAt], [creatorId+updatedAt], pendingSync, deletedAt",
-        messages: "id, [tabId+createdAt], [tabId+pendingSync], pendingSync",
-        tabs: "id, [conversationId+position], pendingSync",
-      })
-      .upgrade(tx => {
-        // Example: ensure all messages have status field
-        return tx.table("messages").toCollection().modify((m: DbMessage) => {
-          if (!m.status) m.status = "complete"
-          if (!m.origin) m.origin = "local"
-        })
-      })
 
     // Handle blocked events during schema upgrades
     this.on("blocked", () => {
@@ -408,31 +427,39 @@ export function toDbMessageContent(message: UIMessage): DbMessageContent {
  * Convert DbMessage to UIMessage for display
  */
 export function toUIMessage(dbMessage: DbMessage): UIMessage {
-  const { content, type, id, createdAt } = dbMessage
+  const { content, type, id, createdAt, status } = dbMessage
+
+  const base = {
+    id,
+    timestamp: createdAt,
+    status,
+  }
 
   switch (content.kind) {
     case "text":
-      return { id, type, content: content.text, timestamp: createdAt }
+      return { ...base, type, content: content.text }
     case "tool_use":
       return {
-        id,
+        ...base,
         type: "tool_use",
         content: content.args,
         toolName: content.toolName,
         toolUseId: content.toolUseId,
-        timestamp: createdAt,
       }
     case "tool_result":
       return {
-        id,
+        ...base,
         type: "tool_result",
         content: content.result,
         toolName: content.toolName,
         toolUseId: content.toolUseId,
-        timestamp: createdAt,
       }
     case "thinking":
-      return { id, type: "thinking", content: content.text, timestamp: createdAt }
+      return { ...base, type: "thinking", content: content.text }
+    case "system":
+      return { ...base, type: "system", content: content.text }
+    default:
+      return { ...base, type, content: "" }
   }
 }
 
@@ -445,9 +472,19 @@ export function extractTitle(content: DbMessageContent): string {
 }
 ```
 
+## Key Schema Changes from Original
+
+| Change | Reason |
+|--------|--------|
+| Added `app.streams` table | Track streaming sessions for idempotency and billing |
+| Added `stream_id` to messages | Link messages to parent stream |
+| Added `seq` to messages | Ordering within a stream (for replay) |
+| Removed `streaming` from DbMessageStatus | Streaming is in-memory only, not persisted |
+| Added `idx_messages_stream_seq` index | Efficient ordering queries |
+
 ## Execution Order
 
 1. **[Part 1: Architecture](./one-dexie-architecture.md)** - Read first for context
 2. **[Part 2: Schema](./two-dexie-schema.md)** - Implement Supabase + Dexie schema (this doc)
 3. **[Part 3: Implementation](./three-dexie-implementation.md)** - Sync service, hooks, store
-4. **[Part 4: Streaming](./four-dexie-streaming-integration.md)** - Streaming message lifecycle
+4. **[Part 4: Streaming](./four-dexie-streaming-integration.md)** - Direct broker streaming

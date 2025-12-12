@@ -27,7 +27,7 @@ import { LINEAR, STRIPE, STRIPE_PATTERNS, FILE_OPS, OTHER } from "./tool-names.j
  * Display configuration for a tool (no React dependencies)
  */
 export interface ToolDisplayConfig {
-  /** Auto-expand when result arrives? (errors always expand) */
+  /** Auto-expand when result arrives? */
   autoExpand: boolean
   /** Show in normal mode? (default: true, false = debug-only) */
   visibleInNormalMode: boolean
@@ -99,21 +99,31 @@ const stripePaymentIntentsPreview = (data: unknown): string => {
   return `${data.length} ${plural(data.length, "payment")} (${succeeded} succeeded)`
 }
 
-const readPreview = (data: unknown): string => {
-  const d = data as Record<string, unknown> | null
-  if (d?.total_lines) return `read ${d.lines_returned || d.total_lines} lines`
-  if (d?.file_size) return "read image"
-  if (d?.total_pages) return "read pdf"
-  if (d?.cells) return "read notebook"
-  return "read"
+const readPreview = (_data: unknown, input?: unknown): string => {
+  const d = _data as Record<string, unknown> | null
+  const inp = input as Record<string, unknown> | null
+  const fileName = inp?.file_path ? String(inp.file_path).split("/").pop() : null
+
+  if (d?.total_lines) {
+    const lines = d.lines_returned || d.total_lines
+    return fileName ? `${fileName} (${lines} lines)` : `${lines} lines`
+  }
+  if (d?.file_size) return fileName || "image"
+  if (d?.total_pages) return fileName || "pdf"
+  if (d?.cells) return fileName || "notebook"
+  return fileName || "file"
 }
 
-const editPreview = (data: unknown): string => {
-  const d = data as Record<string, unknown> | null
+const editPreview = (_data: unknown, input?: unknown): string => {
+  const d = _data as Record<string, unknown> | null
+  const inp = input as Record<string, unknown> | null
+  const fileName = inp?.file_path ? String(inp.file_path).split("/").pop() : null
+
   if (d?.replacements !== undefined) {
-    return `made ${d.replacements} ${plural(Number(d.replacements), "change")}`
+    const changes = `${d.replacements} ${plural(Number(d.replacements), "change")}`
+    return fileName ? `${fileName} (${changes})` : changes
   }
-  return "edit"
+  return fileName || "edited"
 }
 
 const grepPreview = (data: unknown): string => {
@@ -296,9 +306,14 @@ register(STRIPE.SEARCH_RESOURCES, {
 register(FILE_OPS.READ, { autoExpand: false, getPreview: readPreview })
 register(FILE_OPS.WRITE, {
   autoExpand: false,
-  getPreview: data => {
-    const d = data as Record<string, unknown> | null
-    return d?.bytes_written ? "wrote file" : "write"
+  getPreview: (_data, input) => {
+    const d = _data as Record<string, unknown> | null
+    const inp = input as Record<string, unknown> | null
+    const fileName = inp?.file_path ? String(inp.file_path).split("/").pop() : null
+    if (d?.bytes_written) {
+      return fileName || "file written"
+    }
+    return fileName || "file"
   },
 })
 register(FILE_OPS.EDIT, { autoExpand: false, getPreview: editPreview })
@@ -344,10 +359,8 @@ export function getDisplayConfig(toolName: string): ToolDisplayConfig {
 
 /**
  * Should this tool result auto-expand?
- * Errors always expand regardless of config.
  */
-export function shouldAutoExpand(toolName: string, isError: boolean): boolean {
-  if (isError) return true
+export function shouldAutoExpand(toolName: string, _isError: boolean): boolean {
   return getDisplayConfig(toolName).autoExpand
 }
 

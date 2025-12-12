@@ -2,171 +2,213 @@
 
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
+import { useShallow } from "zustand/react/shallow"
 
 /**
  * Tab Store - Manages conversation tabs per workspace
  *
- * Tabs allow users to work on multiple conversations simultaneously.
- * Each tab references a conversation ID and has an editable name.
- * Tabs are workspace-scoped and persisted to localStorage.
+ * Each tab = one conversation. Tabs are workspace-scoped and persisted.
+ * Tab names are "Tab 1", "Tab 2", etc. Numbers are never reused to avoid
+ * confusion with archived conversations in the sidebar.
  */
 
 export interface Tab {
   id: string
   conversationId: string
   name: string
+  tabNumber: number // Sequential number, never reused
   createdAt: number
+  inputDraft?: string // Persisted draft message for this tab
 }
 
 interface TabStoreState {
   tabsByWorkspace: Record<string, Tab[]>
   activeTabByWorkspace: Record<string, string | undefined>
   tabsExpandedByWorkspace: Record<string, boolean>
+  nextTabNumberByWorkspace: Record<string, number>
 }
 
 interface TabStoreActions {
-  addTab: (workspace: string, conversationId: string, name?: string) => Tab
+  addTab: (workspace: string, conversationId: string, name?: string) => Tab | null
   removeTab: (workspace: string, tabId: string) => void
   setActiveTab: (workspace: string, tabId: string) => void
   renameTab: (workspace: string, tabId: string, name: string) => void
-  updateTabConversation: (workspace: string, tabId: string, conversationId: string) => void
   toggleTabsExpanded: (workspace: string) => void
+  openConversationInTab: (workspace: string, conversationId: string, name?: string) => Tab | null
+  setTabInputDraft: (workspace: string, tabId: string, draft: string) => void
 }
 
 type TabStore = TabStoreState & TabStoreActions
 
-const MAX_TABS_PER_WORKSPACE = 10
-const DEFAULT_TAB_NAME = "current"
+const MAX_TABS = 10
 
-// Helper to generate unique IDs
-const generateId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+const genId = () => `tab-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 
 export const useTabStore = create<TabStore>()(
   persist(
-    set => ({
-      tabsByWorkspace: {},
-      activeTabByWorkspace: {},
-      tabsExpandedByWorkspace: {},
+    (set, get) => {
+      const getTabs = (workspace: string) => get().tabsByWorkspace[workspace] || []
+      const getNextNumber = (workspace: string) => get().nextTabNumberByWorkspace[workspace] || 1
 
-      addTab: (workspace, conversationId, name) => {
-        const newTab: Tab = {
-          id: generateId("tab"),
+      const setTabs = (workspace: string, tabs: Tab[], activeId?: string, nextNumber?: number) => {
+        set(s => ({
+          tabsByWorkspace: { ...s.tabsByWorkspace, [workspace]: tabs },
+          ...(activeId !== undefined && {
+            activeTabByWorkspace: { ...s.activeTabByWorkspace, [workspace]: activeId },
+          }),
+          ...(nextNumber !== undefined && {
+            nextTabNumberByWorkspace: { ...s.nextTabNumberByWorkspace, [workspace]: nextNumber },
+          }),
+        }))
+      }
+
+      const createTab = (workspace: string, conversationId: string, name?: string): Tab => {
+        const num = getNextNumber(workspace)
+        return {
+          id: genId(),
           conversationId,
-          name: name || DEFAULT_TAB_NAME,
+          name: name ?? `Tab ${num}`,
+          tabNumber: num,
           createdAt: Date.now(),
         }
+      }
 
-        set(state => {
-          const currentTabs = state.tabsByWorkspace[workspace] || []
-          if (currentTabs.length >= MAX_TABS_PER_WORKSPACE) {
-            console.warn(`[tabStore] Max tabs (${MAX_TABS_PER_WORKSPACE}) reached`)
-            return state
-          }
+      const addTabToWorkspace = (workspace: string, tabs: Tab[], tab: Tab) => {
+        setTabs(workspace, [...tabs, tab], tab.id, tab.tabNumber + 1)
+      }
 
-          return {
-            tabsByWorkspace: { ...state.tabsByWorkspace, [workspace]: [...currentTabs, newTab] },
-            activeTabByWorkspace: { ...state.activeTabByWorkspace, [workspace]: newTab.id },
-          }
-        })
+      return {
+        tabsByWorkspace: {},
+        activeTabByWorkspace: {},
+        tabsExpandedByWorkspace: {},
+        nextTabNumberByWorkspace: {},
 
-        return newTab
-      },
+        addTab: (workspace, conversationId, name) => {
+          const tabs = getTabs(workspace)
+          if (tabs.length >= MAX_TABS) return null
 
-      removeTab: (workspace, tabId) => {
-        set(state => {
-          const currentTabs = state.tabsByWorkspace[workspace] || []
-          const tabIndex = currentTabs.findIndex(t => t.id === tabId)
-          if (tabIndex === -1) return state
+          const tab = createTab(workspace, conversationId, name)
+          addTabToWorkspace(workspace, tabs, tab)
+          return tab
+        },
 
-          const newTabs = currentTabs.filter(t => t.id !== tabId)
-          const currentActiveId = state.activeTabByWorkspace[workspace]
+        removeTab: (workspace, tabId) => {
+          const tabs = getTabs(workspace)
+          const idx = tabs.findIndex(t => t.id === tabId)
+          if (idx === -1 || tabs.length <= 1) return
 
-          // If removing active tab, switch to adjacent
-          let newActiveId: string | undefined = currentActiveId
-          if (currentActiveId === tabId) {
-            const nextIndex = Math.min(tabIndex, newTabs.length - 1)
-            newActiveId = newTabs[nextIndex]?.id
-          }
+          const newTabs = tabs.filter(t => t.id !== tabId)
+          const activeId = get().activeTabByWorkspace[workspace]
+          const newActiveId = activeId === tabId ? newTabs[Math.min(idx, newTabs.length - 1)]?.id : activeId
 
-          return {
-            tabsByWorkspace: { ...state.tabsByWorkspace, [workspace]: newTabs },
-            activeTabByWorkspace: { ...state.activeTabByWorkspace, [workspace]: newActiveId },
-          }
-        })
-      },
+          setTabs(workspace, newTabs, newActiveId)
+        },
 
-      setActiveTab: (workspace, tabId) => {
-        set(state => ({
-          activeTabByWorkspace: { ...state.activeTabByWorkspace, [workspace]: tabId },
-        }))
-      },
+        setActiveTab: (workspace, tabId) => {
+          set(s => ({ activeTabByWorkspace: { ...s.activeTabByWorkspace, [workspace]: tabId } }))
+        },
 
-      renameTab: (workspace, tabId, name) => {
-        set(state => {
-          const tabs = state.tabsByWorkspace[workspace] || []
-          return {
-            tabsByWorkspace: {
-              ...state.tabsByWorkspace,
-              [workspace]: tabs.map(t => (t.id === tabId ? { ...t, name: name.trim() || "Untitled" } : t)),
+        renameTab: (workspace, tabId, name) => {
+          const tabs = getTabs(workspace)
+          setTabs(
+            workspace,
+            tabs.map(t => (t.id === tabId ? { ...t, name: name.trim() || "Untitled" } : t)),
+          )
+        },
+
+        toggleTabsExpanded: workspace => {
+          set(s => ({
+            tabsExpandedByWorkspace: {
+              ...s.tabsExpandedByWorkspace,
+              [workspace]: !s.tabsExpandedByWorkspace[workspace],
             },
-          }
-        })
-      },
+          }))
+        },
 
-      updateTabConversation: (workspace, tabId, conversationId) => {
-        set(state => {
-          const tabs = state.tabsByWorkspace[workspace] || []
-          return {
-            tabsByWorkspace: {
-              ...state.tabsByWorkspace,
-              [workspace]: tabs.map(t => (t.id === tabId ? { ...t, conversationId } : t)),
-            },
-          }
-        })
-      },
+        openConversationInTab: (workspace, conversationId, name) => {
+          const tabs = getTabs(workspace)
 
-      toggleTabsExpanded: workspace => {
-        set(state => ({
-          tabsExpandedByWorkspace: {
-            ...state.tabsExpandedByWorkspace,
-            [workspace]: !state.tabsExpandedByWorkspace[workspace],
-          },
-        }))
-      },
-    }),
+          const existing = tabs.find(t => t.conversationId === conversationId)
+          if (existing) {
+            set(s => ({ activeTabByWorkspace: { ...s.activeTabByWorkspace, [workspace]: existing.id } }))
+            return existing
+          }
+
+          if (tabs.length >= MAX_TABS) return null
+          const tab = createTab(workspace, conversationId, name)
+          addTabToWorkspace(workspace, tabs, tab)
+          return tab
+        },
+
+        setTabInputDraft: (workspace, tabId, draft) => {
+          const tabs = getTabs(workspace)
+          setTabs(
+            workspace,
+            tabs.map(t => (t.id === tabId ? { ...t, inputDraft: draft } : t)),
+          )
+        },
+      }
+    },
     {
       name: "claude-tab-storage",
-      version: 1,
-      partialize: state => ({
-        tabsByWorkspace: state.tabsByWorkspace,
-        activeTabByWorkspace: state.activeTabByWorkspace,
-        tabsExpandedByWorkspace: state.tabsExpandedByWorkspace,
+      version: 2, // Bump version for migration
+      partialize: s => ({
+        tabsByWorkspace: s.tabsByWorkspace,
+        activeTabByWorkspace: s.activeTabByWorkspace,
+        tabsExpandedByWorkspace: s.tabsExpandedByWorkspace,
+        nextTabNumberByWorkspace: s.nextTabNumberByWorkspace,
       }),
+      migrate: (persisted, version) => {
+        if (version === 1) {
+          // Migrate from v1: add tabNumber to existing tabs and compute nextTabNumber
+          const state = persisted as TabStoreState
+          const newTabsByWorkspace: Record<string, Tab[]> = {}
+          const nextNumbers: Record<string, number> = {}
+
+          for (const [ws, tabs] of Object.entries(state.tabsByWorkspace || {})) {
+            newTabsByWorkspace[ws] = tabs.map((t, i) => ({
+              ...t,
+              tabNumber: (t as Tab).tabNumber ?? i + 1,
+            }))
+            nextNumbers[ws] = newTabsByWorkspace[ws].length + 1
+          }
+
+          return {
+            ...state,
+            tabsByWorkspace: newTabsByWorkspace,
+            nextTabNumberByWorkspace: nextNumbers,
+          }
+        }
+        return persisted
+      },
     },
   ),
 )
 
-// Atomic selectors
-export const useTabs = (workspace: string | null) =>
-  useTabStore(state => (workspace ? state.tabsByWorkspace[workspace] || [] : []))
+// Selectors
+export const useTabs = (workspace: string | null): Tab[] =>
+  useTabStore(s => (workspace ? s.tabsByWorkspace[workspace] || [] : []))
 
-export const useActiveTab = (workspace: string | null) =>
-  useTabStore(state => {
+export const useActiveTab = (workspace: string | null): Tab | null =>
+  useTabStore(s => {
     if (!workspace) return null
-    const tabs = state.tabsByWorkspace[workspace] || []
-    const activeId = state.activeTabByWorkspace[workspace]
-    return tabs.find(t => t.id === activeId) || null
+    const tabs = s.tabsByWorkspace[workspace] || []
+    const activeId = s.activeTabByWorkspace[workspace]
+    return tabs.find(t => t.id === activeId) ?? null
   })
 
-export const useTabsExpanded = (workspace: string | null) =>
-  useTabStore(state => (workspace ? (state.tabsExpandedByWorkspace[workspace] ?? false) : false))
+export const useTabsExpanded = (workspace: string | null): boolean =>
+  useTabStore(s => (workspace ? (s.tabsExpandedByWorkspace[workspace] ?? false) : false))
 
-export const useTabActions = () =>
-  useTabStore(state => ({
-    addTab: state.addTab,
-    removeTab: state.removeTab,
-    setActiveTab: state.setActiveTab,
-    renameTab: state.renameTab,
-    updateTabConversation: state.updateTabConversation,
-    toggleTabsExpanded: state.toggleTabsExpanded,
-  }))
+export const useTabActions = (): TabStoreActions =>
+  useTabStore(
+    useShallow(s => ({
+      addTab: s.addTab,
+      removeTab: s.removeTab,
+      setActiveTab: s.setActiveTab,
+      renameTab: s.renameTab,
+      toggleTabsExpanded: s.toggleTabsExpanded,
+      openConversationInTab: s.openConversationInTab,
+      setTabInputDraft: s.setTabInputDraft,
+    })),
+  )

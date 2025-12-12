@@ -1,0 +1,4181 @@
+# WebAlive sites managed by Claude Bridge
+
+(common_headers) {
+    header {
+        # Security Headers
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+
+        # Remove server identification
+        -Server
+        -X-Powered-By
+    }
+}
+
+(image_serving) {
+    handle_path /_images/* {
+        root * /srv/webalive/storage
+        header Cache-Control "public, max-age=31536000, immutable"
+        file_server
+    }
+}
+
+demo.goalive.nl {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3333 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+crazywebsite.nl {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3338 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+riggedgpt.com {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3337 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+# Isolated systemd site with enhanced security
+wheelpickername.com {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3341 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+
+        # Enhanced isolation headers
+        header_down -X-Powered-By
+        header_down -Server
+    }
+}
+
+kranazilie.nl {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3339 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+barendbootsma.com {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3340 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+larsvandeneeden.com {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3342 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+two.goalive.nl {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3343 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+three.goalive.nl {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3344 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+four.goalive.nl {
+    import image_serving
+
+    header {
+        # Security headers (embeddable for template preview)
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    reverse_proxy localhost:3349 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+one.goalive.nl {
+    import image_serving
+
+    header {
+        # Security headers (embeddable for template preview)
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    reverse_proxy localhost:3346 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+five.goalive.nl {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3347 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+six.goalive.nl {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3348 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+# Claude Bridge staging and dev environments
+# (Now defined in /etc/caddy/Caddyfile.staging)
+
+# Terminal app (standalone Hono server with automatic WebSocket support)
+shell.terminal.goalive.nl {
+    reverse_proxy localhost:3888
+}
+
+sk.goalive.nl {
+    reverse_proxy localhost:3888
+}
+
+# NOTE: alive.best subdomain entries are added dynamically by @webalive/site-controller
+# When a new subdomain is deployed, the script adds an entry like:
+# alice.alive.best {
+#     import common_headers
+#     reverse_proxy localhost:3349 { ... }
+# }
+larss.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3351 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+template1.alive.best {
+    import image_serving
+
+    header {
+        # Security headers (embeddable for template preview)
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    reverse_proxy localhost:3352 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+dreammachinetest.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3354 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+emilewaterkeyn.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3355 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+larry.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3356 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+protino.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3357 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+lars.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3358 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+julieleclercq.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3360 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+hendricus.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3361 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+feedback.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3362 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+meditationtimer.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3363 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+# ============================================================================
+# PREVIEW SUBDOMAINS (AUTO-GENERATED)
+# ============================================================================
+# This section is auto-generated by scripts/generate-preview-caddyfile.ts
+# DO NOT EDIT MANUALLY - Changes will be overwritten
+#
+# Preview subdomains allow iframe embedding of workspace dev servers
+# with proper authentication and security headers.
+#
+# Format: <workspace-label>.preview.terminal.goalive.nl → localhost:<port>
+# Example: protino-alive-best.preview.terminal.goalive.nl → localhost:3357
+#
+# Features:
+# - Host header set to "localhost" for Vite dev server compatibility
+# - X-Frame-Options removed to allow iframe embedding
+# - CSP frame-ancestors restricts to terminal.goalive.nl domains only
+# - forward_auth enforces session authentication at Caddy edge
+# ============================================================================
+
+demo-goalive-nl.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3333 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+crazywebsite-nl.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3338 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+riggedgpt-com.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3337 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+wheelpickername-com.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3341 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+kranazilie-nl.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3339 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+barendbootsma-com.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3340 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+larsvandeneeden-com.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3342 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+two-goalive-nl.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3343 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+three-goalive-nl.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3344 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+four-goalive-nl.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3349 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+one-goalive-nl.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3346 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+five-goalive-nl.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3347 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+six-goalive-nl.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3348 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+sk-goalive-nl.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3888 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+larss-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3351 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+template1-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3352 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+dreammachinetest-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3354 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+emilewaterkeyn-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3355 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+larry-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3356 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+protino-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3357 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+lars-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3358 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+julieleclercq-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3360 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+hendricus-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3361 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+feedback-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3362 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+meditationtimer-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3363 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+components-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3364 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3366 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+hellopage-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3367 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+flip-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3369 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+blogtemplate-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3370 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+startup-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3371 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+riggedwheel-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3372 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+mealsnap-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3373 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+larsondj-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3374 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+djlarson-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3374 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+rmk2000test-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3375 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+roefapp-nl.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3376 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+tester-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3377 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+larsprive-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3378 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+windowsxp-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3379 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+emailpay-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3380 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+customers-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3381 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+huurmatcher-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3382 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+fabian-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3383 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+khalid-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3384 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+testkhalid-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3385 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+kapper-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3386 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+alessandro-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3387 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+notion-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3388 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+loodgieter-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3389 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+test3-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3390 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+blabla-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3393 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+awan-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3394 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+dogs-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3391 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+test-flow-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3398 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+gekkewebsite-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3399 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+test123-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3400 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+api-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3407 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+hallohallo-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3408 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+test-hallohallo-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3409 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+verify-fix-test-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3410 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+verify-fix-final-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3411 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+deploy-1713-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3412 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+test-wrong-812-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3413 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+newtest-847-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3415 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+wrongpass-860-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3416 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+test1-93-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3417 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+test2-09-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3418 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+geeskitchen-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3419 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+evermore-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3335 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+mp4-to-mp3-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3336 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+saaslanding-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3465 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+test-e2e-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3395 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+test-cli-e2e-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3482 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+asdf-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3485 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+larrysgarden-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3506 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+geesjeskitchen-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3507 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+larrylar-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3508 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+asdfadsfadsf-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3510 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+larryd-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3549 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+alivecustomers-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3586 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+schoenen-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3587 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+thomascooking-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3588 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+testdeploy-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3589 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth (direct to localhost to avoid redirect loops)
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+# ============================================================================
+# END PREVIEW SUBDOMAINS (AUTO-GENERATED)
+# ============================================================================
+
+# ============================================================================
+# ============================================================================
+components.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3364 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3366 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+hellopage.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3367 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+flip.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3369 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+blogtemplate.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3370 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+startup.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3371 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+rotatewheel.com {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3372 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+mealsnap.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3373 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+larsondj.alive.best, djlarson.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3374 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+rmk2000test.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3375 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+roefapp.nl {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3376 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+tester.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3377 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+larsprive.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3378 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+windowsxp.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3379 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+emailpay.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3380 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+customers.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3381 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+huurmatcher.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3382 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+fabian.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3383 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+khalid.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3384 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+testkhalid.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3385 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+kapper.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3386 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+alessandro.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3387 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+notion.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3388 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+loodgieter.alive.best {
+    import image_serving
+
+    header {
+        # Security headers (embeddable for template preview)
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    reverse_proxy localhost:3389 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+test3.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3390 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+blabla.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3393 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+awan.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3394 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+dogs.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3391 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+test-flow.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3398 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+gekkewebsite.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3399 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+test123.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3400 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+api.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3407 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+hallohallo.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3408 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+test-hallohallo.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3409 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+verify-fix-test.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3410 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+verify-fix-final.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3411 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+deploy-1713.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3412 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+test-wrong-812.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3413 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+newtest-847.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3415 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+wrongpass-860.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3416 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+test1-93.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3417 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+test2-09.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3418 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+geeskitchen.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3419 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+evermore.alive.best {
+    reverse_proxy localhost:3335
+}
+
+mp4-to-mp3.alive.best {
+    reverse_proxy localhost:3336
+}
+
+saaslanding.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3465 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+# Auto-generated Caddyfile for pf163218.alive.best
+# Port: 3467
+# Auto-generated Caddyfile for test-e2e.alive.best
+# Port: 3395
+
+test-e2e.alive.best {
+    import common_headers
+    reverse_proxy localhost:3395 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+# Auto-generated Caddyfile for tc2.alive.best
+# Port: 3406
+# Auto-generated Caddyfile for tc1.alive.best
+# Port: 3404
+# Auto-generated Caddyfile for tc3.alive.best
+# Port: 3405
+# Auto-generated Caddyfile for test-cli-e2e.alive.best
+# Port: 3482
+
+test-cli-e2e.alive.best {
+    import common_headers
+    reverse_proxy localhost:3482 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+# Auto-generated Caddyfile for asdf.alive.best
+# Port: 3485
+
+asdf.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3485 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+# Auto-generated Caddyfile for larrysgarden.alive.best
+# Port: 3506
+
+larrysgarden.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3506 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+# Auto-generated Caddyfile for geesjeskitchen.alive.best
+# Port: 3507
+
+geesjeskitchen.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3507 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+# Auto-generated Caddyfile for larrylar.alive.best
+# Port: 3508
+
+larrylar.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3508 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+asdfadsfadsf.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3510 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+larryd.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3549 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+alivecustomers.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3586 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+schoenen.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3587 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+thomascooking.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3588 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+testdeploy.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3589 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+johnvm.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3590 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+johnvm-alive-best.preview.terminal.goalive.nl {
+    reverse_proxy localhost:3590 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+wfclientoutreach.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3591 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+wfclientoutreach-alive-best.preview.terminal.goalive.nl {
+    reverse_proxy localhost:3591 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+evo.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3592 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+evo-alive-best.preview.terminal.goalive.nl {
+    reverse_proxy localhost:3592 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+checkcheck.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3593 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+checkcheck-alive-best.preview.terminal.goalive.nl {
+    reverse_proxy localhost:3593 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+blank.alive.best {
+    import image_serving
+
+    header {
+        # Security headers (embeddable - allows iframe preview)
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    reverse_proxy localhost:3594 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+blank-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3594 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+oki.alive.best {
+    import image_serving
+
+    header {
+        # Security headers (embeddable - allows iframe preview)
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    reverse_proxy localhost:3597 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+oki-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3597 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+migratetest2.alive.best {
+    import image_serving
+
+    header {
+        # Security headers (embeddable - allows iframe preview)
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    reverse_proxy localhost:3600 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+migratetest2-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3600 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+migrateapp.alive.best {
+    import image_serving
+
+    header {
+        # Security headers (embeddable - allows iframe preview)
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    reverse_proxy localhost:3601 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+migrateapp-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3601 {
+        header_up Host localhost
+    }
+
+    header {
+        # Security headers (embeddable variant)
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://terminal.goalive.nl https://staging.terminal.goalive.nl"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+
+    # Auth check via forward_auth
+    forward_auth localhost:8998 {
+        uri /api/auth/preview-guard
+        copy_headers Cookie
+    }
+}
+
+bootgemist.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3628 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+bootgemist-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+
+    reverse_proxy localhost:3628 {
+        header_up Host localhost
+    }
+
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+}
+
+# === RESTORED MISSING DOMAINS (Dec 12, 2025) ===
+
+alive.best {
+    import image_serving
+    header {
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+    reverse_proxy localhost:3366 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+alive-best.preview.terminal.goalive.nl {
+    import image_serving
+    reverse_proxy localhost:3366 {
+        header_up Host localhost
+    }
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+}
+
+alivemenumakers.alive.best {
+    import image_serving
+    header {
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+    reverse_proxy localhost:3623 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+alivemenumakers-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+    reverse_proxy localhost:3623 {
+        header_up Host localhost
+    }
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+}
+
+beach.alive.best {
+    import image_serving
+    header {
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+    reverse_proxy localhost:3621 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+beach-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+    reverse_proxy localhost:3621 {
+        header_up Host localhost
+    }
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+}
+
+cafecomcacao.alive.best {
+    import image_serving
+    header {
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+    reverse_proxy localhost:3610 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+cafecomcacao-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+    reverse_proxy localhost:3610 {
+        header_up Host localhost
+    }
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+}
+
+clash.alive.best {
+    import image_serving
+    header {
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+    reverse_proxy localhost:3612 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+clash-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+    reverse_proxy localhost:3612 {
+        header_up Host localhost
+    }
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+}
+
+jajaja.alive.best {
+    import image_serving
+    header {
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+    reverse_proxy localhost:3571 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+jajaja-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+    reverse_proxy localhost:3571 {
+        header_up Host localhost
+    }
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+}
+
+larshallo.alive.best {
+    import image_serving
+    header {
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+    reverse_proxy localhost:3602 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+larshallo-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+    reverse_proxy localhost:3602 {
+        header_up Host localhost
+    }
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+}
+
+larsondj.alive.best {
+    import image_serving
+    header {
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+    reverse_proxy localhost:3374 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+larsondj-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+    reverse_proxy localhost:3374 {
+        header_up Host localhost
+    }
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+}
+
+menu.alive.best {
+    import image_serving
+    header {
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+    reverse_proxy localhost:3622 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+menu-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+    reverse_proxy localhost:3622 {
+        header_up Host localhost
+    }
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+}
+
+menumakers.alive.best {
+    import image_serving
+    header {
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+    reverse_proxy localhost:3624 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+menumakers-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+    reverse_proxy localhost:3624 {
+        header_up Host localhost
+    }
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+}
+
+menupipeline.alive.best {
+    import image_serving
+    header {
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+    reverse_proxy localhost:3627 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+menupipeline-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+    reverse_proxy localhost:3627 {
+        header_up Host localhost
+    }
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+}
+
+nami.alive.best {
+    import image_serving
+    header {
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+    reverse_proxy localhost:3608 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+nami-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+    reverse_proxy localhost:3608 {
+        header_up Host localhost
+    }
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+}
+
+pipeline.alive.best {
+    import image_serving
+    header {
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+    reverse_proxy localhost:3626 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+pipeline-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+    reverse_proxy localhost:3626 {
+        header_up Host localhost
+    }
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+}
+
+pokemon.alive.best {
+    import image_serving
+    header {
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+    reverse_proxy localhost:3611 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+pokemon-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+    reverse_proxy localhost:3611 {
+        header_up Host localhost
+    }
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+}
+
+riggedwheel.alive.best {
+    import image_serving
+    header {
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+    reverse_proxy localhost:3372 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+roef.alive.best {
+    import image_serving
+    header {
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+    reverse_proxy localhost:3376 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+roef-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+    reverse_proxy localhost:3376 {
+        header_up Host localhost
+    }
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+}
+
+stekker.alive.best {
+    import image_serving
+    header {
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+    reverse_proxy localhost:3603 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+stekker-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+    reverse_proxy localhost:3603 {
+        header_up Host localhost
+    }
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+}
+
+taxi.alive.best {
+    import image_serving
+    header {
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+    reverse_proxy localhost:3604 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+taxi-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+    reverse_proxy localhost:3604 {
+        header_up Host localhost
+    }
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+}
+
+test5397.alive.best {
+    import image_serving
+    header {
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+    reverse_proxy localhost:3618 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+test5397-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+    reverse_proxy localhost:3618 {
+        header_up Host localhost
+    }
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+}
+
+test-deploy-123.alive.best {
+    import image_serving
+    header {
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+    reverse_proxy localhost:3605 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+test-deploy-123-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+    reverse_proxy localhost:3605 {
+        header_up Host localhost
+    }
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+}
+
+testdeploy123.alive.best {
+    import image_serving
+    header {
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+    reverse_proxy localhost:3606 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+testdeploy123-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+    reverse_proxy localhost:3606 {
+        header_up Host localhost
+    }
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+}
+
+testgal496.alive.best {
+    import image_serving
+    header {
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+    reverse_proxy localhost:3619 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+testgal496-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+    reverse_proxy localhost:3619 {
+        header_up Host localhost
+    }
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+}
+
+topi.alive.best {
+    import image_serving
+    header {
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+    reverse_proxy localhost:3607 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+topi-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+    reverse_proxy localhost:3607 {
+        header_up Host localhost
+    }
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+}
+
+vibecoded.alive.best {
+    import image_serving
+    header {
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+    reverse_proxy localhost:3620 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+vibecoded-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+    reverse_proxy localhost:3620 {
+        header_up Host localhost
+    }
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+}
+
+webbb.alive.best {
+    import image_serving
+    header {
+        -X-Frame-Options
+        X-Content-Type-Options nosniff
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+    reverse_proxy localhost:3609 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+webbb-alive-best.preview.terminal.goalive.nl {
+    import image_serving
+    reverse_proxy localhost:3609 {
+        header_up Host localhost
+    }
+    header {
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors https://dev.terminal.goalive.nl https://staging.terminal.goalive.nl https://terminal.goalive.nl https://app.alive.best"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+        -X-Powered-By
+    }
+}

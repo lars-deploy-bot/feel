@@ -4,10 +4,11 @@ import { Loader2, Square } from "lucide-react"
 import { useChatInput } from "./ChatInputContext"
 
 export function SendButton() {
-  const { busy, isStopping, canSubmit, onSubmit, onStop, abortControllerRef } = useChatInput()
+  const { busy, isStopping, canSubmit, onSubmit, onStop } = useChatInput()
 
   // Show Stop button while streaming (can be interrupted)
-  if (busy && abortControllerRef.current && !isStopping) {
+  // busy is per-conversation from streamingStore, no need to check abortControllerRef
+  if (busy && !isStopping) {
     return (
       <button
         type="button"

@@ -3,6 +3,31 @@
 import { create } from "zustand"
 
 /**
+ * Per-conversation abort controllers (stored outside Zustand because AbortController isn't serializable)
+ * This enables independent stream cancellation when tabs are enabled.
+ */
+const abortControllerMap = new Map<string, AbortController>()
+
+/** Get the abort controller for a conversation */
+export function getAbortController(conversationId: string): AbortController | undefined {
+  return abortControllerMap.get(conversationId)
+}
+
+/** Set the abort controller for a conversation */
+export function setAbortController(conversationId: string, controller: AbortController | null): void {
+  if (controller) {
+    abortControllerMap.set(conversationId, controller)
+  } else {
+    abortControllerMap.delete(conversationId)
+  }
+}
+
+/** Clear the abort controller for a conversation */
+export function clearAbortController(conversationId: string): void {
+  abortControllerMap.delete(conversationId)
+}
+
+/**
  * Streaming State Store - Manages per-conversation streaming state
  *
  * **IMPORTANT**: This store is IN-MEMORY ONLY (not persisted).
@@ -263,3 +288,7 @@ export const useStreamHealth = (conversationId: string) => {
   const actions = useStreamingActions()
   return actions.getStreamHealth(conversationId)
 }
+
+/** Returns true if the specified conversation has an active stream (busy) */
+export const useIsStreamActive = (conversationId: string | null) =>
+  useStreamingStore(state => (conversationId ? (state.conversations[conversationId]?.isStreamActive ?? false) : false))

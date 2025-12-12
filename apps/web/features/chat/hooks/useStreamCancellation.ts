@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from "react"
 import { postty } from "@/lib/api/api-client"
 import { validateRequest } from "@/lib/api/schemas"
 import type { UIMessage } from "@/features/chat/lib/message-parser"
-import { useStreamingActions } from "@/lib/stores/streamingStore"
+import { useStreamingActions, getAbortController, clearAbortController } from "@/lib/stores/streamingStore"
 
 interface UseStreamCancellationOptions {
   /** Current conversation ID */
@@ -13,8 +13,6 @@ interface UseStreamCancellationOptions {
   workspace: string | null
   /** Callback to add message to chat */
   addMessage: (message: UIMessage) => void
-  /** Callback to set busy state */
-  setBusy: (busy: boolean) => void
   /** Callback to show completion dots */
   setShowCompletionDots: (show: boolean) => void
   /** Ref to the abort controller for the current request */
@@ -49,7 +47,6 @@ interface UseStreamCancellationReturn {
  *   conversationId,
  *   workspace,
  *   addMessage,
- *   setBusy,
  *   setShowCompletionDots,
  *   abortControllerRef,
  *   currentRequestIdRef,
@@ -63,7 +60,6 @@ export function useStreamCancellation({
   conversationId,
   workspace,
   addMessage,
-  setBusy,
   setShowCompletionDots,
   abortControllerRef,
   currentRequestIdRef,
@@ -111,8 +107,8 @@ export function useStreamCancellation({
 
     // Helper to reset all states after cancellation completes
     // No delay needed - cancel endpoint now waits for lock release before responding
+    // Note: busy state is derived from streamingStore.isStreamActive, no need to set it
     const finishCancellation = () => {
-      setBusy(false)
       isSubmittingRef.current = false
       isStoppingRef.current = false
       setIsStopping(false)
@@ -149,6 +145,13 @@ export function useStreamCancellation({
     }
 
     // Immediately abort the client-side stream
+    // Use per-conversation abort controller for tabs support
+    const perConvoController = conversationId ? getAbortController(conversationId) : null
+    if (perConvoController) {
+      perConvoController.abort()
+      clearAbortController(conversationId)
+    }
+    // Also clear the ref for backward compatibility
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
       abortControllerRef.current = null
@@ -186,7 +189,6 @@ export function useStreamCancellation({
     conversationId,
     workspace,
     addMessage,
-    setBusy,
     setShowCompletionDots,
     abortControllerRef,
     currentRequestIdRef,

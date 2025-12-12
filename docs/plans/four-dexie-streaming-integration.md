@@ -1,720 +1,733 @@
-# Plan Part 4: Streaming Integration
+# Plan Part 4: Direct Broker Streaming
 
-How streaming messages flow from server to Dexie persistence, with multi-tab support.
+How streaming works with direct browser-to-broker communication.
 
-## Current State Analysis
-
-### Server Streaming Protocol
-
-The server emits NDJSON events via `/api/claude/stream`:
+## Architecture Overview
 
 ```
-bridge_start     → Stream initialized
-bridge_message   → Complete SDK message (user, assistant, tool_use, etc.)
-bridge_complete  → Successful end with result
-bridge_interrupt → User cancelled (via cancel endpoint)
-bridge_error     → Stream failed
+┌──────────────────────────────────────────────────────────────────────────┐
+│                              Client                                       │
+├──────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  1. User sends message                                                   │
+│     │                                                                    │
+│     ▼                                                                    │
+│  2. POST /api/stream-token → { token, brokerUrl }                       │
+│     │                                                                    │
+│     ▼                                                                    │
+│  3. POST brokerUrl/v1/streams (with token) → { streamId }               │
+│     │                                                                    │
+│     ▼                                                                    │
+│  4. GET brokerUrl/v1/streams/:id/events (SSE)                           │
+│     │                                                                    │
+│     │  ┌─────────────────────────────────────────┐                      │
+│     │  │         Zustand (in-memory)             │                      │
+│     │  │  • isStreaming: true                    │                      │
+│     │  │  • streamText: "Hello, I can..."        │                      │
+│     │  │  • currentStreamId: "abc-123"           │                      │
+│     │  │  • lastSeq: 47                          │                      │
+│     │  └─────────────────────────────────────────┘                      │
+│     │                                                                    │
+│     ▼                                                                    │
+│  5. On stream_complete → Write final message to Dexie                   │
+│     │                                                                    │
+│     ▼                                                                    │
+│  6. Dexie syncs to Supabase (debounced)                                 │
+│                                                                          │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Key insight:** Each `bridge_message` contains a *complete* SDK message, not character-by-character streaming. The "streaming" is at the message level - multiple complete messages arriving over time.
+## Shared Event Types
 
-## Shared Event Types (CRITICAL)
-
-**Create a shared type module** imported by both server and client to prevent drift:
-
-**File: `apps/web/lib/bridge/streamTypes.ts`**
+**File: `packages/bridge-types/src/events.ts`**
 
 ```typescript
-// IMPORTANT: This file is the single source of truth for stream event types.
-// Both server (ndjson-stream-handler.ts) and client (useStreamHandler.ts) import from here.
-// DO NOT duplicate these types elsewhere.
+// Protocol version for compatibility checks
+export const BRIDGE_PROTOCOL_VERSION = "1.0.0"
 
-export type BridgeStreamType =
-  | "bridge_start"
-  | "bridge_message"
-  | "bridge_complete"
-  | "bridge_interrupt"
-  | "bridge_error"
+// Base event with sequence number for ordering/replay
+export interface BaseStreamEvent {
+  seq: number           // Monotonically increasing
+  timestamp: number     // Unix ms
+}
 
-export interface BridgeBaseEvent {
-  type: BridgeStreamType
+// Stream started
+export interface StreamStartEvent extends BaseStreamEvent {
+  type: "stream_start"
+  streamId: string
   requestId: string
 }
 
-export interface BridgeStartEvent extends BridgeBaseEvent {
-  type: "bridge_start"
-}
-
-export interface BridgeMessageEvent extends BridgeBaseEvent {
-  type: "bridge_message"
+// Complete SDK message
+export interface StreamMessageEvent extends BaseStreamEvent {
+  type: "stream_message"
   messageType: "user" | "assistant" | "tool_use" | "tool_result" | "thinking" | "system"
-  complete: boolean  // true if this is the final state of this message
+  messageId: string
   content: unknown
+  complete: boolean     // True if this is final state of this message
 }
 
-export interface BridgeCompleteEvent extends BridgeBaseEvent {
-  type: "bridge_complete"
+// Text delta for streaming assistant response
+export interface StreamChunkEvent extends BaseStreamEvent {
+  type: "stream_chunk"
+  messageId: string
+  delta: string         // Text to append
+}
+
+// Periodic state sync (every 5s)
+export interface StreamStateEvent extends BaseStreamEvent {
+  type: "stream_state"
+  state: "running" | "paused"
+  lastMessageId: string
+}
+
+// Stream completed successfully
+export interface StreamCompleteEvent extends BaseStreamEvent {
+  type: "stream_complete"
   result: unknown
+  totalTokens: {
+    input: number
+    output: number
+  }
 }
 
-export interface BridgeInterruptEvent extends BridgeBaseEvent {
-  type: "bridge_interrupt"
-  source: "user" | "system"
+// Stream interrupted
+export interface StreamInterruptEvent extends BaseStreamEvent {
+  type: "stream_interrupt"
+  source: "user" | "system" | "timeout"
   lastMessageId?: string
 }
 
-export interface BridgeErrorEvent extends BridgeBaseEvent {
-  type: "bridge_error"
+// Stream error
+export interface StreamErrorEvent extends BaseStreamEvent {
+  type: "stream_error"
   code: string
   message: string
+  retryable: boolean
 }
 
-export type BridgeEvent =
-  | BridgeStartEvent
-  | BridgeMessageEvent
-  | BridgeCompleteEvent
-  | BridgeInterruptEvent
-  | BridgeErrorEvent
+// Union type
+export type StreamEvent =
+  | StreamStartEvent
+  | StreamMessageEvent
+  | StreamChunkEvent
+  | StreamStateEvent
+  | StreamCompleteEvent
+  | StreamInterruptEvent
+  | StreamErrorEvent
 
 // Type guard
-export function isBridgeEvent(e: unknown): e is BridgeEvent {
-  return typeof e === "object" && e !== null && "type" in e &&
-    ["bridge_start", "bridge_message", "bridge_complete", "bridge_interrupt", "bridge_error"]
-      .includes((e as { type: string }).type)
+export function isStreamEvent(e: unknown): e is StreamEvent {
+  if (typeof e !== "object" || e === null || !("type" in e)) return false
+  const validTypes = [
+    "stream_start", "stream_message", "stream_chunk",
+    "stream_state", "stream_complete", "stream_interrupt", "stream_error"
+  ]
+  return validTypes.includes((e as { type: string }).type)
 }
 ```
 
-## Architecture
-
-### Source of Truth
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Streaming Tab                                 │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│   Zustand (in-memory)              Dexie (IndexedDB)            │
-│   ───────────────────              ──────────────────           │
-│                                                                 │
-│   streamingBuffers: {              DbMessage {                  │
-│     [msgId]: "live text..."          streamState: "streaming"   │
-│   }                                   content: "snapshot..."    │
-│                                       updatedAt: ...            │
-│   activeStreamByTab: {             }                            │
-│     [tabId]: msgId                                              │
-│   }                                                             │
-│                                                                 │
-│   UI renders from Zustand buffer (real-time)                    │
-│   Dexie gets debounced snapshots (every 300-500ms)              │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────┐
-│                    Other Tabs / Windows                          │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│   Zustand: streamingBuffers = {} (empty - different instance)   │
-│                                                                 │
-│   UI renders from Dexie via useLiveQuery                        │
-│   Sees lagging snapshots, but still gets updates                │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────┐
-│                    After Page Refresh                            │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│   Zustand: fresh instance, no buffers                           │
-│                                                                 │
-│   Dexie: message with streamState="streaming" + old updatedAt   │
-│   → Treated as "interrupted" in UI (stale stream detection)     │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-## Schema Updates
-
-### DbMessage Extended
-
-Update `messageDb.ts`:
+**File: `packages/bridge-types/src/tokens.ts`**
 
 ```typescript
-export type DbMessageStatus = "complete" | "streaming" | "interrupted" | "error"
+export interface StreamTokenPayload {
+  sub: string           // userId
+  org: string           // orgId
+  ws: string            // workspace
+  tab: string           // tabId
+  rid: string           // requestId (idempotency)
+  exp: number           // Expiry (unix seconds)
+  iat: number           // Issued at (unix seconds)
+  mdl?: string          // Model override (if allowed)
+}
 
-export interface DbMessage {
-  id: string
-  tabId: string
-  type: DbMessageType
-  content: DbMessageContent
-  createdAt: number
-  updatedAt: number  // NEW: track last update for stale detection
-  version: number
-  status: DbMessageStatus  // renamed from streamState for consistency
-  // Optional metadata for interruptions/errors
-  abortedAt?: number
-  errorCode?: string
-  // Sync metadata
-  syncedAt?: number
-  pendingSync?: boolean  // Only true when status !== "streaming"
+export interface TokenResponse {
+  token: string
+  brokerUrl: string
+  expiresAt: number
+}
+
+export interface StreamStartRequest {
+  messages: Array<{
+    role: "user" | "assistant"
+    content: string
+  }>
+  model?: string
+  maxTokens?: number
+  temperature?: number
+}
+
+export interface StreamStartResponse {
+  streamId: string
+  status: "started" | "already_exists"
+  existingSeq?: number
 }
 ```
 
-### Zustand Streaming State
-
-Add to message store (NOT persisted):
+**File: `packages/bridge-types/src/index.ts`**
 
 ```typescript
-interface MessageStoreState {
-  // ... existing fields
+export * from "./events"
+export * from "./tokens"
 
-  // Streaming state (per-tab, in-memory only)
-  activeStreamByTab: Record<string, string | null>  // tabId -> streaming messageId
-  streamingBuffers: Record<string, string>          // messageId -> current text
-}
+export const BRIDGE_PROTOCOL_VERSION = "1.0.0"
 ```
 
-## Implementation
+## Client Implementation
 
-### 1. Stream Lifecycle Actions
+### Stream Client Hook
 
-**File: `apps/web/lib/stores/messageStore.ts`** (additions)
-
-```typescript
-import { getMessageDb, CURRENT_MESSAGE_VERSION, type DbMessage } from "@/lib/db/messageDb"
-import { safeDb } from "@/lib/db/safeDb"
-import { queueSync } from "@/lib/db/conversationSync"
-
-// Debounce helper for Dexie snapshots
-let flushTimeouts: Record<string, ReturnType<typeof setTimeout>> = {}
-const FLUSH_DEBOUNCE_MS = 300
-
-function scheduleFlushStreamingSnapshot(messageId: string, userId: string) {
-  if (flushTimeouts[messageId]) {
-    clearTimeout(flushTimeouts[messageId])
-  }
-  flushTimeouts[messageId] = setTimeout(() => {
-    flushStreamingSnapshot(messageId, userId)
-    delete flushTimeouts[messageId]
-  }, FLUSH_DEBOUNCE_MS)
-}
-
-async function flushStreamingSnapshot(messageId: string, userId: string) {
-  const { streamingBuffers } = useMessageStore.getState()
-  const text = streamingBuffers[messageId]
-  if (text == null) return
-
-  const db = getMessageDb(userId)
-  await safeDb(() => db.messages.update(messageId, {
-    content: { kind: "text", text },
-    updatedAt: Date.now(),
-    status: "streaming",
-    // Still pendingSync: false - don't sync partials
-  }))
-}
-
-// Track already-finalized messages to prevent double-finalization race conditions
-const alreadyFinalized = new Set<string>()
-
-// Store actions (add to existing store)
-// ... existing state
-activeStreamByTab: {},
-streamingBuffers: {},
-
-/**
- * Start a new assistant streaming message
- * Creates skeleton in Dexie immediately (for other tabs/refresh)
- */
-startAssistantStream: async (tabId: string) => {
-  const { currentConversationId, session } = get()
-  if (!session) throw new Error("No session")
-  if (!currentConversationId) throw new Error("No active conversation")
-
-  const db = getMessageDb(session.userId)
-  const id = crypto.randomUUID()
-  const now = Date.now()
-
-  // Create skeleton in Dexie - other tabs will see this
-  const dbMessage: DbMessage = {
-    id,
-    tabId,
-    type: "assistant",
-    content: { kind: "text", text: "" },
-    createdAt: now,
-    updatedAt: now,
-    version: CURRENT_MESSAGE_VERSION,
-    status: "streaming",
-    origin: "local",
-    pendingSync: false,  // Don't sync partials to Supabase
-  }
-
-  await safeDb(() => db.messages.add(dbMessage))
-
-  set(state => ({
-    activeStreamByTab: { ...state.activeStreamByTab, [tabId]: id },
-    streamingBuffers: { ...state.streamingBuffers, [id]: "" },
-  }))
-
-  return id
-},
-
-/**
- * Append chunk to streaming message
- * Updates Zustand immediately, debounces Dexie writes
- */
-appendToAssistantStream: (messageId: string, deltaText: string) => {
-  const { streamingBuffers, session } = get()
-  if (!session) return
-
-  const prev = streamingBuffers[messageId] ?? ""
-  const next = prev + deltaText
-
-  set({
-    streamingBuffers: { ...streamingBuffers, [messageId]: next },
-  })
-
-  // Debounced flush to Dexie for other tabs/refresh resilience
-  scheduleFlushStreamingSnapshot(messageId, session.userId)
-},
-
-/**
- * Finalize stream successfully
- * Marks complete, enables sync to Supabase
- * IDEMPOTENT: Safe to call multiple times
- */
-finalizeAssistantStream: async (messageId: string) => {
-  // Guard against double-finalization (race conditions from out-of-order events)
-  if (alreadyFinalized.has(messageId)) return
-  alreadyFinalized.add(messageId)
-
-  const { streamingBuffers, activeStreamByTab, currentConversationId, session } = get()
-  if (!session) return
-
-  const db = getMessageDb(session.userId)
-  const text = streamingBuffers[messageId] ?? ""
-
-  await safeDb(() => db.messages.update(messageId, {
-    content: { kind: "text", text },
-    updatedAt: Date.now(),
-    status: "complete",
-    pendingSync: true,  // Now we sync to Supabase
-  }))
-
-  // Clear in-memory state
-  const tabId = Object.entries(activeStreamByTab).find(
-    ([_, id]) => id === messageId
-  )?.[0]
-
-  set(state => {
-    const newBuffers = { ...state.streamingBuffers }
-    delete newBuffers[messageId]
-    return {
-      streamingBuffers: newBuffers,
-      activeStreamByTab: tabId
-        ? { ...state.activeStreamByTab, [tabId]: null }
-        : state.activeStreamByTab,
-    }
-  })
-
-  if (currentConversationId) {
-    queueSync(currentConversationId, session.userId)
-  }
-
-  // Clean up finalization tracker after a delay
-  setTimeout(() => alreadyFinalized.delete(messageId), 60000)
-},
-
-/**
- * User hit "Stop" - keep partial content, mark as interrupted
- * IDEMPOTENT: Safe to call multiple times
- */
-stopAssistantStream: async (messageId: string) => {
-  if (alreadyFinalized.has(messageId)) return
-  alreadyFinalized.add(messageId)
-
-  const { streamingBuffers, activeStreamByTab, currentConversationId, session } = get()
-  if (!session) return
-
-  const db = getMessageDb(session.userId)
-  const text = streamingBuffers[messageId] ?? ""
-
-  await safeDb(() => db.messages.update(messageId, {
-    content: { kind: "text", text },
-    updatedAt: Date.now(),
-    status: "interrupted",
-    abortedAt: Date.now(),
-    pendingSync: true,  // Sync the interrupted state
-  }))
-
-  const tabId = Object.entries(activeStreamByTab).find(
-    ([_, id]) => id === messageId
-  )?.[0]
-
-  set(state => {
-    const newBuffers = { ...state.streamingBuffers }
-    delete newBuffers[messageId]
-    return {
-      streamingBuffers: newBuffers,
-      activeStreamByTab: tabId
-        ? { ...state.activeStreamByTab, [tabId]: null }
-        : state.activeStreamByTab,
-    }
-  })
-
-  if (currentConversationId) {
-    queueSync(currentConversationId, session.userId)
-  }
-
-  setTimeout(() => alreadyFinalized.delete(messageId), 60000)
-},
-
-/**
- * Stream failed - keep partial content, mark as error
- * IDEMPOTENT: Safe to call multiple times
- */
-failAssistantStream: async (messageId: string, errorCode?: string) => {
-  if (alreadyFinalized.has(messageId)) return
-  alreadyFinalized.add(messageId)
-
-  const { streamingBuffers, activeStreamByTab, currentConversationId, session } = get()
-  if (!session) return
-
-  const db = getMessageDb(session.userId)
-  const text = streamingBuffers[messageId] ?? ""
-
-  await safeDb(() => db.messages.update(messageId, {
-    content: { kind: "text", text },
-    updatedAt: Date.now(),
-    status: "error",
-    errorCode: errorCode ?? "unknown",
-    pendingSync: true,
-  }))
-
-  const tabId = Object.entries(activeStreamByTab).find(
-    ([_, id]) => id === messageId
-  )?.[0]
-
-  set(state => {
-    const newBuffers = { ...state.streamingBuffers }
-    delete newBuffers[messageId]
-    return {
-      streamingBuffers: newBuffers,
-      activeStreamByTab: tabId
-        ? { ...state.activeStreamByTab, [tabId]: null }
-        : state.activeStreamByTab,
-    }
-  })
-
-  if (currentConversationId) {
-    queueSync(currentConversationId, session.userId)
-  }
-
-  setTimeout(() => alreadyFinalized.delete(messageId), 60000)
-},
-```
-
-### 2. UI Message Hook
-
-Merge Dexie data with in-memory streaming buffers:
+**File: `apps/web/features/chat/hooks/useStreamClient.ts`**
 
 ```typescript
-// apps/web/features/chat/hooks/useTabMessages.ts
-"use client"
-
-import { useMemo } from "react"
-import { useMessages } from "@/lib/db/useMessageDb"
-import { useMessageStore } from "@/lib/stores/messageStore"
-import { toUIMessage } from "@/lib/db/messageAdapters"
-import type { UIMessage } from "@/features/chat/lib/message-parser"
-
-const STALE_STREAM_THRESHOLD_MS = 30_000  // 30 seconds
-
-/**
- * Get messages for a tab, merging persisted + streaming state
- * Handles stale stream detection for page refresh scenarios
- */
-export function useTabMessages(tabId: string | null): UIMessage[] {
-  const dbMessages = useMessages(tabId)
-  const streamingBuffers = useMessageStore(s => s.streamingBuffers)
-
-  return useMemo(() => {
-    if (!dbMessages) return []
-
-    const now = Date.now()
-
-    return dbMessages.map(dbMsg => {
-      const ui = toUIMessage(dbMsg)
-
-      // If this message is streaming...
-      if (dbMsg.status === "streaming") {
-        // Check if we have a live buffer (same tab)
-        const buffered = streamingBuffers[dbMsg.id]
-        if (typeof buffered === "string") {
-          // Live streaming in this tab - use buffer
-          return {
-            ...ui,
-            content: buffered,
-            isStreaming: true,
-          }
-        }
-
-        // No buffer - either different tab or page was refreshed
-        // Check if it's stale (old updatedAt)
-        const isStale = now - dbMsg.updatedAt > STALE_STREAM_THRESHOLD_MS
-        if (isStale) {
-          // Treat as interrupted in UI
-          return {
-            ...ui,
-            status: "interrupted",
-            isStreaming: false,
-          }
-        }
-
-        // Recent streaming from another tab - show snapshot
-        return {
-          ...ui,
-          isStreaming: true,  // Show loading indicator
-        }
-      }
-
-      return ui
-    })
-  }, [dbMessages, streamingBuffers])
-}
-```
-
-### 3. Stream Event Handler
-
-Wire up NDJSON events to store actions using the shared event types:
-
-```typescript
-// apps/web/features/chat/hooks/useStreamHandler.ts
 "use client"
 
 import { useCallback, useRef } from "react"
 import { useMessageStore } from "@/lib/stores/messageStore"
-import {
-  type BridgeEvent,
-  type BridgeMessageEvent,
-  isBridgeEvent,
-} from "@/lib/bridge/streamTypes"
-import type { UIMessage } from "@/features/chat/lib/message-parser"
+import type {
+  StreamEvent,
+  StreamStartRequest,
+  StreamStartResponse,
+  TokenResponse,
+  isStreamEvent,
+} from "@webalive/bridge-types"
 
-interface UseStreamHandlerOptions {
+interface UseStreamClientOptions {
   tabId: string
-  onUserMessage?: (message: UIMessage) => Promise<void>
+  workspace: string
+  onError?: (error: Error) => void
 }
 
-export function useStreamHandler({ tabId, onUserMessage }: UseStreamHandlerOptions) {
-  const currentStreamId = useRef<string | null>(null)
+export function useStreamClient({ tabId, workspace, onError }: UseStreamClientOptions) {
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const lastSeqRef = useRef<number>(0)
+  const streamIdRef = useRef<string | null>(null)
 
-  const startAssistantStream = useMessageStore(s => s.startAssistantStream)
-  const appendToAssistantStream = useMessageStore(s => s.appendToAssistantStream)
-  const finalizeAssistantStream = useMessageStore(s => s.finalizeAssistantStream)
-  const stopAssistantStream = useMessageStore(s => s.stopAssistantStream)
-  const failAssistantStream = useMessageStore(s => s.failAssistantStream)
-  const addMessage = useMessageStore(s => s.addMessage)
+  const setStreamingState = useMessageStore(s => s.setStreamingState)
+  const appendStreamText = useMessageStore(s => s.appendStreamText)
+  const addFinalStreamMessage = useMessageStore(s => s.addFinalStreamMessage)
 
   /**
-   * Handle incoming NDJSON event from stream
-   * Uses typed BridgeEvent from shared types module
+   * Get a stream token from Next.js
    */
-  const handleStreamEvent = useCallback(async (event: unknown) => {
-    // Type guard to ensure valid event
-    if (!isBridgeEvent(event)) {
-      console.warn("[stream] Invalid event received:", event)
-      return
+  const getToken = useCallback(async (requestId: string): Promise<TokenResponse> => {
+    const res = await fetch("/api/stream-token", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ requestId, tabId, workspace }),
+    })
+
+    if (!res.ok) {
+      const error = await res.json()
+      throw new Error(error.message || "Failed to get stream token")
     }
 
-    const e: BridgeEvent = event
+    return res.json()
+  }, [tabId, workspace])
 
-    switch (e.type) {
-      case "bridge_start":
-        // Stream starting - create assistant message skeleton
-        currentStreamId.current = await startAssistantStream(tabId)
+  /**
+   * Start a new stream
+   */
+  const startStream = useCallback(async (
+    messages: StreamStartRequest["messages"]
+  ): Promise<void> => {
+    // Generate idempotency key
+    const requestId = crypto.randomUUID()
+
+    // Abort any existing stream
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = new AbortController()
+
+    try {
+      // 1. Get token
+      const { token, brokerUrl } = await getToken(requestId)
+
+      // 2. Start stream on broker
+      const startRes = await fetch(`${brokerUrl}/v1/streams`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({ messages }),
+        signal: abortControllerRef.current.signal,
+      })
+
+      if (!startRes.ok) {
+        const error = await startRes.json()
+        throw new Error(error.message || "Failed to start stream")
+      }
+
+      const { streamId, status, existingSeq }: StreamStartResponse = await startRes.json()
+      streamIdRef.current = streamId
+      lastSeqRef.current = existingSeq ?? 0
+
+      // Set initial streaming state
+      setStreamingState(tabId, {
+        streamId,
+        requestId,
+        messageId: "", // Will be set when first chunk arrives
+        text: "",
+        startedAt: Date.now(),
+      })
+
+      // 3. Connect to event stream
+      const eventSource = new EventSource(
+        `${brokerUrl}/v1/streams/${streamId}/events`,
+        // Note: EventSource doesn't support custom headers in standard API
+        // Use query param for auth in production, or use fetch + ReadableStream
+      )
+
+      eventSource.onmessage = (e) => {
+        try {
+          const event: StreamEvent = JSON.parse(e.data)
+          handleEvent(event)
+        } catch (err) {
+          console.error("[stream] Failed to parse event:", err)
+        }
+      }
+
+      eventSource.onerror = () => {
+        // Try to reconnect with replay
+        eventSource.close()
+        handleDisconnect()
+      }
+
+      // Store reference for cleanup
+      abortControllerRef.current.signal.addEventListener("abort", () => {
+        eventSource.close()
+      })
+
+    } catch (error) {
+      setStreamingState(tabId, null)
+      onError?.(error instanceof Error ? error : new Error(String(error)))
+    }
+  }, [tabId, getToken, setStreamingState, onError])
+
+  /**
+   * Handle incoming stream events
+   */
+  const handleEvent = useCallback((event: StreamEvent) => {
+    lastSeqRef.current = event.seq
+
+    switch (event.type) {
+      case "stream_start":
+        // Stream started, waiting for content
         break
 
-      case "bridge_message": {
-        const msg = e as BridgeMessageEvent
+      case "stream_chunk":
+        // Append text to streaming buffer
+        appendStreamText(tabId, event.delta)
+        break
 
-        if (msg.messageType === "assistant" && currentStreamId.current) {
-          // Assistant chunk - append to stream
-          // Check the `complete` flag to know if this is final
-          const content = msg.content as { message?: { content?: Array<{ text?: string }> } }
-          const text = content.message?.content?.[0]?.text ?? ""
-
-          if (msg.complete) {
-            // Final message content - finalize instead of append
-            appendToAssistantStream(currentStreamId.current, text)
-            await finalizeAssistantStream(currentStreamId.current)
-            currentStreamId.current = null
-          } else {
-            appendToAssistantStream(currentStreamId.current, text)
-          }
-        } else if (msg.messageType === "user") {
-          // User message - write directly to Dexie
-          const uiMessage = parseUserMessage(msg.content)
-          if (uiMessage && onUserMessage) {
-            await onUserMessage(uiMessage)
-          }
-        } else {
-          // Tool use, tool result, thinking - write directly
-          const uiMessage = parseMessage(msg)
-          if (uiMessage) {
-            await addMessage(uiMessage)
-          }
+      case "stream_message":
+        if (event.messageType === "assistant" && event.complete) {
+          // Final assistant message - will be handled by stream_complete
         }
+        // Tool use, tool result, thinking - could add to UI here
+        break
+
+      case "stream_complete": {
+        // Stream finished successfully
+        const state = useMessageStore.getState().activeStreams[tabId]
+        if (state) {
+          addFinalStreamMessage(
+            tabId,
+            state.streamId,
+            event.seq,
+            state.text,
+            "complete"
+          )
+        }
+        setStreamingState(tabId, null)
         break
       }
 
-      case "bridge_complete":
-        // Stream finished successfully
-        if (currentStreamId.current) {
-          await finalizeAssistantStream(currentStreamId.current)
-          currentStreamId.current = null
+      case "stream_interrupt": {
+        // Stream interrupted (user cancelled or system)
+        const state = useMessageStore.getState().activeStreams[tabId]
+        if (state) {
+          addFinalStreamMessage(
+            tabId,
+            state.streamId,
+            event.seq,
+            state.text,
+            "interrupted"
+          )
         }
+        setStreamingState(tabId, null)
         break
+      }
 
-      case "bridge_interrupt":
-        // User cancelled (or system interrupted)
-        if (currentStreamId.current) {
-          await stopAssistantStream(currentStreamId.current)
-          currentStreamId.current = null
-        }
-        break
-
-      case "bridge_error":
+      case "stream_error": {
         // Stream failed
-        if (currentStreamId.current) {
-          await failAssistantStream(currentStreamId.current, e.code)
-          currentStreamId.current = null
+        const state = useMessageStore.getState().activeStreams[tabId]
+        if (state) {
+          addFinalStreamMessage(
+            tabId,
+            state.streamId,
+            event.seq,
+            state.text,
+            "error",
+            event.code
+          )
         }
+        setStreamingState(tabId, null)
+        onError?.(new Error(event.message))
         break
+      }
     }
-  }, [tabId, startAssistantStream, appendToAssistantStream, finalizeAssistantStream, stopAssistantStream, failAssistantStream, addMessage, onUserMessage])
+  }, [tabId, appendStreamText, addFinalStreamMessage, setStreamingState, onError])
 
   /**
-   * Cancel current stream (user hit stop)
-   * Safe to call even if no stream is active (idempotent)
+   * Handle disconnect - try to reconnect with replay
+   */
+  const handleDisconnect = useCallback(async () => {
+    const streamId = streamIdRef.current
+    if (!streamId) return
+
+    try {
+      // Get fresh token
+      const requestId = crypto.randomUUID()
+      const { token, brokerUrl } = await getToken(requestId)
+
+      // Try replay
+      const replayRes = await fetch(
+        `${brokerUrl}/v1/streams/${streamId}/replay?after=${lastSeqRef.current}`,
+        {
+          headers: { "Authorization": `Bearer ${token}` },
+        }
+      )
+
+      if (replayRes.status === 404 || replayRes.status === 410) {
+        // Stream expired - show partial content as interrupted
+        const state = useMessageStore.getState().activeStreams[tabId]
+        if (state) {
+          addFinalStreamMessage(
+            tabId,
+            state.streamId,
+            lastSeqRef.current,
+            state.text,
+            "interrupted"
+          )
+        }
+        setStreamingState(tabId, null)
+        return
+      }
+
+      const { events, ended, finalState } = await replayRes.json()
+
+      // Process missed events
+      for (const event of events) {
+        handleEvent(event)
+      }
+
+      // If stream is still running, reconnect to live stream
+      if (!ended) {
+        // Reconnect logic would go here
+        // For simplicity, we'll let the user retry
+      }
+
+    } catch (error) {
+      console.error("[stream] Reconnect failed:", error)
+      onError?.(error instanceof Error ? error : new Error(String(error)))
+    }
+  }, [tabId, getToken, handleEvent, addFinalStreamMessage, setStreamingState, onError])
+
+  /**
+   * Cancel the current stream
    */
   const cancelStream = useCallback(async () => {
-    if (currentStreamId.current) {
-      await stopAssistantStream(currentStreamId.current)
-      currentStreamId.current = null
+    const streamId = streamIdRef.current
+    if (!streamId) return
+
+    abortControllerRef.current?.abort()
+
+    try {
+      const requestId = crypto.randomUUID()
+      const { token, brokerUrl } = await getToken(requestId)
+
+      await fetch(`${brokerUrl}/v1/streams/${streamId}/cancel`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` },
+      })
+      // stream_interrupt event will be emitted by broker
+    } catch (error) {
+      console.error("[stream] Cancel failed:", error)
+      // Still clear local state
+      setStreamingState(tabId, null)
     }
-  }, [stopAssistantStream])
+  }, [tabId, getToken, setStreamingState])
 
   return {
-    handleStreamEvent,
+    startStream,
     cancelStream,
-    isStreaming: currentStreamId.current !== null,
   }
 }
-
-// Helper to parse message content (simplified)
-function parseMessage(msg: BridgeMessageEvent): UIMessage | null {
-  // Implementation depends on actual message format
-  return null
-}
-
-function parseUserMessage(content: unknown): UIMessage | null {
-  // Implementation depends on actual message format
-  return null
-}
 ```
 
-## Edge Cases
+### Using the Stream Client
 
-### 1. Page Refresh During Stream
+**File: `apps/web/features/chat/hooks/useChat.ts`**
 
-- Dexie has message with `status: "streaming"` and `updatedAt` from last snapshot
-- On reload, `useTabMessages` detects stale stream (updatedAt > 30s ago)
-- UI shows message as "interrupted" with partial content
-- User can retry if needed
-
-### 2. Multiple Tabs Same Conversation
-
-- Tab A starts stream → creates `DbMessage` with `status: "streaming"`
-- Tab B sees snapshot via `useLiveQuery` (lagging ~300ms)
-- Tab A completes → `status: "complete"`, `pendingSync: true`
-- Tab B sees final message via `useLiveQuery`
-
-### 3. User Sends New Prompt Mid-Stream
-
-- Current stream continues (or backend cancels it)
-- New user message written to Dexie
-- New assistant stream starts (new message ID)
-- Old stream remains with `status: "interrupted"` if cancelled
-
-### 4. Network Disconnect
-
-- Stream stops receiving events
-- Zustand buffer has partial content
-- Dexie has last snapshot
-- On reconnect attempt, if backend says error → `failAssistantStream`
-- If no response, frontend can timeout and call `failAssistantStream`
-
-## Server Changes (Minimal)
-
-The server already emits the right events. No changes required.
-
-Optional enhancement for better interruption handling:
 ```typescript
-// In ndjson-stream-handler.ts
-createInterruptMessage(requestId, source, {
-  lastMessageId: lastAssistantMessageId
-})
+"use client"
+
+import { useCallback } from "react"
+import { useMessageStore, useStreamingState } from "@/lib/stores/messageStore"
+import { useStreamClient } from "./useStreamClient"
+
+interface UseChatOptions {
+  tabId: string
+  workspace: string
+}
+
+export function useChat({ tabId, workspace }: UseChatOptions) {
+  const streamingState = useStreamingState(tabId)
+  const addMessage = useMessageStore(s => s.addMessage)
+
+  const { startStream, cancelStream } = useStreamClient({
+    tabId,
+    workspace,
+    onError: (error) => {
+      console.error("[chat] Stream error:", error)
+      // Could show toast here
+    },
+  })
+
+  const sendMessage = useCallback(async (content: string) => {
+    // 1. Add user message to Dexie immediately
+    await addMessage({
+      id: crypto.randomUUID(),
+      type: "user",
+      content,
+      timestamp: Date.now(),
+    })
+
+    // 2. Start stream with conversation history
+    // In production, fetch history from Dexie
+    await startStream([
+      { role: "user", content }
+    ])
+  }, [addMessage, startStream])
+
+  const stopGeneration = useCallback(() => {
+    cancelStream()
+  }, [cancelStream])
+
+  return {
+    sendMessage,
+    stopGeneration,
+    isStreaming: streamingState !== null,
+    streamText: streamingState?.text ?? "",
+  }
+}
 ```
 
-## File Changes Summary
+## Next.js Token Endpoint
 
-| File | Change |
-|------|--------|
-| `apps/web/lib/bridge/streamTypes.ts` | **NEW** - Shared event types (server + client) |
-| `apps/web/lib/db/messageDb.ts` | Add `status`, `updatedAt`, `abortedAt`, `errorCode`, `origin` to `DbMessage` |
-| `apps/web/lib/stores/messageStore.ts` | Add streaming state + 5 idempotent lifecycle actions |
-| `apps/web/features/chat/hooks/useTabMessages.ts` | **NEW** - Merge Dexie + streaming buffers with stale detection |
-| `apps/web/features/chat/hooks/useStreamHandler.ts` | **NEW** - Wire typed NDJSON events to store |
+**File: `apps/web/app/api/stream-token/route.ts`**
+
+```typescript
+import { NextRequest, NextResponse } from "next/server"
+import { getSessionUser } from "@/lib/sessions"
+import crypto from "crypto"
+
+const STREAM_TOKEN_SECRET = process.env.STREAM_TOKEN_SECRET!
+const BROKER_URL = process.env.BROKER_URL!
+const TOKEN_TTL_SECONDS = 60
+
+interface TokenRequest {
+  requestId: string
+  tabId: string
+  workspace: string
+}
+
+function signToken(payload: Record<string, unknown>): string {
+  const payloadB64 = Buffer.from(JSON.stringify(payload)).toString("base64url")
+  const signature = crypto
+    .createHmac("sha256", STREAM_TOKEN_SECRET)
+    .update(payloadB64)
+    .digest("base64url")
+  return `${payloadB64}.${signature}`
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    // 1. Verify session
+    const user = await getSessionUser(req)
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    // 2. Parse request
+    const body: TokenRequest = await req.json()
+    const { requestId, tabId, workspace } = body
+
+    if (!requestId || !tabId || !workspace) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      )
+    }
+
+    // 3. Verify user has access to workspace
+    // (Add workspace access check here)
+
+    // 4. Create signed token
+    const now = Math.floor(Date.now() / 1000)
+    const payload = {
+      sub: user.userId,
+      org: user.orgId,
+      ws: workspace,
+      tab: tabId,
+      rid: requestId,
+      iat: now,
+      exp: now + TOKEN_TTL_SECONDS,
+    }
+
+    const token = signToken(payload)
+
+    return NextResponse.json({
+      token,
+      brokerUrl: BROKER_URL,
+      expiresAt: (now + TOKEN_TTL_SECONDS) * 1000,
+    })
+  } catch (error) {
+    console.error("[stream-token] Error:", error)
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    )
+  }
+}
+```
+
+## UI Integration
+
+### Message List with Streaming
+
+**File: `apps/web/features/chat/components/MessageList.tsx`**
+
+```typescript
+"use client"
+
+import { useMessages } from "@/lib/db/useMessageDb"
+import { useStreamingState } from "@/lib/stores/messageStore"
+import { toUIMessage } from "@/lib/db/messageAdapters"
+
+interface MessageListProps {
+  tabId: string
+  userId: string
+}
+
+export function MessageList({ tabId, userId }: MessageListProps) {
+  // Final messages from Dexie
+  const dbMessages = useMessages(tabId, userId)
+
+  // Live streaming state from Zustand
+  const streamingState = useStreamingState(tabId)
+
+  // Convert Dexie messages to UI format
+  const messages = dbMessages?.map(toUIMessage) ?? []
+
+  return (
+    <div className="flex flex-col gap-4">
+      {messages.map((msg) => (
+        <Message key={msg.id} message={msg} />
+      ))}
+
+      {/* Show streaming message if active */}
+      {streamingState && (
+        <Message
+          message={{
+            id: streamingState.messageId || "streaming",
+            type: "assistant",
+            content: streamingState.text,
+            timestamp: streamingState.startedAt,
+            isStreaming: true,
+          }}
+        />
+      )}
+    </div>
+  )
+}
+```
+
+## Error Handling & Edge Cases
+
+### 1. Token Expired During Stream
+
+If the token expires while streaming:
+- Broker continues the stream (token was valid at start)
+- Client can reconnect with new token via replay endpoint
+- Replay endpoint validates new token
+
+### 2. Browser Refresh During Stream
+
+1. Zustand state is lost
+2. On page load, check for any `running` streams in Supabase
+3. If found, try to reconnect via replay
+4. If stream expired, show message as interrupted
+
+### 3. Network Disconnect
+
+1. EventSource triggers `onerror`
+2. Client attempts reconnect with replay
+3. If replay fails (404/410), mark message as interrupted
+4. User can manually retry
+
+### 4. User Cancels
+
+1. Client calls `POST /v1/streams/:id/cancel`
+2. Broker emits `stream_interrupt` event
+3. Client writes interrupted message to Dexie
+4. Idempotent - safe to call multiple times
 
 ## Testing Checklist
 
 ### Stream Lifecycle
-1. **Complete stream** → message `status: "complete"`, synced to Supabase
-2. **Cancel mid-stream** → message `status: "interrupted"` with partial content
-3. **Error mid-stream** → message `status: "error"` with partial content
-4. **Rapid chunks** → debounced Dexie writes, no performance issues
+1. Start stream → events flow
+2. Complete stream → message saved to Dexie
+3. Cancel mid-stream → interrupted message saved
+4. Error mid-stream → error message saved
 
-### Stale Detection
-5. **Refresh during stream** → message shown as interrupted (stale > 30s)
-6. **Recent streaming in another tab** → shows loading indicator
+### Token Security
+5. Expired token → 401 from broker
+6. Invalid signature → 401 from broker
+7. Missing token → 401 from broker
+
+### Reconnection
+8. Disconnect + reconnect → replay works
+9. Long disconnect (> buffer TTL) → shows interrupted
+10. Multiple rapid disconnects → handles gracefully
 
 ### Multi-Tab
-7. **Stream in tab A** → tab B sees lagging snapshots via useLiveQuery
-8. **Complete in tab A** → tab B sees final message immediately
+11. Stream in tab A → tab B doesn't show streaming
+12. Complete in tab A → tab B sees message via Dexie live query
 
-### Race Conditions
-9. **Double finalization** → idempotent, no errors
-10. **ERROR after COMPLETE** → first event wins, second ignored
-11. **Lost currentStreamId** → gracefully handles null refs
-
-### Shared Types
-12. **Invalid event shape** → caught by type guard, logged, ignored
-13. **Server/client type drift** → prevented by shared module
+### Idempotency
+13. Duplicate requestId → returns existing stream
+14. Cancel twice → no error
 
 ## Timeline
 
-- Shared types: 30 min
-- Schema updates: 30 min
-- Store streaming actions: 2 hours
-- useTabMessages hook: 1 hour
-- useStreamHandler hook: 2 hours
-- Integration with existing chat: 2 hours
-- Testing: 2.5 hours
+- Shared types package: 1 hour
+- Token endpoint: 1 hour
+- Stream client hook: 3 hours
+- UI integration: 2 hours
+- Testing: 3 hours
 
-**Total: ~10.5 hours**
+**Total: ~10 hours**
 
 ## Execution Order
 
-1. **[Part 1: Architecture](./one-dexie-architecture.md)** - Read first for context
-2. **[Part 2: Schema](./two-dexie-schema.md)** - Implement Supabase + Dexie schema
-3. **[Part 3: Implementation](./three-dexie-implementation.md)** - Sync service, hooks, store
-4. **[Part 4: Streaming](./four-dexie-streaming-integration.md)** - Streaming message lifecycle (this doc)
+1. **[Part 1: Architecture](./one-dexie-architecture.md)** - Read first
+2. **[Part 2: Schema](./two-dexie-schema.md)** - Database schema
+3. **[Part 3: Implementation](./three-dexie-implementation.md)** - Sync service, store
+4. **[Part 4: Streaming](./four-dexie-streaming-integration.md)** - This doc
+
+## Related Documents
+
+- **[DIRECT_STREAMING_CONTRACT.md](./DIRECT_STREAMING_CONTRACT.md)** - Complete API specs
+- **[ARCHITECTURE_REVISION.md](./ARCHITECTURE_REVISION.md)** - Why direct streaming

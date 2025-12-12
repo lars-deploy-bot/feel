@@ -1,4 +1,6 @@
 import path from "node:path"
+import fs from "node:fs"
+import { execSync } from "node:child_process"
 
 /**
  * NOTE: Environment validation happens in the app itself via:
@@ -8,6 +10,28 @@ import path from "node:path"
  * This ensures validation runs during build AND runtime.
  * Cannot import TS files here since next.config.js runs in Node before transpilation.
  */
+
+// Generate build info file at build time
+function writeBuildInfo() {
+  try {
+    const branch = execSync("git branch --show-current", { encoding: "utf-8" }).trim()
+    const buildTime = new Date().toLocaleString("pt-BR", {
+      timeZone: "America/Sao_Paulo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    })
+    const buildInfo = { branch, buildTime }
+    fs.writeFileSync(path.join(import.meta.dirname, "lib/build-info.json"), JSON.stringify(buildInfo, null, 2))
+  } catch {
+    // Ignore errors in dev mode
+  }
+}
+
+writeBuildInfo()
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {

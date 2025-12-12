@@ -1,8 +1,15 @@
-.PHONY: build run dev clean test deps
+.PHONY: build build-client build-server run dev clean test deps
 
-# Build the server
-build:
+# Build everything (client + server)
+build: build-client build-server
+
+# Build the Go server
+build-server:
 	go build -o bin/shell-server ./cmd/server
+
+# Build the client (Vite + Tailwind)
+build-client:
+	cd client && bun install && bun run build && bun run build:css
 
 # Run the server (requires SHELL_PASSWORD env var)
 run: build
@@ -26,6 +33,7 @@ deps:
 # Clean build artifacts
 clean:
 	rm -rf bin/
+	rm -rf client/node_modules
 	rm -f .sessions.json .rate-limit-state.json
 
 # Run tests

@@ -8,7 +8,23 @@ export interface MessageGroup {
   isComplete: boolean
 }
 
+/**
+ * Filter out superseded messages (e.g., "compacting" when "compact_boundary" exists)
+ */
+function filterSupersededMessages(messages: UIMessage[]): UIMessage[] {
+  const hasCompactBoundary = messages.some(m => m.type === "compact_boundary")
+
+  return messages.filter(m => {
+    // Remove "compacting" messages when compact_boundary exists (compaction finished)
+    if (m.type === "compacting" && hasCompactBoundary) {
+      return false
+    }
+    return true
+  })
+}
+
 export function groupMessages(messages: UIMessage[]): MessageGroup[] {
+  const filteredMessages = filterSupersededMessages(messages)
   const groups: MessageGroup[] = []
   let currentThinkingGroup: UIMessage[] = []
 
@@ -23,8 +39,8 @@ export function groupMessages(messages: UIMessage[]): MessageGroup[] {
     }
   }
 
-  for (let i = 0; i < messages.length; i++) {
-    const message = messages[i]
+  for (let i = 0; i < filteredMessages.length; i++) {
+    const message = filteredMessages[i]
 
     // Errors should be displayed prominently, not hidden in thinking groups
     const isError = message.type === "sdk_message" && isErrorResultMessage(message.content)

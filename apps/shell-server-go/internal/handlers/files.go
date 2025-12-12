@@ -153,6 +153,69 @@ func (h *FileHandler) CheckDirectory(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// CreateDirectory handles POST /api/create-directory
+func (h *FileHandler) CreateDirectory(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		if err := r.ParseForm(); err != nil {
+			jsonError(w, "Invalid request", http.StatusBadRequest)
+			return
+		}
+	}
+
+	workspace := r.FormValue("workspace")
+	if workspace == "" {
+		workspace = "root"
+	}
+	targetDir := r.FormValue("targetDir")
+	if targetDir == "" {
+		jsonError(w, "No directory path provided", http.StatusBadRequest)
+		return
+	}
+
+	// Validate directory name - reject dangerous patterns
+	if strings.Contains(targetDir, "..") {
+		jsonError(w, "Invalid directory path", http.StatusBadRequest)
+		return
+	}
+
+	basePath := h.resolveBasePath(workspace)
+	resolvedTarget, err := filepath.Abs(filepath.Join(basePath, targetDir))
+	if err != nil || !isPathSafe(resolvedTarget, basePath) {
+		jsonError(w, "Path traversal detected", http.StatusBadRequest)
+		return
+	}
+
+	// Check if already exists
+	if info, err := os.Stat(resolvedTarget); err == nil {
+		if info.IsDir() {
+			jsonResponse(w, map[string]interface{}{
+				"success": true,
+				"message": fmt.Sprintf("Directory already exists: %s", targetDir),
+				"path":    resolvedTarget,
+				"created": false,
+			})
+			return
+		}
+		jsonError(w, "A file with that name already exists", http.StatusConflict)
+		return
+	}
+
+	// Create the directory
+	if err := os.MkdirAll(resolvedTarget, 0755); err != nil {
+		filesLog.Error("Failed to create directory %s: %v", resolvedTarget, err)
+		jsonError(w, "Failed to create directory", http.StatusInternalServerError)
+		return
+	}
+
+	filesLog.Info("Created directory: %s", resolvedTarget)
+	jsonResponse(w, map[string]interface{}{
+		"success": true,
+		"message": fmt.Sprintf("Created directory: %s", targetDir),
+		"path":    resolvedTarget,
+		"created": true,
+	})
+}
+
 // Upload handles POST /api/upload
 // Supports both ZIP files (extracted) and regular files (saved with optional custom name)
 func (h *FileHandler) Upload(w http.ResponseWriter, r *http.Request) {

@@ -23,8 +23,6 @@ interface UseStreamReconnectOptions {
   isStreaming: boolean
   /** Callback to add messages to the UI */
   addMessage: (message: UIMessage) => void
-  /** Callback to set busy state */
-  setBusy: (busy: boolean) => void
   /** Whether component is mounted */
   mounted: boolean
 }
@@ -43,7 +41,6 @@ export function useStreamReconnect({
   workspace,
   isStreaming,
   addMessage,
-  setBusy,
   mounted,
 }: UseStreamReconnectOptions) {
   const streamingActions = useStreamingActions()
@@ -113,7 +110,8 @@ export function useStreamReconnect({
 
       // Handle stream state
       if (data.state === "complete" || data.state === "error") {
-        setBusy(false)
+        // Mark stream as ended in the store (this updates busy state)
+        streamingActions.endStream(conversationId)
         // Acknowledge receipt so buffer gets cleaned up
         await fetch("/api/claude/stream/reconnect", {
           method: "POST",
@@ -126,8 +124,8 @@ export function useStreamReconnect({
           }),
         })
       } else if (data.state === "streaming") {
-        // Stream is still active - set up polling to get remaining messages
-        setBusy(true)
+        // Stream is still active - mark it and set up polling
+        streamingActions.startStream(conversationId)
         pollForRemainingMessages(conversationId, workspace)
       }
     } catch (error) {
@@ -136,7 +134,7 @@ export function useStreamReconnect({
       reconnectingRef.current = false
       setIsReconnecting(false)
     }
-  }, [conversationId, workspace, addMessage, setBusy, streamingActions])
+  }, [conversationId, workspace, addMessage, streamingActions])
 
   // Poll for remaining messages when stream is still active
   const pollForRemainingMessages = useCallback(
@@ -171,7 +169,7 @@ export function useStreamReconnect({
 
           if (!data.ok || !data.hasStream) {
             // Stream ended or was cleaned up
-            setBusy(false)
+            streamingActions.endStream(convId)
             return
           }
 
@@ -194,7 +192,7 @@ export function useStreamReconnect({
 
           // Check if stream completed
           if (data.state === "complete" || data.state === "error") {
-            setBusy(false)
+            streamingActions.endStream(convId)
             // Acknowledge receipt
             await fetch("/api/claude/stream/reconnect", {
               method: "POST",
@@ -215,9 +213,9 @@ export function useStreamReconnect({
 
       // Max polls reached
       console.warn("[StreamReconnect] Max polls reached, stopping")
-      setBusy(false)
+      streamingActions.endStream(convId)
     },
-    [addMessage, setBusy, streamingActions],
+    [addMessage, streamingActions],
   )
 
   // Check for active stream on mount (handles page refresh during active stream)

@@ -2,6 +2,8 @@
 
 Sync service, React hooks, Zustand store, and migration code.
 
+**Key Change from Original**: No Dexie writes during streaming. Streaming state is in-memory only. Dexie receives final messages after stream completes.
+
 ## Phase 1: Dependencies
 
 ```bash
@@ -22,20 +24,20 @@ cd apps/web && bun add dexie dexie-react-hooks
 
 export const conversationService = {
   createConversation,
-  addMessage,
+  addMessage,           // For final messages only (not streaming)
   addTab,
   renameTab,
-  deleteConversation,  // Soft delete only!
+  deleteConversation,   // Soft delete only!
   shareConversation,
   unshareConversation,
   syncFromServer,
-  fetchTabMessages,    // Lazy loading per tab
+  fetchTabMessages,     // Lazy loading per tab
 }
 
 // Implementation in files below
 ```
 
-## Phase 3: Sync Service
+## Phase 3: Sync Service (Simplified)
 
 **File: `apps/web/lib/db/conversationSync.ts`**
 
@@ -76,14 +78,13 @@ export function queueSync(conversationId: string, userId: string): void {
 // Listen for online events to retry failed syncs
 if (typeof window !== "undefined") {
   window.addEventListener("online", () => {
-    // TODO: Re-sync any conversations with pendingSync=true and nextRetryAt <= now
     console.log("[sync] Online - checking for pending syncs")
   })
 }
 
 /**
  * Sync conversations to server
- * Uses bulkPut (not bulkUpdate - that's not standard Dexie API!)
+ * Only syncs FINAL messages (not streaming partials)
  */
 async function syncConversations(conversationIds: string[], userId: string): Promise<void> {
   const supabase = createClient()
@@ -94,7 +95,7 @@ async function syncConversations(conversationIds: string[], userId: string): Pro
       const conversation = await db.conversations.get(id)
       if (!conversation) continue
 
-      // Upsert conversation (includes new metadata fields)
+      // Upsert conversation
       await supabase.from("conversations").upsert({
         id: conversation.id,
         workspace: conversation.workspace,
@@ -104,12 +105,10 @@ async function syncConversations(conversationIds: string[], userId: string): Pro
         visibility: conversation.visibility,
         created_at: new Date(conversation.createdAt).toISOString(),
         updated_at: new Date(conversation.updatedAt).toISOString(),
-        // Metadata
         message_count: conversation.messageCount ?? 0,
         last_message_at: conversation.lastMessageAt ? new Date(conversation.lastMessageAt).toISOString() : null,
         first_user_message_id: conversation.firstUserMessageId ?? null,
         auto_title_set: conversation.autoTitleSet ?? false,
-        // Soft delete
         deleted_at: conversation.deletedAt ? new Date(conversation.deletedAt).toISOString() : null,
         archived_at: conversation.archivedAt ? new Date(conversation.archivedAt).toISOString() : null,
       })
@@ -120,13 +119,13 @@ async function syncConversations(conversationIds: string[], userId: string): Pro
         .equals(id)
         .toArray()
 
-      // Get pending messages for all tabs in this conversation
-      // Only sync messages that are NOT streaming
+      // Get pending messages for all tabs
+      // Note: All messages in Dexie are final (no streaming status)
       const tabIds = tabs.map(t => t.id)
       const pendingMessages = await db.messages
         .where("tabId")
         .anyOf(tabIds)
-        .and(m => m.pendingSync === true && m.status !== "streaming")
+        .and(m => m.pendingSync === true)
         .toArray()
 
       if (pendingMessages.length > 0) {
@@ -134,6 +133,8 @@ async function syncConversations(conversationIds: string[], userId: string): Pro
           pendingMessages.map(m => ({
             id: m.id,
             tab_id: m.tabId,
+            stream_id: m.streamId ?? null,
+            seq: m.seq ?? null,
             type: m.type,
             content: m.content,
             created_at: new Date(m.createdAt).toISOString(),
@@ -145,7 +146,7 @@ async function syncConversations(conversationIds: string[], userId: string): Pro
           }))
         )
 
-        // Mark as synced using bulkPut (NOT bulkUpdate - that doesn't exist!)
+        // Mark as synced
         const now = Date.now()
         await db.messages.bulkPut(
           pendingMessages.map(m => ({
@@ -176,7 +177,6 @@ async function syncConversations(conversationIds: string[], userId: string): Pro
           }))
         )
 
-        // Mark as synced using bulkPut
         const now = Date.now()
         await db.tabs.bulkPut(
           pendingTabs.map(t => ({
@@ -187,7 +187,7 @@ async function syncConversations(conversationIds: string[], userId: string): Pro
         )
       }
 
-      // Mark conversation as synced, clear retry state
+      // Mark conversation as synced
       await db.conversations.update(id, {
         syncedAt: Date.now(),
         pendingSync: false,
@@ -221,8 +221,6 @@ async function syncConversations(conversationIds: string[], userId: string): Pro
  * Fetch user's conversations from server (initial load + refresh)
  *
  * CRITICAL: This fetches METADATA ONLY, not messages!
- * Messages are loaded lazily per-tab via fetchTabMessages.
- * Loading all messages for all conversations would be catastrophic at scale.
  */
 export async function fetchConversations(
   workspace: string,
@@ -232,8 +230,7 @@ export async function fetchConversations(
   const supabase = createClient()
   const db = getMessageDb(userId)
 
-  // Fetch user's own conversations for this workspace
-  // METADATA ONLY - no messages! (see fetchTabMessages for that)
+  // Fetch user's own conversations (metadata only)
   const { data: ownConversations } = await supabase
     .from("conversations")
     .select(`
@@ -244,10 +241,10 @@ export async function fetchConversations(
     `)
     .eq("workspace", workspace)
     .eq("creator_id", userId)
-    .is("deleted_at", null)  // Exclude soft-deleted
+    .is("deleted_at", null)
     .order("updated_at", { ascending: false })
 
-  // Fetch shared conversations for this workspace
+  // Fetch shared conversations
   const { data: sharedConversations } = await supabase
     .from("conversations")
     .select(`
@@ -259,8 +256,8 @@ export async function fetchConversations(
     .eq("workspace", workspace)
     .eq("org_id", orgId)
     .eq("visibility", "shared")
-    .neq("creator_id", userId) // Exclude own (already fetched)
-    .is("deleted_at", null)  // Exclude soft-deleted
+    .neq("creator_id", userId)
+    .is("deleted_at", null)
     .order("updated_at", { ascending: false })
 
   const allConversations = [...(ownConversations || []), ...(sharedConversations || [])]
@@ -279,21 +276,17 @@ export async function fetchConversations(
         visibility: c.visibility,
         createdAt: new Date(c.created_at).getTime(),
         updatedAt: remoteUpdatedAt,
-        // Metadata
         messageCount: c.message_count ?? 0,
         lastMessageAt: c.last_message_at ? new Date(c.last_message_at).getTime() : undefined,
         firstUserMessageId: c.first_user_message_id ?? undefined,
         autoTitleSet: c.auto_title_set ?? false,
-        // Soft delete
         deletedAt: c.deleted_at ? new Date(c.deleted_at).getTime() : undefined,
         archivedAt: c.archived_at ? new Date(c.archived_at).getTime() : undefined,
-        // Sync metadata
         syncedAt: Date.now(),
-        remoteUpdatedAt,  // For conflict detection
+        remoteUpdatedAt,
         pendingSync: false,
       })
 
-      // Tabs (metadata only)
       for (const t of c.conversation_tabs || []) {
         await db.tabs.put({
           id: t.id,
@@ -313,12 +306,11 @@ export async function fetchConversations(
 
 /**
  * Fetch messages for a specific tab (lazy loading)
- * Call this when user opens a conversation/tab
  */
 export async function fetchTabMessages(
   tabId: string,
   userId: string,
-  cursor?: string,  // ISO timestamp for pagination
+  cursor?: string,
 ): Promise<{ messages: DbMessage[]; hasMore: boolean }> {
   const supabase = createClient()
   const db = getMessageDb(userId)
@@ -329,7 +321,7 @@ export async function fetchTabMessages(
     .select("*")
     .eq("tab_id", tabId)
     .order("created_at", { ascending: false })
-    .limit(PAGE_SIZE + 1)  // Fetch one extra to check hasMore
+    .limit(PAGE_SIZE + 1)
 
   if (cursor) {
     query = query.lt("created_at", cursor)
@@ -339,21 +331,21 @@ export async function fetchTabMessages(
   const hasMore = (messages?.length ?? 0) > PAGE_SIZE
   const messagesToStore = hasMore ? messages?.slice(0, PAGE_SIZE) : messages
 
-  // Store in Dexie
   if (messagesToStore && messagesToStore.length > 0) {
     await db.transaction("rw", [db.messages], async () => {
       for (const m of messagesToStore) {
-        const createdAt = new Date(m.created_at).getTime()
         await db.messages.put({
           id: m.id,
           tabId: m.tab_id,
+          streamId: m.stream_id ?? undefined,
+          seq: m.seq ?? undefined,
           type: m.type,
           content: m.content,
-          createdAt,
+          createdAt: new Date(m.created_at).getTime(),
           updatedAt: new Date(m.updated_at).getTime(),
           version: CURRENT_MESSAGE_VERSION,
           status: m.status ?? "complete",
-          origin: "remote",  // Came from server
+          origin: "remote",
           abortedAt: m.aborted_at ? new Date(m.aborted_at).getTime() : undefined,
           errorCode: m.error_code ?? undefined,
           syncedAt: Date.now(),
@@ -417,7 +409,6 @@ export async function deleteConversation(conversationId: string, userId: string)
 
 /**
  * Subscribe to realtime updates for shared conversations
- * Call this when entering a workspace
  */
 export function subscribeToSharedConversations(
   workspace: string,
@@ -433,12 +424,13 @@ export function subscribeToSharedConversations(
       event: 'INSERT',
       schema: 'app',
       table: 'messages',
-      // Note: We filter client-side since RLS handles security
     }, payload => {
       const m = payload.new as any
       onMessage({
         id: m.id,
         tabId: m.tab_id,
+        streamId: m.stream_id ?? undefined,
+        seq: m.seq ?? undefined,
         type: m.type,
         content: m.content,
         createdAt: new Date(m.created_at).getTime(),
@@ -452,7 +444,6 @@ export function subscribeToSharedConversations(
     })
     .subscribe()
 
-  // Return unsubscribe function
   return () => {
     supabase.removeChannel(channel)
   }
@@ -470,7 +461,6 @@ import Dexie from "dexie"
 import { useLiveQuery } from "dexie-react-hooks"
 import { getMessageDb, type DbConversation } from "./messageDb"
 
-// Session context type - REQUIRED for all conversation operations
 export interface SessionContext {
   userId: string
   orgId: string
@@ -478,10 +468,6 @@ export interface SessionContext {
 
 /**
  * Get conversations for a workspace (user's own + shared)
- * Uses composite index for performance
- *
- * CRITICAL: Must filter by BOTH creatorId AND orgId for shared conversations
- * to prevent leaking other orgs' data from local cache
  */
 export function useConversations(
   workspace: string | null,
@@ -493,13 +479,11 @@ export function useConversations(
 
       const db = getMessageDb(session.userId)
 
-      // Use composite index [workspace+updatedAt] for efficient sorted query
       return db.conversations
         .where("[workspace+updatedAt]")
         .between([workspace, Dexie.minKey], [workspace, Dexie.maxKey])
-        // CRITICAL: Filter by org for shared conversations to prevent data leak
         .and(c =>
-          !c.deletedAt && (  // Exclude soft-deleted
+          !c.deletedAt && (
             c.creatorId === session.userId ||
             (c.visibility === "shared" && c.orgId === session.orgId)
           )
@@ -513,8 +497,7 @@ export function useConversations(
 }
 
 /**
- * Get only shared conversations for a workspace (team view)
- * Uses composite index for performance
+ * Get only shared conversations for a workspace
  */
 export function useSharedConversations(
   workspace: string | null,
@@ -526,11 +509,10 @@ export function useSharedConversations(
 
       const db = getMessageDb(session.userId)
 
-      // Use composite index [orgId+visibility+updatedAt]
       return db.conversations
         .where("[orgId+visibility+updatedAt]")
         .between([session.orgId, "shared", Dexie.minKey], [session.orgId, "shared", Dexie.maxKey])
-        .and(c => !c.deletedAt)  // Exclude soft-deleted
+        .and(c => !c.deletedAt)
         .reverse()
         .toArray()
     },
@@ -540,8 +522,7 @@ export function useSharedConversations(
 }
 
 /**
- * Get messages for a tab (messages belong to tabs, not conversations)
- * Uses composite index for performance
+ * Get messages for a tab (final messages only)
  */
 export function useMessages(tabId: string | null, userId: string | null) {
   return useLiveQuery(
@@ -550,7 +531,6 @@ export function useMessages(tabId: string | null, userId: string | null) {
 
       const db = getMessageDb(userId)
 
-      // Use composite index [tabId+createdAt]
       return db.messages
         .where("[tabId+createdAt]")
         .between([tabId, Dexie.minKey], [tabId, Dexie.maxKey])
@@ -563,7 +543,6 @@ export function useMessages(tabId: string | null, userId: string | null) {
 
 /**
  * Get tabs for a conversation
- * Uses composite index for performance
  */
 export function useTabs(conversationId: string | null, userId: string | null) {
   return useLiveQuery(
@@ -572,7 +551,6 @@ export function useTabs(conversationId: string | null, userId: string | null) {
 
       const db = getMessageDb(userId)
 
-      // Use composite index [conversationId+position]
       return db.tabs
         .where("[conversationId+position]")
         .between([conversationId, Dexie.minKey], [conversationId, Dexie.maxKey])
@@ -600,7 +578,6 @@ export function useConversation(id: string | null, userId: string | null) {
 
 /**
  * Safe hook for current conversation - handles cross-tab deletion
- * USE THIS instead of raw useConversation + useCurrentConversationId
  */
 export function useCurrentConversationSafe(
   currentConversationId: string | null,
@@ -609,7 +586,6 @@ export function useCurrentConversationSafe(
 ) {
   const conversation = useConversation(currentConversationId, userId)
 
-  // Handle cross-tab deletion
   if (currentConversationId && conversation === null) {
     clearCurrentConversation()
   }
@@ -618,13 +594,11 @@ export function useCurrentConversationSafe(
 }
 ```
 
-## Phase 5: Message Store (Rewrite)
+## Phase 5: Message Store (Simplified)
 
 **File: `apps/web/lib/stores/messageStore.ts`**
 
-> **Note:** Streaming lifecycle actions (`startAssistantStream`, `appendToAssistantStream`, etc.) are documented in [Part 4: Streaming](./four-dexie-streaming-integration.md). This phase covers the core store structure.
-
-**IMPORTANT**: The store delegates to the conversation service layer. It does NOT call Dexie directly for most operations.
+**Key simplification**: Streaming state is in Zustand only. No Dexie writes during streaming.
 
 ```typescript
 "use client"
@@ -645,8 +619,16 @@ import type { UIMessage } from "@/features/chat/lib/message-parser"
 
 const generateId = () => crypto.randomUUID()
 
+interface StreamingState {
+  streamId: string
+  requestId: string
+  messageId: string
+  text: string
+  startedAt: number
+}
+
 interface MessageStoreState {
-  // Session context - REQUIRED for all operations
+  // Session context
   session: { userId: string; orgId: string } | null
   currentConversationId: string | null
   currentTabId: string | null
@@ -654,11 +636,9 @@ interface MessageStoreState {
   isLoading: boolean
   isSyncing: boolean
 
-  // Streaming state (per-tab, in-memory only - NOT persisted)
-  // IMPORTANT: These are NEVER stored in Dexie - they are ephemeral
-  // See Part 4 for streaming lifecycle actions
-  activeStreamByTab: Record<string, string | null>  // tabId -> streaming messageId
-  streamingBuffers: Record<string, string>          // messageId -> current text
+  // Streaming state (in-memory only, NOT persisted to Dexie)
+  // Keyed by tabId for multi-tab support
+  activeStreams: Record<string, StreamingState | null>
 }
 
 interface MessageStoreActions {
@@ -668,12 +648,25 @@ interface MessageStoreActions {
   // Conversation management
   initializeConversation: (workspace: string) => Promise<string>
   switchConversation: (id: string, tabId?: string) => void
-  deleteConversation: (id: string) => Promise<void>  // Soft delete only!
+  deleteConversation: (id: string) => Promise<void>
   shareConversation: (id: string) => Promise<void>
   unshareConversation: (id: string) => Promise<void>
 
-  // Message management (messages belong to tabs)
+  // Message management (FINAL messages only)
   addMessage: (message: UIMessage) => Promise<void>
+  addFinalStreamMessage: (
+    tabId: string,
+    streamId: string,
+    seq: number,
+    content: string,
+    status: "complete" | "interrupted" | "error",
+    errorCode?: string
+  ) => Promise<void>
+
+  // Streaming state (in-memory only)
+  setStreamingState: (tabId: string, state: StreamingState | null) => void
+  appendStreamText: (tabId: string, delta: string) => void
+  getStreamingState: (tabId: string) => StreamingState | null
 
   // Tab management
   addTab: (name?: string) => Promise<string>
@@ -683,7 +676,7 @@ interface MessageStoreActions {
 
   // Sync
   syncFromServer: (workspace: string) => Promise<void>
-  loadTabMessages: (tabId: string) => Promise<void>  // Lazy load
+  loadTabMessages: (tabId: string) => Promise<void>
 
   // Cleanup
   clearCurrentConversation: () => void
@@ -698,8 +691,7 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
   currentWorkspace: null,
   isLoading: false,
   isSyncing: false,
-  activeStreamByTab: {},
-  streamingBuffers: {},
+  activeStreams: {},
 
   setSession: (session) => {
     set({ session })
@@ -722,13 +714,11 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       visibility: "private",
       createdAt: now,
       updatedAt: now,
-      // Initialize metadata
       messageCount: 0,
       autoTitleSet: false,
       pendingSync: true,
     }
 
-    // Create default tab
     const defaultTabId = generateId()
     const defaultTab: DbTab = {
       id: defaultTabId,
@@ -762,15 +752,10 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
     })
   },
 
-  // CRITICAL FIX: Soft delete only, and delete messages via tabs (not conversationId)
   deleteConversation: async (id) => {
     const { currentConversationId, session } = get()
-    if (!session) {
-      console.warn("[messages] deleteConversation called without session")
-      return
-    }
+    if (!session) return
 
-    // Use the sync service for soft delete
     await syncDeleteConversation(id, session.userId)
 
     if (currentConversationId === id) {
@@ -790,20 +775,12 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
     await syncUnshareConversation(id, session.userId)
   },
 
+  // Add a final message (non-streaming)
   addMessage: async (message) => {
     const { currentConversationId, currentTabId, session } = get()
 
-    // Invariant checks - fail early and loudly
-    if (!session) {
-      console.warn("[messages] addMessage called without session")
-      return
-    }
-    if (!currentConversationId) {
-      console.warn("[messages] addMessage called with no currentConversationId")
-      return
-    }
-    if (!currentTabId) {
-      console.warn("[messages] addMessage called with no currentTabId")
+    if (!session || !currentConversationId || !currentTabId) {
+      console.warn("[messages] addMessage called without required context")
       return
     }
 
@@ -812,7 +789,7 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
 
     const dbMessage: DbMessage = {
       id: message.id,
-      tabId: currentTabId,  // Messages belong to tabs, NOT conversations
+      tabId: currentTabId,
       type: message.type,
       content: toDbMessageContent(message),
       createdAt: now,
@@ -825,7 +802,7 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
 
     await safeDb(() => db.messages.add(dbMessage))
 
-    // Update conversation metadata (efficient - no scanning)
+    // Update conversation metadata
     const convo = await db.conversations.get(currentConversationId)
     if (!convo) return
 
@@ -836,7 +813,6 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       pendingSync: true,
     }
 
-    // Update title on first user message (using autoTitleSet flag - no scanning!)
     if (message.type === "user" && !convo.autoTitleSet) {
       updates.title = extractTitle(dbMessage.content)
       updates.firstUserMessageId = dbMessage.id
@@ -856,6 +832,80 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
     }
 
     queueSync(currentConversationId, session.userId)
+  },
+
+  // Add final message from completed stream
+  addFinalStreamMessage: async (tabId, streamId, seq, content, status, errorCode) => {
+    const { currentConversationId, session } = get()
+    if (!session || !currentConversationId) return
+
+    const db = getMessageDb(session.userId)
+    const now = Date.now()
+
+    const dbMessage: DbMessage = {
+      id: generateId(),
+      tabId,
+      streamId,
+      seq,
+      type: "assistant",
+      content: { kind: "text", text: content },
+      createdAt: now,
+      updatedAt: now,
+      version: CURRENT_MESSAGE_VERSION,
+      status,
+      origin: "local",
+      errorCode,
+      abortedAt: status === "interrupted" ? now : undefined,
+      pendingSync: true,
+    }
+
+    await safeDb(() => db.messages.add(dbMessage))
+
+    // Update metadata
+    const convo = await db.conversations.get(currentConversationId)
+    if (convo) {
+      await safeDb(() => db.conversations.update(currentConversationId, {
+        updatedAt: now,
+        lastMessageAt: now,
+        messageCount: (convo.messageCount ?? 0) + 1,
+        pendingSync: true,
+      }))
+    }
+
+    const tab = await db.tabs.get(tabId)
+    if (tab) {
+      await safeDb(() => db.tabs.update(tabId, {
+        lastMessageAt: now,
+        messageCount: (tab.messageCount ?? 0) + 1,
+        pendingSync: true,
+      }))
+    }
+
+    queueSync(currentConversationId, session.userId)
+  },
+
+  // Streaming state management (in-memory only)
+  setStreamingState: (tabId, state) => {
+    set(prev => ({
+      activeStreams: { ...prev.activeStreams, [tabId]: state }
+    }))
+  },
+
+  appendStreamText: (tabId, delta) => {
+    set(prev => {
+      const stream = prev.activeStreams[tabId]
+      if (!stream) return prev
+      return {
+        activeStreams: {
+          ...prev.activeStreams,
+          [tabId]: { ...stream, text: stream.text + delta }
+        }
+      }
+    })
+  },
+
+  getStreamingState: (tabId) => {
+    return get().activeStreams[tabId] ?? null
   },
 
   addTab: async (name = "new tab") => {
@@ -897,11 +947,9 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
     const tab = await db.tabs.get(tabId)
     if (!tab) return
 
-    // Delete messages first (via tabId, NOT conversationId!)
     await safeDb(() => db.messages.where("tabId").equals(tabId).delete())
     await safeDb(() => db.tabs.delete(tabId))
 
-    // Reorder remaining tabs using bulkPut (NOT bulkUpdate!)
     const remainingTabs = await db.tabs
       .where("conversationId")
       .equals(tab.conversationId)
@@ -915,7 +963,6 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       }))
     ))
 
-    // Also delete from server
     const supabase = (await import("@/lib/supabase/client")).createClient()
     await supabase.from("conversation_tabs").delete().eq("id", tabId)
 
@@ -950,7 +997,6 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
     }
   },
 
-  // Lazy load messages for a tab
   loadTabMessages: async (tabId) => {
     const { session } = get()
     if (!session) return
@@ -975,6 +1021,9 @@ export const useCurrentConversationId = () =>
 export const useIsSyncing = () =>
   useMessageStore(state => state.isSyncing)
 
+export const useStreamingState = (tabId: string | null) =>
+  useMessageStore(state => tabId ? state.activeStreams[tabId] : null)
+
 export const useMessageActions = () =>
   useMessageStore(state => ({
     initializeConversation: state.initializeConversation,
@@ -983,6 +1032,9 @@ export const useMessageActions = () =>
     shareConversation: state.shareConversation,
     unshareConversation: state.unshareConversation,
     addMessage: state.addMessage,
+    addFinalStreamMessage: state.addFinalStreamMessage,
+    setStreamingState: state.setStreamingState,
+    appendStreamText: state.appendStreamText,
     addTab: state.addTab,
     removeTab: state.removeTab,
     renameTab: state.renameTab,
@@ -1013,7 +1065,6 @@ import { queueSync } from "./conversationSync"
 
 const LEGACY_STORAGE_KEY = "claude-message-storage"
 
-// Strongly typed legacy state for safe parsing
 interface LegacyMessage {
   id: string
   type: DbMessageType
@@ -1036,7 +1087,6 @@ interface LegacyState {
   }
 }
 
-// Migration status stored as JSON, not bare "true"
 interface MigrationStatus {
   version: number
   completedAt: number
@@ -1046,26 +1096,19 @@ interface MigrationStatus {
 const MIGRATION_KEY = "dexie-migration"
 const CURRENT_MIGRATION_VERSION = 3
 
-/**
- * Migrate from localStorage to new system (one-time)
- * All migrated conversations are PRIVATE
- * Sets origin: "migration" on all migrated data
- */
 export async function migrateLegacyStorage(userId: string, orgId: string): Promise<boolean> {
   if (typeof window === "undefined") return false
 
-  // Check migration status
   const statusRaw = localStorage.getItem(MIGRATION_KEY)
   const status = statusRaw ? JSON.parse(statusRaw) as MigrationStatus : null
 
   if (status?.version >= CURRENT_MIGRATION_VERSION) {
-    return false  // Already migrated
+    return false
   }
 
   try {
     const raw = localStorage.getItem(LEGACY_STORAGE_KEY)
     if (!raw) {
-      // No legacy data - mark as migrated anyway
       saveMigrationStatus(0)
       return false
     }
@@ -1086,7 +1129,6 @@ export async function migrateLegacyStorage(userId: string, orgId: string): Promi
       for (const [id, convo] of Object.entries(legacy.state!.conversations)) {
         const baseTime = convo.createdAt ?? Date.now()
 
-        // Create conversation with metadata
         await db.conversations.put({
           id,
           workspace: convo.workspace || "unknown",
@@ -1096,15 +1138,12 @@ export async function migrateLegacyStorage(userId: string, orgId: string): Promi
           visibility: "private",
           createdAt: baseTime,
           updatedAt: convo.lastActivity ?? baseTime,
-          // Metadata
           messageCount: convo.messages?.length ?? 0,
           lastMessageAt: convo.lastActivity ?? baseTime,
-          autoTitleSet: true,  // Don't overwrite existing titles
-          // Mark as migrated for debugging
+          autoTitleSet: true,
           pendingSync: true,
         })
 
-        // Create default tab
         const defaultTabId = crypto.randomUUID()
         await db.tabs.put({
           id: defaultTabId,
@@ -1117,11 +1156,9 @@ export async function migrateLegacyStorage(userId: string, orgId: string): Promi
           pendingSync: true,
         })
 
-        // Create messages (prefer message timestamps if available)
         const messages = convo.messages ?? []
         for (let i = 0; i < messages.length; i++) {
           const msg = messages[i]
-          // Use message timestamp if available, otherwise derive from position
           const msgTime = msg.createdAt ?? (baseTime + i)
 
           await db.messages.put({
@@ -1133,7 +1170,7 @@ export async function migrateLegacyStorage(userId: string, orgId: string): Promi
             updatedAt: msgTime,
             version: CURRENT_MESSAGE_VERSION,
             status: "complete",
-            origin: "migration",  // Mark origin for debugging
+            origin: "migration",
             pendingSync: true,
           })
           messageCount++
@@ -1143,7 +1180,6 @@ export async function migrateLegacyStorage(userId: string, orgId: string): Promi
       }
     }))
 
-    // Queue all for sync
     for (const id of conversationIds) {
       queueSync(id, userId)
     }
@@ -1152,7 +1188,6 @@ export async function migrateLegacyStorage(userId: string, orgId: string): Promi
     saveMigrationStatus(conversationIds.length)
     return true
   } catch (error) {
-    // On failure, do NOT bump version - allow retry on next load
     console.error("[migration] Failed:", error)
     return false
   }
@@ -1168,73 +1203,69 @@ function saveMigrationStatus(conversationsMigrated: number): void {
 }
 ```
 
+## Key Changes from Original
+
+| Change | Reason |
+|--------|--------|
+| Removed `startAssistantStream`, `appendToAssistantStream`, etc. | Streaming is broker's job |
+| Removed `streamingBuffers` from store | Single `activeStreams` object instead |
+| Added `addFinalStreamMessage` | Write final message with stream metadata |
+| Removed debounced Dexie snapshots | No partial writes during streaming |
+| Simplified `StreamingState` | Just what client needs for UI |
+
 ## File Changes Summary
 
 | File | Change |
 |------|--------|
 | `apps/web/package.json` | Add `dexie`, `dexie-react-hooks` |
-| `apps/web/lib/conversations/service.ts` | **NEW** - Single service layer for all operations |
-| `apps/web/lib/db/messageDb.ts` | **NEW** - Dexie schema with USER-scoped DB name |
-| `apps/web/lib/db/safeDb.ts` | **NEW** - Error handling wrapper |
-| `apps/web/lib/db/messageAdapters.ts` | **NEW** - Type adapters (UIMessage ↔ DbMessage) |
-| `apps/web/lib/db/useMessageDb.ts` | **NEW** - React hooks with session context |
-| `apps/web/lib/db/conversationSync.ts` | **NEW** - Sync service with lazy loading + retry |
-| `apps/web/lib/db/migrateLegacyStorage.ts` | **NEW** - Typed migration with status tracking |
-| `apps/web/lib/stores/messageStore.ts` | **REWRITE** - Session-aware, soft deletes |
-| `apps/web/lib/supabase/client.ts` | **UPDATE** - Add `db: { schema: "app" }` |
-| `supabase/migrations/xxx_conversations.sql` | **NEW** - Server tables with metadata fields |
+| `apps/web/lib/conversations/service.ts` | **NEW** - Service layer |
+| `apps/web/lib/db/messageDb.ts` | **NEW** - Dexie schema (no streaming status) |
+| `apps/web/lib/db/safeDb.ts` | **NEW** - Error handling |
+| `apps/web/lib/db/messageAdapters.ts` | **NEW** - Type adapters |
+| `apps/web/lib/db/useMessageDb.ts` | **NEW** - React hooks |
+| `apps/web/lib/db/conversationSync.ts` | **NEW** - Sync service (simplified) |
+| `apps/web/lib/db/migrateLegacyStorage.ts` | **NEW** - Migration |
+| `apps/web/lib/stores/messageStore.ts` | **REWRITE** - No streaming snapshots |
 
 ## Testing Checklist
 
 ### Core Operations
-1. **Create conversation** → appears locally + syncs to server
-2. **Add messages** → synced to server (debounced), metadata updated
-3. **Add/remove tabs** → synced to server, messages deleted via tabId
-4. **Share conversation** → other org members can see (same org only!)
-5. **Unshare** → only creator can see again
-6. **Soft delete** → deletedAt set, hidden from UI, synced to server
+1. Create conversation → appears locally + syncs
+2. Add messages → synced, metadata updated
+3. Add/remove tabs → synced
+4. Share/unshare → visibility changes
+5. Soft delete → hidden, synced
 
 ### Lazy Loading
-7. **Open workspace** → only conversation metadata loaded (no messages)
-8. **Open tab** → messages loaded for that tab only
-9. **Pagination** → "Load older messages" works
+6. Open workspace → metadata only
+7. Open tab → messages loaded
+8. Pagination → works
 
 ### Multi-User Security
-10. **Different users, same browser** → separate IndexedDB databases
-11. **User A in org X, User B in org Y** → no cross-org data visible
-12. **Shared conversations** → only visible to same org members
-
-### Multi-Tab / Multi-Device
-13. **Delete in tab A** → tab B clears currentConversation
-14. **New message in tab A** → tab B sees it via useLiveQuery
-15. **Offline device** → syncs with exponential backoff when online
+9. Different users → separate databases
+10. Different orgs → no cross-org data
+11. Shared conversations → org members only
 
 ### Migration
-16. **No legacy data** → migration marks complete, no errors
-17. **Valid legacy data** → conversations + messages migrated with origin: "migration"
-18. **Corrupt legacy JSON** → migration fails gracefully, allows retry
-19. **Migration status** → JSON format with version, timestamp, count
-
-### Edge Cases
-20. **Dexie quota exceeded** → error caught by safeDb, logged
-21. **Schema upgrade blocked** → warning shown, suggest closing tabs
-22. **Stale streaming message** → detected as interrupted on refresh
+12. No legacy data → marks complete
+13. Valid legacy → migrates
+14. Corrupt JSON → fails gracefully
 
 ## Timeline
 
-- Phase 1: 1 hour (dependencies)
-- Phase 2: 1 hour (service layer)
-- Phase 3: 4 hours (sync service with lazy loading + retry)
-- Phase 4: 1 hour (hooks with session context)
-- Phase 5: 3 hours (store rewrite with fixes)
-- Phase 6: 1 hour (typed migration)
-- Testing: 4 hours
+- Phase 1: 30 min (dependencies)
+- Phase 2: 30 min (service layer)
+- Phase 3: 2 hours (sync service)
+- Phase 4: 1 hour (hooks)
+- Phase 5: 2 hours (store)
+- Phase 6: 1 hour (migration)
+- Testing: 3 hours
 
-**Total: ~15 hours**
+**Total: ~10 hours**
 
 ## Execution Order
 
-1. **[Part 1: Architecture](./one-dexie-architecture.md)** - Read first for context
-2. **[Part 2: Schema](./two-dexie-schema.md)** - Implement Supabase + Dexie schema
-3. **[Part 3: Implementation](./three-dexie-implementation.md)** - Sync service, hooks, store (this doc)
-4. **[Part 4: Streaming](./four-dexie-streaming-integration.md)** - Streaming message lifecycle
+1. **[Part 1: Architecture](./one-dexie-architecture.md)** - Read first
+2. **[Part 2: Schema](./two-dexie-schema.md)** - Database schema
+3. **[Part 3: Implementation](./three-dexie-implementation.md)** - This doc
+4. **[Part 4: Streaming](./four-dexie-streaming-integration.md)** - Direct broker streaming

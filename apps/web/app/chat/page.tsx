@@ -2,6 +2,7 @@
 import { PanelLeft } from "lucide-react"
 import { AnimatePresence, motion } from "framer-motion"
 import { Suspense, useCallback, useEffect, useRef, useState } from "react"
+import { useQueryState } from "nuqs"
 import toast, { Toaster } from "react-hot-toast"
 import { FeedbackModal } from "@/components/modals/FeedbackModal"
 import { InviteModal } from "@/components/modals/InviteModal"
@@ -51,7 +52,13 @@ import { useSidebarActions, useSidebarOpen } from "@/lib/stores/conversationSide
 import { isDevelopment, useDebugActions, useSandbox, useSSETerminal } from "@/lib/stores/debug-store"
 import { useApiKey, useModel } from "@/lib/stores/llmStore"
 import { useCurrentConversationId, useMessageActions, useMessages, useMessageStore } from "@/lib/stores/messageStore"
-import { useStreamingActions } from "@/lib/stores/streamingStore"
+import {
+  useStreamingActions,
+  useIsStreamActive,
+  getAbortController,
+  setAbortController,
+  clearAbortController,
+} from "@/lib/stores/streamingStore"
 import { useGoal, useBuilding, useTargetUsers } from "@/lib/stores/goalStore"
 import { SUPERADMIN } from "@webalive/shared"
 import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
@@ -76,7 +83,9 @@ function ChatPageContent() {
   } = useMessageActions()
   const { toggleSidebar } = useSidebarActions()
   const isSidebarOpen = useSidebarOpen()
-  const [busy, setBusy] = useState(false)
+  // Per-conversation busy state from streaming store - SOURCE OF TRUTH for tabs
+  // Each tab/conversation has its own independent busy state
+  const busy = useIsStreamActive(storeConversationId)
   const [useStreaming, _setUseStreaming] = useState(true)
   const [shouldForceScroll, setShouldForceScroll] = useState(false)
   const [userHasManuallyScrolled, setUserHasManuallyScrolled] = useState(false)
@@ -118,6 +127,15 @@ function ChatPageContent() {
   const { workspace, isTerminal, mounted, setWorkspace } = useWorkspace({
     allowEmpty: true,
   })
+
+  // Handle ?wk= URL parameter to pre-select workspace (e.g., from widget "Edit me" button)
+  const [wkParam] = useQueryState("wk")
+  useEffect(() => {
+    if (mounted && wkParam && wkParam !== workspace) {
+      console.log("[ChatPage] Setting workspace from URL param:", wkParam)
+      setWorkspace(wkParam)
+    }
+  }, [mounted, wkParam, workspace, setWorkspace])
 
   // Superadmin workspace (claude-bridge) has no preview/sandbox
   const isSuperadminWorkspace = workspace === SUPERADMIN.WORKSPACE_NAME
@@ -163,7 +181,6 @@ function ChatPageContent() {
     conversationId: storeConversationId ?? "",
     workspace,
     addMessage,
-    setBusy,
     setShowCompletionDots,
     abortControllerRef,
     currentRequestIdRef,
@@ -185,7 +202,7 @@ function ChatPageContent() {
   })
 
   // Fetch organizations and auto-select if none selected
-  const { organizations } = useOrganizations()
+  const { organizations, loading: organizationsLoading } = useOrganizations()
 
   // Check for session expiry
   const isSessionExpired = useIsSessionExpired()
@@ -199,7 +216,6 @@ function ChatPageContent() {
     workspace,
     isStreaming: busy,
     addMessage,
-    setBusy,
     mounted,
   })
 
@@ -221,11 +237,15 @@ function ChatPageContent() {
     handleTabClose,
     handleTabRename,
     handleToggleTabs,
+    handleOpenConversationInTab,
   } = useTabsManagement({
     workspace,
     conversationId,
     onSwitchConversation: handleSwitchConversationForTabs,
     onInitializeConversation: initializeConversation,
+    onStartNewConversation: startNewConversation,
+    currentInput: msg,
+    onInputRestore: setMsg,
   })
 
   // Initialize message store when conversation OR workspace changes
@@ -258,7 +278,8 @@ function ChatPageContent() {
       setSSETerminal(true)
       setSSETerminalMinimized(true)
     }
-    if (window.innerWidth >= 768) {
+    // Only auto-open sandbox on large screens (desktops), not tablets
+    if (window.innerWidth >= 1280) {
       setSandbox(true)
       setSandboxMinimized(false)
     }
@@ -350,9 +371,11 @@ function ChatPageContent() {
   async function sendMessage(overrideMessage?: string) {
     const messageToSend = overrideMessage ?? msg
     if (isSubmitting.current || busy || isStopping || !messageToSend.trim()) return
+    if (!conversationId) return // Need a conversation to send to
 
     isSubmitting.current = true
-    setBusy(true)
+    // Mark stream as active immediately - this is the SOURCE OF TRUTH for busy state
+    streamingActions.startStream(conversationId)
 
     const attachments = chatInputRef.current?.getAttachments() || []
 
@@ -375,7 +398,8 @@ function ChatPageContent() {
         await sendRegular(userMessage)
       }
     } finally {
-      setBusy(false)
+      // endStream is called within sendStreaming/sendRegular on completion
+      // This finally block only needs to reset isSubmitting
       isSubmitting.current = false
     }
   }
@@ -390,10 +414,12 @@ function ChatPageContent() {
 
       const abortController = new AbortController()
       abortControllerRef.current = abortController
-
+      // Store in per-conversation map for tabs support
       if (conversationId) {
-        streamingActions.startStream(conversationId)
+        setAbortController(conversationId, abortController)
       }
+
+      // Note: startStream is already called in sendMessage() - no need to call again
 
       timeoutId = setTimeout(() => {
         if (!receivedAnyMessage && conversationId) {
@@ -545,7 +571,8 @@ function ChatPageContent() {
                   isInterruptEvent(eventData)
                 ) {
                   receivedAnyMessage = true
-                  setBusy(false)
+                  // Note: endStream is called in the finally block or at end of try block
+                  // busy state is derived from streamingStore.isStreamActive
                   isSubmitting.current = false
                   if (
                     (isCompleteEvent(eventData) || isDoneEvent(eventData)) &&
@@ -661,6 +688,8 @@ function ChatPageContent() {
             error.errorCode === ErrorCodes.AUTH_REQUIRED)
 
         if (isAuthError) {
+          // End stream before handling session expiry
+          if (conversationId) streamingActions.endStream(conversationId)
           authStore.handleSessionExpired("Your session has expired. Please log in again to continue.")
           return
         }
@@ -676,9 +705,14 @@ function ChatPageContent() {
           addMessage(errorMessage)
         }
       }
+
+      // End stream on any error to reset busy state
+      if (conversationId) streamingActions.endStream(conversationId)
     } finally {
       if (timeoutId) clearTimeout(timeoutId)
       abortControllerRef.current = null
+      // Clear per-conversation abort controller
+      if (conversationId) clearAbortController(conversationId)
       currentRequestIdRef.current = null
     }
   }
@@ -817,6 +851,11 @@ function ChatPageContent() {
         }
         addMessage(errorUIMessage)
       }
+    } finally {
+      // End stream tracking
+      if (conversationId) {
+        streamingActions.endStream(conversationId)
+      }
     }
   }
 
@@ -836,10 +875,13 @@ function ChatPageContent() {
   const handleConversationSelect = useCallback(
     (selectedConversationId: string) => {
       if (!selectedConversationId) return
+      // If tabs are active, open in tab (finds existing or creates new)
+      // handleOpenConversationInTab is a no-op when tabs are not expanded
+      handleOpenConversationInTab(selectedConversationId)
       switchConversation(selectedConversationId)
       switchConversationInMessageStore(selectedConversationId)
     },
-    [switchConversation, switchConversationInMessageStore],
+    [switchConversation, switchConversationInMessageStore, handleOpenConversationInTab],
   )
 
   const handleDeleteConversation = useCallback(
@@ -948,6 +990,7 @@ function ChatPageContent() {
                 <ChatEmptyState
                   workspace={workspace}
                   totalDomainCount={totalDomainCount}
+                  isLoading={organizationsLoading}
                   onTemplatesClick={() => setShowTemplatesModal(true)}
                 />
               )}
@@ -996,9 +1039,8 @@ function ChatPageContent() {
               ref={chatInputRef}
               message={msg}
               setMessage={setMsg}
-              busy={busy || !workspace}
+              busy={busy || (!workspace && mounted && !organizationsLoading)}
               isStopping={isStopping}
-              abortControllerRef={abortControllerRef}
               onSubmit={sendMessage}
               onStop={stopStreaming}
               onOpenTemplates={() => setShowTemplatesModal(true)}
@@ -1007,7 +1049,10 @@ function ChatPageContent() {
                 enableCamera: true,
                 maxAttachments: 5,
                 maxFileSize: 20 * 1024 * 1024,
-                placeholder: !workspace ? "Select a site to start chatting..." : "Tell me what to change...",
+                placeholder:
+                  !workspace && mounted && !organizationsLoading
+                    ? "Select a site to start chatting..."
+                    : "Tell me what to change...",
                 onAttachmentUpload: handleAttachmentUpload,
               }}
             />
@@ -1044,9 +1089,8 @@ function ChatPageContent() {
               ref={chatInputRef}
               message={msg}
               setMessage={setMsg}
-              busy={busy || !workspace}
+              busy={busy || (!workspace && mounted && !organizationsLoading)}
               isStopping={isStopping}
-              abortControllerRef={abortControllerRef}
               onSubmit={sendMessage}
               onStop={stopStreaming}
               hideToolbar
@@ -1118,7 +1162,9 @@ export default function ChatPage() {
           },
         }}
       />
-      <ChatPageWrapper />
+      <Suspense fallback={null}>
+        <ChatPageWrapper />
+      </Suspense>
     </>
   )
 }

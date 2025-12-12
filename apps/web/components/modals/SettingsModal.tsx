@@ -1,6 +1,6 @@
 "use client"
 
-import { Bot, Building2, ClipboardList, Flag, Globe, Key, Link, Settings, Target, User, X } from "lucide-react"
+import { Bot, Building2, ClipboardList, Flag, Globe, Key, Link, Settings, Shield, Target, User, X } from "lucide-react"
 import { motion } from "framer-motion"
 import { useState } from "react"
 import { useIsDesktop } from "@/hooks/useMediaQuery"
@@ -15,6 +15,7 @@ import {
   WorkspaceSettings,
   WebsitesSettings,
   FlagsSettings,
+  AdminSettings,
   SettingsTabLayout,
 } from "@/components/settings/tabs"
 
@@ -28,6 +29,7 @@ type SettingsTab =
   | "integrations"
   | "keys"
   | "flags"
+  | "admin"
 
 interface SettingsModalProps {
   onClose: () => void
@@ -51,6 +53,7 @@ const allTabs: TabDefinition[] = [
   { id: "integrations", label: "Integrations", icon: <Link size={16} /> },
   { id: "keys", label: "API Keys", icon: <Key size={16} /> },
   { id: "flags", label: "Flags", icon: <Flag size={16} />, adminOnly: true },
+  { id: "admin", label: "Admin", icon: <Shield size={16} />, adminOnly: true },
 ]
 
 export function SettingsModal({ onClose, initialTab }: SettingsModalProps) {
@@ -153,6 +156,7 @@ export function SettingsModal({ onClose, initialTab }: SettingsModalProps) {
               {activeTab === "integrations" && <IntegrationsListWithHeader onClose={onClose} />}
               {activeTab === "keys" && <UserEnvKeysWithHeader onClose={onClose} />}
               {activeTab === "flags" && <FlagsSettings onClose={onClose} />}
+              {activeTab === "admin" && <AdminSettings onClose={onClose} />}
             </div>
           </div>
         </div>

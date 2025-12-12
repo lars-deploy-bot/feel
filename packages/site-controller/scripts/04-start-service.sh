@@ -27,7 +27,7 @@ systemctl start "$SERVICE_NAME"
 
 # Wait for service to become active (with polling, not fixed sleep)
 log_info "Waiting for service to start..."
-if ! wait_for 10 0.5 "systemctl is-active --quiet '$SERVICE_NAME'"; then
+if ! wait_for 10 1 "systemctl is-active --quiet '$SERVICE_NAME'"; then
     log_error "Service failed to start within 10 seconds"
     log_error "Check logs with: journalctl -u $SERVICE_NAME -n 50"
     exit 15
@@ -37,7 +37,7 @@ log_success "Service is active"
 
 # Wait for port to be listening (with polling and retries)
 log_info "Waiting for port $SITE_PORT to be listening..."
-if ! wait_for 10 0.5 "port_in_use '$SITE_PORT'"; then
+if ! wait_for 10 1 "port_in_use '$SITE_PORT'"; then
     log_error "Port $SITE_PORT is not listening after 10 seconds"
     log_error "Service may have failed to bind to port"
     log_error "Check logs with: journalctl -u $SERVICE_NAME -n 50"

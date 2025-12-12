@@ -56,7 +56,7 @@ export function TabBar({ tabs, activeTabId, onTabSelect, onTabClose, onTabRename
     useInlineEdit(onTabRename)
 
   return (
-    <div className="hidden md:block flex-shrink-0 border-b border-black/5 dark:border-white/5 bg-black/[0.01] dark:bg-white/[0.01]">
+    <div className="flex-shrink-0 border-b border-black/5 dark:border-white/5 bg-black/[0.01] dark:bg-white/[0.01]">
       <div className="px-4 md:px-6 mx-auto w-full md:max-w-2xl">
         <div className="flex items-center gap-1 py-1.5 overflow-x-auto scrollbar-hide">
           {tabs.map(tab => {

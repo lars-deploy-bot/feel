@@ -1,4 +1,5 @@
-import { checkDirectory, uploadFile } from "../api/upload"
+import { useState } from "react"
+import { checkDirectory, createDirectory, uploadFile } from "../api/upload"
 import { buildErrorMessage } from "../lib/errors"
 import { useUIStore } from "../store/ui"
 import { useCanCheck, useCanUpload, useUploadStore } from "../store/upload"
@@ -23,6 +24,8 @@ export function UploadControls({ onUploadSuccess }: { onUploadSuccess: () => voi
   const setMessage = useUIStore(s => s.setMessage)
   const clearMessage = useUIStore(s => s.clearMessage)
 
+  const [creating, setCreating] = useState(false)
+
   async function handleCheck() {
     if (!canCheck) return
     setChecking(true)
@@ -39,6 +42,28 @@ export function UploadControls({ onUploadSuccess }: { onUploadSuccess: () => voi
       setMessage(`Check failed: ${(err as Error).message}`, "error")
     } finally {
       setChecking(false)
+    }
+  }
+
+  async function handleCreate() {
+    if (!targetDir.trim()) {
+      setMessage("Enter a directory name first", "error")
+      return
+    }
+    setCreating(true)
+    clearMessage()
+
+    try {
+      const result = await createDirectory(workspace, targetDir)
+      if (result.error) {
+        setMessage(result.error, "error")
+      } else if (result.success) {
+        setMessage(result.message + (result.created ? " ✓" : " (already exists)"), "success")
+      }
+    } catch (err) {
+      setMessage(`Create failed: ${(err as Error).message}`, "error")
+    } finally {
+      setCreating(false)
     }
   }
 
@@ -88,14 +113,24 @@ export function UploadControls({ onUploadSuccess }: { onUploadSuccess: () => voi
           onInput={handleTargetDirInput}
           className="w-full p-3 border border-shell-border bg-shell-bg text-white rounded text-sm focus:outline-none focus:border-shell-accent"
         />
-        <button
-          type="button"
-          onClick={handleCheck}
-          disabled={!canCheck}
-          className="mt-2 px-5 py-2.5 bg-shell-blue hover:bg-shell-blue-hover disabled:bg-gray-600 disabled:cursor-not-allowed text-white border-none rounded text-sm font-semibold cursor-pointer transition-colors"
-        >
-          {checking ? "Checking..." : "Check Directory"}
-        </button>
+        <div className="flex gap-2 mt-2">
+          <button
+            type="button"
+            onClick={handleCheck}
+            disabled={!canCheck}
+            className="px-5 py-2.5 bg-shell-blue hover:bg-shell-blue-hover disabled:bg-gray-600 disabled:cursor-not-allowed text-white border-none rounded text-sm font-semibold cursor-pointer transition-colors"
+          >
+            {checking ? "Checking..." : "Check"}
+          </button>
+          <button
+            type="button"
+            onClick={handleCreate}
+            disabled={creating || !targetDir.trim()}
+            className="px-5 py-2.5 bg-shell-accent hover:bg-shell-accent-hover disabled:bg-gray-600 disabled:cursor-not-allowed text-white border-none rounded text-sm font-semibold cursor-pointer transition-colors"
+          >
+            {creating ? "Creating..." : "Create Directory"}
+          </button>
+        </div>
       </div>
       {selectedFile && (
         <button

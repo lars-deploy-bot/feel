@@ -156,6 +156,10 @@ export function parseStreamEvent(
           ...baseMessage,
         }
       }
+      // Ignore other status messages (e.g., status: null for session updates)
+      if (systemMsg.subtype === "status") {
+        return null
+      }
     }
 
     // Handle tool_progress messages (elapsed time for long-running tools)

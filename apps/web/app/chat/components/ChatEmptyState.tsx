@@ -3,10 +3,16 @@
 interface ChatEmptyStateProps {
   workspace: string | null
   totalDomainCount: number
+  isLoading?: boolean
   onTemplatesClick: () => void
 }
 
-export function ChatEmptyState({ workspace, totalDomainCount, onTemplatesClick }: ChatEmptyStateProps) {
+export function ChatEmptyState({ workspace, totalDomainCount, isLoading, onTemplatesClick }: ChatEmptyStateProps) {
+  // Show nothing while loading organizations - prevents flash of "no sites" message
+  if (isLoading && !workspace) {
+    return null
+  }
+
   return (
     <div className="flex items-start justify-center h-full pt-32">
       <div className="max-w-md text-center space-y-6">

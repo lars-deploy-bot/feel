@@ -6,9 +6,8 @@ import { useStreamCancellation } from "../useStreamCancellation"
 type UseStreamCancellationOptions = Parameters<typeof useStreamCancellation>[0]
 
 /** Mock options type with vi.fn() for callbacks */
-type MockOptions = Omit<UseStreamCancellationOptions, "addMessage" | "setBusy" | "setShowCompletionDots"> & {
+type MockOptions = Omit<UseStreamCancellationOptions, "addMessage" | "setShowCompletionDots"> & {
   addMessage: Mock
-  setBusy: Mock
   setShowCompletionDots: Mock
 }
 
@@ -21,10 +20,15 @@ vi.mock("@/lib/api/schemas", () => ({
   validateRequest: vi.fn((_endpoint: string, data: unknown) => data),
 }))
 
+const mockEndStream = vi.fn()
+const mockGetAbortController = vi.fn()
+const mockClearAbortController = vi.fn()
 vi.mock("@/lib/stores/streamingStore", () => ({
   useStreamingActions: () => ({
-    endStream: vi.fn(),
+    endStream: mockEndStream,
   }),
+  getAbortController: (...args: unknown[]) => mockGetAbortController(...args),
+  clearAbortController: (...args: unknown[]) => mockClearAbortController(...args),
 }))
 
 describe("useStreamCancellation", () => {
@@ -33,7 +37,6 @@ describe("useStreamCancellation", () => {
     conversationId: "test-conversation-123",
     workspace: "test-workspace",
     addMessage: vi.fn(),
-    setBusy: vi.fn(),
     setShowCompletionDots: vi.fn(),
     abortControllerRef: { current: new AbortController() },
     currentRequestIdRef: { current: "request-123" },
@@ -43,6 +46,8 @@ describe("useStreamCancellation", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
+    // Reset abort controller mock
+    mockGetAbortController.mockReturnValue(undefined)
   })
 
   afterEach(() => {
@@ -198,7 +203,7 @@ describe("useStreamCancellation", () => {
   })
 
   describe("UI state management", () => {
-    it("should reset busy state to false after cancel completes", async () => {
+    it("should call endStream on streaming store when stopping", () => {
       const options = createMockOptions()
       const { result } = renderHook(() => useStreamCancellation(options))
 
@@ -206,15 +211,8 @@ describe("useStreamCancellation", () => {
         result.current.stopStreaming()
       })
 
-      // setBusy(false) is called when cancel request completes, not immediately
-      expect(options.setBusy).not.toHaveBeenCalled()
-
-      // After cancel request completes
-      await act(async () => {
-        await vi.runAllTimersAsync()
-      })
-
-      expect(options.setBusy).toHaveBeenCalledWith(false)
+      // endStream is called immediately when stopping
+      expect(mockEndStream).toHaveBeenCalledWith(options.conversationId)
     })
 
     it("should show completion dots", () => {
@@ -407,7 +405,8 @@ describe("useStreamCancellation", () => {
 
       // isStopping should be true while waiting
       expect(result.current.isStopping).toBe(true)
-      expect(options.setBusy).not.toHaveBeenCalled()
+      // endStream is called immediately (not after timeout)
+      expect(mockEndStream).toHaveBeenCalledWith(options.conversationId)
 
       // Advance past the 5-second fallback timeout
       await act(async () => {
@@ -416,7 +415,6 @@ describe("useStreamCancellation", () => {
 
       // States should be reset via fallback timeout
       expect(result.current.isStopping).toBe(false)
-      expect(options.setBusy).toHaveBeenCalledWith(false)
       expect(options.isSubmittingRef.current).toBe(false)
 
       // Reset mock for other tests

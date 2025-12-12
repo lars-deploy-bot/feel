@@ -17,6 +17,14 @@ export interface CheckDirectoryResponse {
   error?: string
 }
 
+export interface CreateDirectoryResponse {
+  success: boolean
+  message: string
+  path: string
+  created: boolean
+  error?: string
+}
+
 export interface UploadResponse {
   success?: boolean
   message?: string

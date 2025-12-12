@@ -1,4 +1,5 @@
 import NextTopLoader from "nextjs-toploader"
+import { NuqsAdapter } from "nuqs/adapters/next/app"
 import { AuthModal } from "@/components/modals/AuthModal"
 import { ThemeProvider } from "@/components/providers/theme-provider"
 import { UserPromptsStoreProvider } from "@/lib/providers/UserPromptsStoreProvider"
@@ -21,14 +22,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <NextTopLoader color="#000" height={2} showSpinner={false} />
-        <ThemeProvider>
-          <UserStoreProvider>
-            <UserPromptsStoreProvider>
-              {children}
-              <AuthModal />
-            </UserPromptsStoreProvider>
-          </UserStoreProvider>
-        </ThemeProvider>
+        <NuqsAdapter>
+          <ThemeProvider>
+            <UserStoreProvider>
+              <UserPromptsStoreProvider>
+                {children}
+                <AuthModal />
+              </UserPromptsStoreProvider>
+            </UserStoreProvider>
+          </ThemeProvider>
+        </NuqsAdapter>
       </body>
     </html>
   )

@@ -1,5 +1,5 @@
 "use client"
-import { ExternalLink, RotateCw } from "lucide-react"
+import { ExternalLink, RotateCw, X } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { PREVIEW_MESSAGES } from "@webalive/shared"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
@@ -12,7 +12,7 @@ export function Sandbox() {
   const { workspace } = useWorkspace({ allowEmpty: true })
   const { setSelectedElement } = useSandboxContext()
   const savedWidth = useSandboxWidth()
-  const { setSandboxWidth } = useDebugActions()
+  const { setSandbox, setSandboxWidth } = useDebugActions()
   const { width, setWidth, isResizing, handleMouseDown } = useResizablePanel({
     defaultWidth: savedWidth ?? 600,
     maxWidthPercent: 0.6, // Ensure chat area always has at least 40% of viewport
@@ -192,7 +192,7 @@ export function Sandbox() {
       )}
 
       {/* URL bar */}
-      <div className="flex items-center gap-3 px-3 py-2 bg-neutral-950">
+      <div className="flex items-center gap-2 px-3 py-2 bg-neutral-950">
         <div className="flex-1 flex items-center gap-2 bg-neutral-800/50 rounded-lg px-3 py-1.5 ring-1 ring-white/[0.06] focus-within:ring-white/[0.12] transition-all">
           <button
             type="button"
@@ -220,6 +220,15 @@ export function Sandbox() {
             <ExternalLink size={12} strokeWidth={2} />
           </a>
         </div>
+        {/* Close button - visible on tablets where sandbox takes full width */}
+        <button
+          type="button"
+          onClick={() => setSandbox(false)}
+          className="xl:hidden p-1.5 text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800 rounded transition-colors"
+          title="Close preview"
+        >
+          <X size={16} strokeWidth={2} />
+        </button>
       </div>
 
       {/* Content - iframe */}

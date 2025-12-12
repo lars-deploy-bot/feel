@@ -2,8 +2,10 @@ import { MessageErrorBoundary } from "@/features/chat/components/MessageErrorBou
 import { AgentManagerMessage } from "@/features/chat/components/message-renderers/AgentManagerMessage"
 import { AssistantMessage } from "@/features/chat/components/message-renderers/AssistantMessage"
 import { AuthStatusMessage } from "@/features/chat/components/message-renderers/AuthStatusMessage"
-import { CompactBoundaryMessage } from "@/features/chat/components/message-renderers/CompactBoundaryMessage"
-import { CompactingMessage } from "@/features/chat/components/message-renderers/CompactingMessage"
+import {
+  CompactBoundaryMessage,
+  CompactingMessage,
+} from "@/features/chat/components/message-renderers/CompactIndicator"
 import { CompleteMessage } from "@/features/chat/components/message-renderers/CompleteMessage"
 import { ErrorResultMessage } from "@/features/chat/components/message-renderers/ErrorResultMessage"
 import { InterruptMessage } from "@/features/chat/components/message-renderers/InterruptMessage"

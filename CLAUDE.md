@@ -12,7 +12,9 @@ AI assistant guidelines for working on Claude Bridge.
 4. **NO RANDOM ENV VARS** - Don't add environment variables unless absolutely necessary. Use existing config, constants, or code-level defaults instead. Adding .env variables creates deployment complexity and hidden dependencies.
 5. **NO EXPLORE AGENT** - Never use `Task(subagent_type=Explore)`. Use Glob and Grep directly instead - they're faster and more precise for this codebase.
 6. **USE THE BRAIN** - Query `use_this_to_remember.db` for past decisions, insights, and context before starting work. Store important learnings when you're done.
-7. **ARCHITECTURE SMELL DETECTOR** - Warn when you see these anti-patterns:
+7. **CADDYFILE IS LARGE** - The Caddyfile at `/root/webalive/claude-bridge/ops/caddy/Caddyfile` is too large to read in one go. Use `Read` with `offset` and `limit` parameters, or use `Grep` to find specific domain configurations.
+8. **OWN YOUR CHANGES** - When deploying or committing, NEVER say "these unrelated changes are not mine" or refuse to include changes in the working directory. If changes exist, they are part of the current work. Take responsibility and include them.
+9. **ARCHITECTURE SMELL DETECTOR** - Warn when you see these anti-patterns:
    - Adding more tools/features to solve a problem (instead of one core constraint)
    - "Let the AI figure it out" instead of clear success criteria
    - Flexibility/options when opinionated defaults would work
@@ -88,6 +90,48 @@ Claude Bridge is a **multi-tenant development platform** that enables Claude AI 
 - **SSE streaming**: Real-time Claude responses via Server-Sent Events
 - **Tool-based interaction**: Limited to safe file operations (Read, Write, Edit, Glob, Grep)
 - **Superadmin access**: `eedenlars@gmail.com` can edit this repo via the frontend (workspace: `claude-bridge`, runs as root, all tools enabled)
+
+## Monorepo Structure
+
+### Apps (Deployable Services)
+
+| App | Port | Purpose |
+|-----|------|---------|
+| `web` | 8997/9000 | Main Next.js app: Chat UI, Claude API, file ops, auth, deployments |
+| `broker` | configurable | Message broker for streaming state machines and persistence (Dexie) |
+| `shell-server` | - | Web terminal (node-pty + xterm.js) + CodeMirror file editor |
+| `shell-server-go` | - | Go rewrite of shell-server (WIP) |
+| `image-processor` | 5012 | Python/FastAPI image manipulation service |
+| `mcp-servers/google-scraper` | - | MCP server for Google Maps business search |
+
+### Packages (Shared Libraries)
+
+| Package | Purpose |
+|---------|---------|
+| `@webalive/shared` | Constants, environment definitions, database types. Almost everything depends on this. |
+| `@webalive/database` | Auto-generated Supabase types (`iam.*`, `app.*` schemas) |
+| `@alive-brug/tools` | Claude's workspace tools (Read, Write, Edit, Glob, Grep) + MCP server |
+| `@webalive/site-controller` | Shell-Operator deployment: TS orchestrates, bash executes systemd/caddy/users |
+| `@webalive/oauth-core` | Multi-tenant OAuth with AES-256-GCM encrypted token storage |
+| `@alive-brug/redis` | ioredis wrapper with Docker setup for sessions/caching |
+| `@webalive/env` | Zod-validated env vars via @t3-oss/env-nextjs |
+| `@webalive/worker-pool` | Unix socket IPC for warm Claude SDK workers |
+| `@alive-brug/images` | Native image processing via @napi-rs/image |
+| `@alive-game/alive-tagger` | Vite plugin: injects source locations so Claude knows file:line from UI clicks |
+| `@webalive/bridge-types` | TypeScript types for SSE streaming protocol |
+
+### Request Flow (Claude Chat)
+
+```
+Browser → /api/claude/stream → Claude Agent SDK → tool callbacks
+                                                       ↓
+                                              @alive-brug/tools
+                                                       ↓
+                                              workspace sandbox
+                                              /srv/webalive/sites/[domain]/
+```
+
+Tools validate paths via `isPathWithinWorkspace()` before any file operation.
 
 ## Core Architecture Patterns
 

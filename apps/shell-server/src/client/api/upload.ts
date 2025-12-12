@@ -1,10 +1,18 @@
-import type { CheckDirectoryResponse, UploadResponse } from "../types/api"
+import type { CheckDirectoryResponse, CreateDirectoryResponse, UploadResponse } from "../types/api"
 
 export async function checkDirectory(workspace: string, targetDir: string): Promise<CheckDirectoryResponse> {
   const formData = new FormData()
   formData.append("workspace", workspace)
   formData.append("targetDir", targetDir || "./")
   const res = await fetch("/api/check-directory", { method: "POST", body: formData })
+  return res.json()
+}
+
+export async function createDirectory(workspace: string, targetDir: string): Promise<CreateDirectoryResponse> {
+  const formData = new FormData()
+  formData.append("workspace", workspace)
+  formData.append("targetDir", targetDir)
+  const res = await fetch("/api/create-directory", { method: "POST", body: formData })
   return res.json()
 }
 

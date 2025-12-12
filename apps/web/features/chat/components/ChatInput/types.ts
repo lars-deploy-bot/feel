@@ -1,4 +1,4 @@
-import type { MutableRefObject, ReactNode } from "react"
+import type { ReactNode } from "react"
 import type { FileCategory } from "./types/file-types"
 
 // Base properties for all attachments
@@ -102,7 +102,6 @@ export interface ChatInputState {
   // Loading states
   busy: boolean
   isStopping: boolean
-  abortControllerRef: MutableRefObject<AbortController | null>
 
   // Validation
   canSubmit: boolean
@@ -144,7 +143,6 @@ export interface ChatInputProps extends ChatInputActions {
   setMessage: (msg: string) => void
   busy: boolean
   isStopping?: boolean
-  abortControllerRef: MutableRefObject<AbortController | null>
   config?: ChatInputConfig
   children?: ReactNode
   onOpenTemplates?: () => void
