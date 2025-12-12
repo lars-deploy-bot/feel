@@ -26,6 +26,10 @@ export interface UploadResponse {
   zipContents?: string[]
   hint?: string
   existingItems?: string[]
+  extractedTo?: string
+  fileCount?: number
+  /** Filename (for non-ZIP uploads) */
+  filename?: string
 }
 
 /** Raw API response - use transformApiTree to convert to TreeNode[] */

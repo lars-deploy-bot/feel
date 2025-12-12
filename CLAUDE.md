@@ -497,6 +497,23 @@ make status      # Show all environments
 make rollback    # Interactive rollback (if needed)
 ```
 
+### Deploying from Chat (IMPORTANT)
+
+**When deploying to staging or production from within a chat session, ALWAYS use `nohup` to prevent the deployment from being interrupted if the connection drops:**
+
+```bash
+# Staging deployment (from chat)
+nohup make staging > /tmp/staging-deploy.log 2>&1 &
+
+# Production deployment (from chat) - requires approval
+nohup make prod > /tmp/prod-deploy.log 2>&1 &
+
+# Check deployment progress
+tail -f /tmp/staging-deploy.log
+```
+
+**Why nohup?** Chat sessions can timeout or disconnect during long builds. Using `nohup` ensures the deployment continues even if the session ends.
+
 ### Site Deployment (Different)
 
 To deploy individual websites (not the Claude Bridge itself), use the API endpoint:

@@ -445,6 +445,87 @@ func TestE2E_FileOperationsWithSecurity(t *testing.T) {
 		t.Logf("ZIP uploaded successfully: %v files", result["fileCount"])
 	})
 
+	// Step 2b: Test non-ZIP file upload with custom name
+	t.Run("NonZIPUploadWithCustomName", func(t *testing.T) {
+		// Create multipart form with a regular text file
+		var formBuf bytes.Buffer
+		formWriter := multipart.NewWriter(&formBuf)
+		formWriter.WriteField("workspace", "root")
+		formWriter.WriteField("targetDir", "./")
+		formWriter.WriteField("name", "custom-named-file.txt")
+
+		part, err := formWriter.CreateFormFile("file", "original-name.txt")
+		if err != nil {
+			t.Fatalf("Failed to create form file: %v", err)
+		}
+		part.Write([]byte("Hello from non-ZIP upload!"))
+		formWriter.Close()
+
+		// Upload
+		req, _ := http.NewRequest("POST", ts.server.URL+"/api/upload", &formBuf)
+		req.Header.Set("Content-Type", formWriter.FormDataContentType())
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("Upload request failed: %v", err)
+		}
+		defer resp.Body.Close()
+
+		body, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("Non-ZIP upload failed with status %d: %s", resp.StatusCode, string(body))
+		}
+
+		var result map[string]interface{}
+		json.Unmarshal(body, &result)
+		if result["success"] != true {
+			t.Fatalf("Non-ZIP upload did not return success: %s", string(body))
+		}
+		if result["filename"] != "custom-named-file.txt" {
+			t.Fatalf("Expected filename 'custom-named-file.txt', got: %v", result["filename"])
+		}
+		t.Logf("Non-ZIP file uploaded with custom name: %v", result["filename"])
+	})
+
+	// Step 2c: Test non-ZIP upload without custom name (should use original)
+	t.Run("NonZIPUploadOriginalName", func(t *testing.T) {
+		// Create multipart form with a regular text file
+		var formBuf bytes.Buffer
+		formWriter := multipart.NewWriter(&formBuf)
+		formWriter.WriteField("workspace", "root")
+		formWriter.WriteField("targetDir", "./")
+
+		part, err := formWriter.CreateFormFile("file", "keep-this-name.json")
+		if err != nil {
+			t.Fatalf("Failed to create form file: %v", err)
+		}
+		part.Write([]byte(`{"hello": "world"}`))
+		formWriter.Close()
+
+		// Upload
+		req, _ := http.NewRequest("POST", ts.server.URL+"/api/upload", &formBuf)
+		req.Header.Set("Content-Type", formWriter.FormDataContentType())
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("Upload request failed: %v", err)
+		}
+		defer resp.Body.Close()
+
+		body, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("Non-ZIP upload failed with status %d: %s", resp.StatusCode, string(body))
+		}
+
+		var result map[string]interface{}
+		json.Unmarshal(body, &result)
+		if result["success"] != true {
+			t.Fatalf("Non-ZIP upload did not return success: %s", string(body))
+		}
+		if result["filename"] != "keep-this-name.json" {
+			t.Fatalf("Expected filename 'keep-this-name.json', got: %v", result["filename"])
+		}
+		t.Logf("Non-ZIP file uploaded with original name: %v", result["filename"])
+	})
+
 	// Step 3: Read back the uploaded file
 	t.Run("FileReadback", func(t *testing.T) {
 		form := strings.NewReader("workspace=root&path=test-folder/test-file.txt")

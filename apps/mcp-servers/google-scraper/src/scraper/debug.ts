@@ -116,6 +116,87 @@ switch (cmd) {
     debugI18n()
     break
 
+  case "feed": {
+    // Debug feed extraction to see what aria-labels look like
+    const query = args.join(" ") || "burger restaurant Itacare Brazil"
+    console.log(`Debugging feed for: ${query}\n`)
+
+    const { browser, page } = await setupPage()
+    try {
+      await navigateToGoogleMaps(page, query)
+      await new Promise(r => setTimeout(r, 3000))
+
+      // Get aria-labels from feed
+      const data = await page.evaluate(() => {
+        const results: Array<{
+          name: string
+          ariaLabels: string[]
+          ratingSpanText: string
+          visibleTexts: string[]
+          fullCardText: string
+        }> = []
+
+        const cards = document.querySelectorAll('a[href*="/maps/place/"]')
+        cards.forEach((card, i) => {
+          if (i >= 5) return
+          const parent = card.parentElement
+          if (!parent) return
+
+          // Get name
+          const nameEl = parent.querySelector(".fontHeadlineSmall")
+          const name = nameEl?.textContent || "Unknown"
+
+          // Get all aria-labels
+          const ariaLabels: string[] = []
+          parent.querySelectorAll("[aria-label]").forEach(el => {
+            const label = el.getAttribute("aria-label")
+            if (label) ariaLabels.push(label)
+          })
+
+          // Get the specific span used in extraction
+          const ratingSpan = parent.querySelector("span.fontBodyMedium > span")
+          const ratingSpanText = ratingSpan?.getAttribute("aria-label") || "(not found)"
+
+          // Get visible text that might contain review count
+          const visibleTexts: string[] = []
+          parent.querySelectorAll("span").forEach(span => {
+            const text = span.textContent?.trim()
+            if (text && text.match(/\(\d+\)|\d+\s*(review|rezension|avalia)/i)) {
+              visibleTexts.push(text)
+            }
+          })
+
+          // Full card text (abbreviated)
+          const fullCardText = parent.textContent?.replace(/\s+/g, " ").trim().slice(0, 200) || ""
+
+          results.push({ name, ariaLabels, ratingSpanText, visibleTexts, fullCardText })
+        })
+
+        return results
+      })
+
+      console.log("=== Feed Debug Results ===\n")
+      for (const d of data) {
+        console.log(`Name: ${d.name}`)
+        console.log(`Rating span aria-label: "${d.ratingSpanText}"`)
+        console.log(`Visible texts with numbers: ${d.visibleTexts.length ? d.visibleTexts.join(", ") : "(none)"}`)
+        console.log(`Full card text: "${d.fullCardText}"`)
+        console.log()
+      }
+
+      // Also dump raw HTML of first card for analysis
+      const rawHtml = await page.evaluate(() => {
+        const card = document.querySelector('a[href*="/maps/place/"]')?.parentElement
+        return card?.outerHTML || "not found"
+      })
+      console.log("\n=== RAW HTML of first card ===\n")
+      console.log(rawHtml.slice(0, 3000))
+    } finally {
+      await cleanupBrowser(browser)
+    }
+    break
+  }
+
   default:
     console.log(`
 Debug tool for Google Maps review extraction

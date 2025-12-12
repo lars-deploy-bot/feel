@@ -30,10 +30,14 @@ export const searchGoogleMapsTool = {
 
 Returns: name, address, phone, website, rating, category.
 
+LIMITATIONS:
+- Review counts often unavailable for smaller/newer businesses (Google doesn't always display them)
+- For detailed reviews, recommend users check TripAdvisor or Google Maps directly
+
 TIPS:
 - Be specific: "sushi restaurant Amsterdam Centrum" > "sushi Amsterdam"
 - Include location: city, neighborhood, or landmark
-- Takes 5-15 seconds (scrapes live data)`,
+- Takes 15-45 seconds (fetches detail pages for each result)`,
   inputSchema: {
     type: "object",
     properties: {
@@ -62,7 +66,7 @@ export async function executeSearchGoogleMaps(
         mode: "auto",
         query,
         resultCount: maxResults,
-        includeDetails: false, // Fast mode - basic info from feed
+        includeDetails: true, // Fetch detail pages for full info (address, phone, website)
       },
       {
         concurrency: 3,

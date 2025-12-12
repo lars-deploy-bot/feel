@@ -1,7 +1,7 @@
 import * as cheerio from "cheerio"
 import type { GoogleMapsBusiness, GoogleMapsResult, GoogleMapsReview, ProxyConfig } from "../types.js"
 import { parseHours, parseNumber, sanitizeJSON, setupPage, cleanupBrowser, clickReviewsTabAndWait } from "../utils.js"
-import { isRelativeTime, extractAuthorFromLabel } from "../i18n.js"
+import { isRelativeTime, extractAuthorFromLabel, parseRatingText } from "../i18n.js"
 
 type ExtractResult = { success: true; data: GoogleMapsResult } | { success: false; error: string }
 
@@ -145,10 +145,79 @@ export async function searchSingleBusiness(
     const storeName = main.attr("aria-label") || null
     const mainImage = main.find("img[decoding='async']").first().attr("src") || null
 
-    // 2. Rating & reviews
-    const stars = $(".fontDisplayLarge").text() || null
-    const reviewsLabel = $('span[aria-label$="reviews"]').attr("aria-label") || null
-    const numberOfReviews = parseNumber(reviewsLabel ?? undefined)
+    // 2. Rating & reviews - try multiple selectors for i18n support
+    // Google changes class names frequently, so try multiple approaches
+    let stars =
+      $(".fontDisplayLarge").text() || // Old selector
+      $(".F7nice span[aria-hidden='true']").first().text() || // New selector
+      $("span.ceNzKf")
+        .attr("aria-label")
+        ?.match(/[\d,\.]+/)?.[0] || // From aria-label
+      null
+
+    // Try to find review count from various aria-labels (reviews, Rezensionen, Reseñas, etc.)
+    let numberOfReviews: number | null = null
+
+    // Strategy 1: Look for aria-label with review keywords
+    $("span[aria-label], button[aria-label]").each((_, el) => {
+      if (numberOfReviews !== null) return false
+      const label = $(el).attr("aria-label") || ""
+      // Check if label contains review-related words and numbers
+      if (
+        label.match(/\d+/) &&
+        label.match(/review|rezension|reseña|avalia|avis|recensi|beoordel|отзыв|评论|レビュー/i)
+      ) {
+        const match = label.match(/[\d.,\s]+/)
+        if (match) {
+          const cleanNum = match[0].replace(/[\s.]/g, "").replace(",", "")
+          const parsed = parseInt(cleanNum, 10)
+          if (!isNaN(parsed)) {
+            numberOfReviews = parsed
+          }
+        }
+      }
+    })
+
+    // Strategy 2: Parse from visible text near rating (e.g., "(123)" or "123 reviews")
+    if (numberOfReviews === null) {
+      // Try old selector
+      const ratingArea = $(".fontDisplayLarge").parent()
+      let ratingAreaText = ratingArea.text()
+
+      // Try new selector if old one failed
+      if (!ratingAreaText) {
+        ratingAreaText = $(".F7nice").parent().parent().text()
+      }
+
+      const countMatch = ratingAreaText.match(/\((\d+(?:[.,]\d+)?)\)/)
+      if (countMatch) {
+        const cleanNum = countMatch[1].replace(/[.,]/g, "")
+        numberOfReviews = parseInt(cleanNum, 10)
+      }
+    }
+
+    // Strategy 3: Look for text like "104 Google-Rezensionen" or similar
+    if (numberOfReviews === null) {
+      $("span, div, a").each((_, el) => {
+        if (numberOfReviews !== null) return false
+        const text = $(el).text().trim()
+        // Match patterns like "104 Rezensionen", "104 Rezension", "1.234 reviews", "5K reviews"
+        // Handles singular/plural in multiple languages
+        const match = text.match(
+          /^([\d.,]+)\s*(?:K)?\s*(?:Google-)?(?:Rezension(?:en)?|reviews?|avalia(?:ções|ção)?|avis|recensi(?:oni|one)?|beoordel(?:ingen)?)/i,
+        )
+        if (match) {
+          let numStr = match[1].replace(/[\s.]/g, "").replace(",", "")
+          let num = parseInt(numStr, 10)
+          if (match[0].includes("K") || match[0].includes("k")) {
+            num *= 1000
+          }
+          if (!isNaN(num)) {
+            numberOfReviews = num
+          }
+        }
+      })
+    }
 
     // 3. Website, phone, address, category, status
     const bizWebsite = $('a[data-item-id="authority"]').attr("href") || null
@@ -218,19 +287,54 @@ export async function scrapeDetailPage(
     const { browser, page } = await setupPage(proxy)
     await page.goto(googleUrl, { waitUntil: "networkidle2" })
 
+    // Wait for rating section to fully load (review count is often loaded async)
+    try {
+      await page.waitForSelector(".F7nice, .fontDisplayLarge", { timeout: 5000 })
+      // Give extra time for review count to render (it's often loaded via JS after rating)
+      await new Promise(resolve => setTimeout(resolve, 1500))
+    } catch {
+      // Rating section not found, continue anyway
+    }
+
     // If we need reviews, click the Reviews tab and wait for content
     if (includeReviews) {
       await clickReviewsTabAndWait(page)
     }
+
+    // Try to extract review count directly from the page using JS evaluation
+    // This catches dynamically loaded content that may not be in HTML
+    const pageReviewCount = await page
+      .evaluate(() => {
+        // Look for text like "104 Rezensionen", "1.234 reviews", "104 Rezension" (singular/plural)
+        const allText = document.body.innerText
+        // Pattern matches: number + optional space + review word (handles singular/plural in multiple languages)
+        const pattern =
+          /(\d+(?:[.,]\d+)?)\s*(?:Google-)?(?:Rezension(?:en)?|reviews?|avalia(?:ções|ção)?|avis|recensi(?:oni|one)?|beoordel(?:ingen)?|отзыв)/gi
+        const match = pattern.exec(allText)
+        if (match) {
+          const numStr = match[1].replace(/[\s.]/g, "").replace(",", "")
+          const num = parseInt(numStr, 10)
+          if (!isNaN(num) && num > 0) {
+            return num
+          }
+        }
+        return null
+      })
+      .catch(() => null)
 
     const html = await page.content()
     const result = await searchSingleBusiness(html, googleUrl, { includeReviews, maxReviews })
     await cleanupBrowser(browser)
 
     if (result.success && result.data.businesses.length > 0) {
+      const business = result.data.businesses[0]
+      // Use page-evaluated review count if HTML extraction failed
+      if (business.numberOfReviews === null && pageReviewCount !== null) {
+        business.numberOfReviews = pageReviewCount
+      }
       return {
         originalUrl: googleUrl,
-        business: sanitizeJSON<GoogleMapsBusiness>(result.data.businesses[0] as Record<string, unknown>),
+        business: sanitizeJSON<GoogleMapsBusiness>(business as Record<string, unknown>),
       }
     }
     return { originalUrl: googleUrl, business: null }

@@ -1,6 +1,7 @@
 import * as cheerio from "cheerio"
 import type { Element } from "domhandler"
 import type { Browser, Page } from "puppeteer"
+import { parseRatingText } from "../i18n.js"
 import type { GoogleMapsBusiness, GoogleMapsResult, InputAuto, InputMultiple, ProxyConfig } from "../types.js"
 import { autoScroll, cleanupBrowser, isNullish, normalizeHostname, sanitizeJSON } from "../utils.js"
 import { scrapeDetailPage } from "./detail.js"
@@ -56,6 +57,9 @@ export async function searchMultipleBusinesses(html: string, resultCount = 10): 
 
       const finalPhone = sanitize(address.replace(phone ?? "", ""))
 
+      // Parse rating text using i18n-aware parser (handles "4.5 stars", "4,9 Sterne", etc.)
+      const { stars, numberOfReviews } = parseRatingText(ratingText)
+
       businesses.push({
         placeId: `ChI${url?.split("?")?.[0]?.split("ChI")?.[1]}`,
         address: finalPhone,
@@ -66,10 +70,8 @@ export async function searchMultipleBusinesses(html: string, resultCount = 10): 
         bizWebsite: website,
         storeName: sanitize(storeName),
         ratingText,
-        stars: ratingText?.split("stars")?.[0]?.trim() || null,
-        numberOfReviews: ratingText?.split("stars")?.[1]?.replace("Reviews", "")?.trim()
-          ? Number(ratingText?.split("stars")?.[1]?.replace("Reviews", "")?.trim())
-          : null,
+        stars,
+        numberOfReviews,
         mainImage: undefined,
         hours: null,
       })

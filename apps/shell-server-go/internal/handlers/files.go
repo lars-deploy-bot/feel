@@ -154,6 +154,7 @@ func (h *FileHandler) CheckDirectory(w http.ResponseWriter, r *http.Request) {
 }
 
 // Upload handles POST /api/upload
+// Supports both ZIP files (extracted) and regular files (saved with optional custom name)
 func (h *FileHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	// Parse multipart form (100MB limit)
 	if err := r.ParseMultipartForm(100 << 20); err != nil {
@@ -169,13 +170,18 @@ func (h *FileHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	if targetDir == "" {
 		targetDir = "./"
 	}
+	// Optional custom filename for non-ZIP files
+	customName := r.FormValue("name")
 
-	file, _, err := r.FormFile("file")
+	file, header, err := r.FormFile("file")
 	if err != nil {
 		jsonError(w, "No file provided", http.StatusBadRequest)
 		return
 	}
 	defer file.Close()
+
+	originalFilename := header.Filename
+	isZipFile := strings.HasSuffix(strings.ToLower(originalFilename), ".zip")
 
 	basePath := h.resolveBasePath(workspace)
 	resolvedTarget, err := filepath.Abs(filepath.Join(basePath, targetDir))
@@ -185,7 +191,8 @@ func (h *FileHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Save to temp file
-	tempFile, err := os.CreateTemp("", "upload-*.zip")
+	tempExt := filepath.Ext(originalFilename)
+	tempFile, err := os.CreateTemp("", "upload-*"+tempExt)
 	if err != nil {
 		jsonError(w, "Failed to create temp file", http.StatusInternalServerError)
 		return
@@ -200,7 +207,60 @@ func (h *FileHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	}
 	tempFile.Close()
 
-	// Open ZIP
+	// Handle non-ZIP files: save directly
+	if !isZipFile {
+		// Determine filename
+		destFilename := originalFilename
+		if customName != "" {
+			destFilename = customName
+		}
+
+		// Validate filename
+		if strings.Contains(destFilename, "/") || strings.Contains(destFilename, "\\") || destFilename == ".." {
+			jsonError(w, "Invalid filename", http.StatusBadRequest)
+			return
+		}
+
+		destPath := filepath.Join(resolvedTarget, destFilename)
+		if !isPathSafe(destPath, basePath) {
+			jsonError(w, "Path traversal detected", http.StatusBadRequest)
+			return
+		}
+
+		// Check if file already exists
+		if _, err := os.Stat(destPath); err == nil {
+			jsonResponse(w, map[string]interface{}{
+				"error":         "File already exists",
+				"existingItems": []string{destFilename},
+				"targetDir":     resolvedTarget,
+				"hint":          "Delete existing file first or use a different name",
+			}, http.StatusConflict)
+			return
+		}
+
+		// Create target directory
+		if err := os.MkdirAll(resolvedTarget, 0755); err != nil {
+			jsonError(w, "Failed to create directory", http.StatusInternalServerError)
+			return
+		}
+
+		// Copy file to destination
+		if err := copyFile(tempPath, destPath); err != nil {
+			jsonError(w, "Failed to save file", http.StatusInternalServerError)
+			return
+		}
+
+		jsonResponse(w, map[string]interface{}{
+			"success":     true,
+			"message":     fmt.Sprintf("Uploaded %s to %s", destFilename, targetDir),
+			"extractedTo": resolvedTarget,
+			"fileCount":   1,
+			"filename":    destFilename,
+		})
+		return
+	}
+
+	// Handle ZIP files: extract contents
 	zipReader, err := zip.OpenReader(tempPath)
 	if err != nil {
 		jsonError(w, "Invalid ZIP file", http.StatusBadRequest)
@@ -670,4 +730,22 @@ func jsonResponse(w http.ResponseWriter, data interface{}, statusCodes ...int) {
 
 func jsonError(w http.ResponseWriter, message string, statusCode int) {
 	jsonResponse(w, map[string]string{"error": message}, statusCode)
+}
+
+// copyFile copies a file from src to dst
+func copyFile(src, dst string) error {
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+
+	dstFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer dstFile.Close()
+
+	_, err = io.Copy(dstFile, srcFile)
+	return err
 }

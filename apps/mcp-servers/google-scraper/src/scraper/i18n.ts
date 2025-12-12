@@ -7,6 +7,7 @@
 const LANGS = {
   en: {
     reviews: "Reviews",
+    stars: "stars",
     photo: "Photo of",
     days: ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
     time: ["month", "week", "day", "year", "hour", "minute"],
@@ -14,6 +15,7 @@ const LANGS = {
   },
   de: {
     reviews: "Rezensionen",
+    stars: "Sterne",
     photo: "Foto von",
     days: ["montag", "dienstag", "mittwoch", "donnerstag", "freitag", "samstag", "sonntag"],
     time: ["Monat", "Woche", "Tag", "Jahr", "Stunde", "Minute"],
@@ -21,6 +23,7 @@ const LANGS = {
   },
   es: {
     reviews: "Reseñas",
+    stars: "estrellas",
     photo: "Foto de",
     days: ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"],
     time: ["mes", "semana", "día", "año", "hora", "minuto"],
@@ -28,6 +31,7 @@ const LANGS = {
   },
   pt: {
     reviews: "Avaliações",
+    stars: "estrelas",
     photo: "Foto de",
     days: ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"],
     time: ["mês", "semana", "dia", "ano", "hora", "minuto"],
@@ -35,6 +39,7 @@ const LANGS = {
   },
   fr: {
     reviews: "Avis",
+    stars: "étoiles",
     photo: "Photo de",
     days: ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"],
     time: ["mois", "semaine", "jour", "an", "heure", "minute"],
@@ -42,6 +47,7 @@ const LANGS = {
   },
   it: {
     reviews: "Recensioni",
+    stars: "stelle",
     photo: "Foto di",
     days: ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"],
     time: ["mese", "settimana", "giorno", "anno", "ora", "minuto"],
@@ -49,6 +55,7 @@ const LANGS = {
   },
   nl: {
     reviews: "Beoordelingen",
+    stars: "sterren",
     photo: "Foto van",
     days: ["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"],
     time: ["maand", "week", "dag", "jaar", "uur", "minuut"],
@@ -56,6 +63,7 @@ const LANGS = {
   },
   ru: {
     reviews: "Отзывы",
+    stars: "звёзд",
     photo: "Фото",
     days: ["понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье"],
     time: ["месяц", "неделя", "день", "год", "час", "минута"],
@@ -63,6 +71,7 @@ const LANGS = {
   },
   zh: {
     reviews: "评论",
+    stars: "星",
     photo: "照片",
     days: ["周一", "周二", "周三", "周四", "周五", "周六", "周日"],
     time: ["月", "周", "天", "年", "小时", "分钟"],
@@ -70,6 +79,7 @@ const LANGS = {
   },
   ja: {
     reviews: "レビュー",
+    stars: "つ星",
     photo: "写真",
     days: ["月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日", "日曜日"],
     time: ["か月", "週間", "日", "年", "時間", "分"],
@@ -87,6 +97,75 @@ export const REVIEW_TAB_SELECTORS = [
 ]
 
 export const PHOTO_PREFIXES = Object.values(LANGS).map(l => l.photo)
+
+// Stars patterns for all languages (e.g., "stars", "Sterne", "estrellas")
+const STARS_PATTERNS = Object.values(LANGS).map(l => l.stars)
+
+// Reviews patterns for all languages
+const REVIEWS_PATTERNS = Object.values(LANGS).map(l => l.reviews)
+
+/**
+ * Parse rating text like "4.5 stars 123 Reviews" or "4,9 Sterne 456 Rezensionen"
+ * Returns { stars: string | null, numberOfReviews: number | null }
+ */
+export function parseRatingText(ratingText: string | undefined): {
+  stars: string | null
+  numberOfReviews: number | null
+} {
+  if (!ratingText) {
+    return { stars: null, numberOfReviews: null }
+  }
+
+  // Find which "stars" word is in the text
+  let starsWord: string | null = null
+  for (const pattern of STARS_PATTERNS) {
+    if (ratingText.toLowerCase().includes(pattern.toLowerCase())) {
+      starsWord = pattern
+      break
+    }
+  }
+
+  // Find which "reviews" word is in the text
+  let reviewsWord: string | null = null
+  for (const pattern of REVIEWS_PATTERNS) {
+    if (ratingText.toLowerCase().includes(pattern.toLowerCase())) {
+      reviewsWord = pattern
+      break
+    }
+  }
+
+  let stars: string | null = null
+  let numberOfReviews: number | null = null
+
+  if (starsWord) {
+    // Split by the stars word (case-insensitive)
+    const starsRegex = new RegExp(starsWord, "i")
+    const parts = ratingText.split(starsRegex)
+    if (parts[0]) {
+      // Extract rating number (handles both "4.5" and "4,5")
+      const ratingMatch = parts[0].match(/[\d,\.]+/)
+      if (ratingMatch) {
+        stars = ratingMatch[0].replace(",", ".")
+      }
+    }
+    if (parts[1] && reviewsWord) {
+      // Extract review count from the part after stars
+      const reviewsRegex = new RegExp(reviewsWord, "i")
+      const afterStars = parts[1].split(reviewsRegex)[0]
+      const reviewMatch = afterStars?.match(/[\d.,\s]+/)
+      if (reviewMatch) {
+        // Remove spaces and dots used as thousand separators, keep only digits
+        const cleanNum = reviewMatch[0].replace(/[\s.]/g, "").replace(",", "")
+        const parsed = parseInt(cleanNum, 10)
+        if (!isNaN(parsed)) {
+          numberOfReviews = parsed
+        }
+      }
+    }
+  }
+
+  return { stars, numberOfReviews }
+}
 
 const TIME_UNITS = Object.values(LANGS).flatMap(l => l.time)
 const AGO_PATTERNS = Object.values(LANGS).map(l => l.ago)
