@@ -21,6 +21,7 @@ import { ThinkingSpinner } from "@/features/chat/components/ThinkingSpinner"
 import { useConversationSession } from "@/features/chat/hooks/useConversationSession"
 import { useImageUpload } from "@/features/chat/hooks/useImageUpload"
 import { useStreamCancellation } from "@/features/chat/hooks/useStreamCancellation"
+import { useStreamReconnect } from "@/features/chat/hooks/useStreamReconnect"
 import { useRedeemReferral } from "@/hooks/useRedeemReferral"
 import {
   ClientError,
@@ -36,7 +37,7 @@ import { sendClientError } from "@/features/chat/lib/send-client-error"
 import { isValidStreamEvent } from "@/features/chat/lib/stream-guards"
 import { formatMessagesAsText } from "@/features/chat/utils/format-messages"
 import { isWarningMessage, type BridgeWarningContent } from "@/features/chat/lib/streaming/ndjson"
-import { isCompleteEvent, isDoneEvent, isErrorEvent } from "@/features/chat/types/stream"
+import { isCompleteEvent, isDoneEvent, isErrorEvent, isInterruptEvent } from "@/features/chat/types/stream"
 import { buildPromptWithAttachments } from "@/features/chat/utils/prompt-builder"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
 import type { StructuredError } from "@/lib/error-codes"
@@ -191,6 +192,16 @@ function ChatPageContent() {
 
   // Session management with workspace-scoped persistence
   const { conversationId, startNewConversation, switchConversation } = useConversationSession(workspace, mounted)
+
+  // Stream reconnection - recovers buffered messages when tab becomes visible
+  const { isReconnecting } = useStreamReconnect({
+    conversationId,
+    workspace,
+    isStreaming: busy,
+    addMessage,
+    setBusy,
+    mounted,
+  })
 
   // Tab management - combined switch handler for both conversation hooks
   const handleSwitchConversationForTabs = useCallback(
@@ -527,11 +538,20 @@ function ChatPageContent() {
               const message = parseStreamEvent(eventData, conversationId, streamingActions)
               if (message) {
                 addMessage(message)
-                if (isCompleteEvent(eventData) || isDoneEvent(eventData) || isErrorEvent(eventData)) {
+                if (
+                  isCompleteEvent(eventData) ||
+                  isDoneEvent(eventData) ||
+                  isErrorEvent(eventData) ||
+                  isInterruptEvent(eventData)
+                ) {
                   receivedAnyMessage = true
                   setBusy(false)
                   isSubmitting.current = false
-                  if ((isCompleteEvent(eventData) || isDoneEvent(eventData)) && !isErrorEvent(eventData)) {
+                  if (
+                    (isCompleteEvent(eventData) || isDoneEvent(eventData)) &&
+                    !isErrorEvent(eventData) &&
+                    !isInterruptEvent(eventData)
+                  ) {
                     setShowCompletionDots(true)
                     handleCompletionFeatures()
                   }
@@ -945,11 +965,11 @@ function ChatPageContent() {
                 return <ThinkingGroup key={`group-${index}`} messages={group.messages} isComplete={group.isComplete} />
               })}
 
-              {busy && messages.length > 0 && messages[messages.length - 1]?.type === "user" && (
+              {(busy || isReconnecting) && messages.length > 0 && messages[messages.length - 1]?.type === "user" && (
                 <div className="my-4">
                   <div className="text-xs font-normal text-black/35 dark:text-white/35 flex items-center gap-1">
                     <ThinkingSpinner />
-                    <span>thinking</span>
+                    <span>{isReconnecting ? "reconnecting..." : statusText || "thinking"}</span>
                   </div>
                 </div>
               )}

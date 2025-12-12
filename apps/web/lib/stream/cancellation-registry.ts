@@ -5,12 +5,16 @@
  * - Store cancellation callbacks for active streams
  * - Allow explicit cancellation via requestId
  * - Cleanup completed/cancelled streams
+ * - Mark stream buffers as complete on TTL expiry
  */
+
+import { completeStreamBuffer } from "./stream-buffer"
 
 interface CancelEntry {
   cancel: () => void | Promise<void>
   userId: string
   conversationKey: string
+  requestId: string
   createdAt: number
 }
 
@@ -36,6 +40,7 @@ export function registerCancellation(
     cancel,
     userId,
     conversationKey,
+    requestId,
     createdAt: Date.now(),
   })
   console.log(`[CancellationRegistry] Registry size after: ${registry.size}`)
@@ -177,8 +182,16 @@ export function startTTLCleanup(): void {
         console.warn(
           `[Registry TTL] Cleaning up stale entry: ${requestId} (age: ${Math.round((now - entry.createdAt) / 1000)}s)`,
         )
+        // Try to cancel gracefully (may not work if connection is dead)
         entry.cancel()
         registry.delete(requestId)
+
+        // CRITICAL: Mark stream buffer as complete so client doesn't show "thinking" forever
+        // This is the root cause fix - without this, stale buffers stay in "streaming" state
+        completeStreamBuffer(requestId).catch(err => {
+          console.warn(`[Registry TTL] Failed to complete buffer for ${requestId}:`, err)
+        })
+
         cleanedCount++
       }
     }

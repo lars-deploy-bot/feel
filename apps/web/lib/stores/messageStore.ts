@@ -359,6 +359,12 @@ export const useMessageStore = create<MessageStoreState>()(
           const truncatedMessage = truncateMessage(message)
 
           const conversation = conversations[conversationId]
+
+          // Deduplicate by message ID - prevent duplicate messages from reconnect
+          if (conversation.messages.some(m => m.id === truncatedMessage.id)) {
+            return state // Message already exists, skip
+          }
+
           const updatedMessages = [...conversation.messages, truncatedMessage]
 
           // Auto-generate title from first user message

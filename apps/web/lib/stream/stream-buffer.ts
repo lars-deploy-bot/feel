@@ -32,6 +32,8 @@ export interface StreamBufferEntry {
   messages: string[]
   /** When the stream started */
   startedAt: number
+  /** When the last message was received (for stale detection) */
+  lastMessageAt: number
   /** When the stream completed (if applicable) */
   completedAt?: number
   /** Error message (if state is error) */
@@ -52,6 +54,9 @@ const BUFFER_TTL_SECONDS = 30 * 60
 
 /** Maximum messages to buffer (prevents memory exhaustion) */
 const MAX_BUFFERED_MESSAGES = 1000
+
+/** Stale stream threshold: 5 minutes (in milliseconds) */
+const STALE_STREAM_THRESHOLD_MS = 5 * 60 * 1000
 
 // ============================================================================
 // Singleton Redis Client
@@ -78,13 +83,15 @@ export async function createStreamBuffer(requestId: string, conversationKey: str
   const redis = getRedis()
   const key = `${BUFFER_KEY_PREFIX}${requestId}`
 
+  const now = Date.now()
   const entry: StreamBufferEntry = {
     requestId,
     conversationKey,
     userId,
     state: "streaming",
     messages: [],
-    startedAt: Date.now(),
+    startedAt: now,
+    lastMessageAt: now,
     lastReadIndex: -1,
   }
 
@@ -100,6 +107,10 @@ export async function createStreamBuffer(requestId: string, conversationKey: str
  * Lua script for atomic message append
  * Prevents race conditions in concurrent append operations
  *
+ * ARGV[1]: message to append
+ * ARGV[2]: max messages limit
+ * ARGV[3]: current timestamp (ms)
+ *
  * Returns:
  *  -1: Buffer doesn't exist
  *   0: Buffer full
@@ -111,6 +122,7 @@ if not entry then return -1 end
 local data = cjson.decode(entry)
 if #data.messages >= tonumber(ARGV[2]) then return 0 end
 table.insert(data.messages, ARGV[1])
+data.lastMessageAt = tonumber(ARGV[3])
 local ttl = redis.call('TTL', KEYS[1])
 if ttl > 0 then
   redis.call('SETEX', KEYS[1], ttl, cjson.encode(data))
@@ -128,7 +140,14 @@ export async function appendToStreamBuffer(requestId: string, message: string): 
   const redis = getRedis()
   const key = `${BUFFER_KEY_PREFIX}${requestId}`
 
-  const result = await redis.eval(APPEND_SCRIPT, 1, key, message, MAX_BUFFERED_MESSAGES.toString())
+  const result = await redis.eval(
+    APPEND_SCRIPT,
+    1,
+    key,
+    message,
+    MAX_BUFFERED_MESSAGES.toString(),
+    Date.now().toString(),
+  )
 
   if (result === -1) {
     return false // Buffer doesn't exist (expired or never created)
@@ -299,6 +318,10 @@ export async function deleteStreamBuffer(requestId: string): Promise<void> {
 /**
  * Check if there's an active/recent stream for this conversation
  * Used to provide better UX on reconnection
+ *
+ * A stream is considered stale if:
+ * - State is "streaming" but no message received in 5 minutes
+ * This prevents showing "thinking" forever if stream died unexpectedly
  */
 export async function hasActiveStream(
   conversationKey: string,
@@ -311,6 +334,24 @@ export async function hasActiveStream(
   const buffer = await getStreamBuffer(requestId)
   if (!buffer) {
     return { hasStream: false }
+  }
+
+  // Check for stale stream: if streaming but no activity in 5 minutes, treat as complete
+  if (buffer.state === "streaming") {
+    const lastActivity = buffer.lastMessageAt || buffer.startedAt
+    const timeSinceLastActivity = Date.now() - lastActivity
+    if (timeSinceLastActivity > STALE_STREAM_THRESHOLD_MS) {
+      console.log(
+        `[StreamBuffer] Stream ${requestId} is stale (no activity for ${Math.round(timeSinceLastActivity / 1000)}s), marking as complete`,
+      )
+      // Mark as complete so client doesn't wait forever
+      await completeStreamBuffer(requestId)
+      return {
+        hasStream: true,
+        state: "complete",
+        requestId,
+      }
+    }
   }
 
   return {
