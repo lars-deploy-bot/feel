@@ -1,9 +1,8 @@
 package handlers
 
 import (
+	"io/fs"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 )
 
@@ -16,8 +15,8 @@ type Templates struct {
 	edit      string
 }
 
-// LoadTemplates loads all HTML templates from disk
-func LoadTemplates(templatesDir string) (*Templates, error) {
+// LoadTemplatesFromFS loads all HTML templates from an embedded filesystem
+func LoadTemplatesFromFS(fsys fs.FS) (*Templates, error) {
 	t := &Templates{}
 
 	files := map[string]*string{
@@ -29,7 +28,7 @@ func LoadTemplates(templatesDir string) (*Templates, error) {
 	}
 
 	for name, dest := range files {
-		data, err := os.ReadFile(filepath.Join(templatesDir, name))
+		data, err := fs.ReadFile(fsys, name)
 		if err != nil {
 			return nil, err
 		}

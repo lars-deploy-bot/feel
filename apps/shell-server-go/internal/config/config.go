@@ -48,8 +48,6 @@ type AppConfig struct {
 	AllowWorkspaceSelection bool
 	EditableDirectories     []EditableDirectory
 	ShellPassword           string
-	TemplatesDir            string
-	ClientDir               string
 }
 
 // Common configuration errors
@@ -119,14 +117,6 @@ func (c *AppConfig) Validate() ValidationErrors {
 		} else if !info.IsDir() {
 			errs = append(errs, ValidationError{Field: "sitesPath", Message: "path exists but is not a directory"})
 		}
-	}
-
-	if c.TemplatesDir == "" {
-		errs = append(errs, ValidationError{Field: "templatesDir", Message: "templates directory not found"})
-	} else if info, err := os.Stat(c.TemplatesDir); err != nil {
-		errs = append(errs, ValidationError{Field: "templatesDir", Message: fmt.Sprintf("cannot access: %v", err)})
-	} else if !info.IsDir() {
-		errs = append(errs, ValidationError{Field: "templatesDir", Message: "path exists but is not a directory"})
 	}
 
 	// Editable directories validation
@@ -227,23 +217,6 @@ When you run the shell server and access the terminal, this is your working dire
 		return nil, ErrMissingPassword
 	}
 
-	// Determine templates and client directories
-	execPath, _ := os.Executable()
-	execDir := filepath.Dir(execPath)
-
-	templatesDir := filepath.Join(execDir, "templates")
-	if _, err := os.Stat(templatesDir); os.IsNotExist(err) {
-		// Fallback to source location during development
-		templatesDir = filepath.Join(cwd, "templates")
-	}
-
-	// Check for built client assets (look for actual JS files, not just directory)
-	clientDir := filepath.Join(execDir, "client")
-	if _, err := os.Stat(filepath.Join(clientDir, "shell-term.js")); os.IsNotExist(err) {
-		// Fallback to dist/client during development
-		clientDir = filepath.Join(cwd, "dist", "client")
-	}
-
 	// Build editable directories
 	claudeBridgeRoot := filepath.Join(cwd, "..", "..")
 	editableDirs := []EditableDirectory{
@@ -285,8 +258,6 @@ When you run the shell server and access the terminal, this is your working dire
 		AllowWorkspaceSelection: envConfig.AllowWorkspaceSelection,
 		EditableDirectories:     editableDirs,
 		ShellPassword:           shellPassword,
-		TemplatesDir:            templatesDir,
-		ClientDir:               clientDir,
 	}
 
 	// Validate configuration
