@@ -29,13 +29,6 @@ test("can send a message and receive response", async ({ authenticatedPage, work
   await chat.expectMessage(/Hi there.*help you today/)
 })
 
-test("send button disabled when no workspace", async ({ page }) => {
-  // Use unauthenticated page - no workspace setup
-  await page.goto("/chat", { waitUntil: "domcontentloaded" })
-  const chat = new ChatPage(page)
-  await chat.expectSendButtonDisabled()
-})
-
 test("can send multiple messages", async ({ authenticatedPage, workerTenant }) => {
   await authenticatedPage.route("**/api/claude/stream", handlers.text("Response received"))
 

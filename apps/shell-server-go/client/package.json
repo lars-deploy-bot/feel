@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "build:css": "bunx tailwindcss -i src/styles/shell.css -o ../bin/client/shell.css --minify"
+    "build:css": "npx @tailwindcss/cli -i src/styles/shell.css -o ../bin/client/shell.css --minify"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.18.6",

@@ -239,8 +239,8 @@ When you run the shell server and access the terminal, this is your working dire
 
 	clientDir := filepath.Join(execDir, "client")
 	if _, err := os.Stat(clientDir); os.IsNotExist(err) {
-		// Fallback: use the TypeScript shell-server's dist/client
-		clientDir = filepath.Join(cwd, "..", "shell-server", "dist", "client")
+		// Fallback to source location during development
+		clientDir = filepath.Join(cwd, "bin", "client")
 	}
 
 	// Build editable directories
