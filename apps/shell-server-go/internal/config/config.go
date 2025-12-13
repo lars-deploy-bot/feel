@@ -240,8 +240,8 @@ When you run the shell server and access the terminal, this is your working dire
 	// Check for built client assets (look for actual JS files, not just directory)
 	clientDir := filepath.Join(execDir, "client")
 	if _, err := os.Stat(filepath.Join(clientDir, "shell-term.js")); os.IsNotExist(err) {
-		// Fallback to bin/client during development
-		clientDir = filepath.Join(cwd, "bin", "client")
+		// Fallback to dist/client during development
+		clientDir = filepath.Join(cwd, "dist", "client")
 	}
 
 	// Build editable directories

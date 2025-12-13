@@ -1,6 +1,7 @@
-# Binaries
-bin/
+# Binaries and build output
+dist/
 tmp/
+shell-server
 
 # Session and state files
 .sessions.json
