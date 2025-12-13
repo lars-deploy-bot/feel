@@ -50,7 +50,7 @@
     "redis:test": "bun --filter @alive-brug/redis test",
     "see": "journalctl -u claude-bridge-production -n 1000 -f",
     "see:dev": "journalctl -u claude-bridge-dev -n 1000 -f",
-    "shell-server": "turbo run build --filter=shell-server && systemctl restart shell-server"
+    "shell-server": "cd apps/shell-server-go && make build && systemctl restart shell-server"
   },
   "lint-staged": {
     "**/*.{ts,tsx,js,jsx,json,md}": [

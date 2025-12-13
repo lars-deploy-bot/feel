@@ -237,9 +237,10 @@ When you run the shell server and access the terminal, this is your working dire
 		templatesDir = filepath.Join(cwd, "templates")
 	}
 
+	// Check for built client assets (look for actual JS files, not just directory)
 	clientDir := filepath.Join(execDir, "client")
-	if _, err := os.Stat(clientDir); os.IsNotExist(err) {
-		// Fallback to source location during development
+	if _, err := os.Stat(filepath.Join(clientDir, "shell-term.js")); os.IsNotExist(err) {
+		// Fallback to bin/client during development
 		clientDir = filepath.Join(cwd, "bin", "client")
 	}
 
