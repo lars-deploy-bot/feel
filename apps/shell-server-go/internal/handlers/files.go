@@ -622,6 +622,44 @@ func (h *FileHandler) handlePathError(w http.ResponseWriter, err error) {
 	HandlePathSecurityError(w, err)
 }
 
+// ConfigResponse represents the client configuration response
+type ConfigResponse struct {
+	ShellDefaultPath        string      `json:"shellDefaultPath"`
+	UploadPath              string      `json:"uploadPath"`
+	SitesPath               string      `json:"sitesPath"`
+	WorkspaceBase           string      `json:"workspaceBase"`
+	AllowWorkspaceSelection bool        `json:"allowWorkspaceSelection"`
+	EditableDirectories     []DirConfig `json:"editableDirectories"`
+}
+
+// DirConfig represents a directory config for editable directories
+type DirConfig struct {
+	ID    string `json:"id"`
+	Label string `json:"label"`
+}
+
+// Config handles GET /api/config - returns client configuration
+func (h *FileHandler) Config(w http.ResponseWriter, r *http.Request) {
+	// Build editable directories list (only include those that exist)
+	var dirs []DirConfig
+	for _, dir := range h.config.EditableDirectories {
+		if _, err := os.Stat(dir.Path); err == nil {
+			dirs = append(dirs, DirConfig{ID: dir.ID, Label: dir.Label})
+		}
+	}
+
+	config := ConfigResponse{
+		ShellDefaultPath:        h.config.ResolvedDefaultCwd,
+		UploadPath:              h.config.ResolvedUploadCwd,
+		SitesPath:               h.config.ResolvedSitesPath,
+		WorkspaceBase:           h.config.WorkspaceBase,
+		AllowWorkspaceSelection: h.config.AllowWorkspaceSelection,
+		EditableDirectories:     dirs,
+	}
+
+	jsonResponse(w, config)
+}
+
 // Helper functions
 func jsonResponse(w http.ResponseWriter, data interface{}, statusCodes ...int) {
 	statusCode := http.StatusOK

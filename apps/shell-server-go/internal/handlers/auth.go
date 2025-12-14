@@ -14,50 +14,18 @@ import (
 
 // AuthHandler handles authentication routes
 type AuthHandler struct {
-	config    *config.AppConfig
-	sessions  *session.Store
-	limiter   *ratelimit.Limiter
-	templates *Templates
+	config   *config.AppConfig
+	sessions *session.Store
+	limiter  *ratelimit.Limiter
 }
 
 // NewAuthHandler creates a new auth handler
-func NewAuthHandler(cfg *config.AppConfig, sessions *session.Store, limiter *ratelimit.Limiter, templates *Templates) *AuthHandler {
+func NewAuthHandler(cfg *config.AppConfig, sessions *session.Store, limiter *ratelimit.Limiter) *AuthHandler {
 	return &AuthHandler{
-		config:    cfg,
-		sessions:  sessions,
-		limiter:   limiter,
-		templates: templates,
+		config:   cfg,
+		sessions: sessions,
+		limiter:  limiter,
 	}
-}
-
-// LoginPage renders the login page
-func (h *AuthHandler) LoginPage(w http.ResponseWriter, r *http.Request) {
-	// Check if already authenticated
-	if middleware.IsAuthenticated(r, h.sessions) {
-		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
-		return
-	}
-
-	// Get error from query params
-	errorType := r.URL.Query().Get("error")
-	wait := r.URL.Query().Get("wait")
-	remaining := r.URL.Query().Get("remaining")
-
-	var errorMessage string
-	if errorType == "rate_limit" {
-		if wait == "" {
-			wait = "15"
-		}
-		errorMessage = fmt.Sprintf(`<p class="error">Too many failed attempts. Please wait %s minutes.</p>`, wait)
-	} else if errorType == "invalid" {
-		if remaining != "" {
-			errorMessage = fmt.Sprintf(`<p class="error">Invalid password (%s attempts remaining)</p>`, remaining)
-		} else {
-			errorMessage = `<p class="error">Invalid password</p>`
-		}
-	}
-
-	h.templates.RenderLogin(w, errorMessage)
 }
 
 // Login handles login form submission

@@ -10,20 +10,12 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        upload: resolve(__dirname, "src/main.tsx"),
-        editor: resolve(__dirname, "src/editor-main.tsx"),
-        "shell-term": resolve(__dirname, "src/shell-main.ts"),
+        main: resolve(__dirname, "index.html"),
       },
       output: {
-        entryFileNames: "[name].js",
-        chunkFileNames: "chunks/[name]-[hash].js",
-        // CSS from upload entry (main.tsx) should be named shell.css
-        assetFileNames: assetInfo => {
-          if (assetInfo.names?.[0] === "upload.css") {
-            return "shell.css"
-          }
-          return "[name].[ext]"
-        },
+        entryFileNames: "assets/[name]-[hash].js",
+        chunkFileNames: "assets/[name]-[hash].js",
+        assetFileNames: "assets/[name]-[hash].[ext]",
       },
     },
     minify: true,

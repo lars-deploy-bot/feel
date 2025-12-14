@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -83,22 +85,8 @@ func main() {
 	rateLimitFile := filepath.Join(cwd, ".rate-limit-state.json")
 	limiter := ratelimit.NewLimiter(rateLimitFile)
 
-	// Load templates from embedded filesystem
-	templatesFS, err := GetEmbeddedTemplatesFS()
-	if err != nil {
-		log.Error("Failed to get embedded templates: %v", err)
-		os.Exit(1)
-	}
-	templates, err := handlers.LoadTemplatesFromFS(templatesFS)
-	if err != nil {
-		log.Error("Failed to load templates: %v", err)
-		os.Exit(1)
-	}
-	log.Info("Templates loaded from embedded filesystem")
-
 	// Create handlers
-	authHandler := handlers.NewAuthHandler(cfg, sessions, limiter, templates)
-	pageHandler := handlers.NewPageHandler(cfg, templates)
+	authHandler := handlers.NewAuthHandler(cfg, sessions, limiter)
 	fileHandler := handlers.NewFileHandler(cfg)
 	editorHandler := handlers.NewEditorHandler(cfg)
 	wsHandler := handlers.NewWSHandler(cfg, sessions)
@@ -107,20 +95,25 @@ func main() {
 	mux := http.NewServeMux()
 
 	// Auth middleware helper
-	authMiddleware := middleware.Auth(sessions)
 	authAPIMiddleware := middleware.AuthAPI(sessions)
 
-	// Public routes
-	mux.HandleFunc("/", authHandler.LoginPage)
+	// Get embedded client filesystem for SPA
+	clientFS, err := GetEmbeddedClientFS()
+	if err != nil {
+		log.Error("Failed to get embedded client files: %v", err)
+		os.Exit(1)
+	}
+	log.Info("Client files served from embedded filesystem")
+
+	// Auth API routes
 	mux.HandleFunc("POST /login", authHandler.Login)
 	mux.HandleFunc("/logout", authHandler.Logout)
-	mux.HandleFunc("/health", fileHandler.Health)
 
-	// Protected page routes
-	mux.Handle("/dashboard", authMiddleware(http.HandlerFunc(pageHandler.Dashboard)))
-	mux.Handle("/shell", authMiddleware(http.HandlerFunc(pageHandler.Shell)))
-	mux.Handle("/upload", authMiddleware(http.HandlerFunc(pageHandler.Upload)))
-	mux.Handle("/edit", authMiddleware(http.HandlerFunc(pageHandler.Edit)))
+	// Config API (protected) - returns client config
+	mux.Handle("GET /api/config", authAPIMiddleware(http.HandlerFunc(fileHandler.Config)))
+
+	// Health check (public)
+	mux.HandleFunc("/health", fileHandler.Health)
 
 	// WebSocket (handles its own auth)
 	mux.HandleFunc("/ws", wsHandler.Handle)
@@ -142,17 +135,9 @@ func main() {
 	mux.Handle("POST /api/edit/delete", authAPIMiddleware(http.HandlerFunc(editorHandler.Delete)))
 	mux.Handle("POST /api/edit/copy", authAPIMiddleware(http.HandlerFunc(editorHandler.Copy)))
 
-	// Static file serving from embedded client assets
-	clientFS, err := GetEmbeddedClientFS()
-	if err != nil {
-		log.Error("Failed to get embedded client files: %v", err)
-		os.Exit(1)
-	}
-	log.Info("Client files served from embedded filesystem")
-
-	// Serve client files from embedded FS with gzip compression
-	clientFileServer := http.StripPrefix("/client/", http.FileServerFS(clientFS))
-	mux.Handle("/client/", middleware.Gzip(clientFileServer))
+	// SPA handler - serves index.html for all non-API, non-asset routes
+	spaHandler := createSPAHandler(clientFS)
+	mux.Handle("/", spaHandler)
 
 	// Create server with timeouts
 	addr := fmt.Sprintf(":%d", cfg.Port)
@@ -207,4 +192,43 @@ func main() {
 	sessions.Stop()
 
 	log.Info("Server stopped gracefully")
+}
+
+// createSPAHandler creates a handler that serves the SPA
+// - Static assets (js, css, etc.) are served directly
+// - All other routes get index.html for client-side routing
+func createSPAHandler(clientFS fs.FS) http.Handler {
+	fileServer := http.FileServer(http.FS(clientFS))
+
+	return middleware.Gzip(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+
+		// Clean path
+		if path == "" {
+			path = "/"
+		}
+
+		// Try to serve static file first
+		if path != "/" {
+			// Remove leading slash for fs.Open
+			filePath := strings.TrimPrefix(path, "/")
+
+			// Check if file exists in embedded FS
+			if f, err := clientFS.Open(filePath); err == nil {
+				f.Close()
+				fileServer.ServeHTTP(w, r)
+				return
+			}
+		}
+
+		// Serve index.html for all other routes (SPA fallback)
+		indexFile, err := fs.ReadFile(clientFS, "index.html")
+		if err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write(indexFile)
+	}))
 }

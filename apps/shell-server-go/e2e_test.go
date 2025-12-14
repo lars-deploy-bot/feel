@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"io"
+	"io/fs"
 	"mime/multipart"
 	"net/http"
 	"net/http/cookiejar"
@@ -30,11 +31,11 @@ import (
 
 // testServer holds the test server and dependencies
 type testServer struct {
-	server     *httptest.Server
-	sessions   *session.Store
-	wsHandler  *handlers.WSHandler
-	config     *config.AppConfig
-	tempDir    string
+	server       *httptest.Server
+	sessions     *session.Store
+	wsHandler    *handlers.WSHandler
+	config       *config.AppConfig
+	tempDir      string
 	sessionsFile string
 }
 
@@ -87,44 +88,41 @@ func setupTestServer(t *testing.T) *testServer {
 	rateLimitFile := filepath.Join(tempDir, ".rate-limit-state.json")
 	limiter := ratelimit.NewLimiter(rateLimitFile)
 
-	// Create in-memory template filesystem for tests
-	shellTemplate := `<!DOCTYPE html><html><body>Shell</body></html>`
-	templateFS := fstest.MapFS{
-		"login.html":     {Data: []byte(shellTemplate)},
-		"dashboard.html": {Data: []byte(shellTemplate)},
-		"shell.html":     {Data: []byte(shellTemplate)},
-		"upload.html":    {Data: []byte(shellTemplate)},
-		"edit.html":      {Data: []byte(shellTemplate)},
-	}
-
-	// Load templates from in-memory filesystem
-	templates, err := handlers.LoadTemplatesFromFS(templateFS)
-	if err != nil {
-		t.Fatalf("Failed to load templates: %v", err)
-	}
-
 	// Create handlers
-	authHandler := handlers.NewAuthHandler(cfg, sessions, limiter, templates)
-	pageHandler := handlers.NewPageHandler(cfg, templates)
+	authHandler := handlers.NewAuthHandler(cfg, sessions, limiter)
 	fileHandler := handlers.NewFileHandler(cfg)
 	wsHandler := handlers.NewWSHandler(cfg, sessions)
 
+	// Create in-memory client filesystem for SPA (minimal for tests)
+	clientFS := fstest.MapFS{
+		"index.html": {Data: []byte(`<!DOCTYPE html><html><body><div id="app"></div></body></html>`)},
+	}
+
 	// Create router
 	mux := http.NewServeMux()
-	authMiddleware := middleware.Auth(sessions)
 	authAPIMiddleware := middleware.AuthAPI(sessions)
 
-	// Routes
-	mux.HandleFunc("/", authHandler.LoginPage)
+	// Auth routes
 	mux.HandleFunc("POST /login", authHandler.Login)
 	mux.HandleFunc("/logout", authHandler.Logout)
+
+	// Config API
+	mux.Handle("GET /api/config", authAPIMiddleware(http.HandlerFunc(fileHandler.Config)))
+
+	// Health check
 	mux.HandleFunc("/health", fileHandler.Health)
-	mux.Handle("/dashboard", authMiddleware(http.HandlerFunc(pageHandler.Dashboard)))
-	mux.Handle("/shell", authMiddleware(http.HandlerFunc(pageHandler.Shell)))
+
+	// WebSocket
 	mux.HandleFunc("/ws", wsHandler.Handle)
+
+	// File APIs
 	mux.Handle("POST /api/upload", authAPIMiddleware(http.HandlerFunc(fileHandler.Upload)))
 	mux.Handle("POST /api/read-file", authAPIMiddleware(http.HandlerFunc(fileHandler.ReadFile)))
 	mux.Handle("POST /api/delete-folder", authAPIMiddleware(http.HandlerFunc(fileHandler.DeleteFolder)))
+
+	// SPA handler
+	spaHandler := createTestSPAHandler(clientFS)
+	mux.Handle("/", spaHandler)
 
 	// Use TLS server so Secure cookies work
 	server := httptest.NewTLSServer(mux)
@@ -137,6 +135,19 @@ func setupTestServer(t *testing.T) *testServer {
 		tempDir:      tempDir,
 		sessionsFile: sessionsFile,
 	}
+}
+
+// createTestSPAHandler creates a SPA handler for tests
+func createTestSPAHandler(clientFS fs.FS) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		indexFile, err := fs.ReadFile(clientFS, "index.html")
+		if err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write(indexFile)
+	})
 }
 
 // cleanup removes temp files and stops the server

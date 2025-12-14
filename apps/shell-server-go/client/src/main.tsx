@@ -12,7 +12,7 @@ import { createRoot } from "react-dom/client"
 import "highlight.js/styles/github-dark.css"
 import { App } from "./App"
 
-// Register languages
+// Register languages for syntax highlighting
 hljs.registerLanguage("javascript", javascript)
 hljs.registerLanguage("typescript", typescript)
 hljs.registerLanguage("css", css)

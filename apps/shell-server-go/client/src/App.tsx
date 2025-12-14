@@ -1,32 +1,113 @@
-import { useState } from "react"
-import { Dropzone } from "./components/Dropzone"
-import { FilePreview } from "./components/FilePreview"
-import { FileTree } from "./components/FileTree"
-import { Header } from "./components/Header"
-import { Message } from "./components/Message"
-import { SiteDropdown } from "./components/SiteDropdown"
-import { UploadControls } from "./components/UploadControls"
+import { useEffect } from "react"
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom"
+import { useConfigStore } from "./store/config"
+import { LoginPage } from "./pages/LoginPage"
+import { DashboardPage } from "./pages/DashboardPage"
+import { ShellPage } from "./pages/ShellPage"
+import { UploadPage } from "./pages/UploadPage"
+import { EditPage } from "./pages/EditPage"
 
-export function App() {
-  const [selectedFilePath, setSelectedFilePath] = useState("")
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useConfigStore()
+  const location = useLocation()
 
-  function handleUploadSuccess() {
-    setSelectedFilePath("")
+  if (isLoading) {
+    return (
+      <div className="m-0 p-5 box-border font-sans bg-shell-bg min-h-screen flex items-center justify-center">
+        <div className="text-white text-lg">Loading...</div>
+      </div>
+    )
   }
 
-  return (
-    <div className="container max-w-[1800px] mx-auto transition-all duration-300">
-      <Header />
-      <div className="main-content grid-3col">
-        <div className="bg-shell-surface p-8 md:p-5 rounded-lg">
-          <SiteDropdown />
-          <Dropzone />
-          <UploadControls onUploadSuccess={handleUploadSuccess} />
-          <Message />
-        </div>
-        <FileTree onFileSelect={setSelectedFilePath} />
-        <FilePreview filePath={selectedFilePath} />
+  if (!isAuthenticated) {
+    return <Navigate to="/" state={{ from: location }} replace />
+  }
+
+  return <>{children}</>
+}
+
+function PublicRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading, config } = useConfigStore()
+
+  if (isLoading) {
+    return (
+      <div className="m-0 p-5 box-border font-sans bg-shell-bg min-h-screen flex items-center justify-center">
+        <div className="text-white text-lg">Loading...</div>
       </div>
-    </div>
+    )
+  }
+
+  // If authenticated, redirect based on config
+  if (isAuthenticated) {
+    if (config?.allowWorkspaceSelection) {
+      return <Navigate to="/dashboard" replace />
+    }
+    // No workspace selection - go directly to shell
+    return <Navigate to={`/shell?workspace=${config?.shellDefaultPath || "root"}`} replace />
+  }
+
+  return <>{children}</>
+}
+
+function AppRoutes() {
+  const fetchConfig = useConfigStore(s => s.fetchConfig)
+
+  useEffect(() => {
+    fetchConfig()
+  }, [fetchConfig])
+
+  return (
+    <Routes>
+      <Route
+        path="/"
+        element={
+          <PublicRoute>
+            <LoginPage />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/shell"
+        element={
+          <ProtectedRoute>
+            <ShellPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/upload"
+        element={
+          <ProtectedRoute>
+            <UploadPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/edit"
+        element={
+          <ProtectedRoute>
+            <EditPage />
+          </ProtectedRoute>
+        }
+      />
+      {/* Fallback - redirect to login */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  )
+}
+
+export function App() {
+  return (
+    <BrowserRouter>
+      <AppRoutes />
+    </BrowserRouter>
   )
 }
