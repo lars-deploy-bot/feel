@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"sort"
 	"strings"
@@ -18,6 +17,7 @@ import (
 	"shell-server-go/internal/logger"
 )
 
+// File operation constants
 const (
 	// MaxZipEntries is the maximum number of files in a ZIP archive
 	MaxZipEntries = 10000
@@ -25,18 +25,24 @@ const (
 	MaxZipTotalSize = 500 << 20
 	// MaxZipCompressionRatio is the maximum compression ratio to prevent zip bombs
 	MaxZipCompressionRatio = 100
+	// MaxEditFileSize is the maximum file size for editing (2MB)
+	MaxEditFileSize = 2 << 20
 )
 
 var filesLog = logger.WithComponent("FILES")
 
 // FileHandler handles file operations
 type FileHandler struct {
-	config *config.AppConfig
+	config   *config.AppConfig
+	resolver *PathResolver
 }
 
 // NewFileHandler creates a new file handler
 func NewFileHandler(cfg *config.AppConfig) *FileHandler {
-	return &FileHandler{config: cfg}
+	return &FileHandler{
+		config:   cfg,
+		resolver: NewPathResolver(cfg),
+	}
 }
 
 // TreeNode represents a file tree node
@@ -59,92 +65,26 @@ type NodeData struct {
 	Type string `json:"type"`
 }
 
-// resolveBasePath resolves workspace to base path
-func (h *FileHandler) resolveBasePath(workspace string) string {
-	if strings.HasPrefix(workspace, "site:") {
-		siteName := strings.TrimPrefix(workspace, "site:")
-		return filepath.Join(h.config.ResolvedSitesPath, siteName, "user")
-	} else if workspace == "root" {
-		return h.config.ResolvedUploadCwd
-	}
-	return filepath.Join(h.config.ResolvedSitesPath, workspace)
-}
-
-// isPathSafe checks if path is within base
-func isPathSafe(resolved, base string) bool {
-	return strings.HasPrefix(resolved, base+string(os.PathSeparator)) || resolved == base
-}
-
-// resolveSafePath resolves a path safely, following symlinks and checking bounds
-// Returns the resolved path if safe, or an error if unsafe
-func resolveSafePath(basePath, userPath string) (string, error) {
-	// First resolve the base path (follow symlinks)
-	realBase, err := filepath.EvalSymlinks(basePath)
-	if err != nil {
-		// If base doesn't exist, use the absolute path
-		realBase, err = filepath.Abs(basePath)
-		if err != nil {
-			return "", fmt.Errorf("invalid base path: %w", err)
-		}
-	}
-
-	// Join and get absolute path
-	joined := filepath.Join(basePath, userPath)
-	absPath, err := filepath.Abs(joined)
-	if err != nil {
-		return "", fmt.Errorf("invalid path: %w", err)
-	}
-
-	// Check for basic path traversal before following symlinks
-	if !isPathSafe(absPath, realBase) {
-		return "", fmt.Errorf("path traversal detected")
-	}
-
-	// If the path exists, resolve symlinks and check again
-	if _, err := os.Lstat(absPath); err == nil {
-		realPath, err := filepath.EvalSymlinks(absPath)
-		if err != nil {
-			return "", fmt.Errorf("cannot resolve path: %w", err)
-		}
-		// Check the real path is within base
-		if !isPathSafe(realPath, realBase) {
-			filesLog.Warn("Symlink escape attempt: %s -> %s (base: %s)", absPath, realPath, realBase)
-			return "", fmt.Errorf("symlink escape detected")
-		}
-		return realPath, nil
-	}
-
-	// Path doesn't exist yet, return the absolute path
-	return absPath, nil
-}
-
 // CheckDirectory handles POST /api/check-directory
 func (h *FileHandler) CheckDirectory(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseMultipartForm(32 << 20); err != nil {
-		if err := r.ParseForm(); err != nil {
-			jsonError(w, "Invalid request", http.StatusBadRequest)
-			return
-		}
+	if !ParseFormRequest(w, r) {
+		return
 	}
 
-	workspace := r.FormValue("workspace")
-	if workspace == "" {
-		workspace = "root"
-	}
+	workspace := GetWorkspace(r)
 	targetDir := r.FormValue("targetDir")
 	if targetDir == "" {
 		targetDir = "./"
 	}
 
-	basePath := h.resolveBasePath(workspace)
-	resolvedTarget, err := filepath.Abs(filepath.Join(basePath, targetDir))
-	if err != nil || !isPathSafe(resolvedTarget, basePath) {
-		jsonError(w, "Path traversal detected", http.StatusBadRequest)
+	_, resolvedTarget, err := h.resolver.ResolveForWorkspace(workspace, targetDir)
+	if err != nil {
+		h.handlePathError(w, err)
 		return
 	}
 
-	_, err = os.Stat(resolvedTarget)
-	exists := err == nil
+	_, statErr := os.Stat(resolvedTarget)
+	exists := statErr == nil
 
 	jsonResponse(w, map[string]interface{}{
 		"exists":  exists,
@@ -155,33 +95,20 @@ func (h *FileHandler) CheckDirectory(w http.ResponseWriter, r *http.Request) {
 
 // CreateDirectory handles POST /api/create-directory
 func (h *FileHandler) CreateDirectory(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseMultipartForm(32 << 20); err != nil {
-		if err := r.ParseForm(); err != nil {
-			jsonError(w, "Invalid request", http.StatusBadRequest)
-			return
-		}
+	if !ParseFormRequest(w, r) {
+		return
 	}
 
-	workspace := r.FormValue("workspace")
-	if workspace == "" {
-		workspace = "root"
-	}
+	workspace := GetWorkspace(r)
 	targetDir := r.FormValue("targetDir")
 	if targetDir == "" {
 		jsonError(w, "No directory path provided", http.StatusBadRequest)
 		return
 	}
 
-	// Validate directory name - reject dangerous patterns
-	if strings.Contains(targetDir, "..") {
-		jsonError(w, "Invalid directory path", http.StatusBadRequest)
-		return
-	}
-
-	basePath := h.resolveBasePath(workspace)
-	resolvedTarget, err := filepath.Abs(filepath.Join(basePath, targetDir))
-	if err != nil || !isPathSafe(resolvedTarget, basePath) {
-		jsonError(w, "Path traversal detected", http.StatusBadRequest)
+	_, resolvedTarget, err := h.resolver.ResolveForWorkspace(workspace, targetDir)
+	if err != nil {
+		h.handlePathError(w, err)
 		return
 	}
 
@@ -219,16 +146,12 @@ func (h *FileHandler) CreateDirectory(w http.ResponseWriter, r *http.Request) {
 // Upload handles POST /api/upload
 // Supports both ZIP files (extracted) and regular files (saved with optional custom name)
 func (h *FileHandler) Upload(w http.ResponseWriter, r *http.Request) {
-	// Parse multipart form (100MB limit)
-	if err := r.ParseMultipartForm(100 << 20); err != nil {
-		jsonError(w, "File too large (max 100MB)", http.StatusBadRequest)
+	// Parse multipart form
+	if !ParseFormRequestWithSize(w, r, DefaultMaxUploadSize) {
 		return
 	}
 
-	workspace := r.FormValue("workspace")
-	if workspace == "" {
-		workspace = "root"
-	}
+	workspace := GetWorkspace(r)
 	targetDir := r.FormValue("targetDir")
 	if targetDir == "" {
 		targetDir = "./"
@@ -246,10 +169,9 @@ func (h *FileHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	originalFilename := header.Filename
 	isZipFile := strings.HasSuffix(strings.ToLower(originalFilename), ".zip")
 
-	basePath := h.resolveBasePath(workspace)
-	resolvedTarget, err := filepath.Abs(filepath.Join(basePath, targetDir))
-	if err != nil || !isPathSafe(resolvedTarget, basePath) {
-		jsonError(w, "Path traversal detected", http.StatusBadRequest)
+	basePath, resolvedTarget, err := h.resolver.ResolveForWorkspace(workspace, targetDir)
+	if err != nil {
+		h.handlePathError(w, err)
 		return
 	}
 
@@ -272,58 +194,69 @@ func (h *FileHandler) Upload(w http.ResponseWriter, r *http.Request) {
 
 	// Handle non-ZIP files: save directly
 	if !isZipFile {
-		// Determine filename
-		destFilename := originalFilename
-		if customName != "" {
-			destFilename = customName
-		}
-
-		// Validate filename
-		if strings.Contains(destFilename, "/") || strings.Contains(destFilename, "\\") || destFilename == ".." {
-			jsonError(w, "Invalid filename", http.StatusBadRequest)
-			return
-		}
-
-		destPath := filepath.Join(resolvedTarget, destFilename)
-		if !isPathSafe(destPath, basePath) {
-			jsonError(w, "Path traversal detected", http.StatusBadRequest)
-			return
-		}
-
-		// Check if file already exists
-		if _, err := os.Stat(destPath); err == nil {
-			jsonResponse(w, map[string]interface{}{
-				"error":         "File already exists",
-				"existingItems": []string{destFilename},
-				"targetDir":     resolvedTarget,
-				"hint":          "Delete existing file first or use a different name",
-			}, http.StatusConflict)
-			return
-		}
-
-		// Create target directory
-		if err := os.MkdirAll(resolvedTarget, 0755); err != nil {
-			jsonError(w, "Failed to create directory", http.StatusInternalServerError)
-			return
-		}
-
-		// Copy file to destination
-		if err := copyFile(tempPath, destPath); err != nil {
-			jsonError(w, "Failed to save file", http.StatusInternalServerError)
-			return
-		}
-
-		jsonResponse(w, map[string]interface{}{
-			"success":     true,
-			"message":     fmt.Sprintf("Uploaded %s to %s", destFilename, targetDir),
-			"extractedTo": resolvedTarget,
-			"fileCount":   1,
-			"filename":    destFilename,
-		})
+		h.handleRegularUpload(w, basePath, resolvedTarget, targetDir, tempPath, originalFilename, customName)
 		return
 	}
 
 	// Handle ZIP files: extract contents
+	h.handleZipUpload(w, basePath, resolvedTarget, targetDir, tempPath)
+}
+
+// handleRegularUpload handles uploading a single non-ZIP file
+func (h *FileHandler) handleRegularUpload(w http.ResponseWriter, basePath, resolvedTarget, targetDir, tempPath, originalFilename, customName string) {
+	// Determine filename
+	destFilename := originalFilename
+	if customName != "" {
+		destFilename = customName
+	}
+
+	// Validate filename
+	if !IsValidFilename(destFilename) {
+		jsonError(w, "Invalid filename", http.StatusBadRequest)
+		return
+	}
+
+	// Resolve destination path safely
+	destPath, err := h.resolver.ResolveSafePath(basePath, filepath.Join(targetDir, destFilename))
+	if err != nil {
+		h.handlePathError(w, err)
+		return
+	}
+
+	// Check if file already exists
+	if _, err := os.Stat(destPath); err == nil {
+		jsonResponse(w, map[string]interface{}{
+			"error":         "File already exists",
+			"existingItems": []string{destFilename},
+			"targetDir":     resolvedTarget,
+			"hint":          "Delete existing file first or use a different name",
+		}, http.StatusConflict)
+		return
+	}
+
+	// Create target directory
+	if err := os.MkdirAll(resolvedTarget, 0755); err != nil {
+		jsonError(w, "Failed to create directory", http.StatusInternalServerError)
+		return
+	}
+
+	// Copy file to destination
+	if err := copyFile(tempPath, destPath); err != nil {
+		jsonError(w, "Failed to save file", http.StatusInternalServerError)
+		return
+	}
+
+	jsonResponse(w, map[string]interface{}{
+		"success":     true,
+		"message":     fmt.Sprintf("Uploaded %s to %s", destFilename, targetDir),
+		"extractedTo": resolvedTarget,
+		"fileCount":   1,
+		"filename":    destFilename,
+	})
+}
+
+// handleZipUpload handles extracting a ZIP file
+func (h *FileHandler) handleZipUpload(w http.ResponseWriter, basePath, resolvedTarget, targetDir, tempPath string) {
 	zipReader, err := zip.OpenReader(tempPath)
 	if err != nil {
 		jsonError(w, "Invalid ZIP file", http.StatusBadRequest)
@@ -341,10 +274,10 @@ func (h *FileHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	var totalUncompressedSize uint64
 	rootItems := make(map[string]struct{})
 	for _, f := range zipReader.File {
-		// Check for path traversal in archive
-		destPath := filepath.Join(resolvedTarget, f.Name)
-		if !strings.HasPrefix(destPath, resolvedTarget) {
-			filesLog.Warn("ZIP rejected: path traversal in archive: %s", f.Name)
+		// Check for path traversal in archive using our resolver
+		_, err := h.resolver.ResolveSafePath(resolvedTarget, f.Name)
+		if err != nil {
+			filesLog.Warn("ZIP rejected: path security issue in archive: %s: %v", f.Name, err)
 			jsonError(w, "Malicious ZIP detected (path traversal in archive)", http.StatusBadRequest)
 			return
 		}
@@ -443,19 +376,18 @@ func (h *FileHandler) Upload(w http.ResponseWriter, r *http.Request) {
 
 // ListFiles handles POST /api/list-files
 func (h *FileHandler) ListFiles(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseMultipartForm(32 << 20); err != nil {
-		if err := r.ParseForm(); err != nil {
-			jsonError(w, "Invalid request", http.StatusBadRequest)
-			return
-		}
+	if !ParseFormRequest(w, r) {
+		return
 	}
 
-	workspace := r.FormValue("workspace")
-	if workspace == "" {
-		workspace = "root"
+	workspace := GetWorkspace(r)
+
+	basePath, err := h.resolver.ResolveWorkspaceBase(workspace)
+	if err != nil {
+		h.handlePathError(w, err)
+		return
 	}
 
-	basePath := h.resolveBasePath(workspace)
 	if _, err := os.Stat(basePath); os.IsNotExist(err) {
 		jsonResponse(w, map[string]interface{}{
 			"error": "Directory not found",
@@ -464,14 +396,7 @@ func (h *FileHandler) ListFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	excludeDirs := map[string]bool{
-		"node_modules": true,
-		"dist":         true,
-		".git":         true,
-		".turbo":       true,
-	}
-
-	tree := buildTree(basePath, "", 0, 4, excludeDirs)
+	tree := buildTree(basePath, "", 0, 4, DefaultExcludedDirs)
 	jsonResponse(w, map[string]interface{}{
 		"path": basePath,
 		"tree": tree,
@@ -536,28 +461,21 @@ func buildTree(dirPath, relativePath string, depth, maxDepth int, excludeDirs ma
 
 // ReadFile handles POST /api/read-file
 func (h *FileHandler) ReadFile(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseMultipartForm(32 << 20); err != nil {
-		if err := r.ParseForm(); err != nil {
-			jsonError(w, "Invalid request", http.StatusBadRequest)
-			return
-		}
+	if !ParseFormRequest(w, r) {
+		return
 	}
 
-	workspace := r.FormValue("workspace")
-	if workspace == "" {
-		workspace = "root"
-	}
+	workspace := GetWorkspace(r)
 	filePath := r.FormValue("path")
 	if filePath == "" {
 		jsonError(w, "No file path provided", http.StatusBadRequest)
 		return
 	}
 
-	basePath := h.resolveBasePath(workspace)
-	resolvedPath, err := resolveSafePath(basePath, filePath)
+	_, resolvedPath, err := h.resolver.ResolveForWorkspace(workspace, filePath)
 	if err != nil {
 		filesLog.Warn("Path resolution failed for %s: %v", filePath, err)
-		jsonError(w, "Invalid path", http.StatusBadRequest)
+		h.handlePathError(w, err)
 		return
 	}
 
@@ -567,8 +485,8 @@ func (h *FileHandler) ReadFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Size limit 1MB
-	if info.Size() > 1024*1024 {
+	// Size limit
+	if info.Size() > MaxPreviewSize {
 		jsonResponse(w, map[string]interface{}{
 			"error": "File too large for preview (max 1MB)",
 			"size":  info.Size(),
@@ -576,23 +494,12 @@ func (h *FileHandler) ReadFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check binary
-	binaryExts := map[string]bool{
-		".png": true, ".jpg": true, ".jpeg": true, ".gif": true, ".ico": true,
-		".webp": true, ".bmp": true, ".svg": true, ".pdf": true, ".zip": true,
-		".tar": true, ".gz": true, ".rar": true, ".7z": true, ".mp3": true,
-		".mp4": true, ".wav": true, ".avi": true, ".mov": true, ".mkv": true,
-		".exe": true, ".dll": true, ".so": true, ".dylib": true, ".woff": true,
-		".woff2": true, ".ttf": true, ".eot": true, ".otf": true, ".node": true,
-		".wasm": true,
-	}
-
-	ext := strings.ToLower(filepath.Ext(filePath))
-	if binaryExts[ext] {
+	// Check binary file type
+	if IsBinaryFile(filePath) {
 		jsonResponse(w, map[string]interface{}{
 			"error":     "Binary file cannot be previewed",
 			"binary":    true,
-			"extension": ext,
+			"extension": strings.ToLower(filepath.Ext(filePath)),
 		}, http.StatusUnsupportedMediaType)
 		return
 	}
@@ -614,87 +521,22 @@ func (h *FileHandler) ReadFile(w http.ResponseWriter, r *http.Request) {
 
 // DeleteFolder handles POST /api/delete-folder
 func (h *FileHandler) DeleteFolder(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseMultipartForm(32 << 20); err != nil {
-		if err := r.ParseForm(); err != nil {
-			jsonError(w, "Invalid request", http.StatusBadRequest)
-			return
-		}
+	if !ParseFormRequest(w, r) {
+		return
 	}
 
-	workspace := r.FormValue("workspace")
-	if workspace == "" {
-		workspace = "root"
-	}
+	workspace := GetWorkspace(r)
 	folderPath := r.FormValue("path")
 	if folderPath == "" {
 		jsonError(w, "No folder path provided", http.StatusBadRequest)
 		return
 	}
 
-	// Prevent root deletion
-	if folderPath == "" || folderPath == "/" || folderPath == "." {
-		jsonError(w, "Cannot delete root directory", http.StatusBadRequest)
-		return
-	}
-
-	// Security validation
-	if strings.Contains(folderPath, "..") || strings.HasPrefix(folderPath, "/") {
-		jsonError(w, "Invalid path", http.StatusBadRequest)
-		return
-	}
-
-	var basePath string
-	isRootWorkspace := false
-
-	if strings.HasPrefix(workspace, "site:") {
-		siteName := strings.TrimPrefix(workspace, "site:")
-		// Validate site name
-		matched, _ := regexp.MatchString(`^[a-zA-Z0-9][a-zA-Z0-9.-]*[a-zA-Z0-9]$|^[a-zA-Z0-9]$`, siteName)
-		if !matched {
-			jsonError(w, "Invalid site name", http.StatusBadRequest)
-			return
-		}
-		basePath = filepath.Join(h.config.ResolvedSitesPath, siteName, "user")
-	} else if workspace == "root" {
-		basePath = h.config.ResolvedUploadCwd
-		isRootWorkspace = true
-	} else {
-		jsonError(w, "Invalid workspace", http.StatusBadRequest)
-		return
-	}
-
-	resolvedPath, err := filepath.Abs(filepath.Join(basePath, folderPath))
+	// Use centralized validation for deletion
+	_, resolvedPath, err := h.resolver.ValidateForDeletion(workspace, folderPath)
 	if err != nil {
-		jsonError(w, "Invalid path", http.StatusBadRequest)
+		h.handlePathError(w, err)
 		return
-	}
-
-	normalizedBase, _ := filepath.Abs(basePath)
-
-	// Security checks
-	if !strings.HasPrefix(resolvedPath, normalizedBase+string(os.PathSeparator)) {
-		jsonError(w, "Path traversal detected", http.StatusBadRequest)
-		return
-	}
-
-	if !isRootWorkspace {
-		normalizedSites, _ := filepath.Abs(h.config.ResolvedSitesPath)
-		if !strings.HasPrefix(resolvedPath, normalizedSites+string(os.PathSeparator)) {
-			jsonError(w, "Path outside sites directory", http.StatusBadRequest)
-			return
-		}
-		if resolvedPath == normalizedBase {
-			jsonError(w, "Cannot delete the user directory itself", http.StatusBadRequest)
-			return
-		}
-	}
-
-	if isRootWorkspace {
-		normalizedUpload, _ := filepath.Abs(h.config.ResolvedUploadCwd)
-		if !strings.HasPrefix(resolvedPath, normalizedUpload+string(os.PathSeparator)) {
-			jsonError(w, "Can only delete folders within uploads directory", http.StatusBadRequest)
-			return
-		}
 	}
 
 	info, err := os.Stat(resolvedPath)
@@ -724,7 +566,8 @@ func (h *FileHandler) DeleteFolder(w http.ResponseWriter, r *http.Request) {
 
 // ListSites handles GET /api/sites
 func (h *FileHandler) ListSites(w http.ResponseWriter, r *http.Request) {
-	entries, err := os.ReadDir(h.config.ResolvedSitesPath)
+	sitesPath := h.resolver.GetSitesPath()
+	entries, err := os.ReadDir(sitesPath)
 	if err != nil {
 		jsonError(w, "Failed to list sites", http.StatusInternalServerError)
 		return
@@ -732,13 +575,8 @@ func (h *FileHandler) ListSites(w http.ResponseWriter, r *http.Request) {
 
 	var sites []string
 	for _, entry := range entries {
-		if entry.IsDir() && !entry.Type().IsRegular() {
-			userDir := filepath.Join(h.config.ResolvedSitesPath, entry.Name(), "user")
-			if _, err := os.Stat(userDir); err == nil {
-				sites = append(sites, entry.Name())
-			}
-		} else if entry.IsDir() {
-			userDir := filepath.Join(h.config.ResolvedSitesPath, entry.Name(), "user")
+		if entry.IsDir() {
+			userDir := filepath.Join(sitesPath, entry.Name(), "user")
 			if _, err := os.Stat(userDir); err == nil {
 				sites = append(sites, entry.Name())
 			}
@@ -748,17 +586,17 @@ func (h *FileHandler) ListSites(w http.ResponseWriter, r *http.Request) {
 	sort.Strings(sites)
 	jsonResponse(w, map[string]interface{}{
 		"sites":     sites,
-		"sitesPath": h.config.ResolvedSitesPath,
+		"sitesPath": sitesPath,
 	})
 }
 
 // ServerStats holds server statistics for health checks
 type ServerStats struct {
-	Status       string `json:"status"`
-	Uptime       string `json:"uptime"`
-	Goroutines   int    `json:"goroutines"`
-	MemoryMB     uint64 `json:"memoryMB"`
-	Environment  string `json:"environment"`
+	Status      string `json:"status"`
+	Uptime      string `json:"uptime"`
+	Goroutines  int    `json:"goroutines"`
+	MemoryMB    uint64 `json:"memoryMB"`
+	Environment string `json:"environment"`
 }
 
 var serverStartTime = time.Now()
@@ -769,14 +607,19 @@ func (h *FileHandler) Health(w http.ResponseWriter, r *http.Request) {
 	runtime.ReadMemStats(&memStats)
 
 	stats := ServerStats{
-		Status:       "ok",
-		Uptime:       time.Since(serverStartTime).Round(time.Second).String(),
-		Goroutines:   runtime.NumGoroutine(),
-		MemoryMB:     memStats.Alloc / 1024 / 1024,
-		Environment:  h.config.Env,
+		Status:      "ok",
+		Uptime:      time.Since(serverStartTime).Round(time.Second).String(),
+		Goroutines:  runtime.NumGoroutine(),
+		MemoryMB:    memStats.Alloc / 1024 / 1024,
+		Environment: h.config.Env,
 	}
 
 	jsonResponse(w, stats)
+}
+
+// handlePathError converts path security errors to appropriate HTTP responses
+func (h *FileHandler) handlePathError(w http.ResponseWriter, err error) {
+	HandlePathSecurityError(w, err)
 }
 
 // Helper functions

@@ -4,8 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "vite build",
-    "build:css": "npx @tailwindcss/cli -i src/styles/shell.css -o ../dist/client/shell.css --minify"
+    "build": "vite build"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.18.6",
@@ -31,7 +30,7 @@
     "zustand": "^5.0.2"
   },
   "devDependencies": {
-    "@tailwindcss/cli": "^4.1.17",
+    "@tailwindcss/vite": "^4.1.18",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^4.3.4",

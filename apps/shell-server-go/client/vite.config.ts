@@ -1,9 +1,10 @@
 import { defineConfig, type PluginOption } from "vite"
 import react from "@vitejs/plugin-react"
+import tailwindcss from "@tailwindcss/vite"
 import { resolve } from "path"
 
 export default defineConfig({
-  plugins: [react() as PluginOption],
+  plugins: [react() as PluginOption, tailwindcss() as PluginOption],
   build: {
     outDir: "../dist/client",
     emptyOutDir: true,
@@ -16,9 +17,16 @@ export default defineConfig({
       output: {
         entryFileNames: "[name].js",
         chunkFileNames: "chunks/[name]-[hash].js",
-        assetFileNames: "[name].[ext]",
+        // CSS from upload entry (main.tsx) should be named shell.css
+        assetFileNames: assetInfo => {
+          if (assetInfo.names?.[0] === "upload.css") {
+            return "shell.css"
+          }
+          return "[name].[ext]"
+        },
       },
     },
     minify: true,
+    cssMinify: true,
   },
 })

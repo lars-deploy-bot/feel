@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -57,19 +58,10 @@ func setupTestServer(t *testing.T) *testServer {
 	workspaceDir := filepath.Join(tempDir, "workspace")
 	sitesDir := filepath.Join(tempDir, "sites")
 	uploadsDir := filepath.Join(tempDir, "uploads")
-	templatesDir := filepath.Join(tempDir, "templates")
 
-	for _, dir := range []string{workspaceDir, sitesDir, uploadsDir, templatesDir} {
+	for _, dir := range []string{workspaceDir, sitesDir, uploadsDir} {
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			t.Fatalf("Failed to create dir %s: %v", dir, err)
-		}
-	}
-
-	// Create minimal template files
-	shellTemplate := `<!DOCTYPE html><html><body>Shell</body></html>`
-	for _, name := range []string{"login.html", "dashboard.html", "shell.html", "upload.html", "edit.html"} {
-		if err := os.WriteFile(filepath.Join(templatesDir, name), []byte(shellTemplate), 0644); err != nil {
-			t.Fatalf("Failed to create template %s: %v", name, err)
 		}
 	}
 
@@ -85,8 +77,6 @@ func setupTestServer(t *testing.T) *testServer {
 		AllowWorkspaceSelection: true,
 		EditableDirectories:     []config.EditableDirectory{},
 		ShellPassword:           "testpassword123",
-		TemplatesDir:            templatesDir,
-		ClientDir:               templatesDir,
 	}
 
 	// Initialize session store
@@ -97,8 +87,18 @@ func setupTestServer(t *testing.T) *testServer {
 	rateLimitFile := filepath.Join(tempDir, ".rate-limit-state.json")
 	limiter := ratelimit.NewLimiter(rateLimitFile)
 
-	// Load templates
-	templates, err := handlers.LoadTemplates(cfg.TemplatesDir)
+	// Create in-memory template filesystem for tests
+	shellTemplate := `<!DOCTYPE html><html><body>Shell</body></html>`
+	templateFS := fstest.MapFS{
+		"login.html":     {Data: []byte(shellTemplate)},
+		"dashboard.html": {Data: []byte(shellTemplate)},
+		"shell.html":     {Data: []byte(shellTemplate)},
+		"upload.html":    {Data: []byte(shellTemplate)},
+		"edit.html":      {Data: []byte(shellTemplate)},
+	}
+
+	// Load templates from in-memory filesystem
+	templates, err := handlers.LoadTemplatesFromFS(templateFS)
 	if err != nil {
 		t.Fatalf("Failed to load templates: %v", err)
 	}

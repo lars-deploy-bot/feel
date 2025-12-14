@@ -16,12 +16,16 @@ import (
 
 // EditorHandler handles editor API endpoints
 type EditorHandler struct {
-	config *config.AppConfig
+	config   *config.AppConfig
+	resolver *PathResolver
 }
 
 // NewEditorHandler creates a new editor handler
 func NewEditorHandler(cfg *config.AppConfig) *EditorHandler {
-	return &EditorHandler{config: cfg}
+	return &EditorHandler{
+		config:   cfg,
+		resolver: NewPathResolver(cfg),
+	}
 }
 
 // EditTreeNode represents a file tree node for the editor
@@ -30,6 +34,35 @@ type EditTreeNode struct {
 	Path     string         `json:"path"`
 	Type     string         `json:"type"`
 	Children []EditTreeNode `json:"children,omitempty"`
+}
+
+// Image file extensions that can be displayed
+var imageExtensions = map[string]bool{
+	".png": true, ".jpg": true, ".jpeg": true, ".gif": true,
+	".ico": true, ".webp": true, ".bmp": true, ".svg": true,
+}
+
+// Binary file extensions that cannot be edited
+var editorBinaryExtensions = map[string]bool{
+	".pdf": true, ".zip": true, ".tar": true, ".gz": true, ".rar": true,
+	".7z": true, ".mp3": true, ".mp4": true, ".wav": true, ".avi": true,
+	".mov": true, ".mkv": true, ".exe": true, ".dll": true, ".so": true,
+	".dylib": true, ".woff": true, ".woff2": true, ".ttf": true,
+	".eot": true, ".otf": true, ".node": true, ".wasm": true,
+}
+
+// getMimeType returns the MIME type for an image extension
+func getMimeType(ext string) string {
+	switch ext {
+	case ".svg":
+		return "image/svg+xml"
+	case ".ico":
+		return "image/x-icon"
+	case ".jpg":
+		return "image/jpeg"
+	default:
+		return "image/" + strings.TrimPrefix(ext, ".")
+	}
 }
 
 // ListFiles handles POST /api/edit/list-files
@@ -74,11 +107,6 @@ func buildEditTree(dirPath, relativePath string, depth, maxDepth int) []EditTree
 		return nil
 	}
 
-	excludeDirs := map[string]bool{
-		"node_modules": true, "dist": true, ".git": true,
-		".turbo": true, "__pycache__": true,
-	}
-
 	entries, err := os.ReadDir(dirPath)
 	if err != nil {
 		return nil
@@ -86,7 +114,7 @@ func buildEditTree(dirPath, relativePath string, depth, maxDepth int) []EditTree
 
 	var filtered []os.DirEntry
 	for _, e := range entries {
-		if !excludeDirs[e.Name()] && !strings.HasPrefix(e.Name(), ".") {
+		if !DefaultExcludedDirs[e.Name()] && !strings.HasPrefix(e.Name(), ".") {
 			filtered = append(filtered, e)
 		}
 	}
@@ -153,15 +181,10 @@ func (h *EditorHandler) ReadFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Security validation
-	if strings.Contains(body.Path, "..") || strings.HasPrefix(body.Path, "/") {
-		jsonError(w, "Invalid path", http.StatusBadRequest)
-		return
-	}
-
-	resolvedPath, err := filepath.Abs(filepath.Join(editableDir.Path, body.Path))
-	if err != nil || !strings.HasPrefix(resolvedPath, editableDir.Path) {
-		jsonError(w, "Path traversal detected", http.StatusBadRequest)
+	// Use centralized path resolution
+	resolvedPath, err := h.resolver.ResolveSafePath(editableDir.Path, body.Path)
+	if err != nil {
+		h.handlePathError(w, err)
 		return
 	}
 
@@ -172,7 +195,7 @@ func (h *EditorHandler) ReadFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Size limit 2MB
-	if info.Size() > 2*1024*1024 {
+	if info.Size() > MaxEditFileSize {
 		jsonResponse(w, map[string]interface{}{
 			"error": "File too large for editing (max 2MB)",
 			"size":  info.Size(),
@@ -183,26 +206,14 @@ func (h *EditorHandler) ReadFile(w http.ResponseWriter, r *http.Request) {
 	ext := strings.ToLower(filepath.Ext(body.Path))
 
 	// Handle images
-	imageExts := map[string]bool{
-		".png": true, ".jpg": true, ".jpeg": true, ".gif": true,
-		".ico": true, ".webp": true, ".bmp": true, ".svg": true,
-	}
-	if imageExts[ext] {
+	if imageExtensions[ext] {
 		data, err := os.ReadFile(resolvedPath)
 		if err != nil {
 			jsonError(w, "Failed to read file", http.StatusInternalServerError)
 			return
 		}
 
-		mimeType := "image/" + strings.TrimPrefix(ext, ".")
-		if ext == ".svg" {
-			mimeType = "image/svg+xml"
-		} else if ext == ".ico" {
-			mimeType = "image/x-icon"
-		} else if ext == ".jpg" {
-			mimeType = "image/jpeg"
-		}
-
+		mimeType := getMimeType(ext)
 		base64Data := base64.StdEncoding.EncodeToString(data)
 		jsonResponse(w, map[string]interface{}{
 			"image":    true,
@@ -216,14 +227,7 @@ func (h *EditorHandler) ReadFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check binary
-	binaryExts := map[string]bool{
-		".pdf": true, ".zip": true, ".tar": true, ".gz": true, ".rar": true,
-		".7z": true, ".mp3": true, ".mp4": true, ".wav": true, ".avi": true,
-		".mov": true, ".mkv": true, ".exe": true, ".dll": true, ".so": true,
-		".dylib": true, ".woff": true, ".woff2": true, ".ttf": true,
-		".eot": true, ".otf": true, ".node": true, ".wasm": true,
-	}
-	if binaryExts[ext] {
+	if editorBinaryExtensions[ext] {
 		jsonResponse(w, map[string]interface{}{
 			"error":     "Binary file cannot be edited",
 			"binary":    true,
@@ -274,21 +278,16 @@ func (h *EditorHandler) WriteFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Security validation
-	if strings.Contains(body.Path, "..") || strings.HasPrefix(body.Path, "/") {
-		jsonError(w, "Invalid path", http.StatusBadRequest)
-		return
-	}
-
-	resolvedPath, err := filepath.Abs(filepath.Join(editableDir.Path, body.Path))
-	if err != nil || !strings.HasPrefix(resolvedPath, editableDir.Path) {
-		jsonError(w, "Path traversal detected", http.StatusBadRequest)
+	// Use centralized path resolution
+	resolvedPath, err := h.resolver.ResolveSafePath(editableDir.Path, body.Path)
+	if err != nil {
+		h.handlePathError(w, err)
 		return
 	}
 
 	// Size limit 2MB
 	contentSize := len([]byte(body.Content))
-	if contentSize > 2*1024*1024 {
+	if contentSize > MaxEditFileSize {
 		jsonResponse(w, map[string]interface{}{
 			"error": "Content too large (max 2MB)",
 			"size":  contentSize,
@@ -355,13 +354,10 @@ func (h *EditorHandler) CheckMtimes(w http.ResponseWriter, r *http.Request) {
 
 	var results []FileResult
 	for _, file := range body.Files {
-		// Security check
-		if strings.Contains(file.Path, "..") || strings.HasPrefix(file.Path, "/") {
-			continue
-		}
-
-		resolvedPath, err := filepath.Abs(filepath.Join(editableDir.Path, file.Path))
-		if err != nil || !strings.HasPrefix(resolvedPath, editableDir.Path) {
+		// Use centralized path resolution
+		resolvedPath, err := h.resolver.ResolveSafePath(editableDir.Path, file.Path)
+		if err != nil {
+			// Skip files with invalid paths (security check failed)
 			continue
 		}
 
@@ -408,7 +404,7 @@ func (h *EditorHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Prevent root deletion
-	if body.Path == "" || body.Path == "/" || body.Path == "." {
+	if body.Path == "/" || body.Path == "." {
 		jsonError(w, "Cannot delete root directory", http.StatusBadRequest)
 		return
 	}
@@ -419,20 +415,16 @@ func (h *EditorHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Security validation
-	if strings.Contains(body.Path, "..") || strings.HasPrefix(body.Path, "/") {
-		jsonError(w, "Invalid path", http.StatusBadRequest)
+	// Use centralized path resolution
+	resolvedPath, err := h.resolver.ResolveSafePath(editableDir.Path, body.Path)
+	if err != nil {
+		h.handlePathError(w, err)
 		return
 	}
 
-	resolvedPath, err := filepath.Abs(filepath.Join(editableDir.Path, body.Path))
-	if err != nil || !strings.HasPrefix(resolvedPath, editableDir.Path+string(os.PathSeparator)) {
-		jsonError(w, "Path traversal detected", http.StatusBadRequest)
-		return
-	}
-
-	if resolvedPath == editableDir.Path {
-		jsonError(w, "Cannot delete the root directory", http.StatusBadRequest)
+	// Additional check: cannot delete the editable directory root
+	if err := h.resolver.ValidateNotRoot(editableDir.Path, resolvedPath); err != nil {
+		h.handlePathError(w, err)
 		return
 	}
 
@@ -488,25 +480,16 @@ func (h *EditorHandler) Copy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Security validation
-	if strings.Contains(body.Source, "..") || strings.HasPrefix(body.Source, "/") {
+	// Use centralized path resolution for both paths
+	resolvedSource, err := h.resolver.ResolveSafePath(editableDir.Path, body.Source)
+	if err != nil {
 		jsonError(w, "Invalid source path", http.StatusBadRequest)
 		return
 	}
-	if strings.Contains(body.Destination, "..") || strings.HasPrefix(body.Destination, "/") {
+
+	resolvedDest, err := h.resolver.ResolveSafePath(editableDir.Path, body.Destination)
+	if err != nil {
 		jsonError(w, "Invalid destination path", http.StatusBadRequest)
-		return
-	}
-
-	resolvedSource, err := filepath.Abs(filepath.Join(editableDir.Path, body.Source))
-	if err != nil || !strings.HasPrefix(resolvedSource, editableDir.Path+string(os.PathSeparator)) {
-		jsonError(w, "Source path traversal detected", http.StatusBadRequest)
-		return
-	}
-
-	resolvedDest, err := filepath.Abs(filepath.Join(editableDir.Path, body.Destination))
-	if err != nil || !strings.HasPrefix(resolvedDest, editableDir.Path+string(os.PathSeparator)) {
-		jsonError(w, "Destination path traversal detected", http.StatusBadRequest)
 		return
 	}
 
@@ -553,4 +536,9 @@ func (h *EditorHandler) Copy(w http.ResponseWriter, r *http.Request) {
 		"sourcePath": body.Source,
 		"destPath":   body.Destination,
 	})
+}
+
+// handlePathError converts path security errors to appropriate HTTP responses
+func (h *EditorHandler) handlePathError(w http.ResponseWriter, err error) {
+	HandlePathSecurityError(w, err)
 }

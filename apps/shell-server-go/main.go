@@ -150,8 +150,9 @@ func main() {
 	}
 	log.Info("Client files served from embedded filesystem")
 
-	// Serve client files from embedded FS
-	mux.Handle("/client/", http.StripPrefix("/client/", http.FileServerFS(clientFS)))
+	// Serve client files from embedded FS with gzip compression
+	clientFileServer := http.StripPrefix("/client/", http.FileServerFS(clientFS))
+	mux.Handle("/client/", middleware.Gzip(clientFileServer))
 
 	// Create server with timeouts
 	addr := fmt.Sprintf(":%d", cfg.Port)
