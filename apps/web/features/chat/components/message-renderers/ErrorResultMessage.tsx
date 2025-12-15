@@ -76,7 +76,7 @@ export function ErrorResultMessage({ content }: ErrorResultMessageProps) {
 
     // Specific help for authentication errors
     if (isAuthError) {
-      return "Please run /login to re-authenticate with your Anthropic API key."
+      return "Please contact your administrator to restore access."
     }
 
     // Helpful context for common errors

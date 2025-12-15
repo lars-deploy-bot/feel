@@ -59,7 +59,7 @@ function ToolUseItem({ item }: { item: ContentItem }): React.ReactNode {
 
     // Check for OAuth/authentication errors first
     if (isOAuthError(text)) {
-      return <OAuthErrorMessage errorText={text} />
+      return <OAuthErrorMessage />
     }
 
     // Use MarkdownDisplay if the text contains markdown, otherwise render plain text

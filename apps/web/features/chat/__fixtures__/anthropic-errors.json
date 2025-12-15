@@ -16,8 +16,8 @@
       },
       "handling": {
         "error_code": "API_AUTH_FAILED",
-        "user_message": "API authentication failed. The API key may be expired or invalid. Please contact the system administrator to update the API key.",
-        "implementation": "apps/web/features/chat/lib/streamHandler.ts"
+        "user_message": "Session Expired. Please contact your administrator to restore access.",
+        "implementation": "apps/web/features/chat/components/message-renderers/ErrorResultMessage.tsx"
       },
       "notes": [
         "Error is thrown by Claude SDK when ANTHROPIC_API_KEY is expired or invalid",
@@ -43,22 +43,21 @@
         "error_code": "API_AUTH_FAILED",
         "detection": "errorType === 'authentication_error'",
         "parsed_message": "OAuth token has expired. Please obtain a new token or refresh your existing token.",
-        "user_help": "Please run /login to re-authenticate with your Anthropic API key.",
-        "implementation": "apps/web/features/chat/lib/streaming/handler.ts"
+        "user_help": "Please contact your administrator to restore access.",
+        "implementation": "apps/web/features/chat/components/message-renderers/ErrorResultMessage.tsx"
       },
       "ui_display": {
-        "header": "Authentication Error",
-        "message": "OAuth token has expired. Please obtain a new token or refresh your existing token.",
-        "help_text": "Please run /login to re-authenticate with your Anthropic API key.",
+        "header": "Session Expired",
+        "message": "Please contact your administrator to restore access.",
         "shows_request_id": true,
-        "component": "ErrorResultMessage"
+        "component": "OAuthErrorMessage"
       },
       "notes": [
         "Real production error captured 2025-11-10",
         "Parsing: parseAnthropicError() extracts error.type, error.message, request_id",
         "Detection: Check errorType === 'authentication_error' (precise, not just 401)",
-        "UI: Shows cleaned message + actionable help text + request ID for debugging",
-        "User action: /login command to refresh API key"
+        "UI: Shows clean message directing user to contact admin",
+        "Users cannot re-authenticate themselves - admin intervention required"
       ]
     }
   ]
