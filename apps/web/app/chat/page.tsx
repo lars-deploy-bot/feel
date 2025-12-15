@@ -77,7 +77,6 @@ function ChatPageContent() {
   const {
     initializeConversation,
     addMessage,
-    clearForNewConversation,
     switchConversation: switchConversationInMessageStore,
     deleteConversation,
   } = useMessageActions()
@@ -373,9 +372,14 @@ function ChatPageContent() {
     if (isSubmitting.current || busy || isStopping || !messageToSend.trim()) return
     if (!conversationId) return // Need a conversation to send to
 
+    // CRITICAL: Capture conversation ID at start of request
+    // This ensures all messages from this stream go to the correct conversation
+    // even if the user switches conversations during the stream
+    const targetConversationId = conversationId
+
     isSubmitting.current = true
     // Mark stream as active immediately - this is the SOURCE OF TRUTH for busy state
-    streamingActions.startStream(conversationId)
+    streamingActions.startStream(targetConversationId)
 
     const attachments = chatInputRef.current?.getAttachments() || []
 
@@ -386,16 +390,16 @@ function ChatPageContent() {
       timestamp: new Date(),
       attachments: attachments.length > 0 ? attachments : undefined,
     }
-    addMessage(userMessage)
+    addMessage(userMessage, targetConversationId)
     setMsg("")
     chatInputRef.current?.clearAllAttachments()
     setShouldForceScroll(true)
 
     try {
       if (useStreaming) {
-        await sendStreaming(userMessage)
+        await sendStreaming(userMessage, targetConversationId)
       } else {
-        await sendRegular(userMessage)
+        await sendRegular(userMessage, targetConversationId)
       }
     } finally {
       // endStream is called within sendStreaming/sendRegular on completion
@@ -404,7 +408,7 @@ function ChatPageContent() {
     }
   }
 
-  async function sendStreaming(userMessage: UIMessage) {
+  async function sendStreaming(userMessage: UIMessage, targetConversationId: string) {
     let receivedAnyMessage = false
     let timeoutId: NodeJS.Timeout | null = null
     let shouldStopReading = false
@@ -415,21 +419,19 @@ function ChatPageContent() {
       const abortController = new AbortController()
       abortControllerRef.current = abortController
       // Store in per-conversation map for tabs support
-      if (conversationId) {
-        setAbortController(conversationId, abortController)
-      }
+      setAbortController(targetConversationId, abortController)
 
       // Note: startStream is already called in sendMessage() - no need to call again
 
       timeoutId = setTimeout(() => {
-        if (!receivedAnyMessage && conversationId) {
+        if (!receivedAnyMessage) {
           console.error("[Chat] Request timeout - no response received in 60s")
-          streamingActions.recordError(conversationId, {
+          streamingActions.recordError(targetConversationId, {
             type: "timeout_error",
             message: "Request timeout - no response received in 60s",
           })
           sendClientError({
-            conversationId,
+            conversationId: targetConversationId,
             errorType: ClientError.TIMEOUT_ERROR,
             data: { message: "Request timeout - no response received in 60s", timeoutSeconds: 60 },
             addDevEvent,
@@ -441,7 +443,7 @@ function ChatPageContent() {
       if (isDevelopment()) {
         const requestEvent = {
           type: ClientRequest.MESSAGE,
-          requestId: conversationId,
+          requestId: targetConversationId,
           timestamp: new Date().toISOString(),
           data: { endpoint: "/api/claude/stream", method: "POST", body: requestBody },
         }
@@ -517,16 +519,14 @@ function ChatPageContent() {
               const parsed: unknown = JSON.parse(line)
 
               if (!isValidStreamEvent(parsed)) {
-                if (conversationId) {
-                  streamingActions.incrementConsecutiveErrors(conversationId)
-                  streamingActions.recordError(conversationId, {
-                    type: "invalid_event_structure",
-                    message: "Stream event failed type guard validation",
-                  })
-                }
-                const consecutiveErrors = conversationId ? streamingActions.getConsecutiveErrors(conversationId) : 0
+                streamingActions.incrementConsecutiveErrors(targetConversationId)
+                streamingActions.recordError(targetConversationId, {
+                  type: "invalid_event_structure",
+                  message: "Stream event failed type guard validation",
+                })
+                const consecutiveErrors = streamingActions.getConsecutiveErrors(targetConversationId)
                 sendClientError({
-                  conversationId,
+                  conversationId: targetConversationId,
                   errorType: ClientError.INVALID_EVENT_STRUCTURE,
                   data: { message: parsed, consecutiveErrors },
                   addDevEvent,
@@ -556,14 +556,12 @@ function ChatPageContent() {
               }
 
               receivedAnyMessage = true
-              if (conversationId) {
-                streamingActions.recordMessageReceived(conversationId)
-                streamingActions.resetConsecutiveErrors(conversationId)
-              }
+              streamingActions.recordMessageReceived(targetConversationId)
+              streamingActions.resetConsecutiveErrors(targetConversationId)
 
-              const message = parseStreamEvent(eventData, conversationId, streamingActions)
+              const message = parseStreamEvent(eventData, targetConversationId, streamingActions)
               if (message) {
-                addMessage(message)
+                addMessage(message, targetConversationId)
                 if (
                   isCompleteEvent(eventData) ||
                   isDoneEvent(eventData) ||
@@ -587,17 +585,15 @@ function ChatPageContent() {
                 }
               }
             } catch (parseError) {
-              if (conversationId) {
-                streamingActions.incrementConsecutiveErrors(conversationId)
-                streamingActions.recordError(conversationId, {
-                  type: "parse_error",
-                  message: "Failed to parse NDJSON line",
-                  linePreview: line.slice(0, 200),
-                })
-              }
-              const consecutiveErrors = conversationId ? streamingActions.getConsecutiveErrors(conversationId) : 0
+              streamingActions.incrementConsecutiveErrors(targetConversationId)
+              streamingActions.recordError(targetConversationId, {
+                type: "parse_error",
+                message: "Failed to parse NDJSON line",
+                linePreview: line.slice(0, 200),
+              })
+              const consecutiveErrors = streamingActions.getConsecutiveErrors(targetConversationId)
               sendClientError({
-                conversationId,
+                conversationId: targetConversationId,
                 errorType: ClientError.PARSE_ERROR,
                 data: {
                   consecutiveErrors,
@@ -608,22 +604,25 @@ function ChatPageContent() {
               })
               if (consecutiveErrors >= MAX_CONSECUTIVE_PARSE_ERRORS) {
                 sendClientError({
-                  conversationId,
+                  conversationId: targetConversationId,
                   errorType: ClientError.CRITICAL_PARSE_ERROR,
                   data: { consecutiveErrors, message: "Too many consecutive parse errors, stopping stream" },
                   addDevEvent,
                 })
-                addMessage({
-                  id: Date.now().toString(),
-                  type: "sdk_message",
-                  content: {
-                    type: "result",
-                    is_error: true,
-                    result:
-                      "Connection unstable: Multiple parse errors detected. Please try again or refresh the page.",
+                addMessage(
+                  {
+                    id: Date.now().toString(),
+                    type: "sdk_message",
+                    content: {
+                      type: "result",
+                      is_error: true,
+                      result:
+                        "Connection unstable: Multiple parse errors detected. Please try again or refresh the page.",
+                    },
+                    timestamp: new Date(),
                   },
-                  timestamp: new Date(),
-                })
+                  targetConversationId,
+                )
                 shouldStopReading = true
                 reader.cancel()
                 break
@@ -633,17 +632,15 @@ function ChatPageContent() {
         }
       } catch (readerError) {
         if (abortController.signal.aborted) {
-          if (conversationId) streamingActions.endStream(conversationId)
+          streamingActions.endStream(targetConversationId)
           return
         }
-        if (conversationId) {
-          streamingActions.recordError(conversationId, {
-            type: "reader_error",
-            message: readerError instanceof Error ? readerError.message : "Unknown reader error",
-          })
-        }
+        streamingActions.recordError(targetConversationId, {
+          type: "reader_error",
+          message: readerError instanceof Error ? readerError.message : "Unknown reader error",
+        })
         sendClientError({
-          conversationId,
+          conversationId: targetConversationId,
           errorType: ClientError.READER_ERROR,
           data: {
             receivedMessages: receivedAnyMessage,
@@ -660,19 +657,19 @@ function ChatPageContent() {
         throw new Error("Server closed connection without sending any response")
       }
 
-      if (conversationId) streamingActions.endStream(conversationId)
+      streamingActions.endStream(targetConversationId)
     } catch (error) {
       if (error instanceof Error && error.name !== "AbortError") {
         if (error instanceof HttpError) {
           sendClientError({
-            conversationId,
+            conversationId: targetConversationId,
             errorType: ClientError.HTTP_ERROR,
             data: { status: error.status, statusText: error.statusText, message: error.message },
             addDevEvent,
           })
         } else {
           sendClientError({
-            conversationId,
+            conversationId: targetConversationId,
             errorType: ClientError.GENERAL_ERROR,
             data: { errorName: error.name, message: error.message, stack: error.stack },
             addDevEvent,
@@ -689,7 +686,7 @@ function ChatPageContent() {
 
         if (isAuthError) {
           // End stream before handling session expiry
-          if (conversationId) streamingActions.endStream(conversationId)
+          streamingActions.endStream(targetConversationId)
           authStore.handleSessionExpired("Your session has expired. Please log in again to continue.")
           return
         }
@@ -702,17 +699,17 @@ function ChatPageContent() {
             content: { type: "result", is_error: true, result: error.message },
             timestamp: new Date(),
           }
-          addMessage(errorMessage)
+          addMessage(errorMessage, targetConversationId)
         }
       }
 
       // End stream on any error to reset busy state
-      if (conversationId) streamingActions.endStream(conversationId)
+      streamingActions.endStream(targetConversationId)
     } finally {
       if (timeoutId) clearTimeout(timeoutId)
       abortControllerRef.current = null
       // Clear per-conversation abort controller
-      if (conversationId) clearAbortController(conversationId)
+      clearAbortController(targetConversationId)
       currentRequestIdRef.current = null
     }
   }
@@ -798,7 +795,7 @@ function ChatPageContent() {
     }
   }
 
-  async function sendRegular(userMessage: UIMessage) {
+  async function sendRegular(userMessage: UIMessage, targetConversationId: string) {
     try {
       const requestBody = createRequestBody(buildPromptForClaude(userMessage))
 
@@ -837,7 +834,7 @@ function ChatPageContent() {
         content: response,
         timestamp: new Date(),
       }
-      addMessage(assistantMessage)
+      addMessage(assistantMessage, targetConversationId)
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error"
       const isConversationBusy = errorMessage.includes("I'm still working on your previous request")
@@ -849,13 +846,11 @@ function ChatPageContent() {
           content: { type: "result", is_error: true, result: errorMessage },
           timestamp: new Date(),
         }
-        addMessage(errorUIMessage)
+        addMessage(errorUIMessage, targetConversationId)
       }
     } finally {
       // End stream tracking
-      if (conversationId) {
-        streamingActions.endStream(conversationId)
-      }
+      streamingActions.endStream(targetConversationId)
     }
   }
 
@@ -863,10 +858,30 @@ function ChatPageContent() {
     if (storeConversationId) {
       streamingActions.clearConversation(storeConversationId)
     }
-    startNewConversation()
-    clearForNewConversation()
+    // When tabs are expanded, use the tab's add handler which creates a new tab
+    // Otherwise just create a new conversation directly
+    if (tabsExpanded && workspace) {
+      handleAddTab()
+    } else {
+      const newId = startNewConversation()
+      // Initialize the new conversation in message store immediately
+      // (don't rely on useEffect timing)
+      if (newId && workspace) {
+        initializeConversation(newId, workspace)
+      }
+      // Clear input for new conversation
+      setMsg("")
+    }
     setTimeout(() => chatInputRef.current?.focus(), 0)
-  }, [storeConversationId, streamingActions, startNewConversation, clearForNewConversation])
+  }, [
+    storeConversationId,
+    streamingActions,
+    startNewConversation,
+    workspace,
+    initializeConversation,
+    tabsExpanded,
+    handleAddTab,
+  ])
 
   const handleInsertTemplate = useCallback((prompt: string) => {
     setMsg(prompt)
@@ -889,10 +904,15 @@ function ChatPageContent() {
       if (!conversationIdToDelete) return
       deleteConversation(conversationIdToDelete)
       if (conversationIdToDelete === conversationId) {
-        startNewConversation()
+        const newId = startNewConversation()
+        // Initialize the new conversation in message store
+        if (newId && workspace) {
+          initializeConversation(newId, workspace)
+        }
+        setMsg("")
       }
     },
-    [deleteConversation, conversationId, startNewConversation],
+    [deleteConversation, conversationId, startNewConversation, workspace, initializeConversation],
   )
 
   const handleOpenSettings = useCallback(() => {

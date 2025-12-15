@@ -727,6 +727,21 @@ All documentation in `/docs` with clean, nested organization:
 - **[docs/troubleshooting/](./docs/troubleshooting/README.md)** - Common issues, solutions
 - **[docs/archive/](./docs/archive/)** - Historical documentation
 
+## Local Open Source Services
+
+**Location**: `/opt/services/`
+
+Self-hosted open-source tools running on this server. Each service has its own directory with docker-compose or systemd configuration.
+
+```
+/opt/services/
+├── mailcow/            # Self-hosted email server
+├── n8n/                # Workflow automation platform
+└── supabase/           # Self-hosted Supabase instance
+```
+
+**Management**: Services typically run via Docker Compose or systemd. Check individual directories for their `docker-compose.yml` or service configuration.
+
 ## Important Notes
 
 1. **Never bypass security**: All file operations must be workspace-scoped

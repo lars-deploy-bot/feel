@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useCallback } from "react"
+import { useEffect, useCallback, useRef } from "react"
 import { useTabs, useActiveTab, useTabsExpanded, useTabActions } from "@/lib/stores/tabStore"
 import { useStreamingActions } from "@/lib/stores/streamingStore"
 
@@ -148,8 +148,15 @@ export function useTabsManagement({
   )
 
   // Sync conversation when active tab changes (e.g., after tab close)
+  // Use a ref to track the previous activeTab to only react to TAB changes,
+  // not conversation changes (which would incorrectly switch back)
+  const prevActiveTabRef = useRef<typeof activeTab>(null)
   useEffect(() => {
-    if (activeTab && activeTab.conversationId !== conversationId) {
+    const prevActiveTab = prevActiveTabRef.current
+    prevActiveTabRef.current = activeTab
+
+    // Only sync if the activeTab itself changed (not just conversationId)
+    if (activeTab && prevActiveTab?.id !== activeTab.id && activeTab.conversationId !== conversationId) {
       onSwitchConversation(activeTab.conversationId)
       // Restore input from the new active tab
       if (onInputRestore) {

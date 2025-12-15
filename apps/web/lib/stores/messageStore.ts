@@ -236,8 +236,10 @@ interface MessageStoreState {
   conversationId: string | null
   conversations: Record<string, Conversation>
   initializeConversation: (id: string, workspace: string) => void
-  addMessage: (message: UIMessage) => void
+  /** Add message to a specific conversation. If targetConversationId is not provided, uses current active conversation. */
+  addMessage: (message: UIMessage, targetConversationId?: string) => void
   setMessages: (messages: UIMessage[]) => void
+  /** @deprecated No longer needed - just call initializeConversation with the new ID */
   clearForNewConversation: () => void
   switchConversation: (id: string) => void
   deleteConversation: (id: string) => void
@@ -347,18 +349,20 @@ export const useMessageStore = create<MessageStoreState>()(
         })
       },
 
-      addMessage: (message: UIMessage) => {
+      addMessage: (message: UIMessage, targetConversationId?: string) => {
         set(state => {
-          const { conversationId, conversations } = state
-          if (!conversationId || !conversations[conversationId]) {
-            console.warn("Cannot add message: no active conversation")
+          // Use explicit target if provided, otherwise fall back to active conversation
+          const targetId = targetConversationId ?? state.conversationId
+          const { conversations } = state
+          if (!targetId || !conversations[targetId]) {
+            console.warn(`Cannot add message: conversation ${targetId ?? "null"} not found`)
             return state
           }
 
           // Truncate message content if too large
           const truncatedMessage = truncateMessage(message)
 
-          const conversation = conversations[conversationId]
+          const conversation = conversations[targetId]
 
           // Deduplicate by message ID - prevent duplicate messages from reconnect
           if (conversation.messages.some(m => m.id === truncatedMessage.id)) {
@@ -383,7 +387,7 @@ export const useMessageStore = create<MessageStoreState>()(
           return {
             conversations: {
               ...conversations,
-              [conversationId]: updatedConversation,
+              [targetId]: updatedConversation,
             },
           }
         })
