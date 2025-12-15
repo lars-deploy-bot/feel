@@ -6,11 +6,37 @@
 /**
  * Template frontmatter structure parsed from YAML header
  */
+/**
+ * Standard template categories
+ */
+export const TEMPLATE_CATEGORIES = [
+  "ui-components",
+  "forms",
+  "data-display",
+  "navigation",
+  "media",
+  "layout",
+  "integrations",
+  "animations",
+  "landing",
+  "maps",
+  "backend",
+  "setup",
+  "frontend",
+  "content-management",
+  "photo-sliders",
+  "components", // legacy alias for ui-components
+  "forms-and-inputs", // legacy alias for forms
+  "other",
+] as const
+
+export type TemplateCategory = (typeof TEMPLATE_CATEGORIES)[number]
+
 export interface TemplateFrontmatter {
   name: string
   description: string
-  category: "components" | "setup"
-  complexity: 1 | 2 | 3
+  category: TemplateCategory
+  complexity: 1 | 2 | 3 | 4 | 5
   files: number
   dependencies: string[] // With versions: "swiper@^11.0.0"
   estimatedTime: string
@@ -18,7 +44,7 @@ export interface TemplateFrontmatter {
   tags: string[]
   requires: string[]
   previewImage: string
-  available: boolean
+  enabled: boolean
 }
 
 /**
@@ -36,7 +62,7 @@ export interface PartialTemplateFrontmatter {
   tags?: string[]
   requires?: string[]
   previewImage?: string
-  available?: boolean
+  enabled?: boolean
 }
 
 /**
@@ -83,8 +109,8 @@ export function parseFrontmatter(content: string): PartialTemplateFrontmatter | 
       case "estimatedTokens":
         result[key] = Number.parseInt(value, 10)
         break
-      case "available":
-        result.available = value.toLowerCase() === "true"
+      case "enabled":
+        result.enabled = value.toLowerCase() === "true"
         break
       case "tags":
         // Parse inline array [a, b, c]
@@ -144,22 +170,22 @@ export function parseFrontmatter(content: string): PartialTemplateFrontmatter | 
 }
 
 /**
- * Check if a template is marked as available via YAML frontmatter.
- * Templates with `available: false` in frontmatter are unavailable.
- * Returns true if no frontmatter or `available` field not specified.
+ * Check if a template is enabled via YAML frontmatter.
+ * Templates with `enabled: false` in frontmatter are disabled.
+ * Returns true if no frontmatter or `enabled` field not specified.
  *
  * @param content - Raw markdown content with YAML frontmatter
- * @returns true if template is available, false otherwise
+ * @returns true if template is enabled, false otherwise
  */
-export function isTemplateAvailable(content: string): boolean {
+export function isTemplateEnabled(content: string): boolean {
   const frontmatter = parseFrontmatter(content)
-  return frontmatter?.available !== false
+  return frontmatter?.enabled !== false
 }
 
 /**
  * Required fields for a valid template frontmatter
  */
-export const REQUIRED_FRONTMATTER_FIELDS = ["name", "description", "category", "complexity", "available"] as const
+export const REQUIRED_FRONTMATTER_FIELDS = ["name", "description", "category", "complexity", "enabled"] as const
 
 /**
  * Validate that frontmatter has all required fields

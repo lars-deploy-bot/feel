@@ -121,10 +121,3 @@ apps/web/
 - Reconnection after disconnect
 - Multi-tab behavior
 
-## Other Plans (Unrelated)
-
-| Document | Description |
-|----------|-------------|
-| [shared-assets-tool.md](./shared-assets-tool.md) | Copying fonts/icons to workspaces |
-| [file-upload-sdk-reading-plan.md](./file-upload-sdk-reading-plan.md) | File upload support |
-| [superadmin-bridge-editing.md](./superadmin-bridge-editing.md) | Superadmin workspace access |

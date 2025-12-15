@@ -5,10 +5,41 @@
 import { readdir, readFile } from "node:fs/promises"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
-import { parseFrontmatter, type PartialTemplateFrontmatter } from "../../lib/template-frontmatter.js"
+import {
+  parseFrontmatter,
+  type PartialTemplateFrontmatter,
+  type TemplateCategory,
+} from "../../lib/template-frontmatter.js"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
+
+// Re-export category type from the single source of truth
+export type { TemplateCategory }
+
+/**
+ * Template categories with display names (for UI)
+ */
+export const TEMPLATE_CATEGORIES: Record<string, string> = {
+  "ui-components": "UI Components",
+  forms: "Forms",
+  "data-display": "Data Display",
+  navigation: "Navigation",
+  media: "Media",
+  layout: "Layout",
+  integrations: "Integrations",
+  animations: "Animations",
+  landing: "Landing",
+  maps: "Maps",
+  backend: "Backend",
+  setup: "Setup",
+  frontend: "Frontend",
+  "content-management": "Content Management",
+  "photo-sliders": "Photo Sliders",
+  components: "Components",
+  "forms-and-inputs": "Forms & Inputs",
+  other: "Other",
+}
 
 /**
  * Template list item structure for UI consumption.
@@ -23,10 +54,10 @@ export interface TemplateListItem {
   name: string
   /** Template description */
   description: string
-  /** Category: "components" or "setup" */
-  category: "components" | "setup"
-  /** Complexity level 1-3 */
-  complexity: 1 | 2 | 3
+  /** Category slug */
+  category: string
+  /** Complexity level 1-5 */
+  complexity: number
   /** Number of files in template (renamed from 'files' for UI compat) */
   fileCount: number
   /** Dependencies with versions */
@@ -42,16 +73,6 @@ export interface TemplateListItem {
 }
 
 /**
- * Template categories with display names
- */
-export const TEMPLATE_CATEGORIES = {
-  components: "Components",
-  setup: "Setup",
-} as const
-
-export type TemplateCategory = keyof typeof TEMPLATE_CATEGORIES
-
-/**
  * Convert parsed frontmatter to TemplateListItem
  */
 function frontmatterToListItem(id: string, frontmatter: PartialTemplateFrontmatter): TemplateListItem | null {
@@ -60,13 +81,8 @@ function frontmatterToListItem(id: string, frontmatter: PartialTemplateFrontmatt
     return null
   }
 
-  // Validate category is valid
-  if (frontmatter.category !== "components" && frontmatter.category !== "setup") {
-    return null
-  }
-
-  // Validate complexity is 1, 2, or 3
-  if (![1, 2, 3].includes(frontmatter.complexity)) {
+  // Validate complexity is 1-5
+  if (frontmatter.complexity < 1 || frontmatter.complexity > 5) {
     return null
   }
 
@@ -75,8 +91,8 @@ function frontmatterToListItem(id: string, frontmatter: PartialTemplateFrontmatt
     templateId: id,
     name: frontmatter.name,
     description: frontmatter.description,
-    category: frontmatter.category as "components" | "setup",
-    complexity: frontmatter.complexity as 1 | 2 | 3,
+    category: frontmatter.category,
+    complexity: frontmatter.complexity,
     fileCount: frontmatter.files ?? 0,
     dependencies: frontmatter.dependencies ?? [],
     estimatedTime: frontmatter.estimatedTime ?? "",
@@ -120,8 +136,8 @@ export async function listTemplates(templatesPath?: string): Promise<TemplateLis
 
             if (!frontmatter) continue
 
-            // Skip unavailable templates
-            if (frontmatter.available === false) continue
+            // Skip disabled templates
+            if (frontmatter.enabled === false) continue
 
             const item = frontmatterToListItem(id, frontmatter)
             if (item) {
@@ -152,7 +168,7 @@ export async function listTemplates(templatesPath?: string): Promise<TemplateLis
 /**
  * Get templates filtered by category
  */
-export function getTemplatesByCategory(templates: TemplateListItem[], category: TemplateCategory): TemplateListItem[] {
+export function getTemplatesByCategory(templates: TemplateListItem[], category: string): TemplateListItem[] {
   return templates.filter(t => t.category === category)
 }
 

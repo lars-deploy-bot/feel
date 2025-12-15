@@ -13,7 +13,7 @@ tags: [react, image, crop, upload]
 requires:
   - React 18+
 previewImage: https://terminal.goalive.nl/_images/t/alive.best/o/b08168daa0e9ba5a/v/orig.webp
-available: true
+enabled: true
 ---
 
 # Image Upload with Crop

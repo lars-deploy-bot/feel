@@ -28,7 +28,9 @@ import mermaid from "mermaid"
 import { useEffect, useRef, useState } from "react"
 import Markdown from "react-markdown"
 import remarkGfm from "remark-gfm"
+import { parseFrontmatter } from "../../lib/template-utils"
 import { useActiveTab, useEditorStore, useIsActiveTabModified } from "../../store/editor"
+import { FrontmatterCard } from "./FrontmatterCard"
 
 // Initialize mermaid with dark theme
 mermaid.initialize({
@@ -94,7 +96,9 @@ interface CodeEditorProps {
   onSave: () => void
 }
 
-function isMarkdownFile(filename: string): boolean {
+function isMarkdownFile(filename: string, isTemplate?: boolean): boolean {
+  // Templates are always markdown
+  if (isTemplate) return true
   const ext = filename.toLowerCase().split(".").pop() || ""
   return ext === "md" || ext === "markdown"
 }
@@ -185,7 +189,8 @@ export function CodeEditor({ onSave }: CodeEditorProps) {
   const updateTabContent = useEditorStore(s => s.updateTabContent)
   const isModified = useIsActiveTabModified()
 
-  const isMarkdown = activeTab ? isMarkdownFile(activeTab.name) : false
+  const isMarkdown = activeTab ? isMarkdownFile(activeTab.name, activeTab.isTemplate) : false
+  const isTemplate = activeTab?.isTemplate ?? false
 
   // Create/destroy editor based on active tab and preview mode
   useEffect(() => {
@@ -302,39 +307,47 @@ export function CodeEditor({ onSave }: CodeEditorProps) {
         {showPreview ? (
           <div className="h-full overflow-auto bg-shell-bg p-6">
             <div className="markdown-preview max-w-4xl mx-auto">
-              <Markdown
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  code({ className, children, ...props }) {
-                    const match = /language-(\w+)/.exec(className || "")
-                    const lang = match ? match[1] : ""
-                    const code = String(children).replace(/\n$/, "")
+              {(() => {
+                const { frontmatter, body } = parseFrontmatter(activeTab.content)
+                return (
+                  <>
+                    {frontmatter && <FrontmatterCard data={frontmatter} />}
+                    <Markdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        code({ className, children, ...props }) {
+                          const match = /language-(\w+)/.exec(className || "")
+                          const lang = match ? match[1] : ""
+                          const code = String(children).replace(/\n$/, "")
 
-                    // Render mermaid diagrams
-                    if (lang === "mermaid") {
-                      return <MermaidDiagram code={code} />
-                    }
+                          // Render mermaid diagrams
+                          if (lang === "mermaid") {
+                            return <MermaidDiagram code={code} />
+                          }
 
-                    // Inline code (no language)
-                    if (!match) {
-                      return (
-                        <code className={className} {...props}>
-                          {children}
-                        </code>
-                      )
-                    }
+                          // Inline code (no language)
+                          if (!match) {
+                            return (
+                              <code className={className} {...props}>
+                                {children}
+                              </code>
+                            )
+                          }
 
-                    // Code blocks with language
-                    return (
-                      <code className={className} {...props}>
-                        {children}
-                      </code>
-                    )
-                  },
-                }}
-              >
-                {activeTab.content}
-              </Markdown>
+                          // Code blocks with language
+                          return (
+                            <code className={className} {...props}>
+                              {children}
+                            </code>
+                          )
+                        },
+                      }}
+                    >
+                      {body}
+                    </Markdown>
+                  </>
+                )
+              })()}
             </div>
           </div>
         ) : (

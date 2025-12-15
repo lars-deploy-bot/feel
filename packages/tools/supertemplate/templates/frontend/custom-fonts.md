@@ -13,7 +13,7 @@ requires:
   - React 18+
   - TailwindCSS
 previewImage: https://terminal.goalive.nl/_images/t/alive.best/o/e6aa1a718bcfd3dc/v/orig.webp
-available: true
+enabled: true
 ---
 
 # Custom Fonts - Shared Font Library

@@ -1,48 +1,71 @@
 import { useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
+import { useConfigStore } from "../store/config"
 
 export function LoginPage() {
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const fetchConfig = useConfigStore(s => s.fetchConfig)
 
   const errorType = searchParams.get("error")
   const wait = searchParams.get("wait")
   const remaining = searchParams.get("remaining")
+  const loggedOut = searchParams.get("logged_out")
 
   let errorMessage = ""
-  if (errorType === "rate_limit") {
+  let successMessage = ""
+  if (loggedOut) {
+    successMessage = "You have been logged out."
+  } else if (errorType === "rate_limit") {
     errorMessage = `Too many failed attempts. Please wait ${wait || "15"} minutes.`
   } else if (errorType === "invalid") {
     errorMessage = remaining ? `Invalid password (${remaining} attempts remaining)` : "Invalid password"
+  } else if (errorType === "network") {
+    errorMessage = "Network error. Please try again."
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setIsLoading(true)
 
-    const form = new FormData()
-    form.append("password", password)
+    // Use URLSearchParams to properly encode special characters (+ = etc)
+    const params = new URLSearchParams()
+    params.append("password", password)
 
-    const res = await fetch("/login", {
-      method: "POST",
-      body: form,
-      redirect: "manual",
-    })
+    try {
+      const res = await fetch("/login", {
+        method: "POST",
+        body: params,
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        redirect: "follow",
+        credentials: "same-origin",
+      })
 
-    // Check for redirect (success or error)
-    if (res.type === "opaqueredirect" || res.status === 303) {
-      // Re-check auth by fetching config
-      const configRes = await fetch("/api/config")
-      if (configRes.ok) {
-        navigate("/dashboard")
-      } else {
-        // Redirect was to error page
-        window.location.href = res.headers.get("Location") || "/?error=invalid"
+      // If we got redirected to dashboard (success) or back to login (error)
+      // The URL will tell us what happened
+      if (res.url.includes("/dashboard") || res.ok) {
+        // Success - refresh config store to update isAuthenticated
+        await fetchConfig()
+        // fetchConfig will set isAuthenticated=true, then PublicRoute will redirect
+        return
       }
-    } else {
-      window.location.reload()
+
+      // Check for error in the final URL
+      const finalUrl = new URL(res.url)
+      const error = finalUrl.searchParams.get("error")
+      if (error) {
+        window.location.href = res.url
+      } else {
+        // Fallback - reload to see server response
+        window.location.reload()
+      }
+    } catch {
+      setIsLoading(false)
+      window.location.href = "/?error=network"
     }
   }
 
@@ -68,6 +91,7 @@ export function LoginPage() {
           >
             {isLoading ? "Logging in..." : "Login"}
           </button>
+          {successMessage && <p className="text-green-500 text-sm text-center mt-2">{successMessage}</p>}
           {errorMessage && <p className="text-red-500 text-sm text-center mt-2">{errorMessage}</p>}
         </form>
       </div>

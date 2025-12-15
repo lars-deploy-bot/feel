@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react"
-import { readFile } from "../api/files"
+import { downloadFile, readFile } from "../api/files"
 import { formatFileSize } from "../lib/format"
 import { getLanguageFromFilename } from "../lib/language"
 import { useFilesStore } from "../store/files"
@@ -55,15 +55,46 @@ export function FilePreview({ filePath }: { filePath: string }) {
 
   const language = getLanguageFromFilename(previewFilename)
 
+  function handleDownload() {
+    if (filePath) {
+      downloadFile(workspace, filePath)
+    }
+  }
+
   return (
     <div className="bg-shell-surface rounded-lg flex flex-col h-full min-h-[400px] max-h-[calc(100vh-200px)]">
       <div className="text-shell-accent p-3 border-b border-shell-border text-sm font-mono flex justify-between items-center gap-3 shrink-0">
         <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
           {previewFilename || "No file selected"}
         </span>
-        {previewFilesize > 0 && (
-          <span className="text-shell-text-muted text-xs shrink-0">{formatFileSize(previewFilesize)}</span>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          {previewFilesize > 0 && (
+            <span className="text-shell-text-muted text-xs">{formatFileSize(previewFilesize)}</span>
+          )}
+          {filePath && (
+            <button
+              onClick={handleDownload}
+              className="text-shell-text-muted hover:text-shell-accent transition-colors p-1"
+              title="Download file"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7,10 12,15 17,10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
       <div className="flex-1 overflow-auto bg-shell-code-bg rounded-b-lg">
         {previewLoading ? (

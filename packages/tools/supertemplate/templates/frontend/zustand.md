@@ -14,7 +14,7 @@ requires:
   - React 18+
   - Node 18+
 previewImage: https://terminal.goalive.nl/_images/t/alive.best/o/dd3feda2810fc19a/v/orig.webp
-available: true
+enabled: true
 ---
 
 # Zustand State Management - Best Practices for React + Vite

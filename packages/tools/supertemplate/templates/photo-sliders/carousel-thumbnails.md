@@ -12,7 +12,7 @@ tags: [react, carousel, thumbnails, slider]
 requires:
   - React 18+
 previewImage: https://terminal.goalive.nl/_images/t/alive.best/o/737ac96dc69ba883/v/orig.webp
-available: true
+enabled: true
 ---
 
 # Auto-Scrolling Carousel

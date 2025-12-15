@@ -55,7 +55,6 @@ import { useCurrentConversationId, useMessageActions, useMessages, useMessageSto
 import {
   useStreamingActions,
   useIsStreamActive,
-  getAbortController,
   setAbortController,
   clearAbortController,
 } from "@/lib/stores/streamingStore"

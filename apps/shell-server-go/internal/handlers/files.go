@@ -459,6 +459,64 @@ func buildTree(dirPath, relativePath string, depth, maxDepth int, excludeDirs ma
 	return nodes
 }
 
+// DownloadFile handles GET /api/download-file?workspace=X&path=Y
+// Streams the file with Content-Disposition header for download
+func (h *FileHandler) DownloadFile(w http.ResponseWriter, r *http.Request) {
+	workspace := r.URL.Query().Get("workspace")
+	filePath := r.URL.Query().Get("path")
+
+	if workspace == "" {
+		jsonError(w, "No workspace provided", http.StatusBadRequest)
+		return
+	}
+	if filePath == "" {
+		jsonError(w, "No file path provided", http.StatusBadRequest)
+		return
+	}
+
+	_, resolvedPath, err := h.resolver.ResolveForWorkspace(workspace, filePath)
+	if err != nil {
+		filesLog.Warn("Download path resolution failed for %s: %v", filePath, err)
+		h.handlePathError(w, err)
+		return
+	}
+
+	info, err := os.Stat(resolvedPath)
+	if os.IsNotExist(err) {
+		jsonError(w, "File not found", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		jsonError(w, "Failed to access file", http.StatusInternalServerError)
+		return
+	}
+	if info.IsDir() {
+		jsonError(w, "Cannot download a directory", http.StatusBadRequest)
+		return
+	}
+
+	// Open the file
+	file, err := os.Open(resolvedPath)
+	if err != nil {
+		filesLog.Error("Failed to open file for download %s: %v", resolvedPath, err)
+		jsonError(w, "Failed to open file", http.StatusInternalServerError)
+		return
+	}
+	defer file.Close()
+
+	// Set headers for download
+	filename := filepath.Base(filePath)
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", info.Size()))
+
+	// Stream the file
+	if _, err := io.Copy(w, file); err != nil {
+		filesLog.Error("Failed to stream file %s: %v", resolvedPath, err)
+		// Can't send error response as headers already sent
+	}
+}
+
 // ReadFile handles POST /api/read-file
 func (h *FileHandler) ReadFile(w http.ResponseWriter, r *http.Request) {
 	if !ParseFormRequest(w, r) {

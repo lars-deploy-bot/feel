@@ -3,7 +3,7 @@ import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { tool } from "@anthropic-ai/claude-agent-sdk"
 import { z } from "zod"
-import { isTemplateAvailable } from "../../lib/template-frontmatter.js"
+import { isTemplateEnabled } from "../../lib/template-frontmatter.js"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -148,13 +148,13 @@ export async function getTemplate(params: GetTemplateParams, templatesBasePath: 
 
     const { path: templatePath, content } = result
 
-    // Check if template is marked as unavailable
-    if (!isTemplateAvailable(content)) {
+    // Check if template is disabled
+    if (!isTemplateEnabled(content)) {
       return {
         content: [
           {
             type: "text" as const,
-            text: `Template "${id}" is not available.`,
+            text: `Template "${id}" is disabled.`,
           },
         ],
         isError: true,

@@ -13,7 +13,7 @@ requires:
   - Vite 5+
   - Node 18+
 previewImage: https://terminal.goalive.nl/_images/t/alive.best/o/3e51d4885e323647/v/orig.webp
-available: true
+enabled: true
 ---
 
 # Vite API Plugin - Backend Server in Vite Dev Server

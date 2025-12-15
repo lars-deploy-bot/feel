@@ -22,7 +22,7 @@ help:
 	@echo "  make devchat       Restart dev server via systemctl (safe from chat)"
 	@echo "  make dev:turbo     Run all monorepo dev servers with Turbo"
 	@echo "  make deploy-go     Deploy shell-server-go separately (not included in staging/production)"
-	@echo "  make shell         Run shell-server-go locally (port 3500)"
+	@echo "  make shell         Build and deploy shell-server-go to production"
 	@echo "  make build:shell   Build, test, and restart shell-server-go"
 	@echo "  make test:shell    Run shell-server-go tests"
 	@echo ""
@@ -139,11 +139,11 @@ wash-skip:
 .DEFAULT_GOAL := help
 
 shell:
-	@echo "$(GREEN)Starting shell-server-go locally...$(NC)"
-	@echo "$(BLUE)Building shell-server-go...$(NC)"
+	@echo "$(BLUE)Building and deploying shell-server-go...$(NC)"
 	@cd apps/shell-server-go && make build
 	@echo "$(GREEN)✓ Build complete$(NC)"
-	@echo "$(BLUE)Running shell-server-go on http://localhost:3500$(NC)"
-	@echo "$(BLUE)Password: devpassword$(NC)"
-	@echo ""
-	@cd apps/shell-server-go && PORT=3500 SHELL_PASSWORD=devpassword ./bin/shell-server
+	@echo "$(BLUE)Restarting shell-server-go service...$(NC)"
+	@systemctl restart shell-server-go
+	@sleep 2
+	@echo "$(GREEN)✓ Service restarted$(NC)"
+	@systemctl status shell-server-go --no-pager -l | head -10

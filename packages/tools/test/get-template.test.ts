@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest"
 import { type GetTemplateParams, getTemplate } from "../src/tools/templates/get-template.js"
 import {
   parseFrontmatter,
-  isTemplateAvailable,
+  isTemplateEnabled,
   type PartialTemplateFrontmatter,
 } from "../src/lib/template-frontmatter.js"
 
@@ -14,12 +14,12 @@ const __dirname = dirname(__filename)
 const templatesPath = join(__dirname, "../supertemplate/templates")
 
 /**
- * Check if a template file is marked as available.
+ * Check if a template file is enabled.
  * Reads the file and parses frontmatter.
  */
-async function isTemplateFileAvailable(filePath: string): Promise<boolean> {
+async function isTemplateFileEnabled(filePath: string): Promise<boolean> {
   const content = await readFile(filePath, "utf-8")
-  return isTemplateAvailable(content)
+  return isTemplateEnabled(content)
 }
 
 /**
@@ -85,7 +85,7 @@ describe("getTemplate", () => {
       let skipped = 0
 
       for (const template of templates) {
-        const available = await isTemplateFileAvailable(template.filePath)
+        const available = await isTemplateFileEnabled(template.filePath)
         if (!available) {
           skipped++
           continue
@@ -111,13 +111,13 @@ describe("getTemplate", () => {
       let unavailableCount = 0
 
       for (const template of templates) {
-        const available = await isTemplateFileAvailable(template.filePath)
+        const available = await isTemplateFileEnabled(template.filePath)
         if (!available) {
           unavailableCount++
           // Verify the actual getTemplate function returns an error
           const result = await getTemplate({ id: template.id }, templatesPath)
           expect(result.isError).toBe(true)
-          expect(result.content[0].text).toContain("not available")
+          expect(result.content[0].text).toContain("is disabled")
         }
       }
 
@@ -128,7 +128,7 @@ describe("getTemplate", () => {
     it("all templates should have valid frontmatter", async () => {
       const templates = await findAllTemplateFiles()
       const errors: string[] = []
-      const requiredFields = ["name", "description", "category", "complexity", "available"]
+      const requiredFields = ["name", "description", "category", "complexity", "enabled"]
 
       for (const template of templates) {
         const content = await readFile(template.filePath, "utf-8")

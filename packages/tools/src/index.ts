@@ -71,7 +71,7 @@ export {
 } from "./tools/templates/list-templates.js"
 export {
   parseFrontmatter,
-  isTemplateAvailable,
+  isTemplateEnabled,
   validateFrontmatter,
   REQUIRED_FRONTMATTER_FIELDS,
   type TemplateFrontmatter,

@@ -90,6 +90,7 @@ func main() {
 	fileHandler := handlers.NewFileHandler(cfg)
 	editorHandler := handlers.NewEditorHandler(cfg)
 	wsHandler := handlers.NewWSHandler(cfg, sessions)
+	templateHandler := handlers.NewTemplateHandler(cfg)
 
 	// Create router
 	mux := http.NewServeMux()
@@ -124,6 +125,7 @@ func main() {
 	mux.Handle("POST /api/upload", authAPIMiddleware(http.HandlerFunc(fileHandler.Upload)))
 	mux.Handle("POST /api/list-files", authAPIMiddleware(http.HandlerFunc(fileHandler.ListFiles)))
 	mux.Handle("POST /api/read-file", authAPIMiddleware(http.HandlerFunc(fileHandler.ReadFile)))
+	mux.Handle("GET /api/download-file", authAPIMiddleware(http.HandlerFunc(fileHandler.DownloadFile)))
 	mux.Handle("POST /api/delete-folder", authAPIMiddleware(http.HandlerFunc(fileHandler.DeleteFolder)))
 	mux.Handle("GET /api/sites", authAPIMiddleware(http.HandlerFunc(fileHandler.ListSites)))
 
@@ -134,6 +136,12 @@ func main() {
 	mux.Handle("POST /api/edit/check-mtimes", authAPIMiddleware(http.HandlerFunc(editorHandler.CheckMtimes)))
 	mux.Handle("POST /api/edit/delete", authAPIMiddleware(http.HandlerFunc(editorHandler.Delete)))
 	mux.Handle("POST /api/edit/copy", authAPIMiddleware(http.HandlerFunc(editorHandler.Copy)))
+
+	// Templates API routes (protected)
+	mux.Handle("GET /api/templates", authAPIMiddleware(http.HandlerFunc(templateHandler.ListTemplates)))
+	mux.Handle("POST /api/templates", authAPIMiddleware(http.HandlerFunc(templateHandler.CreateTemplate)))
+	mux.Handle("GET /api/templates/{id}", authAPIMiddleware(http.HandlerFunc(templateHandler.GetTemplate)))
+	mux.Handle("PUT /api/templates/{id}", authAPIMiddleware(http.HandlerFunc(templateHandler.SaveTemplate)))
 
 	// SPA handler - serves index.html for all non-API, non-asset routes
 	spaHandler := createSPAHandler(clientFS)

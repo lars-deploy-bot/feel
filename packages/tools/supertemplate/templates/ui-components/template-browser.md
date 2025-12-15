@@ -1,17 +1,21 @@
 ---
 name: Template Browser
 description: A template browser component that displays available templates as cards with search and selection.
-category: components
+category: ui-components
 complexity: 2
 files: 3
 dependencies: []
-estimatedTime: 6-8 minutes
-estimatedTokens: 45
-tags: [ui, browser, templates, cards, search]
+estimatedTime: "10 min"
+tags:
+  - ui
+  - browser
+  - templates
+  - cards
+  - search
 requires:
   - React 18+
-previewImage: /templates/previews/placeholder.svg
-available: false
+previewImage: https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800&h=600&fit=crop
+enabled: false
 ---
 
 # Template Browser - Quick Template Selector

@@ -43,26 +43,28 @@ else
 fi
 
 # Restart service
-if systemctl is-active --quiet shell-server-go; then
-    log_step "Restarting shell-server-go systemd service..."
-    systemctl restart shell-server-go
+SERVICE_NAME="shell-server-go"
+
+if systemctl is-active --quiet "$SERVICE_NAME"; then
+    log_step "Restarting $SERVICE_NAME systemd service..."
+    systemctl restart "$SERVICE_NAME"
     sleep 2
-    if systemctl is-active --quiet shell-server-go; then
-        log_success "shell-server-go restarted successfully"
+    if systemctl is-active --quiet "$SERVICE_NAME"; then
+        log_success "$SERVICE_NAME restarted successfully"
     else
-        log_error "shell-server-go failed to start"
-        log_step "Check logs: journalctl -u shell-server-go -n 50"
+        log_error "$SERVICE_NAME failed to start"
+        log_step "Check logs: journalctl -u $SERVICE_NAME -n 50"
         exit 1
     fi
 else
-    log_step "Starting shell-server-go systemd service..."
-    systemctl start shell-server-go
+    log_step "Starting $SERVICE_NAME systemd service..."
+    systemctl start "$SERVICE_NAME"
     sleep 2
-    if systemctl is-active --quiet shell-server-go; then
-        log_success "shell-server-go started successfully"
+    if systemctl is-active --quiet "$SERVICE_NAME"; then
+        log_success "$SERVICE_NAME started successfully"
     else
-        log_error "shell-server-go failed to start"
-        log_step "Check logs: journalctl -u shell-server-go -n 50"
+        log_error "$SERVICE_NAME failed to start"
+        log_step "Check logs: journalctl -u $SERVICE_NAME -n 50"
         exit 1
     fi
 fi
@@ -70,6 +72,6 @@ fi
 echo ""
 echo "═══════════════════════════════════════════════════════"
 log_success "shell-server-go deployed successfully"
-echo "  📡 Status:  systemctl status shell-server-go"
-echo "  📜 Logs:    journalctl -u shell-server-go -f"
+echo "  📡 Status:  systemctl status $SERVICE_NAME"
+echo "  📜 Logs:    journalctl -u $SERVICE_NAME -f"
 echo "═══════════════════════════════════════════════════════"

@@ -15,7 +15,7 @@ requires:
   - React 18+
   - TypeScript
 previewImage: https://app.alive.best/_images/t/alive.best/o/50485d47136b4c28/v/orig.webp
-available: true
+enabled: true
 ---
 
 # Interactive Hero Background

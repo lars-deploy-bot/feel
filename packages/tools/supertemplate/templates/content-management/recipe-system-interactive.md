@@ -16,7 +16,7 @@ requires:
   - Vite
   - Node 18+
 previewImage: https://terminal.goalive.nl/_images/t/alive.best/o/2fa4c3e6ac7f134e/v/orig.webp
-available: true
+enabled: true
 ---
 
 # Interactive Recipe System with Chef Workflow

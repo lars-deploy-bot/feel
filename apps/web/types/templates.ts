@@ -1,11 +1,11 @@
 /**
  * Template types for Super Templates UI
- * Re-exports types from @webalive/tools for UI consumption
+ * Types only - no runtime imports to avoid Node.js deps in client bundles
  */
 
 import type { TemplateListItem, TemplateCategory } from "@alive-brug/tools"
 
-// Re-export for component usage
+// Re-export types for component usage
 export type { TemplateListItem, TemplateCategory }
 
 /**
@@ -15,9 +15,26 @@ export type { TemplateListItem, TemplateCategory }
 export type Template = TemplateListItem
 
 /**
- * Template categories with display names
+ * Template categories with display names (for UI)
+ * Duplicated here to avoid importing from @alive-brug/tools which has Node.js deps
  */
-export const TEMPLATE_CATEGORIES: Record<TemplateCategory, string> = {
-  components: "Components",
+export const TEMPLATE_CATEGORIES: Record<string, string> = {
+  "ui-components": "UI Components",
+  forms: "Forms",
+  "data-display": "Data Display",
+  navigation: "Navigation",
+  media: "Media",
+  layout: "Layout",
+  integrations: "Integrations",
+  animations: "Animations",
+  landing: "Landing",
+  maps: "Maps",
+  backend: "Backend",
   setup: "Setup",
+  frontend: "Frontend",
+  "content-management": "Content Management",
+  "photo-sliders": "Photo Sliders",
+  components: "Components",
+  "forms-and-inputs": "Forms & Inputs",
+  other: "Other",
 }

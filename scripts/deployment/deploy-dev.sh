@@ -97,17 +97,17 @@ curl -f -X POST "http://localhost:$DEV_PORT/api/login" \
 
 systemctl status "$DEV_SERVICE" --no-pager | head -15
 
-# Rebuild and restart shell-server (shared across all environments)
+# Rebuild and restart shell-server-go (shared across all environments)
 echo ""
-echo "📡 Rebuilding shell-server..."
-cd apps/shell-server
+echo "📡 Rebuilding shell-server-go..."
+cd apps/shell-server-go
 if bun run build; then
     echo "✅ Shell-server built"
-    systemctl restart shell-server
+    systemctl restart shell-server-go
     sleep 2
-    systemctl is-active --quiet shell-server && \
+    systemctl is-active --quiet shell-server-go && \
       echo "✅ Shell-server restarted" || \
-      echo "⚠️  Shell-server failed to start (check: journalctl -u shell-server -n 20)"
+      echo "⚠️  Shell-server failed to start (check: journalctl -u shell-server-go -n 20)"
 else
     echo "⚠️  Shell-server build failed"
 fi

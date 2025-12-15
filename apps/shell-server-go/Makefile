@@ -1,4 +1,4 @@
-.PHONY: build build-client build-server run dev clean test deps
+.PHONY: build build-client build-server run dev clean test deps deploy
 
 # Build everything (client + server)
 build: build-client build-server
@@ -9,7 +9,7 @@ build-server:
 
 # Build the client (Vite + Tailwind)
 build-client:
-	cd client && bun install && bun run build && bun run build:css
+	cd client && bun install && bun run build
 
 # Run the server (requires SHELL_PASSWORD env var)
 run: build
@@ -55,3 +55,10 @@ lint:
 	else \
 		echo "golangci-lint not installed, skipping..."; \
 	fi
+
+# Deploy: build and restart the systemd service
+deploy: build
+	@echo "Restarting shell-server-go service..."
+	systemctl restart shell-server-go
+	@sleep 2
+	@systemctl is-active --quiet shell-server-go && echo "✓ shell-server-go deployed successfully" || (echo "✗ shell-server-go failed to start" && systemctl status shell-server-go --no-pager && exit 1)

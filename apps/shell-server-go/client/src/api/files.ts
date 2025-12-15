@@ -22,3 +22,15 @@ export async function deleteItem(workspace: string, path: string): Promise<Delet
   const res = await fetch("/api/delete-folder", { method: "POST", body: formData })
   return res.json()
 }
+
+export function downloadFile(workspace: string, path: string): void {
+  const params = new URLSearchParams({ workspace, path })
+  const url = `/api/download-file?${params.toString()}`
+  // Create a temporary anchor element to trigger download
+  const a = document.createElement("a")
+  a.href = url
+  a.download = path.split("/").pop() || "download"
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+}

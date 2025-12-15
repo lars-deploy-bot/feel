@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { checkMtimes, copyEditFile, listEditFiles, readEditFile, writeEditFile } from "../../api/edit"
+import { saveTemplate } from "../../api/templates"
 import {
   useActiveTab,
   useEditorStore,
@@ -10,13 +11,19 @@ import {
 import { CodeEditor } from "./CodeEditor"
 import { DirectorySelector } from "./DirectorySelector"
 import { EditorFileTree } from "./EditorFileTree"
+import { TemplatesPanel } from "./TemplatesPanel"
+
+type SidebarTab = "files" | "templates"
 
 function Tab({ path, name }: { path: string; name: string }) {
   const activeTabPath = useEditorStore(s => s.activeTabPath)
   const setActiveTab = useEditorStore(s => s.setActiveTab)
   const closeTab = useEditorStore(s => s.closeTab)
+  const openTabs = useEditorStore(s => s.openTabs)
   const isModified = useIsTabModified(path)
   const isActive = activeTabPath === path
+  const tab = openTabs.find(t => t.path === path)
+  const isTemplate = tab?.isTemplate ?? false
 
   return (
     <div
@@ -25,6 +32,7 @@ function Tab({ path, name }: { path: string; name: string }) {
       }`}
       onClick={() => setActiveTab(path)}
     >
+      {isTemplate && <span className="text-shell-accent text-xs mr-1">T</span>}
       <span className="truncate max-w-32">{name}</span>
       {isModified && <span className="text-yellow-400 text-xs">●</span>}
       <button
@@ -62,6 +70,9 @@ export function EditorApp() {
   const [showCopy, setShowCopy] = useState(false)
   const [copyDestination, setCopyDestination] = useState("")
   const [copyError, setCopyError] = useState("")
+
+  // Sidebar tab state
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>("files")
 
   const setTree = useEditorStore(s => s.setTree)
   const setTreeLoading = useEditorStore(s => s.setTreeLoading)
@@ -108,11 +119,13 @@ export function EditorApp() {
 
   // Check for file changes on window focus
   const checkForChanges = useCallback(async () => {
-    if (!currentDirectory || openTabs.length === 0 || isCheckingRef.current) return
+    // Filter out template tabs - they don't have real files to check
+    const fileTabs = openTabs.filter(t => !t.isTemplate)
+    if (!currentDirectory || fileTabs.length === 0 || isCheckingRef.current) return
 
     isCheckingRef.current = true
     try {
-      const files = openTabs.map(t => ({ path: t.path, mtime: t.mtime }))
+      const files = fileTabs.map(t => ({ path: t.path, mtime: t.mtime }))
       const result = await checkMtimes(currentDirectory, files)
 
       if (!result.results) return
@@ -223,17 +236,26 @@ export function EditorApp() {
     setSaveSuccess("")
 
     try {
-      const result = await writeEditFile(currentDirectory, activeTab.path, activeTab.content)
-
-      if (result.error) {
-        setSaveError(result.error)
-        return
+      // Handle template saves differently
+      if (activeTab.isTemplate && activeTab.templateId) {
+        const result = await saveTemplate(activeTab.templateId, activeTab.content)
+        if (result.error) {
+          setSaveError(result.error)
+          return
+        }
+        updateTabOriginal(activeTab.path, activeTab.content, Date.now())
+        setSaveSuccess("Template saved!")
+      } else {
+        const result = await writeEditFile(currentDirectory, activeTab.path, activeTab.content)
+        if (result.error) {
+          setSaveError(result.error)
+          return
+        }
+        updateTabOriginal(activeTab.path, activeTab.content, result.mtime || Date.now())
+        setSaveSuccess("Saved!")
+        // Refresh tree to show new file
+        loadFileTree()
       }
-
-      updateTabOriginal(activeTab.path, activeTab.content, result.mtime || Date.now())
-      setSaveSuccess("Saved!")
-      // Refresh tree to show new file
-      loadFileTree()
       setTimeout(() => {
         setSaveSuccess("")
       }, 3000)
@@ -346,63 +368,106 @@ export function EditorApp() {
         {/* Sidebar */}
         <div className="w-64 bg-shell-surface border-r border-shell-border shrink-0 relative">
           <div className="absolute inset-0 flex flex-col">
-            <div className="p-3 border-b border-shell-border shrink-0">
-              <DirectorySelector />
-              <div className="flex justify-between items-center mt-2">
-                <span className="text-shell-text-muted text-xs truncate">{editorTree.length} files</span>
-                <div className="flex gap-1">
-                  <button
-                    type="button"
-                    onClick={handleNewFile}
-                    disabled={!currentDirectory}
-                    className="bg-shell-accent hover:bg-shell-accent-hover text-white border-none rounded px-2 py-1 text-xs cursor-pointer transition-colors disabled:opacity-50"
-                    title="Create new file"
-                  >
-                    + New
-                  </button>
-                  <button
-                    type="button"
-                    onClick={loadFileTree}
-                    disabled={editorTreeLoading}
-                    className="bg-shell-blue hover:bg-shell-blue-hover text-white border-none rounded px-2 py-1 text-xs cursor-pointer transition-colors disabled:opacity-50"
-                  >
-                    {editorTreeLoading ? "..." : "Refresh"}
-                  </button>
-                </div>
-              </div>
-              {/* New file input */}
-              {showNewFile && (
-                <form onSubmit={handleNewFileSubmit} className="mt-2">
-                  <input
-                    type="text"
-                    value={newFileName}
-                    onChange={e => setNewFileName(e.target.value)}
-                    placeholder="path/to/file.ts"
-                    autoFocus
-                    className="w-full bg-shell-bg border border-shell-border rounded px-2 py-1 text-sm text-white placeholder-shell-text-muted focus:outline-none focus:border-shell-accent"
-                  />
-                  <div className="flex gap-1 mt-1">
-                    <button
-                      type="submit"
-                      disabled={!newFileName.trim()}
-                      className="flex-1 bg-shell-accent hover:bg-shell-accent-hover disabled:bg-shell-border text-white border-none rounded px-2 py-1 text-xs cursor-pointer transition-colors"
-                    >
-                      Create
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleNewFileCancel}
-                      className="flex-1 bg-shell-border hover:bg-shell-text-muted text-white border-none rounded px-2 py-1 text-xs cursor-pointer transition-colors"
-                    >
-                      Cancel
-                    </button>
+            {/* Sidebar tabs */}
+            <div className="flex border-b border-shell-border shrink-0">
+              <button
+                type="button"
+                onClick={() => setSidebarTab("files")}
+                className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${
+                  sidebarTab === "files"
+                    ? "text-white bg-shell-bg border-b-2 border-shell-accent"
+                    : "text-shell-text-muted hover:text-white"
+                }`}
+              >
+                Files
+              </button>
+              <button
+                type="button"
+                onClick={() => setSidebarTab("templates")}
+                className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${
+                  sidebarTab === "templates"
+                    ? "text-white bg-shell-bg border-b-2 border-shell-accent"
+                    : "text-shell-text-muted hover:text-white"
+                }`}
+              >
+                Templates
+              </button>
+            </div>
+
+            {/* Files tab content */}
+            {sidebarTab === "files" && (
+              <>
+                <div className="p-3 border-b border-shell-border shrink-0">
+                  <DirectorySelector />
+                  <div className="flex justify-between items-center mt-2">
+                    <span className="text-shell-text-muted text-xs truncate">{editorTree.length} files</span>
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={handleNewFile}
+                        disabled={!currentDirectory}
+                        className="bg-shell-accent hover:bg-shell-accent-hover text-white border-none rounded px-2 py-1 text-xs cursor-pointer transition-colors disabled:opacity-50"
+                        title="Create new file"
+                      >
+                        + New
+                      </button>
+                      <button
+                        type="button"
+                        onClick={loadFileTree}
+                        disabled={editorTreeLoading}
+                        className="bg-shell-blue hover:bg-shell-blue-hover text-white border-none rounded px-2 py-1 text-xs cursor-pointer transition-colors disabled:opacity-50"
+                      >
+                        {editorTreeLoading ? "..." : "Refresh"}
+                      </button>
+                    </div>
                   </div>
-                </form>
-              )}
-            </div>
-            <div className="flex-1 overflow-hidden min-h-0">
-              <EditorFileTree onFileSelect={handleFileSelect} onRefresh={loadFileTree} />
-            </div>
+                  {/* New file input */}
+                  {showNewFile && (
+                    <form onSubmit={handleNewFileSubmit} className="mt-2">
+                      <input
+                        type="text"
+                        value={newFileName}
+                        onChange={e => setNewFileName(e.target.value)}
+                        placeholder="path/to/file.ts"
+                        autoFocus
+                        className="w-full bg-shell-bg border border-shell-border rounded px-2 py-1 text-sm text-white placeholder-shell-text-muted focus:outline-none focus:border-shell-accent"
+                      />
+                      <div className="flex gap-1 mt-1">
+                        <button
+                          type="submit"
+                          disabled={!newFileName.trim()}
+                          className="flex-1 bg-shell-accent hover:bg-shell-accent-hover disabled:bg-shell-border text-white border-none rounded px-2 py-1 text-xs cursor-pointer transition-colors"
+                        >
+                          Create
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleNewFileCancel}
+                          className="flex-1 bg-shell-border hover:bg-shell-text-muted text-white border-none rounded px-2 py-1 text-xs cursor-pointer transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+                <div className="flex-1 overflow-hidden min-h-0">
+                  <EditorFileTree onFileSelect={handleFileSelect} onRefresh={loadFileTree} />
+                </div>
+              </>
+            )}
+
+            {/* Templates tab content */}
+            {sidebarTab === "templates" && (
+              <div className="flex-1 overflow-hidden min-h-0">
+                <TemplatesPanel
+                  onInsertTemplate={content => {
+                    navigator.clipboard.writeText(content)
+                    alert("Template copied to clipboard!")
+                  }}
+                />
+              </div>
+            )}
           </div>
         </div>
 
@@ -417,7 +482,7 @@ export function EditorApp() {
             )}
           </div>
           {/* File toolbar */}
-          {activeTab && !activeTab.isImage && (
+          {activeTab && !activeTab.isImage && !activeTab.isTemplate && (
             <div className="bg-shell-surface border-b border-shell-border px-3 py-1.5 flex items-center gap-2 shrink-0">
               {showCopy ? (
                 <form onSubmit={handleCopySubmit} className="flex items-center gap-2 flex-1">
@@ -456,6 +521,27 @@ export function EditorApp() {
                   </button>
                 </>
               )}
+            </div>
+          )}
+          {/* Template toolbar */}
+          {activeTab?.isTemplate && (
+            <div className="bg-shell-surface border-b border-shell-border px-3 py-1.5 flex items-center gap-2 shrink-0">
+              <span className="text-shell-accent text-xs font-medium">Template</span>
+              <span className="text-shell-text-muted text-xs">|</span>
+              <span className="text-shell-text-muted text-xs truncate flex-1">
+                Use with Claude: "Use template: {activeTab.templateId}"
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(activeTab.content)
+                  setSaveSuccess("Copied to clipboard!")
+                  setTimeout(() => setSaveSuccess(""), 2000)
+                }}
+                className="bg-shell-border hover:bg-shell-text-muted text-white border-none rounded px-3 py-1 text-xs cursor-pointer transition-colors"
+              >
+                Copy Content
+              </button>
             </div>
           )}
           {/* Editor */}

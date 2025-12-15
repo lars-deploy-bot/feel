@@ -10,6 +10,9 @@ export interface EditorTab {
   // For image tabs
   isImage?: boolean
   dataUrl?: string
+  // For template tabs (read-only)
+  isTemplate?: boolean
+  templateId?: string
 }
 
 interface EditorState {
@@ -49,7 +52,7 @@ interface EditorState {
     name: string,
     content: string,
     mtime: number,
-    imageData?: { isImage: true; dataUrl: string },
+    options?: { isImage?: true; dataUrl?: string } | { isTemplate?: true; templateId?: string },
   ) => void
   closeTab: (path: string) => void
   setActiveTab: (path: string) => void
@@ -105,7 +108,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setTreeError: error => set({ editorTreeError: error }),
 
   // Tab actions
-  openTab: (path, name, content, mtime, imageData) => {
+  openTab: (path, name, content, mtime, options) => {
     const { openTabs } = get()
     const existing = openTabs.find(t => t.path === path)
     if (existing) {
@@ -114,9 +117,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     } else {
       // Add new tab
       const tab: EditorTab = { path, name, content, originalContent: content, mtime }
-      if (imageData) {
+      if (options && "isImage" in options && options.isImage) {
         tab.isImage = true
-        tab.dataUrl = imageData.dataUrl
+        tab.dataUrl = options.dataUrl
+      } else if (options && "isTemplate" in options && options.isTemplate) {
+        tab.isTemplate = true
+        tab.templateId = options.templateId
       }
       set({
         openTabs: [...openTabs, tab],

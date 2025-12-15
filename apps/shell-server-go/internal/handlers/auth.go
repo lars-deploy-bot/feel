@@ -78,14 +78,18 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		h.sessions.Delete(token)
 	}
 
-	// Clear cookie
+	// Clear cookie - must match all attributes from login cookie
+	secure := os.Getenv("NODE_ENV") == "production"
 	http.SetCookie(w, &http.Cookie{
 		Name:     middleware.CookieName,
 		Value:    "",
 		Path:     "/",
+		MaxAge:   -1, // Delete immediately
 		Expires:  time.Unix(0, 0),
 		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteLaxMode,
 	})
 
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	http.Redirect(w, r, "/?logged_out=1", http.StatusSeeOther)
 }
