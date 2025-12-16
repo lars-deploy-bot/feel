@@ -39,7 +39,19 @@ export function SuperTemplatesModal({ onClose, onInsertTemplate }: SuperTemplate
     [templates],
   )
 
+  // Filter categories to only show ones with templates
+  const categoriesWithTemplates = (Object.keys(TEMPLATE_CATEGORIES) as TemplateCategory[]).filter(
+    category => getTemplatesByCategory(category).length > 0,
+  )
+
   const currentTemplates = getTemplatesByCategory(activeCategory)
+
+  // Auto-select first category with templates if current has none
+  useEffect(() => {
+    if (!loading && categoriesWithTemplates.length > 0 && !categoriesWithTemplates.includes(activeCategory)) {
+      setActiveCategory(categoriesWithTemplates[0])
+    }
+  }, [loading, categoriesWithTemplates, activeCategory])
 
   // Prevent body scroll when modal is open
   useEffect(() => {
@@ -135,7 +147,7 @@ export function SuperTemplatesModal({ onClose, onInsertTemplate }: SuperTemplate
 
                 <div className="overflow-x-auto scrollbar-hide px-6 -mx-6">
                   <div className="flex gap-3 px-6 pb-1">
-                    {(Object.keys(TEMPLATE_CATEGORIES) as TemplateCategory[]).map(category => {
+                    {categoriesWithTemplates.map(category => {
                       const count = getTemplatesByCategory(category).length
                       const isActive = activeCategory === category
 
@@ -164,7 +176,7 @@ export function SuperTemplatesModal({ onClose, onInsertTemplate }: SuperTemplate
 
               {/* Desktop: Minimal tabs */}
               <div className="hidden md:flex gap-1 px-8 pt-6">
-                {(Object.keys(TEMPLATE_CATEGORIES) as TemplateCategory[]).map(category => {
+                {categoriesWithTemplates.map(category => {
                   const count = getTemplatesByCategory(category).length
                   const isActive = activeCategory === category
 

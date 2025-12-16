@@ -53,7 +53,7 @@ export function ChatHeader({
               title={debugModeEnabled ? "Switch to live view" : "Switch to debug view"}
             >
               {debugModeEnabled ? <FlaskConical size={14} /> : <Radio size={14} />}
-              <span>{debugModeEnabled ? "Debug" : "Live"}</span>
+              <span className="hidden md:inline">{debugModeEnabled ? "Debug" : "Live"}</span>
             </button>
           )}
           {/* Hide Preview button for superadmin workspace (no site to preview) */}

@@ -5,8 +5,9 @@
  * Uses fast patterns (authenticatedPage + gotoFast) for speed
  */
 
-import { SECURITY, TEST_CONFIG } from "@webalive/shared"
+import { SECURITY, TEST_CONFIG, TIMEOUTS } from "@webalive/shared"
 import { TEST_MESSAGES, TEST_SELECTORS, TEST_TIMEOUTS, TEST_USER } from "./fixtures/test-data"
+import { isRemoteEnv } from "./lib/test-env"
 import { expectChatMessage, expectSendButtonEnabled, gotoChatFast } from "./helpers/assertions"
 import { handlers } from "./lib/handlers"
 import { ChatPage } from "./pages/ChatPage"
@@ -22,11 +23,12 @@ test.describe("E2E Utilities Validation", () => {
     // Validate TEST_MESSAGES
     expect(TEST_MESSAGES.simple).toBe("Hello")
 
-    // Validate TEST_TIMEOUTS - updated values for parallel execution
-    expect(TEST_TIMEOUTS.fast).toBe(1000)
-    expect(TEST_TIMEOUTS.medium).toBe(3000)
-    expect(TEST_TIMEOUTS.slow).toBe(10_000) // Updated for parallel load
-    expect(TEST_TIMEOUTS.max).toBe(15_000)
+    // Validate TEST_TIMEOUTS - environment-specific (2x multiplier for remote)
+    const multiplier = isRemoteEnv ? 2 : 1
+    expect(TEST_TIMEOUTS.fast).toBe(TIMEOUTS.TEST.SHORT * multiplier)
+    expect(TEST_TIMEOUTS.medium).toBe(TIMEOUTS.TEST.MEDIUM * multiplier)
+    expect(TEST_TIMEOUTS.slow).toBe(10_000 * multiplier)
+    expect(TEST_TIMEOUTS.max).toBe(15_000 * multiplier)
 
     // Validate TEST_SELECTORS
     expect(TEST_SELECTORS.workspaceReady).toBe('[data-testid="workspace-ready"]')
@@ -118,9 +120,15 @@ test.describe("E2E Utilities Validation", () => {
       expect(stopVisible).toBe(false)
     })
 
+    // Skip on remote - unauthenticated access shows "Session Expired" dialog on staging/production
     test("send button disabled when no workspace", async ({ page }) => {
+      test.skip(isRemoteEnv, "Session expired dialog blocks this test on staging/production")
       // Use unauthenticated page - no workspace setup
       await page.goto("/chat", { waitUntil: "domcontentloaded" })
+      // Wait for chat page to render (but without workspace, send should be disabled)
+      await expect(page.locator(TEST_SELECTORS.messageInput)).toBeAttached({
+        timeout: TEST_TIMEOUTS.slow,
+      })
       const chat = new ChatPage(page)
       await chat.expectSendButtonDisabled()
     })

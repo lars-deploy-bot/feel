@@ -8,6 +8,7 @@ import { execSync } from "node:child_process"
 import { existsSync } from "node:fs"
 import { TEST_CONFIG } from "@webalive/shared"
 import { expect, test } from "./fixtures"
+import { TEST_TIMEOUTS } from "./fixtures/test-data"
 import { TIMEOUTS } from "./lib/test-env"
 
 const TEST_SLUG = "test-e2e"
@@ -75,8 +76,8 @@ test.describe("Website Deployment with Authentication", () => {
 
     // Wait for the element we actually care about - not network activity
     // networkidle is flaky: if any request fires after the 500ms window, test fails
-    await expect(page.getByTestId("deploy-heading")).toBeVisible({ timeout: 10_000 })
-    await expect(page.getByTestId("mode-option-quick-launch")).toBeVisible({ timeout: 3_000 })
+    await expect(page.getByTestId("deploy-heading")).toBeVisible({ timeout: TEST_TIMEOUTS.slow })
+    await expect(page.getByTestId("mode-option-quick-launch")).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
 
     console.log("[Test] ✓ Deploy page accessible without authentication")
   })

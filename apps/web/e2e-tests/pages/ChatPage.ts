@@ -90,7 +90,7 @@ export class ChatPage {
    */
   async expectSendButtonDisabled() {
     await expect(this.sendButton).toBeDisabled({
-      timeout: TEST_TIMEOUTS.fast,
+      timeout: TEST_TIMEOUTS.medium, // Need more time as button may render after page loads
     })
   }
 

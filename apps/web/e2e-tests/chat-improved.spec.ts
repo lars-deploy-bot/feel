@@ -5,7 +5,7 @@
  * No login flow, state pre-injected before navigation.
  */
 
-import { TEST_MESSAGES } from "./fixtures/test-data"
+import { TEST_MESSAGES, TEST_TIMEOUTS } from "./fixtures/test-data"
 import { handlers } from "./lib/handlers"
 import { ChatPage } from "./pages/ChatPage"
 import { expect, test } from "./fixtures"
@@ -14,8 +14,8 @@ test("has chat interface", async ({ authenticatedPage, workerTenant }) => {
   const chat = new ChatPage(authenticatedPage)
   await chat.gotoFast(workerTenant.workspace, workerTenant.orgId)
 
-  await expect(chat.messageInput).toBeVisible({ timeout: 2000 })
-  await expect(chat.sendButton).toBeVisible({ timeout: 1000 })
+  await expect(chat.messageInput).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
+  await expect(chat.sendButton).toBeVisible({ timeout: TEST_TIMEOUTS.fast })
 })
 
 test("can send a message and receive response", async ({ authenticatedPage, workerTenant }) => {

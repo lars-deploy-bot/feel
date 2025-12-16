@@ -1,8 +1,9 @@
 "use client"
-import { PanelLeft } from "lucide-react"
+import { SUPERADMIN } from "@webalive/shared"
 import { AnimatePresence, motion } from "framer-motion"
-import { Suspense, useCallback, useEffect, useRef, useState } from "react"
+import { PanelLeft } from "lucide-react"
 import { useQueryState } from "nuqs"
+import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
 import { FeedbackModal } from "@/components/modals/FeedbackModal"
 import { InviteModal } from "@/components/modals/InviteModal"
@@ -23,55 +24,38 @@ import { useConversationSession } from "@/features/chat/hooks/useConversationSes
 import { useImageUpload } from "@/features/chat/hooks/useImageUpload"
 import { useStreamCancellation } from "@/features/chat/hooks/useStreamCancellation"
 import { useStreamReconnect } from "@/features/chat/hooks/useStreamReconnect"
-import { useRedeemReferral } from "@/hooks/useRedeemReferral"
-import {
-  ClientError,
-  ClientRequest,
-  DevTerminalProvider,
-  useDevTerminal,
-} from "@/features/chat/lib/dev-terminal-context"
+import { ClientRequest, DevTerminalProvider, useDevTerminal } from "@/features/chat/lib/dev-terminal-context"
 import { groupMessages } from "@/features/chat/lib/message-grouper"
-import { parseStreamEvent, type AgentManagerContent, type UIMessage } from "@/features/chat/lib/message-parser"
 import { renderMessage } from "@/features/chat/lib/message-renderer"
 import { SandboxProvider, useSandboxContext } from "@/features/chat/lib/sandbox-context"
-import { sendClientError } from "@/features/chat/lib/send-client-error"
-import { isValidStreamEvent } from "@/features/chat/lib/stream-guards"
-import { formatMessagesAsText } from "@/features/chat/utils/format-messages"
-import { isWarningMessage, type BridgeWarningContent } from "@/features/chat/lib/streaming/ndjson"
-import { isCompleteEvent, isDoneEvent, isErrorEvent, isInterruptEvent } from "@/features/chat/types/stream"
-import { buildPromptWithAttachments } from "@/features/chat/utils/prompt-builder"
+import { useAuth } from "@/features/deployment/hooks/useAuth"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
-import type { StructuredError } from "@/lib/error-codes"
-import { ErrorCodes, getErrorHelp, getErrorMessage } from "@/lib/error-codes"
-import { HttpError } from "@/lib/errors"
+import { useRedeemReferral } from "@/hooks/useRedeemReferral"
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
-import { authStore, useIsSessionExpired } from "@/lib/stores/authStore"
 import { validateOAuthToastParams } from "@/lib/integrations/toast-validation"
-import { isRetryableError, retryWithBackoff } from "@/lib/retry"
+import { useIsSessionExpired } from "@/lib/stores/authStore"
 import { useSidebarActions, useSidebarOpen } from "@/lib/stores/conversationSidebarStore"
 import { isDevelopment, useDebugActions, useSandbox, useSSETerminal } from "@/lib/stores/debug-store"
-import { useApiKey, useModel } from "@/lib/stores/llmStore"
-import { useCurrentConversationId, useMessageActions, useMessages, useMessageStore } from "@/lib/stores/messageStore"
-import {
-  useStreamingActions,
-  useIsStreamActive,
-  setAbortController,
-  clearAbortController,
-} from "@/lib/stores/streamingStore"
-import { useGoal, useBuilding, useTargetUsers } from "@/lib/stores/goalStore"
-import { SUPERADMIN } from "@webalive/shared"
 import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
-import { useAuth } from "@/features/deployment/hooks/useAuth"
+import { useApiKey, useModel } from "@/lib/stores/llmStore"
+import { useCurrentConversationId, useMessageActions } from "@/lib/stores/messageStore"
+import { useStreamingActions } from "@/lib/stores/streamingStore"
 // Local components
-import { ChatHeader, WorkspaceInfoBar, ChatEmptyState, AgentManagerIndicator, TabBar } from "./components"
-import { useStatusText, useChatDragDrop, useTabsManagement } from "./hooks"
+import { AgentManagerIndicator, ChatEmptyState, ChatHeader, TabBar, WorkspaceInfoBar } from "./components"
+import {
+  useChatDragDrop,
+  useChatMessaging,
+  useModals,
+  useStatusText,
+  useTabIsolatedMessages,
+  useTabsManagement,
+} from "./hooks"
 
 // Build version for deployment verification
 const BUILD_VERSION = "2025-11-12-direct-execution"
 
 function ChatPageContent() {
   const [msg, setMsg] = useState("")
-  const messages = useMessages()
   const storeConversationId = useCurrentConversationId()
   const {
     initializeConversation,
@@ -81,27 +65,13 @@ function ChatPageContent() {
   } = useMessageActions()
   const { toggleSidebar } = useSidebarActions()
   const isSidebarOpen = useSidebarOpen()
-  // Per-conversation busy state from streaming store - SOURCE OF TRUTH for tabs
-  // Each tab/conversation has its own independent busy state
-  const busy = useIsStreamActive(storeConversationId)
-  const [useStreaming, _setUseStreaming] = useState(true)
   const [shouldForceScroll, setShouldForceScroll] = useState(false)
   const [userHasManuallyScrolled, setUserHasManuallyScrolled] = useState(false)
   const [subdomainInitialized, setSubdomainInitialized] = useState(false)
-  const [showFeedbackModal, setShowFeedbackModal] = useState(false)
-  const [showInviteModal, setShowInviteModal] = useState(false)
-  const [settingsModalReason, setSettingsModalReason] = useState<"manual" | "error" | "websites" | null>(null)
-  const [showTemplatesModal, setShowTemplatesModal] = useState(false)
-  const [showPhotoMenu, setShowPhotoMenu] = useState(false)
-  const [showMobilePreview, setShowMobilePreview] = useState(false)
   const [_showCompletionDots, setShowCompletionDots] = useState(false)
-  const [isEvaluatingProgress, setIsEvaluatingProgress] = useState(false)
-  const prGoal = useGoal()
-  const building = useBuilding()
-  const targetUsers = useTargetUsers()
+  const modals = useModals()
 
   // Feature flags
-  const agentSupervisorEnabled = useFeatureFlag("AGENT_SUPERVISOR")
   const tabsEnabled = useFeatureFlag("TABS")
   const { user } = useAuth()
   const isAdmin = user?.isAdmin ?? false
@@ -110,13 +80,7 @@ function ChatPageContent() {
   const showTabs = isAdmin && tabsEnabled
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const isAutoScrolling = useRef(false)
-  const abortControllerRef = useRef<AbortController | null>(null)
-  const agentManagerAbortRef = useRef<AbortController | null>(null)
-  const agentManagerTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const currentRequestIdRef = useRef<string | null>(null)
-  const _requestIdPromiseRef = useRef<Promise<string> | null>(null)
-  const isSubmitting = useRef(false)
-  const chatInputRef = useRef<ChatInputHandle>(null)
+  const chatInputRef = useRef<ChatInputHandle | null>(null)
   const photoButtonRef = useRef<HTMLButtonElement>(null)
   const { setSSETerminal, setSSETerminalMinimized, setSandbox, setSandboxMinimized } = useDebugActions()
   const showSSETerminal = useSSETerminal()
@@ -125,6 +89,10 @@ function ChatPageContent() {
   const { workspace, isTerminal, mounted, setWorkspace } = useWorkspace({
     allowEmpty: true,
   })
+
+  // Tab-isolated messages and busy state
+  // When tabs are expanded, shows the active tab's conversation; otherwise shows global active conversation
+  const { messages, busy } = useTabIsolatedMessages({ workspace, showTabs })
 
   // Handle ?wk= URL parameter to pre-select workspace (e.g., from widget "Edit me" button)
   const [wkParam] = useQueryState("wk")
@@ -139,8 +107,8 @@ function ChatPageContent() {
   const isSuperadminWorkspace = workspace === SUPERADMIN.WORKSPACE_NAME
   const showSandbox = showSandboxRaw && !isSuperadminWorkspace
 
-  const userApiKey = useApiKey()
-  const userModel = useModel()
+  const _userApiKey = useApiKey()
+  const _userModel = useModel()
   const streamingActions = useStreamingActions()
   const { registerElementSelectHandler } = useSandboxContext()
 
@@ -174,7 +142,38 @@ function ChatPageContent() {
     }
   }, [workspace])
 
-  // Stream cancellation hook
+  // Fetch organizations and auto-select if none selected
+  const { organizations, loading: organizationsLoading } = useOrganizations()
+
+  // Check for session expiry
+  const isSessionExpired = useIsSessionExpired()
+
+  // Session management with workspace-scoped persistence
+  const { conversationId, startNewConversation, switchConversation } = useConversationSession(workspace, mounted)
+
+  // Chat messaging hook - handles sendMessage, streaming, agent supervisor
+  const {
+    sendMessage,
+    isEvaluatingProgress,
+    agentManagerAbortRef,
+    agentManagerTimeoutRef,
+    abortControllerRef,
+    currentRequestIdRef,
+    isSubmittingRef,
+  } = useChatMessaging({
+    workspace,
+    conversationId,
+    isTerminal,
+    busy,
+    msg,
+    setMsg,
+    addMessage,
+    chatInputRef,
+    setShouldForceScroll,
+    setShowCompletionDots,
+  })
+
+  // Stream cancellation hook - must be after useChatMessaging to get the refs
   const { stopStreaming, isStopping } = useStreamCancellation({
     conversationId: storeConversationId ?? "",
     workspace,
@@ -182,7 +181,7 @@ function ChatPageContent() {
     setShowCompletionDots,
     abortControllerRef,
     currentRequestIdRef,
-    isSubmittingRef: isSubmitting,
+    isSubmittingRef,
     onDevEvent: isDevelopment()
       ? event => {
           addDevEvent({
@@ -198,15 +197,6 @@ function ChatPageContent() {
         }
       : undefined,
   })
-
-  // Fetch organizations and auto-select if none selected
-  const { organizations, loading: organizationsLoading } = useOrganizations()
-
-  // Check for session expiry
-  const isSessionExpired = useIsSessionExpired()
-
-  // Session management with workspace-scoped persistence
-  const { conversationId, startNewConversation, switchConversation } = useConversationSession(workspace, mounted)
 
   // Stream reconnection - recovers buffered messages when tab becomes visible
   const { isReconnecting } = useStreamReconnect({
@@ -257,17 +247,6 @@ function ChatPageContent() {
 
   // Image upload handler
   const handleAttachmentUpload = useImageUpload({ workspace: workspace ?? undefined, isTerminal })
-
-  // Helper to create API request body
-  const createRequestBody = (message: string) => {
-    const baseBody = {
-      message,
-      conversationId,
-      apiKey: userApiKey || undefined,
-      model: userModel,
-    }
-    return isTerminal ? { ...baseBody, workspace: workspace || undefined } : baseBody
-  }
 
   // Show SSE terminal minimized on staging
   useEffect(() => {
@@ -362,497 +341,6 @@ function ChatPageContent() {
     setSubdomainInitialized(true)
   }
 
-  function buildPromptForClaude(userMessage: UIMessage): string {
-    return buildPromptWithAttachments(userMessage.content as string, userMessage.attachments || [])
-  }
-
-  async function sendMessage(overrideMessage?: string) {
-    const messageToSend = overrideMessage ?? msg
-    if (isSubmitting.current || busy || isStopping || !messageToSend.trim()) return
-    if (!conversationId) return // Need a conversation to send to
-
-    // CRITICAL: Capture conversation ID at start of request
-    // This ensures all messages from this stream go to the correct conversation
-    // even if the user switches conversations during the stream
-    const targetConversationId = conversationId
-
-    isSubmitting.current = true
-    // Mark stream as active immediately - this is the SOURCE OF TRUTH for busy state
-    streamingActions.startStream(targetConversationId)
-
-    const attachments = chatInputRef.current?.getAttachments() || []
-
-    const userMessage: UIMessage = {
-      id: Date.now().toString(),
-      type: "user",
-      content: messageToSend,
-      timestamp: new Date(),
-      attachments: attachments.length > 0 ? attachments : undefined,
-    }
-    addMessage(userMessage, targetConversationId)
-    setMsg("")
-    chatInputRef.current?.clearAllAttachments()
-    setShouldForceScroll(true)
-
-    try {
-      if (useStreaming) {
-        await sendStreaming(userMessage, targetConversationId)
-      } else {
-        await sendRegular(userMessage, targetConversationId)
-      }
-    } finally {
-      // endStream is called within sendStreaming/sendRegular on completion
-      // This finally block only needs to reset isSubmitting
-      isSubmitting.current = false
-    }
-  }
-
-  async function sendStreaming(userMessage: UIMessage, targetConversationId: string) {
-    let receivedAnyMessage = false
-    let timeoutId: NodeJS.Timeout | null = null
-    let shouldStopReading = false
-
-    try {
-      const requestBody = createRequestBody(buildPromptForClaude(userMessage))
-
-      const abortController = new AbortController()
-      abortControllerRef.current = abortController
-      // Store in per-conversation map for tabs support
-      setAbortController(targetConversationId, abortController)
-
-      // Note: startStream is already called in sendMessage() - no need to call again
-
-      timeoutId = setTimeout(() => {
-        if (!receivedAnyMessage) {
-          console.error("[Chat] Request timeout - no response received in 60s")
-          streamingActions.recordError(targetConversationId, {
-            type: "timeout_error",
-            message: "Request timeout - no response received in 60s",
-          })
-          sendClientError({
-            conversationId: targetConversationId,
-            errorType: ClientError.TIMEOUT_ERROR,
-            data: { message: "Request timeout - no response received in 60s", timeoutSeconds: 60 },
-            addDevEvent,
-          })
-          abortController.abort()
-        }
-      }, 60000)
-
-      if (isDevelopment()) {
-        const requestEvent = {
-          type: ClientRequest.MESSAGE,
-          requestId: targetConversationId,
-          timestamp: new Date().toISOString(),
-          data: { endpoint: "/api/claude/stream", method: "POST", body: requestBody },
-        }
-        addDevEvent({
-          eventName: ClientRequest.MESSAGE,
-          event: requestEvent,
-          rawSSE: `${JSON.stringify(requestEvent)}\n`,
-        })
-      }
-
-      const response = await retryWithBackoff(
-        async () => {
-          const res = await fetch("/api/claude/stream", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify(requestBody),
-            signal: abortController.signal,
-          })
-
-          if (!res.ok) {
-            const errorData: StructuredError | null = await res.json().catch(() => null)
-            let userMessage: string
-            if (errorData?.error) {
-              userMessage = getErrorMessage(errorData.error, errorData.details) || errorData.message
-              const helpText = getErrorHelp(errorData.error, errorData.details)
-              if (helpText) userMessage += `\n\n${helpText}`
-              if (errorData.error === ErrorCodes.CONVERSATION_BUSY) {
-                toast.error(userMessage, { duration: 4000, position: "top-center" })
-              }
-            } else {
-              userMessage = `HTTP ${res.status}: ${res.statusText}`
-            }
-            throw new HttpError(userMessage, res.status, res.statusText, errorData?.error)
-          }
-          return res
-        },
-        {
-          maxRetries: 3,
-          initialDelay: 1000,
-          maxDelay: 5000,
-          shouldRetry: error => isRetryableError(error),
-        },
-      )
-
-      if (!response.body) {
-        throw new Error("No response body received from server")
-      }
-
-      const headerRequestId = response.headers.get("X-Request-Id")
-      if (headerRequestId) {
-        currentRequestIdRef.current = headerRequestId
-      }
-
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder()
-      const MAX_CONSECUTIVE_PARSE_ERRORS = 10
-      let buffer = ""
-
-      try {
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done || shouldStopReading) break
-
-          buffer += decoder.decode(value, { stream: true })
-          const lines = buffer.split("\n")
-          buffer = lines.pop() || ""
-
-          for (const line of lines) {
-            if (!line.trim()) continue
-
-            try {
-              const parsed: unknown = JSON.parse(line)
-
-              if (!isValidStreamEvent(parsed)) {
-                streamingActions.incrementConsecutiveErrors(targetConversationId)
-                streamingActions.recordError(targetConversationId, {
-                  type: "invalid_event_structure",
-                  message: "Stream event failed type guard validation",
-                })
-                const consecutiveErrors = streamingActions.getConsecutiveErrors(targetConversationId)
-                sendClientError({
-                  conversationId: targetConversationId,
-                  errorType: ClientError.INVALID_EVENT_STRUCTURE,
-                  data: { message: parsed, consecutiveErrors },
-                  addDevEvent,
-                })
-                if (consecutiveErrors >= MAX_CONSECUTIVE_PARSE_ERRORS) {
-                  shouldStopReading = true
-                  reader.cancel()
-                  break
-                }
-                continue
-              }
-
-              const eventData = parsed
-
-              if (!currentRequestIdRef.current && eventData.requestId) {
-                currentRequestIdRef.current = eventData.requestId
-              }
-
-              if (isWarningMessage(eventData)) {
-                const warning = eventData.data.content as BridgeWarningContent
-                console.log("[Chat] OAuth warning received:", warning.provider, warning.message)
-                continue
-              }
-
-              if (isDevelopment()) {
-                addDevEvent({ eventName: eventData.type, event: eventData, rawSSE: line })
-              }
-
-              receivedAnyMessage = true
-              streamingActions.recordMessageReceived(targetConversationId)
-              streamingActions.resetConsecutiveErrors(targetConversationId)
-
-              const message = parseStreamEvent(eventData, targetConversationId, streamingActions)
-              if (message) {
-                addMessage(message, targetConversationId)
-                if (
-                  isCompleteEvent(eventData) ||
-                  isDoneEvent(eventData) ||
-                  isErrorEvent(eventData) ||
-                  isInterruptEvent(eventData)
-                ) {
-                  receivedAnyMessage = true
-                  // Note: endStream is called in the finally block or at end of try block
-                  // busy state is derived from streamingStore.isStreamActive
-                  isSubmitting.current = false
-                  if (
-                    (isCompleteEvent(eventData) || isDoneEvent(eventData)) &&
-                    !isErrorEvent(eventData) &&
-                    !isInterruptEvent(eventData)
-                  ) {
-                    setShowCompletionDots(true)
-                    handleCompletionFeatures()
-                  }
-                  shouldStopReading = true
-                  break
-                }
-              }
-            } catch (parseError) {
-              streamingActions.incrementConsecutiveErrors(targetConversationId)
-              streamingActions.recordError(targetConversationId, {
-                type: "parse_error",
-                message: "Failed to parse NDJSON line",
-                linePreview: line.slice(0, 200),
-              })
-              const consecutiveErrors = streamingActions.getConsecutiveErrors(targetConversationId)
-              sendClientError({
-                conversationId: targetConversationId,
-                errorType: ClientError.PARSE_ERROR,
-                data: {
-                  consecutiveErrors,
-                  line: line.slice(0, 200),
-                  error: parseError instanceof Error ? parseError.message : String(parseError),
-                },
-                addDevEvent,
-              })
-              if (consecutiveErrors >= MAX_CONSECUTIVE_PARSE_ERRORS) {
-                sendClientError({
-                  conversationId: targetConversationId,
-                  errorType: ClientError.CRITICAL_PARSE_ERROR,
-                  data: { consecutiveErrors, message: "Too many consecutive parse errors, stopping stream" },
-                  addDevEvent,
-                })
-                addMessage(
-                  {
-                    id: Date.now().toString(),
-                    type: "sdk_message",
-                    content: {
-                      type: "result",
-                      is_error: true,
-                      result:
-                        "Connection unstable: Multiple parse errors detected. Please try again or refresh the page.",
-                    },
-                    timestamp: new Date(),
-                  },
-                  targetConversationId,
-                )
-                shouldStopReading = true
-                reader.cancel()
-                break
-              }
-            }
-          }
-        }
-      } catch (readerError) {
-        if (abortController.signal.aborted) {
-          streamingActions.endStream(targetConversationId)
-          return
-        }
-        streamingActions.recordError(targetConversationId, {
-          type: "reader_error",
-          message: readerError instanceof Error ? readerError.message : "Unknown reader error",
-        })
-        sendClientError({
-          conversationId: targetConversationId,
-          errorType: ClientError.READER_ERROR,
-          data: {
-            receivedMessages: receivedAnyMessage,
-            error: readerError instanceof Error ? readerError.message : String(readerError),
-          },
-          addDevEvent,
-        })
-        if (!receivedAnyMessage) {
-          throw new Error("Connection lost before receiving any response")
-        }
-      }
-
-      if (!receivedAnyMessage && !abortController.signal.aborted) {
-        throw new Error("Server closed connection without sending any response")
-      }
-
-      streamingActions.endStream(targetConversationId)
-    } catch (error) {
-      if (error instanceof Error && error.name !== "AbortError") {
-        if (error instanceof HttpError) {
-          sendClientError({
-            conversationId: targetConversationId,
-            errorType: ClientError.HTTP_ERROR,
-            data: { status: error.status, statusText: error.statusText, message: error.message },
-            addDevEvent,
-          })
-        } else {
-          sendClientError({
-            conversationId: targetConversationId,
-            errorType: ClientError.GENERAL_ERROR,
-            data: { errorName: error.name, message: error.message, stack: error.stack },
-            addDevEvent,
-          })
-        }
-      }
-
-      if (error instanceof Error && error.name !== "AbortError") {
-        const isAuthError =
-          error instanceof HttpError &&
-          (error.status === 401 ||
-            error.errorCode === ErrorCodes.NO_SESSION ||
-            error.errorCode === ErrorCodes.AUTH_REQUIRED)
-
-        if (isAuthError) {
-          // End stream before handling session expiry
-          streamingActions.endStream(targetConversationId)
-          authStore.handleSessionExpired("Your session has expired. Please log in again to continue.")
-          return
-        }
-
-        const isConversationBusy = error instanceof HttpError && error.errorCode === ErrorCodes.CONVERSATION_BUSY
-        if (!isConversationBusy) {
-          const errorMessage: UIMessage = {
-            id: Date.now().toString(),
-            type: "sdk_message",
-            content: { type: "result", is_error: true, result: error.message },
-            timestamp: new Date(),
-          }
-          addMessage(errorMessage, targetConversationId)
-        }
-      }
-
-      // End stream on any error to reset busy state
-      streamingActions.endStream(targetConversationId)
-    } finally {
-      if (timeoutId) clearTimeout(timeoutId)
-      abortControllerRef.current = null
-      // Clear per-conversation abort controller
-      clearAbortController(targetConversationId)
-      currentRequestIdRef.current = null
-    }
-  }
-
-  function handleCompletionFeatures() {
-    const state = useMessageStore.getState()
-    const currentConvo = state.conversationId ? state.conversations[state.conversationId] : null
-    const formattedMessages = currentConvo?.messages ? formatMessagesAsText(currentConvo.messages) : ""
-
-    if (agentSupervisorEnabled && prGoal && workspace && formattedMessages) {
-      setIsEvaluatingProgress(true)
-      const agentAbort = new AbortController()
-      agentManagerAbortRef.current = agentAbort
-
-      fetch("/api/evaluate-progress", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        signal: agentAbort.signal,
-        body: JSON.stringify({
-          conversation: formattedMessages,
-          prGoal,
-          workspace,
-          building,
-          targetUsers,
-          model: userModel,
-        }),
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.ok && data.nextAction) {
-            const action = data.nextAction.toUpperCase()
-
-            const isDone = /^DONE\b|:\s*DONE\b|is:\s*DONE\b/i.test(action)
-            if (isDone) {
-              const doneMatch = data.nextAction.match(/DONE[\s\-:]*(.*)$/is)
-              const message = doneMatch?.[1]?.trim() || "PR goal complete!"
-              const doneMessage: UIMessage = {
-                id: `agent-manager-done-${Date.now()}`,
-                type: "agent_manager",
-                content: { status: "done", message } satisfies AgentManagerContent,
-                timestamp: new Date(),
-              }
-              addMessage(doneMessage)
-              return
-            }
-
-            const isStop = /^STOP\b|:\s*STOP\b|is:\s*STOP\b/i.test(action)
-            if (isStop) {
-              const stopMatch = data.nextAction.match(/STOP[\s\-:]*(.*)$/is)
-              const message = stopMatch?.[1]?.trim() || "Agent needs input"
-              const stopMessage: UIMessage = {
-                id: `agent-manager-stop-${Date.now()}`,
-                type: "agent_manager",
-                content: { status: "stop", message } satisfies AgentManagerContent,
-                timestamp: new Date(),
-              }
-              addMessage(stopMessage)
-              setMsg("")
-              return
-            }
-
-            const agentMessage = `agentmanager> ${data.nextAction}`
-            setMsg(agentMessage)
-            agentManagerTimeoutRef.current = setTimeout(() => {
-              agentManagerTimeoutRef.current = null
-              sendMessage(agentMessage)
-            }, 4000)
-            if (!data.onTrack) {
-              toast("Supervisor: Course correction suggested", { icon: "🎯" })
-            }
-          }
-        })
-        .catch(err => {
-          if (err instanceof Error && err.name !== "AbortError") {
-            console.error("[AgentSupervisor] Error:", err)
-          }
-        })
-        .finally(() => {
-          setIsEvaluatingProgress(false)
-          agentManagerAbortRef.current = null
-        })
-    }
-  }
-
-  async function sendRegular(userMessage: UIMessage, targetConversationId: string) {
-    try {
-      const requestBody = createRequestBody(buildPromptForClaude(userMessage))
-
-      const r = await fetch("/api/claude", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(requestBody),
-      })
-
-      if (!r.ok) {
-        let errorData: StructuredError | null = null
-        try {
-          errorData = await r.json()
-        } catch {
-          errorData = null
-        }
-
-        if (errorData?.error) {
-          const userMessage = getErrorMessage(errorData.error, errorData.details) || errorData.message
-          const helpText = getErrorHelp(errorData.error, errorData.details)
-          let fullMessage = userMessage
-          if (helpText) fullMessage += `\n\n${helpText}`
-          if (errorData.error === ErrorCodes.CONVERSATION_BUSY) {
-            toast.error(fullMessage, { duration: 4000, position: "top-center" })
-          }
-          throw new Error(fullMessage)
-        }
-        throw new Error(`HTTP ${r.status}: ${r.statusText}`)
-      }
-
-      const response = await r.json()
-      const assistantMessage: UIMessage = {
-        id: (Date.now() + 1).toString(),
-        type: "sdk_message",
-        content: response,
-        timestamp: new Date(),
-      }
-      addMessage(assistantMessage, targetConversationId)
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error"
-      const isConversationBusy = errorMessage.includes("I'm still working on your previous request")
-
-      if (!isConversationBusy) {
-        const errorUIMessage: UIMessage = {
-          id: (Date.now() + 1).toString(),
-          type: "sdk_message",
-          content: { type: "result", is_error: true, result: errorMessage },
-          timestamp: new Date(),
-        }
-        addMessage(errorUIMessage, targetConversationId)
-      }
-    } finally {
-      // End stream tracking
-      streamingActions.endStream(targetConversationId)
-    }
-  }
-
   const handleNewConversation = useCallback(() => {
     if (storeConversationId) {
       streamingActions.clearConversation(storeConversationId)
@@ -914,14 +402,6 @@ function ChatPageContent() {
     [deleteConversation, conversationId, startNewConversation, workspace, initializeConversation],
   )
 
-  const handleOpenSettings = useCallback(() => {
-    setSettingsModalReason("manual")
-  }, [])
-
-  const handleCloseSettings = useCallback(() => {
-    setSettingsModalReason(null)
-  }, [])
-
   return (
     <div
       className="h-[100dvh] flex flex-row overflow-hidden dark:bg-[#1a1a1a] dark:text-white"
@@ -931,8 +411,8 @@ function ChatPageContent() {
         workspace={workspace}
         onConversationSelect={handleConversationSelect}
         onDeleteConversation={handleDeleteConversation}
-        onOpenSettings={handleOpenSettings}
-        onOpenInvite={() => setShowInviteModal(true)}
+        onOpenSettings={modals.openSettings}
+        onOpenInvite={modals.openInvite}
       />
 
       {!isSidebarOpen && (
@@ -967,12 +447,12 @@ function ChatPageContent() {
         <div className="flex-1 min-h-0 flex flex-col">
           <ChatHeader
             isSuperadminWorkspace={isSuperadminWorkspace}
-            onFeedbackClick={() => setShowFeedbackModal(true)}
-            onTemplatesClick={() => setShowTemplatesModal(true)}
-            onSettingsClick={handleOpenSettings}
-            showPhotoMenu={showPhotoMenu}
-            onPhotoMenuToggle={() => setShowPhotoMenu(!showPhotoMenu)}
-            onPhotoMenuClose={() => setShowPhotoMenu(false)}
+            onFeedbackClick={modals.openFeedback}
+            onTemplatesClick={modals.openTemplates}
+            onSettingsClick={modals.openSettings}
+            showPhotoMenu={modals.photoMenu}
+            onPhotoMenuToggle={modals.togglePhotoMenu}
+            onPhotoMenuClose={modals.closePhotoMenu}
             photoButtonRef={photoButtonRef}
             chatInputRef={chatInputRef}
           />
@@ -982,9 +462,9 @@ function ChatPageContent() {
             mounted={mounted}
             isTerminal={isTerminal}
             isSuperadminWorkspace={isSuperadminWorkspace}
-            onSelectSite={() => setSettingsModalReason("websites")}
+            onSelectSite={() => modals.openSettings("websites")}
             onNewConversation={handleNewConversation}
-            onMobilePreview={() => setShowMobilePreview(true)}
+            onMobilePreview={modals.openMobilePreview}
             onToggleTabs={handleToggleTabs}
             showTabsToggle={showTabs && !!workspace}
             tabsExpanded={tabsExpanded}
@@ -1010,7 +490,7 @@ function ChatPageContent() {
                   workspace={workspace}
                   totalDomainCount={totalDomainCount}
                   isLoading={organizationsLoading}
-                  onTemplatesClick={() => setShowTemplatesModal(true)}
+                  onTemplatesClick={modals.openTemplates}
                 />
               )}
 
@@ -1044,7 +524,7 @@ function ChatPageContent() {
                 agentManagerTimeoutRef={agentManagerTimeoutRef}
                 onCancel={() => {
                   if (msg.startsWith("agentmanager>")) setMsg("")
-                  setIsEvaluatingProgress(false)
+                  // isEvaluatingProgress is managed by useChatMessaging hook
                 }}
               />
 
@@ -1062,7 +542,7 @@ function ChatPageContent() {
               isStopping={isStopping}
               onSubmit={sendMessage}
               onStop={stopStreaming}
-              onOpenTemplates={() => setShowTemplatesModal(true)}
+              onOpenTemplates={modals.openTemplates}
               config={{
                 enableAttachments: true,
                 enableCamera: true,
@@ -1097,13 +577,8 @@ function ChatPageContent() {
 
       {/* Mobile preview overlay */}
       <AnimatePresence>
-        {showMobilePreview && (
-          <SandboxMobile
-            onClose={() => setShowMobilePreview(false)}
-            busy={busy}
-            statusText={statusText}
-            onStop={stopStreaming}
-          >
+        {modals.mobilePreview && (
+          <SandboxMobile onClose={modals.closeMobilePreview} busy={busy} statusText={statusText} onStop={stopStreaming}>
             <ChatInput
               ref={chatInputRef}
               message={msg}
@@ -1127,31 +602,27 @@ function ChatPageContent() {
       </AnimatePresence>
 
       {showSSETerminal && <DevTerminal />}
-      {showFeedbackModal && (
+      {modals.feedback && (
         <FeedbackModal
-          onClose={() => setShowFeedbackModal(false)}
+          onClose={modals.closeFeedback}
           workspace={workspace ?? undefined}
           conversationId={conversationId}
         />
       )}
       <AnimatePresence>
-        {settingsModalReason && (
+        {modals.settings && (
           <SettingsModal
-            onClose={handleCloseSettings}
+            onClose={modals.closeSettings}
             initialTab={
-              settingsModalReason === "error"
-                ? "organization"
-                : settingsModalReason === "websites"
-                  ? "websites"
-                  : undefined
+              modals.settings === "error" ? "organization" : modals.settings === "websites" ? "websites" : undefined
             }
           />
         )}
       </AnimatePresence>
-      {showTemplatesModal && (
-        <SuperTemplatesModal onClose={() => setShowTemplatesModal(false)} onInsertTemplate={handleInsertTemplate} />
+      {modals.templates && (
+        <SuperTemplatesModal onClose={modals.closeTemplates} onInsertTemplate={handleInsertTemplate} />
       )}
-      {showInviteModal && <InviteModal onClose={() => setShowInviteModal(false)} />}
+      {modals.invite && <InviteModal onClose={modals.closeInvite} />}
       {isSessionExpired && <SessionExpiredModal />}
     </div>
   )

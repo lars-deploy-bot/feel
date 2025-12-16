@@ -506,6 +506,16 @@ export const useMessages = () =>
     return state.conversations[state.conversationId].messages
   })
 
+// Selector for specific conversation's messages (for tab isolation)
+// Each tab should display its own conversation's messages, not the globally active one
+export const useMessagesForConversation = (conversationId: string | null) =>
+  useMessageStore(state => {
+    if (!conversationId || !state.conversations[conversationId]) {
+      return []
+    }
+    return state.conversations[conversationId].messages
+  })
+
 // Atomic selector: current conversation ID (Guide §14.1)
 export const useCurrentConversationId = () => useMessageStore(state => state.conversationId)
 

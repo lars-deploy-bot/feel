@@ -10,6 +10,9 @@
 
 import { SECURITY, TEST_CONFIG, TIMEOUTS } from "@webalive/shared"
 
+// Direct env check to avoid circular dependency with test-env.ts
+const isRemote = process.env.TEST_ENV !== "local"
+
 export const TEST_USER = {
   email: SECURITY.LOCAL_TEST.EMAIL,
   password: SECURITY.LOCAL_TEST.PASSWORD,
@@ -25,31 +28,33 @@ export const TEST_MESSAGES = {
 } as const
 
 /**
- * Test timeouts calibrated for parallel execution (4 workers)
+ * Test timeouts calibrated for parallel execution
  *
  * Rule of thumb: if a single test needs X seconds, budget 3X for parallel.
- * These values are intentionally higher than "feels necessary" because:
- * 1. Parallel workers share server resources
- * 2. React hydration can be slow under load
- * 3. Flaky tests waste more time than generous timeouts
+ * Remote environments (staging/production) need 2x longer due to:
+ * 1. More workers (6 vs 4)
+ * 2. Network latency
+ * 3. Server load from other traffic
  *
  * @see docs/postmortems/2025-11-30-e2e-test-flakiness.md
  */
+const TIMEOUT_MULTIPLIER = isRemote ? 2 : 1
+
 export const TEST_TIMEOUTS = {
   /** Fast UI operations (button clicks, input fills) - should be instant */
-  fast: TIMEOUTS.TEST.SHORT, // 1s
+  fast: TIMEOUTS.TEST.SHORT * TIMEOUT_MULTIPLIER, // 1s local, 2s remote
 
   /** Medium operations (API responses, DOM updates) */
-  medium: TIMEOUTS.TEST.MEDIUM, // 3s
+  medium: TIMEOUTS.TEST.MEDIUM * TIMEOUT_MULTIPLIER, // 3s local, 6s remote
 
   /**
    * Slow operations (React hydration, workspace initialization)
    * This is the PRIMARY wait - put it first, then use fast/medium for confirmations
    */
-  slow: 10_000, // 10s - accounts for parallel load
+  slow: 10_000 * TIMEOUT_MULTIPLIER, // 10s local, 20s remote
 
   /** Maximum timeout for any single assertion */
-  max: 15_000, // 15s - escape hatch, investigate if hit regularly
+  max: 15_000 * TIMEOUT_MULTIPLIER, // 15s local, 30s remote
 } as const
 
 export const TEST_SELECTORS = {

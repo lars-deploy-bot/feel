@@ -1,4 +1,5 @@
 import { expect, test } from "./fixtures"
+import { TEST_TIMEOUTS } from "./fixtures/test-data"
 
 /**
  * Browser Polling Tests
@@ -40,7 +41,9 @@ interface PollingTestResult {
 test.describe("Browser Polling Mechanism", () => {
   test("browser fetch API works in page context", async ({ page }) => {
     // Navigate to deploy page to establish page context
-    await page.goto("/deploy")
+    await page.goto("/deploy", { waitUntil: "domcontentloaded" })
+    // Wait for page to be interactive before running evaluate
+    await expect(page.getByTestId("deploy-heading")).toBeAttached({ timeout: TEST_TIMEOUTS.slow })
 
     // Test that browser fetch works at all
     // Using same-origin to avoid CORS (we're testing the mechanism, not cross-origin)
@@ -73,7 +76,8 @@ test.describe("Browser Polling Mechanism", () => {
   })
 
   test("polling loop retries and detects success", async ({ page }) => {
-    await page.goto("/deploy")
+    await page.goto("/deploy", { waitUntil: "domcontentloaded" })
+    await expect(page.getByTestId("deploy-heading")).toBeAttached({ timeout: TEST_TIMEOUTS.slow })
 
     // Test the sequential polling pattern used in SubdomainDeployForm.tsx
     // This verifies: retry logic, success detection, timeout handling
@@ -122,7 +126,8 @@ test.describe("Browser Polling Mechanism", () => {
   })
 
   test("polling handles fetch errors gracefully", async ({ page }) => {
-    await page.goto("/deploy")
+    await page.goto("/deploy", { waitUntil: "domcontentloaded" })
+    await expect(page.getByTestId("deploy-heading")).toBeAttached({ timeout: TEST_TIMEOUTS.slow })
 
     // Test error handling: non-existent domain should throw, not hang
     const result = await page.evaluate(async (): Promise<FetchTestResult> => {

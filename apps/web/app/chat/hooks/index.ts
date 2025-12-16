@@ -1,3 +1,6 @@
 export { useStatusText } from "./useStatusText"
 export { useChatDragDrop } from "./useChatDragDrop"
 export { useTabsManagement } from "./useTabs"
+export { useTabIsolatedMessages } from "./useTabIsolatedMessages"
+export { useModals } from "./useModals"
+export { useChatMessaging } from "./useChatMessaging"

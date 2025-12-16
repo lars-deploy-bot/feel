@@ -19,9 +19,8 @@ const baseURL = BASE_URLS[TEST_ENV]
 
 // Enforce worker limits against centralized config (single source of truth)
 // - CI: 2 workers (conservative for shared runners)
-// - Remote (staging/production): 6 workers (deployed server can handle more)
-// - Local: 4 workers (dev machine balance)
-const desiredWorkers = process.env.CI ? 2 : isRemoteEnv ? 6 : 4
+// - Remote/Local: 4 workers (6 caused flaky failures due to resource contention)
+const desiredWorkers = process.env.CI ? 2 : 4
 const maxWorkers = TEST_CONFIG.MAX_WORKERS
 
 if (desiredWorkers > maxWorkers) {
