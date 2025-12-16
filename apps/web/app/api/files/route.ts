@@ -1,4 +1,4 @@
-import { readdir, stat } from "node:fs/promises"
+import { readdir } from "node:fs/promises"
 import path from "node:path"
 import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
@@ -50,30 +50,19 @@ export async function POST(request: NextRequest) {
     }
 
     try {
+      // Use withFileTypes to avoid separate stat calls
       const entries = await readdir(fullPath, { withFileTypes: true })
-      const files: FileInfo[] = []
 
-      for (const entry of entries) {
-        const entryPath = path.join(fullPath, entry.name)
-        const stats = await stat(entryPath)
+      // Build file list without extra stat calls - we don't need size/modified for tree view
+      const files: FileInfo[] = entries.map(entry => ({
+        name: entry.name,
+        type: entry.isDirectory() ? "directory" : "file",
+        size: 0, // Skip stat call - not needed for tree view
+        modified: "", // Skip stat call - not needed for tree view
+        path: path.join(targetPath, entry.name),
+      }))
 
-        files.push({
-          name: entry.name,
-          type: entry.isDirectory() ? "directory" : "file",
-          size: stats.size,
-          modified: stats.mtime.toISOString(),
-          path: path.join(targetPath, entry.name),
-        })
-      }
-
-      // Sort: directories first, then files, alphabetically
-      files.sort((a, b) => {
-        if (a.type !== b.type) {
-          return a.type === "directory" ? -1 : 1
-        }
-        return a.name.localeCompare(b.name)
-      })
-
+      // Skip sorting - client handles it for better caching
       return NextResponse.json({
         ok: true,
         path: targetPath,

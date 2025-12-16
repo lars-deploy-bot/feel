@@ -112,28 +112,61 @@ const useLLMStoreBase = create<LLMStore>()(
     },
     {
       name: "llm-config",
+      /**
+       * skipHydration: true - Prevents automatic hydration on store creation
+       *
+       * HydrationManager calls rehydrate() for all persisted stores together,
+       * ensuring coordinated hydration and eliminating race conditions.
+       *
+       * @see HydrationBoundary.tsx
+       */
+      skipHydration: true,
       partialize: state => ({ model: state.model }),
-      onRehydrateStorage: () => state => {
-        if (!state) return
+      /**
+       * onRehydrateStorage - Called after localStorage state is merged
+       *
+       * IMPORTANT: Do NOT mutate state directly here. Use setState() instead.
+       * Direct mutation bypasses Zustand's update path and can fail silently.
+       *
+       * This callback runs post-hydration to:
+       * 1. Validate persisted model (reset invalid to default)
+       * 2. Load API key from secure storage (separate from persist storage)
+       */
+      onRehydrateStorage: () => (_state, error) => {
+        if (error) {
+          console.error("[LLMStore] Hydration error:", error)
+          return
+        }
+
+        // Use setState for post-hydration modifications (not direct mutation)
+        const currentState = useLLMStoreBase.getState()
 
         // Validate persisted model and reset to default if invalid
-        if (!isValidClaudeModel(state.model)) {
-          console.warn(`Invalid model "${state.model}", resetting to default`)
-          state.model = DEFAULT_MODEL
+        let model = currentState.model
+        if (!isValidClaudeModel(model)) {
+          console.warn(`[LLMStore] Invalid model "${model}", resetting to default`)
+          model = DEFAULT_MODEL
         }
 
         // Load API key from secure storage
         // Note: Model enforcement is handled by the backend (unrestricted users can choose any model)
+        let apiKey: string | null = null
         try {
-          state.apiKey = loadApiKey()
-        } catch (error) {
-          console.error("Failed to load API key:", error)
-          state.apiKey = null
+          apiKey = loadApiKey()
+        } catch (err) {
+          console.error("[LLMStore] Failed to load API key:", err)
         }
+
+        // Atomic state update via setState (not mutation)
+        useLLMStoreBase.setState({ model, apiKey })
+        console.log("[LLMStore] Hydration complete")
       },
     },
   ),
 )
+
+// Export base store for HydrationManager (needs access to persist.rehydrate())
+export { useLLMStoreBase }
 
 // Atomic selector: API key (Guide §14.1)
 export const useApiKey = () => useLLMStoreBase(state => state.apiKey)

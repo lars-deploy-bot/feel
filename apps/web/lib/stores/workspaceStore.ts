@@ -1,6 +1,5 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import { WORKSPACE_STORAGE } from "@webalive/shared"
@@ -22,7 +21,6 @@ interface WorkspaceState {
   currentWorkspace: string | null // The active workspace (persisted)
   selectedOrgId: string | null
   recentWorkspaces: RecentWorkspace[]
-  _hasHydrated: boolean // Track if localStorage has been loaded
 }
 
 // Actions interface - grouped under stable object (Guide §14.3)
@@ -189,14 +187,28 @@ const useWorkspaceStoreBase = create<WorkspaceStore>()(
         currentWorkspace: null,
         selectedOrgId: null,
         recentWorkspaces: [],
-        _hasHydrated: false,
         actions,
       }
     },
     {
       name: WORKSPACE_STORAGE.KEY,
       version: WORKSPACE_STORAGE.VERSION, // See @webalive/shared for history
-      partialize: (state): Omit<WorkspaceState, "_hasHydrated"> => ({
+      /**
+       * skipHydration: true - Prevents automatic hydration on store creation
+       *
+       * This is the definitive fix for Next.js hydration race conditions.
+       * Without this, Zustand persist reads localStorage in a microtask,
+       * causing a gap where state is partially hydrated (currentWorkspace set)
+       * but _hasHydrated is still false.
+       *
+       * With skipHydration, we explicitly call rehydrate() via StoreHydrator
+       * component, ensuring hydration happens at a controlled time.
+       *
+       * @see https://github.com/pmndrs/zustand/issues/938
+       * @see https://zustand.docs.pmnd.rs/integrations/persisting-store-data
+       */
+      skipHydration: true,
+      partialize: state => ({
         currentWorkspace: state.currentWorkspace,
         selectedOrgId: state.selectedOrgId,
         recentWorkspaces: state.recentWorkspaces,
@@ -209,58 +221,34 @@ const useWorkspaceStoreBase = create<WorkspaceStore>()(
             currentWorkspace: null,
             selectedOrgId: state.selectedOrgId ?? null,
             recentWorkspaces: state.recentWorkspaces ?? [],
-            _hasHydrated: false,
           }
         }
         return {
           currentWorkspace: state.currentWorkspace ?? null,
           selectedOrgId: state.selectedOrgId ?? null,
           recentWorkspaces: state.recentWorkspaces ?? [],
-          _hasHydrated: false,
         }
       },
-      onRehydrateStorage: () => state => {
-        // Called when hydration completes (localStorage loaded)
-        // state is the rehydrated state (or undefined if error)
-        console.log("[WorkspaceStore] Hydration complete, state:", !!state)
+      onRehydrateStorage: () => (state, error) => {
+        // Called when rehydrate() completes
+        if (error) {
+          console.error("[WorkspaceStore] Hydration error:", error)
+        } else {
+          console.log("[WorkspaceStore] Hydration complete, workspace:", state?.currentWorkspace)
+        }
+        // Note: App-wide hydration is tracked by HydrationManager via useAppHydrated()
       },
     },
   ),
 )
 
+// Export base store for HydrationManager (needs access to persist.rehydrate())
+export { useWorkspaceStoreBase }
+
 // Atomic selectors (Guide §14.1)
 export const useCurrentWorkspace = () => useWorkspaceStoreBase(state => state.currentWorkspace)
 export const useSelectedOrgId = () => useWorkspaceStoreBase(state => state.selectedOrgId)
 export const useRecentWorkspaces = () => useWorkspaceStoreBase(state => state.recentWorkspaces)
-
-// Use persist.hasHydrated() for SSR-safe hydration checking
-// This is the recommended pattern for Next.js - don't use internal state
-export const useHasHydrated = () => {
-  // Always start with false on SSR, check persist.hasHydrated() on client only
-  const [hydrated, setHydrated] = useState(false)
-
-  useEffect(() => {
-    // persist API is only available on client
-    const persist = useWorkspaceStoreBase.persist
-
-    // Check if already hydrated
-    if (persist.hasHydrated()) {
-      setHydrated(true)
-      return
-    }
-
-    // Subscribe to hydration completion
-    const unsub = persist.onFinishHydration(() => {
-      setHydrated(true)
-    })
-
-    return () => {
-      unsub()
-    }
-  }, [])
-
-  return hydrated
-}
 
 // Derived selector: get recent workspaces for a specific org
 export const useRecentForOrg = (orgId: string) =>

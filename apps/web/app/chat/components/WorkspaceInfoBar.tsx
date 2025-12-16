@@ -28,9 +28,13 @@ export function WorkspaceInfoBar({
   showTabsToggle = false,
   tabsExpanded = false,
 }: WorkspaceInfoBarProps) {
+  // Show warning state only when mounted AND no workspace - avoids hydration mismatch
+  const showWarning = mounted && !workspace
+
   return (
     <div
-      className={`flex-shrink-0 border-b ${!workspace && mounted ? "border-amber-200 dark:border-amber-800/50 bg-amber-50/50 dark:bg-amber-900/20" : "border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02]"}`}
+      className={`flex-shrink-0 border-b ${showWarning ? "border-amber-200 dark:border-amber-800/50 bg-amber-50/50 dark:bg-amber-900/20" : "border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02]"}`}
+      suppressHydrationWarning
     >
       <div className="px-4 md:px-6 py-3 mx-auto w-full md:max-w-2xl">
         {/* Workspace info bar - always visible */}
@@ -38,18 +42,18 @@ export function WorkspaceInfoBar({
           {/* Left: site name (truncated on mobile) */}
           <div className="flex items-center min-w-0 flex-shrink" data-testid="workspace-section">
             {/* Warning icon when no workspace selected (not loading) */}
-            {!workspace && mounted && (
+            {showWarning && (
               <AlertTriangle size={14} className="text-amber-500 dark:text-amber-400 mr-2 flex-shrink-0" />
             )}
             <span
-              className={`font-medium flex-shrink-0 ${!workspace && mounted ? "text-amber-600 dark:text-amber-400" : "text-black/50 dark:text-white/50"}`}
+              className={`font-medium flex-shrink-0 ${showWarning ? "text-amber-600 dark:text-amber-400" : "text-black/50 dark:text-white/50"}`}
               data-testid="workspace-label"
             >
               site
             </span>
             {isTerminal ? (
               <WorkspaceSwitcher currentWorkspace={workspace} onOpenSettings={onSelectSite} />
-            ) : !workspace && mounted ? (
+            ) : showWarning ? (
               <button
                 type="button"
                 onClick={onSelectSite}

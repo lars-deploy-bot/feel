@@ -2,6 +2,7 @@
 
 import { create } from "zustand"
 import { persist, type PersistStorage, type StorageValue } from "zustand/middleware"
+import { shallow } from "zustand/shallow"
 import type { UIMessage } from "@/features/chat/lib/message-parser"
 
 /**
@@ -457,6 +458,15 @@ export const useMessageStore = create<MessageStoreState>()(
       name: "claude-message-storage",
       version: 2, // Increment version for migration
       storage: createSafeStorage(),
+      /**
+       * skipHydration: true - Prevents automatic hydration on store creation
+       *
+       * HydrationManager calls rehydrate() for all persisted stores together,
+       * ensuring coordinated hydration and eliminating race conditions.
+       *
+       * @see HydrationBoundary.tsx
+       */
+      skipHydration: true,
       partialize: state => ({
         conversationId: state.conversationId,
         conversations: state.conversations,
@@ -530,12 +540,40 @@ export const useCurrentConversation = () =>
 // Atomic selector: all conversations filtered by workspace
 // Excludes empty conversations (0 messages) from the list - newly initialized
 // conversations appear in the sidebar only after the first message is added
-export const useConversations = (workspace?: string) =>
-  useMessageStore(state =>
-    Object.values(state.conversations)
-      .filter(c => c.messages.length > 0 && (!workspace || c.workspace === workspace))
-      .sort((a, b) => b.lastActivity - a.lastActivity),
+// Uses shallow comparison to prevent unnecessary re-renders
+
+// Cache for memoized conversation lists to prevent array recreation on every render
+const conversationCache = new Map<string, { conversations: Conversation[]; hash: string }>()
+
+function getConversationHash(conversations: Record<string, Conversation>, workspace: string): string {
+  // Create a hash based on conversation IDs and their lastActivity timestamps
+  const relevant = Object.values(conversations).filter(
+    c => c.messages.length > 0 && (!workspace || c.workspace === workspace),
   )
+  return relevant.map(c => `${c.id}:${c.lastActivity}:${c.messages.length}`).join("|")
+}
+
+export const useConversations = (workspace?: string) =>
+  useMessageStore(state => {
+    const cacheKey = workspace || "__all__"
+    const currentHash = getConversationHash(state.conversations, workspace || "")
+    const cached = conversationCache.get(cacheKey)
+
+    // Return cached result if data hasn't changed
+    if (cached && cached.hash === currentHash) {
+      return cached.conversations
+    }
+
+    // Compute new result
+    const result = Object.values(state.conversations)
+      .filter(c => c.messages.length > 0 && (!workspace || c.workspace === workspace))
+      .sort((a, b) => b.lastActivity - a.lastActivity)
+
+    // Cache the result
+    conversationCache.set(cacheKey, { conversations: result, hash: currentHash })
+
+    return result
+  }, shallow)
 
 export const useMessageActions = () =>
   useMessageStore(state => ({

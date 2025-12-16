@@ -7,10 +7,20 @@ import { useSandboxContext } from "@/features/chat/lib/sandbox-context"
 import { useResizablePanel } from "@/lib/hooks/useResizablePanel"
 import { getPreviewUrl, getSiteUrl } from "@/lib/preview-utils"
 import { useDebugActions, useSandboxWidth } from "@/lib/stores/debug-store"
+import { SandboxModeMenu, SandboxCodePanel } from "./sandbox"
 
 export function Sandbox() {
   const { workspace } = useWorkspace({ allowEmpty: true })
-  const { setSelectedElement } = useSandboxContext()
+  const {
+    setSelectedElement,
+    preview,
+    setPreviewMode,
+    openFile,
+    closeFile,
+    toggleFolder,
+    setTreeWidth,
+    toggleTreeCollapsed,
+  } = useSandboxContext()
   const savedWidth = useSandboxWidth()
   const { setSandbox, setSandboxWidth } = useDebugActions()
   const { width, setWidth, isResizing, handleMouseDown } = useResizablePanel({
@@ -159,96 +169,100 @@ export function Sandbox() {
 
   return (
     <div
-      className={`relative bg-black text-purple-400 font-mono text-xs flex flex-col border-l border-purple-700/30 h-full ${isResizing ? "select-none" : ""}`}
+      className={`relative bg-[#0d0d0d] flex flex-col border-l border-white/[0.04] h-full ${isResizing ? "select-none" : ""}`}
       style={{ width: `${width}px` }}
     >
-      {/* Resize handle - wide hit area with visible grabber */}
+      {/* Resize handle */}
       <div
         role="separator"
         aria-orientation="vertical"
-        aria-label="Resize sandbox"
+        aria-label="Resize panel"
         aria-valuenow={width}
         tabIndex={0}
-        className="absolute left-0 top-0 bottom-0 w-4 -ml-2 cursor-col-resize z-10 group flex items-center justify-center"
+        className="absolute left-0 top-0 bottom-0 w-3 -ml-1.5 cursor-col-resize z-10 group flex items-center justify-center"
         onMouseDown={handleMouseDown}
         style={{ userSelect: "none" }}
       >
-        {/* Grabber pill */}
         <div
-          className={`w-1.5 h-12 rounded-full transition-all ${
-            isResizing ? "bg-purple-500" : "bg-purple-700/30 group-hover:bg-purple-500/80 group-hover:h-16"
+          className={`w-0.5 h-8 rounded-full transition-all duration-150 ${
+            isResizing ? "bg-neutral-500 h-12" : "bg-neutral-800 group-hover:bg-neutral-600 group-hover:h-12"
           }`}
         />
       </div>
-      {/* Overlay to block iframe from capturing mouse during resize */}
-      {isResizing && (
-        <div
-          className="absolute inset-0 z-50"
-          style={{
-            cursor: "col-resize",
-            pointerEvents: "all",
-          }}
-        />
-      )}
 
-      {/* URL bar */}
-      <div className="flex items-center gap-2 px-3 py-2 bg-neutral-950">
-        <div className="flex-1 flex items-center gap-2 bg-neutral-800/50 rounded-lg px-3 py-1.5 ring-1 ring-white/[0.06] focus-within:ring-white/[0.12] transition-all">
-          <button
-            type="button"
-            onClick={handleRefresh}
-            className="text-neutral-500 hover:text-neutral-300 transition-colors"
-            title="Refresh"
-          >
-            <RotateCw size={12} strokeWidth={2} />
-          </button>
-          <input
-            ref={inputRef}
-            type="text"
-            defaultValue={path}
-            onKeyDown={handlePathSubmit}
-            className="flex-1 bg-transparent text-[13px] text-neutral-300 outline-none placeholder:text-neutral-600"
-            placeholder="/"
-          />
-          <a
-            href={workspace ? getSiteUrl(workspace, path) : "#"}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-neutral-500 hover:text-neutral-300 transition-colors"
-            title="Open in new tab"
-          >
-            <ExternalLink size={12} strokeWidth={2} />
-          </a>
+      {/* Overlay during resize */}
+      {isResizing && <div className="absolute inset-0 z-50 cursor-col-resize" />}
+
+      {/* Header bar */}
+      <div className="h-11 px-2 flex items-center gap-1.5 border-b border-white/[0.04] bg-neutral-900/50 shrink-0">
+        {/* URL/Path display */}
+        <div className="flex-1 h-7 flex items-center gap-1.5 bg-white/[0.03] rounded px-2 min-w-0">
+          {preview.mode === "site" && (
+            <>
+              <button
+                type="button"
+                onClick={handleRefresh}
+                className="p-0.5 text-neutral-600 hover:text-neutral-300 transition-colors shrink-0"
+                title="Refresh"
+              >
+                <RotateCw size={12} strokeWidth={1.5} />
+              </button>
+              <input
+                ref={inputRef}
+                type="text"
+                defaultValue={path}
+                onKeyDown={handlePathSubmit}
+                className="flex-1 min-w-0 bg-transparent text-[13px] text-neutral-400 outline-none placeholder:text-neutral-700"
+                placeholder="/"
+              />
+              <a
+                href={workspace ? getSiteUrl(workspace, path) : "#"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-0.5 text-neutral-600 hover:text-neutral-300 transition-colors shrink-0"
+                title="Open in new tab"
+              >
+                <ExternalLink size={12} strokeWidth={1.5} />
+              </a>
+            </>
+          )}
+          {preview.mode === "code" && (
+            <span className="text-[13px] text-neutral-500 truncate">
+              {preview.filePath ? `/${preview.filePath}` : "Code"}
+            </span>
+          )}
         </div>
-        {/* Close button - visible on tablets where sandbox takes full width */}
+
+        {/* Mode switcher */}
+        <SandboxModeMenu currentMode={preview.mode} onModeChange={setPreviewMode} />
+
+        {/* Close - tablets only */}
         <button
           type="button"
           onClick={() => setSandbox(false)}
-          className="xl:hidden p-1.5 text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800 rounded transition-colors"
-          title="Close preview"
+          className="xl:hidden p-1.5 text-neutral-600 hover:text-neutral-300 rounded transition-colors"
+          title="Close"
         >
-          <X size={16} strokeWidth={2} />
+          <X size={14} strokeWidth={1.5} />
         </button>
       </div>
 
-      {/* Content - iframe */}
-      <div className="flex-1 overflow-hidden bg-white relative">
-        {workspace && workspace.length > 0 && workspace.includes(".") ? (
-          <>
-            {/* Loading overlay - show while fetching token or loading iframe */}
+      {/* Content */}
+      <div className="flex-1 overflow-hidden relative">
+        {!workspace || !workspace.includes(".") ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <p className="text-neutral-600 text-sm">{workspace ? "Invalid workspace" : "No site selected"}</p>
+            </div>
+          </div>
+        ) : preview.mode === "site" ? (
+          <div className="h-full bg-white relative">
+            {/* Loading state */}
             {(isLoading || !previewToken) && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center bg-neutral-900">
-                <div className="flex flex-col items-center gap-4">
-                  <div className="relative w-12 h-12">
-                    <div className="absolute inset-0 rounded-full bg-emerald-400/20 alive-logo-outer" />
-                    <div className="absolute inset-1.5 rounded-full bg-emerald-400/30 alive-logo-inner" />
-                    <div className="absolute inset-3 rounded-full bg-emerald-400" />
-                  </div>
-                  <span className="text-sm font-semibold text-neutral-300">Opening your site</span>
-                </div>
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#0d0d0d]">
+                <div className="w-5 h-5 border-2 border-neutral-800 border-t-neutral-500 rounded-full animate-spin" />
               </div>
             )}
-            {/* Only render iframe after preview token is ready to avoid 401 race condition */}
             {previewToken && (
               <iframe
                 ref={iframeRef}
@@ -259,15 +273,21 @@ export function Sandbox() {
                 onLoad={handleIframeLoad}
               />
             )}
-          </>
-        ) : (
-          <div className="flex items-center justify-center h-full text-neutral-700 bg-neutral-900">
-            <div className="text-center">
-              <div className="mb-2">{workspace ? "Invalid workspace format" : "No workspace selected"}</div>
-              <div className="text-xs text-neutral-600">Workspace must be a domain (e.g., example.com)</div>
-            </div>
           </div>
-        )}
+        ) : preview.mode === "code" ? (
+          <SandboxCodePanel
+            workspace={workspace}
+            filePath={preview.filePath}
+            expandedFolders={preview.expandedFolders}
+            treeWidth={preview.treeWidth}
+            treeCollapsed={preview.treeCollapsed}
+            onSelectFile={openFile}
+            onCloseFile={closeFile}
+            onToggleFolder={toggleFolder}
+            onSetTreeWidth={setTreeWidth}
+            onToggleTreeCollapsed={toggleTreeCollapsed}
+          />
+        ) : null}
       </div>
     </div>
   )

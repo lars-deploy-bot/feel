@@ -5,6 +5,7 @@ import { ChevronRight, Heart, PanelLeftClose, Settings2, Trash2 } from "lucide-r
 import { useEffect, useRef, useState } from "react"
 import { REFERRAL } from "@webalive/shared"
 import { useSidebarActions, useSidebarOpen } from "@/lib/stores/conversationSidebarStore"
+import { useAppHydrated } from "@/lib/stores/HydrationBoundary"
 import type { Conversation } from "@/lib/stores/messageStore"
 import { useConversations, useCurrentConversationId } from "@/lib/stores/messageStore"
 
@@ -36,20 +37,17 @@ export function ConversationSidebar({
 }: ConversationSidebarProps) {
   const isOpen = useSidebarOpen()
   const { closeSidebar } = useSidebarActions()
+  // Wait for all persisted stores to hydrate before showing conversations
+  // This prevents hydration mismatch with persisted data
+  const isHydrated = useAppHydrated()
   // IMPORTANT: Only show conversations for current workspace (domain-scoped)
   // Pass workspace to filter, or undefined to show empty (safer than showing all)
   const allConversations = useConversations(workspace || "")
   const conversations = workspace ? allConversations : []
   const currentConversationId = useCurrentConversationId()
   const sidebarRef = useRef<HTMLDivElement>(null)
-  const [mounted, setMounted] = useState(false)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [conversationToDelete, setConversationToDelete] = useState<Conversation | null>(null)
-
-  // Wait for client-side hydration to avoid mismatch with persisted data
-  useEffect(() => {
-    setMounted(true)
-  }, [])
 
   // Close on Escape key
   useEffect(() => {
@@ -136,7 +134,7 @@ export function ConversationSidebar({
 
           {/* Conversation list */}
           <div className="flex-1 overflow-y-auto">
-            {!mounted ? (
+            {!isHydrated ? (
               <div className="px-4 py-8 text-center text-sm text-black/40 dark:text-white/40">Loading...</div>
             ) : conversations.length === 0 ? (
               <div className="px-4 py-8 text-center text-sm text-black/40 dark:text-white/40">No conversations yet</div>

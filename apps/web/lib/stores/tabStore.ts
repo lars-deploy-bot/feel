@@ -152,6 +152,15 @@ export const useTabStore = create<TabStore>()(
     {
       name: "claude-tab-storage",
       version: 2, // Bump version for migration
+      /**
+       * skipHydration: true - Prevents automatic hydration on store creation
+       *
+       * HydrationManager calls rehydrate() for all persisted stores together,
+       * ensuring coordinated hydration and eliminating race conditions.
+       *
+       * @see HydrationBoundary.tsx
+       */
+      skipHydration: true,
       partialize: s => ({
         tabsByWorkspace: s.tabsByWorkspace,
         activeTabByWorkspace: s.activeTabByWorkspace,

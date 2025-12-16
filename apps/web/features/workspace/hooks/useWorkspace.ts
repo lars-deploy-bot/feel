@@ -1,6 +1,7 @@
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useRef } from "react"
-import { useCurrentWorkspace, useHasHydrated, useWorkspaceActions } from "@/lib/stores/workspaceStore"
+import { useAppHydrated } from "@/lib/stores/HydrationBoundary"
+import { useCurrentWorkspace, useWorkspaceActions } from "@/lib/stores/workspaceStore"
 
 interface UseWorkspaceOptions {
   redirectOnMissing?: string | null
@@ -29,7 +30,7 @@ export function useWorkspace(options: UseWorkspaceOptions = {}): UseWorkspaceRet
 
   // Read from store (single source of truth)
   const workspace = useCurrentWorkspace()
-  const hasHydrated = useHasHydrated()
+  const hasHydrated = useAppHydrated()
   const { setCurrentWorkspace, autoSelectWorkspace } = useWorkspaceActions()
 
   // Derive mounted directly from hasHydrated - no extra state/render cycle

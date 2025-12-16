@@ -2,7 +2,8 @@
 
 import { Building2, ChevronDown } from "lucide-react"
 import { useEffect, useState } from "react"
-import { type Organization, useSelectedOrgId, useWorkspaceActions, useHasHydrated } from "@/lib/stores/workspaceStore"
+import { useAppHydrated } from "@/lib/stores/HydrationBoundary"
+import { type Organization, useSelectedOrgId, useWorkspaceActions } from "@/lib/stores/workspaceStore"
 
 interface OrganizationSelectorProps {
   onOrgChange?: (orgId: string | null) => void
@@ -13,7 +14,7 @@ export function OrganizationSelector({ onOrgChange }: OrganizationSelectorProps)
   const [loading, setLoading] = useState(true)
   const [isOpen, setIsOpen] = useState(false)
   const selectedOrgId = useSelectedOrgId()
-  const hasHydrated = useHasHydrated()
+  const hasHydrated = useAppHydrated()
   const { setSelectedOrg } = useWorkspaceActions()
 
   // Fetch organizations on mount

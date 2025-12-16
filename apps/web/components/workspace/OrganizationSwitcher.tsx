@@ -3,7 +3,8 @@
 import { ChevronDown } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useFetch } from "@/lib/hooks/useFetch"
-import { type Organization, useSelectedOrgId, useWorkspaceActions, useHasHydrated } from "@/lib/stores/workspaceStore"
+import { useAppHydrated } from "@/lib/stores/HydrationBoundary"
+import { type Organization, useSelectedOrgId, useWorkspaceActions } from "@/lib/stores/workspaceStore"
 
 interface OrganizationSwitcherProps {
   onOrgChange?: (orgId: string | null) => void
@@ -12,7 +13,7 @@ interface OrganizationSwitcherProps {
 export function OrganizationSwitcher({ onOrgChange }: OrganizationSwitcherProps) {
   const [isOpen, setIsOpen] = useState(false)
   const selectedOrgId = useSelectedOrgId()
-  const hasHydrated = useHasHydrated()
+  const hasHydrated = useAppHydrated()
   const { setSelectedOrg } = useWorkspaceActions()
 
   const { data, loading, error, retry } = useFetch<{ ok: boolean; organizations: Organization[] }>({

@@ -4,6 +4,7 @@ import { AuthModal } from "@/components/modals/AuthModal"
 import { ThemeProvider } from "@/components/providers/theme-provider"
 import { UserPromptsStoreProvider } from "@/lib/providers/UserPromptsStoreProvider"
 import { UserStoreProvider } from "@/lib/providers/UserStoreProvider"
+import { HydrationManager } from "@/lib/stores/HydrationBoundary"
 import "@/lib/env-validation" // Validate env vars at startup (fail fast)
 import "./globals.css"
 
@@ -21,6 +22,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
       </head>
       <body>
+        {/* HydrationManager coordinates hydration of ALL persisted stores */}
+        {/* Must be early in the tree to hydrate stores before components use them */}
+        {/* Sets window.__APP_HYDRATED__ for E2E test synchronization */}
+        <HydrationManager />
         <NextTopLoader color="#000" height={2} showSpinner={false} />
         <NuqsAdapter>
           <ThemeProvider>

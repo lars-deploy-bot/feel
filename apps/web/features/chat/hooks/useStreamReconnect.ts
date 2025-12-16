@@ -55,9 +55,10 @@ export function useStreamReconnect({
       return
     }
 
-    // Debounce: don't check more than once per second
+    // Debounce: don't check more than once every 2 seconds
+    // This prevents rapid re-renders when quickly switching tabs
     const now = Date.now()
-    if (now - lastVisibilityCheck.current < 1000) {
+    if (now - lastVisibilityCheck.current < 2000) {
       return
     }
     lastVisibilityCheck.current = now
