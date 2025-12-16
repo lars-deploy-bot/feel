@@ -742,6 +742,18 @@ Self-hosted open-source tools running on this server. Each service has its own d
 
 **Management**: Services typically run via Docker Compose or systemd. Check individual directories for their `docker-compose.yml` or service configuration.
 
+## External Reference Repos
+
+**Location**: `/opt/third/`
+
+External codebases cloned for reference when stuck on frontend issues.
+
+| Repo | Purpose |
+|------|---------|
+| `openaifrontend` | OpenAI-style chat frontend - use as reference for UI patterns, streaming, chat components |
+
+**When to use**: If stuck on frontend issues (chat UI, streaming display, component patterns), check these repos for working examples before reinventing.
+
 ## Important Notes
 
 1. **Never bypass security**: All file operations must be workspace-scoped

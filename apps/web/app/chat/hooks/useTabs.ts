@@ -57,6 +57,11 @@ export function useTabsManagement({
     }
 
     const convoId = onStartNewConversation?.() ?? genConvoId()
+    console.log("[AddTab]", {
+      previousActiveTabConversationId: activeTab?.conversationId,
+      newConversationId: convoId,
+      usingStartNewConversation: !!onStartNewConversation,
+    })
     const tab = addTab(workspace, convoId)
     if (tab) {
       onInitializeConversation(convoId, workspace)
@@ -80,6 +85,14 @@ export function useTabsManagement({
     (tabId: string) => {
       const tab = tabs.find(t => t.id === tabId)
       if (tab && workspace) {
+        // Debug logging
+        console.log("[TabSelect]", {
+          fromTabId: activeTab?.id,
+          fromConversationId: activeTab?.conversationId,
+          toTabId: tab.id,
+          toConversationId: tab.conversationId,
+        })
+
         // Save current input to the previous tab before switching
         if (activeTab && currentInput !== undefined) {
           setTabInputDraft(workspace, activeTab.id, currentInput)

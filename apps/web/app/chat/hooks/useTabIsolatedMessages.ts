@@ -38,6 +38,18 @@ export function useTabIsolatedMessages({ workspace, showTabs }: UseTabIsolatedMe
   // Scope busy state to the display conversation
   const busy = useIsStreamActive(displayConversationId)
 
+  // Debug logging to trace busy state issues
+  if (process.env.NODE_ENV === "development" || process.env.NEXT_PUBLIC_BRIDGE_ENV === "staging") {
+    console.log("[TabIsolatedMessages]", {
+      isTabMode,
+      activeTabId: activeTab?.id,
+      activeTabConversationId: activeTab?.conversationId,
+      displayConversationId,
+      storeConversationId,
+      busy,
+    })
+  }
+
   return {
     messages,
     busy,

@@ -225,6 +225,7 @@ export const useStreamingStore = create<StreamingStoreState>((set, get) => {
       },
 
       startStream: (conversationId: string): void => {
+        console.log("[StreamingStore] startStream:", conversationId)
         updateConversation(conversationId, {
           isStreamActive: true,
           messagesReceivedInStream: 0,
