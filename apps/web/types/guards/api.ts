@@ -32,6 +32,7 @@ export const BodySchema = z.object({
   message: z.string().min(1),
   workspace: z.string().optional(),
   conversationId: z.string().uuid(),
+  tabId: z.string().optional(), // Tab ID for routing streaming responses to correct tab
   apiKey: z
     .string()
     .refine(

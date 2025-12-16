@@ -15,7 +15,14 @@ interface GoalState {
   }
 }
 
-export const useGoalStore = create<GoalState>()(
+/**
+ * Goal Store - Persisted PR goals and project context.
+ *
+ * skipHydration: true - Prevents automatic hydration on store creation.
+ * Hydration is coordinated by HydrationManager to ensure all stores
+ * hydrate together, eliminating race conditions in E2E tests.
+ */
+export const useGoalStoreBase = create<GoalState>()(
   persist(
     set => ({
       goal: "",
@@ -31,9 +38,13 @@ export const useGoalStore = create<GoalState>()(
     {
       name: "goal-storage",
       partialize: state => ({ goal: state.goal, building: state.building, targetUsers: state.targetUsers }),
+      skipHydration: true,
     },
   ),
 )
+
+// Re-export with original name for backwards compatibility
+export const useGoalStore = useGoalStoreBase
 
 // Atomic selectors
 export const useGoal = () => useGoalStore(s => s.goal)

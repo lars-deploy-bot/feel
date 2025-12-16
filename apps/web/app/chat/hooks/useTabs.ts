@@ -2,7 +2,7 @@
 
 import { useEffect, useCallback, useRef } from "react"
 import { useTabs, useActiveTab, useTabsExpanded, useTabActions } from "@/lib/stores/tabStore"
-import { useStreamingActions } from "@/lib/stores/streamingStore"
+import { useStreamingActions, getAbortController, clearAbortController } from "@/lib/stores/streamingStore"
 
 interface UseTabsOptions {
   workspace: string | null
@@ -102,6 +102,13 @@ export function useTabsManagement({
       // Find the tab being closed to get its conversationId
       const closingTab = tabs.find(t => t.id === tabId)
       if (closingTab) {
+        // Abort the HTTP request if there's an active stream
+        const abortController = getAbortController(closingTab.conversationId)
+        if (abortController) {
+          console.log(`[TabClose] Aborting stream for tab ${tabId}, conversation ${closingTab.conversationId}`)
+          abortController.abort()
+          clearAbortController(closingTab.conversationId)
+        }
         // End any active stream for this conversation to prevent orphaned busy state
         streamingActions.endStream(closingTab.conversationId)
       }

@@ -91,7 +91,14 @@ const createHistorySlice: StateCreator<DeployStore, [], [], HistorySlice> = (set
   }
 }
 
-export const useDeployStore = create<DeployStore>()(
+/**
+ * Deploy Store - Site deployment form and history.
+ *
+ * skipHydration: true - Prevents automatic hydration on store creation.
+ * Hydration is coordinated by HydrationManager to ensure all stores
+ * hydrate together, eliminating race conditions in E2E tests.
+ */
+export const useDeployStoreBase = create<DeployStore>()(
   persist(
     (...a) => {
       const form = createFormSlice(...a) as any
@@ -115,9 +122,13 @@ export const useDeployStore = create<DeployStore>()(
         // Simple pass-through migration - no schema changes needed
         return persistedState as Partial<DeployStore>
       },
+      skipHydration: true,
     },
   ),
 )
+
+// Re-export with original name for backwards compatibility
+export const useDeployStore = useDeployStoreBase
 
 // Atomic selectors (Guide §14.1) - state values
 export const useDeployDomain = () => useDeployStore(state => state.domain)

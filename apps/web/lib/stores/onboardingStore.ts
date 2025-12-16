@@ -19,7 +19,14 @@ const initialState: Pick<OnboardingState, "siteIdea" | "templateId"> = {
   templateId: null,
 }
 
-export const useOnboardingStore = create<OnboardingState>()(
+/**
+ * Onboarding Store - User selections during site creation flow.
+ *
+ * skipHydration: true - Prevents automatic hydration on store creation.
+ * Hydration is coordinated by HydrationManager to ensure all stores
+ * hydrate together, eliminating race conditions in E2E tests.
+ */
+export const useOnboardingStoreBase = create<OnboardingState>()(
   persist(
     set => ({
       ...initialState,
@@ -30,9 +37,13 @@ export const useOnboardingStore = create<OnboardingState>()(
     }),
     {
       name: "onboarding-storage",
+      skipHydration: true,
     },
   ),
 )
+
+// Re-export with original name for backwards compatibility
+export const useOnboardingStore = useOnboardingStoreBase
 
 // Atomic selector hooks
 export const useSiteIdea = () => useOnboardingStore(state => state.siteIdea)

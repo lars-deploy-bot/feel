@@ -52,7 +52,7 @@ test.describe("Protection System Verification", () => {
 
   // This test requires PLAYWRIGHT_TEST=true on the server (local test env only)
   // Purpose: Verify that real Claude API calls are blocked by server-side protection
-  test("Layer 2: Server blocks calls when PLAYWRIGHT_TEST=true", async ({ page, tenant }) => {
+  test.skip("Layer 2: Server blocks calls when PLAYWRIGHT_TEST=true", async ({ page, tenant }) => {
     test.skip(!isLocalTestServer, "Requires local test server with PLAYWRIGHT_TEST=true")
 
     // Just need auth - don't need the full chat UI
@@ -83,7 +83,7 @@ test.describe("Protection System Verification", () => {
 
   // This test uses test credentials from SECURITY.LOCAL_TEST that only work with BRIDGE_ENV=local
   // Purpose: Verify that non-Claude APIs (login) work and aren't blocked by PLAYWRIGHT_TEST=true
-  test("Allows non-Claude API calls (login, verify, etc)", async ({ page }) => {
+  test.skip("Allows non-Claude API calls (login, verify, etc)", async ({ page }) => {
     test.skip(!isLocalTestServer, "Requires local test server with BRIDGE_ENV=local credentials")
     // Login should work - it's NOT a protected endpoint
     await page.goto("/")

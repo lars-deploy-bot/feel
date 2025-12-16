@@ -22,6 +22,7 @@ import { useApiKey, useModel } from "@/lib/stores/llmStore"
 import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
 import { isRetryableError, retryWithBackoff } from "@/lib/retry"
 import { isDevelopment } from "@/lib/stores/debug-store"
+import { useActiveTab } from "@/lib/stores/tabStore"
 
 interface UseChatMessagingOptions {
   workspace: string | null
@@ -63,6 +64,9 @@ export function useChatMessaging({
   const agentManagerAbortRef = useRef<AbortController | null>(null)
   const agentManagerTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
+  // Get active tab for message routing
+  const activeTab = useActiveTab(workspace)
+
   // Store hooks
   const streamingActions = useStreamingActions()
   const userApiKey = useApiKey()
@@ -83,12 +87,13 @@ export function useChatMessaging({
       const baseBody = {
         message,
         conversationId,
+        tabId: activeTab?.id, // Include tabId for message routing
         apiKey: userApiKey || undefined,
         model: userModel,
       }
       return isTerminal ? { ...baseBody, workspace: workspace || undefined } : baseBody
     },
-    [conversationId, userApiKey, userModel, isTerminal, workspace],
+    [conversationId, activeTab?.id, userApiKey, userModel, isTerminal, workspace],
   )
 
   const buildPromptForClaude = useCallback((userMessage: UIMessage): string => {
@@ -181,6 +186,12 @@ export function useChatMessaging({
       let receivedAnyMessage = false
       let timeoutId: NodeJS.Timeout | null = null
       let shouldStopReading = false
+
+      // Capture the tabId at stream start for validation
+      const expectedTabId = activeTab?.id
+
+      // Track seen messageIds for idempotency (prevents duplicate processing)
+      const seenMessageIds = new Set<string>()
 
       try {
         const requestBody = createRequestBody(buildPromptForClaude(userMessage))
@@ -309,6 +320,26 @@ export function useChatMessaging({
 
                 if (!currentRequestIdRef.current && eventData.requestId) {
                   currentRequestIdRef.current = eventData.requestId
+                }
+
+                // Idempotency check: skip duplicate messages
+                const messageId = (eventData as { messageId?: string }).messageId
+                if (messageId) {
+                  if (seenMessageIds.has(messageId)) {
+                    console.log(`[Chat] Duplicate messageId ${messageId}, skipping`)
+                    continue
+                  }
+                  seenMessageIds.add(messageId)
+                }
+
+                // Validate tabId matches what we sent
+                // If server sends a tabId that doesn't match, this message is for a different tab
+                const responseTabId = (eventData as { tabId?: string }).tabId
+                if (expectedTabId && responseTabId && responseTabId !== expectedTabId) {
+                  console.warn(
+                    `[Chat] TabId mismatch: expected ${expectedTabId}, got ${responseTabId}. Skipping message.`,
+                  )
+                  continue
                 }
 
                 if (isWarningMessage(eventData)) {

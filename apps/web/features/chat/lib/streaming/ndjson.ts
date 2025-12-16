@@ -70,6 +70,10 @@ export type InterruptSource = BridgeInterruptSource
 export interface BridgeMessage {
   type: BridgeStreamType
   requestId: string
+  /** Unique message ID for idempotency (prevents duplicate processing) */
+  messageId: string
+  /** Tab ID for routing responses to the correct tab (undefined for legacy clients) */
+  tabId?: string
   timestamp: string
   data: unknown
 }
@@ -192,10 +196,20 @@ export function encodeNDJSON(message: StreamMessage): Uint8Array {
  * Factory functions for creating typed Bridge messages
  */
 
+/** Counter for generating unique message IDs */
+let factoryMessageCounter = 0
+
+/** Generate a unique message ID for factory-created messages */
+function generateFactoryMessageId(requestId: string, prefix: string): string {
+  factoryMessageCounter++
+  return `${requestId}-${prefix}-${factoryMessageCounter}`
+}
+
 export function createStartMessage(requestId: string, data: BridgeStartMessage["data"]): BridgeStartMessage {
   return {
     type: BridgeStreamType.START,
     requestId,
+    messageId: generateFactoryMessageId(requestId, "start"),
     timestamp: new Date().toISOString(),
     data,
   }
@@ -205,6 +219,7 @@ export function createMessageEvent(requestId: string, data: BridgeMessageEvent["
   return {
     type: BridgeStreamType.MESSAGE,
     requestId,
+    messageId: generateFactoryMessageId(requestId, "msg"),
     timestamp: new Date().toISOString(),
     data,
   }
@@ -214,6 +229,7 @@ export function createCompleteMessage(requestId: string, data: BridgeCompleteMes
   return {
     type: BridgeStreamType.COMPLETE,
     requestId,
+    messageId: generateFactoryMessageId(requestId, "complete"),
     timestamp: new Date().toISOString(),
     data,
   }
@@ -223,6 +239,7 @@ export function createErrorMessage(requestId: string, data: BridgeErrorMessage["
   return {
     type: BridgeStreamType.ERROR,
     requestId,
+    messageId: generateFactoryMessageId(requestId, "error"),
     timestamp: new Date().toISOString(),
     data,
   }
@@ -232,6 +249,7 @@ export function createPingMessage(requestId: string): BridgePingMessage {
   return {
     type: BridgeStreamType.PING,
     requestId,
+    messageId: generateFactoryMessageId(requestId, "ping"),
     timestamp: new Date().toISOString(),
     data: {},
   }
@@ -241,6 +259,7 @@ export function createDoneMessage(requestId: string): BridgeDoneMessage {
   return {
     type: BridgeStreamType.DONE,
     requestId,
+    messageId: generateFactoryMessageId(requestId, "done"),
     timestamp: new Date().toISOString(),
     data: {},
   }
@@ -250,6 +269,7 @@ export function createInterruptMessage(requestId: string, source: InterruptSourc
   return {
     type: BridgeStreamType.INTERRUPT,
     requestId,
+    messageId: generateFactoryMessageId(requestId, "interrupt"),
     timestamp: new Date().toISOString(),
     data: {
       message: "Response interrupted by user",
@@ -269,10 +289,17 @@ export interface BridgeWarningContent extends OAuthWarningContent {
 /**
  * Create a synthetic warning message to inject into the stream
  */
-export function createWarningMessage(requestId: string, warning: OAuthWarningContent): BridgeMessageEvent {
+export function createWarningMessage(
+  requestId: string,
+  warning: OAuthWarningContent,
+  tabId?: string,
+  messageId?: string,
+): BridgeMessageEvent {
   return {
     type: BridgeStreamType.MESSAGE,
     requestId,
+    messageId: messageId ?? `${requestId}-warn-${Date.now()}`,
+    tabId,
     timestamp: new Date().toISOString(),
     data: {
       messageCount: 0, // Warning messages don't count toward message count

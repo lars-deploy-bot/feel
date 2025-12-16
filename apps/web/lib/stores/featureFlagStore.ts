@@ -32,8 +32,12 @@ export type FeatureFlagStore = FeatureFlagState & FeatureFlagActions
  * Admin users can toggle flags in Settings > Flags tab.
  *
  * Resolution: user override > global default
+ *
+ * skipHydration: true - Prevents automatic hydration on store creation.
+ * Hydration is coordinated by HydrationManager to ensure all stores
+ * hydrate together, eliminating race conditions in E2E tests.
  */
-const useFeatureFlagStoreBase = create<FeatureFlagStore>()(
+export const useFeatureFlagStoreBase = create<FeatureFlagStore>()(
   persist(
     set => {
       const actions = {
@@ -58,6 +62,7 @@ const useFeatureFlagStoreBase = create<FeatureFlagStore>()(
     {
       name: "feature-flag-overrides-v1",
       partialize: state => ({ overrides: state.overrides }),
+      skipHydration: true,
     },
   ),
 )

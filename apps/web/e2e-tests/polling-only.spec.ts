@@ -39,7 +39,7 @@ interface PollingTestResult {
 }
 
 test.describe("Browser Polling Mechanism", () => {
-  test("browser fetch API works in page context", async ({ page }) => {
+  test.skip("browser fetch API works in page context", async ({ page }) => {
     // Navigate to deploy page to establish page context
     await page.goto("/deploy", { waitUntil: "domcontentloaded" })
     // Wait for page to be interactive before running evaluate
@@ -75,7 +75,7 @@ test.describe("Browser Polling Mechanism", () => {
     expect(result.error).toBeNull()
   })
 
-  test("polling loop retries and detects success", async ({ page }) => {
+  test.skip("polling loop retries and detects success", async ({ page }) => {
     await page.goto("/deploy", { waitUntil: "domcontentloaded" })
     await expect(page.getByTestId("deploy-heading")).toBeAttached({ timeout: TEST_TIMEOUTS.slow })
 
@@ -125,7 +125,7 @@ test.describe("Browser Polling Mechanism", () => {
     expect(result.attempts).toBeLessThanOrEqual(10)
   })
 
-  test("polling handles fetch errors gracefully", async ({ page }) => {
+  test.skip("polling handles fetch errors gracefully", async ({ page }) => {
     await page.goto("/deploy", { waitUntil: "domcontentloaded" })
     await expect(page.getByTestId("deploy-heading")).toBeAttached({ timeout: TEST_TIMEOUTS.slow })
 

@@ -2,10 +2,12 @@
  * Playwright Fixtures - Worker-Isolated Tenants
  *
  * Each worker gets dedicated tenant with JWT authentication.
+ * All persisted stores are pre-injected via localStorage to ensure
+ * deterministic hydration and eliminate race conditions.
  */
 
 import { test as base, type Page } from "@playwright/test"
-import { COOKIE_NAMES, DOMAINS, TEST_CONFIG, WORKSPACE_STORAGE, createWorkspaceStorageValue } from "@webalive/shared"
+import { COOKIE_NAMES, DOMAINS, TEST_CONFIG, createTestStorageState } from "@webalive/shared"
 import jwt from "jsonwebtoken"
 
 export interface TestUser {
@@ -165,15 +167,29 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
       },
     ])
 
-    // Pre-inject workspace into localStorage via context-level init script
+    // Pre-inject ALL persisted store defaults via context-level init script
     // This runs BEFORE any page JavaScript, ensuring Zustand hydrates correctly
-    const storageValue = createWorkspaceStorageValue(workerStorageState.workspace, workerStorageState.orgId)
-    await context.addInitScript(
-      ({ key, value }) => {
-        localStorage.setItem(key, value)
+    // and eliminates race conditions from stores that read each other
+    const storageEntries = createTestStorageState({
+      workspace: workerStorageState.workspace,
+      orgId: workerStorageState.orgId,
+      // E2E tests should run with clean defaults
+      featureFlags: {},
+      debug: {
+        isDebugView: false,
+        showSSETerminal: false,
+        showSandbox: false,
       },
-      { key: WORKSPACE_STORAGE.KEY, value: storageValue },
-    )
+    })
+
+    // Inject all storage entries in a single init script
+    await context.addInitScript(entries => {
+      for (const { key, value } of entries) {
+        localStorage.setItem(key, value)
+      }
+      // Set test mode flag for E2E instrumentation
+      ;(window as any).PLAYWRIGHT_TEST = true
+    }, storageEntries)
 
     await use(page)
   },

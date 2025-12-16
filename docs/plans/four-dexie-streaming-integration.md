@@ -39,11 +39,13 @@ How streaming works with direct browser-to-broker communication.
 
 ## Shared Event Types
 
-**File: `packages/bridge-types/src/events.ts`**
+**File: `packages/shared/src/streaming/broker-events.ts`**
+
+> Note: Use existing `@webalive/shared` package - no separate bridge-types package needed.
 
 ```typescript
 // Protocol version for compatibility checks
-export const BRIDGE_PROTOCOL_VERSION = "1.0.0"
+export const BROKER_PROTOCOL_VERSION = "1.0.0"
 
 // Base event with sequence number for ordering/replay
 export interface BaseStreamEvent {
@@ -127,7 +129,7 @@ export function isStreamEvent(e: unknown): e is StreamEvent {
 }
 ```
 
-**File: `packages/bridge-types/src/tokens.ts`**
+**File: `packages/shared/src/streaming/broker-tokens.ts`**
 
 ```typescript
 export interface StreamTokenPayload {
@@ -164,13 +166,16 @@ export interface StreamStartResponse {
 }
 ```
 
-**File: `packages/bridge-types/src/index.ts`**
+**File: `packages/shared/src/streaming/index.ts`**
 
 ```typescript
-export * from "./events"
-export * from "./tokens"
+export * from "./broker-events"
+export * from "./broker-tokens"
+```
 
-export const BRIDGE_PROTOCOL_VERSION = "1.0.0"
+Then re-export from `packages/shared/src/index.ts`:
+```typescript
+export * from "./streaming"
 ```
 
 ## Client Implementation
@@ -190,7 +195,7 @@ import type {
   StreamStartResponse,
   TokenResponse,
   isStreamEvent,
-} from "@webalive/bridge-types"
+} from "@webalive/shared"
 
 interface UseStreamClientOptions {
   tabId: string
@@ -712,13 +717,13 @@ If the token expires while streaming:
 
 ## Timeline
 
-- Shared types package: 1 hour
+- Shared types (add to `@webalive/shared`): 30 min
 - Token endpoint: 1 hour
 - Stream client hook: 3 hours
 - UI integration: 2 hours
 - Testing: 3 hours
 
-**Total: ~10 hours**
+**Total: ~9.5 hours**
 
 ## Execution Order
 

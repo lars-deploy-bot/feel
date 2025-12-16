@@ -295,3 +295,153 @@ export const FEATURE_FLAGS = {
 } as const satisfies Record<string, FeatureFlagDefinition>
 
 export type FeatureFlagKey = keyof typeof FEATURE_FLAGS
+
+/**
+ * Store Storage Keys - Single Source of Truth
+ *
+ * localStorage keys for all Zustand persisted stores.
+ * Used by E2E tests to inject deterministic state.
+ *
+ * CRITICAL: Keep these in sync with the store definitions in apps/web/lib/stores/
+ */
+export const STORE_STORAGE_KEYS = {
+  WORKSPACE: "workspace-storage",
+  MESSAGE: "claude-messages-v4",
+  TAB: "claude-tabs-v1",
+  LLM: "claude-bridge-llm-settings-v2",
+  DEBUG: "claude-bridge-debug-view-v6",
+  FEATURE_FLAG: "feature-flag-overrides-v1",
+  SESSION: "claude-session-storage",
+  GOAL: "goal-storage",
+  ONBOARDING: "onboarding-storage",
+  DEPLOY: "deploy-storage",
+  USER: "user-store",
+  USER_PROMPTS: "user-prompts-store",
+} as const
+
+/**
+ * E2E Test State Builder
+ *
+ * Creates deterministic localStorage values for all persisted stores.
+ * This eliminates implicit state and ensures tests start with known values.
+ *
+ * @example
+ * ```typescript
+ * const storageEntries = createTestStorageState({
+ *   workspace: "e2e-w0.bridge.local",
+ *   orgId: "org-123",
+ * })
+ *
+ * // In Playwright fixture:
+ * for (const { key, value } of storageEntries) {
+ *   await context.addInitScript(
+ *     ({ k, v }) => localStorage.setItem(k, v),
+ *     { k: key, v: value }
+ *   )
+ * }
+ * ```
+ */
+export interface TestStorageStateOptions {
+  /** Workspace domain (e.g., "e2e-w0.bridge.local") */
+  workspace: string
+  /** Organization ID */
+  orgId: string
+  /** Optional feature flag overrides */
+  featureFlags?: Partial<Record<FeatureFlagKey, boolean>>
+  /** Optional debug settings override */
+  debug?: {
+    isDebugView?: boolean
+    showSSETerminal?: boolean
+    showSandbox?: boolean
+  }
+}
+
+export interface StorageEntry {
+  key: string
+  value: string
+}
+
+/**
+ * Creates localStorage entries for all persisted stores with explicit defaults.
+ *
+ * This ensures E2E tests don't depend on auto-hydration timing or
+ * default state that might change.
+ */
+export function createTestStorageState(options: TestStorageStateOptions): StorageEntry[] {
+  const entries: StorageEntry[] = []
+
+  // Workspace store (most critical - determines which site we're working on)
+  entries.push({
+    key: STORE_STORAGE_KEYS.WORKSPACE,
+    value: createWorkspaceStorageValue(options.workspace, options.orgId),
+  })
+
+  // Debug store - explicit defaults prevent flash of wrong UI state
+  entries.push({
+    key: STORE_STORAGE_KEYS.DEBUG,
+    value: JSON.stringify({
+      state: {
+        isDebugView: options.debug?.isDebugView ?? false,
+        showSSETerminal: options.debug?.showSSETerminal ?? false,
+        isSSETerminalMinimized: false,
+        showSandbox: options.debug?.showSandbox ?? false,
+        isSandboxMinimized: false,
+        sandboxWidth: null,
+      },
+    }),
+  })
+
+  // Feature flags - explicit empty overrides (use defaults)
+  entries.push({
+    key: STORE_STORAGE_KEYS.FEATURE_FLAG,
+    value: JSON.stringify({
+      state: {
+        overrides: options.featureFlags ?? {},
+      },
+    }),
+  })
+
+  // Goal store - explicit empty state
+  entries.push({
+    key: STORE_STORAGE_KEYS.GOAL,
+    value: JSON.stringify({
+      state: {
+        goal: "",
+        building: "",
+        targetUsers: "",
+      },
+    }),
+  })
+
+  // Onboarding store - explicit empty state
+  entries.push({
+    key: STORE_STORAGE_KEYS.ONBOARDING,
+    value: JSON.stringify({
+      state: {
+        siteIdea: "",
+        templateId: null,
+      },
+    }),
+  })
+
+  // Session store - let it initialize naturally (workspace-specific)
+  // Don't inject this - the app creates sessions as needed
+
+  // Deploy store - explicit empty state
+  entries.push({
+    key: STORE_STORAGE_KEYS.DEPLOY,
+    value: JSON.stringify({
+      state: {
+        domain: "",
+        history: [],
+      },
+      version: 1,
+    }),
+  })
+
+  // LLM store - use defaults (apiKey empty, model default)
+  // Message store - don't inject (conversation-specific)
+  // Tab store - don't inject (workspace-specific)
+
+  return entries
+}

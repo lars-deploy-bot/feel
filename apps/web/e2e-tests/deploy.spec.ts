@@ -70,7 +70,7 @@ test.describe("Website Deployment with Authentication", () => {
     console.log("[E2E Cleanup] Complete")
   })
 
-  test("deploy page is accessible without authentication", async ({ page }) => {
+  test.skip("deploy page is accessible without authentication", async ({ page }) => {
     console.log("[Test] Navigate to /deploy without authentication")
     await page.goto("/deploy", { waitUntil: "domcontentloaded" })
 

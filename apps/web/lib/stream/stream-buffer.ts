@@ -26,6 +26,8 @@ export interface StreamBufferEntry {
   conversationKey: string
   /** User who initiated the stream */
   userId: string
+  /** Tab ID that initiated this stream (for routing on reconnect) */
+  tabId?: string
   /** Current state of the stream */
   state: "streaming" | "complete" | "error"
   /** Buffered messages (NDJSON lines) */
@@ -79,7 +81,12 @@ function getRedis() {
 /**
  * Create a new stream buffer entry
  */
-export async function createStreamBuffer(requestId: string, conversationKey: string, userId: string): Promise<void> {
+export async function createStreamBuffer(
+  requestId: string,
+  conversationKey: string,
+  userId: string,
+  tabId?: string,
+): Promise<void> {
   const redis = getRedis()
   const key = `${BUFFER_KEY_PREFIX}${requestId}`
 
@@ -88,6 +95,7 @@ export async function createStreamBuffer(requestId: string, conversationKey: str
     requestId,
     conversationKey,
     userId,
+    tabId,
     state: "streaming",
     messages: [],
     startedAt: now,

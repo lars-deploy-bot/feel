@@ -62,8 +62,12 @@ export type DebugStore = DebugState & DebugActions
  * - SSE Terminal: shows dev terminal sidebar for event logging
  *
  * Follows Guide §14.3: actions grouped in stable object
+ *
+ * skipHydration: true - Prevents automatic hydration on store creation.
+ * Hydration is coordinated by HydrationManager to ensure all stores
+ * hydrate together, eliminating race conditions in E2E tests.
  */
-const useDebugStoreBase = create<DebugStore>()(
+export const useDebugStoreBase = create<DebugStore>()(
   persist(
     set => {
       const actions = {
@@ -109,6 +113,7 @@ const useDebugStoreBase = create<DebugStore>()(
         isSandboxMinimized: state.isSandboxMinimized,
         sandboxWidth: state.sandboxWidth,
       }),
+      skipHydration: true,
     },
   ),
 )

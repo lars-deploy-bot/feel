@@ -63,6 +63,11 @@ interface StreamHandlerConfig {
   childStream: ReadableStream<Uint8Array>
   conversationKey: string
   requestId: string
+  /**
+   * Tab ID for routing responses to correct tab
+   * Included in every NDJSON event so client knows where to route the message
+   */
+  tabId?: string
   conversationWorkspace: string
   /**
    * Token source determines credit billing:
@@ -165,6 +170,7 @@ async function chargeCreditsForMessage(
 async function processChildEvent(
   childEvent: ChildEvent,
   requestId: string,
+  tabId: string | undefined,
   conversationKey: string,
   workspace: string,
   tokenSource: "workspace" | "user_provided",
@@ -194,8 +200,8 @@ async function processChildEvent(
     return { isComplete: false }
   }
 
-  // Build message and send to client
-  const message = buildStreamMessage(childEvent, requestId)
+  // Build message and send to client (includes tabId for routing)
+  const message = buildStreamMessage(childEvent, requestId, tabId)
 
   // Only charge credits if using workspace credits (not user API key)
   if (tokenSource === "workspace") {
@@ -228,16 +234,39 @@ async function processChildEvent(
   return { isComplete }
 }
 
+/** Counter for generating unique message IDs within a request */
+const messageCounters = new Map<string, number>()
+
+/** Generate a unique message ID for idempotency */
+function generateMessageId(requestId: string): string {
+  const count = (messageCounters.get(requestId) ?? 0) + 1
+  messageCounters.set(requestId, count)
+  return `${requestId}-${count}`
+}
+
+/** Clean up message counter when stream ends */
+export function cleanupMessageCounter(requestId: string): void {
+  messageCounters.delete(requestId)
+}
+
 /**
  * Build a stream message from child event
+ * Includes tabId for routing and messageId for idempotency
  */
-function buildStreamMessage(childEvent: ChildEvent, requestId: string): StreamMessage | BridgeErrorMessage {
+function buildStreamMessage(
+  childEvent: ChildEvent,
+  requestId: string,
+  tabId?: string,
+): StreamMessage | BridgeErrorMessage {
   const timestamp = new Date().toISOString()
+  const messageId = generateMessageId(requestId)
 
   if (childEvent.type === "error") {
     return {
       type: BridgeStreamType.ERROR,
       requestId,
+      messageId,
+      tabId,
       timestamp,
       data: {
         error: ErrorCodes.STREAM_ERROR,
@@ -251,6 +280,8 @@ function buildStreamMessage(childEvent: ChildEvent, requestId: string): StreamMe
   return {
     type: childEvent.type,
     requestId,
+    messageId,
+    tabId,
     timestamp,
     data:
       childEvent.type === "message"
@@ -284,6 +315,7 @@ export function createNDJSONStream(config: StreamHandlerConfig): ReadableStream<
     childStream,
     conversationKey,
     requestId,
+    tabId,
     conversationWorkspace,
     tokenSource,
     model,
@@ -306,12 +338,16 @@ export function createNDJSONStream(config: StreamHandlerConfig): ReadableStream<
       // Inject OAuth warnings at the start of the stream
       if (oauthWarnings && oauthWarnings.length > 0) {
         for (const warning of oauthWarnings) {
-          const warningMessage = createWarningMessage(requestId, {
-            category: "oauth",
-            provider: warning.provider,
-            message: warning.message,
-            action: "Reconnect",
-          })
+          const warningMessage = createWarningMessage(
+            requestId,
+            {
+              category: "oauth",
+              provider: warning.provider,
+              message: warning.message,
+              action: "Reconnect",
+            },
+            tabId,
+          )
           controller.enqueue(encodeNDJSON(warningMessage))
           console.log(`[NDJSON Stream ${requestId}] Injected OAuth warning for ${warning.provider}`)
         }
@@ -352,6 +388,7 @@ export function createNDJSONStream(config: StreamHandlerConfig): ReadableStream<
               const { isComplete } = await processChildEvent(
                 childEvent,
                 requestId,
+                tabId,
                 conversationKey,
                 conversationWorkspace,
                 tokenSource,
@@ -389,6 +426,7 @@ export function createNDJSONStream(config: StreamHandlerConfig): ReadableStream<
             const { isComplete } = await processChildEvent(
               childEvent,
               requestId,
+              tabId,
               conversationKey,
               conversationWorkspace,
               tokenSource,
@@ -415,6 +453,7 @@ export function createNDJSONStream(config: StreamHandlerConfig): ReadableStream<
         const errorMessage: BridgeErrorMessage = {
           type: BridgeStreamType.ERROR,
           requestId,
+          messageId: generateMessageId(requestId),
           timestamp: new Date().toISOString(),
           data: {
             error: ErrorCodes.STREAM_ERROR,
@@ -445,6 +484,9 @@ export function createNDJSONStream(config: StreamHandlerConfig): ReadableStream<
           onStreamComplete?.()
           cleanupCalled = true
         }
+
+        // Clean up message counter to prevent memory leak
+        cleanupMessageCounter(requestId)
 
         console.log(`[NDJSON Stream ${requestId}] Stream finalized and cleaned up`)
       }

@@ -36,7 +36,17 @@ type SessionStore = SessionState & SessionActions
 
 const MAX_SESSIONS = 10
 
-const useSessionStoreBase = create<SessionStore>()(
+/**
+ * Session Store - Manages conversation sessions with persistence
+ *
+ * Enables session resumption across page reloads by persisting conversationId
+ * per workspace. Works with backend SessionStoreMemory for full resume capability.
+ *
+ * skipHydration: true - Prevents automatic hydration on store creation.
+ * Hydration is coordinated by HydrationManager to ensure all stores
+ * hydrate together, eliminating race conditions in E2E tests.
+ */
+export const useSessionStoreBase = create<SessionStore>()(
   persist(
     (set, get) => {
       const actions = {
@@ -151,6 +161,7 @@ const useSessionStoreBase = create<SessionStore>()(
         // Simple pass-through migration - no schema changes needed
         return persistedState as SessionState
       },
+      skipHydration: true,
     },
   ),
 )

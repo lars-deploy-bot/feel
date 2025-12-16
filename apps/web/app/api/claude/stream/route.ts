@@ -118,6 +118,7 @@ export async function POST(req: NextRequest) {
       message,
       workspace: requestWorkspace,
       conversationId,
+      tabId,
       apiKey: userApiKey,
       model: userModel,
       projectId,
@@ -289,7 +290,7 @@ export async function POST(req: NextRequest) {
     // Create stream buffer for reconnection support
     // Buffer persists to Redis so users can retrieve missed messages if they disconnect
     try {
-      await createStreamBuffer(requestId, convKey, user.id)
+      await createStreamBuffer(requestId, convKey, user.id, tabId)
       logger.log("Stream buffer created for reconnection support")
     } catch (bufferError) {
       // Non-fatal: continue without buffering if Redis unavailable
@@ -525,6 +526,7 @@ export async function POST(req: NextRequest) {
       childStream,
       conversationKey: convKey,
       requestId,
+      tabId, // Tab ID for routing responses to correct tab
       conversationWorkspace: resolvedWorkspaceName,
       tokenSource,
       model: effectiveModel, // For model-specific credit calculation

@@ -77,11 +77,17 @@ export default async function globalSetup(config: FullConfig) {
   const runId = `E2E_${new Date().toISOString()}`
   process.env.E2E_RUN_ID = runId
 
-  const workers = config.workers ?? 4
+  // In multi-port mode, each project is a separate "worker"
+  // In single-server mode, workers share one server
+  const isMultiPort = config.projects.length > 1 && config.projects.every(p => p.use?.baseURL)
+  const workers = isMultiPort ? config.projects.length : (config.workers ?? 4)
+
+  // Use first project's baseURL (in multi-port, all go to their own server for tenant verification)
   const baseUrl = config.projects[0]?.use?.baseURL || TEST_CONFIG.BASE_URL
 
   console.log(`\n🚀 [Global Setup] Bootstrapping ${workers} worker tenants`)
-  console.log(`📝 [Global Setup] Run ID: ${runId}\n`)
+  console.log(`📝 [Global Setup] Run ID: ${runId}`)
+  console.log(`🔧 [Global Setup] Mode: ${isMultiPort ? "multi-port" : "single-server"}\n`)
 
   // Get test secret for staging/production E2E tests
   const testSecret = process.env.E2E_TEST_SECRET

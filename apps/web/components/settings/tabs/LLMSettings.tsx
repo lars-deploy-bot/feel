@@ -1,5 +1,6 @@
 "use client"
 
+import { useBilling } from "@flowglad/nextjs"
 import { Eye, EyeOff } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useAuth } from "@/features/deployment/hooks/useAuth"
@@ -18,12 +19,16 @@ export function LLMSettings({ onClose }: SettingsTabProps) {
   const [showApiKey, setShowApiKey] = useState(false)
   const [apiKeyInput, setApiKeyInput] = useState("")
   const [isSaved, setIsSaved] = useState(false)
+  const [isUpgrading, setIsUpgrading] = useState(false)
 
   // Credits state
   const credits = useCredits()
   const creditsLoading = useCreditsLoading()
   const creditsError = useCreditsError()
   const { fetchCredits } = useUserActions()
+
+  // FlowGlad billing state
+  const billing = useBilling()
 
   // Check if user can select any model (server-side flag based on UNRESTRICTED_MODEL_EMAILS env var)
   const { user: sessionUser } = useAuth()
@@ -81,16 +86,76 @@ export function LLMSettings({ onClose }: SettingsTabProps) {
         {/* Credits Display - Only show when using workspace credits */}
         {!apiKey && (
           <div className="animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-50">
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-medium text-black dark:text-white">Credits</h4>
-              <span className="text-lg font-semibold text-black dark:text-white">
-                {creditsLoading ? "Loading..." : creditsError ? "—" : credits != null ? credits.toFixed(2) : "—"}
-              </span>
-            </div>
+            {(() => {
+              const isLow = credits != null && credits < 5
+              const handleUpgrade = async () => {
+                if (!billing.loaded) return
+                setIsUpgrading(true)
+                try {
+                  const products = billing.pricingModel?.products
+                  const defaultProduct = products?.[0]
+                  if (billing.createCheckoutSession && defaultProduct?.defaultPrice) {
+                    const result = await billing.createCheckoutSession({
+                      priceId: defaultProduct.defaultPrice.id,
+                      successUrl: `${window.location.origin}/chat?upgraded=true`,
+                      cancelUrl: window.location.href,
+                      autoRedirect: true,
+                    })
+                    if (result && "url" in result && result.url) {
+                      window.location.href = result.url
+                    }
+                  } else if (billing.billingPortalUrl) {
+                    window.open(billing.billingPortalUrl, "_blank")
+                  }
+                } catch (err) {
+                  console.error("Upgrade failed:", err)
+                } finally {
+                  setIsUpgrading(false)
+                }
+              }
+
+              return isLow ? (
+                <button
+                  type="button"
+                  onClick={handleUpgrade}
+                  disabled={isUpgrading || !billing.loaded}
+                  className="w-full p-4 rounded-lg border-2 border-dashed border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-950/30 hover:bg-orange-100 dark:hover:bg-orange-950/50 transition-colors disabled:opacity-50"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="text-left">
+                      <p className="text-sm font-medium text-orange-900 dark:text-orange-100">Running low on credits</p>
+                      <p className="text-xs text-orange-700 dark:text-orange-300 mt-0.5">
+                        {credits?.toFixed(2)} remaining
+                      </p>
+                    </div>
+                    <span className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded-md transition-colors">
+                      {isUpgrading ? "..." : "Top up"}
+                    </span>
+                  </div>
+                </button>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-medium text-black dark:text-white">Credits</h4>
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg font-semibold text-black dark:text-white">
+                      {creditsLoading ? "..." : creditsError ? "—" : credits != null ? credits.toFixed(2) : "—"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleUpgrade}
+                      disabled={isUpgrading || !billing.loaded}
+                      className="px-2.5 py-1 text-xs font-medium text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 rounded transition-colors disabled:opacity-50"
+                    >
+                      {isUpgrading ? "..." : "Get more"}
+                    </button>
+                  </div>
+                </div>
+              )
+            })()}
           </div>
         )}
 
-        <div className="animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-75">
+        <div className="animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-100">
           <label htmlFor="anthropic-api-key" className="block text-sm font-medium text-black dark:text-white mb-2">
             Your API Key
             <span className="ml-2 text-xs text-black/50 dark:text-white/50">(optional)</span>
@@ -152,7 +217,7 @@ export function LLMSettings({ onClose }: SettingsTabProps) {
           </div>
         </div>
 
-        <div className="animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-100">
+        <div className="animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-150">
           <label htmlFor="claude-model" className="block text-sm font-medium text-black dark:text-white mb-2">
             Model
           </label>
@@ -175,7 +240,7 @@ export function LLMSettings({ onClose }: SettingsTabProps) {
           </select>
         </div>
 
-        <div className="p-4 bg-black/5 dark:bg-white/5 rounded-lg border border-black/10 dark:border-white/10 animate-in fade-in-0 slide-in-from-bottom-2 duration-300 delay-150">
+        <div className="p-4 bg-black/5 dark:bg-white/5 rounded-lg border border-black/10 dark:border-white/10 animate-in fade-in-0 slide-in-from-bottom-2 duration-300 delay-200">
           <p className="text-xs text-black/70 dark:text-white/70 leading-relaxed">
             Your API key is stored only in your browser (hidden from view). When you send messages, we use your key to
             call Anthropic&apos;s API—but we never save it on our servers.

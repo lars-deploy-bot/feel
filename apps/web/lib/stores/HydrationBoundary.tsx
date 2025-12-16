@@ -1,24 +1,18 @@
 "use client"
 
 import { useEffect, useRef, useSyncExternalStore } from "react"
-// Direct imports - these are all client-only stores
-import { useLLMStoreBase } from "./llmStore"
-import { useMessageStore } from "./messageStore"
-import { useTabStore } from "./tabStore"
-import { useWorkspaceStoreBase } from "./workspaceStore"
 
-/**
- * Persisted stores that need coordinated hydration.
- *
- * Each store has `skipHydration: true` to prevent automatic hydration.
- * HydrationManager calls rehydrate() for all stores together.
- */
-const PERSISTED_STORES = [
-  { name: "workspace", store: useWorkspaceStoreBase },
-  { name: "message", store: useMessageStore },
-  { name: "tab", store: useTabStore },
-  { name: "llm", store: useLLMStoreBase },
-] as const
+// Import store registrations - this triggers registration of all stores
+import "./store-registrations"
+
+// Import hydration functions from registry
+import { hydrateAll, isAllHydrated, type E2EReadiness } from "./hydration-registry"
+
+// Re-export the E2EReadiness type for external use
+export type { E2EReadiness }
+
+// For backwards compatibility - export the old name
+export type E2EMetrics = E2EReadiness
 
 // Global hydration state - shared across all components
 let _appHydrated = false
@@ -26,10 +20,6 @@ const hydrationListeners = new Set<() => void>()
 
 function setAppHydrated(value: boolean): void {
   _appHydrated = value
-  // Set window flag for E2E tests (explicit synchronization primitive)
-  if (typeof window !== "undefined") {
-    ;(window as unknown as { __APP_HYDRATED__: boolean }).__APP_HYDRATED__ = value
-  }
   // Notify all listeners
   Array.from(hydrationListeners).forEach(listener => {
     listener()
@@ -59,14 +49,21 @@ export function useAppHydrated(): boolean {
  * Place this component once in the root layout. It:
  * 1. Calls persist.rehydrate() for every registered store
  * 2. Waits for all stores to finish hydrating
- * 3. Sets global _appHydrated flag + window.__APP_HYDRATED__ for E2E
+ * 3. Sets global _appHydrated flag + window.__E2E_APP_READY__ for E2E
+ * 4. Records timing metrics for E2E debugging
  *
  * Why coordinated hydration:
  * - All stores hydrate together (no partial state)
  * - Single synchronization point for tests
  * - No per-component "mounted" hacks needed
+ * - Eliminates race conditions between stores
  *
- * @see https://zustand.docs.pmnd.rs/integrations/persisting-store-data
+ * Store registration:
+ * - Stores register themselves via registerStore() in store-registrations.ts
+ * - No hardcoded list - just import store-registrations to trigger registration
+ * - Priority levels control hydration order (lower = first)
+ *
+ * @see docs/architecture/e2e-hydration-architecture.md
  */
 export function HydrationManager(): null {
   const hasStarted = useRef(false)
@@ -76,16 +73,15 @@ export function HydrationManager(): null {
     if (hasStarted.current) return
     hasStarted.current = true
 
-    // Rehydrate all stores synchronously (they're already imported)
-    const rehydrationPromises = PERSISTED_STORES.map(async ({ name, store }) => {
-      if (!store.persist.hasHydrated()) {
-        console.log(`[HydrationManager] Rehydrating ${name}`)
-        await store.persist.rehydrate()
-      }
-    })
+    // Check if already hydrated (e.g., hot reload)
+    if (isAllHydrated()) {
+      console.log("[HydrationManager] Already hydrated, skipping")
+      setAppHydrated(true)
+      return
+    }
 
-    Promise.all(rehydrationPromises).then(() => {
-      console.log("[HydrationManager] All stores hydrated")
+    // Delegate to hydration registry
+    hydrateAll().then(() => {
       setAppHydrated(true)
     })
   }, [])
