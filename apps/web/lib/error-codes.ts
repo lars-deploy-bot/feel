@@ -49,6 +49,9 @@ export const ErrorCodes = {
   FILE_DELETE_ERROR: "FILE_DELETE_ERROR",
   FILE_PROTECTED: "FILE_PROTECTED",
   FILE_NOT_FOUND: "FILE_NOT_FOUND",
+  PATH_IS_DIRECTORY: "PATH_IS_DIRECTORY",
+  BINARY_FILE_NOT_SUPPORTED: "BINARY_FILE_NOT_SUPPORTED",
+  FILE_TOO_LARGE_TO_READ: "FILE_TOO_LARGE_TO_READ",
 
   // Package management errors (6.5xxx)
   PACKAGE_INSTALL_FAILED: "PACKAGE_INSTALL_FAILED",
@@ -217,6 +220,21 @@ export function getErrorMessage(code: ErrorCode, details?: Record<string, any>):
 
     case ErrorCodes.FILE_NOT_FOUND:
       return details?.filePath ? `The file '${details.filePath}' does not exist.` : "The file does not exist."
+
+    case ErrorCodes.PATH_IS_DIRECTORY:
+      return details?.filePath
+        ? `'${details.filePath}' is a directory, not a file. I can only read files.`
+        : "This path is a directory, not a file. I can only read files."
+
+    case ErrorCodes.BINARY_FILE_NOT_SUPPORTED:
+      return details?.extension
+        ? `I cannot read binary files (.${details.extension}). Please use a different tool for binary files.`
+        : "I cannot read binary files. Please use a different tool for binary files."
+
+    case ErrorCodes.FILE_TOO_LARGE_TO_READ:
+      return details?.size
+        ? `This file is too large to read (${Math.round(details.size / 1024)}KB). Maximum size is 1MB.`
+        : "This file is too large to read. Maximum size is 1MB."
 
     case ErrorCodes.PACKAGE_INSTALL_FAILED:
       return details?.package

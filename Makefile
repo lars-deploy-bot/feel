@@ -127,7 +127,7 @@ test\:shell:
 
 static-check:
 	@echo "$(BLUE)Running static checks (type-check, lint, format, unit tests)...$(NC)"
-	@bun run static-check
+	@NODE_OPTIONS="--max-old-space-size=4096" bun run static-check
 
 # Never inspect
 wash:

@@ -125,10 +125,9 @@ export async function POST(request: NextRequest) {
     // Check for binary files
     const ext = filePath.toLowerCase().split(".").pop() || ""
     if (BINARY_EXTENSIONS.has(ext)) {
-      return NextResponse.json({
-        ok: false,
-        error: "Cannot read binary file",
-        binary: true,
+      return createErrorResponse(ErrorCodes.BINARY_FILE_NOT_SUPPORTED, 400, {
+        requestId,
+        filePath,
         extension: ext,
       })
     }
@@ -138,10 +137,11 @@ export async function POST(request: NextRequest) {
 
       // Check file size after reading (could also use stat before)
       if (content.length > MAX_FILE_SIZE) {
-        return NextResponse.json({
-          ok: false,
-          error: `File too large (${Math.round(content.length / 1024)}KB). Max size is 1MB.`,
-          tooLarge: true,
+        return createErrorResponse(ErrorCodes.FILE_TOO_LARGE_TO_READ, 400, {
+          requestId,
+          filePath,
+          size: content.length,
+          maxSize: MAX_FILE_SIZE,
         })
       }
 
@@ -165,10 +165,9 @@ export async function POST(request: NextRequest) {
         })
       }
       if (err.code === "EISDIR") {
-        return NextResponse.json({
-          ok: false,
-          error: "Path is a directory, not a file",
-          isDirectory: true,
+        return createErrorResponse(ErrorCodes.PATH_IS_DIRECTORY, 400, {
+          requestId,
+          filePath,
         })
       }
       console.error(`[Files/Read ${requestId}] Error reading file:`, fsError)
