@@ -117,7 +117,7 @@ export function SandboxProvider({ children }: { children: ReactNode }) {
   )
 
   const activateSelector = useCallback(() => {
-    setSelectorActive(true)
+    setSelectorActive(prev => !prev)
   }, [])
 
   const registerElementSelectHandler = useCallback((handler: (element: ElementSelection) => void) => {

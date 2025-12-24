@@ -24,9 +24,24 @@ interface ToolResultContent {
   tool_input?: unknown // Added by our parser - the original tool input
 }
 
+// SDK image content block (multimodal)
+interface ImageContentBlock {
+  type: "image"
+  source: {
+    type: "base64"
+    media_type: string
+    data: string
+  }
+}
+
 // Type guard to check if a content block is a tool result
-function isToolResult(content: any): content is ToolResultContent {
-  return content && content.type === "tool_result"
+function isToolResult(content: unknown): content is ToolResultContent {
+  return content !== null && typeof content === "object" && (content as any).type === "tool_result"
+}
+
+// Type guard to check if a content block is an image
+function isImageContent(content: unknown): content is ImageContentBlock {
+  return content !== null && typeof content === "object" && (content as any).type === "image"
 }
 
 interface ToolResultMessageProps {
@@ -43,8 +58,22 @@ export function ToolResultMessage({ content }: ToolResultMessageProps) {
           if (isToolResult(result)) {
             return <ToolResult key={index} result={result} />
           }
+          // Handle SDK image content blocks (base64 multimodal images)
+          if (isImageContent(result)) {
+            return <ImagePreview key={index} image={result} />
+          }
           return null
         })}
+    </div>
+  )
+}
+
+/** Render a base64 image from SDK multimodal content */
+function ImagePreview({ image }: { image: ImageContentBlock }) {
+  const dataUrl = `data:${image.source.media_type};base64,${image.source.data}`
+  return (
+    <div className="my-2 rounded-lg overflow-hidden border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 inline-block">
+      <img src={dataUrl} alt="Analysis result" className="max-w-64 max-h-64 object-contain" loading="lazy" />
     </div>
   )
 }

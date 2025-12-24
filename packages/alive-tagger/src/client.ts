@@ -468,12 +468,18 @@ export function initAliveTagger(): () => void {
     hoveredElement = null
   }
 
-  // Listen for activation message from parent (button click)
+  // Listen for activation/deactivation message from parent (button click)
   function handleMessage(e: MessageEvent): void {
     if (e.data?.type === "alive-tagger-activate") {
       isActive = true
       document.body.classList.add("alive-tagger-active")
       console.log("[alive-tagger] Activated via button")
+    } else if (e.data?.type === "alive-tagger-deactivate") {
+      isActive = false
+      document.body.classList.remove("alive-tagger-active")
+      ui.hide()
+      hoveredElement = null
+      console.log("[alive-tagger] Deactivated via button")
     }
   }
 

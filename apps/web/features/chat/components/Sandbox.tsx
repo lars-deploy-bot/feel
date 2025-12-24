@@ -133,10 +133,13 @@ export function Sandbox() {
     }
   }
 
-  // Send activation message to iframe when selectorActive changes
+  // Send activation/deactivation message to iframe when selectorActive changes
   useEffect(() => {
-    if (selectorActive && iframeRef.current?.contentWindow) {
-      iframeRef.current.contentWindow.postMessage({ type: "alive-tagger-activate" }, "*")
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: selectorActive ? "alive-tagger-activate" : "alive-tagger-deactivate" },
+        "*",
+      )
     }
   }, [selectorActive])
 
