@@ -225,6 +225,7 @@ function ChatPageContent() {
     handleTabClose,
     handleTabRename,
     handleToggleTabs,
+    handleCollapseTabsAndClear,
     handleOpenConversationInTab,
   } = useTabsManagement({
     workspace,
@@ -345,8 +346,9 @@ function ChatPageContent() {
     if (storeConversationId) {
       streamingActions.clearConversation(storeConversationId)
     }
-    // Always create a new conversation in the current/active tab
-    // "New tab" button in TabBar is for creating new tabs
+    // Collapse and clear tabs - a new conversation is a fresh start
+    handleCollapseTabsAndClear()
+    // Create a new conversation
     const newId = startNewConversation()
     // Initialize the new conversation in message store immediately
     // (don't rely on useEffect timing)
@@ -356,7 +358,14 @@ function ChatPageContent() {
     // Clear input for new conversation
     setMsg("")
     setTimeout(() => chatInputRef.current?.focus(), 0)
-  }, [storeConversationId, streamingActions, startNewConversation, workspace, initializeConversation])
+  }, [
+    storeConversationId,
+    streamingActions,
+    handleCollapseTabsAndClear,
+    startNewConversation,
+    workspace,
+    initializeConversation,
+  ])
 
   const handleInsertTemplate = useCallback((prompt: string) => {
     setMsg(prompt)

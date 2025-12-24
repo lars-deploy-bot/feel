@@ -34,6 +34,7 @@ interface TabStoreActions {
   setActiveTab: (workspace: string, tabId: string) => void
   renameTab: (workspace: string, tabId: string, name: string) => void
   toggleTabsExpanded: (workspace: string) => void
+  collapseTabsAndClear: (workspace: string) => void
   openConversationInTab: (workspace: string, conversationId: string, name?: string) => Tab | null
   setTabInputDraft: (workspace: string, tabId: string, draft: string) => void
 }
@@ -121,6 +122,27 @@ export const useTabStore = create<TabStore>()(
             tabsExpandedByWorkspace: {
               ...s.tabsExpandedByWorkspace,
               [workspace]: !s.tabsExpandedByWorkspace[workspace],
+            },
+          }))
+        },
+
+        collapseTabsAndClear: workspace => {
+          set(s => ({
+            tabsExpandedByWorkspace: {
+              ...s.tabsExpandedByWorkspace,
+              [workspace]: false,
+            },
+            tabsByWorkspace: {
+              ...s.tabsByWorkspace,
+              [workspace]: [],
+            },
+            activeTabByWorkspace: {
+              ...s.activeTabByWorkspace,
+              [workspace]: undefined,
+            },
+            nextTabNumberByWorkspace: {
+              ...s.nextTabNumberByWorkspace,
+              [workspace]: 1,
             },
           }))
         },
@@ -217,6 +239,7 @@ export const useTabActions = (): TabStoreActions =>
       setActiveTab: s.setActiveTab,
       renameTab: s.renameTab,
       toggleTabsExpanded: s.toggleTabsExpanded,
+      collapseTabsAndClear: s.collapseTabsAndClear,
       openConversationInTab: s.openConversationInTab,
       setTabInputDraft: s.setTabInputDraft,
     })),

@@ -134,7 +134,13 @@ export function Sandbox() {
   }
 
   // Send activation/deactivation message to iframe when selectorActive changes
+  const isFirstRender = useRef(true)
   useEffect(() => {
+    // Skip first render - only send when user toggles the selector
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      return
+    }
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
         { type: selectorActive ? "alive-tagger-activate" : "alive-tagger-deactivate" },

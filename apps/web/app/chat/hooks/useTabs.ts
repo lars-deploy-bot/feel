@@ -36,8 +36,16 @@ export function useTabsManagement({
   const tabs = useTabs(workspace)
   const activeTab = useActiveTab(workspace)
   const tabsExpanded = useTabsExpanded(workspace)
-  const { addTab, removeTab, setActiveTab, renameTab, toggleTabsExpanded, openConversationInTab, setTabInputDraft } =
-    useTabActions()
+  const {
+    addTab,
+    removeTab,
+    setActiveTab,
+    renameTab,
+    toggleTabsExpanded,
+    collapseTabsAndClear,
+    openConversationInTab,
+    setTabInputDraft,
+  } = useTabActions()
   const streamingActions = useStreamingActions()
 
   // Workspace-scoped action wrapper
@@ -137,6 +145,11 @@ export function useTabsManagement({
 
   const handleToggleTabs = useCallback(() => withWorkspace(toggleTabsExpanded)(), [withWorkspace, toggleTabsExpanded])
 
+  const handleCollapseTabsAndClear = useCallback(
+    () => withWorkspace(collapseTabsAndClear)(),
+    [withWorkspace, collapseTabsAndClear],
+  )
+
   const handleOpenConversationInTab = useCallback(
     (convoId: string, name?: string) => {
       if (!workspace || !tabsExpanded) return
@@ -201,6 +214,7 @@ export function useTabsManagement({
     handleTabClose,
     handleTabRename,
     handleToggleTabs,
+    handleCollapseTabsAndClear,
     handleOpenConversationInTab,
   }
 }
