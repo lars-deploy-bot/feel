@@ -47,6 +47,10 @@ interface SandboxContextType {
   onElementSelect: ((element: ElementSelection) => void) | null
   /** Register the callback for element selection */
   registerElementSelectHandler: (handler: (element: ElementSelection) => void) => void
+  /** Whether element selector mode is active */
+  selectorActive: boolean
+  /** Activate element selector mode in the preview iframe */
+  activateSelector: () => void
   /** Preview panel state */
   preview: PreviewState
   /** Set preview mode */
@@ -83,6 +87,7 @@ export function SandboxProvider({ children }: { children: ReactNode }) {
   const [selectedElement, setSelectedElementState] = useState<ElementSelection | null>(null)
   const [onElementSelect, setOnElementSelect] = useState<((element: ElementSelection) => void) | null>(null)
   const [preview, setPreview] = useState<PreviewState>(DEFAULT_PREVIEW_STATE)
+  const [selectorActive, setSelectorActive] = useState(false)
 
   const addEntry = (entry: Omit<SandboxEntry, "id" | "timestamp">) => {
     const newEntry: SandboxEntry = {
@@ -100,12 +105,20 @@ export function SandboxProvider({ children }: { children: ReactNode }) {
   const setSelectedElement = useCallback(
     (element: ElementSelection | null) => {
       setSelectedElementState(element)
+      // Deactivate selector when element is selected
+      if (element) {
+        setSelectorActive(false)
+      }
       if (element && onElementSelect) {
         onElementSelect(element)
       }
     },
     [onElementSelect],
   )
+
+  const activateSelector = useCallback(() => {
+    setSelectorActive(true)
+  }, [])
 
   const registerElementSelectHandler = useCallback((handler: (element: ElementSelection) => void) => {
     setOnElementSelect(() => handler)
@@ -170,6 +183,8 @@ export function SandboxProvider({ children }: { children: ReactNode }) {
         setSelectedElement,
         onElementSelect,
         registerElementSelectHandler,
+        selectorActive,
+        activateSelector,
         preview,
         setPreviewMode,
         openFile,

@@ -45,6 +45,9 @@ export const BodySchema = z.object({
   projectId: z.string().optional(),
   userId: z.string().optional(),
   additionalContext: z.string().optional(),
+  // Image paths to fetch and include for Claude to analyze
+  // Can be relative paths (/_images/...) or absolute URLs
+  analyzeImageUrls: z.array(z.string().min(1)).optional(),
 })
 
 export type ValidatedBody = z.infer<typeof BodySchema>

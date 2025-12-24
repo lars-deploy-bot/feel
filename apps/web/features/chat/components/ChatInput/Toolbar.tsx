@@ -1,12 +1,14 @@
 "use client"
 
-import { Camera, ClipboardList, Copy } from "lucide-react"
+import { Camera, ClipboardList, Copy, MousePointer2 } from "lucide-react"
 import type { RefObject } from "react"
 import { useState } from "react"
 import toast from "react-hot-toast"
+import { useSandboxContext } from "@/features/chat/lib/sandbox-context"
 import { formatMessagesAsText } from "@/features/chat/utils/format-messages"
 import { useUserPrompts } from "@/lib/providers/UserPromptsStoreProvider"
 import { useMessages } from "@/lib/stores/messageStore"
+import { useSandbox } from "@/lib/stores/debug-store"
 import { useChatInput } from "./ChatInputContext"
 
 interface ToolbarProps {
@@ -20,6 +22,8 @@ export function Toolbar({ fileInputRef, onAddUserPrompt }: ToolbarProps) {
   const [showPromptMenu, setShowPromptMenu] = useState(false)
   const prompts = useUserPrompts()
   const messages = useMessages()
+  const { activateSelector, selectorActive } = useSandboxContext()
+  const isSandboxOpen = useSandbox()
 
   if (!config.enableCamera) {
     return null
@@ -128,6 +132,23 @@ export function Toolbar({ fileInputRef, onAddUserPrompt }: ToolbarProps) {
           </>
         )}
       </div>
+
+      {/* Select Element - only show when sandbox preview is open */}
+      {isSandboxOpen && (
+        <button
+          type="button"
+          onClick={activateSelector}
+          className={`flex items-center justify-center w-10 h-10 rounded-md transition-colors ${
+            selectorActive
+              ? "bg-purple-500/20 text-purple-400"
+              : "hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white"
+          }`}
+          aria-label="Select element"
+          title="Select element from preview (or hold Cmd/Ctrl)"
+        >
+          <MousePointer2 className="size-5" />
+        </button>
+      )}
 
       <button
         type="button"

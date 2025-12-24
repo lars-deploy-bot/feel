@@ -468,14 +468,24 @@ export function initAliveTagger(): () => void {
     hoveredElement = null
   }
 
+  // Listen for activation message from parent (button click)
+  function handleMessage(e: MessageEvent): void {
+    if (e.data?.type === "alive-tagger-activate") {
+      isActive = true
+      document.body.classList.add("alive-tagger-active")
+      console.log("[alive-tagger] Activated via button")
+    }
+  }
+
   // Add event listeners
   document.addEventListener("keydown", handleKeyDown, true)
   document.addEventListener("keyup", handleKeyUp, true)
   document.addEventListener("mousemove", handleMouseMove, true)
   document.addEventListener("click", handleClick, true)
   window.addEventListener("blur", handleBlur)
+  window.addEventListener("message", handleMessage)
 
-  console.log("[alive-tagger] Ready! Hold Cmd/Ctrl and click to select elements.")
+  console.log("[alive-tagger] Ready! Hold Cmd/Ctrl or click the select button to select elements.")
 
   // Return cleanup function
   return () => {
@@ -484,6 +494,7 @@ export function initAliveTagger(): () => void {
     document.removeEventListener("mousemove", handleMouseMove, true)
     document.removeEventListener("click", handleClick, true)
     window.removeEventListener("blur", handleBlur)
+    window.removeEventListener("message", handleMessage)
 
     // Remove UI elements
     styleEl.remove()

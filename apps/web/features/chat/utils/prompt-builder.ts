@@ -1,15 +1,40 @@
-import type { Attachment, UploadedFileAttachment } from "../components/ChatInput/types"
+import type { Attachment, LibraryImageAttachment, UploadedFileAttachment } from "../components/ChatInput/types"
+
+/**
+ * Result of building prompt with attachments
+ */
+export interface PromptBuildResult {
+  /** The text prompt to send to Claude */
+  prompt: string
+  /** URLs of images that should be fetched and sent as visual content to Claude */
+  analyzeImageUrls: string[]
+}
 
 /**
  * Builds the final prompt with attachments:
  * - User prompts: Prepended to the message
  * - Uploaded files: Instructions to use Read tool to analyze
- * - Library images: Wrapped with structured context and usage instructions
+ * - Library images (website mode): Wrapped with structured context and usage instructions
+ * - Library images (analyze mode): Treated as images for Claude to visually analyze
  * - Supertemplates: Appended as MCP tool triggers
+ *
+ * @returns Object with prompt text and URLs of images to analyze
  */
 export function buildPromptWithAttachments(message: string, attachments: Attachment[]): string {
+  return buildPromptWithAttachmentsEx(message, attachments).prompt
+}
+
+/**
+ * Extended version that also returns analyze image URLs
+ */
+export function buildPromptWithAttachmentsEx(message: string, attachments: Attachment[]): PromptBuildResult {
   const uploadedFiles = attachments.filter((a): a is UploadedFileAttachment => a.kind === "uploaded-file")
-  const libraryImages = attachments.filter(a => a.kind === "library-image")
+
+  // Split library images by mode
+  const allLibraryImages = attachments.filter((a): a is LibraryImageAttachment => a.kind === "library-image")
+  const websiteImages = allLibraryImages.filter(a => a.mode !== "analyze")
+  const analyzeImages = allLibraryImages.filter(a => a.mode === "analyze")
+
   const supertemplates = attachments.filter(a => a.kind === "supertemplate")
   const userPrompts = attachments.filter(a => a.kind === "user-prompt")
 
@@ -42,9 +67,9 @@ The Read tool supports images (visual analysis), PDFs (text extraction), and tex
 ${prompt}`
   }
 
-  // Wrap with library images context if any exist
-  if (libraryImages.length > 0) {
-    const imagesList = libraryImages
+  // Wrap with library images context if any exist (website mode only)
+  if (websiteImages.length > 0) {
+    const imagesList = websiteImages
       .map(img => {
         const [domain, hash] = img.photobookKey.split("/")
         if (!domain || !hash) {
@@ -58,7 +83,7 @@ ${prompt}`
 
     // Prepend images context and wrap original message
     prompt = `<images_attached>
-The user has attached ${libraryImages.length} image${libraryImages.length > 1 ? "s" : ""} from their photobook:
+The user has attached ${websiteImages.length} image${websiteImages.length > 1 ? "s" : ""} from their photobook:
 
 ${imagesList}
 
@@ -67,13 +92,26 @@ IMPORTANT: These are WEB URLs, NOT files in your workspace. Do NOT try to read, 
 To use them, simply add them to the HTML/code with:
 <img src="/_images/t/[domain]/o/[hash]/v/orig.webp" alt="..." />
 
-The user is suggesting you might want to add ${libraryImages.length > 1 ? "these images" : "this image"} to the website.
+The user is suggesting you might want to add ${websiteImages.length > 1 ? "these images" : "this image"} to the website.
 </images_attached>
 
 <user_message>
 ${prompt}
 </user_message>`
   }
+
+  // Collect analyze mode image URLs - server will fetch, save to .uploads/, and add Read instructions
+  const analyzeImageUrls = analyzeImages
+    .map(img => {
+      const [domain, hash] = img.photobookKey.split("/")
+      if (!domain || !hash) {
+        console.warn(`Invalid photobookKey format: ${img.photobookKey}`)
+        return null
+      }
+      // Use orig variant for best quality analysis
+      return `/_images/t/${domain}/o/${hash}/v/orig.webp`
+    })
+    .filter((url): url is string => url !== null)
 
   // Append supertemplate triggers if any exist
   if (supertemplates.length > 0) {
@@ -83,7 +121,7 @@ ${prompt}
     prompt = `${prompt}\n\n${supertemplateTriggers}`
   }
 
-  return prompt
+  return { prompt, analyzeImageUrls }
 }
 
 /**

@@ -1,6 +1,6 @@
 {
   "name": "@alive-game/alive-tagger",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Element selection and source tagging for Claude Bridge sandbox",
   "type": "module",
   "main": "./dist/index.js",

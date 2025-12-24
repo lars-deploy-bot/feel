@@ -1,15 +1,21 @@
 "use client"
 
-import { ClipboardList, FileText, Sparkles, X } from "lucide-react"
+import { ClipboardList, Eye, FileText, Globe, Sparkles, X } from "lucide-react"
 import Image from "next/image"
 import { useChatInput } from "./ChatInputContext"
-import { isFileUpload, isImageAttachment, isSuperTemplateAttachment, isUserPromptAttachment } from "./types"
+import {
+  isFileUpload,
+  isImageAttachment,
+  isLibraryImage,
+  isSuperTemplateAttachment,
+  isUserPromptAttachment,
+} from "./types"
 
 /**
  * PromptBarAttachmentGrid - Shows attachments in the chat input bar (before sending)
  */
 export function PromptBarAttachmentGrid() {
-  const { attachments, removeAttachment } = useChatInput()
+  const { attachments, removeAttachment, toggleImageMode } = useChatInput()
 
   if (attachments.length === 0) return null
 
@@ -85,6 +91,39 @@ export function PromptBarAttachmentGrid() {
               </span>
             )}
           </div>
+
+          {/* Mode toggle for library images */}
+          {isLibraryImage(attachment) && (
+            <button
+              type="button"
+              onClick={e => {
+                e.stopPropagation()
+                toggleImageMode(attachment.id)
+              }}
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ml-1"
+              style={{
+                backgroundColor: attachment.mode === "analyze" ? "rgba(147, 51, 234, 0.1)" : "rgba(59, 130, 246, 0.1)",
+                color: attachment.mode === "analyze" ? "rgb(147, 51, 234)" : "rgb(59, 130, 246)",
+              }}
+              title={
+                attachment.mode === "analyze"
+                  ? "Analyze mode: Claude will look at this image"
+                  : "Website mode: Add this image to your site"
+              }
+            >
+              {attachment.mode === "analyze" ? (
+                <>
+                  <Eye className="size-3" />
+                  <span>Analyze</span>
+                </>
+              ) : (
+                <>
+                  <Globe className="size-3" />
+                  <span>Website</span>
+                </>
+              )}
+            </button>
+          )}
 
           <button
             type="button"

@@ -10,7 +10,7 @@ import { isValidStreamEvent } from "@/features/chat/lib/stream-guards"
 import { formatMessagesAsText } from "@/features/chat/utils/format-messages"
 import { isWarningMessage, type BridgeWarningContent } from "@/features/chat/lib/streaming/ndjson"
 import { isCompleteEvent, isDoneEvent, isErrorEvent, isInterruptEvent } from "@/features/chat/types/stream"
-import { buildPromptWithAttachments } from "@/features/chat/utils/prompt-builder"
+import { buildPromptWithAttachmentsEx, type PromptBuildResult } from "@/features/chat/utils/prompt-builder"
 import type { StructuredError } from "@/lib/error-codes"
 import { ErrorCodes, getErrorHelp, getErrorMessage } from "@/lib/error-codes"
 import { HttpError } from "@/lib/errors"
@@ -83,21 +83,23 @@ export function useChatMessaging({
   const isEvaluatingProgressRef = useRef(false)
 
   const createRequestBody = useCallback(
-    (message: string) => {
+    (message: string, analyzeImageUrls?: string[]) => {
       const baseBody = {
         message,
         conversationId,
         tabId: activeTab?.id, // Include tabId for message routing
         apiKey: userApiKey || undefined,
         model: userModel,
+        // Include image URLs for analyze mode - server will fetch, save to .uploads/, and tell Claude to Read
+        analyzeImageUrls: analyzeImageUrls?.length ? analyzeImageUrls : undefined,
       }
       return isTerminal ? { ...baseBody, workspace: workspace || undefined } : baseBody
     },
     [conversationId, activeTab?.id, userApiKey, userModel, isTerminal, workspace],
   )
 
-  const buildPromptForClaude = useCallback((userMessage: UIMessage): string => {
-    return buildPromptWithAttachments(userMessage.content as string, userMessage.attachments || [])
+  const buildPromptForClaude = useCallback((userMessage: UIMessage): PromptBuildResult => {
+    return buildPromptWithAttachmentsEx(userMessage.content as string, userMessage.attachments || [])
   }, [])
 
   const handleCompletionFeatures = useCallback(() => {
@@ -194,7 +196,8 @@ export function useChatMessaging({
       const seenMessageIds = new Set<string>()
 
       try {
-        const requestBody = createRequestBody(buildPromptForClaude(userMessage))
+        const { prompt, analyzeImageUrls } = buildPromptForClaude(userMessage)
+        const requestBody = createRequestBody(prompt, analyzeImageUrls)
 
         const abortController = new AbortController()
         abortControllerRef.current = abortController

@@ -35,7 +35,7 @@ const packageName = domain.replace(/\./g, "_")
 // Generate vite.config.ts
 const viteConfig = `import path from "node:path";
 import react from "@vitejs/plugin-react-swc";
-import { componentTagger } from "lovable-tagger";
+import { aliveTagger } from "@alive-game/alive-tagger";
 import { defineConfig } from "vite";
 
 // https://vitejs.dev/config/
@@ -50,7 +50,7 @@ export default defineConfig(({ mode }) => ({
 		port: ${port},
 		allowedHosts: ["${domain}"],
 	},
-	plugins: [react(), mode === "development" && componentTagger()].filter(
+	plugins: [react(), mode === "development" && aliveTagger()].filter(
 		Boolean,
 	),
 	resolve: {
@@ -64,7 +64,7 @@ export default defineConfig(({ mode }) => ({
 // Generate vite.config.docker.ts (for Docker deployments with HMR)
 const viteDockerConfig = `import path from "node:path";
 import react from "@vitejs/plugin-react-swc";
-import { componentTagger } from "lovable-tagger";
+import { aliveTagger } from "@alive-game/alive-tagger";
 import { defineConfig } from "vite";
 
 // https://vitejs.dev/config/
@@ -91,7 +91,7 @@ export default defineConfig(({ mode }) => ({
 		port: ${port},
 		allowedHosts: ["${domain}"],
 	},
-	plugins: [react(), mode === "development" && componentTagger()].filter(
+	plugins: [react(), mode === "development" && aliveTagger()].filter(
 		Boolean,
 	),
 	resolve: {

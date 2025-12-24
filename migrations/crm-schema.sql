@@ -201,6 +201,31 @@ CREATE TABLE crm.docs (
     updated_by TEXT
 );
 
+-- Issue Subtasks (checklist items for issues)
+CREATE TABLE crm.issue_subtasks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    issue_id UUID NOT NULL REFERENCES crm.issues(id) ON DELETE CASCADE,
+    group_title TEXT,
+    title TEXT NOT NULL,
+    is_done BOOLEAN NOT NULL DEFAULT FALSE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_by TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Issue Comments (discussion on issues)
+CREATE TABLE crm.issue_comments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    issue_id UUID NOT NULL REFERENCES crm.issues(id) ON DELETE CASCADE,
+    author_id TEXT NOT NULL,
+    author_name TEXT NOT NULL,
+    author_avatar_url TEXT,
+    body TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- =============================================================================
 -- BLUEPRINT TABLES
 -- =============================================================================
@@ -353,6 +378,12 @@ CREATE INDEX idx_issues_status ON crm.issues(status);
 CREATE INDEX idx_issues_priority ON crm.issues(priority);
 CREATE INDEX idx_issues_assignee ON crm.issues(assignee);
 
+CREATE INDEX idx_issue_subtasks_issue_id ON crm.issue_subtasks(issue_id);
+CREATE INDEX idx_issue_subtasks_sort_order ON crm.issue_subtasks(sort_order);
+
+CREATE INDEX idx_issue_comments_issue_id ON crm.issue_comments(issue_id);
+CREATE INDEX idx_issue_comments_created_at ON crm.issue_comments(created_at);
+
 CREATE INDEX idx_blueprints_status ON crm.blueprints(status);
 CREATE INDEX idx_blueprints_segment ON crm.blueprints(segment);
 
@@ -383,6 +414,12 @@ CREATE TRIGGER backlog_items_updated_at BEFORE UPDATE ON crm.backlog_items
 CREATE TRIGGER issues_updated_at BEFORE UPDATE ON crm.issues
     FOR EACH ROW EXECUTE FUNCTION crm.update_updated_at();
 
+CREATE TRIGGER issue_subtasks_updated_at BEFORE UPDATE ON crm.issue_subtasks
+    FOR EACH ROW EXECUTE FUNCTION crm.update_updated_at();
+
+CREATE TRIGGER issue_comments_updated_at BEFORE UPDATE ON crm.issue_comments
+    FOR EACH ROW EXECUTE FUNCTION crm.update_updated_at();
+
 CREATE TRIGGER blueprints_updated_at BEFORE UPDATE ON crm.blueprints
     FOR EACH ROW EXECUTE FUNCTION crm.update_updated_at();
 
@@ -406,6 +443,8 @@ ALTER TABLE crm.signals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE crm.backlog_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE crm.issues ENABLE ROW LEVEL SECURITY;
 ALTER TABLE crm.docs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE crm.issue_subtasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE crm.issue_comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE crm.blueprints ENABLE ROW LEVEL SECURITY;
 ALTER TABLE crm.blueprint_workflows ENABLE ROW LEVEL SECURITY;
 ALTER TABLE crm.blueprint_integrations ENABLE ROW LEVEL SECURITY;
@@ -428,6 +467,10 @@ CREATE POLICY "Allow all for authenticated" ON crm.signals FOR ALL TO authentica
 CREATE POLICY "Allow all for authenticated" ON crm.backlog_items FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for authenticated" ON crm.issues FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for authenticated" ON crm.docs FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for authenticated" ON crm.issue_subtasks FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for authenticated" ON crm.issue_comments FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for anon" ON crm.issue_subtasks FOR ALL TO anon USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for anon" ON crm.issue_comments FOR ALL TO anon USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for authenticated" ON crm.blueprints FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for authenticated" ON crm.blueprint_workflows FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for authenticated" ON crm.blueprint_integrations FOR ALL TO authenticated USING (true) WITH CHECK (true);
@@ -448,6 +491,8 @@ CREATE POLICY "Allow all for service_role" ON crm.signals FOR ALL TO service_rol
 CREATE POLICY "Allow all for service_role" ON crm.backlog_items FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for service_role" ON crm.issues FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for service_role" ON crm.docs FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for service_role" ON crm.issue_subtasks FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for service_role" ON crm.issue_comments FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for service_role" ON crm.blueprints FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for service_role" ON crm.blueprint_workflows FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for service_role" ON crm.blueprint_integrations FOR ALL TO service_role USING (true) WITH CHECK (true);
@@ -459,8 +504,8 @@ CREATE POLICY "Allow all for service_role" ON crm.positioning_blocks FOR ALL TO 
 CREATE POLICY "Allow all for service_role" ON crm.blueprint_user_flows FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 -- Grant table permissions
-GRANT ALL ON ALL TABLES IN SCHEMA crm TO authenticated, service_role;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA crm TO authenticated, service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA crm TO anon, authenticated, service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA crm TO anon, authenticated, service_role;
 
 -- =============================================================================
 -- ISSUE KEY SEQUENCE

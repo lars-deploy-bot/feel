@@ -149,16 +149,16 @@ export class SiteOrchestrator {
         failedPhase = codeToPhase[error.code] || "unknown"
       }
 
-      // Attempt rollback if enabled
+      // Attempt rollback if enabled - full cleanup so retry works
       if (rollbackOnFailure && deployedPort) {
-        console.log("\n=== Attempting rollback ===\n")
+        console.log("\n=== Attempting rollback (full cleanup) ===\n")
         try {
           await this.teardown(domain, {
-            removeFiles: false,
-            removeUser: false,
-            removePort: false, // Keep port reserved for retry
+            removeFiles: true,
+            removeUser: true,
+            removePort: true,
           })
-          console.log("✓ Rollback successful\n")
+          console.log("✓ Rollback successful - site fully cleaned up\n")
         } catch (rollbackError) {
           console.error(
             `✗ Rollback failed: ${rollbackError instanceof Error ? rollbackError.message : String(rollbackError)}\n`,

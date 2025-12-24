@@ -13,6 +13,7 @@ export function Sandbox() {
   const { workspace } = useWorkspace({ allowEmpty: true })
   const {
     setSelectedElement,
+    selectorActive,
     preview,
     setPreviewMode,
     openFile,
@@ -131,6 +132,13 @@ export function Sandbox() {
       }
     }
   }
+
+  // Send activation message to iframe when selectorActive changes
+  useEffect(() => {
+    if (selectorActive && iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage({ type: "alive-tagger-activate" }, "*")
+    }
+  }, [selectorActive])
 
   // Listen for postMessage from iframe (preview sites send navigation events + element selection)
   useEffect(() => {

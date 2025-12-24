@@ -425,6 +425,21 @@ export function useAttachments(config: ChatInputConfig) {
     setAttachments([])
   }, [attachments])
 
+  /**
+   * Toggle image mode between "website" (add to site) and "analyze" (Claude reads it)
+   */
+  const toggleImageMode = useCallback((id: string) => {
+    setAttachments(prev =>
+      prev.map(a => {
+        if (a.id === id && isLibraryImage(a)) {
+          const currentMode = a.mode ?? "website"
+          return { ...a, mode: currentMode === "website" ? "analyze" : "website" }
+        }
+        return a
+      }),
+    )
+  }, [])
+
   return {
     attachments,
     addAttachment,
@@ -434,5 +449,6 @@ export function useAttachments(config: ChatInputConfig) {
     addFileForAnalysis,
     removeAttachment,
     clearAttachments,
+    toggleImageMode,
   }
 }

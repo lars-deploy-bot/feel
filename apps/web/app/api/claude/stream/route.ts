@@ -7,6 +7,7 @@ import {
   requireSessionUser,
   verifyWorkspaceAccess,
 } from "@/features/auth/lib/auth"
+import { fetchAndSaveAnalyzeImages, buildAnalyzeImagePrompt } from "@/lib/image-analyze/fetch-and-save"
 import {
   SessionStoreMemory,
   sessionKey,
@@ -124,6 +125,7 @@ export async function POST(req: NextRequest) {
       projectId,
       userId,
       additionalContext,
+      analyzeImageUrls,
     } = parseResult.data
     logger.log("Conversation:", conversationId)
     logger.log(
@@ -359,6 +361,28 @@ export async function POST(req: NextRequest) {
     const isProductionMode = serveMode === "build"
     logger.log(`Serve mode: ${serveMode} (isProduction: ${isProductionMode})`)
 
+    // Handle analyze mode images: fetch from photobook and save to workspace
+    // This allows Claude to use the Read tool to visually analyze the images
+    let finalMessage = message
+    if (analyzeImageUrls && analyzeImageUrls.length > 0) {
+      logger.log(`Fetching ${analyzeImageUrls.length} analyze image(s)...`)
+      timing("before_fetch_analyze_images")
+
+      // Build base URL from request origin or host
+      const protocol = req.headers.get("x-forwarded-proto") || "https"
+      const baseUrl = origin || `${protocol}://${host}`
+
+      const savedImages = await fetchAndSaveAnalyzeImages(analyzeImageUrls, cwd, baseUrl)
+      timing("after_fetch_analyze_images")
+
+      if (savedImages.length > 0) {
+        logger.log(`Saved ${savedImages.length} image(s) for analysis`)
+        finalMessage = buildAnalyzeImagePrompt(message, savedImages)
+      } else {
+        logger.log("No images were successfully fetched for analysis")
+      }
+    }
+
     const systemPrompt = getSystemPrompt({
       projectId,
       userId,
@@ -445,7 +469,7 @@ export async function POST(req: NextRequest) {
             await pool.query(credentials, {
               requestId,
               payload: {
-                message,
+                message: finalMessage,
                 model: effectiveModel,
                 maxTurns: maxTurns,
                 resume: existingSessionId || undefined,
@@ -507,7 +531,7 @@ export async function POST(req: NextRequest) {
       }
 
       childStream = runAgentChild(cwd, {
-        message,
+        message: finalMessage,
         model: effectiveModel,
         maxTurns: maxTurns,
         resume: existingSessionId || undefined,

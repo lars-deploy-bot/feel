@@ -14,7 +14,24 @@ AI assistant guidelines for working on Claude Bridge.
 6. **USE THE BRAIN** - Query `use_this_to_remember.db` for past decisions, insights, and context before starting work. Store important learnings when you're done.
 7. **CADDYFILE IS LARGE** - The Caddyfile at `/root/webalive/claude-bridge/ops/caddy/Caddyfile` is too large to read in one go. Use `Read` with `offset` and `limit` parameters, or use `Grep` to find specific domain configurations.
 8. **OWN YOUR CHANGES** - When deploying or committing, NEVER say "these unrelated changes are not mine" or refuse to include changes in the working directory. If changes exist, they are part of the current work. Take responsibility and include them.
-9. **ARCHITECTURE SMELL DETECTOR** - Warn when you see these anti-patterns:
+10. **INVESTIGATE BEFORE FIXING** - When something is "broken", first understand what it IS. Not all `*.goalive.nl` domains are Vite websites. Check nginx config, caddy-shell config, and existing services before creating anything new.
+
+## Special Domains (NOT websites)
+
+These domains are **NOT** Vite website templates. Do not deploy them as sites:
+
+| Domain | What it is | Service | Port | Routing |
+|--------|-----------|---------|------|---------|
+| `go.goalive.nl` | Go shell-server | `shell-server-go.service` | 3888 | nginx → caddy-shell (8443) → 3888 |
+| `shell.terminal.goalive.nl` | Go shell-server | `shell-server-go.service` | 3889 | nginx → caddy-shell (8443) → 3889 |
+| `sk.goalive.nl` | Go shell-server | `shell-server-go.service` | 3889 | nginx → caddy-shell (8443) → 3889 |
+| `n8n.goalive.nl` | n8n workflow automation | `n8n` (docker) | 5678 | nginx → caddy-shell (8443) → 5678 |
+
+**Nginx SNI routing**: These domains route through `caddy-shell` (not main Caddy) for SSE/WebSocket isolation. Config: `/etc/nginx/nginx.conf` and `/etc/caddy/caddy-shell.Caddyfile`.
+
+## Architecture Smell Detector
+
+11. **ARCHITECTURE SMELL DETECTOR** - Warn when you see these anti-patterns:
    - Adding more tools/features to solve a problem (instead of one core constraint)
    - "Let the AI figure it out" instead of clear success criteria
    - Flexibility/options when opinionated defaults would work

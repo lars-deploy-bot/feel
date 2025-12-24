@@ -345,30 +345,18 @@ function ChatPageContent() {
     if (storeConversationId) {
       streamingActions.clearConversation(storeConversationId)
     }
-    // When tabs are expanded, use the tab's add handler which creates a new tab
-    // Otherwise just create a new conversation directly
-    if (tabsExpanded && workspace) {
-      handleAddTab()
-    } else {
-      const newId = startNewConversation()
-      // Initialize the new conversation in message store immediately
-      // (don't rely on useEffect timing)
-      if (newId && workspace) {
-        initializeConversation(newId, workspace)
-      }
-      // Clear input for new conversation
-      setMsg("")
+    // Always create a new conversation in the current/active tab
+    // "New tab" button in TabBar is for creating new tabs
+    const newId = startNewConversation()
+    // Initialize the new conversation in message store immediately
+    // (don't rely on useEffect timing)
+    if (newId && workspace) {
+      initializeConversation(newId, workspace)
     }
+    // Clear input for new conversation
+    setMsg("")
     setTimeout(() => chatInputRef.current?.focus(), 0)
-  }, [
-    storeConversationId,
-    streamingActions,
-    startNewConversation,
-    workspace,
-    initializeConversation,
-    tabsExpanded,
-    handleAddTab,
-  ])
+  }, [storeConversationId, streamingActions, startNewConversation, workspace, initializeConversation])
 
   const handleInsertTemplate = useCallback((prompt: string) => {
     setMsg(prompt)

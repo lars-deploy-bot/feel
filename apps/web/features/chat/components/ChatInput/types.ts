@@ -20,6 +20,12 @@ export interface FileUploadAttachment extends BaseAttachment {
 export interface LibraryImageAttachment extends BaseAttachment {
   kind: "library-image"
   photobookKey: string
+  /**
+   * How this image should be used:
+   * - "website": Add to website (default) - Claude gets URL only
+   * - "analyze": Analyze content - Claude reads the actual image via Read tool
+   */
+  mode?: "website" | "analyze"
 }
 
 // SuperTemplate from templates modal
@@ -98,6 +104,7 @@ export interface ChatInputState {
   attachments: Attachment[]
   addAttachment: (file: File) => Promise<void>
   removeAttachment: (id: string) => void
+  toggleImageMode: (id: string) => void
 
   // Loading states
   busy: boolean

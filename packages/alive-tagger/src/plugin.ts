@@ -222,7 +222,16 @@ const CLIENT_SCRIPT = `
     hoveredElement = null;
   });
 
-  console.log("[alive-tagger] Ready! Hold Cmd/Ctrl and click to select elements.");
+  // Listen for activation message from parent (button click)
+  window.addEventListener("message", function(e) {
+    if (e.data?.type === "alive-tagger-activate") {
+      isActive = true;
+      document.body.classList.add("alive-tagger-active");
+      console.log("[alive-tagger] Activated via button");
+    }
+  });
+
+  console.log("[alive-tagger] Ready! Hold Cmd/Ctrl or click the select button to select elements.");
 })();
 </script>
 `

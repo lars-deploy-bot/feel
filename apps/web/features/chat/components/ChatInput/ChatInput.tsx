@@ -67,6 +67,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
     addFileForAnalysis,
     removeAttachment,
     clearAttachments,
+    toggleImageMode,
   } = useAttachments(config)
 
   // Detect supertemplate JSON in message and convert to attachments
@@ -141,6 +142,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
       attachments,
       addAttachment,
       removeAttachment,
+      toggleImageMode,
       busy,
       isStopping,
       canSubmit,
@@ -154,6 +156,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
       attachments,
       addAttachment,
       removeAttachment,
+      toggleImageMode,
       busy,
       isStopping,
       canSubmit,

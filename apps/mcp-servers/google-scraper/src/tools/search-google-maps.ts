@@ -37,7 +37,15 @@ LIMITATIONS:
 TIPS:
 - Be specific: "sushi restaurant Amsterdam Centrum" > "sushi Amsterdam"
 - Include location: city, neighborhood, or landmark
-- Takes 15-45 seconds (fetches detail pages for each result)`,
+- Takes 15-45 seconds (fetches detail pages for each result)
+
+CANNOT FILTER BY:
+- Menu items (coffee, yoghurt, specific dishes)
+- Amenities (indoor seating, wifi, parking)
+- Price range or opening hours
+- User preferences or dietary requirements
+
+For these filters, search by business type + location only, then check results manually.`,
   inputSchema: {
     type: "object",
     properties: {
