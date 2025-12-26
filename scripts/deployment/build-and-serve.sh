@@ -527,6 +527,11 @@ else
     exit 1
 fi
 
+# Wait for server to fully initialize (Redis connections, session cleanup, etc.)
+# This prevents race conditions where health check passes but env vars aren't fully loaded
+log_step "Waiting for server warmup (3s)..."
+sleep 3
+
 # ============================================================================
 # E2E TESTS: Run against newly deployed server
 # ============================================================================
