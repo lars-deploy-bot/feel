@@ -502,6 +502,12 @@ bun run test security.test.ts
 - Budget timeouts for parallel execution (4 workers = 2-3x slower)
 - Avoid timeout accumulation: put longest wait first, then quick confirmations
 
+### Test Patterns
+
+**MUST READ**: [docs/testing/TEST_PATTERNS.md](./docs/testing/TEST_PATTERNS.md) - Do/Don't examples for AI-generated tests.
+
+Key rules: No mocking internals, no `any` types, test real DB state, descriptive names, use test helpers, clean up data, test error paths.
+
 ### Local Development Setup
 
 ```bash

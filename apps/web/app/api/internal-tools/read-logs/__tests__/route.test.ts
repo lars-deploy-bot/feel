@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 // Helper to create mock NextRequest
 function createMockRequest(url: string, options?: RequestInit) {
   const urlObj = new URL(url)
-  const req = new Request(url, options) as any
+  const req = new Request(url, options) as Request & { nextUrl: URL }
   req.nextUrl = urlObj
   return req
 }
@@ -24,7 +24,11 @@ function createMockRequest(url: string, options?: RequestInit) {
 const originalEnv = process.env.INTERNAL_TOOLS_SECRET
 
 // Mock authentication
-let mockSessionUser: any = null
+interface MockSessionUser {
+  workspaces: string[]
+  _tracker?: () => void
+}
+let mockSessionUser: MockSessionUser | null = null
 vi.mock("@/features/auth/lib/auth", async importOriginal => {
   const actual = await importOriginal<typeof import("@/features/auth/lib/auth")>()
   return {
@@ -40,8 +44,13 @@ vi.mock("@/features/auth/lib/auth", async importOriginal => {
 
 // Mock handleWorkspaceApi to test the secret check independently
 let shouldPassWorkspaceValidation = true
+interface WorkspaceApiConfig {
+  schema: { safeParse: (data: unknown) => { success: boolean; data?: unknown; error?: { issues: unknown[] } } }
+  handler: (ctx: { data: unknown; requestId: string }) => Promise<Response>
+}
+
 vi.mock("@/lib/workspace-api-handler", () => ({
-  handleWorkspaceApi: async (req: Request, config: any) => {
+  handleWorkspaceApi: async (req: Request, config: WorkspaceApiConfig) => {
     // First check authentication (like real handleWorkspaceApi)
     const { requireSessionUser } = await import("@/features/auth/lib/auth")
     try {
@@ -78,7 +87,7 @@ vi.mock("@/lib/workspace-api-handler", () => ({
           ok: false,
           error: "INVALID_REQUEST",
           message: "Invalid request",
-          details: parseResult.error.issues,
+          details: parseResult.error?.issues,
         }),
         { status: 400 },
       )

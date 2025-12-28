@@ -12,7 +12,7 @@
 import { existsSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { NextRequest } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { BRIDGE_ENV } from "@webalive/shared"
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -42,7 +42,14 @@ const { getWorkspace } = await import("@/features/chat/lib/workspaceRetriever")
 const TEST_WORKSPACE = path.join(tmpdir(), "delete-test-workspace")
 
 // Mock user
-const MOCK_USER = { id: "user-123", email: "test@example.com", name: "Test User" }
+const MOCK_USER = {
+  id: "user-123",
+  email: "test@example.com",
+  name: "Test User",
+  canSelectAnyModel: false,
+  isAdmin: false,
+  isSuperadmin: false,
+}
 
 function createMockRequest(body: Record<string, unknown>): NextRequest {
   return new NextRequest("http://localhost/api/files/delete", {
@@ -72,13 +79,13 @@ describe("POST /api/files/delete", () => {
     vi.clearAllMocks()
 
     // Default: authenticated user
-    ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
+    vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
 
     // Default: workspace authorized
-    ;(verifyWorkspaceAccess as any).mockResolvedValue("test-workspace")
+    vi.mocked(verifyWorkspaceAccess).mockResolvedValue("test-workspace")
 
     // Default: valid workspace
-    ;(getWorkspace as any).mockReturnValue({
+    vi.mocked(getWorkspace).mockReturnValue({
       success: true,
       workspace: TEST_WORKSPACE,
     })
@@ -86,7 +93,7 @@ describe("POST /api/files/delete", () => {
 
   describe("Authentication", () => {
     it("should require session (401 without user)", async () => {
-      ;(getSessionUser as any).mockResolvedValue(null)
+      vi.mocked(getSessionUser).mockResolvedValue(null)
 
       const req = createMockRequest({ path: "test.txt", workspace: "test" })
       const response = await POST(req)
@@ -114,7 +121,7 @@ describe("POST /api/files/delete", () => {
 
   describe("Workspace Authorization (Cross-Tenant Protection)", () => {
     it("should deny access to unauthorized workspace", async () => {
-      ;(verifyWorkspaceAccess as any).mockResolvedValue(null)
+      vi.mocked(verifyWorkspaceAccess).mockResolvedValue(null)
 
       const req = createMockRequest({ path: "secret.txt", workspace: "other-tenant.com" })
       const response = await POST(req)
@@ -125,7 +132,7 @@ describe("POST /api/files/delete", () => {
     })
 
     it("should allow access to authorized workspace", async () => {
-      ;(verifyWorkspaceAccess as any).mockResolvedValue("my-workspace.com")
+      vi.mocked(verifyWorkspaceAccess).mockResolvedValue("my-workspace.com")
 
       const testFile = path.join(TEST_WORKSPACE, "my-file.txt")
       writeFileSync(testFile, "my content")
@@ -399,12 +406,9 @@ describe("POST /api/files/delete", () => {
 
   describe("Workspace Resolution", () => {
     it("should reject invalid workspace", async () => {
-      ;(getWorkspace as any).mockReturnValue({
+      vi.mocked(getWorkspace).mockReturnValue({
         success: false,
-        response: new Response(JSON.stringify({ ok: false, error: "WORKSPACE_NOT_FOUND" }), {
-          status: 404,
-          headers: { "Content-Type": "application/json" },
-        }),
+        response: NextResponse.json({ ok: false, error: "WORKSPACE_NOT_FOUND" }, { status: 404 }),
       })
 
       const req = createMockRequest({ path: "test.txt", workspace: "invalid" })

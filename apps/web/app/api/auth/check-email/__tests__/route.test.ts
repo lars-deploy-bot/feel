@@ -44,7 +44,7 @@ function createMockRequest(body: Record<string, unknown> | string): NextRequest 
   })
 }
 
-// Helper to create mock IAM client
+// Helper to create mock IAM client (cast to unknown to satisfy SupabaseClient type)
 function createMockIam(userExists: boolean) {
   return {
     from: vi.fn().mockReturnValue({
@@ -58,15 +58,15 @@ function createMockIam(userExists: boolean) {
         }),
       }),
     }),
-  }
+  } as unknown as Awaited<ReturnType<typeof createIamClient>>
 }
 
 describe("POST /api/auth/check-email", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     // Default: not rate limited
-    ;(emailCheckRateLimiter.isRateLimited as any).mockReturnValue(false)
-    ;(emailCheckRateLimiter.getBlockedTimeRemaining as any).mockReturnValue(0)
+    vi.mocked(emailCheckRateLimiter.isRateLimited).mockReturnValue(false)
+    vi.mocked(emailCheckRateLimiter.getBlockedTimeRemaining).mockReturnValue(0)
   })
 
   afterEach(() => {
@@ -78,8 +78,8 @@ describe("POST /api/auth/check-email", () => {
      * RATE LIMIT TEST - Should return 429 when rate limited
      */
     it("should return 429 when rate limited", async () => {
-      ;(emailCheckRateLimiter.isRateLimited as any).mockReturnValue(true)
-      ;(emailCheckRateLimiter.getBlockedTimeRemaining as any).mockReturnValue(5 * 60 * 1000) // 5 minutes
+      vi.mocked(emailCheckRateLimiter.isRateLimited).mockReturnValue(true)
+      vi.mocked(emailCheckRateLimiter.getBlockedTimeRemaining).mockReturnValue(5 * 60 * 1000) // 5 minutes
 
       const req = createMockRequest({ email: "test@example.com" })
 
@@ -96,8 +96,8 @@ describe("POST /api/auth/check-email", () => {
      * RATE LIMIT - Singular minute message
      */
     it("should use singular 'minute' when 1 minute remaining", async () => {
-      ;(emailCheckRateLimiter.isRateLimited as any).mockReturnValue(true)
-      ;(emailCheckRateLimiter.getBlockedTimeRemaining as any).mockReturnValue(45 * 1000) // 45 seconds = rounds up to 1 minute
+      vi.mocked(emailCheckRateLimiter.isRateLimited).mockReturnValue(true)
+      vi.mocked(emailCheckRateLimiter.getBlockedTimeRemaining).mockReturnValue(45 * 1000) // 45 seconds = rounds up to 1 minute
 
       const req = createMockRequest({ email: "test@example.com" })
 
@@ -112,7 +112,7 @@ describe("POST /api/auth/check-email", () => {
      * RATE LIMIT - Should record attempt on every request
      */
     it("should record attempt on successful requests", async () => {
-      ;(createIamClient as any).mockResolvedValue(createMockIam(false))
+      vi.mocked(createIamClient).mockResolvedValue(createMockIam(false))
 
       const req = createMockRequest({ email: "test@example.com" })
 
@@ -126,8 +126,8 @@ describe("POST /api/auth/check-email", () => {
      * (because we return early before recording)
      */
     it("should not record additional attempt when already rate limited", async () => {
-      ;(emailCheckRateLimiter.isRateLimited as any).mockReturnValue(true)
-      ;(emailCheckRateLimiter.getBlockedTimeRemaining as any).mockReturnValue(5 * 60 * 1000)
+      vi.mocked(emailCheckRateLimiter.isRateLimited).mockReturnValue(true)
+      vi.mocked(emailCheckRateLimiter.getBlockedTimeRemaining).mockReturnValue(5 * 60 * 1000)
 
       const req = createMockRequest({ email: "test@example.com" })
 
@@ -142,7 +142,7 @@ describe("POST /api/auth/check-email", () => {
      * EMAIL EXISTS - Should return exists: true
      */
     it("should return exists: true for existing email", async () => {
-      ;(createIamClient as any).mockResolvedValue(createMockIam(true))
+      vi.mocked(createIamClient).mockResolvedValue(createMockIam(true))
 
       const req = createMockRequest({ email: "existing@example.com" })
 
@@ -160,7 +160,7 @@ describe("POST /api/auth/check-email", () => {
      * EMAIL DOES NOT EXIST - Should return exists: false
      */
     it("should return exists: false for non-existing email", async () => {
-      ;(createIamClient as any).mockResolvedValue(createMockIam(false))
+      vi.mocked(createIamClient).mockResolvedValue(createMockIam(false))
 
       const req = createMockRequest({ email: "new@example.com" })
 
@@ -177,7 +177,7 @@ describe("POST /api/auth/check-email", () => {
      * EMAIL NORMALIZATION - Should lowercase email
      */
     it("should normalize email to lowercase", async () => {
-      ;(createIamClient as any).mockResolvedValue(createMockIam(false))
+      vi.mocked(createIamClient).mockResolvedValue(createMockIam(false))
 
       const req = createMockRequest({ email: "TEST@EXAMPLE.COM" })
 
@@ -237,7 +237,7 @@ describe("POST /api/auth/check-email", () => {
      * DATABASE ERROR - Should handle database errors gracefully
      */
     it("should handle database errors", async () => {
-      ;(createIamClient as any).mockRejectedValue(new Error("Database connection failed"))
+      vi.mocked(createIamClient).mockRejectedValue(new Error("Database connection failed"))
 
       const req = createMockRequest({ email: "test@example.com" })
 
@@ -255,7 +255,7 @@ describe("POST /api/auth/check-email", () => {
      * CORS HEADERS - Should include CORS headers in response
      */
     it("should include CORS headers", async () => {
-      ;(createIamClient as any).mockResolvedValue(createMockIam(false))
+      vi.mocked(createIamClient).mockResolvedValue(createMockIam(false))
 
       const req = createMockRequest({ email: "test@example.com" })
 

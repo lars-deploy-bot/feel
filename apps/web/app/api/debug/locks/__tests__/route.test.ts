@@ -39,8 +39,8 @@ describe("GET /api/debug/locks", () => {
     vi.clearAllMocks()
 
     // Default mock values
-    ;(getLockedConversations as any).mockReturnValue([])
-    ;(getRegistryState as any).mockReturnValue([])
+    vi.mocked(getLockedConversations).mockReturnValue([])
+    vi.mocked(getRegistryState).mockReturnValue([])
   })
 
   afterEach(() => {
@@ -87,8 +87,10 @@ describe("GET /api/debug/locks", () => {
     })
 
     it("should return expected JSON structure", async () => {
-      ;(getLockedConversations as any).mockReturnValue(["user1::workspace1::conv1"])
-      ;(getRegistryState as any).mockReturnValue([{ conversationId: "conv1", controller: {} }])
+      vi.mocked(getLockedConversations).mockReturnValue([{ key: "user1::workspace1::conv1", ageMs: 1000 }])
+      vi.mocked(getRegistryState).mockReturnValue([
+        { requestId: "req1", userId: "user1", conversationKey: "conv1", ageMs: 1000 },
+      ])
 
       const response = await GET()
       const data = await response.json()
@@ -117,8 +119,12 @@ describe("GET /api/debug/locks", () => {
     })
 
     it("should return correct lock count and keys", async () => {
-      const mockLocks = ["user1::workspace1::conv1", "user2::workspace2::conv2", "user3::workspace3::conv3"]
-      ;(getLockedConversations as any).mockReturnValue(mockLocks)
+      const mockLocks = [
+        { key: "user1::workspace1::conv1", ageMs: 1000 },
+        { key: "user2::workspace2::conv2", ageMs: 2000 },
+        { key: "user3::workspace3::conv3", ageMs: 3000 },
+      ]
+      vi.mocked(getLockedConversations).mockReturnValue(mockLocks)
 
       const response = await GET()
       const data = await response.json()
@@ -129,10 +135,10 @@ describe("GET /api/debug/locks", () => {
 
     it("should return correct cancellation registry entries", async () => {
       const mockEntries = [
-        { conversationId: "conv1", controller: {} },
-        { conversationId: "conv2", controller: {} },
+        { requestId: "req1", userId: "user1", conversationKey: "conv1", ageMs: 1000 },
+        { requestId: "req2", userId: "user2", conversationKey: "conv2", ageMs: 2000 },
       ]
-      ;(getRegistryState as any).mockReturnValue(mockEntries)
+      vi.mocked(getRegistryState).mockReturnValue(mockEntries)
 
       const response = await GET()
       const data = await response.json()
@@ -142,8 +148,8 @@ describe("GET /api/debug/locks", () => {
     })
 
     it("should return empty state when no locks or registry entries exist", async () => {
-      ;(getLockedConversations as any).mockReturnValue([])
-      ;(getRegistryState as any).mockReturnValue([])
+      vi.mocked(getLockedConversations).mockReturnValue([])
+      vi.mocked(getRegistryState).mockReturnValue([])
 
       const response = await GET()
       const data = await response.json()

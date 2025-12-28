@@ -40,6 +40,8 @@ const MOCK_USER = {
   email: "test@example.com",
   name: "Test User",
   canSelectAnyModel: false,
+  isAdmin: false,
+  isSuperadmin: false,
 }
 
 // Sample referral data
@@ -75,7 +77,7 @@ function createMockRequest(params: { limit?: number; offset?: number } = {}): Ne
   return new NextRequest(url)
 }
 
-// Helper to create chainable mock for referrals query with pagination
+// Helper to create chainable mock for referrals query with pagination (cast to unknown to satisfy SupabaseClient type)
 function createMockIamClient(options: {
   referrals?: typeof MOCK_REFERRALS | null
   users?: typeof MOCK_USERS | null
@@ -83,39 +85,41 @@ function createMockIamClient(options: {
 }) {
   const { referrals = [], users = [], total = referrals?.length ?? 0 } = options
 
-  return {
-    from: vi.fn().mockImplementation((table: string) => {
-      if (table === "referrals") {
-        return {
-          select: vi.fn().mockImplementation((_fields: string, opts?: { count?: string; head?: boolean }) => {
-            // Count query (with head: true)
-            if (opts?.head) {
-              return {
-                eq: vi.fn().mockResolvedValue({ count: total, error: null }),
-              }
-            }
-            // Data query
+  const fromMock = vi.fn().mockImplementation((table: string) => {
+    if (table === "referrals") {
+      return {
+        select: vi.fn().mockImplementation((_fields: string, opts?: { count?: string; head?: boolean }) => {
+          // Count query (with head: true)
+          if (opts?.head) {
             return {
-              eq: vi.fn().mockReturnThis(),
-              order: vi.fn().mockReturnThis(),
-              range: vi.fn().mockResolvedValue({ data: referrals, error: null }),
+              eq: vi.fn().mockResolvedValue({ count: total, error: null }),
             }
-          }),
-        }
+          }
+          // Data query
+          return {
+            eq: vi.fn().mockReturnThis(),
+            order: vi.fn().mockReturnThis(),
+            range: vi.fn().mockResolvedValue({ data: referrals, error: null }),
+          }
+        }),
       }
-      if (table === "users") {
-        return {
-          select: vi.fn().mockReturnThis(),
-          in: vi.fn().mockResolvedValue({ data: users, error: null }),
-        }
-      }
+    }
+    if (table === "users") {
       return {
         select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        in: vi.fn().mockResolvedValue({ data: null, error: null }),
+        in: vi.fn().mockResolvedValue({ data: users, error: null }),
       }
-    }),
-  }
+    }
+    return {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      in: vi.fn().mockResolvedValue({ data: null, error: null }),
+    }
+  })
+
+  return {
+    from: fromMock,
+  } as unknown as Awaited<ReturnType<typeof createIamClient>> & { from: typeof fromMock }
 }
 
 describe("GET /api/referrals/history", () => {
@@ -129,7 +133,7 @@ describe("GET /api/referrals/history", () => {
 
   describe("Authentication", () => {
     it("should return 401 when not authenticated", async () => {
-      ;(getSessionUser as any).mockResolvedValue(null)
+      vi.mocked(getSessionUser).mockResolvedValue(null)
 
       const response = await GET(createMockRequest())
       const data = await response.json()
@@ -140,8 +144,8 @@ describe("GET /api/referrals/history", () => {
     })
 
     it("should allow authenticated users", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(createMockIamClient({ referrals: [], total: 0 }))
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(createMockIamClient({ referrals: [], total: 0 }))
 
       const response = await GET(createMockRequest())
       const data = await response.json()
@@ -153,8 +157,8 @@ describe("GET /api/referrals/history", () => {
 
   describe("Empty History", () => {
     it("should return empty array when no referrals exist", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(createMockIamClient({ referrals: [], total: 0 }))
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(createMockIamClient({ referrals: [], total: 0 }))
 
       const response = await GET(createMockRequest())
       const data = await response.json()
@@ -167,8 +171,8 @@ describe("GET /api/referrals/history", () => {
     })
 
     it("should return empty array when total is zero", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(createMockIamClient({ referrals: null, total: 0 }))
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(createMockIamClient({ referrals: null, total: 0 }))
 
       const response = await GET(createMockRequest())
       const data = await response.json()
@@ -183,8 +187,8 @@ describe("GET /api/referrals/history", () => {
 
   describe("Happy Path", () => {
     it("should return referrals with user info", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(
         createMockIamClient({ referrals: MOCK_REFERRALS, users: MOCK_USERS, total: 2 }),
       )
 
@@ -223,9 +227,9 @@ describe("GET /api/referrals/history", () => {
 
   describe("Pagination", () => {
     it("should use default limit of 50", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
       const mockClient = createMockIamClient({ referrals: MOCK_REFERRALS, users: MOCK_USERS, total: 2 })
-      ;(createIamClient as any).mockResolvedValue(mockClient)
+      vi.mocked(createIamClient).mockResolvedValue(mockClient)
 
       await GET(createMockRequest())
 
@@ -235,8 +239,8 @@ describe("GET /api/referrals/history", () => {
     })
 
     it("should respect limit parameter", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(
         createMockIamClient({ referrals: [MOCK_REFERRALS[0]], users: [MOCK_USERS[0]], total: 2 }),
       )
 
@@ -250,8 +254,8 @@ describe("GET /api/referrals/history", () => {
     })
 
     it("should respect offset parameter", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(
         createMockIamClient({ referrals: [MOCK_REFERRALS[1]], users: [MOCK_USERS[1]], total: 2 }),
       )
 
@@ -265,9 +269,9 @@ describe("GET /api/referrals/history", () => {
     })
 
     it("should cap limit at 100", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
       const mockClient = createMockIamClient({ referrals: MOCK_REFERRALS, users: MOCK_USERS, total: 2 })
-      ;(createIamClient as any).mockResolvedValue(mockClient)
+      vi.mocked(createIamClient).mockResolvedValue(mockClient)
 
       const response = await GET(createMockRequest({ limit: 500 }))
       const data = await response.json()
@@ -277,8 +281,8 @@ describe("GET /api/referrals/history", () => {
     })
 
     it("should handle negative offset as 0", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(
         createMockIamClient({ referrals: MOCK_REFERRALS, users: MOCK_USERS, total: 2 }),
       )
 
@@ -290,8 +294,8 @@ describe("GET /api/referrals/history", () => {
     })
 
     it("should return hasMore=true when more results exist", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(
         createMockIamClient({ referrals: [MOCK_REFERRALS[0]], users: [MOCK_USERS[0]], total: 10 }),
       )
 
@@ -303,8 +307,8 @@ describe("GET /api/referrals/history", () => {
     })
 
     it("should return hasMore=false on last page", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(
         createMockIamClient({ referrals: [MOCK_REFERRALS[1]], users: [MOCK_USERS[1]], total: 2 }),
       )
 
@@ -318,8 +322,8 @@ describe("GET /api/referrals/history", () => {
 
   describe("Partial User Data", () => {
     it("should handle missing referred users gracefully", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(
         createMockIamClient({ referrals: MOCK_REFERRALS, users: [MOCK_USERS[0]], total: 2 }),
       )
 
@@ -340,8 +344,8 @@ describe("GET /api/referrals/history", () => {
     })
 
     it("should handle null users response", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(
         createMockIamClient({ referrals: MOCK_REFERRALS, users: null, total: 2 }),
       )
 
@@ -360,8 +364,8 @@ describe("GET /api/referrals/history", () => {
 
   describe("Response Shape", () => {
     it("should return correct response structure with pagination", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(
         createMockIamClient({ referrals: MOCK_REFERRALS, users: MOCK_USERS, total: 2 }),
       )
 
@@ -387,8 +391,8 @@ describe("GET /api/referrals/history", () => {
     })
 
     it("should use camelCase for response fields", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(
         createMockIamClient({ referrals: [MOCK_REFERRALS[0]], users: [MOCK_USERS[0]], total: 1 }),
       )
 

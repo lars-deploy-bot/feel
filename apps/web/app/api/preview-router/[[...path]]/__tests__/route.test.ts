@@ -50,7 +50,14 @@ const { getSessionUser, isWorkspaceAuthenticated } = await import("@/features/au
 const { getDomainPort } = await import("@/lib/domains")
 
 // Mock user
-const MOCK_USER = { id: "user-123", email: "test@example.com", name: "Test User", canSelectAnyModel: false }
+const MOCK_USER = {
+  id: "user-123",
+  email: "test@example.com",
+  name: "Test User",
+  canSelectAnyModel: false,
+  isAdmin: false,
+  isSuperadmin: false,
+}
 
 function createMockRequest(host: string, method: string = "GET", path: string = "/"): NextRequest {
   return new NextRequest(`http://localhost${path}`, {
@@ -67,13 +74,13 @@ describe("Preview Router", () => {
     vi.clearAllMocks()
 
     // Default: authenticated user
-    ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
+    vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
 
     // Default: workspace NOT authenticated (secure by default)
-    ;(isWorkspaceAuthenticated as any).mockResolvedValue(false)
+    vi.mocked(isWorkspaceAuthenticated).mockResolvedValue(false)
 
     // Default: valid port
-    ;(getDomainPort as any).mockResolvedValue(3357)
+    vi.mocked(getDomainPort).mockResolvedValue(3357)
   })
 
   afterEach(() => {
@@ -82,7 +89,7 @@ describe("Preview Router", () => {
 
   describe("Authentication", () => {
     it("should require session (401 without user)", async () => {
-      ;(getSessionUser as any).mockResolvedValue(null)
+      vi.mocked(getSessionUser).mockResolvedValue(null)
 
       const req = createMockRequest("test-workspace.preview.alive.best")
       const response = await GET(req)
@@ -94,8 +101,8 @@ describe("Preview Router", () => {
     })
 
     it("should continue to authorization check for authenticated users", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(isWorkspaceAuthenticated as any).mockResolvedValue(false)
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(isWorkspaceAuthenticated).mockResolvedValue(false)
 
       const req = createMockRequest("test-workspace.preview.alive.best")
       const response = await GET(req)
@@ -109,8 +116,8 @@ describe("Preview Router", () => {
 
   describe("Workspace Authorization (Cross-Tenant Protection)", () => {
     it("should deny access to unauthorized workspace (403)", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(isWorkspaceAuthenticated as any).mockResolvedValue(false)
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(isWorkspaceAuthenticated).mockResolvedValue(false)
 
       const req = createMockRequest("other-tenant.preview.alive.best")
       const response = await GET(req)
@@ -123,8 +130,8 @@ describe("Preview Router", () => {
     })
 
     it("should call isWorkspaceAuthenticated with correct hostname", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(isWorkspaceAuthenticated as any).mockResolvedValue(false)
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(isWorkspaceAuthenticated).mockResolvedValue(false)
 
       const req = createMockRequest("my-site-alive-best.preview.alive.best")
       await GET(req)
@@ -133,9 +140,9 @@ describe("Preview Router", () => {
     })
 
     it("should allow access to authorized workspace", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(isWorkspaceAuthenticated as any).mockResolvedValue(true)
-      ;(getDomainPort as any).mockResolvedValue(3357)
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(isWorkspaceAuthenticated).mockResolvedValue(true)
+      vi.mocked(getDomainPort).mockResolvedValue(3357)
 
       // Mock fetch for proxy request
       const mockFetch = vi.fn().mockResolvedValue(
@@ -156,15 +163,17 @@ describe("Preview Router", () => {
 
     it("should prevent users from accessing other tenants' previews", async () => {
       // User A is logged in
-      ;(getSessionUser as any).mockResolvedValue({
+      vi.mocked(getSessionUser).mockResolvedValue({
         id: "user-a",
         email: "a@example.com",
         name: "User A",
         canSelectAnyModel: false,
+        isAdmin: false,
+        isSuperadmin: false,
       })
 
       // User A tries to access User B's workspace
-      ;(isWorkspaceAuthenticated as any).mockResolvedValue(false)
+      vi.mocked(isWorkspaceAuthenticated).mockResolvedValue(false)
 
       const req = createMockRequest("user-b-site.preview.alive.best")
       const response = await GET(req)
@@ -177,7 +186,7 @@ describe("Preview Router", () => {
 
   describe("Invalid Host Handling", () => {
     it("should return 400 for non-preview host", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
 
       const req = createMockRequest("some-other-domain.com")
       const response = await GET(req)
@@ -188,7 +197,7 @@ describe("Preview Router", () => {
     })
 
     it("should return 400 for empty preview label", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
 
       const req = createMockRequest(".preview.alive.best")
       const response = await GET(req)
@@ -201,9 +210,9 @@ describe("Preview Router", () => {
 
   describe("Port Lookup", () => {
     it("should return 404 when domain has no port configured", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(isWorkspaceAuthenticated as any).mockResolvedValue(true)
-      ;(getDomainPort as any).mockResolvedValue(null)
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(isWorkspaceAuthenticated).mockResolvedValue(true)
+      vi.mocked(getDomainPort).mockResolvedValue(null)
 
       const req = createMockRequest("unconfigured-site.preview.alive.best")
       const response = await GET(req)
@@ -224,8 +233,8 @@ describe("Preview Router", () => {
       ["HEAD", HEAD],
       ["OPTIONS", OPTIONS],
     ] as const)("should handle %s requests with authorization", async (method, handler) => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(isWorkspaceAuthenticated as any).mockResolvedValue(false)
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(isWorkspaceAuthenticated).mockResolvedValue(false)
 
       const req = createMockRequest("test-site.preview.alive.best", method)
       const response = await handler(req)

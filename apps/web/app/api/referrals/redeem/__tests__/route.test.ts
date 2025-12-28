@@ -54,6 +54,8 @@ const MOCK_USER = {
   email: "test@example.com",
   name: "Test User",
   canSelectAnyModel: false,
+  isAdmin: false,
+  isSuperadmin: false,
 }
 
 const MOCK_REFERRER = {
@@ -79,7 +81,7 @@ function createMalformedJsonRequest(): Request {
   })
 }
 
-// Create a chainable mock for IAM client
+// Create a chainable mock for IAM client (cast to unknown to satisfy SupabaseClient type)
 function createMockIamClient(options: {
   currentUser?: { created_at: string; email_verified: boolean } | null
   existingReferral?: { referral_id: string } | null
@@ -131,7 +133,7 @@ function createMockIamClient(options: {
       }
     }),
     _insertMock: insertMock,
-  }
+  } as unknown as Awaited<ReturnType<typeof createIamClient>> & { _insertMock: ReturnType<typeof vi.fn> }
 }
 
 describe("POST /api/referrals/redeem", () => {
@@ -145,7 +147,7 @@ describe("POST /api/referrals/redeem", () => {
 
   describe("Authentication", () => {
     it("returns 401 when not authenticated", async () => {
-      ;(getSessionUser as any).mockResolvedValue(null)
+      vi.mocked(getSessionUser).mockResolvedValue(null)
 
       const req = createMockRequest({ code: "ABC123" })
       const res = await POST(req)
@@ -159,7 +161,7 @@ describe("POST /api/referrals/redeem", () => {
 
   describe("Input validation", () => {
     it("returns 400 for malformed JSON body", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
 
       const req = createMalformedJsonRequest()
       const res = await POST(req)
@@ -171,8 +173,8 @@ describe("POST /api/referrals/redeem", () => {
     })
 
     it("returns 400 for missing code", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(createMockIamClient({}))
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(createMockIamClient({}))
 
       const req = createMockRequest({})
       const res = await POST(req)
@@ -181,8 +183,8 @@ describe("POST /api/referrals/redeem", () => {
     })
 
     it("returns 400 for non-string code", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(createMockIamClient({}))
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(createMockIamClient({}))
 
       const req = createMockRequest({ code: 12345 })
       const res = await POST(req)
@@ -196,8 +198,8 @@ describe("POST /api/referrals/redeem", () => {
 
   describe("Security tests - all return generic error", () => {
     it("returns generic error for invalid code (user not found)", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(
         createMockIamClient({
           currentUser: { created_at: new Date().toISOString(), email_verified: true },
           existingReferral: null,
@@ -215,8 +217,8 @@ describe("POST /api/referrals/redeem", () => {
     })
 
     it("returns generic error for self-referral", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(
         createMockIamClient({
           currentUser: { created_at: new Date().toISOString(), email_verified: true },
           existingReferral: null,
@@ -235,8 +237,8 @@ describe("POST /api/referrals/redeem", () => {
 
     it("returns generic error for user >24h old", async () => {
       const oldDate = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() // 2 days ago
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(
         createMockIamClient({
           currentUser: { created_at: oldDate, email_verified: true },
           existingReferral: null,
@@ -254,8 +256,8 @@ describe("POST /api/referrals/redeem", () => {
     })
 
     it("returns generic error for already-referred user", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(
         createMockIamClient({
           currentUser: { created_at: new Date().toISOString(), email_verified: true },
           existingReferral: { referral_id: "existing-ref-123" }, // Already has referral
@@ -273,8 +275,8 @@ describe("POST /api/referrals/redeem", () => {
     })
 
     it("returns generic error when current user not found in database", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(
         createMockIamClient({
           currentUser: null, // User not in database
           existingReferral: null,
@@ -299,8 +301,8 @@ describe("POST /api/referrals/redeem", () => {
         existingReferral: null,
         referrer: MOCK_REFERRER,
       })
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(mockClient)
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(mockClient)
 
       const req = createMockRequest({ code: "VALID" })
       const res = await POST(req)
@@ -328,9 +330,9 @@ describe("POST /api/referrals/redeem", () => {
         existingReferral: null,
         referrer: MOCK_REFERRER,
       })
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(mockClient)
-      ;(awardReferralCredits as any).mockResolvedValue({
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(mockClient)
+      vi.mocked(awardReferralCredits).mockResolvedValue({
         referrerResult: { success: true, orgId: "org-1", newBalance: 1000 },
         referredResult: { success: true, orgId: "org-2", newBalance: 500 },
       })
@@ -364,9 +366,9 @@ describe("POST /api/referrals/redeem", () => {
         existingReferral: null,
         referrer: MOCK_REFERRER,
       })
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(mockClient)
-      ;(awardReferralCredits as any).mockResolvedValue({
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(mockClient)
+      vi.mocked(awardReferralCredits).mockResolvedValue({
         referrerResult: { success: true },
         referredResult: { success: true },
       })
@@ -389,8 +391,8 @@ describe("POST /api/referrals/redeem", () => {
         referrer: MOCK_REFERRER,
         insertError: { message: "Database error" },
       })
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(mockClient)
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(mockClient)
 
       const req = createMockRequest({ code: "VALID" })
       const res = await POST(req)
@@ -408,9 +410,9 @@ describe("POST /api/referrals/redeem", () => {
         referrer: MOCK_REFERRER,
       })
       const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(mockClient)
-      ;(awardReferralCredits as any).mockResolvedValue({
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(mockClient)
+      vi.mocked(awardReferralCredits).mockResolvedValue({
         referrerResult: { success: true, orgId: "org-1", newBalance: 1000 },
         referredResult: { success: false, error: "no_org" }, // Partial failure
       })
@@ -443,8 +445,8 @@ describe("POST /api/referrals/redeem", () => {
         referrer: MOCK_REFERRER,
         insertError: { code: "23505", message: "duplicate key value violates unique constraint" },
       })
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(mockClient)
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(mockClient)
 
       const req = createMockRequest({ code: "VALID" })
       const res = await POST(req)
@@ -463,8 +465,8 @@ describe("POST /api/referrals/redeem", () => {
         referrer: MOCK_REFERRER,
         insertError: { message: "duplicate key value" },
       })
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(mockClient)
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(mockClient)
 
       const req = createMockRequest({ code: "VALID" })
       const res = await POST(req)
@@ -482,8 +484,8 @@ describe("POST /api/referrals/redeem", () => {
         referrer: MOCK_REFERRER,
         insertError: { code: "23505", message: "unique constraint" },
       })
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(mockClient)
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(mockClient)
 
       const req = createMockRequest({ code: "VALID" })
       const res = await POST(req)

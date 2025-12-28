@@ -47,6 +47,18 @@ const { GET, _resetHealthCheckRedis } = await import("../route")
 const { createRedisClient } = await import("@alive-brug/redis")
 const { createClient } = await import("@supabase/supabase-js")
 
+// Type helpers for mocks - cast partial mocks to satisfy full type requirements
+type MockRedis = ReturnType<typeof createRedisClient>
+type MockSupabase = ReturnType<typeof createClient>
+
+function mockRedis(overrides: { ping: ReturnType<typeof vi.fn>; status: string }): MockRedis {
+  return overrides as unknown as MockRedis
+}
+
+function mockSupabase(overrides: { from: ReturnType<typeof vi.fn> }): MockSupabase {
+  return overrides as unknown as MockSupabase
+}
+
 describe("GET /api/health", () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -61,18 +73,20 @@ describe("GET /api/health", () => {
   describe("Happy Path - All Services Connected", () => {
     it("should return 200 when all services are healthy", async () => {
       // Setup: Redis and database both connected
-      const mockRedis = {
-        ping: vi.fn().mockResolvedValue("PONG"),
-        status: "ready",
-      }
-      ;(createRedisClient as any).mockReturnValue(mockRedis)
-
-      const mockSupabase = {
-        from: vi.fn().mockReturnValue({
-          select: vi.fn().mockResolvedValue({ error: null }),
+      vi.mocked(createRedisClient).mockReturnValue(
+        mockRedis({
+          ping: vi.fn().mockResolvedValue("PONG"),
+          status: "ready",
         }),
-      }
-      ;(createClient as any).mockReturnValue(mockSupabase)
+      )
+
+      vi.mocked(createClient).mockReturnValue(
+        mockSupabase({
+          from: vi.fn().mockReturnValue({
+            select: vi.fn().mockResolvedValue({ error: null }),
+          }),
+        }),
+      )
 
       const response = await GET()
       const data = await response.json()
@@ -82,18 +96,20 @@ describe("GET /api/health", () => {
     })
 
     it("should return correct response structure", async () => {
-      const mockRedis = {
-        ping: vi.fn().mockResolvedValue("PONG"),
-        status: "ready",
-      }
-      ;(createRedisClient as any).mockReturnValue(mockRedis)
-
-      const mockSupabase = {
-        from: vi.fn().mockReturnValue({
-          select: vi.fn().mockResolvedValue({ error: null }),
+      vi.mocked(createRedisClient).mockReturnValue(
+        mockRedis({
+          ping: vi.fn().mockResolvedValue("PONG"),
+          status: "ready",
         }),
-      }
-      ;(createClient as any).mockReturnValue(mockSupabase)
+      )
+
+      vi.mocked(createClient).mockReturnValue(
+        mockSupabase({
+          from: vi.fn().mockReturnValue({
+            select: vi.fn().mockResolvedValue({ error: null }),
+          }),
+        }),
+      )
 
       const response = await GET()
       const data = await response.json()
@@ -137,18 +153,20 @@ describe("GET /api/health", () => {
     })
 
     it("should show Redis details when connected", async () => {
-      const mockRedis = {
-        ping: vi.fn().mockResolvedValue("PONG"),
-        status: "ready",
-      }
-      ;(createRedisClient as any).mockReturnValue(mockRedis)
-
-      const mockSupabase = {
-        from: vi.fn().mockReturnValue({
-          select: vi.fn().mockResolvedValue({ error: null }),
+      vi.mocked(createRedisClient).mockReturnValue(
+        mockRedis({
+          ping: vi.fn().mockResolvedValue("PONG"),
+          status: "ready",
         }),
-      }
-      ;(createClient as any).mockReturnValue(mockSupabase)
+      )
+
+      vi.mocked(createClient).mockReturnValue(
+        mockSupabase({
+          from: vi.fn().mockReturnValue({
+            select: vi.fn().mockResolvedValue({ error: null }),
+          }),
+        }),
+      )
 
       const response = await GET()
       const data = await response.json()
@@ -161,18 +179,20 @@ describe("GET /api/health", () => {
 
   describe("Unhealthy - Services Disconnected", () => {
     it("should return 503 when Redis is disconnected", async () => {
-      const mockRedis = {
-        ping: vi.fn().mockRejectedValue(new Error("Connection refused")),
-        status: "end",
-      }
-      ;(createRedisClient as any).mockReturnValue(mockRedis)
-
-      const mockSupabase = {
-        from: vi.fn().mockReturnValue({
-          select: vi.fn().mockResolvedValue({ error: null }),
+      vi.mocked(createRedisClient).mockReturnValue(
+        mockRedis({
+          ping: vi.fn().mockRejectedValue(new Error("Connection refused")),
+          status: "end",
         }),
-      }
-      ;(createClient as any).mockReturnValue(mockSupabase)
+      )
+
+      vi.mocked(createClient).mockReturnValue(
+        mockSupabase({
+          from: vi.fn().mockReturnValue({
+            select: vi.fn().mockResolvedValue({ error: null }),
+          }),
+        }),
+      )
 
       const response = await GET()
       const data = await response.json()
@@ -184,18 +204,20 @@ describe("GET /api/health", () => {
     })
 
     it("should return 503 when database is disconnected", async () => {
-      const mockRedis = {
-        ping: vi.fn().mockResolvedValue("PONG"),
-        status: "ready",
-      }
-      ;(createRedisClient as any).mockReturnValue(mockRedis)
-
-      const mockSupabase = {
-        from: vi.fn().mockReturnValue({
-          select: vi.fn().mockRejectedValue(new Error("Database connection failed")),
+      vi.mocked(createRedisClient).mockReturnValue(
+        mockRedis({
+          ping: vi.fn().mockResolvedValue("PONG"),
+          status: "ready",
         }),
-      }
-      ;(createClient as any).mockReturnValue(mockSupabase)
+      )
+
+      vi.mocked(createClient).mockReturnValue(
+        mockSupabase({
+          from: vi.fn().mockReturnValue({
+            select: vi.fn().mockRejectedValue(new Error("Database connection failed")),
+          }),
+        }),
+      )
 
       const response = await GET()
       const data = await response.json()
@@ -207,18 +229,20 @@ describe("GET /api/health", () => {
     })
 
     it("should return 503 when both services are disconnected", async () => {
-      const mockRedis = {
-        ping: vi.fn().mockRejectedValue(new Error("Redis error")),
-        status: "end",
-      }
-      ;(createRedisClient as any).mockReturnValue(mockRedis)
-
-      const mockSupabase = {
-        from: vi.fn().mockReturnValue({
-          select: vi.fn().mockRejectedValue(new Error("Database error")),
+      vi.mocked(createRedisClient).mockReturnValue(
+        mockRedis({
+          ping: vi.fn().mockRejectedValue(new Error("Redis error")),
+          status: "end",
         }),
-      }
-      ;(createClient as any).mockReturnValue(mockSupabase)
+      )
+
+      vi.mocked(createClient).mockReturnValue(
+        mockSupabase({
+          from: vi.fn().mockReturnValue({
+            select: vi.fn().mockRejectedValue(new Error("Database error")),
+          }),
+        }),
+      )
 
       const response = await GET()
       const data = await response.json()
@@ -232,18 +256,20 @@ describe("GET /api/health", () => {
 
   describe("Degraded - Service Errors", () => {
     it("should return degraded when Redis returns unexpected response", async () => {
-      const mockRedis = {
-        ping: vi.fn().mockResolvedValue("UNEXPECTED"),
-        status: "ready",
-      }
-      ;(createRedisClient as any).mockReturnValue(mockRedis)
-
-      const mockSupabase = {
-        from: vi.fn().mockReturnValue({
-          select: vi.fn().mockResolvedValue({ error: null }),
+      vi.mocked(createRedisClient).mockReturnValue(
+        mockRedis({
+          ping: vi.fn().mockResolvedValue("UNEXPECTED"),
+          status: "ready",
         }),
-      }
-      ;(createClient as any).mockReturnValue(mockSupabase)
+      )
+
+      vi.mocked(createClient).mockReturnValue(
+        mockSupabase({
+          from: vi.fn().mockReturnValue({
+            select: vi.fn().mockResolvedValue({ error: null }),
+          }),
+        }),
+      )
 
       const response = await GET()
       const data = await response.json()
@@ -255,18 +281,20 @@ describe("GET /api/health", () => {
     })
 
     it("should return degraded when database query has error", async () => {
-      const mockRedis = {
-        ping: vi.fn().mockResolvedValue("PONG"),
-        status: "ready",
-      }
-      ;(createRedisClient as any).mockReturnValue(mockRedis)
-
-      const mockSupabase = {
-        from: vi.fn().mockReturnValue({
-          select: vi.fn().mockResolvedValue({ error: { message: "Query failed" } }),
+      vi.mocked(createRedisClient).mockReturnValue(
+        mockRedis({
+          ping: vi.fn().mockResolvedValue("PONG"),
+          status: "ready",
         }),
-      }
-      ;(createClient as any).mockReturnValue(mockSupabase)
+      )
+
+      vi.mocked(createClient).mockReturnValue(
+        mockSupabase({
+          from: vi.fn().mockReturnValue({
+            select: vi.fn().mockResolvedValue({ error: { message: "Query failed" } }),
+          }),
+        }),
+      )
 
       const response = await GET()
       const data = await response.json()
@@ -280,18 +308,20 @@ describe("GET /api/health", () => {
 
   describe("Cache Headers", () => {
     it("should set no-cache headers", async () => {
-      const mockRedis = {
-        ping: vi.fn().mockResolvedValue("PONG"),
-        status: "ready",
-      }
-      ;(createRedisClient as any).mockReturnValue(mockRedis)
-
-      const mockSupabase = {
-        from: vi.fn().mockReturnValue({
-          select: vi.fn().mockResolvedValue({ error: null }),
+      vi.mocked(createRedisClient).mockReturnValue(
+        mockRedis({
+          ping: vi.fn().mockResolvedValue("PONG"),
+          status: "ready",
         }),
-      }
-      ;(createClient as any).mockReturnValue(mockSupabase)
+      )
+
+      vi.mocked(createClient).mockReturnValue(
+        mockSupabase({
+          from: vi.fn().mockReturnValue({
+            select: vi.fn().mockResolvedValue({ error: null }),
+          }),
+        }),
+      )
 
       const response = await GET()
 
@@ -301,18 +331,20 @@ describe("GET /api/health", () => {
 
   describe("System Information", () => {
     it("should include valid system information", async () => {
-      const mockRedis = {
-        ping: vi.fn().mockResolvedValue("PONG"),
-        status: "ready",
-      }
-      ;(createRedisClient as any).mockReturnValue(mockRedis)
-
-      const mockSupabase = {
-        from: vi.fn().mockReturnValue({
-          select: vi.fn().mockResolvedValue({ error: null }),
+      vi.mocked(createRedisClient).mockReturnValue(
+        mockRedis({
+          ping: vi.fn().mockResolvedValue("PONG"),
+          status: "ready",
         }),
-      }
-      ;(createClient as any).mockReturnValue(mockSupabase)
+      )
+
+      vi.mocked(createClient).mockReturnValue(
+        mockSupabase({
+          from: vi.fn().mockReturnValue({
+            select: vi.fn().mockResolvedValue({ error: null }),
+          }),
+        }),
+      )
 
       const response = await GET()
       const data = await response.json()

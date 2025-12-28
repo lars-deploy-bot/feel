@@ -66,7 +66,7 @@ function mockRequestWithMalformedJson(): Request {
   })
 }
 
-// Helper to create chainable Supabase mock
+// Helper to create chainable Supabase mock (cast to unknown to satisfy SupabaseClient type)
 function createMockIamClient(options: {
   pendingReferral?: {
     referral_id: string
@@ -87,7 +87,7 @@ function createMockIamClient(options: {
         eq: vi.fn().mockResolvedValue({ error: updateError }),
       }),
     })),
-  }
+  } as unknown as Awaited<ReturnType<typeof createIamClient>>
 }
 
 describe("POST /api/referrals/complete-pending", () => {
@@ -123,7 +123,7 @@ describe("POST /api/referrals/complete-pending", () => {
     })
 
     it("should accept correct secret", async () => {
-      ;(createIamClient as any).mockResolvedValue(createMockIamClient({ pendingReferral: null }))
+      vi.mocked(createIamClient).mockResolvedValue(createMockIamClient({ pendingReferral: null }))
 
       const req = mockRequest({ userId: TEST_USER_ID, secret: TEST_SECRET })
       const response = await POST(req)
@@ -167,7 +167,7 @@ describe("POST /api/referrals/complete-pending", () => {
 
   describe("No Pending Referral", () => {
     it("should return ok: false when no pending referral exists", async () => {
-      ;(createIamClient as any).mockResolvedValue(createMockIamClient({ pendingReferral: null }))
+      vi.mocked(createIamClient).mockResolvedValue(createMockIamClient({ pendingReferral: null }))
 
       const req = mockRequest({ userId: TEST_USER_ID, secret: TEST_SECRET })
       const response = await POST(req)
@@ -189,8 +189,8 @@ describe("POST /api/referrals/complete-pending", () => {
         credits_awarded: 500,
       }
 
-      ;(createIamClient as any).mockResolvedValue(createMockIamClient({ pendingReferral, updateError: null }))
-      ;(awardReferralCredits as any).mockResolvedValue({
+      vi.mocked(createIamClient).mockResolvedValue(createMockIamClient({ pendingReferral, updateError: null }))
+      vi.mocked(awardReferralCredits).mockResolvedValue({
         referrerResult: { success: false, error: "no_org" },
         referredResult: { success: false, error: "no_org" },
       })
@@ -224,14 +224,14 @@ describe("POST /api/referrals/complete-pending", () => {
         credits_awarded: 500,
       }
 
-      ;(createIamClient as any).mockResolvedValue(
+      vi.mocked(createIamClient).mockResolvedValue(
         createMockIamClient({
           pendingReferral,
           updateError: { message: "Database error" },
         }),
       )
       // Credits succeed but update fails
-      ;(awardReferralCredits as any).mockResolvedValue({
+      vi.mocked(awardReferralCredits).mockResolvedValue({
         referrerResult: { success: true, orgId: "org-1", newBalance: 1500 },
         referredResult: { success: true, orgId: "org-2", newBalance: 500 },
       })
@@ -265,8 +265,8 @@ describe("POST /api/referrals/complete-pending", () => {
         credits_awarded: 500,
       }
 
-      ;(createIamClient as any).mockResolvedValue(createMockIamClient({ pendingReferral, updateError: null }))
-      ;(awardReferralCredits as any).mockResolvedValue({
+      vi.mocked(createIamClient).mockResolvedValue(createMockIamClient({ pendingReferral, updateError: null }))
+      vi.mocked(awardReferralCredits).mockResolvedValue({
         referrerResult: { success: true, orgId: "org-1", newBalance: 1500 },
         referredResult: { success: true, orgId: "org-2", newBalance: 500 },
       })
@@ -294,8 +294,8 @@ describe("POST /api/referrals/complete-pending", () => {
         credits_awarded: 500,
       }
 
-      ;(createIamClient as any).mockResolvedValue(createMockIamClient({ pendingReferral, updateError: null }))
-      ;(awardReferralCredits as any).mockResolvedValue({
+      vi.mocked(createIamClient).mockResolvedValue(createMockIamClient({ pendingReferral, updateError: null }))
+      vi.mocked(awardReferralCredits).mockResolvedValue({
         referrerResult: { success: true, orgId: "org-1", newBalance: 1500 },
         referredResult: { success: false, error: "no_org" }, // Referred user has no org
       })
@@ -332,8 +332,8 @@ describe("POST /api/referrals/complete-pending", () => {
         credits_awarded: 500,
       }
 
-      ;(createIamClient as any).mockResolvedValue(createMockIamClient({ pendingReferral, updateError: null }))
-      ;(awardReferralCredits as any).mockResolvedValue({
+      vi.mocked(createIamClient).mockResolvedValue(createMockIamClient({ pendingReferral, updateError: null }))
+      vi.mocked(awardReferralCredits).mockResolvedValue({
         referrerResult: { success: true },
         referredResult: { success: true },
       })

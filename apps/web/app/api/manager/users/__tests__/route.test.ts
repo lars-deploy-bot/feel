@@ -36,11 +36,22 @@ const { isManagerAuthenticated } = await import("@/features/auth/lib/auth")
  * - app.from("user_quotas").select().in()
  * - app.from("domains").select().in()
  */
+interface MockResponse<T> {
+  data: T[] | null
+  error: { message: string } | null
+}
+
 function setupSupabaseMocks(options: {
-  users?: { data: any[] | null; error: any }
-  memberships?: { data: any[] | null; error: any }
-  quotas?: { data: any[] | null; error: any }
-  domains?: { data: any[] | null; error: any }
+  users?: MockResponse<{
+    user_id: string
+    email: string
+    display_name: string | null
+    created_at: string
+    status: string
+  }>
+  memberships?: MockResponse<{ user_id: string; org_id: string }>
+  quotas?: MockResponse<{ user_id: string; max_sites: number }>
+  domains?: MockResponse<{ user_id: string; domain: string }>
 }) {
   const {
     users = { data: [], error: null },
@@ -49,51 +60,55 @@ function setupSupabaseMocks(options: {
     domains = { data: [], error: null },
   } = options
 
-  // IAM client mock - handles users and org_memberships tables
-  ;(createIamClient as any).mockResolvedValue({
-    from: vi.fn((table: string) => {
-      if (table === "users") {
-        return {
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              order: vi.fn().mockResolvedValue(users),
+  // IAM client mock - handles users and org_memberships tables (cast to unknown to satisfy SupabaseClient type)
+  vi.mocked(createIamClient).mockResolvedValue(
+    {
+      from: vi.fn((table: string) => {
+        if (table === "users") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue(users),
+              }),
             }),
-          }),
+          }
         }
-      }
-      if (table === "org_memberships") {
-        return {
-          select: vi.fn().mockReturnValue({
-            in: vi.fn().mockReturnValue({
-              eq: vi.fn().mockResolvedValue(memberships),
+        if (table === "org_memberships") {
+          return {
+            select: vi.fn().mockReturnValue({
+              in: vi.fn().mockReturnValue({
+                eq: vi.fn().mockResolvedValue(memberships),
+              }),
             }),
-          }),
+          }
         }
-      }
-      return { select: vi.fn().mockReturnValue({ eq: vi.fn(), in: vi.fn() }) }
-    }),
-  })
+        return { select: vi.fn().mockReturnValue({ eq: vi.fn(), in: vi.fn() }) }
+      }),
+    } as unknown as Awaited<ReturnType<typeof createIamClient>>,
+  )
 
-  // App client mock - handles user_quotas and domains tables
-  ;(createAppClient as any).mockResolvedValue({
-    from: vi.fn((table: string) => {
-      if (table === "user_quotas") {
-        return {
-          select: vi.fn().mockReturnValue({
-            in: vi.fn().mockResolvedValue(quotas),
-          }),
+  // App client mock - handles user_quotas and domains tables (cast to unknown to satisfy SupabaseClient type)
+  vi.mocked(createAppClient).mockResolvedValue(
+    {
+      from: vi.fn((table: string) => {
+        if (table === "user_quotas") {
+          return {
+            select: vi.fn().mockReturnValue({
+              in: vi.fn().mockResolvedValue(quotas),
+            }),
+          }
         }
-      }
-      if (table === "domains") {
-        return {
-          select: vi.fn().mockReturnValue({
-            in: vi.fn().mockResolvedValue(domains),
-          }),
+        if (table === "domains") {
+          return {
+            select: vi.fn().mockReturnValue({
+              in: vi.fn().mockResolvedValue(domains),
+            }),
+          }
         }
-      }
-      return { select: vi.fn().mockReturnValue({ in: vi.fn() }) }
-    }),
-  })
+        return { select: vi.fn().mockReturnValue({ in: vi.fn() }) }
+      }),
+    } as unknown as Awaited<ReturnType<typeof createAppClient>>,
+  )
 }
 
 function createMockRequest(url: string, options: NextRequestInit = {}): NextRequest {
@@ -109,7 +124,7 @@ describe("GET /api/manager/users", () => {
   describe("Authentication", () => {
     it("should require manager authentication", async () => {
       // Mock: NOT authenticated
-      ;(isManagerAuthenticated as any).mockResolvedValue(false)
+      vi.mocked(isManagerAuthenticated).mockResolvedValue(false)
 
       const req = createMockRequest("http://localhost/api/manager/users")
       const response = await GET(req)
@@ -122,7 +137,7 @@ describe("GET /api/manager/users", () => {
 
     it("should allow authenticated manager", async () => {
       // Mock: Authenticated
-      ;(isManagerAuthenticated as any).mockResolvedValue(true)
+      vi.mocked(isManagerAuthenticated).mockResolvedValue(true)
 
       // Mock: Supabase returns empty users
       setupSupabaseMocks({
@@ -142,7 +157,7 @@ describe("GET /api/manager/users", () => {
   describe("User Filtering", () => {
     it("should filter out test users (is_test_env = true)", async () => {
       // Mock: Authenticated
-      ;(isManagerAuthenticated as any).mockResolvedValue(true)
+      vi.mocked(isManagerAuthenticated).mockResolvedValue(true)
 
       // Mock: Supabase query returns real users
       setupSupabaseMocks({
@@ -178,7 +193,7 @@ describe("GET /api/manager/users", () => {
 
     it("should return only real users", async () => {
       // Mock: Authenticated
-      ;(isManagerAuthenticated as any).mockResolvedValue(true)
+      vi.mocked(isManagerAuthenticated).mockResolvedValue(true)
 
       // Mock: Supabase returns user with all fields
       setupSupabaseMocks({
@@ -219,7 +234,7 @@ describe("GET /api/manager/users", () => {
   describe("Error Handling", () => {
     it("should handle database errors", async () => {
       // Mock: Authenticated
-      ;(isManagerAuthenticated as any).mockResolvedValue(true)
+      vi.mocked(isManagerAuthenticated).mockResolvedValue(true)
 
       // Mock: Supabase error
       setupSupabaseMocks({
@@ -239,7 +254,7 @@ describe("GET /api/manager/users", () => {
   describe("CORS", () => {
     it("should add CORS headers to response", async () => {
       // Mock: Authenticated
-      ;(isManagerAuthenticated as any).mockResolvedValue(true)
+      vi.mocked(isManagerAuthenticated).mockResolvedValue(true)
 
       // Mock: Supabase returns empty
       setupSupabaseMocks({

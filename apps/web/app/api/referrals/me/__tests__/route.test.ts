@@ -51,9 +51,11 @@ const MOCK_USER = {
   email: "test@example.com",
   name: "Test User",
   canSelectAnyModel: false,
+  isAdmin: false,
+  isSuperadmin: false,
 }
 
-// Helper to create chainable mock that simulates Supabase query behavior
+// Helper to create chainable mock that simulates Supabase query behavior (cast to unknown to satisfy SupabaseClient type)
 function createDetailedIamMock(options: {
   rpcResult?: { data: string | null; error: { message: string } | null }
   completedCount?: number
@@ -80,7 +82,7 @@ function createDetailedIamMock(options: {
         return createThenable()
       }),
     })),
-  }
+  } as unknown as Awaited<ReturnType<typeof createIamClient>>
 }
 
 describe("GET /api/referrals/me", () => {
@@ -94,7 +96,7 @@ describe("GET /api/referrals/me", () => {
 
   describe("Authentication", () => {
     it("should return 401 when not authenticated", async () => {
-      ;(getSessionUser as any).mockResolvedValue(null)
+      vi.mocked(getSessionUser).mockResolvedValue(null)
 
       const response = await GET()
       const data = await response.json()
@@ -105,8 +107,10 @@ describe("GET /api/referrals/me", () => {
     })
 
     it("should allow authenticated users", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(createDetailedIamMock({ rpcResult: { data: "ABC123", error: null } }))
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(
+        createDetailedIamMock({ rpcResult: { data: "ABC123", error: null } }),
+      )
 
       const response = await GET()
       const data = await response.json()
@@ -118,8 +122,8 @@ describe("GET /api/referrals/me", () => {
 
   describe("Invite Code Generation", () => {
     it("should return 500 when RPC fails", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(
         createDetailedIamMock({
           rpcResult: { data: null, error: { message: "Database connection failed" } },
         }),
@@ -134,8 +138,8 @@ describe("GET /api/referrals/me", () => {
     })
 
     it("should return 404 when user not found (RPC returns null)", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(createDetailedIamMock({ rpcResult: { data: null, error: null } }))
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(createDetailedIamMock({ rpcResult: { data: null, error: null } }))
 
       const response = await GET()
       const data = await response.json()
@@ -146,8 +150,8 @@ describe("GET /api/referrals/me", () => {
     })
 
     it("should return invite code from RPC", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(
         createDetailedIamMock({ rpcResult: { data: "MYCODE123", error: null } }),
       )
 
@@ -162,8 +166,8 @@ describe("GET /api/referrals/me", () => {
 
   describe("Invite Link", () => {
     it("should build invite link from code", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(
         createDetailedIamMock({ rpcResult: { data: "ABC123XYZ", error: null } }),
       )
 
@@ -177,8 +181,8 @@ describe("GET /api/referrals/me", () => {
 
   describe("Referral Stats", () => {
     it("should return zero stats when no referrals", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(
         createDetailedIamMock({
           rpcResult: { data: "CODE123", error: null },
           completedCount: 0,
@@ -195,8 +199,8 @@ describe("GET /api/referrals/me", () => {
     })
 
     it("should return correct stats with completed referrals", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(
         createDetailedIamMock({
           rpcResult: { data: "CODE123", error: null },
           completedCount: 3,
@@ -215,8 +219,8 @@ describe("GET /api/referrals/me", () => {
 
   describe("Response Shape", () => {
     it("should return correct response structure", async () => {
-      ;(getSessionUser as any).mockResolvedValue(MOCK_USER)
-      ;(createIamClient as any).mockResolvedValue(
+      vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
+      vi.mocked(createIamClient).mockResolvedValue(
         createDetailedIamMock({
           rpcResult: { data: "TESTCODE", error: null },
           completedCount: 2,

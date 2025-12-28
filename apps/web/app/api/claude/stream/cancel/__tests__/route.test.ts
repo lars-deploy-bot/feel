@@ -2,10 +2,27 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { getRegistrySize, registerCancellation, unregisterCancellation } from "@/lib/stream/cancellation-registry"
 
 // Mock auth functions
+interface MockUser {
+  id: string
+  email: string
+  name: string
+}
+
+interface CancelRequestBody {
+  workspace?: string
+  requestId?: string
+  conversationId?: string
+}
+
 vi.mock("@/features/auth/lib/auth", () => ({
-  requireSessionUser: async () => ({ id: "test-user-123", email: "test@example.com", name: "Test User" }),
-  verifyWorkspaceAccess: async (_user: any, body: any) => body.workspace || "test-workspace",
-  createErrorResponse: (error: string, status: number, fields?: any) => {
+  requireSessionUser: async (): Promise<MockUser> => ({
+    id: "test-user-123",
+    email: "test@example.com",
+    name: "Test User",
+  }),
+  verifyWorkspaceAccess: async (_user: MockUser, body: CancelRequestBody): Promise<string> =>
+    body.workspace || "test-workspace",
+  createErrorResponse: (error: string, status: number, fields?: Record<string, unknown>) => {
     return new Response(
       JSON.stringify({
         ok: false,

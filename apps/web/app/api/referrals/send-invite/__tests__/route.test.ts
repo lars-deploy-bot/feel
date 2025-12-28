@@ -62,6 +62,8 @@ const MOCK_USER = {
   email: "sender@example.com",
   name: "Test Sender",
   canSelectAnyModel: false,
+  isAdmin: false,
+  isSuperadmin: false,
 }
 
 // Helper to create mock request
@@ -94,7 +96,7 @@ function createPromiseLike<T>(value: T) {
   return promiseLike
 }
 
-// Helper to create chainable mock for Supabase
+// Helper to create chainable mock for Supabase (cast to unknown to satisfy SupabaseClient type)
 function createMockIamClient(options: {
   emailCountToday?: number
   existingEmail?: boolean
@@ -143,7 +145,7 @@ function createMockIamClient(options: {
       }
     }),
     _insertMock: insertMock,
-  }
+  } as unknown as Awaited<ReturnType<typeof createIamClient>> & { _insertMock: ReturnType<typeof vi.fn> }
 }
 
 describe("POST /api/referrals/send-invite", () => {

@@ -39,11 +39,13 @@ vi.mock("@/lib/supabase/iam", () => ({
               })),
             })),
           })),
-          upsert: vi.fn(async (data: any) => {
-            const key = makeDbKey(data.user_id, data.domain_id, data.conversation_id)
-            mockSessions.set(key, { sdk_session_id: data.sdk_session_id })
-            return { data: null, error: null }
-          }),
+          upsert: vi.fn(
+            async (data: { user_id: string; domain_id: string; conversation_id: string; sdk_session_id: string }) => {
+              const key = makeDbKey(data.user_id, data.domain_id, data.conversation_id)
+              mockSessions.set(key, { sdk_session_id: data.sdk_session_id })
+              return { data: null, error: null }
+            },
+          ),
           delete: vi.fn(() => ({
             eq: vi.fn((_col: string, userId: string) => ({
               eq: vi.fn((_col: string, domainId: string) => ({
