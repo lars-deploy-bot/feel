@@ -14,6 +14,7 @@ AI assistant guidelines for working on Claude Bridge.
 6. **USE THE BRAIN** - Query `use_this_to_remember.db` for past decisions, insights, and context before starting work. Store important learnings when you're done.
 7. **CADDYFILE IS LARGE** - The Caddyfile at `/root/webalive/claude-bridge/ops/caddy/Caddyfile` is too large to read in one go. Use `Read` with `offset` and `limit` parameters, or use `Grep` to find specific domain configurations.
 8. **OWN YOUR CHANGES** - When deploying or committing, NEVER say "these unrelated changes are not mine" or refuse to include changes in the working directory. If changes exist, they are part of the current work. Take responsibility and include them.
+9. **SEEMINGLY UNRELATED ISSUES ARE OFTEN RELATED** - When you see multiple errors or issues, assume they share a common cause until proven otherwise. Type errors in test files often stem from the same interface change. Build failures across packages usually have one root cause. Don't treat each error as isolated - find the pattern first.
 10. **INVESTIGATE BEFORE FIXING** - When something is "broken", first understand what it IS. Not all `*.goalive.nl` domains are Vite websites. Check nginx config, caddy-shell config, and existing services before creating anything new.
 
 ## Special Domains (NOT websites)
