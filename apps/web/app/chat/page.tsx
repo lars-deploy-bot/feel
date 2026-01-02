@@ -18,8 +18,8 @@ import { DevTerminal } from "@/features/chat/components/DevTerminal"
 import { Sandbox } from "@/features/chat/components/Sandbox"
 import { SandboxMobile } from "@/features/chat/components/SandboxMobile"
 import { SubdomainInitializer } from "@/features/chat/components/SubdomainInitializer"
+import { PendingToolsIndicator } from "@/features/chat/components/PendingToolsIndicator"
 import { ThinkingGroup } from "@/features/chat/components/ThinkingGroup"
-import { ThinkingSpinner } from "@/features/chat/components/ThinkingSpinner"
 import { useConversationSession } from "@/features/chat/hooks/useConversationSession"
 import { useImageUpload } from "@/features/chat/hooks/useImageUpload"
 import { useStreamCancellation } from "@/features/chat/hooks/useStreamCancellation"
@@ -199,7 +199,7 @@ function ChatPageContent() {
   })
 
   // Stream reconnection - recovers buffered messages when tab becomes visible
-  const { isReconnecting } = useStreamReconnect({
+  useStreamReconnect({
     conversationId,
     workspace,
     isStreaming: busy,
@@ -504,14 +504,8 @@ function ChatPageContent() {
                 return <ThinkingGroup key={`group-${index}`} messages={group.messages} isComplete={group.isComplete} />
               })}
 
-              {(busy || isReconnecting) && messages.length > 0 && messages[messages.length - 1]?.type === "user" && (
-                <div className="my-4">
-                  <div className="text-xs font-normal text-black/35 dark:text-white/35 flex items-center gap-1">
-                    <ThinkingSpinner />
-                    <span>{isReconnecting ? "reconnecting..." : statusText || "thinking"}</span>
-                  </div>
-                </div>
-              )}
+              {/* Show pending tools (currently executing) - replaces generic "thinking" when tools are running */}
+              <PendingToolsIndicator conversationId={storeConversationId} />
 
               <AgentManagerIndicator
                 isEvaluating={isEvaluatingProgress}

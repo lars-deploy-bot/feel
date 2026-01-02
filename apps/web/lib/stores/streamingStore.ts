@@ -55,11 +55,22 @@ export interface StreamingError {
   linePreview?: string
 }
 
+/** Pending tool execution state */
+export interface PendingTool {
+  toolUseId: string
+  toolName: string
+  toolInput: unknown
+  startedAt: number
+  elapsedSeconds: number // Updated by tool_progress events
+}
+
 export interface ConversationStreamState {
   // Tool use tracking (per-conversation, not global)
   toolUseMap: Map<string, string>
   // Tool input tracking - stores the input for each tool_use_id
   toolInputMap: Map<string, unknown>
+  // Pending tools - tools that have started but not completed
+  pendingTools: Map<string, PendingTool>
 
   // Error recovery
   consecutiveParseErrors: number
@@ -91,6 +102,12 @@ export interface StreamingStoreState {
     getToolInput: (conversationId: string, toolUseId: string) => unknown | undefined
     clearToolUseMap: (conversationId: string) => void
 
+    // Pending tool tracking (tools in progress)
+    markToolPending: (conversationId: string, toolUseId: string, toolName: string, toolInput: unknown) => void
+    updateToolProgress: (conversationId: string, toolUseId: string, elapsedSeconds: number) => void
+    markToolComplete: (conversationId: string, toolUseId: string) => void
+    getPendingTools: (conversationId: string) => PendingTool[]
+
     // Error tracking
     recordError: (conversationId: string, error: Omit<StreamingError, "timestamp">) => void
     resetConsecutiveErrors: (conversationId: string) => void
@@ -120,6 +137,7 @@ export interface StreamingStoreState {
 const defaultConversationState: ConversationStreamState = {
   toolUseMap: new Map(),
   toolInputMap: new Map(),
+  pendingTools: new Map(),
   consecutiveParseErrors: 0,
   recentErrors: [],
   maxRecentErrors: 10,
@@ -184,6 +202,47 @@ export const useStreamingStore = create<StreamingStoreState>((set, get) => {
         updateConversation(conversationId, { toolUseMap: new Map(), toolInputMap: new Map() })
       },
 
+      markToolPending: (conversationId: string, toolUseId: string, toolName: string, toolInput: unknown): void => {
+        const state = get()
+        const convState = state.conversations[conversationId] || { ...defaultConversationState }
+        const newPendingTools = new Map(convState.pendingTools)
+        newPendingTools.set(toolUseId, {
+          toolUseId,
+          toolName,
+          toolInput,
+          startedAt: Date.now(),
+          elapsedSeconds: 0,
+        })
+        updateConversation(conversationId, { pendingTools: newPendingTools })
+      },
+
+      updateToolProgress: (conversationId: string, toolUseId: string, elapsedSeconds: number): void => {
+        const state = get()
+        const convState = state.conversations[conversationId]
+        if (!convState) return
+        const existing = convState.pendingTools.get(toolUseId)
+        if (!existing) return
+        const newPendingTools = new Map(convState.pendingTools)
+        newPendingTools.set(toolUseId, { ...existing, elapsedSeconds })
+        updateConversation(conversationId, { pendingTools: newPendingTools })
+      },
+
+      markToolComplete: (conversationId: string, toolUseId: string): void => {
+        const state = get()
+        const convState = state.conversations[conversationId]
+        if (!convState) return
+        const newPendingTools = new Map(convState.pendingTools)
+        newPendingTools.delete(toolUseId)
+        updateConversation(conversationId, { pendingTools: newPendingTools })
+      },
+
+      getPendingTools: (conversationId: string): PendingTool[] => {
+        const state = get()
+        const convState = state.conversations[conversationId]
+        if (!convState) return []
+        return Array.from(convState.pendingTools.values())
+      },
+
       recordError: (conversationId: string, error: Omit<StreamingError, "timestamp">): void => {
         const state = get()
         const convState = state.conversations[conversationId] || { ...defaultConversationState }
@@ -242,7 +301,8 @@ export const useStreamingStore = create<StreamingStoreState>((set, get) => {
       },
 
       endStream: (conversationId: string): void => {
-        updateConversation(conversationId, { isStreamActive: false })
+        // Clear pending tools when stream ends (handles cancel, error, completion)
+        updateConversation(conversationId, { isStreamActive: false, pendingTools: new Map() })
       },
 
       getStreamHealth: (
@@ -293,3 +353,12 @@ export const useStreamHealth = (conversationId: string) => {
 /** Returns true if the specified conversation has an active stream (busy) */
 export const useIsStreamActive = (conversationId: string | null) =>
   useStreamingStore(state => (conversationId ? (state.conversations[conversationId]?.isStreamActive ?? false) : false))
+
+/** Returns pending tools for a conversation */
+export const usePendingTools = (conversationId: string | null) =>
+  useStreamingStore(state => {
+    if (!conversationId) return []
+    const convState = state.conversations[conversationId]
+    if (!convState) return []
+    return Array.from(convState.pendingTools.values())
+  })

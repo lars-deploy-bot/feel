@@ -165,6 +165,10 @@ export function parseStreamEvent(
     // Handle tool_progress messages (elapsed time for long-running tools)
     if (content.type === "tool_progress") {
       const progressMsg = content as ToolProgressContent
+      // Update the pending tool's elapsed time
+      if (conversationId && streamingActions) {
+        streamingActions.updateToolProgress(conversationId, progressMsg.tool_use_id, progressMsg.elapsed_time_seconds)
+      }
       return {
         id: `${event.requestId}-progress-${progressMsg.tool_use_id}-${progressMsg.elapsed_time_seconds}`,
         type: "tool_progress",
@@ -186,18 +190,22 @@ export function parseStreamEvent(
 
     // Track tool uses per conversation (not globally)
     // Also track tool inputs so we can display them in tool results (e.g., comment body)
+    // Mark tools as pending when they start executing
     if (conversationId && streamingActions && isSDKAssistantMessage(content)) {
       const assistantMsg = content as SDKAssistantMessage
       if (assistantMsg.message?.content && Array.isArray(assistantMsg.message.content)) {
         assistantMsg.message.content.forEach(item => {
           if (item.type === "tool_use" && item.id && item.name) {
             streamingActions.recordToolUse(conversationId, item.id, item.name, item.input)
+            // Mark as pending so UI can show "running" state
+            streamingActions.markToolPending(conversationId, item.id, item.name, item.input)
           }
         })
       }
     }
 
     // Lookup tool names and inputs from per-conversation store
+    // Mark tools as complete when their result arrives
     if (conversationId && streamingActions && isSDKUserMessage(content)) {
       const userMsg = content as SDKUserMessage
       if (userMsg.message?.content && Array.isArray(userMsg.message.content)) {
@@ -207,6 +215,8 @@ export function parseStreamEvent(
             // SDK doesn't include these in tool_result, so we add them client-side
             ;(item as any).tool_name = streamingActions.getToolName(conversationId, item.tool_use_id) || "Tool"
             ;(item as any).tool_input = streamingActions.getToolInput(conversationId, item.tool_use_id)
+            // Mark as complete - removes from pending list
+            streamingActions.markToolComplete(conversationId, item.tool_use_id)
           }
         })
       }

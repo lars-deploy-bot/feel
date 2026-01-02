@@ -61,54 +61,50 @@ function setupSupabaseMocks(options: {
   } = options
 
   // IAM client mock - handles users and org_memberships tables (cast to unknown to satisfy SupabaseClient type)
-  vi.mocked(createIamClient).mockResolvedValue(
-    {
-      from: vi.fn((table: string) => {
-        if (table === "users") {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                order: vi.fn().mockResolvedValue(users),
-              }),
+  vi.mocked(createIamClient).mockResolvedValue({
+    from: vi.fn((table: string) => {
+      if (table === "users") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              order: vi.fn().mockResolvedValue(users),
             }),
-          }
+          }),
         }
-        if (table === "org_memberships") {
-          return {
-            select: vi.fn().mockReturnValue({
-              in: vi.fn().mockReturnValue({
-                eq: vi.fn().mockResolvedValue(memberships),
-              }),
+      }
+      if (table === "org_memberships") {
+        return {
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue(memberships),
             }),
-          }
+          }),
         }
-        return { select: vi.fn().mockReturnValue({ eq: vi.fn(), in: vi.fn() }) }
-      }),
-    } as unknown as Awaited<ReturnType<typeof createIamClient>>,
-  )
+      }
+      return { select: vi.fn().mockReturnValue({ eq: vi.fn(), in: vi.fn() }) }
+    }),
+  } as unknown as Awaited<ReturnType<typeof createIamClient>>)
 
   // App client mock - handles user_quotas and domains tables (cast to unknown to satisfy SupabaseClient type)
-  vi.mocked(createAppClient).mockResolvedValue(
-    {
-      from: vi.fn((table: string) => {
-        if (table === "user_quotas") {
-          return {
-            select: vi.fn().mockReturnValue({
-              in: vi.fn().mockResolvedValue(quotas),
-            }),
-          }
+  vi.mocked(createAppClient).mockResolvedValue({
+    from: vi.fn((table: string) => {
+      if (table === "user_quotas") {
+        return {
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockResolvedValue(quotas),
+          }),
         }
-        if (table === "domains") {
-          return {
-            select: vi.fn().mockReturnValue({
-              in: vi.fn().mockResolvedValue(domains),
-            }),
-          }
+      }
+      if (table === "domains") {
+        return {
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockResolvedValue(domains),
+          }),
         }
-        return { select: vi.fn().mockReturnValue({ in: vi.fn() }) }
-      }),
-    } as unknown as Awaited<ReturnType<typeof createAppClient>>,
-  )
+      }
+      return { select: vi.fn().mockReturnValue({ in: vi.fn() }) }
+    }),
+  } as unknown as Awaited<ReturnType<typeof createAppClient>>)
 }
 
 function createMockRequest(url: string, options: NextRequestInit = {}): NextRequest {

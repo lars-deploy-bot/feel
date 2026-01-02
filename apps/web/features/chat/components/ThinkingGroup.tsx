@@ -4,11 +4,13 @@
  * Groups and displays thinking-phase messages:
  * - Tool results: Render directly with their own expand/collapse
  * - Thinking content: Wrapped in collapsible "thought" label
- * - Spinner shown while streaming
+ * - Spinner shown while streaming (unless tools are pending - PendingToolsIndicator handles that)
  */
 
 import { useState } from "react"
 import { useDebugVisible } from "@/lib/stores/debug-store"
+import { useCurrentConversationId } from "@/lib/stores/messageStore"
+import { usePendingTools } from "@/lib/stores/streamingStore"
 import type { UIMessage } from "../lib/message-parser"
 import { getToolResults, getThinkingContent } from "../lib/message-classifier"
 import { renderMessage } from "../lib/message-renderer"
@@ -22,13 +24,18 @@ interface ThinkingGroupProps {
 export function ThinkingGroup({ messages, isComplete }: ThinkingGroupProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const isDebugMode = useDebugVisible()
+  const conversationId = useCurrentConversationId()
+  const pendingTools = usePendingTools(conversationId)
 
   // Separate tool results (render directly) from thinking content (in wrapper)
   const toolResults = getToolResults(messages)
   const thinkingContent = getThinkingContent(messages, isDebugMode)
 
-  // Nothing to show
-  if (toolResults.length === 0 && thinkingContent.length === 0 && isComplete) {
+  // Don't show "thinking" spinner if tools are pending - PendingToolsIndicator shows those
+  const hasPendingTools = pendingTools.length > 0
+
+  // Nothing to show (also skip if only pending tools - let PendingToolsIndicator handle it)
+  if (toolResults.length === 0 && thinkingContent.length === 0 && (isComplete || hasPendingTools)) {
     return null
   }
 
@@ -40,7 +47,8 @@ export function ThinkingGroup({ messages, isComplete }: ThinkingGroupProps) {
       ))}
 
       {/* Thinking wrapper: shown while streaming OR if there's thinking content */}
-      {(thinkingContent.length > 0 || !isComplete) && (
+      {/* Skip when tools are pending - PendingToolsIndicator handles that */}
+      {(thinkingContent.length > 0 || (!isComplete && !hasPendingTools)) && (
         <>
           <button
             type="button"
@@ -48,7 +56,7 @@ export function ThinkingGroup({ messages, isComplete }: ThinkingGroupProps) {
             className="text-xs font-normal flex items-center gap-1 group cursor-pointer"
             data-testid={isComplete ? "thought-indicator" : "thinking-indicator"}
           >
-            {!isComplete && <ThinkingSpinner />}
+            {!isComplete && !hasPendingTools && <ThinkingSpinner />}
             <span className="text-black/35 dark:text-white/35 group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-black/35 group-hover:via-black/60 group-hover:to-black/35 dark:group-hover:from-white/35 dark:group-hover:via-white/60 dark:group-hover:to-white/35 group-hover:bg-[length:200%_100%] group-hover:bg-clip-text group-hover:animate-shimmer transition-colors">
               {isComplete ? "thought" : "thinking"}
             </span>
