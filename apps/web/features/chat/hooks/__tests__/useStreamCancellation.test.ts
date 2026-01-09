@@ -305,11 +305,13 @@ describe("useStreamCancellation", () => {
         result.current.stopStreaming()
       })
 
+      // IMPORTANT: addMessage is called with (message, targetConversationId) for tab isolation
       expect(options.addMessage).toHaveBeenCalledWith(
         expect.objectContaining({
           type: "complete",
           content: {},
         }),
+        options.conversationId, // targetConversationId for tab isolation
       )
     })
 

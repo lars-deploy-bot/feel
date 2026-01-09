@@ -21,8 +21,12 @@ interface UseStreamReconnectOptions {
   workspace: string | null
   /** Whether a stream is currently active */
   isStreaming: boolean
-  /** Callback to add messages to the UI */
-  addMessage: (message: UIMessage) => void
+  /**
+   * Callback to add messages to the UI.
+   * IMPORTANT: targetConversationId is REQUIRED for tab isolation.
+   * Without it, messages could be added to the wrong tab when user switches tabs.
+   */
+  addMessage: (message: UIMessage, targetConversationId: string) => void
   /** Whether component is mounted */
   mounted: boolean
 }
@@ -93,6 +97,7 @@ export function useStreamReconnect({
       console.log(`[StreamReconnect] Found ${data.messages?.length ?? 0} buffered messages, state: ${data.state}`)
 
       // Process buffered messages
+      // CRITICAL: Pass conversationId to addMessage for tab isolation
       if (data.messages && data.messages.length > 0) {
         for (const line of data.messages) {
           try {
@@ -100,7 +105,7 @@ export function useStreamReconnect({
             if (isValidStreamEvent(parsed)) {
               const message = parseStreamEvent(parsed, conversationId, streamingActions)
               if (message) {
-                addMessage(message)
+                addMessage(message, conversationId)
               }
             }
           } catch (e) {
@@ -175,6 +180,7 @@ export function useStreamReconnect({
           }
 
           // Process any new messages
+          // CRITICAL: Pass convId to addMessage for tab isolation
           if (data.messages && data.messages.length > 0) {
             for (const line of data.messages) {
               try {
@@ -182,7 +188,7 @@ export function useStreamReconnect({
                 if (isValidStreamEvent(parsed)) {
                   const message = parseStreamEvent(parsed, convId, streamingActions)
                   if (message) {
-                    addMessage(message)
+                    addMessage(message, convId)
                   }
                 }
               } catch {

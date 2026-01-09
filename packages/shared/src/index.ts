@@ -77,6 +77,15 @@ export {
   type OAuthMcpProviderRegistry,
   type OAuthMcpProviderKey,
   type ProviderTokenMap,
+  // OAuth-only providers (no MCP server, just token storage)
+  OAUTH_ONLY_PROVIDERS,
+  getOAuthOnlyProviderKeys,
+  getAllOAuthProviderKeys,
+  isValidOAuthProviderKey,
+  type OAuthOnlyProviderConfig,
+  type OAuthOnlyProviderRegistry,
+  type OAuthOnlyProviderKey,
+  type AllOAuthProviderKey,
   // Global MCP providers (always available, no auth required)
   GLOBAL_MCP_PROVIDERS,
   getGlobalMcpProviderKeys,

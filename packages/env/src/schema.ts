@@ -65,6 +65,8 @@ export const serverSchema = {
   LINEAR_CLIENT_ID: z.string().optional(),
   LINEAR_CLIENT_SECRET: z.string().optional(),
   LINEAR_REDIRECT_URI: z.string().optional(),
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
 
   // JWT & Security
   JWT_SECRET: z.string().optional(),
@@ -137,6 +139,8 @@ export const runtimeEnv = {
   LINEAR_CLIENT_ID: process.env.LINEAR_CLIENT_ID,
   LINEAR_CLIENT_SECRET: process.env.LINEAR_CLIENT_SECRET,
   LINEAR_REDIRECT_URI: process.env.LINEAR_REDIRECT_URI,
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
   JWT_SECRET: process.env.JWT_SECRET,
   JWT_ES256_PRIVATE_KEY: process.env.JWT_ES256_PRIVATE_KEY,
   JWT_ALGORITHM: process.env.JWT_ALGORITHM,

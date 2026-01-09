@@ -7,12 +7,18 @@
  * SINGLE SOURCE OF TRUTH: packages/shared/src/mcp-providers.ts
  */
 
-import { OAUTH_MCP_PROVIDERS, type OAuthMcpProviderKey } from "@webalive/shared"
+import {
+  OAUTH_MCP_PROVIDERS,
+  OAUTH_ONLY_PROVIDERS,
+  getAllOAuthProviderKeys,
+  isValidOAuthProviderKey,
+  type AllOAuthProviderKey,
+} from "@webalive/shared"
 
 /**
- * Supported OAuth providers - derived from shared registry
+ * Supported OAuth providers - includes both MCP and OAuth-only providers
  */
-export type OAuthProvider = OAuthMcpProviderKey
+export type OAuthProvider = AllOAuthProviderKey
 
 /**
  * The base path for all OAuth routes
@@ -41,19 +47,22 @@ export function buildOAuthRedirectUri(baseUrl: string, provider: OAuthProvider):
 }
 
 /**
- * Re-export the shared config for backward compatibility
- * Use OAUTH_MCP_PROVIDERS directly for new code
+ * Combined provider config for both MCP and OAuth-only providers
+ * Used by oauth-flow-handler to get env prefix and default scopes
  */
-export const OAUTH_PROVIDER_CONFIG = OAUTH_MCP_PROVIDERS
+export const OAUTH_PROVIDER_CONFIG = {
+  ...OAUTH_MCP_PROVIDERS,
+  ...OAUTH_ONLY_PROVIDERS,
+} as const
 
 /**
- * List of supported OAuth providers - derived from shared registry
+ * List of supported OAuth providers - includes both MCP and OAuth-only
  */
-export const SUPPORTED_OAUTH_PROVIDERS = Object.keys(OAUTH_MCP_PROVIDERS) as OAuthProvider[]
+export const SUPPORTED_OAUTH_PROVIDERS = getAllOAuthProviderKeys()
 
 /**
- * Check if a provider is supported
+ * Check if a provider is supported (MCP or OAuth-only)
  */
 export function isOAuthProviderSupported(provider: string): provider is OAuthProvider {
-  return provider.toLowerCase() in OAUTH_MCP_PROVIDERS
+  return isValidOAuthProviderKey(provider.toLowerCase())
 }

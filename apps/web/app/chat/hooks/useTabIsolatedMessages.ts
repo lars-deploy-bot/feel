@@ -1,7 +1,8 @@
 "use client"
 
+import { useEffect, useRef } from "react"
 import { useActiveTab, useTabsExpanded } from "@/lib/stores/tabStore"
-import { useCurrentConversationId, useMessages, useMessagesForConversation } from "@/lib/stores/messageStore"
+import { useCurrentConversationId, useMessagesForConversation } from "@/lib/stores/messageStore"
 import { useIsStreamActive } from "@/lib/stores/streamingStore"
 
 interface UseTabIsolatedMessagesOptions {
@@ -17,6 +18,9 @@ interface UseTabIsolatedMessagesOptions {
  * - When tabs are collapsed: shows the globally active conversation messages
  *
  * Also scopes the busy (streaming) state to the displayed conversation.
+ *
+ * INVARIANT: Messages returned MUST belong to displayConversationId.
+ * Any violation indicates a cross-tab contamination bug.
  */
 export function useTabIsolatedMessages({ workspace, showTabs }: UseTabIsolatedMessagesOptions) {
   // Get tab state
@@ -25,30 +29,70 @@ export function useTabIsolatedMessages({ workspace, showTabs }: UseTabIsolatedMe
 
   // Get store's global conversation state (fallback when tabs not active)
   const storeConversationId = useCurrentConversationId()
-  const defaultMessages = useMessages()
 
   // Determine which conversation to display
+  // CRITICAL: This is the SINGLE SOURCE OF TRUTH for which messages to show
   const isTabMode = showTabs && tabsExpanded && activeTab
   const displayConversationId = isTabMode ? activeTab.conversationId : storeConversationId
 
-  // Get messages for the display conversation
-  const tabMessages = useMessagesForConversation(displayConversationId)
-  const messages = isTabMode ? tabMessages : defaultMessages
+  // Get messages ONLY for the display conversation
+  // DO NOT call useMessages() - it subscribes to global state and can cause leakage
+  const messages = useMessagesForConversation(displayConversationId)
 
   // Scope busy state to the display conversation
   const busy = useIsStreamActive(displayConversationId)
 
-  // Debug logging to trace busy state issues
-  if (process.env.NODE_ENV === "development" || process.env.NEXT_PUBLIC_BRIDGE_ENV === "staging") {
-    console.log("[TabIsolatedMessages]", {
-      isTabMode,
-      activeTabId: activeTab?.id,
-      activeTabConversationId: activeTab?.conversationId,
-      displayConversationId,
-      storeConversationId,
-      busy,
-    })
-  }
+  // Track previous values for debugging cross-tab issues
+  const prevDisplayIdRef = useRef<string | null>(null)
+  const prevMessageCountRef = useRef<number>(0)
+
+  // Debug logging and INVARIANT CHECK
+  useEffect(() => {
+    const isDev = process.env.NODE_ENV === "development" || process.env.NEXT_PUBLIC_BRIDGE_ENV === "staging"
+
+    if (isDev) {
+      // Detect potential cross-tab contamination
+      const prevId = prevDisplayIdRef.current
+      const prevCount = prevMessageCountRef.current
+
+      // If conversation switched but message count INCREASED, something is wrong
+      // (Messages should reset to the new conversation's count, which may be different)
+      if (prevId && prevId !== displayConversationId && messages.length > 0) {
+        // Check if any message doesn't belong to current conversation
+        // This would indicate cross-tab leakage
+        console.log("[TabIsolatedMessages] Conversation switched", {
+          from: prevId,
+          to: displayConversationId,
+          prevMessageCount: prevCount,
+          newMessageCount: messages.length,
+          isTabMode,
+        })
+      }
+
+      // Log state on every render for debugging
+      console.log("[TabIsolatedMessages]", {
+        isTabMode,
+        activeTabId: activeTab?.id,
+        activeTabConversationId: activeTab?.conversationId,
+        displayConversationId,
+        storeConversationId,
+        messageCount: messages.length,
+        busy,
+      })
+
+      prevDisplayIdRef.current = displayConversationId
+      prevMessageCountRef.current = messages.length
+    }
+  }, [
+    displayConversationId,
+    messages.length,
+    isTabMode,
+    activeTab?.id,
+    activeTab?.conversationId,
+    storeConversationId,
+    busy,
+    messages,
+  ])
 
   return {
     messages,

@@ -86,3 +86,24 @@ export async function addOrgMember(orgId: string, userId: string, role: "owner" 
     throw new Error("Failed to add member")
   }
 }
+
+export interface CreateOrgRequest {
+  name: string
+  credits?: number
+  ownerUserId?: string
+}
+
+export async function createOrg(data: CreateOrgRequest): Promise<any> {
+  const response = await fetch("/api/manager/orgs/create", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.message || "Failed to create organization")
+  }
+
+  return response.json()
+}

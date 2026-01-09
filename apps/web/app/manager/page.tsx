@@ -79,6 +79,7 @@ export default function ManagerPage() {
   const [removingMember, setRemovingMember] = useState<string | null>(null)
   const [transferringOwnership, setTransferringOwnership] = useState<string | null>(null)
   const [transferringDomain, setTransferringDomain] = useState<string | null>(null)
+  const [creatingOrg, setCreatingOrg] = useState(false)
 
   // Settings actions state
   const [reloadingCaddy, setReloadingCaddy] = useState(false)
@@ -290,6 +291,10 @@ export default function ManagerPage() {
   useEffect(() => {
     if ((activeTab === "organizations" || activeTab === "users" || activeTab === "feedback") && authenticated) {
       fetchOrgs()
+      // Also fetch users for the create org modal
+      if (activeTab === "organizations") {
+        fetchUsers()
+      }
     }
   }, [activeTab, authenticated, fetchOrgs])
 
@@ -738,6 +743,16 @@ export default function ManagerPage() {
     })
   }
 
+  const handleCreateOrg = async (name: string, credits: number, ownerUserId?: string) => {
+    await executeHandler({
+      fn: () => orgService.createOrg({ name, credits, ownerUserId }),
+      onLoading: setCreatingOrg,
+      successMessage: "Organization created successfully",
+      errorMessage: "Failed to create organization",
+      onSuccess: fetchOrgs,
+    })
+  }
+
   const handleCheckPermissions = async (domain: string) => {
     setPermissionsModal(domain)
     await executeHandler({
@@ -992,6 +1007,7 @@ export default function ManagerPage() {
               deleting={deletingOrg}
               transferring={transferringOwnership}
               removing={removingMember}
+              creating={creatingOrg}
               onRefresh={fetchOrgs}
               onAddMember={orgId => {
                 setAddMemberOrgId(orgId)
@@ -1006,6 +1022,8 @@ export default function ManagerPage() {
               }}
               onTransferDomain={handleTransferDomain}
               transferringDomain={transferringDomain}
+              onCreateOrg={handleCreateOrg}
+              availableUsers={availableUsers}
             />
           )}
 

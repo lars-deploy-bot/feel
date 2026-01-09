@@ -8,7 +8,12 @@
  */
 
 import { createOAuthManager, buildInstanceId, type OAuthManagerConfig } from "@webalive/oauth-core"
-import { OAUTH_MCP_PROVIDERS, type OAuthMcpProviderKey } from "@webalive/shared"
+import {
+  OAUTH_MCP_PROVIDERS,
+  OAUTH_ONLY_PROVIDERS,
+  isValidOAuthProviderKey,
+  type AllOAuthProviderKey,
+} from "@webalive/shared"
 
 /**
  * Get the current environment from environment variables
@@ -57,7 +62,7 @@ function getDefaultTtl(environment: string): number | undefined {
 /**
  * Generic factory to create OAuth manager for any provider
  */
-function createProviderOAuthManager(provider: OAuthMcpProviderKey): ReturnType<typeof createOAuthManager> {
+function createProviderOAuthManager(provider: AllOAuthProviderKey): ReturnType<typeof createOAuthManager> {
   const environment = getCurrentEnvironment()
   const instanceId = buildInstanceId(provider, environment)
 
@@ -112,21 +117,26 @@ export function createTenantOAuthManager(provider: string, tenantId: string): Re
 }
 
 // Dynamic singleton map - instances created on demand
-const instances = new Map<OAuthMcpProviderKey, ReturnType<typeof createOAuthManager>>()
+const instances = new Map<AllOAuthProviderKey, ReturnType<typeof createOAuthManager>>()
+
+/**
+ * All supported OAuth providers (MCP + OAuth-only)
+ */
+const ALL_OAUTH_PROVIDERS = { ...OAUTH_MCP_PROVIDERS, ...OAUTH_ONLY_PROVIDERS }
 
 /**
  * Get OAuth manager instance for any provider (singleton per provider)
  *
- * @param provider - Provider key (e.g., 'linear', 'stripe')
+ * @param provider - Provider key (e.g., 'linear', 'stripe', 'google')
  * @returns OAuth manager instance
- * @throws Error if provider is not in OAUTH_MCP_PROVIDERS
+ * @throws Error if provider is not supported
  */
 export function getOAuthInstance(provider: string): ReturnType<typeof createOAuthManager> {
-  const key = provider.toLowerCase() as OAuthMcpProviderKey
+  const key = provider.toLowerCase() as AllOAuthProviderKey
   if (!instances.has(key)) {
-    if (!(key in OAUTH_MCP_PROVIDERS)) {
+    if (!isValidOAuthProviderKey(key)) {
       throw new Error(
-        `Unsupported OAuth provider: ${provider}. Valid providers: ${Object.keys(OAUTH_MCP_PROVIDERS).join(", ")}`,
+        `Unsupported OAuth provider: ${provider}. Valid providers: ${Object.keys(ALL_OAUTH_PROVIDERS).join(", ")}`,
       )
     }
     instances.set(key, createProviderOAuthManager(key))
@@ -137,6 +147,7 @@ export function getOAuthInstance(provider: string): ReturnType<typeof createOAut
 // Backward-compatible named exports for existing code
 export const getLinearOAuth = () => getOAuthInstance("linear")
 export const getStripeOAuth = () => getOAuthInstance("stripe")
+export const getGoogleOAuth = () => getOAuthInstance("google")
 
 // Re-export client-safe provider constants
 export { SUPPORTED_OAUTH_PROVIDERS, isOAuthProviderSupported } from "./providers"

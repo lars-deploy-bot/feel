@@ -19,6 +19,7 @@ interface OrganizationsListProps {
   deleting: string | null
   transferring: string | null
   removing: string | null
+  creating: boolean
   onRefresh: () => void
   onEditCredits: (orgId: string, credits: number) => void
   onDelete: (orgId: string) => void
@@ -27,6 +28,8 @@ interface OrganizationsListProps {
   onRemoveMember: (orgId: string, userId: string) => void
   onTransferDomain: (domain: string, currentOrgId: string, targetOrgId: string) => void
   transferringDomain: string | null
+  onCreateOrg: (name: string, credits: number, ownerUserId?: string) => void
+  availableUsers: Array<{ user_id: string; email: string; display_name: string | null }>
 }
 
 export function OrganizationsList({
@@ -35,6 +38,7 @@ export function OrganizationsList({
   deleting,
   transferring,
   removing,
+  creating,
   onRefresh,
   onEditCredits,
   onDelete,
@@ -43,11 +47,28 @@ export function OrganizationsList({
   onRemoveMember,
   onTransferDomain,
   transferringDomain,
+  onCreateOrg,
+  availableUsers,
 }: OrganizationsListProps) {
   const [expandedOrg, setExpandedOrg] = useState<string | null>(null)
   const [transferModalOpen, setTransferModalOpen] = useState(false)
   const [selectedDomain, setSelectedDomain] = useState<{ hostname: string; orgId: string } | null>(null)
   const [targetOrgId, setTargetOrgId] = useState("")
+
+  // Create org modal state
+  const [createModalOpen, setCreateModalOpen] = useState(false)
+  const [newOrgName, setNewOrgName] = useState("")
+  const [newOrgCredits, setNewOrgCredits] = useState("0")
+  const [newOrgOwner, setNewOrgOwner] = useState("")
+
+  const handleCreateOrg = () => {
+    if (!newOrgName.trim()) return
+    onCreateOrg(newOrgName.trim(), parseFloat(newOrgCredits) || 0, newOrgOwner || undefined)
+    setCreateModalOpen(false)
+    setNewOrgName("")
+    setNewOrgCredits("0")
+    setNewOrgOwner("")
+  }
 
   return (
     <>
@@ -56,14 +77,23 @@ export function OrganizationsList({
           <div className="text-sm text-slate-600 dark:text-slate-400">
             {orgs.length} organization{orgs.length !== 1 ? "s" : ""}
           </div>
-          <button
-            type="button"
-            onClick={onRefresh}
-            disabled={loading}
-            className="text-xs px-2.5 py-1.5 text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-50 dark:bg-[#333] dark:text-slate-300 dark:border-white/20 dark:hover:bg-[#444] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {loading ? "Refreshing..." : "Refresh"}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCreateModalOpen(true)}
+              className="text-xs px-2.5 py-1.5 text-emerald-700 bg-emerald-50 border border-emerald-200 rounded hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800 dark:hover:bg-emerald-900/40 transition-colors"
+            >
+              Create
+            </button>
+            <button
+              type="button"
+              onClick={onRefresh}
+              disabled={loading}
+              className="text-xs px-2.5 py-1.5 text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-50 dark:bg-[#333] dark:text-slate-300 dark:border-white/20 dark:hover:bg-[#444] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {loading ? "Refreshing..." : "Refresh"}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -318,6 +348,100 @@ export function OrganizationsList({
                 className="px-4 py-2 text-sm text-white bg-indigo-600 dark:bg-indigo-500 rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {transferringDomain === selectedDomain.hostname ? "Transferring..." : "Transfer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Organization Modal */}
+      {createModalOpen && (
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-[#1a1a1a] rounded-lg shadow-xl max-w-md w-full">
+            <div className="px-6 py-4 border-b border-slate-200 dark:border-white/10">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Create Organization</h3>
+            </div>
+            <div className="px-6 py-4 space-y-4">
+              <div>
+                <label htmlFor="org-name" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  Organization Name
+                </label>
+                <input
+                  id="org-name"
+                  type="text"
+                  value={newOrgName}
+                  onChange={e => setNewOrgName(e.target.value)}
+                  placeholder="My Organization"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-white/20 rounded-lg bg-white dark:bg-[#2a2a2a] text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent"
+                  onKeyDown={e => {
+                    if (e.key === "Enter") handleCreateOrg()
+                    if (e.key === "Escape") setCreateModalOpen(false)
+                  }}
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="org-credits"
+                  className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2"
+                >
+                  Starting Credits
+                </label>
+                <input
+                  id="org-credits"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={newOrgCredits}
+                  onChange={e => setNewOrgCredits(e.target.value)}
+                  placeholder="0"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-white/20 rounded-lg bg-white dark:bg-[#2a2a2a] text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="org-owner"
+                  className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2"
+                >
+                  Owner (optional)
+                </label>
+                <select
+                  id="org-owner"
+                  value={newOrgOwner}
+                  onChange={e => setNewOrgOwner(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-white/20 rounded-lg bg-white dark:bg-[#2a2a2a] text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent"
+                >
+                  <option value="">No owner (add later)</option>
+                  {availableUsers.map(user => (
+                    <option key={user.user_id} value={user.user_id}>
+                      {user.display_name || user.email} ({user.email})
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  Assign an existing user as the organization owner
+                </p>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-slate-200 dark:border-white/10 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setCreateModalOpen(false)
+                  setNewOrgName("")
+                  setNewOrgCredits("0")
+                  setNewOrgOwner("")
+                }}
+                className="px-4 py-2 text-sm text-slate-700 dark:text-slate-300 bg-white dark:bg-[#2a2a2a] border border-slate-300 dark:border-white/20 rounded-lg hover:bg-slate-50 dark:hover:bg-[#333] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateOrg}
+                disabled={!newOrgName.trim() || creating}
+                className="px-4 py-2 text-sm text-white bg-emerald-600 dark:bg-emerald-500 rounded-lg hover:bg-emerald-700 dark:hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {creating ? "Creating..." : "Create"}
               </button>
             </div>
           </div>

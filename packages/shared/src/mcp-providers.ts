@@ -263,6 +263,86 @@ export function getMcpToolFriendlyName(toolName: string): { provider: string; ac
 }
 
 // =============================================================================
+// OAuth-Only Providers (no MCP server, just token storage)
+// =============================================================================
+
+/**
+ * Configuration for OAuth-only providers (no MCP server)
+ * These providers authenticate users but don't connect to an MCP server.
+ * Used for direct API access (e.g., Gmail API, Google Calendar API).
+ */
+export interface OAuthOnlyProviderConfig {
+  /**
+   * Human-readable name for display in UI
+   */
+  friendlyName: string
+  /**
+   * Default OAuth scopes to request
+   */
+  defaultScopes: string
+  /**
+   * Environment variable prefix for credentials (e.g., "GOOGLE" for GOOGLE_CLIENT_ID)
+   */
+  envPrefix: string
+}
+
+/**
+ * Type for the OAuth-only provider registry
+ */
+export type OAuthOnlyProviderRegistry = Record<string, OAuthOnlyProviderConfig>
+
+/**
+ * Registry of OAuth-only providers (no MCP server)
+ *
+ * These providers store OAuth tokens but don't connect to an MCP server.
+ * Use the tokens directly with provider APIs (e.g., Gmail API).
+ */
+export const OAUTH_ONLY_PROVIDERS = {
+  google: {
+    friendlyName: "Google",
+    // Full Gmail access + profile info
+    defaultScopes: [
+      "https://mail.google.com/",
+      "https://www.googleapis.com/auth/gmail.modify",
+      "https://www.googleapis.com/auth/userinfo.profile",
+      "https://www.googleapis.com/auth/userinfo.email",
+    ].join(" "),
+    envPrefix: "GOOGLE",
+  },
+} as const satisfies OAuthOnlyProviderRegistry
+
+/**
+ * Type for OAuth-only provider keys (e.g., "google")
+ */
+export type OAuthOnlyProviderKey = keyof typeof OAUTH_ONLY_PROVIDERS
+
+/**
+ * Get all OAuth-only provider keys
+ */
+export function getOAuthOnlyProviderKeys(): OAuthOnlyProviderKey[] {
+  return Object.keys(OAUTH_ONLY_PROVIDERS) as OAuthOnlyProviderKey[]
+}
+
+/**
+ * Combined type for all OAuth providers (MCP + OAuth-only)
+ */
+export type AllOAuthProviderKey = OAuthMcpProviderKey | OAuthOnlyProviderKey
+
+/**
+ * Get all OAuth provider keys (MCP + OAuth-only)
+ */
+export function getAllOAuthProviderKeys(): AllOAuthProviderKey[] {
+  return [...getOAuthMcpProviderKeys(), ...getOAuthOnlyProviderKeys()]
+}
+
+/**
+ * Check if a provider key is a valid OAuth provider (MCP or OAuth-only)
+ */
+export function isValidOAuthProviderKey(key: string): key is AllOAuthProviderKey {
+  return key in OAUTH_MCP_PROVIDERS || key in OAUTH_ONLY_PROVIDERS
+}
+
+// =============================================================================
 // Global MCP Providers (always available, no authentication required)
 // =============================================================================
 

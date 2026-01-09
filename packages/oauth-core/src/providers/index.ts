@@ -6,6 +6,7 @@
 
 import type { OAuthProvider } from "./base"
 import { GitHubProvider } from "./github"
+import { GoogleProvider } from "./google"
 import { LinearProvider } from "./linear"
 import { StripeProvider } from "./stripe"
 
@@ -14,6 +15,7 @@ const providers = new Map<string, OAuthProvider>()
 
 // Register built-in providers
 providers.set("github", new GitHubProvider())
+providers.set("google", new GoogleProvider())
 providers.set("linear", new LinearProvider())
 providers.set("stripe", new StripeProvider())
 
@@ -65,5 +67,5 @@ export function hasProvider(name: string): boolean {
 }
 
 // Re-export types and implementations
-export { GitHubProvider, LinearProvider, StripeProvider }
+export { GitHubProvider, GoogleProvider, LinearProvider, StripeProvider }
 export type { OAuthProvider }

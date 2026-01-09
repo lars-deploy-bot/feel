@@ -102,86 +102,99 @@ export function useChatMessaging({
     return buildPromptWithAttachmentsEx(userMessage.content as string, userMessage.attachments || [])
   }, [])
 
-  const handleCompletionFeatures = useCallback(() => {
-    const state = useMessageStore.getState()
-    const currentConvo = state.conversationId ? state.conversations[state.conversationId] : null
-    const formattedMessages = currentConvo?.messages ? formatMessagesAsText(currentConvo.messages) : ""
+  /**
+   * Handle completion features like agent supervisor.
+   * IMPORTANT: targetConversationId must be passed to ensure messages go to the correct tab.
+   * Using global state.conversationId would cause cross-tab message leakage when user switches tabs
+   * during an active stream.
+   */
+  const handleCompletionFeatures = useCallback(
+    (targetConversationId: string) => {
+      const state = useMessageStore.getState()
+      // Use the TARGET conversation, not the global active one
+      // This prevents cross-tab message leakage when user switches tabs during streaming
+      const targetConvo = state.conversations[targetConversationId]
+      const formattedMessages = targetConvo?.messages ? formatMessagesAsText(targetConvo.messages) : ""
 
-    if (agentSupervisorEnabled && prGoal && workspace && formattedMessages) {
-      isEvaluatingProgressRef.current = true
-      const agentAbort = new AbortController()
-      agentManagerAbortRef.current = agentAbort
+      if (agentSupervisorEnabled && prGoal && workspace && formattedMessages) {
+        isEvaluatingProgressRef.current = true
+        const agentAbort = new AbortController()
+        agentManagerAbortRef.current = agentAbort
 
-      fetch("/api/evaluate-progress", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        signal: agentAbort.signal,
-        body: JSON.stringify({
-          conversation: formattedMessages,
-          prGoal,
-          workspace,
-          building,
-          targetUsers,
-          model: userModel,
-        }),
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.ok && data.nextAction) {
-            const action = data.nextAction.toUpperCase()
+        fetch("/api/evaluate-progress", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          signal: agentAbort.signal,
+          body: JSON.stringify({
+            conversation: formattedMessages,
+            prGoal,
+            workspace,
+            building,
+            targetUsers,
+            model: userModel,
+          }),
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (data.ok && data.nextAction) {
+              const action = data.nextAction.toUpperCase()
 
-            const isDone = /^DONE\b|:\s*DONE\b|is:\s*DONE\b/i.test(action)
-            if (isDone) {
-              const doneMatch = data.nextAction.match(/DONE[\s\-:]*(.*)$/is)
-              const message = doneMatch?.[1]?.trim() || "PR goal complete!"
-              const doneMessage: UIMessage = {
-                id: `agent-manager-done-${Date.now()}`,
-                type: "agent_manager",
-                content: { status: "done", message } satisfies AgentManagerContent,
-                timestamp: new Date(),
+              const isDone = /^DONE\b|:\s*DONE\b|is:\s*DONE\b/i.test(action)
+              if (isDone) {
+                const doneMatch = data.nextAction.match(/DONE[\s\-:]*(.*)$/is)
+                const message = doneMatch?.[1]?.trim() || "PR goal complete!"
+                const doneMessage: UIMessage = {
+                  id: `agent-manager-done-${Date.now()}`,
+                  type: "agent_manager",
+                  content: { status: "done", message } satisfies AgentManagerContent,
+                  timestamp: new Date(),
+                }
+                // CRITICAL: Pass targetConversationId to prevent cross-tab leakage
+                addMessage(doneMessage, targetConversationId)
+                return
               }
-              addMessage(doneMessage)
-              return
-            }
 
-            const isStop = /^STOP\b|:\s*STOP\b|is:\s*STOP\b/i.test(action)
-            if (isStop) {
-              const stopMatch = data.nextAction.match(/STOP[\s\-:]*(.*)$/is)
-              const message = stopMatch?.[1]?.trim() || "Agent needs input"
-              const stopMessage: UIMessage = {
-                id: `agent-manager-stop-${Date.now()}`,
-                type: "agent_manager",
-                content: { status: "stop", message } satisfies AgentManagerContent,
-                timestamp: new Date(),
+              const isStop = /^STOP\b|:\s*STOP\b|is:\s*STOP\b/i.test(action)
+              if (isStop) {
+                const stopMatch = data.nextAction.match(/STOP[\s\-:]*(.*)$/is)
+                const message = stopMatch?.[1]?.trim() || "Agent needs input"
+                const stopMessage: UIMessage = {
+                  id: `agent-manager-stop-${Date.now()}`,
+                  type: "agent_manager",
+                  content: { status: "stop", message } satisfies AgentManagerContent,
+                  timestamp: new Date(),
+                }
+                // CRITICAL: Pass targetConversationId to prevent cross-tab leakage
+                addMessage(stopMessage, targetConversationId)
+                setMsg("")
+                return
               }
-              addMessage(stopMessage)
-              setMsg("")
-              return
-            }
 
-            const agentMessage = `agentmanager> ${data.nextAction}`
-            setMsg(agentMessage)
-            agentManagerTimeoutRef.current = setTimeout(() => {
-              agentManagerTimeoutRef.current = null
-              // Note: sendMessage will be called via the returned function
-            }, 4000)
-            if (!data.onTrack) {
-              toast("Supervisor: Course correction suggested", { icon: "🎯" })
+              const agentMessage = `agentmanager> ${data.nextAction}`
+              setMsg(agentMessage)
+              agentManagerTimeoutRef.current = setTimeout(() => {
+                agentManagerTimeoutRef.current = null
+                // Note: sendMessage will be called via the returned function
+              }, 4000)
+              if (!data.onTrack) {
+                toast("Supervisor: Course correction suggested", { icon: "🎯" })
+              }
             }
-          }
-        })
-        .catch(err => {
-          if (err instanceof Error && err.name !== "AbortError") {
-            console.error("[AgentSupervisor] Error:", err)
-          }
-        })
-        .finally(() => {
-          isEvaluatingProgressRef.current = false
-          agentManagerAbortRef.current = null
-        })
-    }
-  }, [agentSupervisorEnabled, prGoal, workspace, building, targetUsers, userModel, addMessage, setMsg])
+          })
+          .catch(err => {
+            if (err instanceof Error && err.name !== "AbortError") {
+              console.error("[AgentSupervisor] Error:", err)
+            }
+          })
+          .finally(() => {
+            isEvaluatingProgressRef.current = false
+            agentManagerAbortRef.current = null
+          })
+      }
+    },
+    [agentSupervisorEnabled, prGoal, workspace, building, targetUsers, userModel, addMessage, setMsg],
+  )
 
   const sendStreaming = useCallback(
     async (userMessage: UIMessage, targetConversationId: string) => {
@@ -376,7 +389,8 @@ export function useChatMessaging({
                       !isInterruptEvent(eventData)
                     ) {
                       setShowCompletionDots(true)
-                      handleCompletionFeatures()
+                      // Pass targetConversationId to ensure agent supervisor uses correct conversation
+                      handleCompletionFeatures(targetConversationId)
                     }
                     shouldStopReading = true
                     break
@@ -488,8 +502,15 @@ export function useChatMessaging({
             return
           }
 
+          // Check if this is an OAuth/API auth error from the SDK stream
+          // These errors are already displayed via OAuthErrorMessage in AssistantMessage
+          // Don't duplicate with ErrorResultMessage
+          const isOAuthApiError =
+            error.message.includes("authentication_error") &&
+            (error.message.includes("OAuth token has expired") || error.message.includes("Please run /login"))
+
           const isConversationBusy = error instanceof HttpError && error.errorCode === ErrorCodes.CONVERSATION_BUSY
-          if (!isConversationBusy) {
+          if (!isConversationBusy && !isOAuthApiError) {
             const errorMessage: UIMessage = {
               id: Date.now().toString(),
               type: "sdk_message",

@@ -11,8 +11,12 @@ interface UseStreamCancellationOptions {
   conversationId: string
   /** Current workspace */
   workspace: string | null
-  /** Callback to add message to chat */
-  addMessage: (message: UIMessage) => void
+  /**
+   * Callback to add message to chat.
+   * IMPORTANT: targetConversationId is REQUIRED for tab isolation.
+   * Without it, interrupt messages could be added to the wrong tab.
+   */
+  addMessage: (message: UIMessage, targetConversationId: string) => void
   /** Callback to show completion dots */
   setShowCompletionDots: (show: boolean) => void
   /** Ref to the abort controller for the current request */
@@ -164,13 +168,15 @@ export function useStreamCancellation({
     }
 
     // Add completion message to mark thinking group as complete
+    // CRITICAL: Pass conversationId for tab isolation - without it,
+    // this message could be added to the wrong tab if user switched tabs
     const interruptMessage: UIMessage = {
       id: crypto.randomUUID(),
       type: "complete",
       content: {},
       timestamp: new Date(),
     }
-    addMessage(interruptMessage)
+    addMessage(interruptMessage, conversationId)
 
     // Show completion dots while waiting for backend confirmation
     setShowCompletionDots(true)
