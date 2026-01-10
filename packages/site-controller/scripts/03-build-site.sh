@@ -17,6 +17,11 @@ DOMAIN=$SITE_DOMAIN
 PORT=$SITE_PORT
 EOF
 
+# SECURITY: Restrict env file to root and site user only
+# This prevents cross-tenant secret leakage (CVE-like: other sites reading secrets)
+chmod 640 "$ENV_FILE_PATH"
+chown root:"$SITE_USER" "$ENV_FILE_PATH"
+
 # Generate config if script exists
 if [[ -f "${TARGET_DIR}/scripts/generate-config.js" ]]; then
     log_info "Generating site config..."

@@ -13,6 +13,14 @@ log_info "Setting up filesystem for: $SITE_DOMAIN"
 log_info "Creating directory: $TARGET_DIR"
 mkdir -p "$TARGET_DIR"
 
+# SECURITY: Ensure parent sites directory prevents listing by other users
+# Mode 711 allows traversal (cd into) but not listing (ls)
+# This prevents domain enumeration by site users
+SITES_PARENT="$(dirname "$TARGET_DIR")"
+if [[ -d "$SITES_PARENT" ]]; then
+    chmod 711 "$SITES_PARENT"
+fi
+
 # Copy from template
 log_info "Copying from template: $TEMPLATE_PATH"
 # Copy entire template directory (includes user/, scripts/, and root files)
