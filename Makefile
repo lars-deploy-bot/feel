@@ -1,149 +1,138 @@
-.PHONY: help deploy-all-environments staging dev devchat deploy-go logs-production logs-staging logs-dev status rollback wash wash-skip shell build\:shell test\:shell static-check
+# =============================================================================
+# Claude Bridge Makefile
+# =============================================================================
+#
+# Main commands:
+#   make ship         - Full pipeline: staging → production
+#   make staging      - Deploy staging only
+#   make production   - Deploy production only
+#   make dev          - Start dev server (hot-reload)
+#
+# =============================================================================
 
-# Load environment variables from .env
+.PHONY: help ship staging production dev devchat static-check status logs-staging logs-production logs-dev rollback shell deploy-go
+
+# Load environment variables
 ifneq (,$(wildcard .env))
     include .env
     export
 endif
 
-# Colors for output
+# Colors
 BLUE := \033[0;34m
 GREEN := \033[0;32m
 RED := \033[0;31m
-NC := \033[0m # No Color
+YELLOW := \033[1;33m
+NC := \033[0m
 
+# =============================================================================
+# Help
+# =============================================================================
 help:
-	@echo "$(BLUE)Claude Bridge Commands$(NC)"
+	@echo "$(BLUE)Claude Bridge$(NC)"
 	@echo ""
-	@echo "$(GREEN)Development & Staging:$(NC)"
-	@echo "  make deploy-all-environments  ⚠️  Run dev → staging → wash (requires CONFIRM_PROD=yes)"
-	@echo "  make staging       Full staging deployment (port 8998)"
-	@echo "  make dev           Rebuild and restart dev environment (port 8997, hot-reload)"
-	@echo "  make devchat       Restart dev server via systemctl (safe from chat)"
-	@echo "  make dev:turbo     Run all monorepo dev servers with Turbo"
-	@echo "  make deploy-go     Deploy shell-server-go separately (not included in staging/production)"
-	@echo "  make shell         Build and deploy shell-server-go to production"
-	@echo "  make build:shell   Build, test, and restart shell-server-go"
-	@echo "  make test:shell    Run shell-server-go tests"
+	@echo "$(GREEN)Deployment:$(NC)"
+	@echo "  make ship            🚀 Full pipeline: staging → production"
+	@echo "  make ship-bg         Same as ship, runs in background (for chat)"
+	@echo "  make ship-fast       Same as ship, skips E2E tests"
+	@echo "  make staging         Deploy staging only (port 8998)"
+	@echo "  make production      Deploy production only (port 9000)"
 	@echo ""
-	@echo "$(GREEN)Quality Checks:$(NC)"
-	@echo "  make static-check  Run type-check, lint, format, and unit tests (used by pre-push hook)"
+	@echo "$(GREEN)Development:$(NC)"
+	@echo "  make dev             Start dev server (port 8997, hot-reload)"
+	@echo "  make devchat         Restart dev server via systemctl"
+	@echo "  make static-check    Run type-check, lint, format, unit tests"
 	@echo ""
-	@echo "$(GREEN)Logs:$(NC)"
-	@echo "  make logs-production     View production logs (systemd)"
-	@echo "  make logs-staging  View staging logs (systemd)"
-	@echo "  make logs-dev      View dev logs (systemd)"
+	@echo "$(GREEN)Logs & Status:$(NC)"
+	@echo "  make status          Show all environments status"
+	@echo "  make logs-staging    View staging logs"
+	@echo "  make logs-production View production logs"
+	@echo "  make logs-dev        View dev logs"
 	@echo ""
-	@echo "$(GREEN)Troubleshooting:$(NC)"
-	@echo "  make status        Show status of all environments"
-	@echo "  make rollback      Interactive rollback to previous build"
-	@echo ""
-	@echo "$(RED)⚠️  Production deployment is intentionally hidden.$(NC)"
+	@echo "$(GREEN)Other:$(NC)"
+	@echo "  make rollback        Interactive rollback to previous build"
+	@echo "  make shell           Build and deploy shell-server-go"
 	@echo ""
 
-# ⚠️  Full deployment pipeline: dev → staging → production
-# Stops immediately on any failure and outputs full logs
-# Each step must pass before proceeding to the next
-#
-# REQUIRES: CONFIRM_PROD=yes environment variable to proceed with production
-# Usage: CONFIRM_PROD=yes make deploy-all-environments
-deploy-all-environments:
-	@echo "$(RED)⚠️  WARNING: This will deploy to dev → staging → production$(NC)"
-	@echo ""
-	@echo "$(BLUE)Step 1/3: Running dev deployment...$(NC)"
-	@$(MAKE) dev || (echo "$(RED)✗ Dev deployment failed. Stopping.$(NC)" && exit 1)
-	@echo ""
-	@echo "$(GREEN)✓ Dev deployment passed$(NC)"
-	@echo ""
-	@echo "$(BLUE)Step 2/3: Running staging deployment...$(NC)"
-	@$(MAKE) staging || (echo "$(RED)✗ Staging deployment failed. Stopping.$(NC)" && exit 1)
-	@echo ""
-	@echo "$(GREEN)✓ Staging deployment passed$(NC)"
-	@echo ""
-	@if [ "$(CONFIRM_PROD)" != "yes" ]; then \
-		echo "$(RED)⚠️  Production deployment blocked!$(NC)"; \
-		echo "$(RED)To deploy to production, run:$(NC)"; \
-		echo "$(RED)  CONFIRM_PROD=yes make deploy-all-environments$(NC)"; \
-		echo ""; \
-		echo "$(GREEN)✓ Dev and staging deployed successfully. Production skipped.$(NC)"; \
-		exit 0; \
-	fi
-	@echo "$(BLUE)Step 3/3: Running production deployment (wash)...$(NC)"
-	@$(MAKE) wash || (echo "$(RED)✗ Production deployment failed. Stopping.$(NC)" && exit 1)
-	@echo ""
-	@echo "$(GREEN)✓✓✓ All deployments completed successfully! ✓✓✓$(NC)"
+.DEFAULT_GOAL := help
 
+# =============================================================================
+# Deployment - Main commands
+# =============================================================================
+
+# Full pipeline: staging → production
+ship:
+	@./scripts/deployment/ship.sh
+
+# Background mode with smart polling (for chat sessions)
+ship-bg:
+	@./scripts/deployment/ship.sh --background
+
+# Skip E2E tests (faster)
+ship-fast:
+	@./scripts/deployment/ship.sh --skip-e2e
+
+# Staging only
 staging:
-	@./scripts/deployment/deploy-staging.sh
+	@./scripts/deployment/ship.sh --staging
 
+# Production only
+production:
+	@./scripts/deployment/ship.sh --production
+
+# =============================================================================
+# Development
+# =============================================================================
+
+# Start dev server with hot-reload
 dev:
 	@./scripts/deployment/deploy-dev.sh
 
-# Safe to run from chat - restarts via systemctl instead of taking over terminal
+# Restart dev server via systemctl (safe from chat)
 devchat:
-	@echo "$(BLUE)Restarting dev server via systemctl...$(NC)"
+	@echo "$(BLUE)Restarting dev server...$(NC)"
 	@systemctl restart claude-bridge-dev
 	@sleep 2
 	@echo "$(GREEN)✓ Dev server restarted$(NC)"
-	@systemctl status claude-bridge-dev --no-pager | head -15
+	@systemctl status claude-bridge-dev --no-pager | head -10
 
-deploy-go:
-	@./scripts/deployment/deploy-go-server.sh
+# Run all quality checks
+static-check:
+	@echo "$(BLUE)Running static checks...$(NC)"
+	@NODE_OPTIONS="--max-old-space-size=4096" bun run static-check
 
-logs-production:
-	@./scripts/deployment/logs-production.sh
-
-logs-staging:
-	@./scripts/deployment/logs-staging.sh
-
-logs-dev:
-	@./scripts/deployment/logs-dev.sh
+# =============================================================================
+# Logs & Status
+# =============================================================================
 
 status:
 	@./scripts/deployment/status.sh
 
+logs-staging:
+	@journalctl -u claude-bridge-staging -f
+
+logs-production:
+	@journalctl -u claude-bridge-production -f
+
+logs-dev:
+	@journalctl -u claude-bridge-dev -f
+
 rollback:
 	@./scripts/deployment/rollback.sh
 
-dev\:turbo:
-	@bun run dev:turbo
-
-build\:shell:
-	@echo "$(BLUE)Building shell-server-go...$(NC)"
-	@cd apps/shell-server-go && make build
-	@echo "$(GREEN)✓ Shell-server-go built successfully$(NC)"
-	@echo "$(BLUE)Running tests...$(NC)"
-	@cd apps/shell-server-go && make test
-	@echo "$(GREEN)✓ All tests passed$(NC)"
-	@echo "$(BLUE)Restarting shell-server-go service...$(NC)"
-	@systemctl restart shell-server-go
-	@sleep 1
-	@echo "$(GREEN)✓ Service restarted$(NC)"
-	@systemctl status shell-server-go --no-pager -l | head -8
-
-test\:shell:
-	@echo "$(BLUE)Running shell-server-go tests...$(NC)"
-	@cd apps/shell-server-go && make test
-
-static-check:
-	@echo "$(BLUE)Running static checks (type-check, lint, format, unit tests)...$(NC)"
-	@NODE_OPTIONS="--max-old-space-size=4096" bun run static-check
-
-# Never inspect
-wash:
-	@./scripts/deployment/washingmachine.sh
-
-wash-skip:
-	@SKIP_E2E=1 ./scripts/deployment/washingmachine.sh
-
-.DEFAULT_GOAL := help
+# =============================================================================
+# Shell Server (Go)
+# =============================================================================
 
 shell:
-	@echo "$(BLUE)Building and deploying shell-server-go...$(NC)"
+	@echo "$(BLUE)Building shell-server-go...$(NC)"
 	@cd apps/shell-server-go && make build
 	@echo "$(GREEN)✓ Build complete$(NC)"
-	@echo "$(BLUE)Restarting shell-server-go service...$(NC)"
+	@echo "$(BLUE)Restarting service...$(NC)"
 	@systemctl restart shell-server-go
 	@sleep 2
 	@echo "$(GREEN)✓ Service restarted$(NC)"
 	@systemctl status shell-server-go --no-pager -l | head -10
+
+deploy-go:
+	@./scripts/deployment/deploy-go-server.sh
