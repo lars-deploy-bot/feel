@@ -8,7 +8,7 @@ import { useSandboxContext } from "@/features/chat/lib/sandbox-context"
 import { formatMessagesAsText } from "@/features/chat/utils/format-messages"
 import { useUserPrompts } from "@/lib/providers/UserPromptsStoreProvider"
 import { useMessages } from "@/lib/stores/messageStore"
-import { useSandbox } from "@/lib/stores/debug-store"
+import { useSandbox, useSandboxMinimized } from "@/lib/stores/debug-store"
 import { useChatInput } from "./ChatInputContext"
 
 interface ToolbarProps {
@@ -24,6 +24,8 @@ export function Toolbar({ fileInputRef, onAddUserPrompt }: ToolbarProps) {
   const messages = useMessages()
   const { activateSelector, selectorActive } = useSandboxContext()
   const isSandboxOpen = useSandbox()
+  const isSandboxMinimized = useSandboxMinimized()
+  const showSelectorButton = isSandboxOpen && !isSandboxMinimized
 
   if (!config.enableCamera) {
     return null
@@ -133,8 +135,8 @@ export function Toolbar({ fileInputRef, onAddUserPrompt }: ToolbarProps) {
         )}
       </div>
 
-      {/* Select Element - only show when sandbox preview is open */}
-      {isSandboxOpen && (
+      {/* Select Element - only show when sandbox preview is open and visible */}
+      {showSelectorButton && (
         <button
           type="button"
           onClick={activateSelector}

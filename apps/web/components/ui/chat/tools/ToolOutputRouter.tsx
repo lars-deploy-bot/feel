@@ -23,6 +23,8 @@ interface ToolOutputRouterProps {
   content: any
   // Original tool input - useful for renderers when output is empty (e.g., create_comment returns {})
   toolInput?: unknown
+  /** Callback to send a message to the chat (for interactive tools like clarification questions) */
+  onSubmitAnswer?: (message: string) => void
 }
 
 /**
@@ -97,7 +99,7 @@ function McpTextOutput({ texts }: { texts: string[] }) {
   )
 }
 
-export function ToolOutputRouter({ toolName, content, toolInput }: ToolOutputRouterProps) {
+export function ToolOutputRouter({ toolName, content, toolInput, onSubmitAnswer }: ToolOutputRouterProps) {
   const tool = toolName.toLowerCase()
 
   // Check component registry for custom renderers
@@ -107,7 +109,7 @@ export function ToolOutputRouter({ toolName, content, toolInput }: ToolOutputRou
     const data = transformToolData(toolName, content)
     // Validate data is suitable for renderer
     if (validateToolData(toolName, data)) {
-      return <Component data={data} toolName={toolName} toolInput={toolInput} />
+      return <Component data={data} toolName={toolName} toolInput={toolInput} onSubmitAnswer={onSubmitAnswer} />
     }
   }
 

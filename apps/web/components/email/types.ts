@@ -24,7 +24,7 @@ export interface EmailDraft {
   /** Thread ID for replies */
   threadId?: string
   /** Draft status */
-  status: "draft" | "saved" | "sending" | "sent" | "error"
+  status: "draft" | "saving" | "saved" | "sending" | "sent" | "error"
   /** Error message if status is error */
   error?: string
   /** Timestamp when created */

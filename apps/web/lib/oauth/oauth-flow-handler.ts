@@ -10,6 +10,7 @@ import type { NextRequest } from "next/server"
 import { cookies } from "next/headers"
 import { getProvider } from "@webalive/oauth-core"
 import { env } from "@webalive/env/server"
+import { getOAuthKeyForProvider } from "@webalive/shared"
 import { canUserAccessIntegration } from "@/lib/integrations/visibility"
 import { getOAuthInstance } from "@/lib/oauth/oauth-instances"
 import { getClientIdentifier } from "@/lib/auth/client-identifier"
@@ -201,7 +202,9 @@ export async function initiateOAuthFlow(context: OAuthContext, config: OAuthConf
   const state = await OAuthStateManager.createState(provider)
 
   // Build authorization URL
-  const oauthProvider = getProvider(provider)
+  // Use oauthKey to get the actual OAuth provider (e.g., 'gmail' -> 'google')
+  const oauthKey = getOAuthKeyForProvider(provider)
+  const oauthProvider = getProvider(oauthKey)
   if (!oauthProvider.getAuthUrl) {
     return {
       type: "error",
@@ -257,11 +260,13 @@ export async function handleOAuthCallback(
 
   try {
     // Exchange code for tokens
-    const oauthManager = getOAuthInstance(provider)
+    // Use oauthKey to get the actual OAuth provider (e.g., 'gmail' -> 'google')
+    const oauthKey = getOAuthKeyForProvider(provider)
+    const oauthManager = getOAuthInstance(oauthKey)
     await oauthManager.handleCallback(
       user.id, // instanceId (for env-based OAuth, same as userId)
       user.id, // authenticatingUserId
-      provider,
+      oauthKey, // Use oauthKey for token storage
       code,
     )
 

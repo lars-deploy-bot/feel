@@ -161,6 +161,38 @@ export const OAUTH_MCP_PROVIDERS = {
       "mcp__linear__search_documentation",
     ],
   },
+  gmail: {
+    url: "http://localhost:8085/mcp",
+    oauthKey: "google", // Uses Google OAuth (gmail is a Google service)
+    friendlyName: "Gmail",
+    defaultScopes: [
+      "https://mail.google.com/",
+      "https://www.googleapis.com/auth/gmail.modify",
+      "https://www.googleapis.com/auth/userinfo.profile",
+      "https://www.googleapis.com/auth/userinfo.email",
+    ].join(" "),
+    envPrefix: "GOOGLE",
+    knownTools: [
+      // Profile
+      "mcp__gmail__get_profile",
+      // Compose (returns data for UI - user must click Send/Save)
+      "mcp__gmail__compose_email",
+      // Read operations
+      "mcp__gmail__search_emails",
+      "mcp__gmail__get_email",
+      "mcp__gmail__list_labels",
+      // NOTE: send_email and create_draft are NOT MCP tools
+      // They are REST-only (/api/send, /api/draft) - user must click
+      // Label operations
+      "mcp__gmail__add_label",
+      "mcp__gmail__remove_label",
+      // Actions
+      "mcp__gmail__archive_email",
+      "mcp__gmail__mark_as_read",
+      "mcp__gmail__mark_as_unread",
+      "mcp__gmail__trash_email",
+    ],
+  },
 } as const satisfies OAuthMcpProviderRegistry
 
 /**
@@ -192,6 +224,24 @@ export function getOAuthMcpProviderKeys(): OAuthMcpProviderKey[] {
  */
 export function isValidOAuthMcpProviderKey(key: string): key is OAuthMcpProviderKey {
   return key in OAUTH_MCP_PROVIDERS
+}
+
+/**
+ * Get the OAuth key for a provider (may differ from MCP provider key)
+ *
+ * For example, 'gmail' MCP provider uses 'google' OAuth key.
+ * Most providers use the same key for both.
+ *
+ * @param providerKey - The MCP provider key (e.g., "gmail", "stripe")
+ * @returns The OAuth key to use (e.g., "google", "stripe")
+ */
+export function getOAuthKeyForProvider(providerKey: string): string {
+  if (providerKey in OAUTH_MCP_PROVIDERS) {
+    const config = OAUTH_MCP_PROVIDERS[providerKey as OAuthMcpProviderKey]
+    return config.oauthKey
+  }
+  // For non-MCP providers, use the key as-is
+  return providerKey
 }
 
 /**
@@ -295,12 +345,13 @@ export type OAuthOnlyProviderRegistry = Record<string, OAuthOnlyProviderConfig>
  * Registry of OAuth-only providers (no MCP server)
  *
  * These providers store OAuth tokens but don't connect to an MCP server.
- * Use the tokens directly with provider APIs (e.g., Gmail API).
+ * Use the tokens directly with provider APIs.
+ *
+ * NOTE: Google is the OAuth provider for Gmail MCP. Gmail MCP uses google's OAuth tokens.
  */
 export const OAUTH_ONLY_PROVIDERS = {
   google: {
     friendlyName: "Google",
-    // Full Gmail access + profile info
     defaultScopes: [
       "https://mail.google.com/",
       "https://www.googleapis.com/auth/gmail.modify",

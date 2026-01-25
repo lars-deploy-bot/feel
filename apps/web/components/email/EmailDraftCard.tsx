@@ -10,21 +10,7 @@
 "use client"
 
 import { useState, useRef, useEffect, type KeyboardEvent } from "react"
-import {
-  Mail,
-  Send,
-  Save,
-  Check,
-  Loader2,
-  AlertCircle,
-  ChevronDown,
-  ChevronUp,
-  X,
-  Plus,
-  AlertTriangle,
-  Settings,
-  Pencil,
-} from "lucide-react"
+import { Mail, Send, Save, Check, Loader2, AlertCircle, X, Plus, AlertTriangle, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { EmailDraft, EmailDraftOutputProps } from "./types"
 
@@ -121,20 +107,13 @@ function InlineEmailChips({
       <span className="text-zinc-400 dark:text-zinc-500 w-8 flex-shrink-0 pt-0.5">{label}:</span>
       <div className="flex-1 flex flex-wrap items-center gap-1">
         {emails.map(email => (
-          <span
-            key={email}
-            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs ${
-              isEditing
-                ? "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
-                : "text-zinc-700 dark:text-zinc-300"
-            }`}
-          >
+          <span key={email} className="inline-flex items-center gap-1 text-xs text-zinc-700 dark:text-zinc-300">
             {email}
             {isEditing && (
               <button
                 type="button"
                 onClick={() => removeEmail(email)}
-                className="hover:text-blue-900 dark:hover:text-blue-100"
+                className="hover:text-zinc-900 dark:hover:text-zinc-100"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -216,7 +195,7 @@ function InlineEditableText({
           e.currentTarget.blur()
         }
       }}
-      className={`${className} outline-none focus:bg-blue-50 dark:focus:bg-blue-900/20 rounded px-1 -mx-1 cursor-text`}
+      className={`${className} outline-none cursor-text`}
       data-placeholder={placeholder}
     >
       {value}
@@ -233,6 +212,11 @@ function StatusBadge({ status }: { status: EmailDraft["status"] }) {
       bg: "bg-amber-100 dark:bg-amber-900/30",
       text: "text-amber-700 dark:text-amber-400",
       label: "Draft",
+    },
+    saving: {
+      bg: "bg-blue-100 dark:bg-blue-900/30",
+      text: "text-blue-700 dark:text-blue-400",
+      label: "Saving...",
     },
     saved: {
       bg: "bg-blue-100 dark:bg-blue-900/30",
@@ -260,8 +244,9 @@ function StatusBadge({ status }: { status: EmailDraft["status"] }) {
 
   return (
     <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-md ${bg} ${text}`}>
-      {status === "sending" && <Loader2 className="w-3 h-3 animate-spin" />}
+      {(status === "sending" || status === "saving") && <Loader2 className="w-3 h-3 animate-spin" />}
       {status === "sent" && <Check className="w-3 h-3" />}
+      {status === "saved" && <Check className="w-3 h-3" />}
       {status === "error" && <AlertCircle className="w-3 h-3" />}
       {label}
     </span>
@@ -294,7 +279,7 @@ export function EmailDraftCard({
   draft,
   onSend,
   onSaveDraft,
-  onEdit,
+  onEdit: _onEdit,
   onDraftChange,
   actionsDisabled,
   isGmailConnected = true,
@@ -302,26 +287,17 @@ export function EmailDraftCard({
   onDraftChange?: (draft: EmailDraft) => void
   isGmailConnected?: boolean
 }) {
-  const [expanded, setExpanded] = useState(false)
   const [sending, setSending] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [isEditing, setIsEditing] = useState(false)
 
-  // Local editing state
+  // Always editable - local state for user changes
   const [editedDraft, setEditedDraft] = useState<EmailDraft>(draft)
-
-  // Sync local state with prop when not editing
-  useEffect(() => {
-    if (!isEditing) {
-      setEditedDraft(draft)
-    }
-  }, [draft, isEditing])
 
   const handleSend = async () => {
     if (!onSend || sending) return
     setSending(true)
     try {
-      await onSend(isEditing ? editedDraft : draft)
+      await onSend(editedDraft)
     } finally {
       setSending(false)
     }
@@ -331,31 +307,11 @@ export function EmailDraftCard({
     if (!onSaveDraft || saving) return
     setSaving(true)
     try {
-      await onSaveDraft(isEditing ? editedDraft : draft)
-      if (isEditing) {
-        onDraftChange?.(editedDraft)
-        setIsEditing(false)
-      }
+      await onSaveDraft(editedDraft)
+      onDraftChange?.(editedDraft)
     } finally {
       setSaving(false)
     }
-  }
-
-  const startEditing = () => {
-    setEditedDraft(draft)
-    setIsEditing(true)
-    setExpanded(true)
-  }
-
-  const finishEditing = () => {
-    onDraftChange?.(editedDraft)
-    onEdit?.(editedDraft)
-    setIsEditing(false)
-  }
-
-  const cancelEditing = () => {
-    setEditedDraft(draft)
-    setIsEditing(false)
   }
 
   const updateField = <K extends keyof EmailDraft>(field: K, value: EmailDraft[K]) => {
@@ -370,13 +326,14 @@ export function EmailDraftCard({
   // Border color based on status
   const borderColor = {
     draft: "border-zinc-200 dark:border-zinc-700/50",
+    saving: "border-blue-200 dark:border-blue-800/30",
     saved: "border-blue-200 dark:border-blue-800/30",
     sending: "border-indigo-200 dark:border-indigo-800/30",
     sent: "border-emerald-200 dark:border-emerald-800/30",
     error: "border-red-200 dark:border-red-800/30",
   }[draft.status]
 
-  const currentDraft = isEditing ? editedDraft : draft
+  const currentDraft = editedDraft
 
   return (
     <div className="space-y-3">
@@ -392,13 +349,7 @@ export function EmailDraftCard({
             <StatusBadge status={draft.status} />
           </div>
           <div className="flex items-center gap-2">
-            {isEditing && (
-              <span className="text-xs text-blue-500 dark:text-blue-400 font-medium flex items-center gap-1">
-                <Pencil className="w-3 h-3" />
-                Editing
-              </span>
-            )}
-            {draft.createdAt && !isEditing && (
+            {draft.createdAt && (
               <span className="text-xs text-zinc-400 dark:text-zinc-500">{formatRelativeTime(draft.createdAt)}</span>
             )}
           </div>
@@ -410,19 +361,19 @@ export function EmailDraftCard({
             label="To"
             emails={currentDraft.to}
             onChange={emails => updateField("to", emails)}
-            isEditing={isEditing}
+            isEditing
           />
           <InlineEmailChips
             label="Cc"
             emails={currentDraft.cc || []}
             onChange={emails => updateField("cc", emails.length ? emails : undefined)}
-            isEditing={isEditing}
+            isEditing
           />
           <InlineEmailChips
             label="Bcc"
             emails={currentDraft.bcc || []}
             onChange={emails => updateField("bcc", emails.length ? emails : undefined)}
-            isEditing={isEditing}
+            isEditing
           />
 
           {/* Subject */}
@@ -431,7 +382,7 @@ export function EmailDraftCard({
             <InlineEditableText
               value={currentDraft.subject}
               onChange={value => updateField("subject", value)}
-              isEditing={isEditing}
+              isEditing
               placeholder="Email subject..."
               className="flex-1 text-zinc-900 dark:text-zinc-100 font-medium"
             />
@@ -440,45 +391,14 @@ export function EmailDraftCard({
 
         {/* Email body */}
         <div className="px-4 py-4">
-          {isEditing ? (
-            <InlineEditableText
-              value={currentDraft.body}
-              onChange={value => updateField("body", value)}
-              isEditing={isEditing}
-              placeholder="Write your email..."
-              className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed min-h-[100px]"
-              multiline
-            />
-          ) : (
-            <>
-              <div className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed">
-                {expanded || currentDraft.body.split("\n").length <= 6
-                  ? currentDraft.body
-                  : `${currentDraft.body.split("\n").slice(0, 6).join("\n")}...`}
-              </div>
-
-              {/* Expand/collapse for long emails */}
-              {currentDraft.body.split("\n").length > 6 && (
-                <button
-                  type="button"
-                  onClick={() => setExpanded(!expanded)}
-                  className="mt-2 text-xs text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
-                >
-                  {expanded ? (
-                    <>
-                      <ChevronUp className="w-3 h-3" />
-                      Show less
-                    </>
-                  ) : (
-                    <>
-                      <ChevronDown className="w-3 h-3" />
-                      Show more
-                    </>
-                  )}
-                </button>
-              )}
-            </>
-          )}
+          <InlineEditableText
+            value={currentDraft.body}
+            onChange={value => updateField("body", value)}
+            isEditing
+            placeholder="Write your email..."
+            className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed min-h-[100px]"
+            multiline
+          />
         </div>
 
         {/* Error message */}
@@ -504,47 +424,28 @@ export function EmailDraftCard({
         {/* Actions */}
         {canAct && (
           <div className="flex items-center gap-2 px-4 py-3 bg-zinc-50 dark:bg-zinc-800/30 border-t border-zinc-200 dark:border-zinc-700/50">
-            {isEditing ? (
-              <>
-                <Button onClick={finishEditing} size="sm" className="gap-1.5">
-                  <Check className="w-3.5 h-3.5" />
-                  Done
-                </Button>
-                <Button onClick={cancelEditing} variant="ghost" size="sm" className="gap-1.5">
-                  Cancel
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  onClick={handleSend}
-                  disabled={isSending || !onSend || !isGmailConnected}
-                  size="sm"
-                  className="gap-1.5"
-                  title={!isGmailConnected ? "Connect Gmail first" : undefined}
-                >
-                  {isSending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                  Send
-                </Button>
+            <Button
+              onClick={handleSend}
+              disabled={isSending || !onSend || !isGmailConnected}
+              size="sm"
+              className="gap-1.5"
+              title={!isGmailConnected ? "Connect Gmail first" : undefined}
+            >
+              {isSending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+              Send
+            </Button>
 
-                <Button
-                  onClick={handleSaveDraft}
-                  disabled={saving || !onSaveDraft || !isGmailConnected}
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5"
-                  title={!isGmailConnected ? "Connect Gmail first" : undefined}
-                >
-                  {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                  Save Draft
-                </Button>
-
-                <Button onClick={startEditing} variant="ghost" size="sm" className="gap-1.5 ml-auto">
-                  <Pencil className="w-3.5 h-3.5" />
-                  Edit
-                </Button>
-              </>
-            )}
+            <Button
+              onClick={handleSaveDraft}
+              disabled={saving || !onSaveDraft || !isGmailConnected}
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              title={!isGmailConnected ? "Connect Gmail first" : undefined}
+            >
+              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              Save Draft
+            </Button>
           </div>
         )}
       </div>

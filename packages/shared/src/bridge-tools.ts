@@ -91,11 +91,11 @@ export type BridgeAlwaysDisallowedSDKTool = (typeof BRIDGE_ALWAYS_DISALLOWED_SDK
 /**
  * MCP tools only available to superadmins.
  *
- * These are experimental/advanced tools not ready for general use:
- * - ask_clarification: Interactive clarification questions UI
+ * These are experimental/advanced tools not ready for general use.
+ * Currently empty - ask_clarification moved to general availability.
  */
-export const BRIDGE_SUPERADMIN_ONLY_MCP_TOOLS = ["mcp__alive-tools__ask_clarification"] as const
-export type BridgeSuperadminOnlyMcpTool = (typeof BRIDGE_SUPERADMIN_ONLY_MCP_TOOLS)[number]
+export const BRIDGE_SUPERADMIN_ONLY_MCP_TOOLS: readonly string[] = []
+export type BridgeSuperadminOnlyMcpTool = string
 
 /**
  * Get disallowed SDK tools based on admin/superadmin status.

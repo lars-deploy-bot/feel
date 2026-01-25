@@ -11,6 +11,7 @@ import { fetchAndSaveAnalyzeImages, buildAnalyzeImagePrompt } from "@/lib/image-
 import {
   SessionStoreMemory,
   sessionKey,
+  lockKey,
   tryLockConversation,
   unlockConversation,
 } from "@/features/auth/lib/sessionStore"
@@ -76,7 +77,8 @@ export async function POST(req: NextRequest) {
 
   // Track lock acquisition for cleanup in error handler
   let lockAcquired = false
-  let convKey = ""
+  let sessionStoreKey = "" // For Claude SDK session persistence (per conversation)
+  let concurrencyLockKey = "" // For concurrent request prevention (per tab)
 
   try {
     const jar = await cookies()
@@ -241,22 +243,34 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    convKey = sessionKey({
+    // Session key: used for Claude SDK session persistence (same conversation = same session)
+    sessionStoreKey = sessionKey({
       userId: user.id,
-      workspace: resolvedWorkspaceName, // Use domain for conversation key (for locking compatibility)
+      workspace: resolvedWorkspaceName,
       conversationId,
     })
-    logger.log(`Domain: ${domainRecord.hostname} (port: ${domainRecord.port}, id: ${domainRecord.domain_id})`)
-    logger.log("Session key:", convKey)
-    logger.log("Attempting to lock conversation...")
 
-    if (!tryLockConversation(convKey)) {
-      logger.log("❌ LOCK FAILED - Conversation already in progress for key:", convKey)
+    // Lock key: includes tabId so different browser tabs can work independently
+    // Without tabId, two browser windows viewing the same conversation would block each other
+    concurrencyLockKey = lockKey({
+      userId: user.id,
+      workspace: resolvedWorkspaceName,
+      conversationId,
+      tabId, // Each UI tab gets its own lock
+    })
+
+    logger.log(`Domain: ${domainRecord.hostname} (port: ${domainRecord.port}, id: ${domainRecord.domain_id})`)
+    logger.log("Session key:", sessionStoreKey)
+    logger.log("Lock key:", concurrencyLockKey)
+    logger.log("Attempting to lock...")
+
+    if (!tryLockConversation(concurrencyLockKey)) {
+      logger.log("❌ LOCK FAILED - Request already in progress for key:", concurrencyLockKey)
       return createErrorResponse(ErrorCodes.CONVERSATION_BUSY, 409, { requestId })
     }
 
     lockAcquired = true
-    logger.log("✅ LOCK ACQUIRED for:", convKey)
+    logger.log("✅ LOCK ACQUIRED for:", concurrencyLockKey)
 
     // === CANCELLATION SETUP - MUST BE IMMEDIATELY AFTER LOCK ===
     // CRITICAL: Register cancellation callback RIGHT AFTER lock acquisition.
@@ -269,9 +283,9 @@ export async function POST(req: NextRequest) {
     const workerAbortController = new AbortController()
     let resolveCancelComplete: (() => void) | null = null
 
-    registerCancellation(requestId, user.id, convKey, () => {
+    registerCancellation(requestId, user.id, concurrencyLockKey, () => {
       logger.log("===== CANCEL CALLBACK INVOKED =====")
-      logger.log("Cancel callback: convKey =", convKey, "requestId =", requestId)
+      logger.log("Cancel callback: lockKey =", concurrencyLockKey, "requestId =", requestId)
 
       // Return Promise that resolves when onStreamComplete is called
       // CRITICAL: Set resolveCancelComplete BEFORE triggering abort signals,
@@ -292,7 +306,7 @@ export async function POST(req: NextRequest) {
     // Create stream buffer for reconnection support
     // Buffer persists to Redis so users can retrieve missed messages if they disconnect
     try {
-      await createStreamBuffer(requestId, convKey, user.id, tabId)
+      await createStreamBuffer(requestId, sessionStoreKey, user.id, tabId)
       logger.log("Stream buffer created for reconnection support")
     } catch (bufferError) {
       // Non-fatal: continue without buffering if Redis unavailable
@@ -300,8 +314,8 @@ export async function POST(req: NextRequest) {
     }
 
     timing("before_session_lookup")
-    logger.log(`[SESSION DEBUG] Looking up session for key: ${convKey}`)
-    const existingSessionId = await SessionStoreMemory.get(convKey)
+    logger.log(`[SESSION DEBUG] Looking up session for key: ${sessionStoreKey}`)
+    const existingSessionId = await SessionStoreMemory.get(sessionStoreKey)
     timing("after_session_lookup")
     logger.log(`[SESSION DEBUG] Existing session: ${existingSessionId ? `found (${existingSessionId})` : "none"}`)
 
@@ -350,6 +364,7 @@ export async function POST(req: NextRequest) {
     const { tokens: oauthTokens, warnings: oauthWarnings } = oauthResult
     const { envKeys: userEnvKeys } = userEnvKeysResult
     const hasStripeConnection = !!oauthTokens.stripe
+    const hasGmailConnection = !!oauthTokens.gmail
 
     // Log warnings for debugging
     if (oauthWarnings.length > 0) {
@@ -388,6 +403,7 @@ export async function POST(req: NextRequest) {
       userId,
       workspaceFolder: cwd,
       hasStripeMcpAccess: hasStripeMcpAccess(resolvedWorkspaceName, hasStripeConnection),
+      hasGmailAccess: hasGmailConnection,
       additionalContext,
       isProduction: isProductionMode,
     })
@@ -548,7 +564,7 @@ export async function POST(req: NextRequest) {
     // Handles: NDJSON parsing, session ID storage, credit charging, error handling, cancellation
     const ndjsonStream = createNDJSONStream({
       childStream,
-      conversationKey: convKey,
+      conversationKey: sessionStoreKey, // For Claude SDK session persistence
       requestId,
       tabId, // Tab ID for routing responses to correct tab
       conversationWorkspace: resolvedWorkspaceName,
@@ -565,7 +581,7 @@ export async function POST(req: NextRequest) {
       onStreamComplete: () => {
         // Guaranteed cleanup: unregister, unlock, mark buffer complete
         unregisterCancellation(requestId)
-        unlockConversation(convKey)
+        unlockConversation(concurrencyLockKey)
 
         // Mark buffer as complete (non-blocking)
         completeStreamBuffer(requestId).catch(err => {
@@ -613,8 +629,8 @@ export async function POST(req: NextRequest) {
     // This prevents deadlocks when errors happen during stream setup
     if (lockAcquired) {
       try {
-        unlockConversation(convKey)
-        logger.log("Released conversation lock after error")
+        unlockConversation(concurrencyLockKey)
+        logger.log("Released lock after error")
 
         // Mark buffer as errored (non-blocking)
         errorStreamBuffer(requestId, outerError instanceof Error ? outerError.message : "Unknown error").catch(err => {

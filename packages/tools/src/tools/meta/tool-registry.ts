@@ -305,15 +305,14 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
     ],
   },
 
-  // AI tools (superadmin-only)
+  // AI tools
   {
     name: "ask_clarification",
     category: "meta",
     description:
       "Ask the user clarification questions when their request is ambiguous. Presents 1-3 multiple choice questions with custom input option. Use when planning complex tasks or when user intent needs clarification.",
     contextCost: "low",
-    enabled: false, // Not generally enabled - only for superadmins
-    superadminOnly: true, // Registered in MCP but only allowed for superadmins
+    enabled: true,
     parameters: [
       {
         name: "questions",

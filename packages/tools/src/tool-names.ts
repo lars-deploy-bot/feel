@@ -77,10 +77,12 @@ export type FileOpTool = (typeof FILE_OPS)[keyof typeof FILE_OPS]
 // ============================================================
 
 export const EMAIL = {
-  COMPOSE: "gmail__compose_email",
-  CREATE_DRAFT: "gmail__create_draft",
-  SEND: "gmail__send_email",
-  REPLY: "gmail__reply_email",
+  // compose_email returns structured data for UI - does NOT save to Gmail
+  COMPOSE: "mcp__gmail__compose_email",
+  // These are called by user action, not Claude
+  CREATE_DRAFT: "mcp__gmail__create_draft",
+  SEND: "mcp__gmail__send_email",
+  REPLY: "mcp__gmail__reply_email",
 } as const
 
 export type EmailTool = (typeof EMAIL)[keyof typeof EMAIL]

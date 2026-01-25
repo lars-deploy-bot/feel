@@ -168,6 +168,7 @@ export const SessionStoreMemory: SessionStore = {
 }
 
 // Helper to build a stable key (user + workspace + conversation)
+// Used for Claude SDK session persistence - same conversation = same session
 export function sessionKey({
   userId,
   workspace,
@@ -178,6 +179,25 @@ export function sessionKey({
   conversationId: string
 }) {
   return `${userId}::${workspace ?? "default"}::${conversationId}`
+}
+
+// Helper to build a lock key (user + workspace + conversation + tab)
+// Used for concurrent request prevention - each browser tab can work independently
+// Without tabId, two browser windows viewing the same conversation would block each other
+export function lockKey({
+  userId,
+  workspace,
+  conversationId,
+  tabId,
+}: {
+  userId: string
+  workspace?: string
+  conversationId: string
+  tabId?: string
+}) {
+  // If no tabId provided, fall back to conversation-level locking (legacy behavior)
+  const base = `${userId}::${workspace ?? "default"}::${conversationId}`
+  return tabId ? `${base}::${tabId}` : base
 }
 
 // Re-export guards from types/guards/session for backward compatibility

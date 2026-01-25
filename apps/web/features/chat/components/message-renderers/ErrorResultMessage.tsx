@@ -1,5 +1,34 @@
+import { RotateCcw } from "lucide-react"
+import { useRetry } from "@/features/chat/lib/retry-context"
 import type { StructuredError } from "@/lib/error-codes"
 import { getErrorHelp, getErrorMessage, isWorkspaceError } from "@/lib/error-codes"
+
+/**
+ * Check if an error is retryable (network issues, server errors, timeouts)
+ */
+function isRetryableError(errorMessage: string): boolean {
+  const retryablePatterns = [
+    "Failed to fetch",
+    "NetworkError",
+    "TypeError: fetch",
+    "Connection lost",
+    "No response body",
+    "closed connection",
+    "timeout",
+    "HTTP 500",
+    "HTTP 502",
+    "HTTP 503",
+    "HTTP 504",
+    "Server error",
+    "Service temporarily unavailable",
+    "ECONNREFUSED",
+    "ETIMEDOUT",
+    "ENOTFOUND",
+  ]
+
+  const lowerMessage = errorMessage.toLowerCase()
+  return retryablePatterns.some(pattern => lowerMessage.includes(pattern.toLowerCase()))
+}
 
 interface ErrorResultMessageProps {
   content: {
@@ -10,7 +39,9 @@ interface ErrorResultMessageProps {
 }
 
 export function ErrorResultMessage({ content }: ErrorResultMessageProps) {
+  const { retryLastMessage } = useRetry()
   const errorMessage = content.result
+  const canRetry = isRetryableError(errorMessage)
 
   let parsedError: StructuredError | null = null
   try {
@@ -148,6 +179,17 @@ export function ErrorResultMessage({ content }: ErrorResultMessageProps) {
                   Request ID: {String(parsedError.details.apiRequestId)}
                 </div>
               )}
+
+            {canRetry && (
+              <button
+                type="button"
+                onClick={retryLastMessage}
+                className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/40 hover:bg-red-200 dark:hover:bg-red-900/60 rounded transition-colors"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Retry
+              </button>
+            )}
           </div>
         </div>
       </div>

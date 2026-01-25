@@ -25,6 +25,7 @@ import { useImageUpload } from "@/features/chat/hooks/useImageUpload"
 import { useStreamCancellation } from "@/features/chat/hooks/useStreamCancellation"
 import { useStreamReconnect } from "@/features/chat/hooks/useStreamReconnect"
 import { ClientRequest, DevTerminalProvider, useDevTerminal } from "@/features/chat/lib/dev-terminal-context"
+import { RetryProvider, useRetry } from "@/features/chat/lib/retry-context"
 import { groupMessages } from "@/features/chat/lib/message-grouper"
 import { renderMessage } from "@/features/chat/lib/message-renderer"
 import { SandboxProvider, useSandboxContext } from "@/features/chat/lib/sandbox-context"
@@ -206,6 +207,19 @@ function ChatPageContent() {
     addMessage,
     mounted,
   })
+
+  // Register retry handler for error recovery
+  const { registerRetryHandler } = useRetry()
+  useEffect(() => {
+    registerRetryHandler(() => {
+      // Find the last user message to retry
+      const lastUserMessage = [...messages].reverse().find(m => m.type === "user")
+      if (lastUserMessage && typeof lastUserMessage.content === "string") {
+        // Re-send the message
+        sendMessage(lastUserMessage.content)
+      }
+    })
+  }, [messages, sendMessage, registerRetryHandler])
 
   // Tab management - combined switch handler for both conversation hooks
   const handleSwitchConversationForTabs = useCallback(
@@ -496,12 +510,19 @@ function ChatPageContent() {
                   return (
                     <div key={`group-${index}`}>
                       {group.messages.map(message => (
-                        <div key={message.id}>{renderMessage(message)}</div>
+                        <div key={message.id}>{renderMessage(message, { onSubmitAnswer: sendMessage })}</div>
                       ))}
                     </div>
                   )
                 }
-                return <ThinkingGroup key={`group-${index}`} messages={group.messages} isComplete={group.isComplete} />
+                return (
+                  <ThinkingGroup
+                    key={`group-${index}`}
+                    messages={group.messages}
+                    isComplete={group.isComplete}
+                    onSubmitAnswer={sendMessage}
+                  />
+                )
               })}
 
               {/* Show pending tools (currently executing) - replaces generic "thinking" when tools are running */}
@@ -621,11 +642,13 @@ function ChatPageContent() {
 
 function ChatPageWrapper() {
   return (
-    <DevTerminalProvider>
-      <SandboxProvider>
-        <ChatPageContent />
-      </SandboxProvider>
-    </DevTerminalProvider>
+    <RetryProvider>
+      <DevTerminalProvider>
+        <SandboxProvider>
+          <ChatPageContent />
+        </SandboxProvider>
+      </DevTerminalProvider>
+    </RetryProvider>
   )
 }
 

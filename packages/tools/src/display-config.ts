@@ -17,7 +17,7 @@
  * ```
  */
 
-import { LINEAR, STRIPE, STRIPE_PATTERNS, FILE_OPS, AI, OTHER } from "./tool-names.js"
+import { LINEAR, STRIPE, STRIPE_PATTERNS, FILE_OPS, AI, OTHER, EMAIL } from "./tool-names.js"
 
 // ============================================================
 // TYPES
@@ -335,6 +335,17 @@ register(AI.ASK_CLARIFICATION, {
     const questions = d?.questions as unknown[] | undefined
     const count = questions?.length ?? 0
     return `${count} ${plural(count, "question")}`
+  },
+})
+
+// --- Email tools ---
+register(EMAIL.COMPOSE, {
+  autoExpand: true, // Always show the email card
+  transform: unwrapMcp,
+  getPreview: data => {
+    const d = data as Record<string, unknown> | null
+    const subject = d?.subject as string | undefined
+    return subject ? `Draft: ${subject.slice(0, 30)}...` : "email draft"
   },
 })
 

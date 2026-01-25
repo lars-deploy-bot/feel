@@ -48,6 +48,7 @@ export interface IntegrationUIConfig {
 export const INTEGRATION_UI_REGISTRY = {
   stripe: null, // No UI component yet - just shows connection status
   linear: null, // Issues viewable via Linear MCP tools, not settings panel
+  gmail: null, // Email operations via Gmail MCP tools
 } as const satisfies Record<OAuthMcpProviderKey, IntegrationUIConfig | null>
 
 /**

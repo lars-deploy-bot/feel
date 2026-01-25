@@ -19,9 +19,11 @@ import { ThinkingSpinner } from "./ThinkingSpinner"
 interface ThinkingGroupProps {
   messages: UIMessage[]
   isComplete: boolean
+  /** Callback to send a message to the chat (for interactive tools like clarification questions) */
+  onSubmitAnswer?: (message: string) => void
 }
 
-export function ThinkingGroup({ messages, isComplete }: ThinkingGroupProps) {
+export function ThinkingGroup({ messages, isComplete, onSubmitAnswer }: ThinkingGroupProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const isDebugMode = useDebugVisible()
   const conversationId = useCurrentConversationId()
@@ -43,7 +45,7 @@ export function ThinkingGroup({ messages, isComplete }: ThinkingGroupProps) {
     <div className="my-4">
       {/* Tool results render directly with their own expand/collapse */}
       {toolResults.map(message => (
-        <div key={message.id}>{renderMessage(message)}</div>
+        <div key={message.id}>{renderMessage(message, { onSubmitAnswer })}</div>
       ))}
 
       {/* Thinking wrapper: shown while streaming OR if there's thinking content */}
@@ -69,7 +71,7 @@ export function ThinkingGroup({ messages, isComplete }: ThinkingGroupProps) {
             <div className="mt-2 space-y-1.5 pl-4 border-l-2 border-black/10 dark:border-white/10">
               {thinkingContent.map(message => (
                 <div key={message.id} className="text-sm">
-                  {renderMessage(message)}
+                  {renderMessage(message, { onSubmitAnswer })}
                 </div>
               ))}
             </div>

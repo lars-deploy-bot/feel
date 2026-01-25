@@ -15,6 +15,7 @@ import { createErrorResponse, getSessionUser } from "@/features/auth/lib/auth"
 import { ErrorCodes } from "@/lib/error-codes"
 import { createIntegrationsClient } from "@/lib/supabase/integrations"
 import { getOAuthInstance } from "@/lib/oauth/oauth-instances"
+import { getOAuthKeyForProvider } from "@webalive/shared"
 
 export type TokenStatus = "valid" | "expired" | "needs_reauth" | "not_connected"
 
@@ -76,14 +77,16 @@ export async function GET(req: NextRequest) {
         let statusMessage: string | undefined
 
         try {
-          const oauthManager = getOAuthInstance(integration.provider_key)
-          isConnected = await oauthManager.isConnected(user.id, integration.provider_key)
+          // Use oauthKey for OAuth operations (e.g., "gmail" -> "google")
+          const oauthKey = getOAuthKeyForProvider(integration.provider_key)
+          const oauthManager = getOAuthInstance(oauthKey)
+          isConnected = await oauthManager.isConnected(user.id, oauthKey)
 
           if (isConnected) {
             // Token exists - now check if it's actually valid by trying to get it
             // This will trigger auto-refresh if expired
             try {
-              await oauthManager.getAccessToken(user.id, integration.provider_key)
+              await oauthManager.getAccessToken(user.id, oauthKey)
               tokenStatus = "valid"
             } catch (tokenError) {
               const errorMsg = tokenError instanceof Error ? tokenError.message : String(tokenError)

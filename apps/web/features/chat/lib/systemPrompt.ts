@@ -5,12 +5,14 @@ interface SystemPromptParams {
   userId?: string
   workspaceFolder?: string
   hasStripeMcpAccess?: boolean
+  hasGmailAccess?: boolean
   additionalContext?: string
   isProduction?: boolean
 }
 
 export function getSystemPrompt(params: SystemPromptParams = {}): string {
-  const { projectId, userId, workspaceFolder, hasStripeMcpAccess, additionalContext, isProduction } = params
+  const { projectId, userId, workspaceFolder, hasStripeMcpAccess, hasGmailAccess, additionalContext, isProduction } =
+    params
 
   // Get current date in clear format (e.g., "10 January 2025")
   const now = new Date()
@@ -39,6 +41,12 @@ export function getSystemPrompt(params: SystemPromptParams = {}): string {
   if (hasStripeMcpAccess) {
     prompt +=
       " STRIPE INTEGRATION: If you have access to Stripe MCP tools and the user's request involves payments, subscriptions, customers, invoices, or any payment-related functionality, you MUST use the available Stripe tools. Do not try to implement payment features manually - always use the Stripe MCP tools when they are available."
+  }
+
+  // Gmail integration: Only for users with Gmail OAuth connected
+  if (hasGmailAccess) {
+    prompt +=
+      " GMAIL INTEGRATION: When the user asks you to compose, draft, or write an email, you MUST use the mcp__gmail__compose_email tool. This tool returns structured data that displays as an email card with Send and Save Draft buttons. Do NOT write emails as plain text in your response - ALWAYS use the compose_email tool so the user can review the email and click Send themselves. The user is the only one who can actually send the email."
   }
 
   // Brief environment + discovery blurb (kept tiny to avoid bloat)

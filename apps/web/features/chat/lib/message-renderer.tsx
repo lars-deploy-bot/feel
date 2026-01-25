@@ -36,11 +36,16 @@ import {
   type UIMessage,
 } from "./message-parser"
 
-export function renderMessage(message: UIMessage): React.ReactNode {
-  return <MessageErrorBoundary messageId={message.id}>{renderMessageContent(message)}</MessageErrorBoundary>
+interface RenderMessageOptions {
+  /** Callback to send a message to the chat (for interactive tools like clarification questions) */
+  onSubmitAnswer?: (message: string) => void
 }
 
-function renderMessageContent(message: UIMessage): React.ReactNode {
+export function renderMessage(message: UIMessage, options?: RenderMessageOptions): React.ReactNode {
+  return <MessageErrorBoundary messageId={message.id}>{renderMessageContent(message, options)}</MessageErrorBoundary>
+}
+
+function renderMessageContent(message: UIMessage, options?: RenderMessageOptions): React.ReactNode {
   // Check for error result messages first (before component type routing)
   if (message.type === "sdk_message" && isErrorResultMessage(message.content)) {
     return <ErrorResultMessage content={message.content} />
@@ -69,7 +74,7 @@ function renderMessageContent(message: UIMessage): React.ReactNode {
       return <AssistantMessage content={message.content as SDKAssistantMessage} />
 
     case COMPONENT_TYPE.TOOL_RESULT:
-      return <ToolResultMessage content={message.content as SDKUserMessage} />
+      return <ToolResultMessage content={message.content as SDKUserMessage} onSubmitAnswer={options?.onSubmitAnswer} />
 
     case COMPONENT_TYPE.RESULT:
       return <ResultMessage content={message.content as SDKResultMessage} />
