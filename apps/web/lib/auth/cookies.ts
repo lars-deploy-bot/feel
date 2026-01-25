@@ -53,9 +53,11 @@ function getCookieDomain(host?: string): string | undefined {
  * Get standard cookie options for session cookies
  * Automatically handles production vs development secure flag
  *
- * Uses sameSite: "lax" for mobile browser compatibility.
- * "none" causes issues on mobile Safari due to ITP (Intelligent Tracking Prevention).
+ * Uses sameSite: "lax" for browser compatibility and session persistence.
+ * "none" was causing Safari ITP to clear cookies within 24 hours.
  * "lax" works for same-origin requests and top-level navigations.
+ *
+ * Note: Preview iframes use separate token-based auth via /api/auth/preview-token
  *
  * @param host - Optional request host to determine cookie domain
  */
@@ -64,10 +66,9 @@ export function getSessionCookieOptions(host?: string): CookieOptions {
   return {
     httpOnly: true,
     secure: isDeployed,
-    // "none" required for iframe preview auth (cross-origin subresource requests)
-    // Safari ITP issue was mitigated by cookie name change (auth_session_v2)
-    // If Safari breaks again, implement preview-specific token auth
-    sameSite: isDeployed ? "none" : "lax",
+    // ALWAYS use "lax" - Safari ITP clears "none" cookies within 24 hours
+    // Preview iframes use token-based auth instead of relying on this cookie
+    sameSite: "lax",
     path: "/",
     maxAge: SESSION_MAX_AGE,
     // Domain set dynamically based on request host
@@ -86,7 +87,7 @@ export function getClearCookieOptions(host?: string): CookieOptions {
   return {
     httpOnly: true,
     secure: isDeployed,
-    sameSite: isDeployed ? "none" : "lax", // Must match getSessionCookieOptions
+    sameSite: "lax", // Must match getSessionCookieOptions
     path: "/",
     expires: new Date(0), // Expire immediately
     ...(isDeployed && { domain: getCookieDomain(host) }),
