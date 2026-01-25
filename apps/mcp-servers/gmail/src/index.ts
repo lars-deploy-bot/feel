@@ -2,14 +2,13 @@
 /**
  * Gmail MCP Server
  *
- * A standalone MCP server that provides Gmail functionality.
+ * MCP-only server for Gmail functionality.
  * Accepts Bearer tokens via HTTP Authorization header.
  *
- * Usage:
- *   node dist/index.js --transport http --port 8085
- *
- * This server is designed to work with our multi-tenant OAuth system
- * where tokens are stored in Supabase and passed via HTTP headers.
+ * REST endpoints (send, draft) are handled by Next.js API routes,
+ * not this server. This keeps concerns separated:
+ * - MCP server: Claude tool calls
+ * - Next.js API: User UI actions (Send/Save Draft buttons)
  */
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js"
@@ -102,78 +101,6 @@ async function startHttpServer() {
   // Health check endpoint
   app.get("/health", (_req, res) => {
     res.json({ status: "ok", server: "gmail" })
-  })
-
-  // Helper to extract and validate Bearer token
-  function extractToken(req: express.Request): string | null {
-    const authHeader = req.headers.authorization
-    if (authHeader?.startsWith("Bearer ")) {
-      return authHeader.slice(7)
-    }
-    return null
-  }
-
-  // REST API: Send email (user clicks Send button)
-  app.post("/api/send", async (req, res) => {
-    try {
-      const accessToken = extractToken(req)
-      if (!accessToken) {
-        res.status(401).json({ success: false, error: "Missing Authorization header" })
-        return
-      }
-
-      const { to, cc, bcc, subject, body, threadId: _threadId } = req.body
-      if (!to || !subject || !body) {
-        res.status(400).json({ success: false, error: "Missing required fields: to, subject, body" })
-        return
-      }
-
-      const gmail = createGmailClient(accessToken)
-      const { sendEmail } = await import("./gmail-client.js")
-
-      const toList = Array.isArray(to) ? to.join(", ") : to
-      const ccList = Array.isArray(cc) ? cc.join(", ") : cc
-      const bccList = Array.isArray(bcc) ? bcc.join(", ") : bcc
-
-      const result = await sendEmail(gmail, toList, subject, body, ccList, bccList)
-
-      res.json({ success: true, messageId: result.id, threadId: result.threadId })
-    } catch (error) {
-      console.error("[Gmail API] Send error:", error)
-      const message = error instanceof Error ? error.message : "Failed to send email"
-      res.status(500).json({ success: false, error: message })
-    }
-  })
-
-  // REST API: Save draft (user clicks Save Draft button)
-  app.post("/api/draft", async (req, res) => {
-    try {
-      const accessToken = extractToken(req)
-      if (!accessToken) {
-        res.status(401).json({ success: false, error: "Missing Authorization header" })
-        return
-      }
-
-      const { to, cc, subject, body, threadId: _threadIdDraft } = req.body
-      if (!to || !subject || !body) {
-        res.status(400).json({ success: false, error: "Missing required fields: to, subject, body" })
-        return
-      }
-
-      const gmail = createGmailClient(accessToken)
-      const { createDraft } = await import("./gmail-client.js")
-
-      const toList = Array.isArray(to) ? to.join(", ") : to
-      const ccList = Array.isArray(cc) ? cc.join(", ") : cc
-
-      const result = await createDraft(gmail, toList, subject, body, ccList)
-
-      res.json({ success: true, draftId: result.id, messageId: result.messageId })
-    } catch (error) {
-      console.error("[Gmail API] Draft error:", error)
-      const message = error instanceof Error ? error.message : "Failed to save draft"
-      res.status(500).json({ success: false, error: message })
-    }
   })
 
   // MCP endpoint - extracts Bearer token from Authorization header

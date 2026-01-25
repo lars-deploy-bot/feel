@@ -1,15 +1,44 @@
 /**
  * Gmail Send API
  *
- * Proxies to Gmail MCP server's /api/send endpoint.
- * Fetches OAuth token and forwards request.
+ * Sends an email via Gmail API when user clicks Send button.
+ * Uses stored OAuth token from user's Gmail connection.
  */
 
 import { type NextRequest, NextResponse } from "next/server"
+import { google } from "googleapis"
 import { getSessionUser, createErrorResponse } from "@/features/auth/lib/auth"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getOAuthInstance } from "@/lib/oauth/oauth-instances"
-import { OAUTH_MCP_PROVIDERS } from "@webalive/shared"
+
+interface SendEmailRequest {
+  to: string[]
+  cc?: string[]
+  bcc?: string[]
+  subject: string
+  body: string
+  threadId?: string
+}
+
+function createRawEmail(params: SendEmailRequest): string {
+  const { to, cc, bcc, subject, body } = params
+
+  const headers = [
+    `To: ${to.join(", ")}`,
+    cc?.length ? `Cc: ${cc.join(", ")}` : null,
+    bcc?.length ? `Bcc: ${bcc.join(", ")}` : null,
+    `Subject: ${subject}`,
+    "MIME-Version: 1.0",
+    "Content-Type: text/plain; charset=utf-8",
+    "",
+    body,
+  ]
+    .filter(Boolean)
+    .join("\r\n")
+
+  // Base64url encode
+  return Buffer.from(headers).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,7 +49,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Parse request body
-    const body = await req.json()
+    const body: SendEmailRequest = await req.json()
     if (!body.to?.length || !body.subject || !body.body) {
       return createErrorResponse(ErrorCodes.INVALID_REQUEST, 400, {
         reason: "Missing required fields: to, subject, body",
@@ -39,29 +68,28 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // 4. Proxy to Gmail MCP server
-    const gmailServerUrl = OAUTH_MCP_PROVIDERS.gmail.url.replace("/mcp", "/api/send")
-    const response = await fetch(gmailServerUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
+    // 4. Create Gmail client
+    const oauth2Client = new google.auth.OAuth2()
+    oauth2Client.setCredentials({ access_token: accessToken })
+    const gmail = google.gmail({ version: "v1", auth: oauth2Client })
+
+    // 5. Send email
+    const raw = createRawEmail(body)
+    const response = await gmail.users.messages.send({
+      userId: "me",
+      requestBody: {
+        raw,
+        threadId: body.threadId,
       },
-      body: JSON.stringify(body),
     })
 
-    const result = await response.json()
+    console.log(`[Gmail Send] Email sent by user ${user.id}, ID: ${response.data.id}`)
 
-    if (!response.ok || !result.success) {
-      console.error("[Gmail Send] MCP server error:", result)
-      return createErrorResponse(ErrorCodes.INTEGRATION_ERROR, response.status, {
-        reason: result.error || "Failed to send email",
-      })
-    }
-
-    console.log(`[Gmail Send] Email sent by user ${user.id}, ID: ${result.messageId}`)
-
-    return NextResponse.json(result)
+    return NextResponse.json({
+      ok: true,
+      messageId: response.data.id,
+      threadId: response.data.threadId,
+    })
   } catch (error) {
     console.error("[Gmail Send] Error:", error)
     const message = error instanceof Error ? error.message : "Failed to send email"
