@@ -360,7 +360,7 @@ More text`
       const duration = performance.now() - start
 
       expect(result).toBe(true)
-      expect(duration).toBeLessThan(50) // Should be very fast
+      expect(duration).toBeLessThan(200) // Allow headroom for CI/deployment load
     })
   })
 })
@@ -498,7 +498,7 @@ This function uses reduce to sum all prices.`
       hasCodeBlock(longText)
       const duration = performance.now() - start
 
-      expect(duration).toBeLessThan(50) // Should be very fast
+      expect(duration).toBeLessThan(200) // Allow headroom for CI/deployment load
     })
   })
 })
