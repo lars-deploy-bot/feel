@@ -73,6 +73,29 @@ export const FILE_OPS = {
 export type FileOpTool = (typeof FILE_OPS)[keyof typeof FILE_OPS]
 
 // ============================================================
+// EMAIL TOOLS (Gmail integration - superadmin only)
+// ============================================================
+
+export const EMAIL = {
+  COMPOSE: "gmail__compose_email",
+  CREATE_DRAFT: "gmail__create_draft",
+  SEND: "gmail__send_email",
+  REPLY: "gmail__reply_email",
+} as const
+
+export type EmailTool = (typeof EMAIL)[keyof typeof EMAIL]
+
+// ============================================================
+// AI TOOLS (alive-tools MCP)
+// ============================================================
+
+export const AI = {
+  ASK_CLARIFICATION: "mcp__alive-tools__ask_clarification",
+} as const
+
+export type AITool = (typeof AI)[keyof typeof AI]
+
+// ============================================================
 // OTHER TOOLS
 // ============================================================
 
@@ -87,7 +110,7 @@ export type OtherTool = (typeof OTHER)[keyof typeof OTHER]
 // ALL TOOLS (union type)
 // ============================================================
 
-export type ToolName = LinearTool | StripeTool | FileOpTool | OtherTool
+export type ToolName = LinearTool | StripeTool | FileOpTool | EmailTool | AITool | OtherTool
 
 // For dynamic/unknown tools, use this explicitly
 export type AnyToolName = ToolName | (string & {})

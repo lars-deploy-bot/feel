@@ -17,7 +17,7 @@
  * ```
  */
 
-import { LINEAR, STRIPE, STRIPE_PATTERNS, FILE_OPS, OTHER } from "./tool-names.js"
+import { LINEAR, STRIPE, STRIPE_PATTERNS, FILE_OPS, AI, OTHER } from "./tool-names.js"
 
 // ============================================================
 // TYPES
@@ -323,6 +323,18 @@ register(FILE_OPS.GLOB, {
   getPreview: data => {
     const d = data as Record<string, unknown> | null
     return d?.count !== undefined ? `found ${d.count} files` : "glob"
+  },
+})
+
+// --- AI tools ---
+register(AI.ASK_CLARIFICATION, {
+  autoExpand: true, // Always show the questionnaire
+  transform: unwrapMcp,
+  getPreview: data => {
+    const d = data as Record<string, unknown> | null
+    const questions = d?.questions as unknown[] | undefined
+    const count = questions?.length ?? 0
+    return `${count} ${plural(count, "question")}`
   },
 })
 

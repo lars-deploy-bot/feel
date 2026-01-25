@@ -89,6 +89,15 @@ export const BRIDGE_ALWAYS_DISALLOWED_SDK_TOOLS = ["Task", "WebSearch"] as const
 export type BridgeAlwaysDisallowedSDKTool = (typeof BRIDGE_ALWAYS_DISALLOWED_SDK_TOOLS)[number]
 
 /**
+ * MCP tools only available to superadmins.
+ *
+ * These are experimental/advanced tools not ready for general use:
+ * - ask_clarification: Interactive clarification questions UI
+ */
+export const BRIDGE_SUPERADMIN_ONLY_MCP_TOOLS = ["mcp__alive-tools__ask_clarification"] as const
+export type BridgeSuperadminOnlyMcpTool = (typeof BRIDGE_SUPERADMIN_ONLY_MCP_TOOLS)[number]
+
+/**
  * Get disallowed SDK tools based on admin/superadmin status.
  *
  * @param isAdmin - Whether the user is an admin
@@ -140,7 +149,7 @@ export function getBridgeAllowedTools(
   const mcpTools = getEnabledMcpToolNames()
   const globalMcpTools = Object.values(GLOBAL_MCP_PROVIDERS).flatMap(p => [...p.knownTools])
 
-  // Superadmins get ALL tools (including Task, WebSearch)
+  // Superadmins get ALL tools (including Task, WebSearch, superadmin-only MCP tools)
   if (isSuperadmin) {
     return [
       ...BRIDGE_ALLOWED_SDK_TOOLS,
@@ -148,6 +157,7 @@ export function getBridgeAllowedTools(
       ...BRIDGE_ALWAYS_DISALLOWED_SDK_TOOLS, // Task, WebSearch enabled for superadmin
       ...mcpTools,
       ...globalMcpTools,
+      ...BRIDGE_SUPERADMIN_ONLY_MCP_TOOLS, // Superadmin-only MCP tools
     ]
   }
 

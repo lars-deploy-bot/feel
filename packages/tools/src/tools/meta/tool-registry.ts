@@ -54,6 +54,8 @@ export interface ToolMetadata {
   description: string
   contextCost: ContextCost
   enabled: boolean
+  /** If true, this tool is only available to superadmins even if enabled=false in general */
+  superadminOnly?: boolean
   parameters?: {
     name: string
     type: string
@@ -299,6 +301,31 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
         type: "boolean",
         required: false,
         description: "Return only summary stats (context-efficient). Default: false",
+      },
+    ],
+  },
+
+  // AI tools (superadmin-only)
+  {
+    name: "ask_clarification",
+    category: "meta",
+    description:
+      "Ask the user clarification questions when their request is ambiguous. Presents 1-3 multiple choice questions with custom input option. Use when planning complex tasks or when user intent needs clarification.",
+    contextCost: "low",
+    enabled: false, // Not generally enabled - only for superadmins
+    superadminOnly: true, // Registered in MCP but only allowed for superadmins
+    parameters: [
+      {
+        name: "questions",
+        type: "array",
+        required: true,
+        description: "1-3 clarification questions, each with id, question text, and exactly 3 options",
+      },
+      {
+        name: "context",
+        type: "string",
+        required: false,
+        description: "Optional context about why these questions are being asked",
       },
     ],
   },

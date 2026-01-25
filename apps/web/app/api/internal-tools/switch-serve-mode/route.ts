@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process"
-import { existsSync, mkdirSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { basename, dirname, join } from "node:path"
 import { NextResponse } from "next/server"
 import { z } from "zod"
@@ -7,6 +7,48 @@ import { createErrorResponse } from "@/features/auth/lib/auth"
 import { ErrorCodes } from "@/lib/error-codes"
 import { handleWorkspaceApi } from "@/lib/workspace-api-handler"
 import { detectServeMode, runAsWorkspaceUser } from "@/lib/workspace-execution/command-runner"
+
+/**
+ * Detect if site has a backend server (server.ts exists).
+ */
+function hasBackendServer(workspaceRoot: string): boolean {
+  const serverPath = join(workspaceRoot, "server.ts")
+  return existsSync(serverPath)
+}
+
+/**
+ * Check if server.ts has static file serving for production.
+ * Production servers need to serve built files from dist/.
+ */
+function hasProductionStaticServing(workspaceRoot: string): boolean {
+  const serverPath = join(workspaceRoot, "server.ts")
+  try {
+    const content = readFileSync(serverPath, "utf-8")
+    // Check for common patterns that indicate static file serving
+    return content.includes("serveStatic") && content.includes("dist")
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Check if site needs script updates for backend server support.
+ * Returns true if server.ts exists but scripts are still using default Vite-only config.
+ */
+function needsBackendScriptUpdate(workspaceRoot: string): boolean {
+  if (!hasBackendServer(workspaceRoot)) {
+    return false
+  }
+
+  const packageJsonPath = join(workspaceRoot, "package.json")
+  try {
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"))
+    // Needs update if preview is still "vite preview" (default)
+    return packageJson.scripts?.preview === "vite preview"
+  } catch {
+    return false
+  }
+}
 
 const SwitchServeModeSchema = z.object({
   workspaceRoot: z.string(),
@@ -99,6 +141,59 @@ export async function POST(req: Request) {
           console.log(`[switch-serve-mode ${requestId}] Build completed`)
         }
 
+        // For sites with backend servers, ensure package.json has correct scripts
+        if (needsBackendScriptUpdate(workspaceRoot)) {
+          const packageJsonPath = join(workspaceRoot, "package.json")
+          try {
+            const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"))
+            let updated = false
+
+            // Fix preview script for production mode
+            if (packageJson.scripts?.preview === "vite preview") {
+              packageJson.scripts.preview = "NODE_ENV=production bun server.ts"
+              updated = true
+              console.log(`[switch-serve-mode ${requestId}] Updated preview script to use production server`)
+            }
+
+            // Fix dev script to run both Vite and API server
+            if (packageJson.scripts?.dev === "vite") {
+              // Add helper scripts if missing
+              if (!packageJson.scripts["dev:api"]) {
+                // biome-ignore lint/suspicious/noTemplateCurlyInString: This is a shell variable, not JS template
+                packageJson.scripts["dev:api"] = "API_PORT=$((${PORT:-3333} + 1000)) bun --watch server.ts"
+              }
+              if (!packageJson.scripts["dev:client"]) {
+                packageJson.scripts["dev:client"] = "vite"
+              }
+              packageJson.scripts.dev = 'concurrently -k -n api,vite -c blue,green "bun dev:api" "bun dev:client"'
+
+              // Add concurrently as dependency if missing
+              if (!packageJson.dependencies?.concurrently && !packageJson.devDependencies?.concurrently) {
+                packageJson.dependencies = packageJson.dependencies || {}
+                packageJson.dependencies.concurrently = "^9.2.1"
+              }
+
+              updated = true
+              console.log(`[switch-serve-mode ${requestId}] Updated dev script to run API + Vite concurrently`)
+            }
+
+            if (updated) {
+              writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`, "utf-8")
+
+              // Install new dependencies
+              console.log(`[switch-serve-mode ${requestId}] Installing dependencies...`)
+              await runAsWorkspaceUser({
+                command: "bun",
+                args: ["install"],
+                workspaceRoot,
+                timeout: 60000,
+              })
+            }
+          } catch (e) {
+            console.error(`[switch-serve-mode ${requestId}] Failed to update package.json:`, e)
+          }
+        }
+
         // Update systemd override configuration
         // Use ${PORT} from EnvironmentFile - systemd loads /etc/sites/<slug>.env
         const execStart =
@@ -149,6 +244,13 @@ ExecStart=${execStart}
           message = previousLabel
             ? `✓ Switched from ${previousLabel} to ${modeLabel.toLowerCase()} mode. ${explanation}`
             : `✓ ${modeLabel} mode enabled. ${explanation}`
+        }
+
+        // Warn if site has backend server but might not be configured for production
+        if (mode === "build" && hasBackendServer(workspaceRoot) && !hasProductionStaticServing(workspaceRoot)) {
+          message +=
+            "\n\n⚠️ This site has a backend server (server.ts) but may not be configured to serve static files in production. " +
+            "The server.ts needs to serve files from dist/ when NODE_ENV=production."
         }
 
         return NextResponse.json({

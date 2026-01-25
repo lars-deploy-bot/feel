@@ -7,7 +7,13 @@
  * Import this file once at app initialization.
  */
 
-import { registerComponent, LINEAR } from "./tool-registry"
+import { registerComponent, LINEAR, EMAIL, AI } from "./tool-registry"
+
+// === AI Components ===
+import {
+  ClarificationQuestionsOutput,
+  validateClarificationQuestions,
+} from "@/components/ui/chat/tools/ai/ClarificationQuestionsOutput"
 
 // === Linear Components ===
 import { LinearIssueResult, validateLinearIssue } from "@/components/linear/LinearIssueResult"
@@ -18,6 +24,9 @@ import {
   validateLinearComment,
   validateLinearComments,
 } from "@/components/linear/LinearCommentResult"
+
+// === Email Components (superadmin only) ===
+import { EmailDraftOutput, validateEmailDraft } from "@/components/ui/chat/tools/email/EmailDraftOutput"
 
 // ============================================================
 // LINEAR COMPONENTS
@@ -31,3 +40,17 @@ registerComponent(LINEAR.CREATE_COMMENT, LinearCommentResult, validateLinearComm
 registerComponent(LINEAR.LIST_COMMENTS, LinearCommentsResult, validateLinearComments)
 
 // Note: LIST_PROJECTS and LIST_TEAMS use default JSON rendering (no custom component)
+
+// ============================================================
+// EMAIL COMPONENTS (superadmin feature flag)
+// ============================================================
+
+registerComponent(EMAIL.COMPOSE, EmailDraftOutput, validateEmailDraft)
+registerComponent(EMAIL.CREATE_DRAFT, EmailDraftOutput, validateEmailDraft)
+registerComponent(EMAIL.REPLY, EmailDraftOutput, validateEmailDraft)
+
+// ============================================================
+// AI COMPONENTS (clarification questions)
+// ============================================================
+
+registerComponent(AI.ASK_CLARIFICATION, ClarificationQuestionsOutput, validateClarificationQuestions)

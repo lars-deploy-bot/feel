@@ -1,10 +1,12 @@
 "use client"
 
-import { AlertTriangle, CheckCircle, Loader2, Play, Server, XCircle } from "lucide-react"
+import { AlertTriangle, CheckCircle, Loader2, Mail, Play, Server, XCircle } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Toggle } from "@/components/ui/Toggle"
 import buildInfo from "@/lib/build-info.json"
 import { SettingsTabLayout, type SettingsTabProps } from "./SettingsTabLayout"
+import { useSuperadmin } from "@/hooks/use-superadmin"
+import { EmailDraftDemo } from "@/components/ui/chat/tools/email/EmailDraftOutput"
 
 type DeployAction = "staging" | "production" | "production-skip-e2e" | "status"
 type DeployStatus = "idle" | "running" | "success" | "error"
@@ -205,6 +207,8 @@ function DeployOutput({ state, onClear }: { state: DeployState; onClear: () => v
 export function AdminSettings({ onClose }: SettingsTabProps) {
   const { state, runDeploy, clear } = useDeployStream()
   const [skipE2E, setSkipE2E] = useState(false)
+  const [showEmailDemo, setShowEmailDemo] = useState(false)
+  const isSuperadmin = useSuperadmin()
 
   const isRunning = state.status === "running"
 
@@ -215,6 +219,26 @@ export function AdminSettings({ onClose }: SettingsTabProps) {
   return (
     <SettingsTabLayout title="Admin" description="System information and admin tools" onClose={onClose}>
       <div className="space-y-6">
+        {/* Email Draft Demo - Superadmin only */}
+        {isSuperadmin && (
+          <div className="p-4 rounded-lg border border-blue-200 dark:border-blue-800/50 bg-blue-50/50 dark:bg-blue-950/20">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Mail size={16} className="text-blue-600 dark:text-blue-400" />
+                <h3 className="text-sm font-medium text-blue-900 dark:text-blue-100">Email Draft Preview</h3>
+                <span className="px-2 py-0.5 text-[10px] font-medium bg-blue-600 text-white rounded-full">
+                  SUPERADMIN
+                </span>
+              </div>
+              <Toggle checked={showEmailDemo} onChange={setShowEmailDemo} aria-label="Show email demo" />
+            </div>
+            <p className="text-xs text-blue-700/80 dark:text-blue-300/80 mb-3">
+              Preview the email draft UI component. Claude can draft emails, but only users can click Send.
+            </p>
+            {showEmailDemo && <EmailDraftDemo />}
+          </div>
+        )}
+
         {/* Build info */}
         <div className="p-4 rounded-lg border border-black/10 dark:border-white/10">
           <h3 className="text-sm font-medium text-black dark:text-white mb-2">Build Information</h3>

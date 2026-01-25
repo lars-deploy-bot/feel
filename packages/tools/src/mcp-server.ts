@@ -1,4 +1,5 @@
 import { createSdkMcpServer } from "@anthropic-ai/claude-agent-sdk"
+import { askClarificationTool } from "./tools/ai/ask-clarification.js"
 import { debugWorkspaceTool } from "./tools/composite/debug-workspace.js"
 import { readServerLogsTool } from "./tools/debug/read-server-logs.js"
 import { getWorkflowTool } from "./tools/meta/get-workflow.js"
@@ -50,6 +51,7 @@ export const toolsInternalMcp = createSdkMcpServer({
     getAliveSuperTemplateTool,
     readServerLogsTool,
     generatePersonaTool,
+    askClarificationTool,
   ],
 })
 

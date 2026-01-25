@@ -11,8 +11,8 @@
  */
 
 // Tool name constants
-export { LINEAR, STRIPE, FILE_OPS, OTHER } from "./tool-names.js"
-export type { LinearTool, StripeTool, FileOpTool, OtherTool, ToolName } from "./tool-names.js"
+export { LINEAR, STRIPE, FILE_OPS, OTHER, EMAIL, AI } from "./tool-names.js"
+export type { LinearTool, StripeTool, FileOpTool, OtherTool, EmailTool, AITool, ToolName } from "./tool-names.js"
 
 // Display configuration
 export {

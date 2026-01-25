@@ -19,7 +19,7 @@ import { toolsInternalMcp, workspaceInternalMcp } from "../src/mcp-server.js"
 import { TOOL_REGISTRY } from "../src/tools/meta/tool-registry.js"
 
 describe("Tool Registry Sync", () => {
-  it("should have all MCP server tools in TOOL_REGISTRY with enabled=true", () => {
+  it("should have all MCP server tools in TOOL_REGISTRY with enabled=true or superadminOnly=true", () => {
     // Get all tool names from MCP servers
     const mcpToolNames = new Set<string>()
 
@@ -35,13 +35,15 @@ describe("Tool Registry Sync", () => {
       mcpToolNames.add(toolName)
     }
 
-    // Get all enabled tool names from registry
-    const registryEnabledTools = new Set(TOOL_REGISTRY.filter(tool => tool.enabled).map(tool => tool.name))
+    // Get all tool names that should be in MCP servers (enabled OR superadminOnly)
+    const registryAvailableTools = new Set(
+      TOOL_REGISTRY.filter(tool => tool.enabled || tool.superadminOnly).map(tool => tool.name),
+    )
 
-    // Check: Every MCP tool must be in registry with enabled=true
+    // Check: Every MCP tool must be in registry with enabled=true or superadminOnly=true
     const missingFromRegistry: string[] = []
     for (const toolName of mcpToolNames) {
-      if (!registryEnabledTools.has(toolName)) {
+      if (!registryAvailableTools.has(toolName)) {
         missingFromRegistry.push(toolName)
       }
     }
@@ -50,13 +52,13 @@ describe("Tool Registry Sync", () => {
       throw new Error(
         "❌ Tools in MCP servers but missing or disabled in TOOL_REGISTRY:\n" +
           `   ${missingFromRegistry.join(", ")}\n\n` +
-          "   Fix: Add these tools to packages/tools/src/tools/meta/tool-registry.ts with enabled=true",
+          "   Fix: Add these tools to packages/tools/src/tools/meta/tool-registry.ts with enabled=true or superadminOnly=true",
       )
     }
 
-    // Check: Every enabled registry tool must be in MCP servers
+    // Check: Every available registry tool must be in MCP servers
     const missingFromMcp: string[] = []
-    for (const toolName of registryEnabledTools) {
+    for (const toolName of registryAvailableTools) {
       if (!mcpToolNames.has(toolName)) {
         missingFromMcp.push(toolName)
       }
@@ -64,17 +66,17 @@ describe("Tool Registry Sync", () => {
 
     if (missingFromMcp.length > 0) {
       throw new Error(
-        "❌ Tools enabled in TOOL_REGISTRY but missing from MCP servers:\n" +
+        "❌ Tools enabled/superadminOnly in TOOL_REGISTRY but missing from MCP servers:\n" +
           `   ${missingFromMcp.join(", ")}\n\n` +
           "   Fix: Either:\n" +
           "   1. Add these tools to packages/tools/src/mcp-server.ts (toolsInternalMcp or workspaceInternalMcp)\n" +
-          `   2. Or set enabled=false in tool-registry.ts if they're intentionally disabled`,
+          `   2. Or set enabled=false and superadminOnly=false in tool-registry.ts if they're intentionally disabled`,
       )
     }
 
     // Verify sync
-    expect(mcpToolNames.size).toBe(registryEnabledTools.size)
-    expect([...mcpToolNames].sort()).toEqual([...registryEnabledTools].sort())
+    expect(mcpToolNames.size).toBe(registryAvailableTools.size)
+    expect([...mcpToolNames].sort()).toEqual([...registryAvailableTools].sort())
   })
 
   it("should have valid metadata for all tools in TOOL_REGISTRY", () => {
@@ -94,7 +96,7 @@ describe("Tool Registry Sync", () => {
     }
   })
 
-  it("should not include disabled tools in MCP servers", () => {
+  it("should not include disabled tools in MCP servers (unless superadminOnly)", () => {
     const mcpToolNames = new Set<string>()
 
     const aliveToolsRegistered = Object.keys(toolsInternalMcp.instance._registeredTools || {})
@@ -107,7 +109,8 @@ describe("Tool Registry Sync", () => {
       mcpToolNames.add(toolName)
     }
 
-    const disabledTools = TOOL_REGISTRY.filter(tool => !tool.enabled).map(tool => tool.name)
+    // Disabled tools that are NOT superadminOnly should not be in MCP servers
+    const disabledTools = TOOL_REGISTRY.filter(tool => !tool.enabled && !tool.superadminOnly).map(tool => tool.name)
 
     const disabledButInMcp: string[] = []
     for (const toolName of disabledTools) {
@@ -118,9 +121,9 @@ describe("Tool Registry Sync", () => {
 
     if (disabledButInMcp.length > 0) {
       throw new Error(
-        "❌ Tools marked as disabled in TOOL_REGISTRY but still in MCP servers:\n" +
+        "❌ Tools marked as disabled (non-superadminOnly) in TOOL_REGISTRY but still in MCP servers:\n" +
           `   ${disabledButInMcp.join(", ")}\n\n` +
-          "   Fix: Remove these tools from packages/tools/src/mcp-server.ts (toolsInternalMcp or workspaceInternalMcp arrays)",
+          "   Fix: Remove these tools from packages/tools/src/mcp-server.ts (or set superadminOnly=true if intended)",
       )
     }
 
@@ -132,10 +135,10 @@ describe("Tool Registry Sync", () => {
     const workspaceToolNames = new Set<string>(Object.keys(workspaceInternalMcp.instance._registeredTools || {}))
     const aliveToolNames = new Set<string>(Object.keys(toolsInternalMcp.instance._registeredTools || {}))
 
-    // Check each enabled tool is in correct server
+    // Check each enabled or superadminOnly tool is in correct server
     const wrongServerTools: string[] = []
 
-    for (const tool of TOOL_REGISTRY.filter(t => t.enabled)) {
+    for (const tool of TOOL_REGISTRY.filter(t => t.enabled || t.superadminOnly)) {
       const isInWorkspaceMcp = workspaceToolNames.has(tool.name)
       const isInToolsMcp = aliveToolNames.has(tool.name)
 
