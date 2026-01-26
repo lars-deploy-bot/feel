@@ -102,6 +102,9 @@ wheelpickername.com {
 kranazilie.nl {
     import common_headers
     import image_serving
+    basic_auth {
+        guest $2a$14$oXCJFb8UORE..ZImuYMgruaAn1zrI3H20ogj6qhi.Xmi5A0rOBDWm
+    }
     reverse_proxy localhost:3339 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}

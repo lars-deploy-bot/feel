@@ -37,9 +37,7 @@ export function ChatHeader({
   return (
     <div className="h-14 flex-shrink-0 border-b border-black/10 dark:border-white/10">
       <div className="h-full flex items-center justify-between px-6 mx-auto w-full md:max-w-2xl">
-        <div className="flex items-center gap-3">
-          <span className="text-lg font-medium text-black dark:text-white">Chat</span>
-        </div>
+        <div />
         <div className="flex items-center gap-2">
           {(isDevelopment() || isSuperadminWorkspace) && (
             <button

@@ -430,10 +430,10 @@ function ChatPageContent() {
         <button
           type="button"
           onClick={toggleSidebar}
-          className="fixed top-3 left-3 z-50 p-2 border border-black/20 dark:border-white/20 hover:bg-black/5 dark:hover:bg-white/5 transition-colors hidden md:flex"
+          className="fixed top-3.5 left-3.5 z-50 p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors hidden md:flex"
           aria-label="Open conversations"
         >
-          <PanelLeft size={18} className="text-black/70 dark:text-white/70" />
+          <PanelLeft size={18} className="text-black/40 dark:text-white/40" />
         </button>
       )}
 

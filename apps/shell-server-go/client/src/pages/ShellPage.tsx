@@ -391,7 +391,7 @@ export function ShellPage() {
   }, [tabs, activeTabId, showSearch, searchQuery, createTab, closeTab, switchToTab, handleSearch, clearSearch])
 
   function sendInput(data: string) {
-    const tab = tabs.find(t => t.id === activeTabId)
+    const tab = tabsRef.current.find(t => t.id === activeTabId)
     if (tab && tab.ws.readyState === WebSocket.OPEN) {
       tab.ws.send(JSON.stringify({ type: "input", data }))
     }
@@ -626,7 +626,7 @@ export function ShellPage() {
             <button
               className="flex-1 p-3 bg-[#3c3c3c] border-none rounded-md text-[#d4d4d4] text-[13px] font-mono cursor-pointer min-h-[44px]"
               onClick={() => {
-                const tab = tabs.find(t => t.id === activeTabId)
+                const tab = tabsRef.current.find(t => t.id === activeTabId)
                 if (tab) tab.terminal.scrollLines(-5)
               }}
             >
@@ -635,7 +635,7 @@ export function ShellPage() {
             <button
               className="flex-1 p-3 bg-[#3c3c3c] border-none rounded-md text-[#d4d4d4] text-[13px] font-mono cursor-pointer min-h-[44px]"
               onClick={() => {
-                const tab = tabs.find(t => t.id === activeTabId)
+                const tab = tabsRef.current.find(t => t.id === activeTabId)
                 if (tab) tab.terminal.scrollLines(5)
               }}
             >
@@ -644,7 +644,7 @@ export function ShellPage() {
             <button
               className="flex-1 p-3 bg-shell-accent border-none rounded-md text-white text-[13px] font-mono cursor-pointer min-h-[44px]"
               onClick={() => {
-                const tab = tabs.find(t => t.id === activeTabId)
+                const tab = tabsRef.current.find(t => t.id === activeTabId)
                 if (tab) tab.terminal.scrollToBottom()
               }}
             >
