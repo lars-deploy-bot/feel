@@ -31,8 +31,8 @@ function isValidApiKeyFormat(key: string): boolean {
 export const BodySchema = z.object({
   message: z.string().min(1),
   workspace: z.string().optional(),
-  conversationId: z.string().uuid(),
-  tabId: z.string().optional(), // Tab ID for routing streaming responses to correct tab
+  conversationId: z.string().uuid().optional(), // Optional grouping layer (future: git branches)
+  tabId: z.string().uuid(), // Tab ID - primary session key (maps to Claude SDK session)
   apiKey: z
     .string()
     .refine(

@@ -66,8 +66,8 @@ vi.mock("@/lib/supabase/iam", () => ({
 
 import {
   SessionStoreMemory,
+  tabKey,
   sessionKey,
-  lockKey,
   tryLockConversation,
   unlockConversation,
 } from "@/features/auth/lib/sessionStore"
@@ -130,33 +130,32 @@ describe("Session Store - Conversation Locking", () => {
     })
   })
 
-  describe("lockKey", () => {
+  describe("tabKey", () => {
     it("should create consistent keys from same parameters", () => {
-      const key1 = lockKey({ userId: "user1", workspace: "workspace1", conversationId: "conv1", tabId: "tab1" })
-      const key2 = lockKey({ userId: "user1", workspace: "workspace1", conversationId: "conv1", tabId: "tab1" })
+      const key1 = tabKey({ userId: "user1", workspace: "workspace1", tabId: "tab1" })
+      const key2 = tabKey({ userId: "user1", workspace: "workspace1", tabId: "tab1" })
       expect(key1).toBe(key2)
     })
 
     it("should create different keys for different tabs", () => {
-      const key1 = lockKey({ userId: "user1", workspace: "workspace1", conversationId: "conv1", tabId: "tab1" })
-      const key2 = lockKey({ userId: "user1", workspace: "workspace1", conversationId: "conv1", tabId: "tab2" })
+      const key1 = tabKey({ userId: "user1", workspace: "workspace1", tabId: "tab1" })
+      const key2 = tabKey({ userId: "user1", workspace: "workspace1", tabId: "tab2" })
       expect(key1).not.toBe(key2)
     })
 
-    it("should include tabId in the key when provided", () => {
-      const key = lockKey({ userId: "user1", workspace: "workspace1", conversationId: "conv1", tabId: "tab1" })
+    it("should include tabId in the key", () => {
+      const key = tabKey({ userId: "user1", workspace: "workspace1", tabId: "tab1" })
       expect(key).toContain("tab1")
     })
 
-    it("should fall back to conversation-level key without tabId", () => {
-      const lockKeyWithoutTab = lockKey({ userId: "user1", workspace: "workspace1", conversationId: "conv1" })
-      const sessionKeyEquivalent = sessionKey({ userId: "user1", workspace: "workspace1", conversationId: "conv1" })
-      expect(lockKeyWithoutTab).toBe(sessionKeyEquivalent)
+    it("should use default workspace when not provided", () => {
+      const key = tabKey({ userId: "user1", tabId: "tab1" })
+      expect(key).toContain("default")
     })
 
-    it("should allow same conversation to be locked by different tabs", () => {
-      const key1 = lockKey({ userId: "user1", workspace: "workspace1", conversationId: "conv1", tabId: "tab1" })
-      const key2 = lockKey({ userId: "user1", workspace: "workspace1", conversationId: "conv1", tabId: "tab2" })
+    it("should allow different tabs to be locked independently", () => {
+      const key1 = tabKey({ userId: "user1", workspace: "workspace1", tabId: "tab1" })
+      const key2 = tabKey({ userId: "user1", workspace: "workspace1", tabId: "tab2" })
 
       const lock1 = tryLockConversation(key1)
       const lock2 = tryLockConversation(key2)
@@ -168,8 +167,8 @@ describe("Session Store - Conversation Locking", () => {
       unlockConversation(key2)
     })
 
-    it("should still block same tab from concurrent requests", () => {
-      const key = lockKey({ userId: "user1", workspace: "workspace1", conversationId: "conv1", tabId: "same-tab" })
+    it("should block same tab from concurrent requests", () => {
+      const key = tabKey({ userId: "user1", workspace: "workspace1", tabId: "same-tab" })
 
       const first = tryLockConversation(key)
       const second = tryLockConversation(key)

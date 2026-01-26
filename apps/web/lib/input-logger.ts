@@ -5,7 +5,8 @@ import { ensureDirectory } from "./utils/fs-helpers"
 export interface InputLogEntry {
   timestamp: string
   userId: string
-  conversationId: string
+  tabId: string // Primary session key
+  conversationId?: string // Optional grouping (future: git branches)
   workspace: string
   cwd: string
   messageLength: number

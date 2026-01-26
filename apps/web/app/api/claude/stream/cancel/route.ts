@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createErrorResponse, requireSessionUser, verifyWorkspaceAccess } from "@/features/auth/lib/auth"
-import { sessionKey } from "@/features/auth/lib/sessionStore"
+import { tabKey } from "@/features/auth/lib/sessionStore"
 import { ErrorCodes } from "@/lib/error-codes"
 import { cancelStream, cancelStreamByConversationKey } from "@/lib/stream/cancellation-registry"
 
@@ -12,14 +12,14 @@ import { cancelStream, cancelStreamByConversationKey } from "@/lib/stream/cancel
  * (Cloudflare, Caddy) prevent req.signal from working correctly.
  *
  * Flow:
- * 1. Client sends POST with requestId (primary) OR conversationId + workspace (fallback)
+ * 1. Client sends POST with requestId (primary) OR tabId + workspace (fallback)
  * 2. Verify user owns the stream (security)
  * 3. Trigger cancellation via registry
  * 4. Stream breaks immediately, releases lock, cleans up child process
  *
  * Fallback (super-early Stop):
  * When user clicks Stop before receiving X-Request-Id header, client sends
- * conversationId instead. We build conversationKey and search registry by that.
+ * tabId instead. We build tabKey and search registry by that.
  *
  * Security:
  * - Requires authenticated session
@@ -35,13 +35,10 @@ export async function POST(req: NextRequest) {
 
     // Parse request body
     const body = await req.json()
-    const { requestId, conversationId } = body
-    console.log(
-      "[Cancel Stream] Request body:",
-      JSON.stringify({ requestId, conversationId, workspace: body.workspace }),
-    )
+    const { requestId, tabId } = body
+    console.log("[Cancel Stream] Request body:", JSON.stringify({ requestId, tabId, workspace: body.workspace }))
 
-    // Validate: must have either requestId OR (conversationId + workspace)
+    // Validate: must have either requestId OR (tabId + workspace)
     if (requestId && typeof requestId === "string") {
       // Primary path: Cancel by requestId
       console.log(`[Cancel Stream] User ${user.id} cancelling request: ${requestId}`)
@@ -67,8 +64,8 @@ export async function POST(req: NextRequest) {
 
         throw error
       }
-    } else if (conversationId && typeof conversationId === "string") {
-      // Fallback path: Cancel by conversationId (super-early Stop case)
+    } else if (tabId && typeof tabId === "string") {
+      // Fallback path: Cancel by tabId (super-early Stop case)
 
       // Security: Verify workspace authorization before using it
       const verifiedWorkspace = await verifyWorkspaceAccess(user, body, "[Cancel Stream]")
@@ -77,33 +74,34 @@ export async function POST(req: NextRequest) {
         return createErrorResponse(ErrorCodes.WORKSPACE_NOT_AUTHENTICATED, 401)
       }
 
-      const convKey = sessionKey({
+      const tabKeyValue = tabKey({
         userId: user.id,
         workspace: verifiedWorkspace,
-        conversationId,
+        tabId,
       })
       console.log(
-        `[Cancel Stream] Building convKey with: userId=${user.id}, workspace=${verifiedWorkspace}, conversationId=${conversationId}`,
+        `[Cancel Stream] Building tabKey with: userId=${user.id}, workspace=${verifiedWorkspace}, tabId=${tabId}`,
       )
-      console.log(`[Cancel Stream] Result convKey: ${convKey}`)
-      console.log(`[Cancel Stream] User ${user.id} cancelling by conversationKey (super-early Stop): ${convKey}`)
+      console.log(`[Cancel Stream] Result tabKey: ${tabKeyValue}`)
+      console.log(`[Cancel Stream] User ${user.id} cancelling by tabKey (super-early Stop): ${tabKeyValue}`)
 
       try {
         // Await cancel - Promise resolves when cleanup is complete (lock released)
-        const cancelled = await cancelStreamByConversationKey(convKey, user.id)
+        // Note: cancelStreamByConversationKey name is legacy - it now searches by tabKey
+        const cancelled = await cancelStreamByConversationKey(tabKeyValue, user.id)
 
         if (cancelled) {
-          console.log(`[Cancel Stream] Successfully cancelled by conversationKey and cleanup complete: ${convKey}`)
-          return NextResponse.json({ ok: true, status: "cancelled", conversationId })
+          console.log(`[Cancel Stream] Successfully cancelled by tabKey and cleanup complete: ${tabKeyValue}`)
+          return NextResponse.json({ ok: true, status: "cancelled", tabId })
         } else {
           // Not found - likely already completed or never started
-          console.log(`[Cancel Stream] Conversation not found (already complete): ${convKey}`)
-          return NextResponse.json({ ok: true, status: "already_complete", conversationId })
+          console.log(`[Cancel Stream] Tab not found (already complete): ${tabKeyValue}`)
+          return NextResponse.json({ ok: true, status: "already_complete", tabId })
         }
       } catch (error) {
         // Authorization error (trying to cancel another user's stream)
         if (error instanceof Error && error.message.includes("Unauthorized")) {
-          console.warn(`[Cancel Stream] Unauthorized attempt by ${user.id} for conversation: ${convKey}`)
+          console.warn(`[Cancel Stream] Unauthorized attempt by ${user.id} for tab: ${tabKeyValue}`)
           return createErrorResponse(ErrorCodes.UNAUTHORIZED, 403)
         }
 
@@ -112,7 +110,7 @@ export async function POST(req: NextRequest) {
     } else {
       // Invalid request - missing required parameters
       return createErrorResponse(ErrorCodes.INVALID_REQUEST, 400, {
-        message: "Either requestId or conversationId is required",
+        message: "Either requestId or tabId is required",
       })
     }
   } catch (error) {

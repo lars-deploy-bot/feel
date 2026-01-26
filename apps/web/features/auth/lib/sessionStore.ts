@@ -21,10 +21,11 @@ export interface SessionStore {
   delete(key: string): Promise<void>
 }
 
-// Parse composite key: userId::workspaceDomain::conversationId
-function parseKey(key: string): { userId: string; workspaceDomain: string; conversationId: string } {
-  const [userId, workspaceDomain, conversationId] = key.split("::")
-  return { userId, workspaceDomain: workspaceDomain || "default", conversationId }
+// Parse composite key: userId::workspaceDomain::tabId
+// Note: Database still uses conversation_id column until DB migration (PR 6)
+function parseKey(key: string): { userId: string; workspaceDomain: string; tabId: string } {
+  const [userId, workspaceDomain, tabId] = key.split("::")
+  return { userId, workspaceDomain: workspaceDomain || "default", tabId }
 }
 
 // In-memory cache for hostname → domain_id lookups (reduces DB queries by 50%)
@@ -93,7 +94,7 @@ if (typeof setInterval !== "undefined") {
 
 export const SessionStoreMemory: SessionStore = {
   async get(key: string): Promise<string | null> {
-    const { userId, workspaceDomain, conversationId } = parseKey(key)
+    const { userId, workspaceDomain, tabId } = parseKey(key)
 
     // Look up domain_id from hostname (cached)
     const domainId = await getDomainId(workspaceDomain)
@@ -104,20 +105,21 @@ export const SessionStoreMemory: SessionStore = {
     }
 
     // Query session from IAM
+    // Note: Uses conversation_id column to store tabId until DB migration (PR 6)
     const iam = await createIamClient("service")
     const { data: session } = await iam
       .from("sessions")
       .select("sdk_session_id")
       .eq("user_id", userId)
       .eq("domain_id", domainId)
-      .eq("conversation_id", conversationId)
+      .eq("conversation_id", tabId) // tabId stored in conversation_id column
       .single()
 
     return session?.sdk_session_id || null
   },
 
   async set(key: string, value: string): Promise<void> {
-    const { userId, workspaceDomain, conversationId } = parseKey(key)
+    const { userId, workspaceDomain, tabId } = parseKey(key)
 
     // Look up domain_id from hostname (cached)
     const domainId = await getDomainId(workspaceDomain)
@@ -127,6 +129,7 @@ export const SessionStoreMemory: SessionStore = {
     }
 
     // Upsert session in IAM (updates if exists, inserts if not)
+    // Note: Uses conversation_id column to store tabId until DB migration (PR 6)
     const iam = await createIamClient("service")
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
 
@@ -134,7 +137,7 @@ export const SessionStoreMemory: SessionStore = {
       {
         user_id: userId,
         domain_id: domainId,
-        conversation_id: conversationId,
+        conversation_id: tabId, // tabId stored in conversation_id column
         sdk_session_id: value,
         last_activity: new Date().toISOString(),
         expires_at: expiresAt.toISOString(),
@@ -146,7 +149,7 @@ export const SessionStoreMemory: SessionStore = {
   },
 
   async delete(key: string): Promise<void> {
-    const { userId, workspaceDomain, conversationId } = parseKey(key)
+    const { userId, workspaceDomain, tabId } = parseKey(key)
 
     // Look up domain_id from hostname (cached)
     const domainId = await getDomainId(workspaceDomain)
@@ -157,18 +160,22 @@ export const SessionStoreMemory: SessionStore = {
     }
 
     // Delete session from IAM
+    // Note: Uses conversation_id column to store tabId until DB migration (PR 6)
     const iam = await createIamClient("service")
-    await iam
-      .from("sessions")
-      .delete()
-      .eq("user_id", userId)
-      .eq("domain_id", domainId)
-      .eq("conversation_id", conversationId)
+    await iam.from("sessions").delete().eq("user_id", userId).eq("domain_id", domainId).eq("conversation_id", tabId) // tabId stored in conversation_id column
   },
 }
 
-// Helper to build a stable key (user + workspace + conversation)
-// Used for Claude SDK session persistence - same conversation = same session
+// Primary key builder: Tab is now the primary entity for chat sessions
+// Used for BOTH Claude SDK session persistence AND concurrency locking
+// Each browser tab = one independent chat session = one Claude SDK session
+export function tabKey({ userId, workspace, tabId }: { userId: string; workspace?: string; tabId: string }) {
+  return `${userId}::${workspace ?? "default"}::${tabId}`
+}
+
+// DEPRECATED: Use tabKey() instead
+// Kept for backward compatibility during migration (cancel/reconnect routes)
+// Will be removed after PR 8 (cleanup)
 export function sessionKey({
   userId,
   workspace,
@@ -179,25 +186,6 @@ export function sessionKey({
   conversationId: string
 }) {
   return `${userId}::${workspace ?? "default"}::${conversationId}`
-}
-
-// Helper to build a lock key (user + workspace + conversation + tab)
-// Used for concurrent request prevention - each browser tab can work independently
-// Without tabId, two browser windows viewing the same conversation would block each other
-export function lockKey({
-  userId,
-  workspace,
-  conversationId,
-  tabId,
-}: {
-  userId: string
-  workspace?: string
-  conversationId: string
-  tabId?: string
-}) {
-  // If no tabId provided, fall back to conversation-level locking (legacy behavior)
-  const base = `${userId}::${workspace ?? "default"}::${conversationId}`
-  return tabId ? `${base}::${tabId}` : base
 }
 
 // Re-export guards from types/guards/session for backward compatibility

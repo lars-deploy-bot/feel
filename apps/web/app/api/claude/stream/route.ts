@@ -8,13 +8,7 @@ import {
   verifyWorkspaceAccess,
 } from "@/features/auth/lib/auth"
 import { fetchAndSaveAnalyzeImages, buildAnalyzeImagePrompt } from "@/lib/image-analyze/fetch-and-save"
-import {
-  SessionStoreMemory,
-  sessionKey,
-  lockKey,
-  tryLockConversation,
-  unlockConversation,
-} from "@/features/auth/lib/sessionStore"
+import { SessionStoreMemory, tabKey, tryLockConversation, unlockConversation } from "@/features/auth/lib/sessionStore"
 import { hasSessionCookie } from "@/features/auth/types/guards"
 import { isInputSafe } from "@/features/chat/lib/formatMessage"
 import { getSystemPrompt } from "@/features/chat/lib/systemPrompt"
@@ -219,6 +213,7 @@ export async function POST(req: NextRequest) {
     logInput({
       timestamp: new Date().toISOString(),
       userId: user.id,
+      tabId,
       conversationId,
       workspace: requestWorkspace ?? "default",
       cwd,
@@ -243,21 +238,17 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // Session key: used for Claude SDK session persistence (same conversation = same session)
-    sessionStoreKey = sessionKey({
+    // Tab key: used for BOTH Claude SDK session persistence AND concurrency locking
+    // Tab is now the primary chat entity - each tab = one independent Claude session
+    // Session key and lock key are now the same (both use tabId)
+    sessionStoreKey = tabKey({
       userId: user.id,
       workspace: resolvedWorkspaceName,
-      conversationId,
+      tabId,
     })
 
-    // Lock key: includes tabId so different browser tabs can work independently
-    // Without tabId, two browser windows viewing the same conversation would block each other
-    concurrencyLockKey = lockKey({
-      userId: user.id,
-      workspace: resolvedWorkspaceName,
-      conversationId,
-      tabId, // Each UI tab gets its own lock
-    })
+    // Lock key is now identical to session key (tab-based, not conversation-based)
+    concurrencyLockKey = sessionStoreKey
 
     logger.log(`Domain: ${domainRecord.hostname} (port: ${domainRecord.port}, id: ${domainRecord.domain_id})`)
     logger.log("Session key:", sessionStoreKey)
