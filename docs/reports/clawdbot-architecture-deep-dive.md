@@ -676,4 +676,242 @@ The key insight: ClawdBot is a **personal assistant** (single-user, full system 
 
 ---
 
+## Automations Deep Dive
+
+ClawdBot has **three automation systems**:
+
+### 1. Cron Jobs (Scheduled Tasks)
+
+Cron jobs run the agent on a schedule - like "every morning at 9am, summarize my emails."
+
+**How it works:**
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   CronService   │ ──► │ Isolated Agent  │ ──► │  Deliver to     │
+│   (croner lib)  │     │   Session       │     │  Channel        │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+        │                       │                       │
+   Schedules jobs         Runs agent turn         Sends to WhatsApp/
+   at specified times     in isolated session     Telegram/etc.
+```
+
+**Cron Job Structure** (`src/cron/types.ts`):
+```typescript
+type CronJob = {
+  id: string;
+  name: string;
+  enabled: boolean;
+  schedule:
+    | { kind: "at"; atMs: number }           // One-time at specific time
+    | { kind: "every"; everyMs: number }     // Repeat every X ms
+    | { kind: "cron"; expr: string; tz?: string }; // Cron expression
+  sessionTarget: "main" | "isolated";         // Run in main or isolated session
+  wakeMode: "next-heartbeat" | "now";
+  payload:
+    | { kind: "systemEvent"; text: string }  // Inject system message
+    | { kind: "agentTurn"; message: string; deliver?: boolean; channel?: string; to?: string };
+};
+```
+
+**Example cron config:**
+```json
+{
+  "cron": {
+    "enabled": true,
+    "jobs": [
+      {
+        "id": "morning-summary",
+        "name": "Morning Summary",
+        "schedule": { "kind": "cron", "expr": "0 9 * * *", "tz": "Europe/Amsterdam" },
+        "sessionTarget": "isolated",
+        "payload": {
+          "kind": "agentTurn",
+          "message": "Summarize my calendar and important emails for today",
+          "deliver": true,
+          "channel": "whatsapp",
+          "to": "+31612345678"
+        }
+      }
+    ]
+  }
+}
+```
+
+**Key features:**
+- Jobs stored in `~/.clawdbot/cron/cron.json`
+- Runs in **isolated sessions** (don't pollute main conversation)
+- Can deliver results to any channel (WhatsApp, Telegram, etc.)
+- Supports one-shot jobs that auto-delete after running
+
+**Cron CLI Commands:**
+```bash
+clawdbot cron list              # List all cron jobs
+clawdbot cron create            # Create a new job
+clawdbot cron enable <id>       # Enable a job
+clawdbot cron disable <id>      # Disable a job
+clawdbot cron delete <id>       # Delete a job
+clawdbot cron run <id>          # Run a job now (manual trigger)
+```
+
+---
+
+### 2. Hooks (Event-Driven Automation)
+
+Hooks respond to events - like "when I start a new session, save the old one to memory."
+
+**Hook Architecture:**
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│  Event Source   │ ──► │  Hook Registry  │ ──► │  Hook Handler   │
+│  (command, etc.)│     │  (internal)     │     │  (bundled/user) │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+        │                       │                       │
+   Triggers events         Matches event to         Executes hook
+   (command:new, etc.)     registered hooks         logic
+```
+
+**Event Types** (`src/hooks/internal-hooks.ts`):
+- `command` - CLI command events (`command:new`, `command:reset`, etc.)
+- `session` - Session lifecycle events
+- `agent` - Agent bootstrap and execution events
+- `gateway` - Gateway lifecycle events
+
+**Bundled Hooks** (in `src/hooks/bundled/`):
+
+| Hook | Event | Description |
+|------|-------|-------------|
+| `session-memory` | `command:new` | Saves conversation to memory when you run `/new` |
+| `command-logger` | `command:*` | Logs all commands |
+| `boot-md` | `agent:bootstrap` | Loads bootstrap markdown files |
+| `soul-evil` | `agent:*` | Security filter for prompt injection |
+
+**Hook Definition Format** (HOOK.md):
+```markdown
+---
+name: session-memory
+description: "Save session context to memory when /new command is issued"
+metadata:
+  clawdbot:
+    emoji: "💾"
+    events: ["command:new"]
+    requires: { "config": ["workspace.dir"] }
+---
+# Session Memory Hook
+When you run `/new` to start a fresh session:
+1. Finds the previous session
+2. Extracts conversation
+3. Generates descriptive slug via LLM
+4. Saves to `<workspace>/memory/YYYY-MM-DD-slug.md`
+```
+
+**Registering a hook programmatically:**
+```typescript
+import { registerInternalHook } from './internal-hooks.js';
+
+registerInternalHook('command:new', async (event) => {
+  // Save session to memory
+  await saveSessionToMemory(event);
+});
+```
+
+**Hook CLI Commands:**
+```bash
+clawdbot hooks list             # List all hooks
+clawdbot hooks enable <name>    # Enable a hook
+clawdbot hooks disable <name>   # Disable a hook
+clawdbot hooks status           # Show hook status
+```
+
+---
+
+### 3. Gmail Watcher (Push-Based Automation)
+
+Watches your Gmail and triggers the agent when new emails arrive.
+
+**How it works:**
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│  Gmail API      │ ──► │  gog binary     │ ──► │  ClawdBot       │
+│  Push (Pub/Sub) │     │  (watch serve)  │     │  Agent          │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+        │                       │                       │
+   Gmail sends              gog receives           Agent processes
+   push notifications       via HTTP endpoint      and responds
+```
+
+**Components:**
+- **gog binary** - Gmail CLI tool that runs `gmail watch serve`
+- **Gmail API Pub/Sub** - Gmail pushes notifications to your endpoint
+- **Tailscale endpoint** - Secure way to receive webhooks
+
+**Gmail Config:**
+```json
+{
+  "hooks": {
+    "gmail": {
+      "account": "me@gmail.com",
+      "label": "inbox",
+      "topic": "projects/my-project/topics/gmail"
+    }
+  }
+}
+```
+
+**When email arrives:**
+1. Gmail sends push notification to gog server
+2. gog calls ClawdBot hook endpoint
+3. Hook triggers agent with email content
+4. Agent can respond, archive, label, etc.
+
+**Gmail CLI Commands:**
+```bash
+clawdbot gmail setup            # Set up Gmail integration
+clawdbot gmail watch start      # Start watching inbox
+clawdbot gmail watch stop       # Stop watching
+```
+
+---
+
+### Automation Flow Summary
+
+```
+                    ┌──────────────────────────────────────┐
+                    │            CLAWDBOT GATEWAY          │
+                    │                                      │
+┌─────────────┐     │  ┌─────────┐  ┌─────────┐  ┌──────┐ │
+│ Time-based  │─────┼─►│  CRON   │  │  HOOKS  │  │GMAIL │ │
+│ (cron expr) │     │  │ Service │  │ Registry│  │WATCH │ │
+└─────────────┘     │  └────┬────┘  └────┬────┘  └──┬───┘ │
+                    │       │            │          │      │
+┌─────────────┐     │       └────────────┼──────────┘      │
+│ Event-based │─────┼────────────────────┘                 │
+│ (command)   │     │                    │                 │
+└─────────────┘     │                    ▼                 │
+                    │           ┌─────────────────┐        │
+┌─────────────┐     │           │   AGENT RUNNER  │        │
+│ Push-based  │─────┼──────────►│  (Pi Embedded)  │        │
+│ (gmail)     │     │           └────────┬────────┘        │
+└─────────────┘     │                    │                 │
+                    │                    ▼                 │
+                    │           ┌─────────────────┐        │
+                    │           │    DELIVERY     │        │
+                    │           │  (to channels)  │        │
+                    │           └─────────────────┘        │
+                    └──────────────────────────────────────┘
+                                         │
+                    ┌────────────────────┼────────────────────┐
+                    │                    │                    │
+                    ▼                    ▼                    ▼
+             ┌──────────┐         ┌──────────┐         ┌──────────┐
+             │ WhatsApp │         │ Telegram │         │  Slack   │
+             └──────────┘         └──────────┘         └──────────┘
+```
+
+**Key Insight:** ClawdBot automations are **agent-centric** - they all ultimately trigger the agent to do something, then optionally deliver the result to a messaging channel. This is different from traditional automation tools that just run scripts - ClawdBot runs AI conversations on a schedule.
+
+---
+
 *Report generated from ClawdBot source code analysis, January 26, 2026*
