@@ -645,7 +645,11 @@ function ChatPageContent() {
 
       {showSSETerminal && <DevTerminal />}
       {modals.feedback && (
-        <FeedbackModal onClose={modals.closeFeedback} workspace={workspace ?? undefined} conversationId={tabId} />
+        <FeedbackModal
+          onClose={modals.closeFeedback}
+          workspace={workspace ?? undefined}
+          conversationId={tabId ?? undefined}
+        />
       )}
       <AnimatePresence>
         {modals.settings && (
