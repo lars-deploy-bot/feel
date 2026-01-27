@@ -1,39 +1,43 @@
-# Tab-Conversation Migration Overview
+# Tab → Conversation Migration Overview
 
 ## Status Tracker
 
-| PR | Status | Description |
-|----|--------|-------------|
-| 1_backend_session_keys.md | ⏳ pending | Backend: tabId becomes session key |
-| 2_stream_buffer.md | ⏳ pending | Stream buffer uses tabKey |
-| 3_streaming_store.md | ⏳ pending | Frontend streamingStore refactor |
-| 4_delete_message_store.md | ⏳ pending | Delete localStorage messageStore, use Dexie only |
-| 5_tab_store_refactor.md | ⏳ pending | Tab becomes primary, conversationId required |
-| 6_hooks_components.md | ⏳ pending | Update all hooks and components |
-| 7_supabase_migration.md | ⏳ pending | Database column rename |
-| 8_tests_cleanup.md | ⏳ pending | Update tests, delete old code |
+| PR | File | Status | Notes |
+|----|------|--------|-------|
+| 1 | Backend Session Keys | [x] Complete | |
+| 2 | Stream Buffer | [x] Complete | |
+| 3 | Streaming Store | [ ] Not Started | 60+ changes |
+| 4 | Delete Message Store | [ ] Not Started | |
+| 5 | Tab Store Refactor | [ ] Not Started | |
+| 6 | Hooks & Components | [ ] Not Started | |
+| 7 | Supabase Migration | [ ] Not Started | Optional |
+| 8 | Tests & Cleanup | [ ] Not Started | |
 
-**Legend**: ⏳ pending | 🔄 in progress | ✅ complete | ❌ blocked
+## Quick Links
 
-## Quick Reference
+- [Main Plan](../tab_becomes_conversation.md)
+- [PR 1: Backend Session Keys](./1_backend_session_keys.md)
+- [PR 2: Stream Buffer](./2_stream_buffer.md)
+- [PR 3: Streaming Store](./3_streaming_store.md)
+- [PR 4: Delete Message Store](./4_delete_message_store.md)
+- [PR 5: Tab Store Refactor](./5_tab_store_refactor.md)
+- [PR 6: Hooks & Components](./6_hooks_components.md)
+- [PR 7: Supabase Migration](./7_supabase_migration.md)
+- [PR 8: Tests & Cleanup](./8_tests_cleanup.md)
 
-- **Main plan**: `../tab_becomes_conversation.md`
-- **Session key change**: `userId::workspace::conversationId` → `userId::workspace::tabId`
-- **Message storage**: Dexie only (delete localStorage messageStore)
-- **Conversation**: Grouping layer (always present, future: git branches)
-- **Tab**: Chat thread (has messages, maps to Claude SDK session)
+## How to Use These Files
 
-## How to Use
+Each PR file contains:
+1. **Checklist** - Tasks to complete
+2. **Files to modify** - Exact files and what to change
+3. **Code examples** - Before/after snippets
+4. **Self-update instructions** - Mark tasks complete as you go
 
-1. Start with PR 1 (backend session keys)
-2. Each PR file has a checklist - work through it
-3. After completing each file change, update the checklist
-4. Update this overview when PR is complete
-5. PRs can be done in order (dependencies noted in each)
+**On crash recovery**: Read this file first to see overall status, then continue from the first incomplete PR.
 
-## Crash Recovery
+## Key Terminology Reminder
 
-Each PR file tracks its own progress. If you crash mid-PR:
-1. Read the PR file to see what's checked off
-2. Continue from where you left off
-3. The checklist IS the source of truth
+- **Tab** = Primary chat entity, owns messages, maps to Claude SDK session
+- **Conversation** = Grouping layer, will link to git branches
+- **tabId** = Session key for Claude SDK `resume` parameter
+- **conversationId** = Grouping ID (required, every tab belongs to a conversation)

@@ -22,8 +22,8 @@ import { getRedisUrl } from "@webalive/env/server"
 export interface StreamBufferEntry {
   /** Unique request identifier */
   requestId: string
-  /** Conversation key for lookup */
-  conversationKey: string
+  /** Tab key for lookup (userId::workspace::tabId) */
+  tabKey: string
   /** User who initiated the stream */
   userId: string
   /** Tab ID that initiated this stream (for routing on reconnect) */
@@ -83,7 +83,7 @@ function getRedis() {
  */
 export async function createStreamBuffer(
   requestId: string,
-  conversationKey: string,
+  tabKey: string,
   userId: string,
   tabId?: string,
 ): Promise<void> {
@@ -93,7 +93,7 @@ export async function createStreamBuffer(
   const now = Date.now()
   const entry: StreamBufferEntry = {
     requestId,
-    conversationKey,
+    tabKey,
     userId,
     tabId,
     state: "streaming",
@@ -106,8 +106,8 @@ export async function createStreamBuffer(
   // Store with TTL
   await redis.setex(key, BUFFER_TTL_SECONDS, JSON.stringify(entry))
 
-  // Also create a lookup by conversation key (for reconnection)
-  const lookupKey = `${BUFFER_KEY_PREFIX}conv:${conversationKey}`
+  // Also create a lookup by tab key (for reconnection)
+  const lookupKey = `${BUFFER_KEY_PREFIX}tab:${tabKey}`
   await redis.setex(lookupKey, BUFFER_TTL_SECONDS, requestId)
 }
 
@@ -222,12 +222,12 @@ export async function getStreamBuffer(requestId: string): Promise<StreamBufferEn
 }
 
 /**
- * Find active stream buffer for a conversation
+ * Find active stream buffer for a tab
  * Returns the most recent requestId if found
  */
-export async function findStreamBufferByConversation(conversationKey: string): Promise<string | null> {
+export async function findStreamBufferByTab(tabKey: string): Promise<string | null> {
   const redis = getRedis()
-  const lookupKey = `${BUFFER_KEY_PREFIX}conv:${conversationKey}`
+  const lookupKey = `${BUFFER_KEY_PREFIX}tab:${tabKey}`
 
   return redis.get(lookupKey)
 }
@@ -312,11 +312,11 @@ export async function deleteStreamBuffer(requestId: string): Promise<void> {
   const redis = getRedis()
   const key = `${BUFFER_KEY_PREFIX}${requestId}`
 
-  // Get conversation key before deletion for lookup cleanup
+  // Get tab key before deletion for lookup cleanup
   const raw = await redis.get(key)
   if (raw) {
     const entry: StreamBufferEntry = JSON.parse(raw)
-    const lookupKey = `${BUFFER_KEY_PREFIX}conv:${entry.conversationKey}`
+    const lookupKey = `${BUFFER_KEY_PREFIX}tab:${entry.tabKey}`
     await redis.del(lookupKey)
   }
 
@@ -324,7 +324,7 @@ export async function deleteStreamBuffer(requestId: string): Promise<void> {
 }
 
 /**
- * Check if there's an active/recent stream for this conversation
+ * Check if there's an active/recent stream for this tab
  * Used to provide better UX on reconnection
  *
  * A stream is considered stale if:
@@ -332,9 +332,9 @@ export async function deleteStreamBuffer(requestId: string): Promise<void> {
  * This prevents showing "thinking" forever if stream died unexpectedly
  */
 export async function hasActiveStream(
-  conversationKey: string,
+  tabKey: string,
 ): Promise<{ hasStream: boolean; state?: StreamBufferEntry["state"]; requestId?: string }> {
-  const requestId = await findStreamBufferByConversation(conversationKey)
+  const requestId = await findStreamBufferByTab(tabKey)
   if (!requestId) {
     return { hasStream: false }
   }

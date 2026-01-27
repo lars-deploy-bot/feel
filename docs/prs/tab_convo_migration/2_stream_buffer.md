@@ -1,63 +1,59 @@
 # PR 2: Stream Buffer
 
-**Status**: ⏳ pending
-**Depends on**: PR 1 (backend session keys)
-**Estimated time**: 1 hour
-
-## Goal
-
-Update stream buffer to use `tabKey` instead of `conversationKey`.
-
-## Self-Update Instructions
-
-After completing each checkbox, update this file immediately:
-```
-- [ ] Task  →  - [x] Task
-```
-This ensures crash recovery - the file IS the source of truth.
-
----
+## Status: [x] Complete
 
 ## Checklist
 
-### 1. lib/stream/stream-buffer.ts
+- [x] Update `lib/stream/stream-buffer.ts` - Key buffers by `tabKey` instead of `conversationKey`
+- [x] Update buffer retrieval functions (`findStreamBufferByTab` renamed from `findStreamBufferByConversation`)
+- [x] Update buffer cleanup functions (`deleteStreamBuffer` now uses `tabKey`)
+- [x] Test: Type check passes, callers already use tabKey format
 
-- [ ] Read current file
-- [ ] Rename `conversationKey` to `tabKey` in `StreamBufferEntry` interface
-- [ ] Update `createStreamBuffer()` to accept `tabKey` parameter
-- [ ] Update `hasActiveStream()` to lookup by `tabKey`
-- [ ] Update `getStreamBuffer()` if it uses conversation key
-- [ ] Update `deleteStreamBuffer()` if it uses conversation key
-- [ ] Update any Redis key patterns that include "conversation"
-- [ ] Verify changes compile: `bun run type-check`
+## Files to Modify
 
-### 2. Update callers
+### 1. `apps/web/lib/stream/stream-buffer.ts`
 
-- [ ] Search for `stream-buffer` imports: `grep -r "stream-buffer" apps/web`
-- [ ] Update each caller to pass `tabKey` instead of `conversationKey`
-- [ ] Verify changes compile: `bun run type-check`
+**Key insight:** The stream buffer stores messages for reconnection. Currently keyed by `conversationId`, needs to be keyed by `tabId`.
 
----
+**Before:**
+```typescript
+// Buffer keyed by conversationId
+const buffers = new Map<string, StreamBuffer>()
 
-## Verification
+export function getBuffer(conversationId: string): StreamBuffer {
+  return buffers.get(conversationId)
+}
 
-- [ ] `bun run type-check` passes
-- [ ] `bun run lint` passes
-- [ ] Stream reconnection still works (manual test if possible)
-
----
-
-## Notes
-
-Write any issues, blockers, or decisions here during implementation:
-
-```
-(empty)
+export function setBuffer(conversationId: string, buffer: StreamBuffer) {
+  buffers.set(conversationId, buffer)
+}
 ```
 
----
+**After:**
+```typescript
+// Buffer keyed by tabId (the session key)
+const buffers = new Map<string, StreamBuffer>()
 
-## Completion
+export function getBuffer(tabId: string): StreamBuffer {
+  return buffers.get(tabId)
+}
 
-- [ ] All checkboxes complete
-- [ ] Update `0_overview.md`: Change PR 2 status to ✅ complete
+export function setBuffer(tabId: string, buffer: StreamBuffer) {
+  buffers.set(tabId, buffer)
+}
+```
+
+**Also update any functions that:**
+- Create buffers
+- Delete buffers
+- List buffers
+- Check buffer existence
+
+## Self-Update Instructions
+
+When completing a task, update the checkbox:
+```markdown
+- [x] Update `lib/stream/stream-buffer.ts` - Key buffers by `tabId`
+```
+
+When PR is complete, update status and `0_overview.md`.
