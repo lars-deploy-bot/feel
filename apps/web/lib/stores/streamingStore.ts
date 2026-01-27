@@ -33,7 +33,7 @@ export function clearAbortController(tabId: string): void {
  * **IMPORTANT**: This store is IN-MEMORY ONLY (not persisted).
  * - Streaming state only matters during active streams
  * - Tool mappings, errors, and health metrics are ephemeral
- * - On page refresh, messages are restored from messageStore; streaming state resets (correct behavior)
+ * - On page refresh, messages are restored from Dexie (IndexedDB); streaming state resets (correct behavior)
  *
  * Solves brittleness issues:
  * 1. Per-conversation toolUseMap (not global) - no collisions across conversations

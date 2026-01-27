@@ -1,6 +1,6 @@
 # PR 4: Delete localStorage messageStore
 
-**Status**: ⏳ pending
+**Status**: ✅ complete
 **Depends on**: PR 3 (streaming store)
 **Estimated time**: 2 hours
 

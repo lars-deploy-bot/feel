@@ -1,9 +1,10 @@
 "use client"
 
 import { useEffect, useRef } from "react"
-import { useActiveTab, useTabsExpanded } from "@/lib/stores/tabStore"
-import { useCurrentConversationId, useMessagesForConversation } from "@/lib/stores/messageStore"
+import { useDexieCurrentConversationId, useDexieCurrentTabId, useDexieSession } from "@/lib/db/dexieMessageStore"
+import { useTabMessages } from "@/lib/db/useTabMessages"
 import { useIsStreamActive } from "@/lib/stores/streamingStore"
+import { useActiveTab, useTabsExpanded } from "@/lib/stores/tabStore"
 
 interface UseTabIsolatedMessagesOptions {
   workspace: string | null
@@ -27,17 +28,20 @@ export function useTabIsolatedMessages({ workspace, showTabs }: UseTabIsolatedMe
   const activeTab = useActiveTab(workspace)
   const tabsExpanded = useTabsExpanded(workspace)
 
-  // Get store's global conversation state (fallback when tabs not active)
-  const storeConversationId = useCurrentConversationId()
+  // Get Dexie store's global conversation/tab state (fallback when tabs not active)
+  const storeConversationId = useDexieCurrentConversationId()
+  const currentTabId = useDexieCurrentTabId()
+  const session = useDexieSession()
 
   // Determine which conversation to display
   // CRITICAL: This is the SINGLE SOURCE OF TRUTH for which messages to show
   const isTabMode = showTabs && tabsExpanded && activeTab
   const displayConversationId = isTabMode ? activeTab.conversationId : storeConversationId
 
-  // Get messages ONLY for the display conversation
-  // DO NOT call useMessages() - it subscribes to global state and can cause leakage
-  const messages = useMessagesForConversation(displayConversationId)
+  // Get messages from Dexie via tab ID
+  // With Dexie, messages belong to tabs, not conversations directly
+  const displayTabId = isTabMode ? (activeTab.id ?? currentTabId) : currentTabId
+  const messages = useTabMessages(displayTabId, session?.userId ?? null)
 
   // Scope busy state to the display conversation
   const busy = useIsStreamActive(displayConversationId)

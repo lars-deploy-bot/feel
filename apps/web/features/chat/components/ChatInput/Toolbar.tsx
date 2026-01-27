@@ -6,8 +6,9 @@ import { useState } from "react"
 import toast from "react-hot-toast"
 import { useSandboxContext } from "@/features/chat/lib/sandbox-context"
 import { formatMessagesAsText } from "@/features/chat/utils/format-messages"
+import { useDexieMessageStore } from "@/lib/db/dexieMessageStore"
+import { useTabMessages } from "@/lib/db/useTabMessages"
 import { useUserPrompts } from "@/lib/providers/UserPromptsStoreProvider"
-import { useMessages } from "@/lib/stores/messageStore"
 import { useSandbox, useSandboxMinimized } from "@/lib/stores/debug-store"
 import { useChatInput } from "./ChatInputContext"
 
@@ -21,7 +22,9 @@ export function Toolbar({ fileInputRef, onAddUserPrompt }: ToolbarProps) {
   const { config } = useChatInput()
   const [showPromptMenu, setShowPromptMenu] = useState(false)
   const prompts = useUserPrompts()
-  const messages = useMessages()
+  const currentTabId = useDexieMessageStore(s => s.currentTabId)
+  const userId = useDexieMessageStore(s => s.session?.userId ?? null)
+  const messages = useTabMessages(currentTabId, userId)
   const { activateSelector, selectorActive } = useSandboxContext()
   const isSandboxOpen = useSandbox()
   const isSandboxMinimized = useSandboxMinimized()

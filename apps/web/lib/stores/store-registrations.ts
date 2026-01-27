@@ -16,20 +16,18 @@
  * - 100+: Low priority (deploy, onboarding)
  */
 
+import { useDebugStoreBase } from "./debug-store"
+import { useDeployStoreBase } from "./deployStore"
+import { useFeatureFlagStoreBase } from "./featureFlagStore"
+import { useGoalStoreBase } from "./goalStore"
 import { registerStore } from "./hydration-registry"
-
+import { useLLMStoreBase } from "./llmStore"
+import { useOnboardingStoreBase } from "./onboardingStore"
+import { useSessionStoreBase } from "./sessionStore"
+import { useTabStore } from "./tabStore"
 // Import all stores that need coordinated hydration
 // These imports are type-only initially, we access .persist at runtime
 import { useWorkspaceStoreBase } from "./workspaceStore"
-import { useMessageStore } from "./messageStore"
-import { useTabStore } from "./tabStore"
-import { useLLMStoreBase } from "./llmStore"
-import { useDebugStoreBase } from "./debug-store"
-import { useFeatureFlagStoreBase } from "./featureFlagStore"
-import { useSessionStoreBase } from "./sessionStore"
-import { useGoalStoreBase } from "./goalStore"
-import { useOnboardingStoreBase } from "./onboardingStore"
-import { useDeployStoreBase } from "./deployStore"
 
 /**
  * Register all persisted stores.
@@ -60,13 +58,7 @@ function registerAllStores(): void {
   })
 
   // Data stores (medium-high priority)
-  registerStore({
-    name: "message",
-    rehydrate: wrapRehydrate(() => useMessageStore.persist.rehydrate()),
-    hasHydrated: () => useMessageStore.persist.hasHydrated(),
-    priority: 20,
-  })
-
+  // messageStore removed - messages now stored in Dexie (IndexedDB) via dexieMessageStore
   registerStore({
     name: "tab",
     rehydrate: wrapRehydrate(() => useTabStore.persist.rehydrate()),
@@ -118,7 +110,7 @@ function registerAllStores(): void {
     priority: 105,
   })
 
-  console.log("[StoreRegistrations] All 10 stores registered for coordinated hydration")
+  console.log("[StoreRegistrations] All 9 stores registered for coordinated hydration")
 }
 
 // Auto-register when this module is imported

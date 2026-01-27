@@ -1,13 +1,13 @@
 "use client"
 
+import { REFERRAL } from "@webalive/shared"
 import { AnimatePresence, motion } from "framer-motion"
 import { ChevronRight, Heart, PanelLeftClose, Settings2, Trash2 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
-import { REFERRAL } from "@webalive/shared"
+import { useDexieConversations, useDexieCurrentConversationId, useDexieSession } from "@/lib/db/dexieMessageStore"
+import type { DbConversation } from "@/lib/db/messageDb"
 import { useSidebarActions, useSidebarOpen } from "@/lib/stores/conversationSidebarStore"
 import { useAppHydrated } from "@/lib/stores/HydrationBoundary"
-import type { Conversation } from "@/lib/stores/messageStore"
-import { useConversations, useCurrentConversationId } from "@/lib/stores/messageStore"
 
 interface ConversationSidebarProps {
   workspace: string | null
@@ -42,12 +42,13 @@ export function ConversationSidebar({
   const isHydrated = useAppHydrated()
   // IMPORTANT: Only show conversations for current workspace (domain-scoped)
   // Pass workspace to filter, or undefined to show empty (safer than showing all)
-  const allConversations = useConversations(workspace || "")
+  const session = useDexieSession()
+  const allConversations = useDexieConversations(workspace || "", session)
   const conversations = workspace ? allConversations : []
-  const currentConversationId = useCurrentConversationId()
+  const currentConversationId = useDexieCurrentConversationId()
   const sidebarRef = useRef<HTMLDivElement>(null)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
-  const [conversationToDelete, setConversationToDelete] = useState<Conversation | null>(null)
+  const [conversationToDelete, setConversationToDelete] = useState<DbConversation | null>(null)
 
   // Close on Escape key
   useEffect(() => {
@@ -67,7 +68,7 @@ export function ConversationSidebar({
     onConversationSelect(conversationId)
   }
 
-  const handleDeleteClick = (e: React.MouseEvent, conversation: Conversation) => {
+  const handleDeleteClick = (e: React.MouseEvent, conversation: DbConversation) => {
     e.stopPropagation()
 
     // Don't allow deleting current conversation
@@ -244,10 +245,10 @@ export function ConversationSidebar({
 }
 
 interface ConversationItemProps {
-  conversation: Conversation
+  conversation: DbConversation
   isActive: boolean
   onClick: () => void
-  onDelete: (e: React.MouseEvent, conversation: Conversation) => void
+  onDelete: (e: React.MouseEvent, conversation: DbConversation) => void
   formatTimestamp: (timestamp: number) => string
 }
 
@@ -278,9 +279,9 @@ function ConversationItem({ conversation, isActive, onClick, onDelete, formatTim
         <div className="flex-1 min-w-0">
           <div className="text-sm font-medium text-black dark:text-white line-clamp-2">{conversation.title}</div>
           <div className="text-xs text-black/40 dark:text-white/40 mt-1 flex items-center gap-1.5">
-            <span>{formatTimestamp(conversation.lastActivity)}</span>
+            <span>{formatTimestamp(conversation.updatedAt)}</span>
             <span>•</span>
-            <span>{conversation.messages.length} messages</span>
+            <span>{conversation.messageCount ?? 0} messages</span>
           </div>
         </div>
         {!isActive && (

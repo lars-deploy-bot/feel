@@ -7,7 +7,7 @@
 | 1 | Backend Session Keys | [x] Complete | |
 | 2 | Stream Buffer | [x] Complete | |
 | 3 | Streaming Store | [x] Complete | 60+ changes |
-| 4 | Delete Message Store | [ ] Not Started | |
+| 4 | Delete Message Store | [x] Complete | messageStore.ts deleted, 6 consumers migrated to Dexie |
 | 5 | Tab Store Refactor | [ ] Not Started | |
 | 6 | Hooks & Components | [ ] Not Started | |
 | 7 | Supabase Migration | [ ] Not Started | Optional |

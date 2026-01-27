@@ -1,27 +1,29 @@
 "use client"
 
-import { useRef, useCallback } from "react"
+import { useCallback, useRef } from "react"
 import toast from "react-hot-toast"
 import type { ChatInputHandle } from "@/features/chat/components/ChatInput/types"
 import { ClientError, ClientRequest, useDevTerminal } from "@/features/chat/lib/dev-terminal-context"
-import { parseStreamEvent, type AgentManagerContent, type UIMessage } from "@/features/chat/lib/message-parser"
+import { type AgentManagerContent, parseStreamEvent, type UIMessage } from "@/features/chat/lib/message-parser"
 import { sendClientError } from "@/features/chat/lib/send-client-error"
 import { isValidStreamEvent } from "@/features/chat/lib/stream-guards"
-import { formatMessagesAsText } from "@/features/chat/utils/format-messages"
-import { isWarningMessage, type BridgeWarningContent } from "@/features/chat/lib/streaming/ndjson"
+import { type BridgeWarningContent, isWarningMessage } from "@/features/chat/lib/streaming/ndjson"
 import { isCompleteEvent, isDoneEvent, isErrorEvent, isInterruptEvent } from "@/features/chat/types/stream"
+import { formatMessagesAsText } from "@/features/chat/utils/format-messages"
 import { buildPromptWithAttachmentsEx, type PromptBuildResult } from "@/features/chat/utils/prompt-builder"
+import { useDexieMessageStore } from "@/lib/db/dexieMessageStore"
+import { toUIMessage } from "@/lib/db/messageAdapters"
+import { getMessageDb } from "@/lib/db/messageDb"
 import type { StructuredError } from "@/lib/error-codes"
 import { ErrorCodes, getErrorHelp, getErrorMessage } from "@/lib/error-codes"
 import { HttpError } from "@/lib/errors"
-import { authStore } from "@/lib/stores/authStore"
-import { useMessageStore } from "@/lib/stores/messageStore"
-import { useStreamingActions, setAbortController, clearAbortController } from "@/lib/stores/streamingStore"
-import { useGoal, useBuilding, useTargetUsers } from "@/lib/stores/goalStore"
-import { useApiKey, useModel } from "@/lib/stores/llmStore"
-import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
 import { isRetryableError, retryWithBackoff } from "@/lib/retry"
+import { authStore } from "@/lib/stores/authStore"
 import { isDevelopment } from "@/lib/stores/debug-store"
+import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
+import { useBuilding, useGoal, useTargetUsers } from "@/lib/stores/goalStore"
+import { useApiKey, useModel } from "@/lib/stores/llmStore"
+import { clearAbortController, setAbortController, useStreamingActions } from "@/lib/stores/streamingStore"
 import { useActiveTab } from "@/lib/stores/tabStore"
 
 interface UseChatMessagingOptions {
@@ -109,12 +111,22 @@ export function useChatMessaging({
    * during an active stream.
    */
   const handleCompletionFeatures = useCallback(
-    (targetConversationId: string) => {
-      const state = useMessageStore.getState()
+    async (targetConversationId: string) => {
+      const state = useDexieMessageStore.getState()
       // Use the TARGET conversation, not the global active one
       // This prevents cross-tab message leakage when user switches tabs during streaming
-      const targetConvo = state.conversations[targetConversationId]
-      const formattedMessages = targetConvo?.messages ? formatMessagesAsText(targetConvo.messages) : ""
+      // With Dexie, messages are in IndexedDB - query async for agent supervisor
+      let formattedMessages = ""
+      if (state.session?.userId && state.currentTabId) {
+        try {
+          const db = getMessageDb(state.session.userId)
+          const dbMessages = await db.messages.where("tabId").equals(state.currentTabId).sortBy("seq")
+          const uiMessages = dbMessages.map(toUIMessage)
+          formattedMessages = formatMessagesAsText(uiMessages)
+        } catch (e) {
+          console.warn("[AgentSupervisor] Failed to read messages from Dexie:", e)
+        }
+      }
 
       if (agentSupervisorEnabled && prGoal && workspace && formattedMessages) {
         isEvaluatingProgressRef.current = true

@@ -15,23 +15,24 @@ import { ChatInput } from "@/features/chat/components/ChatInput"
 import type { ChatInputHandle } from "@/features/chat/components/ChatInput/types"
 import { ConversationSidebar } from "@/features/chat/components/ConversationSidebar"
 import { DevTerminal } from "@/features/chat/components/DevTerminal"
+import { PendingToolsIndicator } from "@/features/chat/components/PendingToolsIndicator"
 import { Sandbox } from "@/features/chat/components/Sandbox"
 import { SandboxMobile } from "@/features/chat/components/SandboxMobile"
 import { SubdomainInitializer } from "@/features/chat/components/SubdomainInitializer"
-import { PendingToolsIndicator } from "@/features/chat/components/PendingToolsIndicator"
 import { ThinkingGroup } from "@/features/chat/components/ThinkingGroup"
 import { useConversationSession } from "@/features/chat/hooks/useConversationSession"
 import { useImageUpload } from "@/features/chat/hooks/useImageUpload"
 import { useStreamCancellation } from "@/features/chat/hooks/useStreamCancellation"
 import { useStreamReconnect } from "@/features/chat/hooks/useStreamReconnect"
 import { ClientRequest, DevTerminalProvider, useDevTerminal } from "@/features/chat/lib/dev-terminal-context"
-import { RetryProvider, useRetry } from "@/features/chat/lib/retry-context"
 import { groupMessages } from "@/features/chat/lib/message-grouper"
 import { renderMessage } from "@/features/chat/lib/message-renderer"
+import { RetryProvider, useRetry } from "@/features/chat/lib/retry-context"
 import { SandboxProvider, useSandboxContext } from "@/features/chat/lib/sandbox-context"
 import { useAuth } from "@/features/deployment/hooks/useAuth"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
 import { useRedeemReferral } from "@/hooks/useRedeemReferral"
+import { useDexieCurrentConversationId, useDexieMessageActions } from "@/lib/db/dexieMessageStore"
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
 import { validateOAuthToastParams } from "@/lib/integrations/toast-validation"
 import { useIsSessionExpired } from "@/lib/stores/authStore"
@@ -39,7 +40,6 @@ import { useSidebarActions, useSidebarOpen } from "@/lib/stores/conversationSide
 import { isDevelopment, useDebugActions, useSandbox, useSSETerminal } from "@/lib/stores/debug-store"
 import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
 import { useApiKey, useModel } from "@/lib/stores/llmStore"
-import { useCurrentConversationId, useMessageActions } from "@/lib/stores/messageStore"
 import { useStreamingActions } from "@/lib/stores/streamingStore"
 // Local components
 import { AgentManagerIndicator, ChatEmptyState, ChatHeader, TabBar, WorkspaceInfoBar } from "./components"
@@ -57,13 +57,25 @@ const BUILD_VERSION = "2025-11-12-direct-execution"
 
 function ChatPageContent() {
   const [msg, setMsg] = useState("")
-  const storeConversationId = useCurrentConversationId()
+  const storeConversationId = useDexieCurrentConversationId()
   const {
-    initializeConversation,
+    initializeConversation: dexieInitializeConversation,
     addMessage,
-    switchConversation: switchConversationInMessageStore,
+    switchConversation: switchConversationInDexie,
     deleteConversation,
-  } = useMessageActions()
+  } = useDexieMessageActions()
+
+  // Wrapper to match old initializeConversation(id, workspace) signature
+  // Dexie's initializeConversation(workspace) creates its own ID and returns it
+  // But page.tsx uses conversationId from useConversationSession, so we just switch to it
+  const initializeConversation = useCallback(
+    (id: string, _workspace: string) => {
+      // Dexie store creates conversations on its own, we just ensure it's tracking the right one
+      switchConversationInDexie(id)
+    },
+    [switchConversationInDexie],
+  )
+  const switchConversationInMessageStore = switchConversationInDexie
   const { toggleSidebar } = useSidebarActions()
   const isSidebarOpen = useSidebarOpen()
   const [shouldForceScroll, setShouldForceScroll] = useState(false)
@@ -251,14 +263,14 @@ function ChatPageContent() {
     onInputRestore: setMsg,
   })
 
-  // Initialize message store when conversation OR workspace changes
+  // Sync Dexie store when conversation changes
   useEffect(() => {
     if (conversationId && workspace) {
       if (storeConversationId !== conversationId) {
-        initializeConversation(conversationId, workspace)
+        switchConversationInDexie(conversationId)
       }
     }
-  }, [conversationId, workspace, storeConversationId, initializeConversation])
+  }, [conversationId, workspace, storeConversationId, switchConversationInDexie])
 
   // Image upload handler
   const handleAttachmentUpload = useImageUpload({ workspace: workspace ?? undefined, isTerminal })
@@ -356,19 +368,18 @@ function ChatPageContent() {
     setSubdomainInitialized(true)
   }
 
-  const handleNewConversation = useCallback(() => {
+  const handleNewConversation = useCallback(async () => {
     if (storeConversationId) {
       streamingActions.clearTab(storeConversationId)
     }
     // Collapse and clear tabs - a new conversation is a fresh start
     handleCollapseTabsAndClear()
-    // Create a new conversation
-    const newId = startNewConversation()
-    // Initialize the new conversation in message store immediately
-    // (don't rely on useEffect timing)
-    if (newId && workspace) {
-      initializeConversation(newId, workspace)
+    // Create a new conversation in Dexie (which creates both conversation + default tab)
+    if (workspace) {
+      await dexieInitializeConversation(workspace)
     }
+    // Also create in session store (for URL/session tracking)
+    startNewConversation()
     // Clear input for new conversation
     setMsg("")
     setTimeout(() => chatInputRef.current?.focus(), 0)
@@ -376,9 +387,9 @@ function ChatPageContent() {
     storeConversationId,
     streamingActions,
     handleCollapseTabsAndClear,
+    dexieInitializeConversation,
     startNewConversation,
     workspace,
-    initializeConversation,
   ])
 
   const handleInsertTemplate = useCallback((prompt: string) => {
@@ -398,19 +409,19 @@ function ChatPageContent() {
   )
 
   const handleDeleteConversation = useCallback(
-    (conversationIdToDelete: string) => {
+    async (conversationIdToDelete: string) => {
       if (!conversationIdToDelete) return
-      deleteConversation(conversationIdToDelete)
+      await deleteConversation(conversationIdToDelete)
       if (conversationIdToDelete === conversationId) {
-        const newId = startNewConversation()
-        // Initialize the new conversation in message store
-        if (newId && workspace) {
-          initializeConversation(newId, workspace)
+        // Create a new conversation in Dexie
+        if (workspace) {
+          await dexieInitializeConversation(workspace)
         }
+        startNewConversation()
         setMsg("")
       }
     },
-    [deleteConversation, conversationId, startNewConversation, workspace, initializeConversation],
+    [deleteConversation, conversationId, startNewConversation, workspace, dexieInitializeConversation],
   )
 
   return (
