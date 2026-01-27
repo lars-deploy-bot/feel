@@ -63,10 +63,8 @@ const BUILD_VERSION = "2025-11-12-direct-execution"
 
 function ChatPageContent() {
   const [msg, setMsg] = useState("")
-  const storeConversationId = useDexieCurrentConversationId()
   const storeTabId = useDexieCurrentTabId()
   const {
-    initializeConversation: dexieInitializeConversation,
     ensureConversationWithTab,
     addMessage,
     switchConversation: switchConversationInDexie,
