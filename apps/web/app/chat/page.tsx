@@ -32,12 +32,7 @@ import { SandboxProvider, useSandboxContext } from "@/features/chat/lib/sandbox-
 import { useAuth } from "@/features/deployment/hooks/useAuth"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
 import { useRedeemReferral } from "@/hooks/useRedeemReferral"
-import {
-  useDexieCurrentConversationId,
-  useDexieCurrentTabId,
-  useDexieMessageActions,
-  useDexieSession,
-} from "@/lib/db/dexieMessageStore"
+import { useDexieCurrentTabId, useDexieMessageActions, useDexieSession } from "@/lib/db/dexieMessageStore"
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
 import { validateOAuthToastParams } from "@/lib/integrations/toast-validation"
 import { useIsSessionExpired } from "@/lib/stores/authStore"
