@@ -40,7 +40,7 @@ export function useTabIsolatedMessages({ workspace, showTabs }: UseTabIsolatedMe
 
   // Get messages from Dexie via tab ID
   // With Dexie, messages belong to tabs, not conversations directly
-  const displayTabId = isTabMode ? (activeTab.id ?? currentTabId) : currentTabId
+  const displayTabId = isTabMode ? (activeTab.conversationId ?? currentTabId) : currentTabId
   const messages = useTabMessages(displayTabId, session?.userId ?? null)
 
   // Scope busy state to the display conversation

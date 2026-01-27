@@ -8,8 +8,8 @@
 | 2 | Stream Buffer | [x] Complete | |
 | 3 | Streaming Store | [x] Complete | 60+ changes |
 | 4 | Delete Message Store | [x] Complete | messageStore.ts deleted, all consumers migrated to Dexie |
-| 5 | Tab Store Refactor | [x] Complete | Added createConversationWithTab, useTabsForConversation; kept sessionStore |
-| 6 | Hooks & Components | [x] Complete | useTabSession, tabId in all hooks/components |
+| 5 | Tab Store Refactor | [x] Complete | createConversationWithTab added; sessionStore still drives session key (see notes) |
+| 6 | Hooks & Components | [x] Complete | Follow-up fixes applied: Dexie init, correct tabId usage, ChatInput readiness |
 | 7 | Supabase Migration | [x] Complete | Code ready; SQL migration pending production deployment |
 | 8 | Tests & Cleanup | [x] Complete | All tests pass, docs updated, no old code remaining |
 
@@ -41,3 +41,10 @@ Each PR file contains:
 - **Conversation** = Grouping layer, will link to git branches
 - **tabId** = Session key for Claude SDK `resume` parameter
 - **conversationId** = Grouping ID (required, every tab belongs to a conversation)
+
+## Current Implementation Notes (2026-01-27)
+
+- The grouping layer is not fully wired yet. For now, `conversationId` is treated as the session key in most flows.
+- Dexie uses a temporary 1:1 mapping: `conversationId === tabId` for new chats so messaging stays consistent.
+- `tabStore.id` remains a UI-only identifier. The session key is stored in `tabStore.conversationId`.
+- Chat readiness now depends on Dexie session + tab sync; ChatInput recomputes `canSubmit` when readiness changes.

@@ -4,6 +4,15 @@
 
 Restructure the tab/conversation hierarchy so that **Tab becomes the primary chat entity** (maps to Claude SDK session), while **Conversation becomes a grouping layer** (will connect to git branches in future).
 
+## Current Implementation Reality (2026-01-27)
+
+The grouping layer is not fully wired yet. To keep message storage and streaming consistent:
+- `conversationId` is currently treated as the session key in most flows.
+- Dexie creates conversations and tabs with a temporary 1:1 mapping (`conversationId === tabId`).
+- `tabStore.id` remains a UI-only identifier; the session key lives in `tabStore.conversationId`.
+
+This is a transitional state; the sections below describe the intended end-state.
+
 ## Current vs New Architecture
 
 ### Current (BEFORE)

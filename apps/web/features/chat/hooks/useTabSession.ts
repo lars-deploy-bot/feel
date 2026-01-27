@@ -20,7 +20,7 @@ export function useTabSession(workspace: string | null, mounted: boolean) {
   const { initConversation, newConversation, switchToConversation } = useSessionActions()
   const prevWorkspaceRef = useRef<string | null>(null)
 
-  const [tabId, setTabId] = useState<string>(() => crypto.randomUUID())
+  const [tabId, setTabId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!workspace || !mounted) return

@@ -86,10 +86,11 @@ export function useChatMessaging({
 
   const createRequestBody = useCallback(
     (message: string, analyzeImageUrls?: string[]) => {
+      const tabId = activeTab?.conversationId ?? conversationId
       const baseBody = {
         message,
         conversationId,
-        tabId: activeTab?.id, // Include tabId for message routing
+        tabId, // Tab/session key (required by API)
         apiKey: userApiKey || undefined,
         model: userModel,
         // Include image URLs for analyze mode - server will fetch, save to .uploads/, and tell Claude to Read
@@ -97,7 +98,7 @@ export function useChatMessaging({
       }
       return isTerminal ? { ...baseBody, workspace: workspace || undefined } : baseBody
     },
-    [conversationId, activeTab?.id, userApiKey, userModel, isTerminal, workspace],
+    [conversationId, activeTab?.conversationId, userApiKey, userModel, isTerminal, workspace],
   )
 
   const buildPromptForClaude = useCallback((userMessage: UIMessage): PromptBuildResult => {
@@ -215,7 +216,7 @@ export function useChatMessaging({
       let shouldStopReading = false
 
       // Capture the tabId at stream start for validation
-      const expectedTabId = activeTab?.id
+      const expectedTabId = activeTab?.conversationId ?? conversationId
 
       // Track seen messageIds for idempotency (prevents duplicate processing)
       const seenMessageIds = new Set<string>()

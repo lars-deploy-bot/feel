@@ -7,6 +7,7 @@
 ## Goal
 
 Make Tab the primary entity. Every tab has a required `conversationId`. Update Tab interface and tabStore.
+Until the grouping layer is fully wired, `conversationId` is treated as the session key (1:1 with `tabId`).
 
 ## Self-Update Instructions
 
@@ -61,11 +62,11 @@ This ensures crash recovery - the file IS the source of truth.
 
 - [x] Read current file
 - [x] Determine if any unique functionality remains
-  **Decision: KEEP** - sessionStore serves a different purpose:
-  - Persists `currentConversationId` per workspace for URL session resumption
-  - Used by `useConversationSession` hook
-  - Orthogonal to tabStore (tabs = UI, sessions = Claude SDK persistence)
-- [x] No changes needed - sessionStore handles URL-based persistence while tabStore handles UI tabs
+  **Decision: KEEP** - sessionStore still serves a different purpose:
+  - Persists the per-workspace session key (still named `conversationId` in the store)
+  - `useTabSession` treats this value as `tabId` for Claude SDK resume
+  - Orthogonal to tabStore (tabs = UI, session key = Claude SDK persistence)
+- [x] No changes needed - sessionStore holds the session key while tabStore handles UI tabs
 - [x] Verify changes compile: `bun run type-check`
 
 ### 5. Update callers
@@ -80,9 +81,9 @@ This ensures crash recovery - the file IS the source of truth.
 ### 6. Update "New Chat" flow
 
 - [x] Find where "New Chat" button is handled (`page.tsx` → `handleNewConversation`)
-- [x] Review flow - already works correctly:
-  - Uses Dexie's `initializeConversation(workspace)` which creates and returns new ID
-  - `createConversationWithTab()` is now available for future tab-first flows
+- [x] Review flow - works with the new session key:
+  - Uses Dexie's `ensureConversationWithTab(workspace, tabId)` to create conversation+tab with id == tabId
+  - `createConversationWithTab()` remains available for future grouping-first flows
 - [x] Conversation title auto-generation still works via first message
 - [x] Verify changes compile: `bun run type-check`
 

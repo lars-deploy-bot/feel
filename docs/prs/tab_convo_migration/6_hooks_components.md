@@ -40,15 +40,15 @@ This ensures crash recovery - the file IS the source of truth.
 
 - [x] Read current file
 - [x] `conversationId` param is still appropriate here (passed from page.tsx as `tabId`)
-- [x] Already uses `activeTab?.id` for tabId in request body
-- [x] No interface changes needed - the caller (page.tsx) now passes `tabId` as `conversationId`
+- [x] Uses `activeTab?.conversationId` for tabId in request body (tabStore id is UI-only)
+- [x] No interface changes needed - the caller (page.tsx) passes `tabId` as `conversationId`
 - [x] Verify changes compile: `bun run type-check`
 
 ### 4. app/chat/hooks/useTabIsolatedMessages.ts
 
 - [x] Read current file
-- [x] Already mostly correct - uses tabId via activeTab
-- [x] Still imports from messageStore (will be migrated when messageStore is deleted on this branch)
+- [x] Uses `activeTab.conversationId` as tabId for Dexie message lookup
+- [x] Uses Dexie message store (messageStore already removed on this branch)
 - [x] Verify changes compile: `bun run type-check`
 
 ### 5. features/chat/hooks/useStreamCancellation.ts
@@ -73,7 +73,7 @@ This ensures crash recovery - the file IS the source of truth.
 
 - [x] Read current file
 - [x] No changes needed for PR 6 - sidebar shows conversations (grouping layer), not tabs
-- [x] Still imports from messageStore (will be migrated when messageStore is deleted)
+- [x] Uses Dexie conversations store (messageStore removed)
 - [x] Verify changes compile: `bun run type-check`
 
 ### 8. app/chat/page.tsx
@@ -82,7 +82,7 @@ This ensures crash recovery - the file IS the source of truth.
 - [x] Updated import: `useConversationSession` → `useTabSession`
 - [x] Destructured: `{ tabId, startNewTab, switchTab }` instead of `{ conversationId, startNewConversation, switchConversation }`
 - [x] Updated all hook calls: `conversationId` → `tabId` where appropriate
-- [x] Updated `useStreamCancellation` call: `{ tabId: storeConversationId ?? "" }`
+- [x] Updated `useStreamCancellation` call: `{ tabId }`
 - [x] Updated `useStreamReconnect` call: `{ tabId }`
 - [x] Updated `useChatMessaging` call: `{ conversationId: tabId }`
 - [x] Updated `useTabsManagement` call: `{ conversationId: tabId, onStartNewConversation: startNewTab }`
@@ -91,14 +91,19 @@ This ensures crash recovery - the file IS the source of truth.
 - [x] Updated `FeedbackModal` prop: `conversationId={tabId}`
 - [x] Verify changes compile: `bun run type-check`
 
-### 9. features/chat/components/PendingToolsIndicator.tsx
+### 9. ChatInput readiness
+
+- [x] Added `isReady` prop to gate submission until Dexie session/tab is ready
+- [x] Ensure `canSubmit` recomputes when `isReady` changes
+
+### 10. features/chat/components/PendingToolsIndicator.tsx
 
 - [x] Read current file
 - [x] Renamed `conversationId` prop to `tabId`
 - [x] Updated component to use `usePendingTools(tabId)`
 - [x] Verify changes compile: `bun run type-check`
 
-### 10. features/chat/components/ThinkingGroup.tsx
+### 11. features/chat/components/ThinkingGroup.tsx
 
 - [x] Read current file
 - [x] Aliased import: `useCurrentConversationId as useCurrentTabId`
@@ -124,7 +129,8 @@ This ensures crash recovery - the file IS the source of truth.
 1. `useChatMessaging` interface kept `conversationId` param name - the caller (page.tsx) passes `tabId` as the value. This avoids a cascade of internal changes in the messaging hook.
 2. `useStreamReconnect` API body still sends `{ conversationId: tabId }` because the backend endpoint expects that key name.
 3. `ConversationSidebar` unchanged - it operates on the conversation grouping layer, not the tab/session layer.
-4. Old `useConversationSession.ts` file kept for now - will be deleted in PR 8 (cleanup).
+4. `tabStore.id` is UI-only; use `tabStore.conversationId` as the session key when talking to Dexie/API.
+5. Old `useConversationSession.ts` file kept for now - will be deleted in PR 8 (cleanup).
 
 ---
 

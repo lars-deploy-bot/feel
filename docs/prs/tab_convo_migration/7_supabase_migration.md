@@ -50,6 +50,8 @@ This ensures crash recovery - the file IS the source of truth.
 - [ ] Regenerate types from live DB to confirm match
 - [ ] Verify deployment works
 
+**Update (2026-01-27)**: Schema already has `tab_id` (no `conversation_id`) and legacy session rows were truncated in at least one environment. Confirm per environment before deploying.
+
 ---
 
 ## Rollback Plan

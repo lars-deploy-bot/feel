@@ -372,6 +372,21 @@ if [ $BUN_EXIT_CODE -ne 0 ]; then
 fi
 rm -f /tmp/bun-install-$$.log
 
+# Workaround: bun sometimes installs vite 6.x (nested in vitest) without dist/client
+# This causes vitest to crash with "CLIENT_ENTRY does not point to an existing file"
+NESTED_VITE="$PROJECT_ROOT/apps/web/node_modules/vitest/node_modules/vite"
+if [ -d "$NESTED_VITE" ] && [ ! -d "$NESTED_VITE/dist/client" ]; then
+    log_step "Fixing incomplete vite installation (bun bug: missing dist/client)..."
+    VITE_VERSION=$(node -p "require('$NESTED_VITE/package.json').version")
+    cd /tmp && npm pack "vite@$VITE_VERSION" --silent 2>/dev/null && \
+        tar xzf "vite-$VITE_VERSION.tgz" package/dist/client 2>/dev/null && \
+        cp -r package/dist/client "$NESTED_VITE/dist/" && \
+        rm -rf "/tmp/vite-$VITE_VERSION.tgz" /tmp/package && \
+        log_step "Fixed vite $VITE_VERSION dist/client" || \
+        log_warn "Could not fix vite dist/client - tests may fail"
+    cd "$PROJECT_ROOT"
+fi
+
 end_phase "success" "Dependencies installed"
 
 start_phase "Running static analysis"

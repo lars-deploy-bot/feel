@@ -16,7 +16,10 @@ interface UseTabsOptions {
   onInputRestore?: (input: string) => void
 }
 
-const genConvoId = () => `conv-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+const genConvoId = () =>
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `conv-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 
 /**
  * Hook for managing conversation tabs

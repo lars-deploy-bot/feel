@@ -9,7 +9,7 @@
  */
 
 import { z } from "zod"
-import type { gmail_v1 } from "googleapis"
+import type { gmail_v1 } from "@googleapis/gmail"
 import { getUserProfile, searchEmails, getEmail, listLabels, modifyLabels, trashEmail } from "../gmail-client.js"
 
 // Tools disabled for MCP (only available via REST API)

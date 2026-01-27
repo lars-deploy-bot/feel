@@ -32,7 +32,12 @@ import { SandboxProvider, useSandboxContext } from "@/features/chat/lib/sandbox-
 import { useAuth } from "@/features/deployment/hooks/useAuth"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
 import { useRedeemReferral } from "@/hooks/useRedeemReferral"
-import { useDexieCurrentConversationId, useDexieMessageActions } from "@/lib/db/dexieMessageStore"
+import {
+  useDexieCurrentConversationId,
+  useDexieCurrentTabId,
+  useDexieMessageActions,
+  useDexieSession,
+} from "@/lib/db/dexieMessageStore"
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
 import { validateOAuthToastParams } from "@/lib/integrations/toast-validation"
 import { useIsSessionExpired } from "@/lib/stores/authStore"
@@ -41,6 +46,7 @@ import { isDevelopment, useDebugActions, useSandbox, useSSETerminal } from "@/li
 import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
 import { useApiKey, useModel } from "@/lib/stores/llmStore"
 import { useStreamingActions } from "@/lib/stores/streamingStore"
+import { useSelectedOrgId } from "@/lib/stores/workspaceStore"
 // Local components
 import { AgentManagerIndicator, ChatEmptyState, ChatHeader, TabBar, WorkspaceInfoBar } from "./components"
 import {
@@ -58,22 +64,25 @@ const BUILD_VERSION = "2025-11-12-direct-execution"
 function ChatPageContent() {
   const [msg, setMsg] = useState("")
   const storeConversationId = useDexieCurrentConversationId()
+  const storeTabId = useDexieCurrentTabId()
   const {
     initializeConversation: dexieInitializeConversation,
+    ensureConversationWithTab,
     addMessage,
     switchConversation: switchConversationInDexie,
     deleteConversation,
+    setSession: setDexieSession,
   } = useDexieMessageActions()
+  const dexieSession = useDexieSession()
 
   // Wrapper to match old initializeConversation(id, workspace) signature
-  // Dexie's initializeConversation(workspace) creates its own ID and returns it
-  // But page.tsx uses conversationId from useConversationSession, so we just switch to it
+  // Ensures Dexie has a conversation+tab for the session key (tabId)
   const initializeConversation = useCallback(
-    (id: string, _workspace: string) => {
-      // Dexie store creates conversations on its own, we just ensure it's tracking the right one
-      switchConversationInDexie(id)
+    (id: string, targetWorkspace: string) => {
+      if (!dexieSession) return
+      void ensureConversationWithTab(targetWorkspace, id)
     },
-    [switchConversationInDexie],
+    [dexieSession, ensureConversationWithTab],
   )
   const switchConversationInMessageStore = switchConversationInDexie
   const { toggleSidebar } = useSidebarActions()
@@ -87,6 +96,7 @@ function ChatPageContent() {
   // Feature flags
   const tabsEnabled = useFeatureFlag("TABS")
   const { user } = useAuth()
+  const selectedOrgId = useSelectedOrgId()
   const isAdmin = user?.isAdmin ?? false
 
   // Tabs are admin-only feature: requires both admin status AND feature flag
@@ -158,12 +168,25 @@ function ChatPageContent() {
   // Fetch organizations and auto-select if none selected
   const { organizations, loading: organizationsLoading } = useOrganizations()
 
+  // Sync Dexie session once we have a user + org (required before storing messages)
+  useEffect(() => {
+    if (!user?.id) return
+
+    const orgId = selectedOrgId || organizations[0]?.org_id
+    if (!orgId) return
+
+    if (dexieSession?.userId === user.id && dexieSession?.orgId === orgId) return
+
+    setDexieSession({ userId: user.id, orgId })
+  }, [user?.id, selectedOrgId, organizations, dexieSession, setDexieSession])
+
   // Check for session expiry
   const isSessionExpired = useIsSessionExpired()
 
   // Session management with workspace-scoped persistence
   // tabId is the primary session key for Claude SDK (resume parameter)
   const { tabId, startNewTab, switchTab } = useTabSession(workspace, mounted)
+  const isChatReady = !!dexieSession && !!tabId && storeTabId === tabId
 
   // Chat messaging hook - handles sendMessage, streaming, agent supervisor
   const {
@@ -189,7 +212,7 @@ function ChatPageContent() {
 
   // Stream cancellation hook - must be after useChatMessaging to get the refs
   const { stopStreaming, isStopping } = useStreamCancellation({
-    tabId: storeConversationId ?? "",
+    tabId: tabId ?? "",
     workspace,
     addMessage,
     setShowCompletionDots,
@@ -202,7 +225,7 @@ function ChatPageContent() {
             eventName: ClientRequest.INTERRUPT,
             event: {
               type: ClientRequest.INTERRUPT,
-              requestId: storeConversationId ?? "unknown",
+              requestId: currentRequestIdRef.current ?? "unknown",
               timestamp: new Date().toISOString(),
               data: event.data,
             },
@@ -264,14 +287,11 @@ function ChatPageContent() {
     onInputRestore: setMsg,
   })
 
-  // Sync Dexie store when tabId OR workspace changes
+  // Ensure Dexie has a conversation+tab for the active session key
   useEffect(() => {
-    if (tabId && workspace) {
-      if (storeConversationId !== tabId) {
-        switchConversationInDexie(tabId)
-      }
-    }
-  }, [tabId, workspace, storeConversationId, switchConversationInDexie])
+    if (!tabId || !workspace || !dexieSession) return
+    void ensureConversationWithTab(workspace, tabId)
+  }, [tabId, workspace, dexieSession, ensureConversationWithTab])
 
   // Image upload handler
   const handleAttachmentUpload = useImageUpload({ workspace: workspace ?? undefined, isTerminal })
@@ -370,28 +390,23 @@ function ChatPageContent() {
   }
 
   const handleNewConversation = useCallback(async () => {
-    if (storeConversationId) {
-      streamingActions.clearTab(storeConversationId)
+    if (tabId) {
+      streamingActions.clearTab(tabId)
     }
     // Collapse and clear tabs - a new conversation is a fresh start
     handleCollapseTabsAndClear()
-    // Create a new conversation in Dexie (which creates both conversation + default tab)
+
     if (workspace) {
-      await dexieInitializeConversation(workspace)
+      const nextTabId = startNewTab()
+      if (nextTabId) {
+        await ensureConversationWithTab(workspace, nextTabId)
+      }
     }
-    // Also create in session store (for URL/session tracking)
-    startNewTab()
+
     // Clear input for new conversation
     setMsg("")
     setTimeout(() => chatInputRef.current?.focus(), 0)
-  }, [
-    storeConversationId,
-    streamingActions,
-    handleCollapseTabsAndClear,
-    dexieInitializeConversation,
-    startNewTab,
-    workspace,
-  ])
+  }, [tabId, streamingActions, handleCollapseTabsAndClear, startNewTab, workspace, ensureConversationWithTab])
 
   const handleInsertTemplate = useCallback((prompt: string) => {
     setMsg(prompt)
@@ -414,15 +429,16 @@ function ChatPageContent() {
       if (!conversationIdToDelete) return
       await deleteConversation(conversationIdToDelete)
       if (conversationIdToDelete === tabId) {
-        // Create a new conversation in Dexie
         if (workspace) {
-          await dexieInitializeConversation(workspace)
+          const nextTabId = startNewTab()
+          if (nextTabId) {
+            await ensureConversationWithTab(workspace, nextTabId)
+          }
         }
-        startNewTab()
         setMsg("")
       }
     },
-    [deleteConversation, tabId, startNewTab, workspace, dexieInitializeConversation],
+    [deleteConversation, tabId, startNewTab, workspace, ensureConversationWithTab],
   )
 
   return (
@@ -538,7 +554,7 @@ function ChatPageContent() {
               })}
 
               {/* Show pending tools (currently executing) - replaces generic "thinking" when tools are running */}
-              <PendingToolsIndicator tabId={storeConversationId} />
+              <PendingToolsIndicator tabId={storeTabId ?? tabId} />
 
               <AgentManagerIndicator
                 isEvaluating={isEvaluatingProgress}
@@ -563,6 +579,7 @@ function ChatPageContent() {
               message={msg}
               setMessage={setMsg}
               busy={busy || (!workspace && mounted && !organizationsLoading)}
+              isReady={isChatReady}
               isStopping={isStopping}
               onSubmit={sendMessage}
               onStop={stopStreaming}
@@ -608,6 +625,7 @@ function ChatPageContent() {
               message={msg}
               setMessage={setMsg}
               busy={busy || (!workspace && mounted && !organizationsLoading)}
+              isReady={isChatReady}
               isStopping={isStopping}
               onSubmit={sendMessage}
               onStop={stopStreaming}

@@ -29,6 +29,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
     setMessage,
     busy,
     isStopping = false,
+    isReady = true,
     onSubmit,
     onStop,
     config: userConfig = {},
@@ -107,7 +108,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
   )
 
   const canSubmit = useMemo(() => {
-    if (busy) return false
+    if (!isReady || busy) return false
     const hasMessage = message.trim().length > 0
     const hasUserPrompt = attachments.some(a => a.kind === "user-prompt")
     const attachmentsValid = attachments.every(a => !a.error && a.uploadProgress === 100)
@@ -116,12 +117,13 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
     // Other attachments (images, templates) require a message
     if (hasUserPrompt && attachmentsValid) return true
     return hasMessage && attachmentsValid
-  }, [busy, message, attachments])
+  }, [busy, isReady, message, attachments])
 
   // Just call parent onSubmit directly (prompt building happens in parent now)
   const handleSubmit = useCallback(() => {
+    if (!canSubmit) return
     onSubmit()
-  }, [onSubmit])
+  }, [canSubmit, onSubmit])
 
   // Keyboard shortcuts
   useEffect(() => {

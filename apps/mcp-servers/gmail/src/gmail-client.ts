@@ -5,16 +5,16 @@
  * Each request uses the access token passed via HTTP Authorization header.
  */
 
-import { google, type gmail_v1 } from "googleapis"
+import { gmail, auth, type gmail_v1 } from "@googleapis/gmail"
 
 /**
  * Create a Gmail client with the provided access token
  */
 export function createGmailClient(accessToken: string): gmail_v1.Gmail {
-  const auth = new google.auth.OAuth2()
-  auth.setCredentials({ access_token: accessToken })
+  const oauth2Client = new auth.OAuth2()
+  oauth2Client.setCredentials({ access_token: accessToken })
 
-  return google.gmail({ version: "v1", auth })
+  return gmail({ version: "v1", auth: oauth2Client })
 }
 
 /**

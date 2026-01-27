@@ -63,7 +63,11 @@ interface DexieMessageStoreActions {
   setSession: (session: DexieSessionContext) => void
 
   // Conversation management
-  initializeConversation: (workspace: string) => Promise<string>
+  initializeConversation: (workspace: string) => Promise<{ conversationId: string; tabId: string }>
+  ensureConversationWithTab: (
+    workspace: string,
+    tabId: string,
+  ) => Promise<{ conversationId: string; tabId: string; created: boolean }>
   switchConversation: (id: string, tabId?: string) => void
   deleteConversation: (id: string) => Promise<void>
   shareConversation: (id: string) => Promise<void>
@@ -195,7 +199,71 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
     })
 
     queueSync(id, session.userId)
-    return id
+    return { conversationId: id, tabId: defaultTabId }
+  },
+
+  ensureConversationWithTab: async (workspace, tabId) => {
+    const { session } = get()
+    if (!session) throw new Error("No session - call setSession first")
+
+    const db = getMessageDb(session.userId)
+    const existingTab = await db.tabs.get(tabId)
+
+    if (existingTab) {
+      set({
+        currentConversationId: existingTab.conversationId,
+        currentTabId: existingTab.id,
+        currentWorkspace: workspace,
+      })
+      return { conversationId: existingTab.conversationId, tabId: existingTab.id, created: false }
+    }
+
+    const conversationId = tabId
+    const now = Date.now()
+
+    await safeDb(() =>
+      db.transaction("rw", [db.conversations, db.tabs], async () => {
+        const existingConversation = await db.conversations.get(conversationId)
+        if (!existingConversation) {
+          const newConvo: DbConversation = {
+            id: conversationId,
+            workspace,
+            orgId: session.orgId,
+            creatorId: session.userId,
+            title: "New conversation",
+            visibility: "private",
+            createdAt: now,
+            updatedAt: now,
+            messageCount: 0,
+            autoTitleSet: false,
+            pendingSync: true,
+          }
+          await db.conversations.add(newConvo)
+        }
+
+        const existingTabs = await db.tabs.where("conversationId").equals(conversationId).toArray()
+        const newTab: DbTab = {
+          id: tabId,
+          conversationId,
+          name: "current",
+          position: existingTabs.length,
+          createdAt: now,
+          messageCount: 0,
+          pendingSync: true,
+        }
+
+        await db.tabs.add(newTab)
+      }),
+    )
+
+    set({
+      currentConversationId: conversationId,
+      currentTabId: tabId,
+      currentWorkspace: workspace,
+    })
+
+    queueSync(conversationId, session.userId)
+    return { conversationId, tabId, created: true }
   },
 
   switchConversation: (id, tabId) => {
@@ -535,6 +603,7 @@ export const useDexieMessageActions = () =>
   useDexieMessageStore(state => ({
     setSession: state.setSession,
     initializeConversation: state.initializeConversation,
+    ensureConversationWithTab: state.ensureConversationWithTab,
     switchConversation: state.switchConversation,
     deleteConversation: state.deleteConversation,
     shareConversation: state.shareConversation,

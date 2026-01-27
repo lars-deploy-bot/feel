@@ -150,6 +150,8 @@ export interface ChatInputProps extends ChatInputActions {
   setMessage: (msg: string) => void
   busy: boolean
   isStopping?: boolean
+  /** Whether submitting is currently allowed (defaults to true) */
+  isReady?: boolean
   config?: ChatInputConfig
   children?: ReactNode
   onOpenTemplates?: () => void
