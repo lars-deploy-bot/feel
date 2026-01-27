@@ -4,8 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const mockSessions = new Map<string, { sdk_session_id: string }>()
 
 // Helper to create session key for storage
-function makeDbKey(userId: string, domainId: string, conversationId: string) {
-  return `${userId}::${domainId}::${conversationId}`
+function makeDbKey(userId: string, domainId: string, tabId: string) {
+  return `${userId}::${domainId}::${tabId}`
 }
 
 // Mock Supabase clients before importing sessionStore
@@ -29,9 +29,9 @@ vi.mock("@/lib/supabase/iam", () => ({
           select: vi.fn(() => ({
             eq: vi.fn((_col: string, userId: string) => ({
               eq: vi.fn((_col: string, domainId: string) => ({
-                eq: vi.fn((_col: string, conversationId: string) => ({
+                eq: vi.fn((_col: string, tabId: string) => ({
                   single: vi.fn(async () => {
-                    const key = makeDbKey(userId, domainId, conversationId)
+                    const key = makeDbKey(userId, domainId, tabId)
                     const data = mockSessions.get(key)
                     return { data: data || null, error: null }
                   }),
@@ -49,8 +49,8 @@ vi.mock("@/lib/supabase/iam", () => ({
           delete: vi.fn(() => ({
             eq: vi.fn((_col: string, userId: string) => ({
               eq: vi.fn((_col: string, domainId: string) => ({
-                eq: vi.fn(async (_col: string, conversationId: string) => {
-                  const key = makeDbKey(userId, domainId, conversationId)
+                eq: vi.fn(async (_col: string, tabId: string) => {
+                  const key = makeDbKey(userId, domainId, tabId)
                   mockSessions.delete(key)
                   return { data: null, error: null }
                 }),
@@ -64,70 +64,19 @@ vi.mock("@/lib/supabase/iam", () => ({
   })),
 }))
 
-import {
-  SessionStoreMemory,
-  tabKey,
-  sessionKey,
-  tryLockConversation,
-  unlockConversation,
-} from "@/features/auth/lib/sessionStore"
+import { SessionStoreMemory, tabKey, tryLockConversation, unlockConversation } from "@/features/auth/lib/sessionStore"
 
 // Use real workspace and user from migrated database (demo.goalive.nl)
 const TEST_WORKSPACE = "demo.goalive.nl"
 const TEST_USER_ID = "ace1261c-2b9a-4845-8d41-4f6ecab8cb37" // demo.goalive.nl user
 
-describe("Session Store - Conversation Locking", () => {
+describe("Session Store - Tab Locking", () => {
   beforeEach(async () => {
     // Clear mock database
     mockSessions.clear()
 
-    await SessionStoreMemory.delete(
-      sessionKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, conversationId: "test-conv-1" }),
-    )
-    await SessionStoreMemory.delete(
-      sessionKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, conversationId: "test-conv-2" }),
-    )
-  })
-
-  describe("sessionKey", () => {
-    it("should create consistent keys from same parameters", () => {
-      const key1 = sessionKey({ userId: "user1", workspace: "workspace1", conversationId: "conv1" })
-      const key2 = sessionKey({ userId: "user1", workspace: "workspace1", conversationId: "conv1" })
-      expect(key1).toBe(key2)
-    })
-
-    it("should create different keys for different users", () => {
-      const key1 = sessionKey({ userId: "user1", workspace: "workspace1", conversationId: "conv1" })
-      const key2 = sessionKey({ userId: "user2", workspace: "workspace1", conversationId: "conv1" })
-      expect(key1).not.toBe(key2)
-    })
-
-    it("should create different keys for different workspaces", () => {
-      const key1 = sessionKey({ userId: "user1", workspace: "workspace1", conversationId: "conv1" })
-      const key2 = sessionKey({ userId: "user1", workspace: "workspace2", conversationId: "conv1" })
-      expect(key1).not.toBe(key2)
-    })
-
-    it("should create different keys for different conversations", () => {
-      const key1 = sessionKey({ userId: "user1", workspace: "workspace1", conversationId: "conv1" })
-      const key2 = sessionKey({ userId: "user1", workspace: "workspace1", conversationId: "conv2" })
-      expect(key1).not.toBe(key2)
-    })
-
-    it("should use default workspace when not provided", () => {
-      const key = sessionKey({ userId: "user1", conversationId: "conv1" })
-      expect(key).toContain("default")
-    })
-
-    it("should handle special characters in parameters", () => {
-      const key = sessionKey({
-        userId: "user-with-dash",
-        workspace: "workspace.with.dots",
-        conversationId: "conv_with_underscore",
-      })
-      expect(key).toBeTruthy()
-      expect(typeof key).toBe("string")
-    })
+    await SessionStoreMemory.delete(tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabId: "test-tab-1" }))
+    await SessionStoreMemory.delete(tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabId: "test-tab-2" }))
   })
 
   describe("tabKey", () => {
@@ -180,16 +129,16 @@ describe("Session Store - Conversation Locking", () => {
     })
   })
 
-  describe("Conversation Locking", () => {
-    it("should acquire lock for new conversation", () => {
-      const key = sessionKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, conversationId: "test-conv-lock-1" })
+  describe("Tab Locking", () => {
+    it("should acquire lock for new tab", () => {
+      const key = tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabId: "test-tab-lock-1" })
       const acquired = tryLockConversation(key)
       expect(acquired).toBe(true)
       unlockConversation(key)
     })
 
     it("should prevent concurrent locks", () => {
-      const key = sessionKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, conversationId: "test-conv-lock-2" })
+      const key = tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabId: "test-tab-lock-2" })
 
       const first = tryLockConversation(key)
       const second = tryLockConversation(key)
@@ -201,7 +150,7 @@ describe("Session Store - Conversation Locking", () => {
     })
 
     it("should release lock and allow reacquisition", () => {
-      const key = sessionKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, conversationId: "test-conv-lock-3" })
+      const key = tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabId: "test-tab-lock-3" })
 
       tryLockConversation(key)
       unlockConversation(key)
@@ -212,9 +161,9 @@ describe("Session Store - Conversation Locking", () => {
       unlockConversation(key)
     })
 
-    it("should handle multiple independent conversation locks", () => {
-      const key1 = sessionKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, conversationId: "test-conv-multi-1" })
-      const key2 = sessionKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, conversationId: "test-conv-multi-2" })
+    it("should handle multiple independent tab locks", () => {
+      const key1 = tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabId: "test-tab-multi-1" })
+      const key2 = tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabId: "test-tab-multi-2" })
 
       const lock1 = tryLockConversation(key1)
       const lock2 = tryLockConversation(key2)
@@ -226,9 +175,9 @@ describe("Session Store - Conversation Locking", () => {
       unlockConversation(key2)
     })
 
-    it("should allow same conversation for different users", () => {
-      const key1 = sessionKey({ userId: "user1", workspace: TEST_WORKSPACE, conversationId: "shared-conv" })
-      const key2 = sessionKey({ userId: "user2", workspace: TEST_WORKSPACE, conversationId: "shared-conv" })
+    it("should allow same tab for different users", () => {
+      const key1 = tabKey({ userId: "user1", workspace: TEST_WORKSPACE, tabId: "shared-tab" })
+      const key2 = tabKey({ userId: "user2", workspace: TEST_WORKSPACE, tabId: "shared-tab" })
 
       const lock1 = tryLockConversation(key1)
       const lock2 = tryLockConversation(key2)
@@ -241,10 +190,10 @@ describe("Session Store - Conversation Locking", () => {
     })
 
     it("should be idempotent when unlocking", () => {
-      const key = sessionKey({
+      const key = tabKey({
         userId: TEST_USER_ID,
         workspace: TEST_WORKSPACE,
-        conversationId: "test-conv-idempotent",
+        tabId: "test-tab-idempotent",
       })
 
       tryLockConversation(key)
@@ -258,7 +207,7 @@ describe("Session Store - Conversation Locking", () => {
     })
 
     it("should handle rapid lock/unlock cycles", () => {
-      const key = sessionKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, conversationId: "test-conv-rapid" })
+      const key = tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabId: "test-tab-rapid" })
 
       for (let i = 0; i < 10; i++) {
         const acquired = tryLockConversation(key)
@@ -271,16 +220,12 @@ describe("Session Store - Conversation Locking", () => {
   describe("SessionStoreMemory", () => {
     beforeEach(async () => {
       // Clear memory store before each test
-      await SessionStoreMemory.delete(
-        sessionKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, conversationId: "test-conv-1" }),
-      )
-      await SessionStoreMemory.delete(
-        sessionKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, conversationId: "test-conv-2" }),
-      )
+      await SessionStoreMemory.delete(tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabId: "test-tab-1" }))
+      await SessionStoreMemory.delete(tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabId: "test-tab-2" }))
     })
 
     it("should store and retrieve session IDs", async () => {
-      const key = sessionKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, conversationId: "test-conv-store-1" })
+      const key = tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabId: "test-tab-store-1" })
       const sessionId = "session-abc-123"
 
       await SessionStoreMemory.set(key, sessionId)
@@ -290,13 +235,13 @@ describe("Session Store - Conversation Locking", () => {
     })
 
     it("should return null for non-existent keys", async () => {
-      const key = sessionKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, conversationId: "non-existent" })
+      const key = tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabId: "non-existent" })
       const retrieved = await SessionStoreMemory.get(key)
       expect(retrieved).toBeNull()
     })
 
     it("should delete stored sessions", async () => {
-      const key = sessionKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, conversationId: "test-conv-delete" })
+      const key = tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabId: "test-tab-delete" })
       const sessionId = "session-abc-123"
 
       await SessionStoreMemory.set(key, sessionId)
@@ -307,7 +252,7 @@ describe("Session Store - Conversation Locking", () => {
     })
 
     it("should overwrite existing sessions", async () => {
-      const key = sessionKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, conversationId: "test-conv-overwrite" })
+      const key = tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabId: "test-tab-overwrite" })
 
       await SessionStoreMemory.set(key, "session-1")
       await SessionStoreMemory.set(key, "session-2")
@@ -317,8 +262,8 @@ describe("Session Store - Conversation Locking", () => {
     })
 
     it("should handle multiple independent sessions", async () => {
-      const key1 = sessionKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, conversationId: "test-conv-multi-a" })
-      const key2 = sessionKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, conversationId: "test-conv-multi-b" })
+      const key1 = tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabId: "test-tab-multi-a" })
+      const key2 = tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabId: "test-tab-multi-b" })
 
       await SessionStoreMemory.set(key1, "session-1")
       await SessionStoreMemory.set(key2, "session-2")

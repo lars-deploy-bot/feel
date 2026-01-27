@@ -1,11 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { SECURITY } from "@webalive/shared"
-import {
-  isConversationLocked,
-  sessionKey,
-  tryLockConversation,
-  unlockConversation,
-} from "@/features/auth/lib/sessionStore"
+import { isConversationLocked, tabKey, tryLockConversation, unlockConversation } from "@/features/auth/lib/sessionStore"
 import { CLAUDE_MODELS } from "@/lib/models/claude-models"
 import { cancelStream, registerCancellation } from "@/lib/stream/cancellation-registry"
 import type { CancelState } from "@/lib/stream/ndjson-stream-handler"
@@ -33,8 +28,8 @@ const TEST_MODEL = CLAUDE_MODELS.HAIKU_4_5
 describe("Explicit Cancellation Integration (STRICT)", () => {
   const userId = SECURITY.LOCAL_TEST.SESSION_VALUE
   const workspace = "test-workspace"
-  const conversationId = "explicit-cancel-test"
-  const convKey = sessionKey({ userId, conversationId })
+  const tabId = "explicit-cancel-test"
+  const convKey = tabKey({ userId, tabId })
 
   beforeEach(() => {
     unlockConversation(convKey)

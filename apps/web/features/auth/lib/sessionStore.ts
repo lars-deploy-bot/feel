@@ -169,20 +169,5 @@ export function tabKey({ userId, workspace, tabId }: { userId: string; workspace
   return `${userId}::${workspace ?? "default"}::${tabId}`
 }
 
-// DEPRECATED: Use tabKey() instead
-// Kept for backward compatibility during migration (cancel/reconnect routes)
-// Will be removed after PR 8 (cleanup)
-export function sessionKey({
-  userId,
-  workspace,
-  conversationId,
-}: {
-  userId: string
-  workspace?: string
-  conversationId: string
-}) {
-  return `${userId}::${workspace ?? "default"}::${conversationId}`
-}
-
 // Re-export guards from types/guards/session for backward compatibility
 export { tryLockConversation, unlockConversation, isConversationLocked, hasExistingSession }

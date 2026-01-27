@@ -21,7 +21,7 @@ import { TEST_TIMEOUTS, TEST_USER } from "./fixtures/test-data"
  */
 interface ChatRequest {
   message: string
-  conversationId: string
+  tabId: string
   model: string
   workspace: string
 }
@@ -104,7 +104,7 @@ test.describe("Chat API - Request Validation", () => {
 
     // Verify request structure (using constants)
     expect(requestBody.message).toBe(TEST_MESSAGES.SIMPLE)
-    expect(requestBody.conversationId).toMatch(PATTERNS.UUID)
+    expect(requestBody.tabId).toMatch(PATTERNS.UUID)
     expect(requestBody.model).toBe(TEST_MODELS.HAIKU)
     expect(requestBody.workspace).toBe(TEST_USER.workspace)
     console.log("✅ Request structure valid")

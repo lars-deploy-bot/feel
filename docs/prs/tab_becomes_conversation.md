@@ -133,40 +133,36 @@ interface Conversation {
 ### Database
 15. Supabase migration for `app.conversations` and `app.tabs` tables (if persisting server-side)
 
-## Implementation Phases
+## Implementation Phases -- ALL COMPLETE
 
-### Phase 1: Backend Session Keys
-- Update session key format to use `tabId`
-- Update lock key (now same as session key)
-- Update API validation schemas
+### Phase 1: Backend Session Keys ✅
+- Updated session key format to use `tabId` via `tabKey()`
+- Lock key = session key
+- API validation schemas updated
 
-### Phase 2: Stream Buffer
-- Key buffers by `tabId` instead of `conversationId`
+### Phase 2: Stream Buffer ✅
+- Buffers keyed by `tabId`
 
-### Phase 3: Streaming Store
-- Replace all `conversationId` with `tabId` (60+ occurrences)
-- This is the biggest change
+### Phase 3: Streaming Store ✅
+- Replaced all `conversationId` with `tabId` (60+ occurrences)
 
-### Phase 4: Delete Message Store
-- Remove `lib/stores/messageStore.ts`
-- Ensure all code uses Dexie via `dexieMessageStore`
+### Phase 4: Delete Message Store ✅
+- Removed `lib/stores/messageStore.ts`
+- All code uses Dexie via `dexieMessageStore`
 
-### Phase 5: Tab Store Refactor
-- Add `conversationId` and `tabNumber` to Tab interface
-- Update `createTab()` to accept `conversationId`
-- Add `createConversationWithTab()` for "New Chat"
+### Phase 5: Tab Store Refactor ✅
+- Added `conversationId` and `tabNumber` to Tab interface
+- Added `createConversationWithTab()` for "New Chat"
 
-### Phase 6: Hooks & Components
-- Update all hooks to use new pattern
-- Update sidebar to show hierarchy
+### Phase 6: Hooks & Components ✅
+- All hooks use new tab-based pattern
 
-### Phase 7: Supabase Migration (Optional)
-- Add tables if server-side persistence needed
+### Phase 7: Supabase Migration ✅
+- `iam.sessions` table with `(user_id, domain_id, tab_id)` composite key
+- SessionStoreMemory backed by Supabase
 
-### Phase 8: Tests & Cleanup
-- Update all tests
-- Remove dead code
-- Final verification
+### Phase 8: Tests & Cleanup ✅
+- All tests pass, docs updated, old code removed
 
 ## Migration Notes
 

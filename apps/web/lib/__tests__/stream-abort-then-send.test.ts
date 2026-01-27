@@ -1,11 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { SECURITY } from "@webalive/shared"
-import {
-  isConversationLocked,
-  sessionKey,
-  tryLockConversation,
-  unlockConversation,
-} from "@/features/auth/lib/sessionStore"
+import { isConversationLocked, tabKey, tryLockConversation, unlockConversation } from "@/features/auth/lib/sessionStore"
 import { CLAUDE_MODELS } from "@/lib/models/claude-models"
 import { setupAbortHandler } from "@/lib/stream/abort-handler"
 import { createNDJSONStream } from "@/lib/stream/ndjson-stream-handler"
@@ -39,8 +34,8 @@ const TEST_MODEL = CLAUDE_MODELS.HAIKU_4_5
 describe("Stream Abort → Send Integration (REAL)", () => {
   const userId = SECURITY.LOCAL_TEST.SESSION_VALUE
   const workspace = "test-workspace"
-  const conversationId = "test-conv-abort"
-  const convKey = sessionKey({ userId, conversationId })
+  const tabId = "test-conv-abort"
+  const convKey = tabKey({ userId, tabId })
 
   beforeEach(() => {
     unlockConversation(convKey)
@@ -513,8 +508,8 @@ describe("Stream Abort → Send Integration (REAL)", () => {
 
   describe("Concurrent Conversation Isolation", () => {
     it("should not affect other conversations when one aborts", async () => {
-      const conv1Key = sessionKey({ userId, conversationId: "conv-1" })
-      const conv2Key = sessionKey({ userId, conversationId: "conv-2" })
+      const conv1Key = tabKey({ userId, tabId: "conv-1" })
+      const conv2Key = tabKey({ userId, tabId: "conv-2" })
 
       // Lock both conversations
       const locked1 = tryLockConversation(conv1Key)

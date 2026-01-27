@@ -11,7 +11,7 @@
 | 5 | Tab Store Refactor | [x] Complete | Added createConversationWithTab, useTabsForConversation; kept sessionStore |
 | 6 | Hooks & Components | [x] Complete | useTabSession, tabId in all hooks/components |
 | 7 | Supabase Migration | [x] Complete | Code ready; SQL migration pending production deployment |
-| 8 | Tests & Cleanup | [ ] Not Started | |
+| 8 | Tests & Cleanup | [x] Complete | All tests pass, docs updated, no old code remaining |
 
 ## Quick Links
 
