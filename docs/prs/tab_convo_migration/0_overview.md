@@ -10,7 +10,7 @@
 | 4 | Delete Message Store | [x] Complete | messageStore.ts deleted, all consumers migrated to Dexie |
 | 5 | Tab Store Refactor | [x] Complete | Added createConversationWithTab, useTabsForConversation; kept sessionStore |
 | 6 | Hooks & Components | [x] Complete | useTabSession, tabId in all hooks/components |
-| 7 | Supabase Migration | [ ] Not Started | Optional |
+| 7 | Supabase Migration | [x] Complete | Code ready; SQL migration pending production deployment |
 | 8 | Tests & Cleanup | [ ] Not Started | |
 
 ## Quick Links

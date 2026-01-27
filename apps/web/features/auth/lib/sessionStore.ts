@@ -22,7 +22,6 @@ export interface SessionStore {
 }
 
 // Parse composite key: userId::workspaceDomain::tabId
-// Note: Database still uses conversation_id column until DB migration (PR 6)
 function parseKey(key: string): { userId: string; workspaceDomain: string; tabId: string } {
   const [userId, workspaceDomain, tabId] = key.split("::")
   return { userId, workspaceDomain: workspaceDomain || "default", tabId }
@@ -105,14 +104,13 @@ export const SessionStoreMemory: SessionStore = {
     }
 
     // Query session from IAM
-    // Note: Uses conversation_id column to store tabId until DB migration (PR 6)
     const iam = await createIamClient("service")
     const { data: session } = await iam
       .from("sessions")
       .select("sdk_session_id")
       .eq("user_id", userId)
       .eq("domain_id", domainId)
-      .eq("conversation_id", tabId) // tabId stored in conversation_id column
+      .eq("tab_id", tabId)
       .single()
 
     return session?.sdk_session_id || null
@@ -129,7 +127,6 @@ export const SessionStoreMemory: SessionStore = {
     }
 
     // Upsert session in IAM (updates if exists, inserts if not)
-    // Note: Uses conversation_id column to store tabId until DB migration (PR 6)
     const iam = await createIamClient("service")
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
 
@@ -137,13 +134,13 @@ export const SessionStoreMemory: SessionStore = {
       {
         user_id: userId,
         domain_id: domainId,
-        conversation_id: tabId, // tabId stored in conversation_id column
+        tab_id: tabId,
         sdk_session_id: value,
         last_activity: new Date().toISOString(),
         expires_at: expiresAt.toISOString(),
       },
       {
-        onConflict: "user_id,domain_id,conversation_id",
+        onConflict: "user_id,domain_id,tab_id",
       },
     )
   },
@@ -160,9 +157,8 @@ export const SessionStoreMemory: SessionStore = {
     }
 
     // Delete session from IAM
-    // Note: Uses conversation_id column to store tabId until DB migration (PR 6)
     const iam = await createIamClient("service")
-    await iam.from("sessions").delete().eq("user_id", userId).eq("domain_id", domainId).eq("conversation_id", tabId) // tabId stored in conversation_id column
+    await iam.from("sessions").delete().eq("user_id", userId).eq("domain_id", domainId).eq("tab_id", tabId)
   },
 }
 

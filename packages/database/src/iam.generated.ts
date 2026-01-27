@@ -208,7 +208,7 @@ export type Database = {
       }
       sessions: {
         Row: {
-          conversation_id: string
+          tab_id: string
           created_at: string
           domain_id: string
           expires_at: string
@@ -218,7 +218,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          conversation_id: string
+          tab_id: string
           created_at?: string
           domain_id: string
           expires_at: string
@@ -228,7 +228,7 @@ export type Database = {
           user_id: string
         }
         Update: {
-          conversation_id?: string
+          tab_id?: string
           created_at?: string
           domain_id?: string
           expires_at?: string
