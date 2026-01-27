@@ -15,18 +15,18 @@ import { isValidStreamEvent } from "../lib/stream-guards"
 import { useStreamingActions } from "@/lib/stores/streamingStore"
 
 interface UseStreamReconnectOptions {
-  /** Current conversation ID */
-  conversationId: string | null
+  /** Current tab ID (session key for Claude SDK) */
+  tabId: string | null
   /** Current workspace */
   workspace: string | null
   /** Whether a stream is currently active */
   isStreaming: boolean
   /**
    * Callback to add messages to the UI.
-   * IMPORTANT: targetConversationId is REQUIRED for tab isolation.
+   * IMPORTANT: targetTabId is REQUIRED for tab isolation.
    * Without it, messages could be added to the wrong tab when user switches tabs.
    */
-  addMessage: (message: UIMessage, targetConversationId: string) => void
+  addMessage: (message: UIMessage, targetTabId: string) => void
   /** Whether component is mounted */
   mounted: boolean
 }
@@ -40,13 +40,7 @@ interface ReconnectResponse {
   requestId?: string
 }
 
-export function useStreamReconnect({
-  conversationId,
-  workspace,
-  isStreaming,
-  addMessage,
-  mounted,
-}: UseStreamReconnectOptions) {
+export function useStreamReconnect({ tabId, workspace, isStreaming, addMessage, mounted }: UseStreamReconnectOptions) {
   const streamingActions = useStreamingActions()
   const [isReconnecting, setIsReconnecting] = useState(false)
   const reconnectingRef = useRef(false) // For async checks without causing re-renders
@@ -55,7 +49,7 @@ export function useStreamReconnect({
   const wasStreamingBeforeHidden = useRef(false)
 
   const checkForBufferedMessages = useCallback(async () => {
-    if (!conversationId || !workspace || reconnectingRef.current) {
+    if (!tabId || !workspace || reconnectingRef.current) {
       return
     }
 
@@ -76,7 +70,7 @@ export function useStreamReconnect({
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          conversationId,
+          conversationId: tabId, // Backend still uses conversationId key
           workspace,
           acknowledge: false, // Don't delete buffer yet, in case we need to retry
         }),
@@ -97,15 +91,15 @@ export function useStreamReconnect({
       console.log(`[StreamReconnect] Found ${data.messages?.length ?? 0} buffered messages, state: ${data.state}`)
 
       // Process buffered messages
-      // CRITICAL: Pass conversationId to addMessage for tab isolation
+      // CRITICAL: Pass tabId to addMessage for tab isolation
       if (data.messages && data.messages.length > 0) {
         for (const line of data.messages) {
           try {
             const parsed: unknown = JSON.parse(line)
             if (isValidStreamEvent(parsed)) {
-              const message = parseStreamEvent(parsed, conversationId, streamingActions)
+              const message = parseStreamEvent(parsed, tabId, streamingActions)
               if (message) {
-                addMessage(message, conversationId)
+                addMessage(message, tabId)
               }
             }
           } catch (e) {
@@ -117,22 +111,22 @@ export function useStreamReconnect({
       // Handle stream state
       if (data.state === "complete" || data.state === "error") {
         // Mark stream as ended in the store (this updates busy state)
-        streamingActions.endStream(conversationId)
+        streamingActions.endStream(tabId)
         // Acknowledge receipt so buffer gets cleaned up
         await fetch("/api/claude/stream/reconnect", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({
-            conversationId,
+            conversationId: tabId, // Backend still uses conversationId key
             workspace,
             acknowledge: true,
           }),
         })
       } else if (data.state === "streaming") {
         // Stream is still active - mark it and set up polling
-        streamingActions.startStream(conversationId)
-        pollForRemainingMessages(conversationId, workspace)
+        streamingActions.startStream(tabId)
+        pollForRemainingMessages(tabId, workspace)
       }
     } catch (error) {
       console.error("[StreamReconnect] Error checking for buffered messages:", error)
@@ -140,11 +134,11 @@ export function useStreamReconnect({
       reconnectingRef.current = false
       setIsReconnecting(false)
     }
-  }, [conversationId, workspace, addMessage, streamingActions])
+  }, [tabId, workspace, addMessage, streamingActions])
 
   // Poll for remaining messages when stream is still active
   const pollForRemainingMessages = useCallback(
-    async (convId: string, ws: string) => {
+    async (pollTabId: string, ws: string) => {
       const pollInterval = 1000 // 1 second
       const maxPolls = 300 // 5 minutes max
 
@@ -163,7 +157,7 @@ export function useStreamReconnect({
             headers: { "Content-Type": "application/json" },
             credentials: "include",
             body: JSON.stringify({
-              conversationId: convId,
+              conversationId: pollTabId, // Backend still uses conversationId key
               workspace: ws,
               acknowledge: false,
             }),
@@ -175,20 +169,20 @@ export function useStreamReconnect({
 
           if (!data.ok || !data.hasStream) {
             // Stream ended or was cleaned up
-            streamingActions.endStream(convId)
+            streamingActions.endStream(pollTabId)
             return
           }
 
           // Process any new messages
-          // CRITICAL: Pass convId to addMessage for tab isolation
+          // CRITICAL: Pass pollTabId to addMessage for tab isolation
           if (data.messages && data.messages.length > 0) {
             for (const line of data.messages) {
               try {
                 const parsed: unknown = JSON.parse(line)
                 if (isValidStreamEvent(parsed)) {
-                  const message = parseStreamEvent(parsed, convId, streamingActions)
+                  const message = parseStreamEvent(parsed, pollTabId, streamingActions)
                   if (message) {
-                    addMessage(message, convId)
+                    addMessage(message, pollTabId)
                   }
                 }
               } catch {
@@ -199,14 +193,14 @@ export function useStreamReconnect({
 
           // Check if stream completed
           if (data.state === "complete" || data.state === "error") {
-            streamingActions.endStream(convId)
+            streamingActions.endStream(pollTabId)
             // Acknowledge receipt
             await fetch("/api/claude/stream/reconnect", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               credentials: "include",
               body: JSON.stringify({
-                conversationId: convId,
+                conversationId: pollTabId, // Backend still uses conversationId key
                 workspace: ws,
                 acknowledge: true,
               }),
@@ -220,14 +214,14 @@ export function useStreamReconnect({
 
       // Max polls reached
       console.warn("[StreamReconnect] Max polls reached, stopping")
-      streamingActions.endStream(convId)
+      streamingActions.endStream(pollTabId)
     },
     [addMessage, streamingActions],
   )
 
   // Check for active stream on mount (handles page refresh during active stream)
   useEffect(() => {
-    if (!mounted || !conversationId || !workspace) return
+    if (!mounted || !tabId || !workspace) return
 
     // Small delay to let the page settle
     const timeoutId = setTimeout(() => {
@@ -236,7 +230,7 @@ export function useStreamReconnect({
     }, 500)
 
     return () => clearTimeout(timeoutId)
-  }, [mounted, conversationId, workspace]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [mounted, tabId, workspace]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Listen for visibility changes
   useEffect(() => {

@@ -26,8 +26,8 @@ interface ThinkingGroupProps {
 export function ThinkingGroup({ messages, isComplete, onSubmitAnswer }: ThinkingGroupProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const isDebugMode = useDebugVisible()
-  const conversationId = useDexieCurrentConversationId()
-  const pendingTools = usePendingTools(conversationId)
+  const tabId = useDexieCurrentConversationId()
+  const pendingTools = usePendingTools(tabId)
 
   // Separate tool results (render directly) from thinking content (in wrapper)
   const toolResults = getToolResults(messages)

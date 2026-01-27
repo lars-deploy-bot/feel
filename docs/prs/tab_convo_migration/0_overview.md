@@ -9,7 +9,7 @@
 | 3 | Streaming Store | [x] Complete | 60+ changes |
 | 4 | Delete Message Store | [x] Complete | messageStore.ts deleted, all consumers migrated to Dexie |
 | 5 | Tab Store Refactor | [x] Complete | Added createConversationWithTab, useTabsForConversation; kept sessionStore |
-| 6 | Hooks & Components | [ ] Not Started | |
+| 6 | Hooks & Components | [x] Complete | useTabSession, tabId in all hooks/components |
 | 7 | Supabase Migration | [ ] Not Started | Optional |
 | 8 | Tests & Cleanup | [ ] Not Started | |
 

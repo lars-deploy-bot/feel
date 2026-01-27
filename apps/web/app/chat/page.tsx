@@ -20,7 +20,7 @@ import { Sandbox } from "@/features/chat/components/Sandbox"
 import { SandboxMobile } from "@/features/chat/components/SandboxMobile"
 import { SubdomainInitializer } from "@/features/chat/components/SubdomainInitializer"
 import { ThinkingGroup } from "@/features/chat/components/ThinkingGroup"
-import { useConversationSession } from "@/features/chat/hooks/useConversationSession"
+import { useTabSession } from "@/features/chat/hooks/useTabSession"
 import { useImageUpload } from "@/features/chat/hooks/useImageUpload"
 import { useStreamCancellation } from "@/features/chat/hooks/useStreamCancellation"
 import { useStreamReconnect } from "@/features/chat/hooks/useStreamReconnect"
@@ -162,7 +162,8 @@ function ChatPageContent() {
   const isSessionExpired = useIsSessionExpired()
 
   // Session management with workspace-scoped persistence
-  const { conversationId, startNewConversation, switchConversation } = useConversationSession(workspace, mounted)
+  // tabId is the primary session key for Claude SDK (resume parameter)
+  const { tabId, startNewTab, switchTab } = useTabSession(workspace, mounted)
 
   // Chat messaging hook - handles sendMessage, streaming, agent supervisor
   const {
@@ -175,7 +176,7 @@ function ChatPageContent() {
     isSubmittingRef,
   } = useChatMessaging({
     workspace,
-    conversationId,
+    conversationId: tabId,
     isTerminal,
     busy,
     msg,
@@ -188,7 +189,7 @@ function ChatPageContent() {
 
   // Stream cancellation hook - must be after useChatMessaging to get the refs
   const { stopStreaming, isStopping } = useStreamCancellation({
-    conversationId: storeConversationId ?? "",
+    tabId: storeConversationId ?? "",
     workspace,
     addMessage,
     setShowCompletionDots,
@@ -213,7 +214,7 @@ function ChatPageContent() {
 
   // Stream reconnection - recovers buffered messages when tab becomes visible
   useStreamReconnect({
-    conversationId,
+    tabId,
     workspace,
     isStreaming: busy,
     addMessage,
@@ -236,10 +237,10 @@ function ChatPageContent() {
   // Tab management - combined switch handler for both conversation hooks
   const handleSwitchConversationForTabs = useCallback(
     (id: string) => {
-      switchConversation(id)
+      switchTab(id)
       switchConversationInMessageStore(id)
     },
-    [switchConversation, switchConversationInMessageStore],
+    [switchTab, switchConversationInMessageStore],
   )
 
   const {
@@ -255,22 +256,22 @@ function ChatPageContent() {
     handleOpenConversationInTab,
   } = useTabsManagement({
     workspace,
-    conversationId,
+    conversationId: tabId,
     onSwitchConversation: handleSwitchConversationForTabs,
     onInitializeConversation: initializeConversation,
-    onStartNewConversation: startNewConversation,
+    onStartNewConversation: startNewTab,
     currentInput: msg,
     onInputRestore: setMsg,
   })
 
-  // Sync Dexie store when conversation changes
+  // Sync Dexie store when tabId OR workspace changes
   useEffect(() => {
-    if (conversationId && workspace) {
-      if (storeConversationId !== conversationId) {
-        switchConversationInDexie(conversationId)
+    if (tabId && workspace) {
+      if (storeConversationId !== tabId) {
+        switchConversationInDexie(tabId)
       }
     }
-  }, [conversationId, workspace, storeConversationId, switchConversationInDexie])
+  }, [tabId, workspace, storeConversationId, switchConversationInDexie])
 
   // Image upload handler
   const handleAttachmentUpload = useImageUpload({ workspace: workspace ?? undefined, isTerminal })
@@ -379,7 +380,7 @@ function ChatPageContent() {
       await dexieInitializeConversation(workspace)
     }
     // Also create in session store (for URL/session tracking)
-    startNewConversation()
+    startNewTab()
     // Clear input for new conversation
     setMsg("")
     setTimeout(() => chatInputRef.current?.focus(), 0)
@@ -388,7 +389,7 @@ function ChatPageContent() {
     streamingActions,
     handleCollapseTabsAndClear,
     dexieInitializeConversation,
-    startNewConversation,
+    startNewTab,
     workspace,
   ])
 
@@ -402,26 +403,26 @@ function ChatPageContent() {
       // If tabs are active, open in tab (finds existing or creates new)
       // handleOpenConversationInTab is a no-op when tabs are not expanded
       handleOpenConversationInTab(selectedConversationId)
-      switchConversation(selectedConversationId)
+      switchTab(selectedConversationId)
       switchConversationInMessageStore(selectedConversationId)
     },
-    [switchConversation, switchConversationInMessageStore, handleOpenConversationInTab],
+    [switchTab, switchConversationInMessageStore, handleOpenConversationInTab],
   )
 
   const handleDeleteConversation = useCallback(
     async (conversationIdToDelete: string) => {
       if (!conversationIdToDelete) return
       await deleteConversation(conversationIdToDelete)
-      if (conversationIdToDelete === conversationId) {
+      if (conversationIdToDelete === tabId) {
         // Create a new conversation in Dexie
         if (workspace) {
           await dexieInitializeConversation(workspace)
         }
-        startNewConversation()
+        startNewTab()
         setMsg("")
       }
     },
-    [deleteConversation, conversationId, startNewConversation, workspace, dexieInitializeConversation],
+    [deleteConversation, tabId, startNewTab, workspace, dexieInitializeConversation],
   )
 
   return (
@@ -537,7 +538,7 @@ function ChatPageContent() {
               })}
 
               {/* Show pending tools (currently executing) - replaces generic "thinking" when tools are running */}
-              <PendingToolsIndicator conversationId={storeConversationId} />
+              <PendingToolsIndicator tabId={storeConversationId} />
 
               <AgentManagerIndicator
                 isEvaluating={isEvaluatingProgress}
@@ -626,11 +627,7 @@ function ChatPageContent() {
 
       {showSSETerminal && <DevTerminal />}
       {modals.feedback && (
-        <FeedbackModal
-          onClose={modals.closeFeedback}
-          workspace={workspace ?? undefined}
-          conversationId={conversationId}
-        />
+        <FeedbackModal onClose={modals.closeFeedback} workspace={workspace ?? undefined} conversationId={tabId} />
       )}
       <AnimatePresence>
         {modals.settings && (
