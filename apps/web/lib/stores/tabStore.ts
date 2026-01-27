@@ -37,6 +37,8 @@ interface TabStoreActions {
   collapseTabsAndClear: (workspace: string) => void
   openConversationInTab: (workspace: string, conversationId: string, name?: string) => Tab | null
   setTabInputDraft: (workspace: string, tabId: string, draft: string) => void
+  /** Creates a new conversation with Tab 1 inside it. Returns { conversationId, tabId } or null if max tabs reached. */
+  createConversationWithTab: (workspace: string) => { conversationId: string; tabId: string } | null
 }
 
 type TabStore = TabStoreState & TabStoreActions
@@ -169,6 +171,16 @@ export const useTabStore = create<TabStore>()(
             tabs.map(t => (t.id === tabId ? { ...t, inputDraft: draft } : t)),
           )
         },
+
+        createConversationWithTab: workspace => {
+          const tabs = getTabs(workspace)
+          if (tabs.length >= MAX_TABS) return null
+
+          const conversationId = crypto.randomUUID()
+          const tab = createTab(workspace, conversationId)
+          addTabToWorkspace(workspace, tabs, tab)
+          return { conversationId, tabId: tab.id }
+        },
       }
     },
     {
@@ -231,6 +243,17 @@ export const useActiveTab = (workspace: string | null): Tab | null =>
 export const useTabsExpanded = (workspace: string | null): boolean =>
   useTabStore(s => (workspace ? (s.tabsExpandedByWorkspace[workspace] ?? false) : false))
 
+/** Get all tabs for a specific conversation across all workspaces */
+export const useTabsForConversation = (conversationId: string | null): Tab[] =>
+  useTabStore(s => {
+    if (!conversationId) return []
+    const allTabs: Tab[] = []
+    for (const tabs of Object.values(s.tabsByWorkspace)) {
+      allTabs.push(...tabs.filter(t => t.conversationId === conversationId))
+    }
+    return allTabs
+  })
+
 export const useTabActions = (): TabStoreActions =>
   useTabStore(
     useShallow(s => ({
@@ -242,5 +265,6 @@ export const useTabActions = (): TabStoreActions =>
       collapseTabsAndClear: s.collapseTabsAndClear,
       openConversationInTab: s.openConversationInTab,
       setTabInputDraft: s.setTabInputDraft,
+      createConversationWithTab: s.createConversationWithTab,
     })),
   )
