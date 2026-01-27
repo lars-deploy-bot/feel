@@ -344,7 +344,7 @@ describe("useStreamCancellation", () => {
       expect(postty).toHaveBeenCalledWith("claude/stream/cancel", { requestId: "request-456" })
     })
 
-    it("should fallback to conversationId when no requestId", async () => {
+    it("should fallback to tabId when no requestId", async () => {
       const { postty } = await import("@/lib/api/api-client")
       const options = createMockOptions()
       options.currentRequestIdRef.current = null
@@ -355,7 +355,7 @@ describe("useStreamCancellation", () => {
       })
 
       expect(postty).toHaveBeenCalledWith("claude/stream/cancel", {
-        conversationId: "test-conversation-123",
+        tabId: "test-conversation-123",
         workspace: "test-workspace",
       })
     })

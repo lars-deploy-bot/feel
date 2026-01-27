@@ -49,7 +49,7 @@ interface MockTabStore {
 }
 
 interface MockStreamingStore {
-  conversations: Record<string, { isStreamActive: boolean }>
+  tabs: Record<string, { isStreamActive: boolean }>
 }
 
 describe("Tab Isolation", () => {
@@ -71,7 +71,7 @@ describe("Tab Isolation", () => {
     }
 
     streamingStore = {
-      conversations: {},
+      tabs: {},
     }
   })
 
@@ -157,23 +157,23 @@ describe("Tab Isolation", () => {
     tabStore.activeTabByWorkspace[workspace] = tabId
   }
 
-  // Helper: Check if a conversation has an active stream
-  function isStreamActive(conversationId: string): boolean {
-    return streamingStore.conversations[conversationId]?.isStreamActive ?? false
+  // Helper: Check if a tab has an active stream
+  function isStreamActive(tabId: string): boolean {
+    return streamingStore.tabs[tabId]?.isStreamActive ?? false
   }
 
   // Helper: Start a stream
-  function startStream(conversationId: string) {
-    if (!streamingStore.conversations[conversationId]) {
-      streamingStore.conversations[conversationId] = { isStreamActive: false }
+  function startStream(tabId: string) {
+    if (!streamingStore.tabs[tabId]) {
+      streamingStore.tabs[tabId] = { isStreamActive: false }
     }
-    streamingStore.conversations[conversationId].isStreamActive = true
+    streamingStore.tabs[tabId].isStreamActive = true
   }
 
   // Helper: End a stream
-  function endStream(conversationId: string) {
-    if (streamingStore.conversations[conversationId]) {
-      streamingStore.conversations[conversationId].isStreamActive = false
+  function endStream(tabId: string) {
+    if (streamingStore.tabs[tabId]) {
+      streamingStore.tabs[tabId].isStreamActive = false
     }
   }
 

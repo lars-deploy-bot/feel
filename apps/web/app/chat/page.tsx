@@ -358,7 +358,7 @@ function ChatPageContent() {
 
   const handleNewConversation = useCallback(() => {
     if (storeConversationId) {
-      streamingActions.clearConversation(storeConversationId)
+      streamingActions.clearTab(storeConversationId)
     }
     // Collapse and clear tabs - a new conversation is a fresh start
     handleCollapseTabsAndClear()

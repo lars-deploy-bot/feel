@@ -131,13 +131,14 @@ export function useStreamCancellation({
           const response = await postty("claude/stream/cancel", validatedRequest)
           console.log("[useStreamCancellation] Cancel response:", JSON.stringify(response))
         } else if (conversationId.length > 0 && workspace) {
-          // Fallback path: Cancel by conversationId (super-early Stop)
-          console.log("[useStreamCancellation] Sending cancel with conversationId fallback:", conversationId)
-          const validatedRequest = validateRequest("claude/stream/cancel", { conversationId, workspace })
+          // Fallback path: Cancel by tabId (super-early Stop)
+          // Note: conversationId variable is now used as tabId for the API
+          console.log("[useStreamCancellation] Sending cancel with tabId fallback:", conversationId)
+          const validatedRequest = validateRequest("claude/stream/cancel", { tabId: conversationId, workspace })
           const response = await postty("claude/stream/cancel", validatedRequest)
           console.log("[useStreamCancellation] Cancel response (fallback):", JSON.stringify(response))
         } else {
-          console.warn("[useStreamCancellation] No requestId or conversationId available - relying on abort() only")
+          console.warn("[useStreamCancellation] No requestId or tabId available - relying on abort() only")
         }
       } catch (error) {
         console.error("[useStreamCancellation] Cancel request failed:", error)

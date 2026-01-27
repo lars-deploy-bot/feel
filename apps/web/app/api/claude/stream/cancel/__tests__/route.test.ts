@@ -11,7 +11,7 @@ interface MockUser {
 interface CancelRequestBody {
   workspace?: string
   requestId?: string
-  conversationId?: string
+  tabId?: string
 }
 
 vi.mock("@/features/auth/lib/auth", () => ({
@@ -95,7 +95,7 @@ describe("POST /api/claude/stream/cancel", () => {
     expect(data.status).toBe("already_complete")
   })
 
-  it("should return 400 for missing both requestId and conversationId", async () => {
+  it("should return 400 for missing both requestId and tabId", async () => {
     const req = new Request("http://localhost/api/claude/stream/cancel", {
       method: "POST",
       body: JSON.stringify({}),
@@ -107,7 +107,7 @@ describe("POST /api/claude/stream/cancel", () => {
 
     expect(response.status).toBe(400)
     expect(data.ok).toBe(false)
-    expect(data.message).toContain("Either requestId or conversationId is required")
+    expect(data.message).toContain("Either requestId or tabId is required")
   })
 
   it("should return 403 when cancelling another user's stream", async () => {
@@ -174,24 +174,24 @@ describe("POST /api/claude/stream/cancel", () => {
     expect(cancelCount).toBe(1) // Should NOT increment
   })
 
-  // conversationId fallback tests (super-early Stop case)
-  it("should cancel by conversationId when requestId not available", async () => {
+  // tabId fallback tests (super-early Stop case)
+  it("should cancel by tabId when requestId not available", async () => {
     let cancelled = false
     const requestId = "test-req-conv-1"
     const userId = "test-user-123"
-    const conversationId = "conv-abc-123"
+    const tabId = "tab-abc-123"
     const workspace = "test-workspace"
-    const convKey = `${userId}::${workspace}::${conversationId}`
+    const tabKeyValue = `${userId}::${workspace}::${tabId}`
 
     // Register a stream
-    registerCancellation(requestId, userId, convKey, () => {
+    registerCancellation(requestId, userId, tabKeyValue, () => {
       cancelled = true
     })
 
-    // Call cancel endpoint with conversationId (super-early Stop)
+    // Call cancel endpoint with tabId (super-early Stop)
     const req = new Request("http://localhost/api/claude/stream/cancel", {
       method: "POST",
-      body: JSON.stringify({ conversationId, workspace }),
+      body: JSON.stringify({ tabId, workspace }),
       headers: { "Content-Type": "application/json" },
     })
 
@@ -201,14 +201,14 @@ describe("POST /api/claude/stream/cancel", () => {
     expect(response.status).toBe(200)
     expect(data.ok).toBe(true)
     expect(data.status).toBe("cancelled")
-    expect(data.conversationId).toBe(conversationId)
+    expect(data.tabId).toBe(tabId)
     expect(cancelled).toBe(true)
   })
 
-  it("should return already_complete for non-existent conversationId", async () => {
+  it("should return already_complete for non-existent tabId", async () => {
     const req = new Request("http://localhost/api/claude/stream/cancel", {
       method: "POST",
-      body: JSON.stringify({ conversationId: "non-existent", workspace: "test" }),
+      body: JSON.stringify({ tabId: "non-existent", workspace: "test" }),
       headers: { "Content-Type": "application/json" },
     })
 
@@ -220,31 +220,31 @@ describe("POST /api/claude/stream/cancel", () => {
     expect(data.status).toBe("already_complete")
   })
 
-  it("should not find another user's stream when cancelling by conversationId (security by isolation)", async () => {
+  it("should not find another user's stream when cancelling by tabId (security by isolation)", async () => {
     let cancelled = false
     const requestId = "test-req-conv-2"
     const ownerUserId = "other-user-456"
-    const conversationId = "conv-xyz-789"
+    const tabId = "tab-xyz-789"
     const workspace = "test-workspace"
-    const convKey = `${ownerUserId}::${workspace}::${conversationId}`
+    const tabKeyValue = `${ownerUserId}::${workspace}::${tabId}`
 
     // Register a stream owned by different user
-    registerCancellation(requestId, ownerUserId, convKey, () => {
+    registerCancellation(requestId, ownerUserId, tabKeyValue, () => {
       cancelled = true
     })
 
-    // Try to cancel as test-user-123 using conversationId
-    // Security: conversationKey is built using caller's userId, so will never match
+    // Try to cancel as test-user-123 using tabId
+    // Security: tabKey is built using caller's userId, so will never match
     const req = new Request("http://localhost/api/claude/stream/cancel", {
       method: "POST",
-      body: JSON.stringify({ conversationId, workspace }),
+      body: JSON.stringify({ tabId, workspace }),
       headers: { "Content-Type": "application/json" },
     })
 
     const response = await POST(req as any)
     const data = await response.json()
 
-    // Should return "already_complete" (not found) - users are isolated by conversationKey
+    // Should return "already_complete" (not found) - users are isolated by tabKey
     expect(response.status).toBe(200)
     expect(data.ok).toBe(true)
     expect(data.status).toBe("already_complete")
@@ -254,28 +254,28 @@ describe("POST /api/claude/stream/cancel", () => {
     unregisterCancellation(requestId)
   })
 
-  it("should prefer requestId over conversationId when both provided", async () => {
+  it("should prefer requestId over tabId when both provided", async () => {
     let cancelled1 = false
     let cancelled2 = false
     const requestId1 = "test-req-primary"
     const requestId2 = "test-req-fallback"
     const userId = "test-user-123"
-    const conversationId = "conv-both-123"
+    const tabId = "tab-both-123"
     const workspace = "test-workspace"
-    const convKey = `${userId}::${workspace}::${conversationId}`
+    const tabKeyValue = `${userId}::${workspace}::${tabId}`
 
-    // Register two streams: one for requestId, one for conversationKey
-    registerCancellation(requestId1, userId, convKey, () => {
+    // Register two streams: one for requestId, one for tabKey
+    registerCancellation(requestId1, userId, tabKeyValue, () => {
       cancelled1 = true
     })
-    registerCancellation(requestId2, userId, convKey, () => {
+    registerCancellation(requestId2, userId, tabKeyValue, () => {
       cancelled2 = true
     })
 
-    // Call cancel endpoint with BOTH requestId and conversationId
+    // Call cancel endpoint with BOTH requestId and tabId
     const req = new Request("http://localhost/api/claude/stream/cancel", {
       method: "POST",
-      body: JSON.stringify({ requestId: requestId1, conversationId, workspace }),
+      body: JSON.stringify({ requestId: requestId1, tabId, workspace }),
       headers: { "Content-Type": "application/json" },
     })
 

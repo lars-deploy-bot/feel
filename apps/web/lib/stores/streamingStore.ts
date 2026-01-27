@@ -3,28 +3,28 @@
 import { create } from "zustand"
 
 /**
- * Per-conversation abort controllers (stored outside Zustand because AbortController isn't serializable)
+ * Per-tab abort controllers (stored outside Zustand because AbortController isn't serializable)
  * This enables independent stream cancellation when tabs are enabled.
  */
 const abortControllerMap = new Map<string, AbortController>()
 
-/** Get the abort controller for a conversation */
-export function getAbortController(conversationId: string): AbortController | undefined {
-  return abortControllerMap.get(conversationId)
+/** Get the abort controller for a tab */
+export function getAbortController(tabId: string): AbortController | undefined {
+  return abortControllerMap.get(tabId)
 }
 
-/** Set the abort controller for a conversation */
-export function setAbortController(conversationId: string, controller: AbortController | null): void {
+/** Set the abort controller for a tab */
+export function setAbortController(tabId: string, controller: AbortController | null): void {
   if (controller) {
-    abortControllerMap.set(conversationId, controller)
+    abortControllerMap.set(tabId, controller)
   } else {
-    abortControllerMap.delete(conversationId)
+    abortControllerMap.delete(tabId)
   }
 }
 
-/** Clear the abort controller for a conversation */
-export function clearAbortController(conversationId: string): void {
-  abortControllerMap.delete(conversationId)
+/** Clear the abort controller for a tab */
+export function clearAbortController(tabId: string): void {
+  abortControllerMap.delete(tabId)
 }
 
 /**
@@ -64,8 +64,8 @@ export interface PendingTool {
   elapsedSeconds: number // Updated by tool_progress events
 }
 
-export interface ConversationStreamState {
-  // Tool use tracking (per-conversation, not global)
+export interface TabStreamState {
+  // Tool use tracking (per-tab, not global)
   toolUseMap: Map<string, string>
   // Tool input tracking - stores the input for each tool_use_id
   toolInputMap: Map<string, unknown>
@@ -88,53 +88,53 @@ export interface ConversationStreamState {
 }
 
 export interface StreamingStoreState {
-  // Map of conversationId -> StreamingState
-  conversations: Record<string, ConversationStreamState>
+  // Map of tabId -> StreamingState
+  tabs: Record<string, TabStreamState>
 
   // Actions
   actions: {
-    // Initialize or get conversation state
-    getConversationState: (conversationId: string) => ConversationStreamState
+    // Initialize or get tab state
+    getTabState: (tabId: string) => TabStreamState
 
     // Tool use tracking
-    recordToolUse: (conversationId: string, toolUseId: string, toolName: string, toolInput?: unknown) => void
-    getToolName: (conversationId: string, toolUseId: string) => string | undefined
-    getToolInput: (conversationId: string, toolUseId: string) => unknown | undefined
-    clearToolUseMap: (conversationId: string) => void
+    recordToolUse: (tabId: string, toolUseId: string, toolName: string, toolInput?: unknown) => void
+    getToolName: (tabId: string, toolUseId: string) => string | undefined
+    getToolInput: (tabId: string, toolUseId: string) => unknown | undefined
+    clearToolUseMap: (tabId: string) => void
 
     // Pending tool tracking (tools in progress)
-    markToolPending: (conversationId: string, toolUseId: string, toolName: string, toolInput: unknown) => void
-    updateToolProgress: (conversationId: string, toolUseId: string, elapsedSeconds: number) => void
-    markToolComplete: (conversationId: string, toolUseId: string) => void
-    getPendingTools: (conversationId: string) => PendingTool[]
+    markToolPending: (tabId: string, toolUseId: string, toolName: string, toolInput: unknown) => void
+    updateToolProgress: (tabId: string, toolUseId: string, elapsedSeconds: number) => void
+    markToolComplete: (tabId: string, toolUseId: string) => void
+    getPendingTools: (tabId: string) => PendingTool[]
 
     // Error tracking
-    recordError: (conversationId: string, error: Omit<StreamingError, "timestamp">) => void
-    resetConsecutiveErrors: (conversationId: string) => void
-    incrementConsecutiveErrors: (conversationId: string) => void
-    getConsecutiveErrors: (conversationId: string) => number
+    recordError: (tabId: string, error: Omit<StreamingError, "timestamp">) => void
+    resetConsecutiveErrors: (tabId: string) => void
+    incrementConsecutiveErrors: (tabId: string) => void
+    getConsecutiveErrors: (tabId: string) => number
 
     // Session tracking
-    recordSessionId: (conversationId: string, sessionId: string) => void
-    getLastSessionId: (conversationId: string) => string | null
+    recordSessionId: (tabId: string, sessionId: string) => void
+    getLastSessionId: (tabId: string) => string | null
 
     // Stream health
-    startStream: (conversationId: string) => void
-    recordMessageReceived: (conversationId: string) => void
-    endStream: (conversationId: string) => void
-    getStreamHealth: (conversationId: string) => {
+    startStream: (tabId: string) => void
+    recordMessageReceived: (tabId: string) => void
+    endStream: (tabId: string) => void
+    getStreamHealth: (tabId: string) => {
       isActive: boolean
       messageCount: number
       timeSinceLastMessage: number | null
     }
 
     // Cleanup
-    clearConversation: (conversationId: string) => void
-    clearAllConversations: () => void
+    clearTab: (tabId: string) => void
+    clearAllTabs: () => void
   }
 }
 
-const defaultConversationState: ConversationStreamState = {
+const defaultTabState: TabStreamState = {
   toolUseMap: new Map(),
   toolInputMap: new Map(),
   pendingTools: new Map(),
@@ -149,13 +149,13 @@ const defaultConversationState: ConversationStreamState = {
 }
 
 export const useStreamingStore = create<StreamingStoreState>((set, get) => {
-  // Helper: Update a conversation's state without boilerplate
-  const updateConversation = (conversationId: string, updates: Partial<ConversationStreamState>): void => {
+  // Helper: Update a tab's state without boilerplate
+  const updateTab = (tabId: string, updates: Partial<TabStreamState>): void => {
     set(s => ({
-      conversations: {
-        ...s.conversations,
-        [conversationId]: {
-          ...(s.conversations[conversationId] || defaultConversationState),
+      tabs: {
+        ...s.tabs,
+        [tabId]: {
+          ...(s.tabs[tabId] || defaultTabState),
           ...updates,
         },
       },
@@ -163,49 +163,49 @@ export const useStreamingStore = create<StreamingStoreState>((set, get) => {
   }
 
   return {
-    conversations: {},
+    tabs: {},
 
     actions: {
-      getConversationState: (conversationId: string): ConversationStreamState => {
+      getTabState: (tabId: string): TabStreamState => {
         const state = get()
-        const existing = state.conversations[conversationId]
+        const existing = state.tabs[tabId]
         if (!existing) {
-          updateConversation(conversationId, defaultConversationState)
-          return { ...defaultConversationState }
+          updateTab(tabId, defaultTabState)
+          return { ...defaultTabState }
         }
         return existing
       },
 
-      recordToolUse: (conversationId: string, toolUseId: string, toolName: string, toolInput?: unknown): void => {
+      recordToolUse: (tabId: string, toolUseId: string, toolName: string, toolInput?: unknown): void => {
         const state = get()
-        const convState = state.conversations[conversationId] || { ...defaultConversationState }
-        const newToolUseMap = new Map(convState.toolUseMap)
+        const tabState = state.tabs[tabId] || { ...defaultTabState }
+        const newToolUseMap = new Map(tabState.toolUseMap)
         newToolUseMap.set(toolUseId, toolName)
-        const newToolInputMap = new Map(convState.toolInputMap)
+        const newToolInputMap = new Map(tabState.toolInputMap)
         if (toolInput !== undefined) {
           newToolInputMap.set(toolUseId, toolInput)
         }
-        updateConversation(conversationId, { toolUseMap: newToolUseMap, toolInputMap: newToolInputMap })
+        updateTab(tabId, { toolUseMap: newToolUseMap, toolInputMap: newToolInputMap })
       },
 
-      getToolName: (conversationId: string, toolUseId: string): string | undefined => {
+      getToolName: (tabId: string, toolUseId: string): string | undefined => {
         const state = get()
-        return state.conversations[conversationId]?.toolUseMap.get(toolUseId)
+        return state.tabs[tabId]?.toolUseMap.get(toolUseId)
       },
 
-      getToolInput: (conversationId: string, toolUseId: string): unknown | undefined => {
+      getToolInput: (tabId: string, toolUseId: string): unknown | undefined => {
         const state = get()
-        return state.conversations[conversationId]?.toolInputMap.get(toolUseId)
+        return state.tabs[tabId]?.toolInputMap.get(toolUseId)
       },
 
-      clearToolUseMap: (conversationId: string): void => {
-        updateConversation(conversationId, { toolUseMap: new Map(), toolInputMap: new Map() })
+      clearToolUseMap: (tabId: string): void => {
+        updateTab(tabId, { toolUseMap: new Map(), toolInputMap: new Map() })
       },
 
-      markToolPending: (conversationId: string, toolUseId: string, toolName: string, toolInput: unknown): void => {
+      markToolPending: (tabId: string, toolUseId: string, toolName: string, toolInput: unknown): void => {
         const state = get()
-        const convState = state.conversations[conversationId] || { ...defaultConversationState }
-        const newPendingTools = new Map(convState.pendingTools)
+        const tabState = state.tabs[tabId] || { ...defaultTabState }
+        const newPendingTools = new Map(tabState.pendingTools)
         newPendingTools.set(toolUseId, {
           toolUseId,
           toolName,
@@ -213,122 +213,122 @@ export const useStreamingStore = create<StreamingStoreState>((set, get) => {
           startedAt: Date.now(),
           elapsedSeconds: 0,
         })
-        updateConversation(conversationId, { pendingTools: newPendingTools })
+        updateTab(tabId, { pendingTools: newPendingTools })
       },
 
-      updateToolProgress: (conversationId: string, toolUseId: string, elapsedSeconds: number): void => {
+      updateToolProgress: (tabId: string, toolUseId: string, elapsedSeconds: number): void => {
         const state = get()
-        const convState = state.conversations[conversationId]
-        if (!convState) return
-        const existing = convState.pendingTools.get(toolUseId)
+        const tabState = state.tabs[tabId]
+        if (!tabState) return
+        const existing = tabState.pendingTools.get(toolUseId)
         if (!existing) return
-        const newPendingTools = new Map(convState.pendingTools)
+        const newPendingTools = new Map(tabState.pendingTools)
         newPendingTools.set(toolUseId, { ...existing, elapsedSeconds })
-        updateConversation(conversationId, { pendingTools: newPendingTools })
+        updateTab(tabId, { pendingTools: newPendingTools })
       },
 
-      markToolComplete: (conversationId: string, toolUseId: string): void => {
+      markToolComplete: (tabId: string, toolUseId: string): void => {
         const state = get()
-        const convState = state.conversations[conversationId]
-        if (!convState) return
-        const newPendingTools = new Map(convState.pendingTools)
+        const tabState = state.tabs[tabId]
+        if (!tabState) return
+        const newPendingTools = new Map(tabState.pendingTools)
         newPendingTools.delete(toolUseId)
-        updateConversation(conversationId, { pendingTools: newPendingTools })
+        updateTab(tabId, { pendingTools: newPendingTools })
       },
 
-      getPendingTools: (conversationId: string): PendingTool[] => {
+      getPendingTools: (tabId: string): PendingTool[] => {
         const state = get()
-        const convState = state.conversations[conversationId]
-        if (!convState) return []
-        return Array.from(convState.pendingTools.values())
+        const tabState = state.tabs[tabId]
+        if (!tabState) return []
+        return Array.from(tabState.pendingTools.values())
       },
 
-      recordError: (conversationId: string, error: Omit<StreamingError, "timestamp">): void => {
+      recordError: (tabId: string, error: Omit<StreamingError, "timestamp">): void => {
         const state = get()
-        const convState = state.conversations[conversationId] || { ...defaultConversationState }
+        const tabState = state.tabs[tabId] || { ...defaultTabState }
         const newError: StreamingError = {
           ...error,
           timestamp: Date.now(),
         }
-        const recentErrors = [newError, ...convState.recentErrors].slice(0, convState.maxRecentErrors)
-        updateConversation(conversationId, { recentErrors })
+        const recentErrors = [newError, ...tabState.recentErrors].slice(0, tabState.maxRecentErrors)
+        updateTab(tabId, { recentErrors })
       },
 
-      resetConsecutiveErrors: (conversationId: string): void => {
-        updateConversation(conversationId, { consecutiveParseErrors: 0 })
+      resetConsecutiveErrors: (tabId: string): void => {
+        updateTab(tabId, { consecutiveParseErrors: 0 })
       },
 
-      incrementConsecutiveErrors: (conversationId: string): void => {
+      incrementConsecutiveErrors: (tabId: string): void => {
         const state = get()
-        const convState = state.conversations[conversationId] || { ...defaultConversationState }
-        updateConversation(conversationId, {
-          consecutiveParseErrors: convState.consecutiveParseErrors + 1,
+        const tabState = state.tabs[tabId] || { ...defaultTabState }
+        updateTab(tabId, {
+          consecutiveParseErrors: tabState.consecutiveParseErrors + 1,
         })
       },
 
-      getConsecutiveErrors: (conversationId: string): number => {
+      getConsecutiveErrors: (tabId: string): number => {
         const state = get()
-        return state.conversations[conversationId]?.consecutiveParseErrors || 0
+        return state.tabs[tabId]?.consecutiveParseErrors || 0
       },
 
-      recordSessionId: (conversationId: string, sessionId: string): void => {
-        updateConversation(conversationId, {
+      recordSessionId: (tabId: string, sessionId: string): void => {
+        updateTab(tabId, {
           lastValidSessionId: sessionId,
           sessionValidatedAt: Date.now(),
         })
       },
 
-      getLastSessionId: (conversationId: string): string | null => {
+      getLastSessionId: (tabId: string): string | null => {
         const state = get()
-        return state.conversations[conversationId]?.lastValidSessionId || null
+        return state.tabs[tabId]?.lastValidSessionId || null
       },
 
-      startStream: (conversationId: string): void => {
-        console.log("[StreamingStore] startStream:", conversationId)
-        updateConversation(conversationId, {
+      startStream: (tabId: string): void => {
+        console.log("[StreamingStore] startStream:", tabId)
+        updateTab(tabId, {
           isStreamActive: true,
           messagesReceivedInStream: 0,
         })
       },
 
-      recordMessageReceived: (conversationId: string): void => {
+      recordMessageReceived: (tabId: string): void => {
         const state = get()
-        const convState = state.conversations[conversationId] || { ...defaultConversationState }
-        updateConversation(conversationId, {
+        const tabState = state.tabs[tabId] || { ...defaultTabState }
+        updateTab(tabId, {
           lastMessageReceivedAt: Date.now(),
-          messagesReceivedInStream: convState.messagesReceivedInStream + 1,
+          messagesReceivedInStream: tabState.messagesReceivedInStream + 1,
         })
       },
 
-      endStream: (conversationId: string): void => {
+      endStream: (tabId: string): void => {
         // Clear pending tools when stream ends (handles cancel, error, completion)
-        updateConversation(conversationId, { isStreamActive: false, pendingTools: new Map() })
+        updateTab(tabId, { isStreamActive: false, pendingTools: new Map() })
       },
 
       getStreamHealth: (
-        conversationId: string,
+        tabId: string,
       ): { isActive: boolean; messageCount: number; timeSinceLastMessage: number | null } => {
         const state = get()
-        const convState = state.conversations[conversationId]
-        if (!convState) {
+        const tabState = state.tabs[tabId]
+        if (!tabState) {
           return { isActive: false, messageCount: 0, timeSinceLastMessage: null }
         }
         return {
-          isActive: convState.isStreamActive,
-          messageCount: convState.messagesReceivedInStream,
-          timeSinceLastMessage: convState.lastMessageReceivedAt ? Date.now() - convState.lastMessageReceivedAt : null,
+          isActive: tabState.isStreamActive,
+          messageCount: tabState.messagesReceivedInStream,
+          timeSinceLastMessage: tabState.lastMessageReceivedAt ? Date.now() - tabState.lastMessageReceivedAt : null,
         }
       },
 
-      clearConversation: (conversationId: string): void => {
+      clearTab: (tabId: string): void => {
         set(s => {
-          const { [conversationId]: _, ...rest } = s.conversations
-          return { conversations: rest }
+          const { [tabId]: _, ...rest } = s.tabs
+          return { tabs: rest }
         })
       },
 
-      clearAllConversations: (): void => {
-        set({ conversations: {} })
+      clearAllTabs: (): void => {
+        set({ tabs: {} })
       },
     },
   }
@@ -337,28 +337,27 @@ export const useStreamingStore = create<StreamingStoreState>((set, get) => {
 // Atomic selectors (Guide §14.1)
 export const useStreamingActions = () => useStreamingStore(state => state.actions)
 
-export const useConversationToolMap = (conversationId: string) =>
-  useStreamingStore(state => state.conversations[conversationId]?.toolUseMap || new Map())
+export const useTabToolMap = (tabId: string) => useStreamingStore(state => state.tabs[tabId]?.toolUseMap || new Map())
 
-export const useConversationErrors = (conversationId: string) => ({
-  consecutive: useStreamingStore(state => state.conversations[conversationId]?.consecutiveParseErrors || 0),
-  recent: useStreamingStore(state => state.conversations[conversationId]?.recentErrors || []),
+export const useTabErrors = (tabId: string) => ({
+  consecutive: useStreamingStore(state => state.tabs[tabId]?.consecutiveParseErrors || 0),
+  recent: useStreamingStore(state => state.tabs[tabId]?.recentErrors || []),
 })
 
-export const useStreamHealth = (conversationId: string) => {
+export const useStreamHealth = (tabId: string) => {
   const actions = useStreamingActions()
-  return actions.getStreamHealth(conversationId)
+  return actions.getStreamHealth(tabId)
 }
 
-/** Returns true if the specified conversation has an active stream (busy) */
-export const useIsStreamActive = (conversationId: string | null) =>
-  useStreamingStore(state => (conversationId ? (state.conversations[conversationId]?.isStreamActive ?? false) : false))
+/** Returns true if the specified tab has an active stream (busy) */
+export const useIsStreamActive = (tabId: string | null) =>
+  useStreamingStore(state => (tabId ? (state.tabs[tabId]?.isStreamActive ?? false) : false))
 
-/** Returns pending tools for a conversation */
-export const usePendingTools = (conversationId: string | null) =>
+/** Returns pending tools for a tab */
+export const usePendingTools = (tabId: string | null) =>
   useStreamingStore(state => {
-    if (!conversationId) return []
-    const convState = state.conversations[conversationId]
-    if (!convState) return []
-    return Array.from(convState.pendingTools.values())
+    if (!tabId) return []
+    const tabState = state.tabs[tabId]
+    if (!tabState) return []
+    return Array.from(tabState.pendingTools.values())
   })
