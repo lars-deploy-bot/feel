@@ -1,13 +1,15 @@
 # PR 5: Tab Store Refactor
 
-**Status**: ✅ complete
+**Status**: 🚧 in progress
 **Depends on**: PR 4 (delete messageStore)
 **Estimated time**: 1.5 hours
 
 ## Goal
 
-Make Tab the primary entity. Every tab has a required `conversationId`. Update Tab interface and tabStore.
-Until the grouping layer is fully wired, `conversationId` is treated as the session key (1:1 with `tabId`).
+Introduce a **tabgroup** layer for the left panel while keeping **per‑tab session ids**:
+- `conversationId` = per‑tab session key (Claude resume)
+- `tabGroupId` = grouping id for the left panel (Dexie conversation id)
+- Tabs live inside a tabgroup; multiple tabs per tabgroup
 
 ## Self-Update Instructions
 
@@ -27,16 +29,16 @@ This ensures crash recovery - the file IS the source of truth.
 - [x] Update `Tab` interface:
   ```typescript
   interface Tab {
-    id: string                  // UUID, this is the tabId
-    conversationId: string      // Required - every tab belongs to a conversation
+    id: string                  // UI-only id
+    conversationId: string      // Per-tab session key (Claude resume)
+    tabGroupId: string          // Grouping id for left panel
     tabNumber: number           // Sequential: 1, 2, 3...
     name: string                // "Tab 1", "Tab 2", etc.
     createdAt: number
     inputDraft?: string
   }
   ```
-  **Note**: Interface was already compliant - no changes needed
-- [x] Verify changes compile: `bun run type-check`
+  **Note**: tabGroupId added; conversationId now explicitly the per‑tab session id
 
 ### 2. lib/stores/tabStore.ts - Update createTab
 
@@ -48,24 +50,20 @@ This ensures crash recovery - the file IS the source of truth.
   **Note**: Already generates "Tab {num}"
 - [x] Verify changes compile: `bun run type-check`
 
-### 3. lib/stores/tabStore.ts - Add conversation helpers
+### 3. lib/stores/tabStore.ts - Add tabgroup helpers
 
-- [x] Add `useTabsForConversation(conversationId)` selector
-  - Returns all tabs for a conversation across workspaces
-- [x] Add `createConversationWithTab(workspace)` action that:
-  - Creates a new conversation (generate UUID)
-  - Creates Tab 1 inside it
-  - Returns `{ conversationId, tabId }` or null if max tabs reached
-- [x] Verify changes compile: `bun run type-check`
+- [x] Add `useTabsForTabGroup(tabGroupId)` selector
+  - Returns all tabs for a tabgroup across workspaces
+- [x] Add `createTabGroupWithTab(workspace, conversationIdOverride?)` action that:
+  - Creates a new tabgroup id
+  - Creates Tab 1 inside it (conversationId = per‑tab session key)
+  - Returns `{ tabGroupId, conversationId, tabId }` or null if max tabs reached
 
-### 4. lib/stores/sessionStore.ts - Simplify or Delete
+### 4. lib/stores/sessionStore.ts - Keep session store (still required)
 
 - [x] Read current file
 - [x] Determine if any unique functionality remains
-  **Decision: KEEP** - sessionStore still serves a different purpose:
-  - Persists the per-workspace session key (still named `conversationId` in the store)
-  - `useTabSession` treats this value as `tabId` for Claude SDK resume
-  - Orthogonal to tabStore (tabs = UI, session key = Claude SDK persistence)
+  **Decision: KEEP** - sessionStore persists the per‑tab session key (named `conversationId` in the store)
 - [x] No changes needed - sessionStore holds the session key while tabStore handles UI tabs
 - [x] Verify changes compile: `bun run type-check`
 
@@ -81,9 +79,9 @@ This ensures crash recovery - the file IS the source of truth.
 ### 6. Update "New Chat" flow
 
 - [x] Find where "New Chat" button is handled (`page.tsx` → `handleNewConversation`)
-- [x] Review flow - works with the new session key:
-  - Uses Dexie's `ensureConversationWithTab(workspace, tabId)` to create conversation+tab with id == tabId
-  - `createConversationWithTab()` remains available for future grouping-first flows
+- [x] Review flow - works with tabgroups:
+  - Uses `createTabGroupWithTab(workspace, tabId)` to create tabgroup + tab
+  - Uses Dexie's `ensureTabGroupWithTab(workspace, tabGroupId, tabId)`
 - [x] Conversation title auto-generation still works via first message
 - [x] Verify changes compile: `bun run type-check`
 
@@ -91,10 +89,10 @@ This ensures crash recovery - the file IS the source of truth.
 
 ## Verification
 
-- [x] `bun run type-check` passes
-- [x] `bun run lint` passes
-- [x] "New Chat" creates conversation + tab (existing flow works)
-- [x] Adding tabs within conversation works (existing flow works)
+- [ ] `bun run type-check`
+- [ ] `bun run lint`
+- [ ] "New Chat" creates tabgroup + tab
+- [ ] Adding tabs stays within the same tabgroup
 
 ---
 
@@ -102,8 +100,8 @@ This ensures crash recovery - the file IS the source of truth.
 
 **Key insight**: The tabStore was already mostly compliant with the PR 5 goals. The main additions were:
 
-1. `createConversationWithTab(workspace)` - Creates conversation + Tab 1 atomically
-2. `useTabsForConversation(conversationId)` - Selector for tabs by conversation
+1. `createTabGroupWithTab(workspace)` - Creates tabgroup + Tab 1 atomically
+2. `useTabsForTabGroup(tabGroupId)` - Selector for tabs by tabgroup
 
 **sessionStore decision**: Kept separate because:
 - sessionStore = URL/SDK session persistence (resume conversations)
@@ -114,5 +112,5 @@ This ensures crash recovery - the file IS the source of truth.
 
 ## Completion
 
-- [x] All checkboxes complete
-- [x] Update `0_overview.md`: Change PR 5 status to ✅ complete
+- [ ] All checkboxes complete
+- [ ] Update `0_overview.md`: Change PR 5 status to ✅ complete

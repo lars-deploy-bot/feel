@@ -1,12 +1,14 @@
 # PR 6: Hooks & Components Update
 
-**Status**: ✅ complete
+**Status**: 🚧 in progress
 **Depends on**: PR 5 (tab store refactor)
 **Estimated time**: 2.5 hours
 
 ## Goal
 
-Update all hooks and components to use `tabId` as the session key and work with the new data model.
+Update hooks/components for **tabgroup + tab session** model:
+- Left panel = tabgroup (Dexie conversation)
+- Tabs hold per‑tab session ids (`conversationId`)
 
 ## Self-Update Instructions
 
@@ -33,8 +35,8 @@ This ensures crash recovery - the file IS the source of truth.
 ### 2. app/chat/hooks/useTabs.ts
 
 - [x] Read current file
-- [x] No changes needed - already uses tab-primary model with required conversationId
-- [x] Verify changes compile: `bun run type-check`
+- [x] Update hook interface to accept `tabGroupId` + `activeConversationId`
+- [x] Ensure tab selection only switches tab session (not tabgroup)
 
 ### 3. app/chat/hooks/useChatMessaging.ts
 
@@ -72,9 +74,8 @@ This ensures crash recovery - the file IS the source of truth.
 ### 7. features/chat/components/ConversationSidebar.tsx
 
 - [x] Read current file
-- [x] No changes needed for PR 6 - sidebar shows conversations (grouping layer), not tabs
-- [x] Uses Dexie conversations store (messageStore removed)
-- [x] Verify changes compile: `bun run type-check`
+- [x] Update UI copy to "tab groups" (left panel shows tabgroups)
+- [x] Uses Dexie conversations store (tabgroup layer)
 
 ### 8. app/chat/page.tsx
 
@@ -85,16 +86,15 @@ This ensures crash recovery - the file IS the source of truth.
 - [x] Updated `useStreamCancellation` call: `{ tabId }`
 - [x] Updated `useStreamReconnect` call: `{ tabId }`
 - [x] Updated `useChatMessaging` call: `{ conversationId: tabId }`
-- [x] Updated `useTabsManagement` call: `{ conversationId: tabId, onStartNewConversation: startNewTab }`
-- [x] Updated `handleConversationSelect` to use `switchTab`
-- [x] Updated `handleDeleteConversation` to compare with `tabId` and use `startNewTab`
+- [x] Updated `useTabsManagement` call: `{ tabGroupId, activeConversationId: tabId, onStartNewTab: startNewTab }`
+- [x] Updated `handleConversationSelect` to open tabgroup in a tab (not switch tabgroup directly)
+- [x] Updated `handleDeleteConversation` to remove tabgroup + open next tabgroup
 - [x] Updated `FeedbackModal` prop: `conversationId={tabId}`
 - [x] Verify changes compile: `bun run type-check`
 
 ### 9. ChatInput readiness
 
-- [x] Added `isReady` prop to gate submission until Dexie session/tab is ready
-- [x] Ensure `canSubmit` recomputes when `isReady` changes
+- [x] Keep `isReady` gating on Dexie session + tabgroup/tab sync
 
 ### 10. features/chat/components/PendingToolsIndicator.tsx
 
@@ -115,11 +115,10 @@ This ensures crash recovery - the file IS the source of truth.
 
 ## Verification
 
-- [x] `bun run type-check` passes
-- [x] `bun run lint` passes
-- [x] Chat page loads without errors (all types resolve)
-- [x] Sidebar shows conversations correctly (unchanged)
-- [x] All hook interfaces use `tabId` as session key
+- [ ] `bun run type-check`
+- [ ] `bun run lint`
+- [ ] Chat page loads without errors
+- [ ] Sidebar shows tabgroups correctly
 
 ---
 
@@ -128,7 +127,7 @@ This ensures crash recovery - the file IS the source of truth.
 **Key decisions:**
 1. `useChatMessaging` interface kept `conversationId` param name - the caller (page.tsx) passes `tabId` as the value. This avoids a cascade of internal changes in the messaging hook.
 2. `useStreamReconnect` API body still sends `{ conversationId: tabId }` because the backend endpoint expects that key name.
-3. `ConversationSidebar` unchanged - it operates on the conversation grouping layer, not the tab/session layer.
+3. `ConversationSidebar` shows tabgroups (Dexie conversations) – it is the grouping layer.
 4. `tabStore.id` is UI-only; use `tabStore.conversationId` as the session key when talking to Dexie/API.
 5. Old `useConversationSession.ts` file kept for now - will be deleted in PR 8 (cleanup).
 
@@ -136,5 +135,5 @@ This ensures crash recovery - the file IS the source of truth.
 
 ## Completion
 
-- [x] All checkboxes complete
-- [x] Update `0_overview.md`: Change PR 6 status to ✅ complete
+- [ ] All checkboxes complete
+- [ ] Update `0_overview.md`: Change PR 6 status to ✅ complete

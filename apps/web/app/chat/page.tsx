@@ -32,7 +32,12 @@ import { SandboxProvider, useSandboxContext } from "@/features/chat/lib/sandbox-
 import { useAuth } from "@/features/deployment/hooks/useAuth"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
 import { useRedeemReferral } from "@/hooks/useRedeemReferral"
-import { useDexieCurrentTabId, useDexieMessageActions, useDexieSession } from "@/lib/db/dexieMessageStore"
+import {
+  useDexieCurrentConversationId,
+  useDexieCurrentTabId,
+  useDexieMessageActions,
+  useDexieSession,
+} from "@/lib/db/dexieMessageStore"
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
 import { validateOAuthToastParams } from "@/lib/integrations/toast-validation"
 import { useIsSessionExpired } from "@/lib/stores/authStore"
@@ -41,6 +46,7 @@ import { isDevelopment, useDebugActions, useSandbox, useSSETerminal } from "@/li
 import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
 import { useApiKey, useModel } from "@/lib/stores/llmStore"
 import { useStreamingActions } from "@/lib/stores/streamingStore"
+import { useActiveTab, useTabActions, useWorkspaceTabs } from "@/lib/stores/tabStore"
 import { useSelectedOrgId } from "@/lib/stores/workspaceStore"
 // Local components
 import { AgentManagerIndicator, ChatEmptyState, ChatHeader, TabBar, WorkspaceInfoBar } from "./components"
@@ -59,25 +65,25 @@ const BUILD_VERSION = "2025-11-12-direct-execution"
 function ChatPageContent() {
   const [msg, setMsg] = useState("")
   const storeTabId = useDexieCurrentTabId()
+  const storeTabGroupId = useDexieCurrentConversationId()
   const {
-    ensureConversationWithTab,
+    ensureTabGroupWithTab,
     addMessage,
-    switchConversation: switchConversationInDexie,
+    switchTab: switchDexieTab,
     deleteConversation,
     setSession: setDexieSession,
   } = useDexieMessageActions()
   const dexieSession = useDexieSession()
+  const { createTabGroupWithTab, removeTabGroup, setActiveTab } = useTabActions()
 
-  // Wrapper to match old initializeConversation(id, workspace) signature
-  // Ensures Dexie has a conversation+tab for the session key (tabId)
-  const initializeConversation = useCallback(
-    (id: string, targetWorkspace: string) => {
+  // Ensures Dexie has a tabgroup+tab for the session key (tabId)
+  const initializeTab = useCallback(
+    (tabId: string, tabGroupId: string, targetWorkspace: string) => {
       if (!dexieSession) return
-      void ensureConversationWithTab(targetWorkspace, id)
+      void ensureTabGroupWithTab(targetWorkspace, tabGroupId, tabId)
     },
-    [dexieSession, ensureConversationWithTab],
+    [dexieSession, ensureTabGroupWithTab],
   )
-  const switchConversationInMessageStore = switchConversationInDexie
   const { toggleSidebar } = useSidebarActions()
   const isSidebarOpen = useSidebarOpen()
   const [shouldForceScroll, setShouldForceScroll] = useState(false)
@@ -179,7 +185,11 @@ function ChatPageContent() {
   // Session management with workspace-scoped persistence
   // tabId is the primary session key for Claude SDK (resume parameter)
   const { tabId, startNewTab, switchTab } = useTabSession(workspace, mounted)
-  const isChatReady = !!dexieSession && !!tabId && storeTabId === tabId
+  const activeTab = useActiveTab(workspace)
+  const workspaceTabs = useWorkspaceTabs(workspace)
+  const tabForSession = tabId ? (workspaceTabs.find(tab => tab.conversationId === tabId) ?? null) : null
+  const tabGroupId = tabForSession?.tabGroupId ?? activeTab?.tabGroupId ?? storeTabGroupId ?? null
+  const isChatReady = !!dexieSession && !!tabId && !!storeTabGroupId && storeTabId === tabId
 
   // Chat messaging hook - handles sendMessage, streaming, agent supervisor
   const {
@@ -254,37 +264,64 @@ function ChatPageContent() {
   const handleSwitchConversationForTabs = useCallback(
     (id: string) => {
       switchTab(id)
-      switchConversationInMessageStore(id)
+      switchDexieTab(id)
     },
-    [switchTab, switchConversationInMessageStore],
+    [switchTab, switchDexieTab],
   )
 
   const {
     tabs,
-    activeTab,
+    activeTab: activeTabInGroup,
     tabsExpanded,
     handleAddTab,
     handleTabSelect,
     handleTabClose,
     handleTabRename,
     handleToggleTabs,
-    handleCollapseTabsAndClear,
-    handleOpenConversationInTab,
+    handleOpenTabGroupInTab,
   } = useTabsManagement({
     workspace,
-    conversationId: tabId,
+    tabGroupId,
+    activeConversationId: tabId,
     onSwitchConversation: handleSwitchConversationForTabs,
-    onInitializeConversation: initializeConversation,
-    onStartNewConversation: startNewTab,
+    onInitializeTab: initializeTab,
+    onStartNewTab: startNewTab,
     currentInput: msg,
     onInputRestore: setMsg,
   })
 
-  // Ensure Dexie has a conversation+tab for the active session key
+  // Ensure the session tab is mapped to a tabgroup + Dexie tab
   useEffect(() => {
-    if (!tabId || !workspace || !dexieSession) return
-    void ensureConversationWithTab(workspace, tabId)
-  }, [tabId, workspace, dexieSession, ensureConversationWithTab])
+    if (!mounted || !workspace || !dexieSession || !tabId) return
+
+    if (!tabForSession) {
+      const created = createTabGroupWithTab(workspace, tabId)
+      if (created) {
+        void ensureTabGroupWithTab(workspace, created.tabGroupId, created.conversationId)
+      }
+      return
+    }
+
+    if (activeTab && activeTab.id !== tabForSession.id) {
+      setActiveTab(workspace, tabForSession.id)
+    }
+
+    if (storeTabId === tabId && storeTabGroupId === tabForSession.tabGroupId) return
+    void ensureTabGroupWithTab(workspace, tabForSession.tabGroupId, tabId)
+  }, [
+    mounted,
+    workspace,
+    dexieSession,
+    tabId,
+    tabForSession?.id,
+    tabForSession?.tabGroupId,
+    activeTab?.id,
+    createTabGroupWithTab,
+    ensureTabGroupWithTab,
+    setActiveTab,
+    storeTabId,
+    storeTabGroupId,
+  ])
 
   // Image upload handler
   const handleAttachmentUpload = useImageUpload({ workspace: workspace ?? undefined, isTerminal })
@@ -386,52 +423,76 @@ function ChatPageContent() {
     if (tabId) {
       streamingActions.clearTab(tabId)
     }
-    // Collapse and clear tabs - a new conversation is a fresh start
-    handleCollapseTabsAndClear()
-
     if (workspace) {
       const nextTabId = startNewTab()
       if (nextTabId) {
-        await ensureConversationWithTab(workspace, nextTabId)
+        const created = createTabGroupWithTab(workspace, nextTabId)
+        if (created) {
+          await ensureTabGroupWithTab(workspace, created.tabGroupId, created.conversationId)
+        }
       }
     }
 
     // Clear input for new conversation
     setMsg("")
     setTimeout(() => chatInputRef.current?.focus(), 0)
-  }, [tabId, streamingActions, handleCollapseTabsAndClear, startNewTab, workspace, ensureConversationWithTab])
+  }, [tabId, streamingActions, startNewTab, workspace, createTabGroupWithTab, ensureTabGroupWithTab])
 
   const handleInsertTemplate = useCallback((prompt: string) => {
     setMsg(prompt)
   }, [])
 
-  const handleConversationSelect = useCallback(
-    (selectedConversationId: string) => {
-      if (!selectedConversationId) return
-      // If tabs are active, open in tab (finds existing or creates new)
-      // handleOpenConversationInTab is a no-op when tabs are not expanded
-      handleOpenConversationInTab(selectedConversationId)
-      switchTab(selectedConversationId)
-      switchConversationInMessageStore(selectedConversationId)
+  const handleTabGroupSelect = useCallback(
+    (selectedTabGroupId: string) => {
+      if (!selectedTabGroupId) return
+      handleOpenTabGroupInTab(selectedTabGroupId)
     },
-    [switchTab, switchConversationInMessageStore, handleOpenConversationInTab],
+    [handleOpenTabGroupInTab],
   )
 
-  const handleDeleteConversation = useCallback(
-    async (conversationIdToDelete: string) => {
-      if (!conversationIdToDelete) return
-      await deleteConversation(conversationIdToDelete)
-      if (conversationIdToDelete === tabId) {
-        if (workspace) {
+  const handleDeleteTabGroup = useCallback(
+    async (tabGroupIdToDelete: string) => {
+      if (!tabGroupIdToDelete) return
+
+      const nextTab =
+        tabGroupIdToDelete === tabGroupId
+          ? (workspaceTabs.find(tab => tab.tabGroupId !== tabGroupIdToDelete) ?? null)
+          : null
+
+      await deleteConversation(tabGroupIdToDelete)
+      if (workspace) {
+        removeTabGroup(workspace, tabGroupIdToDelete)
+      }
+
+      if (tabGroupIdToDelete === tabGroupId && workspace) {
+        if (nextTab) {
+          setActiveTab(workspace, nextTab.id)
+          switchTab(nextTab.conversationId)
+          await ensureTabGroupWithTab(workspace, nextTab.tabGroupId, nextTab.conversationId)
+        } else {
           const nextTabId = startNewTab()
           if (nextTabId) {
-            await ensureConversationWithTab(workspace, nextTabId)
+            const created = createTabGroupWithTab(workspace, nextTabId)
+            if (created) {
+              await ensureTabGroupWithTab(workspace, created.tabGroupId, created.conversationId)
+            }
           }
         }
         setMsg("")
       }
     },
-    [deleteConversation, tabId, startNewTab, workspace, ensureConversationWithTab],
+    [
+      deleteConversation,
+      tabGroupId,
+      workspaceTabs,
+      workspace,
+      removeTabGroup,
+      setActiveTab,
+      switchTab,
+      ensureTabGroupWithTab,
+      startNewTab,
+      createTabGroupWithTab,
+    ],
   )
 
   return (
@@ -441,8 +502,8 @@ function ChatPageContent() {
     >
       <ConversationSidebar
         workspace={workspace}
-        onConversationSelect={handleConversationSelect}
-        onDeleteConversation={handleDeleteConversation}
+        onTabGroupSelect={handleTabGroupSelect}
+        onDeleteTabGroup={handleDeleteTabGroup}
         onOpenSettings={modals.openSettings}
         onOpenInvite={modals.openInvite}
       />
@@ -452,7 +513,7 @@ function ChatPageContent() {
           type="button"
           onClick={toggleSidebar}
           className="fixed top-3.5 left-3.5 z-50 p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors hidden md:flex"
-          aria-label="Open conversations"
+          aria-label="Open tab groups"
         >
           <PanelLeft size={18} className="text-black/40 dark:text-white/40" />
         </button>
@@ -506,7 +567,7 @@ function ChatPageContent() {
           {showTabs && tabsExpanded && (
             <TabBar
               tabs={tabs}
-              activeTabId={activeTab?.id ?? null}
+              activeTabId={activeTabInGroup?.id ?? null}
               onTabSelect={handleTabSelect}
               onTabClose={handleTabClose}
               onTabRename={handleTabRename}

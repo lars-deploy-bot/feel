@@ -11,27 +11,26 @@ import { useAppHydrated } from "@/lib/stores/HydrationBoundary"
 
 interface ConversationSidebarProps {
   workspace: string | null
-  onConversationSelect: (conversationId: string) => void
-  onDeleteConversation: (conversationId: string) => void
+  onTabGroupSelect: (tabGroupId: string) => void
+  onDeleteTabGroup: (tabGroupId: string) => void
   onOpenSettings: () => void
   onOpenInvite: () => void
 }
 
 /**
- * ConversationSidebar - Shows past conversations (desktop only)
+ * ConversationSidebar - Shows past tab groups (desktop only)
  *
  * Features:
- * - List of conversations sorted by last activity
- * - Click to switch conversations
- * - Delete conversations with confirmation modal
- * - New conversation button
+ * - List of tab groups sorted by last activity
+ * - Click to switch tab groups
+ * - Delete tab groups with confirmation modal
  * - Escape key to close
  * - Static layout (non-overlay) with smooth width animation
  */
 export function ConversationSidebar({
   workspace,
-  onConversationSelect,
-  onDeleteConversation,
+  onTabGroupSelect,
+  onDeleteTabGroup,
   onOpenSettings,
   onOpenInvite,
 }: ConversationSidebarProps) {
@@ -64,8 +63,8 @@ export function ConversationSidebar({
     return () => document.removeEventListener("keydown", handleEscape)
   }, [isOpen, closeSidebar])
 
-  const handleConversationClick = (conversationId: string) => {
-    onConversationSelect(conversationId)
+  const handleTabGroupClick = (tabGroupId: string) => {
+    onTabGroupSelect(tabGroupId)
   }
 
   const handleDeleteClick = (e: React.MouseEvent, conversation: DbConversation) => {
@@ -82,7 +81,7 @@ export function ConversationSidebar({
 
   const handleConfirmDelete = () => {
     if (conversationToDelete) {
-      onDeleteConversation(conversationToDelete.id)
+      onDeleteTabGroup(conversationToDelete.id)
     }
     setDeleteModalOpen(false)
     setConversationToDelete(null)
@@ -117,12 +116,12 @@ export function ConversationSidebar({
         className={`hidden md:flex flex-col h-full bg-white dark:bg-[#1a1a1a] border-r border-black/10 dark:border-white/10 transition-all duration-300 ease-in-out overflow-hidden ${
           isOpen ? "w-[280px]" : "w-0 border-r-0"
         }`}
-        aria-label="Conversation history"
+        aria-label="Tab group history"
       >
         <div className="flex flex-col h-full min-w-[280px]">
           {/* Header - h-14 matches chat header height */}
           <div className="h-14 flex items-center justify-between px-4 border-b border-black/10 dark:border-white/10">
-            <h2 className="text-sm font-medium text-black dark:text-white">Conversations</h2>
+            <h2 className="text-sm font-medium text-black dark:text-white">Tab groups</h2>
             <button
               type="button"
               onClick={closeSidebar}
@@ -133,12 +132,12 @@ export function ConversationSidebar({
             </button>
           </div>
 
-          {/* Conversation list */}
+          {/* Tab group list */}
           <div className="flex-1 overflow-y-auto">
             {!isHydrated ? (
               <div className="px-4 py-8 text-center text-sm text-black/40 dark:text-white/40">Loading...</div>
             ) : conversations.length === 0 ? (
-              <div className="px-4 py-8 text-center text-sm text-black/40 dark:text-white/40">No conversations yet</div>
+              <div className="px-4 py-8 text-center text-sm text-black/40 dark:text-white/40">No tab groups yet</div>
             ) : (
               <div className="py-2">
                 <AnimatePresence mode="popLayout">
@@ -147,7 +146,7 @@ export function ConversationSidebar({
                       key={conversation.id}
                       conversation={conversation}
                       isActive={conversation.id === currentConversationId}
-                      onClick={() => handleConversationClick(conversation.id)}
+                      onClick={() => handleTabGroupClick(conversation.id)}
                       onDelete={e => handleDeleteClick(e, conversation)}
                       formatTimestamp={formatTimestamp}
                     />
@@ -210,12 +209,12 @@ export function ConversationSidebar({
           >
             <div className="px-6 py-5 border-b border-black/10 dark:border-white/10">
               <h3 id="delete-dialog-title" className="text-lg font-medium text-black dark:text-white">
-                Delete conversation
+                Delete tab group
               </h3>
             </div>
             <div className="px-6 py-4">
               <p className="text-sm text-black/70 dark:text-white/70 mb-2">
-                Are you sure you want to delete this conversation?
+                Are you sure you want to delete this tab group?
               </p>
               <p className="text-sm font-medium text-black dark:text-white line-clamp-2 bg-black/5 dark:bg-white/5 px-3 py-2 rounded">
                 {conversationToDelete.title}
@@ -289,7 +288,7 @@ function ConversationItem({ conversation, isActive, onClick, onDelete, formatTim
             type="button"
             onClick={e => onDelete(e, conversation)}
             className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-all"
-            aria-label="Delete conversation"
+            aria-label="Delete tab group"
           >
             <Trash2 size={14} className="text-red-600 dark:text-red-400" />
           </button>

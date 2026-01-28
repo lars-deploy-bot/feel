@@ -8,10 +8,10 @@
 | 2 | Stream Buffer | [x] Complete | |
 | 3 | Streaming Store | [x] Complete | 60+ changes |
 | 4 | Delete Message Store | [x] Complete | messageStore.ts deleted, all consumers migrated to Dexie |
-| 5 | Tab Store Refactor | [x] Complete | createConversationWithTab added; sessionStore still drives session key (see notes) |
-| 6 | Hooks & Components | [x] Complete | Follow-up fixes applied: Dexie init, correct tabId usage, ChatInput readiness |
+| 5 | Tab Store Refactor | [~] In Progress | Introduce tabGroupId; tab = session; sidebar = tabgroup |
+| 6 | Hooks & Components | [~] In Progress | Wire tabgroup selection + Dexie tabgroup/tab sync |
 | 7 | Supabase Migration | [x] Complete | Code ready; SQL migration pending production deployment |
-| 8 | Tests & Cleanup | [x] Complete | All tests pass, docs updated, no old code remaining |
+| 8 | Tests & Cleanup | [ ] Pending | Update E2E + UI copy for tabgroups |
 
 ## Quick Links
 
@@ -37,14 +37,14 @@ Each PR file contains:
 
 ## Key Terminology Reminder
 
-- **Tab** = Primary chat entity, owns messages, maps to Claude SDK session
-- **Conversation** = Grouping layer, will link to git branches
-- **tabId** = Session key for Claude SDK `resume` parameter
-- **conversationId** = Grouping ID (required, every tab belongs to a conversation)
+- **Tabgroup** = Left panel entity (what users think of as a "conversation")
+- **Tab** = A workspace tab within a tabgroup
+- **conversationId** = Per‑tab session key for Claude SDK `resume` parameter
+- **tabGroupId** = Grouping ID for the left panel (Dexie conversation id)
 
-## Current Implementation Notes (2026-01-27)
+## Current Implementation Notes (2026-01-28)
 
-- The grouping layer is not fully wired yet. For now, `conversationId` is treated as the session key in most flows.
-- Dexie uses a temporary 1:1 mapping: `conversationId === tabId` for new chats so messaging stays consistent.
-- `tabStore.id` remains a UI-only identifier. The session key is stored in `tabStore.conversationId`.
-- Chat readiness now depends on Dexie session + tab sync; ChatInput recomputes `canSubmit` when readiness changes.
+- `conversationId` is the per‑tab session key (used as Claude SDK `resume`).
+- `tabGroupId` is the grouping id for the left panel and maps to Dexie conversations.
+- `tabStore.id` remains a UI-only identifier.
+- Dexie state should track both `currentConversationId` (tabgroup) and `currentTabId` (tab session).

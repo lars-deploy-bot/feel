@@ -64,8 +64,9 @@ interface DexieMessageStoreActions {
 
   // Conversation management
   initializeConversation: (workspace: string) => Promise<{ conversationId: string; tabId: string }>
-  ensureConversationWithTab: (
+  ensureTabGroupWithTab: (
     workspace: string,
+    tabGroupId: string,
     tabId: string,
   ) => Promise<{ conversationId: string; tabId: string; created: boolean }>
   switchConversation: (id: string, tabId?: string) => void
@@ -202,7 +203,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
     return { conversationId: id, tabId: defaultTabId }
   },
 
-  ensureConversationWithTab: async (workspace, tabId) => {
+  ensureTabGroupWithTab: async (workspace, tabGroupId, tabId) => {
     const { session } = get()
     if (!session) throw new Error("No session - call setSession first")
 
@@ -210,15 +211,23 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
     const existingTab = await db.tabs.get(tabId)
 
     if (existingTab) {
+      if (existingTab.conversationId !== tabGroupId) {
+        console.warn("[dexie] Tab group mismatch for tab, updating conversationId", {
+          tabId,
+          from: existingTab.conversationId,
+          to: tabGroupId,
+        })
+        await safeDb(() => db.tabs.update(tabId, { conversationId: tabGroupId, pendingSync: true }))
+      }
       set({
-        currentConversationId: existingTab.conversationId,
+        currentConversationId: tabGroupId,
         currentTabId: existingTab.id,
         currentWorkspace: workspace,
       })
-      return { conversationId: existingTab.conversationId, tabId: existingTab.id, created: false }
+      return { conversationId: tabGroupId, tabId: existingTab.id, created: false }
     }
 
-    const conversationId = tabId
+    const conversationId = tabGroupId
     const now = Date.now()
 
     await safeDb(() =>
@@ -603,7 +612,7 @@ export const useDexieMessageActions = () =>
   useDexieMessageStore(state => ({
     setSession: state.setSession,
     initializeConversation: state.initializeConversation,
-    ensureConversationWithTab: state.ensureConversationWithTab,
+    ensureTabGroupWithTab: state.ensureTabGroupWithTab,
     switchConversation: state.switchConversation,
     deleteConversation: state.deleteConversation,
     shareConversation: state.shareConversation,

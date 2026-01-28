@@ -14,7 +14,10 @@ import { useShallow } from "zustand/react/shallow"
 
 export interface Tab {
   id: string
+  /** Conversation/session id for this tab (Claude session key) */
   conversationId: string
+  /** Grouping id shown in left panel (tabgroup) */
+  tabGroupId: string
   name: string
   tabNumber: number // Sequential number, never reused
   createdAt: number
@@ -29,16 +32,20 @@ interface TabStoreState {
 }
 
 interface TabStoreActions {
-  addTab: (workspace: string, conversationId: string, name?: string) => Tab | null
+  addTab: (workspace: string, tabGroupId: string, conversationId: string, name?: string) => Tab | null
   removeTab: (workspace: string, tabId: string) => void
+  removeTabGroup: (workspace: string, tabGroupId: string) => void
   setActiveTab: (workspace: string, tabId: string) => void
   renameTab: (workspace: string, tabId: string, name: string) => void
   toggleTabsExpanded: (workspace: string) => void
   collapseTabsAndClear: (workspace: string) => void
-  openConversationInTab: (workspace: string, conversationId: string, name?: string) => Tab | null
+  openTabGroupInTab: (workspace: string, tabGroupId: string, name?: string) => Tab | null
   setTabInputDraft: (workspace: string, tabId: string, draft: string) => void
-  /** Creates a new conversation with Tab 1 inside it. Returns { conversationId, tabId } or null if max tabs reached. */
-  createConversationWithTab: (workspace: string) => { conversationId: string; tabId: string } | null
+  /** Creates a new tabgroup with Tab 1 inside it. Returns ids or null if max tabs reached. */
+  createTabGroupWithTab: (
+    workspace: string,
+    conversationIdOverride?: string,
+  ) => { tabGroupId: string; conversationId: string; tabId: string } | null
 }
 
 type TabStore = TabStoreState & TabStoreActions
@@ -46,6 +53,8 @@ type TabStore = TabStoreState & TabStoreActions
 const MAX_TABS = 10
 
 const genId = () => `tab-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+const genConversationId = () => crypto.randomUUID()
+const genTabGroupId = () => crypto.randomUUID()
 
 export const useTabStore = create<TabStore>()(
   persist(
@@ -65,11 +74,12 @@ export const useTabStore = create<TabStore>()(
         }))
       }
 
-      const createTab = (workspace: string, conversationId: string, name?: string): Tab => {
+      const createTab = (workspace: string, tabGroupId: string, conversationId: string, name?: string): Tab => {
         const num = getNextNumber(workspace)
         return {
           id: genId(),
           conversationId,
+          tabGroupId,
           name: name ?? `Tab ${num}`,
           tabNumber: num,
           createdAt: Date.now(),
@@ -86,11 +96,11 @@ export const useTabStore = create<TabStore>()(
         tabsExpandedByWorkspace: {},
         nextTabNumberByWorkspace: {},
 
-        addTab: (workspace, conversationId, name) => {
+        addTab: (workspace, tabGroupId, conversationId, name) => {
           const tabs = getTabs(workspace)
           if (tabs.length >= MAX_TABS) return null
 
-          const tab = createTab(workspace, conversationId, name)
+          const tab = createTab(workspace, tabGroupId, conversationId, name)
           addTabToWorkspace(workspace, tabs, tab)
           return tab
         },
@@ -105,6 +115,16 @@ export const useTabStore = create<TabStore>()(
           const newActiveId = activeId === tabId ? newTabs[Math.min(idx, newTabs.length - 1)]?.id : activeId
 
           setTabs(workspace, newTabs, newActiveId)
+        },
+
+        removeTabGroup: (workspace, tabGroupId) => {
+          const tabs = getTabs(workspace)
+          const remainingTabs = tabs.filter(t => t.tabGroupId !== tabGroupId)
+          const activeId = get().activeTabByWorkspace[workspace]
+          const activeStillExists = remainingTabs.some(t => t.id === activeId)
+          const nextActiveId = activeStillExists ? activeId : remainingTabs[0]?.id
+
+          setTabs(workspace, remainingTabs, nextActiveId)
         },
 
         setActiveTab: (workspace, tabId) => {
@@ -149,17 +169,17 @@ export const useTabStore = create<TabStore>()(
           }))
         },
 
-        openConversationInTab: (workspace, conversationId, name) => {
+        openTabGroupInTab: (workspace, tabGroupId, name) => {
           const tabs = getTabs(workspace)
 
-          const existing = tabs.find(t => t.conversationId === conversationId)
+          const existing = tabs.find(t => t.tabGroupId === tabGroupId)
           if (existing) {
             set(s => ({ activeTabByWorkspace: { ...s.activeTabByWorkspace, [workspace]: existing.id } }))
             return existing
           }
 
           if (tabs.length >= MAX_TABS) return null
-          const tab = createTab(workspace, conversationId, name)
+          const tab = createTab(workspace, tabGroupId, genConversationId(), name)
           addTabToWorkspace(workspace, tabs, tab)
           return tab
         },
@@ -172,20 +192,21 @@ export const useTabStore = create<TabStore>()(
           )
         },
 
-        createConversationWithTab: workspace => {
+        createTabGroupWithTab: (workspace, conversationIdOverride) => {
           const tabs = getTabs(workspace)
           if (tabs.length >= MAX_TABS) return null
 
-          const conversationId = crypto.randomUUID()
-          const tab = createTab(workspace, conversationId)
+          const tabGroupId = genTabGroupId()
+          const conversationId = conversationIdOverride ?? genConversationId()
+          const tab = createTab(workspace, tabGroupId, conversationId)
           addTabToWorkspace(workspace, tabs, tab)
-          return { conversationId, tabId: tab.id }
+          return { tabGroupId, conversationId, tabId: tab.id }
         },
       }
     },
     {
       name: "claude-tab-storage",
-      version: 2, // Bump version for migration
+      version: 3, // Bump version for migration
       /**
        * skipHydration: true - Prevents automatic hydration on store creation
        *
@@ -202,9 +223,10 @@ export const useTabStore = create<TabStore>()(
         nextTabNumberByWorkspace: s.nextTabNumberByWorkspace,
       }),
       migrate: (persisted, version) => {
+        const state = persisted as TabStoreState
+
         if (version === 1) {
-          // Migrate from v1: add tabNumber to existing tabs and compute nextTabNumber
-          const state = persisted as TabStoreState
+          // v1 -> v2: add tabNumber to existing tabs and compute nextTabNumber
           const newTabsByWorkspace: Record<string, Tab[]> = {}
           const nextNumbers: Record<string, number> = {}
 
@@ -222,6 +244,24 @@ export const useTabStore = create<TabStore>()(
             nextTabNumberByWorkspace: nextNumbers,
           }
         }
+
+        if (version === 2) {
+          // v2 -> v3: add tabGroupId for grouping (default to conversationId)
+          const newTabsByWorkspace: Record<string, Tab[]> = {}
+
+          for (const [ws, tabs] of Object.entries(state.tabsByWorkspace || {})) {
+            newTabsByWorkspace[ws] = tabs.map(t => ({
+              ...t,
+              tabGroupId: (t as Tab).tabGroupId ?? (t as Tab).conversationId,
+            }))
+          }
+
+          return {
+            ...state,
+            tabsByWorkspace: newTabsByWorkspace,
+          }
+        }
+
         return persisted
       },
     },
@@ -229,8 +269,13 @@ export const useTabStore = create<TabStore>()(
 )
 
 // Selectors
-export const useTabs = (workspace: string | null): Tab[] =>
-  useTabStore(s => (workspace ? s.tabsByWorkspace[workspace] || [] : []))
+export const useTabs = (workspace: string | null, tabGroupId?: string | null): Tab[] =>
+  useTabStore(s => {
+    if (!workspace) return []
+    const tabs = s.tabsByWorkspace[workspace] || []
+    if (!tabGroupId) return []
+    return tabs.filter(t => t.tabGroupId === tabGroupId)
+  })
 
 export const useActiveTab = (workspace: string | null): Tab | null =>
   useTabStore(s => {
@@ -243,13 +288,16 @@ export const useActiveTab = (workspace: string | null): Tab | null =>
 export const useTabsExpanded = (workspace: string | null): boolean =>
   useTabStore(s => (workspace ? (s.tabsExpandedByWorkspace[workspace] ?? false) : false))
 
+export const useWorkspaceTabs = (workspace: string | null): Tab[] =>
+  useTabStore(s => (workspace ? (s.tabsByWorkspace[workspace] ?? []) : []))
+
 /** Get all tabs for a specific conversation across all workspaces */
-export const useTabsForConversation = (conversationId: string | null): Tab[] =>
+export const useTabsForTabGroup = (tabGroupId: string | null): Tab[] =>
   useTabStore(s => {
-    if (!conversationId) return []
+    if (!tabGroupId) return []
     const allTabs: Tab[] = []
     for (const tabs of Object.values(s.tabsByWorkspace)) {
-      allTabs.push(...tabs.filter(t => t.conversationId === conversationId))
+      allTabs.push(...tabs.filter(t => t.tabGroupId === tabGroupId))
     }
     return allTabs
   })
@@ -259,12 +307,13 @@ export const useTabActions = (): TabStoreActions =>
     useShallow(s => ({
       addTab: s.addTab,
       removeTab: s.removeTab,
+      removeTabGroup: s.removeTabGroup,
       setActiveTab: s.setActiveTab,
       renameTab: s.renameTab,
       toggleTabsExpanded: s.toggleTabsExpanded,
       collapseTabsAndClear: s.collapseTabsAndClear,
-      openConversationInTab: s.openConversationInTab,
+      openTabGroupInTab: s.openTabGroupInTab,
       setTabInputDraft: s.setTabInputDraft,
-      createConversationWithTab: s.createConversationWithTab,
+      createTabGroupWithTab: s.createTabGroupWithTab,
     })),
   )
