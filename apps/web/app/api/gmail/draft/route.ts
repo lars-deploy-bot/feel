@@ -6,7 +6,7 @@
  */
 
 import { type NextRequest, NextResponse } from "next/server"
-import { google } from "googleapis"
+import { gmail_v1, auth as gauth } from "@googleapis/gmail"
 import { getSessionUser, createErrorResponse } from "@/features/auth/lib/auth"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getOAuthInstance } from "@/lib/oauth/oauth-instances"
@@ -67,9 +67,9 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. Create Gmail client
-    const oauth2Client = new google.auth.OAuth2()
+    const oauth2Client = new gauth.OAuth2()
     oauth2Client.setCredentials({ access_token: accessToken })
-    const gmail = google.gmail({ version: "v1", auth: oauth2Client })
+    const gmail = new gmail_v1.Gmail({ auth: oauth2Client })
 
     // 5. Create draft
     const raw = createRawEmail(body)
