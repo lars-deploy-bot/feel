@@ -54,7 +54,7 @@
     "ship": "bash -c 'git add -A && git commit -m \"$1\" && git push' --"
   },
   "lint-staged": {
-    "**/*.{ts,tsx,js,jsx,json,md}": [
+    "**/*.{ts,tsx,js,jsx,json}": [
       "biome format --write"
     ]
   },
