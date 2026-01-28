@@ -2,22 +2,42 @@
 
 import { Bot, Building2, ClipboardList, Flag, Globe, Key, Link, Settings, Shield, Target, User, X } from "lucide-react"
 import { motion } from "framer-motion"
-import { useState } from "react"
+import { lazy, Suspense, useState } from "react"
 import { useIsDesktop } from "@/hooks/useMediaQuery"
 import { useAuth } from "@/features/deployment/hooks/useAuth"
-import { IntegrationsList } from "@/components/settings/integrations-list"
-import { UserEnvKeysSettings } from "@/components/settings/user-env-keys"
-import {
-  AccountSettings,
-  LLMSettings,
-  GoalSettings,
-  UserPromptsSettings,
-  WorkspaceSettings,
-  WebsitesSettings,
-  FlagsSettings,
-  AdminSettings,
-  SettingsTabLayout,
-} from "@/components/settings/tabs"
+
+// Lazy load tab components - only load on demand to speed up modal opening
+const AccountSettings = lazy(() =>
+  import("@/components/settings/tabs/AccountSettings").then(m => ({ default: m.AccountSettings })),
+)
+const LLMSettings = lazy(() => import("@/components/settings/tabs/LLMSettings").then(m => ({ default: m.LLMSettings })))
+const GoalSettings = lazy(() =>
+  import("@/components/settings/tabs/GoalSettings").then(m => ({ default: m.GoalSettings })),
+)
+const UserPromptsSettings = lazy(() =>
+  import("@/components/settings/tabs/UserPromptsSettings").then(m => ({ default: m.UserPromptsSettings })),
+)
+const WorkspaceSettings = lazy(() =>
+  import("@/components/settings/tabs/WorkspaceSettings").then(m => ({ default: m.WorkspaceSettings })),
+)
+const WebsitesSettings = lazy(() =>
+  import("@/components/settings/tabs/WebsitesSettings").then(m => ({ default: m.WebsitesSettings })),
+)
+const FlagsSettings = lazy(() =>
+  import("@/components/settings/tabs/FlagsSettings").then(m => ({ default: m.FlagsSettings })),
+)
+const AdminSettings = lazy(() =>
+  import("@/components/settings/tabs/AdminSettings").then(m => ({ default: m.AdminSettings })),
+)
+const SettingsTabLayout = lazy(() =>
+  import("@/components/settings/tabs/SettingsTabLayout").then(m => ({ default: m.SettingsTabLayout })),
+)
+const IntegrationsList = lazy(() =>
+  import("@/components/settings/integrations-list").then(m => ({ default: m.IntegrationsList })),
+)
+const UserEnvKeysSettings = lazy(() =>
+  import("@/components/settings/user-env-keys").then(m => ({ default: m.UserEnvKeysSettings })),
+)
 
 type SettingsTab =
   | "account"
@@ -147,16 +167,18 @@ export function SettingsModal({ onClose, initialTab }: SettingsModalProps) {
           {/* Scrollable Content */}
           <div className="flex-1 overflow-y-auto px-4 sm:px-6">
             <div className="animate-in fade-in-0 duration-200">
-              {activeTab === "account" && <AccountSettings onClose={onClose} />}
-              {activeTab === "llm" && <LLMSettings onClose={onClose} />}
-              {activeTab === "goal" && <GoalSettings onClose={onClose} />}
-              {activeTab === "prompts" && <UserPromptsSettings onClose={onClose} />}
-              {activeTab === "organization" && <WorkspaceSettings onClose={onClose} />}
-              {activeTab === "websites" && <WebsitesSettings onClose={onClose} />}
-              {activeTab === "integrations" && <IntegrationsListWithHeader onClose={onClose} />}
-              {activeTab === "keys" && <UserEnvKeysWithHeader onClose={onClose} />}
-              {activeTab === "flags" && <FlagsSettings onClose={onClose} />}
-              {activeTab === "admin" && <AdminSettings onClose={onClose} />}
+              <Suspense fallback={<div className="py-8 text-center text-black/50 dark:text-white/50">Loading...</div>}>
+                {activeTab === "account" && <AccountSettings onClose={onClose} />}
+                {activeTab === "llm" && <LLMSettings onClose={onClose} />}
+                {activeTab === "goal" && <GoalSettings onClose={onClose} />}
+                {activeTab === "prompts" && <UserPromptsSettings onClose={onClose} />}
+                {activeTab === "organization" && <WorkspaceSettings onClose={onClose} />}
+                {activeTab === "websites" && <WebsitesSettings onClose={onClose} />}
+                {activeTab === "integrations" && <IntegrationsListWithHeader onClose={onClose} />}
+                {activeTab === "keys" && <UserEnvKeysWithHeader onClose={onClose} />}
+                {activeTab === "flags" && <FlagsSettings onClose={onClose} />}
+                {activeTab === "admin" && <AdminSettings onClose={onClose} />}
+              </Suspense>
             </div>
           </div>
         </div>
