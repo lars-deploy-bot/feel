@@ -19,6 +19,7 @@
  * 3. Use workspace-scoped hooks for conversations
  */
 
+import Dexie from "dexie"
 import { create } from "zustand"
 import { getMessageDb, CURRENT_MESSAGE_VERSION, type DbConversation, type DbMessage, type DbTab } from "./messageDb"
 import { safeDb } from "./safeDb"
@@ -134,9 +135,15 @@ function enqueueTabWrite(tabId: string, fn: () => Promise<void>): Promise<void> 
  *
  * IMPORTANT: Must only be called inside enqueueTabWrite to prevent
  * concurrent reads returning the same seq.
+ *
+ * Uses the compound [tabId+seq] index so .last() returns the highest seq,
+ * not the last entry by primary key (id/UUID).
  */
 async function getNextSeq(db: ReturnType<typeof getMessageDb>, tabId: string): Promise<number> {
-  const lastMessage = await db.messages.where("tabId").equals(tabId).last()
+  const lastMessage = await db.messages
+    .where("[tabId+seq]")
+    .between([tabId, Dexie.minKey], [tabId, Dexie.maxKey])
+    .last()
   return (lastMessage?.seq ?? 0) + 1
 }
 
@@ -524,24 +531,28 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
 
     const db = getMessageDb(session.userId)
     const id = generateId()
-    const now = Date.now()
-    const seq = await getNextSeq(db, tabId)
 
-    const dbMessage: DbMessage = {
-      id,
-      tabId,
-      type: "assistant",
-      content: { kind: "text", text: "" },
-      createdAt: now,
-      updatedAt: now,
-      version: CURRENT_MESSAGE_VERSION,
-      status: "streaming",
-      origin: "local",
-      seq,
-      pendingSync: false,
-    }
+    // Use enqueueTabWrite to serialize with addMessage and prevent seq races
+    await enqueueTabWrite(tabId, async () => {
+      const now = Date.now()
+      const seq = await getNextSeq(db, tabId)
 
-    await safeDb(() => db.messages.put(dbMessage))
+      const dbMessage: DbMessage = {
+        id,
+        tabId,
+        type: "assistant",
+        content: { kind: "text", text: "" },
+        createdAt: now,
+        updatedAt: now,
+        version: CURRENT_MESSAGE_VERSION,
+        status: "streaming",
+        origin: "local",
+        seq,
+        pendingSync: false,
+      }
+
+      await safeDb(() => db.messages.put(dbMessage))
+    })
 
     set(state => ({
       activeStreamByTab: { ...state.activeStreamByTab, [tabId]: id },

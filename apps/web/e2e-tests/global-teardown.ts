@@ -9,6 +9,13 @@ import { getSupabaseCredentials } from "@/lib/env/server"
 import type { AppDatabase } from "@webalive/database"
 import type { IamDatabase } from "@webalive/database"
 
+function formatError(error: unknown): string {
+  if (error instanceof Error) return error.message
+  if (typeof error === "object" && error !== null && "message" in error)
+    return String((error as { message: unknown }).message)
+  return JSON.stringify(error)
+}
+
 export default async function globalTeardown() {
   const runId = process.env.E2E_RUN_ID
 
@@ -33,13 +40,27 @@ export default async function globalTeardown() {
   const orgIds = orgs?.map(o => o.org_id) || []
 
   const stats = {
+    sessions: 0,
     domains: 0,
     memberships: 0,
     orgs: 0,
     users: 0,
   }
 
-  // 3. Delete domains
+  // 3. Delete sessions (must happen before users due to FK constraint)
+  if (userIds.length > 0) {
+    try {
+      const { count, error } = await iam.from("sessions").delete({ count: "exact" }).in("user_id", userIds)
+      if (error) throw error
+      stats.sessions = count || 0
+    } catch (error) {
+      console.error(`⚠️  [Global Teardown] Failed to delete sessions for user_ids: ${userIds.join(", ")}`)
+      console.error(`   Error: ${formatError(error)}`)
+      stats.sessions = 0
+    }
+  }
+
+  // 4. Delete domains
   if (orgIds.length > 0) {
     try {
       const { count, error } = await app.from("domains").delete({ count: "exact" }).in("org_id", orgIds)
@@ -47,12 +68,12 @@ export default async function globalTeardown() {
       stats.domains = count || 0
     } catch (error) {
       console.error(`⚠️  [Global Teardown] Failed to delete domains for org_ids: ${orgIds.join(", ")}`)
-      console.error(`   Error: ${error instanceof Error ? error.message : String(error)}`)
+      console.error(`   Error: ${formatError(error)}`)
       stats.domains = 0
     }
   }
 
-  // 4. Delete memberships
+  // 5. Delete memberships
   if (userIds.length > 0) {
     try {
       const { count, error } = await iam.from("org_memberships").delete({ count: "exact" }).in("user_id", userIds)
@@ -60,12 +81,12 @@ export default async function globalTeardown() {
       stats.memberships = count || 0
     } catch (error) {
       console.error(`⚠️  [Global Teardown] Failed to delete org_memberships for user_ids: ${userIds.join(", ")}`)
-      console.error(`   Error: ${error instanceof Error ? error.message : String(error)}`)
+      console.error(`   Error: ${formatError(error)}`)
       stats.memberships = 0
     }
   }
 
-  // 5. Delete orgs
+  // 6. Delete orgs
   if (orgIds.length > 0) {
     try {
       const { count, error } = await iam.from("orgs").delete({ count: "exact" }).in("org_id", orgIds)
@@ -73,12 +94,12 @@ export default async function globalTeardown() {
       stats.orgs = count || 0
     } catch (error) {
       console.error(`⚠️  [Global Teardown] Failed to delete orgs for org_ids: ${orgIds.join(", ")}`)
-      console.error(`   Error: ${error instanceof Error ? error.message : String(error)}`)
+      console.error(`   Error: ${formatError(error)}`)
       stats.orgs = 0
     }
   }
 
-  // 6. Delete users
+  // 7. Delete users
   if (userIds.length > 0) {
     try {
       const { count, error } = await iam.from("users").delete({ count: "exact" }).in("user_id", userIds)
@@ -86,11 +107,12 @@ export default async function globalTeardown() {
       stats.users = count || 0
     } catch (error) {
       console.error(`⚠️  [Global Teardown] Failed to delete users for user_ids: ${userIds.join(", ")}`)
-      console.error(`   Error: ${error instanceof Error ? error.message : String(error)}`)
+      console.error(`   Error: ${formatError(error)}`)
       stats.users = 0
     }
   }
 
+  console.log(`✓ Sessions: ${stats.sessions}`)
   console.log(`✓ Domains: ${stats.domains}`)
   console.log(`✓ Memberships: ${stats.memberships}`)
   console.log(`✓ Orgs: ${stats.orgs}`)
