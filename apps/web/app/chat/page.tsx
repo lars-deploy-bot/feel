@@ -190,7 +190,7 @@ function ChatPageContent() {
   // sessionTabId is the primary session key for Claude SDK (resume parameter)
   const tabId = sessionTabId
   const tabGroupId = sessionTabGroupId
-  const { createSessionId, startNewTabGroup, switchTab } = sessionActions
+  const { addTabToGroup, startNewTabGroup, switchTab } = sessionActions
   const isChatReady = !!dexieSession && sessionReady && storeTabId === tabId
 
   // Chat messaging hook - handles sendMessage, streaming, agent supervisor
@@ -204,7 +204,7 @@ function ChatPageContent() {
     isSubmittingRef,
   } = useChatMessaging({
     workspace,
-    sessionId: tabId,
+    tabId,
     tabGroupId,
     isTerminal,
     busy,
@@ -291,10 +291,9 @@ function ChatPageContent() {
   } = useTabsManagement({
     workspace,
     tabGroupId,
-    activeSessionId: tabId,
-    onSwitchSession: handleSwitchConversationForTabs,
+    activeTabId: tabId,
+    onSwitchTab: handleSwitchConversationForTabs,
     onInitializeTab: initializeTab,
-    onCreateSessionId: createSessionId,
     currentInput: msg,
     onInputRestore: setMsg,
   })
@@ -305,13 +304,14 @@ function ChatPageContent() {
     if (!mounted || !workspace || !dexieSession || !activeTab) return
 
     // Sync Dexie store if it doesn't match the active tab
-    if (storeTabId === activeTab.sessionId && storeTabGroupId === activeTab.tabGroupId) return
-    void ensureTabGroupWithTab(workspace, activeTab.tabGroupId, activeTab.sessionId)
+    // Tab.id IS the conversation key
+    if (storeTabId === activeTab.id && storeTabGroupId === activeTab.tabGroupId) return
+    void ensureTabGroupWithTab(workspace, activeTab.tabGroupId, activeTab.id)
   }, [
     mounted,
     workspace,
     dexieSession,
-    activeTab?.sessionId,
+    activeTab?.id,
     activeTab?.tabGroupId,
     ensureTabGroupWithTab,
     storeTabId,
@@ -455,15 +455,13 @@ function ChatPageContent() {
       if (tabGroupIdToArchive === tabGroupId && workspace) {
         if (nextTab) {
           setActiveTab(workspace, nextTab.id)
-          switchTab(nextTab.sessionId)
-          await ensureTabGroupWithTab(workspace, nextTab.tabGroupId, nextTab.sessionId)
+          switchTab(nextTab.id)
+          await ensureTabGroupWithTab(workspace, nextTab.tabGroupId, nextTab.id)
         } else {
-          const nextTabId = createSessionId()
-          if (nextTabId) {
-            const created = createTabGroupWithTab(workspace, nextTabId)
-            if (created) {
-              await ensureTabGroupWithTab(workspace, created.tabGroupId, created.sessionId)
-            }
+          // Create a new tab group when archiving the current one
+          const created = createTabGroupWithTab(workspace)
+          if (created) {
+            await ensureTabGroupWithTab(workspace, created.tabGroupId, created.tabId)
           }
         }
         setMsg("")
@@ -478,7 +476,6 @@ function ChatPageContent() {
       setActiveTab,
       switchTab,
       ensureTabGroupWithTab,
-      createSessionId,
       createTabGroupWithTab,
     ],
   )

@@ -3,19 +3,14 @@
 import { useCallback, useEffect, useMemo, useRef } from "react"
 import { useActiveTab, useTabActions, useWorkspaceTabs, type Tab } from "@/lib/stores/tabStore"
 import { useIsStreamActive } from "@/lib/stores/streamingStore"
-import { useSessionActions } from "@/lib/stores/sessionStore"
+import type { TabId, TabGroupId } from "@/lib/types/ids"
 
 /**
  * ActiveSession - Single source of truth for the current chat session
  *
  * PROBLEM THIS SOLVES:
- * Previously, 3 stores tracked "active tab" independently:
- * - sessionStore.currentSessionId (Claude SDK session key)
- * - tabStore.activeTabByWorkspace[workspace] (UI tab state)
- * - dexieMessageStore.currentTabId (message persistence)
- *
- * This caused race conditions when switching tabs, workspaces, or during
- * async operations like ensureTabGroupWithTab().
+ * Previously, multiple stores tracked "active tab" independently, causing
+ * race conditions when switching tabs, workspaces, or during async operations.
  *
  * SOLUTION:
  * This hook provides a single, typed interface to the active session.
@@ -23,7 +18,7 @@ import { useSessionActions } from "@/lib/stores/sessionStore"
  * values from this hook, not from individual stores.
  *
  * The source of truth is tabStore.activeTab because:
- * 1. useChatMessaging uses activeTab.sessionId for startStream()
+ * 1. Tab.id IS the Claude conversation key (no separate sessionId)
  * 2. All UI rendering uses activeTab for display
  * 3. It's synchronous (no async hydration issues)
  *
@@ -32,16 +27,16 @@ import { useSessionActions } from "@/lib/stores/sessionStore"
  * const session = useActiveSession(workspace)
  *
  * // For streaming operations
- * streamingActions.startStream(session.tabId)  // Never use raw tabId!
+ * streamingActions.startStream(session.tabId)  // Tab.id = conversation key
  *
  * // For checking busy state
- * const busy = session.isStreaming  // Never use useIsStreamActive directly!
+ * const busy = session.isStreaming
  *
  * // Guard before operations
  * if (!session.isReady) return  // Tab not yet available
  *
- * // For creating new tabs
- * const newTabId = session.actions.createSessionId()
+ * // For creating new tab groups
+ * const newTabId = session.actions.startNewTabGroup()
  *
  * // For switching tabs
  * session.actions.switchTab(otherTabId)
@@ -50,39 +45,37 @@ import { useSessionActions } from "@/lib/stores/sessionStore"
 
 export interface SessionActions {
   /**
-   * Create a new sessionId in sessionStore only.
-   * Use this when adding a tab to an EXISTING tabGroup.
-   * Returns the new sessionId or empty string if failed.
+   * Add a new tab to the current tabGroup.
+   * Returns the new tab's ID (which is also the conversation key) or empty string if failed.
    */
-  createSessionId: () => string
+  addTabToGroup: () => TabId | ""
 
   /**
    * Create a new tabGroup with its first tab.
    * Use this for "New Tab Group" - creates a fresh tab group.
-   * Returns the new sessionId or empty string if failed.
+   * Returns the new tab's ID (which is also the conversation key) or empty string if failed.
    */
-  startNewTabGroup: () => string
+  startNewTabGroup: () => TabId | ""
 
   /**
-   * Switch to an existing tab by its sessionId.
+   * Switch to an existing tab by its ID.
    */
-  switchTab: (sessionId: string) => void
+  switchTab: (tabId: TabId) => void
 }
 
 export interface ActiveSession {
   /**
-   * The session ID for Claude SDK session key.
-   * Use this for: startStream, endStream, cancel, reconnect.
+   * The tab ID - ALSO the Claude conversation key.
+   * Use this for: startStream, endStream, cancel, reconnect, Dexie keys.
    * null if no active tab exists.
    */
-  tabId: string | null
+  tabId: TabId | null
 
   /**
-   * The tab group ID for grouping related tabs.
-   * Use this for: API requests, server-side session lookup.
+   * The tab group ID for grouping related tabs in the sidebar.
    * null if no active tab exists.
    */
-  tabGroupId: string | null
+  tabGroupId: TabGroupId | null
 
   /**
    * Whether the session is ready for operations.
@@ -122,19 +115,15 @@ export interface ActiveSession {
  * Hook to get the active session for a workspace.
  *
  * @param workspace - The workspace domain (e.g., "example.com")
- * @returns ActiveSession with all values derived from single source of truth
+ * @returns ActiveSession with all values derived from tabStore (single source of truth)
  */
 export function useActiveSession(workspace: string | null): ActiveSession {
   const activeTab = useActiveTab(workspace)
   const workspaceTabs = useWorkspaceTabs(workspace)
-  const { setActiveTab, createTabGroupWithTab } = useTabActions()
-  const { initSession, newSession, switchToSession } = useSessionActions()
+  const { addTab, setActiveTab, createTabGroupWithTab } = useTabActions()
   const prevWorkspaceRef = useRef<string | null>(null)
 
-  // Initialize session when workspace changes and no active tab exists
-  // This handles:
-  // 1. First load: creates new tab
-  // 2. Workspace switch: resumes existing session or creates new
+  // Initialize first tab when workspace changes and no active tab exists
   useEffect(() => {
     if (!workspace) return
     if (prevWorkspaceRef.current === workspace) return
@@ -146,64 +135,50 @@ export function useActiveSession(workspace: string | null): ActiveSession {
       return
     }
 
-    // Initialize session from sessionStore (may resume existing or create new)
-    const sessionId = initSession(workspace)
+    // Create first tab group for this workspace
+    createTabGroupWithTab(workspace)
+  }, [workspace, activeTab, createTabGroupWithTab])
 
-    // Create a tab in tabStore for this session
-    createTabGroupWithTab(workspace, sessionId)
-  }, [workspace, activeTab, initSession, createTabGroupWithTab])
-
-  // CRITICAL: All streaming state must be read from the same tabId
-  // that useChatMessaging uses for startStream().
-  // activeTab.sessionId is that source of truth.
-  const tabId = activeTab?.sessionId ?? null
+  // Tab.id IS the conversation key - no separate sessionId
+  const tabId = activeTab?.id ?? null
   const tabGroupId = activeTab?.tabGroupId ?? null
 
   // Streaming state scoped to the active tab
   const isStreaming = useIsStreamActive(tabId)
 
-  // Session is ready when we have a valid tab with sessionId
+  // Session is ready when we have a valid tab
   const isReady = tabId !== null && tabGroupId !== null
 
-  // Action: Create a new sessionId in sessionStore only
-  // This is used by useTabsManagement when adding a tab to an EXISTING tabGroup
-  // For creating a NEW tabGroup, use startNewTabGroup instead
-  const createSessionId = useCallback((): string => {
-    if (!workspace) {
+  // Action: Add a new tab to the current tabGroup
+  const addTabToGroup = useCallback((): TabId | "" => {
+    if (!workspace || !tabGroupId) {
       return ""
     }
-    return newSession(workspace)
-  }, [workspace, newSession])
+    const newTab = addTab(workspace, tabGroupId)
+    return newTab?.id ?? ""
+  }, [workspace, tabGroupId, addTab])
 
   // Action: Create a new tabGroup with its first tab
-  // This is used for "New Tab Group" button - creates a fresh tab group
-  const startNewTabGroup = useCallback((): string => {
+  const startNewTabGroup = useCallback((): TabId | "" => {
     if (!workspace) {
       return ""
     }
-    const newId = newSession(workspace)
-    createTabGroupWithTab(workspace, newId)
-    return newId
-  }, [workspace, newSession, createTabGroupWithTab])
+    const result = createTabGroupWithTab(workspace)
+    return result?.tabId ?? ""
+  }, [workspace, createTabGroupWithTab])
 
-  // Action: Switch to an existing tab (syncs sessionStore + tabStore)
+  // Action: Switch to an existing tab by its ID
   const switchTab = useCallback(
-    (sessionId: string) => {
+    (targetTabId: TabId) => {
       if (!workspace) return
-      // Update sessionStore
-      switchToSession(sessionId, workspace)
-      // Find and activate the tab in tabStore
-      const tab = workspaceTabs.find(t => t.sessionId === sessionId)
-      if (tab) {
-        setActiveTab(workspace, tab.id)
-      }
+      setActiveTab(workspace, targetTabId)
     },
-    [workspace, switchToSession, workspaceTabs, setActiveTab],
+    [workspace, setActiveTab],
   )
 
   const actions = useMemo(
-    () => ({ createSessionId, startNewTabGroup, switchTab }),
-    [createSessionId, startNewTabGroup, switchTab],
+    () => ({ addTabToGroup, startNewTabGroup, switchTab }),
+    [addTabToGroup, startNewTabGroup, switchTab],
   )
 
   return useMemo(
@@ -237,6 +212,6 @@ export function useActiveSession(workspace: string | null): ActiveSession {
  */
 export function assertSessionReady(
   session: ActiveSession,
-): session is ActiveSession & { tabId: string; tabGroupId: string; isReady: true } {
+): session is ActiveSession & { tabId: TabId; tabGroupId: TabGroupId; isReady: true } {
   return session.isReady && session.tabId !== null && session.tabGroupId !== null
 }

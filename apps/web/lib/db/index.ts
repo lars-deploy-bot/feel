@@ -87,6 +87,7 @@ export {
 export {
   useDexieMessageStore,
   useDexieCurrentConversationId,
+  useDexieCurrentTabGroupId,
   useDexieCurrentTabId,
   useDexieCurrentWorkspace,
   useDexieIsSyncing,

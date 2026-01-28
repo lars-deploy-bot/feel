@@ -28,8 +28,8 @@ import { useActiveTab } from "@/lib/stores/tabStore"
 
 interface UseChatMessagingOptions {
   workspace: string | null
-  /** Session ID (Claude SDK session key) for this tab */
-  sessionId: string | null
+  /** Tab ID — also the Claude conversation key */
+  tabId: string | null
   /** Tab group ID — required for lock key */
   tabGroupId: string | null
   isTerminal: boolean
@@ -52,7 +52,7 @@ interface UseChatMessagingOptions {
  */
 export function useChatMessaging({
   workspace,
-  sessionId,
+  tabId,
   tabGroupId,
   isTerminal,
   busy,
@@ -90,23 +90,22 @@ export function useChatMessaging({
 
   const createRequestBody = useCallback(
     (message: string, analyzeImageUrls?: string[]) => {
-      // Strict: require activeTab with sessionId — no fallbacks
-      const tabId = activeTab?.sessionId
-      if (!tabId || !tabGroupId) {
+      // Tab.id IS the conversation key - no separate sessionId
+      const activeTabId = activeTab?.id
+      if (!activeTabId || !tabGroupId) {
         throw new Error("[useChatMessaging] Cannot create request: activeTab or tabGroupId is missing")
       }
       const baseBody = {
         message,
-        sessionId,
+        tabId: activeTabId,
         tabGroupId,
-        tabId,
         apiKey: userApiKey || undefined,
         model: userModel,
         analyzeImageUrls: analyzeImageUrls?.length ? analyzeImageUrls : undefined,
       }
       return isTerminal ? { ...baseBody, workspace: workspace || undefined } : baseBody
     },
-    [sessionId, activeTab?.sessionId, tabGroupId, userApiKey, userModel, isTerminal, workspace],
+    [tabId, activeTab?.id, tabGroupId, userApiKey, userModel, isTerminal, workspace],
   )
 
   const buildPromptForClaude = useCallback((userMessage: UIMessage): PromptBuildResult => {
@@ -224,7 +223,7 @@ export function useChatMessaging({
       let shouldStopReading = false
 
       // Capture the tabId at stream start for validation — strict, no fallback
-      const expectedTabId = activeTab?.sessionId
+      const expectedTabId = activeTab?.id
 
       // Track seen messageIds for idempotency (prevents duplicate processing)
       const seenMessageIds = new Set<string>()
@@ -566,11 +565,11 @@ export function useChatMessaging({
       const messageToSend = overrideMessage ?? msg
       // Note: isStopping check is done by the caller in ChatInput
       if (isSubmitting.current || busy || !messageToSend.trim()) return
-      // Strict: require both sessionId and activeTab — no fallbacks
-      if (!sessionId || !activeTab?.sessionId) return
+      // Strict: require activeTab — tab.id IS the conversation key
+      if (!tabId || !activeTab?.id) return
 
-      // Use the active tab's session key for streaming and message routing
-      const targetTabId = activeTab.sessionId
+      // Use the active tab's ID for streaming and message routing
+      const targetTabId = activeTab.id
 
       isSubmitting.current = true
       streamingActions.startStream(targetTabId)
@@ -598,8 +597,8 @@ export function useChatMessaging({
     [
       msg,
       busy,
-      sessionId,
-      activeTab?.sessionId,
+      tabId,
+      activeTab?.id,
       streamingActions,
       chatInputRef,
       addMessage,

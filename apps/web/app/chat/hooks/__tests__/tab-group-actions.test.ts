@@ -35,10 +35,11 @@ describe("Tab group actions", () => {
   it("addTab does not create a new tab group and makes the new tab active", () => {
     const { createTabGroupWithTab, addTab } = useTabStore.getState()
 
-    const created = createTabGroupWithTab(WS, "conv-A")!
+    // Tab.id is now auto-generated UUID (no sessionId parameter)
+    const created = createTabGroupWithTab(WS)!
     expect(getGroupIds(WS).size).toBe(1)
 
-    const tabB = addTab(WS, created.tabGroupId, "conv-B")!
+    const tabB = addTab(WS, created.tabGroupId)!
     expect(getGroupIds(WS).size).toBe(1)
 
     const groupTabs = getOpenTabs(WS).filter(t => t.tabGroupId === created.tabGroupId)
@@ -49,8 +50,9 @@ describe("Tab group actions", () => {
   it("createTabGroupWithTab creates a new group and switches active tab to it", () => {
     const { createTabGroupWithTab } = useTabStore.getState()
 
-    createTabGroupWithTab(WS, "conv-A")
-    const created = createTabGroupWithTab(WS, "conv-B")!
+    // Tab.id is now auto-generated UUID (no sessionId parameter)
+    createTabGroupWithTab(WS)
+    const created = createTabGroupWithTab(WS)!
 
     expect(getGroupIds(WS).size).toBe(2)
 
@@ -58,6 +60,6 @@ describe("Tab group actions", () => {
     const activeTab = getOpenTabs(WS).find(t => t.id === activeTabId)
 
     expect(activeTab?.tabGroupId).toBe(created.tabGroupId)
-    expect(activeTab?.sessionId).toBe("conv-B")
+    expect(activeTab?.id).toBeDefined()
   })
 })

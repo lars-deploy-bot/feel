@@ -23,7 +23,6 @@ import { useGoalStoreBase } from "./goalStore"
 import { registerStore } from "./hydration-registry"
 import { useLLMStoreBase } from "./llmStore"
 import { useOnboardingStoreBase } from "./onboardingStore"
-import { useSessionStoreBase } from "./sessionStore"
 import { useTabStore } from "./tabStore"
 // Import all stores that need coordinated hydration
 // These imports are type-only initially, we access .persist at runtime
@@ -48,13 +47,6 @@ function registerAllStores(): void {
     rehydrate: wrapRehydrate(() => useWorkspaceStoreBase.persist.rehydrate()),
     hasHydrated: () => useWorkspaceStoreBase.persist.hasHydrated(),
     priority: 10,
-  })
-
-  registerStore({
-    name: "session",
-    rehydrate: wrapRehydrate(() => useSessionStoreBase.persist.rehydrate()),
-    hasHydrated: () => useSessionStoreBase.persist.hasHydrated(),
-    priority: 15,
   })
 
   // Data stores (medium-high priority)
@@ -110,7 +102,7 @@ function registerAllStores(): void {
     priority: 105,
   })
 
-  console.log("[StoreRegistrations] All 9 stores registered for coordinated hydration")
+  console.log("[StoreRegistrations] All 8 stores registered for coordinated hydration")
 }
 
 // Auto-register when this module is imported

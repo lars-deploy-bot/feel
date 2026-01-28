@@ -3,6 +3,7 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import { useShallow } from "zustand/react/shallow"
+import type { TabId, TabGroupId } from "@/lib/types/ids"
 
 /**
  * Tab Store - Manages conversation tabs per workspace
@@ -13,11 +14,10 @@ import { useShallow } from "zustand/react/shallow"
  */
 
 export interface Tab {
-  id: string
-  /** Claude session id for this tab (backend session key) */
-  sessionId: string
+  /** Unique tab identifier - ALSO the Claude conversation key */
+  id: TabId
   /** Grouping id shown in left panel (sidebar item) */
-  tabGroupId: string
+  tabGroupId: TabGroupId
   name: string
   tabNumber: number // Sequential number, never reused
   createdAt: number
@@ -35,30 +35,28 @@ interface TabStoreState {
 }
 
 interface TabStoreActions {
-  addTab: (workspace: string, tabGroupId: string, sessionId: string, name?: string) => Tab | null
-  removeTab: (workspace: string, tabId: string) => void
-  reopenTab: (workspace: string, tabId: string) => void
-  removeTabGroup: (workspace: string, tabGroupId: string) => void
-  setActiveTab: (workspace: string, tabId: string) => void
-  renameTab: (workspace: string, tabId: string, name: string) => void
+  addTab: (workspace: string, tabGroupId: TabGroupId, name?: string) => Tab | null
+  removeTab: (workspace: string, tabId: TabId) => void
+  reopenTab: (workspace: string, tabId: TabId) => void
+  removeTabGroup: (workspace: string, tabGroupId: TabGroupId) => void
+  setActiveTab: (workspace: string, tabId: TabId) => void
+  renameTab: (workspace: string, tabId: TabId, name: string) => void
   toggleTabsExpanded: (workspace: string) => void
   collapseTabsAndClear: (workspace: string) => void
-  openTabGroupInTab: (workspace: string, tabGroupId: string, name?: string) => Tab | null
-  setTabInputDraft: (workspace: string, tabId: string, draft: string) => void
+  openTabGroupInTab: (workspace: string, tabGroupId: TabGroupId, name?: string) => Tab | null
+  setTabInputDraft: (workspace: string, tabId: TabId, draft: string) => void
   /** Creates a new tabgroup with Tab 1 inside it. Returns ids or null if max tabs reached. */
-  createTabGroupWithTab: (
-    workspace: string,
-    sessionIdOverride?: string,
-  ) => { tabGroupId: string; sessionId: string; tabId: string } | null
+  createTabGroupWithTab: (workspace: string) => { tabGroupId: TabGroupId; tabId: TabId } | null
 }
 
 type TabStore = TabStoreState & TabStoreActions
 
 const MAX_TABS = 10
+const STORE_VERSION = 6 // Bump: Tab.id is now the conversation key (removed sessionId)
 
-const genId = () => `tab-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-const genSessionId = () => crypto.randomUUID()
-const genTabGroupId = () => crypto.randomUUID()
+/** Generate a tab ID - this IS the Claude conversation key */
+const genTabId = (): TabId => crypto.randomUUID()
+const genTabGroupId = (): TabGroupId => crypto.randomUUID()
 
 export const useTabStore = create<TabStore>()(
   persist(
@@ -86,11 +84,10 @@ export const useTabStore = create<TabStore>()(
         return Math.max(...groupTabs.map(t => t.tabNumber)) + 1
       }
 
-      const createTab = (workspace: string, tabGroupId: string, sessionId: string, name?: string): Tab => {
+      const createTab = (workspace: string, tabGroupId: TabGroupId, name?: string): Tab => {
         const num = getNextGroupNumber(workspace, tabGroupId)
         return {
-          id: genId(),
-          sessionId,
+          id: genTabId(),
           tabGroupId,
           name: name ?? `Tab ${num}`,
           tabNumber: num,
@@ -108,12 +105,12 @@ export const useTabStore = create<TabStore>()(
         tabsExpandedByWorkspace: {},
         nextTabNumberByWorkspace: {}, // deprecated, kept for migration compat
 
-        addTab: (workspace, tabGroupId, sessionId, name) => {
+        addTab: (workspace, tabGroupId, name) => {
           const tabs = getTabs(workspace)
           const openTabs = tabs.filter(t => !t.closedAt)
           if (openTabs.length >= MAX_TABS) return null
 
-          const tab = createTab(workspace, tabGroupId, sessionId, name)
+          const tab = createTab(workspace, tabGroupId, name)
           addTabToWorkspace(workspace, tabs, tab)
           return tab
         },
@@ -213,7 +210,7 @@ export const useTabStore = create<TabStore>()(
 
           const openTabs = tabs.filter(t => !t.closedAt)
           if (openTabs.length >= MAX_TABS) return null
-          const tab = createTab(workspace, tabGroupId, genSessionId(), name)
+          const tab = createTab(workspace, tabGroupId, name)
           addTabToWorkspace(workspace, tabs, tab)
           return tab
         },
@@ -226,22 +223,21 @@ export const useTabStore = create<TabStore>()(
           )
         },
 
-        createTabGroupWithTab: (workspace, sessionIdOverride) => {
+        createTabGroupWithTab: workspace => {
           const tabs = getTabs(workspace)
           const openTabs = tabs.filter(t => !t.closedAt)
           if (openTabs.length >= MAX_TABS) return null
 
           const tabGroupId = genTabGroupId()
-          const sessionId = sessionIdOverride ?? genSessionId()
-          const tab = createTab(workspace, tabGroupId, sessionId)
+          const tab = createTab(workspace, tabGroupId)
           addTabToWorkspace(workspace, tabs, tab)
-          return { tabGroupId, sessionId, tabId: tab.id }
+          return { tabGroupId, tabId: tab.id }
         },
       }
     },
     {
       name: "claude-tab-storage",
-      version: 5, // Bump version for conversationId → sessionId rename
+      version: STORE_VERSION,
       /**
        * skipHydration: true - Prevents automatic hydration on store creation
        *
@@ -259,7 +255,7 @@ export const useTabStore = create<TabStore>()(
       }),
       migrate: (_persisted, version) => {
         // Old versions get reset - not worth maintaining complex migrations for localStorage
-        if (version < 5) {
+        if (version < STORE_VERSION) {
           return {
             tabsByWorkspace: {},
             activeTabByWorkspace: {},

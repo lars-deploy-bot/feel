@@ -14,7 +14,7 @@
  *
  * This test exercises the real Zustand tabStore (no React, no effects) to verify:
  *   1. removeTab picks a valid new active tab
- *   2. The new active tab's sessionId is available to call onSwitchConversation
+ *   2. The new active tab's id (conversation key) is available to call onSwitchConversation
  */
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
@@ -33,14 +33,14 @@ function resetStore() {
 }
 
 /** Simulates what handleTabClose does after removeTab:
- *  read the new active tab from the store and return its sessionId. */
-function getNewActiveSessionId(workspace: string, closedTabId: string): string | null {
+ *  read the new active tab from the store and return its id (conversation key). */
+function getNewActiveTabId(workspace: string, closedTabId: string): string | null {
   const state = useTabStore.getState()
   const newActiveId = state.activeTabByWorkspace[workspace]
   if (!newActiveId || newActiveId === closedTabId) return null
   const allTabs = state.tabsByWorkspace[workspace] ?? []
   const newActiveTab = allTabs.find(t => t.id === newActiveId)
-  return newActiveTab?.sessionId ?? null
+  return newActiveTab?.id ?? null
 }
 
 describe("Tab close → switch conversation (regression for React #185)", () => {
@@ -50,7 +50,7 @@ describe("Tab close → switch conversation (regression for React #185)", () => 
   it("after closing active tab, store has a different active tab with valid conversationId", () => {
     const { addTab, removeTab } = useTabStore.getState()
 
-    addTab(WS, GROUP, "conv-A")
+    const tabA = addTab(WS, GROUP, "conv-A")!
     const tabB = addTab(WS, GROUP, "conv-B")!
 
     // tabB is active (addTab sets latest as active)
@@ -59,8 +59,9 @@ describe("Tab close → switch conversation (regression for React #185)", () => 
     // Close active tab (tabB)
     removeTab(WS, tabB.id)
 
-    const switchTo = getNewActiveSessionId(WS, tabB.id)
-    expect(switchTo).toBe("conv-A")
+    const switchTo = getNewActiveTabId(WS, tabB.id)
+    // Tab.id is now the conversation key - should switch to tabA
+    expect(switchTo).toBe(tabA.id)
   })
 
   it("after closing non-active tab, active tab stays the same", () => {
@@ -75,22 +76,24 @@ describe("Tab close → switch conversation (regression for React #185)", () => 
     removeTab(WS, tabC.id)
 
     expect(useTabStore.getState().activeTabByWorkspace[WS]).toBe(tabB.id)
-    const switchTo = getNewActiveSessionId(WS, tabC.id)
-    expect(switchTo).toBe("conv-B")
+    const switchTo = getNewActiveTabId(WS, tabC.id)
+    // Tab.id is now the conversation key - should stay on tabB
+    expect(switchTo).toBe(tabB.id)
   })
 
   it("closing the first tab selects the next tab", () => {
     const { addTab, setActiveTab, removeTab } = useTabStore.getState()
 
     const tabA = addTab(WS, GROUP, "conv-A")!
-    addTab(WS, GROUP, "conv-B")
+    const tabB = addTab(WS, GROUP, "conv-B")!
     addTab(WS, GROUP, "conv-C")
 
     setActiveTab(WS, tabA.id)
     removeTab(WS, tabA.id)
 
-    const switchTo = getNewActiveSessionId(WS, tabA.id)
-    expect(switchTo).toBe("conv-B")
+    const switchTo = getNewActiveTabId(WS, tabA.id)
+    // Tab.id is now the conversation key - should switch to tabB (next tab)
+    expect(switchTo).toBe(tabB.id)
   })
 
   it("does not close the last remaining tab", () => {
@@ -136,9 +139,10 @@ describe("Tab close → switch conversation (regression for React #185)", () => 
       const newActiveId = useTabStore.getState().activeTabByWorkspace[WS]
       expect(newActiveId).not.toBe(tabs[i].id)
 
-      const switchTo = getNewActiveSessionId(WS, tabs[i].id)
+      const switchTo = getNewActiveTabId(WS, tabs[i].id)
       expect(switchTo).toBeTruthy()
-      expect(switchTo).not.toBe(`conv-${i}`)
+      // Tab.id is now the conversation key - verify it's not the closed tab's id
+      expect(switchTo).not.toBe(tabs[i].id)
     }
   })
 })

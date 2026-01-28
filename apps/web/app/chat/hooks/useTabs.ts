@@ -15,35 +15,29 @@ import { useDexieMessageActions } from "@/lib/db/dexieMessageStore"
 interface UseTabsOptions {
   workspace: string | null
   tabGroupId: string | null
-  /** Active tab's session id (Claude SDK session key) */
-  activeSessionId: string | null
-  onSwitchSession: (id: string) => void
-  onInitializeTab: (sessionId: string, tabGroupId: string, workspace: string) => void
-  onCreateSessionId?: () => string
+  /** Active tab's ID (also the Claude conversation key) */
+  activeTabId: string | null
+  onSwitchTab: (tabId: string) => void
+  onInitializeTab: (tabId: string, tabGroupId: string, workspace: string) => void
   /** Current input message - used to save draft on tab switch */
   currentInput?: string
   /** Callback to restore input when switching tabs */
   onInputRestore?: (input: string) => void
 }
 
-const genSessionId = () =>
-  typeof crypto !== "undefined" && "randomUUID" in crypto
-    ? crypto.randomUUID()
-    : `session-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-
 /**
  * Hook for managing tabs within a tab group
  *
- * Each tab = one session. Switching tabs switches sessions.
+ * Each tab has a unique ID that is also the Claude conversation key.
+ * Switching tabs switches conversations.
  * Closed tabs are removed from the bar but tab groups stay in sidebar history.
  */
 export function useTabsManagement({
   workspace,
   tabGroupId,
-  activeSessionId,
-  onSwitchSession,
+  activeTabId,
+  onSwitchTab,
   onInitializeTab,
-  onCreateSessionId,
   currentInput,
   onInputRestore,
 }: UseTabsOptions) {
@@ -82,16 +76,15 @@ export function useTabsManagement({
       setTabInputDraft(workspace, activeTabInGroup.id, currentInput)
     }
 
-    const sessionId = onCreateSessionId?.() ?? genSessionId()
-    console.log("[AddTab]", {
-      previousActiveTabSessionId: activeTabInGroup?.sessionId,
-      newSessionId: sessionId,
-      usingCreateSessionId: !!onCreateSessionId,
-    })
-    const tab = addTab(workspace, tabGroupId, sessionId)
+    // Tab.id IS the conversation key - no separate sessionId
+    const tab = addTab(workspace, tabGroupId)
     if (tab) {
-      onInitializeTab(sessionId, tabGroupId, workspace)
-      onSwitchSession(sessionId)
+      console.log("[AddTab]", {
+        previousActiveTabId: activeTabInGroup?.id,
+        newTabId: tab.id,
+      })
+      onInitializeTab(tab.id, tabGroupId, workspace)
+      onSwitchTab(tab.id)
       // Clear input for new tab
       if (onInputRestore) {
         onInputRestore("")
@@ -103,9 +96,8 @@ export function useTabsManagement({
     activeTabInGroup,
     currentInput,
     addTab,
-    onCreateSessionId,
     onInitializeTab,
-    onSwitchSession,
+    onSwitchTab,
     setTabInputDraft,
     onInputRestore,
   ])
@@ -114,12 +106,9 @@ export function useTabsManagement({
     (tabId: string) => {
       const tab = tabs.find(t => t.id === tabId)
       if (tab && workspace) {
-        // Debug logging
         console.log("[TabSelect]", {
           fromTabId: activeTabInGroup?.id,
-          fromSessionId: activeTabInGroup?.sessionId,
           toTabId: tab.id,
-          toSessionId: tab.sessionId,
         })
 
         // Save current input to the previous tab before switching
@@ -128,7 +117,7 @@ export function useTabsManagement({
         }
 
         setActiveTab(workspace, tabId)
-        onSwitchSession(tab.sessionId)
+        onSwitchTab(tab.id)
 
         // Restore input from the new tab's draft
         if (onInputRestore) {
@@ -136,44 +125,42 @@ export function useTabsManagement({
         }
       }
     },
-    [tabs, workspace, activeTabInGroup, currentInput, setActiveTab, onSwitchSession, setTabInputDraft, onInputRestore],
+    [tabs, workspace, activeTabInGroup, currentInput, setActiveTab, onSwitchTab, setTabInputDraft, onInputRestore],
   )
 
   const handleTabClose = useCallback(
     (tabId: string) => {
-      // Find the tab being closed to get its sessionId
+      // Find the tab being closed - tab.id IS the conversation key
       const closingTab = tabs.find(t => t.id === tabId)
       if (closingTab) {
         // Abort the HTTP request if there's an active stream
-        const abortController = getAbortController(closingTab.sessionId)
+        const abortController = getAbortController(closingTab.id)
         if (abortController) {
-          console.log(`[TabClose] Aborting stream for tab ${tabId}, session ${closingTab.sessionId}`)
+          console.log(`[TabClose] Aborting stream for tab ${tabId}`)
           abortController.abort()
-          clearAbortController(closingTab.sessionId)
+          clearAbortController(closingTab.id)
         }
-        // End any active stream for this session to prevent orphaned busy state
-        streamingActions.endStream(closingTab.sessionId)
+        // End any active stream for this tab to prevent orphaned busy state
+        streamingActions.endStream(closingTab.id)
       }
       if (!workspace) return
       removeTab(workspace, tabId)
 
       // Proactively switch to the new active tab to prevent effect cascades.
-      // Without this, competing effects (activeTab sync + tabForSession null guard)
-      // ping-pong state updates causing React error #185 (max update depth).
       const state = useTabStore.getState()
       const newActiveId = state.activeTabByWorkspace[workspace]
       if (newActiveId && newActiveId !== tabId) {
         const allTabs = state.tabsByWorkspace[workspace] ?? []
         const newActiveTab = allTabs.find(t => t.id === newActiveId)
         if (newActiveTab) {
-          onSwitchSession(newActiveTab.sessionId)
+          onSwitchTab(newActiveTab.id)
           if (onInputRestore) {
             onInputRestore(newActiveTab.inputDraft ?? "")
           }
         }
       }
     },
-    [tabs, workspace, streamingActions, removeTab, onSwitchSession, onInputRestore],
+    [tabs, workspace, streamingActions, removeTab, onSwitchTab, onInputRestore],
   )
 
   const handleTabRename = useCallback(
@@ -199,13 +186,13 @@ export function useTabsManagement({
         toggleTabsExpanded(workspace)
       }
 
-      // Find the tab to get its sessionId and switch to it
+      // Find the tab and switch to it - tab.id IS the conversation key
       const tab = closedTabs.find(t => t.id === tabId)
       if (tab) {
-        onSwitchSession(tab.sessionId)
-        onInitializeTab(tab.sessionId, tab.tabGroupId, workspace)
-        // loadTabMessages expects the Dexie tab key (sessionId)
-        void loadTabMessages(tab.sessionId)
+        onSwitchTab(tab.id)
+        onInitializeTab(tab.id, tab.tabGroupId, workspace)
+        // loadTabMessages expects the tab ID (which is the conversation key)
+        void loadTabMessages(tab.id)
         if (onInputRestore) {
           onInputRestore(tab.inputDraft ?? "")
         }
@@ -219,7 +206,7 @@ export function useTabsManagement({
       dexieReopenTab,
       loadTabMessages,
       toggleTabsExpanded,
-      onSwitchSession,
+      onSwitchTab,
       onInitializeTab,
       onInputRestore,
     ],
@@ -236,8 +223,8 @@ export function useTabsManagement({
 
       const tab = openTabGroupInTab(workspace, targetTabGroupId, name)
       if (tab) {
-        onInitializeTab(tab.sessionId, tab.tabGroupId, workspace)
-        onSwitchSession(tab.sessionId)
+        onInitializeTab(tab.id, tab.tabGroupId, workspace)
+        onSwitchTab(tab.id)
         // Restore input from the tab's draft (empty for new tabs)
         if (onInputRestore) {
           onInputRestore(tab.inputDraft ?? "")
@@ -249,42 +236,38 @@ export function useTabsManagement({
       activeTabInGroup,
       currentInput,
       openTabGroupInTab,
-      onSwitchSession,
+      onSwitchTab,
       onInitializeTab,
       setTabInputDraft,
       onInputRestore,
     ],
   )
 
-  // Sync session when active tab changes (e.g., after tab close)
-  // Use a ref to track the previous activeTab to only react to TAB changes,
-  // not session changes (which would incorrectly switch back)
+  // Sync when active tab changes (e.g., after tab close)
   const prevActiveTabRef = useRef<typeof activeTab>(null)
   useEffect(() => {
     const prevActiveTab = prevActiveTabRef.current
     prevActiveTabRef.current = activeTabInGroup
 
-    // Only sync if the activeTab itself changed (not just sessionId)
-    if (
-      activeTabInGroup &&
-      prevActiveTab?.id !== activeTabInGroup.id &&
-      activeTabInGroup.sessionId !== activeSessionId
-    ) {
-      onSwitchSession(activeTabInGroup.sessionId)
+    // Only sync if the activeTab itself changed
+    if (activeTabInGroup && prevActiveTab?.id !== activeTabInGroup.id && activeTabInGroup.id !== activeTabId) {
+      onSwitchTab(activeTabInGroup.id)
       // Restore input from the new active tab
       if (onInputRestore) {
         onInputRestore(activeTabInGroup.inputDraft ?? "")
       }
     }
-  }, [activeTabInGroup, activeSessionId, onSwitchSession, onInputRestore])
+  }, [activeTabInGroup, activeTabId, onSwitchTab, onInputRestore])
 
   // Auto-create first tab when tabs expanded but empty
   useEffect(() => {
-    if (workspace && tabsExpanded && tabs.length === 0 && tabGroupId && activeSessionId) {
-      addTab(workspace, tabGroupId, activeSessionId) // Name auto-generated as "Tab N"
-      onInitializeTab(activeSessionId, tabGroupId, workspace)
+    if (workspace && tabsExpanded && tabs.length === 0 && tabGroupId && activeTabId) {
+      const newTab = addTab(workspace, tabGroupId) // Name auto-generated as "Tab N"
+      if (newTab) {
+        onInitializeTab(newTab.id, tabGroupId, workspace)
+      }
     }
-  }, [workspace, tabsExpanded, tabs.length, tabGroupId, activeSessionId, addTab, onInitializeTab])
+  }, [workspace, tabsExpanded, tabs.length, tabGroupId, activeTabId, addTab, onInitializeTab])
 
   // Ensure store active tab belongs to current tabgroup
   useEffect(() => {

@@ -67,7 +67,7 @@ describe("message ordering", () => {
   beforeEach(() => {
     useDexieMessageStore.setState({
       session: null,
-      currentConversationId: null,
+      currentTabGroupId: null,
       currentTabId: null,
       currentWorkspace: null,
       isLoading: false,

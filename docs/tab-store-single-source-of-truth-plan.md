@@ -1,129 +1,93 @@
-# Plan: Single Source of Truth for Tabs + Conversation Key
+# STRICT PLAN: Single Source of Truth for Tabs + Conversation Key
 
-## Problem Statement
-The current model uses multiple overlapping sources of truth and overloaded naming:
-- `sessionStore.currentConversationId` ("session"/"conversation"),
-- `tabStore.activeTabByWorkspace` and `Tab.conversationId` ("tab"),
-- Dexie `currentTabId` / `currentConversationId` ("conversation").
+## PROBLEM STATEMENT (NON‑NEGOTIABLE)
+The system currently violates the rule of **one source of truth per abstraction**. There are multiple overlapping stores and overloaded names (`session`, `conversation`, `tab`). This is **unacceptable** for stability. The same conceptual ID is tracked in **multiple places** (sessionStore, tabStore, Dexie), leading to drift, broken UI behavior, and fragile wiring. This must be eliminated.
 
-These layers drift and are easy to miswire. The same conceptual ID is called
-"session", "conversation", and "tab", and the system allows multiple stores to
-mutate or cache the same identity. This makes the UI fragile (no-ops, wrong
-active tab, mis-synced tabs/groups) and violates the requirement of *one source
-of truth per abstraction*.
-
-## Target Model (Single Source of Truth)
-- **Single authoritative store:** `tabStore`.
-- **Tab ID equals Claude conversation key** (no separate `conversationId` or
-  `sessionId`).
+## REQUIRED TARGET MODEL
+- **Only one source of truth:** `tabStore`.
+- **Tab ID equals the Claude conversation key.** There is no separate `conversationId` or `sessionId`.
 - **Tab group ID** remains the sidebar grouping concept.
-- All other state (Dexie current tab, streaming, UI selection) *derives from*
-  `tabStore.activeTabByWorkspace` and `Tab.id`.
+- Everything else **derives from** `tabStore.activeTabByWorkspace` and `Tab.id`.
 
-## Non‑Goals
-- UX changes beyond renaming labels and wiring actions correctly.
-- Changing Dexie schema design beyond necessary ID alignment.
+Any additional store that tries to maintain “current conversation” state is **forbidden**.
 
-## Plan Overview (Phased, Safe Migration)
+## PHASED EXECUTION (FOLLOW EXACTLY)
 
-### Phase 0 — Prep & Inventory (no behavior changes)
-1. Add explicit types in a shared file (e.g. `apps/web/lib/types/ids.ts`):
+### PHASE 0 — PREP & INVENTORY (NO LOGIC CHANGES)
+1. Create explicit types in a shared file (e.g., `apps/web/lib/types/ids.ts`):
    - `type TabId = string`
    - `type TabGroupId = string`
-   - `type ConversationKey = string` (alias of `TabId` if desired)
-2. Update imports to use these types in key files:
+   - `type ConversationKey = TabId`
+2. Add these types to all relevant files:
    - `apps/web/lib/stores/tabStore.ts`
    - `apps/web/features/chat/hooks/useActiveSession.ts`
    - `apps/web/app/chat/hooks/useTabs.ts`
    - `apps/web/app/chat/page.tsx`
    - `apps/web/lib/db/dexieMessageStore.ts`
-3. Add TODO markers (short, scoped) where old naming will be replaced.
+3. Do **not** change behavior in Phase 0.
 
-### Phase 1 — Make Tab.id the Conversation Key
-**Goal:** The Claude key is `Tab.id` and there is no separate `Tab.conversationId`.
+### PHASE 1 — TAB.ID IS THE CONVERSATION KEY
+1. Delete `Tab.conversationId`. It must not exist.
+2. Ensure `Tab.id` is generated as the conversation key (UUID).
+3. Update tab creation:
+   - `createTab()` assigns `id = conversationKey`.
+   - `addTab()` and `createTabGroupWithTab()` accept `tabId` (conversation key).
+4. Update all call sites to pass `tabId` instead of `conversationId`.
+5. Compile. Fix all type errors. **No exceptions.**
 
-1. Update `Tab` shape in `tabStore`:
-   - Remove `conversationId` field.
-   - Ensure `id` is the Claude conversation key (UUID).
-2. Update tab creation helpers:
-   - `genId()` returns the conversation key.
-   - `createTab()` uses `id = conversationKey` and **does not** generate a
-     separate `conversationId`.
-3. Update `addTab` and `createTabGroupWithTab` to accept `tabId` (conversation key)
-   instead of `conversationId`.
-4. Update all call sites to pass/expect `tabId` instead of `conversationId`.
-
-### Phase 2 — Remove sessionStore as Source of Truth
-**Goal:** No separate `sessionStore` state for active conversation.
-
-1. Remove `useSessionActions` usage from `useActiveSession`.
-2. Replace `useActiveSession` with a lightweight hook that reads from tabStore:
-   - `activeTab` = `useActiveTab(workspace)`
-   - `tabId` = `activeTab?.id` (Claude key)
-   - `tabGroupId` = `activeTab?.tabGroupId`
-   - `switchTab(tabId)` = set active tab in tabStore
-3. Remove `sessionStore` module and references:
+### PHASE 2 — REMOVE sessionStore AS A SOURCE OF TRUTH
+1. Remove `sessionStore` usage from `useActiveSession`.
+2. `useActiveSession` becomes a thin wrapper over `tabStore`:
+   - `tabId = activeTab?.id`
+   - `tabGroupId = activeTab?.tabGroupId`
+   - `switchTab(tabId)` sets the active tab in `tabStore`.
+3. Remove `sessionStore` and all dependent hooks:
    - `apps/web/lib/stores/sessionStore.ts`
-   - Any hooks that wrap it (`useTabSession`, `useConversationSession`)
-4. Ensure any resume/rehydration logic now depends on tabStore hydration only.
+   - `apps/web/features/chat/hooks/useTabSession.ts`
+   - `apps/web/features/chat/hooks/useConversationSession.ts`
+4. Rebuild. Fix every reference. **No dead code left.**
 
-### Phase 3 — Align Dexie with New Identity
-**Goal:** Dexie tab ID equals Claude conversation key.
+### PHASE 3 — DEXIE MUST MATCH TABSTORE
+1. Dexie `DbTab.id` must equal `tabStore.Tab.id` (conversation key).
+2. Update `ensureTabGroupWithTab(...)` and related calls to use `tabId`.
+3. If any Dexie field is still named `conversationId` but represents a group, rename it.
 
-1. Update `ensureTabGroupWithTab(workspace, tabGroupId, tabId)` usage:
-   - Use `tabId` from tabStore, not `conversationId`.
-2. Update Dexie `DbTab` writes so `id === tabId` (Claude key).
-3. Update Dexie selectors to read by `tabId` consistently.
-
-### Phase 4 — Rename for Clarity
-**Goal:** Remove overloaded naming in UI and code.
-
-1. Replace labels:
-   - “New Chat” → “New Tab Group”
-   - Ensure tooltips/test IDs are semantic (`new-tab-group-button`).
-2. Replace variable names and props:
-   - `conversationId` → `tabId` or `conversationKey`
+### PHASE 4 — RENAME FOR CLARITY (MANDATORY)
+1. **Labels:** “New Chat” → “New Tab Group”.
+2. **Props/variables:**
+   - `conversationId` → `tabId` or `conversationKey` (where appropriate)
    - `session` → `activeTab` or `activeConversationKey`
-3. Update comments/docs to reflect the new vocabulary.
+3. Audit all occurrences using `rg`. If any legacy naming remains, it’s a bug.
 
-### Phase 5 — Migration & Persistence Safety
-**Goal:** No data loss across persisted tabStore data.
+### PHASE 5 — MIGRATION (NO DATA LOSS)
+1. Bump `tabStore` persistence version.
+2. Add migration:
+   - If a tab has a legacy `conversationId`, **replace** `id` with it.
+   - Remove legacy `conversationId` field entirely.
+3. Ensure `activeTabByWorkspace` points to the new `id`.
+4. Add tests for the migration.
 
-1. Add a tabStore migration (bump version):
-   - For each tab: if `conversationId` exists and `id` is not a UUID or is a
-     legacy `tab-*` id, replace `id` with `conversationId`.
-   - Remove `conversationId` field.
-2. Ensure `activeTabByWorkspace` points to the new `id`.
-3. Validate that old persisted data loads into the new schema without breaking
-   the active tab.
+### PHASE 6 — TESTS (REQUIRED)
+1. Update existing tests to the new model.
+2. Add **minimum** regression tests:
+   - Add Tab does **not** create a new group.
+   - New Tab Group **does** create a new group and switches active.
+   - Migration maps legacy IDs correctly.
+3. Run:
+   - `bun run type-check`
+   - `bun run test`
+   Both must pass.
 
-### Phase 6 — Tests (Minimum Set)
-1. Update existing tab store tests for the new field names.
-2. Add regression tests:
-   - **Add Tab**: group count unchanged, new tab active, tabId used as Claude key.
-   - **New Tab Group**: group count increases, active tab/group points to new.
-   - **Migration**: old persisted tab with `conversationId` becomes `id`.
+## ACCEPTANCE CRITERIA (ALL MUST BE TRUE)
+- Only `tabStore` is the source of truth for active tab.
+- `Tab.id` is the Claude conversation key.
+- No `sessionStore` state exists.
+- UI actions behave deterministically (Add Tab vs New Tab Group).
+- Migration is correct and does not drop data.
+- Tests pass. Zero type errors.
 
-## Acceptance Criteria
-- Exactly one source of truth: `tabStore`.
-- A tab’s `id` is the Claude conversation key.
-- No `sessionStore` state involved in tab selection or active conversation.
-- UI actions behave deterministically:
-  - **New Tab Group** creates group + first tab and switches active.
-  - **Add Tab** adds tab to current group and switches active.
-- Tests and typecheck pass.
-- No data loss after migration.
-
-## Risks & Mitigations
-- **Risk:** Persisted data mismatch (old IDs vs new IDs).
-  - **Mitigation:** migration step with careful mapping + tests.
-- **Risk:** Dexie mismatch if IDs diverge.
-  - **Mitigation:** align Dexie `DbTab.id` strictly with tabStore `Tab.id`.
-- **Risk:** Hidden call sites still using old `conversationId` naming.
-  - **Mitigation:** enforce type aliases + rename pass + `rg` audit.
-
-## Implementation Notes
-- Keep changes atomic per phase and re-run tests after each phase.
-- Update dev tools/console logs to use “tabId” or “conversationKey”.
-- Avoid dual-write logic at any time (one source of truth).
+## ZERO TOLERANCE RULES
+- No duplicate stores for the same concept.
+- No ambiguous naming.
+- No silent failures (e.g., ignored `null` returns) without explicit UI feedback.
 

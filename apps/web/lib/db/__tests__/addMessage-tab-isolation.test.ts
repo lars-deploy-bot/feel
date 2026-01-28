@@ -45,7 +45,7 @@ describe("addMessage tab isolation (Dexie integration)", () => {
     // Reset Zustand store between tests
     useDexieMessageStore.setState({
       session: null,
-      currentConversationId: null,
+      currentTabGroupId: null,
       currentTabId: null,
       currentWorkspace: null,
       isLoading: false,
