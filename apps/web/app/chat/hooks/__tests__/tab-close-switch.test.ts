@@ -1,0 +1,144 @@
+/**
+ * Tab Close → Switch Conversation test
+ *
+ * Regression test for React error #185 (max update depth exceeded).
+ *
+ * Root cause: handleTabClose called removeTab but did NOT call onSwitchConversation.
+ * Two competing effects then fought over state:
+ *   1. useTabs effect detected activeTabInGroup changed → called switchTab → setTabId
+ *   2. page.tsx effect saw tabForSession=null (stale tabId) → created unwanted tab group
+ * These ping-ponged until React hit the 50-update limit.
+ *
+ * Fix: handleTabClose proactively reads the new active tab from the store after
+ * removeTab and calls onSwitchConversation synchronously — no effect cascade needed.
+ *
+ * This test exercises the real Zustand tabStore (no React, no effects) to verify:
+ *   1. removeTab picks a valid new active tab
+ *   2. The new active tab's conversationId is available to call onSwitchConversation
+ */
+
+import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { useTabStore } from "@/lib/stores/tabStore"
+
+const WS = "test.example.com"
+const GROUP = "group-1"
+
+function resetStore() {
+  useTabStore.setState({
+    tabsByWorkspace: {},
+    activeTabByWorkspace: {},
+    tabsExpandedByWorkspace: {},
+    nextTabNumberByWorkspace: {},
+  })
+}
+
+/** Simulates what handleTabClose does after removeTab:
+ *  read the new active tab from the store and return its conversationId. */
+function getNewActiveConversationId(workspace: string, closedTabId: string): string | null {
+  const state = useTabStore.getState()
+  const newActiveId = state.activeTabByWorkspace[workspace]
+  if (!newActiveId || newActiveId === closedTabId) return null
+  const allTabs = state.tabsByWorkspace[workspace] ?? []
+  const newActiveTab = allTabs.find(t => t.id === newActiveId)
+  return newActiveTab?.conversationId ?? null
+}
+
+describe("Tab close → switch conversation (regression for React #185)", () => {
+  beforeEach(resetStore)
+  afterEach(resetStore)
+
+  it("after closing active tab, store has a different active tab with valid conversationId", () => {
+    const { addTab, removeTab } = useTabStore.getState()
+
+    addTab(WS, GROUP, "conv-A")
+    const tabB = addTab(WS, GROUP, "conv-B")!
+
+    // tabB is active (addTab sets latest as active)
+    expect(useTabStore.getState().activeTabByWorkspace[WS]).toBe(tabB.id)
+
+    // Close active tab (tabB)
+    removeTab(WS, tabB.id)
+
+    const switchTo = getNewActiveConversationId(WS, tabB.id)
+    expect(switchTo).toBe("conv-A")
+  })
+
+  it("after closing non-active tab, active tab stays the same", () => {
+    const { addTab, setActiveTab, removeTab } = useTabStore.getState()
+
+    addTab(WS, GROUP, "conv-A")
+    const tabB = addTab(WS, GROUP, "conv-B")!
+    const tabC = addTab(WS, GROUP, "conv-C")!
+
+    setActiveTab(WS, tabB.id)
+
+    removeTab(WS, tabC.id)
+
+    expect(useTabStore.getState().activeTabByWorkspace[WS]).toBe(tabB.id)
+    const switchTo = getNewActiveConversationId(WS, tabC.id)
+    expect(switchTo).toBe("conv-B")
+  })
+
+  it("closing the first tab selects the next tab", () => {
+    const { addTab, setActiveTab, removeTab } = useTabStore.getState()
+
+    const tabA = addTab(WS, GROUP, "conv-A")!
+    addTab(WS, GROUP, "conv-B")
+    addTab(WS, GROUP, "conv-C")
+
+    setActiveTab(WS, tabA.id)
+    removeTab(WS, tabA.id)
+
+    const switchTo = getNewActiveConversationId(WS, tabA.id)
+    expect(switchTo).toBe("conv-B")
+  })
+
+  it("does not close the last remaining tab", () => {
+    const { addTab, removeTab } = useTabStore.getState()
+
+    const tabA = addTab(WS, GROUP, "conv-A")!
+
+    removeTab(WS, tabA.id)
+
+    // Tab should still exist (removeTab is a no-op for last tab)
+    const state = useTabStore.getState()
+    const openTabs = (state.tabsByWorkspace[WS] ?? []).filter(t => !t.closedAt)
+    expect(openTabs).toHaveLength(1)
+    expect(state.activeTabByWorkspace[WS]).toBe(tabA.id)
+  })
+
+  it("closed tab is soft-deleted (closedAt set), not removed from array", () => {
+    const { addTab, removeTab } = useTabStore.getState()
+
+    const tabA = addTab(WS, GROUP, "conv-A")!
+    addTab(WS, GROUP, "conv-B")
+
+    removeTab(WS, tabA.id)
+
+    const state = useTabStore.getState()
+    const allTabs = state.tabsByWorkspace[WS] ?? []
+    const closedTab = allTabs.find(t => t.id === tabA.id)
+    expect(closedTab).toBeDefined()
+    expect(closedTab!.closedAt).toBeGreaterThan(0)
+  })
+
+  it("new active tab is never the closed tab (the core invariant)", () => {
+    const { addTab, setActiveTab, removeTab } = useTabStore.getState()
+
+    // Create 5 tabs
+    const tabs = Array.from({ length: 5 }, (_, i) => addTab(WS, GROUP, `conv-${i}`)!)
+
+    // Close each tab in turn (except last) and verify active is never the closed one
+    for (let i = 0; i < 4; i++) {
+      setActiveTab(WS, tabs[i].id)
+      removeTab(WS, tabs[i].id)
+
+      const newActiveId = useTabStore.getState().activeTabByWorkspace[WS]
+      expect(newActiveId).not.toBe(tabs[i].id)
+
+      const switchTo = getNewActiveConversationId(WS, tabs[i].id)
+      expect(switchTo).toBeTruthy()
+      expect(switchTo).not.toBe(`conv-${i}`)
+    }
+  })
+})

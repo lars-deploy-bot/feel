@@ -1,7 +1,14 @@
 "use client"
 
 import { useEffect, useCallback, useRef } from "react"
-import { useTabs, useActiveTab, useTabsExpanded, useTabActions, useClosedTabs } from "@/lib/stores/tabStore"
+import {
+  useTabs,
+  useActiveTab,
+  useTabsExpanded,
+  useTabActions,
+  useClosedTabs,
+  useTabStore,
+} from "@/lib/stores/tabStore"
 import { useStreamingActions, getAbortController, clearAbortController } from "@/lib/stores/streamingStore"
 import { useDexieMessageActions } from "@/lib/db/dexieMessageStore"
 
@@ -156,9 +163,26 @@ export function useTabsManagement({
         // End any active stream for this conversation to prevent orphaned busy state
         streamingActions.endStream(closingTab.conversationId)
       }
-      withWorkspace(removeTab)(tabId)
+      if (!workspace) return
+      removeTab(workspace, tabId)
+
+      // Proactively switch to the new active tab to prevent effect cascades.
+      // Without this, competing effects (activeTab sync + tabForSession null guard)
+      // ping-pong state updates causing React error #185 (max update depth).
+      const state = useTabStore.getState()
+      const newActiveId = state.activeTabByWorkspace[workspace]
+      if (newActiveId && newActiveId !== tabId) {
+        const allTabs = state.tabsByWorkspace[workspace] ?? []
+        const newActiveTab = allTabs.find(t => t.id === newActiveId)
+        if (newActiveTab) {
+          onSwitchConversation(newActiveTab.conversationId)
+          if (onInputRestore) {
+            onInputRestore(newActiveTab.inputDraft ?? "")
+          }
+        }
+      }
     },
-    [tabs, streamingActions, withWorkspace, removeTab],
+    [tabs, workspace, streamingActions, removeTab, onSwitchConversation, onInputRestore],
   )
 
   const handleTabRename = useCallback(
