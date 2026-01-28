@@ -241,7 +241,7 @@ export const useTabStore = create<TabStore>()(
     },
     {
       name: "claude-tab-storage",
-      version: 4, // Bump version for migration
+      version: 5, // Bump version for conversationId → sessionId rename
       /**
        * skipHydration: true - Prevents automatic hydration on store creation
        *
@@ -300,6 +300,28 @@ export const useTabStore = create<TabStore>()(
         if (version === 3) {
           // v3 -> v4: closedAt field added to Tab (optional, no data migration needed)
           return persisted
+        }
+
+        if (version === 4) {
+          // v4 -> v5: rename conversationId → sessionId
+          const newTabsByWorkspace: Record<string, Tab[]> = {}
+
+          for (const [ws, tabs] of Object.entries(state.tabsByWorkspace || {})) {
+            newTabsByWorkspace[ws] = tabs.map(t => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const oldTab = t as any
+              return {
+                ...oldTab,
+                sessionId: oldTab.sessionId ?? oldTab.conversationId,
+                conversationId: undefined, // Remove old field
+              }
+            })
+          }
+
+          return {
+            ...state,
+            tabsByWorkspace: newTabsByWorkspace,
+          }
         }
 
         return persisted

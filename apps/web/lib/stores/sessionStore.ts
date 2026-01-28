@@ -149,14 +149,27 @@ export const useSessionStoreBase = create<SessionStore>()(
     },
     {
       name: "claude-session-storage",
-      version: 1,
+      version: 2, // Bump for conversationId → sessionId rename
       partialize: state => ({
         sessions: state.sessions,
         currentSessionId: state.currentSessionId,
         currentWorkspace: state.currentWorkspace,
       }),
-      migrate: (persistedState: unknown, _version: number) => {
-        // Simple pass-through migration - no schema changes needed
+      migrate: (persistedState: unknown, version: number) => {
+        if (version === 1) {
+          // v1 -> v2: rename conversationId → sessionId
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const old = persistedState as any
+          return {
+            currentSessionId: old.currentSessionId ?? old.currentConversationId ?? null,
+            currentWorkspace: old.currentWorkspace ?? null,
+            sessions: (old.sessions ?? []).map((s: Record<string, unknown>) => ({
+              sessionId: s.sessionId ?? s.conversationId,
+              workspace: s.workspace,
+              lastActivity: s.lastActivity,
+            })),
+          } as SessionState
+        }
         return persistedState as SessionState
       },
       skipHydration: true,
