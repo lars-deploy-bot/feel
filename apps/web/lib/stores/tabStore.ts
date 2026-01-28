@@ -258,73 +258,71 @@ export const useTabStore = create<TabStore>()(
         nextTabNumberByWorkspace: s.nextTabNumberByWorkspace,
       }),
       migrate: (persisted, version) => {
-        const state = persisted as TabStoreState
+        // Chained migrations: each step transforms state and falls through to next
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let state = persisted as any
 
-        if (version === 1) {
+        if (version < 2) {
           // v1 -> v2: add tabNumber to existing tabs and compute nextTabNumber
           const newTabsByWorkspace: Record<string, Tab[]> = {}
           const nextNumbers: Record<string, number> = {}
 
           for (const [ws, tabs] of Object.entries(state.tabsByWorkspace || {})) {
-            newTabsByWorkspace[ws] = tabs.map((t, i) => ({
+            newTabsByWorkspace[ws] = (tabs as Tab[]).map((t, i) => ({
               ...t,
-              tabNumber: (t as Tab).tabNumber ?? i + 1,
+              tabNumber: t.tabNumber ?? i + 1,
             }))
             nextNumbers[ws] = newTabsByWorkspace[ws].length + 1
           }
 
-          return {
+          state = {
             ...state,
             tabsByWorkspace: newTabsByWorkspace,
             nextTabNumberByWorkspace: nextNumbers,
           }
         }
 
-        if (version === 2) {
-          // v2 -> v3: add tabGroupId for grouping (default to sessionId)
+        if (version < 3) {
+          // v2 -> v3: add tabGroupId for grouping (default to sessionId/conversationId)
           const newTabsByWorkspace: Record<string, Tab[]> = {}
 
           for (const [ws, tabs] of Object.entries(state.tabsByWorkspace || {})) {
-            newTabsByWorkspace[ws] = tabs.map(t => ({
+            newTabsByWorkspace[ws] = (tabs as Tab[]).map(t => ({
               ...t,
-              tabGroupId: (t as Tab).tabGroupId ?? (t as Tab).sessionId,
+              // Use sessionId if available (post-v5), otherwise conversationId (pre-v5)
+              tabGroupId: t.tabGroupId ?? (t as any).sessionId ?? (t as any).conversationId,
             }))
           }
 
-          return {
+          state = {
             ...state,
             tabsByWorkspace: newTabsByWorkspace,
           }
         }
 
-        if (version === 3) {
-          // v3 -> v4: closedAt field added to Tab (optional, no data migration needed)
-          return persisted
-        }
+        // v3 -> v4: closedAt field added to Tab (optional, no data migration needed)
 
-        if (version === 4) {
+        if (version < 5) {
           // v4 -> v5: rename conversationId → sessionId
           const newTabsByWorkspace: Record<string, Tab[]> = {}
 
           for (const [ws, tabs] of Object.entries(state.tabsByWorkspace || {})) {
-            newTabsByWorkspace[ws] = tabs.map(t => {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const oldTab = t as any
+            newTabsByWorkspace[ws] = (tabs as any[]).map(t => {
+              const { conversationId, ...rest } = t
               return {
-                ...oldTab,
-                sessionId: oldTab.sessionId ?? oldTab.conversationId,
-                conversationId: undefined, // Remove old field
+                ...rest,
+                sessionId: t.sessionId ?? conversationId,
               }
             })
           }
 
-          return {
+          state = {
             ...state,
             tabsByWorkspace: newTabsByWorkspace,
           }
         }
 
-        return persisted
+        return state as TabStoreState
       },
     },
   ),

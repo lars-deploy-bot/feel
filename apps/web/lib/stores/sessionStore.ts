@@ -156,21 +156,24 @@ export const useSessionStoreBase = create<SessionStore>()(
         currentWorkspace: state.currentWorkspace,
       }),
       migrate: (persistedState: unknown, version: number) => {
-        if (version === 1) {
+        // Chained migrations using version < N pattern
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let state = persistedState as any
+
+        if (version < 2) {
           // v1 -> v2: rename conversationId → sessionId
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const old = persistedState as any
-          return {
-            currentSessionId: old.currentSessionId ?? old.currentConversationId ?? null,
-            currentWorkspace: old.currentWorkspace ?? null,
-            sessions: (old.sessions ?? []).map((s: Record<string, unknown>) => ({
+          state = {
+            currentSessionId: state.currentSessionId ?? state.currentConversationId ?? null,
+            currentWorkspace: state.currentWorkspace ?? null,
+            sessions: (state.sessions ?? []).map((s: Record<string, unknown>) => ({
               sessionId: s.sessionId ?? s.conversationId,
               workspace: s.workspace,
               lastActivity: s.lastActivity,
             })),
-          } as SessionState
+          }
         }
-        return persistedState as SessionState
+
+        return state as SessionState
       },
       skipHydration: true,
     },
