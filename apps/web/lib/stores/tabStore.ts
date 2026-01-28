@@ -258,71 +258,104 @@ export const useTabStore = create<TabStore>()(
         nextTabNumberByWorkspace: s.nextTabNumberByWorkspace,
       }),
       migrate: (persisted, version) => {
-        // Chained migrations: each step transforms state and falls through to next
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let state = persisted as any
+        // Chained migrations using proper unknown handling
+        const input = (persisted && typeof persisted === "object" ? persisted : {}) as Record<string, unknown>
+
+        // Safe accessors
+        const getObj = (key: string): Record<string, unknown> => {
+          const v = input[key]
+          return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {}
+        }
+
+        let tabsByWorkspace: Record<string, Tab[]> = {}
+        const rawTabs = getObj("tabsByWorkspace")
+        for (const [ws, arr] of Object.entries(rawTabs)) {
+          if (Array.isArray(arr)) {
+            tabsByWorkspace[ws] = arr.filter((t): t is Tab => t !== null && typeof t === "object")
+          }
+        }
+
+        let nextTabNumberByWorkspace: Record<string, number> = {}
+        const rawNext = getObj("nextTabNumberByWorkspace")
+        for (const [ws, n] of Object.entries(rawNext)) {
+          if (typeof n === "number") nextTabNumberByWorkspace[ws] = n
+        }
+
+        const activeTabByWorkspace: Record<string, string | undefined> = {}
+        const rawActive = getObj("activeTabByWorkspace")
+        for (const [ws, id] of Object.entries(rawActive)) {
+          if (typeof id === "string") activeTabByWorkspace[ws] = id
+        }
+
+        const tabsExpandedByWorkspace: Record<string, boolean> = {}
+        const rawExpanded = getObj("tabsExpandedByWorkspace")
+        for (const [ws, v] of Object.entries(rawExpanded)) {
+          if (typeof v === "boolean") tabsExpandedByWorkspace[ws] = v
+        }
 
         if (version < 2) {
-          // v1 -> v2: add tabNumber to existing tabs and compute nextTabNumber
-          const newTabsByWorkspace: Record<string, Tab[]> = {}
+          // v1 -> v2: add tabNumber to existing tabs
+          const migrated: Record<string, Tab[]> = {}
           const nextNumbers: Record<string, number> = {}
 
-          for (const [ws, tabs] of Object.entries(state.tabsByWorkspace || {})) {
-            newTabsByWorkspace[ws] = (tabs as Tab[]).map((t, i) => ({
+          for (const [ws, tabs] of Object.entries(tabsByWorkspace)) {
+            migrated[ws] = tabs.map((t, i) => ({
               ...t,
               tabNumber: t.tabNumber ?? i + 1,
             }))
-            nextNumbers[ws] = newTabsByWorkspace[ws].length + 1
+            nextNumbers[ws] = migrated[ws].length + 1
           }
-
-          state = {
-            ...state,
-            tabsByWorkspace: newTabsByWorkspace,
-            nextTabNumberByWorkspace: nextNumbers,
-          }
+          tabsByWorkspace = migrated
+          nextTabNumberByWorkspace = nextNumbers
         }
 
         if (version < 3) {
-          // v2 -> v3: add tabGroupId for grouping (default to sessionId/conversationId)
-          const newTabsByWorkspace: Record<string, Tab[]> = {}
+          // v2 -> v3: add tabGroupId for grouping
+          const migrated: Record<string, Tab[]> = {}
 
-          for (const [ws, tabs] of Object.entries(state.tabsByWorkspace || {})) {
-            newTabsByWorkspace[ws] = (tabs as Tab[]).map(t => ({
-              ...t,
-              // Use sessionId if available (post-v5), otherwise conversationId (pre-v5)
-              tabGroupId: t.tabGroupId ?? (t as any).sessionId ?? (t as any).conversationId,
-            }))
+          for (const [ws, tabs] of Object.entries(tabsByWorkspace)) {
+            migrated[ws] = tabs.map(t => {
+              // Access old field names that may exist on persisted data
+              const raw = t as unknown as Record<string, unknown>
+              const fallbackId = String(raw.sessionId ?? raw.conversationId ?? "")
+              return { ...t, tabGroupId: t.tabGroupId || fallbackId }
+            })
           }
-
-          state = {
-            ...state,
-            tabsByWorkspace: newTabsByWorkspace,
-          }
+          tabsByWorkspace = migrated
         }
 
-        // v3 -> v4: closedAt field added to Tab (optional, no data migration needed)
+        // v3 -> v4: closedAt field (optional, no migration needed)
 
         if (version < 5) {
           // v4 -> v5: rename conversationId → sessionId
-          const newTabsByWorkspace: Record<string, Tab[]> = {}
+          const migrated: Record<string, Tab[]> = {}
 
-          for (const [ws, tabs] of Object.entries(state.tabsByWorkspace || {})) {
-            newTabsByWorkspace[ws] = (tabs as any[]).map(t => {
-              const { conversationId, ...rest } = t
+          for (const [ws, tabs] of Object.entries(tabsByWorkspace)) {
+            migrated[ws] = tabs.map(t => {
+              // Access old field name that may exist on persisted data
+              const raw = t as unknown as Record<string, unknown>
+              const oldId = raw.conversationId
               return {
-                ...rest,
-                sessionId: t.sessionId ?? conversationId,
+                id: t.id,
+                sessionId: t.sessionId || String(oldId ?? ""),
+                tabGroupId: t.tabGroupId,
+                name: t.name,
+                tabNumber: t.tabNumber,
+                createdAt: t.createdAt,
+                inputDraft: t.inputDraft,
+                closedAt: t.closedAt,
               }
             })
           }
-
-          state = {
-            ...state,
-            tabsByWorkspace: newTabsByWorkspace,
-          }
+          tabsByWorkspace = migrated
         }
 
-        return state as TabStoreState
+        return {
+          tabsByWorkspace,
+          activeTabByWorkspace,
+          tabsExpandedByWorkspace,
+          nextTabNumberByWorkspace,
+        }
       },
     },
   ),

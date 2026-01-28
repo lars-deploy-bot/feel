@@ -156,24 +156,38 @@ export const useSessionStoreBase = create<SessionStore>()(
         currentWorkspace: state.currentWorkspace,
       }),
       migrate: (persistedState: unknown, version: number) => {
-        // Chained migrations using version < N pattern
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let state = persistedState as any
+        // Chained migrations using proper unknown handling
+        const input = (persistedState && typeof persistedState === "object" ? persistedState : {}) as Record<
+          string,
+          unknown
+        >
+
+        const rawSessionId = input.currentSessionId ?? input.currentConversationId
+        const rawWorkspace = input.currentWorkspace
+        const rawSessions = Array.isArray(input.sessions) ? input.sessions : []
+
+        let sessions: TabSession[] = rawSessions
+          .filter((s): s is Record<string, unknown> => s !== null && typeof s === "object")
+          .map(s => ({
+            sessionId:
+              typeof s.sessionId === "string"
+                ? s.sessionId
+                : typeof s.conversationId === "string"
+                  ? s.conversationId
+                  : "",
+            workspace: typeof s.workspace === "string" ? s.workspace : "",
+            lastActivity: typeof s.lastActivity === "number" ? s.lastActivity : Date.now(),
+          }))
 
         if (version < 2) {
-          // v1 -> v2: rename conversationId → sessionId
-          state = {
-            currentSessionId: state.currentSessionId ?? state.currentConversationId ?? null,
-            currentWorkspace: state.currentWorkspace ?? null,
-            sessions: (state.sessions ?? []).map((s: Record<string, unknown>) => ({
-              sessionId: s.sessionId ?? s.conversationId,
-              workspace: s.workspace,
-              lastActivity: s.lastActivity,
-            })),
-          }
+          // v1 -> v2: conversationId fields already handled above via fallback
         }
 
-        return state as SessionState
+        return {
+          currentSessionId: typeof rawSessionId === "string" ? rawSessionId : null,
+          currentWorkspace: typeof rawWorkspace === "string" ? rawWorkspace : null,
+          sessions,
+        }
       },
       skipHydration: true,
     },
