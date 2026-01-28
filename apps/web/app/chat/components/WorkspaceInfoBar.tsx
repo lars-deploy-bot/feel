@@ -96,6 +96,7 @@ export function WorkspaceInfoBar({
               <button
                 type="button"
                 onClick={onNewTabGroup}
+                data-testid="new-tab-group-button"
                 className="px-2 py-1 text-xs font-medium text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 rounded transition-colors"
               >
                 <span className="sm:hidden">new group</span>
@@ -106,6 +107,7 @@ export function WorkspaceInfoBar({
                 <button
                   type="button"
                   onClick={onToggleTabs}
+                  data-testid="toggle-tabs-button"
                   className={`hidden md:flex items-center gap-1 px-2 py-1 text-xs font-medium rounded transition-colors ${
                     tabsExpanded
                       ? "text-black dark:text-white bg-black/5 dark:bg-white/5"

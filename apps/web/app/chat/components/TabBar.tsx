@@ -97,7 +97,10 @@ export function TabBar({
   }, [showClosedMenu])
 
   return (
-    <div className="flex-shrink-0 border-b border-black/5 dark:border-white/5 bg-black/[0.01] dark:bg-white/[0.01]">
+    <div
+      data-testid="tab-bar"
+      className="flex-shrink-0 border-b border-black/5 dark:border-white/5 bg-black/[0.01] dark:bg-white/[0.01]"
+    >
       <div className="px-4 md:px-6 mx-auto w-full md:max-w-2xl">
         <div className="flex items-center gap-1 py-1.5 overflow-x-auto scrollbar-hide">
           {tabs.length > 0 && (
@@ -109,6 +112,9 @@ export function TabBar({
                 return (
                   <div
                     key={tab.id}
+                    data-testid={`tab-${tab.id}`}
+                    data-tab-name={tab.name}
+                    data-active={isActive}
                     className={`group flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-colors min-w-0 ${
                       isActive
                         ? "bg-black/10 dark:bg-white/10 text-black dark:text-white"
@@ -142,6 +148,7 @@ export function TabBar({
                           e.stopPropagation()
                           onTabClose(tab.id)
                         }}
+                        data-testid={`close-tab-${tab.id}`}
                         className={`p-0.5 rounded transition-colors hover:bg-black/10 dark:hover:bg-white/10 ${
                           isActive
                             ? "opacity-60 hover:opacity-100"
@@ -158,6 +165,7 @@ export function TabBar({
               <button
                 type="button"
                 onClick={onAddTab}
+                data-testid="add-tab-button"
                 className="flex items-center justify-center p-1 text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 hover:bg-black/5 dark:hover:bg-white/5 rounded transition-colors"
                 title="Add new tab"
               >

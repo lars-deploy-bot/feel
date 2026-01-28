@@ -63,6 +63,14 @@ export const TEST_SELECTORS = {
   messageInput: '[data-testid="message-input"]',
   sendButton: '[data-testid="send-button"]',
   stopButton: '[data-testid="stop-button"]',
+  // Tab-related selectors
+  tabBar: '[data-testid="tab-bar"]',
+  addTabButton: '[data-testid="add-tab-button"]',
+  toggleTabsButton: '[data-testid="toggle-tabs-button"]',
+  newTabGroupButton: '[data-testid="new-tab-group-button"]',
+  /** Use with string template: `[data-testid="tab-${tabId}"]` */
+  tabPrefix: '[data-testid^="tab-"]',
+  activeTab: '[data-active="true"]',
 } as const
 
 /**

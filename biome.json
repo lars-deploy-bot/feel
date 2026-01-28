@@ -7,18 +7,7 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": [
-      "**",
-      "!**/node_modules",
-      "!**/dist",
-      "!**/.next",
-      "!**/build",
-      "!**/*.min.js",
-      "!**/*.bundle.js",
-      "!**/vendor",
-      "!**/.builds",
-      "!**/lovable-folder-only-use-for-inspiration"
-    ]
+    "includes": ["apps/**", "packages/**", "*.ts", "*.tsx", "*.js", "*.json"]
   },
   "assist": {
     "actions": {
