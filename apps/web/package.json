@@ -87,6 +87,7 @@
     "@types/react": "19.2.2",
     "autoprefixer": "^10.4.20",
     "drizzle-kit": "^0.31.7",
+    "fake-indexeddb": "^6.2.5",
     "happy-dom": "^20.0.10",
     "jsdom": "^26.1.0",
     "postcss": "^8.4.47",

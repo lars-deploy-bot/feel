@@ -32,6 +32,7 @@ export const BodySchema = z.object({
   message: z.string().min(1),
   workspace: z.string().optional(),
   conversationId: z.string().uuid().optional(), // Optional grouping layer (future: git branches)
+  tabGroupId: z.string().uuid(), // Tab group ID - groups tabs in sidebar, part of lock key
   tabId: z.string().uuid(), // Tab ID - primary session key (maps to Claude SDK session)
   apiKey: z
     .string()

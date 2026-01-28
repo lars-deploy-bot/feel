@@ -29,7 +29,7 @@ describe("Explicit Cancellation Integration (STRICT)", () => {
   const userId = SECURITY.LOCAL_TEST.SESSION_VALUE
   const workspace = "test-workspace"
   const tabId = "explicit-cancel-test"
-  const convKey = tabKey({ userId, tabId })
+  const convKey = tabKey({ userId, tabGroupId: "test-tabgroup", tabId })
 
   beforeEach(() => {
     unlockConversation(convKey)

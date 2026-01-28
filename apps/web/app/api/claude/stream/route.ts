@@ -8,7 +8,13 @@ import {
   verifyWorkspaceAccess,
 } from "@/features/auth/lib/auth"
 import { fetchAndSaveAnalyzeImages, buildAnalyzeImagePrompt } from "@/lib/image-analyze/fetch-and-save"
-import { SessionStoreMemory, tabKey, tryLockConversation, unlockConversation } from "@/features/auth/lib/sessionStore"
+import {
+  type TabSessionKey,
+  SessionStoreMemory,
+  tabKey,
+  tryLockConversation,
+  unlockConversation,
+} from "@/features/auth/lib/sessionStore"
 import { hasSessionCookie } from "@/features/auth/types/guards"
 import { isInputSafe } from "@/features/chat/lib/formatMessage"
 import { getSystemPrompt } from "@/features/chat/lib/systemPrompt"
@@ -71,8 +77,8 @@ export async function POST(req: NextRequest) {
 
   // Track lock acquisition for cleanup in error handler
   let lockAcquired = false
-  let sessionStoreKey = "" // For Claude SDK session persistence (per conversation)
-  let concurrencyLockKey = "" // For concurrent request prevention (per tab)
+  let sessionStoreKey: TabSessionKey | null = null // For Claude SDK session persistence (per conversation)
+  let concurrencyLockKey: TabSessionKey | null = null // For concurrent request prevention (per tab)
 
   try {
     const jar = await cookies()
@@ -115,6 +121,7 @@ export async function POST(req: NextRequest) {
       message,
       workspace: requestWorkspace,
       conversationId,
+      tabGroupId,
       tabId,
       apiKey: userApiKey,
       model: userModel,
@@ -240,10 +247,11 @@ export async function POST(req: NextRequest) {
 
     // Tab key: used for BOTH Claude SDK session persistence AND concurrency locking
     // Tab is now the primary chat entity - each tab = one independent Claude session
-    // Session key and lock key are now the same (both use tabId)
+    // Lock key includes tabGroupId to guarantee uniqueness across tabs in the same group
     sessionStoreKey = tabKey({
       userId: user.id,
       workspace: resolvedWorkspaceName,
+      tabGroupId,
       tabId,
     })
 
@@ -572,7 +580,7 @@ export async function POST(req: NextRequest) {
       onStreamComplete: () => {
         // Guaranteed cleanup: unregister, unlock, mark buffer complete
         unregisterCancellation(requestId)
-        unlockConversation(concurrencyLockKey)
+        unlockConversation(concurrencyLockKey!)
 
         // Mark buffer as complete (non-blocking)
         completeStreamBuffer(requestId).catch(err => {
@@ -620,7 +628,7 @@ export async function POST(req: NextRequest) {
     // This prevents deadlocks when errors happen during stream setup
     if (lockAcquired) {
       try {
-        unlockConversation(concurrencyLockKey)
+        unlockConversation(concurrencyLockKey!)
         logger.log("Released lock after error")
 
         // Mark buffer as errored (non-blocking)

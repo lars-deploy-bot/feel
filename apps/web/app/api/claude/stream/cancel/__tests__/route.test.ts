@@ -180,8 +180,9 @@ describe("POST /api/claude/stream/cancel", () => {
     const requestId = "test-req-conv-1"
     const userId = "test-user-123"
     const tabId = "tab-abc-123"
+    const tabGroupId = "11111111-1111-1111-1111-111111111111"
     const workspace = "test-workspace"
-    const tabKeyValue = `${userId}::${workspace}::${tabId}`
+    const tabKeyValue = `${userId}::${workspace}::${tabGroupId}::${tabId}`
 
     // Register a stream
     registerCancellation(requestId, userId, tabKeyValue, () => {
@@ -191,7 +192,7 @@ describe("POST /api/claude/stream/cancel", () => {
     // Call cancel endpoint with tabId (super-early Stop)
     const req = new Request("http://localhost/api/claude/stream/cancel", {
       method: "POST",
-      body: JSON.stringify({ tabId, workspace }),
+      body: JSON.stringify({ tabId, tabGroupId, workspace }),
       headers: { "Content-Type": "application/json" },
     })
 
@@ -208,7 +209,11 @@ describe("POST /api/claude/stream/cancel", () => {
   it("should return already_complete for non-existent tabId", async () => {
     const req = new Request("http://localhost/api/claude/stream/cancel", {
       method: "POST",
-      body: JSON.stringify({ tabId: "non-existent", workspace: "test" }),
+      body: JSON.stringify({
+        tabId: "non-existent",
+        tabGroupId: "11111111-1111-1111-1111-111111111111",
+        workspace: "test",
+      }),
       headers: { "Content-Type": "application/json" },
     })
 
@@ -225,8 +230,9 @@ describe("POST /api/claude/stream/cancel", () => {
     const requestId = "test-req-conv-2"
     const ownerUserId = "other-user-456"
     const tabId = "tab-xyz-789"
+    const tabGroupId = "11111111-1111-1111-1111-111111111111"
     const workspace = "test-workspace"
-    const tabKeyValue = `${ownerUserId}::${workspace}::${tabId}`
+    const tabKeyValue = `${ownerUserId}::${workspace}::${tabGroupId}::${tabId}`
 
     // Register a stream owned by different user
     registerCancellation(requestId, ownerUserId, tabKeyValue, () => {
@@ -237,7 +243,7 @@ describe("POST /api/claude/stream/cancel", () => {
     // Security: tabKey is built using caller's userId, so will never match
     const req = new Request("http://localhost/api/claude/stream/cancel", {
       method: "POST",
-      body: JSON.stringify({ tabId, workspace }),
+      body: JSON.stringify({ tabId, tabGroupId, workspace }),
       headers: { "Content-Type": "application/json" },
     })
 
@@ -261,8 +267,9 @@ describe("POST /api/claude/stream/cancel", () => {
     const requestId2 = "test-req-fallback"
     const userId = "test-user-123"
     const tabId = "tab-both-123"
+    const tabGroupId = "11111111-1111-1111-1111-111111111111"
     const workspace = "test-workspace"
-    const tabKeyValue = `${userId}::${workspace}::${tabId}`
+    const tabKeyValue = `${userId}::${workspace}::${tabGroupId}::${tabId}`
 
     // Register two streams: one for requestId, one for tabKey
     registerCancellation(requestId1, userId, tabKeyValue, () => {
@@ -275,7 +282,7 @@ describe("POST /api/claude/stream/cancel", () => {
     // Call cancel endpoint with BOTH requestId and tabId
     const req = new Request("http://localhost/api/claude/stream/cancel", {
       method: "POST",
-      body: JSON.stringify({ requestId: requestId1, tabId, workspace }),
+      body: JSON.stringify({ requestId: requestId1, tabId, tabGroupId, workspace }),
       headers: { "Content-Type": "application/json" },
     })
 

@@ -11,6 +11,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import type { TabSessionKey } from "@/features/auth/types/session"
 
 // Mock session module
 vi.mock("@/features/auth/types/session", () => ({
@@ -87,7 +88,9 @@ describe("GET /api/debug/locks", () => {
     })
 
     it("should return expected JSON structure", async () => {
-      vi.mocked(getLockedConversations).mockReturnValue([{ key: "user1::workspace1::conv1", ageMs: 1000 }])
+      vi.mocked(getLockedConversations).mockReturnValue([
+        { key: "user1::workspace1::tg1::conv1" as TabSessionKey, ageMs: 1000 },
+      ])
       vi.mocked(getRegistryState).mockReturnValue([
         { requestId: "req1", userId: "user1", conversationKey: "conv1", ageMs: 1000 },
       ])
@@ -120,9 +123,9 @@ describe("GET /api/debug/locks", () => {
 
     it("should return correct lock count and keys", async () => {
       const mockLocks = [
-        { key: "user1::workspace1::conv1", ageMs: 1000 },
-        { key: "user2::workspace2::conv2", ageMs: 2000 },
-        { key: "user3::workspace3::conv3", ageMs: 3000 },
+        { key: "user1::workspace1::tg1::conv1" as TabSessionKey, ageMs: 1000 },
+        { key: "user2::workspace2::tg2::conv2" as TabSessionKey, ageMs: 2000 },
+        { key: "user3::workspace3::tg3::conv3" as TabSessionKey, ageMs: 3000 },
       ]
       vi.mocked(getLockedConversations).mockReturnValue(mockLocks)
 

@@ -29,6 +29,7 @@ export const runtime = "nodejs"
 
 // Request body schema
 const ReconnectSchema = z.object({
+  tabGroupId: z.string().uuid(),
   tabId: z.string().uuid(),
   workspace: z.string().min(1),
   /** If true, deletes the buffer after returning messages (client confirms receipt) */
@@ -78,12 +79,13 @@ export async function POST(req: Request) {
       })
     }
 
-    const { tabId, workspace, acknowledge } = parseResult.data
+    const { tabGroupId, tabId, workspace, acknowledge } = parseResult.data
 
     // Build tab key (same format as stream route)
     const tabKeyValue = tabKey({
       userId: user.id,
       workspace,
+      tabGroupId,
       tabId,
     })
 

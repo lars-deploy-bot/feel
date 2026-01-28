@@ -26,7 +26,7 @@ describe("HTTP Abort → Second Message (Production Flow)", () => {
   const userId = SECURITY.LOCAL_TEST.SESSION_VALUE
   const workspace = "test-workspace"
   const tabId = "http-abort-test"
-  const convKey = tabKey({ userId, tabId })
+  const convKey = tabKey({ userId, tabGroupId: "test-tabgroup", tabId })
 
   beforeEach(() => {
     unlockConversation(convKey)

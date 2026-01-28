@@ -18,7 +18,7 @@
  * applying credit charges, and sending typed messages to client.
  */
 
-import { SessionStoreMemory } from "@/features/auth/lib/sessionStore"
+import { type TabSessionKey, SessionStoreMemory } from "@/features/auth/lib/sessionStore"
 import type { BridgeErrorMessage, StreamMessage } from "@/features/chat/lib/streaming/ndjson"
 import { BridgeStreamType, createWarningMessage, encodeNDJSON } from "@/features/chat/lib/streaming/ndjson"
 import { isAssistantMessageWithUsage, isBridgeMessageEvent } from "@/features/chat/types/guards"
@@ -61,7 +61,7 @@ export interface CancelState {
  */
 interface StreamHandlerConfig {
   childStream: ReadableStream<Uint8Array>
-  conversationKey: string
+  conversationKey: TabSessionKey
   requestId: string
   /**
    * Tab ID for routing responses to correct tab
@@ -171,7 +171,7 @@ async function processChildEvent(
   childEvent: ChildEvent,
   requestId: string,
   tabId: string | undefined,
-  conversationKey: string,
+  conversationKey: TabSessionKey,
   workspace: string,
   tokenSource: "workspace" | "user_provided",
   model: ClaudeModel,

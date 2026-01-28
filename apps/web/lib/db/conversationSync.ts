@@ -289,6 +289,25 @@ export async function unshareConversation(conversationId: string, userId: string
 }
 
 /**
+ * Archive a conversation (hide from sidebar, restorable later).
+ *
+ * Sets archivedAt instead of deletedAt - conversation can be restored.
+ */
+export async function archiveConversation(conversationId: string, userId: string): Promise<void> {
+  const db = getMessageDb(userId)
+  await db.conversations.update(conversationId, {
+    archivedAt: Date.now(),
+    updatedAt: Date.now(),
+    pendingSync: true,
+  })
+
+  console.log(`[sync] STUB: Would archive conversation ${conversationId} on Supabase`)
+
+  // Immediate sync for archive operations
+  forceSyncNow(conversationId, userId)
+}
+
+/**
  * Soft delete a conversation (NEVER hard delete!).
  *
  * Hard deletes cause permanent desync on multi-device setups.

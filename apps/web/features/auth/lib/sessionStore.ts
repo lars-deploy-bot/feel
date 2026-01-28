@@ -7,6 +7,7 @@
  */
 
 import {
+  type TabSessionKey,
   hasExistingSession,
   isConversationLocked,
   tryLockConversation,
@@ -15,16 +16,18 @@ import {
 import { createAppClient } from "@/lib/supabase/app"
 import { createIamClient } from "@/lib/supabase/iam"
 
+export type { TabSessionKey }
+
 export interface SessionStore {
-  get(key: string): Promise<string | null>
-  set(key: string, value: string): Promise<void>
-  delete(key: string): Promise<void>
+  get(key: TabSessionKey): Promise<string | null>
+  set(key: TabSessionKey, value: string): Promise<void>
+  delete(key: TabSessionKey): Promise<void>
 }
 
-// Parse composite key: userId::workspaceDomain::tabId
-function parseKey(key: string): { userId: string; workspaceDomain: string; tabId: string } {
-  const [userId, workspaceDomain, tabId] = key.split("::")
-  return { userId, workspaceDomain: workspaceDomain || "default", tabId }
+// Parse composite key: userId::workspaceDomain::tabGroupId::tabId
+function parseKey(key: TabSessionKey): { userId: string; workspaceDomain: string; tabGroupId: string; tabId: string } {
+  const [userId, workspaceDomain, tabGroupId, tabId] = key.split("::")
+  return { userId, workspaceDomain: workspaceDomain || "default", tabGroupId, tabId }
 }
 
 // In-memory cache for hostname → domain_id lookups (reduces DB queries by 50%)
@@ -92,7 +95,7 @@ if (typeof setInterval !== "undefined") {
 }
 
 export const SessionStoreMemory: SessionStore = {
-  async get(key: string): Promise<string | null> {
+  async get(key: TabSessionKey): Promise<string | null> {
     const { userId, workspaceDomain, tabId } = parseKey(key)
 
     // Look up domain_id from hostname (cached)
@@ -116,7 +119,7 @@ export const SessionStoreMemory: SessionStore = {
     return session?.sdk_session_id || null
   },
 
-  async set(key: string, value: string): Promise<void> {
+  async set(key: TabSessionKey, value: string): Promise<void> {
     const { userId, workspaceDomain, tabId } = parseKey(key)
 
     // Look up domain_id from hostname (cached)
@@ -145,7 +148,7 @@ export const SessionStoreMemory: SessionStore = {
     )
   },
 
-  async delete(key: string): Promise<void> {
+  async delete(key: TabSessionKey): Promise<void> {
     const { userId, workspaceDomain, tabId } = parseKey(key)
 
     // Look up domain_id from hostname (cached)
@@ -165,8 +168,19 @@ export const SessionStoreMemory: SessionStore = {
 // Primary key builder: Tab is now the primary entity for chat sessions
 // Used for BOTH Claude SDK session persistence AND concurrency locking
 // Each browser tab = one independent chat session = one Claude SDK session
-export function tabKey({ userId, workspace, tabId }: { userId: string; workspace?: string; tabId: string }) {
-  return `${userId}::${workspace ?? "default"}::${tabId}`
+// Lock key includes tabGroupId to guarantee uniqueness across tabs in the same group
+export function tabKey({
+  userId,
+  workspace,
+  tabGroupId,
+  tabId,
+}: {
+  userId: string
+  workspace?: string
+  tabGroupId: string
+  tabId: string
+}): TabSessionKey {
+  return `${userId}::${workspace ?? "default"}::${tabGroupId}::${tabId}` as TabSessionKey
 }
 
 // Re-export guards from types/guards/session for backward compatibility

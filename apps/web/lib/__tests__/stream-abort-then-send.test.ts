@@ -35,7 +35,7 @@ describe("Stream Abort → Send Integration (REAL)", () => {
   const userId = SECURITY.LOCAL_TEST.SESSION_VALUE
   const workspace = "test-workspace"
   const tabId = "test-conv-abort"
-  const convKey = tabKey({ userId, tabId })
+  const convKey = tabKey({ userId, tabGroupId: "test-tabgroup", tabId })
 
   beforeEach(() => {
     unlockConversation(convKey)
@@ -508,8 +508,8 @@ describe("Stream Abort → Send Integration (REAL)", () => {
 
   describe("Concurrent Conversation Isolation", () => {
     it("should not affect other conversations when one aborts", async () => {
-      const conv1Key = tabKey({ userId, tabId: "conv-1" })
-      const conv2Key = tabKey({ userId, tabId: "conv-2" })
+      const conv1Key = tabKey({ userId, tabGroupId: "test-tabgroup", tabId: "conv-1" })
+      const conv2Key = tabKey({ userId, tabGroupId: "test-tabgroup", tabId: "conv-2" })
 
       // Lock both conversations
       const locked1 = tryLockConversation(conv1Key)

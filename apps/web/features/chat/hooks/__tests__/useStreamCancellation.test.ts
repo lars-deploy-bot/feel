@@ -35,6 +35,7 @@ describe("useStreamCancellation", () => {
   // Default mock options for the hook
   const createMockOptions = (): MockOptions => ({
     tabId: "test-conversation-123",
+    tabGroupId: "test-tabgroup",
     workspace: "test-workspace",
     addMessage: vi.fn(),
     setShowCompletionDots: vi.fn(),
@@ -355,6 +356,7 @@ describe("useStreamCancellation", () => {
       })
 
       expect(postty).toHaveBeenCalledWith("claude/stream/cancel", {
+        tabGroupId: "test-tabgroup",
         tabId: "test-conversation-123",
         workspace: "test-workspace",
       })

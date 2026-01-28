@@ -29,6 +29,7 @@ import {
   shareConversation as syncShareConversation,
   unshareConversation as syncUnshareConversation,
   deleteConversation as syncDeleteConversation,
+  archiveConversation as syncArchiveConversation,
 } from "./conversationSync"
 import { toDbMessageContent, extractTitle } from "./messageAdapters"
 import type { UIMessage } from "@/features/chat/lib/message-parser"
@@ -71,11 +72,12 @@ interface DexieMessageStoreActions {
   ) => Promise<{ conversationId: string; tabId: string; created: boolean }>
   switchConversation: (id: string, tabId?: string) => void
   deleteConversation: (id: string) => Promise<void>
+  archiveConversation: (id: string) => Promise<void>
   shareConversation: (id: string) => Promise<void>
   unshareConversation: (id: string) => Promise<void>
 
   // Message management
-  addMessage: (message: UIMessage) => Promise<void>
+  addMessage: (message: UIMessage, targetTabId: string) => Promise<void>
 
   // Tab management
   addTab: (name?: string) => Promise<string>
@@ -250,18 +252,23 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
           await db.conversations.add(newConvo)
         }
 
+        // Use put (not add) to be idempotent — handleNewConversation and the
+        // useEffect that syncs tab↔tabGroup can race, both calling this with
+        // the same tabId before the other's write is visible.
         const existingTabs = await db.tabs.where("conversationId").equals(conversationId).toArray()
-        const newTab: DbTab = {
-          id: tabId,
-          conversationId,
-          name: "current",
-          position: existingTabs.length,
-          createdAt: now,
-          messageCount: 0,
-          pendingSync: true,
+        const alreadyExists = existingTabs.some(t => t.id === tabId)
+        if (!alreadyExists) {
+          const newTab: DbTab = {
+            id: tabId,
+            conversationId,
+            name: "current",
+            position: existingTabs.length,
+            createdAt: now,
+            messageCount: 0,
+            pendingSync: true,
+          }
+          await db.tabs.put(newTab)
         }
-
-        await db.tabs.add(newTab)
       }),
     )
 
@@ -293,6 +300,17 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
     }
   },
 
+  archiveConversation: async id => {
+    const { currentConversationId, session } = get()
+    if (!session) return
+
+    await syncArchiveConversation(id, session.userId)
+
+    if (currentConversationId === id) {
+      set({ currentConversationId: null, currentTabId: null })
+    }
+  },
+
   shareConversation: async id => {
     const { session } = get()
     if (!session) return
@@ -305,21 +323,46 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
     await syncUnshareConversation(id, session.userId)
   },
 
-  addMessage: async message => {
+  addMessage: async (message, targetTabId) => {
+    // Skip transient stream lifecycle messages that don't make sense when reloaded
+    // These are ephemeral UI events (stream start/complete, progress indicators, etc.)
+    const TRANSIENT_TYPES = new Set(["start", "complete", "compact_boundary", "tool_progress", "auth_status"])
+    if (TRANSIENT_TYPES.has(message.type)) {
+      return
+    }
+
     const { currentConversationId, currentTabId, session } = get()
 
-    if (!session || !currentConversationId || !currentTabId) {
-      console.warn("[dexie] addMessage called without session/conversation/tab")
+    if (!session || !targetTabId) {
+      console.warn("[dexie] addMessage called without session or targetTabId")
       return
     }
 
     const db = getMessageDb(session.userId)
+
+    // Resolve conversationId for the target tab
+    // If target tab differs from current, look up its conversationId from Dexie
+    let effectiveConversationId = currentConversationId
+    if (targetTabId !== currentTabId) {
+      const targetTab = await db.tabs.get(targetTabId)
+      if (targetTab) {
+        effectiveConversationId = targetTab.conversationId
+      } else {
+        console.warn(`[dexie] addMessage: target tab ${targetTabId} not found in Dexie`)
+      }
+    }
+
+    if (!effectiveConversationId) {
+      console.warn("[dexie] addMessage called without conversationId")
+      return
+    }
+
     const now = Date.now()
-    const seq = await getNextSeq(db, currentTabId)
+    const seq = await getNextSeq(db, targetTabId)
 
     const dbMessage: DbMessage = {
       id: message.id,
-      tabId: currentTabId,
+      tabId: targetTabId,
       type: message.type === "user" ? "user" : message.type === "sdk_message" ? "sdk_message" : "system",
       content: toDbMessageContent(message),
       createdAt: now,
@@ -334,7 +377,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
     await safeDb(() => db.messages.add(dbMessage))
 
     // Update conversation metadata
-    const convo = await db.conversations.get(currentConversationId)
+    const convo = await db.conversations.get(effectiveConversationId)
     if (!convo) return
 
     const updates: Partial<DbConversation> = {
@@ -350,12 +393,12 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
       updates.autoTitleSet = true
     }
 
-    await safeDb(() => db.conversations.update(currentConversationId, updates))
+    await safeDb(() => db.conversations.update(effectiveConversationId!, updates))
 
-    const tab = await db.tabs.get(currentTabId)
+    const tab = await db.tabs.get(targetTabId)
     if (tab) {
       await safeDb(() =>
-        db.tabs.update(currentTabId, {
+        db.tabs.update(targetTabId, {
           lastMessageAt: now,
           messageCount: (tab.messageCount ?? 0) + 1,
           pendingSync: true,
@@ -363,7 +406,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
       )
     }
 
-    queueSync(currentConversationId, session.userId)
+    queueSync(effectiveConversationId, session.userId)
   },
 
   addTab: async (name = "new tab") => {
@@ -615,6 +658,7 @@ export const useDexieMessageActions = () =>
     ensureTabGroupWithTab: state.ensureTabGroupWithTab,
     switchConversation: state.switchConversation,
     deleteConversation: state.deleteConversation,
+    archiveConversation: state.archiveConversation,
     shareConversation: state.shareConversation,
     unshareConversation: state.unshareConversation,
     addMessage: state.addMessage,

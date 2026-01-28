@@ -29,11 +29,13 @@ import { useActiveTab } from "@/lib/stores/tabStore"
 interface UseChatMessagingOptions {
   workspace: string | null
   conversationId: string | null
+  /** Tab group ID — required for lock key */
+  tabGroupId: string | null
   isTerminal: boolean
   busy: boolean
   msg: string
   setMsg: (msg: string) => void
-  addMessage: (message: UIMessage, targetConversationId?: string) => void
+  addMessage: (message: UIMessage, targetTabId: string) => void
   chatInputRef: React.RefObject<ChatInputHandle | null>
   setShouldForceScroll: (value: boolean) => void
   setShowCompletionDots: (value: boolean) => void
@@ -50,6 +52,7 @@ interface UseChatMessagingOptions {
 export function useChatMessaging({
   workspace,
   conversationId,
+  tabGroupId,
   isTerminal,
   busy,
   msg,
@@ -86,19 +89,23 @@ export function useChatMessaging({
 
   const createRequestBody = useCallback(
     (message: string, analyzeImageUrls?: string[]) => {
-      const tabId = activeTab?.conversationId ?? conversationId
+      // Strict: require activeTab with conversationId — no fallbacks
+      const tabId = activeTab?.conversationId
+      if (!tabId || !tabGroupId) {
+        throw new Error("[useChatMessaging] Cannot create request: activeTab or tabGroupId is missing")
+      }
       const baseBody = {
         message,
         conversationId,
-        tabId, // Tab/session key (required by API)
+        tabGroupId,
+        tabId,
         apiKey: userApiKey || undefined,
         model: userModel,
-        // Include image URLs for analyze mode - server will fetch, save to .uploads/, and tell Claude to Read
         analyzeImageUrls: analyzeImageUrls?.length ? analyzeImageUrls : undefined,
       }
       return isTerminal ? { ...baseBody, workspace: workspace || undefined } : baseBody
     },
-    [conversationId, activeTab?.conversationId, userApiKey, userModel, isTerminal, workspace],
+    [conversationId, activeTab?.conversationId, tabGroupId, userApiKey, userModel, isTerminal, workspace],
   )
 
   const buildPromptForClaude = useCallback((userMessage: UIMessage): PromptBuildResult => {
@@ -215,8 +222,8 @@ export function useChatMessaging({
       let timeoutId: NodeJS.Timeout | null = null
       let shouldStopReading = false
 
-      // Capture the tabId at stream start for validation
-      const expectedTabId = activeTab?.conversationId ?? conversationId
+      // Capture the tabId at stream start for validation — strict, no fallback
+      const expectedTabId = activeTab?.conversationId
 
       // Track seen messageIds for idempotency (prevents duplicate processing)
       const seenMessageIds = new Set<string>()
@@ -558,12 +565,14 @@ export function useChatMessaging({
       const messageToSend = overrideMessage ?? msg
       // Note: isStopping check is done by the caller in ChatInput
       if (isSubmitting.current || busy || !messageToSend.trim()) return
-      if (!conversationId) return
+      // Strict: require both conversationId and activeTab — no fallbacks
+      if (!conversationId || !activeTab?.conversationId) return
 
-      const targetConversationId = conversationId
+      // Use the active tab's session key for streaming and message routing
+      const targetTabId = activeTab.conversationId
 
       isSubmitting.current = true
-      streamingActions.startStream(targetConversationId)
+      streamingActions.startStream(targetTabId)
 
       const attachments = chatInputRef.current?.getAttachments() || []
 
@@ -574,14 +583,13 @@ export function useChatMessaging({
         timestamp: new Date(),
         attachments: attachments.length > 0 ? attachments : undefined,
       }
-      addMessage(userMessage, targetConversationId)
+      addMessage(userMessage, targetTabId)
       setMsg("")
       chatInputRef.current?.clearAllAttachments()
       setShouldForceScroll(true)
 
       try {
-        // Always use streaming (useStreaming state was always true)
-        await sendStreaming(userMessage, targetConversationId)
+        await sendStreaming(userMessage, targetTabId)
       } finally {
         isSubmitting.current = false
       }
@@ -590,6 +598,7 @@ export function useChatMessaging({
       msg,
       busy,
       conversationId,
+      activeTab?.conversationId,
       streamingActions,
       chatInputRef,
       addMessage,

@@ -3,11 +3,14 @@
  * These guards prevent overlapping requests and manage conversation state
  */
 
+/** Branded key: userId::workspace::tabGroupId::tabId — only created by tabKey() */
+export type TabSessionKey = string & { readonly __brand: "TabSessionKey" }
+
 // Concurrency guard to prevent overlapping sessions
-const activeConversations = new Set<string>()
+const activeConversations = new Set<TabSessionKey>()
 
 // Track when each conversation was locked (for timeout detection)
-const conversationLockTimestamps = new Map<string, number>()
+const conversationLockTimestamps = new Map<TabSessionKey, number>()
 
 // Lock timeout: 5 minutes (in milliseconds)
 const LOCK_TIMEOUT_MS = 5 * 60 * 1000
@@ -19,7 +22,7 @@ const LOCK_TIMEOUT_MS = 5 * 60 * 1000
  *
  * SECURITY: Uses atomic check-and-set pattern to prevent TOCTOU race conditions
  */
-export function tryLockConversation(key: string): boolean {
+export function tryLockConversation(key: TabSessionKey): boolean {
   // Atomic read: Check if lock exists and get timestamp in one operation
   const existingLockTime = conversationLockTimestamps.get(key)
 
@@ -59,7 +62,7 @@ export function tryLockConversation(key: string): boolean {
  * Release a conversation lock after request completes
  * Should be called in finally block to ensure cleanup
  */
-export function unlockConversation(key: string): void {
+export function unlockConversation(key: TabSessionKey): void {
   activeConversations.delete(key)
   conversationLockTimestamps.delete(key)
 }
@@ -67,7 +70,7 @@ export function unlockConversation(key: string): void {
 /**
  * Check if a conversation is currently locked/in-progress
  */
-export function isConversationLocked(key: string): boolean {
+export function isConversationLocked(key: TabSessionKey): boolean {
   return activeConversations.has(key)
 }
 
@@ -124,9 +127,9 @@ if (typeof setInterval !== "undefined") {
  * Debug function: Get all currently locked conversations
  * Returns array of lock keys with their ages
  */
-export function getLockedConversations(): Array<{ key: string; ageMs: number }> {
+export function getLockedConversations(): Array<{ key: TabSessionKey; ageMs: number }> {
   const now = Date.now()
-  const locks: Array<{ key: string; ageMs: number }> = []
+  const locks: Array<{ key: TabSessionKey; ageMs: number }> = []
 
   for (const [key, timestamp] of conversationLockTimestamps.entries()) {
     locks.push({

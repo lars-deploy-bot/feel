@@ -75,36 +75,40 @@ describe("Session Store - Tab Locking", () => {
     // Clear mock database
     mockSessions.clear()
 
-    await SessionStoreMemory.delete(tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabId: "test-tab-1" }))
-    await SessionStoreMemory.delete(tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabId: "test-tab-2" }))
+    await SessionStoreMemory.delete(
+      tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabGroupId: "test-tabgroup", tabId: "test-tab-1" }),
+    )
+    await SessionStoreMemory.delete(
+      tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabGroupId: "test-tabgroup", tabId: "test-tab-2" }),
+    )
   })
 
   describe("tabKey", () => {
     it("should create consistent keys from same parameters", () => {
-      const key1 = tabKey({ userId: "user1", workspace: "workspace1", tabId: "tab1" })
-      const key2 = tabKey({ userId: "user1", workspace: "workspace1", tabId: "tab1" })
+      const key1 = tabKey({ userId: "user1", workspace: "workspace1", tabGroupId: "test-tabgroup", tabId: "tab1" })
+      const key2 = tabKey({ userId: "user1", workspace: "workspace1", tabGroupId: "test-tabgroup", tabId: "tab1" })
       expect(key1).toBe(key2)
     })
 
     it("should create different keys for different tabs", () => {
-      const key1 = tabKey({ userId: "user1", workspace: "workspace1", tabId: "tab1" })
-      const key2 = tabKey({ userId: "user1", workspace: "workspace1", tabId: "tab2" })
+      const key1 = tabKey({ userId: "user1", workspace: "workspace1", tabGroupId: "test-tabgroup", tabId: "tab1" })
+      const key2 = tabKey({ userId: "user1", workspace: "workspace1", tabGroupId: "test-tabgroup", tabId: "tab2" })
       expect(key1).not.toBe(key2)
     })
 
     it("should include tabId in the key", () => {
-      const key = tabKey({ userId: "user1", workspace: "workspace1", tabId: "tab1" })
+      const key = tabKey({ userId: "user1", workspace: "workspace1", tabGroupId: "test-tabgroup", tabId: "tab1" })
       expect(key).toContain("tab1")
     })
 
     it("should use default workspace when not provided", () => {
-      const key = tabKey({ userId: "user1", tabId: "tab1" })
+      const key = tabKey({ userId: "user1", tabGroupId: "test-tabgroup", tabId: "tab1" })
       expect(key).toContain("default")
     })
 
     it("should allow different tabs to be locked independently", () => {
-      const key1 = tabKey({ userId: "user1", workspace: "workspace1", tabId: "tab1" })
-      const key2 = tabKey({ userId: "user1", workspace: "workspace1", tabId: "tab2" })
+      const key1 = tabKey({ userId: "user1", workspace: "workspace1", tabGroupId: "test-tabgroup", tabId: "tab1" })
+      const key2 = tabKey({ userId: "user1", workspace: "workspace1", tabGroupId: "test-tabgroup", tabId: "tab2" })
 
       const lock1 = tryLockConversation(key1)
       const lock2 = tryLockConversation(key2)
@@ -117,7 +121,7 @@ describe("Session Store - Tab Locking", () => {
     })
 
     it("should block same tab from concurrent requests", () => {
-      const key = tabKey({ userId: "user1", workspace: "workspace1", tabId: "same-tab" })
+      const key = tabKey({ userId: "user1", workspace: "workspace1", tabGroupId: "test-tabgroup", tabId: "same-tab" })
 
       const first = tryLockConversation(key)
       const second = tryLockConversation(key)
@@ -131,14 +135,24 @@ describe("Session Store - Tab Locking", () => {
 
   describe("Tab Locking", () => {
     it("should acquire lock for new tab", () => {
-      const key = tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabId: "test-tab-lock-1" })
+      const key = tabKey({
+        userId: TEST_USER_ID,
+        workspace: TEST_WORKSPACE,
+        tabGroupId: "test-tabgroup",
+        tabId: "test-tab-lock-1",
+      })
       const acquired = tryLockConversation(key)
       expect(acquired).toBe(true)
       unlockConversation(key)
     })
 
     it("should prevent concurrent locks", () => {
-      const key = tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabId: "test-tab-lock-2" })
+      const key = tabKey({
+        userId: TEST_USER_ID,
+        workspace: TEST_WORKSPACE,
+        tabGroupId: "test-tabgroup",
+        tabId: "test-tab-lock-2",
+      })
 
       const first = tryLockConversation(key)
       const second = tryLockConversation(key)
@@ -150,7 +164,12 @@ describe("Session Store - Tab Locking", () => {
     })
 
     it("should release lock and allow reacquisition", () => {
-      const key = tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabId: "test-tab-lock-3" })
+      const key = tabKey({
+        userId: TEST_USER_ID,
+        workspace: TEST_WORKSPACE,
+        tabGroupId: "test-tabgroup",
+        tabId: "test-tab-lock-3",
+      })
 
       tryLockConversation(key)
       unlockConversation(key)
@@ -162,8 +181,18 @@ describe("Session Store - Tab Locking", () => {
     })
 
     it("should handle multiple independent tab locks", () => {
-      const key1 = tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabId: "test-tab-multi-1" })
-      const key2 = tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabId: "test-tab-multi-2" })
+      const key1 = tabKey({
+        userId: TEST_USER_ID,
+        workspace: TEST_WORKSPACE,
+        tabGroupId: "test-tabgroup",
+        tabId: "test-tab-multi-1",
+      })
+      const key2 = tabKey({
+        userId: TEST_USER_ID,
+        workspace: TEST_WORKSPACE,
+        tabGroupId: "test-tabgroup",
+        tabId: "test-tab-multi-2",
+      })
 
       const lock1 = tryLockConversation(key1)
       const lock2 = tryLockConversation(key2)
@@ -176,8 +205,18 @@ describe("Session Store - Tab Locking", () => {
     })
 
     it("should allow same tab for different users", () => {
-      const key1 = tabKey({ userId: "user1", workspace: TEST_WORKSPACE, tabId: "shared-tab" })
-      const key2 = tabKey({ userId: "user2", workspace: TEST_WORKSPACE, tabId: "shared-tab" })
+      const key1 = tabKey({
+        userId: "user1",
+        workspace: TEST_WORKSPACE,
+        tabGroupId: "test-tabgroup",
+        tabId: "shared-tab",
+      })
+      const key2 = tabKey({
+        userId: "user2",
+        workspace: TEST_WORKSPACE,
+        tabGroupId: "test-tabgroup",
+        tabId: "shared-tab",
+      })
 
       const lock1 = tryLockConversation(key1)
       const lock2 = tryLockConversation(key2)
@@ -193,6 +232,7 @@ describe("Session Store - Tab Locking", () => {
       const key = tabKey({
         userId: TEST_USER_ID,
         workspace: TEST_WORKSPACE,
+        tabGroupId: "test-tabgroup",
         tabId: "test-tab-idempotent",
       })
 
@@ -207,7 +247,12 @@ describe("Session Store - Tab Locking", () => {
     })
 
     it("should handle rapid lock/unlock cycles", () => {
-      const key = tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabId: "test-tab-rapid" })
+      const key = tabKey({
+        userId: TEST_USER_ID,
+        workspace: TEST_WORKSPACE,
+        tabGroupId: "test-tabgroup",
+        tabId: "test-tab-rapid",
+      })
 
       for (let i = 0; i < 10; i++) {
         const acquired = tryLockConversation(key)
@@ -220,12 +265,21 @@ describe("Session Store - Tab Locking", () => {
   describe("SessionStoreMemory", () => {
     beforeEach(async () => {
       // Clear memory store before each test
-      await SessionStoreMemory.delete(tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabId: "test-tab-1" }))
-      await SessionStoreMemory.delete(tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabId: "test-tab-2" }))
+      await SessionStoreMemory.delete(
+        tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabGroupId: "test-tabgroup", tabId: "test-tab-1" }),
+      )
+      await SessionStoreMemory.delete(
+        tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabGroupId: "test-tabgroup", tabId: "test-tab-2" }),
+      )
     })
 
     it("should store and retrieve session IDs", async () => {
-      const key = tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabId: "test-tab-store-1" })
+      const key = tabKey({
+        userId: TEST_USER_ID,
+        workspace: TEST_WORKSPACE,
+        tabGroupId: "test-tabgroup",
+        tabId: "test-tab-store-1",
+      })
       const sessionId = "session-abc-123"
 
       await SessionStoreMemory.set(key, sessionId)
@@ -235,13 +289,23 @@ describe("Session Store - Tab Locking", () => {
     })
 
     it("should return null for non-existent keys", async () => {
-      const key = tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabId: "non-existent" })
+      const key = tabKey({
+        userId: TEST_USER_ID,
+        workspace: TEST_WORKSPACE,
+        tabGroupId: "test-tabgroup",
+        tabId: "non-existent",
+      })
       const retrieved = await SessionStoreMemory.get(key)
       expect(retrieved).toBeNull()
     })
 
     it("should delete stored sessions", async () => {
-      const key = tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabId: "test-tab-delete" })
+      const key = tabKey({
+        userId: TEST_USER_ID,
+        workspace: TEST_WORKSPACE,
+        tabGroupId: "test-tabgroup",
+        tabId: "test-tab-delete",
+      })
       const sessionId = "session-abc-123"
 
       await SessionStoreMemory.set(key, sessionId)
@@ -252,7 +316,12 @@ describe("Session Store - Tab Locking", () => {
     })
 
     it("should overwrite existing sessions", async () => {
-      const key = tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabId: "test-tab-overwrite" })
+      const key = tabKey({
+        userId: TEST_USER_ID,
+        workspace: TEST_WORKSPACE,
+        tabGroupId: "test-tabgroup",
+        tabId: "test-tab-overwrite",
+      })
 
       await SessionStoreMemory.set(key, "session-1")
       await SessionStoreMemory.set(key, "session-2")
@@ -262,8 +331,18 @@ describe("Session Store - Tab Locking", () => {
     })
 
     it("should handle multiple independent sessions", async () => {
-      const key1 = tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabId: "test-tab-multi-a" })
-      const key2 = tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabId: "test-tab-multi-b" })
+      const key1 = tabKey({
+        userId: TEST_USER_ID,
+        workspace: TEST_WORKSPACE,
+        tabGroupId: "test-tabgroup",
+        tabId: "test-tab-multi-a",
+      })
+      const key2 = tabKey({
+        userId: TEST_USER_ID,
+        workspace: TEST_WORKSPACE,
+        tabGroupId: "test-tabgroup",
+        tabId: "test-tab-multi-b",
+      })
 
       await SessionStoreMemory.set(key1, "session-1")
       await SessionStoreMemory.set(key2, "session-2")

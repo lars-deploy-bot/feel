@@ -9,6 +9,8 @@ import { useStreamingActions, getAbortController, clearAbortController } from "@
 interface UseStreamCancellationOptions {
   /** Current tab ID (session key for Claude SDK) */
   tabId: string
+  /** Current tab group ID */
+  tabGroupId: string | null
   /** Current workspace */
   workspace: string | null
   /**
@@ -62,6 +64,7 @@ interface UseStreamCancellationReturn {
  */
 export function useStreamCancellation({
   tabId,
+  tabGroupId,
   workspace,
   addMessage,
   setShowCompletionDots,
@@ -130,10 +133,10 @@ export function useStreamCancellation({
           const validatedRequest = validateRequest("claude/stream/cancel", { requestId: requestIdToCancel })
           const response = await postty("claude/stream/cancel", validatedRequest)
           console.log("[useStreamCancellation] Cancel response:", JSON.stringify(response))
-        } else if (tabId.length > 0 && workspace) {
+        } else if (tabId.length > 0 && tabGroupId && workspace) {
           // Fallback path: Cancel by tabId (super-early Stop)
           console.log("[useStreamCancellation] Sending cancel with tabId fallback:", tabId)
-          const validatedRequest = validateRequest("claude/stream/cancel", { tabId, workspace })
+          const validatedRequest = validateRequest("claude/stream/cancel", { tabGroupId, tabId, workspace })
           const response = await postty("claude/stream/cancel", validatedRequest)
           console.log("[useStreamCancellation] Cancel response (fallback):", JSON.stringify(response))
         } else {

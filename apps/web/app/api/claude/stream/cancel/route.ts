@@ -35,8 +35,11 @@ export async function POST(req: NextRequest) {
 
     // Parse request body
     const body = await req.json()
-    const { requestId, tabId } = body
-    console.log("[Cancel Stream] Request body:", JSON.stringify({ requestId, tabId, workspace: body.workspace }))
+    const { requestId, tabId, tabGroupId } = body
+    console.log(
+      "[Cancel Stream] Request body:",
+      JSON.stringify({ requestId, tabId, tabGroupId, workspace: body.workspace }),
+    )
 
     // Validate: must have either requestId OR (tabId + workspace)
     if (requestId && typeof requestId === "string") {
@@ -77,10 +80,11 @@ export async function POST(req: NextRequest) {
       const tabKeyValue = tabKey({
         userId: user.id,
         workspace: verifiedWorkspace,
+        tabGroupId: tabGroupId as string,
         tabId,
       })
       console.log(
-        `[Cancel Stream] Building tabKey with: userId=${user.id}, workspace=${verifiedWorkspace}, tabId=${tabId}`,
+        `[Cancel Stream] Building tabKey with: userId=${user.id}, workspace=${verifiedWorkspace}, tabGroupId=${tabGroupId}, tabId=${tabId}`,
       )
       console.log(`[Cancel Stream] Result tabKey: ${tabKeyValue}`)
       console.log(`[Cancel Stream] User ${user.id} cancelling by tabKey (super-early Stop): ${tabKeyValue}`)

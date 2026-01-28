@@ -2,7 +2,7 @@
 
 import { REFERRAL } from "@webalive/shared"
 import { AnimatePresence, motion } from "framer-motion"
-import { ChevronRight, Heart, PanelLeftClose, Settings2, Trash2 } from "lucide-react"
+import { Archive, ChevronRight, Heart, PanelLeftClose, Settings2 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { useDexieConversations, useDexieCurrentConversationId, useDexieSession } from "@/lib/db/dexieMessageStore"
 import type { DbConversation } from "@/lib/db/messageDb"
@@ -12,7 +12,7 @@ import { useAppHydrated } from "@/lib/stores/HydrationBoundary"
 interface ConversationSidebarProps {
   workspace: string | null
   onTabGroupSelect: (tabGroupId: string) => void
-  onDeleteTabGroup: (tabGroupId: string) => void
+  onArchiveTabGroup: (tabGroupId: string) => void
   onOpenSettings: () => void
   onOpenInvite: () => void
 }
@@ -30,7 +30,7 @@ interface ConversationSidebarProps {
 export function ConversationSidebar({
   workspace,
   onTabGroupSelect,
-  onDeleteTabGroup,
+  onArchiveTabGroup,
   onOpenSettings,
   onOpenInvite,
 }: ConversationSidebarProps) {
@@ -46,8 +46,8 @@ export function ConversationSidebar({
   const conversations = workspace ? allConversations : []
   const currentConversationId = useDexieCurrentConversationId()
   const sidebarRef = useRef<HTMLDivElement>(null)
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
-  const [conversationToDelete, setConversationToDelete] = useState<DbConversation | null>(null)
+  const [archiveModalOpen, setArchiveModalOpen] = useState(false)
+  const [conversationToArchive, setConversationToArchive] = useState<DbConversation | null>(null)
 
   // Close on Escape key
   useEffect(() => {
@@ -67,29 +67,29 @@ export function ConversationSidebar({
     onTabGroupSelect(tabGroupId)
   }
 
-  const handleDeleteClick = (e: React.MouseEvent, conversation: DbConversation) => {
+  const handleArchiveClick = (e: React.MouseEvent, conversation: DbConversation) => {
     e.stopPropagation()
 
-    // Don't allow deleting current conversation
+    // Don't allow archiving current conversation
     if (conversation.id === currentConversationId) {
       return
     }
 
-    setConversationToDelete(conversation)
-    setDeleteModalOpen(true)
+    setConversationToArchive(conversation)
+    setArchiveModalOpen(true)
   }
 
-  const handleConfirmDelete = () => {
-    if (conversationToDelete) {
-      onDeleteTabGroup(conversationToDelete.id)
+  const handleConfirmArchive = () => {
+    if (conversationToArchive) {
+      onArchiveTabGroup(conversationToArchive.id)
     }
-    setDeleteModalOpen(false)
-    setConversationToDelete(null)
+    setArchiveModalOpen(false)
+    setConversationToArchive(null)
   }
 
-  const handleCancelDelete = () => {
-    setDeleteModalOpen(false)
-    setConversationToDelete(null)
+  const handleCancelArchive = () => {
+    setArchiveModalOpen(false)
+    setConversationToArchive(null)
   }
 
   // Format timestamp as relative time
@@ -147,7 +147,7 @@ export function ConversationSidebar({
                       conversation={conversation}
                       isActive={conversation.id === currentConversationId}
                       onClick={() => handleTabGroupClick(conversation.id)}
-                      onDelete={e => handleDeleteClick(e, conversation)}
+                      onArchive={e => handleArchiveClick(e, conversation)}
                       formatTimestamp={formatTimestamp}
                     />
                   ))}
@@ -189,15 +189,15 @@ export function ConversationSidebar({
         </div>
       </aside>
 
-      {/* Delete confirmation modal */}
-      {deleteModalOpen && conversationToDelete && (
+      {/* Archive confirmation modal */}
+      {archiveModalOpen && conversationToArchive && (
         <div
           role="dialog"
           aria-modal="true"
-          aria-labelledby="delete-dialog-title"
+          aria-labelledby="archive-dialog-title"
           className="fixed inset-0 bg-black/40 dark:bg-black/60 z-[60] flex items-center justify-center"
-          onClick={handleCancelDelete}
-          onKeyDown={e => e.key === "Escape" && handleCancelDelete()}
+          onClick={handleCancelArchive}
+          onKeyDown={e => e.key === "Escape" && handleCancelArchive()}
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
@@ -208,32 +208,32 @@ export function ConversationSidebar({
             className="bg-white dark:bg-[#1a1a1a] border border-black/10 dark:border-white/10 rounded-lg shadow-xl max-w-md w-full mx-4 overflow-hidden"
           >
             <div className="px-6 py-5 border-b border-black/10 dark:border-white/10">
-              <h3 id="delete-dialog-title" className="text-lg font-medium text-black dark:text-white">
-                Delete tab group
+              <h3 id="archive-dialog-title" className="text-lg font-medium text-black dark:text-white">
+                Archive tab group
               </h3>
             </div>
             <div className="px-6 py-4">
               <p className="text-sm text-black/70 dark:text-white/70 mb-2">
-                Are you sure you want to delete this tab group?
+                Archive this tab group? You can restore it later.
               </p>
               <p className="text-sm font-medium text-black dark:text-white line-clamp-2 bg-black/5 dark:bg-white/5 px-3 py-2 rounded">
-                {conversationToDelete.title}
+                {conversationToArchive.title}
               </p>
             </div>
             <div className="px-6 py-4 border-t border-black/10 dark:border-white/10 flex items-center justify-end gap-3">
               <button
                 type="button"
-                onClick={handleCancelDelete}
+                onClick={handleCancelArchive}
                 className="px-4 py-2 text-sm font-medium text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors rounded"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                onClick={handleConfirmDelete}
-                className="px-4 py-2 text-sm font-medium bg-red-600 text-white hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 transition-colors rounded"
+                onClick={handleConfirmArchive}
+                className="px-4 py-2 text-sm font-medium bg-black/80 text-white hover:bg-black/90 dark:bg-white/80 dark:text-black dark:hover:bg-white/90 transition-colors rounded"
               >
-                Delete
+                Archive
               </button>
             </div>
           </motion.div>
@@ -247,11 +247,11 @@ interface ConversationItemProps {
   conversation: DbConversation
   isActive: boolean
   onClick: () => void
-  onDelete: (e: React.MouseEvent, conversation: DbConversation) => void
+  onArchive: (e: React.MouseEvent, conversation: DbConversation) => void
   formatTimestamp: (timestamp: number) => string
 }
 
-function ConversationItem({ conversation, isActive, onClick, onDelete, formatTimestamp }: ConversationItemProps) {
+function ConversationItem({ conversation, isActive, onClick, onArchive, formatTimestamp }: ConversationItemProps) {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault()
@@ -286,11 +286,11 @@ function ConversationItem({ conversation, isActive, onClick, onDelete, formatTim
         {!isActive && (
           <button
             type="button"
-            onClick={e => onDelete(e, conversation)}
-            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-all"
-            aria-label="Delete tab group"
+            onClick={e => onArchive(e, conversation)}
+            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-all"
+            aria-label="Archive tab group"
           >
-            <Trash2 size={14} className="text-red-600 dark:text-red-400" />
+            <Archive size={14} className="text-black/50 dark:text-white/50" />
           </button>
         )}
       </div>

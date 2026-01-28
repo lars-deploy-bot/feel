@@ -123,18 +123,19 @@ export const apiSchemas = {
     req: z
       .object({
         requestId: z.string().optional(),
+        tabGroupId: z.string().optional(), // Tab group ID for lock key
         tabId: z.string().optional(), // Primary session key (replaces conversationId for fallback)
         workspace: z.string().optional(),
       })
-      .refine(data => data.requestId || (data.tabId && data.workspace), {
-        message: "Either requestId or (tabId + workspace) must be provided",
+      .refine(data => data.requestId || (data.tabGroupId && data.tabId && data.workspace), {
+        message: "Either requestId or (tabGroupId + tabId + workspace) must be provided",
       })
       .brand<"CancelStreamRequest">(),
     res: z.object({
       ok: z.boolean(),
       status: z.enum(["cancelled", "already_complete"]),
       requestId: z.string().optional(),
-      tabId: z.string().optional(), // Returned instead of conversationId
+      tabId: z.string().optional(),
     }),
   },
   /**

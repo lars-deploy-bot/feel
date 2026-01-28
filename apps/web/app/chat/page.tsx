@@ -43,7 +43,6 @@ import { validateOAuthToastParams } from "@/lib/integrations/toast-validation"
 import { useIsSessionExpired } from "@/lib/stores/authStore"
 import { useSidebarActions, useSidebarOpen } from "@/lib/stores/conversationSidebarStore"
 import { isDevelopment, useDebugActions, useSandbox, useSSETerminal } from "@/lib/stores/debug-store"
-import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
 import { useApiKey, useModel } from "@/lib/stores/llmStore"
 import { useStreamingActions } from "@/lib/stores/streamingStore"
 import { useActiveTab, useTabActions, useWorkspaceTabs } from "@/lib/stores/tabStore"
@@ -70,7 +69,7 @@ function ChatPageContent() {
     ensureTabGroupWithTab,
     addMessage,
     switchTab: switchDexieTab,
-    deleteConversation,
+    archiveConversation,
     setSession: setDexieSession,
   } = useDexieMessageActions()
   const dexieSession = useDexieSession()
@@ -92,14 +91,12 @@ function ChatPageContent() {
   const [_showCompletionDots, setShowCompletionDots] = useState(false)
   const modals = useModals()
 
-  // Feature flags
-  const tabsEnabled = useFeatureFlag("TABS")
   const { user } = useAuth()
   const selectedOrgId = useSelectedOrgId()
-  const isAdmin = user?.isAdmin ?? false
+  const _isAdmin = user?.isAdmin ?? false
 
-  // Tabs are admin-only feature: requires both admin status AND feature flag
-  const showTabs = isAdmin && tabsEnabled
+  // Tabs are on by default for all users
+  const showTabs = true
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const isAutoScrolling = useRef(false)
   const chatInputRef = useRef<ChatInputHandle | null>(null)
@@ -203,6 +200,7 @@ function ChatPageContent() {
   } = useChatMessaging({
     workspace,
     conversationId: tabId,
+    tabGroupId,
     isTerminal,
     busy,
     msg,
@@ -216,6 +214,7 @@ function ChatPageContent() {
   // Stream cancellation hook - must be after useChatMessaging to get the refs
   const { stopStreaming, isStopping } = useStreamCancellation({
     tabId: tabId ?? "",
+    tabGroupId,
     workspace,
     addMessage,
     setShowCompletionDots,
@@ -241,6 +240,7 @@ function ChatPageContent() {
   // Stream reconnection - recovers buffered messages when tab becomes visible
   useStreamReconnect({
     tabId,
+    tabGroupId,
     workspace,
     isStreaming: busy,
     addMessage,
@@ -450,21 +450,21 @@ function ChatPageContent() {
     [handleOpenTabGroupInTab],
   )
 
-  const handleDeleteTabGroup = useCallback(
-    async (tabGroupIdToDelete: string) => {
-      if (!tabGroupIdToDelete) return
+  const handleArchiveTabGroup = useCallback(
+    async (tabGroupIdToArchive: string) => {
+      if (!tabGroupIdToArchive) return
 
       const nextTab =
-        tabGroupIdToDelete === tabGroupId
-          ? (workspaceTabs.find(tab => tab.tabGroupId !== tabGroupIdToDelete) ?? null)
+        tabGroupIdToArchive === tabGroupId
+          ? (workspaceTabs.find(tab => tab.tabGroupId !== tabGroupIdToArchive) ?? null)
           : null
 
-      await deleteConversation(tabGroupIdToDelete)
+      await archiveConversation(tabGroupIdToArchive)
       if (workspace) {
-        removeTabGroup(workspace, tabGroupIdToDelete)
+        removeTabGroup(workspace, tabGroupIdToArchive)
       }
 
-      if (tabGroupIdToDelete === tabGroupId && workspace) {
+      if (tabGroupIdToArchive === tabGroupId && workspace) {
         if (nextTab) {
           setActiveTab(workspace, nextTab.id)
           switchTab(nextTab.conversationId)
@@ -482,7 +482,7 @@ function ChatPageContent() {
       }
     },
     [
-      deleteConversation,
+      archiveConversation,
       tabGroupId,
       workspaceTabs,
       workspace,
@@ -503,7 +503,7 @@ function ChatPageContent() {
       <ConversationSidebar
         workspace={workspace}
         onTabGroupSelect={handleTabGroupSelect}
-        onDeleteTabGroup={handleDeleteTabGroup}
+        onArchiveTabGroup={handleArchiveTabGroup}
         onOpenSettings={modals.openSettings}
         onOpenInvite={modals.openInvite}
       />

@@ -54,6 +54,7 @@ export function useConversations(workspace: string | null, session: SessionConte
             .and(
               c =>
                 !c.deletedAt && // Exclude soft-deleted
+                !c.archivedAt && // Exclude archived
                 (c.creatorId === session.userId || // User's own
                   (c.visibility === "shared" && c.orgId === session.orgId)), // Shared in same org
             )
@@ -82,7 +83,7 @@ export function useSharedConversations(workspace: string | null, session: Sessio
         return db.conversations
           .where("[orgId+visibility+updatedAt]")
           .between([session.orgId, "shared", Dexie.minKey], [session.orgId, "shared", Dexie.maxKey])
-          .and(c => !c.deletedAt && c.workspace === workspace) // Filter by workspace and exclude deleted
+          .and(c => !c.deletedAt && !c.archivedAt && c.workspace === workspace) // Filter by workspace and exclude deleted/archived
           .reverse()
           .toArray()
       },

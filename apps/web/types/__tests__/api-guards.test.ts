@@ -5,12 +5,14 @@ describe("API Request Validation Guards", () => {
   describe("BodySchema (Claude API request)", () => {
     // tabId is now required, conversationId is optional
     const validTabId = "660e8400-e29b-41d4-a716-446655440001"
+    const validTabGroupId = "11111111-1111-1111-1111-111111111111"
     const validConversationId = "550e8400-e29b-41d4-a716-446655440000"
 
     it("should accept valid request body", () => {
       const validBody = {
         message: "Hello Claude",
         tabId: validTabId,
+        tabGroupId: validTabGroupId,
         conversationId: validConversationId,
         workspace: "example.com",
       }
@@ -22,6 +24,7 @@ describe("API Request Validation Guards", () => {
     it("should require message field", () => {
       const invalidBody = {
         tabId: validTabId,
+        tabGroupId: validTabGroupId,
       }
 
       const result = BodySchema.safeParse(invalidBody)
@@ -32,6 +35,7 @@ describe("API Request Validation Guards", () => {
       const invalidBody = {
         message: "",
         tabId: validTabId,
+        tabGroupId: validTabGroupId,
       }
 
       const result = BodySchema.safeParse(invalidBody)
@@ -40,10 +44,10 @@ describe("API Request Validation Guards", () => {
 
     it("should reject non-string messages", () => {
       const invalidBodies = [
-        { message: 123, tabId: validTabId },
-        { message: null, tabId: validTabId },
-        { message: undefined, tabId: validTabId },
-        { message: {}, tabId: validTabId },
+        { message: 123, tabId: validTabId, tabGroupId: validTabGroupId },
+        { message: null, tabId: validTabId, tabGroupId: validTabGroupId },
+        { message: undefined, tabId: validTabId, tabGroupId: validTabGroupId },
+        { message: {}, tabId: validTabId, tabGroupId: validTabGroupId },
       ]
 
       for (const body of invalidBodies) {
@@ -55,6 +59,7 @@ describe("API Request Validation Guards", () => {
     it("should require tabId", () => {
       const invalidBody = {
         message: "Hello",
+        tabGroupId: validTabGroupId,
       }
 
       const result = BodySchema.safeParse(invalidBody)
@@ -63,9 +68,9 @@ describe("API Request Validation Guards", () => {
 
     it("should require tabId to be valid UUID", () => {
       const invalidIds = [
-        { message: "Hello", tabId: "not-a-uuid" },
-        { message: "Hello", tabId: "12345" },
-        { message: "Hello", tabId: "" },
+        { message: "Hello", tabId: "not-a-uuid", tabGroupId: validTabGroupId },
+        { message: "Hello", tabId: "12345", tabGroupId: validTabGroupId },
+        { message: "Hello", tabId: "", tabGroupId: validTabGroupId },
       ]
 
       for (const body of invalidIds) {
@@ -78,12 +83,14 @@ describe("API Request Validation Guards", () => {
       const withWorkspace = {
         message: "Hello",
         tabId: validTabId,
+        tabGroupId: validTabGroupId,
         workspace: "example.com",
       }
 
       const withoutWorkspace = {
         message: "Hello",
         tabId: validTabId,
+        tabGroupId: validTabGroupId,
       }
 
       expect(BodySchema.safeParse(withWorkspace).success).toBe(true)
@@ -94,6 +101,7 @@ describe("API Request Validation Guards", () => {
       const tooLong = {
         message: "a".repeat(1_000_001),
         tabId: validTabId,
+        tabGroupId: validTabGroupId,
       }
 
       expect(() => BodySchema.safeParse(tooLong)).not.toThrow()
@@ -101,9 +109,9 @@ describe("API Request Validation Guards", () => {
 
     it("should accept messages with special characters", () => {
       const specialMessages = [
-        { message: "<script>alert('xss')</script>", tabId: validTabId },
-        { message: "'; DROP TABLE users; --", tabId: validTabId },
-        { message: "test\x00null", tabId: validTabId },
+        { message: "<script>alert('xss')</script>", tabId: validTabId, tabGroupId: validTabGroupId },
+        { message: "'; DROP TABLE users; --", tabId: validTabId, tabGroupId: validTabGroupId },
+        { message: "test\x00null", tabId: validTabId, tabGroupId: validTabGroupId },
       ]
 
       for (const body of specialMessages) {
@@ -165,11 +173,13 @@ describe("API Request Validation Guards", () => {
 
   describe("Request Sanitization", () => {
     const validTabId = "660e8400-e29b-41d4-a716-446655440001"
+    const validTabGroupId = "11111111-1111-1111-1111-111111111111"
 
     it("should strip unexpected fields from valid requests", () => {
       const bodyWithExtra = {
         message: "Hello",
         tabId: validTabId,
+        tabGroupId: validTabGroupId,
         extraField: "should be stripped",
       }
 
@@ -183,6 +193,7 @@ describe("API Request Validation Guards", () => {
       const nullProtoBody = Object.create(null)
       nullProtoBody.message = "Hello"
       nullProtoBody.tabId = validTabId
+      nullProtoBody.tabGroupId = validTabGroupId
 
       expect(() => BodySchema.safeParse(nullProtoBody)).not.toThrow()
     })
@@ -191,12 +202,14 @@ describe("API Request Validation Guards", () => {
       interface CircularBody {
         message: string
         tabId: string
+        tabGroupId: string
         self?: CircularBody
       }
 
       const circular: CircularBody = {
         message: "Hello",
         tabId: validTabId,
+        tabGroupId: validTabGroupId,
       }
       circular.self = circular
 
@@ -206,15 +219,17 @@ describe("API Request Validation Guards", () => {
 
   describe("Performance & DoS Prevention", () => {
     const validTabId = "660e8400-e29b-41d4-a716-446655440001"
+    const validTabGroupId = "11111111-1111-1111-1111-111111111111"
 
     it("should handle deeply nested objects without stack overflow", () => {
       interface DeepObject {
         message?: string
         tabId?: string
+        tabGroupId?: string
         nested?: DeepObject
       }
 
-      let deepObject: DeepObject = { message: "Hello", tabId: validTabId }
+      let deepObject: DeepObject = { message: "Hello", tabId: validTabId, tabGroupId: validTabGroupId }
       for (let i = 0; i < 100; i++) {
         deepObject = { nested: deepObject }
       }
@@ -226,6 +241,7 @@ describe("API Request Validation Guards", () => {
       const largeObject = {
         message: "Hello",
         tabId: validTabId,
+        tabGroupId: validTabGroupId,
         extra: Array(1000).fill("item"),
       }
 
