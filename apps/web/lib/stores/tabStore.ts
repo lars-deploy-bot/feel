@@ -14,9 +14,9 @@ import { useShallow } from "zustand/react/shallow"
 
 export interface Tab {
   id: string
-  /** Conversation/session id for this tab (Claude session key) */
-  conversationId: string
-  /** Grouping id shown in left panel (tabgroup) */
+  /** Claude session id for this tab (backend session key) */
+  sessionId: string
+  /** Grouping id shown in left panel (sidebar item) */
   tabGroupId: string
   name: string
   tabNumber: number // Sequential number, never reused
@@ -35,7 +35,7 @@ interface TabStoreState {
 }
 
 interface TabStoreActions {
-  addTab: (workspace: string, tabGroupId: string, conversationId: string, name?: string) => Tab | null
+  addTab: (workspace: string, tabGroupId: string, sessionId: string, name?: string) => Tab | null
   removeTab: (workspace: string, tabId: string) => void
   reopenTab: (workspace: string, tabId: string) => void
   removeTabGroup: (workspace: string, tabGroupId: string) => void
@@ -48,8 +48,8 @@ interface TabStoreActions {
   /** Creates a new tabgroup with Tab 1 inside it. Returns ids or null if max tabs reached. */
   createTabGroupWithTab: (
     workspace: string,
-    conversationIdOverride?: string,
-  ) => { tabGroupId: string; conversationId: string; tabId: string } | null
+    sessionIdOverride?: string,
+  ) => { tabGroupId: string; sessionId: string; tabId: string } | null
 }
 
 type TabStore = TabStoreState & TabStoreActions
@@ -57,7 +57,7 @@ type TabStore = TabStoreState & TabStoreActions
 const MAX_TABS = 10
 
 const genId = () => `tab-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-const genConversationId = () => crypto.randomUUID()
+const genSessionId = () => crypto.randomUUID()
 const genTabGroupId = () => crypto.randomUUID()
 
 export const useTabStore = create<TabStore>()(
@@ -76,7 +76,7 @@ export const useTabStore = create<TabStore>()(
 
       /**
        * Compute next tab number for a tabgroup.
-       * Scoped per-tabgroup (not workspace) so each new chat starts at Tab 1.
+       * Scoped per-tabgroup (not workspace) so each new tab group starts at Tab 1.
        * Counts ALL tabs including closed ones to avoid reusing numbers within a group.
        */
       const getNextGroupNumber = (workspace: string, tabGroupId: string): number => {
@@ -86,11 +86,11 @@ export const useTabStore = create<TabStore>()(
         return Math.max(...groupTabs.map(t => t.tabNumber)) + 1
       }
 
-      const createTab = (workspace: string, tabGroupId: string, conversationId: string, name?: string): Tab => {
+      const createTab = (workspace: string, tabGroupId: string, sessionId: string, name?: string): Tab => {
         const num = getNextGroupNumber(workspace, tabGroupId)
         return {
           id: genId(),
-          conversationId,
+          sessionId,
           tabGroupId,
           name: name ?? `Tab ${num}`,
           tabNumber: num,
@@ -108,12 +108,12 @@ export const useTabStore = create<TabStore>()(
         tabsExpandedByWorkspace: {},
         nextTabNumberByWorkspace: {}, // deprecated, kept for migration compat
 
-        addTab: (workspace, tabGroupId, conversationId, name) => {
+        addTab: (workspace, tabGroupId, sessionId, name) => {
           const tabs = getTabs(workspace)
           const openTabs = tabs.filter(t => !t.closedAt)
           if (openTabs.length >= MAX_TABS) return null
 
-          const tab = createTab(workspace, tabGroupId, conversationId, name)
+          const tab = createTab(workspace, tabGroupId, sessionId, name)
           addTabToWorkspace(workspace, tabs, tab)
           return tab
         },
@@ -213,7 +213,7 @@ export const useTabStore = create<TabStore>()(
 
           const openTabs = tabs.filter(t => !t.closedAt)
           if (openTabs.length >= MAX_TABS) return null
-          const tab = createTab(workspace, tabGroupId, genConversationId(), name)
+          const tab = createTab(workspace, tabGroupId, genSessionId(), name)
           addTabToWorkspace(workspace, tabs, tab)
           return tab
         },
@@ -226,16 +226,16 @@ export const useTabStore = create<TabStore>()(
           )
         },
 
-        createTabGroupWithTab: (workspace, conversationIdOverride) => {
+        createTabGroupWithTab: (workspace, sessionIdOverride) => {
           const tabs = getTabs(workspace)
           const openTabs = tabs.filter(t => !t.closedAt)
           if (openTabs.length >= MAX_TABS) return null
 
           const tabGroupId = genTabGroupId()
-          const conversationId = conversationIdOverride ?? genConversationId()
-          const tab = createTab(workspace, tabGroupId, conversationId)
+          const sessionId = sessionIdOverride ?? genSessionId()
+          const tab = createTab(workspace, tabGroupId, sessionId)
           addTabToWorkspace(workspace, tabs, tab)
-          return { tabGroupId, conversationId, tabId: tab.id }
+          return { tabGroupId, sessionId, tabId: tab.id }
         },
       }
     },
@@ -281,13 +281,13 @@ export const useTabStore = create<TabStore>()(
         }
 
         if (version === 2) {
-          // v2 -> v3: add tabGroupId for grouping (default to conversationId)
+          // v2 -> v3: add tabGroupId for grouping (default to sessionId)
           const newTabsByWorkspace: Record<string, Tab[]> = {}
 
           for (const [ws, tabs] of Object.entries(state.tabsByWorkspace || {})) {
             newTabsByWorkspace[ws] = tabs.map(t => ({
               ...t,
-              tabGroupId: (t as Tab).tabGroupId ?? (t as Tab).conversationId,
+              tabGroupId: (t as Tab).tabGroupId ?? (t as Tab).sessionId,
             }))
           }
 

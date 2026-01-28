@@ -4,30 +4,30 @@ import { create } from "zustand"
 import { persist } from "zustand/middleware"
 
 /**
- * Session Store - Manages conversation sessions with persistence
+ * Session Store - Manages tab sessions with persistence
  *
- * Enables session resumption across page reloads by persisting conversationId
+ * Enables session resumption across page reloads by persisting sessionId
  * per workspace. Works with backend sessionStore for full resume capability.
  */
 
-export interface ConversationSession {
-  conversationId: string
+export interface TabSession {
+  sessionId: string
   workspace: string
   lastActivity: number
 }
 
 interface SessionState {
-  currentConversationId: string | null
+  currentSessionId: string | null
   currentWorkspace: string | null
-  sessions: ConversationSession[]
+  sessions: TabSession[]
 }
 
 interface SessionActions {
   actions: {
-    initConversation: (workspace: string) => string
-    newConversation: (workspace: string) => string
-    switchToConversation: (conversationId: string, workspace: string) => void
-    clearWorkspaceConversation: (workspace: string) => void
+    initSession: (workspace: string) => string
+    newSession: (workspace: string) => string
+    switchToSession: (sessionId: string, workspace: string) => void
+    clearWorkspaceSession: (workspace: string) => void
     clearAll: () => void
   }
 }
@@ -37,9 +37,9 @@ type SessionStore = SessionState & SessionActions
 const MAX_SESSIONS = 10
 
 /**
- * Session Store - Manages conversation sessions with persistence
+ * Session Store - Manages tab sessions with persistence
  *
- * Enables session resumption across page reloads by persisting conversationId
+ * Enables session resumption across page reloads by persisting sessionId
  * per workspace. Works with backend sessionStore for full resume capability.
  *
  * skipHydration: true - Prevents automatic hydration on store creation.
@@ -50,44 +50,44 @@ export const useSessionStoreBase = create<SessionStore>()(
   persist(
     (set, get) => {
       const actions = {
-        initConversation: (workspace: string): string => {
+        initSession: (workspace: string): string => {
           const state = get()
 
-          // If already on this workspace, return existing conversationId
-          if (state.currentWorkspace === workspace && state.currentConversationId) {
-            return state.currentConversationId
+          // If already on this workspace, return existing sessionId
+          if (state.currentWorkspace === workspace && state.currentSessionId) {
+            return state.currentSessionId
           }
 
           // Look for existing session for this workspace
           const existingSession = state.sessions.find(s => s.workspace === workspace)
 
           if (existingSession) {
-            // Resume existing conversation
+            // Resume existing session
             set({
-              currentConversationId: existingSession.conversationId,
+              currentSessionId: existingSession.sessionId,
               currentWorkspace: workspace,
             })
-            return existingSession.conversationId
+            return existingSession.sessionId
           }
 
-          // Create new conversation
-          return actions.newConversation(workspace)
+          // Create new session
+          return actions.newSession(workspace)
         },
 
-        newConversation: (workspace: string): string => {
+        newSession: (workspace: string): string => {
           const newId = crypto.randomUUID()
 
           set(state => {
             // Add new session (keep other workspace sessions)
-            const newSession: ConversationSession = {
-              conversationId: newId,
+            const newSession: TabSession = {
+              sessionId: newId,
               workspace,
               lastActivity: Date.now(),
             }
 
             // Keep all sessions, prune globally if needed
             return {
-              currentConversationId: newId,
+              currentSessionId: newId,
               currentWorkspace: workspace,
               sessions: [newSession, ...state.sessions].slice(0, MAX_SESSIONS),
             }
@@ -96,46 +96,44 @@ export const useSessionStoreBase = create<SessionStore>()(
           return newId
         },
 
-        switchToConversation: (conversationId: string, workspace: string) => {
+        switchToSession: (sessionId: string, workspace: string) => {
           set(state => {
-            const existingSession = state.sessions.find(s => s.conversationId === conversationId)
+            const existingSession = state.sessions.find(s => s.sessionId === sessionId)
 
             if (existingSession) {
               return {
-                currentConversationId: conversationId,
+                currentSessionId: sessionId,
                 currentWorkspace: workspace,
-                sessions: state.sessions.map(s =>
-                  s.conversationId === conversationId ? { ...s, lastActivity: Date.now() } : s,
-                ),
+                sessions: state.sessions.map(s => (s.sessionId === sessionId ? { ...s, lastActivity: Date.now() } : s)),
               }
             }
 
-            const newSession: ConversationSession = {
-              conversationId,
+            const newSession: TabSession = {
+              sessionId,
               workspace,
               lastActivity: Date.now(),
             }
 
             return {
-              currentConversationId: conversationId,
+              currentSessionId: sessionId,
               currentWorkspace: workspace,
               sessions: [newSession, ...state.sessions].slice(0, MAX_SESSIONS),
             }
           })
         },
 
-        clearWorkspaceConversation: (workspace: string) => {
+        clearWorkspaceSession: (workspace: string) => {
           set(state => ({
             sessions: state.sessions.filter(s => s.workspace !== workspace),
             // Clear current if it matches
-            currentConversationId: state.currentWorkspace === workspace ? null : state.currentConversationId,
+            currentSessionId: state.currentWorkspace === workspace ? null : state.currentSessionId,
             currentWorkspace: state.currentWorkspace === workspace ? null : state.currentWorkspace,
           }))
         },
 
         clearAll: () => {
           set({
-            currentConversationId: null,
+            currentSessionId: null,
             currentWorkspace: null,
             sessions: [],
           })
@@ -143,7 +141,7 @@ export const useSessionStoreBase = create<SessionStore>()(
       }
 
       return {
-        currentConversationId: null,
+        currentSessionId: null,
         currentWorkspace: null,
         sessions: [],
         actions,
@@ -154,7 +152,7 @@ export const useSessionStoreBase = create<SessionStore>()(
       version: 1,
       partialize: state => ({
         sessions: state.sessions,
-        currentConversationId: state.currentConversationId,
+        currentSessionId: state.currentSessionId,
         currentWorkspace: state.currentWorkspace,
       }),
       migrate: (persistedState: unknown, _version: number) => {
@@ -166,7 +164,7 @@ export const useSessionStoreBase = create<SessionStore>()(
   ),
 )
 
-export const useConversationId = () => useSessionStoreBase(state => state.currentConversationId)
+export const useSessionId = () => useSessionStoreBase(state => state.currentSessionId)
 
 export const useCurrentWorkspace = () => useSessionStoreBase(state => state.currentWorkspace)
 

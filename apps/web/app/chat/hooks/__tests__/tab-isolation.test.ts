@@ -38,7 +38,7 @@ interface MockMessageStore {
 
 interface MockTab {
   id: string
-  conversationId: string
+  sessionId: string
   name: string
 }
 
@@ -131,14 +131,14 @@ describe("Tab Isolation", () => {
     const tabsExpanded = tabStore.tabsExpandedByWorkspace[workspace] ?? false
 
     const isTabMode = showTabs && tabsExpanded && activeTab
-    return isTabMode ? activeTab.conversationId : messageStore.conversationId
+    return isTabMode ? activeTab.sessionId : messageStore.conversationId
   }
 
   // Helper: Add a tab
-  function addTab(workspace: string, conversationId: string, name: string): MockTab {
+  function addTab(workspace: string, sessionId: string, name: string): MockTab {
     const tab: MockTab = {
       id: `tab-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      conversationId,
+      sessionId,
       name,
     }
 

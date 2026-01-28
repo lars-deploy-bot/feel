@@ -11,6 +11,8 @@
 import { useEffect, useState } from "react"
 import { Terminal, FileText, Search, Edit3, FolderOpen, Cpu } from "lucide-react"
 import { type PendingTool, usePendingTools } from "@/lib/stores/streamingStore"
+import { cn } from "@/lib/utils"
+import { ICON_SIZE, monoText, mutedIcon, mutedText } from "./message-renderers/styles"
 
 interface PendingToolsIndicatorProps {
   tabId: string | null
@@ -85,7 +87,7 @@ function PendingToolItem({ tool }: { tool: PendingTool }) {
   const displayElapsed = tool.elapsedSeconds > 0 ? elapsed : formatElapsedTime(localElapsed)
 
   return (
-    <div className="flex items-center gap-2 text-xs text-black/50 dark:text-white/50">
+    <div className={cn("flex items-center gap-2 mb-2 text-xs", mutedText)}>
       <div className="flex items-center gap-1.5">
         <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -95,8 +97,8 @@ function PendingToolItem({ tool }: { tool: PendingTool }) {
             d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
           />
         </svg>
-        <Icon size={12} className="opacity-60" />
-        <span className="font-diatype-mono truncate max-w-[300px]">{label}</span>
+        <Icon size={ICON_SIZE} className={mutedIcon} />
+        <span className={cn(monoText, "truncate max-w-[300px]")}>{label}</span>
         {displayElapsed && (
           <span className="text-black/30 dark:text-white/30 font-mono text-[10px]">{displayElapsed}</span>
         )}
@@ -113,7 +115,7 @@ export function PendingToolsIndicator({ tabId }: PendingToolsIndicatorProps) {
   }
 
   return (
-    <div className="space-y-1 my-2">
+    <div>
       {pendingTools.map(tool => (
         <PendingToolItem key={tool.toolUseId} tool={tool} />
       ))}

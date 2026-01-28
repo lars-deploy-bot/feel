@@ -28,35 +28,38 @@ export function GrepOutput(props: GrepOutputProps) {
   // Content output (matching lines)
   if ("matches" in props && "total_matches" in props) {
     return (
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         <div className="text-xs text-black/40 dark:text-white/40 font-normal">{props.total_matches} matches</div>
-        <div className="space-y-3 max-h-80 overflow-auto">
-          {props.matches.map((match, index) => (
-            <div key={index} className="space-y-1">
-              <div className="text-xs text-black/50 dark:text-white/50 font-normal">
-                {match.file.split("/").pop()} {match.line_number && `:${match.line_number}`}
-              </div>
-              {match.before_context?.map((line, i) => (
-                <div
-                  key={`before-${i}`}
-                  className="text-xs text-black/30 dark:text-white/30 font-diatype-mono pl-2 break-all"
-                >
-                  {line}
+        <div className="bg-black/[0.03] dark:bg-white/[0.04] rounded-lg p-2 max-h-60 overflow-auto">
+          <div className="space-y-2">
+            {props.matches.map((match, index) => (
+              <div key={index} className="space-y-0.5">
+                <div className="text-[10px] text-black/40 dark:text-white/40 font-diatype-mono">
+                  {match.file.split("/").pop()}
+                  {match.line_number && `:${match.line_number}`}
                 </div>
-              ))}
-              <div className="text-xs text-black/80 dark:text-white/80 font-diatype-mono pl-2 bg-yellow-50 dark:bg-yellow-900/30 break-all">
-                {match.line}
-              </div>
-              {match.after_context?.map((line, i) => (
-                <div
-                  key={`after-${i}`}
-                  className="text-xs text-black/30 dark:text-white/30 font-diatype-mono pl-2 break-all"
-                >
-                  {line}
+                {match.before_context?.map((line, i) => (
+                  <div
+                    key={`before-${i}`}
+                    className="text-[11px] text-black/30 dark:text-white/30 font-diatype-mono break-all"
+                  >
+                    {line}
+                  </div>
+                ))}
+                <div className="text-[11px] text-black/70 dark:text-white/70 font-diatype-mono break-all bg-amber-500/10 dark:bg-amber-400/10 -mx-1 px-1 rounded">
+                  {match.line}
                 </div>
-              ))}
-            </div>
-          ))}
+                {match.after_context?.map((line, i) => (
+                  <div
+                    key={`after-${i}`}
+                    className="text-[11px] text-black/30 dark:text-white/30 font-diatype-mono break-all"
+                  >
+                    {line}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     )
@@ -65,14 +68,16 @@ export function GrepOutput(props: GrepOutputProps) {
   // Files output (just file names)
   if ("files" in props && "count" in props) {
     return (
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         <div className="text-xs text-black/40 dark:text-white/40 font-normal">{props.count} files</div>
-        <div className="space-y-1 max-h-80 overflow-auto">
-          {props.files.map((file, index) => (
-            <div key={index} className="text-xs text-black/60 dark:text-white/60 font-diatype-mono break-all">
-              {file}
-            </div>
-          ))}
+        <div className="bg-black/[0.03] dark:bg-white/[0.04] rounded-lg p-2 max-h-60 overflow-auto">
+          <div className="space-y-0.5">
+            {props.files.map((file, index) => (
+              <div key={index} className="text-[11px] text-black/60 dark:text-white/60 font-diatype-mono break-all">
+                {file}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     )
@@ -81,18 +86,20 @@ export function GrepOutput(props: GrepOutputProps) {
   // Count output (counts per file)
   if ("counts" in props && "total" in props) {
     return (
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         <div className="text-xs text-black/40 dark:text-white/40 font-normal">{props.total} total matches</div>
-        <div className="space-y-1 max-h-80 overflow-auto">
-          {props.counts.map((count, index) => (
-            <div
-              key={index}
-              className="text-xs text-black/60 dark:text-white/60 font-diatype-mono flex justify-between"
-            >
-              <span>{count.file}</span>
-              <span className="text-black/40 dark:text-white/40">{count.count}</span>
-            </div>
-          ))}
+        <div className="bg-black/[0.03] dark:bg-white/[0.04] rounded-lg p-2 max-h-60 overflow-auto">
+          <div className="space-y-0.5">
+            {props.counts.map((count, index) => (
+              <div
+                key={index}
+                className="text-[11px] text-black/60 dark:text-white/60 font-diatype-mono flex justify-between"
+              >
+                <span className="break-all">{count.file}</span>
+                <span className="text-black/40 dark:text-white/40 shrink-0 ml-2">{count.count}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     )

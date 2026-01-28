@@ -18,7 +18,7 @@ export function TaskInput({ description, prompt, subagent_type }: TaskInputProps
       {prompt && (
         <div>
           <div className="text-black/50 dark:text-white/50 mb-1">Prompt:</div>
-          <div className="text-black/60 dark:text-white/60 bg-black/[0.02] dark:bg-white/[0.02] border border-black/10 dark:border-white/10 rounded p-2 leading-relaxed max-h-40 overflow-y-auto whitespace-pre-wrap break-words">
+          <div className="text-black/50 dark:text-white/50 bg-black/[0.03] dark:bg-white/[0.04] rounded-lg p-2 leading-relaxed max-h-40 overflow-y-auto whitespace-pre-wrap break-words">
             {prompt}
           </div>
         </div>

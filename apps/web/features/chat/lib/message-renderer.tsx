@@ -36,6 +36,46 @@ import {
   type UIMessage,
 } from "./message-parser"
 
+/**
+ * Check if a message should be rendered (has visible content)
+ * Used to filter out empty wrapper divs from messages that render to null
+ */
+export function shouldRenderMessage(message: UIMessage, isDebugMode: boolean): boolean {
+  const componentType = getMessageComponentType(message)
+
+  // These always render to null - filter them out entirely
+  if (componentType === COMPONENT_TYPE.COMPLETE) return false
+  if (componentType === COMPONENT_TYPE.TOOL_PROGRESS) return false
+  if (componentType === COMPONENT_TYPE.START) return false
+
+  // System messages only show in debug mode
+  if (componentType === COMPONENT_TYPE.SYSTEM) return isDebugMode
+
+  // Result messages (SDK internal) only show in debug mode unless error
+  if (componentType === COMPONENT_TYPE.RESULT) {
+    if (message.type === "sdk_message" && isErrorResultMessage(message.content)) {
+      return true
+    }
+    return isDebugMode
+  }
+
+  // Assistant messages: check if they have any visible content
+  // (text blocks or tool_use in debug mode)
+  if (componentType === COMPONENT_TYPE.ASSISTANT) {
+    const content = message.content as SDKAssistantMessage
+    if (!content.message?.content) return false
+
+    return content.message.content.some(item => {
+      if (item.type === "text") return true
+      if (item.type === "tool_use") return isDebugMode
+      return false
+    })
+  }
+
+  // Everything else renders
+  return true
+}
+
 interface RenderMessageOptions {
   /** Callback to send a message to the chat (for interactive tools like clarification questions) */
   onSubmitAnswer?: (message: string) => void

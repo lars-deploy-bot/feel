@@ -656,4 +656,260 @@ describe("NDJSON Stream Handler", () => {
       expect(lockReleasedBeforeStreamClosed).toBe(true)
     })
   })
+
+  describe("System Reminder Stripping", () => {
+    it("should strip <system-reminder> tags from string content", async () => {
+      const mockChildStream = new ReadableStream({
+        start(controller) {
+          const message = JSON.stringify({
+            type: "bridge_message",
+            messageCount: 1,
+            messageType: "assistant",
+            content: {
+              type: "assistant",
+              content: "Hello<system-reminder>This is internal</system-reminder> world",
+            },
+          })
+          controller.enqueue(new TextEncoder().encode(`${message}\n`))
+          controller.close()
+        },
+      })
+
+      const stream = createNDJSONStream({
+        childStream: mockChildStream,
+        conversationKey: "test-conv" as TabSessionKey,
+        requestId: "test-strip-1",
+        conversationWorkspace: "test-workspace",
+        tokenSource: "user_provided",
+        model: TEST_MODEL,
+        cancelState: createCancelState(),
+      })
+
+      const reader = stream.getReader()
+      const { value } = await reader.read()
+      const decoded = new TextDecoder().decode(value)
+      const parsed = JSON.parse(decoded)
+
+      expect(parsed.data.content.content).toBe("Hello world")
+      expect(parsed.data.content.content).not.toContain("<system-reminder>")
+    })
+
+    it("should strip <system-reminder> tags with multiline content", async () => {
+      const mockChildStream = new ReadableStream({
+        start(controller) {
+          const message = JSON.stringify({
+            type: "bridge_message",
+            messageCount: 1,
+            messageType: "assistant",
+            content: {
+              type: "assistant",
+              content: "Start<system-reminder>\nMultiple lines\nOf reminders\n</system-reminder>End",
+            },
+          })
+          controller.enqueue(new TextEncoder().encode(`${message}\n`))
+          controller.close()
+        },
+      })
+
+      const stream = createNDJSONStream({
+        childStream: mockChildStream,
+        conversationKey: "test-conv" as TabSessionKey,
+        requestId: "test-strip-2",
+        conversationWorkspace: "test-workspace",
+        tokenSource: "user_provided",
+        model: TEST_MODEL,
+        cancelState: createCancelState(),
+      })
+
+      const reader = stream.getReader()
+      const { value } = await reader.read()
+      const decoded = new TextDecoder().decode(value)
+      const parsed = JSON.parse(decoded)
+
+      expect(parsed.data.content.content).toBe("Start\nEnd")
+    })
+
+    it("should strip multiple <system-reminder> tags", async () => {
+      const mockChildStream = new ReadableStream({
+        start(controller) {
+          const message = JSON.stringify({
+            type: "bridge_message",
+            messageCount: 1,
+            messageType: "assistant",
+            content: {
+              type: "assistant",
+              content: "Text<system-reminder>First</system-reminder>Middle<system-reminder>Second</system-reminder>End",
+            },
+          })
+          controller.enqueue(new TextEncoder().encode(`${message}\n`))
+          controller.close()
+        },
+      })
+
+      const stream = createNDJSONStream({
+        childStream: mockChildStream,
+        conversationKey: "test-conv" as TabSessionKey,
+        requestId: "test-strip-3",
+        conversationWorkspace: "test-workspace",
+        tokenSource: "user_provided",
+        model: TEST_MODEL,
+        cancelState: createCancelState(),
+      })
+
+      const reader = stream.getReader()
+      const { value } = await reader.read()
+      const decoded = new TextDecoder().decode(value)
+      const parsed = JSON.parse(decoded)
+
+      expect(parsed.data.content.content).toBe("TextMiddleEnd")
+    })
+
+    it("should strip <system-reminder> from nested object content", async () => {
+      const mockChildStream = new ReadableStream({
+        start(controller) {
+          const message = JSON.stringify({
+            type: "bridge_message",
+            messageCount: 1,
+            messageType: "assistant",
+            content: {
+              type: "assistant",
+              nested: {
+                deeper: {
+                  text: "Content<system-reminder>Hidden</system-reminder> visible",
+                },
+              },
+            },
+          })
+          controller.enqueue(new TextEncoder().encode(`${message}\n`))
+          controller.close()
+        },
+      })
+
+      const stream = createNDJSONStream({
+        childStream: mockChildStream,
+        conversationKey: "test-conv" as TabSessionKey,
+        requestId: "test-strip-4",
+        conversationWorkspace: "test-workspace",
+        tokenSource: "user_provided",
+        model: TEST_MODEL,
+        cancelState: createCancelState(),
+      })
+
+      const reader = stream.getReader()
+      const { value } = await reader.read()
+      const decoded = new TextDecoder().decode(value)
+      const parsed = JSON.parse(decoded)
+
+      expect(parsed.data.content.nested.deeper.text).toBe("Content visible")
+    })
+
+    it("should strip <system-reminder> from array content", async () => {
+      const mockChildStream = new ReadableStream({
+        start(controller) {
+          const message = JSON.stringify({
+            type: "bridge_message",
+            messageCount: 1,
+            messageType: "assistant",
+            content: {
+              type: "assistant",
+              items: [
+                "First<system-reminder>Hidden</system-reminder>",
+                "Second<system-reminder>Also hidden</system-reminder>",
+              ],
+            },
+          })
+          controller.enqueue(new TextEncoder().encode(`${message}\n`))
+          controller.close()
+        },
+      })
+
+      const stream = createNDJSONStream({
+        childStream: mockChildStream,
+        conversationKey: "test-conv" as TabSessionKey,
+        requestId: "test-strip-5",
+        conversationWorkspace: "test-workspace",
+        tokenSource: "user_provided",
+        model: TEST_MODEL,
+        cancelState: createCancelState(),
+      })
+
+      const reader = stream.getReader()
+      const { value } = await reader.read()
+      const decoded = new TextDecoder().decode(value)
+      const parsed = JSON.parse(decoded)
+
+      expect(parsed.data.content.items[0]).toBe("First")
+      expect(parsed.data.content.items[1]).toBe("Second")
+    })
+
+    it("should handle content without system-reminder tags", async () => {
+      const mockChildStream = new ReadableStream({
+        start(controller) {
+          const message = JSON.stringify({
+            type: "bridge_message",
+            messageCount: 1,
+            messageType: "assistant",
+            content: {
+              type: "assistant",
+              content: "Normal content without tags",
+            },
+          })
+          controller.enqueue(new TextEncoder().encode(`${message}\n`))
+          controller.close()
+        },
+      })
+
+      const stream = createNDJSONStream({
+        childStream: mockChildStream,
+        conversationKey: "test-conv" as TabSessionKey,
+        requestId: "test-strip-6",
+        conversationWorkspace: "test-workspace",
+        tokenSource: "user_provided",
+        model: TEST_MODEL,
+        cancelState: createCancelState(),
+      })
+
+      const reader = stream.getReader()
+      const { value } = await reader.read()
+      const decoded = new TextDecoder().decode(value)
+      const parsed = JSON.parse(decoded)
+
+      expect(parsed.data.content.content).toBe("Normal content without tags")
+    })
+
+    it("should strip <system-reminder> from bridge_complete result", async () => {
+      const mockChildStream = new ReadableStream({
+        start(controller) {
+          const completeEvent = JSON.stringify({
+            type: "bridge_complete",
+            totalMessages: 1,
+            result: {
+              type: "result",
+              output: "Done<system-reminder>Internal note</system-reminder>",
+            },
+          })
+          controller.enqueue(new TextEncoder().encode(`${completeEvent}\n`))
+          controller.close()
+        },
+      })
+
+      const stream = createNDJSONStream({
+        childStream: mockChildStream,
+        conversationKey: "test-conv" as TabSessionKey,
+        requestId: "test-strip-7",
+        conversationWorkspace: "test-workspace",
+        tokenSource: "user_provided",
+        model: TEST_MODEL,
+        cancelState: createCancelState(),
+      })
+
+      const reader = stream.getReader()
+      const { value } = await reader.read()
+      const decoded = new TextDecoder().decode(value)
+      const parsed = JSON.parse(decoded)
+
+      expect(parsed.data.result.output).toBe("Done")
+      expect(parsed.data.result.output).not.toContain("<system-reminder>")
+    })
+  })
 })

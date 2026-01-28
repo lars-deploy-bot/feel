@@ -4,14 +4,14 @@ import { Settings } from "lucide-react"
 import { useState } from "react"
 
 interface SettingsDropdownProps {
-  onNewChat?: () => void
+  onNewTabGroup?: () => void
   currentWorkspace?: string
   onSwitchWorkspace?: (workspace: string) => void
   onOpenSettings?: () => void
 }
 
 export function SettingsDropdown({
-  onNewChat,
+  onNewTabGroup,
   currentWorkspace: _currentWorkspace,
   onSwitchWorkspace: _onSwitchWorkspace,
   onOpenSettings,
@@ -60,14 +60,14 @@ export function SettingsDropdown({
         }}
       >
         <div className="py-1">
-          {onNewChat && (
+          {onNewTabGroup && (
             <button
-              onClick={() => handleAction(onNewChat)}
+              onClick={() => handleAction(onNewTabGroup)}
               className="w-full px-4 py-2.5 text-left text-sm text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors font-medium"
               type="button"
-              data-testid="new-chat-button"
+              data-testid="new-tab-group-button"
             >
-              Start new chat
+              Start new tab group
             </button>
           )}
           <div className="border-t border-black/10 dark:border-white/10 my-1" />

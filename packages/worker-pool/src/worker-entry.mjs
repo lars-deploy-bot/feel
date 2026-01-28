@@ -16,7 +16,7 @@
  *   WORKER_WORKSPACE_KEY - Workspace identifier
  */
 
-import { chownSync, copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, rmSync } from "node:fs"
+import { chownSync, copyFileSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { createConnection } from "node:net"
 import { join } from "node:path"
@@ -217,6 +217,19 @@ function dropPrivileges() {
 
       process.env.HOME = tempHome
       console.error(`[worker] Copied credentials to ${tempHome}`)
+
+      // Copy global skills from /etc/claude-code/skills/ to user's .claude/skills/
+      // This makes skills available via "user" settingSources scope
+      const globalSkillsPath = "/etc/claude-code/skills"
+      const userSkillsPath = join(claudeDir, "skills")
+      if (existsSync(globalSkillsPath)) {
+        try {
+          cpSync(globalSkillsPath, userSkillsPath, { recursive: true })
+          console.error(`[worker] Copied global skills to ${userSkillsPath}`)
+        } catch (e) {
+          console.error(`[worker] Failed to copy skills: ${e.message}`)
+        }
+      }
     }
   }
 

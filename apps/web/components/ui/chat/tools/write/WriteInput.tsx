@@ -18,7 +18,7 @@ export function WriteInput({ file_path, content }: WriteInputProps) {
       <div className="text-black/50 dark:text-white/50 font-mono text-[10px] break-all">{file_path}</div>
       <div>
         <div className="text-black/50 dark:text-white/50 mb-1">Content:</div>
-        <div className="bg-black/[0.02] dark:bg-white/[0.02] border border-black/10 dark:border-white/10 rounded p-2 text-black/70 dark:text-white/70 font-mono text-[10px] whitespace-pre-wrap break-words max-h-40 overflow-y-auto">
+        <div className="bg-black/[0.03] dark:bg-white/[0.04] rounded-lg p-2 text-black/50 dark:text-white/50 font-mono text-[10px] whitespace-pre-wrap break-words max-h-40 overflow-y-auto">
           {content}
         </div>
       </div>

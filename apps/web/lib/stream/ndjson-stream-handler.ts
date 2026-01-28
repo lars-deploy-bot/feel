@@ -250,6 +250,47 @@ export function cleanupMessageCounter(requestId: string): void {
 }
 
 /**
+ * Strip <system-reminder> tags from content
+ * These tags contain internal Claude instructions that should not be shown to users
+ */
+function stripSystemReminders(content: unknown): unknown {
+  if (typeof content === "string") {
+    // Remove all <system-reminder>...</system-reminder> tags
+    // Strategy: Remove the tag and preserve spacing as appropriate
+    // - If tag has newlines inside OR is between newlines, preserve one newline
+    // - Otherwise just remove inline (space before/after gets collapsed naturally)
+    let stripped = content.replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, match => {
+      // If the tag contains newlines, it was multiline - replace with single newline
+      if (match.includes("\n")) {
+        return "\n"
+      }
+      // Inline tag - just remove it
+      return ""
+    })
+
+    // Clean up whitespace: collapse multiple spaces, trim excess newlines
+    stripped = stripped.replace(/ +/g, " ") // Multiple spaces → single space
+    stripped = stripped.replace(/\n{3,}/g, "\n\n") // 3+ newlines → 2 newlines
+
+    return stripped.trim()
+  }
+
+  if (Array.isArray(content)) {
+    return content.map(stripSystemReminders)
+  }
+
+  if (content && typeof content === "object") {
+    const result: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(content)) {
+      result[key] = stripSystemReminders(value)
+    }
+    return result
+  }
+
+  return content
+}
+
+/**
  * Build a stream message from child event
  * Includes tabId for routing and messageId for idempotency
  */
@@ -284,14 +325,14 @@ function buildStreamMessage(
     tabId,
     timestamp,
     data:
-      childEvent.type === "message"
+      childEvent.type === BridgeStreamType.MESSAGE
         ? {
             messageCount: childEvent.messageCount,
             messageType: childEvent.messageType,
-            content: childEvent.content,
+            content: stripSystemReminders(childEvent.content),
           }
-        : childEvent.type === "complete"
-          ? { totalMessages: childEvent.totalMessages, result: childEvent.result }
+        : childEvent.type === BridgeStreamType.COMPLETE
+          ? { totalMessages: childEvent.totalMessages, result: stripSystemReminders(childEvent.result) }
           : childEvent,
   } as StreamMessage
 }

@@ -9,7 +9,7 @@ interface WorkspaceInfoBarProps {
   isTerminal: boolean
   isSuperadminWorkspace: boolean
   onSelectSite: () => void
-  onNewConversation: () => void
+  onNewTabGroup: () => void
   onMobilePreview: () => void
   onToggleTabs?: () => void
   showTabsToggle?: boolean
@@ -22,7 +22,7 @@ export function WorkspaceInfoBar({
   isTerminal,
   isSuperadminWorkspace,
   onSelectSite,
-  onNewConversation,
+  onNewTabGroup,
   onMobilePreview,
   onToggleTabs,
   showTabsToggle = false,
@@ -95,11 +95,11 @@ export function WorkspaceInfoBar({
               )}
               <button
                 type="button"
-                onClick={onNewConversation}
+                onClick={onNewTabGroup}
                 className="px-2 py-1 text-xs font-medium text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 rounded transition-colors"
               >
-                <span className="sm:hidden">new</span>
-                <span className="hidden sm:inline">new chat</span>
+                <span className="sm:hidden">new group</span>
+                <span className="hidden sm:inline">new tab group</span>
               </button>
               {/* Tabs toggle button - desktop only */}
               {showTabsToggle && onToggleTabs && (

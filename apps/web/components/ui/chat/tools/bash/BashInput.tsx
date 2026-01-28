@@ -10,7 +10,7 @@ export function BashInput({ command, description, timeout, run_in_background }: 
     <div className="space-y-2 text-xs">
       <div>
         <div className="text-black/50 dark:text-white/50 mb-1">Command:</div>
-        <div className="text-black/70 dark:text-white/70 font-diatype-mono bg-black/[0.02] dark:bg-white/[0.02] border border-black/10 dark:border-white/10 rounded p-2 whitespace-pre-wrap break-words">
+        <div className="text-black/60 dark:text-white/60 font-diatype-mono bg-black/[0.03] dark:bg-white/[0.04] rounded-lg p-2 whitespace-pre-wrap break-words">
           {command}
         </div>
       </div>

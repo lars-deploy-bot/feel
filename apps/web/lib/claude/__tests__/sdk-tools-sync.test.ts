@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest"
 import { ALLOWED_SDK_TOOLS, DISALLOWED_SDK_TOOLS, SDK_TOOL_NAMES } from "../sdk-tools-sync"
 
+// Bridge-only tools that are not in the SDK but are valid in ALLOWED_SDK_TOOLS
+const BRIDGE_ONLY_TOOLS = ["Skill"]
+
 describe("SDK Tools Sync", () => {
   describe("Array completeness", () => {
     it("should have all SDK tools categorized (allowed + disallowed = all)", () => {
-      const allCategorized = new Set([...ALLOWED_SDK_TOOLS, ...DISALLOWED_SDK_TOOLS])
+      // Filter out Bridge-only tools for this check
+      const allowedSDKOnly = ALLOWED_SDK_TOOLS.filter(t => !BRIDGE_ONLY_TOOLS.includes(t))
+      const allCategorized = new Set([...allowedSDKOnly, ...DISALLOWED_SDK_TOOLS])
       const allSDK = new Set(SDK_TOOL_NAMES)
 
       expect(allCategorized.size).toBe(allSDK.size)
@@ -14,10 +19,12 @@ describe("SDK Tools Sync", () => {
       expect(missing).toEqual([])
     })
 
-    it("should not have extra tools that are not in SDK", () => {
+    it("should not have extra tools that are not in SDK (except Bridge-only tools)", () => {
       const allSDK = new Set<string>(SDK_TOOL_NAMES)
+      const bridgeOnly = new Set<string>(BRIDGE_ONLY_TOOLS)
 
-      const extraInAllowed = ALLOWED_SDK_TOOLS.filter(t => !allSDK.has(t))
+      // Bridge-only tools are expected in allowed, not in SDK
+      const extraInAllowed = ALLOWED_SDK_TOOLS.filter(t => !allSDK.has(t) && !bridgeOnly.has(t))
       const extraInDisallowed = DISALLOWED_SDK_TOOLS.filter(t => !allSDK.has(t))
 
       expect(extraInAllowed).toEqual([])
@@ -61,10 +68,14 @@ describe("SDK Tools Sync", () => {
     })
 
     it("should have correct tool counts in categories", () => {
-      // 13 allowed + 5 disallowed = 18 total
-      expect(ALLOWED_SDK_TOOLS.length).toBe(13)
+      // 13 SDK allowed + 1 Bridge-only (Skill) = 14 in ALLOWED_SDK_TOOLS
+      // 5 disallowed
+      // 13 + 5 = 18 SDK total
+      const allowedSDKOnly = ALLOWED_SDK_TOOLS.filter(t => !BRIDGE_ONLY_TOOLS.includes(t))
+      expect(ALLOWED_SDK_TOOLS.length).toBe(14) // 13 SDK + 1 Bridge-only
+      expect(allowedSDKOnly.length).toBe(13) // Pure SDK tools
       expect(DISALLOWED_SDK_TOOLS.length).toBe(5)
-      expect(ALLOWED_SDK_TOOLS.length + DISALLOWED_SDK_TOOLS.length).toBe(SDK_TOOL_NAMES.length)
+      expect(allowedSDKOnly.length + DISALLOWED_SDK_TOOLS.length).toBe(SDK_TOOL_NAMES.length)
     })
   })
 

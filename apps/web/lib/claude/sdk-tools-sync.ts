@@ -162,6 +162,8 @@ const _assertAllCategorized: _MissingTools extends never ? true : never = true
 
 /**
  * Compile-time check: Ensure no extra tools beyond SDK.
+ * Note: "Skill" is a Bridge-specific tool (loaded from .claude/skills/) not in SDK's ToolInputSchemas.
  */
-type _ExtraTools = Exclude<_AllCategorized, SDKToolName>
+type _BridgeOnlyTools = "Skill"
+type _ExtraTools = Exclude<_AllCategorized, SDKToolName | _BridgeOnlyTools>
 const _assertNoExtraTools: _ExtraTools extends never ? true : never = true

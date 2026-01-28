@@ -6,18 +6,16 @@ interface WriteOutputProps {
 
 export function WriteOutput({ bytes_written, file_path, error }: WriteOutputProps) {
   if (error) {
-    return (
-      <div className="text-xs text-red-600 dark:text-red-400 font-normal p-2 bg-red-50/50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
-        {error}
-      </div>
-    )
+    return <div className="text-xs text-red-500 dark:text-red-400 font-normal">{error}</div>
   }
 
   const fileName = file_path?.split("/").pop() || "file"
+  const size = bytes_written || 0
+  const sizeStr = size > 1024 ? `${(size / 1024).toFixed(1)}KB` : `${size}B`
 
   return (
-    <div className="text-xs text-blue-700 dark:text-blue-400 font-normal p-2 bg-blue-50/30 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-      ✓ Wrote {bytes_written || 0} bytes to {fileName}
+    <div className="text-xs text-black/50 dark:text-white/50 font-normal">
+      wrote {sizeStr} to {fileName}
     </div>
   )
 }

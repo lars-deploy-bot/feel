@@ -19,14 +19,12 @@ import { PendingToolsIndicator } from "@/features/chat/components/PendingToolsIn
 import { Sandbox } from "@/features/chat/components/Sandbox"
 import { SandboxMobile } from "@/features/chat/components/SandboxMobile"
 import { SubdomainInitializer } from "@/features/chat/components/SubdomainInitializer"
-import { ThinkingGroup } from "@/features/chat/components/ThinkingGroup"
-import { useTabSession } from "@/features/chat/hooks/useTabSession"
+// useTabSession removed - now using useActiveSession via useTabIsolatedMessages
 import { useImageUpload } from "@/features/chat/hooks/useImageUpload"
 import { useStreamCancellation } from "@/features/chat/hooks/useStreamCancellation"
 import { useStreamReconnect } from "@/features/chat/hooks/useStreamReconnect"
 import { ClientRequest, DevTerminalProvider, useDevTerminal } from "@/features/chat/lib/dev-terminal-context"
-import { groupMessages } from "@/features/chat/lib/message-grouper"
-import { renderMessage } from "@/features/chat/lib/message-renderer"
+import { renderMessage, shouldRenderMessage } from "@/features/chat/lib/message-renderer"
 import { RetryProvider, useRetry } from "@/features/chat/lib/retry-context"
 import { SandboxProvider, useSandboxContext } from "@/features/chat/lib/sandbox-context"
 import { useAuth } from "@/features/deployment/hooks/useAuth"
@@ -42,10 +40,10 @@ import { useOrganizations } from "@/lib/hooks/useOrganizations"
 import { validateOAuthToastParams } from "@/lib/integrations/toast-validation"
 import { useIsSessionExpired } from "@/lib/stores/authStore"
 import { useSidebarActions, useSidebarOpen } from "@/lib/stores/conversationSidebarStore"
-import { isDevelopment, useDebugActions, useSandbox, useSSETerminal } from "@/lib/stores/debug-store"
+import { isDevelopment, useDebugActions, useDebugVisible, useSandbox, useSSETerminal } from "@/lib/stores/debug-store"
 import { useApiKey, useModel } from "@/lib/stores/llmStore"
 import { useStreamingActions } from "@/lib/stores/streamingStore"
-import { useActiveTab, useTabActions, useWorkspaceTabs } from "@/lib/stores/tabStore"
+import { useTabActions } from "@/lib/stores/tabStore"
 import { useSelectedOrgId } from "@/lib/stores/workspaceStore"
 // Local components
 import { AgentManagerIndicator, ChatEmptyState, ChatHeader, TabBar, WorkspaceInfoBar } from "./components"
@@ -104,14 +102,23 @@ function ChatPageContent() {
   const { setSSETerminal, setSSETerminalMinimized, setSandbox, setSandboxMinimized } = useDebugActions()
   const showSSETerminal = useSSETerminal()
   const showSandboxRaw = useSandbox()
+  const isDebugMode = useDebugVisible()
   const { addEvent: addDevEvent } = useDevTerminal()
   const { workspace, isTerminal, mounted, setWorkspace } = useWorkspace({
     allowEmpty: true,
   })
 
-  // Tab-isolated messages and busy state
-  // When tabs are expanded, shows the active tab's conversation; otherwise shows global active conversation
-  const { messages, busy } = useTabIsolatedMessages({ workspace, showTabs })
+  // Tab-isolated messages, busy state, and session actions from single source of truth
+  const {
+    messages,
+    busy,
+    tabId: sessionTabId,
+    tabGroupId: sessionTabGroupId,
+    isReady: sessionReady,
+    activeTab,
+    workspaceTabs,
+    actions: sessionActions,
+  } = useTabIsolatedMessages({ workspace })
 
   // Handle ?wk= URL parameter to pre-select workspace (e.g., from widget "Edit me" button)
   const [wkParam] = useQueryState("wk")
@@ -179,14 +186,12 @@ function ChatPageContent() {
   // Check for session expiry
   const isSessionExpired = useIsSessionExpired()
 
-  // Session management with workspace-scoped persistence
-  // tabId is the primary session key for Claude SDK (resume parameter)
-  const { tabId, startNewTab, switchTab } = useTabSession(workspace, mounted)
-  const activeTab = useActiveTab(workspace)
-  const workspaceTabs = useWorkspaceTabs(workspace)
-  const tabForSession = tabId ? (workspaceTabs.find(tab => tab.conversationId === tabId) ?? null) : null
-  const tabGroupId = tabForSession?.tabGroupId ?? activeTab?.tabGroupId ?? storeTabGroupId ?? null
-  const isChatReady = !!dexieSession && !!tabId && !!storeTabGroupId && storeTabId === tabId
+  // Session values from useTabIsolatedMessages (single source of truth)
+  // sessionTabId is the primary session key for Claude SDK (resume parameter)
+  const tabId = sessionTabId
+  const tabGroupId = sessionTabGroupId
+  const { createSessionId, startNewTabGroup, switchTab } = sessionActions
+  const isChatReady = !!dexieSession && sessionReady && storeTabId === tabId
 
   // Chat messaging hook - handles sendMessage, streaming, agent supervisor
   const {
@@ -199,7 +204,7 @@ function ChatPageContent() {
     isSubmittingRef,
   } = useChatMessaging({
     workspace,
-    conversationId: tabId,
+    sessionId: tabId,
     tabGroupId,
     isTerminal,
     busy,
@@ -212,9 +217,10 @@ function ChatPageContent() {
   })
 
   // Stream cancellation hook - must be after useChatMessaging to get the refs
+  // Uses sessionTabId from useTabIsolatedMessages (single source of truth)
   const { stopStreaming, isStopping } = useStreamCancellation({
-    tabId: tabId ?? "",
-    tabGroupId,
+    tabId: sessionTabId ?? "",
+    tabGroupId: sessionTabGroupId,
     workspace,
     addMessage,
     setShowCompletionDots,
@@ -238,9 +244,10 @@ function ChatPageContent() {
   })
 
   // Stream reconnection - recovers buffered messages when tab becomes visible
+  // Uses sessionTabId from useTabIsolatedMessages (single source of truth)
   useStreamReconnect({
-    tabId,
-    tabGroupId,
+    tabId: sessionTabId,
+    tabGroupId: sessionTabGroupId,
     workspace,
     isStreaming: busy,
     addMessage,
@@ -284,43 +291,29 @@ function ChatPageContent() {
   } = useTabsManagement({
     workspace,
     tabGroupId,
-    activeConversationId: tabId,
-    onSwitchConversation: handleSwitchConversationForTabs,
+    activeSessionId: tabId,
+    onSwitchSession: handleSwitchConversationForTabs,
     onInitializeTab: initializeTab,
-    onStartNewTab: startNewTab,
+    onCreateSessionId: createSessionId,
     currentInput: msg,
     onInputRestore: setMsg,
   })
 
-  // Ensure the session tab is mapped to a tabgroup + Dexie tab
+  // Ensure the session tab is mapped to Dexie (for message persistence)
+  // activeTab is now the single source of truth from useActiveSession
   useEffect(() => {
-    if (!mounted || !workspace || !dexieSession || !tabId) return
+    if (!mounted || !workspace || !dexieSession || !activeTab) return
 
-    if (!tabForSession) {
-      const created = createTabGroupWithTab(workspace, tabId)
-      if (created) {
-        void ensureTabGroupWithTab(workspace, created.tabGroupId, created.conversationId)
-      }
-      return
-    }
-
-    if (activeTab && activeTab.id !== tabForSession.id) {
-      setActiveTab(workspace, tabForSession.id)
-    }
-
-    if (storeTabId === tabId && storeTabGroupId === tabForSession.tabGroupId) return
-    void ensureTabGroupWithTab(workspace, tabForSession.tabGroupId, tabId)
+    // Sync Dexie store if it doesn't match the active tab
+    if (storeTabId === activeTab.sessionId && storeTabGroupId === activeTab.tabGroupId) return
+    void ensureTabGroupWithTab(workspace, activeTab.tabGroupId, activeTab.sessionId)
   }, [
     mounted,
     workspace,
     dexieSession,
-    tabId,
-    tabForSession?.id,
-    tabForSession?.tabGroupId,
-    activeTab?.id,
-    createTabGroupWithTab,
+    activeTab?.sessionId,
+    activeTab?.tabGroupId,
     ensureTabGroupWithTab,
-    setActiveTab,
     storeTabId,
     storeTabGroupId,
   ])
@@ -421,24 +414,17 @@ function ChatPageContent() {
     setSubdomainInitialized(true)
   }
 
-  const handleNewConversation = useCallback(async () => {
+  const handleNewTabGroup = useCallback(async () => {
     if (tabId) {
       streamingActions.clearTab(tabId)
     }
     if (workspace) {
-      const nextTabId = startNewTab()
-      if (nextTabId) {
-        const created = createTabGroupWithTab(workspace, nextTabId)
-        if (created) {
-          await ensureTabGroupWithTab(workspace, created.tabGroupId, created.conversationId)
-        }
-      }
+      // startNewTabGroup creates a new tabGroup + first tab in tabStore
+      startNewTabGroup()
     }
-
-    // Clear input for new conversation
     setMsg("")
     setTimeout(() => chatInputRef.current?.focus(), 0)
-  }, [tabId, streamingActions, startNewTab, workspace, createTabGroupWithTab, ensureTabGroupWithTab])
+  }, [tabId, streamingActions, startNewTabGroup, workspace])
 
   const handleInsertTemplate = useCallback((prompt: string) => {
     setMsg(prompt)
@@ -469,14 +455,14 @@ function ChatPageContent() {
       if (tabGroupIdToArchive === tabGroupId && workspace) {
         if (nextTab) {
           setActiveTab(workspace, nextTab.id)
-          switchTab(nextTab.conversationId)
-          await ensureTabGroupWithTab(workspace, nextTab.tabGroupId, nextTab.conversationId)
+          switchTab(nextTab.sessionId)
+          await ensureTabGroupWithTab(workspace, nextTab.tabGroupId, nextTab.sessionId)
         } else {
-          const nextTabId = startNewTab()
+          const nextTabId = createSessionId()
           if (nextTabId) {
             const created = createTabGroupWithTab(workspace, nextTabId)
             if (created) {
-              await ensureTabGroupWithTab(workspace, created.tabGroupId, created.conversationId)
+              await ensureTabGroupWithTab(workspace, created.tabGroupId, created.sessionId)
             }
           }
         }
@@ -492,7 +478,7 @@ function ChatPageContent() {
       setActiveTab,
       switchTab,
       ensureTabGroupWithTab,
-      startNewTab,
+      createSessionId,
       createTabGroupWithTab,
     ],
   )
@@ -558,7 +544,7 @@ function ChatPageContent() {
             isTerminal={isTerminal}
             isSuperadminWorkspace={isSuperadminWorkspace}
             onSelectSite={() => modals.openSettings("websites")}
-            onNewConversation={handleNewConversation}
+            onNewTabGroup={handleNewTabGroup}
             onMobilePreview={modals.openMobilePreview}
             onToggleTabs={handleToggleTabs}
             showTabsToggle={showTabs && !!workspace}
@@ -581,7 +567,7 @@ function ChatPageContent() {
 
           {/* Messages */}
           <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
-            <div className="p-4 space-y-1 mx-auto w-full md:max-w-2xl min-w-0">
+            <div className="p-4 mx-auto w-full md:max-w-2xl min-w-0">
               {messages.length === 0 && !busy && (
                 <ChatEmptyState
                   workspace={workspace}
@@ -591,28 +577,21 @@ function ChatPageContent() {
                 />
               )}
 
-              {groupMessages(messages).map((group, index) => {
-                if (group.type === "text") {
+              {messages
+                .filter(message => shouldRenderMessage(message, isDebugMode))
+                .map(message => {
+                  const content = renderMessage(message, { onSubmitAnswer: sendMessage })
+                  // Skip rendering wrapper if component returns null
+                  if (!content) return null
                   return (
-                    <div key={`group-${index}`}>
-                      {group.messages.map(message => (
-                        <div key={message.id}>{renderMessage(message, { onSubmitAnswer: sendMessage })}</div>
-                      ))}
+                    <div key={message.id} className="min-w-0 max-w-full overflow-hidden">
+                      {content}
                     </div>
                   )
-                }
-                return (
-                  <ThinkingGroup
-                    key={`group-${index}`}
-                    messages={group.messages}
-                    isComplete={group.isComplete}
-                    onSubmitAnswer={sendMessage}
-                  />
-                )
-              })}
+                })}
 
               {/* Show pending tools (currently executing) - replaces generic "thinking" when tools are running */}
-              <PendingToolsIndicator tabId={storeTabId ?? tabId} />
+              <PendingToolsIndicator tabId={sessionTabId} />
 
               <AgentManagerIndicator
                 isEvaluating={isEvaluatingProgress}

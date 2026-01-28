@@ -22,11 +22,13 @@ import { useState } from "react"
 import { OAuthErrorMessage } from "@/components/ui/chat/errors/OAuthErrorMessage"
 import { MarkdownDisplay } from "@/components/ui/chat/format/MarkdownDisplay"
 import { ToolInputRouter } from "@/components/ui/chat/tools/ToolInputRouter"
+import { cn } from "@/lib/utils"
 import { useDebugVisible } from "@/lib/stores/debug-store"
 import { getToolIcon } from "@/lib/tool-icons"
 import { hasMarkdown } from "@/lib/utils/markdown-utils"
 import type { ContentItem } from "@/types/guards/content"
 import { isTextBlock, isToolUseBlock } from "@/types/guards/content"
+import { ICON_SIZE, interactiveText, monoText, mutedIcon, subtleText, toolIndicatorButton } from "./styles"
 
 interface AssistantMessageProps {
   content: SDKAssistantMessage
@@ -44,11 +46,11 @@ function isOAuthError(text: string): boolean {
 
 export function AssistantMessage({ content }: AssistantMessageProps) {
   return (
-    <div className="mb-6 min-w-0 max-w-full overflow-hidden">
+    <>
       {content.message.content.map((item, index) => (
         <ToolUseItem key={index} item={item} />
       ))}
-    </div>
+    </>
   )
 }
 
@@ -63,12 +65,17 @@ function ToolUseItem({ item }: { item: ContentItem }): React.ReactNode {
     }
 
     // Use MarkdownDisplay if the text contains markdown, otherwise render plain text
+    // Text messages get more vertical spacing than tool results
     if (hasMarkdown(text)) {
-      return <MarkdownDisplay content={text} />
+      return (
+        <div className="mb-4">
+          <MarkdownDisplay content={text} />
+        </div>
+      )
     }
 
     return (
-      <div className="whitespace-pre-wrap break-words text-black dark:text-white font-medium leading-relaxed">
+      <div className="mb-4 whitespace-pre-wrap break-words text-black dark:text-white font-normal leading-relaxed">
         {text}
       </div>
     )
@@ -147,24 +154,24 @@ function DebugToolItem({
   const [isExpanded, setIsExpanded] = useState(false)
 
   return (
-    <div className="my-1">
+    <>
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center gap-1.5 text-xs font-normal text-black/35 dark:text-white/35 hover:text-black/50 dark:hover:text-white/50 transition-colors"
+        className={cn(toolIndicatorButton, interactiveText, "mb-2")}
       >
-        <ChevronRight size={12} className={`opacity-60 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
-        <Icon size={12} className="opacity-60" />
+        <ChevronRight size={ICON_SIZE} className={cn(mutedIcon, "transition-transform", isExpanded && "rotate-90")} />
+        <Icon size={ICON_SIZE} className={mutedIcon} />
         <span>{toolItem.name}</span>
-        <span className="text-black/25 dark:text-white/25">({actionLabel})</span>
-        {inlineDetail && <span className="font-diatype-mono text-black/50 dark:text-white/50">{inlineDetail}</span>}
+        <span className={subtleText}>({actionLabel})</span>
+        {inlineDetail && <span className={cn(monoText, "text-black/50 dark:text-white/50")}>{inlineDetail}</span>}
       </button>
 
       {isExpanded && (
-        <div className="mt-2 ml-6">
+        <div className="mt-2 ml-6 mb-2">
           <ToolInputRouter toolName={toolItem.name} input={toolItem.input} />
         </div>
       )}
-    </div>
+    </>
   )
 }

@@ -34,12 +34,49 @@ interface NotebookFileOutputProps {
   metadata?: Record<string, any>
 }
 
+/**
+ * Parse cat -n formatted content into lines with line numbers
+ * Format: "     1\tcontent" (tab) or "     1→content" (arrow)
+ */
+function parseNumberedContent(content: string): Array<{ lineNum: number; text: string }> {
+  return content.split("\n").map(line => {
+    // Match: optional spaces, number, tab OR arrow, rest of line
+    const match = line.match(/^\s*(\d+)[\t→](.*)$/)
+    if (match) {
+      return { lineNum: parseInt(match[1], 10), text: match[2] }
+    }
+    // Fallback for lines without proper formatting
+    return { lineNum: 0, text: line }
+  })
+}
+
 export function ReadOutput(props: ReadOutputProps) {
   // Text file
   if ("content" in props && "total_lines" in props) {
+    const lines = parseNumberedContent(props.content)
+    const maxLineNum = Math.max(...lines.map(l => l.lineNum))
+    const lineNumWidth = String(maxLineNum).length
+
     return (
-      <div className="text-xs text-black/40 dark:text-white/40 font-normal">
-        {props.lines_returned} of {props.total_lines} lines
+      <div className="space-y-1.5">
+        <div className="text-xs text-black/40 dark:text-white/40 font-normal">
+          {props.lines_returned} of {props.total_lines} lines
+        </div>
+        <div className="bg-black/[0.03] dark:bg-white/[0.04] rounded-lg p-2 max-h-60 overflow-auto">
+          <div className="font-diatype-mono text-[11px] leading-relaxed">
+            {lines.map((line, i) => (
+              <div key={i} className="flex">
+                <span
+                  className="text-black/25 dark:text-white/25 select-none pr-3 text-right shrink-0"
+                  style={{ width: `${lineNumWidth + 2}ch` }}
+                >
+                  {line.lineNum || ""}
+                </span>
+                <span className="text-black/70 dark:text-white/70 whitespace-pre-wrap break-all">{line.text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     )
   }

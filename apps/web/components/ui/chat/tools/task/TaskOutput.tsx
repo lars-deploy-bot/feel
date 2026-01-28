@@ -23,7 +23,7 @@ export function TaskOutput({ result, usage, total_cost_usd, duration_ms }: TaskO
           {usage && ` • ${usage.input_tokens + usage.output_tokens} tokens`}
         </div>
       )}
-      <div className="text-xs bg-black/[0.02] dark:bg-white/[0.02] p-3 border border-black/10 dark:border-white/10 max-h-80 overflow-auto">
+      <div className="text-xs bg-black/[0.03] dark:bg-white/[0.04] p-2 rounded-lg max-h-60 overflow-auto">
         {hasMarkdown(result) ? (
           <MarkdownDisplay content={result} className="text-black/80 dark:text-white/80" />
         ) : (

@@ -2,22 +2,22 @@ import { useEffect, useRef, useState } from "react"
 import { useSessionActions } from "@/lib/stores/sessionStore"
 
 /**
- * Custom hook for managing conversation sessions with workspace-scoped persistence
+ * Custom hook for managing tab sessions with workspace-scoped persistence
  *
  * Handles:
  * - Automatic session resumption on workspace change
  * - Activity tracking
- * - New conversation creation
+ * - New session creation
  *
  * @param workspace - Current workspace identifier
  * @param mounted - Whether workspace is initialized (from useWorkspace)
- * @returns conversationId and control functions
+ * @returns sessionId (Claude SDK session key) and control functions
  */
 export function useConversationSession(workspace: string | null, mounted: boolean) {
-  const { initConversation, newConversation, switchToConversation } = useSessionActions()
+  const { initSession, newSession, switchToSession } = useSessionActions()
   const prevWorkspaceRef = useRef<string | null>(null)
 
-  const [conversationId, setConversationId] = useState<string>(() => crypto.randomUUID())
+  const [sessionId, setSessionId] = useState<string>(() => crypto.randomUUID())
 
   useEffect(() => {
     if (!workspace || !mounted) return
@@ -27,31 +27,31 @@ export function useConversationSession(workspace: string | null, mounted: boolea
 
     console.log(`[useConversationSession] Workspace changed: ${prevWorkspaceRef.current} → ${workspace}`)
 
-    const id = initConversation(workspace)
-    console.log(`[useConversationSession] ConversationId for workspace "${workspace}": ${id}`)
+    const id = initSession(workspace)
+    console.log(`[useConversationSession] SessionId for workspace "${workspace}": ${id}`)
 
-    setConversationId(id)
+    setSessionId(id)
     prevWorkspaceRef.current = workspace
-  }, [workspace, mounted, initConversation])
+  }, [workspace, mounted, initSession])
 
-  const startNewConversation = () => {
+  const startNewSession = () => {
     if (!workspace) return ""
 
-    const newId = newConversation(workspace)
-    setConversationId(newId)
+    const newId = newSession(workspace)
+    setSessionId(newId)
     return newId
   }
 
-  const switchConversation = (id: string) => {
+  const switchSession = (id: string) => {
     if (!workspace) return
 
-    switchToConversation(id, workspace)
-    setConversationId(id)
+    switchToSession(id, workspace)
+    setSessionId(id)
   }
 
   return {
-    conversationId,
-    startNewConversation,
-    switchConversation,
+    sessionId,
+    startNewSession,
+    switchSession,
   }
 }

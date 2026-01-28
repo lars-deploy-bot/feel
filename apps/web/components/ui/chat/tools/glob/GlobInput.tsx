@@ -8,7 +8,7 @@ export function GlobInput({ pattern, path }: GlobInputProps) {
     <div className="space-y-2 text-xs">
       <div>
         <div className="text-black/50 dark:text-white/50 mb-1">Pattern:</div>
-        <div className="text-black/70 dark:text-white/70 font-diatype-mono bg-black/[0.02] dark:bg-white/[0.02] border border-black/10 dark:border-white/10 rounded p-2">
+        <div className="text-black/60 dark:text-white/60 font-diatype-mono bg-black/[0.03] dark:bg-white/[0.04] rounded-lg p-2">
           {pattern}
         </div>
       </div>

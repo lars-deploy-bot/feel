@@ -147,13 +147,19 @@ export function isDevelopment(): boolean {
 
 /**
  * Check if debug view should be visible
- * Shows when:
- * - In development mode AND user has enabled debug view, OR
- * - In superadmin workspace (claude-bridge) AND user has enabled debug view
+ * Shows ONLY when:
+ * - User explicitly enabled debug view (toggleView in UI) AND
+ * - Either in local development (localhost) OR in superadmin workspace
+ *
+ * This ensures regular users on prod/staging never see debug UI,
+ * even if running a dev build.
  */
 export function useDebugVisible(): boolean {
   const debugView = useDebugView()
   const workspace = useCurrentWorkspace()
   const isSuperadminWorkspace = workspace === SUPERADMIN.WORKSPACE_NAME
-  return debugView && (isDev || isSuperadminWorkspace)
+  const isLocalDev = typeof window !== "undefined" && window.location.hostname === "localhost"
+
+  // Only show if user enabled it AND (localhost OR superadmin)
+  return debugView && (isLocalDev || isSuperadminWorkspace)
 }

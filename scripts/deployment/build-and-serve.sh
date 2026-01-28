@@ -503,6 +503,33 @@ log_step "New build: $NEW_BUILD"
 
 end_phase "success" "Application built successfully"
 
+start_phase "Syncing global skills"
+
+# Sync skills from repo to /etc/claude-code/skills/
+# Workers copy these to temp HOME during startup
+SKILLS_SRC="$PROJECT_ROOT/.claude/skills"
+SKILLS_DEST="/etc/claude-code/skills"
+
+if [ -d "$SKILLS_SRC" ]; then
+    mkdir -p "$SKILLS_DEST"
+    # Use rsync for efficient sync (only copies changed files)
+    if command -v rsync &> /dev/null; then
+        rsync -a --delete "$SKILLS_SRC/" "$SKILLS_DEST/"
+        log_step "Synced skills to $SKILLS_DEST (rsync)"
+    else
+        rm -rf "$SKILLS_DEST"
+        cp -r "$SKILLS_SRC" "$SKILLS_DEST"
+        log_step "Synced skills to $SKILLS_DEST (cp)"
+    fi
+    SKILL_COUNT=$(find "$SKILLS_DEST" -maxdepth 1 -type d | wc -l)
+    SKILL_COUNT=$((SKILL_COUNT - 1))  # Subtract 1 for parent dir
+    log_step "Total skills: $SKILL_COUNT"
+else
+    log_step "No skills directory found at $SKILLS_SRC, skipping"
+fi
+
+end_phase "success" "Skills synced"
+
 start_phase "Deploying server"
 
 # Both production and staging use systemd

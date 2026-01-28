@@ -86,15 +86,51 @@ function extractMcpText(content: unknown): string[] | null {
  */
 function McpTextOutput({ texts }: { texts: string[] }) {
   return (
-    <div className="mt-2 space-y-2">
+    <div className="space-y-2">
       {texts.map((text, i) => (
         <div
           key={i}
-          className="text-xs text-black/60 dark:text-white/60 font-diatype-mono whitespace-pre-wrap leading-relaxed px-3 py-2 bg-black/[0.02] dark:bg-white/[0.02] rounded-md border border-black/5 dark:border-white/5"
+          className="text-xs text-black/50 dark:text-white/50 font-diatype-mono whitespace-pre-wrap leading-relaxed p-2 rounded-lg bg-black/[0.03] dark:bg-white/[0.04]"
         >
           {text}
         </div>
       ))}
+    </div>
+  )
+}
+
+/**
+ * Renderer for cat -n style numbered code output
+ * Parses "   1\tcontent" format into clean line numbers + code
+ */
+function NumberedCodeOutput({ content }: { content: string }) {
+  const lines = content.split("\n").map(line => {
+    // Match: optional spaces, number, tab OR arrow, rest of line
+    const match = line.match(/^\s*(\d+)[\t→](.*)$/)
+    if (match) {
+      return { lineNum: parseInt(match[1], 10), text: match[2] }
+    }
+    return { lineNum: 0, text: line }
+  })
+
+  const maxLineNum = Math.max(...lines.map(l => l.lineNum), 1)
+  const lineNumWidth = String(maxLineNum).length
+
+  return (
+    <div className="bg-black/[0.03] dark:bg-white/[0.04] rounded-lg p-2 max-h-60 overflow-auto">
+      <div className="font-diatype-mono text-[11px] leading-relaxed">
+        {lines.map((line, i) => (
+          <div key={i} className="flex">
+            <span
+              className="text-black/25 dark:text-white/25 select-none pr-3 text-right shrink-0"
+              style={{ width: `${lineNumWidth + 2}ch` }}
+            >
+              {line.lineNum || ""}
+            </span>
+            <span className="text-black/60 dark:text-white/60 whitespace-pre-wrap break-all">{line.text}</span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -259,9 +295,15 @@ export function ToolOutputRouter({ toolName, content, toolInput, onSubmitAnswer 
     return <McpTextOutput texts={mcpTexts} />
   }
 
+  // Check if content looks like cat -n output (line numbers with tabs or arrows)
+  // Handles: "   1\tcontent" (tab) or "   1→content" (arrow from some renderers)
+  if (typeof content === "string" && /^\s*\d+[\t→]/.test(content)) {
+    return <NumberedCodeOutput content={content} />
+  }
+
   // Final fallback: raw JSON display
   return (
-    <pre className="text-xs text-black/60 dark:text-white/60 font-diatype-mono leading-relaxed overflow-auto max-h-80 p-3 bg-black/[0.02] dark:bg-white/[0.02] border border-black/10 dark:border-white/10">
+    <pre className="text-xs text-black/50 dark:text-white/50 font-diatype-mono leading-relaxed overflow-auto max-h-60 p-2 rounded-lg bg-black/[0.03] dark:bg-white/[0.04]">
       {typeof content === "string" ? content : JSON.stringify(content, null, 2)}
     </pre>
   )

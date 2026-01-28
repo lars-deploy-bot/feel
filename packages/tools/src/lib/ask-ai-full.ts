@@ -71,7 +71,7 @@ export const SETTINGS_SOURCES = {
   USER: "user",
 } as const
 
-export type SettingsSource = "project" | "user"
+export type SettingsSource = "project" | "user" | "managed"
 
 // =============================================================================
 // TYPES
@@ -169,7 +169,8 @@ export async function askAIFull(options: AskAIFullOptions): Promise<AskAIFullRes
 
   if (isBridgeMode) {
     permissionMode = permissionMode ?? BRIDGE_PERMISSION_MODE
-    settingSources = [...BRIDGE_SETTINGS_SOURCES]
+    // Cast to SettingsSource[] - "managed" is valid for Claude Code but not in SDK types
+    settingSources = [...BRIDGE_SETTINGS_SOURCES] as SettingsSource[]
 
     // Note: ask-ai-full is used by MCP tools, not by admin users
     // Always use non-admin tools (isAdmin=false)
@@ -195,7 +196,8 @@ export async function askAIFull(options: AskAIFullOptions): Promise<AskAIFullRes
       model,
       maxTurns,
       permissionMode,
-      settingSources,
+      // Cast needed: "managed" is valid for Claude Code but not in SDK's SettingSource type
+      settingSources: settingSources as ("project" | "user")[],
       systemPrompt,
       resume,
       allowedTools,

@@ -10,9 +10,19 @@
 import { useState } from "react"
 import { ToolOutputRouter } from "@/components/ui/chat/tools/ToolOutputRouter"
 import type { SDKUserMessage } from "@/features/chat/types/sdk-types"
+import { cn } from "@/lib/utils"
 import { useDebugVisible } from "@/lib/stores/debug-store"
 import { getToolIcon } from "@/lib/tool-icons"
 import { shouldAutoExpand, getToolPreview, transformToolData } from "@/lib/tools/tool-registry"
+import {
+  ICON_SIZE,
+  errorInteractiveText,
+  filledBg,
+  interactiveText,
+  mutedIcon,
+  roundedContainer,
+  toolIndicatorButton,
+} from "./styles"
 
 // Extended tool result type with our added tool_name and tool_input
 interface ToolResultContent {
@@ -54,7 +64,7 @@ export function ToolResultMessage({ content, onSubmitAnswer }: ToolResultMessage
   const messageContent = content.message.content
 
   return (
-    <div className="mb-6 min-w-0 max-w-full">
+    <>
       {Array.isArray(messageContent) &&
         messageContent.map((result: unknown, index: number) => {
           if (isToolResult(result)) {
@@ -66,7 +76,7 @@ export function ToolResultMessage({ content, onSubmitAnswer }: ToolResultMessage
           }
           return null
         })}
-    </div>
+    </>
   )
 }
 
@@ -74,7 +84,7 @@ export function ToolResultMessage({ content, onSubmitAnswer }: ToolResultMessage
 function ImagePreview({ image }: { image: ImageContentBlock }) {
   const dataUrl = `data:${image.source.media_type};base64,${image.source.data}`
   return (
-    <div className="my-2 rounded-lg overflow-hidden border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 inline-block">
+    <div className={cn("mb-2 overflow-hidden inline-block", roundedContainer, filledBg)}>
       <img src={dataUrl} alt="Analysis result" className="max-w-64 max-h-64 object-contain" loading="lazy" />
     </div>
   )
@@ -106,25 +116,21 @@ function ToolResult({
   const displayPreview = isDebugMode ? `${toolName}: ${preview}` : preview
 
   return (
-    <div className="my-0.5 min-w-0">
+    <>
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
         aria-expanded={isExpanded}
-        className={`text-xs font-normal transition-colors flex items-center gap-1.5 max-w-full ${
-          result.is_error
-            ? "text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
-            : "text-black/35 dark:text-white/35 hover:text-black/50 dark:hover:text-white/50"
-        }`}
+        className={cn(toolIndicatorButton, "mb-2", result.is_error ? errorInteractiveText : interactiveText)}
       >
-        <Icon size={12} className="opacity-60 flex-shrink-0" />
+        <Icon size={ICON_SIZE} className={cn(mutedIcon, "flex-shrink-0")} />
         <span className="truncate">
           {displayPreview}
           {result.is_error && " error"}
         </span>
       </button>
       {isExpanded && (
-        <div className="mt-1 max-w-full overflow-hidden">
+        <div className="mt-1 mb-2 overflow-hidden">
           <ToolOutputRouter
             toolName={toolName}
             content={displayContent}
@@ -133,7 +139,7 @@ function ToolResult({
           />
         </div>
       )}
-    </div>
+    </>
   )
 }
 

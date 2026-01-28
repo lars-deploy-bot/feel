@@ -28,7 +28,8 @@ import { useActiveTab } from "@/lib/stores/tabStore"
 
 interface UseChatMessagingOptions {
   workspace: string | null
-  conversationId: string | null
+  /** Session ID (Claude SDK session key) for this tab */
+  sessionId: string | null
   /** Tab group ID — required for lock key */
   tabGroupId: string | null
   isTerminal: boolean
@@ -51,7 +52,7 @@ interface UseChatMessagingOptions {
  */
 export function useChatMessaging({
   workspace,
-  conversationId,
+  sessionId,
   tabGroupId,
   isTerminal,
   busy,
@@ -89,14 +90,14 @@ export function useChatMessaging({
 
   const createRequestBody = useCallback(
     (message: string, analyzeImageUrls?: string[]) => {
-      // Strict: require activeTab with conversationId — no fallbacks
-      const tabId = activeTab?.conversationId
+      // Strict: require activeTab with sessionId — no fallbacks
+      const tabId = activeTab?.sessionId
       if (!tabId || !tabGroupId) {
         throw new Error("[useChatMessaging] Cannot create request: activeTab or tabGroupId is missing")
       }
       const baseBody = {
         message,
-        conversationId,
+        sessionId,
         tabGroupId,
         tabId,
         apiKey: userApiKey || undefined,
@@ -105,7 +106,7 @@ export function useChatMessaging({
       }
       return isTerminal ? { ...baseBody, workspace: workspace || undefined } : baseBody
     },
-    [conversationId, activeTab?.conversationId, tabGroupId, userApiKey, userModel, isTerminal, workspace],
+    [sessionId, activeTab?.sessionId, tabGroupId, userApiKey, userModel, isTerminal, workspace],
   )
 
   const buildPromptForClaude = useCallback((userMessage: UIMessage): PromptBuildResult => {
@@ -114,8 +115,8 @@ export function useChatMessaging({
 
   /**
    * Handle completion features like agent supervisor.
-   * IMPORTANT: targetConversationId must be passed to ensure messages go to the correct tab.
-   * Using global state.conversationId would cause cross-tab message leakage when user switches tabs
+   * IMPORTANT: targetTabId must be passed to ensure messages go to the correct tab.
+   * Using global state would cause cross-tab message leakage when user switches tabs
    * during an active stream.
    */
   const handleCompletionFeatures = useCallback(
@@ -223,7 +224,7 @@ export function useChatMessaging({
       let shouldStopReading = false
 
       // Capture the tabId at stream start for validation — strict, no fallback
-      const expectedTabId = activeTab?.conversationId
+      const expectedTabId = activeTab?.sessionId
 
       // Track seen messageIds for idempotency (prevents duplicate processing)
       const seenMessageIds = new Set<string>()
@@ -565,11 +566,11 @@ export function useChatMessaging({
       const messageToSend = overrideMessage ?? msg
       // Note: isStopping check is done by the caller in ChatInput
       if (isSubmitting.current || busy || !messageToSend.trim()) return
-      // Strict: require both conversationId and activeTab — no fallbacks
-      if (!conversationId || !activeTab?.conversationId) return
+      // Strict: require both sessionId and activeTab — no fallbacks
+      if (!sessionId || !activeTab?.sessionId) return
 
       // Use the active tab's session key for streaming and message routing
-      const targetTabId = activeTab.conversationId
+      const targetTabId = activeTab.sessionId
 
       isSubmitting.current = true
       streamingActions.startStream(targetTabId)
@@ -597,8 +598,8 @@ export function useChatMessaging({
     [
       msg,
       busy,
-      conversationId,
-      activeTab?.conversationId,
+      sessionId,
+      activeTab?.sessionId,
       streamingActions,
       chatInputRef,
       addMessage,

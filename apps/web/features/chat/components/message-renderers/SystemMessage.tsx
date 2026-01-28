@@ -1,37 +1,36 @@
 import type { SDKSystemMessage } from "@anthropic-ai/claude-agent-sdk"
-import { useDebugVisible } from "@/lib/stores/debug-store"
+import { cn } from "@/lib/utils"
+import { semiVisibleText } from "./styles"
 
 interface SystemMessageProps {
   content: SDKSystemMessage
 }
 
 export function SystemMessage({ content }: SystemMessageProps) {
-  const isDebugMode = useDebugVisible()
-  if (!isDebugMode) return null
-
+  // Note: Only rendered in debug mode (filtered by shouldRenderMessage)
   return (
-    <div className="py-2 mb-4 text-sm text-black/60 dark:text-white/60">
-      <div className="mb-1.5 font-medium normal-case tracking-normal">System Initialized</div>
-      <div className="space-y-1 text-xs font-normal normal-case tracking-normal">
+    <article className={cn("py-2 mb-4 text-sm", semiVisibleText)}>
+      <h3 className="mb-1.5 font-medium normal-case tracking-normal">System Initialized</h3>
+      <dl className="space-y-1 text-xs font-normal normal-case tracking-normal">
         <div>
-          <span className="font-medium">Model:</span>
-          <span className="ml-1">{content.model}</span>
+          <dt className="inline font-medium">Model:</dt>
+          <dd className="inline ml-1">{content.model}</dd>
         </div>
         <div>
-          <span className="font-medium">Directory:</span>
-          <span className="ml-1">{content.cwd}</span>
+          <dt className="inline font-medium">Directory:</dt>
+          <dd className="inline ml-1">{content.cwd}</dd>
         </div>
         <div>
-          <span className="font-medium">Tools:</span>
-          <span className="ml-1">{content.tools?.length || 0} available</span>
+          <dt className="inline font-medium">Tools:</dt>
+          <dd className="inline ml-1">{content.tools?.length || 0} available</dd>
         </div>
         {content.claude_code_version && (
           <div>
-            <span className="font-medium">Version:</span>
-            <span className="ml-1">{content.claude_code_version}</span>
+            <dt className="inline font-medium">Version:</dt>
+            <dd className="inline ml-1">{content.claude_code_version}</dd>
           </div>
         )}
-      </div>
-    </div>
+      </dl>
+    </article>
   )
 }

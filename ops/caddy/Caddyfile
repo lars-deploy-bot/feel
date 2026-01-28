@@ -3010,7 +3010,7 @@ migrateapp-alive-best.preview.terminal.goalive.nl {
 bootgemist.alive.best {
     import common_headers
     import image_serving
-    reverse_proxy localhost:3338 {
+    reverse_proxy localhost:3651 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
         header_up X-Forwarded-For {remote_host}
@@ -3021,7 +3021,7 @@ bootgemist.alive.best {
 bootgemist-alive-best.preview.terminal.goalive.nl {
     import image_serving
 
-    reverse_proxy localhost:3338 {
+    reverse_proxy localhost:3651 {
         header_up Host localhost
     }
 
@@ -4407,4 +4407,124 @@ fcdemo-alive-best.preview.terminal.goalive.nl {
         -X-Powered-By
     }
 
+}
+
+menu2.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3700 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+menucardsversion.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3701 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+menucardversion.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3702 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+menutemplate2.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3703 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+menutwo.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3704 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+quicktest829.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3710 {
+        header_up Host {host}
+    }
+}
+
+sassa.alive.best {
+    # Fixed port
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3596 {
+        header_up Host {host}
+    }
+}
+
+secjan10.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3712 {
+        header_up Host {host}
+    }
+}
+
+sectest2.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3713 {
+        header_up Host {host}
+    }
+}
+
+sectest3.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3714 {
+        header_up Host {host}
+    }
+}
+
+test5285.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3715 {
+        header_up Host {host}
+    }
+}
+
+test5371.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3716 {
+        header_up Host {host}
+    }
+}
+
+testdeploy14262.alive.best {
+    import common_headers
+    import image_serving
+    reverse_proxy localhost:3717 {
+        header_up Host {host}
+    }
 }

@@ -1,50 +1,36 @@
 "use client"
 
 import { useEffect, useRef } from "react"
-import { useDexieCurrentTabId, useDexieSession } from "@/lib/db/dexieMessageStore"
+import { useDexieSession } from "@/lib/db/dexieMessageStore"
 import { useTabMessages } from "@/lib/db/useTabMessages"
-import { useIsStreamActive } from "@/lib/stores/streamingStore"
-import { useActiveTab, useTabsExpanded } from "@/lib/stores/tabStore"
+import { useActiveSession } from "@/features/chat/hooks/useActiveSession"
 
 interface UseTabIsolatedMessagesOptions {
   workspace: string | null
-  showTabs: boolean
 }
 
 /**
- * Hook for tab-isolated message display
+ * Hook for tab-isolated message display and session management
  *
- * Handles the complexity of determining which tab's messages to show:
- * - When tabs are expanded: shows the active tab's messages
- * - When tabs are collapsed: shows the globally active tab's messages
+ * Uses useActiveSession as the SINGLE SOURCE OF TRUTH for:
+ * - Which tab's messages to display (via tabId, the Claude SDK session key)
+ * - Whether the session is streaming (busy)
+ * - Session actions (createSessionId, switchTab)
  *
- * Also scopes the busy (streaming) state to the displayed tab.
- *
- * INVARIANT: Messages returned MUST belong to displayTabId.
+ * INVARIANT: Messages returned MUST belong to session.tabId.
  * Any violation indicates a cross-tab contamination bug.
  */
-export function useTabIsolatedMessages({ workspace, showTabs }: UseTabIsolatedMessagesOptions) {
-  // Get tab state
-  const activeTab = useActiveTab(workspace)
-  const tabsExpanded = useTabsExpanded(workspace)
+export function useTabIsolatedMessages({ workspace }: UseTabIsolatedMessagesOptions) {
+  // Single source of truth for active session
+  const session = useActiveSession(workspace)
+  const dexieSession = useDexieSession()
 
-  // Get Dexie store's global conversation/tab state (fallback when tabs not active)
-  const currentTabId = useDexieCurrentTabId()
-  const session = useDexieSession()
-
-  // Determine which conversation to display
-  // CRITICAL: This is the SINGLE SOURCE OF TRUTH for which messages to show
-  const isTabMode = showTabs && tabsExpanded && activeTab
-  // Get messages from Dexie via tab ID (session key)
-  // With Dexie, messages belong to tabs, not tabgroups directly
-  const displayTabId = isTabMode ? activeTab.conversationId : currentTabId
-  const messages = useTabMessages(displayTabId, session?.userId ?? null)
-
-  // Scope busy state to the display tab (session)
-  const busy = useIsStreamActive(displayTabId)
+  // Messages are fetched for the active session's tabId
+  // If no active session, no messages are shown
+  const messages = useTabMessages(session.tabId, dexieSession?.userId ?? null)
 
   // Track previous values for debugging cross-tab issues
-  const prevDisplayIdRef = useRef<string | null>(null)
+  const prevTabIdRef = useRef<string | null>(null)
   const prevMessageCountRef = useRef<number>(0)
 
   // Debug logging and INVARIANT CHECK
@@ -52,44 +38,41 @@ export function useTabIsolatedMessages({ workspace, showTabs }: UseTabIsolatedMe
     const isDev = process.env.NODE_ENV === "development" || process.env.NEXT_PUBLIC_BRIDGE_ENV === "staging"
 
     if (isDev) {
-      // Detect potential cross-tab contamination
-      const prevId = prevDisplayIdRef.current
+      const prevId = prevTabIdRef.current
       const prevCount = prevMessageCountRef.current
 
-      // If conversation switched but message count INCREASED, something is wrong
-      // (Messages should reset to the new conversation's count, which may be different)
-      if (prevId && prevId !== displayTabId && messages.length > 0) {
-        // Check if any message doesn't belong to current conversation
-        // This would indicate cross-tab leakage
-        console.log("[TabIsolatedMessages] Conversation switched", {
+      // Detect tab switch
+      if (prevId && prevId !== session.tabId && messages.length > 0) {
+        console.log("[TabIsolatedMessages] Tab switched", {
           from: prevId,
-          to: displayTabId,
+          to: session.tabId,
           prevMessageCount: prevCount,
           newMessageCount: messages.length,
-          isTabMode,
         })
       }
 
       // Log state on every render for debugging
       console.log("[TabIsolatedMessages]", {
-        isTabMode,
-        activeTabId: activeTab?.id,
-        activeTabConversationId: activeTab?.conversationId,
-        displayTabId,
+        tabId: session.tabId,
+        tabGroupId: session.tabGroupId,
+        isReady: session.isReady,
+        isStreaming: session.isStreaming,
         messageCount: messages.length,
-        busy,
       })
 
-      prevDisplayIdRef.current = displayTabId
+      prevTabIdRef.current = session.tabId
       prevMessageCountRef.current = messages.length
     }
-  }, [displayTabId, messages.length, isTabMode, activeTab?.id, activeTab?.conversationId, busy, messages])
+  }, [session.tabId, session.tabGroupId, session.isReady, session.isStreaming, messages.length, messages])
 
   return {
     messages,
-    busy,
-    displayTabId,
-    /** Whether currently in tab isolation mode */
-    isTabMode,
+    busy: session.isStreaming,
+    tabId: session.tabId,
+    tabGroupId: session.tabGroupId,
+    isReady: session.isReady,
+    activeTab: session.activeTab,
+    workspaceTabs: session.workspaceTabs,
+    actions: session.actions,
   }
 }

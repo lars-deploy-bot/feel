@@ -48,6 +48,8 @@ export const BRIDGE_ALLOWED_SDK_TOOLS: string[] = [
   "NotebookEdit",
   "WebFetch",
   "AskUserQuestion",
+  // Skills (loaded from ~/.claude/skills/ or project .claude/skills/)
+  "Skill",
 ]
 
 export type BridgeAllowedSDKTool =
@@ -64,6 +66,7 @@ export type BridgeAllowedSDKTool =
   | "NotebookEdit"
   | "WebFetch"
   | "AskUserQuestion"
+  | "Skill"
 
 /**
  * Admin-only SDK tools.
@@ -126,8 +129,19 @@ export const BRIDGE_PERMISSION_MODE = "default" as const
 
 /**
  * Default settings sources for Bridge
+ *
+ * Hierarchy (highest to lowest precedence):
+ * - project: {cwd}/.claude/ (workspace-specific)
+ * - user: ~/.claude/ (user-level)
+ *
+ * Global skills flow:
+ * 1. Git-tracked in .claude/skills/ (source of truth)
+ * 2. Synced to /etc/claude-code/skills/ during deploy (build-and-serve.sh)
+ * 3. Copied to worker temp HOME's .claude/skills/ at startup (worker-entry.mjs)
+ *
+ * Users can add workspace-specific skills in {workspace}/.claude/skills/ (project scope)
  */
-export const BRIDGE_SETTINGS_SOURCES = ["project"] as const
+export const BRIDGE_SETTINGS_SOURCES = ["project", "user"] as const
 
 // =============================================================================
 // HELPER FUNCTIONS
