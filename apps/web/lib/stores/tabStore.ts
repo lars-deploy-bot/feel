@@ -30,6 +30,7 @@ interface TabStoreState {
   tabsByWorkspace: Record<string, Tab[]>
   activeTabByWorkspace: Record<string, string | undefined>
   tabsExpandedByWorkspace: Record<string, boolean>
+  /** @deprecated Kept for migration compatibility. Tab numbers are now computed per-tabgroup. */
   nextTabNumberByWorkspace: Record<string, number>
 }
 
@@ -63,22 +64,30 @@ export const useTabStore = create<TabStore>()(
   persist(
     (set, get) => {
       const getTabs = (workspace: string) => get().tabsByWorkspace[workspace] || []
-      const getNextNumber = (workspace: string) => get().nextTabNumberByWorkspace[workspace] || 1
 
-      const setTabs = (workspace: string, tabs: Tab[], activeId?: string, nextNumber?: number) => {
+      const setTabs = (workspace: string, tabs: Tab[], activeId?: string) => {
         set(s => ({
           tabsByWorkspace: { ...s.tabsByWorkspace, [workspace]: tabs },
           ...(activeId !== undefined && {
             activeTabByWorkspace: { ...s.activeTabByWorkspace, [workspace]: activeId },
           }),
-          ...(nextNumber !== undefined && {
-            nextTabNumberByWorkspace: { ...s.nextTabNumberByWorkspace, [workspace]: nextNumber },
-          }),
         }))
       }
 
+      /**
+       * Compute next tab number for a tabgroup.
+       * Scoped per-tabgroup (not workspace) so each new chat starts at Tab 1.
+       * Counts ALL tabs including closed ones to avoid reusing numbers within a group.
+       */
+      const getNextGroupNumber = (workspace: string, tabGroupId: string): number => {
+        const tabs = getTabs(workspace)
+        const groupTabs = tabs.filter(t => t.tabGroupId === tabGroupId)
+        if (groupTabs.length === 0) return 1
+        return Math.max(...groupTabs.map(t => t.tabNumber)) + 1
+      }
+
       const createTab = (workspace: string, tabGroupId: string, conversationId: string, name?: string): Tab => {
-        const num = getNextNumber(workspace)
+        const num = getNextGroupNumber(workspace, tabGroupId)
         return {
           id: genId(),
           conversationId,
@@ -90,14 +99,14 @@ export const useTabStore = create<TabStore>()(
       }
 
       const addTabToWorkspace = (workspace: string, tabs: Tab[], tab: Tab) => {
-        setTabs(workspace, [...tabs, tab], tab.id, tab.tabNumber + 1)
+        setTabs(workspace, [...tabs, tab], tab.id)
       }
 
       return {
         tabsByWorkspace: {},
         activeTabByWorkspace: {},
         tabsExpandedByWorkspace: {},
-        nextTabNumberByWorkspace: {},
+        nextTabNumberByWorkspace: {}, // deprecated, kept for migration compat
 
         addTab: (workspace, tabGroupId, conversationId, name) => {
           const tabs = getTabs(workspace)
@@ -189,10 +198,6 @@ export const useTabStore = create<TabStore>()(
             activeTabByWorkspace: {
               ...s.activeTabByWorkspace,
               [workspace]: undefined,
-            },
-            nextTabNumberByWorkspace: {
-              ...s.nextTabNumberByWorkspace,
-              [workspace]: 1,
             },
           }))
         },
@@ -312,15 +317,12 @@ export const useTabs = (workspace: string | null, tabGroupId?: string | null): T
     return tabs.filter(t => t.tabGroupId === tabGroupId && !t.closedAt)
   })
 
-/** Get closed tabs for a specific tabgroup (for the "reopen" dropdown), most recently closed first */
-export const useClosedTabs = (workspace: string | null, tabGroupId?: string | null): Tab[] =>
+/** Get all closed tabs for a workspace (for the "reopen" dropdown), most recently closed first */
+export const useClosedTabs = (workspace: string | null): Tab[] =>
   useTabStore(s => {
     if (!workspace) return []
     const tabs = s.tabsByWorkspace[workspace] || []
-    if (!tabGroupId) return []
-    return tabs
-      .filter(t => t.tabGroupId === tabGroupId && t.closedAt)
-      .sort((a, b) => (b.closedAt ?? 0) - (a.closedAt ?? 0))
+    return tabs.filter(t => t.closedAt).sort((a, b) => (b.closedAt ?? 0) - (a.closedAt ?? 0))
   })
 
 export const useActiveTab = (workspace: string | null): Tab | null =>

@@ -41,7 +41,7 @@ export function useTabsManagement({
   onInputRestore,
 }: UseTabsOptions) {
   const tabs = useTabs(workspace, tabGroupId)
-  const closedTabs = useClosedTabs(workspace, tabGroupId)
+  const closedTabs = useClosedTabs(workspace)
   const activeTab = useActiveTab(workspace)
   const activeTabInGroup = tabs.find(t => t.id === activeTab?.id) ?? tabs[0] ?? null
   const tabsExpanded = useTabsExpanded(workspace)
@@ -179,12 +179,18 @@ export function useTabsManagement({
       reopenTab(workspace, tabId)
       void dexieReopenTab(tabId)
 
+      // Ensure tabs are expanded so the reopened tab is visible
+      if (!tabsExpanded) {
+        toggleTabsExpanded(workspace)
+      }
+
       // Find the tab to get its conversationId and switch to it
       const tab = closedTabs.find(t => t.id === tabId)
       if (tab) {
         onSwitchConversation(tab.conversationId)
         onInitializeTab(tab.conversationId, tab.tabGroupId, workspace)
-        void loadTabMessages(tabId)
+        // loadTabMessages expects the Dexie tab key (conversationId/session key)
+        void loadTabMessages(tab.conversationId)
         if (onInputRestore) {
           onInputRestore(tab.inputDraft ?? "")
         }
@@ -193,9 +199,11 @@ export function useTabsManagement({
     [
       workspace,
       closedTabs,
+      tabsExpanded,
       reopenTab,
       dexieReopenTab,
       loadTabMessages,
+      toggleTabsExpanded,
       onSwitchConversation,
       onInitializeTab,
       onInputRestore,
