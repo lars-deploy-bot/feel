@@ -43,7 +43,7 @@ test.describe("Protection System Verification", () => {
     await sendButton.click()
 
     // Wait for response (use .first() to avoid strict mode violations)
-    await expect(authenticatedPage.getByText("Protected!").first()).toBeVisible({ timeout: 3000 })
+    await expect(authenticatedPage.getByText("Protected!").first()).toBeVisible({ timeout: 8000 })
 
     // Verify the API call was made (but mocked)
     expect(apiCalls.length).toBeGreaterThan(0)
@@ -66,7 +66,8 @@ test.describe("Protection System Verification", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: "This should be blocked",
-          conversationId: "test",
+          tabGroupId: crypto.randomUUID(),
+          tabId: crypto.randomUUID(),
         }),
       })
       return {

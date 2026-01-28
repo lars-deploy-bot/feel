@@ -1,22 +1,28 @@
 "use client"
 
 import { useEffect, useCallback, useRef } from "react"
-import { useTabs, useActiveTab, useTabsExpanded, useTabActions } from "@/lib/stores/tabStore"
+import { useTabs, useActiveTab, useTabsExpanded, useTabActions, useClosedTabs } from "@/lib/stores/tabStore"
 import { useStreamingActions, getAbortController, clearAbortController } from "@/lib/stores/streamingStore"
+import { useDexieMessageActions } from "@/lib/db/dexieMessageStore"
 
 interface UseTabsOptions {
   workspace: string | null
-  conversationId: string | null
+  tabGroupId: string | null
+  /** Active tab's conversation/session id */
+  activeConversationId: string | null
   onSwitchConversation: (id: string) => void
-  onInitializeConversation: (id: string, workspace: string) => void
-  onStartNewConversation?: () => string
+  onInitializeTab: (conversationId: string, tabGroupId: string, workspace: string) => void
+  onStartNewTab?: () => string
   /** Current input message - used to save draft on tab switch */
   currentInput?: string
   /** Callback to restore input when switching tabs */
   onInputRestore?: (input: string) => void
 }
 
-const genConvoId = () => `conv-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+const genConvoId = () =>
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `conv-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 
 /**
  * Hook for managing conversation tabs
@@ -26,26 +32,31 @@ const genConvoId = () => `conv-${Date.now()}-${Math.random().toString(36).slice(
  */
 export function useTabsManagement({
   workspace,
-  conversationId,
+  tabGroupId,
+  activeConversationId,
   onSwitchConversation,
-  onInitializeConversation,
-  onStartNewConversation,
+  onInitializeTab,
+  onStartNewTab,
   currentInput,
   onInputRestore,
 }: UseTabsOptions) {
-  const tabs = useTabs(workspace)
+  const tabs = useTabs(workspace, tabGroupId)
+  const closedTabs = useClosedTabs(workspace)
   const activeTab = useActiveTab(workspace)
+  const activeTabInGroup = tabs.find(t => t.id === activeTab?.id) ?? tabs[0] ?? null
   const tabsExpanded = useTabsExpanded(workspace)
   const {
     addTab,
     removeTab,
+    reopenTab,
     setActiveTab,
     renameTab,
     toggleTabsExpanded,
     collapseTabsAndClear,
-    openConversationInTab,
+    openTabGroupInTab,
     setTabInputDraft,
   } = useTabActions()
+  const { reopenTab: dexieReopenTab, loadTabMessages } = useDexieMessageActions()
   const streamingActions = useStreamingActions()
 
   // Workspace-scoped action wrapper
@@ -57,22 +68,23 @@ export function useTabsManagement({
   )
 
   const handleAddTab = useCallback(() => {
-    if (!workspace) return
+    if (!workspace || !tabGroupId) return
 
     // Save current input to active tab before creating new tab
-    if (activeTab && currentInput !== undefined) {
-      setTabInputDraft(workspace, activeTab.id, currentInput)
+    if (activeTabInGroup && currentInput !== undefined) {
+      setTabInputDraft(workspace, activeTabInGroup.id, currentInput)
     }
 
-    const convoId = onStartNewConversation?.() ?? genConvoId()
+    const convoId = onStartNewTab?.() ?? genConvoId()
     console.log("[AddTab]", {
-      previousActiveTabConversationId: activeTab?.conversationId,
+      previousActiveTabConversationId: activeTabInGroup?.conversationId,
       newConversationId: convoId,
-      usingStartNewConversation: !!onStartNewConversation,
+      usingStartNewTab: !!onStartNewTab,
     })
-    const tab = addTab(workspace, convoId)
+    const tab = addTab(workspace, tabGroupId, convoId)
     if (tab) {
-      onInitializeConversation(convoId, workspace)
+      onInitializeTab(convoId, tabGroupId, workspace)
+      onSwitchConversation(convoId)
       // Clear input for new tab
       if (onInputRestore) {
         onInputRestore("")
@@ -80,11 +92,13 @@ export function useTabsManagement({
     }
   }, [
     workspace,
-    activeTab,
+    tabGroupId,
+    activeTabInGroup,
     currentInput,
     addTab,
-    onStartNewConversation,
-    onInitializeConversation,
+    onStartNewTab,
+    onInitializeTab,
+    onSwitchConversation,
     setTabInputDraft,
     onInputRestore,
   ])
@@ -95,15 +109,15 @@ export function useTabsManagement({
       if (tab && workspace) {
         // Debug logging
         console.log("[TabSelect]", {
-          fromTabId: activeTab?.id,
-          fromConversationId: activeTab?.conversationId,
+          fromTabId: activeTabInGroup?.id,
+          fromConversationId: activeTabInGroup?.conversationId,
           toTabId: tab.id,
           toConversationId: tab.conversationId,
         })
 
         // Save current input to the previous tab before switching
-        if (activeTab && currentInput !== undefined) {
-          setTabInputDraft(workspace, activeTab.id, currentInput)
+        if (activeTabInGroup && currentInput !== undefined) {
+          setTabInputDraft(workspace, activeTabInGroup.id, currentInput)
         }
 
         setActiveTab(workspace, tabId)
@@ -115,7 +129,16 @@ export function useTabsManagement({
         }
       }
     },
-    [tabs, workspace, activeTab, currentInput, setActiveTab, onSwitchConversation, setTabInputDraft, onInputRestore],
+    [
+      tabs,
+      workspace,
+      activeTabInGroup,
+      currentInput,
+      setActiveTab,
+      onSwitchConversation,
+      setTabInputDraft,
+      onInputRestore,
+    ],
   )
 
   const handleTabClose = useCallback(
@@ -150,18 +173,56 @@ export function useTabsManagement({
     [withWorkspace, collapseTabsAndClear],
   )
 
-  const handleOpenConversationInTab = useCallback(
-    (convoId: string, name?: string) => {
-      if (!workspace || !tabsExpanded) return
+  const handleTabReopen = useCallback(
+    (tabId: string) => {
+      if (!workspace) return
+      reopenTab(workspace, tabId)
+      void dexieReopenTab(tabId)
 
-      // Save current input to active tab before opening conversation in new/existing tab
-      if (activeTab && currentInput !== undefined) {
-        setTabInputDraft(workspace, activeTab.id, currentInput)
+      // Ensure tabs are expanded so the reopened tab is visible
+      if (!tabsExpanded) {
+        toggleTabsExpanded(workspace)
       }
 
-      const tab = openConversationInTab(workspace, convoId, name)
+      // Find the tab to get its conversationId and switch to it
+      const tab = closedTabs.find(t => t.id === tabId)
       if (tab) {
-        onSwitchConversation(convoId)
+        onSwitchConversation(tab.conversationId)
+        onInitializeTab(tab.conversationId, tab.tabGroupId, workspace)
+        // loadTabMessages expects the Dexie tab key (conversationId/session key)
+        void loadTabMessages(tab.conversationId)
+        if (onInputRestore) {
+          onInputRestore(tab.inputDraft ?? "")
+        }
+      }
+    },
+    [
+      workspace,
+      closedTabs,
+      tabsExpanded,
+      reopenTab,
+      dexieReopenTab,
+      loadTabMessages,
+      toggleTabsExpanded,
+      onSwitchConversation,
+      onInitializeTab,
+      onInputRestore,
+    ],
+  )
+
+  const handleOpenTabGroupInTab = useCallback(
+    (targetTabGroupId: string, name?: string) => {
+      if (!workspace) return
+
+      // Save current input to active tab before opening conversation in new/existing tab
+      if (activeTabInGroup && currentInput !== undefined) {
+        setTabInputDraft(workspace, activeTabInGroup.id, currentInput)
+      }
+
+      const tab = openTabGroupInTab(workspace, targetTabGroupId, name)
+      if (tab) {
+        onInitializeTab(tab.conversationId, tab.tabGroupId, workspace)
+        onSwitchConversation(tab.conversationId)
         // Restore input from the tab's draft (empty for new tabs)
         if (onInputRestore) {
           onInputRestore(tab.inputDraft ?? "")
@@ -170,11 +231,11 @@ export function useTabsManagement({
     },
     [
       workspace,
-      tabsExpanded,
-      activeTab,
+      activeTabInGroup,
       currentInput,
-      openConversationInTab,
+      openTabGroupInTab,
       onSwitchConversation,
+      onInitializeTab,
       setTabInputDraft,
       onInputRestore,
     ],
@@ -186,35 +247,50 @@ export function useTabsManagement({
   const prevActiveTabRef = useRef<typeof activeTab>(null)
   useEffect(() => {
     const prevActiveTab = prevActiveTabRef.current
-    prevActiveTabRef.current = activeTab
+    prevActiveTabRef.current = activeTabInGroup
 
     // Only sync if the activeTab itself changed (not just conversationId)
-    if (activeTab && prevActiveTab?.id !== activeTab.id && activeTab.conversationId !== conversationId) {
-      onSwitchConversation(activeTab.conversationId)
+    if (
+      activeTabInGroup &&
+      prevActiveTab?.id !== activeTabInGroup.id &&
+      activeTabInGroup.conversationId !== activeConversationId
+    ) {
+      onSwitchConversation(activeTabInGroup.conversationId)
       // Restore input from the new active tab
       if (onInputRestore) {
-        onInputRestore(activeTab.inputDraft ?? "")
+        onInputRestore(activeTabInGroup.inputDraft ?? "")
       }
     }
-  }, [activeTab, conversationId, onSwitchConversation, onInputRestore])
+  }, [activeTabInGroup, activeConversationId, onSwitchConversation, onInputRestore])
 
   // Auto-create first tab when tabs expanded but empty
   useEffect(() => {
-    if (workspace && tabsExpanded && tabs.length === 0 && conversationId) {
-      addTab(workspace, conversationId) // Name auto-generated as "Tab N"
+    if (workspace && tabsExpanded && tabs.length === 0 && tabGroupId && activeConversationId) {
+      addTab(workspace, tabGroupId, activeConversationId) // Name auto-generated as "Tab N"
+      onInitializeTab(activeConversationId, tabGroupId, workspace)
     }
-  }, [workspace, tabsExpanded, tabs.length, conversationId, addTab])
+  }, [workspace, tabsExpanded, tabs.length, tabGroupId, activeConversationId, addTab, onInitializeTab])
+
+  // Ensure store active tab belongs to current tabgroup
+  useEffect(() => {
+    if (!workspace || !tabGroupId || tabs.length === 0) return
+    if (!activeTabInGroup) {
+      setActiveTab(workspace, tabs[0].id)
+    }
+  }, [workspace, tabGroupId, tabs, activeTabInGroup, setActiveTab])
 
   return {
     tabs,
-    activeTab,
+    closedTabs,
+    activeTab: activeTabInGroup,
     tabsExpanded,
     handleAddTab,
     handleTabSelect,
     handleTabClose,
     handleTabRename,
+    handleTabReopen,
     handleToggleTabs,
     handleCollapseTabsAndClear,
-    handleOpenConversationInTab,
+    handleOpenTabGroupInTab,
   }
 }

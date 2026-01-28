@@ -13,7 +13,7 @@ import { Terminal, FileText, Search, Edit3, FolderOpen, Cpu } from "lucide-react
 import { type PendingTool, usePendingTools } from "@/lib/stores/streamingStore"
 
 interface PendingToolsIndicatorProps {
-  conversationId: string | null
+  tabId: string | null
 }
 
 function getToolIcon(toolName: string) {
@@ -105,8 +105,8 @@ function PendingToolItem({ tool }: { tool: PendingTool }) {
   )
 }
 
-export function PendingToolsIndicator({ conversationId }: PendingToolsIndicatorProps) {
-  const pendingTools = usePendingTools(conversationId)
+export function PendingToolsIndicator({ tabId }: PendingToolsIndicatorProps) {
+  const pendingTools = usePendingTools(tabId)
 
   if (pendingTools.length === 0) {
     return null

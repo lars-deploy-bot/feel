@@ -9,9 +9,9 @@ import {
 } from "@/features/auth/lib/auth"
 import { fetchAndSaveAnalyzeImages, buildAnalyzeImagePrompt } from "@/lib/image-analyze/fetch-and-save"
 import {
-  SessionStoreMemory,
-  sessionKey,
-  lockKey,
+  type TabSessionKey,
+  sessionStore,
+  tabKey,
   tryLockConversation,
   unlockConversation,
 } from "@/features/auth/lib/sessionStore"
@@ -77,8 +77,7 @@ export async function POST(req: NextRequest) {
 
   // Track lock acquisition for cleanup in error handler
   let lockAcquired = false
-  let sessionStoreKey = "" // For Claude SDK session persistence (per conversation)
-  let concurrencyLockKey = "" // For concurrent request prevention (per tab)
+  let sessionKey: TabSessionKey | null = null // Tab session key: used for BOTH session persistence AND lock
 
   try {
     const jar = await cookies()
@@ -121,6 +120,7 @@ export async function POST(req: NextRequest) {
       message,
       workspace: requestWorkspace,
       conversationId,
+      tabGroupId,
       tabId,
       apiKey: userApiKey,
       model: userModel,
@@ -219,6 +219,7 @@ export async function POST(req: NextRequest) {
     logInput({
       timestamp: new Date().toISOString(),
       userId: user.id,
+      tabId,
       conversationId,
       workspace: requestWorkspace ?? "default",
       cwd,
@@ -243,34 +244,25 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // Session key: used for Claude SDK session persistence (same conversation = same session)
-    sessionStoreKey = sessionKey({
+    // Session key: each tab = one independent Claude session
+    sessionKey = tabKey({
       userId: user.id,
       workspace: resolvedWorkspaceName,
-      conversationId,
-    })
-
-    // Lock key: includes tabId so different browser tabs can work independently
-    // Without tabId, two browser windows viewing the same conversation would block each other
-    concurrencyLockKey = lockKey({
-      userId: user.id,
-      workspace: resolvedWorkspaceName,
-      conversationId,
-      tabId, // Each UI tab gets its own lock
+      tabGroupId,
+      tabId,
     })
 
     logger.log(`Domain: ${domainRecord.hostname} (port: ${domainRecord.port}, id: ${domainRecord.domain_id})`)
-    logger.log("Session key:", sessionStoreKey)
-    logger.log("Lock key:", concurrencyLockKey)
+    logger.log("Session key:", sessionKey)
     logger.log("Attempting to lock...")
 
-    if (!tryLockConversation(concurrencyLockKey)) {
-      logger.log("❌ LOCK FAILED - Request already in progress for key:", concurrencyLockKey)
+    if (!tryLockConversation(sessionKey)) {
+      logger.log("❌ LOCK FAILED - Request already in progress for key:", sessionKey)
       return createErrorResponse(ErrorCodes.CONVERSATION_BUSY, 409, { requestId })
     }
 
     lockAcquired = true
-    logger.log("✅ LOCK ACQUIRED for:", concurrencyLockKey)
+    logger.log("✅ LOCK ACQUIRED for:", sessionKey)
 
     // === CANCELLATION SETUP - MUST BE IMMEDIATELY AFTER LOCK ===
     // CRITICAL: Register cancellation callback RIGHT AFTER lock acquisition.
@@ -283,9 +275,9 @@ export async function POST(req: NextRequest) {
     const workerAbortController = new AbortController()
     let resolveCancelComplete: (() => void) | null = null
 
-    registerCancellation(requestId, user.id, concurrencyLockKey, () => {
+    registerCancellation(requestId, user.id, sessionKey, () => {
       logger.log("===== CANCEL CALLBACK INVOKED =====")
-      logger.log("Cancel callback: lockKey =", concurrencyLockKey, "requestId =", requestId)
+      logger.log("Cancel callback: lockKey =", sessionKey, "requestId =", requestId)
 
       // Return Promise that resolves when onStreamComplete is called
       // CRITICAL: Set resolveCancelComplete BEFORE triggering abort signals,
@@ -306,7 +298,7 @@ export async function POST(req: NextRequest) {
     // Create stream buffer for reconnection support
     // Buffer persists to Redis so users can retrieve missed messages if they disconnect
     try {
-      await createStreamBuffer(requestId, sessionStoreKey, user.id, tabId)
+      await createStreamBuffer(requestId, sessionKey, user.id, tabId)
       logger.log("Stream buffer created for reconnection support")
     } catch (bufferError) {
       // Non-fatal: continue without buffering if Redis unavailable
@@ -314,8 +306,8 @@ export async function POST(req: NextRequest) {
     }
 
     timing("before_session_lookup")
-    logger.log(`[SESSION DEBUG] Looking up session for key: ${sessionStoreKey}`)
-    const existingSessionId = await SessionStoreMemory.get(sessionStoreKey)
+    logger.log(`[SESSION DEBUG] Looking up session for key: ${sessionKey}`)
+    const existingSessionId = await sessionStore.get(sessionKey)
     timing("after_session_lookup")
     logger.log(`[SESSION DEBUG] Existing session: ${existingSessionId ? `found (${existingSessionId})` : "none"}`)
 
@@ -564,7 +556,7 @@ export async function POST(req: NextRequest) {
     // Handles: NDJSON parsing, session ID storage, credit charging, error handling, cancellation
     const ndjsonStream = createNDJSONStream({
       childStream,
-      conversationKey: sessionStoreKey, // For Claude SDK session persistence
+      conversationKey: sessionKey, // For Claude SDK session persistence
       requestId,
       tabId, // Tab ID for routing responses to correct tab
       conversationWorkspace: resolvedWorkspaceName,
@@ -581,7 +573,7 @@ export async function POST(req: NextRequest) {
       onStreamComplete: () => {
         // Guaranteed cleanup: unregister, unlock, mark buffer complete
         unregisterCancellation(requestId)
-        unlockConversation(concurrencyLockKey)
+        unlockConversation(sessionKey!)
 
         // Mark buffer as complete (non-blocking)
         completeStreamBuffer(requestId).catch(err => {
@@ -629,7 +621,7 @@ export async function POST(req: NextRequest) {
     // This prevents deadlocks when errors happen during stream setup
     if (lockAcquired) {
       try {
-        unlockConversation(concurrencyLockKey)
+        unlockConversation(sessionKey!)
         logger.log("Released lock after error")
 
         // Mark buffer as errored (non-blocking)

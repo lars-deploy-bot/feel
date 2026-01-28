@@ -178,9 +178,14 @@ if (!isPathWithinWorkspace(filePath, workspacePath)) {
 
 ### 2. Session Management
 
-**Pattern**: Conversation sessions are keyed by `userId::workspace::conversationId`
+**Pattern**: Each browser tab = one independent chat session. Sessions are keyed by `userId::workspace::tabId`
 
 ```typescript
+// Session key builder
+import { tabKey } from '@/features/auth/lib/sessionStore'
+const key = tabKey({ userId, workspace, tabId })
+// → "userId::workspace::tabId"
+
 // Session store interface
 interface SessionStore {
   get(key: string): Promise<string | null>
@@ -189,7 +194,7 @@ interface SessionStore {
 }
 ```
 
-**IMPORTANT**: Current implementation uses in-memory storage. For production, this MUST be replaced with Redis or a database.
+**Implementation**: Supabase IAM-backed (`iam.sessions` table) with domain_id caching. Sessions persist across server restarts.
 
 ### 3. Streaming & SSE Protocol
 
@@ -219,17 +224,18 @@ This enables proper component rendering for interleaved messages.
 **CRITICAL**: Prevent concurrent requests to same conversation
 
 ```typescript
-const conversationKey = `${userId}::${workspace}::${conversationId}`
+import { tabKey } from '@/features/auth/lib/sessionStore'
+const key = tabKey({ userId, workspace, tabId })
 
-if (activeConversations.has(conversationKey)) {
+if (activeConversations.has(key)) {
   return res.status(409).json({ error: 'Conversation in progress' })
 }
 
-activeConversations.add(conversationKey)
+activeConversations.add(key)
 try {
   // SDK query
 } finally {
-  activeConversations.delete(conversationKey)
+  activeConversations.delete(key)
 }
 ```
 
@@ -654,8 +660,9 @@ if (!isPathWithinWorkspace(resolvedPath, workspacePath)) {
 
 **Solution**: Check session key format and storage
 ```typescript
-const sessionKey = `${userId}::${workspace}::${conversationId}`
-const sessionId = await sessionStore.get(sessionKey)
+import { tabKey } from '@/features/auth/lib/sessionStore'
+const key = tabKey({ userId, workspace, tabId })
+const sessionId = await sessionStore.get(key)
 ```
 
 ### Issue: Systemd Site Not Starting

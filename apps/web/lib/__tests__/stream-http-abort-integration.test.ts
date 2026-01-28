@@ -1,11 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { SECURITY } from "@webalive/shared"
-import {
-  isConversationLocked,
-  sessionKey,
-  tryLockConversation,
-  unlockConversation,
-} from "@/features/auth/lib/sessionStore"
+import { isConversationLocked, tabKey, tryLockConversation, unlockConversation } from "@/features/auth/lib/sessionStore"
 import { CLAUDE_MODELS } from "@/lib/models/claude-models"
 import { setupAbortHandler } from "@/lib/stream/abort-handler"
 import { createNDJSONStream } from "@/lib/stream/ndjson-stream-handler"
@@ -30,8 +25,8 @@ const TEST_MODEL = CLAUDE_MODELS.HAIKU_4_5
 describe("HTTP Abort → Second Message (Production Flow)", () => {
   const userId = SECURITY.LOCAL_TEST.SESSION_VALUE
   const workspace = "test-workspace"
-  const conversationId = "http-abort-test"
-  const convKey = sessionKey({ userId, conversationId })
+  const tabId = "http-abort-test"
+  const convKey = tabKey({ userId, tabGroupId: "test-tabgroup", tabId })
 
   beforeEach(() => {
     unlockConversation(convKey)

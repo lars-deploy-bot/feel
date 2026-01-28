@@ -29,6 +29,7 @@ import {
   shareConversation as syncShareConversation,
   unshareConversation as syncUnshareConversation,
   deleteConversation as syncDeleteConversation,
+  archiveConversation as syncArchiveConversation,
 } from "./conversationSync"
 import { toDbMessageContent, extractTitle } from "./messageAdapters"
 import type { UIMessage } from "@/features/chat/lib/message-parser"
@@ -63,19 +64,26 @@ interface DexieMessageStoreActions {
   setSession: (session: DexieSessionContext) => void
 
   // Conversation management
-  initializeConversation: (workspace: string) => Promise<string>
+  initializeConversation: (workspace: string) => Promise<{ conversationId: string; tabId: string }>
+  ensureTabGroupWithTab: (
+    workspace: string,
+    tabGroupId: string,
+    tabId: string,
+  ) => Promise<{ conversationId: string; tabId: string; created: boolean }>
   switchConversation: (id: string, tabId?: string) => void
   deleteConversation: (id: string) => Promise<void>
+  archiveConversation: (id: string) => Promise<void>
   shareConversation: (id: string) => Promise<void>
   unshareConversation: (id: string) => Promise<void>
 
   // Message management
-  addMessage: (message: UIMessage) => Promise<void>
+  addMessage: (message: UIMessage, targetTabId: string) => Promise<void>
 
   // Tab management
   addTab: (name?: string) => Promise<string>
   switchTab: (tabId: string) => void
   removeTab: (tabId: string) => Promise<void>
+  reopenTab: (tabId: string) => Promise<void>
   renameTab: (tabId: string, name: string) => Promise<void>
 
   // Sync
@@ -195,7 +203,84 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
     })
 
     queueSync(id, session.userId)
-    return id
+    return { conversationId: id, tabId: defaultTabId }
+  },
+
+  ensureTabGroupWithTab: async (workspace, tabGroupId, tabId) => {
+    const { session } = get()
+    if (!session) throw new Error("No session - call setSession first")
+
+    const db = getMessageDb(session.userId)
+    const existingTab = await db.tabs.get(tabId)
+
+    if (existingTab) {
+      if (existingTab.conversationId !== tabGroupId) {
+        console.warn("[dexie] Tab group mismatch for tab, updating conversationId", {
+          tabId,
+          from: existingTab.conversationId,
+          to: tabGroupId,
+        })
+        await safeDb(() => db.tabs.update(tabId, { conversationId: tabGroupId, pendingSync: true }))
+      }
+      set({
+        currentConversationId: tabGroupId,
+        currentTabId: existingTab.id,
+        currentWorkspace: workspace,
+      })
+      return { conversationId: tabGroupId, tabId: existingTab.id, created: false }
+    }
+
+    const conversationId = tabGroupId
+    const now = Date.now()
+
+    await safeDb(() =>
+      db.transaction("rw", [db.conversations, db.tabs], async () => {
+        const existingConversation = await db.conversations.get(conversationId)
+        if (!existingConversation) {
+          const newConvo: DbConversation = {
+            id: conversationId,
+            workspace,
+            orgId: session.orgId,
+            creatorId: session.userId,
+            title: "New conversation",
+            visibility: "private",
+            createdAt: now,
+            updatedAt: now,
+            messageCount: 0,
+            autoTitleSet: false,
+            pendingSync: true,
+          }
+          await db.conversations.add(newConvo)
+        }
+
+        // Use put (not add) to be idempotent — handleNewConversation and the
+        // useEffect that syncs tab↔tabGroup can race, both calling this with
+        // the same tabId before the other's write is visible.
+        const existingTabs = await db.tabs.where("conversationId").equals(conversationId).toArray()
+        const alreadyExists = existingTabs.some(t => t.id === tabId)
+        if (!alreadyExists) {
+          const newTab: DbTab = {
+            id: tabId,
+            conversationId,
+            name: "current",
+            position: existingTabs.length,
+            createdAt: now,
+            messageCount: 0,
+            pendingSync: true,
+          }
+          await db.tabs.put(newTab)
+        }
+      }),
+    )
+
+    set({
+      currentConversationId: conversationId,
+      currentTabId: tabId,
+      currentWorkspace: workspace,
+    })
+
+    queueSync(conversationId, session.userId)
+    return { conversationId, tabId, created: true }
   },
 
   switchConversation: (id, tabId) => {
@@ -216,6 +301,17 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
     }
   },
 
+  archiveConversation: async id => {
+    const { currentConversationId, session } = get()
+    if (!session) return
+
+    await syncArchiveConversation(id, session.userId)
+
+    if (currentConversationId === id) {
+      set({ currentConversationId: null, currentTabId: null })
+    }
+  },
+
   shareConversation: async id => {
     const { session } = get()
     if (!session) return
@@ -228,21 +324,46 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
     await syncUnshareConversation(id, session.userId)
   },
 
-  addMessage: async message => {
+  addMessage: async (message, targetTabId) => {
+    // Skip transient stream lifecycle messages that don't make sense when reloaded
+    // These are ephemeral UI events (stream start/complete, progress indicators, etc.)
+    const TRANSIENT_TYPES = new Set(["start", "complete", "compact_boundary", "tool_progress", "auth_status"])
+    if (TRANSIENT_TYPES.has(message.type)) {
+      return
+    }
+
     const { currentConversationId, currentTabId, session } = get()
 
-    if (!session || !currentConversationId || !currentTabId) {
-      console.warn("[dexie] addMessage called without session/conversation/tab")
+    if (!session || !targetTabId) {
+      console.warn("[dexie] addMessage called without session or targetTabId")
       return
     }
 
     const db = getMessageDb(session.userId)
+
+    // Resolve conversationId for the target tab
+    // If target tab differs from current, look up its conversationId from Dexie
+    let effectiveConversationId = currentConversationId
+    if (targetTabId !== currentTabId) {
+      const targetTab = await db.tabs.get(targetTabId)
+      if (targetTab) {
+        effectiveConversationId = targetTab.conversationId
+      } else {
+        console.warn(`[dexie] addMessage: target tab ${targetTabId} not found in Dexie`)
+      }
+    }
+
+    if (!effectiveConversationId) {
+      console.warn("[dexie] addMessage called without conversationId")
+      return
+    }
+
     const now = Date.now()
-    const seq = await getNextSeq(db, currentTabId)
+    const seq = await getNextSeq(db, targetTabId)
 
     const dbMessage: DbMessage = {
       id: message.id,
-      tabId: currentTabId,
+      tabId: targetTabId,
       type: message.type === "user" ? "user" : message.type === "sdk_message" ? "sdk_message" : "system",
       content: toDbMessageContent(message),
       createdAt: now,
@@ -257,7 +378,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
     await safeDb(() => db.messages.add(dbMessage))
 
     // Update conversation metadata
-    const convo = await db.conversations.get(currentConversationId)
+    const convo = await db.conversations.get(effectiveConversationId)
     if (!convo) return
 
     const updates: Partial<DbConversation> = {
@@ -273,12 +394,12 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
       updates.autoTitleSet = true
     }
 
-    await safeDb(() => db.conversations.update(currentConversationId, updates))
+    await safeDb(() => db.conversations.update(effectiveConversationId!, updates))
 
-    const tab = await db.tabs.get(currentTabId)
+    const tab = await db.tabs.get(targetTabId)
     if (tab) {
       await safeDb(() =>
-        db.tabs.update(currentTabId, {
+        db.tabs.update(targetTabId, {
           lastMessageAt: now,
           messageCount: (tab.messageCount ?? 0) + 1,
           pendingSync: true,
@@ -286,7 +407,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
       )
     }
 
-    queueSync(currentConversationId, session.userId)
+    queueSync(effectiveConversationId, session.userId)
   },
 
   addTab: async (name = "new tab") => {
@@ -319,17 +440,20 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
     if (!session) return
 
     const db = getMessageDb(session.userId)
+    await safeDb(() => db.tabs.update(tabId, { closedAt: Date.now() }))
+  },
+
+  reopenTab: async tabId => {
+    const { session } = get()
+    if (!session) return
+
+    const db = getMessageDb(session.userId)
+    // Dexie doesn't support setting a field to undefined via update,
+    // so we read-modify-write to remove closedAt
     const tab = await db.tabs.get(tabId)
     if (!tab) return
-
-    await safeDb(() => db.messages.where("tabId").equals(tabId).delete())
-    await safeDb(() => db.tabs.delete(tabId))
-
-    const remainingTabs = await db.tabs.where("conversationId").equals(tab.conversationId).sortBy("position")
-
-    await safeDb(() => db.tabs.bulkPut(remainingTabs.map((t, i) => ({ ...t, position: i, pendingSync: true }))))
-
-    queueSync(tab.conversationId, session.userId)
+    const { closedAt: _, ...rest } = tab
+    await safeDb(() => db.tabs.put(rest))
   },
 
   renameTab: async (tabId, name) => {
@@ -535,14 +659,17 @@ export const useDexieMessageActions = () =>
   useDexieMessageStore(state => ({
     setSession: state.setSession,
     initializeConversation: state.initializeConversation,
+    ensureTabGroupWithTab: state.ensureTabGroupWithTab,
     switchConversation: state.switchConversation,
     deleteConversation: state.deleteConversation,
+    archiveConversation: state.archiveConversation,
     shareConversation: state.shareConversation,
     unshareConversation: state.unshareConversation,
     addMessage: state.addMessage,
     addTab: state.addTab,
     switchTab: state.switchTab,
     removeTab: state.removeTab,
+    reopenTab: state.reopenTab,
     renameTab: state.renameTab,
     syncFromServer: state.syncFromServer,
     loadTabMessages: state.loadTabMessages,

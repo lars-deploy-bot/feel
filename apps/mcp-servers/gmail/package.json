@@ -28,7 +28,7 @@
     "start": "node dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "type-check": "NODE_OPTIONS='--max-old-space-size=4096' tsc --noEmit",
+    "type-check": "tsc --noEmit",
     "lint": "biome lint .",
     "format": "npx biome format --write ."
   },
@@ -36,7 +36,7 @@
     "@modelcontextprotocol/sdk": "^1.0.0",
     "commander": "^13.1.0",
     "express": "^4.21.2",
-    "googleapis": "^144.0.0",
+    "@googleapis/gmail": "^16.1.1",
     "zod": "^3.25.0"
   },
   "devDependencies": {

@@ -27,7 +27,7 @@
  * 3. Log the cancellation event
  */
 
-import { unlockConversation } from "@/features/auth/lib/sessionStore"
+import { type TabSessionKey, unlockConversation } from "@/features/auth/lib/sessionStore"
 
 /**
  * Configuration for abort handler
@@ -35,7 +35,7 @@ import { unlockConversation } from "@/features/auth/lib/sessionStore"
 interface AbortHandlerConfig {
   signal: AbortSignal | null
   stream: ReadableStream<Uint8Array>
-  conversationKey: string
+  conversationKey: TabSessionKey
   requestId: string
 }
 

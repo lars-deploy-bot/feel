@@ -3,6 +3,7 @@
 import { AlertTriangle, CheckCircle, Loader2, Mail, Play, Server, XCircle } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Toggle } from "@/components/ui/Toggle"
+// @ts-ignore - Generated at build time by next.config.js, may not exist during type-check
 import buildInfo from "@/lib/build-info.json"
 import { SettingsTabLayout, type SettingsTabProps } from "./SettingsTabLayout"
 import { useSuperadmin } from "@/hooks/use-superadmin"

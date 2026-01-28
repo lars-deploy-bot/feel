@@ -20,44 +20,38 @@ interface SessionStore {
 }
 ```
 
-**Session Key Format:** `${userId}::${workspace}::${conversationId}`
+**Session Key Format:** `${userId}::${workspace}::${tabId}` (built via `tabKey()` from `features/auth/lib/sessionStore.ts`)
 
 ## Current Implementation
 
 **Location:** `features/auth/lib/sessionStore.ts`
 
+The session store is backed by Supabase IAM (`iam.sessions` table) with domain_id caching for performance. Sessions persist across server restarts.
+
 ```typescript
-class InMemorySessionStore implements SessionStore {
-  private sessions = new Map<string, string>()
+import { tabKey, sessionStore } from '@/features/auth/lib/sessionStore'
 
-  async get(key: string): Promise<string | null> {
-    return this.sessions.get(key) ?? null
-  }
+// Build key: each browser tab = one independent session
+const key = tabKey({ userId, workspace, tabId })
 
-  async set(key: string, value: string): Promise<void> {
-    this.sessions.set(key, value)
-  }
-
-  async delete(key: string): Promise<void> {
-    this.sessions.delete(key)
-  }
-}
-
-export const sessionStore = new InMemorySessionStore()
+// Get/set/delete SDK session IDs
+await sessionStore.get(key)
+await sessionStore.set(key, sdkSessionId)
+await sessionStore.delete(key)
 ```
 
-**⚠️ Limitation:** In-memory storage loses sessions on server restart.
-
-**Production TODO:** Replace with Redis or database for persistence.
+**Key parsing:** `userId::workspaceDomain::tabId` - workspace domain is resolved to `domain_id` via cached lookup.
 
 ## Session Lifecycle
 
-### 1. New Conversation
+### 1. New Conversation (New Tab)
 
 ```typescript
-// No session exists yet
-const sessionKey = `${userId}::${workspace}::${conversationId}`
-const sessionId = await sessionStore.get(sessionKey)  // null
+import { tabKey, sessionStore } from '@/features/auth/lib/sessionStore'
+
+// No session exists yet for this tab
+const key = tabKey({ userId, workspace, tabId })
+const sessionId = await sessionStore.get(key)  // null
 
 // Run SDK query without sessionId
 const response = await sdk.query(prompt, {
@@ -66,15 +60,15 @@ const response = await sdk.query(prompt, {
 })
 
 // Store session ID from response
-await sessionStore.set(sessionKey, response.sessionId)
+await sessionStore.set(key, response.sessionId)
 ```
 
-### 2. Resume Conversation
+### 2. Resume Conversation (Same Tab)
 
 ```typescript
-// Session exists from previous message
-const sessionKey = `${userId}::${workspace}::${conversationId}`
-const sessionId = await sessionStore.get(sessionKey)  // "session_abc123"
+// Session exists from previous message in this tab
+const key = tabKey({ userId, workspace, tabId })
+const sessionId = await sessionStore.get(key)  // "session_abc123"
 
 // Resume with existing session
 const response = await sdk.query(prompt, {
@@ -83,14 +77,14 @@ const response = await sdk.query(prompt, {
 })
 
 // Update with new session ID (if changed)
-await sessionStore.set(sessionKey, response.sessionId)
+await sessionStore.set(key, response.sessionId)
 ```
 
 ### 3. Session Cleanup
 
 ```typescript
-// Delete session when conversation reset
-await sessionStore.delete(sessionKey)
+// Delete session when tab is closed or conversation reset
+await sessionStore.delete(key)
 ```
 
 ## SDK Session Behavior
@@ -198,80 +192,36 @@ if (response.status === 409) {
 
 ```typescript
 // Different workspaces = different sessions
-const key1 = `user123::example.com::conv1`
-const key2 = `user123::demo.com::conv1`  // Different workspace
-// key1 !== key2
+const key1 = tabKey({ userId: 'user123', workspace: 'example.com', tabId: 'tab1' })
+const key2 = tabKey({ userId: 'user123', workspace: 'demo.com', tabId: 'tab1' })
+// "user123::example.com::tab1" !== "user123::demo.com::tab1"
 ```
 
-### Per-Conversation Sessions
+### Per-Tab Sessions
 
 ```typescript
-// Same workspace, different conversation = different sessions
-const key1 = `user123::example.com::conv1`
-const key2 = `user123::example.com::conv2`  // Different conversation
-// key1 !== key2
+// Same workspace, different tabs = different sessions
+const key1 = tabKey({ userId: 'user123', workspace: 'example.com', tabId: 'tab1' })
+const key2 = tabKey({ userId: 'user123', workspace: 'example.com', tabId: 'tab2' })
+// "user123::example.com::tab1" !== "user123::example.com::tab2"
 ```
 
-### Shared Conversations
+### Same Tab = Same Session
 
 ```typescript
-// Same user, workspace, conversation = shared session
-const key1 = `user123::example.com::conv1`
-const key2 = `user123::example.com::conv1`  // Same everything
+// Same user, workspace, tab = shared session
+const key1 = tabKey({ userId: 'user123', workspace: 'example.com', tabId: 'tab1' })
+const key2 = tabKey({ userId: 'user123', workspace: 'example.com', tabId: 'tab1' })
 // key1 === key2 (shares session)
 ```
 
 ## Production Session Store
 
-### Redis Implementation (Recommended)
+**Status**: Implemented via Supabase IAM (`iam.sessions` table).
 
-```typescript
-import { Redis } from '@upstash/redis'
+The session store uses Supabase with upsert on `(user_id, domain_id, tab_id)` composite key. Sessions have a 24-hour expiry. Domain hostname-to-ID lookups are cached in-memory with 5-minute TTL.
 
-class RedisSessionStore implements SessionStore {
-  private redis = new Redis({
-    url: process.env.REDIS_URL,
-    token: process.env.REDIS_TOKEN
-  })
-
-  async get(key: string): Promise<string | null> {
-    return await this.redis.get(key)
-  }
-
-  async set(key: string, value: string): Promise<void> {
-    await this.redis.set(key, value, {
-      ex: 60 * 60 * 24 * 30  // 30 day expiry
-    })
-  }
-
-  async delete(key: string): Promise<void> {
-    await this.redis.del(key)
-  }
-}
-```
-
-### Database Implementation
-
-```typescript
-class DatabaseSessionStore implements SessionStore {
-  async get(key: string): Promise<string | null> {
-    const session = await db.session.findUnique({ where: { key } })
-    return session?.sessionId ?? null
-  }
-
-  async set(key: string, value: string): Promise<void> {
-    await db.session.upsert({
-      where: { key },
-      create: { key, sessionId: value },
-      update: { sessionId: value }
-    })
-  }
-
-  async delete(key: string): Promise<void> {
-    await db.session.delete({ where: { key } })
-  }
-}
-```
+See `features/auth/lib/sessionStore.ts` for the full implementation.
 
 ## Session Debugging
 

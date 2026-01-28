@@ -285,12 +285,12 @@ export const FEATURE_FLAGS = {
 
   /**
    * Tabs - Multiple conversation tabs per workspace.
-   * Admin-only feature (off by default). When enabled, shows a tab bar
-   * allowing users to work on multiple conversations simultaneously.
+   * Enabled by default. Shows a tab bar allowing users to work on
+   * multiple conversations simultaneously within a tabgroup.
    */
   TABS: {
-    defaultValue: false,
-    description: "Tabs: Multiple conversation tabs per workspace (admin-only)",
+    defaultValue: true,
+    description: "Tabs: Multiple conversation tabs per workspace",
   },
 } as const satisfies Record<string, FeatureFlagDefinition>
 

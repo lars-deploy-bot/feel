@@ -49,7 +49,7 @@ interface MockTabStore {
 }
 
 interface MockStreamingStore {
-  conversations: Record<string, { isStreamActive: boolean }>
+  tabs: Record<string, { isStreamActive: boolean }>
 }
 
 describe("Tab Isolation", () => {
@@ -71,20 +71,20 @@ describe("Tab Isolation", () => {
     }
 
     streamingStore = {
-      conversations: {},
+      tabs: {},
     }
   })
 
   // Helper: Add a message to a specific conversation
-  function addMessage(message: MockMessage, targetConversationId?: string) {
-    const targetId = targetConversationId ?? messageStore.conversationId
-    if (!targetId || !messageStore.conversations[targetId]) {
-      console.warn(`Cannot add message: conversation ${targetId ?? "null"} not found`)
+  // targetConversationId is REQUIRED to prevent cross-tab leakage
+  function addMessage(message: MockMessage, targetConversationId: string) {
+    if (!messageStore.conversations[targetConversationId]) {
+      console.warn(`Cannot add message: conversation ${targetConversationId} not found`)
       return false
     }
 
-    const conversation = messageStore.conversations[targetId]
-    conversation.messages.push({ ...message, conversationId: targetId })
+    const conversation = messageStore.conversations[targetConversationId]
+    conversation.messages.push({ ...message, conversationId: targetConversationId })
     return true
   }
 
@@ -157,23 +157,23 @@ describe("Tab Isolation", () => {
     tabStore.activeTabByWorkspace[workspace] = tabId
   }
 
-  // Helper: Check if a conversation has an active stream
-  function isStreamActive(conversationId: string): boolean {
-    return streamingStore.conversations[conversationId]?.isStreamActive ?? false
+  // Helper: Check if a tab has an active stream
+  function isStreamActive(tabId: string): boolean {
+    return streamingStore.tabs[tabId]?.isStreamActive ?? false
   }
 
   // Helper: Start a stream
-  function startStream(conversationId: string) {
-    if (!streamingStore.conversations[conversationId]) {
-      streamingStore.conversations[conversationId] = { isStreamActive: false }
+  function startStream(tabId: string) {
+    if (!streamingStore.tabs[tabId]) {
+      streamingStore.tabs[tabId] = { isStreamActive: false }
     }
-    streamingStore.conversations[conversationId].isStreamActive = true
+    streamingStore.tabs[tabId].isStreamActive = true
   }
 
   // Helper: End a stream
-  function endStream(conversationId: string) {
-    if (streamingStore.conversations[conversationId]) {
-      streamingStore.conversations[conversationId].isStreamActive = false
+  function endStream(tabId: string) {
+    if (streamingStore.tabs[tabId]) {
+      streamingStore.tabs[tabId].isStreamActive = false
     }
   }
 
@@ -203,15 +203,15 @@ describe("Tab Isolation", () => {
       expect(getMessagesForConversation("conv-B")).toHaveLength(0)
     })
 
-    it("should add message to global conversation when no targetConversationId specified", () => {
+    it("should always require explicit targetConversationId to prevent cross-tab leakage", () => {
       const workspace = "test.example.com"
 
       initializeConversation("conv-A", workspace)
       initializeConversation("conv-B", workspace)
       switchConversation("conv-B")
 
-      // Add message without explicit target - should go to global (conv-B)
-      addMessage({ id: "msg-1", type: "assistant", content: "Hello B" })
+      // targetConversationId is required - message must explicitly target conv-B
+      addMessage({ id: "msg-1", type: "assistant", content: "Hello B" }, "conv-B")
 
       expect(getMessagesForConversation("conv-A")).toHaveLength(0)
       expect(getMessagesForConversation("conv-B")).toHaveLength(1)

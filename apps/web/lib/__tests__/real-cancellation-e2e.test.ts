@@ -47,7 +47,7 @@ if (SKIP_REAL_API_TESTS) {
 
 describe.skipIf(SKIP_REAL_API_TESTS)("REAL Cancellation E2E (uses API credits)", () => {
   let sessionCookie: string
-  let conversationId: string
+  let tabId: string
 
   beforeAll(async () => {
     if (!TEST_EMAIL || !TEST_PASSWORD) {
@@ -85,10 +85,10 @@ describe.skipIf(SKIP_REAL_API_TESTS)("REAL Cancellation E2E (uses API credits)",
     }
     sessionCookie = `${COOKIE_NAMES.SESSION}=${match[1]}`
 
-    // Generate unique conversation ID
-    conversationId = crypto.randomUUID()
+    // Generate unique tab ID
+    tabId = crypto.randomUUID()
 
-    console.log(`[E2E] Logged in successfully, conversationId: ${conversationId}`)
+    console.log(`[E2E] Logged in successfully, tabId: ${tabId}`)
   }, 30000)
 
   // After each test, verify clean state
@@ -134,7 +134,8 @@ describe.skipIf(SKIP_REAL_API_TESTS)("REAL Cancellation E2E (uses API credits)",
       },
       body: JSON.stringify({
         message,
-        conversationId: convId,
+        tabGroupId: convId,
+        tabId: convId,
         workspace: TEST_WORKSPACE,
       }),
       signal: abortController.signal,

@@ -76,7 +76,8 @@ async function testClaudeBridgeAccess(sessionCookie: string, userLabel: string):
     body: JSON.stringify({
       message: "Hello, just testing access",
       workspace: "claude-bridge",
-      conversationId: randomUUID(),
+      tabGroupId: randomUUID(),
+      tabId: randomUUID(),
     }),
   })
 
@@ -111,7 +112,8 @@ async function testUnauthenticatedAccess(): Promise<boolean> {
     body: JSON.stringify({
       message: "Hello, just testing access",
       workspace: "claude-bridge",
-      conversationId: randomUUID(),
+      tabGroupId: randomUUID(),
+      tabId: randomUUID(),
     }),
   })
 

@@ -47,7 +47,7 @@ Implemented Zustand-based session management that enables conversation resumptio
    - Found: Returns existing conversationId
    - Not found: Creates new UUID and persists
 4. conversationId sent to API
-5. Backend checks SessionStoreMemory:
+5. Backend checks sessionStore:
    - Found: Resumes with existing session
    - Not found: Starts new conversation
 ```
@@ -70,10 +70,12 @@ localStorage['claude-session-storage'] = {
 }
 ```
 
-**Backend (In-Memory):**
+**Backend (Supabase IAM):**
 ```typescript
-SessionStoreMemory.get("userId::workspace::conversationId")
-// Returns: Claude SDK session_id
+import { tabKey, sessionStore } from '@/features/auth/lib/sessionStore'
+const key = tabKey({ userId, workspace, tabId })
+sessionStore.get(key)
+// Returns: Claude SDK session_id (persisted in iam.sessions table)
 ```
 
 ## API
@@ -118,39 +120,16 @@ const {
 
 ## Limitations
 
-⚠️ **Backend Storage**: Currently uses in-memory Map (lost on server restart)
-⚠️ **No Sync**: Multiple tabs don't sync (each has own store instance)
-⚠️ **Local Only**: Sessions stored in browser localStorage only
+⚠️ **No Cross-Tab Sync**: Each browser tab has its own independent session (by design -- tab = conversation)
+⚠️ **Local Only**: Frontend session tracking stored in browser localStorage/Dexie
 
-## Future Improvements
+## Current State
 
-### Production-Ready Backend Storage
+### Backend Storage -- Implemented
+Backend session store is Supabase IAM backed (`iam.sessions` table). Sessions persist across server restarts with 24-hour expiry. Domain hostname-to-ID lookups are cached in-memory with 5-minute TTL.
 
-Replace `SessionStoreMemory` with Redis:
-
-```typescript
-// lib/sessions-redis.ts
-export const SessionStoreRedis: SessionStore = {
-  async get(key) {
-    return await redis.get(key)
-  },
-  async set(key, val) {
-    await redis.set(key, val, 'EX', 60 * 60 * 24 * 7) // 7 days
-  },
-  async delete(key) {
-    await redis.del(key)
-  }
-}
-```
-
-### Cross-Tab Sync
-
-Use Zustand's `subscribeWithSelector` + BroadcastChannel:
-
-```typescript
-const channel = new BroadcastChannel('session-sync')
-channel.postMessage({ type: 'session-updated', conversationId })
-```
+### Tab-Based Sessions
+Each browser tab gets its own independent chat session via `tabId`. This is the intended design -- tabs are conversations, not shared state.
 
 ### Session Metadata
 

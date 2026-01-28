@@ -9,14 +9,17 @@ import { BodySchema } from "@/types/guards/api"
  */
 
 describe("API Key Validation - BodySchema", () => {
-  const validConversationId = "550e8400-e29b-41d4-a716-446655440000"
+  // tabId is now required, conversationId is optional
+  const validTabId = "660e8400-e29b-41d4-a716-446655440001"
+  const validTabGroupId = "11111111-1111-1111-1111-111111111111"
   const validMessage = "Hello, Claude"
 
   describe("Valid API Keys", () => {
     it("should accept valid Anthropic API key format", () => {
       const body = {
         message: validMessage,
-        conversationId: validConversationId,
+        tabId: validTabId,
+        tabGroupId: validTabGroupId,
         apiKey: "sk-ant-abcd1234567890123456",
       }
 
@@ -27,7 +30,8 @@ describe("API Key Validation - BodySchema", () => {
     it("should accept long valid keys", () => {
       const body = {
         message: validMessage,
-        conversationId: validConversationId,
+        tabId: validTabId,
+        tabGroupId: validTabGroupId,
         apiKey: `sk-ant-${"x".repeat(100)}`,
       }
 
@@ -38,7 +42,8 @@ describe("API Key Validation - BodySchema", () => {
     it("should accept undefined API key (optional)", () => {
       const body = {
         message: validMessage,
-        conversationId: validConversationId,
+        tabId: validTabId,
+        tabGroupId: validTabGroupId,
       }
 
       const result = BodySchema.safeParse(body)
@@ -48,7 +53,8 @@ describe("API Key Validation - BodySchema", () => {
     it("should accept empty string as API key (optional)", () => {
       const body = {
         message: validMessage,
-        conversationId: validConversationId,
+        tabId: validTabId,
+        tabGroupId: validTabGroupId,
         apiKey: "",
       }
 
@@ -61,7 +67,8 @@ describe("API Key Validation - BodySchema", () => {
     it("should reject key without sk-ant- prefix", () => {
       const body = {
         message: validMessage,
-        conversationId: validConversationId,
+        tabId: validTabId,
+        tabGroupId: validTabGroupId,
         apiKey: "sk-invalid-abcd1234567890",
       }
 
@@ -75,7 +82,8 @@ describe("API Key Validation - BodySchema", () => {
     it("should reject completely wrong format", () => {
       const body = {
         message: validMessage,
-        conversationId: validConversationId,
+        tabId: validTabId,
+        tabGroupId: validTabGroupId,
         apiKey: "my-api-key-12345",
       }
 
@@ -86,7 +94,8 @@ describe("API Key Validation - BodySchema", () => {
     it("should reject incomplete sk-ant- prefix", () => {
       const body = {
         message: validMessage,
-        conversationId: validConversationId,
+        tabId: validTabId,
+        tabGroupId: validTabGroupId,
         apiKey: "sk-ant-", // Just the prefix, no actual key
       }
 
@@ -97,7 +106,8 @@ describe("API Key Validation - BodySchema", () => {
     it("should reject too-short sk-ant- key", () => {
       const body = {
         message: validMessage,
-        conversationId: validConversationId,
+        tabId: validTabId,
+        tabGroupId: validTabGroupId,
         apiKey: "sk-ant-abc", // Too short
       }
 
@@ -108,7 +118,8 @@ describe("API Key Validation - BodySchema", () => {
     it("should reject key with spaces", () => {
       const body = {
         message: validMessage,
-        conversationId: validConversationId,
+        tabId: validTabId,
+        tabGroupId: validTabGroupId,
         apiKey: "sk-ant-abcd 1234567890", // Has space
       }
 
@@ -119,7 +130,8 @@ describe("API Key Validation - BodySchema", () => {
     it("should reject key with newlines", () => {
       const body = {
         message: validMessage,
-        conversationId: validConversationId,
+        tabId: validTabId,
+        tabGroupId: validTabGroupId,
         apiKey: "sk-ant-abcd\n1234567890", // Has newline
       }
 
@@ -130,7 +142,8 @@ describe("API Key Validation - BodySchema", () => {
     it("should reject user-provided OpenAI key (wrong provider)", () => {
       const body = {
         message: validMessage,
-        conversationId: validConversationId,
+        tabId: validTabId,
+        tabGroupId: validTabGroupId,
         apiKey: "sk-proj-abcd1234567890123456", // OpenAI format
       }
 
@@ -143,7 +156,8 @@ describe("API Key Validation - BodySchema", () => {
     it("should reject injection attempt with valid key plus extra data", () => {
       const body = {
         message: validMessage,
-        conversationId: validConversationId,
+        tabId: validTabId,
+        tabGroupId: validTabGroupId,
         apiKey: "sk-ant-validkey1234567890'; DROP TABLE users;--",
       }
 
@@ -154,7 +168,8 @@ describe("API Key Validation - BodySchema", () => {
     it("should reject social engineering attempt (long string)", () => {
       const body = {
         message: validMessage,
-        conversationId: validConversationId,
+        tabId: validTabId,
+        tabGroupId: validTabGroupId,
         apiKey: `sk-ant-${"a".repeat(10000)}`, // Excessively long
       }
 
@@ -166,7 +181,8 @@ describe("API Key Validation - BodySchema", () => {
     it("should reject typo in prefix", () => {
       const body = {
         message: validMessage,
-        conversationId: validConversationId,
+        tabId: validTabId,
+        tabGroupId: validTabGroupId,
         apiKey: "sk-nta-abcd1234567890123456", // Typo: nta instead of ant
       }
 
@@ -179,7 +195,8 @@ describe("API Key Validation - BodySchema", () => {
     it("should handle null API key (should fail)", () => {
       const body = {
         message: validMessage,
-        conversationId: validConversationId,
+        tabId: validTabId,
+        tabGroupId: validTabGroupId,
         apiKey: null,
       }
 
@@ -191,7 +208,8 @@ describe("API Key Validation - BodySchema", () => {
     it("should validate API key independently of other fields", () => {
       const validBody = {
         message: "Short",
-        conversationId: validConversationId,
+        tabId: validTabId,
+        tabGroupId: validTabGroupId,
         apiKey: "sk-ant-validkey1234567890",
       }
 
@@ -225,7 +243,8 @@ describe("API Key Validation - BodySchema", () => {
       testCases.forEach(({ key, valid, reason }) => {
         const body = {
           message: validMessage,
-          conversationId: validConversationId,
+          tabId: validTabId,
+          tabGroupId: validTabGroupId,
           apiKey: key,
         }
 

@@ -360,6 +360,11 @@ export function getMessageComponentType(message: UIMessage): ComponentType {
   if (message.type === "sdk_message") {
     const sdkMsg = message.content as SDKMessage
 
+    // Detect compacting messages reloaded from Dexie (stored as sdk_message)
+    if (sdkMsg.type === "system" && (sdkMsg as any).subtype === "status" && (sdkMsg as any).status === "compacting") {
+      return COMPONENT_TYPE.COMPACTING
+    }
+
     if (isSDKSystemMessage(sdkMsg)) return COMPONENT_TYPE.SYSTEM
     if (isSDKAssistantMessage(sdkMsg)) return COMPONENT_TYPE.ASSISTANT
     if (isSDKUserMessage(sdkMsg)) return COMPONENT_TYPE.TOOL_RESULT

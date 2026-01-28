@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
+import type { TabSessionKey } from "@/features/auth/types/session"
 import { CLAUDE_MODELS } from "@/lib/models/claude-models"
 import { type CancelState, createNDJSONStream } from "../ndjson-stream-handler"
 
@@ -41,7 +42,7 @@ describe("NDJSON Stream Handler", () => {
 
       const stream = createNDJSONStream({
         childStream: mockChildStream,
-        conversationKey: "test-conv",
+        conversationKey: "test-conv" as TabSessionKey,
         requestId: "test-req-1",
         conversationWorkspace: "test-workspace",
         tokenSource: "user_provided",
@@ -64,7 +65,7 @@ describe("NDJSON Stream Handler", () => {
 
       const stream = createNDJSONStream({
         childStream: mockChildStream,
-        conversationKey: "test-conv",
+        conversationKey: "test-conv" as TabSessionKey,
         requestId: "test-req-2",
         conversationWorkspace: "test-workspace",
         tokenSource: "workspace",
@@ -85,7 +86,7 @@ describe("NDJSON Stream Handler", () => {
 
       const stream = createNDJSONStream({
         childStream: mockChildStream,
-        conversationKey: "test-conv",
+        conversationKey: "test-conv" as TabSessionKey,
         requestId: "test-req-3",
         conversationWorkspace: "test-workspace",
         tokenSource: "workspace",
@@ -105,7 +106,7 @@ describe("NDJSON Stream Handler", () => {
 
       const stream = createNDJSONStream({
         childStream: mockChildStream,
-        conversationKey: "test-conv",
+        conversationKey: "test-conv" as TabSessionKey,
         requestId: "test-req-4",
         conversationWorkspace: "test-workspace",
         tokenSource: "user_provided",
@@ -127,7 +128,7 @@ describe("NDJSON Stream Handler", () => {
 
       const stream = createNDJSONStream({
         childStream: mockChildStream,
-        conversationKey: "test-conv",
+        conversationKey: "test-conv" as TabSessionKey,
         requestId: "test-req-5",
         conversationWorkspace: "test-workspace",
         tokenSource: "user_provided",
@@ -148,7 +149,7 @@ describe("NDJSON Stream Handler", () => {
 
       const stream = createNDJSONStream({
         childStream: mockChildStream,
-        conversationKey: "test-conv",
+        conversationKey: "test-conv" as TabSessionKey,
         requestId: "test-req-6",
         conversationWorkspace: "test-workspace",
         tokenSource: "user_provided",
@@ -169,7 +170,11 @@ describe("NDJSON Stream Handler", () => {
         },
       })
 
-      const conversationKeys = ["simple-key", "user1::workspace::conv-123", "complex-key-with-many-segments::multiple"]
+      const conversationKeys: TabSessionKey[] = [
+        "simple-key" as TabSessionKey,
+        "user1::workspace::tg::conv-123" as TabSessionKey,
+        "complex::key::with::parts" as TabSessionKey,
+      ]
 
       for (const key of conversationKeys) {
         const stream = createNDJSONStream({
@@ -198,7 +203,7 @@ describe("NDJSON Stream Handler", () => {
       for (const id of requestIds) {
         const stream = createNDJSONStream({
           childStream: mockChildStream,
-          conversationKey: "test-conv",
+          conversationKey: "test-conv" as TabSessionKey,
           requestId: id,
           conversationWorkspace: "test-workspace",
           tokenSource: "user_provided",
@@ -222,7 +227,7 @@ describe("NDJSON Stream Handler", () => {
       for (const workspace of workspaces) {
         const stream = createNDJSONStream({
           childStream: mockChildStream,
-          conversationKey: "test-conv",
+          conversationKey: "test-conv" as TabSessionKey,
           requestId: "test-req",
           conversationWorkspace: workspace,
           tokenSource: "user_provided",
@@ -245,7 +250,7 @@ describe("NDJSON Stream Handler", () => {
 
       const stream = createNDJSONStream({
         childStream: mockChildStream,
-        conversationKey: "test-conv",
+        conversationKey: "test-conv" as TabSessionKey,
         requestId: "test-req-7",
         conversationWorkspace: "test-workspace",
         tokenSource: "user_provided",
@@ -267,7 +272,7 @@ describe("NDJSON Stream Handler", () => {
 
       const stream = createNDJSONStream({
         childStream: mockChildStream,
-        conversationKey: "test-conv",
+        conversationKey: "test-conv" as TabSessionKey,
         requestId: "test-req-8",
         conversationWorkspace: "test-workspace",
         tokenSource: "user_provided",
@@ -291,7 +296,7 @@ describe("NDJSON Stream Handler", () => {
 
       const stream = createNDJSONStream({
         childStream: errorStream,
-        conversationKey: "test-conv",
+        conversationKey: "test-conv" as TabSessionKey,
         requestId: "test-req-error-1",
         conversationWorkspace: "test-workspace",
         tokenSource: "user_provided",
@@ -312,7 +317,7 @@ describe("NDJSON Stream Handler", () => {
       expect(() => {
         createNDJSONStream({
           childStream: mockChildStream,
-          conversationKey: "test-conv",
+          conversationKey: "test-conv" as TabSessionKey,
           requestId: "test-req-error-2",
           conversationWorkspace: "test-workspace",
           tokenSource: "user_provided",
@@ -333,7 +338,7 @@ describe("NDJSON Stream Handler", () => {
 
       const stream = createNDJSONStream({
         childStream: mockChildStream,
-        conversationKey: "test-conv",
+        conversationKey: "test-conv" as TabSessionKey,
         requestId: "test-req-type-1",
         conversationWorkspace: "test-workspace",
         tokenSource: "user_provided",
@@ -361,7 +366,7 @@ describe("NDJSON Stream Handler", () => {
 
       const stream1 = createNDJSONStream({
         childStream: mockChildStream1,
-        conversationKey: "conv-1",
+        conversationKey: "conv-1" as TabSessionKey,
         requestId: "req-1",
         conversationWorkspace: "ws-1",
         tokenSource: "user_provided",
@@ -371,7 +376,7 @@ describe("NDJSON Stream Handler", () => {
 
       const stream2 = createNDJSONStream({
         childStream: mockChildStream2,
-        conversationKey: "conv-2",
+        conversationKey: "conv-2" as TabSessionKey,
         requestId: "req-2",
         conversationWorkspace: "ws-2",
         tokenSource: "workspace",
@@ -404,7 +409,7 @@ describe("NDJSON Stream Handler", () => {
 
       const stream = createNDJSONStream({
         childStream: mockChildStream,
-        conversationKey: "test-conv",
+        conversationKey: "test-conv" as TabSessionKey,
         requestId: "test-cleanup-1",
         conversationWorkspace: "test-workspace",
         tokenSource: "workspace",
@@ -437,7 +442,7 @@ describe("NDJSON Stream Handler", () => {
 
       const stream = createNDJSONStream({
         childStream: mockChildStream,
-        conversationKey: "test-conv",
+        conversationKey: "test-conv" as TabSessionKey,
         requestId: "test-cleanup-2",
         conversationWorkspace: "test-workspace",
         tokenSource: "workspace",
@@ -471,7 +476,7 @@ describe("NDJSON Stream Handler", () => {
 
       const stream = createNDJSONStream({
         childStream: mockChildStream,
-        conversationKey: "test-conv",
+        conversationKey: "test-conv" as TabSessionKey,
         requestId: "test-cleanup-3",
         conversationWorkspace: "test-workspace",
         tokenSource: "workspace",
@@ -508,7 +513,7 @@ describe("NDJSON Stream Handler", () => {
 
       const stream = createNDJSONStream({
         childStream: mockChildStream,
-        conversationKey: "test-conv",
+        conversationKey: "test-conv" as TabSessionKey,
         requestId: "test-close-1",
         conversationWorkspace: "test-workspace",
         tokenSource: "workspace",
@@ -544,7 +549,7 @@ describe("NDJSON Stream Handler", () => {
 
       const stream = createNDJSONStream({
         childStream: mockChildStream,
-        conversationKey: "test-conv",
+        conversationKey: "test-conv" as TabSessionKey,
         requestId: "test-no-callback",
         conversationWorkspace: "test-workspace",
         tokenSource: "workspace",
@@ -570,7 +575,7 @@ describe("NDJSON Stream Handler", () => {
 
       const stream = createNDJSONStream({
         childStream: mockChildStream,
-        conversationKey: "test-conv",
+        conversationKey: "test-conv" as TabSessionKey,
         requestId: "test-once",
         conversationWorkspace: "test-workspace",
         tokenSource: "workspace",
@@ -625,7 +630,7 @@ describe("NDJSON Stream Handler", () => {
 
       const stream = createNDJSONStream({
         childStream: mockChildStream,
-        conversationKey: "test-conv",
+        conversationKey: "test-conv" as TabSessionKey,
         requestId: "test-early-release",
         conversationWorkspace: "test-workspace",
         tokenSource: "workspace",

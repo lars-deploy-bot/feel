@@ -180,11 +180,11 @@ export function useStreamHandler({
         if (onOtherMessage) {
           await onOtherMessage(uiMessage)
         } else {
-          await addMessage(uiMessage)
+          await addMessage(uiMessage, tabId)
         }
       }
     },
-    [appendToAssistantStream, finalizeAssistantStream, addMessage, onUserMessage, onOtherMessage],
+    [appendToAssistantStream, finalizeAssistantStream, addMessage, tabId, onUserMessage, onOtherMessage],
   )
 
   /**

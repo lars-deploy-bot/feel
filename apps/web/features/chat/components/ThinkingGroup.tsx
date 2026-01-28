@@ -8,11 +8,11 @@
  */
 
 import { useState } from "react"
+import { useDexieCurrentConversationId } from "@/lib/db/dexieMessageStore"
 import { useDebugVisible } from "@/lib/stores/debug-store"
-import { useCurrentConversationId } from "@/lib/stores/messageStore"
 import { usePendingTools } from "@/lib/stores/streamingStore"
+import { getThinkingContent, getToolResults } from "../lib/message-classifier"
 import type { UIMessage } from "../lib/message-parser"
-import { getToolResults, getThinkingContent } from "../lib/message-classifier"
 import { renderMessage } from "../lib/message-renderer"
 import { ThinkingSpinner } from "./ThinkingSpinner"
 
@@ -26,8 +26,8 @@ interface ThinkingGroupProps {
 export function ThinkingGroup({ messages, isComplete, onSubmitAnswer }: ThinkingGroupProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const isDebugMode = useDebugVisible()
-  const conversationId = useCurrentConversationId()
-  const pendingTools = usePendingTools(conversationId)
+  const tabId = useDexieCurrentConversationId()
+  const pendingTools = usePendingTools(tabId)
 
   // Separate tool results (render directly) from thinking content (in wrapper)
   const toolResults = getToolResults(messages)

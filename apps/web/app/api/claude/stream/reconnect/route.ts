@@ -9,8 +9,8 @@
  * 3. Browser refresh during active conversation
  *
  * Flow:
- * 1. Client reconnects and calls this endpoint with conversationId
- * 2. Server looks up any buffered output for that conversation
+ * 1. Client reconnects and calls this endpoint with tabId
+ * 2. Server looks up any buffered output for that tab
  * 3. Returns unread messages and stream state
  * 4. Client can then resume normal operation or wait for completion
  */
@@ -18,7 +18,7 @@
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import { createErrorResponse, requireSessionUser } from "@/features/auth/lib/auth"
-import { sessionKey } from "@/features/auth/lib/sessionStore"
+import { tabKey } from "@/features/auth/lib/sessionStore"
 import { hasSessionCookie } from "@/features/auth/types/guards"
 import { COOKIE_NAMES } from "@/lib/auth/cookies"
 import { ErrorCodes } from "@/lib/error-codes"
@@ -29,7 +29,8 @@ export const runtime = "nodejs"
 
 // Request body schema
 const ReconnectSchema = z.object({
-  conversationId: z.string().min(1),
+  tabGroupId: z.string().uuid(),
+  tabId: z.string().uuid(),
   workspace: z.string().min(1),
   /** If true, deletes the buffer after returning messages (client confirms receipt) */
   acknowledge: z.boolean().optional(),
@@ -38,10 +39,10 @@ const ReconnectSchema = z.object({
 /**
  * POST /api/claude/stream/reconnect
  *
- * Check for and retrieve buffered stream output for a conversation.
+ * Check for and retrieve buffered stream output for a tab.
  *
  * Request body:
- * - conversationId: string - The conversation to check
+ * - tabId: string (UUID) - The tab to check
  * - workspace: string - The workspace domain
  * - acknowledge?: boolean - If true, deletes buffer after retrieval
  *
@@ -78,17 +79,18 @@ export async function POST(req: Request) {
       })
     }
 
-    const { conversationId, workspace, acknowledge } = parseResult.data
+    const { tabGroupId, tabId, workspace, acknowledge } = parseResult.data
 
-    // Build conversation key (same format as stream route)
-    const convKey = sessionKey({
+    // Build tab key (same format as stream route)
+    const tabKeyValue = tabKey({
       userId: user.id,
       workspace,
-      conversationId,
+      tabGroupId,
+      tabId,
     })
 
-    // Check if there's an active stream for this conversation
-    const { hasStream, requestId } = await hasActiveStream(convKey)
+    // Check if there's an active stream for this tab
+    const { hasStream, requestId } = await hasActiveStream(tabKeyValue)
 
     if (!hasStream || !requestId) {
       return NextResponse.json({

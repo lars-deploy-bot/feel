@@ -7,6 +7,7 @@
  */
 
 import {
+  type TabSessionKey,
   hasExistingSession,
   isConversationLocked,
   tryLockConversation,
@@ -15,16 +16,26 @@ import {
 import { createAppClient } from "@/lib/supabase/app"
 import { createIamClient } from "@/lib/supabase/iam"
 
+export type { TabSessionKey }
+
 export interface SessionStore {
-  get(key: string): Promise<string | null>
-  set(key: string, value: string): Promise<void>
-  delete(key: string): Promise<void>
+  get(key: TabSessionKey): Promise<string | null>
+  set(key: TabSessionKey, value: string): Promise<void>
+  delete(key: TabSessionKey): Promise<void>
 }
 
-// Parse composite key: userId::workspaceDomain::conversationId
-function parseKey(key: string): { userId: string; workspaceDomain: string; conversationId: string } {
-  const [userId, workspaceDomain, conversationId] = key.split("::")
-  return { userId, workspaceDomain: workspaceDomain || "default", conversationId }
+// Parse composite key: userId::workspaceDomain::tabGroupId::tabId
+// NOTE: DB queries only use (userId, domainId, tabId). tabGroupId is returned
+// for callers that need it (e.g., lock keys), but DB ignores it because tabId is a UUID.
+function parseKey(key: TabSessionKey): { userId: string; workspaceDomain: string; tabGroupId: string; tabId: string } {
+  const parts = key.split("::")
+  if (parts.length !== 4) {
+    throw new Error(
+      `[SessionStore] Invalid session key: expected 4 segments (userId::workspace::tabGroupId::tabId), got ${parts.length}. Key: "${key}"`,
+    )
+  }
+  const [userId, workspaceDomain, tabGroupId, tabId] = parts
+  return { userId, workspaceDomain: workspaceDomain || "default", tabGroupId, tabId }
 }
 
 // In-memory cache for hostname → domain_id lookups (reduces DB queries by 50%)
@@ -69,8 +80,8 @@ async function getDomainId(hostname: string): Promise<string | null> {
   return domain.domain_id
 }
 
-// Periodic cleanup of expired cache entries (every 10 minutes)
-if (typeof setInterval !== "undefined") {
+// Periodic cleanup of expired cache entries (skip in tests to avoid leaked timers)
+if (typeof setInterval !== "undefined" && typeof process !== "undefined" && !process.env.VITEST) {
   setInterval(
     () => {
       const now = Date.now()
@@ -91,9 +102,13 @@ if (typeof setInterval !== "undefined") {
   )
 }
 
-export const SessionStoreMemory: SessionStore = {
-  async get(key: string): Promise<string | null> {
-    const { userId, workspaceDomain, conversationId } = parseKey(key)
+// DB queries use (userId, domainId, tabId) — NOT tabGroupId.
+// tabGroupId exists in the key for in-memory lock uniqueness but the DB
+// doesn't need it because tabId is a UUID and already globally unique.
+// If tabId generation ever changes, add tab_group_id to iam.sessions.
+export const sessionStore: SessionStore = {
+  async get(key: TabSessionKey): Promise<string | null> {
+    const { userId, workspaceDomain, tabId } = parseKey(key)
 
     // Look up domain_id from hostname (cached)
     const domainId = await getDomainId(workspaceDomain)
@@ -110,14 +125,14 @@ export const SessionStoreMemory: SessionStore = {
       .select("sdk_session_id")
       .eq("user_id", userId)
       .eq("domain_id", domainId)
-      .eq("conversation_id", conversationId)
+      .eq("tab_id", tabId)
       .single()
 
     return session?.sdk_session_id || null
   },
 
-  async set(key: string, value: string): Promise<void> {
-    const { userId, workspaceDomain, conversationId } = parseKey(key)
+  async set(key: TabSessionKey, value: string): Promise<void> {
+    const { userId, workspaceDomain, tabId } = parseKey(key)
 
     // Look up domain_id from hostname (cached)
     const domainId = await getDomainId(workspaceDomain)
@@ -134,19 +149,19 @@ export const SessionStoreMemory: SessionStore = {
       {
         user_id: userId,
         domain_id: domainId,
-        conversation_id: conversationId,
+        tab_id: tabId,
         sdk_session_id: value,
         last_activity: new Date().toISOString(),
         expires_at: expiresAt.toISOString(),
       },
       {
-        onConflict: "user_id,domain_id,conversation_id",
+        onConflict: "user_id,domain_id,tab_id",
       },
     )
   },
 
-  async delete(key: string): Promise<void> {
-    const { userId, workspaceDomain, conversationId } = parseKey(key)
+  async delete(key: TabSessionKey): Promise<void> {
+    const { userId, workspaceDomain, tabId } = parseKey(key)
 
     // Look up domain_id from hostname (cached)
     const domainId = await getDomainId(workspaceDomain)
@@ -158,46 +173,26 @@ export const SessionStoreMemory: SessionStore = {
 
     // Delete session from IAM
     const iam = await createIamClient("service")
-    await iam
-      .from("sessions")
-      .delete()
-      .eq("user_id", userId)
-      .eq("domain_id", domainId)
-      .eq("conversation_id", conversationId)
+    await iam.from("sessions").delete().eq("user_id", userId).eq("domain_id", domainId).eq("tab_id", tabId)
   },
 }
 
-// Helper to build a stable key (user + workspace + conversation)
-// Used for Claude SDK session persistence - same conversation = same session
-export function sessionKey({
+// Primary key builder: Tab is now the primary entity for chat sessions
+// Used for BOTH Claude SDK session persistence AND concurrency locking
+// Each browser tab = one independent chat session = one Claude SDK session
+// Lock key includes tabGroupId to guarantee uniqueness across tabs in the same group
+export function tabKey({
   userId,
   workspace,
-  conversationId,
-}: {
-  userId: string
-  workspace?: string
-  conversationId: string
-}) {
-  return `${userId}::${workspace ?? "default"}::${conversationId}`
-}
-
-// Helper to build a lock key (user + workspace + conversation + tab)
-// Used for concurrent request prevention - each browser tab can work independently
-// Without tabId, two browser windows viewing the same conversation would block each other
-export function lockKey({
-  userId,
-  workspace,
-  conversationId,
+  tabGroupId,
   tabId,
 }: {
   userId: string
   workspace?: string
-  conversationId: string
-  tabId?: string
-}) {
-  // If no tabId provided, fall back to conversation-level locking (legacy behavior)
-  const base = `${userId}::${workspace ?? "default"}::${conversationId}`
-  return tabId ? `${base}::${tabId}` : base
+  tabGroupId: string
+  tabId: string
+}): TabSessionKey {
+  return `${userId}::${workspace ?? "default"}::${tabGroupId}::${tabId}` as TabSessionKey
 }
 
 // Re-export guards from types/guards/session for backward compatibility

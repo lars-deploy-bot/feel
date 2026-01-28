@@ -1,37 +1,41 @@
 "use client"
 
-import { useRef, useCallback } from "react"
+import { useCallback, useRef } from "react"
 import toast from "react-hot-toast"
 import type { ChatInputHandle } from "@/features/chat/components/ChatInput/types"
 import { ClientError, ClientRequest, useDevTerminal } from "@/features/chat/lib/dev-terminal-context"
-import { parseStreamEvent, type AgentManagerContent, type UIMessage } from "@/features/chat/lib/message-parser"
+import { type AgentManagerContent, parseStreamEvent, type UIMessage } from "@/features/chat/lib/message-parser"
 import { sendClientError } from "@/features/chat/lib/send-client-error"
 import { isValidStreamEvent } from "@/features/chat/lib/stream-guards"
-import { formatMessagesAsText } from "@/features/chat/utils/format-messages"
-import { isWarningMessage, type BridgeWarningContent } from "@/features/chat/lib/streaming/ndjson"
+import { type BridgeWarningContent, isWarningMessage } from "@/features/chat/lib/streaming/ndjson"
 import { isCompleteEvent, isDoneEvent, isErrorEvent, isInterruptEvent } from "@/features/chat/types/stream"
+import { formatMessagesAsText } from "@/features/chat/utils/format-messages"
 import { buildPromptWithAttachmentsEx, type PromptBuildResult } from "@/features/chat/utils/prompt-builder"
+import { useDexieMessageStore } from "@/lib/db/dexieMessageStore"
+import { toUIMessage } from "@/lib/db/messageAdapters"
+import { getMessageDb } from "@/lib/db/messageDb"
 import type { StructuredError } from "@/lib/error-codes"
 import { ErrorCodes, getErrorHelp, getErrorMessage } from "@/lib/error-codes"
 import { HttpError } from "@/lib/errors"
-import { authStore } from "@/lib/stores/authStore"
-import { useMessageStore } from "@/lib/stores/messageStore"
-import { useStreamingActions, setAbortController, clearAbortController } from "@/lib/stores/streamingStore"
-import { useGoal, useBuilding, useTargetUsers } from "@/lib/stores/goalStore"
-import { useApiKey, useModel } from "@/lib/stores/llmStore"
-import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
 import { isRetryableError, retryWithBackoff } from "@/lib/retry"
+import { authStore } from "@/lib/stores/authStore"
 import { isDevelopment } from "@/lib/stores/debug-store"
+import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
+import { useBuilding, useGoal, useTargetUsers } from "@/lib/stores/goalStore"
+import { useApiKey, useModel } from "@/lib/stores/llmStore"
+import { clearAbortController, setAbortController, useStreamingActions } from "@/lib/stores/streamingStore"
 import { useActiveTab } from "@/lib/stores/tabStore"
 
 interface UseChatMessagingOptions {
   workspace: string | null
   conversationId: string | null
+  /** Tab group ID — required for lock key */
+  tabGroupId: string | null
   isTerminal: boolean
   busy: boolean
   msg: string
   setMsg: (msg: string) => void
-  addMessage: (message: UIMessage, targetConversationId?: string) => void
+  addMessage: (message: UIMessage, targetTabId: string) => void
   chatInputRef: React.RefObject<ChatInputHandle | null>
   setShouldForceScroll: (value: boolean) => void
   setShowCompletionDots: (value: boolean) => void
@@ -48,6 +52,7 @@ interface UseChatMessagingOptions {
 export function useChatMessaging({
   workspace,
   conversationId,
+  tabGroupId,
   isTerminal,
   busy,
   msg,
@@ -84,18 +89,23 @@ export function useChatMessaging({
 
   const createRequestBody = useCallback(
     (message: string, analyzeImageUrls?: string[]) => {
+      // Strict: require activeTab with conversationId — no fallbacks
+      const tabId = activeTab?.conversationId
+      if (!tabId || !tabGroupId) {
+        throw new Error("[useChatMessaging] Cannot create request: activeTab or tabGroupId is missing")
+      }
       const baseBody = {
         message,
         conversationId,
-        tabId: activeTab?.id, // Include tabId for message routing
+        tabGroupId,
+        tabId,
         apiKey: userApiKey || undefined,
         model: userModel,
-        // Include image URLs for analyze mode - server will fetch, save to .uploads/, and tell Claude to Read
         analyzeImageUrls: analyzeImageUrls?.length ? analyzeImageUrls : undefined,
       }
       return isTerminal ? { ...baseBody, workspace: workspace || undefined } : baseBody
     },
-    [conversationId, activeTab?.id, userApiKey, userModel, isTerminal, workspace],
+    [conversationId, activeTab?.conversationId, tabGroupId, userApiKey, userModel, isTerminal, workspace],
   )
 
   const buildPromptForClaude = useCallback((userMessage: UIMessage): PromptBuildResult => {
@@ -109,12 +119,22 @@ export function useChatMessaging({
    * during an active stream.
    */
   const handleCompletionFeatures = useCallback(
-    (targetConversationId: string) => {
-      const state = useMessageStore.getState()
+    async (targetConversationId: string) => {
+      const state = useDexieMessageStore.getState()
       // Use the TARGET conversation, not the global active one
       // This prevents cross-tab message leakage when user switches tabs during streaming
-      const targetConvo = state.conversations[targetConversationId]
-      const formattedMessages = targetConvo?.messages ? formatMessagesAsText(targetConvo.messages) : ""
+      // With Dexie, messages are in IndexedDB - query async for agent supervisor
+      let formattedMessages = ""
+      if (state.session?.userId && state.currentTabId) {
+        try {
+          const db = getMessageDb(state.session.userId)
+          const dbMessages = await db.messages.where("tabId").equals(state.currentTabId).sortBy("seq")
+          const uiMessages = dbMessages.map(toUIMessage)
+          formattedMessages = formatMessagesAsText(uiMessages)
+        } catch (e) {
+          console.warn("[AgentSupervisor] Failed to read messages from Dexie:", e)
+        }
+      }
 
       if (agentSupervisorEnabled && prGoal && workspace && formattedMessages) {
         isEvaluatingProgressRef.current = true
@@ -202,8 +222,8 @@ export function useChatMessaging({
       let timeoutId: NodeJS.Timeout | null = null
       let shouldStopReading = false
 
-      // Capture the tabId at stream start for validation
-      const expectedTabId = activeTab?.id
+      // Capture the tabId at stream start for validation — strict, no fallback
+      const expectedTabId = activeTab?.conversationId
 
       // Track seen messageIds for idempotency (prevents duplicate processing)
       const seenMessageIds = new Set<string>()
@@ -545,12 +565,14 @@ export function useChatMessaging({
       const messageToSend = overrideMessage ?? msg
       // Note: isStopping check is done by the caller in ChatInput
       if (isSubmitting.current || busy || !messageToSend.trim()) return
-      if (!conversationId) return
+      // Strict: require both conversationId and activeTab — no fallbacks
+      if (!conversationId || !activeTab?.conversationId) return
 
-      const targetConversationId = conversationId
+      // Use the active tab's session key for streaming and message routing
+      const targetTabId = activeTab.conversationId
 
       isSubmitting.current = true
-      streamingActions.startStream(targetConversationId)
+      streamingActions.startStream(targetTabId)
 
       const attachments = chatInputRef.current?.getAttachments() || []
 
@@ -561,14 +583,13 @@ export function useChatMessaging({
         timestamp: new Date(),
         attachments: attachments.length > 0 ? attachments : undefined,
       }
-      addMessage(userMessage, targetConversationId)
+      addMessage(userMessage, targetTabId)
       setMsg("")
       chatInputRef.current?.clearAllAttachments()
       setShouldForceScroll(true)
 
       try {
-        // Always use streaming (useStreaming state was always true)
-        await sendStreaming(userMessage, targetConversationId)
+        await sendStreaming(userMessage, targetTabId)
       } finally {
         isSubmitting.current = false
       }
@@ -577,6 +598,7 @@ export function useChatMessaging({
       msg,
       busy,
       conversationId,
+      activeTab?.conversationId,
       streamingActions,
       chatInputRef,
       addMessage,

@@ -34,7 +34,8 @@ vi.mock("@/lib/stores/streamingStore", () => ({
 describe("useStreamCancellation", () => {
   // Default mock options for the hook
   const createMockOptions = (): MockOptions => ({
-    conversationId: "test-conversation-123",
+    tabId: "test-conversation-123",
+    tabGroupId: "test-tabgroup",
     workspace: "test-workspace",
     addMessage: vi.fn(),
     setShowCompletionDots: vi.fn(),
@@ -212,7 +213,7 @@ describe("useStreamCancellation", () => {
       })
 
       // endStream is called immediately when stopping
-      expect(mockEndStream).toHaveBeenCalledWith(options.conversationId)
+      expect(mockEndStream).toHaveBeenCalledWith(options.tabId)
     })
 
     it("should show completion dots", () => {
@@ -311,7 +312,7 @@ describe("useStreamCancellation", () => {
           type: "complete",
           content: {},
         }),
-        options.conversationId, // targetConversationId for tab isolation
+        options.tabId, // targetTabId for tab isolation
       )
     })
 
@@ -344,7 +345,7 @@ describe("useStreamCancellation", () => {
       expect(postty).toHaveBeenCalledWith("claude/stream/cancel", { requestId: "request-456" })
     })
 
-    it("should fallback to conversationId when no requestId", async () => {
+    it("should fallback to tabId when no requestId", async () => {
       const { postty } = await import("@/lib/api/api-client")
       const options = createMockOptions()
       options.currentRequestIdRef.current = null
@@ -355,7 +356,8 @@ describe("useStreamCancellation", () => {
       })
 
       expect(postty).toHaveBeenCalledWith("claude/stream/cancel", {
-        conversationId: "test-conversation-123",
+        tabGroupId: "test-tabgroup",
+        tabId: "test-conversation-123",
         workspace: "test-workspace",
       })
     })
@@ -377,13 +379,13 @@ describe("useStreamCancellation", () => {
       expect(postty).not.toHaveBeenCalled()
     })
 
-    it("should skip cancel request when conversationId is empty", async () => {
+    it("should skip cancel request when tabId is empty string", async () => {
       const { postty } = await import("@/lib/api/api-client")
       ;(postty as Mock).mockClear()
 
       const options = createMockOptions()
       options.currentRequestIdRef.current = null
-      options.conversationId = ""
+      options.tabId = ""
       const { result } = renderHook(() => useStreamCancellation(options))
 
       act(() => {
@@ -408,7 +410,7 @@ describe("useStreamCancellation", () => {
       // isStopping should be true while waiting
       expect(result.current.isStopping).toBe(true)
       // endStream is called immediately (not after timeout)
-      expect(mockEndStream).toHaveBeenCalledWith(options.conversationId)
+      expect(mockEndStream).toHaveBeenCalledWith(options.tabId)
 
       // Advance past the 5-second fallback timeout
       await act(async () => {
@@ -442,7 +444,7 @@ describe("useStreamCancellation", () => {
           data: expect.objectContaining({
             message: "Response interrupted by user",
             source: "client_cancel",
-            conversationId: "test-conversation-123",
+            tabId: "test-conversation-123",
           }),
         }),
       )

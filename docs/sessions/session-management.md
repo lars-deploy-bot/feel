@@ -61,15 +61,18 @@ const isAuth = await isWorkspaceAuthenticated(workspace)
 
 **Files**:
 - `features/auth/lib/sessionStore.ts` - Store interface and implementation
-- `app/api/claude/stream/route.ts` - Usage (lines 280-283)
+- `app/api/claude/stream/route.ts` - Usage
 
-**Storage**: In-memory `Map<string, string>`
+**Storage**: Supabase IAM (`iam.sessions` table) with in-memory domain_id cache
 
 **Key Format**:
 ```typescript
-const sessionKey = `${userId}::${workspace}::${conversationId}`
-// Example: "anon-abc123::example.com::550e8400-e29b-41d4-a716-446655440000"
+import { tabKey } from '@/features/auth/lib/sessionStore'
+const key = tabKey({ userId, workspace, tabId })
+// → "anon-abc123::example.com::tab-550e8400"
 ```
+
+Each browser tab gets its own independent session (tabId). The composite key is `(user_id, domain_id, tab_id)` in the database.
 
 **Value**: SDK session ID (opaque string from `@anthropic-ai/claude-agent-sdk`)
 
@@ -82,23 +85,21 @@ interface SessionStore {
 }
 ```
 
-**Current Implementation**: `SessionStoreMemory` - simple in-memory Map
-- All sessions lost on server restart
-- No TTL or expiration
-- No persistence
+**Current Implementation**: `sessionStore` - Supabase IAM backed
+- Sessions persist across server restarts
+- 24-hour expiry per session
+- Domain hostname-to-ID lookups cached (5-minute TTL)
 
 **How It Works**:
 
-1. Client sends `conversationId` (UUID) with each request
-2. Backend constructs key: `${userId}::${workspace}::${conversationId}`
-3. Lookup existing SDK session: `const sessionId = await SessionStoreMemory.get(key)`
+1. Client sends `tabId` (UUID per browser tab) with each request
+2. Backend constructs key: `tabKey({ userId, workspace, tabId })`
+3. Lookup existing SDK session: `const sessionId = await sessionStore.get(key)`
 4. If found, pass to SDK: `query({ resume: sessionId, ... })`
 5. SDK restores conversation context, skips re-executing previous tools
-6. After query completes, save new session ID: `await SessionStoreMemory.set(key, newSessionId)`
+6. After query completes, save new session ID: `await sessionStore.set(key, newSessionId)`
 
-**Benefits**: User can refresh page, continue conversation without tools re-running
-
-**Limitations**: Sessions lost on server restart (in-memory only)
+**Benefits**: User can refresh page, continue conversation without tools re-running. Sessions survive server restarts.
 
 ---
 
@@ -157,7 +158,7 @@ interface ConversationSession {
 
 **Storage**: In-memory `Set<string>` (not persisted anywhere)
 
-**Key Format**: Same as backend session key: `${userId}::${workspace}::${conversationId}`
+**Key Format**: Same as backend session key: `tabKey({ userId, workspace, tabId })` → `${userId}::${workspace}::${tabId}`
 
 **State**:
 ```typescript
@@ -194,51 +195,50 @@ const conversationLockTimestamps = new Map<string, number>()  // Lock acquisitio
 2. JWT created with workspace → **System 1** (Auth)
 3. Cookie sent to browser
 4. User redirects to `/chat`
-5. Frontend calls `initConversation(workspace)` → **System 3** (Frontend)
-6. ConversationId generated, saved to localStorage
+5. Frontend assigns tabId per browser tab → **System 3** (Frontend)
+6. Tab session tracked, saved to localStorage/Dexie
 
 **First Message Flow**:
 1. User types message, clicks send
-2. Frontend reads conversationId from Zustand store → **System 3**
-3. POST to `/api/claude/stream` with conversationId
+2. Frontend reads tabId for this browser tab → **System 3**
+3. POST to `/api/claude/stream` with tabId
 4. Backend checks JWT cookie → **System 1** (Auth)
-5. Backend tries to lock conversation → **System 4** (Locking)
-6. Backend looks up SDK session → **System 2** (Backend) - none found
+5. Backend tries to lock tab session → **System 4** (Locking)
+6. Backend looks up SDK session via `tabKey()` → **System 2** (Backend) - none found
 7. SDK query runs without resume
 8. SDK returns new sessionId
-9. Backend saves sessionId to SessionStoreMemory → **System 2**
+9. Backend saves sessionId to Supabase → **System 2**
 10. Response streamed to client
 
 **Subsequent Message Flow**:
 1. User types another message
-2. Frontend reads **same** conversationId from Zustand → **System 3**
-3. POST to `/api/claude/stream` with conversationId
+2. Frontend reads **same** tabId for this tab → **System 3**
+3. POST to `/api/claude/stream` with tabId
 4. Backend checks JWT cookie → **System 1** (Auth)
-5. Backend tries to lock conversation → **System 4** (Locking)
-6. Backend looks up SDK session → **System 2** (Backend) - **found!**
+5. Backend tries to lock tab session → **System 4** (Locking)
+6. Backend looks up SDK session via `tabKey()` → **System 2** (Backend) - **found!**
 7. SDK query runs WITH resume (context restored, tools not re-executed)
 8. SDK returns updated sessionId
-9. Backend updates sessionId in SessionStoreMemory → **System 2**
+9. Backend updates sessionId in Supabase → **System 2**
 10. Response streamed to client
 
 **Page Refresh Flow**:
 1. User refreshes browser
 2. JWT cookie persists (httpOnly) → **System 1**
-3. Zustand store restores from localStorage → **System 3**
-4. ConversationId retrieved for workspace
-5. Next message uses existing conversationId
-6. Backend resumes SDK session → **System 2**
+3. Frontend restores tabId from localStorage/Dexie → **System 3**
+4. TabId retrieved for this browser tab
+5. Next message uses existing tabId
+6. Backend resumes SDK session from Supabase → **System 2**
 7. Conversation continues where user left off
 
 **Server Restart Flow**:
 1. Server restarts
 2. JWT cookies still valid (stored in browser) → **System 1** ✓
-3. Frontend Zustand still has conversationId (localStorage) → **System 3** ✓
-4. Backend SessionStoreMemory cleared (in-memory) → **System 2** ✗
+3. Frontend still has tabId (localStorage/Dexie) → **System 3** ✓
+4. Backend sessionStore reloads from Supabase → **System 2** ✓
 5. Conversation locks cleared (in-memory) → **System 4** ✗
-6. Next message: Backend cannot resume SDK session (no sessionId found)
-7. SDK starts new conversation (context lost)
-8. User sees response but prior context forgotten
+6. Next message: Backend resumes SDK session from Supabase
+7. Conversation continues (sessions survive restarts)
 
 ---
 
@@ -267,10 +267,9 @@ const conversationLockTimestamps = new Map<string, number>()  // Lock acquisitio
 ## Current Limitations
 
 **System 2 (Backend Persistence)**:
-- In-memory only, lost on restart
-- No expiration/TTL
-- No cleanup of old sessions
-- Memory grows unbounded
+- ✅ Supabase-backed, survives restarts
+- ✅ 24-hour session expiry
+- Domain cache entries expire after 5 minutes
 
 **System 4 (Conversation Locking)**:
 - In-memory only, not shared across server instances

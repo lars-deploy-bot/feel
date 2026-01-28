@@ -7,16 +7,18 @@ import type { UIMessage } from "@/features/chat/lib/message-parser"
 import { useStreamingActions, getAbortController, clearAbortController } from "@/lib/stores/streamingStore"
 
 interface UseStreamCancellationOptions {
-  /** Current conversation ID */
-  conversationId: string
+  /** Current tab ID (session key for Claude SDK) */
+  tabId: string
+  /** Current tab group ID */
+  tabGroupId: string | null
   /** Current workspace */
   workspace: string | null
   /**
    * Callback to add message to chat.
-   * IMPORTANT: targetConversationId is REQUIRED for tab isolation.
+   * IMPORTANT: targetTabId is REQUIRED for tab isolation.
    * Without it, interrupt messages could be added to the wrong tab.
    */
-  addMessage: (message: UIMessage, targetConversationId: string) => void
+  addMessage: (message: UIMessage, targetTabId: string) => void
   /** Callback to show completion dots */
   setShowCompletionDots: (show: boolean) => void
   /** Ref to the abort controller for the current request */
@@ -48,7 +50,7 @@ interface UseStreamCancellationReturn {
  * @example
  * ```tsx
  * const { stopStreaming } = useStreamCancellation({
- *   conversationId,
+ *   tabId,
  *   workspace,
  *   addMessage,
  *   setShowCompletionDots,
@@ -61,7 +63,8 @@ interface UseStreamCancellationReturn {
  * ```
  */
 export function useStreamCancellation({
-  conversationId,
+  tabId,
+  tabGroupId,
   workspace,
   addMessage,
   setShowCompletionDots,
@@ -93,7 +96,7 @@ export function useStreamCancellation({
       data: {
         message: "Response interrupted by user",
         source: "client_cancel",
-        conversationId,
+        tabId,
         timestamp: new Date().toISOString(),
       },
     })
@@ -103,8 +106,8 @@ export function useStreamCancellation({
     console.log(
       "[useStreamCancellation] requestIdToCancel:",
       requestIdToCancel,
-      "conversationId:",
-      conversationId,
+      "tabId:",
+      tabId,
       "workspace:",
       workspace,
     )
@@ -130,14 +133,14 @@ export function useStreamCancellation({
           const validatedRequest = validateRequest("claude/stream/cancel", { requestId: requestIdToCancel })
           const response = await postty("claude/stream/cancel", validatedRequest)
           console.log("[useStreamCancellation] Cancel response:", JSON.stringify(response))
-        } else if (conversationId.length > 0 && workspace) {
-          // Fallback path: Cancel by conversationId (super-early Stop)
-          console.log("[useStreamCancellation] Sending cancel with conversationId fallback:", conversationId)
-          const validatedRequest = validateRequest("claude/stream/cancel", { conversationId, workspace })
+        } else if (tabId.length > 0 && tabGroupId && workspace) {
+          // Fallback path: Cancel by tabId (super-early Stop)
+          console.log("[useStreamCancellation] Sending cancel with tabId fallback:", tabId)
+          const validatedRequest = validateRequest("claude/stream/cancel", { tabGroupId, tabId, workspace })
           const response = await postty("claude/stream/cancel", validatedRequest)
           console.log("[useStreamCancellation] Cancel response (fallback):", JSON.stringify(response))
         } else {
-          console.warn("[useStreamCancellation] No requestId or conversationId available - relying on abort() only")
+          console.warn("[useStreamCancellation] No requestId or tabId available - relying on abort() only")
         }
       } catch (error) {
         console.error("[useStreamCancellation] Cancel request failed:", error)
@@ -149,11 +152,11 @@ export function useStreamCancellation({
     }
 
     // Immediately abort the client-side stream
-    // Use per-conversation abort controller for tabs support
-    const perConvoController = conversationId ? getAbortController(conversationId) : null
-    if (perConvoController) {
-      perConvoController.abort()
-      clearAbortController(conversationId)
+    // Use per-tab abort controller for tabs support
+    const perTabController = tabId ? getAbortController(tabId) : null
+    if (perTabController) {
+      perTabController.abort()
+      clearAbortController(tabId)
     }
     // Also clear the ref for backward compatibility
     if (abortControllerRef.current) {
@@ -163,12 +166,12 @@ export function useStreamCancellation({
     currentRequestIdRef.current = null
 
     // End stream tracking
-    if (conversationId) {
-      streamingActions.endStream(conversationId)
+    if (tabId) {
+      streamingActions.endStream(tabId)
     }
 
     // Add completion message to mark thinking group as complete
-    // CRITICAL: Pass conversationId for tab isolation - without it,
+    // CRITICAL: Pass tabId for tab isolation - without it,
     // this message could be added to the wrong tab if user switched tabs
     const interruptMessage: UIMessage = {
       id: crypto.randomUUID(),
@@ -176,7 +179,7 @@ export function useStreamCancellation({
       content: {},
       timestamp: new Date(),
     }
-    addMessage(interruptMessage, conversationId)
+    addMessage(interruptMessage, tabId)
 
     // Show completion dots while waiting for backend confirmation
     setShowCompletionDots(true)
@@ -192,7 +195,8 @@ export function useStreamCancellation({
       clearTimeout(timeoutId)
     })
   }, [
-    conversationId,
+    tabId,
+    tabGroupId,
     workspace,
     addMessage,
     setShowCompletionDots,
