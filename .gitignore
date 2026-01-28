@@ -175,3 +175,7 @@ packages/*/tools
 apps/web/.env.save
 apps/shell-server/.env*
 .env.broker
+
+# Generated routing files (created by routing:generate script)
+# These are server-specific and should not be committed
+# Location: /var/lib/claude-bridge/generated/

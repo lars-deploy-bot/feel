@@ -13,9 +13,11 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "routing:generate": "bun run src/infra/generate-routing.ts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.46.2",
     "@types/node": "^20.0.0",
     "@webalive/shared": "workspace:*",
     "typescript": "^5.0.0"
