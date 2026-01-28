@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef } from "react"
+import { useAppHydrated } from "@/lib/stores/HydrationBoundary"
 import { useActiveTab, useTabActions, useWorkspaceTabs, type Tab } from "@/lib/stores/tabStore"
 import { useIsStreamActive } from "@/lib/stores/streamingStore"
 import type { TabId, TabGroupId } from "@/lib/types/ids"
@@ -121,31 +122,33 @@ export function useActiveSession(workspace: string | null): ActiveSession {
   const activeTab = useActiveTab(workspace)
   const workspaceTabs = useWorkspaceTabs(workspace)
   const { addTab, setActiveTab, createTabGroupWithTab } = useTabActions()
-  const prevWorkspaceRef = useRef<string | null>(null)
+  const hasHydrated = useAppHydrated()
+  const initializedWorkspaceRef = useRef<string | null>(null)
 
   // Initialize first tab when workspace changes and no active tab exists
   useEffect(() => {
-    if (!workspace) return
-    if (prevWorkspaceRef.current === workspace) return
+    if (!workspace || !hasHydrated) return
 
-    prevWorkspaceRef.current = workspace
-
-    // If there's already an active tab for this workspace, use it
+    // If there's already an active tab for this workspace, consider it initialized.
     if (activeTab) {
+      initializedWorkspaceRef.current = workspace
       return
     }
 
-    // Check if there are existing open tabs for this workspace
     const openTabs = workspaceTabs.filter(t => !t.closedAt)
     if (openTabs.length > 0) {
       // Set first existing open tab as active instead of creating a new one
       setActiveTab(workspace, openTabs[0].id)
+      initializedWorkspaceRef.current = workspace
       return
     }
 
-    // Only create a new tab group when no open tabs exist
-    createTabGroupWithTab(workspace)
-  }, [workspace, activeTab, workspaceTabs, setActiveTab, createTabGroupWithTab])
+    // Only create a new tab group once per workspace when no open tabs exist
+    if (initializedWorkspaceRef.current !== workspace) {
+      initializedWorkspaceRef.current = workspace
+      createTabGroupWithTab(workspace)
+    }
+  }, [workspace, hasHydrated, activeTab, workspaceTabs, setActiveTab, createTabGroupWithTab])
 
   // Tab.id IS the conversation key - no separate sessionId
   const tabId = activeTab?.id ?? null

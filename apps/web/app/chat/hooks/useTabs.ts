@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useCallback, useRef } from "react"
+import toast from "react-hot-toast"
 import {
   useTabs,
   useActiveTab,
@@ -59,6 +60,9 @@ export function useTabsManagement({
   } = useTabActions()
   const { reopenTab: dexieReopenTab, loadTabMessages } = useDexieMessageActions()
   const streamingActions = useStreamingActions()
+  const notifyTabLimit = useCallback(() => {
+    toast.error("Tab limit reached. Close a tab to open a new one.", { id: "tab-limit" })
+  }, [])
 
   // Workspace-scoped action wrapper
   const withWorkspace = useCallback(
@@ -78,6 +82,10 @@ export function useTabsManagement({
 
     // Tab.id IS the conversation key - no separate sessionId
     const tab = addTab(workspace, tabGroupId)
+    if (!tab) {
+      notifyTabLimit()
+      return
+    }
     if (tab) {
       console.log("[AddTab]", {
         previousActiveTabId: activeTabInGroup?.id,
@@ -222,6 +230,10 @@ export function useTabsManagement({
       }
 
       const tab = openTabGroupInTab(workspace, targetTabGroupId, name)
+      if (!tab) {
+        notifyTabLimit()
+        return
+      }
       if (tab) {
         onInitializeTab(tab.id, tab.tabGroupId, workspace)
         onSwitchTab(tab.id)

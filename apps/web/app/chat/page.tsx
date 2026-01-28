@@ -416,12 +416,18 @@ function ChatPageContent() {
   }
 
   const handleNewTabGroup = useCallback(async () => {
-    if (tabId) {
-      streamingActions.clearTab(tabId)
+    if (!workspace) return
+
+    const previousTabId = tabId
+    // startNewTabGroup creates a new tabGroup + first tab in tabStore
+    const newTabId = startNewTabGroup()
+    if (!newTabId) {
+      toast.error("Tab limit reached. Close a tab to open a new one.", { id: "tab-limit" })
+      return
     }
-    if (workspace) {
-      // startNewTabGroup creates a new tabGroup + first tab in tabStore
-      startNewTabGroup()
+
+    if (previousTabId) {
+      streamingActions.clearTab(previousTabId)
     }
     setMsg("")
     setTimeout(() => chatInputRef.current?.focus(), 0)
