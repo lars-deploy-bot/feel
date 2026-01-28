@@ -47,7 +47,7 @@ Implemented Zustand-based session management that enables conversation resumptio
    - Found: Returns existing conversationId
    - Not found: Creates new UUID and persists
 4. conversationId sent to API
-5. Backend checks SessionStoreMemory:
+5. Backend checks sessionStore:
    - Found: Resumes with existing session
    - Not found: Starts new conversation
 ```
@@ -72,9 +72,9 @@ localStorage['claude-session-storage'] = {
 
 **Backend (Supabase IAM):**
 ```typescript
-import { tabKey, SessionStoreMemory } from '@/features/auth/lib/sessionStore'
+import { tabKey, sessionStore } from '@/features/auth/lib/sessionStore'
 const key = tabKey({ userId, workspace, tabId })
-SessionStoreMemory.get(key)
+sessionStore.get(key)
 // Returns: Claude SDK session_id (persisted in iam.sessions table)
 ```
 

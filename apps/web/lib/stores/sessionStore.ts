@@ -7,7 +7,7 @@ import { persist } from "zustand/middleware"
  * Session Store - Manages conversation sessions with persistence
  *
  * Enables session resumption across page reloads by persisting conversationId
- * per workspace. Works with backend SessionStoreMemory for full resume capability.
+ * per workspace. Works with backend sessionStore for full resume capability.
  */
 
 export interface ConversationSession {
@@ -40,7 +40,7 @@ const MAX_SESSIONS = 10
  * Session Store - Manages conversation sessions with persistence
  *
  * Enables session resumption across page reloads by persisting conversationId
- * per workspace. Works with backend SessionStoreMemory for full resume capability.
+ * per workspace. Works with backend sessionStore for full resume capability.
  *
  * skipHydration: true - Prevents automatic hydration on store creation.
  * Hydration is coordinated by HydrationManager to ensure all stores

@@ -12,6 +12,7 @@ interface CancelRequestBody {
   workspace?: string
   requestId?: string
   tabId?: string
+  tabGroupId?: string
 }
 
 vi.mock("@/features/auth/lib/auth", () => ({
@@ -258,6 +259,36 @@ describe("POST /api/claude/stream/cancel", () => {
 
     // Cleanup
     unregisterCancellation(requestId)
+  })
+
+  it("should return 400 when tabId is provided without tabGroupId", async () => {
+    const req = new Request("http://localhost/api/claude/stream/cancel", {
+      method: "POST",
+      body: JSON.stringify({ tabId: "some-tab", workspace: "test-workspace" }),
+      headers: { "Content-Type": "application/json" },
+    })
+
+    const response = await POST(req as any)
+    const data = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(data.ok).toBe(false)
+    expect(data.message).toContain("tabGroupId is required")
+  })
+
+  it("should return 400 when tabGroupId is not a string", async () => {
+    const req = new Request("http://localhost/api/claude/stream/cancel", {
+      method: "POST",
+      body: JSON.stringify({ tabId: "some-tab", tabGroupId: 123, workspace: "test-workspace" }),
+      headers: { "Content-Type": "application/json" },
+    })
+
+    const response = await POST(req as any)
+    const data = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(data.ok).toBe(false)
+    expect(data.message).toContain("tabGroupId is required")
   })
 
   it("should prefer requestId over tabId when both provided", async () => {

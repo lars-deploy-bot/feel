@@ -271,12 +271,14 @@ function ChatPageContent() {
 
   const {
     tabs,
+    closedTabs,
     activeTab: activeTabInGroup,
     tabsExpanded,
     handleAddTab,
     handleTabSelect,
     handleTabClose,
     handleTabRename,
+    handleTabReopen,
     handleToggleTabs,
     handleOpenTabGroupInTab,
   } = useTabsManagement({
@@ -567,10 +569,12 @@ function ChatPageContent() {
           {showTabs && tabsExpanded && (
             <TabBar
               tabs={tabs}
+              closedTabs={closedTabs}
               activeTabId={activeTabInGroup?.id ?? null}
               onTabSelect={handleTabSelect}
               onTabClose={handleTabClose}
               onTabRename={handleTabRename}
+              onTabReopen={handleTabReopen}
               onAddTab={handleAddTab}
             />
           )}

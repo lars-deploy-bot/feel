@@ -66,7 +66,8 @@ test.describe("Protection System Verification", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: "This should be blocked",
-          tabId: "test",
+          tabGroupId: crypto.randomUUID(),
+          tabId: crypto.randomUUID(),
         }),
       })
       return {

@@ -29,15 +29,15 @@ interface SessionStore {
 The session store is backed by Supabase IAM (`iam.sessions` table) with domain_id caching for performance. Sessions persist across server restarts.
 
 ```typescript
-import { tabKey, SessionStoreMemory } from '@/features/auth/lib/sessionStore'
+import { tabKey, sessionStore } from '@/features/auth/lib/sessionStore'
 
 // Build key: each browser tab = one independent session
 const key = tabKey({ userId, workspace, tabId })
 
 // Get/set/delete SDK session IDs
-await SessionStoreMemory.get(key)
-await SessionStoreMemory.set(key, sdkSessionId)
-await SessionStoreMemory.delete(key)
+await sessionStore.get(key)
+await sessionStore.set(key, sdkSessionId)
+await sessionStore.delete(key)
 ```
 
 **Key parsing:** `userId::workspaceDomain::tabId` - workspace domain is resolved to `domain_id` via cached lookup.
@@ -47,11 +47,11 @@ await SessionStoreMemory.delete(key)
 ### 1. New Conversation (New Tab)
 
 ```typescript
-import { tabKey, SessionStoreMemory } from '@/features/auth/lib/sessionStore'
+import { tabKey, sessionStore } from '@/features/auth/lib/sessionStore'
 
 // No session exists yet for this tab
 const key = tabKey({ userId, workspace, tabId })
-const sessionId = await SessionStoreMemory.get(key)  // null
+const sessionId = await sessionStore.get(key)  // null
 
 // Run SDK query without sessionId
 const response = await sdk.query(prompt, {
@@ -60,7 +60,7 @@ const response = await sdk.query(prompt, {
 })
 
 // Store session ID from response
-await SessionStoreMemory.set(key, response.sessionId)
+await sessionStore.set(key, response.sessionId)
 ```
 
 ### 2. Resume Conversation (Same Tab)
@@ -68,7 +68,7 @@ await SessionStoreMemory.set(key, response.sessionId)
 ```typescript
 // Session exists from previous message in this tab
 const key = tabKey({ userId, workspace, tabId })
-const sessionId = await SessionStoreMemory.get(key)  // "session_abc123"
+const sessionId = await sessionStore.get(key)  // "session_abc123"
 
 // Resume with existing session
 const response = await sdk.query(prompt, {
@@ -77,14 +77,14 @@ const response = await sdk.query(prompt, {
 })
 
 // Update with new session ID (if changed)
-await SessionStoreMemory.set(key, response.sessionId)
+await sessionStore.set(key, response.sessionId)
 ```
 
 ### 3. Session Cleanup
 
 ```typescript
 // Delete session when tab is closed or conversation reset
-await SessionStoreMemory.delete(key)
+await sessionStore.delete(key)
 ```
 
 ## SDK Session Behavior

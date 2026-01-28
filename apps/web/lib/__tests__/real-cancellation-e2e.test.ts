@@ -134,6 +134,7 @@ describe.skipIf(SKIP_REAL_API_TESTS)("REAL Cancellation E2E (uses API credits)",
       },
       body: JSON.stringify({
         message,
+        tabGroupId: convId,
         tabId: convId,
         workspace: TEST_WORKSPACE,
       }),

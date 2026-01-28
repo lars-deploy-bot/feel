@@ -196,6 +196,7 @@ export function useStreamCancellation({
     })
   }, [
     tabId,
+    tabGroupId,
     workspace,
     addMessage,
     setShowCompletionDots,

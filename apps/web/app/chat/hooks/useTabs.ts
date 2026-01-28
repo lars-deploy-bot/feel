@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useCallback, useRef } from "react"
-import { useTabs, useActiveTab, useTabsExpanded, useTabActions } from "@/lib/stores/tabStore"
+import { useTabs, useActiveTab, useTabsExpanded, useTabActions, useClosedTabs } from "@/lib/stores/tabStore"
 import { useStreamingActions, getAbortController, clearAbortController } from "@/lib/stores/streamingStore"
+import { useDexieMessageActions } from "@/lib/db/dexieMessageStore"
 
 interface UseTabsOptions {
   workspace: string | null
@@ -40,12 +41,14 @@ export function useTabsManagement({
   onInputRestore,
 }: UseTabsOptions) {
   const tabs = useTabs(workspace, tabGroupId)
+  const closedTabs = useClosedTabs(workspace, tabGroupId)
   const activeTab = useActiveTab(workspace)
   const activeTabInGroup = tabs.find(t => t.id === activeTab?.id) ?? tabs[0] ?? null
   const tabsExpanded = useTabsExpanded(workspace)
   const {
     addTab,
     removeTab,
+    reopenTab,
     setActiveTab,
     renameTab,
     toggleTabsExpanded,
@@ -53,6 +56,7 @@ export function useTabsManagement({
     openTabGroupInTab,
     setTabInputDraft,
   } = useTabActions()
+  const { reopenTab: dexieReopenTab, loadTabMessages } = useDexieMessageActions()
   const streamingActions = useStreamingActions()
 
   // Workspace-scoped action wrapper
@@ -169,6 +173,35 @@ export function useTabsManagement({
     [withWorkspace, collapseTabsAndClear],
   )
 
+  const handleTabReopen = useCallback(
+    (tabId: string) => {
+      if (!workspace) return
+      reopenTab(workspace, tabId)
+      void dexieReopenTab(tabId)
+
+      // Find the tab to get its conversationId and switch to it
+      const tab = closedTabs.find(t => t.id === tabId)
+      if (tab) {
+        onSwitchConversation(tab.conversationId)
+        onInitializeTab(tab.conversationId, tab.tabGroupId, workspace)
+        void loadTabMessages(tabId)
+        if (onInputRestore) {
+          onInputRestore(tab.inputDraft ?? "")
+        }
+      }
+    },
+    [
+      workspace,
+      closedTabs,
+      reopenTab,
+      dexieReopenTab,
+      loadTabMessages,
+      onSwitchConversation,
+      onInitializeTab,
+      onInputRestore,
+    ],
+  )
+
   const handleOpenTabGroupInTab = useCallback(
     (targetTabGroupId: string, name?: string) => {
       if (!workspace) return
@@ -240,12 +273,14 @@ export function useTabsManagement({
 
   return {
     tabs,
+    closedTabs,
     activeTab: activeTabInGroup,
     tabsExpanded,
     handleAddTab,
     handleTabSelect,
     handleTabClose,
     handleTabRename,
+    handleTabReopen,
     handleToggleTabs,
     handleCollapseTabsAndClear,
     handleOpenTabGroupInTab,

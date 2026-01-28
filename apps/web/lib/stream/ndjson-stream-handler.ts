@@ -18,7 +18,7 @@
  * applying credit charges, and sending typed messages to client.
  */
 
-import { type TabSessionKey, SessionStoreMemory } from "@/features/auth/lib/sessionStore"
+import { type TabSessionKey, sessionStore } from "@/features/auth/lib/sessionStore"
 import type { BridgeErrorMessage, StreamMessage } from "@/features/chat/lib/streaming/ndjson"
 import { BridgeStreamType, createWarningMessage, encodeNDJSON } from "@/features/chat/lib/streaming/ndjson"
 import { isAssistantMessageWithUsage, isBridgeMessageEvent } from "@/features/chat/types/guards"
@@ -186,7 +186,7 @@ async function processChildEvent(
     )
     console.log(`[NDJSON Stream ${requestId}] [SESSION DEBUG] Storing to key: ${conversationKey}`)
     try {
-      await SessionStoreMemory.set(conversationKey, childEvent.sessionId)
+      await sessionStore.set(conversationKey, childEvent.sessionId)
       console.log(`[NDJSON Stream ${requestId}] [SESSION DEBUG] Session stored successfully`)
       if (onSessionIdReceived) {
         await onSessionIdReceived(childEvent.sessionId)

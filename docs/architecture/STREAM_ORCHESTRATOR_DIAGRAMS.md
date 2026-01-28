@@ -638,7 +638,7 @@ graph TB
 
     subgraph "Orchestration Layer"
         Lock[Conversation Locking<br/>tryLockConversation]
-        Session[Session Store<br/>SessionStoreMemory]
+        Session[Session Store<br/>sessionStore]
         Registry[Cancellation Registry<br/>registerCancellation]
         Credits[Credit Manager<br/>chargeTokensForMessage]
     end

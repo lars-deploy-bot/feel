@@ -83,6 +83,7 @@ interface DexieMessageStoreActions {
   addTab: (name?: string) => Promise<string>
   switchTab: (tabId: string) => void
   removeTab: (tabId: string) => Promise<void>
+  reopenTab: (tabId: string) => Promise<void>
   renameTab: (tabId: string, name: string) => Promise<void>
 
   // Sync
@@ -439,17 +440,20 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
     if (!session) return
 
     const db = getMessageDb(session.userId)
+    await safeDb(() => db.tabs.update(tabId, { closedAt: Date.now() }))
+  },
+
+  reopenTab: async tabId => {
+    const { session } = get()
+    if (!session) return
+
+    const db = getMessageDb(session.userId)
+    // Dexie doesn't support setting a field to undefined via update,
+    // so we read-modify-write to remove closedAt
     const tab = await db.tabs.get(tabId)
     if (!tab) return
-
-    await safeDb(() => db.messages.where("tabId").equals(tabId).delete())
-    await safeDb(() => db.tabs.delete(tabId))
-
-    const remainingTabs = await db.tabs.where("conversationId").equals(tab.conversationId).sortBy("position")
-
-    await safeDb(() => db.tabs.bulkPut(remainingTabs.map((t, i) => ({ ...t, position: i, pendingSync: true }))))
-
-    queueSync(tab.conversationId, session.userId)
+    const { closedAt: _, ...rest } = tab
+    await safeDb(() => db.tabs.put(rest))
   },
 
   renameTab: async (tabId, name) => {
@@ -665,6 +669,7 @@ export const useDexieMessageActions = () =>
     addTab: state.addTab,
     switchTab: state.switchTab,
     removeTab: state.removeTab,
+    reopenTab: state.reopenTab,
     renameTab: state.renameTab,
     syncFromServer: state.syncFromServer,
     loadTabMessages: state.loadTabMessages,

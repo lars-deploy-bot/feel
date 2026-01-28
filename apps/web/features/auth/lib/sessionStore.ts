@@ -25,8 +25,16 @@ export interface SessionStore {
 }
 
 // Parse composite key: userId::workspaceDomain::tabGroupId::tabId
+// NOTE: DB queries only use (userId, domainId, tabId). tabGroupId is returned
+// for callers that need it (e.g., lock keys), but DB ignores it because tabId is a UUID.
 function parseKey(key: TabSessionKey): { userId: string; workspaceDomain: string; tabGroupId: string; tabId: string } {
-  const [userId, workspaceDomain, tabGroupId, tabId] = key.split("::")
+  const parts = key.split("::")
+  if (parts.length !== 4) {
+    throw new Error(
+      `[SessionStore] Invalid session key: expected 4 segments (userId::workspace::tabGroupId::tabId), got ${parts.length}. Key: "${key}"`,
+    )
+  }
+  const [userId, workspaceDomain, tabGroupId, tabId] = parts
   return { userId, workspaceDomain: workspaceDomain || "default", tabGroupId, tabId }
 }
 
@@ -72,8 +80,8 @@ async function getDomainId(hostname: string): Promise<string | null> {
   return domain.domain_id
 }
 
-// Periodic cleanup of expired cache entries (every 10 minutes)
-if (typeof setInterval !== "undefined") {
+// Periodic cleanup of expired cache entries (skip in tests to avoid leaked timers)
+if (typeof setInterval !== "undefined" && typeof process !== "undefined" && !process.env.VITEST) {
   setInterval(
     () => {
       const now = Date.now()
@@ -94,7 +102,11 @@ if (typeof setInterval !== "undefined") {
   )
 }
 
-export const SessionStoreMemory: SessionStore = {
+// DB queries use (userId, domainId, tabId) — NOT tabGroupId.
+// tabGroupId exists in the key for in-memory lock uniqueness but the DB
+// doesn't need it because tabId is a UUID and already globally unique.
+// If tabId generation ever changes, add tab_group_id to iam.sessions.
+export const sessionStore: SessionStore = {
   async get(key: TabSessionKey): Promise<string | null> {
     const { userId, workspaceDomain, tabId } = parseKey(key)
 

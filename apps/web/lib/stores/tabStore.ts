@@ -22,6 +22,8 @@ export interface Tab {
   tabNumber: number // Sequential number, never reused
   createdAt: number
   inputDraft?: string // Persisted draft message for this tab
+  /** Timestamp when tab was soft-deleted. Undefined = open tab. */
+  closedAt?: number
 }
 
 interface TabStoreState {
@@ -34,6 +36,7 @@ interface TabStoreState {
 interface TabStoreActions {
   addTab: (workspace: string, tabGroupId: string, conversationId: string, name?: string) => Tab | null
   removeTab: (workspace: string, tabId: string) => void
+  reopenTab: (workspace: string, tabId: string) => void
   removeTabGroup: (workspace: string, tabGroupId: string) => void
   setActiveTab: (workspace: string, tabId: string) => void
   renameTab: (workspace: string, tabId: string, name: string) => void
@@ -98,7 +101,8 @@ export const useTabStore = create<TabStore>()(
 
         addTab: (workspace, tabGroupId, conversationId, name) => {
           const tabs = getTabs(workspace)
-          if (tabs.length >= MAX_TABS) return null
+          const openTabs = tabs.filter(t => !t.closedAt)
+          if (openTabs.length >= MAX_TABS) return null
 
           const tab = createTab(workspace, tabGroupId, conversationId, name)
           addTabToWorkspace(workspace, tabs, tab)
@@ -107,14 +111,31 @@ export const useTabStore = create<TabStore>()(
 
         removeTab: (workspace, tabId) => {
           const tabs = getTabs(workspace)
-          const idx = tabs.findIndex(t => t.id === tabId)
-          if (idx === -1 || tabs.length <= 1) return
+          const openTabs = tabs.filter(t => !t.closedAt)
+          const idx = openTabs.findIndex(t => t.id === tabId)
+          if (idx === -1 || openTabs.length <= 1) return // Don't close the last open tab
 
-          const newTabs = tabs.filter(t => t.id !== tabId)
+          const newTabs = tabs.map(t => (t.id === tabId ? { ...t, closedAt: Date.now() } : t))
           const activeId = get().activeTabByWorkspace[workspace]
-          const newActiveId = activeId === tabId ? newTabs[Math.min(idx, newTabs.length - 1)]?.id : activeId
+          const remainingOpen = openTabs.filter(t => t.id !== tabId)
+          const newActiveId = activeId === tabId ? remainingOpen[Math.min(idx, remainingOpen.length - 1)]?.id : activeId
 
           setTabs(workspace, newTabs, newActiveId)
+        },
+
+        reopenTab: (workspace, tabId) => {
+          const tabs = getTabs(workspace)
+          const tab = tabs.find(t => t.id === tabId && t.closedAt)
+          if (!tab) return
+
+          const newTabs = tabs.map(t => {
+            if (t.id === tabId) {
+              const { closedAt: _, ...rest } = t
+              return rest
+            }
+            return t
+          })
+          setTabs(workspace, newTabs, tabId)
         },
 
         removeTabGroup: (workspace, tabGroupId) => {
@@ -172,13 +193,14 @@ export const useTabStore = create<TabStore>()(
         openTabGroupInTab: (workspace, tabGroupId, name) => {
           const tabs = getTabs(workspace)
 
-          const existing = tabs.find(t => t.tabGroupId === tabGroupId)
+          const existing = tabs.find(t => t.tabGroupId === tabGroupId && !t.closedAt)
           if (existing) {
             set(s => ({ activeTabByWorkspace: { ...s.activeTabByWorkspace, [workspace]: existing.id } }))
             return existing
           }
 
-          if (tabs.length >= MAX_TABS) return null
+          const openTabs = tabs.filter(t => !t.closedAt)
+          if (openTabs.length >= MAX_TABS) return null
           const tab = createTab(workspace, tabGroupId, genConversationId(), name)
           addTabToWorkspace(workspace, tabs, tab)
           return tab
@@ -194,7 +216,8 @@ export const useTabStore = create<TabStore>()(
 
         createTabGroupWithTab: (workspace, conversationIdOverride) => {
           const tabs = getTabs(workspace)
-          if (tabs.length >= MAX_TABS) return null
+          const openTabs = tabs.filter(t => !t.closedAt)
+          if (openTabs.length >= MAX_TABS) return null
 
           const tabGroupId = genTabGroupId()
           const conversationId = conversationIdOverride ?? genConversationId()
@@ -206,7 +229,7 @@ export const useTabStore = create<TabStore>()(
     },
     {
       name: "claude-tab-storage",
-      version: 3, // Bump version for migration
+      version: 4, // Bump version for migration
       /**
        * skipHydration: true - Prevents automatic hydration on store creation
        *
@@ -262,19 +285,33 @@ export const useTabStore = create<TabStore>()(
           }
         }
 
+        if (version === 3) {
+          // v3 -> v4: closedAt field added to Tab (optional, no data migration needed)
+          return persisted
+        }
+
         return persisted
       },
     },
   ),
 )
 
-// Selectors
+// Selectors — all return only open tabs (closedAt undefined) unless otherwise noted
 export const useTabs = (workspace: string | null, tabGroupId?: string | null): Tab[] =>
   useTabStore(s => {
     if (!workspace) return []
     const tabs = s.tabsByWorkspace[workspace] || []
     if (!tabGroupId) return []
-    return tabs.filter(t => t.tabGroupId === tabGroupId)
+    return tabs.filter(t => t.tabGroupId === tabGroupId && !t.closedAt)
+  })
+
+/** Get closed tabs for a specific tabgroup (for the "reopen" dropdown) */
+export const useClosedTabs = (workspace: string | null, tabGroupId?: string | null): Tab[] =>
+  useTabStore(s => {
+    if (!workspace) return []
+    const tabs = s.tabsByWorkspace[workspace] || []
+    if (!tabGroupId) return []
+    return tabs.filter(t => t.tabGroupId === tabGroupId && t.closedAt)
   })
 
 export const useActiveTab = (workspace: string | null): Tab | null =>
@@ -282,14 +319,14 @@ export const useActiveTab = (workspace: string | null): Tab | null =>
     if (!workspace) return null
     const tabs = s.tabsByWorkspace[workspace] || []
     const activeId = s.activeTabByWorkspace[workspace]
-    return tabs.find(t => t.id === activeId) ?? null
+    return tabs.find(t => t.id === activeId && !t.closedAt) ?? null
   })
 
 export const useTabsExpanded = (workspace: string | null): boolean =>
   useTabStore(s => (workspace ? (s.tabsExpandedByWorkspace[workspace] ?? false) : false))
 
 export const useWorkspaceTabs = (workspace: string | null): Tab[] =>
-  useTabStore(s => (workspace ? (s.tabsByWorkspace[workspace] ?? []) : []))
+  useTabStore(s => (workspace ? (s.tabsByWorkspace[workspace] ?? []).filter(t => !t.closedAt) : []))
 
 /** Get all tabs for a specific conversation across all workspaces */
 export const useTabsForTabGroup = (tabGroupId: string | null): Tab[] =>
@@ -297,7 +334,7 @@ export const useTabsForTabGroup = (tabGroupId: string | null): Tab[] =>
     if (!tabGroupId) return []
     const allTabs: Tab[] = []
     for (const tabs of Object.values(s.tabsByWorkspace)) {
-      allTabs.push(...tabs.filter(t => t.tabGroupId === tabGroupId))
+      allTabs.push(...tabs.filter(t => t.tabGroupId === tabGroupId && !t.closedAt))
     }
     return allTabs
   })
@@ -307,6 +344,7 @@ export const useTabActions = (): TabStoreActions =>
     useShallow(s => ({
       addTab: s.addTab,
       removeTab: s.removeTab,
+      reopenTab: s.reopenTab,
       removeTabGroup: s.removeTabGroup,
       setActiveTab: s.setActiveTab,
       renameTab: s.renameTab,

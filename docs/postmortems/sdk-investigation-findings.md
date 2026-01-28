@@ -164,7 +164,7 @@ const agentQuery = query({
 - Resumes context from previous messages
 - Starts from where the conversation left off
 
-This is why we store session IDs in `SessionStoreMemory` - to resume conversations across requests.
+This is why we store session IDs in `sessionStore` - to resume conversations across requests.
 
 ## Process Lifecycle
 
@@ -268,7 +268,7 @@ Because the SDK runs in a separate process:
 if (message.type === "system" && message.subtype === "init") {
   const sessionId = message.session_id
   // Store for resumption
-  await SessionStoreMemory.set(conversationKey, sessionId)
+  await sessionStore.set(conversationKey, sessionId)
 }
 ```
 

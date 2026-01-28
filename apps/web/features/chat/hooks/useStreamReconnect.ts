@@ -128,7 +128,8 @@ export function useStreamReconnect({
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({
-            conversationId: tabId, // Backend still uses conversationId key
+            tabGroupId,
+            tabId,
             workspace,
             acknowledge: true,
           }),
@@ -211,7 +212,8 @@ export function useStreamReconnect({
               headers: { "Content-Type": "application/json" },
               credentials: "include",
               body: JSON.stringify({
-                conversationId: pollTabId, // Backend still uses conversationId key
+                tabGroupId,
+                tabId: pollTabId,
                 workspace: ws,
                 acknowledge: true,
               }),
@@ -227,7 +229,7 @@ export function useStreamReconnect({
       console.warn("[StreamReconnect] Max polls reached, stopping")
       streamingActions.endStream(pollTabId)
     },
-    [addMessage, streamingActions],
+    [tabGroupId, addMessage, streamingActions],
   )
 
   // Check for active stream on mount (handles page refresh during active stream)

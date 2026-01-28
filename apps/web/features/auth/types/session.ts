@@ -16,45 +16,29 @@ const conversationLockTimestamps = new Map<TabSessionKey, number>()
 const LOCK_TIMEOUT_MS = 5 * 60 * 1000
 
 /**
- * Attempt to lock a conversation to prevent concurrent requests
- * Returns true if lock was acquired, false if conversation is already in progress
- * Automatically unlocks stale locks that have been held for more than LOCK_TIMEOUT_MS
- *
- * SECURITY: Uses atomic check-and-set pattern to prevent TOCTOU race conditions
+ * Attempt to lock a conversation to prevent concurrent requests.
+ * Returns true if acquired, false if already held.
+ * Stale locks (> LOCK_TIMEOUT_MS) are auto-released.
  */
 export function tryLockConversation(key: TabSessionKey): boolean {
-  // Atomic read: Check if lock exists and get timestamp in one operation
   const existingLockTime = conversationLockTimestamps.get(key)
 
-  // If lock exists, check if it's stale
   if (existingLockTime !== undefined) {
     const lockAge = Date.now() - existingLockTime
 
     if (lockAge > LOCK_TIMEOUT_MS) {
-      // Stale lock detected - force cleanup
-      console.warn(`[Session] Force unlocking stale conversation lock: ${key}`)
-      console.warn(`[Session] Lock was held for ${Math.round(lockAge / 1000)}s (timeout: ${LOCK_TIMEOUT_MS / 1000}s)`)
-
+      // Stale lock — force cleanup and fall through to re-acquire
+      console.warn(`[Session] Force unlocking stale lock: ${key} (held ${Math.round(lockAge / 1000)}s)`)
       activeConversations.delete(key)
       conversationLockTimestamps.delete(key)
-      // Fall through to acquire lock below
     } else {
-      // Lock is valid and held by another request
       return false
     }
   }
 
-  // Double-check pattern: Ensure no lock was acquired between our check and now
-  // This reduces the race window from ~18 lines to ~2 lines (9x improvement)
-  if (conversationLockTimestamps.has(key)) {
-    return false // Lost the race to another request
-  }
-
-  // Acquire lock atomically: timestamp first (source of truth), then set
-  const now = Date.now()
-  conversationLockTimestamps.set(key, now)
+  // Acquire lock (JS is single-threaded — no race possible between check and set)
+  conversationLockTimestamps.set(key, Date.now())
   activeConversations.add(key)
-
   return true
 }
 
@@ -116,11 +100,9 @@ function cleanupStaleLocks() {
   }
 }
 
-// Start periodic cleanup in Node.js runtime
-// This prevents unbounded memory growth from abandoned locks
-if (typeof setInterval !== "undefined") {
+// Periodic cleanup in server runtime only (skip in tests to avoid leaked timers)
+if (typeof setInterval !== "undefined" && typeof process !== "undefined" && !process.env.VITEST) {
   setInterval(cleanupStaleLocks, 60 * 1000)
-  console.log("[Session] Started periodic lock cleanup (every 60s)")
 }
 
 /**

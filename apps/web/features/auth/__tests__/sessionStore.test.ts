@@ -64,7 +64,7 @@ vi.mock("@/lib/supabase/iam", () => ({
   })),
 }))
 
-import { SessionStoreMemory, tabKey, tryLockConversation, unlockConversation } from "@/features/auth/lib/sessionStore"
+import { sessionStore, tabKey, tryLockConversation, unlockConversation } from "@/features/auth/lib/sessionStore"
 
 // Use real workspace and user from migrated database (demo.goalive.nl)
 const TEST_WORKSPACE = "demo.goalive.nl"
@@ -75,10 +75,10 @@ describe("Session Store - Tab Locking", () => {
     // Clear mock database
     mockSessions.clear()
 
-    await SessionStoreMemory.delete(
+    await sessionStore.delete(
       tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabGroupId: "test-tabgroup", tabId: "test-tab-1" }),
     )
-    await SessionStoreMemory.delete(
+    await sessionStore.delete(
       tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabGroupId: "test-tabgroup", tabId: "test-tab-2" }),
     )
   })
@@ -262,13 +262,43 @@ describe("Session Store - Tab Locking", () => {
     })
   })
 
-  describe("SessionStoreMemory", () => {
+  describe("parseKey validation (via sessionStore)", () => {
+    it("should reject keys with wrong segment count (old 3-segment format)", async () => {
+      // Simulate a stale key from the old format: userId::workspace::tabId
+      const malformedKey = "user1::workspace1::tab1" as ReturnType<typeof tabKey>
+      await expect(sessionStore.get(malformedKey)).rejects.toThrow("expected 4 segments")
+    })
+
+    it("should reject keys with too many segments", async () => {
+      const malformedKey = "a::b::c::d::e" as ReturnType<typeof tabKey>
+      await expect(sessionStore.get(malformedKey)).rejects.toThrow("expected 4 segments")
+    })
+
+    it("should reject empty keys", async () => {
+      const malformedKey = "" as ReturnType<typeof tabKey>
+      await expect(sessionStore.get(malformedKey)).rejects.toThrow("expected 4 segments")
+    })
+
+    it("should accept valid 4-segment keys", async () => {
+      const validKey = tabKey({
+        userId: TEST_USER_ID,
+        workspace: TEST_WORKSPACE,
+        tabGroupId: "test-tabgroup",
+        tabId: "test-tab-valid",
+      })
+      // Should not throw — null result is fine
+      const result = await sessionStore.get(validKey)
+      expect(result).toBeNull()
+    })
+  })
+
+  describe("sessionStore", () => {
     beforeEach(async () => {
       // Clear memory store before each test
-      await SessionStoreMemory.delete(
+      await sessionStore.delete(
         tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabGroupId: "test-tabgroup", tabId: "test-tab-1" }),
       )
-      await SessionStoreMemory.delete(
+      await sessionStore.delete(
         tabKey({ userId: TEST_USER_ID, workspace: TEST_WORKSPACE, tabGroupId: "test-tabgroup", tabId: "test-tab-2" }),
       )
     })
@@ -282,8 +312,8 @@ describe("Session Store - Tab Locking", () => {
       })
       const sessionId = "session-abc-123"
 
-      await SessionStoreMemory.set(key, sessionId)
-      const retrieved = await SessionStoreMemory.get(key)
+      await sessionStore.set(key, sessionId)
+      const retrieved = await sessionStore.get(key)
 
       expect(retrieved).toBe(sessionId)
     })
@@ -295,7 +325,7 @@ describe("Session Store - Tab Locking", () => {
         tabGroupId: "test-tabgroup",
         tabId: "non-existent",
       })
-      const retrieved = await SessionStoreMemory.get(key)
+      const retrieved = await sessionStore.get(key)
       expect(retrieved).toBeNull()
     })
 
@@ -308,10 +338,10 @@ describe("Session Store - Tab Locking", () => {
       })
       const sessionId = "session-abc-123"
 
-      await SessionStoreMemory.set(key, sessionId)
-      await SessionStoreMemory.delete(key)
+      await sessionStore.set(key, sessionId)
+      await sessionStore.delete(key)
 
-      const retrieved = await SessionStoreMemory.get(key)
+      const retrieved = await sessionStore.get(key)
       expect(retrieved).toBeNull()
     })
 
@@ -323,10 +353,10 @@ describe("Session Store - Tab Locking", () => {
         tabId: "test-tab-overwrite",
       })
 
-      await SessionStoreMemory.set(key, "session-1")
-      await SessionStoreMemory.set(key, "session-2")
+      await sessionStore.set(key, "session-1")
+      await sessionStore.set(key, "session-2")
 
-      const retrieved = await SessionStoreMemory.get(key)
+      const retrieved = await sessionStore.get(key)
       expect(retrieved).toBe("session-2")
     })
 
@@ -344,11 +374,11 @@ describe("Session Store - Tab Locking", () => {
         tabId: "test-tab-multi-b",
       })
 
-      await SessionStoreMemory.set(key1, "session-1")
-      await SessionStoreMemory.set(key2, "session-2")
+      await sessionStore.set(key1, "session-1")
+      await sessionStore.set(key2, "session-2")
 
-      const retrieved1 = await SessionStoreMemory.get(key1)
-      const retrieved2 = await SessionStoreMemory.get(key2)
+      const retrieved1 = await sessionStore.get(key1)
+      const retrieved2 = await sessionStore.get(key2)
 
       expect(retrieved1).toBe("session-1")
       expect(retrieved2).toBe("session-2")

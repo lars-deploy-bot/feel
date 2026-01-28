@@ -85,7 +85,7 @@ interface SessionStore {
 }
 ```
 
-**Current Implementation**: `SessionStoreMemory` - Supabase IAM backed
+**Current Implementation**: `sessionStore` - Supabase IAM backed
 - Sessions persist across server restarts
 - 24-hour expiry per session
 - Domain hostname-to-ID lookups cached (5-minute TTL)
@@ -94,10 +94,10 @@ interface SessionStore {
 
 1. Client sends `tabId` (UUID per browser tab) with each request
 2. Backend constructs key: `tabKey({ userId, workspace, tabId })`
-3. Lookup existing SDK session: `const sessionId = await SessionStoreMemory.get(key)`
+3. Lookup existing SDK session: `const sessionId = await sessionStore.get(key)`
 4. If found, pass to SDK: `query({ resume: sessionId, ... })`
 5. SDK restores conversation context, skips re-executing previous tools
-6. After query completes, save new session ID: `await SessionStoreMemory.set(key, newSessionId)`
+6. After query completes, save new session ID: `await sessionStore.set(key, newSessionId)`
 
 **Benefits**: User can refresh page, continue conversation without tools re-running. Sessions survive server restarts.
 
@@ -235,7 +235,7 @@ const conversationLockTimestamps = new Map<string, number>()  // Lock acquisitio
 1. Server restarts
 2. JWT cookies still valid (stored in browser) → **System 1** ✓
 3. Frontend still has tabId (localStorage/Dexie) → **System 3** ✓
-4. Backend SessionStoreMemory reloads from Supabase → **System 2** ✓
+4. Backend sessionStore reloads from Supabase → **System 2** ✓
 5. Conversation locks cleared (in-memory) → **System 4** ✗
 6. Next message: Backend resumes SDK session from Supabase
 7. Conversation continues (sessions survive restarts)

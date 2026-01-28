@@ -70,6 +70,14 @@ export async function POST(req: NextRequest) {
     } else if (tabId && typeof tabId === "string") {
       // Fallback path: Cancel by tabId (super-early Stop case)
 
+      // tabGroupId is required to build the correct lock key
+      if (!tabGroupId || typeof tabGroupId !== "string") {
+        console.warn("[Cancel Stream] Missing tabGroupId for tabId fallback cancel")
+        return createErrorResponse(ErrorCodes.INVALID_REQUEST, 400, {
+          message: "tabGroupId is required when cancelling by tabId",
+        })
+      }
+
       // Security: Verify workspace authorization before using it
       const verifiedWorkspace = await verifyWorkspaceAccess(user, body, "[Cancel Stream]")
       if (!verifiedWorkspace) {
@@ -80,7 +88,7 @@ export async function POST(req: NextRequest) {
       const tabKeyValue = tabKey({
         userId: user.id,
         workspace: verifiedWorkspace,
-        tabGroupId: tabGroupId as string,
+        tabGroupId,
         tabId,
       })
       console.log(

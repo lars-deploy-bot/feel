@@ -168,7 +168,7 @@ interface Conversation {
 
 ### Phase 7: Supabase Migration ✅
 - `iam.sessions` table with `(user_id, domain_id, tab_id)` composite key
-- SessionStoreMemory backed by Supabase
+- sessionStore backed by Supabase
 
 ### Phase 8: Tests & Cleanup ✅
 - All tests pass, docs updated, old code removed

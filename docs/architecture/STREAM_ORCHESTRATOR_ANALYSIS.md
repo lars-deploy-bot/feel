@@ -162,11 +162,11 @@ activeConversations.add(key)
 
 **Session store query**:
 ```typescript
-const existingSessionId = await SessionStoreMemory.get(convKey)
+const existingSessionId = await sessionStore.get(convKey)
 ```
 
 **Critical flaw**:
-- ❌ **IN-MEMORY STORAGE**: `SessionStoreMemory` uses in-memory Map
+- ❌ **IN-MEMORY STORAGE**: `sessionStore` uses in-memory Map
 - ❌ **Data loss on restart**: All sessions lost if server restarts
 - ❌ **Not production-ready**: Acknowledged in code comments
 
@@ -318,7 +318,7 @@ return new ReadableStream({
 
 1. **Session events** (`bridge_session`):
    ```typescript
-   await SessionStoreMemory.set(conversationKey, sessionId)
+   await sessionStore.set(conversationKey, sessionId)
    onSessionIdReceived?.(sessionId)
    ```
 
@@ -957,7 +957,7 @@ function cleanup() {
 ### P0 - Critical (Block Multi-Instance)
 
 1. **Replace in-memory session store** with Supabase direct queries
-   - Remove `SessionStoreMemory` Map
+   - Remove `sessionStore` Map
    - Query `iam.sessions` directly
    - Cache domain_id lookups (already done)
    - Estimated effort: 4 hours

@@ -207,7 +207,7 @@ alive-patterns-folder-only-use-for-inspiration/
 **Content Should Cover:**
 1. **Request Ingestion**
    - Workspace authentication (`isWorkspaceAuthenticated`)
-   - Session resume (`SessionStoreMemory.get`)
+   - Session resume (`sessionStore.get`)
    - Conversation locking (prevents concurrent requests)
 
 2. **Intent Analysis**

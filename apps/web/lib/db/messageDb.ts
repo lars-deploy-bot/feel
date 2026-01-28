@@ -101,6 +101,8 @@ export interface DbTab {
   // Tab-level metadata
   messageCount?: number
   lastMessageAt?: number
+  // Soft-delete: timestamp when tab was closed (undefined = open)
+  closedAt?: number
   // Sync metadata
   syncedAt?: number
   pendingSync?: boolean
