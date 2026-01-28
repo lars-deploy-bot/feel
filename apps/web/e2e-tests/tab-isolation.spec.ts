@@ -8,6 +8,12 @@
  * - Intercept API requests and capture the tabId from each request
  * - Verify different tabs send different tabIds
  * - This proves isolation at the protocol level, not just UI visibility
+ *
+ * Non-flaky by design:
+ * - Wait for chat-ready (dexie + tab initialized), not just workspace-ready
+ * - Wait for response text to appear (not button re-enabled - known timing issue)
+ * - Use deterministic selectors (data-testid, data-tab-name)
+ * - No timing-based assertions
  */
 
 import { expect, type Request } from "@playwright/test"
@@ -29,6 +35,31 @@ function getTabIdFromRequest(request: Request): string | null {
   }
 }
 
+/**
+ * Wait for chat to be fully ready (dexie session + active tab)
+ */
+async function waitForChatReady(page: import("@playwright/test").Page) {
+  await expect(page.locator(TEST_SELECTORS.chatReady)).toBeAttached({
+    timeout: TEST_TIMEOUTS.max,
+  })
+}
+
+/**
+ * Send a message and wait for response - matches working test pattern
+ */
+async function sendAndWaitForResponse(
+  page: import("@playwright/test").Page,
+  chatPage: ChatPage,
+  message: string,
+  expectedResponse: string | RegExp,
+) {
+  await chatPage.sendMessage(message)
+  // Wait for response to appear (not button re-enable - known timing issue with mocks)
+  await expect(page.getByText(expectedResponse).first()).toBeVisible({
+    timeout: TEST_TIMEOUTS.slow,
+  })
+}
+
 test.describe("Tab Isolation", () => {
   test("different tabs send different tabIds to the API", async ({ authenticatedPage, workerTenant }) => {
     const page = authenticatedPage
@@ -38,19 +69,17 @@ test.describe("Tab Isolation", () => {
     const capturedTabIds: string[] = []
 
     // Mock API and capture tabId from each request
+    let responseIndex = 0
     await page.route(`**${TEST_API.CLAUDE_STREAM}`, async route => {
       const tabId = getTabIdFromRequest(route.request())
       if (tabId) capturedTabIds.push(tabId)
-      await handlers.text(`Response ${capturedTabIds.length}`)(route)
+      responseIndex++
+      await handlers.text(`Response ${responseIndex}`)(route)
     })
 
-    // Navigate and wait for workspace ready
+    // Navigate and wait for full chat readiness
     await chatPage.gotoFast(workerTenant.workspace, workerTenant.orgId)
-
-    // Wait for chat to be fully ready (send button enabled)
-    await expect(page.locator(TEST_SELECTORS.sendButton)).toBeEnabled({
-      timeout: TEST_TIMEOUTS.slow,
-    })
+    await waitForChatReady(page)
 
     // Expand tabs bar
     const toggleTabsBtn = page.locator(TEST_SELECTORS.toggleTabsButton)
@@ -62,35 +91,23 @@ test.describe("Tab Isolation", () => {
     }
 
     // Send message in Tab 1
-    await chatPage.sendMessage("Message from Tab 1")
-
-    // Wait for response to complete
-    await expect(page.locator(TEST_SELECTORS.sendButton)).toBeEnabled({
-      timeout: TEST_TIMEOUTS.slow,
-    })
+    await sendAndWaitForResponse(page, chatPage, "Message from Tab 1", "Response 1")
 
     // Create Tab 2
     await page.locator(TEST_SELECTORS.addTabButton).click()
 
-    // Wait for Tab 2 to be active and ready
+    // Wait for Tab 2 to be active
     await expect(page.locator(`${TEST_SELECTORS.tabPrefix}${TEST_SELECTORS.activeTab}`)).toHaveAttribute(
       "data-tab-name",
       "Tab 2",
       { timeout: TEST_TIMEOUTS.medium },
     )
 
-    // Wait for send button to be enabled in new tab
-    await expect(page.locator(TEST_SELECTORS.sendButton)).toBeEnabled({
-      timeout: TEST_TIMEOUTS.slow,
-    })
+    // Wait for chat to be ready in new tab
+    await waitForChatReady(page)
 
     // Send message in Tab 2
-    await chatPage.sendMessage("Message from Tab 2")
-
-    // Wait for response to complete
-    await expect(page.locator(TEST_SELECTORS.sendButton)).toBeEnabled({
-      timeout: TEST_TIMEOUTS.slow,
-    })
+    await sendAndWaitForResponse(page, chatPage, "Message from Tab 2", "Response 2")
 
     // CRITICAL ASSERTION: We should have 2 requests with DIFFERENT tabIds
     expect(capturedTabIds).toHaveLength(2)
@@ -106,19 +123,18 @@ test.describe("Tab Isolation", () => {
     // Map tabId -> request count to track conversation continuity
     const tabIdRequestCounts = new Map<string, number>()
 
+    let responseIndex = 0
     await page.route(`**${TEST_API.CLAUDE_STREAM}`, async route => {
       const tabId = getTabIdFromRequest(route.request())
       if (tabId) {
         tabIdRequestCounts.set(tabId, (tabIdRequestCounts.get(tabId) || 0) + 1)
       }
-      await handlers.text(`Response for ${tabId?.slice(0, 8)}`)(route)
+      responseIndex++
+      await handlers.text(`Response ${responseIndex}`)(route)
     })
 
     await chatPage.gotoFast(workerTenant.workspace, workerTenant.orgId)
-
-    await expect(page.locator(TEST_SELECTORS.sendButton)).toBeEnabled({
-      timeout: TEST_TIMEOUTS.slow,
-    })
+    await waitForChatReady(page)
 
     // Expand tabs
     const toggleTabsBtn = page.locator(TEST_SELECTORS.toggleTabsButton)
@@ -130,10 +146,7 @@ test.describe("Tab Isolation", () => {
     }
 
     // Send first message in Tab 1
-    await chatPage.sendMessage("Tab 1 - Message 1")
-    await expect(page.locator(TEST_SELECTORS.sendButton)).toBeEnabled({
-      timeout: TEST_TIMEOUTS.slow,
-    })
+    await sendAndWaitForResponse(page, chatPage, "Tab 1 - Message 1", "Response 1")
 
     // Create and switch to Tab 2
     await page.locator(TEST_SELECTORS.addTabButton).click()
@@ -142,30 +155,20 @@ test.describe("Tab Isolation", () => {
       "Tab 2",
       { timeout: TEST_TIMEOUTS.medium },
     )
-    await expect(page.locator(TEST_SELECTORS.sendButton)).toBeEnabled({
-      timeout: TEST_TIMEOUTS.slow,
-    })
+    await waitForChatReady(page)
 
     // Send message in Tab 2
-    await chatPage.sendMessage("Tab 2 - Message 1")
-    await expect(page.locator(TEST_SELECTORS.sendButton)).toBeEnabled({
-      timeout: TEST_TIMEOUTS.slow,
-    })
+    await sendAndWaitForResponse(page, chatPage, "Tab 2 - Message 1", "Response 2")
 
     // Switch back to Tab 1
     await page.locator('[data-tab-name="Tab 1"]').click()
     await expect(page.locator('[data-tab-name="Tab 1"]')).toHaveAttribute("data-active", "true", {
       timeout: TEST_TIMEOUTS.medium,
     })
-    await expect(page.locator(TEST_SELECTORS.sendButton)).toBeEnabled({
-      timeout: TEST_TIMEOUTS.slow,
-    })
+    await waitForChatReady(page)
 
     // Send second message in Tab 1
-    await chatPage.sendMessage("Tab 1 - Message 2")
-    await expect(page.locator(TEST_SELECTORS.sendButton)).toBeEnabled({
-      timeout: TEST_TIMEOUTS.slow,
-    })
+    await sendAndWaitForResponse(page, chatPage, "Tab 1 - Message 2", "Response 3")
 
     // ASSERTIONS:
     // 1. Should have exactly 2 distinct tabIds
@@ -189,16 +192,9 @@ test.describe("Tab Isolation", () => {
     })
 
     await chatPage.gotoFast(workerTenant.workspace, workerTenant.orgId)
+    await waitForChatReady(page)
 
-    await expect(page.locator(TEST_SELECTORS.sendButton)).toBeEnabled({
-      timeout: TEST_TIMEOUTS.slow,
-    })
-
-    await chatPage.sendMessage("Test message")
-
-    await expect(page.locator(TEST_SELECTORS.sendButton)).toBeEnabled({
-      timeout: TEST_TIMEOUTS.slow,
-    })
+    await sendAndWaitForResponse(page, chatPage, "Test message", "Response")
 
     // Verify tabId is a valid UUID
     expect(capturedTabId).toBeTruthy()

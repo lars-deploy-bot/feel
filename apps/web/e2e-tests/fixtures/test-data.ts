@@ -60,6 +60,8 @@ export const TEST_TIMEOUTS = {
 export const TEST_SELECTORS = {
   workspaceReady: '[data-testid="workspace-ready"]',
   workspaceLoading: '[data-testid="workspace-loading"]',
+  /** Chat is ready to send messages (dexie session + tab initialized) */
+  chatReady: '[data-chat-ready="true"]',
   messageInput: '[data-testid="message-input"]',
   sendButton: '[data-testid="send-button"]',
   stopButton: '[data-testid="stop-button"]',

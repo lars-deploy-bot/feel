@@ -491,6 +491,7 @@ function ChatPageContent() {
     <div
       className="h-[100dvh] flex flex-row overflow-hidden dark:bg-[#1a1a1a] dark:text-white"
       data-testid={mounted && workspace ? "workspace-ready" : "workspace-loading"}
+      data-chat-ready={isChatReady}
     >
       <ConversationSidebar
         workspace={workspace}
