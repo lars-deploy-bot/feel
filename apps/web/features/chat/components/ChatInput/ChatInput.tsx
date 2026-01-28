@@ -205,11 +205,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
         onPaste={handlePaste}
       >
         <div className="relative">
-          {/* Toolbar above input */}
-          {!hideToolbar && (
-            <Toolbar fileInputRef={fileInputRef} onOpenTemplates={onOpenTemplates} onAddUserPrompt={addUserPrompt} />
-          )}
-
           <InputContainer>
             {/* Attachments */}
             <PromptBarAttachmentGrid />
@@ -217,8 +212,22 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
             {/* Input area */}
             <InputArea />
 
-            {/* Send button */}
-            <SendButton />
+            {/* Bottom row: toolbar left, send button right */}
+            <div className="flex items-center px-3 pb-3">
+              {/* Toolbar buttons */}
+              <div className="flex-1">
+                {!hideToolbar && (
+                  <Toolbar
+                    fileInputRef={fileInputRef}
+                    onOpenTemplates={onOpenTemplates}
+                    onAddUserPrompt={addUserPrompt}
+                  />
+                )}
+              </div>
+
+              {/* Send button */}
+              <SendButton />
+            </div>
           </InputContainer>
         </div>
       </section>

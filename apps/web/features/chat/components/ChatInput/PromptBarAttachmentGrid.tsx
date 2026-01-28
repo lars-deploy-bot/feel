@@ -20,30 +20,30 @@ export function PromptBarAttachmentGrid() {
   if (attachments.length === 0) return null
 
   return (
-    <div className="px-3 pb-2 pt-3 flex flex-wrap gap-2">
+    <div className="px-4 pb-1 pt-3 flex flex-wrap gap-2">
       {attachments.map(attachment => (
         <div
           key={attachment.id}
-          className={`relative group flex items-center gap-2 px-3 py-2 rounded-lg border ${
+          className={`relative group flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-xl transition-colors ${
             attachment.error
-              ? "border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/20"
-              : "border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02]"
+              ? "bg-red-50 dark:bg-red-950/20"
+              : "bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.07] dark:hover:bg-white/[0.09]"
           }`}
         >
           {isUserPromptAttachment(attachment) ? (
-            <div className="w-12 h-12 flex items-center justify-center rounded bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20">
+            <div className="size-9 flex items-center justify-center rounded-lg bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-950/30 dark:to-pink-950/30">
               {attachment.promptType === "revise-code" ? (
-                <ClipboardList className="size-6 text-purple-600 dark:text-purple-400" />
+                <ClipboardList className="size-4 text-purple-600 dark:text-purple-400" />
               ) : (
-                <Sparkles className="size-6 text-purple-600 dark:text-purple-400" />
+                <Sparkles className="size-4 text-purple-600 dark:text-purple-400" />
               )}
             </div>
           ) : isSuperTemplateAttachment(attachment) && attachment.preview ? (
-            <div className="w-12 h-12 relative rounded overflow-hidden">
+            <div className="size-9 relative rounded-lg overflow-hidden">
               <img src={attachment.preview} alt={attachment.name} className="w-full h-full object-cover" />
             </div>
           ) : isImageAttachment(attachment) && attachment.preview ? (
-            <div className="w-12 h-12 relative rounded overflow-hidden">
+            <div className="size-9 relative rounded-lg overflow-hidden">
               {attachment.preview.startsWith("blob:") ? (
                 <Image
                   src={attachment.preview}
@@ -60,13 +60,13 @@ export function PromptBarAttachmentGrid() {
               )}
             </div>
           ) : (
-            <div className="w-12 h-12 flex items-center justify-center rounded bg-black/5 dark:bg-white/5">
-              <FileText className="size-6 text-black/40 dark:text-white/40" />
+            <div className="size-9 flex items-center justify-center rounded-lg bg-black/[0.04] dark:bg-white/[0.06]">
+              <FileText className="size-4 text-black/40 dark:text-white/40" />
             </div>
           )}
 
           <div className="flex flex-col min-w-0">
-            <span className="text-xs font-medium text-black dark:text-white truncate max-w-[150px]">
+            <span className="text-xs font-medium text-black/80 dark:text-white/80 truncate max-w-[140px]">
               {isUserPromptAttachment(attachment)
                 ? attachment.displayName
                 : isSuperTemplateAttachment(attachment)
@@ -76,11 +76,14 @@ export function PromptBarAttachmentGrid() {
                     : "Photo"}
             </span>
             {attachment.error ? (
-              <span className="text-xs text-red-600 dark:text-red-400 truncate max-w-[150px]" title={attachment.error}>
+              <span
+                className="text-[11px] text-red-500 dark:text-red-400 truncate max-w-[140px]"
+                title={attachment.error}
+              >
                 Upload failed
               </span>
             ) : (
-              <span className="text-xs text-black/50 dark:text-white/50">
+              <span className="text-[11px] text-black/40 dark:text-white/40">
                 {isUserPromptAttachment(attachment)
                   ? "User Prompt"
                   : isSuperTemplateAttachment(attachment)
@@ -100,11 +103,11 @@ export function PromptBarAttachmentGrid() {
                 e.stopPropagation()
                 toggleImageMode(attachment.id)
               }}
-              className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ml-1"
-              style={{
-                backgroundColor: attachment.mode === "analyze" ? "rgba(147, 51, 234, 0.1)" : "rgba(59, 130, 246, 0.1)",
-                color: attachment.mode === "analyze" ? "rgb(147, 51, 234)" : "rgb(59, 130, 246)",
-              }}
+              className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors ml-1 ${
+                attachment.mode === "analyze"
+                  ? "bg-purple-500/10 text-purple-600 dark:text-purple-400"
+                  : "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+              }`}
               title={
                 attachment.mode === "analyze"
                   ? "Analyze mode: Claude will look at this image"
@@ -128,16 +131,16 @@ export function PromptBarAttachmentGrid() {
           <button
             type="button"
             onClick={() => removeAttachment(attachment.id)}
-            className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center rounded-full bg-black dark:bg-white text-white dark:text-black opacity-0 group-hover:opacity-100 hover:scale-110 transition-all shadow-lg"
+            className="absolute -top-1.5 -right-1.5 size-5 flex items-center justify-center rounded-full bg-black/70 dark:bg-white/80 text-white dark:text-black opacity-0 group-hover:opacity-100 hover:scale-110 transition-all duration-150 shadow-sm"
             aria-label="Remove"
           >
-            <X className="size-3" strokeWidth={3} />
+            <X className="size-3" strokeWidth={2.5} />
           </button>
 
           {attachment.uploadProgress !== undefined && attachment.uploadProgress < 100 && (
-            <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/10 dark:bg-white/10 rounded-b overflow-hidden">
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black/5 dark:bg-white/5 rounded-b-xl overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-300"
+                className="h-full bg-blue-500 transition-all duration-300 ease-out"
                 style={{ width: `${attachment.uploadProgress}%` }}
               />
             </div>
