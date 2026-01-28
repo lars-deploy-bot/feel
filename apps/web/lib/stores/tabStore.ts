@@ -111,14 +111,21 @@ export const useTabStore = create<TabStore>()(
 
         removeTab: (workspace, tabId) => {
           const tabs = getTabs(workspace)
-          const openTabs = tabs.filter(t => !t.closedAt)
-          const idx = openTabs.findIndex(t => t.id === tabId)
-          if (idx === -1 || openTabs.length <= 1) return // Don't close the last open tab
+          const closingTab = tabs.find(t => t.id === tabId)
+          if (!closingTab || closingTab.closedAt) return
 
+          // Only count open tabs in the SAME tabgroup — prevents picking an
+          // active tab from a different group which causes the TabBar to
+          // briefly show the wrong group's tabs.
+          const groupOpenTabs = tabs.filter(t => t.tabGroupId === closingTab.tabGroupId && !t.closedAt)
+          if (groupOpenTabs.length <= 1) return // Don't close the last open tab in the group
+
+          const idx = groupOpenTabs.findIndex(t => t.id === tabId)
           const newTabs = tabs.map(t => (t.id === tabId ? { ...t, closedAt: Date.now() } : t))
           const activeId = get().activeTabByWorkspace[workspace]
-          const remainingOpen = openTabs.filter(t => t.id !== tabId)
-          const newActiveId = activeId === tabId ? remainingOpen[Math.min(idx, remainingOpen.length - 1)]?.id : activeId
+          const remainingInGroup = groupOpenTabs.filter(t => t.id !== tabId)
+          const newActiveId =
+            activeId === tabId ? remainingInGroup[Math.min(idx, remainingInGroup.length - 1)]?.id : activeId
 
           setTabs(workspace, newTabs, newActiveId)
         },
@@ -305,13 +312,15 @@ export const useTabs = (workspace: string | null, tabGroupId?: string | null): T
     return tabs.filter(t => t.tabGroupId === tabGroupId && !t.closedAt)
   })
 
-/** Get closed tabs for a specific tabgroup (for the "reopen" dropdown) */
+/** Get closed tabs for a specific tabgroup (for the "reopen" dropdown), most recently closed first */
 export const useClosedTabs = (workspace: string | null, tabGroupId?: string | null): Tab[] =>
   useTabStore(s => {
     if (!workspace) return []
     const tabs = s.tabsByWorkspace[workspace] || []
     if (!tabGroupId) return []
-    return tabs.filter(t => t.tabGroupId === tabGroupId && t.closedAt)
+    return tabs
+      .filter(t => t.tabGroupId === tabGroupId && t.closedAt)
+      .sort((a, b) => (b.closedAt ?? 0) - (a.closedAt ?? 0))
   })
 
 export const useActiveTab = (workspace: string | null): Tab | null =>
