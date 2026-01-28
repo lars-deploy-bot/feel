@@ -394,7 +394,7 @@ export function useChatMessaging({
 
                 const message = parseStreamEvent(eventData, targetConversationId, streamingActions)
                 if (message) {
-                  addMessage(message, targetConversationId)
+                  await addMessage(message, targetConversationId)
                   if (
                     isCompleteEvent(eventData) ||
                     isDoneEvent(eventData) ||
@@ -441,7 +441,7 @@ export function useChatMessaging({
                     data: { consecutiveErrors, message: "Too many consecutive parse errors, stopping stream" },
                     addDevEvent,
                   })
-                  addMessage(
+                  await addMessage(
                     {
                       id: Date.now().toString(),
                       type: "sdk_message",
@@ -537,7 +537,7 @@ export function useChatMessaging({
               content: { type: "result", is_error: true, result: error.message },
               timestamp: new Date(),
             }
-            addMessage(errorMessage, targetConversationId)
+            await addMessage(errorMessage, targetConversationId)
           }
         }
 
@@ -583,7 +583,7 @@ export function useChatMessaging({
         timestamp: new Date(),
         attachments: attachments.length > 0 ? attachments : undefined,
       }
-      addMessage(userMessage, targetTabId)
+      await addMessage(userMessage, targetTabId)
       setMsg("")
       chatInputRef.current?.clearAllAttachments()
       setShouldForceScroll(true)

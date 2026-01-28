@@ -112,8 +112,28 @@ const FLUSH_DEBOUNCE_MS = 300
 const alreadyFinalized = new Set<string>()
 
 /**
+ * Per-tab write queue: serializes all addMessage writes so that seq
+ * assignment is always correct, even if callers forget to `await`.
+ *
+ * Without this, concurrent addMessage calls can read the same "last seq"
+ * from Dexie and assign duplicate sequence numbers, causing messages to
+ * render out of order (e.g. user messages grouped together).
+ */
+const tabWriteQueues = new Map<string, Promise<void>>()
+
+function enqueueTabWrite(tabId: string, fn: () => Promise<void>): Promise<void> {
+  const prev = tabWriteQueues.get(tabId) ?? Promise.resolve()
+  const next = prev.then(fn, fn) // run even if prev rejected
+  tabWriteQueues.set(tabId, next)
+  return next
+}
+
+/**
  * Get the next sequence number for a tab.
  * Messages are ordered by seq, not timestamp, for reliable ordering.
+ *
+ * IMPORTANT: Must only be called inside enqueueTabWrite to prevent
+ * concurrent reads returning the same seq.
  */
 async function getNextSeq(db: ReturnType<typeof getMessageDb>, tabId: string): Promise<number> {
   const lastMessage = await db.messages.where("tabId").equals(tabId).last()
@@ -339,75 +359,80 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
       return
     }
 
-    const db = getMessageDb(session.userId)
+    // Serialize writes per tab to guarantee monotonic seq assignment.
+    // Without this, concurrent addMessage calls (e.g. fire-and-forget)
+    // can read the same "last seq" and produce duplicate/out-of-order seqs.
+    await enqueueTabWrite(targetTabId, async () => {
+      const db = getMessageDb(session.userId)
 
-    // Resolve conversationId for the target tab
-    // If target tab differs from current, look up its conversationId from Dexie
-    let effectiveConversationId = currentConversationId
-    if (targetTabId !== currentTabId) {
-      const targetTab = await db.tabs.get(targetTabId)
-      if (targetTab) {
-        effectiveConversationId = targetTab.conversationId
-      } else {
-        console.warn(`[dexie] addMessage: target tab ${targetTabId} not found in Dexie`)
+      // Resolve conversationId for the target tab
+      // If target tab differs from current, look up its conversationId from Dexie
+      let effectiveConversationId = currentConversationId
+      if (targetTabId !== currentTabId) {
+        const targetTab = await db.tabs.get(targetTabId)
+        if (targetTab) {
+          effectiveConversationId = targetTab.conversationId
+        } else {
+          console.warn(`[dexie] addMessage: target tab ${targetTabId} not found in Dexie`)
+        }
       }
-    }
 
-    if (!effectiveConversationId) {
-      console.warn("[dexie] addMessage called without conversationId")
-      return
-    }
+      if (!effectiveConversationId) {
+        console.warn("[dexie] addMessage called without conversationId")
+        return
+      }
 
-    const now = Date.now()
-    const seq = await getNextSeq(db, targetTabId)
+      const now = Date.now()
+      const seq = await getNextSeq(db, targetTabId)
 
-    const dbMessage: DbMessage = {
-      id: message.id,
-      tabId: targetTabId,
-      type: message.type === "user" ? "user" : message.type === "sdk_message" ? "sdk_message" : "system",
-      content: toDbMessageContent(message),
-      createdAt: now,
-      updatedAt: now,
-      version: CURRENT_MESSAGE_VERSION,
-      status: "complete",
-      origin: "local",
-      seq,
-      pendingSync: true,
-    }
+      const dbMessage: DbMessage = {
+        id: message.id,
+        tabId: targetTabId,
+        type: message.type === "user" ? "user" : message.type === "sdk_message" ? "sdk_message" : "system",
+        content: toDbMessageContent(message),
+        createdAt: now,
+        updatedAt: now,
+        version: CURRENT_MESSAGE_VERSION,
+        status: "complete",
+        origin: "local",
+        seq,
+        pendingSync: true,
+      }
 
-    await safeDb(() => db.messages.put(dbMessage))
+      await safeDb(() => db.messages.put(dbMessage))
 
-    // Update conversation metadata
-    const convo = await db.conversations.get(effectiveConversationId)
-    if (!convo) return
+      // Update conversation metadata
+      const convo = await db.conversations.get(effectiveConversationId)
+      if (!convo) return
 
-    const updates: Partial<DbConversation> = {
-      updatedAt: now,
-      lastMessageAt: now,
-      messageCount: (convo.messageCount ?? 0) + 1,
-      pendingSync: true,
-    }
+      const updates: Partial<DbConversation> = {
+        updatedAt: now,
+        lastMessageAt: now,
+        messageCount: (convo.messageCount ?? 0) + 1,
+        pendingSync: true,
+      }
 
-    if (message.type === "user" && !convo.autoTitleSet) {
-      updates.title = extractTitle(dbMessage.content)
-      updates.firstUserMessageId = dbMessage.id
-      updates.autoTitleSet = true
-    }
+      if (message.type === "user" && !convo.autoTitleSet) {
+        updates.title = extractTitle(dbMessage.content)
+        updates.firstUserMessageId = dbMessage.id
+        updates.autoTitleSet = true
+      }
 
-    await safeDb(() => db.conversations.update(effectiveConversationId!, updates))
+      await safeDb(() => db.conversations.update(effectiveConversationId!, updates))
 
-    const tab = await db.tabs.get(targetTabId)
-    if (tab) {
-      await safeDb(() =>
-        db.tabs.update(targetTabId, {
-          lastMessageAt: now,
-          messageCount: (tab.messageCount ?? 0) + 1,
-          pendingSync: true,
-        }),
-      )
-    }
+      const tab = await db.tabs.get(targetTabId)
+      if (tab) {
+        await safeDb(() =>
+          db.tabs.update(targetTabId, {
+            lastMessageAt: now,
+            messageCount: (tab.messageCount ?? 0) + 1,
+            pendingSync: true,
+          }),
+        )
+      }
 
-    queueSync(effectiveConversationId, session.userId)
+      queueSync(effectiveConversationId, session.userId)
+    })
   },
 
   addTab: async (name = "new tab") => {
