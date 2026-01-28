@@ -7,6 +7,11 @@
  *
  * The mock-based tests in tab-isolation.test.ts test the routing LOGIC.
  * This file tests the REAL Dexie store implementation.
+ *
+ * TERMINOLOGY NOTE:
+ * - In Dexie schema: DbTab.conversationId = tabGroupId (sidebar grouping)
+ * - In Zustand Tab store: Tab.id IS the conversation key, Tab.tabGroupId is sidebar grouping
+ * - The `tabId` parameter in addMessage() is the target tab (Tab.id = conversation key)
  */
 
 import "fake-indexeddb/auto"
@@ -19,8 +24,11 @@ const TEST_ORG_ID = "test-org-456"
 const TEST_WORKSPACE = "test.example.com"
 
 /**
- * Helper: Set up the store with a session and two tabs in separate conversations.
- * Returns the conversationIds and tabIds for both tabs.
+ * Helper: Set up the store with a session and two tabs in separate tab groups.
+ * Returns the Dexie conversationIds (= tabGroupIds in the new model) and tabIds for both tabs.
+ *
+ * Note: In Dexie, conversationId refers to the sidebar grouping (tabGroupId).
+ * The tabId IS the Claude conversation key (single source of truth).
  */
 async function setupTwoTabs() {
   const store = useDexieMessageStore.getState()

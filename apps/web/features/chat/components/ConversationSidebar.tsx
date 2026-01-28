@@ -4,13 +4,15 @@ import { REFERRAL } from "@webalive/shared"
 import { AnimatePresence, motion } from "framer-motion"
 import { Archive, ChevronRight, Heart, PanelLeftClose, Settings2 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
-import { useDexieConversations, useDexieCurrentConversationId, useDexieSession } from "@/lib/db/dexieMessageStore"
+import { useDexieConversations, useDexieSession } from "@/lib/db/dexieMessageStore"
 import type { DbConversation } from "@/lib/db/messageDb"
 import { useSidebarActions, useSidebarOpen } from "@/lib/stores/conversationSidebarStore"
 import { useAppHydrated } from "@/lib/stores/HydrationBoundary"
 
 interface ConversationSidebarProps {
   workspace: string | null
+  /** Active tab group ID from tabStore (single source of truth) */
+  activeTabGroupId: string | null
   onTabGroupSelect: (tabGroupId: string) => void
   onArchiveTabGroup: (tabGroupId: string) => void
   onOpenSettings: () => void
@@ -29,6 +31,7 @@ interface ConversationSidebarProps {
  */
 export function ConversationSidebar({
   workspace,
+  activeTabGroupId,
   onTabGroupSelect,
   onArchiveTabGroup,
   onOpenSettings,
@@ -44,7 +47,8 @@ export function ConversationSidebar({
   const session = useDexieSession()
   const allConversations = useDexieConversations(workspace || "", session)
   const conversations = workspace ? allConversations : []
-  const currentConversationId = useDexieCurrentConversationId()
+  // Use activeTabGroupId from props (tabStore) as single source of truth
+  // Dexie is for persistence only, not active state
   const sidebarRef = useRef<HTMLDivElement>(null)
   const [archiveModalOpen, setArchiveModalOpen] = useState(false)
   const [conversationToArchive, setConversationToArchive] = useState<DbConversation | null>(null)
@@ -71,7 +75,7 @@ export function ConversationSidebar({
     e.stopPropagation()
 
     // Don't allow archiving current conversation
-    if (conversation.id === currentConversationId) {
+    if (conversation.id === activeTabGroupId) {
       return
     }
 
@@ -145,7 +149,7 @@ export function ConversationSidebar({
                     <ConversationItem
                       key={conversation.id}
                       conversation={conversation}
-                      isActive={conversation.id === currentConversationId}
+                      isActive={conversation.id === activeTabGroupId}
                       onClick={() => handleTabGroupClick(conversation.id)}
                       onArchive={e => handleArchiveClick(e, conversation)}
                       formatTimestamp={formatTimestamp}

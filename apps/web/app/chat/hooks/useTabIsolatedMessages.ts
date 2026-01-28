@@ -15,7 +15,7 @@ interface UseTabIsolatedMessagesOptions {
  * Uses useActiveSession as the SINGLE SOURCE OF TRUTH for:
  * - Which tab's messages to display (via tabId, the Claude SDK session key)
  * - Whether the session is streaming (busy)
- * - Session actions (createSessionId, switchTab)
+ * - Session actions (addTabToGroup, startNewTabGroup, switchTab)
  *
  * INVARIANT: Messages returned MUST belong to session.tabId.
  * Any violation indicates a cross-tab contamination bug.

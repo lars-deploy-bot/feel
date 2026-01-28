@@ -3,11 +3,16 @@
  *
  * Tests the core invariant: Messages should NEVER appear in tabs they don't belong to.
  *
+ * NEW TAB MODEL (as of STORE_VERSION 6):
+ * - Tab.id = unique tab identifier AND Claude conversation key (single source of truth)
+ * - Tab.tabGroupId = sidebar grouping (what shows in left panel)
+ * - No Tab.sessionId or Tab.conversationId exists anymore
+ *
  * Key areas to test:
- * 1. Message routing: addMessage(msg, targetConversationId) routes correctly
- * 2. Message display: useMessagesForConversation returns only correct messages
+ * 1. Message routing: addMessage(msg, targetTabId) routes correctly
+ * 2. Message display: useMessagesForTab returns only correct messages
  * 3. Tab switching during active stream: doesn't leak messages
- * 4. Global conversationId vs tab conversationId: isolation maintained
+ * 4. Global tabId vs display tabId: isolation maintained
  * 5. Busy state isolation: each tab has independent busy state
  */
 
@@ -37,7 +42,8 @@ interface MockMessageStore {
 }
 
 interface MockTab {
-  id: string // The tab id IS the conversation key
+  /** Unique tab identifier - ALSO the Claude conversation key (single source of truth) */
+  id: string
   name: string
 }
 
@@ -74,16 +80,16 @@ describe("Tab Isolation", () => {
     }
   })
 
-  // Helper: Add a message to a specific conversation
-  // targetConversationId is REQUIRED to prevent cross-tab leakage
-  function addMessage(message: MockMessage, targetConversationId: string) {
-    if (!messageStore.conversations[targetConversationId]) {
-      console.warn(`Cannot add message: conversation ${targetConversationId} not found`)
+  // Helper: Add a message to a specific conversation (identified by tab ID in production)
+  // In production code, this is called with targetTabId since Tab.id IS the conversation key
+  function addMessage(message: MockMessage, targetTabId: string) {
+    if (!messageStore.conversations[targetTabId]) {
+      console.warn(`Cannot add message: conversation ${targetTabId} not found`)
       return false
     }
 
-    const conversation = messageStore.conversations[targetConversationId]
-    conversation.messages.push({ ...message, conversationId: targetConversationId })
+    const conversation = messageStore.conversations[targetTabId]
+    conversation.messages.push({ ...message, conversationId: targetTabId })
     return true
   }
 
@@ -133,10 +139,15 @@ describe("Tab Isolation", () => {
     return isTabMode ? activeTab.id : messageStore.conversationId
   }
 
-  // Helper: Add a tab
-  function addTab(workspace: string, conversationId: string, name: string): MockTab {
+  /**
+   * Helper: Add a tab.
+   * In production, Tab.id IS the Claude conversation key (single source of truth).
+   * This mock uses tabId as the key for the conversations record to simulate
+   * the production behavior where messages are stored by tabId.
+   */
+  function addTab(workspace: string, tabId: string, name: string): MockTab {
     const tab: MockTab = {
-      id: conversationId, // Tab id IS the conversation key
+      id: tabId, // Tab.id IS the conversation key (single source of truth)
       name,
     }
 
@@ -180,7 +191,7 @@ describe("Tab Isolation", () => {
   // =============================================================
 
   describe("Basic Message Routing", () => {
-    it("should add message to the correct conversation when targetConversationId is specified", () => {
+    it("should add message to the correct conversation when targetTabId is specified", () => {
       const workspace = "test.example.com"
 
       // Initialize two conversations
@@ -201,14 +212,14 @@ describe("Tab Isolation", () => {
       expect(getMessagesForConversation("conv-B")).toHaveLength(0)
     })
 
-    it("should always require explicit targetConversationId to prevent cross-tab leakage", () => {
+    it("should always require explicit targetTabId to prevent cross-tab leakage", () => {
       const workspace = "test.example.com"
 
       initializeConversation("conv-A", workspace)
       initializeConversation("conv-B", workspace)
       switchConversation("conv-B")
 
-      // targetConversationId is required - message must explicitly target conv-B
+      // targetTabId is required - message must explicitly target conv-B
       addMessage({ id: "msg-1", type: "assistant", content: "Hello B" }, "conv-B")
 
       expect(getMessagesForConversation("conv-A")).toHaveLength(0)
@@ -299,26 +310,26 @@ describe("Tab Isolation", () => {
       // Start in Tab A
       setActiveTab(workspace, tabA.id)
 
-      // Capture the target conversation ID at stream start (this is what sendStreaming does)
-      const targetConversationId = "conv-A" // Captured at stream start
+      // Capture the target tab ID at stream start (this is what sendStreaming does)
+      const targetTabId = "conv-A" // Captured at stream start
 
       // Start stream for conv-A
-      startStream(targetConversationId)
+      startStream(targetTabId)
 
       // Simulate receiving messages while in Tab A
-      addMessage({ id: "msg-1", type: "assistant", content: "First message for A" }, targetConversationId)
+      addMessage({ id: "msg-1", type: "assistant", content: "First message for A" }, targetTabId)
 
       // USER SWITCHES TO TAB B
       setActiveTab(workspace, tabB.id)
       // Note: The global conversationId would also switch in real implementation
       messageStore.conversationId = "conv-B"
 
-      // Stream continues sending messages to Tab A (using captured targetConversationId)
-      addMessage({ id: "msg-2", type: "assistant", content: "Second message for A" }, targetConversationId)
-      addMessage({ id: "msg-3", type: "assistant", content: "Third message for A" }, targetConversationId)
+      // Stream continues sending messages to Tab A (using captured targetTabId)
+      addMessage({ id: "msg-2", type: "assistant", content: "Second message for A" }, targetTabId)
+      addMessage({ id: "msg-3", type: "assistant", content: "Third message for A" }, targetTabId)
 
       // End stream
-      endStream(targetConversationId)
+      endStream(targetTabId)
 
       // VERIFICATION: Tab B should NOT have Tab A's messages
       const displayId = getDisplayConversationId(workspace, showTabs)
@@ -403,12 +414,12 @@ describe("Tab Isolation", () => {
      *
      * BEFORE FIX:
      * - handleCompletionFeatures() read state.conversationId (global active)
-     * - addMessage() was called WITHOUT targetConversationId
+     * - addMessage() was called WITHOUT targetTabId
      * - This caused agent_manager messages to go to wrong tab
      *
      * AFTER FIX:
-     * - handleCompletionFeatures(targetConversationId) reads specific conversation
-     * - addMessage(msg, targetConversationId) routes to correct tab
+     * - handleCompletionFeatures(targetTabId) reads specific conversation
+     * - addMessage(msg, targetTabId) routes to correct tab
      */
     it("should add agent_manager messages to correct conversation when user switches tabs", () => {
       const workspace = "test.example.com"
@@ -418,24 +429,24 @@ describe("Tab Isolation", () => {
       initializeConversation("conv-B", workspace)
 
       // User starts stream in conv-A
-      const targetConversationId = "conv-A"
-      startStream(targetConversationId)
+      const targetTabId = "conv-A"
+      startStream(targetTabId)
 
       // User switches to conv-B (simulating tab switch)
       messageStore.conversationId = "conv-B"
 
       // Stream completes in Tab A, agent supervisor sends a "done" message
-      // THE FIX: addMessage should use targetConversationId, not global
+      // THE FIX: addMessage should use targetTabId, not global
       const agentMessage: MockMessage = {
         id: "agent-done-1",
         type: "agent_manager",
         content: "PR goal complete!",
       }
 
-      // CORRECT behavior: pass targetConversationId explicitly
-      addMessage(agentMessage, targetConversationId)
+      // CORRECT behavior: pass targetTabId explicitly
+      addMessage(agentMessage, targetTabId)
 
-      endStream(targetConversationId)
+      endStream(targetTabId)
 
       // Verify: Message went to conv-A (the target), NOT conv-B (global active)
       expect(getMessagesForConversation("conv-A")).toHaveLength(1)
@@ -461,9 +472,9 @@ describe("Tab Isolation", () => {
       messageStore.conversationId = "conv-B"
 
       // When evaluating conv-A's progress, should read conv-A's messages
-      // THE FIX: Use conversations[targetConversationId], not conversations[state.conversationId]
-      const targetConversationId = "conv-A"
-      const targetMessages = getMessagesForConversation(targetConversationId)
+      // THE FIX: Use conversations[targetTabId], not conversations[state.conversationId]
+      const targetTabId = "conv-A"
+      const targetMessages = getMessagesForConversation(targetTabId)
 
       // Verify we get conv-A's messages, not conv-B's
       expect(targetMessages).toHaveLength(2)

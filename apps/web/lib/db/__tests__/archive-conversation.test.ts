@@ -306,15 +306,17 @@ describe("Archive Conversation", () => {
       const _workspace = "test.example.com"
       const tabGroupId = "conv-1" // Currently active
 
+      // NEW TAB MODEL: Tab.id IS the conversation key, Tab.tabGroupId is sidebar grouping
       interface TabEntry {
+        /** Unique tab id - ALSO the Claude conversation key */
         id: string
+        /** Sidebar grouping id */
         tabGroupId: string
-        conversationId: string
       }
 
       const workspaceTabs: TabEntry[] = [
-        { id: "tab-1", tabGroupId: "conv-1", conversationId: "session-1" },
-        { id: "tab-2", tabGroupId: "conv-2", conversationId: "session-2" },
+        { id: "tab-1", tabGroupId: "conv-1" },
+        { id: "tab-2", tabGroupId: "conv-2" },
       ]
 
       const tabGroupIdToArchive = "conv-1"
@@ -333,7 +335,8 @@ describe("Archive Conversation", () => {
       const tabGroupId = "conv-1"
       const tabGroupIdToArchive = "conv-1"
 
-      const workspaceTabs = [{ id: "tab-1", tabGroupId: "conv-1", conversationId: "session-1" }]
+      // Tab.id IS the conversation key (no separate conversationId field)
+      const workspaceTabs = [{ id: "tab-1", tabGroupId: "conv-1" }]
 
       const nextTab =
         tabGroupIdToArchive === tabGroupId
@@ -348,9 +351,10 @@ describe("Archive Conversation", () => {
       const tabGroupId: string = "conv-1" // Currently active
       const tabGroupIdToArchive: string = "conv-2" // Archiving a different one
 
+      // Tab.id IS the conversation key (no separate conversationId field)
       const workspaceTabs = [
-        { id: "tab-1", tabGroupId: "conv-1", conversationId: "session-1" },
-        { id: "tab-2", tabGroupId: "conv-2", conversationId: "session-2" },
+        { id: "tab-1", tabGroupId: "conv-1" },
+        { id: "tab-2", tabGroupId: "conv-2" },
       ]
 
       const nextTab =

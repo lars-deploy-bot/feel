@@ -117,18 +117,23 @@ export function useChatMessaging({
    * IMPORTANT: targetTabId must be passed to ensure messages go to the correct tab.
    * Using global state would cause cross-tab message leakage when user switches tabs
    * during an active stream.
+   *
+   * @param targetTabId - The tab ID that initiated the stream. Tab.id IS the conversation
+   *   key in our architecture. This parameter was captured at stream start, ensuring we
+   *   query/update the correct conversation even if the user switches tabs during streaming.
    */
   const handleCompletionFeatures = useCallback(
-    async (targetConversationId: string) => {
+    async (targetTabId: string) => {
       const state = useDexieMessageStore.getState()
-      // Use the TARGET conversation, not the global active one
-      // This prevents cross-tab message leakage when user switches tabs during streaming
-      // With Dexie, messages are in IndexedDB - query async for agent supervisor
+      // CRITICAL: Use targetTabId (the tab ID passed from the caller), NOT state.currentTabId
+      // state.currentTabId reflects whichever tab is currently active in the UI, which may have
+      // changed if the user switched tabs during streaming. targetTabId was captured
+      // at stream start and represents the correct conversation to query/update.
       let formattedMessages = ""
-      if (state.session?.userId && state.currentTabId) {
+      if (state.session?.userId && targetTabId) {
         try {
           const db = getMessageDb(state.session.userId)
-          const dbMessages = await db.messages.where("tabId").equals(state.currentTabId).sortBy("seq")
+          const dbMessages = await db.messages.where("tabId").equals(targetTabId).sortBy("seq")
           const uiMessages = dbMessages.map(toUIMessage)
           formattedMessages = formatMessagesAsText(uiMessages)
         } catch (e) {
@@ -170,8 +175,8 @@ export function useChatMessaging({
                   content: { status: "done", message } satisfies AgentManagerContent,
                   timestamp: new Date(),
                 }
-                // CRITICAL: Pass targetConversationId to prevent cross-tab leakage
-                addMessage(doneMessage, targetConversationId)
+                // CRITICAL: Pass targetTabId to prevent cross-tab leakage
+                addMessage(doneMessage, targetTabId)
                 return
               }
 
@@ -185,8 +190,8 @@ export function useChatMessaging({
                   content: { status: "stop", message } satisfies AgentManagerContent,
                   timestamp: new Date(),
                 }
-                // CRITICAL: Pass targetConversationId to prevent cross-tab leakage
-                addMessage(stopMessage, targetConversationId)
+                // CRITICAL: Pass targetTabId to prevent cross-tab leakage
+                addMessage(stopMessage, targetTabId)
                 setMsg("")
                 return
               }
@@ -217,7 +222,7 @@ export function useChatMessaging({
   )
 
   const sendStreaming = useCallback(
-    async (userMessage: UIMessage, targetConversationId: string) => {
+    async (userMessage: UIMessage, targetTabId: string) => {
       let receivedAnyMessage = false
       let timeoutId: NodeJS.Timeout | null = null
       let shouldStopReading = false
@@ -234,17 +239,17 @@ export function useChatMessaging({
 
         const abortController = new AbortController()
         abortControllerRef.current = abortController
-        setAbortController(targetConversationId, abortController)
+        setAbortController(targetTabId, abortController)
 
         timeoutId = setTimeout(() => {
           if (!receivedAnyMessage) {
             console.error("[Chat] Request timeout - no response received in 60s")
-            streamingActions.recordError(targetConversationId, {
+            streamingActions.recordError(targetTabId, {
               type: "timeout_error",
               message: "Request timeout - no response received in 60s",
             })
             sendClientError({
-              conversationId: targetConversationId,
+              tabId: targetTabId,
               errorType: ClientError.TIMEOUT_ERROR,
               data: { message: "Request timeout - no response received in 60s", timeoutSeconds: 60 },
               addDevEvent,
@@ -256,7 +261,7 @@ export function useChatMessaging({
         if (isDevelopment()) {
           const requestEvent = {
             type: ClientRequest.MESSAGE,
-            requestId: targetConversationId,
+            requestId: targetTabId,
             timestamp: new Date().toISOString(),
             data: { endpoint: "/api/claude/stream", method: "POST", body: requestBody },
           }
@@ -332,14 +337,14 @@ export function useChatMessaging({
                 const parsed: unknown = JSON.parse(line)
 
                 if (!isValidStreamEvent(parsed)) {
-                  streamingActions.incrementConsecutiveErrors(targetConversationId)
-                  streamingActions.recordError(targetConversationId, {
+                  streamingActions.incrementConsecutiveErrors(targetTabId)
+                  streamingActions.recordError(targetTabId, {
                     type: "invalid_event_structure",
                     message: "Stream event failed type guard validation",
                   })
-                  const consecutiveErrors = streamingActions.getConsecutiveErrors(targetConversationId)
+                  const consecutiveErrors = streamingActions.getConsecutiveErrors(targetTabId)
                   sendClientError({
-                    conversationId: targetConversationId,
+                    tabId: targetTabId,
                     errorType: ClientError.INVALID_EVENT_STRUCTURE,
                     data: { message: parsed, consecutiveErrors },
                     addDevEvent,
@@ -389,12 +394,12 @@ export function useChatMessaging({
                 }
 
                 receivedAnyMessage = true
-                streamingActions.recordMessageReceived(targetConversationId)
-                streamingActions.resetConsecutiveErrors(targetConversationId)
+                streamingActions.recordMessageReceived(targetTabId)
+                streamingActions.resetConsecutiveErrors(targetTabId)
 
-                const message = parseStreamEvent(eventData, targetConversationId, streamingActions)
+                const message = parseStreamEvent(eventData, targetTabId, streamingActions)
                 if (message) {
-                  await addMessage(message, targetConversationId)
+                  await addMessage(message, targetTabId)
                   if (
                     isCompleteEvent(eventData) ||
                     isDoneEvent(eventData) ||
@@ -409,23 +414,23 @@ export function useChatMessaging({
                       !isInterruptEvent(eventData)
                     ) {
                       setShowCompletionDots(true)
-                      // Pass targetConversationId to ensure agent supervisor uses correct conversation
-                      handleCompletionFeatures(targetConversationId)
+                      // Pass targetTabId to ensure agent supervisor uses correct conversation
+                      handleCompletionFeatures(targetTabId)
                     }
                     shouldStopReading = true
                     break
                   }
                 }
               } catch (parseError) {
-                streamingActions.incrementConsecutiveErrors(targetConversationId)
-                streamingActions.recordError(targetConversationId, {
+                streamingActions.incrementConsecutiveErrors(targetTabId)
+                streamingActions.recordError(targetTabId, {
                   type: "parse_error",
                   message: "Failed to parse NDJSON line",
                   linePreview: line.slice(0, 200),
                 })
-                const consecutiveErrors = streamingActions.getConsecutiveErrors(targetConversationId)
+                const consecutiveErrors = streamingActions.getConsecutiveErrors(targetTabId)
                 sendClientError({
-                  conversationId: targetConversationId,
+                  tabId: targetTabId,
                   errorType: ClientError.PARSE_ERROR,
                   data: {
                     consecutiveErrors,
@@ -436,7 +441,7 @@ export function useChatMessaging({
                 })
                 if (consecutiveErrors >= MAX_CONSECUTIVE_PARSE_ERRORS) {
                   sendClientError({
-                    conversationId: targetConversationId,
+                    tabId: targetTabId,
                     errorType: ClientError.CRITICAL_PARSE_ERROR,
                     data: { consecutiveErrors, message: "Too many consecutive parse errors, stopping stream" },
                     addDevEvent,
@@ -453,7 +458,7 @@ export function useChatMessaging({
                       },
                       timestamp: new Date(),
                     },
-                    targetConversationId,
+                    targetTabId,
                   )
                   shouldStopReading = true
                   reader.cancel()
@@ -464,15 +469,15 @@ export function useChatMessaging({
           }
         } catch (readerError) {
           if (abortController.signal.aborted) {
-            streamingActions.endStream(targetConversationId)
+            streamingActions.endStream(targetTabId)
             return
           }
-          streamingActions.recordError(targetConversationId, {
+          streamingActions.recordError(targetTabId, {
             type: "reader_error",
             message: readerError instanceof Error ? readerError.message : "Unknown reader error",
           })
           sendClientError({
-            conversationId: targetConversationId,
+            tabId: targetTabId,
             errorType: ClientError.READER_ERROR,
             data: {
               receivedMessages: receivedAnyMessage,
@@ -489,19 +494,19 @@ export function useChatMessaging({
           throw new Error("Server closed connection without sending any response")
         }
 
-        streamingActions.endStream(targetConversationId)
+        streamingActions.endStream(targetTabId)
       } catch (error) {
         if (error instanceof Error && error.name !== "AbortError") {
           if (error instanceof HttpError) {
             sendClientError({
-              conversationId: targetConversationId,
+              tabId: targetTabId,
               errorType: ClientError.HTTP_ERROR,
               data: { status: error.status, statusText: error.statusText, message: error.message },
               addDevEvent,
             })
           } else {
             sendClientError({
-              conversationId: targetConversationId,
+              tabId: targetTabId,
               errorType: ClientError.GENERAL_ERROR,
               data: { errorName: error.name, message: error.message, stack: error.stack },
               addDevEvent,
@@ -517,7 +522,7 @@ export function useChatMessaging({
               error.errorCode === ErrorCodes.AUTH_REQUIRED)
 
           if (isAuthError) {
-            streamingActions.endStream(targetConversationId)
+            streamingActions.endStream(targetTabId)
             authStore.handleSessionExpired("Your session has expired. Please log in again to continue.")
             return
           }
@@ -537,15 +542,15 @@ export function useChatMessaging({
               content: { type: "result", is_error: true, result: error.message },
               timestamp: new Date(),
             }
-            await addMessage(errorMessage, targetConversationId)
+            await addMessage(errorMessage, targetTabId)
           }
         }
 
-        streamingActions.endStream(targetConversationId)
+        streamingActions.endStream(targetTabId)
       } finally {
         if (timeoutId) clearTimeout(timeoutId)
         abortControllerRef.current = null
-        clearAbortController(targetConversationId)
+        clearAbortController(targetTabId)
         currentRequestIdRef.current = null
       }
     },

@@ -7,14 +7,14 @@ export interface ClientErrorData {
 }
 
 export function sendClientError(params: {
-  conversationId: string
+  tabId: string
   errorType: ClientErrorType
   data: Record<string, unknown>
   addDevEvent: (event: DevSSEEvent) => void
 }): void {
   if (!isDevelopment()) return
 
-  const { conversationId, errorType, data, addDevEvent } = params
+  const { tabId, errorType, data, addDevEvent } = params
 
   const errorData: ClientErrorData = {
     errorType,
@@ -23,7 +23,7 @@ export function sendClientError(params: {
 
   const eventData = {
     type: errorType,
-    requestId: conversationId,
+    requestId: tabId,
     timestamp: new Date().toISOString(),
     data: errorData,
   }

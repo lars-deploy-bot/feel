@@ -9,6 +9,11 @@
  *
  * IMPORTANT: These tests use unique tab IDs per test to avoid queue state pollution
  * between tests (the tabWriteQueues Map persists at module level).
+ *
+ * TERMINOLOGY NOTE:
+ * - In Dexie schema: DbTab.conversationId = tabGroupId (sidebar grouping)
+ * - In Zustand Tab store: Tab.id IS the conversation key, Tab.tabGroupId is sidebar grouping
+ * - The `tabId` parameter in addMessage() is the target tab (Tab.id = conversation key)
  */
 
 import "fake-indexeddb/auto"
@@ -27,6 +32,9 @@ let testCounter = 0
 /**
  * Helper to set up the store with a session and a single tab.
  * Uses unique tab IDs to avoid queue state pollution between tests.
+ *
+ * Note: In Dexie, conversationId refers to the sidebar grouping (tabGroupId).
+ * The tabId IS the Claude conversation key (single source of truth).
  */
 async function setupTab() {
   testCounter++

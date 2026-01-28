@@ -191,7 +191,8 @@ function ChatPageContent() {
   const tabId = sessionTabId
   const tabGroupId = sessionTabGroupId
   const { addTabToGroup, startNewTabGroup, switchTab } = sessionActions
-  const isChatReady = !!dexieSession && sessionReady && storeTabId === tabId
+  // isChatReady derives from tabStore (sessionReady) only - Dexie is for persistence, not readiness
+  const isChatReady = !!dexieSession && sessionReady
 
   // Chat messaging hook - handles sendMessage, streaming, agent supervisor
   const {
@@ -487,6 +488,7 @@ function ChatPageContent() {
     >
       <ConversationSidebar
         workspace={workspace}
+        activeTabGroupId={sessionTabGroupId}
         onTabGroupSelect={handleTabGroupSelect}
         onArchiveTabGroup={handleArchiveTabGroup}
         onOpenSettings={modals.openSettings}

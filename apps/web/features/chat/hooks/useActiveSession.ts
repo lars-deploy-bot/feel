@@ -79,7 +79,7 @@ export interface ActiveSession {
 
   /**
    * Whether the session is ready for operations.
-   * true when workspace has an active tab with valid sessionId.
+   * true when workspace has an active tab with valid tabId.
    * Guard all streaming operations with this.
    */
   isReady: boolean
@@ -135,9 +135,17 @@ export function useActiveSession(workspace: string | null): ActiveSession {
       return
     }
 
-    // Create first tab group for this workspace
+    // Check if there are existing open tabs for this workspace
+    const openTabs = workspaceTabs.filter(t => !t.closedAt)
+    if (openTabs.length > 0) {
+      // Set first existing open tab as active instead of creating a new one
+      setActiveTab(workspace, openTabs[0].id)
+      return
+    }
+
+    // Only create a new tab group when no open tabs exist
     createTabGroupWithTab(workspace)
-  }, [workspace, activeTab, createTabGroupWithTab])
+  }, [workspace, activeTab, workspaceTabs, setActiveTab, createTabGroupWithTab])
 
   // Tab.id IS the conversation key - no separate sessionId
   const tabId = activeTab?.id ?? null

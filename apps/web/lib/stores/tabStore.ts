@@ -254,15 +254,80 @@ export const useTabStore = create<TabStore>()(
         nextTabNumberByWorkspace: s.nextTabNumberByWorkspace,
       }),
       migrate: (_persisted, version) => {
-        // Old versions get reset - not worth maintaining complex migrations for localStorage
+        // Type for old tab structure (before v6)
+        interface LegacyTab {
+          id: string
+          sessionId?: string // Old: separate Claude session key
+          conversationId?: string // Even older: was sessionId before rename
+          tabGroupId: string
+          name: string
+          tabNumber: number
+          createdAt: number
+          inputDraft?: string
+          closedAt?: number
+        }
+
+        interface LegacyState {
+          tabsByWorkspace: Record<string, LegacyTab[]>
+          activeTabByWorkspace: Record<string, string | undefined>
+          tabsExpandedByWorkspace: Record<string, boolean>
+          nextTabNumberByWorkspace: Record<string, number>
+        }
+
         if (version < STORE_VERSION) {
+          const legacy = _persisted as LegacyState | null
+          if (!legacy?.tabsByWorkspace) {
+            // No valid data to migrate
+            return {
+              tabsByWorkspace: {},
+              activeTabByWorkspace: {},
+              tabsExpandedByWorkspace: {},
+              nextTabNumberByWorkspace: {},
+            }
+          }
+
+          // Migrate tabs: sessionId (or conversationId) becomes the new id
+          const newTabsByWorkspace: Record<string, Tab[]> = {}
+          const idMapping: Record<string, string> = {} // old id -> new id
+
+          for (const [workspace, tabs] of Object.entries(legacy.tabsByWorkspace)) {
+            newTabsByWorkspace[workspace] = tabs.map((legacyTab: LegacyTab) => {
+              // Use sessionId or conversationId as the new id (it's the Claude session key)
+              // Fall back to existing id if neither exists (shouldn't happen but be safe)
+              const newId = legacyTab.sessionId || legacyTab.conversationId || legacyTab.id
+              idMapping[legacyTab.id] = newId
+
+              return {
+                id: newId,
+                tabGroupId: legacyTab.tabGroupId,
+                name: legacyTab.name,
+                tabNumber: legacyTab.tabNumber,
+                createdAt: legacyTab.createdAt,
+                inputDraft: legacyTab.inputDraft,
+                closedAt: legacyTab.closedAt,
+              }
+            })
+          }
+
+          // Update activeTabByWorkspace to use new ids
+          const newActiveTabByWorkspace: Record<string, string | undefined> = {}
+          for (const [workspace, oldActiveId] of Object.entries(legacy.activeTabByWorkspace)) {
+            if (oldActiveId && idMapping[oldActiveId]) {
+              newActiveTabByWorkspace[workspace] = idMapping[oldActiveId]
+            } else {
+              // Active tab not found in mapping, clear it (will be set on next render)
+              newActiveTabByWorkspace[workspace] = undefined
+            }
+          }
+
           return {
-            tabsByWorkspace: {},
-            activeTabByWorkspace: {},
-            tabsExpandedByWorkspace: {},
-            nextTabNumberByWorkspace: {},
+            tabsByWorkspace: newTabsByWorkspace,
+            activeTabByWorkspace: newActiveTabByWorkspace,
+            tabsExpandedByWorkspace: legacy.tabsExpandedByWorkspace || {},
+            nextTabNumberByWorkspace: legacy.nextTabNumberByWorkspace || {},
           }
         }
+
         // Current version: pass through
         return _persisted as TabStoreState
       },
