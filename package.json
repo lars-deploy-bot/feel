@@ -31,7 +31,7 @@
     "prepare": "husky",
     "prepare:repo": "bun run setup:template && bun run build:libs",
     "setup:template": "cd templates/site-template/user && bun install",
-    "build:libs": "cross-env SKIP_ENV_VALIDATION=1 turbo run build --filter='!apps/*'",
+    "build:libs": "cross-env SKIP_ENV_VALIDATION=1 turbo run build --filter='./packages/*'",
     "setup": "./scripts/setup/copy-template.sh",
     "cleanup-test-db": "bun scripts/database/cleanup-test-database.ts",
     "superclean": "bun scripts/database/superclean.ts",
