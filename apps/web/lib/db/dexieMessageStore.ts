@@ -375,7 +375,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
       pendingSync: true,
     }
 
-    await safeDb(() => db.messages.add(dbMessage))
+    await safeDb(() => db.messages.put(dbMessage))
 
     // Update conversation metadata
     const convo = await db.conversations.get(effectiveConversationId)
@@ -516,7 +516,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
       pendingSync: false,
     }
 
-    await safeDb(() => db.messages.add(dbMessage))
+    await safeDb(() => db.messages.put(dbMessage))
 
     set(state => ({
       activeStreamByTab: { ...state.activeStreamByTab, [tabId]: id },
