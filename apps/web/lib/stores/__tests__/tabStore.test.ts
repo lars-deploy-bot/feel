@@ -198,7 +198,7 @@ describe("tabStore", () => {
 
       // Create tabs in both
       const tab1 = actions.addTab(workspace1, tabGroupId)
-      const tab2 = actions.addTab(workspace2, tabGroupId)
+      const _tab2 = actions.addTab(workspace2, tabGroupId)
 
       // Close tab in workspace1
       if (tab1) actions.removeTab(workspace1, tab1.id)

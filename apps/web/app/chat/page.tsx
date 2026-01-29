@@ -190,7 +190,7 @@ function ChatPageContent() {
   // sessionTabId is the primary session key for Claude SDK (resume parameter)
   const tabId = sessionTabId
   const tabGroupId = sessionTabGroupId
-  const { addTabToGroup, startNewTabGroup, switchTab } = sessionActions
+  const { startNewTabGroup, switchTab } = sessionActions
   // isChatReady derives from tabStore (sessionReady) only - Dexie is for persistence, not readiness
   const isChatReady = !!dexieSession && sessionReady
 
