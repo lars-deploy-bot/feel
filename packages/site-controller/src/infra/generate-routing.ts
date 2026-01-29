@@ -299,6 +299,30 @@ async function run() {
 }
 
 run().catch((e) => {
-  console.error("Error:", e.message)
+  const msg = e.message || String(e)
+
+  console.error("\n\x1b[31m╔══════════════════════════════════════════════════════════════╗\x1b[0m")
+  console.error("\x1b[31m║                    Generation Failed                         ║\x1b[0m")
+  console.error("\x1b[31m╚══════════════════════════════════════════════════════════════╝\x1b[0m")
+  console.error(`\n\x1b[31mError:\x1b[0m ${msg}\n`)
+
+  // Provide specific help based on error
+  if (msg.includes("server-config.json") || msg.includes("ENOENT")) {
+    console.error("\x1b[33mFix:\x1b[0m Create /var/lib/claude-bridge/server-config.json")
+    console.error("     Copy from: ops/server-config.example.json")
+    console.error("     Then edit with this server's configuration\n")
+  } else if (msg.includes("SUPABASE_URL")) {
+    console.error("\x1b[33mFix:\x1b[0m Set database credentials:")
+    console.error("     export SUPABASE_URL=https://xxx.supabase.co")
+    console.error("     export SUPABASE_SERVICE_ROLE_KEY=eyJ...\n")
+  } else if (msg.includes("server_id")) {
+    console.error("\x1b[33mFix:\x1b[0m Add server_id column to domains table:")
+    console.error("     ALTER TABLE app.domains ADD COLUMN server_id TEXT;\n")
+  } else if (msg.includes("snippets") || msg.includes("common_headers") || msg.includes("image_serving")) {
+    console.error("\x1b[33mFix:\x1b[0m Ensure Caddy snippets exist in ops/caddy/snippets/")
+    console.error("     Required: common_headers.caddy, image_serving.caddy\n")
+  }
+
+  console.error("Run \x1b[36mbun run --cwd packages/site-controller setup:validate\x1b[0m for full diagnostics.\n")
   process.exit(1)
 })

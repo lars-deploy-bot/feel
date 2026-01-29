@@ -14,6 +14,7 @@
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "clean": "rm -rf dist",
+    "setup:validate": "bun run src/infra/validate-setup.ts",
     "routing:generate": "bun run src/infra/generate-routing.ts"
   },
   "dependencies": {

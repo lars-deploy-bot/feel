@@ -1,6 +1,5 @@
 {
   "lockfileVersion": 1,
-  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "claude-bridge-mono",
@@ -251,6 +250,7 @@
       "name": "@webalive/site-controller",
       "version": "1.0.0",
       "dependencies": {
+        "@supabase/supabase-js": "^2.46.2",
         "@types/node": "^20.0.0",
         "@webalive/shared": "workspace:*",
         "typescript": "^5.0.0",
