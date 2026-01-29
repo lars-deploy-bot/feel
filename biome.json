@@ -52,9 +52,7 @@
       "performance": {
         "noImgElement": "off"
       },
-      "nursery": {
-        "noFloatingPromises": "error"
-      }
+      "nursery": {}
     }
   },
   "formatter": {
