@@ -1,6 +1,5 @@
 "use client"
 
-import { useEffect, useRef } from "react"
 import { useDexieSession } from "@/lib/db/dexieMessageStore"
 import { useTabMessages } from "@/lib/db/useTabMessages"
 import { useActiveSession } from "@/features/chat/hooks/useActiveSession"
@@ -28,42 +27,6 @@ export function useTabIsolatedMessages({ workspace }: UseTabIsolatedMessagesOpti
   // Messages are fetched for the active session's tabId
   // If no active session, no messages are shown
   const messages = useTabMessages(session.tabId, dexieSession?.userId ?? null)
-
-  // Track previous values for debugging cross-tab issues
-  const prevTabIdRef = useRef<string | null>(null)
-  const prevMessageCountRef = useRef<number>(0)
-
-  // Debug logging and INVARIANT CHECK
-  useEffect(() => {
-    const isDev = process.env.NODE_ENV === "development" || process.env.NEXT_PUBLIC_BRIDGE_ENV === "staging"
-
-    if (isDev) {
-      const prevId = prevTabIdRef.current
-      const prevCount = prevMessageCountRef.current
-
-      // Detect tab switch
-      if (prevId && prevId !== session.tabId && messages.length > 0) {
-        console.log("[TabIsolatedMessages] Tab switched", {
-          from: prevId,
-          to: session.tabId,
-          prevMessageCount: prevCount,
-          newMessageCount: messages.length,
-        })
-      }
-
-      // Log state on every render for debugging
-      console.log("[TabIsolatedMessages]", {
-        tabId: session.tabId,
-        tabGroupId: session.tabGroupId,
-        isReady: session.isReady,
-        isStreaming: session.isStreaming,
-        messageCount: messages.length,
-      })
-
-      prevTabIdRef.current = session.tabId
-      prevMessageCountRef.current = messages.length
-    }
-  }, [session.tabId, session.tabGroupId, session.isReady, session.isStreaming, messages.length, messages])
 
   return {
     messages,

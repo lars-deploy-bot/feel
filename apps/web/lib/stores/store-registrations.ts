@@ -23,7 +23,9 @@ import { useGoalStoreBase } from "./goalStore"
 import { registerStore } from "./hydration-registry"
 import { useLLMStoreBase } from "./llmStore"
 import { useOnboardingStoreBase } from "./onboardingStore"
-import { useTabStore } from "./tabStore"
+// Split tab stores for parallel browser tab isolation
+import { useTabDataStore } from "./tabDataStore"
+import { useTabViewStore } from "./tabViewStore"
 // Import all stores that need coordinated hydration
 // These imports are type-only initially, we access .persist at runtime
 import { useWorkspaceStoreBase } from "./workspaceStore"
@@ -51,10 +53,21 @@ function registerAllStores(): void {
 
   // Data stores (medium-high priority)
   // messageStore removed - messages now stored in Dexie (IndexedDB) via dexieMessageStore
+
+  // Tab stores are split for parallel browser tab isolation:
+  // - tabData (localStorage): shared tab history across browser tabs
+  // - tabView (sessionStorage): per-browser-tab UI state (active selection)
   registerStore({
-    name: "tab",
-    rehydrate: wrapRehydrate(() => useTabStore.persist.rehydrate()),
-    hasHydrated: () => useTabStore.persist.hasHydrated(),
+    name: "tabData",
+    rehydrate: wrapRehydrate(() => useTabDataStore.persist.rehydrate()),
+    hasHydrated: () => useTabDataStore.persist.hasHydrated(),
+    priority: 24, // Slightly before tabView since view depends on data
+  })
+
+  registerStore({
+    name: "tabView",
+    rehydrate: wrapRehydrate(() => useTabViewStore.persist.rehydrate()),
+    hasHydrated: () => useTabViewStore.persist.hasHydrated(),
     priority: 25,
   })
 
@@ -102,7 +115,7 @@ function registerAllStores(): void {
     priority: 105,
   })
 
-  console.log("[StoreRegistrations] All 8 stores registered for coordinated hydration")
+  console.log("[StoreRegistrations] All 9 stores registered for coordinated hydration")
 }
 
 // Auto-register when this module is imported

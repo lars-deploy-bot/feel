@@ -284,7 +284,6 @@ export const useStreamingStore = create<StreamingStoreState>((set, get) => {
       },
 
       startStream: (tabId: string): void => {
-        console.log("[StreamingStore] startStream:", tabId)
         updateTab(tabId, {
           isStreamActive: true,
           messagesReceivedInStream: 0,

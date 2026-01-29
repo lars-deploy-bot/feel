@@ -8,7 +8,8 @@ import {
   useTabsExpanded,
   useTabActions,
   useClosedTabs,
-  useTabStore,
+  useTabDataStore,
+  useTabViewStore,
 } from "@/lib/stores/tabStore"
 import { useStreamingActions, getAbortController, clearAbortController } from "@/lib/stores/streamingStore"
 import { useDexieMessageActions } from "@/lib/db/dexieMessageStore"
@@ -87,10 +88,6 @@ export function useTabsManagement({
       return
     }
     if (tab) {
-      console.log("[AddTab]", {
-        previousActiveTabId: activeTabInGroup?.id,
-        newTabId: tab.id,
-      })
       onInitializeTab(tab.id, tabGroupId, workspace)
       onSwitchTab(tab.id)
       // Clear input for new tab
@@ -114,11 +111,6 @@ export function useTabsManagement({
     (tabId: string) => {
       const tab = tabs.find(t => t.id === tabId)
       if (tab && workspace) {
-        console.log("[TabSelect]", {
-          fromTabId: activeTabInGroup?.id,
-          toTabId: tab.id,
-        })
-
         // Save current input to the previous tab before switching
         if (activeTabInGroup && currentInput !== undefined) {
           setTabInputDraft(workspace, activeTabInGroup.id, currentInput)
@@ -155,11 +147,10 @@ export function useTabsManagement({
       removeTab(workspace, tabId)
 
       // Proactively switch to the new active tab to prevent effect cascades.
-      const state = useTabStore.getState()
-      const newActiveId = state.activeTabByWorkspace[workspace]
+      const newActiveId = useTabViewStore.getState().activeTabByWorkspace[workspace]
       if (newActiveId && newActiveId !== tabId) {
-        const allTabs = state.tabsByWorkspace[workspace] ?? []
-        const newActiveTab = allTabs.find(t => t.id === newActiveId)
+        const allTabs = useTabDataStore.getState().tabsByWorkspace[workspace] ?? []
+        const newActiveTab = allTabs.find((t: { id: string }) => t.id === newActiveId)
         if (newActiveTab) {
           onSwitchTab(newActiveTab.id)
           if (onInputRestore) {

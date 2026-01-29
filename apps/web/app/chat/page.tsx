@@ -202,7 +202,7 @@ function ChatPageContent() {
     agentManagerTimeoutRef,
     abortControllerRef,
     currentRequestIdRef,
-    isSubmittingRef,
+    isSubmittingByTabRef,
   } = useChatMessaging({
     workspace,
     tabId,
@@ -227,7 +227,7 @@ function ChatPageContent() {
     setShowCompletionDots,
     abortControllerRef,
     currentRequestIdRef,
-    isSubmittingRef,
+    isSubmittingByTabRef,
     onDevEvent: isDevelopment()
       ? event => {
           addDevEvent({

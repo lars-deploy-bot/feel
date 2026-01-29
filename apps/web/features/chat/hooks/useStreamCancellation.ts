@@ -25,8 +25,8 @@ interface UseStreamCancellationOptions {
   abortControllerRef: React.MutableRefObject<AbortController | null>
   /** Ref to the current request ID */
   currentRequestIdRef: React.MutableRefObject<string | null>
-  /** Ref to track if currently submitting */
-  isSubmittingRef: React.MutableRefObject<boolean>
+  /** Ref to track per-tab submission state */
+  isSubmittingByTabRef: React.MutableRefObject<Map<string, boolean>>
   /** Optional callback for dev terminal events */
   onDevEvent?: (event: { type: string; data: unknown }) => void
 }
@@ -56,7 +56,7 @@ interface UseStreamCancellationReturn {
  *   setShowCompletionDots,
  *   abortControllerRef,
  *   currentRequestIdRef,
- *   isSubmittingRef,
+ *   isSubmittingByTabRef,
  * })
  *
  * <button onClick={stopStreaming}>Stop</button>
@@ -70,7 +70,7 @@ export function useStreamCancellation({
   setShowCompletionDots,
   abortControllerRef,
   currentRequestIdRef,
-  isSubmittingRef,
+  isSubmittingByTabRef,
   onDevEvent,
 }: UseStreamCancellationOptions): UseStreamCancellationReturn {
   // Ref for immediate guard (prevents double-click during same sync tick)
@@ -116,7 +116,7 @@ export function useStreamCancellation({
     // No delay needed - cancel endpoint now waits for lock release before responding
     // Note: busy state is derived from streamingStore.isStreamActive, no need to set it
     const finishCancellation = () => {
-      isSubmittingRef.current = false
+      if (tabId) isSubmittingByTabRef.current.set(tabId, false)
       isStoppingRef.current = false
       setIsStopping(false)
       setShowCompletionDots(false)
@@ -202,7 +202,7 @@ export function useStreamCancellation({
     setShowCompletionDots,
     abortControllerRef,
     currentRequestIdRef,
-    isSubmittingRef,
+    isSubmittingByTabRef,
     streamingActions,
     onDevEvent,
   ])

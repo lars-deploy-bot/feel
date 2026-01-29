@@ -41,7 +41,7 @@ describe("useStreamCancellation", () => {
     setShowCompletionDots: vi.fn(),
     abortControllerRef: { current: new AbortController() },
     currentRequestIdRef: { current: "request-123" },
-    isSubmittingRef: { current: true },
+    isSubmittingByTabRef: { current: new Map([["test-conversation-123", true]]) },
   })
 
   beforeEach(() => {
@@ -227,9 +227,9 @@ describe("useStreamCancellation", () => {
       expect(options.setShowCompletionDots).toHaveBeenCalledWith(true)
     })
 
-    it("should reset isSubmittingRef to false after cancel completes", async () => {
+    it("should reset isSubmittingByTabRef to false after cancel completes", async () => {
       const options = createMockOptions()
-      options.isSubmittingRef.current = true
+      options.isSubmittingByTabRef.current.set("test-conversation-123", true)
       const { result } = renderHook(() => useStreamCancellation(options))
 
       act(() => {
@@ -237,14 +237,14 @@ describe("useStreamCancellation", () => {
       })
 
       // Still true during cleanup period
-      expect(options.isSubmittingRef.current).toBe(true)
+      expect(options.isSubmittingByTabRef.current.get("test-conversation-123")).toBe(true)
 
       // After cancel request completes
       await act(async () => {
         await vi.runAllTimersAsync()
       })
 
-      expect(options.isSubmittingRef.current).toBe(false)
+      expect(options.isSubmittingByTabRef.current.get("test-conversation-123")).toBe(false)
     })
   })
 
@@ -419,7 +419,7 @@ describe("useStreamCancellation", () => {
 
       // States should be reset via fallback timeout
       expect(result.current.isStopping).toBe(false)
-      expect(options.isSubmittingRef.current).toBe(false)
+      expect(options.isSubmittingByTabRef.current.get("test-conversation-123")).toBe(false)
 
       // Reset mock for other tests
       ;(postty as Mock).mockResolvedValue({})
