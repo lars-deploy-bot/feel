@@ -122,7 +122,7 @@ async function queryDomains(serverId: string): Promise<DomainRow[]> {
 
 function renderCaddySites(
   cfg: ServerConfig,
-  snippets: { common: string; image: string },
+  _snippets: { common: string; image: string },
   domains: DomainRow[]
 ): string {
   const header = [
@@ -131,15 +131,13 @@ function renderCaddySites(
     `# generated: ${new Date().toISOString()}`,
     `# domains: ${domains.length}`,
     "",
+    "# NOTE: Snippets (common_headers, image_serving) are imported globally",
+    "# from /etc/caddy/snippets/ via the main Caddyfile",
+    "",
   ].join("\n")
 
-  // Process snippets - replace placeholders
-  const common = snippets.common.trim()
-  const image = snippets.image
-    .replaceAll("__IMAGES_STORAGE__", cfg.paths.imagesStorage)
-    .trim()
-
-  const globalBlocks = [common, "", image, ""].join("\n")
+  // Skip snippet definitions - they're already loaded globally from /etc/caddy/snippets/
+  // Just generate site blocks that use `import <snippet_name>`
 
   // Generate site blocks
   const frameAncestors = cfg.domains.frameAncestors.join(" ")
@@ -197,7 +195,7 @@ function renderCaddySites(
     })
     .join("\n\n")
 
-  return `${header}\n${globalBlocks}\n${siteBlocks}\n`
+  return `${header}${siteBlocks}\n`
 }
 
 function renderCaddyShell(cfg: ServerConfig): string {
