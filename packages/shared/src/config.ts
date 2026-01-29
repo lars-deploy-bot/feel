@@ -39,18 +39,21 @@ interface ServerConfigFile {
   serverIp?: string
 }
 
+// Check if we're in a browser environment
+const isBrowser = typeof globalThis !== "undefined" && "window" in globalThis
+
 /**
  * Attempt to load server-config.json (server-side only)
  * Returns empty object in browser or if file doesn't exist
  */
 function loadServerConfig(): ServerConfigFile {
   // Skip in browser environment
-  if (typeof window !== "undefined") {
+  if (isBrowser) {
     return {}
   }
 
   // Skip if process.env indicates we should use defaults
-  if (process.env.SKIP_SERVER_CONFIG === "true") {
+  if (typeof process !== "undefined" && process.env?.SKIP_SERVER_CONFIG === "true") {
     return {}
   }
 
