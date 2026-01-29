@@ -1,13 +1,14 @@
 /**
  * tabStore unit tests
  *
- * Focus: Tab limit logic and edge cases that could cause
- * "Tab limit reached" error when user only sees 1 tab.
+ * Focus: Per-TabGroup tab limits. Each conversation can have up to
+ * MAX_TABS_PER_GROUP tabs. No global workspace limit.
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { useTabStore, type Tab } from "../tabStore"
+import { useTabStore, MAX_TABS_PER_GROUP, type Tab } from "../tabStore"
 
-const MAX_TABS = 10
+// Use the same logic as the store: closedAt === undefined means open
+const isOpen = (tab: Tab): boolean => tab.closedAt === undefined
 
 // Direct store access (no React hooks)
 const getState = () => useTabStore.getState()
@@ -26,19 +27,25 @@ const getActions = () => {
 
 // Helper to count open tabs for a workspace
 const countOpenTabs = (workspace: string): number => {
-  const tabs = getState().tabsByWorkspace[workspace] || []
-  return tabs.filter(t => !t.closedAt).length
+  const tabs = getState().tabsByWorkspace[workspace] ?? []
+  return tabs.filter(isOpen).length
+}
+
+// Helper to count open tabs in a specific group
+const countOpenTabsInGroup = (workspace: string, tabGroupId: string): number => {
+  const tabs = getState().tabsByWorkspace[workspace] ?? []
+  return tabs.filter(t => t.tabGroupId === tabGroupId && isOpen(t)).length
 }
 
 // Helper to count all tabs (open + closed) for a workspace
 const countAllTabs = (workspace: string): number => {
-  const tabs = getState().tabsByWorkspace[workspace] || []
+  const tabs = getState().tabsByWorkspace[workspace] ?? []
   return tabs.length
 }
 
 // Helper to get all tabs for inspection
 const getAllTabs = (workspace: string): Tab[] => {
-  return getState().tabsByWorkspace[workspace] || []
+  return getState().tabsByWorkspace[workspace] ?? []
 }
 
 describe("tabStore", () => {
@@ -65,107 +72,138 @@ describe("tabStore", () => {
     })
   })
 
-  describe("tab limit enforcement", () => {
-    it("should allow creating tabs up to MAX_TABS (10)", () => {
+  describe("per-group tab limit enforcement", () => {
+    it("should allow creating tabs up to MAX_TABS_PER_GROUP (5) in a single group", () => {
       const actions = getActions()
 
-      for (let i = 0; i < MAX_TABS; i++) {
+      for (let i = 0; i < MAX_TABS_PER_GROUP; i++) {
         const tab = actions.addTab(workspace, tabGroupId)
         expect(tab).not.toBeNull()
         expect(tab?.id).toBeDefined()
       }
 
-      expect(countOpenTabs(workspace)).toBe(MAX_TABS)
+      expect(countOpenTabsInGroup(workspace, tabGroupId)).toBe(MAX_TABS_PER_GROUP)
     })
 
-    it("should return null when adding tab at limit", () => {
+    it("should return null when adding tab at per-group limit", () => {
       const actions = getActions()
 
-      // Create 10 tabs
-      for (let i = 0; i < MAX_TABS; i++) {
+      // Create 5 tabs in same group
+      for (let i = 0; i < MAX_TABS_PER_GROUP; i++) {
         actions.addTab(workspace, tabGroupId)
       }
 
-      // 11th tab should fail
+      // 6th tab in same group should fail
       const tab = actions.addTab(workspace, tabGroupId)
       expect(tab).toBeNull()
     })
 
-    it("should return null from createTabGroupWithTab at limit", () => {
+    it("should allow tabs in different groups independently", () => {
       const actions = getActions()
+      const group1 = "group-1"
+      const group2 = "group-2"
 
-      // Create 10 tabs
-      for (let i = 0; i < MAX_TABS; i++) {
-        actions.addTab(workspace, tabGroupId)
+      // Fill group1 to limit
+      for (let i = 0; i < MAX_TABS_PER_GROUP; i++) {
+        const tab = actions.addTab(workspace, group1)
+        expect(tab).not.toBeNull()
       }
+      expect(countOpenTabsInGroup(workspace, group1)).toBe(MAX_TABS_PER_GROUP)
 
-      // Creating new tab group should fail
-      const result = actions.createTabGroupWithTab(workspace)
-      expect(result).toBeNull()
+      // group2 should still allow tabs
+      const tab = actions.addTab(workspace, group2)
+      expect(tab).not.toBeNull()
+      expect(countOpenTabsInGroup(workspace, group2)).toBe(1)
     })
 
-    it("should return null from openTabGroupInTab at limit (new group)", () => {
+    it("should allow unlimited tab groups (no global limit)", () => {
       const actions = getActions()
 
-      // Create 10 tabs
-      for (let i = 0; i < MAX_TABS; i++) {
+      // Create 20 different tab groups, each with 1 tab
+      for (let i = 0; i < 20; i++) {
+        const result = actions.createTabGroupWithTab(workspace)
+        expect(result).not.toBeNull()
+        expect(result?.tabGroupId).toBeDefined()
+        expect(result?.tabId).toBeDefined()
+      }
+
+      expect(countOpenTabs(workspace)).toBe(20)
+    })
+
+    it("should always succeed creating new tab group via createTabGroupWithTab", () => {
+      const actions = getActions()
+
+      // Fill one group to limit
+      for (let i = 0; i < MAX_TABS_PER_GROUP; i++) {
         actions.addTab(workspace, tabGroupId)
       }
 
-      // Opening new tab group should fail
+      // Creating new tab group should still succeed
+      const result = actions.createTabGroupWithTab(workspace)
+      expect(result).not.toBeNull()
+    })
+
+    it("should always succeed opening new tab group via openTabGroupInTab", () => {
+      const actions = getActions()
+
+      // Fill one group to limit
+      for (let i = 0; i < MAX_TABS_PER_GROUP; i++) {
+        actions.addTab(workspace, tabGroupId)
+      }
+
+      // Opening new tab group should succeed
       const newGroupId = "new-group"
       const tab = actions.openTabGroupInTab(workspace, newGroupId)
-      expect(tab).toBeNull()
+      expect(tab).not.toBeNull()
+      expect(tab?.tabGroupId).toBe(newGroupId)
     })
   })
 
   describe("closed tabs should NOT count toward limit", () => {
-    it("should not count closed tabs in limit check", () => {
+    it("should not count closed tabs in per-group limit check", () => {
       const actions = getActions()
 
-      // Create 10 tabs
+      // Create 5 tabs
       const tabs: Tab[] = []
-      for (let i = 0; i < MAX_TABS; i++) {
+      for (let i = 0; i < MAX_TABS_PER_GROUP; i++) {
         const tab = actions.addTab(workspace, tabGroupId)
         if (tab) tabs.push(tab)
       }
-      expect(countOpenTabs(workspace)).toBe(10)
+      expect(countOpenTabsInGroup(workspace, tabGroupId)).toBe(5)
 
-      // Close 5 tabs
-      for (let i = 0; i < 5; i++) {
+      // Close 3 tabs
+      for (let i = 0; i < 3; i++) {
         actions.removeTab(workspace, tabs[i].id)
       }
 
-      // Should have 5 open tabs now
-      expect(countOpenTabs(workspace)).toBe(5)
-      // But 10 total tabs (5 open + 5 closed)
-      expect(countAllTabs(workspace)).toBe(10)
+      // Should have 2 open tabs now
+      expect(countOpenTabsInGroup(workspace, tabGroupId)).toBe(2)
 
-      // Should be able to add 5 more
-      for (let i = 0; i < 5; i++) {
+      // Should be able to add 3 more
+      for (let i = 0; i < 3; i++) {
         const tab = actions.addTab(workspace, tabGroupId)
         expect(tab).not.toBeNull()
       }
 
-      expect(countOpenTabs(workspace)).toBe(10)
+      expect(countOpenTabsInGroup(workspace, tabGroupId)).toBe(5)
     })
 
-    it("should allow adding tab after closing one at limit", () => {
+    it("should allow adding tab after closing one at per-group limit", () => {
       const actions = getActions()
 
-      // Create 10 tabs
+      // Create 5 tabs
       const tabs: Tab[] = []
-      for (let i = 0; i < MAX_TABS; i++) {
+      for (let i = 0; i < MAX_TABS_PER_GROUP; i++) {
         const tab = actions.addTab(workspace, tabGroupId)
         if (tab) tabs.push(tab)
       }
 
-      // At limit - can't add more
+      // At limit - can't add more to this group
       expect(actions.addTab(workspace, tabGroupId)).toBeNull()
 
       // Close one tab
       actions.removeTab(workspace, tabs[0].id)
-      expect(countOpenTabs(workspace)).toBe(9)
+      expect(countOpenTabsInGroup(workspace, tabGroupId)).toBe(4)
 
       // Now should be able to add
       const newTab = actions.addTab(workspace, tabGroupId)
@@ -179,16 +217,16 @@ describe("tabStore", () => {
       const workspace1 = "workspace-1"
       const workspace2 = "workspace-2"
 
-      // Fill workspace1 to limit
-      for (let i = 0; i < MAX_TABS; i++) {
+      // Fill workspace1's group to limit
+      for (let i = 0; i < MAX_TABS_PER_GROUP; i++) {
         actions.addTab(workspace1, tabGroupId)
       }
-      expect(countOpenTabs(workspace1)).toBe(10)
+      expect(countOpenTabsInGroup(workspace1, tabGroupId)).toBe(5)
 
-      // workspace2 should still allow tabs
+      // Same tabGroupId in workspace2 should still allow tabs
       const tab = actions.addTab(workspace2, tabGroupId)
       expect(tab).not.toBeNull()
-      expect(countOpenTabs(workspace2)).toBe(1)
+      expect(countOpenTabsInGroup(workspace2, tabGroupId)).toBe(1)
     })
 
     it("should not affect other workspaces when closing tabs", () => {
@@ -257,11 +295,12 @@ describe("tabStore", () => {
       })
 
       // Both should count as open
-      expect(countOpenTabs(workspace)).toBe(2)
+      expect(countOpenTabsInGroup(workspace, tabGroupId)).toBe(2)
     })
 
     it("should handle tabs with closedAt=0 as closed (falsy but defined)", () => {
       // Edge case: closedAt could be 0 (epoch) which is falsy
+      // The fix uses `closedAt === undefined` instead of `!closedAt`
       useTabStore.setState({
         tabsByWorkspace: {
           [workspace]: [
@@ -280,14 +319,9 @@ describe("tabStore", () => {
         nextTabNumberByWorkspace: {},
       })
 
-      // This tab has closedAt=0, which is falsy
-      // The current filter uses `!t.closedAt` which would treat 0 as "open"
-      // This test documents the current behavior
-      const openCount = countOpenTabs(workspace)
-
-      // BUG: closedAt=0 is treated as open because !0 === true
-      // This test will FAIL if the bug is fixed (which is good!)
-      expect(openCount).toBe(1) // Current buggy behavior
+      // closedAt=0 is a valid timestamp (epoch), so it's closed
+      const openCount = countOpenTabsInGroup(workspace, tabGroupId)
+      expect(openCount).toBe(0) // Correctly treated as closed
     })
 
     it("should not create duplicate tabs on rapid addTab calls", () => {
@@ -338,10 +372,10 @@ describe("tabStore", () => {
 
       if (tab2) {
         actions.removeTab(workspace, tab2.id)
-        expect(countOpenTabs(workspace)).toBe(1)
+        expect(countOpenTabsInGroup(workspace, tabGroupId)).toBe(1)
 
         actions.reopenTab(workspace, tab2.id)
-        expect(countOpenTabs(workspace)).toBe(2)
+        expect(countOpenTabsInGroup(workspace, tabGroupId)).toBe(2)
       }
     })
   })
@@ -364,98 +398,66 @@ describe("tabStore", () => {
     })
   })
 
-  describe("BUG HUNT: scenarios that could cause limit with 1 visible tab", () => {
-    it("scenario: multiple tabGroups with tabs, user only sees one group", () => {
+  describe("per-group limits prevent old accumulation bug", () => {
+    it("scenario: multiple tabGroups with tabs - each group limited independently", () => {
       const actions = getActions()
 
-      // User creates tabs in multiple tab groups over time
-      // Each tab group might show as one "conversation" in sidebar
-      // but each can have multiple tabs
       const group1 = "group-1"
       const group2 = "group-2"
       const group3 = "group-3"
 
-      // 4 tabs in group 1
-      for (let i = 0; i < 4; i++) {
+      // Fill each group to limit
+      for (let i = 0; i < MAX_TABS_PER_GROUP; i++) {
         actions.addTab(workspace, group1)
-      }
-      // 3 tabs in group 2
-      for (let i = 0; i < 3; i++) {
         actions.addTab(workspace, group2)
-      }
-      // 3 tabs in group 3
-      for (let i = 0; i < 3; i++) {
         actions.addTab(workspace, group3)
       }
 
-      // Total: 10 open tabs across 3 groups
-      expect(countOpenTabs(workspace)).toBe(10)
+      // Total: 15 open tabs across 3 groups (5 each)
+      expect(countOpenTabs(workspace)).toBe(15)
+      expect(countOpenTabsInGroup(workspace, group1)).toBe(5)
+      expect(countOpenTabsInGroup(workspace, group2)).toBe(5)
+      expect(countOpenTabsInGroup(workspace, group3)).toBe(5)
 
-      // User might only SEE group 3 (3 tabs) but limit is reached
-      // because tabs from group 1 and 2 still count!
-      const newTab = actions.addTab(workspace, group3)
-      expect(newTab).toBeNull() // Limit reached!
+      // Can't add more to any full group
+      expect(actions.addTab(workspace, group1)).toBeNull()
+      expect(actions.addTab(workspace, group2)).toBeNull()
+      expect(actions.addTab(workspace, group3)).toBeNull()
+
+      // But CAN create a new group
+      const newGroup = actions.createTabGroupWithTab(workspace)
+      expect(newGroup).not.toBeNull()
+      expect(countOpenTabs(workspace)).toBe(16)
     })
 
-    it("scenario: tabs created but never properly displayed", () => {
-      // Simulate race condition where tabs are created
-      // but UI never rendered them (e.g., component unmounted)
+    it("scenario: old phantom tabs don't block new group creation", () => {
+      // Simulate state where many old tabs exist from different groups
       useTabStore.setState({
         tabsByWorkspace: {
           [workspace]: [
-            // 9 "phantom" tabs that were created but user never saw
-            ...Array.from({ length: 9 }, (_, i) => ({
+            // 50 "phantom" tabs spread across 10 old groups (5 each)
+            ...Array.from({ length: 50 }, (_, i) => ({
               id: `phantom-${i}`,
-              tabGroupId: `old-group-${i}`,
-              name: `Tab ${i + 1}`,
-              tabNumber: i + 1,
-              createdAt: Date.now() - 1000000, // Old timestamps
+              tabGroupId: `old-group-${Math.floor(i / 5)}`,
+              name: `Tab ${(i % 5) + 1}`,
+              tabNumber: (i % 5) + 1,
+              createdAt: Date.now() - 1000000,
               // NO closedAt - they're "open"
             })),
-            // 1 current tab user can see
-            {
-              id: "current-tab",
-              tabGroupId: "current-group",
-              name: "Tab 1",
-              tabNumber: 1,
-              createdAt: Date.now(),
-            },
           ],
         },
-        activeTabByWorkspace: { [workspace]: "current-tab" },
+        activeTabByWorkspace: { [workspace]: "phantom-0" },
         tabsExpandedByWorkspace: {},
         nextTabNumberByWorkspace: {},
       })
 
-      // User sees 1 tab but has 10 open
-      expect(countOpenTabs(workspace)).toBe(10)
+      expect(countOpenTabs(workspace)).toBe(50)
 
-      // Can't create new tab!
+      // With per-group limits, user can ALWAYS create a new group
       const actions = getActions()
-      const newTab = actions.addTab(workspace, "current-group")
-      expect(newTab).toBeNull()
-    })
-
-    it("scenario: migration left tabs without closedAt", () => {
-      // Simulate post-migration state where old tabs
-      // didn't have closedAt field at all
-      useTabStore.setState({
-        tabsByWorkspace: {
-          [workspace]: Array.from({ length: 10 }, (_, i) => ({
-            id: `migrated-${i}`,
-            tabGroupId: "migrated-group",
-            name: `Migrated Tab ${i + 1}`,
-            tabNumber: i + 1,
-            createdAt: Date.now(),
-            // closedAt field doesn't exist (not even undefined)
-          })),
-        },
-        activeTabByWorkspace: { [workspace]: "migrated-0" },
-        tabsExpandedByWorkspace: {},
-        nextTabNumberByWorkspace: {},
-      })
-
-      expect(countOpenTabs(workspace)).toBe(10)
+      const result = actions.createTabGroupWithTab(workspace)
+      expect(result).not.toBeNull()
+      expect(countOpenTabs(workspace)).toBe(51)
     })
   })
 
@@ -474,13 +476,13 @@ describe("tabStore", () => {
 
       const diagnosis = {
         totalTabs: tabs.length,
-        openTabs: tabs.filter(t => !t.closedAt).length,
-        closedTabs: tabs.filter(t => t.closedAt).length,
+        openTabs: tabs.filter(isOpen).length,
+        closedTabs: tabs.filter(t => !isOpen(t)).length,
         tabGroups: [...new Set(tabs.map(t => t.tabGroupId))],
         tabDetails: tabs.map(t => ({
           id: t.id.slice(0, 8),
           group: t.tabGroupId.slice(0, 8),
-          open: !t.closedAt,
+          open: isOpen(t),
           age: Date.now() - t.createdAt,
         })),
       }
@@ -488,6 +490,124 @@ describe("tabStore", () => {
       expect(diagnosis.totalTabs).toBe(2)
       expect(diagnosis.openTabs).toBe(1)
       expect(diagnosis.closedTabs).toBe(1)
+    })
+  })
+
+  /**
+   * REGRESSION TESTS
+   *
+   * These tests would have FAILED with the old global MAX_TABS=10 limit.
+   * They verify the fix: per-group limits instead of global workspace limits.
+   */
+  describe("REGRESSION: global limit bug fix", () => {
+    const OLD_GLOBAL_LIMIT = 10 // The old buggy limit
+
+    it("user with 10+ tabs across conversations can still create new conversation", () => {
+      // THE BUG: User had 10 open tabs spread across old conversations.
+      // When they tried to start a new conversation, it failed with "tabs full".
+      // THE FIX: Per-group limit means old conversations don't block new ones.
+
+      const actions = getActions()
+
+      // Simulate user's history: 3 old conversations with tabs
+      const oldConversations = ["conv-monday", "conv-tuesday", "conv-wednesday"]
+      for (const conv of oldConversations) {
+        // Each conversation has 4 tabs (total: 12 tabs)
+        for (let i = 0; i < 4; i++) {
+          actions.addTab(workspace, conv)
+        }
+      }
+
+      // Verify we have more than the old global limit
+      expect(countOpenTabs(workspace)).toBe(12)
+      expect(countOpenTabs(workspace)).toBeGreaterThan(OLD_GLOBAL_LIMIT)
+
+      // THE FIX: User can ALWAYS start a new conversation
+      const newConv = actions.createTabGroupWithTab(workspace)
+      expect(newConv).not.toBeNull()
+      expect(newConv.tabGroupId).toBeDefined()
+      expect(newConv.tabId).toBeDefined()
+
+      // And add tabs to the new conversation (up to per-group limit)
+      for (let i = 1; i < MAX_TABS_PER_GROUP; i++) {
+        const tab = actions.addTab(workspace, newConv.tabGroupId)
+        expect(tab).not.toBeNull()
+      }
+    })
+
+    it("user viewing conversation A can add tab even if B,C,D are full", () => {
+      // THE BUG: If conversations B, C, D had 10 tabs total, user couldn't
+      // add a tab to conversation A even though A only had 1 tab.
+
+      const actions = getActions()
+
+      // Create conversation A with 1 tab
+      const convA = "conversation-A"
+      actions.addTab(workspace, convA)
+      expect(countOpenTabsInGroup(workspace, convA)).toBe(1)
+
+      // Create conversations B, C, D each with 5 tabs (15 total in B/C/D)
+      for (const conv of ["conversation-B", "conversation-C", "conversation-D"]) {
+        for (let i = 0; i < MAX_TABS_PER_GROUP; i++) {
+          actions.addTab(workspace, conv)
+        }
+      }
+
+      // Total is way over old limit
+      expect(countOpenTabs(workspace)).toBe(16)
+      expect(countOpenTabs(workspace)).toBeGreaterThan(OLD_GLOBAL_LIMIT)
+
+      // THE FIX: Can still add tabs to conversation A (it only has 1)
+      const newTabInA = actions.addTab(workspace, convA)
+      expect(newTabInA).not.toBeNull()
+      expect(countOpenTabsInGroup(workspace, convA)).toBe(2)
+    })
+
+    it("opening sidebar conversation works even with many existing tabs", () => {
+      // THE BUG: User clicks conversation in sidebar, but openTabGroupInTab
+      // failed because global limit was reached from other conversations.
+
+      const actions = getActions()
+
+      // Fill workspace with 20 tabs across 4 groups
+      for (let g = 0; g < 4; g++) {
+        for (let t = 0; t < MAX_TABS_PER_GROUP; t++) {
+          actions.addTab(workspace, `existing-group-${g}`)
+        }
+      }
+      expect(countOpenTabs(workspace)).toBe(20)
+
+      // User clicks on a conversation in the sidebar
+      const sidebarConvId = "clicked-from-sidebar"
+      const tab = actions.openTabGroupInTab(workspace, sidebarConvId)
+
+      // THE FIX: Always succeeds for new groups
+      expect(tab).not.toBeNull()
+      expect(tab.tabGroupId).toBe(sidebarConvId)
+    })
+
+    it("power user with 100 conversations is not blocked", () => {
+      // Extreme case: power user with lots of history
+
+      const actions = getActions()
+
+      // Create 100 conversations, each with 1 tab
+      for (let i = 0; i < 100; i++) {
+        actions.createTabGroupWithTab(workspace)
+      }
+      expect(countOpenTabs(workspace)).toBe(100)
+
+      // Can still create more
+      const conv101 = actions.createTabGroupWithTab(workspace)
+      expect(conv101).not.toBeNull()
+
+      // Can add tabs to the new conversation
+      for (let i = 1; i < MAX_TABS_PER_GROUP; i++) {
+        expect(actions.addTab(workspace, conv101.tabGroupId)).not.toBeNull()
+      }
+
+      // Only blocked at per-group limit
+      expect(actions.addTab(workspace, conv101.tabGroupId)).toBeNull()
     })
   })
 })
