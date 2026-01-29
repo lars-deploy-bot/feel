@@ -608,7 +608,7 @@ curl -X POST https://terminal.goalive.nl/api/deploy-subdomain \
 ### Core Stack
 - **Next.js**: 16.0.0 (App Router, RSC)
 - **React**: 19.2.0 (Concurrent features)
-- **Claude Agent SDK**: 0.1.25 (query, streaming, tools)
+- **Claude Agent SDK**: 0.1.60 (query, streaming, tools) - Note: 0.2.x available with breaking changes
 - **Bun**: 1.2.22+ (runtime & package manager)
 - **TypeScript**: 5.x (strict mode)
 - **TailwindCSS**: 4.1.15 (utility-first CSS)

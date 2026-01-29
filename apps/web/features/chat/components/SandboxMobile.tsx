@@ -1,5 +1,5 @@
 "use client"
-import { Loader2, RotateCw, Square, X } from "lucide-react"
+import { RotateCw, Square, X } from "lucide-react"
 import { motion } from "framer-motion"
 import type { ReactNode } from "react"
 import { useEffect, useRef, useState } from "react"
@@ -7,6 +7,7 @@ import { PREVIEW_MESSAGES } from "@webalive/shared"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
 import { useSandboxContext } from "@/features/chat/lib/sandbox-context"
 import { getPreviewUrl } from "@/lib/preview-utils"
+import { PulsingDot } from "./ui/PulsingDot"
 
 interface SandboxMobileProps {
   onClose: () => void
@@ -164,7 +165,7 @@ export function SandboxMobile({ onClose, children, busy, statusText, onStop }: S
         {/* Status or chat input area */}
         {busy ? (
           <div className="border-t border-white/5 px-4 py-3 flex items-center gap-2">
-            <Loader2 size={14} className="animate-spin text-neutral-400 flex-shrink-0" />
+            <PulsingDot size="sm" className="flex-shrink-0" />
             <span className="text-sm text-neutral-300 truncate flex-1">{statusText || "Working..."}</span>
             {onStop && (
               <button

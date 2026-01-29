@@ -29,7 +29,7 @@
 | Topic | Description |
 |-------|-------------|
 | [Open Problems](./open-problems/) | Active issues and investigations |
-| [Currently Working On](./currently-working-on-this/) | Work in progress |
+| [PRs](./prs/) | Planned features and implementation guides |
 
 ## Documentation Principles
 

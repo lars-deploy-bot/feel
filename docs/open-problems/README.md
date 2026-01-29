@@ -36,8 +36,11 @@ GitHub Issue → Open Problem (this dir) → Fix Applied → Postmortem (moved t
 
 ## Current Open Problems
 
-- [deployment-port-collision.md](./deployment-port-collision.md) - Port assignment fails due to systemd environment pollution
 - [oauth-core-architectural-issues.md](./oauth-core-architectural-issues.md) - Critical architectural debt in OAuth core package requiring major refactoring
+
+## Resolved (Moved to Archive)
+
+- `deployment-port-collision` - Fixed 2025-11-19, moved to `/docs/archive/postmortems-resolved/`
 
 ## Moving to Postmortem
 

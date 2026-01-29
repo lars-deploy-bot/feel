@@ -39,6 +39,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
   ref,
 ) {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   const config: ChatInputConfig = useMemo(
     () => ({
@@ -74,6 +75,11 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
   // Detect supertemplate JSON in message and convert to attachments
   useSuperTemplateDetection(message, setMessage, attachments, addSuperTemplateAttachment)
 
+  // Callback for InputArea to register its textarea ref
+  const registerTextareaRef = useCallback((el: HTMLTextAreaElement | null) => {
+    textareaRef.current = el
+  }, [])
+
   // Expose methods to parent via ref
   useImperativeHandle(
     ref,
@@ -92,7 +98,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
       },
       clearAllAttachments: clearAttachments,
       focus: () => {
-        document.querySelector<HTMLTextAreaElement>('[data-testid="message-input"]')?.focus()
+        textareaRef.current?.focus()
       },
     }),
     [
@@ -130,7 +136,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault()
-        document.querySelector<HTMLTextAreaElement>('[data-testid="message-input"]')?.focus()
+        textareaRef.current?.focus()
       }
     }
     window.addEventListener("keydown", handleKeyDown)
@@ -151,6 +157,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
       onSubmit: handleSubmit,
       onStop,
       config,
+      registerTextareaRef,
     }),
     [
       message,
@@ -165,6 +172,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
       handleSubmit,
       onStop,
       config,
+      registerTextareaRef,
     ],
   )
 

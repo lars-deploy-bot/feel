@@ -1,7 +1,8 @@
 "use client"
 
-import { ArrowUp, Loader2, Square } from "lucide-react"
+import { ArrowUp, Square } from "lucide-react"
 import { useChatInput } from "./ChatInputContext"
+import { PulsingDot } from "../ui/PulsingDot"
 
 export function SendButton() {
   const { busy, isStopping, canSubmit, onSubmit, onStop } = useChatInput()
@@ -30,7 +31,7 @@ export function SendButton() {
         className="shrink-0 size-8 rounded-full text-xs font-medium bg-black/50 dark:bg-white/50 text-white dark:text-black transition-all duration-150 ease-in-out focus:outline-none flex items-center justify-center cursor-not-allowed"
         data-testid="stopping-button"
       >
-        <Loader2 size={14} className="animate-spin" />
+        <PulsingDot size="sm" />
       </button>
     )
   }

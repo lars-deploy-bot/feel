@@ -24,7 +24,7 @@
   * **Next.js 16** (App Router)
   * **PM2** runs the dev server (`bunx next dev --turbo -p 8998`) in staging; production can run `next start` (pattern is the same)
   * **Server user:** `root` (needed for uid/gid switching and management tasks)
-* **SDK:** `@anthropic-ai/claude-agent-sdk@0.1.25` provides the agent loop, tools, and streaming / polling behaviors.
+* **SDK:** `@anthropic-ai/claude-agent-sdk@0.1.60` provides the agent loop, tools, and streaming / polling behaviors.
 
 **The incident:** Files created by the agent within site workspaces were owned by **`root:root`** → site processes (unprivileged) could not read them → builds failed (e.g., Vite "failed to resolve import").
 
@@ -88,8 +88,8 @@ $ ls -la /srv/webalive/sites/two.goalive.nl/user/test-ownership-v2.txt
 
 * **Runtime:** Bun (Node-compat mode)
 * **Framework:** Next.js 16
-* **Process manager:** PM2 (dev mode in staging)
-* **SDK:** `@anthropic-ai/claude-agent-sdk` 0.1.25
+* **Process manager:** systemd (all environments)
+* **SDK:** `@anthropic-ai/claude-agent-sdk` 0.1.60
 * **Server user:** `root`
 
 ---
