@@ -30,20 +30,16 @@ const styles = {
   transitionAll: "transition-all duration-150 ease-in-out",
 } as const
 
-// Reusable close button component
+// Reusable close button component - matches header icon button style
 function CloseButton({ onClick, isMobile }: { onClick: () => void; isMobile?: boolean }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`size-8 rounded-full flex items-center justify-center ${styles.hoverFill} ${styles.transitionAll}`}
+      className="inline-flex items-center justify-center size-10 rounded-xl text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 bg-black/[0.03] dark:bg-white/[0.03] hover:bg-black/[0.07] dark:hover:bg-white/[0.07] active:bg-black/[0.12] dark:active:bg-white/[0.12] active:scale-95 transition-all duration-150 ease-out"
       aria-label="Close sidebar"
     >
-      {isMobile ? (
-        <X size={18} className={styles.textMuted} />
-      ) : (
-        <PanelLeftClose size={18} className={styles.textMuted} />
-      )}
+      {isMobile ? <X size={18} strokeWidth={1.75} /> : <PanelLeftClose size={18} strokeWidth={1.75} />}
     </button>
   )
 }
@@ -237,10 +233,10 @@ function FooterActions({ onOpenInvite, onOpenSettings }: { onOpenInvite: () => v
       <button
         type="button"
         onClick={onOpenSettings}
-        className={`size-8 rounded-full flex items-center justify-center ${styles.hoverFill} ${styles.transition}`}
+        className="inline-flex items-center justify-center size-10 rounded-xl text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 bg-black/[0.03] dark:bg-white/[0.03] hover:bg-black/[0.07] dark:hover:bg-white/[0.07] active:bg-black/[0.12] dark:active:bg-white/[0.12] active:scale-95 transition-all duration-150 ease-out"
         aria-label="Settings"
       >
-        <Settings2 size={18} className={styles.textMuted} />
+        <Settings2 size={18} strokeWidth={1.75} />
       </button>
     </div>
   )

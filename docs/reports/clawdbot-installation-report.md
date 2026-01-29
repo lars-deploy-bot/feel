@@ -4,11 +4,13 @@
 **Server:** claude-server (138.201.56.93)
 **Status:** Installed and Running
 
+> **Update (Jan 29, 2026):** ClawdBot has been renamed to **Moltbot**. Official repo: https://github.com/moltbot/moltbot · Website: https://molt.bot · Docs: https://docs.molt.bot. The CLI is now `moltbot` (the `clawdbot` command remains as a compatibility shim). This report reflects the Jan 25-26, 2026 install.
+
 ---
 
 ## Summary
 
-ClawdBot v2026.1.24-3 was successfully installed and configured as a systemd service on the WebAlive infrastructure server.
+ClawdBot (now Moltbot) v2026.1.24-3 was successfully installed and configured as a systemd service on the WebAlive infrastructure server.
 
 ## What is ClawdBot?
 
@@ -96,46 +98,46 @@ Many skills require additional setup (API keys, OAuth, or macOS-specific tools):
 
 ```bash
 # One-shot message
-clawdbot agent --agent main --message "What's the weather in Amsterdam?"
+moltbot agent --agent main --message "What's the weather in Amsterdam?"
 
 # Interactive TUI
-clawdbot tui
+moltbot tui
 ```
 
 ### Check Status
 
 ```bash
 # Full status
-clawdbot status --all
+moltbot status --all
 
 # Health check
-clawdbot health
+moltbot health
 
 # Doctor (diagnostics)
-clawdbot doctor
+moltbot doctor
 ```
 
 ### Manage Skills
 
 ```bash
 # List all skills
-clawdbot skills list
+moltbot skills list
 
 # Get skill details
-clawdbot skills info weather
+moltbot skills info weather
 ```
 
 ### Connect Messaging Channels
 
 ```bash
 # Interactive setup
-clawdbot onboard
+moltbot onboard
 
 # WhatsApp (scan QR)
-clawdbot channels login
+moltbot channels login
 
 # Configure specific channel
-clawdbot configure
+moltbot configure
 ```
 
 ## Comparison: ClawdBot vs Claude Bridge
@@ -185,9 +187,9 @@ clawdbot configure
 
 ## References
 
-- [ClawdBot GitHub](https://github.com/clawdbot/clawdbot)
-- [ClawdBot Documentation](https://docs.clawd.bot/)
-- [Getting Started Guide](https://docs.clawd.bot/start/getting-started)
+- [Moltbot GitHub](https://github.com/moltbot/moltbot)
+- [Moltbot Documentation](https://docs.molt.bot/)
+- [Getting Started Guide](https://docs.molt.bot/)
 - [VelvetShark Review](https://velvetshark.com/clawdbot-the-self-hosted-ai-that-siri-should-have-been)
 
 ---

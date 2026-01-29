@@ -1,5 +1,7 @@
 # ClawdBot Skills Analysis
 
+> **Update (Jan 29, 2026):** ClawdBot has been renamed to **Moltbot**. Official repo: https://github.com/moltbot/moltbot · Website: https://molt.bot · Docs: https://docs.molt.bot. The CLI is now `moltbot` (the `clawdbot` command remains as a compatibility shim). This report reflects the earlier ClawdBot naming.
+
 **Date**: 2026-01-26
 **Purpose**: Understand how ClawdBot skills work and what we can adopt for Alive
 
@@ -239,5 +241,5 @@ interface Skill {
 
 - [badlogic/pi-mono](https://github.com/badlogic/pi-mono) - Core library
 - [badlogic/pi-skills](https://github.com/badlogic/pi-skills) - Skill collection
-- [clawdbot/clawdbot](https://github.com/clawdbot/clawdbot) - ClawdBot repo
+- [moltbot/moltbot](https://github.com/moltbot/moltbot) - Moltbot repo
 - [Agent Skills Spec](https://agentskills.io/specification) - Standard specification

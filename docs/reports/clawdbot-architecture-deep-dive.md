@@ -1,5 +1,7 @@
 # ClawdBot Architecture Deep Dive
 
+> **Update (Jan 29, 2026):** ClawdBot has been renamed to **Moltbot**. Official repo: https://github.com/moltbot/moltbot · Website: https://molt.bot · Docs: https://docs.molt.bot. The CLI is now `moltbot` (the `clawdbot` command remains as a compatibility shim). This report reflects the earlier ClawdBot naming and codebase layout.
+
 **Date:** January 26, 2026
 **Version Analyzed:** 2026.1.24-3
 **Source:** `/opt/services/clawdbot`

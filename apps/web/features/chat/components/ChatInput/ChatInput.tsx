@@ -208,7 +208,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
       />
 
       <section
-        className="relative flex-shrink-0 px-4 pb-4 mt-4 safe-area-inset-bottom"
+        className="relative flex-shrink-0 px-4 pb-4 pt-2 safe-area-inset-bottom"
         aria-label="Chat input"
         onPaste={handlePaste}
       >

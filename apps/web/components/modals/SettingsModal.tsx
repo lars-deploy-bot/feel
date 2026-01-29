@@ -89,7 +89,7 @@ export function SettingsModal({ onClose, initialTab }: SettingsModalProps) {
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 dark:bg-black/60 backdrop-blur-sm"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -101,7 +101,7 @@ export function SettingsModal({ onClose, initialTab }: SettingsModalProps) {
       transition={{ duration: 0.15 }}
     >
       <motion.div
-        className="relative bg-white dark:bg-zinc-900 rounded-t-2xl sm:rounded-2xl w-full sm:w-[95vw] sm:max-w-5xl h-[90vh] sm:min-h-[500px] sm:max-h-[680px] flex flex-col sm:flex-row overflow-hidden shadow-2xl border border-black/10 dark:border-white/10"
+        className="relative bg-white dark:bg-neutral-900 rounded-t-3xl sm:rounded-2xl w-full sm:w-[95vw] sm:max-w-5xl h-[92vh] sm:min-h-[500px] sm:max-h-[680px] flex flex-col sm:flex-row overflow-hidden shadow-2xl border border-black/[0.08] dark:border-white/[0.08] ring-1 ring-black/[0.04] dark:ring-white/[0.04]"
         onClick={e => e.stopPropagation()}
         role="document"
         initial={isDesktop ? { clipPath: "inset(50% 50% 50% 50%)" } : { y: "100%" }}
@@ -110,64 +110,82 @@ export function SettingsModal({ onClose, initialTab }: SettingsModalProps) {
         transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
       >
         {/* Mobile pull indicator */}
-        <div className="sm:hidden w-full flex justify-center pt-2 pb-1">
-          <div className="w-10 h-1 bg-black/20 dark:bg-white/20 rounded-full" />
+        <div className="sm:hidden w-full flex justify-center pt-3 pb-2">
+          <div className="w-9 h-1 bg-black/15 dark:bg-white/15 rounded-full" />
         </div>
 
         {/* Mobile: Top Tabs | Desktop: Left Sidebar */}
-        <div className="sm:w-56 bg-black/[0.02] dark:bg-white/[0.02] border-b sm:border-b-0 sm:border-r border-black/10 dark:border-white/10 flex flex-col">
+        <div className="sm:w-52 border-b sm:border-b-0 sm:border-r border-black/[0.06] dark:border-white/[0.06] flex flex-col">
           {/* Header */}
-          <div className="px-4 sm:px-6 py-3 sm:py-6 border-b border-black/10 dark:border-white/10 flex items-center justify-between">
+          <div className="px-4 sm:px-5 py-3 sm:py-5 border-b border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between">
             <h2
               id="settings-dialog-title"
-              className="text-base sm:text-lg font-semibold text-black dark:text-white flex items-center gap-2"
+              className="text-base font-semibold text-black/90 dark:text-white/90 flex items-center gap-2.5"
             >
-              <Settings size={18} />
+              <Settings size={18} strokeWidth={1.75} className="text-black/40 dark:text-white/40" />
               <span>Settings</span>
             </h2>
             {/* Mobile close button */}
             <button
               type="button"
               onClick={onClose}
-              className="sm:hidden p-2 -mr-1 hover:bg-black/10 dark:hover:bg-white/10 rounded-lg transition-colors active:scale-95"
+              className="sm:hidden inline-flex items-center justify-center size-10 rounded-xl text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 bg-black/[0.04] dark:bg-white/[0.04] hover:bg-black/[0.08] dark:hover:bg-white/[0.08] active:bg-black/[0.12] dark:active:bg-white/[0.12] active:scale-95 transition-all duration-150"
               aria-label="Close settings"
             >
-              <X size={20} className="text-black/60 dark:text-white/60" />
+              <X size={18} strokeWidth={2} />
             </button>
           </div>
 
-          {/* Tabs Navigation - Mobile: horizontal scroll with labels, Desktop: vertical sidebar */}
-          <div className="relative sm:flex-1">
-            {/* Fade indicators for mobile horizontal scroll */}
-            <div className="sm:hidden absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-white dark:from-zinc-900 to-transparent z-10 pointer-events-none" />
-            <div className="sm:hidden absolute right-0 top-0 bottom-0 w-4 bg-gradient-to-l from-white dark:from-zinc-900 to-transparent z-10 pointer-events-none" />
-
-            <nav className="flex sm:flex-col sm:flex-1 sm:p-3 px-2 sm:px-0 py-2 sm:py-0 gap-1.5 sm:gap-1 overflow-x-auto sm:overflow-x-visible overflow-y-hidden sm:overflow-y-auto scrollbar-hide">
+          {/* Mobile: Icon grid | Desktop: Vertical list */}
+          <nav className="p-2 sm:p-2.5 sm:flex-1">
+            {/* Mobile: Compact grid of icon buttons (4 cols = balanced rows for 8 tabs) */}
+            <div className="grid grid-cols-4 gap-1.5 sm:hidden">
               {tabs.map(tab => (
                 <button
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex-shrink-0 sm:flex-shrink flex flex-col sm:flex-row items-center gap-1 sm:gap-3 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap min-w-[56px] sm:min-w-0 ${
+                  className={`flex flex-col items-center justify-center gap-1.5 h-16 rounded-xl transition-all duration-150 active:scale-95 ${
                     activeTab === tab.id
-                      ? "bg-black dark:bg-white text-white dark:text-black shadow-sm"
-                      : "text-black/60 dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/5 hover:text-black dark:hover:text-white"
+                      ? "bg-black dark:bg-white text-white dark:text-black"
+                      : "text-black/50 dark:text-white/50 bg-black/[0.03] dark:bg-white/[0.03] active:bg-black/[0.08] dark:active:bg-white/[0.08]"
                   }`}
                 >
-                  <span className="[&>svg]:w-[18px] [&>svg]:h-[18px] sm:[&>svg]:w-4 sm:[&>svg]:h-4">{tab.icon}</span>
-                  <span className="text-[10px] sm:text-sm leading-tight">{tab.label}</span>
+                  <span className="[&>svg]:w-5 [&>svg]:h-5 [&>svg]:stroke-[1.5]">{tab.icon}</span>
+                  <span className="text-[10px] font-medium leading-none">{tab.label}</span>
                 </button>
               ))}
-            </nav>
-          </div>
+            </div>
+
+            {/* Desktop: Vertical list */}
+            <div className="hidden sm:flex sm:flex-col gap-0.5">
+              {tabs.map(tab => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2.5 h-9 px-3 rounded-lg text-[13px] font-medium transition-all duration-150 ${
+                    activeTab === tab.id
+                      ? "bg-black/[0.08] dark:bg-white/[0.10] text-black/90 dark:text-white/90"
+                      : "text-black/50 dark:text-white/50 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-black/70 dark:hover:text-white/70"
+                  }`}
+                >
+                  <span className="[&>svg]:w-4 [&>svg]:h-4 [&>svg]:stroke-[1.75]">{tab.icon}</span>
+                  <span>{tab.label}</span>
+                </button>
+              ))}
+            </div>
+          </nav>
         </div>
 
         {/* Content Area */}
         <div className="flex-1 flex flex-col min-h-0">
           {/* Scrollable Content */}
-          <div className="flex-1 overflow-y-auto px-4 sm:px-6">
+          <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-2 sm:py-0">
             <div className="animate-in fade-in-0 duration-200">
-              <Suspense fallback={<div className="py-8 text-center text-black/50 dark:text-white/50">Loading...</div>}>
+              <Suspense
+                fallback={<div className="py-12 text-center text-black/40 dark:text-white/40 text-sm">Loading...</div>}
+              >
                 {activeTab === "account" && <AccountSettings onClose={onClose} />}
                 {activeTab === "llm" && <LLMSettings onClose={onClose} />}
                 {activeTab === "goal" && <GoalSettings onClose={onClose} />}

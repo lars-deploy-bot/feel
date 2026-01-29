@@ -506,10 +506,10 @@ function ChatPageContent() {
         <button
           type="button"
           onClick={toggleSidebar}
-          className="fixed top-3.5 left-3.5 z-40 p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors flex"
+          className="fixed top-[6px] left-3 z-40 inline-flex items-center justify-center size-10 rounded-xl text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 bg-black/[0.03] dark:bg-white/[0.03] hover:bg-black/[0.07] dark:hover:bg-white/[0.07] active:bg-black/[0.12] dark:active:bg-white/[0.12] active:scale-95 transition-all duration-150 ease-out"
           aria-label="Open tab groups"
         >
-          <PanelLeft size={18} className="text-black/40 dark:text-white/40" />
+          <PanelLeft size={18} strokeWidth={1.75} />
         </button>
       )}
 

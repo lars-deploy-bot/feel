@@ -1,5 +1,7 @@
 # ClawdBot vs Alive: Competitive Analysis Report
 
+> **Update (Jan 29, 2026):** ClawdBot has been renamed to **Moltbot**. Official repo: https://github.com/moltbot/moltbot · Website: https://molt.bot · Docs: https://docs.molt.bot. The CLI is now `moltbot` (the `clawdbot` command remains as a compatibility shim). This report reflects the earlier ClawdBot naming.
+
 **Date:** January 26, 2026
 **Context:** Analysis from Claude Code session `63fbcb14-1715-4a0c-aed2-9e78f1453ab8`
 

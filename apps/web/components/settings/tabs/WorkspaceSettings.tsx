@@ -9,6 +9,7 @@ import type { Organization } from "@/lib/api/types"
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
 import { canRemoveMember } from "@/lib/permissions/org-permissions"
 import { useCurrentWorkspace, useSelectedOrgId, useWorkspaceActions } from "@/lib/stores/workspaceStore"
+import { input, primaryButton, secondaryButton, smallButton, text } from "../styles"
 import { SettingsTabLayout, type SettingsTabProps } from "./SettingsTabLayout"
 
 interface OrgMember {
@@ -291,7 +292,7 @@ export function WorkspacesGrid({
 }) {
   if (loading) {
     return (
-      <div className="px-3 py-4 text-xs text-black/40 dark:text-white/40 text-center rounded-md bg-black/5 dark:bg-white/5">
+      <div className="px-3 py-4 text-xs text-black/40 dark:text-white/40 text-center rounded-xl bg-black/[0.03] dark:bg-white/[0.03]">
         Loading websites...
       </div>
     )
@@ -299,14 +300,10 @@ export function WorkspacesGrid({
 
   if (error) {
     return (
-      <div className="px-3 py-3 text-xs text-center rounded-md bg-red-50 dark:bg-red-950/20 space-y-2">
-        <p className="text-red-600 dark:text-red-400">{error}</p>
+      <div className="px-3 py-3 text-xs text-center rounded-xl bg-red-500/5 dark:bg-red-500/5 space-y-2">
+        <p className={text.error}>{error}</p>
         {onRetry && (
-          <button
-            type="button"
-            onClick={onRetry}
-            className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded transition-colors"
-          >
+          <button type="button" onClick={onRetry} className={smallButton}>
             Retry
           </button>
         )}
@@ -316,7 +313,7 @@ export function WorkspacesGrid({
 
   if (workspaces.length === 0) {
     return (
-      <div className="px-3 py-4 text-xs text-black/40 dark:text-white/40 text-center rounded-md bg-black/5 dark:bg-white/5">
+      <div className="px-3 py-4 text-xs text-black/40 dark:text-white/40 text-center rounded-xl bg-black/[0.03] dark:bg-white/[0.03]">
         No websites yet
       </div>
     )
@@ -331,23 +328,23 @@ export function WorkspacesGrid({
             key={workspace}
             type="button"
             disabled={isCurrent}
-            className={`text-left px-3 py-3 sm:py-2.5 rounded-lg sm:rounded border transition-all active:scale-[0.98] ${
+            className={`text-left px-3 py-3 sm:py-2.5 rounded-xl border transition-all duration-150 active:scale-[0.98] ${
               isCurrent
-                ? "border-black dark:border-white bg-black/5 dark:bg-white/5"
-                : "border-black/20 dark:border-white/20 hover:border-black dark:hover:border-white cursor-pointer"
+                ? "border-black/20 dark:border-white/20 bg-black/[0.04] dark:bg-white/[0.04]"
+                : "border-black/[0.08] dark:border-white/[0.08] hover:border-black/20 dark:hover:border-white/20 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] cursor-pointer"
             }`}
             onClick={() => onSwitch(workspace)}
           >
             <div className="flex items-center sm:flex-col sm:items-start justify-between sm:justify-start gap-2 sm:gap-1.5">
-              <span className="text-sm font-medium text-black dark:text-white truncate flex-1" title={workspace}>
+              <span className="text-sm font-medium text-black/90 dark:text-white/90 truncate flex-1" title={workspace}>
                 {workspace}
               </span>
               {isCurrent ? (
-                <span className="text-xs px-2 py-0.5 bg-black dark:bg-white text-white dark:text-black rounded flex-shrink-0">
+                <span className="text-xs px-2 py-0.5 bg-black dark:bg-white text-white dark:text-black rounded-lg flex-shrink-0">
                   Current
                 </span>
               ) : (
-                <span className="text-xs text-black/50 dark:text-white/50 flex-shrink-0">Tap to switch</span>
+                <span className={`${text.muted} flex-shrink-0`}>Tap to switch</span>
               )}
             </div>
           </button>
@@ -441,22 +438,19 @@ export function WorkspaceSettings({ onClose }: SettingsTabProps) {
     <SettingsTabLayout title="Workspace" description="Invite teammates and manage your organization" onClose={onClose}>
       {/* Errors */}
       {error && (
-        <div className="px-4 py-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/30 rounded-lg space-y-2">
-          <p className="text-sm text-red-600 dark:text-red-400" data-testid="org-error-message">
+        <div className="px-4 py-3 bg-red-500/5 dark:bg-red-500/5 border border-red-500/10 dark:border-red-500/10 rounded-xl space-y-2">
+          <p className={text.error} data-testid="org-error-message">
             {error}
           </p>
-          <button
-            type="button"
-            onClick={refetch}
-            className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded transition-colors"
-            data-testid="org-error-retry"
-          >
+          <button type="button" onClick={refetch} className={smallButton} data-testid="org-error-retry">
             Retry
           </button>
         </div>
       )}
       {editor.error && (
-        <div className="px-4 py-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/30 rounded-lg text-sm text-red-600 dark:text-red-400">
+        <div
+          className={`px-4 py-3 bg-red-500/5 dark:bg-red-500/5 border border-red-500/10 dark:border-red-500/10 rounded-xl ${text.error}`}
+        >
           {editor.error}
         </div>
       )}
@@ -464,17 +458,14 @@ export function WorkspaceSettings({ onClose }: SettingsTabProps) {
       {/* Loading */}
       {loading ? (
         <div className="flex flex-col items-center justify-center py-12 gap-3">
-          <div className="w-8 h-8 border-2 border-black/20 dark:border-white/20 border-t-black dark:border-t-white rounded-full animate-spin" />
-          <p className="text-sm text-black/40 dark:text-white/40">Loading organizations...</p>
+          <div className="w-8 h-8 border-2 border-black/[0.08] dark:border-white/[0.08] border-t-black/60 dark:border-t-white/60 rounded-full animate-spin" />
+          <p className={text.muted}>Loading organizations...</p>
         </div>
       ) : organizations.length === 0 ? (
         <div className="text-center py-12">
-          <Building2 size={48} className="mx-auto mb-4 text-black/20 dark:text-white/20" />
-          <p className="text-sm text-black/60 dark:text-white/60 mb-4">No organizations found</p>
-          <button
-            type="button"
-            className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg text-sm font-medium hover:bg-black/80 dark:hover:bg-white/80 transition-colors"
-          >
+          <Building2 size={48} strokeWidth={1} className="mx-auto mb-4 text-black/20 dark:text-white/20" />
+          <p className={`${text.description} mb-4`}>No organizations found</p>
+          <button type="button" className={primaryButton}>
             Create Organization
           </button>
         </div>
@@ -487,10 +478,10 @@ export function WorkspaceSettings({ onClose }: SettingsTabProps) {
                 key={org.org_id}
                 type="button"
                 onClick={() => handleSelectOrg(org.org_id)}
-                className={`px-3 py-1.5 rounded-full text-sm transition-all ${
+                className={`px-3 py-1.5 rounded-xl text-sm transition-all duration-150 active:scale-95 ${
                   org.org_id === selectedOrgId
                     ? "bg-black dark:bg-white text-white dark:text-black font-medium"
-                    : "bg-black/5 dark:bg-white/5 text-black/60 dark:text-white/60 hover:bg-black/10 dark:hover:bg-white/10 hover:text-black dark:hover:text-white"
+                    : "bg-black/[0.04] dark:bg-white/[0.04] text-black/60 dark:text-white/60 hover:bg-black/[0.08] dark:hover:bg-white/[0.08] hover:text-black/80 dark:hover:text-white/80"
                 }`}
               >
                 {org.name}
@@ -512,18 +503,19 @@ export function WorkspaceSettings({ onClose }: SettingsTabProps) {
               return (
                 <div className="space-y-5">
                   {/* Quick Summary Bar */}
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-black/60 dark:text-white/60">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-black/50 dark:text-white/50">
                     <span>
-                      <strong className="text-black dark:text-white">{selectedOrg.credits.toFixed(2)}</strong> credits
+                      <strong className="text-black/90 dark:text-white/90">{selectedOrg.credits.toFixed(2)}</strong>{" "}
+                      credits
                     </span>
-                    <span className="hidden sm:inline">•</span>
+                    <span className="hidden sm:inline text-black/20 dark:text-white/20">•</span>
                     <span>
-                      <strong className="text-black dark:text-white">{selectedOrg.workspace_count || 0}</strong>{" "}
+                      <strong className="text-black/90 dark:text-white/90">{selectedOrg.workspace_count || 0}</strong>{" "}
                       websites
                     </span>
-                    <span className="hidden sm:inline">•</span>
+                    <span className="hidden sm:inline text-black/20 dark:text-white/20">•</span>
                     <span>
-                      <strong className="text-black dark:text-white">
+                      <strong className="text-black/90 dark:text-white/90">
                         {members.orgMembers[selectedOrg.org_id]?.length || 0}
                       </strong>{" "}
                       members
@@ -534,30 +526,21 @@ export function WorkspaceSettings({ onClose }: SettingsTabProps) {
                   <div className="space-y-3">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <h4 className="text-sm font-medium text-black dark:text-white">Invite teammates</h4>
-                        <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-medium rounded">
+                        <h4 className={text.label}>Invite teammates</h4>
+                        <span className="px-2 py-0.5 bg-amber-500/10 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-medium rounded-lg">
                           Coming soon
                         </span>
                       </div>
-                      <p className="text-xs text-black/60 dark:text-white/60">
+                      <p className={text.description}>
                         Give access to <strong>{selectedOrg.name}</strong> workspace and shared credits
                       </p>
-                      <p className="text-xs text-black/50 dark:text-white/50 mt-1">
+                      <p className={`${text.muted} mt-1`}>
                         Contact us to enable team invitations for your organization
                       </p>
                     </div>
-                    <div className="flex gap-2 opacity-50">
-                      <input
-                        type="email"
-                        placeholder="email@example.com"
-                        disabled
-                        className="flex-1 px-3 py-2 bg-white dark:bg-zinc-800 border border-black/20 dark:border-white/20 rounded-lg text-sm text-black dark:text-white placeholder:text-black/40 dark:placeholder:text-white/40 focus:outline-none focus:border-black dark:focus:border-white transition-colors"
-                      />
-                      <button
-                        type="button"
-                        disabled
-                        className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg text-sm font-medium hover:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
+                    <div className="flex gap-2 opacity-40">
+                      <input type="email" placeholder="email@example.com" disabled className={`flex-1 ${input}`} />
+                      <button type="button" disabled className={primaryButton}>
                         Invite
                       </button>
                     </div>
@@ -566,12 +549,12 @@ export function WorkspaceSettings({ onClose }: SettingsTabProps) {
                   {/* Members List - Always Visible */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-medium text-black dark:text-white">Members</h4>
+                      <h4 className={text.label}>Members</h4>
                     </div>
 
                     {members.loadingMembers[selectedOrg.org_id] ? (
                       <div className="py-8 text-center">
-                        <div className="inline-block w-5 h-5 border-2 border-black/20 dark:border-white/20 border-t-black dark:border-t-white rounded-full animate-spin" />
+                        <div className="inline-block w-5 h-5 border-2 border-black/[0.08] dark:border-white/[0.08] border-t-black/60 dark:border-t-white/60 rounded-full animate-spin" />
                       </div>
                     ) : members.orgMembers[selectedOrg.org_id] && members.orgMembers[selectedOrg.org_id].length > 0 ? (
                       <div className="space-y-2">
@@ -583,31 +566,27 @@ export function WorkspaceSettings({ onClose }: SettingsTabProps) {
                           return (
                             <div
                               key={member.user_id}
-                              className="flex items-start sm:items-center justify-between px-3 py-3 rounded-lg border border-black/10 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20 transition-colors gap-2"
+                              className="flex items-start sm:items-center justify-between px-3 py-3 rounded-xl border border-black/[0.06] dark:border-white/[0.06] hover:border-black/[0.12] dark:hover:border-white/[0.12] transition-colors duration-150 gap-2"
                             >
                               <div className="flex-1 min-w-0">
                                 <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-0.5">
-                                  <span className="text-sm font-medium text-black dark:text-white truncate max-w-[180px] sm:max-w-none">
+                                  <span className="text-sm font-medium text-black/90 dark:text-white/90 truncate max-w-[180px] sm:max-w-none">
                                     {member.display_name || member.email}
-                                    {isCurrentUser && (
-                                      <span className="ml-1 text-xs font-normal text-black/50 dark:text-white/50">
-                                        (you)
-                                      </span>
-                                    )}
+                                    {isCurrentUser && <span className={`ml-1 ${text.muted} font-normal`}>(you)</span>}
                                   </span>
                                   <span
-                                    className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
+                                    className={`text-xs px-2 py-0.5 rounded-lg font-medium flex-shrink-0 ${
                                       member.role === "owner"
-                                        ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
+                                        ? "bg-violet-500/10 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400"
                                         : member.role === "admin"
-                                          ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                                          : "bg-black/5 dark:bg-white/10 text-black/60 dark:text-white/60"
+                                          ? "bg-blue-500/10 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                                          : "bg-black/[0.04] dark:bg-white/[0.06] text-black/60 dark:text-white/60"
                                     }`}
                                   >
                                     {member.role}
                                   </span>
                                 </div>
-                                <div className="text-xs text-black/50 dark:text-white/50 truncate">{member.email}</div>
+                                <div className={`${text.muted} truncate`}>{member.email}</div>
                               </div>
 
                               {canRemove && (
@@ -617,10 +596,10 @@ export function WorkspaceSettings({ onClose }: SettingsTabProps) {
                                     members.requestRemoveMember(selectedOrg.org_id, member.user_id, member.email)
                                   }
                                   disabled={members.removingMember === member.user_id}
-                                  className="flex-shrink-0 p-2 sm:p-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg sm:rounded transition-colors disabled:opacity-50"
+                                  className="flex-shrink-0 p-2 sm:p-1.5 text-red-500/70 dark:text-red-400/70 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-500/10 dark:hover:bg-red-500/10 rounded-xl transition-colors duration-150 disabled:opacity-40"
                                   title="Remove member"
                                 >
-                                  <UserMinus size={18} className="sm:w-4 sm:h-4" />
+                                  <UserMinus size={18} strokeWidth={1.75} className="sm:w-4 sm:h-4" />
                                 </button>
                               )}
                             </div>
@@ -628,28 +607,24 @@ export function WorkspaceSettings({ onClose }: SettingsTabProps) {
                         })}
                       </div>
                     ) : (
-                      <div className="py-8 text-center text-sm text-black/40 dark:text-white/40">
-                        No members yet. Invite someone above!
-                      </div>
+                      <div className={`py-8 text-center ${text.muted}`}>No members yet. Invite someone above!</div>
                     )}
                   </div>
 
                   {/* Advanced Actions */}
                   <details className="group">
-                    <summary className="flex items-center justify-between px-3 py-2 rounded-lg bg-black/[0.02] dark:bg-white/[0.02] hover:bg-black/[0.04] dark:hover:bg-white/[0.04] cursor-pointer transition-colors">
-                      <span className="text-sm font-medium text-black dark:text-white">Advanced</span>
+                    <summary className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] hover:bg-black/[0.04] dark:hover:bg-white/[0.04] cursor-pointer transition-colors duration-150">
+                      <span className={text.label}>Advanced</span>
                       <ChevronDown
                         size={16}
-                        className="text-black/60 dark:text-white/60 group-open:rotate-180 transition-transform"
+                        strokeWidth={1.75}
+                        className="text-black/40 dark:text-white/40 group-open:rotate-180 transition-transform duration-150"
                       />
                     </summary>
                     <div className="mt-3 space-y-3 px-1">
                       {/* Rename Organization */}
                       <div>
-                        <label
-                          htmlFor="org-name-input"
-                          className="block text-xs font-medium text-black dark:text-white mb-2"
-                        >
+                        <label htmlFor="org-name-input" className={`block ${text.label} mb-2`}>
                           Organization name
                         </label>
                         {editor.editingOrgId === selectedOrg.org_id ? (
@@ -659,31 +634,27 @@ export function WorkspaceSettings({ onClose }: SettingsTabProps) {
                               type="text"
                               value={editor.editOrgName}
                               onChange={e => editor.setEditOrgName(e.target.value)}
-                              className="flex-1 px-3 py-2 bg-white dark:bg-zinc-800 border border-black/20 dark:border-white/20 rounded-lg text-sm text-black dark:text-white focus:outline-none focus:border-black dark:focus:border-white"
+                              className={`flex-1 ${input}`}
                             />
                             <button
                               type="button"
                               onClick={() => editor.saveEdit(selectedOrg.org_id)}
                               disabled={!editor.editOrgName.trim() || editor.saving}
-                              className="px-3 py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg text-xs font-medium hover:opacity-80 transition-opacity disabled:opacity-50"
+                              className={primaryButton}
                             >
                               {editor.saving ? "..." : "Save"}
                             </button>
-                            <button
-                              type="button"
-                              onClick={editor.cancelEdit}
-                              className="px-3 py-2 text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white rounded-lg text-xs font-medium transition-colors"
-                            >
+                            <button type="button" onClick={editor.cancelEdit} className={secondaryButton}>
                               Cancel
                             </button>
                           </div>
                         ) : (
-                          <div className="flex items-center justify-between px-3 py-2 bg-black/5 dark:bg-white/5 rounded-lg">
-                            <span className="text-sm text-black dark:text-white">{selectedOrg.name}</span>
+                          <div className="flex items-center justify-between px-3 py-2.5 bg-black/[0.03] dark:bg-white/[0.03] rounded-xl">
+                            <span className="text-sm text-black/80 dark:text-white/80">{selectedOrg.name}</span>
                             <button
                               type="button"
                               onClick={() => editor.startEdit(selectedOrg)}
-                              className="text-xs text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors"
+                              className={`${text.description} hover:text-black/80 dark:hover:text-white/80 transition-colors`}
                             >
                               Rename
                             </button>
@@ -692,12 +663,12 @@ export function WorkspaceSettings({ onClose }: SettingsTabProps) {
                       </div>
 
                       {/* Leave Organization */}
-                      <div className="pt-3 border-t border-black/10 dark:border-white/10">
+                      <div className="pt-3 border-t border-black/[0.06] dark:border-white/[0.06]">
                         <button
                           type="button"
                           onClick={() => leave.requestLeave(selectedOrg.org_id, selectedOrg.name)}
                           disabled={leave.leavingOrg === selectedOrg.org_id}
-                          className="text-xs text-red-600/70 dark:text-red-400/70 hover:text-red-600 dark:hover:text-red-400 transition-colors disabled:opacity-50"
+                          className="text-xs text-red-500/60 dark:text-red-400/60 hover:text-red-600 dark:hover:text-red-400 transition-colors duration-150 disabled:opacity-40"
                         >
                           {leave.leavingOrg === selectedOrg.org_id ? "Leaving..." : "Leave organization"}
                         </button>

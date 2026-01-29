@@ -44,7 +44,7 @@ export function useTabsManagement({
   onInputRestore,
 }: UseTabsOptions) {
   const tabs = useTabs(workspace, tabGroupId)
-  const closedTabs = useClosedTabs(workspace)
+  const closedTabs = useClosedTabs(workspace, tabGroupId)
   const activeTab = useActiveTab(workspace)
   const activeTabInGroup = tabs.find(t => t.id === activeTab?.id) ?? tabs[0] ?? null
   const tabsExpanded = useTabsExpanded(workspace)
