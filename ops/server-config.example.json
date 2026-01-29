@@ -1,8 +1,9 @@
 {
-  "serverId": "srv-primary",
-  "serverIp": "138.201.56.93",
+  "_comment": "Copy to /var/lib/claude-bridge/server-config.json and customize for this server",
+  "serverId": "srv-CHANGEME",
+  "serverIp": "0.0.0.0",
   "paths": {
-    "bridgeRoot": "/root/webalive/claude-bridge",
+    "bridgeRoot": "/path/to/claude-bridge",
     "sitesRoot": "/srv/webalive/sites",
     "imagesStorage": "/srv/webalive/storage"
   },

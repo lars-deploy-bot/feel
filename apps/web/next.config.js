@@ -40,6 +40,10 @@ const nextConfig = {
   distDir: process.env.PLAYWRIGHT_TEST ? ".next-test" : ".next",
   output: "standalone",
   devIndicators: false,
+  // Skip type checking during build (run separately with tsc)
+  typescript: {
+    ignoreBuildErrors: process.env.SKIP_TYPE_CHECK === "true",
+  },
   experimental: {
     serverActions: { bodySizeLimit: "2mb" },
   },
@@ -61,7 +65,15 @@ const nextConfig = {
       "../../node_modules/zod/**/*",
     ],
   },
-  serverExternalPackages: ["@napi-rs/image", "@webalive/shared", "@webalive/site-controller", "@webalive/env"],
+  serverExternalPackages: [
+    "@napi-rs/image",
+    "@webalive/shared",
+    "@webalive/site-controller",
+    "@webalive/env",
+    "@webalive/worker-pool",
+    "@webalive/oauth-core",
+    "@webalive/database",
+  ],
   transpilePackages: ["@alive-brug/guides", "@alive-brug/images", "@alive-brug/tools"],
 }
 export default nextConfig
