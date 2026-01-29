@@ -190,7 +190,7 @@ function ChatPageContent() {
   // sessionTabId is the primary session key for Claude SDK (resume parameter)
   const tabId = sessionTabId
   const tabGroupId = sessionTabGroupId
-  const { addTabToGroup, startNewTabGroup, switchTab } = sessionActions
+  const { startNewTabGroup, switchTab } = sessionActions
   // isChatReady derives from tabStore (sessionReady) only - Dexie is for persistence, not readiness
   const isChatReady = !!dexieSession && sessionReady
 
@@ -202,7 +202,7 @@ function ChatPageContent() {
     agentManagerTimeoutRef,
     abortControllerRef,
     currentRequestIdRef,
-    isSubmittingRef,
+    isSubmittingByTabRef,
   } = useChatMessaging({
     workspace,
     tabId,
@@ -227,7 +227,7 @@ function ChatPageContent() {
     setShowCompletionDots,
     abortControllerRef,
     currentRequestIdRef,
-    isSubmittingRef,
+    isSubmittingByTabRef,
     onDevEvent: isDevelopment()
       ? event => {
           addDevEvent({
@@ -491,6 +491,7 @@ function ChatPageContent() {
     <div
       className="h-[100dvh] flex flex-row overflow-hidden dark:bg-[#1a1a1a] dark:text-white"
       data-testid={mounted && workspace ? "workspace-ready" : "workspace-loading"}
+      data-chat-ready={isChatReady}
     >
       <ConversationSidebar
         workspace={workspace}
@@ -583,7 +584,13 @@ function ChatPageContent() {
               )}
 
               {messages
-                .filter(message => shouldRenderMessage(message, isDebugMode))
+                .filter(message => {
+                  // Hide "compacting" indicator once compaction completes (compact_boundary exists)
+                  if (message.type === "compacting" && messages.some(m => m.type === "compact_boundary")) {
+                    return false
+                  }
+                  return shouldRenderMessage(message, isDebugMode)
+                })
                 .map(message => {
                   const content = renderMessage(message, { onSubmitAnswer: sendMessage })
                   // Skip rendering wrapper if component returns null
@@ -596,7 +603,13 @@ function ChatPageContent() {
                 })}
 
               {/* Show pending tools (currently executing) - replaces generic "thinking" when tools are running */}
-              <PendingToolsIndicator tabId={sessionTabId} />
+              {/* Suppress "thinking" during context compaction (compacting without compact_boundary) */}
+              <PendingToolsIndicator
+                tabId={sessionTabId}
+                suppressThinking={
+                  messages.some(m => m.type === "compacting") && !messages.some(m => m.type === "compact_boundary")
+                }
+              />
 
               <AgentManagerIndicator
                 isEvaluating={isEvaluatingProgress}

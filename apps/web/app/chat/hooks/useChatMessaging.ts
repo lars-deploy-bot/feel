@@ -66,7 +66,8 @@ export function useChatMessaging({
   // Refs for request management
   const abortControllerRef = useRef<AbortController | null>(null)
   const currentRequestIdRef = useRef<string | null>(null)
-  const isSubmitting = useRef(false)
+  // Per-tab submission tracking to prevent double-clicks (Map<tabId, boolean>)
+  const isSubmittingByTab = useRef<Map<string, boolean>>(new Map())
   const agentManagerAbortRef = useRef<AbortController | null>(null)
   const agentManagerTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -407,7 +408,7 @@ export function useChatMessaging({
                     isInterruptEvent(eventData)
                   ) {
                     receivedAnyMessage = true
-                    isSubmitting.current = false
+                    isSubmittingByTab.current.set(targetTabId, false)
                     if (
                       (isCompleteEvent(eventData) || isDoneEvent(eventData)) &&
                       !isErrorEvent(eventData) &&
@@ -568,15 +569,18 @@ export function useChatMessaging({
   const sendMessage = useCallback(
     async (overrideMessage?: string) => {
       const messageToSend = overrideMessage ?? msg
+      // Use activeTab.id for per-tab submission check
+      const targetTabId = activeTab?.id
+      const isTabSubmitting = targetTabId ? (isSubmittingByTab.current.get(targetTabId) ?? false) : false
+
       // Note: isStopping check is done by the caller in ChatInput
-      if (isSubmitting.current || busy || !messageToSend.trim()) return
+      // Check per-tab submission state, not global
+      if (isTabSubmitting || busy || !messageToSend.trim()) return
       // Strict: require activeTab — tab.id IS the conversation key
-      if (!tabId || !activeTab?.id) return
+      if (!tabId || !targetTabId) return
 
-      // Use the active tab's ID for streaming and message routing
-      const targetTabId = activeTab.id
-
-      isSubmitting.current = true
+      // Mark this specific tab as submitting
+      isSubmittingByTab.current.set(targetTabId, true)
       streamingActions.startStream(targetTabId)
 
       const attachments = chatInputRef.current?.getAttachments() || []
@@ -596,7 +600,8 @@ export function useChatMessaging({
       try {
         await sendStreaming(userMessage, targetTabId)
       } finally {
-        isSubmitting.current = false
+        // Clear submission state for this specific tab
+        isSubmittingByTab.current.set(targetTabId, false)
       }
     },
     [
@@ -621,6 +626,6 @@ export function useChatMessaging({
     // Refs needed by useStreamCancellation
     abortControllerRef,
     currentRequestIdRef,
-    isSubmittingRef: isSubmitting,
+    isSubmittingByTabRef: isSubmittingByTab,
   }
 }

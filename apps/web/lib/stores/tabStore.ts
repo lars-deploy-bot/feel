@@ -1,395 +1,312 @@
 "use client"
 
-import { create } from "zustand"
-import { persist } from "zustand/middleware"
-import { useShallow } from "zustand/react/shallow"
-import type { TabId, TabGroupId } from "@/lib/types/ids"
-
 /**
- * Tab Store - Manages conversation tabs per workspace
+ * Tab Store Facade - Unified interface for split tab stores
  *
- * Each tab = one conversation. Tabs are workspace-scoped and persisted.
- * Tab names are "Tab 1", "Tab 2", etc. Numbers are never reused to avoid
- * confusion with archived conversations in the sidebar.
+ * This facade provides backwards-compatible access to the split tab stores:
+ * - tabDataStore (localStorage): Shared tab history across browser tabs
+ * - tabViewStore (sessionStorage): Per-browser-tab UI state (active tab, expanded)
+ *
+ * WHY SPLIT?
+ * Previously, activeTabByWorkspace was stored in localStorage, causing all browser
+ * tabs viewing the same workspace to share the same active tab ID. This caused
+ * 409 CONVERSATION_BUSY errors when trying to use parallel browser tabs.
+ *
+ * Now, tab DATA (history) is shared, but tab VIEW (selection) is per-browser-tab.
+ *
+ * MIGRATION:
+ * Old data from "claude-tab-storage" is automatically migrated to "claude-tab-data".
+ * The view store starts fresh per browser tab (intentional - no stale selections).
  */
 
-export interface Tab {
-  /** Unique tab identifier - ALSO the Claude conversation key */
-  id: TabId
-  /** Grouping id shown in left panel (sidebar item) */
-  tabGroupId: TabGroupId
-  name: string
-  tabNumber: number // Sequential number, never reused
-  createdAt: number
-  inputDraft?: string // Persisted draft message for this tab
-  /** Timestamp when tab was soft-deleted. Undefined = open tab. */
-  closedAt?: number
+import type { TabId, TabGroupId } from "@/lib/types/ids"
+import { type Tab, isOpen, isClosed } from "@/lib/tabs/tabModel"
+import { useTabDataStore, migrateFromLegacyTabStore } from "./tabDataStore"
+import { useTabViewStore } from "./tabViewStore"
+
+// Re-export types and constants for backwards compatibility
+export type { Tab } from "@/lib/tabs/tabModel"
+export { MAX_TABS_PER_GROUP } from "@/lib/tabs/tabModel"
+
+// Re-export stores for direct access
+export { useTabDataStore } from "./tabDataStore"
+export { useTabViewStore } from "./tabViewStore"
+
+// ============================================================================
+// Migration - Run once at module load
+// ============================================================================
+
+if (typeof window !== "undefined") {
+  // Migrate old localStorage data to new data store
+  migrateFromLegacyTabStore()
 }
 
-interface TabStoreState {
-  tabsByWorkspace: Record<string, Tab[]>
-  activeTabByWorkspace: Record<string, string | undefined>
-  tabsExpandedByWorkspace: Record<string, boolean>
-  /** @deprecated Kept for migration compatibility. Tab numbers are now computed per-tabgroup. */
-  nextTabNumberByWorkspace: Record<string, number>
-}
+// ============================================================================
+// Combined Actions Interface (backwards compatible)
+// ============================================================================
 
-interface TabStoreActions {
+export interface TabStoreActions {
+  /** Add a tab to a group. Returns null if group is at MAX_TABS_PER_GROUP limit. */
   addTab: (workspace: string, tabGroupId: TabGroupId, name?: string) => Tab | null
+  /** Soft-delete a tab (sets closedAt). Won't close the last tab in a group. */
   removeTab: (workspace: string, tabId: TabId) => void
+  /** Reopen a closed tab */
   reopenTab: (workspace: string, tabId: TabId) => void
+  /** Remove all tabs in a group (hard delete) */
   removeTabGroup: (workspace: string, tabGroupId: TabGroupId) => void
+  /** Set the active tab for a workspace */
   setActiveTab: (workspace: string, tabId: TabId) => void
+  /** Rename a tab */
   renameTab: (workspace: string, tabId: TabId, name: string) => void
+  /** Toggle tabs expanded state */
   toggleTabsExpanded: (workspace: string) => void
+  /** Collapse tabs and clear all tabs for workspace */
   collapseTabsAndClear: (workspace: string) => void
-  openTabGroupInTab: (workspace: string, tabGroupId: TabGroupId, name?: string) => Tab | null
+  /** Open a tab group - returns existing open tab or creates new one. Always succeeds. */
+  openTabGroupInTab: (workspace: string, tabGroupId: TabGroupId, name?: string) => Tab
+  /** Save input draft for a tab */
   setTabInputDraft: (workspace: string, tabId: TabId, draft: string) => void
-  /** Creates a new tabgroup with Tab 1 inside it. Returns ids or null if max tabs reached. */
-  createTabGroupWithTab: (workspace: string) => { tabGroupId: TabGroupId; tabId: TabId } | null
+  /** Create a new tab group with its first tab. Always succeeds. */
+  createTabGroupWithTab: (workspace: string) => { tabGroupId: TabGroupId; tabId: TabId }
+  /** Remove old closed tabs to free up storage. Returns count of removed tabs. */
+  cleanupOldTabs: (workspace: string) => number
 }
 
-type TabStore = TabStoreState & TabStoreActions
+// ============================================================================
+// Hook: useTabActions (combines both stores)
+// ============================================================================
 
-const MAX_TABS = 10
-const STORE_VERSION = 6 // Bump: Tab.id is now the conversation key (removed sessionId)
-
-/** Generate a tab ID - this IS the Claude conversation key */
-const genTabId = (): TabId => crypto.randomUUID()
-const genTabGroupId = (): TabGroupId => crypto.randomUUID()
-
-export const useTabStore = create<TabStore>()(
-  persist(
-    (set, get) => {
-      const getTabs = (workspace: string) => get().tabsByWorkspace[workspace] || []
-
-      const setTabs = (workspace: string, tabs: Tab[], activeId?: string) => {
-        set(s => ({
-          tabsByWorkspace: { ...s.tabsByWorkspace, [workspace]: tabs },
-          ...(activeId !== undefined && {
-            activeTabByWorkspace: { ...s.activeTabByWorkspace, [workspace]: activeId },
-          }),
-        }))
+/**
+ * Create stable action functions that don't change on re-render.
+ * These call directly into the stores at invocation time.
+ */
+function createTabActions(): TabStoreActions {
+  return {
+    addTab: (workspace: string, tabGroupId: TabGroupId, name?: string): Tab | null => {
+      const tab = useTabDataStore.getState().addTab(workspace, tabGroupId, name)
+      if (tab) {
+        useTabViewStore.getState().setActiveTab(workspace, tab.id)
       }
+      return tab
+    },
 
-      /**
-       * Compute next tab number for a tabgroup.
-       * Scoped per-tabgroup (not workspace) so each new tab group starts at Tab 1.
-       * Counts ALL tabs including closed ones to avoid reusing numbers within a group.
-       */
-      const getNextGroupNumber = (workspace: string, tabGroupId: string): number => {
-        const tabs = getTabs(workspace)
-        const groupTabs = tabs.filter(t => t.tabGroupId === tabGroupId)
-        if (groupTabs.length === 0) return 1
-        return Math.max(...groupTabs.map(t => t.tabNumber)) + 1
-      }
-
-      const createTab = (workspace: string, tabGroupId: TabGroupId, name?: string): Tab => {
-        const num = getNextGroupNumber(workspace, tabGroupId)
-        return {
-          id: genTabId(),
-          tabGroupId,
-          name: name ?? `Tab ${num}`,
-          tabNumber: num,
-          createdAt: Date.now(),
-        }
-      }
-
-      const addTabToWorkspace = (workspace: string, tabs: Tab[], tab: Tab) => {
-        setTabs(workspace, [...tabs, tab], tab.id)
-      }
-
-      return {
-        tabsByWorkspace: {},
-        activeTabByWorkspace: {},
-        tabsExpandedByWorkspace: {},
-        nextTabNumberByWorkspace: {}, // deprecated, kept for migration compat
-
-        addTab: (workspace, tabGroupId, name) => {
-          const tabs = getTabs(workspace)
-          const openTabs = tabs.filter(t => !t.closedAt)
-          if (openTabs.length >= MAX_TABS) return null
-
-          const tab = createTab(workspace, tabGroupId, name)
-          addTabToWorkspace(workspace, tabs, tab)
-          return tab
-        },
-
-        removeTab: (workspace, tabId) => {
-          const tabs = getTabs(workspace)
-          const closingTab = tabs.find(t => t.id === tabId)
-          if (!closingTab || closingTab.closedAt) return
-
-          // Only count open tabs in the SAME tabgroup — prevents picking an
-          // active tab from a different group which causes the TabBar to
-          // briefly show the wrong group's tabs.
-          const groupOpenTabs = tabs.filter(t => t.tabGroupId === closingTab.tabGroupId && !t.closedAt)
-          if (groupOpenTabs.length <= 1) return // Don't close the last open tab in the group
-
-          const idx = groupOpenTabs.findIndex(t => t.id === tabId)
-          const newTabs = tabs.map(t => (t.id === tabId ? { ...t, closedAt: Date.now() } : t))
-          const activeId = get().activeTabByWorkspace[workspace]
-          const remainingInGroup = groupOpenTabs.filter(t => t.id !== tabId)
-          const newActiveId =
-            activeId === tabId ? remainingInGroup[Math.min(idx, remainingInGroup.length - 1)]?.id : activeId
-
-          setTabs(workspace, newTabs, newActiveId)
-        },
-
-        reopenTab: (workspace, tabId) => {
-          const tabs = getTabs(workspace)
-          const tab = tabs.find(t => t.id === tabId && t.closedAt)
-          if (!tab) return
-
-          const newTabs = tabs.map(t => {
-            if (t.id === tabId) {
-              const { closedAt: _, ...rest } = t
-              return rest
-            }
-            return t
-          })
-          setTabs(workspace, newTabs, tabId)
-        },
-
-        removeTabGroup: (workspace, tabGroupId) => {
-          const tabs = getTabs(workspace)
-          const remainingTabs = tabs.filter(t => t.tabGroupId !== tabGroupId)
-          const activeId = get().activeTabByWorkspace[workspace]
-          const activeStillExists = remainingTabs.some(t => t.id === activeId)
-          const nextActiveId = activeStillExists ? activeId : remainingTabs[0]?.id
-
-          setTabs(workspace, remainingTabs, nextActiveId)
-        },
-
-        setActiveTab: (workspace, tabId) => {
-          set(s => ({ activeTabByWorkspace: { ...s.activeTabByWorkspace, [workspace]: tabId } }))
-        },
-
-        renameTab: (workspace, tabId, name) => {
-          const tabs = getTabs(workspace)
-          setTabs(
-            workspace,
-            tabs.map(t => (t.id === tabId ? { ...t, name: name.trim() || "Untitled" } : t)),
-          )
-        },
-
-        toggleTabsExpanded: workspace => {
-          set(s => ({
-            tabsExpandedByWorkspace: {
-              ...s.tabsExpandedByWorkspace,
-              [workspace]: !s.tabsExpandedByWorkspace[workspace],
-            },
-          }))
-        },
-
-        collapseTabsAndClear: workspace => {
-          set(s => ({
-            tabsExpandedByWorkspace: {
-              ...s.tabsExpandedByWorkspace,
-              [workspace]: false,
-            },
-            tabsByWorkspace: {
-              ...s.tabsByWorkspace,
-              [workspace]: [],
-            },
-            activeTabByWorkspace: {
-              ...s.activeTabByWorkspace,
-              [workspace]: undefined,
-            },
-          }))
-        },
-
-        openTabGroupInTab: (workspace, tabGroupId, name) => {
-          const tabs = getTabs(workspace)
-
-          const existing = tabs.find(t => t.tabGroupId === tabGroupId && !t.closedAt)
-          if (existing) {
-            set(s => ({ activeTabByWorkspace: { ...s.activeTabByWorkspace, [workspace]: existing.id } }))
-            return existing
-          }
-
-          const openTabs = tabs.filter(t => !t.closedAt)
-          if (openTabs.length >= MAX_TABS) return null
-          const tab = createTab(workspace, tabGroupId, name)
-          addTabToWorkspace(workspace, tabs, tab)
-          return tab
-        },
-
-        setTabInputDraft: (workspace, tabId, draft) => {
-          const tabs = getTabs(workspace)
-          setTabs(
-            workspace,
-            tabs.map(t => (t.id === tabId ? { ...t, inputDraft: draft } : t)),
-          )
-        },
-
-        createTabGroupWithTab: workspace => {
-          const tabs = getTabs(workspace)
-          const openTabs = tabs.filter(t => !t.closedAt)
-          if (openTabs.length >= MAX_TABS) return null
-
-          const tabGroupId = genTabGroupId()
-          const tab = createTab(workspace, tabGroupId)
-          addTabToWorkspace(workspace, tabs, tab)
-          return { tabGroupId, tabId: tab.id }
-        },
+    removeTab: (workspace: string, tabId: TabId): void => {
+      const currentActiveId = useTabViewStore.getState().getActiveTabId(workspace)
+      const nextActiveId = useTabDataStore.getState().removeTab(workspace, tabId, currentActiveId)
+      if (nextActiveId !== currentActiveId && nextActiveId) {
+        useTabViewStore.getState().setActiveTab(workspace, nextActiveId)
       }
     },
-    {
-      name: "claude-tab-storage",
-      version: STORE_VERSION,
-      /**
-       * skipHydration: true - Prevents automatic hydration on store creation
-       *
-       * HydrationManager calls rehydrate() for all persisted stores together,
-       * ensuring coordinated hydration and eliminating race conditions.
-       *
-       * @see HydrationBoundary.tsx
-       */
-      skipHydration: true,
-      partialize: s => ({
-        tabsByWorkspace: s.tabsByWorkspace,
-        activeTabByWorkspace: s.activeTabByWorkspace,
-        tabsExpandedByWorkspace: s.tabsExpandedByWorkspace,
-        nextTabNumberByWorkspace: s.nextTabNumberByWorkspace,
-      }),
-      migrate: (_persisted, version) => {
-        // Type for old tab structure (before v6)
-        interface LegacyTab {
-          id: string
-          sessionId?: string // Old: separate Claude session key
-          conversationId?: string // Even older: was sessionId before rename
-          tabGroupId: string
-          name: string
-          tabNumber: number
-          createdAt: number
-          inputDraft?: string
-          closedAt?: number
-        }
 
-        interface LegacyState {
-          tabsByWorkspace: Record<string, LegacyTab[]>
-          activeTabByWorkspace: Record<string, string | undefined>
-          tabsExpandedByWorkspace: Record<string, boolean>
-          nextTabNumberByWorkspace: Record<string, number>
-        }
-
-        if (version < STORE_VERSION) {
-          const legacy = _persisted as LegacyState | null
-          if (!legacy?.tabsByWorkspace) {
-            // No valid data to migrate
-            return {
-              tabsByWorkspace: {},
-              activeTabByWorkspace: {},
-              tabsExpandedByWorkspace: {},
-              nextTabNumberByWorkspace: {},
-            }
-          }
-
-          // Migrate tabs: sessionId (or conversationId) becomes the new id
-          const newTabsByWorkspace: Record<string, Tab[]> = {}
-          const idMapping: Record<string, string> = {} // old id -> new id
-
-          for (const [workspace, tabs] of Object.entries(legacy.tabsByWorkspace)) {
-            newTabsByWorkspace[workspace] = tabs.map((legacyTab: LegacyTab) => {
-              // Use sessionId or conversationId as the new id (it's the Claude session key)
-              // Fall back to existing id if neither exists (shouldn't happen but be safe)
-              const newId = legacyTab.sessionId || legacyTab.conversationId || legacyTab.id
-              idMapping[legacyTab.id] = newId
-
-              return {
-                id: newId,
-                tabGroupId: legacyTab.tabGroupId,
-                name: legacyTab.name,
-                tabNumber: legacyTab.tabNumber,
-                createdAt: legacyTab.createdAt,
-                inputDraft: legacyTab.inputDraft,
-                closedAt: legacyTab.closedAt,
-              }
-            })
-          }
-
-          // Update activeTabByWorkspace to use new ids
-          const newActiveTabByWorkspace: Record<string, string | undefined> = {}
-          for (const [workspace, oldActiveId] of Object.entries(legacy.activeTabByWorkspace)) {
-            if (oldActiveId && idMapping[oldActiveId]) {
-              newActiveTabByWorkspace[workspace] = idMapping[oldActiveId]
-            } else {
-              // Active tab not found in mapping, clear it (will be set on next render)
-              newActiveTabByWorkspace[workspace] = undefined
-            }
-          }
-
-          return {
-            tabsByWorkspace: newTabsByWorkspace,
-            activeTabByWorkspace: newActiveTabByWorkspace,
-            tabsExpandedByWorkspace: legacy.tabsExpandedByWorkspace || {},
-            nextTabNumberByWorkspace: legacy.nextTabNumberByWorkspace || {},
-          }
-        }
-
-        // Current version: pass through
-        return _persisted as TabStoreState
-      },
+    reopenTab: (workspace: string, tabId: TabId): void => {
+      useTabDataStore.getState().reopenTab(workspace, tabId)
+      useTabViewStore.getState().setActiveTab(workspace, tabId)
     },
-  ),
-)
 
-// Selectors — all return only open tabs (closedAt undefined) unless otherwise noted
+    removeTabGroup: (workspace: string, tabGroupId: TabGroupId): void => {
+      const viewState = useTabViewStore.getState()
+      const dataState = useTabDataStore.getState()
+      const currentActiveId = viewState.getActiveTabId(workspace)
+      const currentTab = currentActiveId ? dataState.getTab(workspace, currentActiveId) : undefined
+
+      const nextActiveId = dataState.removeTabGroup(workspace, tabGroupId)
+
+      // Only update active if the removed group contained the active tab
+      if (currentTab?.tabGroupId === tabGroupId) {
+        if (nextActiveId) {
+          viewState.setActiveTab(workspace, nextActiveId)
+        } else {
+          viewState.clearActiveTab(workspace)
+        }
+      }
+    },
+
+    setActiveTab: (workspace: string, tabId: TabId): void => {
+      useTabViewStore.getState().setActiveTab(workspace, tabId)
+    },
+
+    renameTab: (workspace: string, tabId: TabId, name: string): void => {
+      useTabDataStore.getState().renameTab(workspace, tabId, name)
+    },
+
+    toggleTabsExpanded: (workspace: string): void => {
+      useTabViewStore.getState().toggleTabsExpanded(workspace)
+    },
+
+    collapseTabsAndClear: (workspace: string): void => {
+      useTabDataStore.getState().clearWorkspace(workspace)
+      useTabViewStore.getState().collapseAndClear(workspace)
+    },
+
+    openTabGroupInTab: (workspace: string, tabGroupId: TabGroupId, name?: string): Tab => {
+      const tab = useTabDataStore.getState().openTabGroupInTab(workspace, tabGroupId, name)
+      useTabViewStore.getState().setActiveTab(workspace, tab.id)
+      return tab
+    },
+
+    setTabInputDraft: (workspace: string, tabId: TabId, draft: string): void => {
+      useTabDataStore.getState().setTabInputDraft(workspace, tabId, draft)
+    },
+
+    createTabGroupWithTab: (workspace: string): { tabGroupId: TabGroupId; tabId: TabId } => {
+      const result = useTabDataStore.getState().createTabGroupWithTab(workspace)
+      useTabViewStore.getState().setActiveTab(workspace, result.tabId)
+      return result
+    },
+
+    cleanupOldTabs: (workspace: string): number => {
+      const currentActiveId = useTabViewStore.getState().getActiveTabId(workspace)
+      return useTabDataStore.getState().cleanupOldTabs(workspace, currentActiveId)
+    },
+  }
+}
+
+// Singleton actions object (stable reference)
+let _tabActions: TabStoreActions | null = null
+
+export const useTabActions = (): TabStoreActions => {
+  if (!_tabActions) {
+    _tabActions = createTabActions()
+  }
+  return _tabActions
+}
+
+// ============================================================================
+// Selectors (React hooks) - Backwards compatible
+// ============================================================================
+
+/** Get open tabs in a specific group */
 export const useTabs = (workspace: string | null, tabGroupId?: string | null): Tab[] =>
-  useTabStore(s => {
-    if (!workspace) return []
-    const tabs = s.tabsByWorkspace[workspace] || []
-    if (!tabGroupId) return []
-    return tabs.filter(t => t.tabGroupId === tabGroupId && !t.closedAt)
+  useTabDataStore(s => {
+    if (!workspace || !tabGroupId) return []
+    const tabs = s.tabsByWorkspace[workspace] ?? []
+    return tabs.filter(t => t.tabGroupId === tabGroupId && isOpen(t))
   })
 
-/** Get all closed tabs for a workspace (for the "reopen" dropdown), most recently closed first */
+/** Get all closed tabs for a workspace, most recently closed first */
 export const useClosedTabs = (workspace: string | null): Tab[] =>
-  useTabStore(s => {
+  useTabDataStore(s => {
     if (!workspace) return []
-    const tabs = s.tabsByWorkspace[workspace] || []
-    return tabs.filter(t => t.closedAt).sort((a, b) => (b.closedAt ?? 0) - (a.closedAt ?? 0))
+    const tabs = s.tabsByWorkspace[workspace] ?? []
+    return tabs.filter(isClosed).sort((a, b) => (b.closedAt as number) - (a.closedAt as number))
   })
 
-export const useActiveTab = (workspace: string | null): Tab | null =>
-  useTabStore(s => {
-    if (!workspace) return null
-    const tabs = s.tabsByWorkspace[workspace] || []
-    const activeId = s.activeTabByWorkspace[workspace]
-    return tabs.find(t => t.id === activeId && !t.closedAt) ?? null
-  })
+/**
+ * Get the active tab for a workspace.
+ * Combines data from tabDataStore (tab details) and tabViewStore (active selection).
+ * Returns null if no active tab or workspace is null.
+ */
+export const useActiveTab = (workspace: string | null): Tab | null => {
+  const activeId = useTabViewStore(s => (workspace ? s.activeTabByWorkspace[workspace] : undefined))
+  const tabs = useTabDataStore(s => (workspace ? (s.tabsByWorkspace[workspace] ?? []) : []))
 
+  if (!workspace || !activeId) return null
+  const activeTab = tabs.find(t => t.id === activeId)
+  if (!activeTab || isClosed(activeTab)) return null
+  return activeTab
+}
+
+/** Check if tabs are expanded for a workspace */
 export const useTabsExpanded = (workspace: string | null): boolean =>
-  useTabStore(s => (workspace ? (s.tabsExpandedByWorkspace[workspace] ?? false) : false))
+  useTabViewStore(s => (workspace ? (s.tabsExpandedByWorkspace[workspace] ?? false) : false))
 
+/** Get all open tabs for a workspace */
 export const useWorkspaceTabs = (workspace: string | null): Tab[] =>
-  useTabStore(s => (workspace ? (s.tabsByWorkspace[workspace] ?? []).filter(t => !t.closedAt) : []))
+  useTabDataStore(s => (workspace ? (s.tabsByWorkspace[workspace] ?? []).filter(isOpen) : []))
 
-/** Get all tabs for a specific conversation across all workspaces */
+/** Get all open tabs for a specific tab group across all workspaces */
 export const useTabsForTabGroup = (tabGroupId: string | null): Tab[] =>
-  useTabStore(s => {
+  useTabDataStore(s => {
     if (!tabGroupId) return []
     const allTabs: Tab[] = []
     for (const tabs of Object.values(s.tabsByWorkspace)) {
-      allTabs.push(...tabs.filter(t => t.tabGroupId === tabGroupId && !t.closedAt))
+      allTabs.push(...tabs.filter(t => t.tabGroupId === tabGroupId && isOpen(t)))
     }
     return allTabs
   })
 
-export const useTabActions = (): TabStoreActions =>
-  useTabStore(
-    useShallow(s => ({
-      addTab: s.addTab,
-      removeTab: s.removeTab,
-      reopenTab: s.reopenTab,
-      removeTabGroup: s.removeTabGroup,
-      setActiveTab: s.setActiveTab,
-      renameTab: s.renameTab,
-      toggleTabsExpanded: s.toggleTabsExpanded,
-      collapseTabsAndClear: s.collapseTabsAndClear,
-      openTabGroupInTab: s.openTabGroupInTab,
-      setTabInputDraft: s.setTabInputDraft,
-      createTabGroupWithTab: s.createTabGroupWithTab,
-    })),
-  )
+// ============================================================================
+// Legacy Compatibility Layer
+// ============================================================================
+
+/**
+ * Combined state + actions type for backwards compatibility with tests and hooks.
+ */
+interface LegacyTabStoreState extends TabStoreActions {
+  tabsByWorkspace: Record<string, Tab[]>
+  activeTabByWorkspace: Record<string, TabId | undefined>
+  tabsExpandedByWorkspace: Record<string, boolean>
+  /** @deprecated Kept for migration compatibility only */
+  nextTabNumberByWorkspace: Record<string, number>
+}
+
+/**
+ * Unified store reference for backwards compatibility.
+ * Provides getState/setState for tests and hooks that used the old unified store.
+ *
+ * NOTE: setState only affects data stores.
+ * activeTabByWorkspace is now in tabViewStore (sessionStorage) and should be
+ * set via useTabActions().setActiveTab() instead.
+ */
+export const useTabStore = {
+  // Expose persist API for store-registrations.ts compatibility
+  persist: {
+    rehydrate: async (): Promise<void> => {
+      // Both stores handle their own rehydration
+      await useTabDataStore.persist?.rehydrate?.()
+      await useTabViewStore.persist?.rehydrate?.()
+    },
+    hasHydrated: (): boolean => {
+      // Defensive: in test environment, persist may not be initialized
+      const dataHydrated = useTabDataStore.persist?.hasHydrated?.() ?? false
+      const viewHydrated = useTabViewStore.persist?.hasHydrated?.() ?? false
+      return dataHydrated && viewHydrated
+    },
+  },
+
+  /**
+   * Get combined state + actions from both stores.
+   * Used by tests and hooks for backwards compatibility.
+   */
+  getState: (): LegacyTabStoreState => {
+    const dataState = useTabDataStore.getState()
+    const viewState = useTabViewStore.getState()
+    const actions = useTabActions()
+
+    return {
+      // State
+      tabsByWorkspace: dataState.tabsByWorkspace,
+      activeTabByWorkspace: viewState.activeTabByWorkspace,
+      tabsExpandedByWorkspace: viewState.tabsExpandedByWorkspace,
+      nextTabNumberByWorkspace: {}, // Deprecated, always empty
+      // Actions
+      ...actions,
+    }
+  },
+
+  /**
+   * Set state for backwards compatibility.
+   * Routes to appropriate store based on which fields are being set.
+   */
+  setState: (
+    partial: Partial<LegacyTabStoreState> | ((state: LegacyTabStoreState) => Partial<LegacyTabStoreState>),
+  ): void => {
+    const currentState = useTabStore.getState()
+    const newState = typeof partial === "function" ? partial(currentState) : partial
+
+    // Route to data store
+    if (newState.tabsByWorkspace !== undefined) {
+      useTabDataStore.setState({ tabsByWorkspace: newState.tabsByWorkspace })
+    }
+
+    // Route to view store
+    if (newState.activeTabByWorkspace !== undefined) {
+      useTabViewStore.setState({ activeTabByWorkspace: newState.activeTabByWorkspace })
+    }
+    if (newState.tabsExpandedByWorkspace !== undefined) {
+      useTabViewStore.setState({ tabsExpandedByWorkspace: newState.tabsExpandedByWorkspace })
+    }
+
+    // Ignore nextTabNumberByWorkspace - deprecated
+  },
+}

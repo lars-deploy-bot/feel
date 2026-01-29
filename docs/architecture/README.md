@@ -88,7 +88,7 @@ apps/web/
 ### Core Stack
 - **Next.js 16** - React framework (App Router)
 - **React 19** - UI library (concurrent features)
-- **Claude Agent SDK 0.1.25** - AI integration (query, streaming, tools)
+- **Claude Agent SDK 0.1.60** - AI integration (query, streaming, tools)
 - **Bun 1.2.22+** - Runtime & package manager
 - **TypeScript 5.x** - Type safety (strict mode)
 - **TailwindCSS 4** - Utility-first styling

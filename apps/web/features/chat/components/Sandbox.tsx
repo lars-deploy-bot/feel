@@ -8,6 +8,7 @@ import { useResizablePanel } from "@/lib/hooks/useResizablePanel"
 import { getPreviewUrl, getSiteUrl } from "@/lib/preview-utils"
 import { useDebugActions, useSandboxWidth } from "@/lib/stores/debug-store"
 import { SandboxModeMenu, SandboxCodePanel } from "./sandbox"
+import { PulsingDot } from "./ui/PulsingDot"
 
 export function Sandbox() {
   const { workspace } = useWorkspace({ allowEmpty: true })
@@ -277,7 +278,7 @@ export function Sandbox() {
             {/* Loading state */}
             {(isLoading || !previewToken) && (
               <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#0d0d0d]">
-                <div className="w-5 h-5 border-2 border-neutral-800 border-t-neutral-500 rounded-full animate-spin" />
+                <PulsingDot size="lg" />
               </div>
             )}
             {previewToken && (

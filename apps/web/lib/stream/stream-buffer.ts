@@ -251,7 +251,7 @@ if data.userId ~= ARGV[1] then
 end
 
 -- Get unread messages
-local startIndex = data.lastReadIndex + 2  -- Lua arrays are 1-indexed, +1 for next message
+local startIndex = data.lastReadIndex + 1  -- Lua arrays are 1-indexed, +1 for next message
 local unreadMessages = {}
 for i = startIndex, #data.messages do
   table.insert(unreadMessages, data.messages[i])
@@ -259,7 +259,7 @@ end
 
 -- Update cursor atomically if there are unread messages
 if #unreadMessages > 0 then
-  data.lastReadIndex = #data.messages - 1  -- 0-indexed for JS compatibility
+  data.lastReadIndex = #data.messages  -- 1-indexed Lua position of last message read
   local ttl = redis.call('TTL', KEYS[1])
   if ttl > 0 then
     redis.call('SETEX', KEYS[1], ttl, cjson.encode(data))

@@ -28,9 +28,27 @@ This directory contains historical documentation that has been archived.
 
 **Status**: Most issues resolved. Kept for historical reference.
 
+### Completed Features (Jan 2026)
+- `completed-features/tab_becomes_conversation.md` - Tab→conversation migration (PR #73)
+- `completed-features/tab_convo_migration/` - Detailed 8-phase implementation docs
+
+**Status**: Migration complete, merged to main.
+
+### Resolved Postmortems
+- `postmortems-resolved/2025-11-19-deployment-port-collision.md` - Port collision bug (fixed)
+- `postmortems-resolved/2025-11-19-deployment-port-collision-FIXES.md` - Fix implementation
+
+**Status**: Issues resolved, kept for reference.
+
+### Dead Code Analysis (Nov 2025)
+- `dead-code-analysis.md` - Codebase dead code audit
+- `dead-code/` - Detailed findings
+
+**Status**: Historical analysis, may be outdated.
+
 ## Why Archived?
 
-These documents were moved to archive during a documentation cleanup (Nov 2025) because:
+These documents were moved to archive during documentation cleanups because:
 1. **Completed work** - Implementation tracking docs for finished features
 2. **Duplication** - Information now consolidated in main docs
 3. **Historical value** - Useful for reference but not needed for daily development
@@ -42,3 +60,4 @@ For current documentation, see:
 - `docs/deployment/` - Deployment guides (active)
 - `docs/security/` - Security documentation (active)
 - `docs/features/` - Feature documentation (active)
+- `docs/open-problems/` - Currently open issues

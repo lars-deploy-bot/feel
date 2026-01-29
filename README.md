@@ -485,7 +485,7 @@ Messages are batched into groups for optimal UI rendering:
 
 - **Next.js 16.0.0** – React framework with App Router
 - **React 19.2.0** – Latest React with concurrent features
-- **@anthropic-ai/claude-agent-sdk 0.1.25** – Claude integration (query, streaming, tool callbacks)
+- **@anthropic-ai/claude-agent-sdk 0.1.60** – Claude integration (query, streaming, tool callbacks)
 - **TailwindCSS 4.1.15** – Utility-first CSS framework
 - **Lucide React 0.546.0** – Modern icon library
 - **Zod 4.1.12** – TypeScript-first schema validation

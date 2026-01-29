@@ -1,9 +1,8 @@
 import { createWriteStream } from "node:fs"
 import { spawn } from "node:child_process"
-import { NextResponse } from "next/server"
 import { z } from "zod"
-import { AuthenticationError, getSessionUser } from "@/features/auth/lib/auth"
-import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
+import { AuthenticationError, getSessionUser, createErrorResponse } from "@/features/auth/lib/auth"
+import { ErrorCodes } from "@/lib/error-codes"
 import { generateRequestId } from "@/lib/utils"
 
 /**
@@ -67,29 +66,13 @@ export async function POST(req: Request): Promise<Response> {
     const user = await getSessionUser()
     if (!user) {
       console.warn(`[Admin Deploy ${requestId}] No session`)
-      return NextResponse.json(
-        {
-          ok: false,
-          error: ErrorCodes.NO_SESSION,
-          message: getErrorMessage(ErrorCodes.NO_SESSION),
-          requestId,
-        },
-        { status: 401 },
-      )
+      return createErrorResponse(ErrorCodes.NO_SESSION, 401, { requestId })
     }
 
     // 2. Authorization - require admin privileges
     if (!user.isAdmin) {
       console.warn(`[Admin Deploy ${requestId}] Non-admin access attempt: ${user.email} (${user.id})`)
-      return NextResponse.json(
-        {
-          ok: false,
-          error: ErrorCodes.UNAUTHORIZED,
-          message: "Admin privileges required to access deployment controls.",
-          requestId,
-        },
-        { status: 403 },
-      )
+      return createErrorResponse(ErrorCodes.UNAUTHORIZED, 403, { requestId })
     }
 
     // 3. Parse and validate request body
@@ -97,30 +80,17 @@ export async function POST(req: Request): Promise<Response> {
     try {
       body = await req.json()
     } catch {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: ErrorCodes.INVALID_JSON,
-          message: getErrorMessage(ErrorCodes.INVALID_JSON),
-          requestId,
-        },
-        { status: 400 },
-      )
+      return createErrorResponse(ErrorCodes.INVALID_JSON, 400, { requestId })
     }
 
     const parseResult = RequestSchema.safeParse(body)
     if (!parseResult.success) {
       const field = parseResult.error.issues[0]?.path.join(".") || "action"
-      return NextResponse.json(
-        {
-          ok: false,
-          error: ErrorCodes.INVALID_REQUEST,
-          message: getErrorMessage(ErrorCodes.INVALID_REQUEST, { field }),
-          validActions: DeployActionSchema.options,
-          requestId,
-        },
-        { status: 400 },
-      )
+      return createErrorResponse(ErrorCodes.INVALID_REQUEST, 400, {
+        field,
+        validActions: DeployActionSchema.options,
+        requestId,
+      })
     }
 
     const { action } = parseResult.data
@@ -261,27 +231,13 @@ export async function POST(req: Request): Promise<Response> {
   } catch (error) {
     // Handle authentication errors thrown by requireSessionUser pattern
     if (error instanceof AuthenticationError) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: ErrorCodes.NO_SESSION,
-          message: getErrorMessage(ErrorCodes.NO_SESSION),
-          requestId,
-        },
-        { status: 401 },
-      )
+      return createErrorResponse(ErrorCodes.NO_SESSION, 401, { requestId })
     }
 
     console.error(`[Admin Deploy ${requestId}] Unexpected error:`, error)
-    return NextResponse.json(
-      {
-        ok: false,
-        error: ErrorCodes.REQUEST_PROCESSING_FAILED,
-        message: getErrorMessage(ErrorCodes.REQUEST_PROCESSING_FAILED),
-        details: { error: error instanceof Error ? error.message : "Unknown error" },
-        requestId,
-      },
-      { status: 500 },
-    )
+    return createErrorResponse(ErrorCodes.REQUEST_PROCESSING_FAILED, 500, {
+      exception: error instanceof Error ? error.message : "Unknown error",
+      requestId,
+    })
   }
 }

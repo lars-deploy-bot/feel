@@ -143,6 +143,8 @@ export interface ChatInputConfig {
 
 export interface ChatInputContextValue extends ChatInputState, ChatInputActions {
   config: ChatInputConfig
+  /** Register the textarea ref for focus management */
+  registerTextareaRef: (ref: HTMLTextAreaElement | null) => void
 }
 
 export interface ChatInputProps extends ChatInputActions {

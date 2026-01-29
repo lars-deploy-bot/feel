@@ -4,8 +4,14 @@ import { useEffect, useRef, type ClipboardEvent } from "react"
 import { useChatInput } from "./ChatInputContext"
 
 export function InputArea() {
-  const { message, setMessage, onSubmit, config } = useChatInput()
+  const { message, setMessage, onSubmit, config, registerTextareaRef } = useChatInput()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Register textarea ref with parent ChatInput for focus management
+  useEffect(() => {
+    registerTextareaRef(textareaRef.current)
+    return () => registerTextareaRef(null)
+  }, [registerTextareaRef])
 
   // Trim pasted content (collapse newlines to spaces)
   const handlePaste = (e: ClipboardEvent<HTMLTextAreaElement>) => {
