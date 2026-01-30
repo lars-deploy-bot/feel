@@ -21,22 +21,6 @@ AI assistant guidelines for working on Claude Bridge.
 13. **ONE DEPLOYMENT AT A TIME** - Before starting any deployment, check if one is already running: `make deploy-status`. If a deployment is running, WAIT. Do not start another. Stacked deployments cause memory exhaustion and production outages.
 14. **CLEAN BEFORE DEPLOY** - Before ANY deployment, check for orphaned processes: `ps aux | grep -E "make|ship|turbo|next build" | grep -v grep`. If you see old ones, kill them: `pkill -9 -f "ship.sh|build-and-serve|turbo|next build"` and remove stale lock: `rm -f /tmp/claude-bridge-deploy.lock`. Only then deploy.
 
-**DEPLOYMENT QUICK REFERENCE (copy-paste these in order):**
-```bash
-# 1. Check for orphans and clean
-ps aux | grep -E "make|ship|turbo|next build" | grep -v grep
-pkill -9 -f "ship.sh|build-and-serve|turbo|next build" 2>/dev/null; rm -f /tmp/claude-bridge-deploy.lock
-
-# 2. Verify no deployment running
-make deploy-status
-
-# 3. Deploy (ALWAYS with nohup)
-nohup make staging > /tmp/staging-deploy.log 2>&1 &  # or: nohup make production > /tmp/prod-deploy.log 2>&1 &
-
-# 4. Monitor
-tail -f /tmp/staging-deploy.log
-```
-
 ## Special Domains (NOT websites)
 
 These domains are **NOT** Vite website templates. Do not deploy them as sites:
