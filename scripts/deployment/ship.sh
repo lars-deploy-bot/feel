@@ -84,20 +84,7 @@ else
 fi
 
 # =============================================================================
-# Pre-flight: Check for zombie deployment processes
-# =============================================================================
-# If parent ship.sh was SIGKILLed, children may still be running
-zombie_count=$(pgrep -c -f "ship.sh --production|ship.sh --staging" 2>/dev/null || echo "0")
-if [ "$zombie_count" -gt 1 ]; then
-    echo -e "${RED}ERROR: Found $zombie_count ship.sh processes already running${NC}"
-    echo -e "${YELLOW}Killing orphaned processes before proceeding...${NC}"
-    pkill -9 -f "ship.sh|build-and-serve.sh|build-atomic.sh|turbo.*build|turbo.*type-check|next build" 2>/dev/null || true
-    sleep 2
-    rm -f "$LOCK_FILE"
-fi
-
-# =============================================================================
-# Acquire Lock
+# Acquire Lock (includes orphan cleanup if stale lock detected)
 # =============================================================================
 if ! lock_acquire "$TARGET"; then
     exit 1
