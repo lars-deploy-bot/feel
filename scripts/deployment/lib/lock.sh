@@ -128,7 +128,17 @@ lock_status() {
         echo "Deployment running: $target (phase: $phase, started: $time, PID: $pid)"
         return 0
     else
-        echo "Stale lock found (PID $pid not running)"
-        return 2
+        echo "Stale lock found (PID $pid not running) - auto-cleaning..."
+        # Kill any orphaned deployment processes
+        local orphans
+        orphans=$(pgrep -f "ship.sh|build-and-serve.sh|build-atomic.sh|turbo.*build|turbo.*type-check|next build" 2>/dev/null || true)
+        if [ -n "$orphans" ]; then
+            echo "Killing orphaned processes..."
+            echo "$orphans" | xargs -r kill -9 2>/dev/null || true
+            sleep 1
+        fi
+        rm -f "$LOCK_FILE"
+        echo "Cleaned. No deployment running."
+        return 1
     fi
 }

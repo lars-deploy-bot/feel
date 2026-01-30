@@ -575,31 +575,9 @@ make status      # Show all environments
 make rollback    # Interactive rollback (if needed)
 ```
 
-### Deploying from Chat (CRITICAL - READ THIS)
+### Deploying from Chat
 
-**⚠️ FAILURE TO FOLLOW THESE RULES CRASHES PRODUCTION ⚠️**
-
-**Step 1: Check if a deployment is already running**
-```bash
-make deploy-status
-```
-If it shows "Deployment running", STOP. Wait for it to finish. Do NOT start another.
-
-**Step 2: ALWAYS use nohup (NEVER bare make commands)**
-```bash
-# Staging deployment
-nohup make staging > /tmp/staging-deploy.log 2>&1 &
-
-# Production deployment
-nohup make prod > /tmp/prod-deploy.log 2>&1 &
-
-# Check progress
-tail -f /tmp/staging-deploy.log
-```
-
-**Why this matters:** If you run `make staging` without nohup and your chat disconnects or you cancel, the parent process dies but child processes (turbo, tsc, next build) become orphans and keep running. Next deployment sees "stale lock", removes it, starts new deployment alongside orphans. Repeat = 5+ concurrent builds = memory exhaustion = production down.
-
-**If production is timing out:** Check for stacked deployments with `ps aux | grep -E "make|ship|turbo|next build" | grep -v grep`. Kill them all, then restart the service.
+See **Core Rules 12-14** at the top of this file. Summary: clean orphans, check `make deploy-status`, deploy with `nohup`.
 
 ### Site Deployment (Different)
 
