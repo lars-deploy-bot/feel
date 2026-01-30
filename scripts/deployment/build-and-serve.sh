@@ -182,14 +182,17 @@ phase_start "Building application"
 # Remove circular symlinks from bun
 rm -f packages/*/template packages/*/images packages/*/tools 2>/dev/null || true
 
+BUILD_LOG="/tmp/claude-bridge-build-${ENV}.log"
 set +e
-BUILD_OUT=$("$SCRIPT_DIR/build-atomic.sh" "$ENV" 2>&1)
-BUILD_EXIT=$?
+"$SCRIPT_DIR/build-atomic.sh" "$ENV" 2>&1 | tee "$BUILD_LOG"
+BUILD_EXIT=${PIPESTATUS[0]}
 set -e
 
 if [ $BUILD_EXIT -ne 0 ]; then
     phase_end error "Build failed"
-    echo "$BUILD_OUT" | grep -E "Error:|error TS" | head -20
+    log_error "Full build log: $BUILD_LOG"
+    echo ""
+    grep -E "Error:|error TS|error:|failed" "$BUILD_LOG" | head -30
     exit 1
 fi
 

@@ -17,6 +17,9 @@ AI assistant guidelines for working on Claude Bridge.
 9. **OWN YOUR CHANGES** - When deploying or committing, NEVER say "these unrelated changes are not mine" or refuse to include changes in the working directory. If changes exist, they are part of the current work. Take responsibility and include them.
 10. **SEEMINGLY UNRELATED ISSUES ARE OFTEN RELATED** - When you see multiple errors or issues, assume they share a common cause until proven otherwise. Type errors in test files often stem from the same interface change. Build failures across packages usually have one root cause. Don't treat each error as isolated - find the pattern first.
 11. **INVESTIGATE BEFORE FIXING** - When something is "broken", first understand what it IS. Not all `*.goalive.nl` domains are Vite websites. Check nginx config, caddy-shell config, and existing services before creating anything new.
+12. **DEPLOYMENTS REQUIRE NOHUP** - When deploying staging/production, ALWAYS use `nohup make staging > /tmp/staging-deploy.log 2>&1 &` (never bare `make staging`). If your chat session disconnects or you cancel, bare commands leave orphaned build processes that stack up and crash production. Check `tail -f /tmp/staging-deploy.log` for progress. NEVER run deployment commands multiple times - wait for the first to complete.
+13. **ONE DEPLOYMENT AT A TIME** - Before starting any deployment, check if one is already running: `make deploy-status`. If a deployment is running, WAIT. Do not start another. Stacked deployments cause memory exhaustion and production outages.
+14. **CLEAN BEFORE DEPLOY** - Before ANY deployment, check for orphaned processes: `ps aux | grep -E "make|ship|turbo|next build" | grep -v grep`. If you see old ones, kill them: `pkill -9 -f "ship.sh|build-and-serve|turbo|next build"` and remove stale lock: `rm -f /tmp/claude-bridge-deploy.lock`. Only then deploy.
 
 ## Special Domains (NOT websites)
 
@@ -572,22 +575,31 @@ make status      # Show all environments
 make rollback    # Interactive rollback (if needed)
 ```
 
-### Deploying from Chat (IMPORTANT)
+### Deploying from Chat (CRITICAL - READ THIS)
 
-**When deploying to staging or production from within a chat session, ALWAYS use `nohup` to prevent the deployment from being interrupted if the connection drops:**
+**⚠️ FAILURE TO FOLLOW THESE RULES CRASHES PRODUCTION ⚠️**
 
+**Step 1: Check if a deployment is already running**
 ```bash
-# Staging deployment (from chat)
+make deploy-status
+```
+If it shows "Deployment running", STOP. Wait for it to finish. Do NOT start another.
+
+**Step 2: ALWAYS use nohup (NEVER bare make commands)**
+```bash
+# Staging deployment
 nohup make staging > /tmp/staging-deploy.log 2>&1 &
 
-# Production deployment (from chat) - requires approval
+# Production deployment
 nohup make prod > /tmp/prod-deploy.log 2>&1 &
 
-# Check deployment progress
+# Check progress
 tail -f /tmp/staging-deploy.log
 ```
 
-**Why nohup?** Chat sessions can timeout or disconnect during long builds. Using `nohup` ensures the deployment continues even if the session ends.
+**Why this matters:** If you run `make staging` without nohup and your chat disconnects or you cancel, the parent process dies but child processes (turbo, tsc, next build) become orphans and keep running. Next deployment sees "stale lock", removes it, starts new deployment alongside orphans. Repeat = 5+ concurrent builds = memory exhaustion = production down.
+
+**If production is timing out:** Check for stacked deployments with `ps aux | grep -E "make|ship|turbo|next build" | grep -v grep`. Kill them all, then restart the service.
 
 ### Site Deployment (Different)
 

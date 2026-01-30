@@ -48,27 +48,40 @@ for pkg in "${DEPRECATED_PACKAGES[@]}"; do
 done
 echo "✓ No deprecated packages found"
 
-# Check 3: Broken symlinks in node_modules
+# Check 3: Broken symlinks in node_modules (auto-fix)
 echo ""
 echo "[3/4] Checking for broken symlinks in node_modules..."
-BROKEN_LINKS=$(find node_modules/@alive-brug node_modules/@webalive -maxdepth 1 -type l 2>/dev/null | while read link; do
+BROKEN_LINKS=""
+for link in $(find node_modules/@alive-brug node_modules/@webalive node_modules/@alive-game -maxdepth 1 -type l 2>/dev/null); do
     if [ ! -e "$link" ]; then
-        echo "  ❌ Broken: $link"
-        echo "$link"
+        echo "  ⚠️  Broken symlink: $link"
+        echo "  → Auto-removing..."
+        rm -f "$link"
+        BROKEN_LINKS="$BROKEN_LINKS $link"
     fi
-done)
+done
 
 if [ -n "$BROKEN_LINKS" ]; then
-    echo "❌ FAIL: Broken symlinks detected:"
-    echo "$BROKEN_LINKS"
-    ISSUES_FOUND=$((ISSUES_FOUND + 1))
+    echo "✓ Auto-fixed broken symlinks:$BROKEN_LINKS"
 else
     echo "✓ No broken symlinks in node_modules"
 fi
 
-# Check 4: Empty package directories
+# Check 4: Stale Next.js lock files (auto-fix)
 echo ""
-echo "[4/4] Checking for empty package directories..."
+echo "[4/5] Checking for stale Next.js lock files..."
+if [ -f "apps/web/.next/lock" ]; then
+    echo "  ⚠️  Stale lock file: apps/web/.next/lock"
+    echo "  → Auto-removing..."
+    rm -f "apps/web/.next/lock"
+    echo "✓ Auto-fixed stale lock file"
+else
+    echo "✓ No stale lock files"
+fi
+
+# Check 5: Empty package directories
+echo ""
+echo "[5/5] Checking for empty package directories..."
 for dir in packages/*/; do
     PKG_NAME=$(basename "$dir")
     if [ ! -f "$dir/package.json" ]; then

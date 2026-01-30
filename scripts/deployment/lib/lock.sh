@@ -58,6 +58,15 @@ lock_acquire() {
             return 1
         else
             echo -e "${YELLOW}Removing stale lock (PID $lock_pid no longer running)${NC}"
+            # Kill any orphaned deployment processes from the dead parent
+            # These are child processes that survived SIGKILL of the parent
+            local orphans
+            orphans=$(pgrep -f "ship.sh|build-and-serve.sh|build-atomic.sh|turbo.*build|turbo.*type-check|next build" 2>/dev/null || true)
+            if [ -n "$orphans" ]; then
+                echo -e "${YELLOW}Killing orphaned deployment processes...${NC}"
+                echo "$orphans" | xargs -r kill -9 2>/dev/null || true
+                sleep 1
+            fi
             rm -f "$LOCK_FILE"
         fi
     fi
