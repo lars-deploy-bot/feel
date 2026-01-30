@@ -221,7 +221,16 @@ phase_end ok "Skills synced"
 phase_start "Deploying"
 
 log_step "Restarting $SERVICE..."
-systemctl restart "$SERVICE" || { phase_end error "Failed to restart"; exit 1; }
+# Use nohup to survive if we're restarting our own parent service
+# (e.g., staging chat deploys staging - the restart kills the Claude session)
+nohup systemctl restart "$SERVICE" >/dev/null 2>&1 &
+RESTART_PID=$!
+sleep 2  # Give systemd time to process
+# Check if service is now active (don't wait for the nohup process - it may be orphaned)
+if ! systemctl is-active --quiet "$SERVICE"; then
+    phase_end error "Failed to restart (service not active)"
+    exit 1
+fi
 
 log_step "Waiting for health check (max ${MAX_WAIT}s)..."
 if ! health_check "http://localhost:$PORT/" "$MAX_WAIT" 1; then
