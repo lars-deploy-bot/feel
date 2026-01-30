@@ -95,9 +95,10 @@ export function WorkspaceInfoBar({
                 type="button"
                 onClick={onNewTabGroup}
                 data-testid="new-tab-group-button"
-                className="hidden sm:inline-flex items-center h-8 px-3 text-xs font-medium text-black/50 dark:text-white/50 hover:text-black/80 dark:hover:text-white/80 bg-black/[0.04] dark:bg-white/[0.04] hover:bg-black/[0.08] dark:hover:bg-white/[0.08] active:scale-95 rounded-lg transition-all duration-150"
+                className="inline-flex items-center h-8 px-3 text-xs font-medium text-black/50 dark:text-white/50 hover:text-black/80 dark:hover:text-white/80 bg-black/[0.04] dark:bg-white/[0.04] hover:bg-black/[0.08] dark:hover:bg-white/[0.08] active:scale-95 rounded-lg transition-all duration-150"
               >
-                + new group
+                <span className="hidden sm:inline">+ new group</span>
+                <span className="sm:hidden">+ new</span>
               </button>
               {showTabsToggle && onToggleTabs && (
                 <button

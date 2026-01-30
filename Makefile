@@ -10,7 +10,7 @@
 #
 # =============================================================================
 
-.PHONY: help ship staging production dev devchat static-check status logs-staging logs-production logs-dev rollback shell deploy-go
+.PHONY: help ship ship-fast staging production deploy-status dev devchat static-check status logs-staging logs-production logs-dev rollback shell deploy-go
 
 # Load environment variables
 ifneq (,$(wildcard .env))
@@ -33,10 +33,10 @@ help:
 	@echo ""
 	@echo "$(GREEN)Deployment:$(NC)"
 	@echo "  make ship            🚀 Full pipeline: staging → production"
-	@echo "  make ship-bg         Same as ship, runs in background (for chat)"
 	@echo "  make ship-fast       Same as ship, skips E2E tests"
 	@echo "  make staging         Deploy staging only (port 8998)"
 	@echo "  make production      Deploy production only (port 9000)"
+	@echo "  make deploy-status   Check if a deployment is running"
 	@echo ""
 	@echo "$(GREEN)Development:$(NC)"
 	@echo "  make dev             Start dev server (port 8997, hot-reload)"
@@ -59,14 +59,12 @@ help:
 # =============================================================================
 # Deployment - Main commands
 # =============================================================================
+# All deployments use a global lock - only one can run at a time.
+# Use 'make deploy-status' to check if a deployment is running.
 
 # Full pipeline: staging → production
 ship:
 	@./scripts/deployment/ship.sh
-
-# Background mode with smart polling (for chat sessions)
-ship-bg:
-	@./scripts/deployment/ship.sh --background
 
 # Skip E2E tests (faster)
 ship-fast:
@@ -79,6 +77,10 @@ staging:
 # Production only
 production:
 	@./scripts/deployment/ship.sh --production
+
+# Check deployment lock status
+deploy-status:
+	@./scripts/deployment/ship.sh --status || true
 
 # =============================================================================
 # Development
@@ -109,7 +111,15 @@ static-check:
 # =============================================================================
 
 status:
-	@./scripts/deployment/status.sh
+	@echo "$(BLUE)Claude Bridge Status$(NC)"
+	@echo ""
+	@echo "$(GREEN)Services:$(NC)"
+	@systemctl is-active claude-bridge-dev >/dev/null 2>&1 && echo "  Dev (8997):        $(GREEN)running$(NC)" || echo "  Dev (8997):        $(RED)stopped$(NC)"
+	@systemctl is-active claude-bridge-staging >/dev/null 2>&1 && echo "  Staging (8998):    $(GREEN)running$(NC)" || echo "  Staging (8998):    $(RED)stopped$(NC)"
+	@systemctl is-active claude-bridge-production >/dev/null 2>&1 && echo "  Production (9000): $(GREEN)running$(NC)" || echo "  Production (9000): $(RED)stopped$(NC)"
+	@echo ""
+	@echo "$(GREEN)Deployment Lock:$(NC)"
+	@./scripts/deployment/ship.sh --status || true
 
 logs-staging:
 	@journalctl -u claude-bridge-staging -f

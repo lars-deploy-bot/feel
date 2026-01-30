@@ -137,8 +137,9 @@ export function useActiveSession(workspace: string | null): ActiveSession {
 
     const openTabs = workspaceTabs.filter(t => !t.closedAt)
     if (openTabs.length > 0) {
-      // Set first existing open tab as active instead of creating a new one
-      setActiveTab(workspace, openTabs[0].id)
+      // Pick the most recently created tab (newest first)
+      const sortedByNewest = [...openTabs].sort((a, b) => b.createdAt - a.createdAt)
+      setActiveTab(workspace, sortedByNewest[0].id)
       initializedWorkspaceRef.current = workspace
       return
     }

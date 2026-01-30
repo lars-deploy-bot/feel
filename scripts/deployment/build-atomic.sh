@@ -1,446 +1,194 @@
 #!/bin/bash
-# Atomic build script - prevents systemd from serving half-built files
-# Builds to .builds/{env}/dist, moves to timestamped directory, then atomically swaps symlink
+# =============================================================================
+# Atomic Build Script
+# =============================================================================
+# Builds to .builds/{env}/dist, then atomically swaps symlink.
+# Called by build-and-serve.sh - don't run directly.
 #
-# Usage: ./scripts/build-atomic.sh [environment]
-# Examples:
-#   ./scripts/build-atomic.sh production  # Build to .builds/production/dist.TIMESTAMP → .builds/production/current
-#   ./scripts/build-atomic.sh staging     # Build to .builds/staging/dist.TIMESTAMP → .builds/staging/current
-#
-# NOTE: Dev environment uses hot-reload (next dev) and does NOT use this script
+# Usage: ./build-atomic.sh <staging|production>
+# =============================================================================
 
 set -euo pipefail
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
-log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
-log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+# Load shared libraries
+source "$SCRIPT_DIR/lib/common.sh"
 
-# Cleanup function for failed builds
+# =============================================================================
+# Configuration
+# =============================================================================
+ENV="${1:-}"
+if [[ ! "$ENV" =~ ^(staging|production)$ ]]; then
+    log_error "Usage: $0 <staging|production>"
+    log_error "Dev uses hot-reload (next dev) and does not use this script"
+    exit 1
+fi
+
+TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+BUILDS_DIR="$PROJECT_ROOT/.builds/$ENV"
+TEMP_BUILD_DIR="$BUILDS_DIR/dist"
+TIMESTAMPED_DIR="$BUILDS_DIR/dist.$TIMESTAMP"
+WEB_DIR="$PROJECT_ROOT/apps/web"
+WEB_NEXT_DIR="$WEB_DIR/.next"
+
+cd "$PROJECT_ROOT"
+
+# =============================================================================
+# Cleanup on Failure
+# =============================================================================
+DEV_BACKUP=""
+
 cleanup_failed_build() {
-    local EXIT_CODE=$?
-    if [ $EXIT_CODE -ne 0 ]; then
-        log_error "Build failed with exit code $EXIT_CODE"
+    local exit_code=$?
+    [ $exit_code -eq 0 ] && return
 
-        # Clean up temporary build directory if it exists
-        if [ -n "${TEMP_BUILD_DIR:-}" ] && [ -d "$TEMP_BUILD_DIR" ]; then
-            log_info "Cleaning up failed build directory..."
-            rm -rf "$TEMP_BUILD_DIR"
-            log_success "Cleaned up temporary build directory"
-        fi
+    log_error "Build failed with exit code $exit_code"
 
-        # Restore dev server files if backup exists
-        if [ -n "${DEV_BACKUP:-}" ] && [ -d "$DEV_BACKUP" ]; then
-            log_info "Restoring dev server files from backup..."
-            mkdir -p "${WEB_NEXT_DIR:-apps/web/.next}"
-            mv "$DEV_BACKUP" "${WEB_NEXT_DIR}/dev" 2>/dev/null || true
-            log_success "Dev server files restored"
-        fi
+    # Clean up temp build
+    [ -d "$TEMP_BUILD_DIR" ] && rm -rf "$TEMP_BUILD_DIR"
 
-        log_error "Build aborted - previous build remains active"
+    # Restore dev server files
+    if [ -n "$DEV_BACKUP" ] && [ -d "$DEV_BACKUP" ]; then
+        mkdir -p "$WEB_NEXT_DIR"
+        mv "$DEV_BACKUP" "$WEB_NEXT_DIR/dev" 2>/dev/null || true
+        log_step "Dev server files restored"
     fi
 }
 
-# Register cleanup trap
 trap cleanup_failed_build EXIT
 
-# Navigate to project root
-SCRIPT_DIR="$(dirname "$0")"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-cd "$PROJECT_ROOT"
-
-# Verify required commands exist
-log_info "Verifying required commands..."
-if ! command -v bun &> /dev/null; then
-    log_error "bun command not found. Please install Bun runtime."
-    exit 1
-fi
-
-if ! command -v node &> /dev/null; then
-    log_error "node command not found. Please install Node.js."
-    exit 1
-fi
-log_success "Required commands verified (bun, node)"
-
-# Get environment parameter (default: production)
-ENV="${1:-production}"
-if [[ ! "$ENV" =~ ^(production|staging)$ ]]; then
-    log_error "Invalid environment: $ENV. Must be 'production' or 'staging'"
-    log_error "Dev environment uses hot-reload (next dev) and does not use this script"
-    exit 1
-fi
-
-# Configuration
-TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-TEMP_BUILD_DIR=".builds/${ENV}/dist"
-TIMESTAMPED_DIR=".builds/${ENV}/dist.${TIMESTAMP}"
-SYMLINK=".builds/${ENV}/current"
-WEB_DIR="apps/web"
-WEB_NEXT_DIR="$WEB_DIR/.next"
-BUILDS_DIR=".builds/${ENV}"
-
-log_info "Starting atomic build of ${ENV} environment to dist.${TIMESTAMP}..."
-
-# Check available disk space (require 250MB: ~127MB build + buffer)
+# =============================================================================
+# Phase 1: Pre-build Checks
+# =============================================================================
+log_step "Checking disk space..."
 REQUIRED_MB=250
 AVAILABLE_MB=$(df -BM "$PROJECT_ROOT" | tail -1 | awk '{print $4}' | sed 's/M//')
 if [ "$AVAILABLE_MB" -lt "$REQUIRED_MB" ]; then
     log_error "Insufficient disk space: ${AVAILABLE_MB}MB available, ${REQUIRED_MB}MB required"
-    log_error "Clean up old builds or free disk space before building"
     exit 1
 fi
-log_info "Disk space check: ${AVAILABLE_MB}MB available (${REQUIRED_MB}MB required)"
 
-# Ensure .builds directory exists
 mkdir -p "$BUILDS_DIR"
 
-# Preserve dev server files if they exist
-DEV_BACKUP=""
+# =============================================================================
+# Phase 2: Preserve Dev Server
+# =============================================================================
 if [ -d "$WEB_NEXT_DIR/dev" ]; then
-    log_info "Backing up dev server files..."
+    log_step "Backing up dev server files..."
     DEV_BACKUP="$WEB_NEXT_DIR.dev-backup"
-    # Remove any stale backup from previous failed builds
-    if [ -d "$DEV_BACKUP" ]; then
-        log_warn "Stale dev backup found, removing..."
-        rm -rf "$DEV_BACKUP"
-    fi
+    rm -rf "$DEV_BACKUP" 2>/dev/null || true
     mv "$WEB_NEXT_DIR/dev" "$DEV_BACKUP"
 fi
 
-# Clean up any existing production .next build and turbo cache for web
-# This ensures turbo doesn't serve a cached build when .next doesn't exist
-if [ -d "$WEB_NEXT_DIR" ]; then
-    log_info "Removing existing production .next build..."
-    rm -rf "$WEB_NEXT_DIR"
-fi
-log_info "Clearing turbo cache for web app..."
-rm -rf "$PROJECT_ROOT/.turbo"
-rm -rf "$PROJECT_ROOT/node_modules/.cache/turbo"
+# =============================================================================
+# Phase 3: Clean & Validate
+# =============================================================================
+log_step "Cleaning build artifacts..."
+rm -rf "$WEB_NEXT_DIR" "$PROJECT_ROOT/.turbo" "$PROJECT_ROOT/node_modules/.cache/turbo"
+rm -rf "$WEB_DIR/dist" 2>/dev/null || true
 
-# Clean up stale dist directory if it exists (prevents type validation errors)
-if [ -d "$WEB_DIR/dist" ]; then
-    log_info "Removing stale dist directory..."
-    rm -rf "$WEB_DIR/dist"
-fi
-
-# Validate workspace integrity before building
-log_info "Validating workspace integrity..."
-if ! "$SCRIPT_DIR/../validation/detect-workspace-issues.sh"; then
-    log_error "Workspace validation failed - fix issues before deploying"
+log_step "Validating workspace..."
+if ! "$SCRIPT_DIR/../validation/detect-workspace-issues.sh" >/dev/null 2>&1; then
+    log_error "Workspace validation failed"
     exit 1
 fi
-log_success "Workspace validation passed"
 
-# Remove circular symlinks created by bun workspace linking (causes Turbopack build failures)
-log_info "Removing circular symlinks in packages..."
-rm -f templates/site-template/site-template packages/site-controller/site-controller packages/images/images packages/tools/tools packages/shared/shared 2>/dev/null || true
-log_success "Cleaned up circular symlinks"
+# Remove circular symlinks from bun
+rm -f templates/site-template/site-template packages/*/$(basename packages/*) 2>/dev/null || true
 
-# Build web app using turbo with --force to ensure fresh build
-# Turbo handles building dependencies (images, tools, site-controller, shared) automatically
-log_info "Building web app (turbo --force)..."
+# =============================================================================
+# Phase 4: Build
+# =============================================================================
+log_step "Building web app..."
 BUILD_START=$(date +%s)
 
-# Run turbo build with --force to bypass cache and get fresh .next output
-# Direct `next build` fails with "generate is not a function" due to monorepo resolution issues
-if ! bun run build --filter=web --force; then
+if ! bun run build --filter=web --force >/dev/null 2>&1; then
     log_error "Build failed"
     exit 1
 fi
-BUILD_END=$(date +%s)
-BUILD_TIME=$((BUILD_END - BUILD_START))
-log_success "Build completed in ${BUILD_TIME}s"
 
-# Verify .next build output exists and has required structure
-log_info "Verifying build output structure..."
-if [ ! -d "$WEB_NEXT_DIR" ]; then
-    log_error "Build directory not found: $WEB_NEXT_DIR"
-    exit 1
-fi
+BUILD_TIME=$(($(date +%s) - BUILD_START))
+log_step "Build completed in ${BUILD_TIME}s"
 
-# Verify standalone directory exists (Next.js output=standalone mode)
-if [ ! -d "$WEB_NEXT_DIR/standalone" ]; then
-    log_error "Standalone directory not found: $WEB_NEXT_DIR/standalone"
-    log_error "Ensure next.config.ts has output: 'standalone' configured"
-    exit 1
-fi
+# =============================================================================
+# Phase 5: Verify Build Output
+# =============================================================================
+log_step "Verifying build output..."
 
-# Verify server.js exists (required for production)
-if [ ! -f "$WEB_NEXT_DIR/standalone/apps/web/server.js" ]; then
-    log_error "Server entry point not found: $WEB_NEXT_DIR/standalone/apps/web/server.js"
-    log_error "Next.js standalone build may have failed"
-    exit 1
-fi
+[ ! -d "$WEB_NEXT_DIR/standalone" ] && { log_error "Standalone directory not found"; exit 1; }
+[ ! -f "$WEB_NEXT_DIR/standalone/apps/web/server.js" ] && { log_error "server.js not found"; exit 1; }
 
-log_success "Build output structure verified"
-
-# Move .next to .builds/dist
-log_info "Moving build to .builds/dist..."
+# =============================================================================
+# Phase 6: Move to .builds
+# =============================================================================
+log_step "Moving build to .builds..."
 mv "$WEB_NEXT_DIR" "$TEMP_BUILD_DIR"
-log_success "Build moved to temporary location"
 
-# Restore dev server files if they were backed up
+# Restore dev server
 if [ -n "$DEV_BACKUP" ] && [ -d "$DEV_BACKUP" ]; then
-    log_info "Restoring dev server files..."
     mkdir -p "$WEB_NEXT_DIR"
     mv "$DEV_BACKUP" "$WEB_NEXT_DIR/dev"
-    log_success "Dev server files restored"
 fi
 
-# Copy static assets into standalone directory for Next.js standalone mode
-log_info "Copying static assets to standalone directory..."
+# =============================================================================
+# Phase 7: Copy Static Assets
+# =============================================================================
 STANDALONE_DIR="$TEMP_BUILD_DIR/standalone/apps/web"
 
-# Copy entire .next/static to standalone
-if [ -d "$TEMP_BUILD_DIR/static" ]; then
+[ -d "$TEMP_BUILD_DIR/static" ] && {
     mkdir -p "$STANDALONE_DIR/.next"
     cp -r "$TEMP_BUILD_DIR/static" "$STANDALONE_DIR/.next/static"
-    log_success "Copied .next/static to standalone"
-fi
+}
 
-# Copy public directory if it exists
-if [ -d "$WEB_DIR/public" ]; then
-    cp -r "$WEB_DIR/public" "$STANDALONE_DIR/public"
-    log_success "Copied public directory to standalone"
-fi
+[ -d "$WEB_DIR/public" ] && cp -r "$WEB_DIR/public" "$STANDALONE_DIR/public"
 
-# Copy workspace packages to standalone (Next.js file tracing doesn't handle symlinked workspaces)
-log_info "Copying workspace packages to standalone..."
+# =============================================================================
+# Phase 8: Copy Workspace Packages
+# =============================================================================
+log_step "Copying workspace packages..."
 STANDALONE_PACKAGES="$TEMP_BUILD_DIR/standalone/packages"
-mkdir -p "$STANDALONE_PACKAGES" || {
-    log_error "Failed to create packages directory: $STANDALONE_PACKAGES"
-    exit 1
-}
+mkdir -p "$STANDALONE_PACKAGES"
 
-REQUIRED_PACKAGES=("tools" "images" "site-controller")
-COPIED_PACKAGES=0
-
-for pkg in "${REQUIRED_PACKAGES[@]}"; do
-    if [ ! -d "packages/$pkg" ]; then
-        log_error "Required package not found: packages/$pkg"
-        log_error "All workspace packages must exist before building"
-        exit 1
-    fi
-
-    # Remove existing directory if Next.js already created it (prevents nested copy)
-    if [ -d "$STANDALONE_PACKAGES/$pkg" ]; then
-        rm -rf "$STANDALONE_PACKAGES/$pkg"
-    fi
-
-    if ! cp -r "packages/$pkg" "$STANDALONE_PACKAGES/$pkg"; then
-        log_error "Failed to copy packages/$pkg to standalone"
-        exit 1
-    fi
-
-    # Remove any symlinks that may have been copied (prevents circular reference issues)
-    find "$STANDALONE_PACKAGES/$pkg" -type l -delete 2>/dev/null
-
-    # Verify package.json exists
-    if [ ! -f "$STANDALONE_PACKAGES/$pkg/package.json" ]; then
-        log_error "Package $pkg is missing package.json"
-        exit 1
-    fi
-
-    COPIED_PACKAGES=$((COPIED_PACKAGES + 1))
-    log_success "Copied packages/$pkg to standalone (symlinks removed)"
+for pkg in tools images site-controller; do
+    [ ! -d "packages/$pkg" ] && { log_error "Package not found: $pkg"; exit 1; }
+    rm -rf "$STANDALONE_PACKAGES/$pkg" 2>/dev/null || true
+    cp -r "packages/$pkg" "$STANDALONE_PACKAGES/$pkg"
+    find "$STANDALONE_PACKAGES/$pkg" -type l -delete 2>/dev/null || true
 done
 
-# Copy template from new location (templates/site-template -> packages/template)
-if [ ! -d "templates/site-template" ]; then
-    log_error "Required template not found: templates/site-template"
-    log_error "Template must exist before building"
-    exit 1
-fi
+# Copy template
+[ ! -d "templates/site-template" ] && { log_error "Template not found"; exit 1; }
+rm -rf "$STANDALONE_PACKAGES/template" 2>/dev/null || true
+cp -r "templates/site-template" "$STANDALONE_PACKAGES/template"
+find "$STANDALONE_PACKAGES/template" -type l -delete 2>/dev/null || true
 
-if [ -d "$STANDALONE_PACKAGES/template" ]; then
-    rm -rf "$STANDALONE_PACKAGES/template"
-fi
-
-if ! cp -r "templates/site-template" "$STANDALONE_PACKAGES/template"; then
-    log_error "Failed to copy templates/site-template to standalone"
-    exit 1
-fi
-
-find "$STANDALONE_PACKAGES/template" -type l -delete 2>/dev/null
-
-if [ ! -f "$STANDALONE_PACKAGES/template/package.json" ]; then
-    log_error "Template is missing package.json"
-    exit 1
-fi
-
-COPIED_PACKAGES=$((COPIED_PACKAGES + 1))
-log_success "Copied templates/site-template to standalone/packages/template (symlinks removed)"
-
-log_success "Verified and copied all $COPIED_PACKAGES required packages"
-
-# Create node_modules symlinks for workspace packages (required for Bun module resolution)
-log_info "Creating node_modules symlinks for workspace packages..."
+# =============================================================================
+# Phase 9: Create Package Symlinks
+# =============================================================================
+log_step "Creating package symlinks..."
 STANDALONE_NODE_MODULES="$STANDALONE_DIR/node_modules"
+mkdir -p "$STANDALONE_NODE_MODULES/@alive-brug" "$STANDALONE_NODE_MODULES/@webalive"
 
-if ! mkdir -p "$STANDALONE_NODE_MODULES/@alive-brug"; then
-    log_error "Failed to create node_modules directory: $STANDALONE_NODE_MODULES/@alive-brug"
-    exit 1
-fi
-
-CREATED_LINKS=0
-# Link packages from REQUIRED_PACKAGES array
-for pkg in "${REQUIRED_PACKAGES[@]}"; do
-    if [ -d "$STANDALONE_PACKAGES/$pkg" ]; then
-        if ! ln -sf "../../../../packages/$pkg" "$STANDALONE_NODE_MODULES/@alive-brug/$pkg"; then
-            log_error "Failed to create symlink for package: $pkg"
-            exit 1
-        fi
-        CREATED_LINKS=$((CREATED_LINKS + 1))
-        log_success "Linked @alive-brug/$pkg -> ../../../../packages/$pkg"
-    else
-        log_error "Package directory not found: $STANDALONE_PACKAGES/$pkg"
-        log_error "Package should have been copied in previous step"
-        exit 1
-    fi
-done
-
-# Link template package (copied from templates/site-template)
-if [ -d "$STANDALONE_PACKAGES/template" ]; then
-    if ! ln -sf "../../../../packages/template" "$STANDALONE_NODE_MODULES/@alive-brug/template"; then
-        log_error "Failed to create symlink for package: template"
-        exit 1
-    fi
-    CREATED_LINKS=$((CREATED_LINKS + 1))
-    log_success "Linked @alive-brug/template -> ../../../../packages/template"
-else
-    log_error "Template package directory not found: $STANDALONE_PACKAGES/template"
-    exit 1
-fi
-
-log_success "Created $CREATED_LINKS package symlinks"
-
-# Verify all symlinks resolve correctly (fail fast if broken)
-log_info "Verifying workspace package symlinks..."
-BROKEN_LINKS=0
-
-# Check @alive-brug packages
 for pkg in tools images template; do
-    LINK_PATH="$STANDALONE_NODE_MODULES/@alive-brug/$pkg"
-    if [ -L "$LINK_PATH" ]; then
-        # Symlink exists, verify it resolves to a valid directory
-        if [ ! -d "$LINK_PATH" ]; then
-            log_error "Broken symlink: @alive-brug/$pkg does not resolve to valid directory"
-            log_error "  Link: $LINK_PATH"
-            log_error "  Target: $(readlink "$LINK_PATH")"
-            BROKEN_LINKS=$((BROKEN_LINKS + 1))
-        else
-            log_success "Verified @alive-brug/$pkg symlink"
-        fi
-    else
-        log_warn "Missing symlink for package: $pkg (package may not exist)"
-    fi
+    ln -sf "../../../../packages/$pkg" "$STANDALONE_NODE_MODULES/@alive-brug/$pkg"
 done
+ln -sf "../../../../packages/site-controller" "$STANDALONE_NODE_MODULES/@webalive/site-controller"
 
-# Check @webalive packages
-LINK_PATH="$STANDALONE_NODE_MODULES/@webalive/site-controller"
-if [ -L "$LINK_PATH" ]; then
-    if [ ! -d "$LINK_PATH" ]; then
-        log_error "Broken symlink: @webalive/site-controller does not resolve to valid directory"
-        log_error "  Link: $LINK_PATH"
-        log_error "  Target: $(readlink "$LINK_PATH")"
-        BROKEN_LINKS=$((BROKEN_LINKS + 1))
-    else
-        log_success "Verified @webalive/site-controller symlink"
-    fi
-else
-    log_warn "Missing symlink for package: site-controller (package may not exist)"
-fi
+# =============================================================================
+# Phase 10: Atomic Swap
+# =============================================================================
+log_step "Moving to timestamped directory..."
+mv "$TEMP_BUILD_DIR" "$TIMESTAMPED_DIR"
 
-if [ $BROKEN_LINKS -gt 0 ]; then
-    log_error "Build failed: $BROKEN_LINKS broken package symlink(s) detected"
-    log_error "This will cause runtime errors when importing workspace packages"
-    exit 1
-fi
-
-# Move build to timestamped directory
-log_info "Moving build to timestamped directory..."
-if ! mv "$TEMP_BUILD_DIR" "$TIMESTAMPED_DIR"; then
-    log_error "Failed to move build to timestamped directory"
-    log_error "Source: $TEMP_BUILD_DIR"
-    log_error "Destination: $TIMESTAMPED_DIR"
-    exit 1
-fi
-log_success "Build moved to: dist.${TIMESTAMP}"
-
-# Verify the timestamped directory exists and contains expected files
-if [ ! -d "$TIMESTAMPED_DIR/standalone/apps/web" ]; then
-    log_error "Build directory verification failed: $TIMESTAMPED_DIR/standalone/apps/web not found"
-    exit 1
-fi
-
-if [ ! -f "$TIMESTAMPED_DIR/standalone/apps/web/server.js" ]; then
-    log_error "Build verification failed: server.js not found in timestamped directory"
-    exit 1
-fi
-
-log_success "Build directory verified"
-
-# Atomic symlink swap
-log_info "Creating symlink: current -> dist.${TIMESTAMP}"
-cd "$BUILDS_DIR" || {
-    log_error "Failed to change to builds directory: $BUILDS_DIR"
-    exit 1
-}
-
-if ! ln -sfn "dist.${TIMESTAMP}" "current"; then
-    log_error "Failed to create current symlink"
-    cd "$PROJECT_ROOT"
-    exit 1
-fi
-
-cd "$PROJECT_ROOT"
-log_success "Symlink updated atomically"
-
-# Verify the symlink points to the correct build
-ACTUAL_TARGET=$(readlink "$SYMLINK")
-if [ "$ACTUAL_TARGET" != "dist.${TIMESTAMP}" ]; then
-    log_error "Symlink verification failed"
-    log_error "Expected: dist.${TIMESTAMP}"
-    log_error "Actual: $ACTUAL_TARGET"
-    exit 1
-fi
-log_success "Symlink verified: $SYMLINK -> $ACTUAL_TARGET"
-
-# Cleanup old builds (keep last 3)
-log_info "Cleaning up old builds..."
+log_step "Atomic symlink swap..."
 cd "$BUILDS_DIR"
-OLD_BUILDS=$(ls -dt dist.* 2>/dev/null | tail -n +4)
-if [ -n "$OLD_BUILDS" ]; then
-    echo "$OLD_BUILDS" | xargs rm -rf
-    log_success "Removed old builds"
-else
-    log_info "No old builds to remove"
-fi
+ln -sfn "dist.$TIMESTAMP" "current"
 cd "$PROJECT_ROOT"
 
-# Show build info
-ACTUAL_TARGET=$(readlink "$SYMLINK")
-log_success "Active build: $ACTUAL_TARGET"
+# Verify
+ACTUAL=$(readlink "$BUILDS_DIR/current")
+[ "$ACTUAL" != "dist.$TIMESTAMP" ] && { log_error "Symlink verification failed"; exit 1; }
 
-# List all builds with sizes
-log_info "Available builds:"
-cd "$BUILDS_DIR"
-ls -dt dist.* 2>/dev/null | while read dir; do
-    SIZE=$(du -sh "$dir" 2>/dev/null | cut -f1)
-    if [ "dist.${TIMESTAMP}" = "$dir" ]; then
-        echo "  → $(basename $dir) ($SIZE) [ACTIVE]"
-    else
-        echo "    $(basename $dir) ($SIZE)"
-    fi
-done
-cd "$PROJECT_ROOT"
-
-echo ""
-log_success "Atomic build complete! Systemd can now safely serve .builds/${ENV}/current"
+log_step "Build: dist.$TIMESTAMP"

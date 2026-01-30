@@ -442,6 +442,36 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
       },
     ],
   },
+  {
+    name: "create_website",
+    category: "workspace",
+    description:
+      "Deploy a new website with automatic infrastructure setup. Creates subdomain, SSL, systemd service, and Caddy reverse proxy. The site is immediately live at https://{slug}.alive.best",
+    contextCost: "high",
+    enabled: true,
+    parameters: [
+      {
+        name: "slug",
+        type: "string",
+        required: true,
+        description:
+          "Subdomain name (3-20 chars, lowercase letters/numbers/hyphens). Example: 'my-bakery' creates my-bakery.alive.best",
+      },
+      {
+        name: "siteIdeas",
+        type: "string",
+        required: false,
+        description: "Description of what the website should be about (helps guide initial design)",
+      },
+      {
+        name: "templateId",
+        type: "string",
+        required: false,
+        description:
+          "Template ID (tmpl_blank, tmpl_gallery, tmpl_event, tmpl_saas, tmpl_business). Default: tmpl_blank",
+      },
+    ],
+  },
 
   // External MCP entries are auto-generated below from shared registries
 ]
