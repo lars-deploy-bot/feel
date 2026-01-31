@@ -444,9 +444,35 @@ async function handleQuery(ipc, requestId, payload) {
     }
 
     console.error(`[worker] Allowed tools count: ${allowedTools.length}`)
+    console.error(`[worker] Permission mode: "${permissionMode}"`)
+
+    // Plan mode: block tools that modify files
+    // These tools are denied when permissionMode === 'plan'
+    const PLAN_MODE_BLOCKED_TOOLS = [
+      "Write",
+      "Edit",
+      "MultiEdit",
+      "Bash",
+      "NotebookEdit",
+      "mcp__alive-workspace__delete_file",
+      "mcp__alive-workspace__install_package",
+      "mcp__alive-workspace__restart_dev_server",
+      "mcp__alive-workspace__switch_serve_mode",
+      "mcp__alive-workspace__create_website",
+    ]
+    const isPlanMode = permissionMode === "plan"
+    if (isPlanMode) {
+      console.error("[worker] PLAN MODE: Write/Edit/Bash tools will be blocked")
+    }
 
     // Tool permission handler
     const canUseTool = async (toolName, input, _options) => {
+      // Plan mode: block modification tools
+      if (isPlanMode && PLAN_MODE_BLOCKED_TOOLS.includes(toolName)) {
+        console.error(`[worker] PLAN MODE: Blocked modification tool: ${toolName}`)
+        return denyTool(`Tool "${toolName}" is not allowed in plan mode. Plan mode is for exploration only - Claude can read and analyze but not modify files.`)
+      }
+
       if (disallowedTools.includes(toolName)) {
         console.error(`[worker] SECURITY: Blocked disallowed tool: ${toolName}`)
         return denyTool(`Tool "${toolName}" is explicitly disallowed for security reasons.`)

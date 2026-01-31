@@ -328,6 +328,28 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
       },
     ],
   },
+  {
+    name: "ask_website_config",
+    category: "meta",
+    description:
+      "Show an interactive form for the user to configure a new website. Use when the user wants to create a website - presents a wizard to choose subdomain, template, and optional description. After submission, use create_website with the user's choices.",
+    contextCost: "low",
+    enabled: true,
+    parameters: [
+      {
+        name: "context",
+        type: "string",
+        required: false,
+        description: "Optional context about why a website is being created",
+      },
+      {
+        name: "defaultSlug",
+        type: "string",
+        required: false,
+        description: "Optional default slug to pre-fill in the form",
+      },
+    ],
+  },
 
   // Other tools
   {

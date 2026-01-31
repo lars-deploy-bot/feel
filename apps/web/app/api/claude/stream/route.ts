@@ -128,6 +128,7 @@ export async function POST(req: NextRequest) {
       userId,
       additionalContext,
       analyzeImageUrls,
+      planMode,
     } = parseResult.data
     logger.log("Conversation:", conversationId)
     logger.log(
@@ -141,6 +142,7 @@ export async function POST(req: NextRequest) {
     if (userModel) {
       logger.log("Using user-selected model:", userModel)
     }
+    logger.log(`Plan mode received: ${planMode} (type: ${typeof planMode})`)
 
     // Check input safety (skip for superadmins - they should never be interrupted)
     if (!user.isSuperadmin) {
@@ -408,6 +410,13 @@ export async function POST(req: NextRequest) {
 
     let childStream: ReadableStream<Uint8Array>
 
+    // Plan mode: Claude can only read/explore, not modify files
+    // When enabled, permissionMode is set to 'plan' in the SDK
+    const effectivePermissionMode = planMode ? "plan" : PERMISSION_MODE
+    if (planMode) {
+      logger.log("Plan mode enabled - Claude will only explore, not modify")
+    }
+
     if (WORKER_POOL.ENABLED) {
       // === PERSISTENT WORKER POOL ===
       // Reuses workers between requests for faster response times
@@ -458,7 +467,7 @@ export async function POST(req: NextRequest) {
       const agentConfig = {
         allowedTools,
         disallowedTools,
-        permissionMode: PERMISSION_MODE,
+        permissionMode: effectivePermissionMode,
         settingSources: SETTINGS_SOURCES,
         oauthMcpServers: getOAuthMcpServers(oauthTokens) as Record<string, unknown>,
         bridgeStreamTypes: BRIDGE_STREAM_TYPES,
@@ -549,6 +558,7 @@ export async function POST(req: NextRequest) {
         oauthTokens, // OAuth tokens for connected MCP providers (stripe, linear, etc.)
         isAdmin: user.isAdmin, // Enable Bash tools for admins
         isSuperadmin: isSuperadminWorkspace, // Superadmin has all tools, runs as root
+        permissionMode: effectivePermissionMode, // Plan mode: "plan" = read-only exploration
       })
     }
 

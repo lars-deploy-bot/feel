@@ -42,12 +42,12 @@ export function LinearIssuePreview() {
         </p>
       </div>
 
-      <div className="flex gap-8">
-        <div className="flex-1 max-w-xl">
+      <div className="flex flex-col-reverse md:flex-row gap-6 md:gap-8">
+        <div className="flex-1 md:max-w-xl">
           <LinearIssueResult data={issue} toolName={toolName} />
         </div>
 
-        <div className="w-56 space-y-4">
+        <div className="w-full md:w-56 space-y-4">
           <div className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 p-3">
             <h3 className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-2">
               Action

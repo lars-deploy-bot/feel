@@ -98,13 +98,47 @@ async function readStdinJson() {
     const isSuperadmin = request.isSuperadmin === true
     console.error(`[runner] isAdmin: ${isAdmin}, isSuperadmin: ${isSuperadmin}`)
 
+    // Plan mode: use from request or fall back to default
+    const effectivePermissionMode = request.permissionMode || PERMISSION_MODE
+    const isPlanMode = effectivePermissionMode === "plan"
+    if (isPlanMode) {
+      console.error("[runner] 🔒 PLAN MODE ENABLED: Write/Edit/Bash tools will be blocked")
+    }
+
+    // Tools blocked in plan mode (read-only exploration)
+    const PLAN_MODE_BLOCKED_TOOLS = [
+      "Write",
+      "Edit",
+      "MultiEdit",
+      "Bash",
+      "NotebookEdit",
+      "mcp__alive-workspace__delete_file",
+      "mcp__alive-workspace__install_package",
+      "mcp__alive-workspace__restart_dev_server",
+      "mcp__alive-workspace__switch_serve_mode",
+      "mcp__alive-workspace__create_website",
+    ]
+
     // Get base allowed tools (SDK + internal MCP tools)
     // OAuth MCP tools are allowed dynamically in canUseTool
     // Admin users get Bash, BashOutput, KillShell tools
     // Superadmin users get ALL tools (Task, WebSearch included)
     const baseAllowedTools = getAllowedTools(targetCwd || process.cwd(), isAdmin, isSuperadmin)
     const disallowedTools = getDisallowedTools(isAdmin, isSuperadmin)
+
+    // Plan mode: Filter out blocked tools from allowedTools
+    // The SDK auto-allows tools in allowedTools without calling canUseTool,
+    // so we must remove them from the list to enforce plan mode restrictions
+    const effectiveAllowedTools = isPlanMode
+      ? baseAllowedTools.filter(t => !PLAN_MODE_BLOCKED_TOOLS.includes(t))
+      : baseAllowedTools
+
     console.error(`[runner] Base allowed tools count: ${baseAllowedTools.length}`)
+    if (isPlanMode) {
+      console.error(
+        `[runner] 🔒 PLAN MODE: Filtered to ${effectiveAllowedTools.length} tools (removed ${baseAllowedTools.length - effectiveAllowedTools.length} modification tools)`,
+      )
+    }
     if (isSuperadmin) {
       const hasTask = baseAllowedTools.includes("Task")
       const hasWebSearch = baseAllowedTools.includes("WebSearch")
@@ -121,6 +155,15 @@ async function readStdinJson() {
      * @type {import('@anthropic-ai/claude-agent-sdk').CanUseTool}
      */
     const canUseTool = async (toolName, input, _options) => {
+      // Plan mode: block modification tools
+      if (isPlanMode && PLAN_MODE_BLOCKED_TOOLS.includes(toolName)) {
+        console.error(`[runner] 🔒 PLAN MODE: Blocked modification tool: ${toolName}`)
+        return {
+          behavior: "deny",
+          message: `Tool "${toolName}" is not allowed in plan mode. Plan mode is for exploration only - Claude can read and analyze but not modify files.`,
+        }
+      }
+
       // Explicit deny list takes precedence (respects admin status)
       if (disallowedTools.includes(toolName)) {
         console.error(`[runner] SECURITY: Blocked explicitly disallowed tool: ${toolName}`)
@@ -176,8 +219,8 @@ async function readStdinJson() {
         cwd: process.cwd(),
         model: request.model,
         maxTurns: request.maxTurns || DEFAULTS.CLAUDE_MAX_TURNS,
-        permissionMode: PERMISSION_MODE,
-        allowedTools: baseAllowedTools, // OAuth MCP tools handled dynamically in canUseTool
+        permissionMode: effectivePermissionMode,
+        allowedTools: effectiveAllowedTools, // Plan mode filters out modification tools
         disallowedTools, // Dynamic based on admin status
         canUseTool,
         settingSources: SETTINGS_SOURCES,

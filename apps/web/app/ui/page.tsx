@@ -1,19 +1,54 @@
 /**
  * UI Component Preview Page
  *
- * A Storybook-like component library for testing integration components.
+ * A Storybook-like component library for previewing all UI components.
  * Only accessible to superadmins (eedenlars@gmail.com).
  *
- * Categories: Mail, Linear, Stripe
+ * Categories: Primitives, General, Tools, Integrations
  */
 
 "use client"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Loader2, Mail, LayoutList, CreditCard, Sparkles } from "lucide-react"
+import {
+  Loader2,
+  Boxes,
+  Layout,
+  Terminal,
+  Mail,
+  LayoutList,
+  CreditCard,
+  Sparkles,
+  Menu,
+  X,
+  ChevronDown,
+} from "lucide-react"
 
-// Component previews
+// Primitives
+import { ButtonPreview } from "./previews/primitives/ButtonPreview"
+import { InputPreview } from "./previews/primitives/InputPreview"
+import { CardPreview } from "./previews/primitives/CardPreview"
+import { BadgePreview } from "./previews/primitives/BadgePreview"
+import { AlertPreview } from "./previews/primitives/AlertPreview"
+
+// General UI
+import { ModalPreview } from "./previews/general/ModalPreview"
+import { TogglePreview } from "./previews/general/TogglePreview"
+import { TabsPreview } from "./previews/general/TabsPreview"
+import { SearchInputPreview } from "./previews/general/SearchInputPreview"
+import { EmptyStatePreview } from "./previews/general/EmptyStatePreview"
+import { LoadingSpinnerPreview } from "./previews/general/LoadingSpinnerPreview"
+
+// Tool Outputs
+import { ReadOutputPreview } from "./previews/tools/ReadOutputPreview"
+import { WriteOutputPreview } from "./previews/tools/WriteOutputPreview"
+import { EditOutputPreview } from "./previews/tools/EditOutputPreview"
+import { GlobOutputPreview } from "./previews/tools/GlobOutputPreview"
+import { GrepOutputPreview } from "./previews/tools/GrepOutputPreview"
+import { BashOutputPreview } from "./previews/tools/BashOutputPreview"
+
+// Integrations
 import { MailSendPreview } from "./previews/MailSendPreview"
 import { LinearIssuePreview } from "./previews/LinearIssuePreview"
 import { LinearIssuesPreview } from "./previews/LinearIssuesPreview"
@@ -21,15 +56,55 @@ import { LinearCommentPreview } from "./previews/LinearCommentPreview"
 import { StripeCustomersPreview } from "./previews/StripeCustomersPreview"
 import { StripeAccountPreview } from "./previews/StripeAccountPreview"
 import { ClarificationQuestionsPreview } from "./previews/ClarificationQuestionsPreview"
+import { WebsiteConfigPreview } from "./previews/WebsiteConfigPreview"
 
 // Category and component definitions
 const CATEGORIES = {
+  primitives: {
+    id: "primitives",
+    name: "Primitives",
+    icon: Boxes,
+    components: {
+      button: { id: "button", name: "Button", component: ButtonPreview },
+      input: { id: "input", name: "Input", component: InputPreview },
+      card: { id: "card", name: "Card", component: CardPreview },
+      badge: { id: "badge", name: "Badge", component: BadgePreview },
+      alert: { id: "alert", name: "Alert", component: AlertPreview },
+    },
+  },
+  general: {
+    id: "general",
+    name: "General",
+    icon: Layout,
+    components: {
+      modal: { id: "modal", name: "Modal", component: ModalPreview },
+      toggle: { id: "toggle", name: "Toggle", component: TogglePreview },
+      tabs: { id: "tabs", name: "Tabs", component: TabsPreview },
+      search: { id: "search", name: "Search Input", component: SearchInputPreview },
+      empty: { id: "empty", name: "Empty State", component: EmptyStatePreview },
+      loading: { id: "loading", name: "Loading Spinner", component: LoadingSpinnerPreview },
+    },
+  },
+  tools: {
+    id: "tools",
+    name: "Tools",
+    icon: Terminal,
+    components: {
+      read: { id: "read", name: "Read Output", component: ReadOutputPreview },
+      write: { id: "write", name: "Write Output", component: WriteOutputPreview },
+      edit: { id: "edit", name: "Edit Output", component: EditOutputPreview },
+      glob: { id: "glob", name: "Glob Output", component: GlobOutputPreview },
+      grep: { id: "grep", name: "Grep Output", component: GrepOutputPreview },
+      bash: { id: "bash", name: "Bash Output", component: BashOutputPreview },
+    },
+  },
   ai: {
     id: "ai",
     name: "AI",
     icon: Sparkles,
     components: {
       clarification: { id: "clarification", name: "Clarification Questions", component: ClarificationQuestionsPreview },
+      websiteConfig: { id: "websiteConfig", name: "Website Config", component: WebsiteConfigPreview },
     },
   },
   mail: {
@@ -67,8 +142,9 @@ export default function PreviewUIPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [authorized, setAuthorized] = useState(false)
-  const [activeCategory, setActiveCategory] = useState<CategoryId>("ai")
-  const [activeComponent, setActiveComponent] = useState<string>("clarification")
+  const [activeCategory, setActiveCategory] = useState<CategoryId>("primitives")
+  const [activeComponent, setActiveComponent] = useState<string>("button")
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
     async function checkAccess() {
@@ -101,6 +177,7 @@ export default function PreviewUIPage() {
     setActiveCategory(categoryId)
     const components = Object.keys(CATEGORIES[categoryId].components)
     setActiveComponent(components[0])
+    setSidebarOpen(false) // Close sidebar on mobile after selection
   }
 
   if (loading) {
@@ -120,14 +197,73 @@ export default function PreviewUIPage() {
   const CurrentPreview = components[activeComponent]?.component
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex">
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col md:flex-row">
+      {/* Mobile Header */}
+      <header className="md:hidden flex items-center justify-between p-4 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 relative z-30">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 -ml-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 active:bg-zinc-200 dark:active:bg-zinc-700"
+            aria-label="Toggle menu"
+            aria-expanded={sidebarOpen}
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          <button type="button" onClick={() => setSidebarOpen(true)} className="text-left">
+            <h1 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">UI Library</h1>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
+              {category.name}
+              <ChevronDown className="w-3 h-3" />
+            </p>
+          </button>
+        </div>
+      </header>
+
+      {/* Mobile Sidebar Overlay */}
+      <button
+        type="button"
+        className={`md:hidden fixed inset-0 bg-black/50 z-40 transition-opacity duration-200 ${
+          sidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+        onClick={() => setSidebarOpen(false)}
+        onKeyDown={e => e.key === "Escape" && setSidebarOpen(false)}
+        tabIndex={sidebarOpen ? 0 : -1}
+        aria-label="Close menu"
+      />
+
       {/* Left Sidebar - Categories */}
-      <aside className="w-48 min-h-screen border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex-shrink-0">
-        <div className="p-4 border-b border-zinc-200 dark:border-zinc-800">
+      <aside
+        className={`
+          fixed md:relative top-0 left-0 bottom-0 z-50
+          w-64 md:w-48 h-full md:h-auto
+          border-r border-zinc-200 dark:border-zinc-800
+          bg-white dark:bg-zinc-900
+          flex-shrink-0 flex flex-col
+          transition-transform duration-200 ease-out
+          ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+        `}
+      >
+        {/* Desktop header */}
+        <div className="hidden md:block p-4 border-b border-zinc-200 dark:border-zinc-800">
           <h1 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Components</h1>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">UI Library</p>
         </div>
 
-        <nav className="p-2">
+        {/* Mobile close button area */}
+        <div className="md:hidden p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between flex-shrink-0">
+          <h1 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Categories</h1>
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(false)}
+            className="p-2 -mr-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 active:bg-zinc-200 dark:active:bg-zinc-700"
+            aria-label="Close menu"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <nav className="p-2 space-y-1 overflow-y-auto flex-1">
           {Object.values(CATEGORIES).map(cat => {
             const Icon = cat.icon
             const isActive = activeCategory === cat.id
@@ -136,13 +272,13 @@ export default function PreviewUIPage() {
                 key={cat.id}
                 type="button"
                 onClick={() => handleCategoryChange(cat.id as CategoryId)}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
+                className={`w-full flex items-center gap-3 px-3 py-3 md:py-2 rounded-lg md:rounded-md text-sm transition-colors ${
                   isActive
                     ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-medium"
-                    : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                    : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 active:bg-zinc-100 dark:active:bg-zinc-800"
                 }`}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="w-5 h-5 md:w-4 md:h-4 flex-shrink-0" />
                 {cat.name}
               </button>
             )
@@ -152,29 +288,33 @@ export default function PreviewUIPage() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top Bar - Component Selection */}
-        <header className="h-12 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center px-4 gap-2 flex-shrink-0">
-          {Object.values(components).map(comp => {
-            const isActive = activeComponent === comp.id
-            return (
-              <button
-                key={comp.id}
-                type="button"
-                onClick={() => setActiveComponent(comp.id)}
-                className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
-                  isActive
-                    ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-medium"
-                    : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                }`}
-              >
-                {comp.name}
-              </button>
-            )
-          })}
+        {/* Component Selection - Horizontal scroll on mobile */}
+        <header className="border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex-shrink-0">
+          <div className="overflow-x-auto scrollbar-hide">
+            <div className="flex items-center gap-1 px-4 py-2 min-w-max">
+              {Object.values(components).map(comp => {
+                const isActive = activeComponent === comp.id
+                return (
+                  <button
+                    key={comp.id}
+                    type="button"
+                    onClick={() => setActiveComponent(comp.id)}
+                    className={`px-3 py-2 md:py-1.5 rounded-lg md:rounded-md text-sm whitespace-nowrap transition-colors ${
+                      isActive
+                        ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-medium"
+                        : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 active:bg-zinc-200 dark:active:bg-zinc-700"
+                    }`}
+                  >
+                    {comp.name}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
         </header>
 
         {/* Preview Area */}
-        <main className="flex-1 overflow-auto p-8">{CurrentPreview && <CurrentPreview />}</main>
+        <main className="flex-1 overflow-auto p-4 md:p-8">{CurrentPreview && <CurrentPreview />}</main>
       </div>
     </div>
   )
