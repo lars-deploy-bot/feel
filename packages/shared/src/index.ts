@@ -175,3 +175,14 @@ export {
   isRetryableNetworkError,
   formatUncaughtError,
 } from "./errors.js"
+export {
+  // External content security (prompt injection protection)
+  detectSuspiciousPatterns,
+  wrapExternalContent,
+  buildSafeExternalPrompt,
+  isExternalHookSession,
+  getHookType,
+  sanitizePromptInput,
+  type ExternalContentSource,
+  type WrapExternalContentOptions,
+} from "./external-content.js"
