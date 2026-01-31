@@ -8,7 +8,7 @@
 import crypto from "node:crypto"
 import type { NextRequest } from "next/server"
 import { cookies } from "next/headers"
-import { getProvider } from "@webalive/oauth-core"
+import { getProvider, GoogleProvider } from "@webalive/oauth-core"
 import { env } from "@webalive/env/server"
 import { getOAuthKeyForProvider } from "@webalive/shared"
 import { canUserAccessIntegration } from "@/lib/integrations/visibility"
@@ -214,9 +214,23 @@ export async function initiateOAuthFlow(context: OAuthContext, config: OAuthConf
     }
   }
 
-  const authUrl = oauthProvider.getAuthUrl(config.clientId, config.redirectUri, config.scopes, state)
+  // Google requires prompt=consent to guarantee refresh tokens on re-authorization
+  // Without this, Google only returns refresh_token on FIRST auth, causing failures later
+  // See: https://developers.google.com/identity/protocols/oauth2/web-server#offline
+  let authUrl: string
+  if (oauthKey === "google" && oauthProvider instanceof GoogleProvider) {
+    authUrl = oauthProvider.getAuthUrl(config.clientId, config.redirectUri, config.scopes, state, {
+      forceConsent: true,
+    })
+  } else {
+    authUrl = oauthProvider.getAuthUrl(config.clientId, config.redirectUri, config.scopes, state)
+  }
 
-  console.log(`[${provider} OAuth] Initiating flow for user ${user.id}`)
+  console.log(`[${provider} OAuth] Initiating flow for user ${user.id}`, {
+    redirectUri: config.redirectUri,
+    scopeCount: config.scopes.split(" ").length,
+    forceConsent: oauthKey === "google",
+  })
 
   return {
     type: "redirect",
