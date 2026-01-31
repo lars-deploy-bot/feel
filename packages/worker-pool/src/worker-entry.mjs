@@ -25,7 +25,7 @@ import process from "node:process"
 // IMPORTANT: Import these BEFORE dropping privileges!
 // After privilege drop, the worker can't read /root/webalive/claude-bridge/node_modules/
 import { query } from "@anthropic-ai/claude-agent-sdk"
-import { isOAuthMcpTool, GLOBAL_MCP_PROVIDERS, DEFAULTS } from "@webalive/shared"
+import { isOAuthMcpTool, GLOBAL_MCP_PROVIDERS, DEFAULTS, PLAN_MODE_BLOCKED_TOOLS, allowTool, denyTool } from "@webalive/shared"
 import { workspaceInternalMcp, toolsInternalMcp } from "@alive-brug/tools"
 
 // Global unhandled rejection handler - last resort safety net
@@ -67,15 +67,7 @@ function clearQueryState() {
   currentAbortController = null
 }
 
-/** Create tool permission "allow" response */
-function allowTool(input) {
-  return { behavior: "allow", updatedInput: input, updatedPermissions: [] }
-}
-
-/** Create tool permission "deny" response */
-function denyTool(message) {
-  return { behavior: "deny", message }
-}
+// allowTool and denyTool imported from @webalive/shared
 
 // =============================================================================
 // NDJSON IPC Client
@@ -416,6 +408,13 @@ async function handleQuery(ipc, requestId, payload) {
     // If payload has cookie, use it; otherwise clear any previous value
     process.env.BRIDGE_SESSION_COOKIE = payload.sessionCookie || ""
 
+    // Allow per-request API key override (e.g., from OAuth refresh)
+    // This enables using refreshed OAuth tokens without restarting workers
+    if (payload.apiKey) {
+      process.env.ANTHROPIC_API_KEY = payload.apiKey
+      console.error("[worker] Using request-provided API key")
+    }
+
     // Set user-defined environment keys (custom API keys from lockbox)
     // These are prefixed with USER_ to avoid conflicts with system env vars
     // SECURITY: Clear any previous user env keys before setting new ones
@@ -447,19 +446,7 @@ async function handleQuery(ipc, requestId, payload) {
     console.error(`[worker] Permission mode: "${permissionMode}"`)
 
     // Plan mode: block tools that modify files
-    // These tools are denied when permissionMode === 'plan'
-    const PLAN_MODE_BLOCKED_TOOLS = [
-      "Write",
-      "Edit",
-      "MultiEdit",
-      "Bash",
-      "NotebookEdit",
-      "mcp__alive-workspace__delete_file",
-      "mcp__alive-workspace__install_package",
-      "mcp__alive-workspace__restart_dev_server",
-      "mcp__alive-workspace__switch_serve_mode",
-      "mcp__alive-workspace__create_website",
-    ]
+    // See docs/architecture/plan-mode.md for full explanation
     const isPlanMode = permissionMode === "plan"
     if (isPlanMode) {
       console.error("[worker] PLAN MODE: Write/Edit/Bash tools will be blocked")

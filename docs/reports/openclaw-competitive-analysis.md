@@ -1,23 +1,23 @@
-# ClawdBot vs Alive: Competitive Analysis Report
+# OpenClaw vs Alive: Competitive Analysis Report
 
-> **Update (Jan 29, 2026):** ClawdBot has been renamed to **Moltbot**. Official repo: https://github.com/moltbot/moltbot · Website: https://molt.bot · Docs: https://docs.molt.bot. The CLI is now `moltbot` (the `clawdbot` command remains as a compatibility shim). This report reflects the earlier ClawdBot naming.
+> **Update (Jan 31, 2026):** OpenClaw has been renamed to **OpenClaw**. Official repo: https://github.com/openclaw/openclaw · Website: https://openclaw.ai. The CLI is now `openclaw`. This report has been updated to use the new naming.
 
-**Date:** January 26, 2026
+**Date:** January 26, 2026 (Updated: January 31, 2026)
 **Context:** Analysis from Claude Code session `63fbcb14-1715-4a0c-aed2-9e78f1453ab8`
 
 ---
 
 ## Executive Summary
 
-ClawdBot and Alive are both AI agent platforms but serve **fundamentally different use cases**. ClawdBot is a personal AI assistant that lives in messaging apps. Alive is a website development platform where AI agents build and maintain sites for customers.
+OpenClaw and Alive are both AI agent platforms but serve **fundamentally different use cases**. OpenClaw is a personal AI assistant that lives in messaging apps. Alive is a website development platform where AI agents build and maintain sites for customers.
 
-**They are not direct competitors** - but ClawdBot's architecture offers insights for Alive's roadmap.
+**They are not direct competitors** - but OpenClaw's architecture offers insights for Alive's roadmap.
 
 ---
 
 ## Product Comparison
 
-| Dimension | ClawdBot | Alive (GoAlive) |
+| Dimension | OpenClaw | Alive (GoAlive) |
 |-----------|----------|-----------------|
 | **Core Use Case** | Personal AI assistant in messaging apps | AI-powered website development |
 | **Target User** | Individual power users, developers | Small businesses, agencies |
@@ -32,7 +32,7 @@ ClawdBot and Alive are both AI agent platforms but serve **fundamentally differe
 
 ### Communication Channels
 
-| Channel | ClawdBot | Alive |
+| Channel | OpenClaw | Alive |
 |---------|----------|-------|
 | WhatsApp | ✅ | ❌ |
 | Telegram | ✅ | ❌ |
@@ -45,7 +45,7 @@ ClawdBot and Alive are both AI agent platforms but serve **fundamentally differe
 
 ### Agent Capabilities
 
-| Capability | ClawdBot | Alive |
+| Capability | OpenClaw | Alive |
 |------------|----------|-------|
 | File Read/Write/Edit | ✅ | ✅ |
 | Shell Commands | ✅ | ✅ (sandboxed) |
@@ -58,7 +58,7 @@ ClawdBot and Alive are both AI agent platforms but serve **fundamentally differe
 
 ### Security Model
 
-| Aspect | ClawdBot | Alive |
+| Aspect | OpenClaw | Alive |
 |--------|----------|-------|
 | Isolation | Single-user, full system access | Multi-tenant, workspace sandboxed |
 | Auth | Pairing codes, device tokens | Session cookies, per-domain passwords |
@@ -68,12 +68,12 @@ ClawdBot and Alive are both AI agent platforms but serve **fundamentally differe
 
 ## Architecture Differences
 
-### ClawdBot Architecture
+### OpenClaw Architecture
 
 ```
 User Phone (WhatsApp/Telegram)
         ↓
-ClawdBot Gateway (ws://127.0.0.1:18789)
+OpenClaw Gateway (ws://127.0.0.1:18789)
         ↓
 Agent (Claude/OpenAI)
         ↓
@@ -104,60 +104,60 @@ Deployed Website
 
 ---
 
-## What Alive Can Learn from ClawdBot
+## What Alive Can Learn from OpenClaw
 
 ### 1. Multi-Channel Communication
-ClawdBot's killer feature is **meeting users where they are** (WhatsApp, Telegram). Alive customers could benefit from:
+OpenClaw's killer feature is **meeting users where they are** (WhatsApp, Telegram). Alive customers could benefit from:
 - WhatsApp notifications when site is deployed
 - Telegram bot for quick edits ("change the hero text to X")
 - Discord integration for agencies
 
 ### 2. Skill System
-ClawdBot's 49 skills are modular, documented capabilities. Alive could:
+OpenClaw's 49 skills are modular, documented capabilities. Alive could:
 - Package common tasks as "skills" (deploy, SEO audit, image optimization)
 - Let users request skills by name
 - Build a skill library for website tasks
 
 ### 3. Voice Interface
-ClawdBot supports voice via ElevenLabs. For Alive:
+OpenClaw supports voice via ElevenLabs. For Alive:
 - "Hey, update my opening hours to 9-5"
 - Voice-first website management for busy business owners
 
 ### 4. Proactive Agents
-ClawdBot has cron/scheduling for proactive tasks. Alive could:
+OpenClaw has cron/scheduling for proactive tasks. Alive could:
 - Daily SEO checks
 - Weekly performance reports
 - Automatic content freshness updates
 
 ---
 
-## What ClawdBot Could Learn from Alive
+## What OpenClaw Could Learn from Alive
 
 ### 1. Multi-Tenant Security
-Alive's workspace isolation is battle-tested. ClawdBot runs as single user with full system access - risky for some deployments.
+Alive's workspace isolation is battle-tested. OpenClaw runs as single user with full system access - risky for some deployments.
 
 ### 2. Atomic Deployments
-Alive's Shell-Operator pattern (TS orchestration + bash execution) with automatic rollback is more robust than ClawdBot's skill-based approach.
+Alive's Shell-Operator pattern (TS orchestration + bash execution) with automatic rollback is more robust than OpenClaw's skill-based approach.
 
 ### 3. Revenue Model
-ClawdBot is open source with no clear monetization. Alive has a defined €40/month model (even if not yet collecting).
+OpenClaw is open source with no clear monetization. Alive has a defined €40/month model (even if not yet collecting).
 
 ---
 
 ## Strategic Implications for Alive
 
 ### Not Competitors, But...
-ClawdBot validates that **AI agents in messaging apps** is a viable UX. Alive's web-only approach may be leaving value on the table.
+OpenClaw validates that **AI agents in messaging apps** is a viable UX. Alive's web-only approach may be leaving value on the table.
 
 ### Potential Integration
-ClawdBot could become a **channel** for Alive:
+OpenClaw could become a **channel** for Alive:
 1. Customer sends WhatsApp: "Update my café menu"
-2. ClawdBot routes to Alive agent
+2. OpenClaw routes to Alive agent
 3. Agent edits the website
 4. Customer gets confirmation via WhatsApp
 
 ### Differentiation
-Alive's strength is **outcome-focused** ("I need a website for my hairdresser") vs ClawdBot's **task-focused** ("Run this command").
+Alive's strength is **outcome-focused** ("I need a website for my hairdresser") vs OpenClaw's **task-focused** ("Run this command").
 
 Keep this differentiation. Don't become another generic AI assistant.
 
@@ -165,7 +165,7 @@ Keep this differentiation. Don't become another generic AI assistant.
 
 ## Current Status Comparison
 
-| Metric | ClawdBot | Alive |
+| Metric | OpenClaw | Alive |
 |--------|----------|-------|
 | GitHub Stars | ~15k+ | Private |
 | Active Users | Unknown (open source) | 4 leads, 0 paying |
@@ -178,25 +178,25 @@ Keep this differentiation. Don't become another generic AI assistant.
 ## Recommendations
 
 ### Short-term (Do Now)
-1. **Don't pivot to become ClawdBot** - Different markets, different value props
+1. **Don't pivot to become OpenClaw** - Different markets, different value props
 2. **Consider WhatsApp integration** - Low-effort, high-value for customer communication
 3. **Get first paying customer** - Neither product wins without revenue
 
 ### Medium-term (This Quarter)
-4. **Explore ClawdBot as notification channel** - Use it for deployment alerts
+4. **Explore OpenClaw as notification channel** - Use it for deployment alerts
 5. **Build skill equivalents** - Package Alive capabilities as documented, requestable skills
 6. **Add proactive features** - Scheduled checks, automated reports
 
 ### Long-term (This Year)
 7. **Multi-channel customer communication** - Meet customers in WhatsApp/Telegram
 8. **Voice interface for quick edits** - "Update my hours"
-9. **Evaluate ClawdBot partnership** - Could ClawdBot route website tasks to Alive?
+9. **Evaluate OpenClaw partnership** - Could OpenClaw route website tasks to Alive?
 
 ---
 
-## Appendix: ClawdBot Installation on This Server
+## Appendix: OpenClaw Installation on This Server
 
-ClawdBot v2026.1.24-3 is installed and running:
+OpenClaw v2026.1.24-3 is installed and running:
 
 - **Location**: `/opt/services/clawdbot`
 - **Service**: `clawdbot-gateway.service` (systemd)
@@ -212,9 +212,9 @@ clawdbot status --all
 clawdbot agent --message "Hello"
 
 # Use via WhatsApp
-# Message yourself on WhatsApp, ClawdBot responds
+# Message yourself on WhatsApp, OpenClaw responds
 ```
 
 ---
 
-*Analysis based on ClawdBot installation and Alive business review from January 25-26, 2026*
+*Analysis based on OpenClaw installation and Alive business review from January 25-26, 2026*

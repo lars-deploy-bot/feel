@@ -114,10 +114,16 @@ export {
   BRIDGE_ALWAYS_DISALLOWED_SDK_TOOLS,
   BRIDGE_PERMISSION_MODE,
   BRIDGE_SETTINGS_SOURCES,
+  PLAN_MODE_BLOCKED_TOOLS,
   type BridgeAllowedSDKTool,
   type BridgeDisallowedSDKTool,
   type BridgeAdminOnlySDKTool,
   type BridgeAlwaysDisallowedSDKTool,
+  type PlanModeBlockedTool,
+  // Tool permission helpers
+  allowTool,
+  denyTool,
+  filterToolsForPlanMode,
   // Helper functions
   getBridgeAllowedTools,
   getBridgeDisallowedTools,

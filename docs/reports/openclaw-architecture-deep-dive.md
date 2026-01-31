@@ -1,16 +1,16 @@
-# ClawdBot Architecture Deep Dive
+# OpenClaw Architecture Deep Dive
 
-> **Update (Jan 29, 2026):** ClawdBot has been renamed to **Moltbot**. Official repo: https://github.com/moltbot/moltbot · Website: https://molt.bot · Docs: https://docs.molt.bot. The CLI is now `moltbot` (the `clawdbot` command remains as a compatibility shim). This report reflects the earlier ClawdBot naming and codebase layout.
+> **Update (Jan 31, 2026):** OpenClaw has been renamed to **OpenClaw**. Official repo: https://github.com/openclaw/openclaw · Website: https://openclaw.ai. The CLI is now `openclaw`. This report has been updated to use the new naming.
 
-**Date:** January 26, 2026
-**Version Analyzed:** 2026.1.24-3
+**Date:** January 26, 2026 (Updated: January 31, 2026)
+**Version Analyzed:** 2026.1.30 (originally 2026.1.24-3)
 **Source:** `/opt/services/clawdbot`
 
 ---
 
 ## Overview
 
-ClawdBot is a self-hosted personal AI assistant that routes messages from multiple chat platforms (WhatsApp, Telegram, Discord, etc.) through a central Gateway to AI models (Claude, GPT, etc.).
+OpenClaw is a self-hosted personal AI assistant that routes messages from multiple chat platforms (WhatsApp, Telegram, Discord, etc.) through a central Gateway to AI models (Claude, GPT, etc.).
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -22,7 +22,7 @@ ClawdBot is a self-hosted personal AI assistant that routes messages from multip
      └──────────┴──────────┴────┬─────┴──────────┴────────────┘
                                 │
                     ┌───────────▼───────────┐
-                    │   CLAWDBOT GATEWAY    │
+                    │   OPENCLAW GATEWAY    │
                     │   ws://127.0.0.1:18789│
                     ├───────────────────────┤
                     │ • Channel Manager     │
@@ -208,7 +208,7 @@ clawdbot skills info github   # Get skill details
 
 ### Auth Profiles (`src/agents/auth-profiles/`)
 
-ClawdBot supports multiple authentication methods stored in "auth profiles":
+OpenClaw supports multiple authentication methods stored in "auth profiles":
 
 ```
 ~/.clawdbot/agents/<agentId>/agent/auth-profiles.json
@@ -235,7 +235,7 @@ ClawdBot supports multiple authentication methods stored in "auth profiles":
 
 ### Model Fallback (`src/agents/model-fallback.ts`)
 
-When a model fails, ClawdBot can automatically fallback:
+When a model fails, OpenClaw can automatically fallback:
 
 ```
 claude-opus-4-5 → claude-sonnet-4 → gpt-4o → gpt-4o-mini
@@ -255,7 +255,7 @@ claude-opus-4-5 → claude-sonnet-4 → gpt-4o → gpt-4o-mini
 
 ```
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│ WhatsApp     │ ◄── │ Baileys      │ ◄── │ ClawdBot     │
+│ WhatsApp     │ ◄── │ Baileys      │ ◄── │ OpenClaw     │
 │ (Phone App)  │     │ (Library)    │     │ Extension    │
 └──────────────┘     └──────────────┘     └──────────────┘
        │                    │                    │
@@ -275,7 +275,7 @@ claude-opus-4-5 → claude-sonnet-4 → gpt-4o → gpt-4o-mini
 
 ### Key Library: @whiskeysockets/baileys
 
-ClawdBot uses **Baileys** (v7.0.0-rc.9) for WhatsApp Web protocol:
+OpenClaw uses **Baileys** (v7.0.0-rc.9) for WhatsApp Web protocol:
 
 ```json
 "@whiskeysockets/baileys": "7.0.0-rc.9"
@@ -354,7 +354,7 @@ security: {
 
 ### Built-in Tools (`src/agents/pi-tools.ts`)
 
-ClawdBot provides coding tools from **@mariozechner/pi-coding-agent**:
+OpenClaw provides coding tools from **@mariozechner/pi-coding-agent**:
 
 ```typescript
 import {
@@ -386,9 +386,9 @@ Agent requests tool → Tool Policy Check → Sandbox Check → Execute → Retu
 - Group-specific policies (e.g., no exec in groups)
 - Subagent-specific restrictions
 
-### ClawdBot-Specific Tools (`src/agents/clawdbot-tools.ts`)
+### OpenClaw-Specific Tools (`src/agents/clawdbot-tools.ts`)
 
-Additional tools for ClawdBot features:
+Additional tools for OpenClaw features:
 - `session_status` - Get current session info
 - `sessions_list` - List conversation sessions
 - `sessions_spawn` - Create sub-agents
@@ -491,7 +491,7 @@ CLAWDBOT_CONFIG_PATH=...          # Config file path
 
 ### Cron System (`src/cron/`)
 
-ClawdBot has built-in cron for scheduled tasks:
+OpenClaw has built-in cron for scheduled tasks:
 
 ```json
 {
@@ -557,9 +557,9 @@ clawdbot memory search "what did we discuss about the project?"
 
 ---
 
-## Comparison: ClawdBot vs Alive Architecture
+## Comparison: OpenClaw vs Alive Architecture
 
-| Aspect | ClawdBot | Alive (Claude Bridge) |
+| Aspect | OpenClaw | Alive (Claude Bridge) |
 |--------|----------|----------------------|
 | **Agent Library** | @mariozechner/pi-coding-agent | @anthropic-ai/claude-agent-sdk |
 | **Gateway** | Custom WebSocket (Hono + ws) | Next.js API routes + SSE |
@@ -599,7 +599,7 @@ sock.ev.on('messages.upsert', async ({ messages }) => {
 await gateway.chat({
   channel: 'whatsapp',
   from: '+1234567890',
-  message: 'Hello ClawdBot!',
+  message: 'Hello OpenClaw!',
   sessionKey: 'whatsapp:+1234567890'
 });
 ```
@@ -609,7 +609,7 @@ await gateway.chat({
 ```typescript
 const result = await runEmbeddedPiAgent({
   sessionId: 'whatsapp:+1234567890',
-  prompt: 'Hello ClawdBot!',
+  prompt: 'Hello OpenClaw!',
   model: 'claude-opus-4-5',
 });
 ```
@@ -635,7 +635,7 @@ Baileys → WhatsApp Servers → Phone
 
 ---
 
-## Running ClawdBot Commands
+## Running OpenClaw Commands
 
 ```bash
 # Start gateway
@@ -664,7 +664,7 @@ clawdbot tui
 
 ## Summary
 
-ClawdBot is a sophisticated personal AI assistant with:
+OpenClaw is a sophisticated personal AI assistant with:
 
 1. **Multi-channel architecture** - Single gateway, many messaging platforms
 2. **Pi Agent runtime** - Battle-tested coding agent with tools
@@ -674,13 +674,13 @@ ClawdBot is a sophisticated personal AI assistant with:
 6. **Cron + webhooks** - Automation capabilities
 7. **Memory persistence** - Vector-based recall
 
-The key insight: ClawdBot is a **personal assistant** (single-user, full system access) while Alive is a **platform** (multi-tenant, sandboxed). They solve different problems but share some architectural patterns.
+The key insight: OpenClaw is a **personal assistant** (single-user, full system access) while Alive is a **platform** (multi-tenant, sandboxed). They solve different problems but share some architectural patterns.
 
 ---
 
 ## Automations Deep Dive
 
-ClawdBot has **three automation systems**:
+OpenClaw has **three automation systems**:
 
 ### 1. Cron Jobs (Scheduled Tasks)
 
@@ -836,7 +836,7 @@ Watches your Gmail and triggers the agent when new emails arrive.
 
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│  Gmail API      │ ──► │  gog binary     │ ──► │  ClawdBot       │
+│  Gmail API      │ ──► │  gog binary     │ ──► │  OpenClaw       │
 │  Push (Pub/Sub) │     │  (watch serve)  │     │  Agent          │
 └─────────────────┘     └─────────────────┘     └─────────────────┘
         │                       │                       │
@@ -864,7 +864,7 @@ Watches your Gmail and triggers the agent when new emails arrive.
 
 **When email arrives:**
 1. Gmail sends push notification to gog server
-2. gog calls ClawdBot hook endpoint
+2. gog calls OpenClaw hook endpoint
 3. Hook triggers agent with email content
 4. Agent can respond, archive, label, etc.
 
@@ -912,8 +912,8 @@ clawdbot gmail watch stop       # Stop watching
              └──────────┘         └──────────┘         └──────────┘
 ```
 
-**Key Insight:** ClawdBot automations are **agent-centric** - they all ultimately trigger the agent to do something, then optionally deliver the result to a messaging channel. This is different from traditional automation tools that just run scripts - ClawdBot runs AI conversations on a schedule.
+**Key Insight:** OpenClaw automations are **agent-centric** - they all ultimately trigger the agent to do something, then optionally deliver the result to a messaging channel. This is different from traditional automation tools that just run scripts - OpenClaw runs AI conversations on a schedule.
 
 ---
 
-*Report generated from ClawdBot source code analysis, January 26, 2026*
+*Report generated from OpenClaw source code analysis, January 26, 2026*

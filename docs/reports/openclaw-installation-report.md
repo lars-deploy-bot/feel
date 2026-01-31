@@ -1,20 +1,20 @@
-# ClawdBot Installation Report
+# OpenClaw Installation Report
 
-**Date:** January 25-26, 2026
+**Date:** January 25-26, 2026 (Updated: January 31, 2026)
 **Server:** claude-server (138.201.56.93)
 **Status:** Installed and Running
 
-> **Update (Jan 29, 2026):** ClawdBot has been renamed to **Moltbot**. Official repo: https://github.com/moltbot/moltbot · Website: https://molt.bot · Docs: https://docs.molt.bot. The CLI is now `moltbot` (the `clawdbot` command remains as a compatibility shim). This report reflects the Jan 25-26, 2026 install.
+> **Update (Jan 31, 2026):** ClawdBot has been renamed to **OpenClaw**. Official repo: https://github.com/openclaw/openclaw · Website: https://openclaw.ai · The CLI is now `openclaw`. Service renamed to `openclaw-gateway.service`. Currently running v2026.1.30.
 
 ---
 
 ## Summary
 
-ClawdBot (now Moltbot) v2026.1.24-3 was successfully installed and configured as a systemd service on the WebAlive infrastructure server.
+OpenClaw v2026.1.30 is installed and configured as a systemd service on the WebAlive infrastructure server.
 
-## What is ClawdBot?
+## What is OpenClaw?
 
-ClawdBot is a self-hosted AI assistant created by Peter Steinberger. Unlike web-based AI interfaces, ClawdBot lives inside messaging apps you already use (Telegram, WhatsApp, Discord, Slack, Signal, iMessage) and provides a unified gateway for AI agent interactions.
+OpenClaw (formerly ClawdBot) is a self-hosted AI assistant created by Peter Steinberger. Unlike web-based AI interfaces, OpenClaw lives inside messaging apps you already use (Telegram, WhatsApp, Discord, Slack, Signal, iMessage) and provides a unified gateway for AI agent interactions.
 
 **Key differentiators:**
 - Local-first: Runs on your own infrastructure
@@ -29,23 +29,23 @@ ClawdBot is a self-hosted AI assistant created by Peter Steinberger. Unlike web-
 
 | Component | Version | Notes |
 |-----------|---------|-------|
-| Node.js | 22.22.0 | Upgraded from v20 (ClawdBot requires ≥22) |
-| ClawdBot | 2026.1.24-3 | Latest stable |
-| Source | /opt/services/clawdbot | Cloned from GitHub |
+| Node.js | 22.22.0 | Upgraded from v20 (OpenClaw requires ≥22) |
+| OpenClaw | 2026.1.30 | Latest stable |
+| Source | /opt/services/clawdbot | Cloned from GitHub (github.com/openclaw/openclaw) |
 
 ### Service Configuration
 
-**Systemd Service:** `clawdbot-gateway.service`
+**Systemd Service:** `openclaw-gateway.service`
 
 ```bash
 # Status
-systemctl status clawdbot-gateway.service
+systemctl status openclaw-gateway.service
 
 # Logs
-journalctl -u clawdbot-gateway.service -f
+journalctl -u openclaw-gateway.service -f
 
 # Restart
-systemctl restart clawdbot-gateway.service
+systemctl restart openclaw-gateway.service
 ```
 
 **Gateway:** Running on `ws://127.0.0.1:18789` (localhost only for security)
@@ -98,51 +98,51 @@ Many skills require additional setup (API keys, OAuth, or macOS-specific tools):
 
 ```bash
 # One-shot message
-moltbot agent --agent main --message "What's the weather in Amsterdam?"
+openclaw agent --agent main --message "What's the weather in Amsterdam?"
 
 # Interactive TUI
-moltbot tui
+openclaw tui
 ```
 
 ### Check Status
 
 ```bash
 # Full status
-moltbot status --all
+openclaw status --all
 
 # Health check
-moltbot health
+openclaw health
 
 # Doctor (diagnostics)
-moltbot doctor
+openclaw doctor
 ```
 
 ### Manage Skills
 
 ```bash
 # List all skills
-moltbot skills list
+openclaw skills list
 
 # Get skill details
-moltbot skills info weather
+openclaw skills info weather
 ```
 
 ### Connect Messaging Channels
 
 ```bash
 # Interactive setup
-moltbot onboard
+openclaw onboard
 
 # WhatsApp (scan QR)
-moltbot channels login
+openclaw channels login
 
 # Configure specific channel
-moltbot configure
+openclaw configure
 ```
 
-## Comparison: ClawdBot vs Claude Bridge
+## Comparison: OpenClaw vs Claude Bridge
 
-| Feature | ClawdBot | Claude Bridge |
+| Feature | OpenClaw | Claude Bridge |
 |---------|----------|---------------|
 | **Primary Use** | Personal AI assistant | Website development platform |
 | **Interface** | Messaging apps, TUI, CLI | Web chat, file operations |
@@ -154,9 +154,9 @@ moltbot configure
 
 ### Potential Synergies
 
-1. **ClawdBot as notification channel:** Send build/deploy notifications via Telegram/Discord
-2. **ClawdBot for ops:** Use ClawdBot's tmux skill for server management
-3. **Unified agent:** Route ClawdBot to Claude Bridge workspaces
+1. **OpenClaw as notification channel:** Send build/deploy notifications via Telegram/Discord
+2. **OpenClaw for ops:** Use OpenClaw's tmux skill for server management
+3. **Unified agent:** Route OpenClaw to Claude Bridge workspaces
 4. **Voice interface:** Add voice commands for website building
 
 ## Security Considerations
@@ -179,17 +179,16 @@ moltbot configure
 | Item | Path |
 |------|------|
 | Installation | `/opt/services/clawdbot` |
-| Config | `/root/.clawdbot/clawdbot.json` |
+| Config | `/root/.clawdbot/clawdbot.json` (legacy path, still works) |
 | Agent workspace | `/root/.clawdbot/agents/main/` |
 | Sessions | `/root/.clawdbot/agents/main/sessions/sessions.json` |
-| Systemd service | `/etc/systemd/system/clawdbot-gateway.service` |
-| Logs | `journalctl -u clawdbot-gateway.service` |
+| Systemd service | `/etc/systemd/system/openclaw-gateway.service` |
+| Logs | `journalctl -u openclaw-gateway.service` |
 
 ## References
 
-- [Moltbot GitHub](https://github.com/moltbot/moltbot)
-- [Moltbot Documentation](https://docs.molt.bot/)
-- [Getting Started Guide](https://docs.molt.bot/)
+- [OpenClaw GitHub](https://github.com/openclaw/openclaw)
+- [OpenClaw Website](https://openclaw.ai/)
 - [VelvetShark Review](https://velvetshark.com/clawdbot-the-self-hosted-ai-that-siri-should-have-been)
 
 ---

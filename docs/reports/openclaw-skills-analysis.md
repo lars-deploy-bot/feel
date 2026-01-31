@@ -1,17 +1,17 @@
-# ClawdBot Skills Analysis
+# OpenClaw Skills Analysis
 
-> **Update (Jan 29, 2026):** ClawdBot has been renamed to **Moltbot**. Official repo: https://github.com/moltbot/moltbot · Website: https://molt.bot · Docs: https://docs.molt.bot. The CLI is now `moltbot` (the `clawdbot` command remains as a compatibility shim). This report reflects the earlier ClawdBot naming.
+> **Update (Jan 31, 2026):** OpenClaw has been renamed to **OpenClaw**. Official repo: https://github.com/openclaw/openclaw · Website: https://openclaw.ai. The CLI is now `openclaw`. This report has been updated to use the new naming.
 
-**Date**: 2026-01-26
-**Purpose**: Understand how ClawdBot skills work and what we can adopt for Alive
+**Date**: 2026-01-26 (Updated: 2026-01-31)
+**Purpose**: Understand how OpenClaw skills work and what we can adopt for Alive
 
 ## Overview
 
-ClawdBot uses a skill system based on **markdown files with frontmatter**. The core library is `@mariozechner/pi-coding-agent` from the [badlogic/pi-mono](https://github.com/badlogic/pi-mono) repository.
+OpenClaw uses a skill system based on **markdown files with frontmatter**. The core library is `@mariozechner/pi-coding-agent` from the [badlogic/pi-mono](https://github.com/badlogic/pi-mono) repository.
 
 ## Local References
 
-- ClawdBot repo: `/opt/services/clawdbot`
+- OpenClaw repo: `/opt/services/clawdbot`
 - pi-mono library: `/opt/third/pi-mono`
 - pi-skills collection: `/opt/third/pi-skills`
 
@@ -82,7 +82,7 @@ The `loadSkillsFromDir()` function:
 
 The agent then uses the Read tool to load skill content when relevant.
 
-## ClawdBot vs Alive Comparison
+## OpenClaw vs Alive Comparison
 
 ### What We Already Have
 
@@ -95,7 +95,7 @@ The agent then uses the Read tool to load skill content when relevant.
 
 ### What We're Missing
 
-| Feature | ClawdBot | Alive |
+| Feature | OpenClaw | Alive |
 |---------|----------|-------|
 | `{baseDir}` placeholder | ✅ | ❌ |
 | Skill validation | ✅ | Partial |
@@ -118,7 +118,7 @@ From `/opt/third/pi-skills`:
 | `vscode` | VS Code integration | VS Code |
 | `youtube-transcript` | YouTube transcripts | Node.js |
 
-## ClawdBot Bundled Skills (50+)
+## OpenClaw Bundled Skills (50+)
 
 From `/opt/services/clawdbot/skills`:
 
@@ -182,7 +182,7 @@ Run the search:
 Our existing skill system is ~90% compatible with pi-coding-agent format. We could:
 - Copy pi-skills directly into our skills folder
 - Add `{baseDir}` placeholder support
-- Reuse ClawdBot's bundled skills
+- Reuse OpenClaw's bundled skills
 
 ## Recommendations
 
@@ -190,7 +190,7 @@ Our existing skill system is ~90% compatible with pi-coding-agent format. We cou
 
 1. **Add `{baseDir}` support** - Simple string replacement in skill loading
 2. **Import pi-skills** - Copy from `/opt/third/pi-skills` to our skills
-3. **Import useful ClawdBot skills** - Weather, GitHub, coding-agent
+3. **Import useful OpenClaw skills** - Weather, GitHub, coding-agent
 
 ### Medium-Term
 
