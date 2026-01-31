@@ -17,7 +17,7 @@ import { getMessageDb } from "@/lib/db/messageDb"
 import type { StructuredError } from "@/lib/error-codes"
 import { ErrorCodes, getErrorHelp, getErrorMessage } from "@/lib/error-codes"
 import { HttpError } from "@/lib/errors"
-import { isRetryableError, retryWithBackoff } from "@/lib/retry"
+import { retryAsync, isRetryableNetworkError } from "@webalive/shared"
 import { authStore } from "@/lib/stores/authStore"
 import { isDevelopment } from "@/lib/stores/debug-store"
 import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
@@ -277,7 +277,7 @@ export function useChatMessaging({
           })
         }
 
-        const response = await retryWithBackoff(
+        const response = await retryAsync(
           async () => {
             const res = await fetch("/api/claude/stream", {
               method: "POST",
@@ -305,10 +305,10 @@ export function useChatMessaging({
             return res
           },
           {
-            maxRetries: 3,
-            initialDelay: 1000,
-            maxDelay: 5000,
-            shouldRetry: error => isRetryableError(error),
+            attempts: 3,
+            minDelayMs: 1000,
+            maxDelayMs: 5000,
+            shouldRetry: error => isRetryableNetworkError(error),
           },
         )
 
