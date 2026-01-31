@@ -147,3 +147,21 @@ export {
   DEFAULT_MAX_LINES,
   type TruncateOptions,
 } from "./output-limits.js"
+export {
+  // Retry utilities
+  retryAsync,
+  resolveRetryConfig,
+  computeBackoff,
+  sleepWithAbort,
+  type RetryConfig,
+  type RetryInfo,
+  type RetryOptions,
+  type BackoffPolicy,
+} from "./retry.js"
+export {
+  // Deduplication cache
+  createDedupeCache,
+  createPrefixedDedupeCache,
+  type DedupeCache,
+  type DedupeCacheOptions,
+} from "./dedupe.js"
