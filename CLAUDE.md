@@ -21,6 +21,32 @@ AI assistant guidelines for working on Claude Bridge.
 13. **ONE DEPLOYMENT AT A TIME** - Before starting any deployment, check if one is already running: `make deploy-status`. If a deployment is running, WAIT. Do not start another. Stacked deployments cause memory exhaustion and production outages.
 14. **CLEAN BEFORE DEPLOY** - Before ANY deployment, check for orphaned processes: `ps aux | grep -E "make|ship|turbo|next build" | grep -v grep`. If you see old ones, kill them: `pkill -9 -f "ship.sh|build-and-serve|turbo|next build"` and remove stale lock: `rm -f /tmp/claude-bridge-deploy.lock`. Only then deploy.
 
+## Learn from OpenClaw (IMPORTANT)
+
+**OpenClaw** (formerly ClawdBot) is installed at `/opt/services/clawdbot/`. It's a well-architected open-source AI assistant with battle-tested patterns we should steal.
+
+**When building new features, ALWAYS check OpenClaw first:**
+```bash
+# Search for relevant patterns
+ls /opt/services/clawdbot/src/
+grep -r "your-feature" /opt/services/clawdbot/src/
+```
+
+**Patterns we've already adopted:**
+- `proper-lockfile` for file-based locking (OAuth refresh)
+- `retryAsync` with exponential backoff and jitter (`@webalive/shared`)
+- `createDedupeCache` for TTL-based deduplication (`@webalive/shared`)
+- OAuth token auto-refresh with 5-minute buffer
+
+**Patterns worth exploring:**
+- `/opt/services/clawdbot/src/security/external-content.ts` - Prompt injection protection for webhooks
+- `/opt/services/clawdbot/src/security/audit.ts` - Security audit system with findings/remediation
+- `/opt/services/clawdbot/src/infra/` - Infrastructure utilities (ports, restart, ssh-tunnel, etc.)
+- `/opt/services/clawdbot/src/memory/` - Embeddings and vector search for conversation memory
+- `/opt/services/clawdbot/src/sessions/` - Session management patterns
+
+**The goal:** Don't reinvent. When you need retry logic, deduplication, rate limiting, security patterns, or infrastructure utilities - check OpenClaw first. Copy what works, adapt to our architecture.
+
 ## Special Domains (NOT websites)
 
 These domains are **NOT** Vite website templates. Do not deploy them as sites:
