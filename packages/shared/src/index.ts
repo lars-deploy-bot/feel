@@ -74,6 +74,8 @@ export {
   isOAuthMcpTool,
   getMcpToolFriendlyName,
   getOAuthKeyForProvider,
+  getOAuthMcpProviderConfig,
+  providerSupportsPat,
   type OAuthMcpProviderConfig,
   type OAuthMcpProviderRegistry,
   type OAuthMcpProviderKey,

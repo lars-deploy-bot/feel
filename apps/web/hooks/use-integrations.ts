@@ -270,3 +270,57 @@ export function useDisconnectIntegration(providerKey: string) {
     error,
   }
 }
+
+/**
+ * Hook to connect to an integration using a Personal Access Token (PAT)
+ * Used for providers like GitHub that support PAT authentication
+ */
+export function useConnectWithPat(providerKey: string) {
+  const [connecting, setConnecting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const connectWithPat = useCallback(
+    async (token: string): Promise<{ success: boolean; username?: string }> => {
+      setConnecting(true)
+      setError(null)
+
+      try {
+        console.log(`[useConnectWithPat] Connecting to ${providerKey} with PAT`)
+
+        const response = await fetch(`/api/integrations/${providerKey}`, {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ token }),
+        })
+
+        const data = await response.json()
+
+        if (!response.ok) {
+          const errorMessage = data.details?.reason || data.error || `Failed to connect to ${providerKey}`
+          setError(errorMessage)
+          return { success: false }
+        }
+
+        console.log(`[useConnectWithPat] Successfully connected to ${providerKey}:`, data.username)
+        return { success: true, username: data.username }
+      } catch (err) {
+        console.error(`[useConnectWithPat] Error connecting to ${providerKey}:`, err)
+        setError(err instanceof Error ? err.message : "Failed to connect")
+        return { success: false }
+      } finally {
+        setConnecting(false)
+      }
+    },
+    [providerKey],
+  )
+
+  return {
+    connectWithPat,
+    connecting,
+    error,
+    clearError: useCallback(() => setError(null), []),
+  }
+}

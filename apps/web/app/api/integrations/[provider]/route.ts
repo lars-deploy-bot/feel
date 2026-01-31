@@ -2,7 +2,10 @@
  * Integration Management API
  *
  * Clean implementation with DRY principle.
- * Handles connection status checks and disconnection for OAuth providers.
+ * Handles connection status checks, disconnection, and PAT-based connections for OAuth providers.
+ *
+ * @error-check-disable - Internal validation functions return error strings,
+ * not API responses. These are converted to proper ErrorCodes at the API boundary.
  */
 
 import { type NextRequest, NextResponse } from "next/server"
@@ -12,6 +15,8 @@ import { oauthOperationRateLimiter } from "@/lib/auth/rate-limiter"
 import { ErrorCodes } from "@/lib/error-codes"
 import { validateProviderName } from "@/lib/integrations/validation"
 import { getOAuthInstance } from "@/lib/oauth/oauth-instances"
+import { providerSupportsPat } from "@webalive/shared"
+import { canUserAccessIntegration } from "@/lib/integrations/visibility"
 
 /**
  * Common request validation and rate limiting
@@ -199,5 +204,164 @@ async function revokeTokenGracefully(
     // Provider might be down, still disconnect locally
     console.warn(`[${provider} Integration] Token revocation failed, disconnecting locally:`, error)
     await oauthManager.disconnect(userId, provider)
+  }
+}
+
+/**
+ * Validate a GitHub PAT by calling the GitHub API
+ *
+ * @param token - The PAT to validate
+ * @returns Object with validation result and optional user info
+ */
+async function validateGitHubPat(token: string): Promise<{
+  valid: boolean
+  username?: string
+  scopes?: string
+  error?: string
+}> {
+  try {
+    const response = await fetch("https://api.github.com/user", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+    })
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        return { valid: false, error: "Invalid token" }
+      }
+      return { valid: false, error: `GitHub API error: ${response.status}` }
+    }
+
+    const user = await response.json()
+    const scopes = response.headers.get("x-oauth-scopes") || ""
+
+    return {
+      valid: true,
+      username: user.login,
+      scopes,
+    }
+  } catch (error) {
+    return {
+      valid: false,
+      error: error instanceof Error ? error.message : "Failed to validate token",
+    }
+  }
+}
+
+/**
+ * POST /api/integrations/[provider]
+ *
+ * Connect user to a provider using a Personal Access Token (PAT).
+ * Only available for providers that support PAT authentication.
+ *
+ * Request body:
+ * - token: The Personal Access Token
+ *
+ * Response:
+ * - 200: { ok: true, message: string, username?: string }
+ * - 400: Invalid provider, provider doesn't support PAT, or invalid token
+ * - 401: Unauthorized
+ * - 403: User doesn't have access to this integration
+ * - 429: Rate limited
+ * - 500: Internal error
+ */
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ provider: string }> },
+): Promise<NextResponse> {
+  // Common validation
+  const validation = await validateIntegrationRequest(req, params)
+  if (!validation.ok) {
+    return validation.response
+  }
+
+  const { provider, user } = validation
+  const clientId = getClientIdentifier(req, `integration:${provider}`)
+
+  // Check if provider supports PAT
+  if (!providerSupportsPat(provider)) {
+    return createErrorResponse(ErrorCodes.INVALID_PROVIDER, 400, {
+      reason: `${provider} does not support Personal Access Token authentication. Use OAuth instead.`,
+    })
+  }
+
+  // Check user has access to this integration
+  const hasAccess = await canUserAccessIntegration(user.id, provider)
+  if (!hasAccess) {
+    console.error(`[${provider} Integration] User ${user.id} denied access`)
+    return createErrorResponse(ErrorCodes.UNAUTHORIZED, 403, {
+      reason: `You don't have access to the ${provider} integration`,
+    })
+  }
+
+  // Parse request body
+  let token: string
+  try {
+    const body = await req.json()
+    token = body.token
+
+    if (!token || typeof token !== "string") {
+      return createErrorResponse(ErrorCodes.INVALID_REQUEST, 400, {
+        reason: "Token is required",
+      })
+    }
+
+    // Basic validation: GitHub classic PATs start with "ghp_", fine-grained with "github_pat_"
+    const isValidFormat = token.startsWith("ghp_") || token.startsWith("github_pat_")
+    if (!isValidFormat) {
+      return createErrorResponse(ErrorCodes.INVALID_REQUEST, 400, {
+        reason: "Invalid token format. GitHub PATs should start with 'ghp_' (classic) or 'github_pat_' (fine-grained)",
+      })
+    }
+  } catch {
+    return createErrorResponse(ErrorCodes.INVALID_REQUEST, 400, {
+      reason: "Invalid request body",
+    })
+  }
+
+  try {
+    // Validate the token with GitHub API
+    const tokenValidation = await validateGitHubPat(token)
+
+    if (!tokenValidation.valid) {
+      oauthOperationRateLimiter.recordFailedAttempt(clientId)
+      return createErrorResponse(ErrorCodes.INVALID_REQUEST, 400, {
+        reason: tokenValidation.error || "Invalid token",
+      })
+    }
+
+    // Store the token using OAuth manager
+    // PATs don't expire, so we don't set expires_in
+    const oauthManager = getOAuthInstance(provider)
+    await oauthManager.saveTokens(user.id, provider, {
+      access_token: token,
+      token_type: "Bearer",
+      scope: tokenValidation.scopes,
+      // No refresh_token or expires_in for PATs
+    })
+
+    // Reset rate limit on success
+    oauthOperationRateLimiter.reset(clientId)
+
+    console.log(`[${provider} Integration] Successfully connected via PAT:`, {
+      userId: user.id.slice(0, 8) + "...",
+      username: tokenValidation.username,
+      scopes: tokenValidation.scopes,
+    })
+
+    return NextResponse.json({
+      ok: true,
+      message: `Connected to ${provider} as ${tokenValidation.username}`,
+      username: tokenValidation.username,
+    })
+  } catch (error) {
+    console.error(`[${provider} Integration] PAT connection failed:`, error)
+
+    return createErrorResponse(ErrorCodes.INTEGRATION_ERROR, 500, {
+      provider,
+    })
   }
 }

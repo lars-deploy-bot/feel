@@ -20,6 +20,7 @@ import { Sandbox } from "@/features/chat/components/Sandbox"
 import { SandboxMobile } from "@/features/chat/components/SandboxMobile"
 import { SubdomainInitializer } from "@/features/chat/components/SubdomainInitializer"
 // useTabSession removed - now using useActiveSession via useTabIsolatedMessages
+import { useBrowserCleanup } from "@/features/chat/hooks/useBrowserCleanup"
 import { useImageUpload } from "@/features/chat/hooks/useImageUpload"
 import { useStreamCancellation } from "@/features/chat/hooks/useStreamCancellation"
 import { useStreamReconnect } from "@/features/chat/hooks/useStreamReconnect"
@@ -253,6 +254,16 @@ function ChatPageContent() {
     isStreaming: busy,
     addMessage,
     mounted,
+  })
+
+  // Browser cleanup - sends cancel beacon when user closes tab/navigates away
+  // Prevents orphaned agent processes on the server
+  useBrowserCleanup({
+    tabId: sessionTabId,
+    tabGroupId: sessionTabGroupId,
+    workspace,
+    currentRequestIdRef,
+    isStreaming: busy,
   })
 
   // Register retry handler for error recovery
