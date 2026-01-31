@@ -165,3 +165,13 @@ export {
   type DedupeCache,
   type DedupeCacheOptions,
 } from "./dedupe.js"
+export {
+  // Error utilities
+  extractErrorCode,
+  isAbortError,
+  isFatalError,
+  isConfigError,
+  isTransientNetworkError,
+  isRetryableNetworkError,
+  formatUncaughtError,
+} from "./errors.js"

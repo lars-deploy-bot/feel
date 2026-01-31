@@ -25,18 +25,46 @@ import process from "node:process"
 // IMPORTANT: Import these BEFORE dropping privileges!
 // After privilege drop, the worker can't read /root/webalive/claude-bridge/node_modules/
 import { query } from "@anthropic-ai/claude-agent-sdk"
-import { isOAuthMcpTool, GLOBAL_MCP_PROVIDERS, DEFAULTS, PLAN_MODE_BLOCKED_TOOLS, allowTool, denyTool } from "@webalive/shared"
+import { isOAuthMcpTool, GLOBAL_MCP_PROVIDERS, DEFAULTS, PLAN_MODE_BLOCKED_TOOLS, allowTool, denyTool, isAbortError, isTransientNetworkError, isFatalError, formatUncaughtError } from "@webalive/shared"
 import { workspaceInternalMcp, toolsInternalMcp } from "@alive-brug/tools"
 
-// Global unhandled rejection handler - last resort safety net
-process.on("unhandledRejection", (reason, promise) => {
-  console.error("[worker] FATAL: Unhandled promise rejection:", reason)
-  // Exit with error to avoid zombie worker state
+// Global unhandled rejection handler - smart handling based on error type
+// Pattern from OpenClaw: don't crash on transient network errors or intentional aborts
+process.on("unhandledRejection", (reason, _promise) => {
+  // AbortError is typically an intentional cancellation (e.g., during shutdown)
+  // Log it but don't crash - these are expected during graceful shutdown
+  if (isAbortError(reason)) {
+    console.warn("[worker] Suppressed AbortError (intentional cancellation):", formatUncaughtError(reason))
+    return
+  }
+
+  // Transient network errors shouldn't crash the worker
+  // They typically resolve on their own or will be retried
+  if (isTransientNetworkError(reason)) {
+    console.warn("[worker] Non-fatal network error (continuing):", formatUncaughtError(reason))
+    return
+  }
+
+  // Fatal errors should definitely crash
+  if (isFatalError(reason)) {
+    console.error("[worker] FATAL unhandled rejection:", formatUncaughtError(reason))
+    process.exit(1)
+    return
+  }
+
+  // Unknown errors - still crash to be safe, but with better logging
+  console.error("[worker] Unhandled promise rejection:", formatUncaughtError(reason))
   process.exit(1)
 })
 
 process.on("uncaughtException", (error) => {
-  console.error("[worker] FATAL: Uncaught exception:", error)
+  // Transient network errors in sync code (rare but possible)
+  if (isTransientNetworkError(error)) {
+    console.warn("[worker] Non-fatal uncaught exception (continuing):", formatUncaughtError(error))
+    return
+  }
+
+  console.error("[worker] FATAL: Uncaught exception:", formatUncaughtError(error))
   process.exit(1)
 })
 
