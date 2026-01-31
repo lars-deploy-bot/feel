@@ -12,6 +12,7 @@ import fs from "node:fs"
 import path from "node:path"
 import os from "node:os"
 import lockfile from "proper-lockfile"
+import { retryAsync } from "@webalive/shared"
 
 // Anthropic OAuth constants (same as Claude Code / OpenClaw)
 const ANTHROPIC_TOKEN_URL = "https://console.anthropic.com/v1/oauth/token"
@@ -91,39 +92,74 @@ export function isTokenExpired(expiresAt: number): boolean {
 }
 
 /**
- * Refresh an expired Anthropic OAuth token
+ * Check if an error is retryable (network errors, 5xx, rate limits)
+ */
+function isRetryableError(error: unknown): boolean {
+  if (error instanceof Error) {
+    // Network errors
+    if (error.message.includes("fetch failed") || error.message.includes("ECONNRESET")) {
+      return true
+    }
+    // Rate limiting or server errors
+    if (error.message.includes("429") || error.message.includes("5")) {
+      const statusMatch = error.message.match(/\((\d{3})\)/)
+      if (statusMatch) {
+        const status = parseInt(statusMatch[1], 10)
+        return status === 429 || status >= 500
+      }
+    }
+  }
+  return false
+}
+
+/**
+ * Refresh an expired Anthropic OAuth token with retry logic
  */
 async function refreshTokenInternal(refreshToken: string): Promise<ClaudeOAuthCredentials> {
   console.log("[anthropic-oauth] Refreshing expired token...")
 
-  const response = await fetch(ANTHROPIC_TOKEN_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+  return retryAsync(
+    async () => {
+      const response = await fetch(ANTHROPIC_TOKEN_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          grant_type: "refresh_token",
+          client_id: ANTHROPIC_CLIENT_ID,
+          refresh_token: refreshToken,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Anthropic token refresh failed (${response.status}): ${errorText}`)
+      }
+
+      const data: TokenRefreshResponse = await response.json()
+
+      const newCredentials: ClaudeOAuthCredentials = {
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token,
+        expiresAt: Date.now() + data.expires_in * 1000,
+      }
+
+      console.log("[anthropic-oauth] Token refreshed, expires at:", new Date(newCredentials.expiresAt).toISOString())
+
+      return newCredentials
     },
-    body: JSON.stringify({
-      grant_type: "refresh_token",
-      client_id: ANTHROPIC_CLIENT_ID,
-      refresh_token: refreshToken,
-    }),
-  })
-
-  if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(`Anthropic token refresh failed (${response.status}): ${errorText}`)
-  }
-
-  const data: TokenRefreshResponse = await response.json()
-
-  const newCredentials: ClaudeOAuthCredentials = {
-    accessToken: data.access_token,
-    refreshToken: data.refresh_token,
-    expiresAt: Date.now() + data.expires_in * 1000,
-  }
-
-  console.log("[anthropic-oauth] Token refreshed, expires at:", new Date(newCredentials.expiresAt).toISOString())
-
-  return newCredentials
+    {
+      attempts: 3,
+      minDelayMs: 500,
+      maxDelayMs: 5000,
+      jitter: 0.2,
+      shouldRetry: isRetryableError,
+      onRetry: ({ attempt, delayMs, err }) => {
+        console.log(`[anthropic-oauth] Retry ${attempt}/3 in ${delayMs}ms:`, err instanceof Error ? err.message : err)
+      },
+    },
+  )
 }
 
 /**
