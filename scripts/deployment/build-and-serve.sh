@@ -81,13 +81,33 @@ rollback() {
 
     log_warn "Rolling back: $reason"
     ln -sfn "$PREVIOUS_BUILD" "$BUILDS_DIR/current"
-    systemctl restart "$SERVICE" 2>/dev/null || true
-    sleep 3
 
-    if health_check "http://localhost:$PORT/" 5 1; then
-        log_success "Rollback complete"
+    # Reset any failed state before restarting
+    systemctl reset-failed "$SERVICE" 2>/dev/null || true
+    systemctl restart "$SERVICE" 2>/dev/null || true
+
+    # Wait for service to come up
+    local wait_time=10
+    local service_up=false
+    for i in $(seq 1 $wait_time); do
+        sleep 1
+        if systemctl is-active --quiet "$SERVICE"; then
+            service_up=true
+            break
+        fi
+    done
+
+    if [ "$service_up" = false ]; then
+        log_error "Rollback failed - service won't start"
+        log_error "Check: journalctl -u $SERVICE -n 50"
+        return 1
+    fi
+
+    if health_check "http://localhost:$PORT/" 10 1; then
+        log_success "Rollback complete - now serving: $PREVIOUS_BUILD"
     else
-        log_error "Rollback failed - check: journalctl -u $SERVICE"
+        log_error "Rollback partial - service running but health check failed"
+        log_error "Check: journalctl -u $SERVICE"
     fi
 }
 
@@ -225,10 +245,23 @@ log_step "Restarting $SERVICE..."
 # (e.g., staging chat deploys staging - the restart kills the Claude session)
 nohup systemctl restart "$SERVICE" >/dev/null 2>&1 &
 RESTART_PID=$!
-sleep 2  # Give systemd time to process
-# Check if service is now active (don't wait for the nohup process - it may be orphaned)
-if ! systemctl is-active --quiet "$SERVICE"; then
-    phase_end error "Failed to restart (service not active)"
+
+# Wait for service to become active (with retries)
+SERVICE_WAIT=10
+SERVICE_ACTIVE=false
+for i in $(seq 1 $SERVICE_WAIT); do
+    sleep 1
+    if systemctl is-active --quiet "$SERVICE"; then
+        SERVICE_ACTIVE=true
+        break
+    fi
+done
+
+if [ "$SERVICE_ACTIVE" = false ]; then
+    phase_end error "Failed to restart (service not active after ${SERVICE_WAIT}s)"
+    log_error "Service status:"
+    systemctl status "$SERVICE" --no-pager 2>&1 | head -20 || true
+    rollback "service failed to start"
     exit 1
 fi
 
