@@ -3,9 +3,12 @@
  *
  * Cookie names and session config imported from @webalive/shared (single source of truth).
  * This file provides cookie options helpers for Next.js.
+ *
+ * SERVER-AGNOSTIC: Cookie domain is extracted dynamically from the request host,
+ * allowing the app to work on any domain without hardcoding.
  */
 
-import { COOKIE_NAMES, DOMAINS, SESSION_MAX_AGE } from "@webalive/shared"
+import { COOKIE_NAMES, SESSION_MAX_AGE } from "@webalive/shared"
 
 // Re-export for backward compatibility
 export { COOKIE_NAMES, SESSION_MAX_AGE }
@@ -23,9 +26,6 @@ type CookieOptions = {
 /**
  * Check if running on a deployed server (dev/staging/production)
  * Local development uses BRIDGE_ENV=local
- *
- * All deployed servers (dev/staging/prod) run on *.terminal.goalive.nl
- * and need cross-origin cookie support for preview iframes.
  */
 function isDeployedServer(): boolean {
   // BRIDGE_ENV=local means local development (localhost)
@@ -34,19 +34,52 @@ function isDeployedServer(): boolean {
 }
 
 /**
- * Get cookie domain based on request host
- * Supports multiple domains: terminal.goalive.nl, alive.best
+ * Extract the root domain from a host for cookie domain setting.
+ * Returns the domain with a leading dot for subdomain sharing.
+ *
+ * Examples:
+ * - "app.sonnno.tech" -> ".sonnno.tech"
+ * - "terminal.goalive.nl" -> ".goalive.nl"
+ * - "dev.terminal.goalive.nl" -> ".goalive.nl"
+ * - "alive.best" -> ".alive.best"
+ * - "localhost:3000" -> undefined (no domain for localhost)
+ *
+ * @param host - The request host (e.g., "app.example.com" or "app.example.com:3000")
  */
-function getCookieDomain(host?: string): string | undefined {
-  if (!host) return DOMAINS.COOKIE_DOMAIN
+function extractRootDomain(host: string): string | undefined {
+  // Remove port if present
+  const hostname = host.split(":")[0]
 
-  // alive.best and subdomains
-  if (host.endsWith("alive.best") || host === "alive.best") {
-    return ".alive.best"
+  // Don't set domain for localhost/IP addresses
+  if (hostname === "localhost" || hostname === "127.0.0.1" || /^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
+    return undefined
   }
 
-  // terminal.goalive.nl and subdomains (default)
-  return DOMAINS.COOKIE_DOMAIN
+  const parts = hostname.split(".")
+
+  // Need at least 2 parts for a valid domain (e.g., "example.com")
+  if (parts.length < 2) {
+    return undefined
+  }
+
+  // Get the last 2 parts as the root domain
+  // This works for most TLDs (.com, .nl, .tech, .best, etc.)
+  // Note: Does not handle special TLDs like .co.uk - add explicit handling if needed
+  const rootDomain = parts.slice(-2).join(".")
+
+  return `.${rootDomain}`
+}
+
+/**
+ * Get cookie domain based on request host.
+ * Dynamically extracts root domain to work with ANY domain.
+ */
+function getCookieDomain(host?: string): string | undefined {
+  if (!host) {
+    return undefined
+  }
+
+  return extractRootDomain(host)
 }
 
 /**
