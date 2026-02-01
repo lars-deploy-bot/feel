@@ -1,17 +1,17 @@
 import { getEnabledMcpToolNames, toolsInternalMcp, workspaceInternalMcp } from "@alive-brug/tools"
 import {
-  OAUTH_MCP_PROVIDERS,
-  getGlobalMcpToolNames,
-  BRIDGE_STREAM_TYPES,
-  BRIDGE_SYNTHETIC_MESSAGE_TYPES,
-  BRIDGE_INTERRUPT_SOURCES,
   // Single source of truth for Bridge tool configuration
   BRIDGE_ALLOWED_SDK_TOOLS,
+  BRIDGE_INTERRUPT_SOURCES,
   BRIDGE_PERMISSION_MODE,
   BRIDGE_SETTINGS_SOURCES,
+  BRIDGE_STREAM_TYPES,
+  BRIDGE_SYNTHETIC_MESSAGE_TYPES,
   getBridgeAllowedTools,
   getBridgeDisallowedTools,
   getBridgeMcpServers,
+  getGlobalMcpToolNames,
+  OAUTH_MCP_PROVIDERS,
 } from "@webalive/shared"
 
 // Re-export stream types

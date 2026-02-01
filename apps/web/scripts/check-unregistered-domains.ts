@@ -8,10 +8,10 @@
  * This is a READ-ONLY script - it only reports discrepancies
  */
 
-import { readdirSync, existsSync } from "node:fs"
+import { existsSync, readdirSync } from "node:fs"
 import { createClient } from "@supabase/supabase-js"
-import { PATHS } from "@webalive/shared"
 import type { AppDatabase } from "@webalive/database"
+import { PATHS } from "@webalive/shared"
 
 // Bun automatically loads .env files
 

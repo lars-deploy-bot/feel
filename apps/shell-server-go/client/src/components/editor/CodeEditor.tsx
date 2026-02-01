@@ -190,7 +190,7 @@ export function CodeEditor({ onSave }: CodeEditorProps) {
   const isModified = useIsActiveTabModified()
 
   const isMarkdown = activeTab ? isMarkdownFile(activeTab.name, activeTab.isTemplate) : false
-  const isTemplate = activeTab?.isTemplate ?? false
+  const _isTemplate = activeTab?.isTemplate ?? false
 
   // Create/destroy editor based on active tab and preview mode
   useEffect(() => {

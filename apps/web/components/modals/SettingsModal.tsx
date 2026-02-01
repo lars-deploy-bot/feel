@@ -1,9 +1,23 @@
 "use client"
 
-import { Bot, Building2, ClipboardList, Flag, Globe, Key, Link, Settings, Shield, Target, User, X } from "lucide-react"
+import {
+  Bot,
+  Building2,
+  ClipboardList,
+  Flag,
+  Globe,
+  Key,
+  Link,
+  Settings,
+  Shield,
+  Target,
+  User,
+  X,
+  Zap,
+} from "lucide-react"
 import { lazy, Suspense, useState } from "react"
-import { useIsDesktop } from "@/hooks/useMediaQuery"
 import { useAuth } from "@/features/deployment/hooks/useAuth"
+import { useIsDesktop } from "@/hooks/useMediaQuery"
 
 // Lazy load tab components - only load on demand to speed up modal opening
 const AccountSettings = lazy(() =>
@@ -37,6 +51,9 @@ const IntegrationsList = lazy(() =>
 const UserEnvKeysSettings = lazy(() =>
   import("@/components/settings/user-env-keys").then(m => ({ default: m.UserEnvKeysSettings })),
 )
+const AutomationsSettings = lazy(() =>
+  import("@/components/settings/tabs/AutomationsSettings").then(m => ({ default: m.AutomationsSettings })),
+)
 
 type SettingsTab =
   | "account"
@@ -45,6 +62,7 @@ type SettingsTab =
   | "prompts"
   | "organization"
   | "websites"
+  | "automations"
   | "integrations"
   | "keys"
   | "flags"
@@ -69,6 +87,7 @@ const allTabs: TabDefinition[] = [
   { id: "prompts", label: "Prompts", icon: <ClipboardList size={16} /> },
   { id: "organization", label: "Workspace", icon: <Building2 size={16} /> },
   { id: "websites", label: "Websites", icon: <Globe size={16} /> },
+  { id: "automations", label: "Automations", icon: <Zap size={16} /> },
   { id: "integrations", label: "Integrations", icon: <Link size={16} /> },
   { id: "keys", label: "API Keys", icon: <Key size={16} /> },
   { id: "flags", label: "Flags", icon: <Flag size={16} />, adminOnly: true },
@@ -183,6 +202,7 @@ export function SettingsModal({ onClose, initialTab }: SettingsModalProps) {
                 {activeTab === "prompts" && <UserPromptsSettings />}
                 {activeTab === "organization" && <WorkspaceSettings />}
                 {activeTab === "websites" && <WebsitesSettings />}
+                {activeTab === "automations" && <AutomationsSettings />}
                 {activeTab === "integrations" && <IntegrationsListWithHeader />}
                 {activeTab === "keys" && <UserEnvKeysWithHeader />}
                 {activeTab === "flags" && <FlagsSettings />}

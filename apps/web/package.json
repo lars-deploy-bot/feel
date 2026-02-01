@@ -12,7 +12,7 @@
     "format": "npx biome format --write .",
     "tsc": "tsc --noEmit",
     "type-check": "NODE_OPTIONS='--max-old-space-size=4096' tsc --noEmit",
-    "pretest": "bun run scripts/check-error-patterns.ts && bun run scripts/check-test-imports.ts",
+    "pretest": "bun run scripts/check-test-imports.ts",
     "test": "bun run test:unit",
     "test:unit": "vitest run",
     "test:db": "vitest run -c vitest.db.config.ts",

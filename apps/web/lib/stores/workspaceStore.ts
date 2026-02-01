@@ -1,9 +1,10 @@
 "use client"
 
+import { WORKSPACE_STORAGE } from "@webalive/shared"
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
-import { WORKSPACE_STORAGE } from "@webalive/shared"
 import type { Organization } from "@/lib/api/types"
+import { queueSyncToServer } from "./workspacePreferencesSync"
 
 // Re-export Organization type for backwards compatibility
 export type { Organization }
@@ -55,10 +56,14 @@ const useWorkspaceStoreBase = create<WorkspaceStore>()(
           if (workspace && orgId) {
             actions.addRecentWorkspace(workspace, orgId)
           }
+          // Sync to server for cross-device access
+          queueSyncToServer()
         },
 
         setSelectedOrg: (orgId: string | null) => {
           set({ selectedOrgId: orgId })
+          // Sync to server for cross-device access
+          queueSyncToServer()
         },
 
         /**
@@ -170,6 +175,8 @@ const useWorkspaceStoreBase = create<WorkspaceStore>()(
               recentWorkspaces: Array.from(byOrg.values()).flat(),
             }
           })
+          // Sync to server for cross-device access
+          queueSyncToServer()
         },
 
         clearRecentWorkspaces: () => {

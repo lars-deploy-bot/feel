@@ -6,12 +6,12 @@
  */
 
 import { SECURITY, TEST_CONFIG, TIMEOUTS } from "@webalive/shared"
+import { expect, test } from "./fixtures"
 import { TEST_MESSAGES, TEST_SELECTORS, TEST_TIMEOUTS, TEST_USER } from "./fixtures/test-data"
-import { isRemoteEnv } from "./lib/test-env"
 import { expectChatMessage, expectSendButtonEnabled, gotoChatFast } from "./helpers/assertions"
 import { handlers } from "./lib/handlers"
+import { isRemoteEnv } from "./lib/test-env"
 import { ChatPage } from "./pages/ChatPage"
-import { expect, test } from "./fixtures"
 
 test.describe("E2E Utilities Validation", () => {
   test("test-data constants are accessible and have correct types", async () => {

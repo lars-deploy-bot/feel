@@ -12,8 +12,8 @@
 
 "use client"
 
-import { useState, useMemo, useRef } from "react"
-import { ExternalLink, User, Folder, ChevronDown, Filter, ArrowUp, ArrowDown, Copy, Check } from "lucide-react"
+import { ArrowDown, ArrowUp, Check, ChevronDown, Copy, ExternalLink, Filter, Folder, User } from "lucide-react"
+import { useMemo, useRef, useState } from "react"
 import toast from "react-hot-toast"
 import type { ToolResultRendererProps } from "@/lib/tools/tool-registry"
 

@@ -1,6 +1,6 @@
+import { getMcpToolFriendlyName } from "@webalive/shared"
 import { useMemo } from "react"
 import type { UIMessage } from "@/features/chat/lib/message-parser"
-import { getMcpToolFriendlyName } from "@webalive/shared"
 
 /**
  * Derives status text from the last assistant message when busy.

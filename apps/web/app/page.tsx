@@ -1,5 +1,6 @@
 "use client"
 
+import { FREE_CREDITS } from "@webalive/shared"
 import { Eye, EyeOff, Rocket } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Suspense, useState } from "react"
@@ -7,7 +8,6 @@ import { Button } from "@/components/ui/primitives/Button"
 import { Input } from "@/components/ui/primitives/Input"
 import { ThemeToggle } from "@/components/ui/ThemeToggle"
 import { authStore } from "@/lib/stores/authStore"
-import { FREE_CREDITS } from "@webalive/shared"
 
 function LoginPageContent() {
   const [email, setEmail] = useState("")

@@ -9,7 +9,7 @@
 
 "use client"
 
-import { MessageSquare, Check, User, Clock } from "lucide-react"
+import { Check, Clock, MessageSquare, User } from "lucide-react"
 import type { ToolResultRendererProps } from "@/lib/tools/tool-registry"
 
 /**

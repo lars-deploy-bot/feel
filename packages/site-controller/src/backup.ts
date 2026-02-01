@@ -9,7 +9,7 @@
  * - Pushes to GitHub repository
  */
 
-import { execSync, spawnSync } from "child_process"
+import { spawnSync } from "node:child_process"
 import { DeploymentError } from "./errors.js"
 import { PATHS } from "@webalive/shared"
 
@@ -166,7 +166,7 @@ function stageFiles(includedSites: string[]): number {
         ],
         REPO_DIR,
       )
-    } catch (error) {
+    } catch (_error) {
       // Don't fail if reset fails (patterns might not match)
       console.log(`[Backup] Reset artifacts for ${site} (may not exist)`)
     }
@@ -219,7 +219,7 @@ function createCommit(skippedSites: string[]): void {
     }
   }
 
-  commitMsg += `\n\nCo-Authored-By: lars-deploy-bot <lars-deploy-bot@hetzner-webalive>`
+  commitMsg += "\n\nCo-Authored-By: lars-deploy-bot <lars-deploy-bot@hetzner-webalive>"
 
   console.log("[Backup] Creating commit...")
   try {

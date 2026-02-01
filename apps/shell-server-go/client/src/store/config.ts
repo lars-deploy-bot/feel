@@ -17,7 +17,7 @@ interface ConfigState {
   fetchConfig: () => Promise<void>
 }
 
-export const useConfigStore = create<ConfigState>((set, get) => ({
+export const useConfigStore = create<ConfigState>((set, _get) => ({
   config: null,
   isLoading: true,
   error: null,

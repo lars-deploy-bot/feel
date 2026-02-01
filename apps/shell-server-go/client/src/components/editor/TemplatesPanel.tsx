@@ -333,7 +333,6 @@ ${body}`
                   onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
                   className="w-full bg-shell-bg border border-shell-border rounded px-3 py-2 text-white text-sm placeholder-shell-text-muted focus:outline-none focus:border-shell-accent"
                   placeholder="e.g., Image Carousel with Thumbnails"
-                  autoFocus
                 />
                 <p className="text-shell-text-muted text-xs mt-1">Filename will be auto-generated from the name</p>
               </div>

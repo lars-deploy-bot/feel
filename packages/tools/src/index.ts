@@ -22,7 +22,7 @@
  */
 
 // MCP servers
-export { toolsInternalMcp, workspaceInternalMcp } from "./mcp-server.js"
+export { toolsInternalMcp, workspaceInternalMcp, supabaseInternalMcp } from "./mcp-server.js"
 export { getEnabledMcpToolNames } from "./tools/meta/search-tools.js"
 export { SDK_TOOLS, type SDKTool } from "./tools/meta/tool-registry.js"
 
@@ -78,6 +78,24 @@ export {
   type PartialTemplateFrontmatter,
 } from "./lib/template-frontmatter.js"
 
+// Skill utilities
+export {
+  listSkillsFromDir,
+  listGlobalSkills,
+  listProjectSkills,
+  mergeSkills,
+  getSkillById,
+  GLOBAL_SKILLS_PATH,
+  type SkillListItem,
+  type SkillSource,
+} from "./tools/skills/list-skills.js"
+export {
+  parseSkillContent,
+  skillIdToDisplayName,
+  type SkillFrontmatter,
+  type ParsedSkill,
+} from "./lib/skill-frontmatter.js"
+
 // Agent-to-Agent (A2A) Session Tools
 export {
   // Types
@@ -108,3 +126,76 @@ export {
   type SessionsHistoryContext,
   type SessionsHistoryResult,
 } from "./tools/sessions/index.js"
+
+// Scheduled Tasks (Cron) Tools
+export {
+  // Types
+  type Schedule,
+  type ScheduleAt,
+  type ScheduleEvery,
+  type ScheduleCron,
+  type Payload,
+  type PayloadSystemEvent,
+  type PayloadAgentTurn,
+  type ScheduledJob,
+  type JobState,
+  type JobStatus,
+  type ScheduledJobCreate,
+  type ScheduledJobUpdate,
+  type ScheduledJobListParams,
+  type ScheduledJobListResult,
+  type JobExecutionContext,
+  type JobExecutionResult,
+  type ScheduledToolContext,
+  // Validation & helpers
+  isValidSchedule,
+  isValidPayload,
+  isValidCronExpression,
+  calculateNextRunTime,
+  formatSchedule,
+  // Store operations
+  createJob,
+  getJob,
+  updateJob,
+  deleteJob,
+  listJobs,
+  getDueJobs,
+  markJobRunning,
+  markJobCompleted,
+  getStoreStatus,
+  // Scheduler
+  startScheduler,
+  stopScheduler,
+  getSchedulerStatus,
+  registerJobExecutor,
+  triggerJob,
+  createDefaultExecutor,
+  // Tool: scheduled_create
+  scheduledCreateSchema,
+  scheduledCreateToolDefinition,
+  executeScheduledCreate,
+  type ScheduledCreateParams,
+  // Tool: scheduled_list
+  scheduledListSchema,
+  scheduledListToolDefinition,
+  executeScheduledList,
+  type ScheduledListParams,
+  type ScheduledListResult,
+  // Tool: scheduled_update
+  scheduledUpdateSchema,
+  scheduledUpdateToolDefinition,
+  executeScheduledUpdate,
+  type ScheduledUpdateParams,
+  // Tool: scheduled_delete
+  scheduledDeleteSchema,
+  scheduledDeleteToolDefinition,
+  executeScheduledDelete,
+  type ScheduledDeleteParams,
+  // Tool: scheduled_trigger
+  scheduledTriggerSchema,
+  scheduledTriggerToolDefinition,
+  executeScheduledTrigger,
+  type ScheduledTriggerParams,
+  // All tool definitions
+  SCHEDULED_TOOL_DEFINITIONS,
+} from "./tools/scheduled/index.js"

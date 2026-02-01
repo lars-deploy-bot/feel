@@ -16,26 +16,25 @@
  * ```
  */
 
-import type { ComponentType } from "react"
+import type { ToolDisplayConfig, ToolName } from "@alive-brug/tools/display"
 
 // Import from the shared package (display-only, browser-safe)
 import {
-  LINEAR,
-  STRIPE,
-  FILE_OPS,
-  OTHER,
-  EMAIL,
   AI,
+  EMAIL,
+  FILE_OPS,
   getDisplayConfig,
-  shouldAutoExpand,
-  isVisibleInNormalMode,
   getPreview,
+  isVisibleInNormalMode,
+  LINEAR,
+  OTHER,
+  plural,
+  STRIPE,
+  shouldAutoExpand,
   transformData,
   unwrapMcp,
-  plural,
 } from "@alive-brug/tools/display"
-
-import type { ToolDisplayConfig, ToolName } from "@alive-brug/tools/display"
+import type { ComponentType } from "react"
 
 // Re-export for consumers
 export {

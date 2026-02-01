@@ -21,19 +21,21 @@
 
 import Dexie from "dexie"
 import { create } from "zustand"
-import { getMessageDb, CURRENT_MESSAGE_VERSION, type DbConversation, type DbMessage, type DbTab } from "./messageDb"
-import { safeDb } from "./safeDb"
+import type { UIMessage } from "@/features/chat/lib/message-parser"
 import {
-  queueSync,
   fetchConversations,
   fetchTabMessages,
-  shareConversation as syncShareConversation,
-  unshareConversation as syncUnshareConversation,
-  deleteConversation as syncDeleteConversation,
+  queueSync,
   archiveConversation as syncArchiveConversation,
+  deleteConversation as syncDeleteConversation,
+  renameConversation as syncRenameConversation,
+  shareConversation as syncShareConversation,
+  unarchiveConversation as syncUnarchiveConversation,
+  unshareConversation as syncUnshareConversation,
 } from "./conversationSync"
-import { toDbMessageContent, extractTitle } from "./messageAdapters"
-import type { UIMessage } from "@/features/chat/lib/message-parser"
+import { extractTitle, toDbMessageContent } from "./messageAdapters"
+import { CURRENT_MESSAGE_VERSION, type DbConversation, type DbMessage, type DbTab, getMessageDb } from "./messageDb"
+import { safeDb } from "./safeDb"
 
 // =============================================================================
 // Types
@@ -79,6 +81,8 @@ interface DexieMessageStoreActions {
   switchConversation: (id: string, tabId?: string) => void
   deleteConversation: (id: string) => Promise<void>
   archiveConversation: (id: string) => Promise<void>
+  unarchiveConversation: (id: string) => Promise<void>
+  renameConversation: (id: string, title: string) => Promise<void>
   shareConversation: (id: string) => Promise<void>
   unshareConversation: (id: string) => Promise<void>
 
@@ -342,6 +346,18 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
     if (currentTabGroupId === id) {
       set({ currentTabGroupId: null, currentTabId: null })
     }
+  },
+
+  unarchiveConversation: async id => {
+    const { session } = get()
+    if (!session) return
+    await syncUnarchiveConversation(id, session.userId)
+  },
+
+  renameConversation: async (id, title) => {
+    const { session } = get()
+    if (!session) return
+    await syncRenameConversation(id, session.userId, title)
   },
 
   shareConversation: async id => {
@@ -711,6 +727,8 @@ export const useDexieMessageActions = () =>
     switchConversation: state.switchConversation,
     deleteConversation: state.deleteConversation,
     archiveConversation: state.archiveConversation,
+    unarchiveConversation: state.unarchiveConversation,
+    renameConversation: state.renameConversation,
     shareConversation: state.shareConversation,
     unshareConversation: state.unshareConversation,
     addMessage: state.addMessage,
@@ -734,10 +752,11 @@ export const useDexieMessageActions = () =>
 // =============================================================================
 
 export {
-  useConversations as useDexieConversations,
-  useSharedConversations as useDexieSharedConversations,
-  useMessages as useDexieMessages,
-  useTabs as useDexieTabs,
+  useArchivedConversations as useDexieArchivedConversations,
   useConversation as useDexieConversation,
+  useConversations as useDexieConversations,
   useCurrentConversationSafe as useDexieCurrentConversationSafe,
+  useMessages as useDexieMessages,
+  useSharedConversations as useDexieSharedConversations,
+  useTabs as useDexieTabs,
 } from "./useMessageDb"

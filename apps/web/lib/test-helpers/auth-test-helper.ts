@@ -6,12 +6,12 @@
 
 import { randomUUID } from "node:crypto"
 import { createClient } from "@supabase/supabase-js"
+import type { IamDatabase } from "@webalive/database"
 import { TEST_CONFIG } from "@webalive/shared"
 import { hash } from "bcrypt"
 import jwt from "jsonwebtoken"
 import { getUserDefaultOrgId } from "@/lib/deployment/org-resolver"
 import { getSupabaseCredentials } from "@/lib/env/server"
-import type { IamDatabase } from "@webalive/database"
 import { generateTestEmail, validateTestEmail } from "./test-email-domains"
 
 export interface TestUser {

@@ -12,7 +12,7 @@
 
 import Dexie from "dexie"
 import { useLiveQuery } from "dexie-react-hooks"
-import { getMessageDb, type DbConversation, type DbMessage, type DbTab } from "./messageDb"
+import { type DbConversation, type DbMessage, type DbTab, getMessageDb } from "./messageDb"
 
 // =============================================================================
 // Session Context
@@ -85,6 +85,37 @@ export function useSharedConversations(workspace: string | null, session: Sessio
           .between([session.orgId, "shared", Dexie.minKey], [session.orgId, "shared", Dexie.maxKey])
           .and(c => !c.deletedAt && !c.archivedAt && c.workspace === workspace) // Filter by workspace and exclude deleted/archived
           .reverse()
+          .toArray()
+      },
+      [workspace, session?.userId, session?.orgId],
+      [],
+    ) ?? []
+  )
+}
+
+/**
+ * Get archived conversations for a workspace.
+ * Shows user's own archived conversations that can be restored.
+ */
+export function useArchivedConversations(workspace: string | null, session: SessionContext | null): DbConversation[] {
+  return (
+    useLiveQuery(
+      async () => {
+        if (!workspace || !session?.userId || !session?.orgId) return []
+
+        const db = getMessageDb(session.userId)
+
+        // Get archived conversations (has archivedAt but not deletedAt)
+        return db.conversations
+          .where("[workspace+updatedAt]")
+          .between([workspace, Dexie.minKey], [workspace, Dexie.maxKey])
+          .and(
+            c =>
+              !c.deletedAt && // Not deleted
+              !!c.archivedAt && // Is archived
+              c.creatorId === session.userId, // User's own only (can't unarchive shared)
+          )
+          .reverse() // Most recently archived first
           .toArray()
       },
       [workspace, session?.userId, session?.orgId],

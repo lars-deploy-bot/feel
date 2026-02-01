@@ -7,27 +7,24 @@
  * Import this file once at app initialization.
  */
 
-import { registerComponent, LINEAR, EMAIL, AI } from "./tool-registry"
-
-// === AI Components ===
-import {
-  ClarificationQuestionsOutput,
-  validateClarificationQuestions,
-} from "@/components/ui/chat/tools/ai/ClarificationQuestionsOutput"
-import { WebsiteConfigOutput, validateWebsiteConfig } from "@/components/ui/chat/tools/ai/WebsiteConfigOutput"
-
-// === Linear Components ===
-import { LinearIssueResult, validateLinearIssue } from "@/components/linear/LinearIssueResult"
-import { LinearIssuesResult, validateLinearIssues } from "@/components/linear/LinearIssuesResult"
 import {
   LinearCommentResult,
   LinearCommentsResult,
   validateLinearComment,
   validateLinearComments,
 } from "@/components/linear/LinearCommentResult"
-
+// === Linear Components ===
+import { LinearIssueResult, validateLinearIssue } from "@/components/linear/LinearIssueResult"
+import { LinearIssuesResult, validateLinearIssues } from "@/components/linear/LinearIssuesResult"
+// === AI Components ===
+import {
+  ClarificationQuestionsOutput,
+  validateClarificationQuestions,
+} from "@/components/ui/chat/tools/ai/ClarificationQuestionsOutput"
+import { validateWebsiteConfig, WebsiteConfigOutput } from "@/components/ui/chat/tools/ai/WebsiteConfigOutput"
 // === Email Components (superadmin only) ===
 import { EmailDraftOutput, validateEmailDraft } from "@/components/ui/chat/tools/email/EmailDraftOutput"
+import { AI, EMAIL, LINEAR, registerComponent } from "./tool-registry"
 
 // ============================================================
 // LINEAR COMPONENTS

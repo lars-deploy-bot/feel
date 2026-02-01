@@ -3,30 +3,58 @@
  *
  * Implements OAuth 2.0 flow for Linear
  * Docs: https://developers.linear.app/docs/oauth/authentication
+ *
+ * Linear supports:
+ * - Token refresh (unlike GitHub OAuth Apps)
+ * - Token revocation
+ * - PKCE for public clients
  */
 
-import type { OAuthProvider } from "./base"
+import type { OAuthProviderCore, OAuthRefreshable, OAuthRevocable, PKCEOptions, TokenExchangeOptions } from "./base"
 import type { OAuthTokens, GraphQLError } from "../types"
 import { fetchWithRetry } from "../fetch-with-retry"
 
 export const LINEAR_SCOPES = ["read", "write", "issues:create"] as const
 
-export class LinearProvider implements OAuthProvider {
+export class LinearProvider implements OAuthProviderCore, OAuthRefreshable, OAuthRevocable {
   name = "linear"
 
   /**
    * Exchanges authorization code for Linear access token
+   * Supports PKCE for public clients
    */
-  async exchangeCode(code: string, clientId: string, clientSecret: string, redirectUri?: string): Promise<OAuthTokens> {
+  async exchangeCode(
+    code: string,
+    clientId: string,
+    clientSecret: string,
+    redirectUri?: string,
+    options?: TokenExchangeOptions,
+  ): Promise<OAuthTokens> {
     const params = new URLSearchParams({
       code,
       client_id: clientId,
-      client_secret: clientSecret,
       grant_type: "authorization_code",
     })
 
+    // PKCE flow: use code_verifier instead of client_secret
+    if (options?.code_verifier) {
+      params.append("code_verifier", options.code_verifier)
+    }
+
+    // Add client_secret only if provided (confidential clients)
+    if (clientSecret) {
+      params.append("client_secret", clientSecret)
+    }
+
     if (redirectUri) {
       params.append("redirect_uri", redirectUri)
+    }
+
+    // Additional body params support (n8n pattern)
+    if (options?.additionalBodyParams) {
+      for (const [key, value] of Object.entries(options.additionalBodyParams)) {
+        params.append(key, value)
+      }
     }
 
     const res = await fetchWithRetry(
@@ -143,9 +171,10 @@ export class LinearProvider implements OAuthProvider {
    * @param redirectUri - Callback URL (must match Linear app config)
    * @param scope - Comma-separated scopes (e.g., "read,write,issues:create")
    * @param state - Random state for CSRF protection
+   * @param pkce - PKCE challenge for public clients (optional)
    * @returns Authorization URL to redirect user to
    */
-  getAuthUrl(clientId: string, redirectUri: string, scope: string, state?: string): string {
+  getAuthUrl(clientId: string, redirectUri: string, scope: string, state?: string, pkce?: PKCEOptions): string {
     const params = new URLSearchParams({
       client_id: clientId,
       redirect_uri: redirectUri,
@@ -155,6 +184,12 @@ export class LinearProvider implements OAuthProvider {
 
     if (state) {
       params.append("state", state)
+    }
+
+    // PKCE support for public clients
+    if (pkce) {
+      params.append("code_challenge", pkce.code_challenge)
+      params.append("code_challenge_method", pkce.code_challenge_method)
     }
 
     return `https://linear.app/oauth/authorize?${params.toString()}`

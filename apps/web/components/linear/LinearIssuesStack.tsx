@@ -7,10 +7,10 @@
 
 "use client"
 
-import { useLinearIssues, type LinearIssue } from "@/hooks/use-linear-issues"
-import { useConnectIntegration } from "@/hooks/use-integrations"
-import { Loader2, RefreshCw, ExternalLink, AlertCircle } from "lucide-react"
+import { AlertCircle, ExternalLink, Loader2, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useConnectIntegration } from "@/hooks/use-integrations"
+import { type LinearIssue, useLinearIssues } from "@/hooks/use-linear-issues"
 
 interface LinearIssuesStackProps {
   limit?: number
@@ -66,10 +66,8 @@ export function LinearIssuesStack({
     return (
       <div className={`rounded-lg border border-zinc-200 dark:border-zinc-800 p-6 ${className}`}>
         <div className="flex flex-col items-center justify-center text-center">
-          <div className="w-12 h-12 rounded-full bg-indigo-500/10 flex items-center justify-center mb-4">
-            <svg className="w-6 h-6 text-indigo-500" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a.996.996 0 000-1.41l-2.34-2.34a.996.996 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
-            </svg>
+          <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center mb-4">
+            <img src="/integrations/linear.svg" alt="Linear" className="w-8 h-8" />
           </div>
           <h3 className="text-lg font-semibold text-black dark:text-white mb-2">Connect Linear</h3>
           <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4 max-w-xs">
@@ -148,9 +146,7 @@ export function LinearIssuesStack({
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-800">
         <div className="flex items-center gap-2">
-          <svg className="w-4 h-4 text-indigo-500" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a.996.996 0 000-1.41l-2.34-2.34a.996.996 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
-          </svg>
+          <img src="/integrations/linear.svg" alt="Linear" className="w-4 h-4" />
           <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">My Issues</span>
           <span className="text-xs text-zinc-500 bg-zinc-200 dark:bg-zinc-700 px-1.5 py-0.5 rounded">
             {issues.length}

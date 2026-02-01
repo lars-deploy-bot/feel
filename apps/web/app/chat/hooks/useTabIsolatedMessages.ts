@@ -1,8 +1,8 @@
 "use client"
 
+import { useActiveSession } from "@/features/chat/hooks/useActiveSession"
 import { useDexieSession } from "@/lib/db/dexieMessageStore"
 import { useTabMessages } from "@/lib/db/useTabMessages"
-import { useActiveSession } from "@/features/chat/hooks/useActiveSession"
 
 interface UseTabIsolatedMessagesOptions {
   workspace: string | null

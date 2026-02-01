@@ -7,43 +7,13 @@
 
 "use client"
 
-import { useState } from "react"
 import { RotateCcw } from "lucide-react"
+import { useState } from "react"
 import { WebsiteConfig, type WebsiteConfigData, type WebsiteConfigResult } from "@/components/ai/WebsiteConfig"
+import { TEMPLATES } from "@webalive/shared"
 
 const SAMPLE_DATA: WebsiteConfigData = {
-  templates: [
-    {
-      id: "tmpl_blank",
-      name: "Blank Canvas",
-      description: "Minimal starter - build from scratch",
-      icon: "blank",
-    },
-    {
-      id: "tmpl_gallery",
-      name: "Photo Gallery",
-      description: "Showcase images and portfolios",
-      icon: "gallery",
-    },
-    {
-      id: "tmpl_event",
-      name: "Event Page",
-      description: "Perfect for launches, parties, or announcements",
-      icon: "event",
-    },
-    {
-      id: "tmpl_saas",
-      name: "SaaS Landing",
-      description: "Modern product landing page",
-      icon: "saas",
-    },
-    {
-      id: "tmpl_business",
-      name: "Business",
-      description: "Professional company website",
-      icon: "business",
-    },
-  ],
+  templates: [...TEMPLATES],
   context: "Let's set up your new website!",
 }
 

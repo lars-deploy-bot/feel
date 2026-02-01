@@ -5,12 +5,12 @@
  * AI agents love to "simplify" these - don't let them.
  */
 import { describe, expect, it } from "vitest"
+import { hasSessionCookie, hasValidUser, isValidSessionCookie } from "@/features/auth/types/guards"
 import {
   containsPathTraversal,
   isPathWithinWorkspace,
   isValidWorkspaceString,
 } from "@/features/workspace/types/workspace"
-import { hasSessionCookie, isValidSessionCookie, hasValidUser } from "@/features/auth/types/guards"
 
 describe("Path Security Guards", () => {
   describe("containsPathTraversal", () => {

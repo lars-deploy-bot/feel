@@ -15,6 +15,7 @@ import { chownSync, copyFileSync, existsSync, mkdirSync } from "node:fs"
 import { join } from "node:path"
 import process from "node:process"
 import { query } from "@anthropic-ai/claude-agent-sdk"
+import { allowTool, DEFAULTS, denyTool, isOAuthMcpTool, PLAN_MODE_BLOCKED_TOOLS } from "@webalive/shared"
 import {
   BRIDGE_STREAM_TYPES,
   getAllowedTools,
@@ -23,7 +24,6 @@ import {
   PERMISSION_MODE,
   SETTINGS_SOURCES,
 } from "../lib/claude/agent-constants.mjs"
-import { isOAuthMcpTool, DEFAULTS, PLAN_MODE_BLOCKED_TOOLS, allowTool, denyTool } from "@webalive/shared"
 
 async function readStdinJson() {
   const chunks = []

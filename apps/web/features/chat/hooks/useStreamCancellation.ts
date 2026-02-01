@@ -1,10 +1,10 @@
 "use client"
 
 import { useCallback, useRef, useState } from "react"
+import type { UIMessage } from "@/features/chat/lib/message-parser"
 import { postty } from "@/lib/api/api-client"
 import { validateRequest } from "@/lib/api/schemas"
-import type { UIMessage } from "@/features/chat/lib/message-parser"
-import { useStreamingActions, getAbortController, clearAbortController } from "@/lib/stores/streamingStore"
+import { clearAbortController, getAbortController, useStreamingActions } from "@/lib/stores/streamingStore"
 
 interface UseStreamCancellationOptions {
   /** Current tab ID (session key for Claude SDK) */

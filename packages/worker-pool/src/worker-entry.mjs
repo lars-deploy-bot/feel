@@ -16,7 +16,7 @@
  *   WORKER_WORKSPACE_KEY - Workspace identifier
  */
 
-import { chownSync, copyFileSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, rmSync } from "node:fs"
+import { chownSync, copyFileSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, } from "node:fs"
 import { tmpdir } from "node:os"
 import { createConnection } from "node:net"
 import { join } from "node:path"
@@ -165,7 +165,7 @@ class IpcClient {
       try {
         const msg = JSON.parse(line)
         this.onMessage?.(msg)
-      } catch (err) {
+      } catch (_err) {
         console.error("[worker] Failed to parse message:", line.slice(0, 200))
       }
     }
@@ -173,7 +173,7 @@ class IpcClient {
 
   send(msg) {
     if (this.socket && !this.socket.destroyed) {
-      this.socket.write(JSON.stringify(msg) + "\n")
+      this.socket.write(`${JSON.stringify(msg)}\n`)
     }
   }
 
@@ -216,7 +216,7 @@ function dropPrivileges() {
     // SECURITY: Verify source is a regular file, not a symlink
     const sourceStat = lstatSync(credSource)
     if (!sourceStat.isFile()) {
-      console.error(`[worker] SECURITY: Credential source is not a regular file, skipping copy`)
+      console.error("[worker] SECURITY: Credential source is not a regular file, skipping copy")
     } else {
       // Create secure temp directory with unpredictable name (immune to symlink attacks)
       // mkdtempSync creates directory with mode 0o700 by default
@@ -291,7 +291,7 @@ function dropPrivileges() {
   if (targetCwd) {
     // SECURITY: Validate TARGET_CWD before use
     if (typeof targetCwd !== "string" || targetCwd.length === 0) {
-      console.error(`[worker] FATAL: TARGET_CWD must be non-empty string`)
+      console.error("[worker] FATAL: TARGET_CWD must be non-empty string")
       process.exit(1)
     }
     if (!targetCwd.startsWith("/")) {
@@ -430,6 +430,10 @@ async function handleQuery(ipc, requestId, payload) {
   currentAbortController = new AbortController()
   const { signal } = currentAbortController
 
+  // Declare these outside try so they're accessible in catch
+  let messageCount = 0
+  let queryResult = null
+
   try {
     // SECURITY: Always set/clear session cookie at start of each request
     // This prevents cookie leakage between requests from different users
@@ -482,6 +486,16 @@ async function handleQuery(ipc, requestId, payload) {
 
     // Tool permission handler
     const canUseTool = async (toolName, input, _options) => {
+      // ExitPlanMode requires user approval - Claude cannot approve its own plan
+      // The user must click "Approve Plan" in the UI to exit plan mode
+      if (toolName === "ExitPlanMode") {
+        console.error(`[worker] PLAN MODE: ExitPlanMode blocked - requires user approval`)
+        return denyTool(
+          `You cannot approve your own plan. The user must review and approve the plan by clicking "Approve Plan" in the UI. ` +
+          `Present your plan clearly and wait for user approval before proceeding with implementation.`
+        )
+      }
+
       // Plan mode: block modification tools
       if (isPlanMode && PLAN_MODE_BLOCKED_TOOLS.includes(toolName)) {
         console.error(`[worker] PLAN MODE: Blocked modification tool: ${toolName}`)
@@ -545,8 +559,6 @@ async function handleQuery(ipc, requestId, payload) {
       },
     })
 
-    let messageCount = 0
-    let queryResult = null
     let firstMessageLogged = false
 
     for await (const message of agentQuery) {
@@ -619,8 +631,32 @@ async function handleQuery(ipc, requestId, payload) {
     const status = wasCancelled ? "cancelled" : "complete"
     console.error(`[worker] Query ${status}: ${messageCount} messages (total: ${queriesProcessed})`)
   } catch (error) {
-    console.error("[worker] Query error:", error?.stack || String(error))
-    ipc.send({ type: "error", requestId, error: error?.message || String(error), stack: error?.stack })
+    // Check if we already received a successful result before the error
+    // The Claude Code CLI sometimes exits with code 1 AFTER yielding all messages including the result
+    // In this case, treat it as success since we have the complete response
+    if (queryResult && queryResult.subtype === "success") {
+      console.error("[worker] Query completed with result before error - treating as success")
+      console.error("[worker] (Suppressed error:", error?.message || String(error), ")")
+
+      // Send completion with the result we already have
+      ipc.send({
+        type: "complete",
+        requestId,
+        result: {
+          type: bridgeStreamTypes.COMPLETE,
+          totalMessages: messageCount,
+          result: queryResult,
+          cancelled: false,
+        },
+      })
+
+      queriesProcessed++
+      console.error(`[worker] Query complete: ${messageCount} messages (total: ${queriesProcessed})`)
+    } else {
+      // No result yet - this is a real error
+      console.error("[worker] Query error:", error?.stack || String(error))
+      ipc.send({ type: "error", requestId, error: error?.message || String(error), stack: error?.stack })
+    }
   } finally {
     clearQueryState()
   }
@@ -633,7 +669,7 @@ function handleCancel(requestId) {
     // CRITICAL: Clear state immediately so worker can accept new queries
     // The handleQuery finally block will also call clearQueryState() but that's harmless
     clearQueryState()
-    console.error(`[worker] Query state cleared after cancel`)
+    console.error("[worker] Query state cleared after cancel")
   }
 }
 

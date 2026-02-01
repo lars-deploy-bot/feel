@@ -2,9 +2,9 @@
 
 import { REFERRAL } from "@webalive/shared"
 import { AnimatePresence, motion } from "framer-motion"
-import { Archive, ChevronRight, Heart, PanelLeftClose, Settings2, X } from "lucide-react"
+import { Archive, ArchiveRestore, ChevronRight, Heart, PanelLeftClose, Pencil, Plus, Settings2, X } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { useDexieConversations, useDexieSession } from "@/lib/db/dexieMessageStore"
+import { useDexieArchivedConversations, useDexieConversations, useDexieSession } from "@/lib/db/dexieMessageStore"
 import type { DbConversation } from "@/lib/db/messageDb"
 import { useSidebarActions, useSidebarOpen } from "@/lib/stores/conversationSidebarStore"
 import { useAppHydrated } from "@/lib/stores/HydrationBoundary"
@@ -50,6 +50,9 @@ interface ConversationSidebarProps {
   activeTabGroupId: string | null
   onTabGroupSelect: (tabGroupId: string) => void
   onArchiveTabGroup: (tabGroupId: string) => void
+  onUnarchiveTabGroup: (tabGroupId: string) => void
+  onRenameTabGroup: (tabGroupId: string, title: string) => void
+  onNewConversation: () => void
   onOpenSettings: () => void
   onOpenInvite: () => void
 }
@@ -59,6 +62,9 @@ export function ConversationSidebar({
   activeTabGroupId,
   onTabGroupSelect,
   onArchiveTabGroup,
+  onUnarchiveTabGroup,
+  onRenameTabGroup,
+  onNewConversation,
   onOpenSettings,
   onOpenInvite,
 }: ConversationSidebarProps) {
@@ -68,9 +74,11 @@ export function ConversationSidebar({
   const session = useDexieSession()
   const allConversations = useDexieConversations(workspace || "", session)
   const conversations = workspace ? allConversations : []
+  const archivedConversations = useDexieArchivedConversations(workspace || "", session)
   const sidebarRef = useRef<HTMLDivElement>(null)
   const [archiveModalOpen, setArchiveModalOpen] = useState(false)
   const [conversationToArchive, setConversationToArchive] = useState<DbConversation | null>(null)
+  const [archivedExpanded, setArchivedExpanded] = useState(false)
 
   // Get streaming state for all tabs to show activity indicator
   const streamingTabs = useStreamingStore(state => state.tabs)
@@ -87,15 +95,11 @@ export function ConversationSidebar({
     [onTabGroupSelect, closeSidebar],
   )
 
-  const handleArchiveClick = useCallback(
-    (e: React.MouseEvent, conversation: DbConversation) => {
-      e.stopPropagation()
-      if (conversation.id === activeTabGroupId) return
-      setConversationToArchive(conversation)
-      setArchiveModalOpen(true)
-    },
-    [activeTabGroupId],
-  )
+  const handleArchiveClick = useCallback((e: React.MouseEvent, conversation: DbConversation) => {
+    e.stopPropagation()
+    setConversationToArchive(conversation)
+    setArchiveModalOpen(true)
+  }, [])
 
   const handleConfirmArchive = useCallback(() => {
     if (conversationToArchive) {
@@ -140,29 +144,86 @@ export function ConversationSidebar({
       {/* Header */}
       <div className={`flex items-center justify-between px-4 py-3.5 border-b ${styles.borderSubtle}`}>
         <h2 className={`text-sm font-medium ${styles.textPrimary}`}>Conversations</h2>
-        <CloseButton onClick={closeSidebar} isMobile={isMobile} />
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => {
+              onNewConversation()
+              if (isMobile) closeSidebar()
+            }}
+            className="inline-flex items-center justify-center size-10 rounded-xl text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 bg-black/[0.03] dark:bg-white/[0.03] hover:bg-black/[0.07] dark:hover:bg-white/[0.07] active:bg-black/[0.12] dark:active:bg-white/[0.12] active:scale-95 transition-all duration-150 ease-out"
+            aria-label="New conversation"
+          >
+            <Plus size={18} strokeWidth={1.75} />
+          </button>
+          <CloseButton onClick={closeSidebar} isMobile={isMobile} />
+        </div>
       </div>
 
       {/* Conversation list */}
       <div className="flex-1 overflow-y-auto">
         {!isHydrated ? (
           <EmptyState>Loading...</EmptyState>
-        ) : conversations.length === 0 ? (
+        ) : conversations.length === 0 && archivedConversations.length === 0 ? (
           <EmptyState>No conversations yet</EmptyState>
         ) : (
           <div className="py-1">
-            <AnimatePresence mode="popLayout">
-              {conversations.map(conversation => (
-                <ConversationItem
-                  key={conversation.id}
-                  conversation={conversation}
-                  isActive={conversation.id === activeTabGroupId}
-                  isStreaming={isConversationStreaming(conversation.id)}
-                  onClick={() => handleTabGroupClick(conversation.id)}
-                  onArchive={handleArchiveClick}
-                />
-              ))}
-            </AnimatePresence>
+            {/* Active conversations */}
+            {conversations.length > 0 && (
+              <AnimatePresence mode="popLayout">
+                {conversations.map(conversation => (
+                  <ConversationItem
+                    key={conversation.id}
+                    conversation={conversation}
+                    isActive={conversation.id === activeTabGroupId}
+                    isStreaming={isConversationStreaming(conversation.id)}
+                    onClick={() => handleTabGroupClick(conversation.id)}
+                    onArchive={handleArchiveClick}
+                    onRename={(id, title) => onRenameTabGroup(id, title)}
+                  />
+                ))}
+              </AnimatePresence>
+            )}
+
+            {/* Archived section */}
+            {archivedConversations.length > 0 && (
+              <div className="mt-2">
+                <button
+                  type="button"
+                  onClick={() => setArchivedExpanded(prev => !prev)}
+                  className={`w-full flex items-center gap-2 px-4 py-2.5 text-xs font-medium ${styles.textMuted} hover:text-black/60 dark:hover:text-white/60 ${styles.hoverFill} ${styles.transition} rounded-lg mx-1`}
+                >
+                  <ChevronRight
+                    size={14}
+                    className={`transition-transform duration-150 ${archivedExpanded ? "rotate-90" : ""}`}
+                  />
+                  <span>Archived ({archivedConversations.length})</span>
+                </button>
+                <AnimatePresence>
+                  {archivedExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                      className="overflow-hidden"
+                    >
+                      {archivedConversations.map(conversation => (
+                        <ArchivedConversationItem
+                          key={conversation.id}
+                          conversation={conversation}
+                          onOpen={() => {
+                            onUnarchiveTabGroup(conversation.id)
+                            handleTabGroupClick(conversation.id)
+                          }}
+                          onRestore={() => onUnarchiveTabGroup(conversation.id)}
+                        />
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -217,6 +278,7 @@ export function ConversationSidebar({
         {archiveModalOpen && conversationToArchive && (
           <ArchiveModal
             conversation={conversationToArchive}
+            isActive={conversationToArchive.id === activeTabGroupId}
             onConfirm={handleConfirmArchive}
             onCancel={handleCancelArchive}
           />
@@ -293,17 +355,55 @@ function ConversationItem({
   isStreaming,
   onClick,
   onArchive,
+  onRename,
 }: {
   conversation: DbConversation
   isActive: boolean
   isStreaming: boolean
   onClick: () => void
   onArchive: (e: React.MouseEvent, conversation: DbConversation) => void
+  onRename: (id: string, title: string) => void
 }) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [editValue, setEditValue] = useState(conversation.title)
+  const inputRef = useRef<HTMLInputElement>(null)
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (isEditing) return
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault()
       onClick()
+    }
+  }
+
+  const handleStartEdit = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setEditValue(conversation.title)
+    setIsEditing(true)
+    // Focus input after state update
+    setTimeout(() => inputRef.current?.select(), 0)
+  }
+
+  const handleSaveEdit = () => {
+    const trimmed = editValue.trim()
+    if (trimmed && trimmed !== conversation.title) {
+      onRename(conversation.id, trimmed)
+    }
+    setIsEditing(false)
+  }
+
+  const handleCancelEdit = () => {
+    setEditValue(conversation.title)
+    setIsEditing(false)
+  }
+
+  const handleEditKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault()
+      handleSaveEdit()
+    } else if (e.key === "Escape") {
+      e.preventDefault()
+      handleCancelEdit()
     }
   }
 
@@ -315,8 +415,8 @@ function ConversationItem({
       exit={{ opacity: 0, x: -12 }}
       transition={{ duration: 0.15 }}
       role="button"
-      tabIndex={0}
-      onClick={onClick}
+      tabIndex={isEditing ? -1 : 0}
+      onClick={isEditing ? undefined : onClick}
       onKeyDown={handleKeyDown}
       className={`mx-2 px-3 py-2.5 rounded-xl cursor-pointer group ${styles.transition} ${
         isActive ? `${styles.activeFill} ring-1 ring-black/[0.08] dark:ring-white/[0.08]` : styles.hoverFill
@@ -324,38 +424,101 @@ function ConversationItem({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <div className={`text-sm font-medium ${styles.textPrimary} line-clamp-2 flex items-center gap-2`}>
-            {isStreaming && <StreamingDot />}
-            <span className="flex-1 min-w-0 truncate">{conversation.title}</span>
-          </div>
+          {isEditing ? (
+            <input
+              ref={inputRef}
+              type="text"
+              value={editValue}
+              onChange={e => setEditValue(e.target.value)}
+              onBlur={handleSaveEdit}
+              onKeyDown={handleEditKeyDown}
+              className={`w-full text-sm font-medium ${styles.textPrimary} bg-black/[0.02] dark:bg-white/[0.04] border-0 rounded-lg px-2 py-1 outline-none ring-1 ring-black/[0.12] dark:ring-white/[0.12] focus:ring-black/[0.2] dark:focus:ring-white/[0.2] transition-all duration-150`}
+            />
+          ) : (
+            <div className={`text-sm font-medium ${styles.textPrimary} line-clamp-2 flex items-center gap-2`}>
+              {isStreaming && <StreamingDot />}
+              <span className="flex-1 min-w-0 truncate">{conversation.title}</span>
+            </div>
+          )}
           <div className={`text-xs ${styles.textMuted} mt-0.5 flex items-center gap-1.5`}>
             <span>{formatTimestamp(conversation.updatedAt)}</span>
             <span className={styles.textSubtle}>·</span>
             <span>{conversation.messageCount ?? 0} messages</span>
           </div>
         </div>
-        {!isActive && (
-          <button
-            type="button"
-            onClick={e => onArchive(e, conversation)}
-            className={`opacity-0 group-hover:opacity-100 size-7 rounded-full flex items-center justify-center ${styles.hoverFillStrong} ${styles.transitionAll}`}
-            aria-label="Archive conversation"
-          >
-            <Archive size={14} className={styles.textMuted} />
-          </button>
+        {!isEditing && (
+          <div className="flex items-center gap-0.5 shrink-0">
+            <button
+              type="button"
+              onClick={handleStartEdit}
+              className={`opacity-40 md:opacity-0 md:group-hover:opacity-100 size-7 rounded-full flex items-center justify-center ${styles.hoverFillStrong} ${styles.transitionAll} active:scale-95 md:hover:scale-110`}
+              aria-label="Rename conversation"
+            >
+              <Pencil size={13} className={styles.textMuted} />
+            </button>
+            <button
+              type="button"
+              onClick={e => onArchive(e, conversation)}
+              className={`opacity-40 md:opacity-0 md:group-hover:opacity-100 size-7 rounded-full flex items-center justify-center ${styles.hoverFillStrong} ${styles.transitionAll} active:scale-95 md:hover:scale-110`}
+              aria-label="Archive conversation"
+            >
+              <Archive size={13} className={styles.textMuted} />
+            </button>
+          </div>
         )}
       </div>
     </motion.div>
   )
 }
 
+// Archived conversation item - clickable to open, with restore button
+function ArchivedConversationItem({
+  conversation,
+  onOpen,
+  onRestore,
+}: {
+  conversation: DbConversation
+  onOpen: () => void
+  onRestore: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className={`mx-2 px-3 py-2 rounded-xl group cursor-pointer ${styles.transition} ${styles.hoverFill} w-full text-left`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex-1 min-w-0 opacity-50 group-hover:opacity-70 transition-opacity">
+          <div className={`text-sm ${styles.textPrimary} truncate`}>{conversation.title}</div>
+          <div className={`text-xs ${styles.textMuted} mt-0.5`}>
+            Archived {formatTimestamp(conversation.archivedAt ?? conversation.updatedAt)}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={e => {
+            e.stopPropagation()
+            onRestore()
+          }}
+          className={`opacity-40 md:opacity-0 md:group-hover:opacity-100 size-7 rounded-full flex items-center justify-center ${styles.hoverFillStrong} ${styles.transitionAll} active:scale-95 md:hover:scale-110`}
+          aria-label="Restore without opening"
+        >
+          <ArchiveRestore size={13} className={styles.textMuted} />
+        </button>
+      </div>
+    </button>
+  )
+}
+
 // Archive confirmation modal
 function ArchiveModal({
   conversation,
+  isActive,
   onConfirm,
   onCancel,
 }: {
   conversation: DbConversation
+  isActive: boolean
   onConfirm: () => void
   onCancel: () => void
 }) {
@@ -374,7 +537,7 @@ function ArchiveModal({
         exit={{ opacity: 0, scale: 0.95, y: 8 }}
         transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
         onClick={e => e.stopPropagation()}
-        className={`${styles.panel} border ${styles.border} rounded-2xl shadow-xl max-w-sm w-full overflow-hidden`}
+        className={`${styles.panel} border ${styles.border} rounded-2xl shadow-xl ring-1 ring-black/[0.04] dark:ring-white/[0.04] max-w-sm w-full overflow-hidden`}
       >
         <div className={`px-5 py-4 border-b ${styles.borderSubtle}`}>
           <h3 id="archive-dialog-title" className={`text-base font-medium ${styles.textPrimary}`}>
@@ -383,7 +546,9 @@ function ArchiveModal({
         </div>
         <div className="px-5 py-4">
           <p className="text-sm text-black/60 dark:text-white/60 mb-3">
-            Archive this conversation? You can restore it later.
+            {isActive
+              ? "Archive this conversation? A new conversation will be started."
+              : "Archive this conversation? You can restore it later."}
           </p>
           <p
             className={`text-sm font-medium ${styles.textPrimary} line-clamp-2 ${styles.activeFill} px-3 py-2 rounded-xl`}
@@ -395,14 +560,14 @@ function ArchiveModal({
           <button
             type="button"
             onClick={onCancel}
-            className={`px-4 py-2 text-sm font-medium ${styles.textPrimary} ${styles.hoverFill} rounded-xl ${styles.transition}`}
+            className={`px-4 py-2.5 text-sm font-medium ${styles.textPrimary} ${styles.hoverFill} rounded-xl ${styles.transition} focus:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20`}
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className={`px-4 py-2 text-sm font-medium bg-black text-white dark:bg-white dark:text-black rounded-xl hover:brightness-[0.85] active:brightness-75 ${styles.transition}`}
+            className={`px-4 py-2.5 text-sm font-medium bg-black text-white dark:bg-white dark:text-black rounded-xl hover:brightness-[0.85] active:brightness-75 active:scale-[0.98] ${styles.transition} focus:outline-none focus-visible:ring-2 focus-visible:ring-black/30 dark:focus-visible:ring-white/30 focus-visible:ring-offset-2`}
           >
             Archive
           </button>

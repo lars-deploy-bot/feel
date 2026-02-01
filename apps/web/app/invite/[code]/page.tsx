@@ -1,7 +1,7 @@
 "use client"
 
+import { useParams, useRouter } from "next/navigation"
 import { useEffect } from "react"
-import { useRouter, useParams } from "next/navigation"
 import { storeReferralCode } from "@/lib/referral"
 
 /**

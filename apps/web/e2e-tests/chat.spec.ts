@@ -1,6 +1,6 @@
+import { expect, test } from "./fixtures"
 import { gotoChatFast } from "./helpers/assertions"
 import { handlers } from "./lib/handlers"
-import { expect, test } from "./fixtures"
 
 /**
  * Chat tests using pre-authenticated page (fast)

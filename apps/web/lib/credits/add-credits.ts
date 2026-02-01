@@ -12,8 +12,8 @@
  *
  */
 
-import { createIamClient } from "@/lib/supabase/iam"
 import { REFERRAL } from "@webalive/shared"
+import { createIamClient } from "@/lib/supabase/iam"
 
 export interface AwardCreditsResult {
   success: boolean

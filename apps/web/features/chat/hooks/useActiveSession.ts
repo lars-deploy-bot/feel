@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef } from "react"
 import { useAppHydrated } from "@/lib/stores/HydrationBoundary"
-import { useActiveTab, useTabActions, useWorkspaceTabs, type Tab } from "@/lib/stores/tabStore"
 import { useIsStreamActive } from "@/lib/stores/streamingStore"
-import type { TabId, TabGroupId } from "@/lib/types/ids"
+import { type Tab, useActiveTab, useTabActions, useWorkspaceTabs } from "@/lib/stores/tabStore"
+import type { TabGroupId, TabId } from "@/lib/types/ids"
 
 /**
  * ActiveSession - Single source of truth for the current chat session

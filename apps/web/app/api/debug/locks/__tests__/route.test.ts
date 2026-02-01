@@ -42,6 +42,14 @@ describe("GET /api/debug/locks", () => {
     // Default mock values
     vi.mocked(getLockedConversations).mockReturnValue([])
     vi.mocked(getRegistryState).mockReturnValue([])
+
+    // Mock worker pool when WORKER_POOL.ENABLED is true
+    if (WORKER_POOL.ENABLED) {
+      vi.mocked(getWorkerPool).mockReturnValue({
+        getStats: () => ({ activeWorkers: 0, totalQueries: 0, cacheHits: 0, evictions: 0 }),
+        getWorkerInfo: () => [],
+      } as unknown as ReturnType<typeof getWorkerPool>)
+    }
   })
 
   afterEach(() => {

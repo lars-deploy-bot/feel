@@ -43,7 +43,7 @@ describe("NdjsonParser", () => {
   describe("single complete messages", () => {
     it("should parse a complete JSON message with newline", () => {
       const msg: WorkerToParentMessage = { type: WORKER_MESSAGE_TYPES.READY }
-      parser.write(JSON.stringify(msg) + "\n")
+      parser.write(`${JSON.stringify(msg)}\n`)
 
       expect(messageHandler).toHaveBeenCalledTimes(1)
       expect(messageHandler).toHaveBeenCalledWith(msg)
@@ -57,7 +57,7 @@ describe("NdjsonParser", () => {
         result: {},
       }
 
-      parser.write(JSON.stringify(msg1) + "\n" + JSON.stringify(msg2) + "\n")
+      parser.write(`${JSON.stringify(msg1)}\n${JSON.stringify(msg2)}\n`)
 
       expect(messageHandler).toHaveBeenCalledTimes(2)
       expect(messageHandler).toHaveBeenNthCalledWith(1, msg1)
@@ -66,7 +66,7 @@ describe("NdjsonParser", () => {
 
     it("should ignore empty lines", () => {
       const msg: WorkerToParentMessage = { type: WORKER_MESSAGE_TYPES.READY }
-      parser.write("\n\n" + JSON.stringify(msg) + "\n\n")
+      parser.write(`\n\n${JSON.stringify(msg)}\n\n`)
 
       expect(messageHandler).toHaveBeenCalledTimes(1)
       expect(messageHandler).toHaveBeenCalledWith(msg)
@@ -87,7 +87,7 @@ describe("NdjsonParser", () => {
       parser.write(json.slice(0, mid))
       expect(messageHandler).not.toHaveBeenCalled()
 
-      parser.write(json.slice(mid) + "\n")
+      parser.write(`${json.slice(mid)}\n`)
       expect(messageHandler).toHaveBeenCalledTimes(1)
       expect(messageHandler).toHaveBeenCalledWith(msg)
     })
@@ -117,7 +117,7 @@ describe("NdjsonParser", () => {
       const validMsg: WorkerToParentMessage = { type: WORKER_MESSAGE_TYPES.READY }
 
       parser.write("invalid\n")
-      parser.write(JSON.stringify(validMsg) + "\n")
+      parser.write(`${JSON.stringify(validMsg)}\n`)
 
       expect(errorHandler).toHaveBeenCalledTimes(1)
       expect(messageHandler).toHaveBeenCalledTimes(1)
@@ -139,7 +139,7 @@ describe("NdjsonParser", () => {
 
       // Parser should recover and accept new messages
       const validMsg: WorkerToParentMessage = { type: WORKER_MESSAGE_TYPES.READY }
-      smallParser.write(JSON.stringify(validMsg) + "\n")
+      smallParser.write(`${JSON.stringify(validMsg)}\n`)
       expect(messageHandler).toHaveBeenCalledTimes(1)
     })
   })

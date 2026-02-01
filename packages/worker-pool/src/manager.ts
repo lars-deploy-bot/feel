@@ -12,7 +12,6 @@ import type {
   WorkerPoolConfig,
   WorkerHandle,
   WorkerInfo,
-  WorkerState,
   WorkspaceCredentials,
   QueryOptions,
   QueryResult,
@@ -186,7 +185,7 @@ export class WorkerPoolManager extends EventEmitter {
     // Check if worker is available
     if (worker.state === "busy") {
       throw new Error(
-        `Worker is busy processing another request. Please wait for it to complete before sending a new message.`,
+        "Worker is busy processing another request. Please wait for it to complete before sending a new message.",
       )
     }
 
@@ -629,7 +628,7 @@ export class WorkerPoolManager extends EventEmitter {
     worker.ipc?.sendMessage(msg)
   }
 
-  private async gracefulShutdown(worker: WorkerHandleInternal, reason: string): Promise<void> {
+  private async gracefulShutdown(worker: WorkerHandleInternal, _reason: string): Promise<void> {
     if (worker.state === "shutting_down" || worker.state === "dead") return
 
     worker.state = "shutting_down"

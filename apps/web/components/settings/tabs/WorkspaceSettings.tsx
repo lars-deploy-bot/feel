@@ -3,7 +3,7 @@
 import { Building2, ChevronDown, UserMinus } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import toast from "react-hot-toast"
-import { AddWorkspaceModal } from "@/components/modals/AddWorkspaceModal"
+import { AddWebsiteModal } from "@/components/modals/AddWebsiteModal"
 import { DeleteModal } from "@/components/modals/DeleteModal"
 import type { Organization } from "@/lib/api/types"
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
@@ -389,7 +389,7 @@ function _OrgSitesSection({ orgId }: { orgId: string }) {
         onRetry={refetch}
       />
 
-      {showAddModal && <AddWorkspaceModal onClose={() => setShowAddModal(false)} onSuccess={refetch} />}
+      {showAddModal && <AddWebsiteModal onClose={() => setShowAddModal(false)} onSuccess={refetch} />}
     </div>
   )
 }

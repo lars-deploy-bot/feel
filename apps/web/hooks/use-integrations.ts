@@ -2,14 +2,15 @@
  * React hook for fetching and managing available integrations
  */
 
-import { useState, useEffect, useCallback } from "react"
+import { useCallback, useEffect, useState } from "react"
 import type { AvailableIntegration } from "@/app/api/integrations/available/route"
+import { clientLogger } from "@/lib/client-error-logger"
 import {
-  OAUTH_POPUP_WIDTH,
+  isOAuthCallbackMessage,
   OAUTH_POPUP_HEIGHT,
   OAUTH_POPUP_POLL_INTERVAL,
+  OAUTH_POPUP_WIDTH,
   OAUTH_STORAGE_KEY,
-  isOAuthCallbackMessage,
 } from "@/lib/oauth/popup-constants"
 
 interface UseIntegrationsResult {
@@ -211,11 +212,23 @@ export function useConnectIntegration(providerKey: string) {
 
       if (!result.success && result.error && result.error !== "Authorization cancelled") {
         setError(result.error)
+        // Log to centralized error system for debugging
+        clientLogger.oauth(`OAuth connection failed for ${providerKey}`, {
+          provider: providerKey,
+          errorMessage: result.error,
+        })
       }
       return result.success
     } catch (err) {
       console.error("[useConnectIntegration] Error:", err)
-      setError("Failed to open authorization window")
+      const errorMsg = "Failed to open authorization window"
+      setError(errorMsg)
+      // Log to centralized error system for debugging
+      clientLogger.oauth(`OAuth popup failed for ${providerKey}`, {
+        provider: providerKey,
+        errorMessage: errorMsg,
+        error: err,
+      })
       return false
     } finally {
       setConnecting(false)
@@ -258,7 +271,14 @@ export function useDisconnectIntegration(providerKey: string) {
       window.location.reload() // or use a state management solution
     } catch (err) {
       console.error(`[useDisconnectIntegration] Error disconnecting from ${providerKey}:`, err)
-      setError(err instanceof Error ? err.message : "Failed to disconnect")
+      const errorMsg = err instanceof Error ? err.message : "Failed to disconnect"
+      setError(errorMsg)
+      // Log to centralized error system for debugging
+      clientLogger.integration(`Disconnect failed for ${providerKey}`, {
+        provider: providerKey,
+        errorMessage: errorMsg,
+        error: err,
+      })
     } finally {
       setDisconnecting(false)
     }
@@ -301,6 +321,12 @@ export function useConnectWithPat(providerKey: string) {
         if (!response.ok) {
           const errorMessage = data.details?.reason || data.error || `Failed to connect to ${providerKey}`
           setError(errorMessage)
+          // Log to centralized error system for debugging
+          clientLogger.integration(`PAT connection failed for ${providerKey}`, {
+            provider: providerKey,
+            errorMessage,
+            statusCode: response.status,
+          })
           return { success: false }
         }
 
@@ -308,7 +334,14 @@ export function useConnectWithPat(providerKey: string) {
         return { success: true, username: data.username }
       } catch (err) {
         console.error(`[useConnectWithPat] Error connecting to ${providerKey}:`, err)
-        setError(err instanceof Error ? err.message : "Failed to connect")
+        const errorMsg = err instanceof Error ? err.message : "Failed to connect"
+        setError(errorMsg)
+        // Log to centralized error system for debugging
+        clientLogger.integration(`PAT connection error for ${providerKey}`, {
+          provider: providerKey,
+          errorMessage: errorMsg,
+          error: err,
+        })
         return { success: false }
       } finally {
         setConnecting(false)

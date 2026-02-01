@@ -3,7 +3,7 @@ import { requireManagerAuth } from "@/features/manager/lib/api-helpers"
 import { createCorsErrorResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { ErrorCodes } from "@/lib/error-codes"
-import { createAppClient, type AppTemplateInsert } from "@/lib/supabase/app"
+import { type AppTemplateInsert, createAppClient } from "@/lib/supabase/app"
 
 /**
  * GET /api/manager/templates

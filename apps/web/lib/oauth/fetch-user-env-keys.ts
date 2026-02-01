@@ -5,7 +5,7 @@
  * These keys can be passed to MCP servers for custom integrations.
  */
 
-import { oauth } from "@webalive/oauth-core"
+import { getUserEnvKeysManager } from "./oauth-instances"
 
 interface Logger {
   log: (message: string) => void
@@ -38,7 +38,7 @@ export interface UserEnvKeysFetchResult {
  */
 export async function fetchUserEnvKeys(userId: string, logger?: Logger): Promise<UserEnvKeysFetchResult> {
   try {
-    const envKeys = await oauth.getAllUserEnvKeys(userId)
+    const envKeys = await getUserEnvKeysManager().getAllUserEnvKeys(userId)
     const count = Object.keys(envKeys).length
 
     if (count > 0) {

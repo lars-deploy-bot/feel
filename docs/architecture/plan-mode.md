@@ -9,6 +9,15 @@ Plan mode allows Claude to explore and analyze without making modifications.
 - **Trigger**: `planMode: true` in request body
 - **Effect**: Filters modification tools from `allowedTools` before SDK call
 
+## ExitPlanMode Requires User Approval
+
+**CRITICAL**: Claude cannot approve its own plan. `ExitPlanMode` is intentionally NOT in `BRIDGE_ALLOWED_SDK_TOOLS`.
+
+When Claude tries to use `ExitPlanMode`, `canUseTool()` denies it with a message:
+> "You cannot approve your own plan. The user must review and approve the plan."
+
+The user must click "Approve Plan" in the UI to exit plan mode and allow implementation.
+
 ## The Problem (Why This Exists)
 
 The Claude SDK has a specific behavior: tools in the `allowedTools` array are **auto-allowed without calling `canUseTool()`**. The `canUseTool()` callback is only invoked for tools NOT in `allowedTools`.

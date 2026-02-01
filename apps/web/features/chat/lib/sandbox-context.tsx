@@ -51,6 +51,8 @@ interface SandboxContextType {
   selectorActive: boolean
   /** Activate element selector mode in the preview iframe */
   activateSelector: () => void
+  /** Deactivate element selector mode */
+  deactivateSelector: () => void
   /** Preview panel state */
   preview: PreviewState
   /** Set preview mode */
@@ -120,6 +122,10 @@ export function SandboxProvider({ children }: { children: ReactNode }) {
     setSelectorActive(prev => !prev)
   }, [])
 
+  const deactivateSelector = useCallback(() => {
+    setSelectorActive(false)
+  }, [])
+
   const registerElementSelectHandler = useCallback((handler: (element: ElementSelection) => void) => {
     setOnElementSelect(() => handler)
   }, [])
@@ -185,6 +191,7 @@ export function SandboxProvider({ children }: { children: ReactNode }) {
         registerElementSelectHandler,
         selectorActive,
         activateSelector,
+        deactivateSelector,
         preview,
         setPreviewMode,
         openFile,

@@ -1,18 +1,18 @@
 "use client"
 
-import { useEffect, useCallback, useRef } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import toast from "react-hot-toast"
+import { useDexieMessageActions } from "@/lib/db/dexieMessageStore"
+import { clearAbortController, getAbortController, useStreamingActions } from "@/lib/stores/streamingStore"
 import {
-  useTabs,
   useActiveTab,
-  useTabsExpanded,
-  useTabActions,
   useClosedTabs,
+  useTabActions,
   useTabDataStore,
+  useTabs,
+  useTabsExpanded,
   useTabViewStore,
 } from "@/lib/stores/tabStore"
-import { useStreamingActions, getAbortController, clearAbortController } from "@/lib/stores/streamingStore"
-import { useDexieMessageActions } from "@/lib/db/dexieMessageStore"
 
 interface UseTabsOptions {
   workspace: string | null

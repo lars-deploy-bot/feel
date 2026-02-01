@@ -1,7 +1,7 @@
 # OAuth Core Architectural Issues
 
-**Status**: 🟢 MOSTLY RESOLVED
-**Severity**: Low (Reduced from High - all critical issues fixed)
+**Status**: 🟢 RESOLVED
+**Severity**: None (All issues fixed)
 **Component**: `@webalive/oauth-core`
 **Created**: 2025-01-24
 **Last Updated**: 2026-02-01
@@ -105,23 +105,23 @@ All OAuth providers now use consistent retry logic:
 
 ## Open Issues
 
-### 7. SINGLETON ANTI-PATTERN - Global singleton instance
+### ✅ SINGLETON ANTI-PATTERN - Migration Complete (FIXED 2026-02-01)
 
-**Severity**: Medium
-**Effort**: High (breaking change)
+**Resolution**: All web app code now uses factory pattern via `oauth-instances.ts`
 
-The global singleton `export const oauth = new OAuthManager()` creates tight coupling. However, the codebase now supports both patterns:
+The singleton `oauth` export is deprecated. All application code uses factories:
 
 ```typescript
-// Legacy singleton (still works, deprecated)
-import { oauth } from '@webalive/oauth-core'
-
-// Recommended: explicit instantiation
-import { createOAuthManager, OAuthManager } from '@webalive/oauth-core'
-const oauth = createOAuthManager({ instanceId: 'my-app', ... })
+// apps/web/lib/oauth/oauth-instances.ts
+export function getOAuthInstance(provider: string)     // Per-provider singleton
+export function getUserEnvKeysManager()                 // For user env key operations
+export function createTenantOAuthManager(provider, tenantId)  // Multi-tenant
+export function createE2EOAuthManager(provider, runId, workerIndex)  // E2E tests
 ```
 
-**Current state**: The singleton is marked deprecated but still used in web app. Tests use `createOAuthManager()` for isolation.
+**Remaining:**
+- Singleton still exported for backward compatibility (scripts/verify.ts uses it)
+- Can be removed in next major version
 
 ---
 
@@ -261,7 +261,7 @@ Searched for validation duplication patterns - no matches found. Each module has
 | Environment Coupling | ✅ Fixed | Already centralized in `config.ts` |
 | Promise.all Errors | ✅ N/A | No batch multi-provider operations exist |
 | DRY Violations | ✅ N/A | Described duplication not found |
-| Singleton Pattern | 🟡 Partial | Factory exists, singleton deprecated |
+| Singleton Pattern | ✅ Fixed | All app code uses factories |
 
 ## Impact Analysis (Updated)
 
@@ -272,7 +272,7 @@ Searched for validation duplication patterns - no matches found. Each module has
 
 ### Scalability Impact
 - ~~Missing distributed locking~~ ✅ Fixed (Redis support)
-- ~~Singleton prevents horizontal scaling~~ 🟡 Mitigated (factory available)
+- ~~Singleton prevents horizontal scaling~~ ✅ Fixed (factories used everywhere)
 - ~~Partial retry logic causes some unnecessary failures~~ ✅ Fixed
 
 ### Maintainability Impact
@@ -293,7 +293,7 @@ Searched for validation duplication patterns - no matches found. Each module has
 
 ### Phase 3: Architecture Cleanup ✅ COMPLETE
 1. ~~Extract configuration to DI container~~ ✅ Already done (`config.ts`)
-2. Replace singleton imports with factory usage (ongoing migration)
+2. ~~Replace singleton imports with factory usage~~ ✅ Done (2026-02-01)
 3. ~~Use Promise.allSettled for batch operations~~ ✅ N/A (no batch ops exist)
 4. ~~Consolidate validation logic~~ ✅ N/A (no duplication found)
 
@@ -305,20 +305,18 @@ Searched for validation duplication patterns - no matches found. Each module has
 - [x] Different tenants use different encryption keys
 - [x] Retry logic on all providers (not just Google)
 - [x] All provider capabilities known at compile time
-- [ ] Zero singleton imports in new code (ongoing migration)
+- [x] Zero singleton imports in app code
 
-## Remaining Work
+## Status: COMPLETE ✅
 
-The only remaining issue is the singleton pattern migration. The singleton `oauth` export still exists for backward compatibility, but new code should use `createOAuthManager()`:
+All identified architectural issues have been resolved. The OAuth core package is now:
 
-```typescript
-// Deprecated (still works)
-import { oauth } from '@webalive/oauth-core'
+- **Secure**: HKDF key derivation, audit logging, distributed locking
+- **Resilient**: Retry logic on all providers with exponential backoff
+- **Testable**: Factory pattern, centralized config
+- **Scalable**: No singletons in app code, Redis-backed locks
 
-// Recommended
-import { createOAuthManager } from '@webalive/oauth-core'
-const oauth = createOAuthManager({ instanceId: 'my-app' })
-```
+The deprecated `oauth` singleton export remains for backward compatibility with scripts but is not used by any application code.
 
 ## Related Documents
 

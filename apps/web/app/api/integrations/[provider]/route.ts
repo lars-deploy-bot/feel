@@ -8,15 +8,15 @@
  * not API responses. These are converted to proper ErrorCodes at the API boundary.
  */
 
+import { providerSupportsPat } from "@webalive/shared"
 import { type NextRequest, NextResponse } from "next/server"
 import { createErrorResponse, getSessionUser } from "@/features/auth/lib/auth"
 import { getClientIdentifier } from "@/lib/auth/client-identifier"
 import { oauthOperationRateLimiter } from "@/lib/auth/rate-limiter"
 import { ErrorCodes } from "@/lib/error-codes"
 import { validateProviderName } from "@/lib/integrations/validation"
-import { getOAuthInstance } from "@/lib/oauth/oauth-instances"
-import { providerSupportsPat } from "@webalive/shared"
 import { canUserAccessIntegration } from "@/lib/integrations/visibility"
+import { getOAuthInstance } from "@/lib/oauth/oauth-instances"
 
 /**
  * Common request validation and rate limiting
@@ -347,7 +347,7 @@ export async function POST(
     oauthOperationRateLimiter.reset(clientId)
 
     console.log(`[${provider} Integration] Successfully connected via PAT:`, {
-      userId: user.id.slice(0, 8) + "...",
+      userId: `${user.id.slice(0, 8)}...`,
       username: tokenValidation.username,
       scopes: tokenValidation.scopes,
     })

@@ -374,7 +374,7 @@ describe("POST /api/login", () => {
         email: "TEST@EXAMPLE.COM",
         password: "correct-password",
       })
-      const response = await POST(req)
+      const _response = await POST(req)
 
       // Should still query the database (case handling is at DB level)
       expect(createIamClient).toHaveBeenCalled()
@@ -386,7 +386,7 @@ describe("POST /api/login", () => {
         password: "correct-password",
       })
       const response = await POST(req)
-      const data = await response.json()
+      const _data = await response.json()
 
       // Zod's email validation might reject or accept depending on trim
       expect([200, 400]).toContain(response.status)

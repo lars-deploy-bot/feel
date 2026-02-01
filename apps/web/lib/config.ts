@@ -5,8 +5,8 @@
  * See packages/site-controller/src/config.ts for all hardcoded constants
  */
 
-import { DOMAINS, PATHS } from "@webalive/shared"
 import { env } from "@webalive/env/server"
+import { DOMAINS, PATHS } from "@webalive/shared"
 
 export const WILDCARD_DOMAIN = env.WILDCARD_TLD || DOMAINS.WILDCARD
 export const WILDCARD_PATTERN = `*.${WILDCARD_DOMAIN}`

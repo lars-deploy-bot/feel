@@ -9,53 +9,49 @@
 
 "use client"
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
 import {
-  Loader2,
   Boxes,
-  Layout,
-  Terminal,
-  Mail,
-  LayoutList,
-  CreditCard,
-  Sparkles,
-  Menu,
-  X,
   ChevronDown,
+  CreditCard,
+  Layout,
+  LayoutList,
+  Loader2,
+  Mail,
+  Menu,
+  Sparkles,
+  Terminal,
+  X,
 } from "lucide-react"
-
-// Primitives
-import { ButtonPreview } from "./previews/primitives/ButtonPreview"
-import { InputPreview } from "./previews/primitives/InputPreview"
-import { CardPreview } from "./previews/primitives/CardPreview"
-import { BadgePreview } from "./previews/primitives/BadgePreview"
-import { AlertPreview } from "./previews/primitives/AlertPreview"
-
-// General UI
-import { ModalPreview } from "./previews/general/ModalPreview"
-import { TogglePreview } from "./previews/general/TogglePreview"
-import { TabsPreview } from "./previews/general/TabsPreview"
-import { SearchInputPreview } from "./previews/general/SearchInputPreview"
+import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+import { ClarificationQuestionsPreview } from "./previews/ClarificationQuestionsPreview"
 import { EmptyStatePreview } from "./previews/general/EmptyStatePreview"
 import { LoadingSpinnerPreview } from "./previews/general/LoadingSpinnerPreview"
-
-// Tool Outputs
-import { ReadOutputPreview } from "./previews/tools/ReadOutputPreview"
-import { WriteOutputPreview } from "./previews/tools/WriteOutputPreview"
+// General UI
+import { ModalPreview } from "./previews/general/ModalPreview"
+import { SearchInputPreview } from "./previews/general/SearchInputPreview"
+import { TabsPreview } from "./previews/general/TabsPreview"
+import { TogglePreview } from "./previews/general/TogglePreview"
+import { LinearCommentPreview } from "./previews/LinearCommentPreview"
+import { LinearIssuePreview } from "./previews/LinearIssuePreview"
+import { LinearIssuesPreview } from "./previews/LinearIssuesPreview"
+// Integrations
+import { MailSendPreview } from "./previews/MailSendPreview"
+import { AlertPreview } from "./previews/primitives/AlertPreview"
+import { BadgePreview } from "./previews/primitives/BadgePreview"
+// Primitives
+import { ButtonPreview } from "./previews/primitives/ButtonPreview"
+import { CardPreview } from "./previews/primitives/CardPreview"
+import { InputPreview } from "./previews/primitives/InputPreview"
+import { StripeAccountPreview } from "./previews/StripeAccountPreview"
+import { StripeCustomersPreview } from "./previews/StripeCustomersPreview"
+import { BashOutputPreview } from "./previews/tools/BashOutputPreview"
 import { EditOutputPreview } from "./previews/tools/EditOutputPreview"
 import { GlobOutputPreview } from "./previews/tools/GlobOutputPreview"
 import { GrepOutputPreview } from "./previews/tools/GrepOutputPreview"
-import { BashOutputPreview } from "./previews/tools/BashOutputPreview"
-
-// Integrations
-import { MailSendPreview } from "./previews/MailSendPreview"
-import { LinearIssuePreview } from "./previews/LinearIssuePreview"
-import { LinearIssuesPreview } from "./previews/LinearIssuesPreview"
-import { LinearCommentPreview } from "./previews/LinearCommentPreview"
-import { StripeCustomersPreview } from "./previews/StripeCustomersPreview"
-import { StripeAccountPreview } from "./previews/StripeAccountPreview"
-import { ClarificationQuestionsPreview } from "./previews/ClarificationQuestionsPreview"
+// Tool Outputs
+import { ReadOutputPreview } from "./previews/tools/ReadOutputPreview"
+import { WriteOutputPreview } from "./previews/tools/WriteOutputPreview"
 import { WebsiteConfigPreview } from "./previews/WebsiteConfigPreview"
 
 // Category and component definitions

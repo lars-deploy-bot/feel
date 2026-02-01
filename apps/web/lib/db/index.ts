@@ -14,92 +14,86 @@
  * ```
  */
 
-// Core database
+// Sync service
 export {
-  getMessageDb,
-  resetMessageDb,
-  getMessageDbName,
-  CURRENT_MESSAGE_VERSION,
-  type DbConversation,
-  type DbMessage,
-  type DbTab,
-  type DbMessageContent,
-  type DbMessageType,
-  type DbMessageStatus,
-  type DbMessageOrigin,
-  type ConversationVisibility,
-} from "./messageDb"
-
-// Safe operations wrapper
-export { safeDb, safeDbWithHandler, type DbError } from "./safeDb"
+  deleteConversation,
+  fetchConversations,
+  fetchTabMessages,
+  forceSyncNow,
+  queueSync,
+  shareConversation,
+  subscribeToSharedConversations,
+  unshareConversation,
+} from "./conversationSync"
+// Zustand store (new implementation)
+export {
+  type DexieSessionContext,
+  useDexieConversation,
+  // Re-exported hooks with Dexie prefix
+  useDexieConversations,
+  useDexieCurrentConversationId,
+  useDexieCurrentConversationSafe,
+  useDexieCurrentTabGroupId,
+  useDexieCurrentTabId,
+  useDexieCurrentWorkspace,
+  useDexieIsLoading,
+  useDexieIsSyncing,
+  useDexieMessageActions,
+  useDexieMessageStore,
+  useDexieMessages,
+  useDexieSession,
+  useDexieSharedConversations,
+  useDexieTabs,
+} from "./dexieMessageStore"
 
 // Type adapters
 export {
+  extractTitle,
+  isEmptyContent,
   toDbMessage,
   toDbMessageContent,
   toDbMessageType,
   toUIMessage,
   toUIMessages,
-  extractTitle,
-  isEmptyContent,
 } from "./messageAdapters"
-
-// Sync service
+// Core database
 export {
-  queueSync,
-  forceSyncNow,
-  fetchConversations,
-  fetchTabMessages,
-  shareConversation,
-  unshareConversation,
-  deleteConversation,
-  subscribeToSharedConversations,
-} from "./conversationSync"
-
+  type ConversationVisibility,
+  CURRENT_MESSAGE_VERSION,
+  type DbConversation,
+  type DbMessage,
+  type DbMessageContent,
+  type DbMessageOrigin,
+  type DbMessageStatus,
+  type DbMessageType,
+  type DbTab,
+  getMessageDb,
+  getMessageDbName,
+  resetMessageDb,
+} from "./messageDb"
+// Migration
+export { clearLegacyStorage, migrateLegacyStorage, needsMigration } from "./migrateLegacyStorage"
+// Safe operations wrapper
+export { type DbError, safeDb, safeDbWithHandler } from "./safeDb"
 // React hooks
 export {
-  useConversations,
-  useSharedConversations,
+  type SessionContext,
   useConversation,
-  useTabs,
-  useTab,
+  useConversationMessageCount,
+  useConversations,
+  useCurrentConversationSafe,
+  useHasPendingSyncs,
   useMessages,
   usePendingMessages,
-  useCurrentConversationSafe,
-  useConversationMessageCount,
-  useHasPendingSyncs,
-  type SessionContext,
+  useSharedConversations,
+  useTab,
+  useTabs,
 } from "./useMessageDb"
-
-// Migration
-export { migrateLegacyStorage, needsMigration, clearLegacyStorage } from "./migrateLegacyStorage"
-
 // Tab messages hook (merges Dexie + streaming buffers)
 export {
-  useTabMessages,
+  type TabMessage,
   useActiveStreamId,
   useIsTabStreaming,
   useStreamingText,
-  type TabMessage,
+  useTabMessages,
 } from "./useTabMessages"
-
-// Zustand store (new implementation)
-export {
-  useDexieMessageStore,
-  useDexieCurrentConversationId,
-  useDexieCurrentTabGroupId,
-  useDexieCurrentTabId,
-  useDexieCurrentWorkspace,
-  useDexieIsSyncing,
-  useDexieIsLoading,
-  useDexieSession,
-  useDexieMessageActions,
-  // Re-exported hooks with Dexie prefix
-  useDexieConversations,
-  useDexieSharedConversations,
-  useDexieMessages,
-  useDexieTabs,
-  useDexieConversation,
-  useDexieCurrentConversationSafe,
-  type DexieSessionContext,
-} from "./dexieMessageStore"

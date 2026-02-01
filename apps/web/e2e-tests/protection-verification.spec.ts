@@ -11,11 +11,11 @@
  */
 
 import { SECURITY } from "@webalive/shared"
+import { expect, test } from "./fixtures"
 import { login } from "./helpers"
 import { gotoChatFast } from "./helpers/assertions"
 import { handlers } from "./lib/handlers"
 import { isLocalTestServer } from "./lib/test-env"
-import { expect, test } from "./fixtures"
 
 test.describe("Protection System Verification", () => {
   test("Layer 1: Catches unmocked calls at browser level", async ({ authenticatedPage, workerTenant }) => {

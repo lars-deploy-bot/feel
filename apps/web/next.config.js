@@ -1,6 +1,6 @@
-import path from "node:path"
-import fs from "node:fs"
 import { execSync } from "node:child_process"
+import fs from "node:fs"
+import path from "node:path"
 
 /**
  * NOTE: Environment validation happens in the app itself via:

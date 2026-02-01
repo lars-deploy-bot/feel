@@ -8,9 +8,9 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js"
-import { createIamClient } from "@/lib/supabase/iam"
 import type { IamDatabase as Database } from "@webalive/database"
 import { FREE_CREDITS } from "@webalive/shared"
+import { createIamClient } from "@/lib/supabase/iam"
 
 export interface UserOrganization {
   orgId: string
@@ -149,6 +149,26 @@ export async function getUserDefaultOrgId(
 
   console.log(`[Org Resolver] Created new organization ${newOrg.org_id} for user ${userEmail}`)
   return newOrg.org_id
+}
+
+/**
+ * Get the first organization ID for a user (simpler than getUserDefaultOrgId)
+ *
+ * Unlike getUserDefaultOrgId, this does NOT create an org if none exists.
+ * Use this for read operations where creating an org doesn't make sense.
+ *
+ * @param userId - User ID from iam.users
+ * @param iamClient - Optional IAM client (for testing)
+ * @returns Organization ID or null if user has no orgs
+ */
+export async function getOrgIdForUser(userId: string, iamClient?: SupabaseClient<Database>): Promise<string | null> {
+  const orgs = await getUserOrganizations(userId, iamClient)
+  if (orgs.length === 0) {
+    return null
+  }
+  // Prefer owner orgs, fall back to first available
+  const ownerOrg = orgs.find(o => o.role === "owner")
+  return ownerOrg?.orgId || orgs[0].orgId
 }
 
 /**

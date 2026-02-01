@@ -1,6 +1,7 @@
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
+import { FREE_CREDITS } from "@webalive/shared"
 import { AnimatePresence, motion } from "framer-motion"
 import { Info, Zap } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -11,12 +12,11 @@ import { PasswordField } from "@/components/ui/primitives/PasswordField"
 import { containerVariants, fieldVariants, itemVariants } from "@/lib/animations"
 import {
   useDeployDomain,
-  useDeployPassword,
   useDeploymentStatus,
+  useDeployPassword,
   useFormActions,
   useStatusActions,
 } from "@/lib/stores/deployStore"
-import { FREE_CREDITS } from "@webalive/shared"
 import { DeploymentStatus } from "./DeploymentStatus"
 import { generateRandomDomain } from "./formUtils"
 import { ModeOption } from "./ModeOption"

@@ -47,9 +47,9 @@ export interface OAuthAuditEvent {
  */
 function truncateUserId(userId: string): string {
   if (userId.length <= 12) {
-    return userId.slice(0, 4) + "..."
+    return `${userId.slice(0, 4)}...`
   }
-  return userId.slice(0, 8) + "..."
+  return `${userId.slice(0, 8)}...`
 }
 
 /**

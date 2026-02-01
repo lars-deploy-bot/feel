@@ -3,9 +3,12 @@
  *
  * Implements OAuth 2.0 flow for Stripe Connect
  * Docs: https://docs.stripe.com/connect/oauth-reference
+ *
+ * Note: Stripe uses API secret key as client_secret for authentication
+ * Stripe Connect supports token refresh but not PKCE
  */
 
-import type { OAuthProvider } from "./base"
+import type { OAuthProviderCore, OAuthRefreshable, OAuthRevocable, PKCEOptions, TokenExchangeOptions } from "./base"
 import type { OAuthTokens } from "../types"
 import { fetchWithRetry } from "../fetch-with-retry"
 
@@ -24,7 +27,7 @@ export interface StripeTokenResponse extends OAuthTokens {
   stripe_publishable_key?: string
 }
 
-export class StripeProvider implements OAuthProvider {
+export class StripeProvider implements OAuthProviderCore, OAuthRefreshable, OAuthRevocable {
   name = "stripe"
 
   /**
@@ -34,9 +37,10 @@ export class StripeProvider implements OAuthProvider {
    * @param redirectUri - Callback URL (must match Stripe app config)
    * @param scope - Scope: "read_write" (default) or "read_only"
    * @param state - Random state for CSRF protection
+   * @param _pkce - Not supported by Stripe Connect (ignored)
    * @returns Authorization URL to redirect user to
    */
-  getAuthUrl(clientId: string, redirectUri: string, scope: string, state?: string): string {
+  getAuthUrl(clientId: string, redirectUri: string, scope: string, state?: string, _pkce?: PKCEOptions): string {
     const params = new URLSearchParams({
       client_id: clientId,
       redirect_uri: redirectUri,
@@ -61,11 +65,19 @@ export class StripeProvider implements OAuthProvider {
     _clientId: string,
     clientSecret: string,
     _redirectUri?: string,
+    options?: TokenExchangeOptions,
   ): Promise<StripeTokenResponse> {
     const params = new URLSearchParams({
       code,
       grant_type: "authorization_code",
     })
+
+    // Additional body params support (n8n pattern)
+    if (options?.additionalBodyParams) {
+      for (const [key, value] of Object.entries(options.additionalBodyParams)) {
+        params.append(key, value)
+      }
+    }
 
     const res = await fetchWithRetry(
       "https://connect.stripe.com/oauth/token",

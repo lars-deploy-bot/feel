@@ -1,4 +1,10 @@
-import type { Attachment, LibraryImageAttachment, UploadedFileAttachment } from "../components/ChatInput/types"
+import type {
+  Attachment,
+  LibraryImageAttachment,
+  SkillAttachment,
+  UploadedFileAttachment,
+  UserPromptAttachment,
+} from "../components/ChatInput/types"
 
 /**
  * Result of building prompt with attachments
@@ -36,15 +42,24 @@ export function buildPromptWithAttachmentsEx(message: string, attachments: Attac
   const analyzeImages = allLibraryImages.filter(a => a.mode === "analyze")
 
   const supertemplates = attachments.filter(a => a.kind === "supertemplate")
-  const userPrompts = attachments.filter(a => a.kind === "user-prompt")
+
+  // Support both new skill attachments and legacy user-prompt attachments
+  const skillAttachments = attachments.filter((a): a is SkillAttachment => a.kind === "skill")
+  const legacyUserPrompts = attachments.filter((a): a is UserPromptAttachment => a.kind === "user-prompt")
 
   // Start with user message
   let prompt = message
 
-  // Prepend user prompts at the very beginning
-  if (userPrompts.length > 0) {
-    const promptTexts = userPrompts.map(p => p.data).join("\n\n")
+  // Prepend skill prompts at the very beginning (new unified skills)
+  if (skillAttachments.length > 0) {
+    const promptTexts = skillAttachments.map(s => s.prompt).join("\n\n")
     prompt = message.trim() ? `${promptTexts}\n\n${prompt}` : promptTexts
+  }
+
+  // Prepend legacy user prompts (for backward compatibility)
+  if (legacyUserPrompts.length > 0) {
+    const promptTexts = legacyUserPrompts.map(p => p.data).join("\n\n")
+    prompt = prompt.trim() ? `${promptTexts}\n\n${prompt}` : promptTexts
   }
 
   // Add uploaded files context - these can be read with the Read tool

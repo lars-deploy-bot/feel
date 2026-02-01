@@ -9,8 +9,8 @@
 
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
-import { describe, expect, it } from "vitest"
 import { DOMAINS } from "@webalive/shared"
+import { describe, expect, it } from "vitest"
 import { getWorkspace } from "../workspaceRetriever"
 
 describe("Workspace Naming Bug - Regression Test", () => {

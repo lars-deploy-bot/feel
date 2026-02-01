@@ -9,6 +9,7 @@ import type {
   ChatInputConfig,
   FileUploadAttachment,
   LibraryImageAttachment,
+  SkillAttachment,
   SuperTemplateAttachment,
   UploadedFileAttachment,
   UserPromptAttachment,
@@ -16,6 +17,7 @@ import type {
 import {
   isFileUpload,
   isLibraryImage,
+  isSkillAttachment,
   isSuperTemplateAttachment,
   isUploadedFile,
   isUserPromptAttachment,
@@ -293,6 +295,7 @@ export function useAttachments(config: ChatInputConfig) {
     [attachments, config],
   )
 
+  /** @deprecated Use addSkill instead */
   const addUserPrompt = useCallback(
     (promptType: string, data: string, displayName: string, userFacingDescription?: string) => {
       // Check if same prompt type already attached
@@ -315,6 +318,43 @@ export function useAttachments(config: ChatInputConfig) {
         data,
         displayName,
         userFacingDescription,
+        uploadProgress: 100,
+      }
+
+      setAttachments(prev => [...prev, attachment])
+    },
+    [attachments, config],
+  )
+
+  const addSkill = useCallback(
+    (
+      skillId: string,
+      displayName: string,
+      description: string,
+      prompt: string,
+      source: "global" | "user" | "project",
+    ) => {
+      // Check if same skill already attached
+      if (attachments.some(a => isSkillAttachment(a) && a.skillId === skillId)) {
+        config.onMessage?.(`"${displayName}" already attached`, "error")
+        return
+      }
+
+      // Check max attachments
+      if (config.maxAttachments && attachments.length >= config.maxAttachments) {
+        config.onMessage?.(`Maximum ${config.maxAttachments} attachments allowed`, "error")
+        return
+      }
+
+      // Create skill attachment
+      const attachment: SkillAttachment = {
+        kind: "skill",
+        id: crypto.randomUUID(),
+        skillId,
+        displayName,
+        description,
+        prompt,
+        source,
         uploadProgress: 100,
       }
 
@@ -446,6 +486,7 @@ export function useAttachments(config: ChatInputConfig) {
     addPhotobookImage,
     addSuperTemplateAttachment,
     addUserPrompt,
+    addSkill,
     addFileForAnalysis,
     removeAttachment,
     clearAttachments,

@@ -5,12 +5,14 @@
  * Used by A2A tools (sessions_list, sessions_send, sessions_history).
  */
 
-import { NextRequest, NextResponse } from "next/server"
-import { getSessionUser } from "@/features/auth/lib/auth"
-import { createIamClient } from "@/lib/supabase/iam"
-import { createAppClient } from "@/lib/supabase/app"
-import { isConversationLocked, type TabSessionKey } from "@/features/auth/types/session"
 import type { SessionInfo } from "@alive-brug/tools"
+import { type NextRequest, NextResponse } from "next/server"
+import { getSessionUser } from "@/features/auth/lib/auth"
+import { isConversationLocked, type TabSessionKey } from "@/features/auth/types/session"
+import { ErrorCodes } from "@/lib/error-codes"
+import { structuredErrorResponse } from "@/lib/api/responses"
+import { createAppClient } from "@/lib/supabase/app"
+import { createIamClient } from "@/lib/supabase/iam"
 
 /**
  * GET /api/sessions - List sessions
@@ -24,7 +26,7 @@ export async function GET(req: NextRequest) {
   try {
     const user = await getSessionUser()
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return structuredErrorResponse(ErrorCodes.UNAUTHORIZED, { status: 401 })
     }
 
     const userId = user.id
@@ -32,7 +34,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const workspace = searchParams.get("workspace")
     const activeMinutes = searchParams.get("activeMinutes")
-    const limit = Math.min(parseInt(searchParams.get("limit") || "50"), 100)
+    const limit = Math.min(parseInt(searchParams.get("limit") || "50", 10), 100)
 
     // Build query
     const iam = await createIamClient("service")
@@ -47,7 +49,7 @@ export async function GET(req: NextRequest) {
 
     // Filter by active time
     if (activeMinutes) {
-      const cutoff = new Date(Date.now() - parseInt(activeMinutes) * 60 * 1000)
+      const cutoff = new Date(Date.now() - parseInt(activeMinutes, 10) * 60 * 1000)
       query = query.gte("last_activity", cutoff.toISOString())
     }
 
@@ -55,7 +57,7 @@ export async function GET(req: NextRequest) {
 
     if (error) {
       console.error("[Sessions API] Query error:", error)
-      return NextResponse.json({ error: "Failed to fetch sessions" }, { status: 500 })
+      return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
     }
 
     // Get domain hostnames for sessions
@@ -107,7 +109,7 @@ export async function GET(req: NextRequest) {
     })
   } catch (err) {
     console.error("[Sessions API] Error:", err)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
   }
 }
 
@@ -124,7 +126,7 @@ export async function POST(req: NextRequest) {
   try {
     const user = await getSessionUser()
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return structuredErrorResponse(ErrorCodes.UNAUTHORIZED, { status: 401 })
     }
 
     const userId = user.id
@@ -133,13 +135,19 @@ export async function POST(req: NextRequest) {
     const { targetSessionKey, message, timeoutSeconds: _timeoutSeconds = 30, waitForReply: _waitForReply = true } = body
 
     if (!targetSessionKey || !message) {
-      return NextResponse.json({ error: "targetSessionKey and message are required" }, { status: 400 })
+      return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
+        status: 400,
+        details: { field: "targetSessionKey and message" },
+      })
     }
 
     // Parse target session key
     const parts = targetSessionKey.split("::")
     if (parts.length !== 4) {
-      return NextResponse.json({ error: "Invalid session key format" }, { status: 400 })
+      return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
+        status: 400,
+        details: { field: "targetSessionKey", reason: "Invalid session key format" },
+      })
     }
 
     const [targetUserId, targetWorkspace, _tabGroupId, targetTabId] = parts
@@ -147,13 +155,10 @@ export async function POST(req: NextRequest) {
     // For now, only allow sending to own sessions
     // TODO: Implement A2A policy for cross-user messaging
     if (targetUserId !== userId) {
-      return NextResponse.json(
-        {
-          status: "forbidden",
-          error: "Cross-user session messaging not yet implemented",
-        },
-        { status: 403 },
-      )
+      return structuredErrorResponse(ErrorCodes.UNAUTHORIZED, {
+        status: 403,
+        details: { reason: "Cross-user session messaging not yet implemented" },
+      })
     }
 
     // Check if target session exists
@@ -164,13 +169,10 @@ export async function POST(req: NextRequest) {
     const { data: domain } = await app.from("domains").select("domain_id").eq("hostname", targetWorkspace).single()
 
     if (!domain) {
-      return NextResponse.json(
-        {
-          status: "error",
-          error: `Workspace not found: ${targetWorkspace}`,
-        },
-        { status: 404 },
-      )
+      return structuredErrorResponse(ErrorCodes.SITE_NOT_FOUND, {
+        status: 404,
+        details: { workspace: targetWorkspace },
+      })
     }
 
     // Get target session
@@ -183,13 +185,10 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (!session) {
-      return NextResponse.json(
-        {
-          status: "error",
-          error: "Target session not found",
-        },
-        { status: 404 },
-      )
+      return structuredErrorResponse(ErrorCodes.SITE_NOT_FOUND, {
+        status: 404,
+        details: { resource: "Target session not found" },
+      })
     }
 
     // Check if session is currently active (locked)
@@ -199,10 +198,11 @@ export async function POST(req: NextRequest) {
       // Session is busy - queue the message or return busy status
       // For now, return busy - TODO: implement message queue
       return NextResponse.json({
+        ok: false,
         status: "busy",
         runId: crypto.randomUUID(),
         sessionKey: targetSessionKey,
-        error: "Target session is currently processing. Try again later.",
+        message: "Target session is currently processing. Try again later.",
       })
     }
 
@@ -223,6 +223,6 @@ export async function POST(req: NextRequest) {
     })
   } catch (err) {
     console.error("[Sessions API] Send error:", err)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
   }
 }

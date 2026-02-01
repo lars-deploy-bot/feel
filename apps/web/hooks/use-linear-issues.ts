@@ -2,7 +2,7 @@
  * React hook for fetching Linear issues assigned to the current user
  */
 
-import { useState, useEffect, useCallback } from "react"
+import { useCallback, useEffect, useState } from "react"
 
 export interface LinearIssue {
   id: string

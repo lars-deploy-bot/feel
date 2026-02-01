@@ -18,9 +18,9 @@
 
 import "fake-indexeddb/auto"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import type { UIMessage } from "@/features/chat/lib/message-parser"
 import { useDexieMessageStore } from "../dexieMessageStore"
 import { getMessageDb } from "../messageDb"
-import type { UIMessage } from "@/features/chat/lib/message-parser"
 
 const TEST_USER_ID = "test-user-ordering"
 const TEST_ORG_ID = "test-org-ordering"

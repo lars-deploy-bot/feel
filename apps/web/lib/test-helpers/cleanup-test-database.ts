@@ -9,9 +9,8 @@
  */
 
 import { createClient } from "@supabase/supabase-js"
+import type { AppDatabase, IamDatabase } from "@webalive/database"
 import { getSupabaseCredentials } from "@/lib/env/server"
-import type { AppDatabase } from "@webalive/database"
-import type { IamDatabase } from "@webalive/database"
 import { isTestEmail } from "./test-email-domains"
 
 interface CleanupStats {

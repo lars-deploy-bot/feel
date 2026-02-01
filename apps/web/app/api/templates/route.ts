@@ -6,7 +6,7 @@
 import { NextResponse } from "next/server"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { ErrorCodes } from "@/lib/error-codes"
-import { createAppClient, type AppTemplate } from "@/lib/supabase/app"
+import { type AppTemplate, createAppClient } from "@/lib/supabase/app"
 
 export interface TemplatesResponse {
   templates: AppTemplate[]

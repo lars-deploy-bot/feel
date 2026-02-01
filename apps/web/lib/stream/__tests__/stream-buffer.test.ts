@@ -5,9 +5,9 @@
  * Verifies the off-by-one fix in the GET_UNREAD_SCRIPT.
  */
 
-import { describe, it, expect, beforeAll, afterAll } from "vitest"
 import { createRedisClient } from "@alive-brug/redis"
 import { getRedisUrl } from "@webalive/env/server"
+import { afterAll, beforeAll, describe, expect, it } from "vitest"
 
 describe("Stream Buffer - Lua Script (GET_UNREAD_SCRIPT)", () => {
   let redis: ReturnType<typeof createRedisClient>

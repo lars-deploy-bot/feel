@@ -5,9 +5,9 @@
  */
 
 import { createClient } from "@supabase/supabase-js"
+import type { IamDatabase } from "@webalive/database"
 import { beforeEach, describe, expect, test } from "vitest"
 import { getSupabaseCredentials } from "@/lib/env/server"
-import type { IamDatabase } from "@webalive/database"
 import { assertSupabaseServiceEnv } from "@/lib/test-helpers/integration-env"
 import { getUserDefaultOrgId, getUserOrganizations, validateUserOrgAccess } from "../org-resolver"
 

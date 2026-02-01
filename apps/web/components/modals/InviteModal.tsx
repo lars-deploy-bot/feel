@@ -1,10 +1,10 @@
 "use client"
 
+import { REFERRAL } from "@webalive/shared"
 import { Check, ChevronRight, Heart, Link, Send, X } from "lucide-react"
 import { useState } from "react"
 import useSWR from "swr"
 import { Modal } from "@/components/ui/Modal"
-import { REFERRAL } from "@webalive/shared"
 import type { ReferralData } from "@/lib/api/types"
 
 interface InviteModalProps {

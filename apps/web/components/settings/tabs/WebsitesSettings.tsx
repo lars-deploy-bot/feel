@@ -2,7 +2,7 @@
 
 import { AlertTriangle, Building2, Globe, Search } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
-import { AddWorkspaceModal } from "@/components/modals/AddWorkspaceModal"
+import { AddWebsiteModal } from "@/components/modals/AddWebsiteModal"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner"
 import { SearchInput } from "@/components/ui/SearchInput"
@@ -176,7 +176,7 @@ export function WebsitesSettings() {
           </div>
         )}
 
-        {showAddModal && <AddWorkspaceModal onClose={() => setShowAddModal(false)} onSuccess={refetch} />}
+        {showAddModal && <AddWebsiteModal onClose={() => setShowAddModal(false)} onSuccess={refetch} />}
       </div>
     </SettingsTabLayout>
   )

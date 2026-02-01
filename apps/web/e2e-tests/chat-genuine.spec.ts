@@ -12,7 +12,7 @@
  * - ANTHROPIC_API_KEY in .env
  */
 
-import { type Page, type Request, type Response, expect, test } from "@playwright/test"
+import { expect, type Page, type Request, type Response, test } from "@playwright/test"
 import { PATTERNS, TEST_API, TEST_MESSAGES, TEST_MODELS } from "./fixtures/test-constants"
 import { TEST_TIMEOUTS, TEST_USER } from "./fixtures/test-data"
 

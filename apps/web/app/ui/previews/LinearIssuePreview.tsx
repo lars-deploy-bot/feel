@@ -7,10 +7,10 @@
 
 "use client"
 
-import { useState } from "react"
-import { LinearIssueResult } from "@/components/linear/LinearIssueResult"
-import { FAKE_LINEAR_ISSUE } from "@/components/linear/fake-data"
 import { RotateCcw } from "lucide-react"
+import { useState } from "react"
+import { FAKE_LINEAR_ISSUE } from "@/components/linear/fake-data"
+import { LinearIssueResult } from "@/components/linear/LinearIssueResult"
 
 type ActionType = "create" | "update" | "get"
 

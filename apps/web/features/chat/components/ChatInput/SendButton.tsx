@@ -1,8 +1,8 @@
 "use client"
 
 import { ArrowUp, Square } from "lucide-react"
-import { useChatInput } from "./ChatInputContext"
 import { PulsingDot } from "../ui/PulsingDot"
+import { useChatInput } from "./ChatInputContext"
 
 export function SendButton() {
   const { busy, isStopping, canSubmit, onSubmit, onStop } = useChatInput()

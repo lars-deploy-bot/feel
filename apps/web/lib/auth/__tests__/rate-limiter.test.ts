@@ -14,7 +14,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { managerLoginRateLimiter, emailCheckRateLimiter } from "../rate-limiter"
+import { emailCheckRateLimiter, managerLoginRateLimiter } from "../rate-limiter"
 
 /**
  * Create a fresh rate limiter for isolated testing.
@@ -189,19 +189,20 @@ describe("RateLimiter", () => {
 
     it("should return 0 for unknown user", () => {
       expect(limiter.getBlockedTimeRemaining("unknown@example.com")).toBe(0)
-    }),
-      it("should return remaining time for blocked user", () => {
-        for (let i = 0; i < 5; i++) {
-          limiter.recordFailedAttempt("user@example.com")
-        }
+    })
 
-        // Advance time by 5 minutes
-        vi.advanceTimersByTime(5 * 60 * 1000)
+    it("should return remaining time for blocked user", () => {
+      for (let i = 0; i < 5; i++) {
+        limiter.recordFailedAttempt("user@example.com")
+      }
 
-        const remaining = limiter.getBlockedTimeRemaining("user@example.com")
-        expect(remaining).toBeGreaterThan(0)
-        expect(remaining).toBeLessThanOrEqual(10 * 60 * 1000) // 10 minutes remaining
-      })
+      // Advance time by 5 minutes
+      vi.advanceTimersByTime(5 * 60 * 1000)
+
+      const remaining = limiter.getBlockedTimeRemaining("user@example.com")
+      expect(remaining).toBeGreaterThan(0)
+      expect(remaining).toBeLessThanOrEqual(10 * 60 * 1000) // 10 minutes remaining
+    })
 
     it("should return 0 after block expires", () => {
       for (let i = 0; i < 5; i++) {

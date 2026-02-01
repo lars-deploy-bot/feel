@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest"
+import { describe, it, expect } from "vitest"
 import { PATHS, DEFAULTS } from "../src/config"
 
 describe("Configuration Constants", () => {

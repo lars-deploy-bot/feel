@@ -1,13 +1,13 @@
 "use client"
+import { PREVIEW_MESSAGES } from "@webalive/shared"
 import { ExternalLink, RotateCw, X } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { PREVIEW_MESSAGES } from "@webalive/shared"
-import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
 import { useSandboxContext } from "@/features/chat/lib/sandbox-context"
+import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
 import { useResizablePanel } from "@/lib/hooks/useResizablePanel"
 import { getPreviewUrl, getSiteUrl } from "@/lib/preview-utils"
 import { useDebugActions, useSandboxWidth } from "@/lib/stores/debug-store"
-import { SandboxModeMenu, SandboxCodePanel } from "./sandbox"
+import { SandboxCodePanel, SandboxModeMenu } from "./sandbox"
 import { PulsingDot } from "./ui/PulsingDot"
 
 export function Sandbox() {
@@ -15,6 +15,7 @@ export function Sandbox() {
   const {
     setSelectedElement,
     selectorActive,
+    deactivateSelector,
     preview,
     setPreviewMode,
     openFile,
@@ -77,6 +78,13 @@ export function Sandbox() {
     return () => clearInterval(interval)
   }, [workspace, fetchPreviewToken])
 
+  // Reset selector state when sandbox unmounts (closes)
+  useEffect(() => {
+    return () => {
+      deactivateSelector()
+    }
+  }, [deactivateSelector])
+
   // Set to half viewport on first open (when no saved preference)
   useEffect(() => {
     if (savedWidth === null) {
@@ -102,6 +110,10 @@ export function Sandbox() {
 
   const handleIframeLoad = () => {
     setIsLoading(false)
+    // Sync selector state to newly loaded iframe
+    if (selectorActive && iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage({ type: "alive-tagger-activate" }, "*")
+    }
   }
 
   // Reset loading state when path changes
@@ -135,13 +147,7 @@ export function Sandbox() {
   }
 
   // Send activation/deactivation message to iframe when selectorActive changes
-  const isFirstRender = useRef(true)
   useEffect(() => {
-    // Skip first render - only send when user toggles the selector
-    if (isFirstRender.current) {
-      isFirstRender.current = false
-      return
-    }
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
         { type: selectorActive ? "alive-tagger-activate" : "alive-tagger-deactivate" },

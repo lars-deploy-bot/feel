@@ -47,12 +47,20 @@ import { useStreamingActions } from "@/lib/stores/streamingStore"
 import { useTabActions } from "@/lib/stores/tabStore"
 import { useSelectedOrgId } from "@/lib/stores/workspaceStore"
 // Local components
-import { AgentManagerIndicator, ChatEmptyState, ChatHeader, TabBar, WorkspaceInfoBar } from "./components"
+import {
+  AgentManagerIndicator,
+  ChatEmptyState,
+  ChatHeader,
+  OfflineBanner,
+  TabBar,
+  WorkspaceInfoBar,
+} from "./components"
 import {
   useChatDragDrop,
   useChatMessaging,
   useChatScroll,
   useModals,
+  useOnlineStatus,
   useStatusText,
   useTabIsolatedMessages,
   useTabsManagement,
@@ -70,6 +78,8 @@ function ChatPageContent() {
     addMessage,
     switchTab: switchDexieTab,
     archiveConversation,
+    unarchiveConversation,
+    renameConversation,
     setSession: setDexieSession,
   } = useDexieMessageActions()
   const dexieSession = useDexieSession()
@@ -187,8 +197,20 @@ function ChatPageContent() {
     setDexieSession({ userId: user.id, orgId })
   }, [user?.id, selectedOrgId, organizations, dexieSession, setDexieSession])
 
+  // Fetch conversations from server when workspace changes
+  const { syncFromServer } = useDexieMessageActions()
+  useEffect(() => {
+    if (!mounted || !workspace || !dexieSession) return
+
+    // Fetch server conversations in background (non-blocking)
+    void syncFromServer(workspace)
+  }, [mounted, workspace, dexieSession, syncFromServer])
+
   // Check for session expiry
   const isSessionExpired = useIsSessionExpired()
+
+  // Track online/offline status for user feedback
+  const isOnline = useOnlineStatus()
 
   // Session values from useTabIsolatedMessages (single source of truth)
   // sessionTabId is the primary session key for Claude SDK (resume parameter)
@@ -461,6 +483,22 @@ function ChatPageContent() {
     ],
   )
 
+  const handleRenameTabGroup = useCallback(
+    async (tabGroupIdToRename: string, title: string) => {
+      if (!tabGroupIdToRename || !title.trim()) return
+      await renameConversation(tabGroupIdToRename, title)
+    },
+    [renameConversation],
+  )
+
+  const handleUnarchiveTabGroup = useCallback(
+    async (tabGroupIdToUnarchive: string) => {
+      if (!tabGroupIdToUnarchive) return
+      await unarchiveConversation(tabGroupIdToUnarchive)
+    },
+    [unarchiveConversation],
+  )
+
   return (
     <div
       className="h-[100dvh] flex flex-row overflow-hidden dark:bg-[#1a1a1a] dark:text-white"
@@ -472,6 +510,9 @@ function ChatPageContent() {
         activeTabGroupId={sessionTabGroupId}
         onTabGroupSelect={handleTabGroupSelect}
         onArchiveTabGroup={handleArchiveTabGroup}
+        onUnarchiveTabGroup={handleUnarchiveTabGroup}
+        onRenameTabGroup={handleRenameTabGroup}
+        onNewConversation={handleNewTabGroup}
         onOpenSettings={modals.openSettings}
         onOpenInvite={modals.openInvite}
       />
@@ -496,6 +537,7 @@ function ChatPageContent() {
         onDragOver={handleChatDragOver}
         onDrop={handleChatDrop}
       >
+        <OfflineBanner isOnline={isOnline} />
         <ChatDropOverlay isDragging={isDragging} />
         <Suspense fallback={null}>
           <SubdomainInitializer

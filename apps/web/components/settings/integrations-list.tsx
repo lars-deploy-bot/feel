@@ -7,19 +7,19 @@
 
 "use client"
 
+import { isValidOAuthMcpProviderKey, providerSupportsOAuth, providerSupportsPat } from "@webalive/shared"
+import { AlertCircle, CheckCircle2, ExternalLink, Key, Loader2, RefreshCw } from "lucide-react"
 import { useEffect, useState } from "react"
 import toast from "react-hot-toast"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
-  useIntegrations,
-  useDisconnectIntegration,
   useConnectIntegration,
   useConnectWithPat,
+  useDisconnectIntegration,
+  useIntegrations,
 } from "@/hooks/use-integrations"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Loader2, AlertCircle, CheckCircle2, RefreshCw, Key, ExternalLink } from "lucide-react"
 import { getIntegrationUI } from "@/lib/integrations/registry"
-import { isValidOAuthMcpProviderKey, providerSupportsPat, providerSupportsOAuth } from "@webalive/shared"
 
 // Constants
 const VISIBILITY_STATUS = {

@@ -167,6 +167,8 @@ export class OAuthManager {
     code: string,
     /** Override redirect URI - MUST match the URI used during authorization */
     redirectUriOverride?: string,
+    /** PKCE code_verifier - required if PKCE was used during authorization */
+    codeVerifier?: string,
   ): Promise<{ success: boolean; scopes?: string }> {
     // Start audit trail
     const correlationId = oauthAudit.authInitiated(provider, authenticatingUserId, tenantUserId)
@@ -207,7 +209,15 @@ export class OAuthManager {
 
       // 2. Get provider instance and exchange code for tokens
       const oauthProvider = getProvider(provider)
-      const tokens = await oauthProvider.exchangeCode(code, config.client_id, config.client_secret, config.redirect_uri)
+      const tokens = await oauthProvider.exchangeCode(
+        code,
+        config.client_id,
+        config.client_secret,
+        config.redirect_uri,
+        {
+          code_verifier: codeVerifier,
+        },
+      )
 
       // 3. Try to get user email for debugging (Google-specific)
       let userEmail: string | undefined
@@ -745,4 +755,26 @@ export {
   type KeyDerivationContext,
   type EncryptionMetadata,
 } from "./key-derivation"
-export { type EncryptedPayloadV2 } from "./security"
+export type { EncryptedPayloadV2 } from "./security"
+
+// PKCE support (learned from n8n)
+export { generatePKCEChallenge, verifyPKCEChallenge, type PKCEChallenge } from "./pkce"
+
+// Dynamic Client Registration (RFC 7591)
+export {
+  discoverAuthorizationServer,
+  registerClient,
+  selectBestAuthMethod,
+  AuthorizationServerMetadataSchema,
+  ClientRegistrationResponseSchema,
+  type AuthorizationServerMetadata,
+  type ClientRegistrationResponse,
+  type OAuth2GrantType,
+  type TokenEndpointAuthMethod,
+} from "./dynamic-client-registration"
+
+// Extended types
+export type { OAuthTokensWithMetadata, TokenRotationResult } from "./types"
+
+// Extended provider options
+export type { PKCEOptions, TokenExchangeOptions } from "./providers/base"

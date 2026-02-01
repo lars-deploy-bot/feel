@@ -14,9 +14,9 @@ if (typeof window !== "undefined" && !isTestEnv) {
 
 import { createServerClient } from "@supabase/ssr"
 import { createClient } from "@supabase/supabase-js"
+import type { AppDatabase as Database } from "@webalive/database"
 import { cookies } from "next/headers"
 import { getSupabaseCredentials, type KeyType } from "@/lib/env/server"
-import type { AppDatabase as Database } from "@webalive/database"
 
 /**
  * Create a Supabase client scoped to the app schema

@@ -6,9 +6,9 @@ if (typeof window !== "undefined") {
 }
 
 import { createServerClient } from "@supabase/ssr"
+import type { PublicDatabase as Database } from "@webalive/database"
 import { cookies } from "next/headers"
 import { getSupabaseCredentials, type KeyType } from "@/lib/env/server"
-import type { PublicDatabase as Database } from "@webalive/database"
 
 export async function createClient(keyType: KeyType = "anon") {
   const cookieStore = await cookies()

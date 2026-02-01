@@ -66,6 +66,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
     addPhotobookImage,
     addSuperTemplateAttachment,
     addUserPrompt,
+    addSkill,
     addFileForAnalysis,
     removeAttachment,
     clearAttachments,
@@ -88,6 +89,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
       addPhotobookImage,
       addSuperTemplateAttachment,
       addUserPrompt,
+      addSkill,
       addFileForAnalysis,
       getAttachments: () => attachments,
       clearLibraryImages: () => {
@@ -106,6 +108,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
       addPhotobookImage,
       addSuperTemplateAttachment,
       addUserPrompt,
+      addSkill,
       addFileForAnalysis,
       attachments,
       removeAttachment,
@@ -116,12 +119,12 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
   const canSubmit = useMemo(() => {
     if (!isReady || busy) return false
     const hasMessage = message.trim().length > 0
-    const hasUserPrompt = attachments.some(a => a.kind === "user-prompt")
+    const hasSkillOrPrompt = attachments.some(a => a.kind === "skill" || a.kind === "user-prompt")
     const attachmentsValid = attachments.every(a => !a.error && a.uploadProgress === 100)
 
-    // User prompts can be sent alone without a message
+    // Skills and user prompts can be sent alone without a message
     // Other attachments (images, templates) require a message
-    if (hasUserPrompt && attachmentsValid) return true
+    if (hasSkillOrPrompt && attachmentsValid) return true
     return hasMessage && attachmentsValid
   }, [busy, isReady, message, attachments])
 
@@ -229,6 +232,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Omit<ChatInputProps, "child
                     fileInputRef={fileInputRef}
                     onOpenTemplates={onOpenTemplates}
                     onAddUserPrompt={addUserPrompt}
+                    onAddSkill={addSkill}
                   />
                 )}
               </div>

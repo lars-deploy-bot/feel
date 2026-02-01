@@ -2,11 +2,11 @@
 
 import { AlertTriangle, CheckCircle, Loader2, Mail, Play, Server, XCircle } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
+import { EmailDraftDemo } from "@/components/ui/chat/tools/email/EmailDraftOutput"
 import { Toggle } from "@/components/ui/Toggle"
+import { useSuperadmin } from "@/hooks/use-superadmin"
 import buildInfo from "@/lib/build-info.json"
 import { SettingsTabLayout } from "./SettingsTabLayout"
-import { useSuperadmin } from "@/hooks/use-superadmin"
-import { EmailDraftDemo } from "@/components/ui/chat/tools/email/EmailDraftOutput"
 
 type DeployAction = "staging" | "production" | "production-skip-e2e" | "status"
 type DeployStatus = "idle" | "running" | "success" | "error"

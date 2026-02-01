@@ -2,7 +2,7 @@
 
 import { ChevronRight, File, Folder } from "lucide-react"
 import { memo, useCallback, useEffect, useState } from "react"
-import { listFiles, type FileInfo } from "./lib/file-api"
+import { type FileInfo, listFiles } from "./lib/file-api"
 import { getFileColor } from "./lib/file-colors"
 
 interface FileTreeProps {

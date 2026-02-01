@@ -6,18 +6,18 @@
  */
 
 import { type NextRequest, NextResponse } from "next/server"
-import { createErrorResponse, requireSessionUser, AuthenticationError } from "@/features/auth/lib/auth"
+import { AuthenticationError, createErrorResponse, requireSessionUser } from "@/features/auth/lib/auth"
 import { ErrorCodes } from "@/lib/error-codes"
 import { validateProviderName } from "@/lib/integrations/validation"
-import { getRequestUrls } from "@/lib/request-url"
 import {
-  type OAuthFlowResult,
-  getOAuthConfig,
   checkRateLimit,
-  initiateOAuthFlow,
+  getOAuthConfig,
   handleOAuthCallback,
   handleProviderError,
+  initiateOAuthFlow,
+  type OAuthFlowResult,
 } from "@/lib/oauth/oauth-flow-handler"
+import { getRequestUrls } from "@/lib/request-url"
 
 /**
  * Parse and validate OAuth request parameters

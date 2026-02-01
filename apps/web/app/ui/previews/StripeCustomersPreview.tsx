@@ -7,10 +7,10 @@
 
 "use client"
 
-import { useState } from "react"
-import { StripeCustomersOutput } from "@/components/ui/chat/tools/stripe/StripeCustomersOutput"
-import { FAKE_STRIPE_CUSTOMERS } from "@/components/ui/chat/tools/stripe/fake-data"
 import { RotateCcw } from "lucide-react"
+import { useState } from "react"
+import { FAKE_STRIPE_CUSTOMERS } from "@/components/ui/chat/tools/stripe/fake-data"
+import { StripeCustomersOutput } from "@/components/ui/chat/tools/stripe/StripeCustomersOutput"
 
 export function StripeCustomersPreview() {
   const [customerCount, setCustomerCount] = useState(FAKE_STRIPE_CUSTOMERS.length)

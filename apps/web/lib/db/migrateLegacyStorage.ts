@@ -14,9 +14,9 @@
  * - Preserves existing timestamps where available
  */
 
-import { getMessageDb, CURRENT_MESSAGE_VERSION, type DbMessageType, type DbMessageContent } from "./messageDb"
-import { safeDb } from "./safeDb"
 import { queueSync } from "./conversationSync"
+import { CURRENT_MESSAGE_VERSION, type DbMessageContent, type DbMessageType, getMessageDb } from "./messageDb"
+import { safeDb } from "./safeDb"
 
 // =============================================================================
 // Legacy Types (for parsing old localStorage data)

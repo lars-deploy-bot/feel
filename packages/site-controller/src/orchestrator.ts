@@ -153,7 +153,7 @@ export class SiteOrchestrator {
       if (rollbackOnFailure && deployedPort) {
         console.log("\n=== Attempting rollback (full cleanup) ===\n")
         try {
-          await this.teardown(domain, {
+          await SiteOrchestrator.teardown(domain, {
             removeFiles: true,
             removeUser: true,
             removePort: true,

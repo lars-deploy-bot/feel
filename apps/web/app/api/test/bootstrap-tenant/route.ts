@@ -6,12 +6,12 @@
  */
 
 import { randomUUID } from "node:crypto"
-import { hash } from "bcrypt"
 import { TEST_CONFIG } from "@webalive/shared"
+import { hash } from "bcrypt"
+import { createErrorResponse } from "@/features/auth/lib/auth"
+import { ErrorCodes } from "@/lib/error-codes"
 import { createAppClient } from "@/lib/supabase/app"
 import { createIamClient } from "@/lib/supabase/iam"
-import { ErrorCodes } from "@/lib/error-codes"
-import { createErrorResponse } from "@/features/auth/lib/auth"
 
 interface BootstrapRequest {
   runId: string

@@ -247,6 +247,24 @@ export const OAUTH_MCP_PROVIDERS = {
       "mcp__gmail__trash_email",
     ],
   },
+  supabase: {
+    url: "internal", // Tools are built into @alive-brug/tools, not a separate MCP server
+    oauthKey: "supabase",
+    friendlyName: "Supabase",
+    defaultScopes: "", // Supabase OAuth doesn't use scopes - grants full Management API access
+    envPrefix: "SUPABASE",
+    supportsOAuth: true,
+    knownTools: [
+      // Query execution
+      "mcp__supabase__run_query",
+      // Project management
+      "mcp__supabase__list_projects",
+      "mcp__supabase__get_project",
+      // Table operations (via SQL)
+      "mcp__supabase__list_tables",
+      "mcp__supabase__describe_table",
+    ],
+  },
 } as const satisfies OAuthMcpProviderRegistry
 
 /**

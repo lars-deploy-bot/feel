@@ -133,7 +133,7 @@ export function EditorFileTree({ onFileSelect, onRefresh }: EditorFileTreeProps)
         if (type === "directory") {
           // Close all tabs within the deleted directory
           for (const tab of openTabs) {
-            if (tab.path === path || tab.path.startsWith(path + "/")) {
+            if (tab.path === path || tab.path.startsWith(`${path}/`)) {
               closeTab(tab.path)
             }
           }

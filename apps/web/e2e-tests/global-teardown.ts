@@ -5,9 +5,8 @@
  */
 
 import { createClient } from "@supabase/supabase-js"
+import type { AppDatabase, IamDatabase } from "@webalive/database"
 import { getSupabaseCredentials } from "@/lib/env/server"
-import type { AppDatabase } from "@webalive/database"
-import type { IamDatabase } from "@webalive/database"
 
 function formatError(error: unknown): string {
   if (error instanceof Error) return error.message

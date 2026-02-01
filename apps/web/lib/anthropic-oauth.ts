@@ -9,10 +9,10 @@
  */
 
 import fs from "node:fs"
-import path from "node:path"
 import os from "node:os"
-import lockfile from "proper-lockfile"
+import path from "node:path"
 import { retryAsync } from "@webalive/shared"
+import lockfile from "proper-lockfile"
 
 // Anthropic OAuth constants (same as Claude Code / OpenClaw)
 const ANTHROPIC_TOKEN_URL = "https://console.anthropic.com/v1/oauth/token"

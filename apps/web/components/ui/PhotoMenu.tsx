@@ -5,7 +5,7 @@ import type { RefObject } from "react"
 import { useEffect, useRef, useState } from "react"
 import { DeleteModal } from "@/components/modals/DeleteModal"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
-import { useImages, useImagesLoading, useImagesUploading, useImageActions } from "@/lib/stores/imageStore"
+import { useImageActions, useImages, useImagesLoading, useImagesUploading } from "@/lib/stores/imageStore"
 
 interface PhotoMenuProps {
   isOpen: boolean

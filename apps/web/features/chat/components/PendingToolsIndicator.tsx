@@ -14,7 +14,7 @@
  */
 
 import { useEffect, useState } from "react"
-import { type PendingTool, usePendingTools, useIsStreamActive } from "@/lib/stores/streamingStore"
+import { type PendingTool, useIsStreamActive, usePendingTools } from "@/lib/stores/streamingStore"
 import { cn } from "@/lib/utils"
 import { monoText, mutedText } from "./message-renderers/styles"
 import { PulsingDot } from "./ui/PulsingDot"

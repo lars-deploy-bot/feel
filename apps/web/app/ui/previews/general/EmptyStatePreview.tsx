@@ -1,6 +1,6 @@
 "use client"
 
-import { FileText, Inbox, Search, Image } from "lucide-react"
+import { FileText, Image, Inbox, Search } from "lucide-react"
 import { EmptyState } from "@/components/ui/EmptyState"
 
 export function EmptyStatePreview() {

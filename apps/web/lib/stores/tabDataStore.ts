@@ -2,25 +2,25 @@
 
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
-import type { TabId, TabGroupId } from "@/lib/types/ids"
 import {
-  type Tab,
-  MAX_TABS_PER_GROUP,
+  closeTab,
   createTab,
   createTabGroup,
-  closeTab,
-  reopenTab as reopenTabPure,
-  renameTab as renameTabPure,
-  setTabDraft,
-  removeTabGroup as removeTabGroupPure,
-  getOpenTabsInGroup,
-  isOpen,
-  isClosed,
   filterStaleTabs,
   findFirstOpenTabId,
   findNextActiveTab,
   findTabById,
+  getOpenTabsInGroup,
+  isClosed,
+  isOpen,
+  MAX_TABS_PER_GROUP,
+  removeTabGroup as removeTabGroupPure,
+  renameTab as renameTabPure,
+  reopenTab as reopenTabPure,
+  setTabDraft,
+  type Tab,
 } from "@/lib/tabs/tabModel"
+import type { TabGroupId, TabId } from "@/lib/types/ids"
 import { TAB_DATA_STORAGE_KEY, TAB_LEGACY_STORAGE_KEY, TAB_MIGRATION_FLAG_KEY } from "./storage-keys"
 
 // Re-export Tab type for convenience

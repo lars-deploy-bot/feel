@@ -1,6 +1,6 @@
 import { tool } from "@anthropic-ai/claude-agent-sdk"
 import { z } from "zod"
-import { DEFAULTS } from "@webalive/shared"
+import { DEFAULTS, getTemplateListForDocs, getTemplateIdsInline } from "@webalive/shared"
 import { callBridgeApi, errorResult, type ToolResult } from "../../lib/bridge-api-client.js"
 
 // Reserved slugs that cannot be used (mirrors server-side validation)
@@ -104,7 +104,7 @@ export async function createWebsite(params: CreateWebsiteParams): Promise<ToolRe
   if (!finalTemplateId.startsWith(DEFAULTS.TEMPLATE_ID_PREFIX)) {
     return errorResult(
       "Invalid template ID",
-      `Template ID must start with '${DEFAULTS.TEMPLATE_ID_PREFIX}'. Got: ${finalTemplateId}. Available templates include: tmpl_blank, tmpl_gallery, tmpl_event, tmpl_saas, tmpl_business`,
+      `Template ID must start with '${DEFAULTS.TEMPLATE_ID_PREFIX}'. Got: ${finalTemplateId}. Available templates: ${getTemplateIdsInline()}`,
     )
   }
 
@@ -146,9 +146,8 @@ The site is now live and ready to edit. You can start customizing it right away.
   }
 }
 
-export const createWebsiteTool = tool(
-  "create_website",
-  `Create a new website with automatic deployment.
+// Build description dynamically from template source of truth
+const TOOL_DESCRIPTION = `Create a new website with automatic deployment.
 
 Creates a fully configured website with:
 - Custom subdomain (e.g., my-site.alive.best)
@@ -162,16 +161,11 @@ Creates a fully configured website with:
 - Optionally specify a template
 
 **Templates:**
-- tmpl_blank: Minimal starter (default)
-- tmpl_gallery: Photo gallery template
-- tmpl_event: Event/landing page template
-- tmpl_saas: SaaS landing page template
-- tmpl_business: Business website template
+${getTemplateListForDocs(DEFAULTS.DEFAULT_TEMPLATE_ID)}
 
 **Example:**
-create_website({ slug: "my-bakery", siteIdeas: "A website for a local bakery with menu, location, and contact info" })`,
-  createWebsiteParamsSchema,
-  async args => {
-    return createWebsite(args)
-  },
-)
+create_website({ slug: "my-bakery", siteIdeas: "A website for a local bakery with menu, location, and contact info" })`
+
+export const createWebsiteTool = tool("create_website", TOOL_DESCRIPTION, createWebsiteParamsSchema, async args => {
+  return createWebsite(args)
+})

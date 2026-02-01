@@ -10,7 +10,7 @@
  * - Workspace boundary enforcement
  */
 
-import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs"
+import { existsSync, mkdirSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { NextRequest, NextResponse } from "next/server"

@@ -7,6 +7,7 @@ import {
   isFileUpload,
   isImageAttachment,
   isLibraryImage,
+  isSkillAttachment,
   isSuperTemplateAttachment,
   isUserPromptAttachment,
 } from "./types"
@@ -42,7 +43,15 @@ export function PromptBarAttachmentGrid() {
           >
             {/* Thumbnail with loading overlay */}
             <div className="relative">
-              {isUserPromptAttachment(attachment) ? (
+              {isSkillAttachment(attachment) ? (
+                <div className="size-9 flex items-center justify-center rounded-lg bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-950/30 dark:to-pink-950/30">
+                  {attachment.source === "global" ? (
+                    <Globe className="size-4 text-purple-600 dark:text-purple-400" />
+                  ) : (
+                    <Sparkles className="size-4 text-purple-600 dark:text-purple-400" />
+                  )}
+                </div>
+              ) : isUserPromptAttachment(attachment) ? (
                 <div className="size-9 flex items-center justify-center rounded-lg bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-950/30 dark:to-pink-950/30">
                   {attachment.promptType === "revise-code" ? (
                     <ClipboardList className="size-4 text-purple-600 dark:text-purple-400" />
@@ -87,13 +96,15 @@ export function PromptBarAttachmentGrid() {
 
             <div className="flex flex-col min-w-0">
               <span className="text-xs font-medium text-black/80 dark:text-white/80 truncate max-w-[140px]">
-                {isUserPromptAttachment(attachment)
+                {isSkillAttachment(attachment)
                   ? attachment.displayName
-                  : isSuperTemplateAttachment(attachment)
-                    ? attachment.name
-                    : isFileUpload(attachment)
-                      ? attachment.file.name
-                      : "Photo"}
+                  : isUserPromptAttachment(attachment)
+                    ? attachment.displayName
+                    : isSuperTemplateAttachment(attachment)
+                      ? attachment.name
+                      : isFileUpload(attachment)
+                        ? attachment.file.name
+                        : "Photo"}
               </span>
               {attachment.error ? (
                 <span
@@ -106,13 +117,17 @@ export function PromptBarAttachmentGrid() {
                 <span className="text-[11px] text-blue-500 dark:text-blue-400">Uploading...</span>
               ) : (
                 <span className="text-[11px] text-black/40 dark:text-white/40">
-                  {isUserPromptAttachment(attachment)
-                    ? "User Prompt"
-                    : isSuperTemplateAttachment(attachment)
-                      ? "SuperTemplate"
-                      : isFileUpload(attachment)
-                        ? `${(attachment.file.size / 1024).toFixed(1)} KB`
-                        : "Library"}
+                  {isSkillAttachment(attachment)
+                    ? attachment.source === "global"
+                      ? "Skill"
+                      : "Custom Skill"
+                    : isUserPromptAttachment(attachment)
+                      ? "User Prompt"
+                      : isSuperTemplateAttachment(attachment)
+                        ? "SuperTemplate"
+                        : isFileUpload(attachment)
+                          ? `${(attachment.file.size / 1024).toFixed(1)} KB`
+                          : "Library"}
                 </span>
               )}
             </div>

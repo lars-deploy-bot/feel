@@ -12,7 +12,7 @@
  * including failure modes that caused production bugs.
  */
 
-import { describe, expect, it, beforeAll } from "vitest"
+import { describe, expect, it } from "vitest"
 import { chmod, mkdir, rm, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { tmpdir } from "node:os"

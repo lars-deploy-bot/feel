@@ -19,9 +19,9 @@
  * The view store starts fresh per browser tab (intentional - no stale selections).
  */
 
-import type { TabId, TabGroupId } from "@/lib/types/ids"
-import { type Tab, isOpen, isClosed } from "@/lib/tabs/tabModel"
-import { useTabDataStore, migrateFromLegacyTabStore } from "./tabDataStore"
+import { isClosed, isOpen, type Tab } from "@/lib/tabs/tabModel"
+import type { TabGroupId, TabId } from "@/lib/types/ids"
+import { migrateFromLegacyTabStore, useTabDataStore } from "./tabDataStore"
 import { useTabViewStore } from "./tabViewStore"
 
 // Re-export types and constants for backwards compatibility

@@ -64,6 +64,33 @@ export interface OAuthTokens {
   token_type?: string
 }
 
+/**
+ * Extended OAuth tokens with PKCE and metadata
+ * Learned from n8n's OAuth2CredentialData pattern
+ */
+export interface OAuthTokensWithMetadata extends OAuthTokens {
+  /** Grant type used to obtain tokens */
+  grant_type?: "authorization_code" | "client_credentials" | "refresh_token" | "pkce"
+  /** Token endpoint auth method */
+  authentication?: "header" | "body"
+  /** PKCE code verifier (stored for token exchange) */
+  code_verifier?: string
+  /** Timestamp when token was obtained */
+  obtained_at?: number
+  /** Calculated expiry timestamp */
+  expires_at?: number
+}
+
+/**
+ * Token rotation result (for atomic refresh operations)
+ * Learned from n8n's McpOAuthTokenService.validateAndRotateRefreshToken
+ */
+export interface TokenRotationResult {
+  old_access_token?: string
+  new_tokens: OAuthTokens
+  rotated_at: number
+}
+
 export interface ProviderConfig {
   client_id: string
   client_secret: string

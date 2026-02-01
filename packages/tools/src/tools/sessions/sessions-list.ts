@@ -7,7 +7,7 @@
 
 import { z } from "zod"
 import type { SessionInfo, AgentToAgentPolicy } from "./types.js"
-import { DEFAULT_A2A_POLICY, isA2AAllowed } from "./types.js"
+import { isA2AAllowed } from "./types.js"
 
 export const sessionsListSchema = z.object({
   /** Filter by workspace domain */

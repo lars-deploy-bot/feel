@@ -3,7 +3,7 @@
  * Types only - no runtime imports to avoid Node.js deps in client bundles
  */
 
-import type { TemplateListItem, TemplateCategory } from "@alive-brug/tools"
+import type { TemplateCategory, TemplateListItem } from "@alive-brug/tools"
 
 // Re-export types for component usage
 export type { TemplateListItem, TemplateCategory }

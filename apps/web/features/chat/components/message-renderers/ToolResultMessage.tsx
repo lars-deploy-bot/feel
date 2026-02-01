@@ -10,14 +10,14 @@
 import { useState } from "react"
 import { ToolOutputRouter } from "@/components/ui/chat/tools/ToolOutputRouter"
 import type { SDKUserMessage } from "@/features/chat/types/sdk-types"
-import { cn } from "@/lib/utils"
 import { useDebugVisible } from "@/lib/stores/debug-store"
 import { getToolIcon } from "@/lib/tool-icons"
-import { shouldAutoExpand, getToolPreview, transformToolData } from "@/lib/tools/tool-registry"
+import { getToolPreview, shouldAutoExpand, transformToolData } from "@/lib/tools/tool-registry"
+import { cn } from "@/lib/utils"
 import {
-  ICON_SIZE,
   errorInteractiveText,
   filledBg,
+  ICON_SIZE,
   interactiveText,
   mutedIcon,
   roundedContainer,

@@ -111,8 +111,8 @@ describe("timingSafeCompare", () => {
     })
 
     it("should return false for very long strings that differ at the end", () => {
-      const longString1 = "a".repeat(9999) + "b"
-      const longString2 = "a".repeat(9999) + "c"
+      const longString1 = `${"a".repeat(9999)}b`
+      const longString2 = `${"a".repeat(9999)}c`
       expect(timingSafeCompare(longString1, longString2)).toBe(false)
     })
 

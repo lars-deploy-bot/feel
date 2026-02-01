@@ -18,15 +18,15 @@
  * - RUN_REAL_E2E=1 to explicitly enable (safety flag)
  */
 
-import { describe, it, expect, beforeAll, afterEach } from "vitest"
 import { COOKIE_NAMES, DOMAINS, PORTS } from "@webalive/shared"
+import { afterEach, beforeAll, describe, expect, it } from "vitest"
 import {
+  assertNoStreamErrors,
+  collectStreamEvents,
+  extractTextFromEvents,
+  fetchDebugState,
   waitFor,
   waitForCleanState,
-  fetchDebugState,
-  collectStreamEvents,
-  assertNoStreamErrors,
-  extractTextFromEvents,
 } from "./test-utils"
 
 // Explicit opt-in required - this uses real API credits!

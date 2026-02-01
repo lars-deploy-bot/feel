@@ -37,8 +37,12 @@ export const BRIDGE_ALLOWED_SDK_TOOLS: string[] = [
   "Edit",
   "Glob",
   "Grep",
+  // Shell execution (available to all users)
+  "Bash",
+  "BashOutput",
   // Planning & workflow
-  "ExitPlanMode",
+  // NOTE: ExitPlanMode is intentionally NOT here - it requires user approval
+  // When Claude tries to use it, canUseTool() denies with a message asking user to approve
   "TodoWrite",
   // MCP integration
   "ListMcpResources",
@@ -58,7 +62,9 @@ export type BridgeAllowedSDKTool =
   | "Edit"
   | "Glob"
   | "Grep"
-  | "ExitPlanMode"
+  | "Bash"
+  | "BashOutput"
+  // ExitPlanMode intentionally omitted - requires user approval
   | "TodoWrite"
   | "ListMcpResources"
   | "Mcp"
@@ -70,13 +76,10 @@ export type BridgeAllowedSDKTool =
 
 /**
  * Admin-only SDK tools.
- *
- * These tools are dangerous but useful for admins:
- * - Bash: Shell command execution
- * - BashOutput: Read output from background shell
- * - KillShell: Kill a background shell process
+ * KillShell is admin-only because it can terminate long-running processes.
+ * Bash/BashOutput are in BRIDGE_ALLOWED_SDK_TOOLS (available to all users).
  */
-export const BRIDGE_ADMIN_ONLY_SDK_TOOLS = ["Bash", "BashOutput", "KillShell"] as const
+export const BRIDGE_ADMIN_ONLY_SDK_TOOLS = ["KillShell"] as const
 export type BridgeAdminOnlySDKTool = (typeof BRIDGE_ADMIN_ONLY_SDK_TOOLS)[number]
 
 /**
@@ -85,10 +88,11 @@ export type BridgeAdminOnlySDKTool = (typeof BRIDGE_ADMIN_ONLY_SDK_TOOLS)[number
  * Why disallowed:
  * - Task: Subagent spawning - not supported in Bridge architecture
  * - WebSearch: External web access - not needed, cost concerns
+ * - ExitPlanMode: Requires user approval - Claude cannot approve its own plan
  *
  * Note: Superadmins get ALL tools including these.
  */
-export const BRIDGE_ALWAYS_DISALLOWED_SDK_TOOLS = ["Task", "WebSearch"] as const
+export const BRIDGE_ALWAYS_DISALLOWED_SDK_TOOLS = ["Task", "WebSearch", "ExitPlanMode"] as const
 export type BridgeAlwaysDisallowedSDKTool = (typeof BRIDGE_ALWAYS_DISALLOWED_SDK_TOOLS)[number]
 
 /**

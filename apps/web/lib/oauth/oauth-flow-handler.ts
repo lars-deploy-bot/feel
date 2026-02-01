@@ -6,19 +6,19 @@
  */
 
 import crypto from "node:crypto"
-import type { NextRequest } from "next/server"
-import { cookies } from "next/headers"
-import { getProvider, GoogleProvider } from "@webalive/oauth-core"
 import { env } from "@webalive/env/server"
+import { GoogleProvider, getProvider } from "@webalive/oauth-core"
 import { getOAuthKeyForProvider } from "@webalive/shared"
-import { canUserAccessIntegration } from "@/lib/integrations/visibility"
-import { errorLogger } from "@/lib/error-logger"
-import { getOAuthInstance } from "@/lib/oauth/oauth-instances"
+import { cookies } from "next/headers"
+import type { NextRequest } from "next/server"
+import type { SessionUser } from "@/features/auth/lib/auth"
 import { getClientIdentifier } from "@/lib/auth/client-identifier"
 import { oauthInitiationRateLimiter, oauthOperationRateLimiter } from "@/lib/auth/rate-limiter"
 import { ErrorCodes } from "@/lib/error-codes"
-import type { SessionUser } from "@/features/auth/lib/auth"
-import { OAUTH_PROVIDER_CONFIG, buildOAuthRedirectUri, isOAuthProviderSupported, type OAuthProvider } from "./providers"
+import { errorLogger } from "@/lib/error-logger"
+import { canUserAccessIntegration } from "@/lib/integrations/visibility"
+import { getOAuthInstance } from "@/lib/oauth/oauth-instances"
+import { buildOAuthRedirectUri, isOAuthProviderSupported, OAUTH_PROVIDER_CONFIG, type OAuthProvider } from "./providers"
 
 const OAUTH_STATE_COOKIE_PREFIX = "oauth_state_"
 const STATE_COOKIE_MAX_AGE = 600 // 10 minutes
@@ -220,7 +220,9 @@ export async function initiateOAuthFlow(context: OAuthContext, config: OAuthConf
   // See: https://developers.google.com/identity/protocols/oauth2/web-server#offline
   let authUrl: string
   if (oauthKey === "google" && oauthProvider instanceof GoogleProvider) {
-    authUrl = oauthProvider.getAuthUrl(config.clientId, config.redirectUri, config.scopes, state, {
+    // Google getAuthUrl signature: (clientId, redirectUri, scope, state?, pkce?, options?)
+    // Pass undefined for pkce (not using PKCE), then GoogleAuthOptions
+    authUrl = oauthProvider.getAuthUrl(config.clientId, config.redirectUri, config.scopes, state, undefined, {
       forceConsent: true,
     })
   } else {

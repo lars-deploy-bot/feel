@@ -14,8 +14,8 @@ if (typeof window !== "undefined" && !isTestEnv) {
 
 import { createServerClient } from "@supabase/ssr"
 import { createClient } from "@supabase/supabase-js"
-import { getSupabaseCredentials, type KeyType } from "@/lib/env/server"
 import type { IamDatabase as Database } from "@webalive/database"
+import { getSupabaseCredentials, type KeyType } from "@/lib/env/server"
 
 /**
  * Create a Supabase client scoped to the IAM schema

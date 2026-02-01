@@ -18,14 +18,14 @@
  * applying credit charges, and sending typed messages to client.
  */
 
-import { type TabSessionKey, sessionStore } from "@/features/auth/lib/sessionStore"
+import type { OAuthWarning } from "@webalive/shared"
+import { sessionStore, type TabSessionKey } from "@/features/auth/lib/sessionStore"
 import type { BridgeErrorMessage, StreamMessage } from "@/features/chat/lib/streaming/ndjson"
 import { BridgeStreamType, createWarningMessage, encodeNDJSON } from "@/features/chat/lib/streaming/ndjson"
 import { isAssistantMessageWithUsage, isBridgeMessageEvent } from "@/features/chat/types/guards"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 import type { ClaudeModel } from "@/lib/models/claude-models"
 import { calculateCreditsToCharge } from "@/lib/models/model-pricing"
-import type { OAuthWarning } from "@webalive/shared"
 import { chargeCreditsDirectly } from "@/lib/tokens"
 
 /**

@@ -1,10 +1,10 @@
+import { env } from "@webalive/env/server"
+import { jwtVerify } from "jose"
 import { cookies } from "next/headers"
 import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
-import { jwtVerify } from "jose"
 import { verifySessionToken } from "@/features/auth/lib/jwt"
 import { COOKIE_NAMES } from "@/lib/auth/cookies"
-import { env } from "@webalive/env/server"
 
 /**
  * Preview Guard - Authentication endpoint for Caddy forward_auth

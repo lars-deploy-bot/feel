@@ -5,8 +5,8 @@
  * based on the database-driven visibility rules.
  */
 
-import { createIntegrationsClient } from "@/lib/supabase/integrations"
 import type { AvailableIntegration } from "@/app/api/integrations/available/route"
+import { createIntegrationsClient } from "@/lib/supabase/integrations"
 
 /**
  * Check if a user has access to a specific integration
