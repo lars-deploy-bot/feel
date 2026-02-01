@@ -77,6 +77,7 @@
         "@modelcontextprotocol/sdk": "^1.0.0",
         "cheerio": "^1.1.2",
         "commander": "^13.1.0",
+        "domhandler": "^5.0.3",
         "express": "^4.21.2",
         "puppeteer": "^24.15.0",
         "puppeteer-extra": "^3.3.6",
@@ -84,6 +85,7 @@
         "zod": "^3.25.0",
       },
       "devDependencies": {
+        "@types/domhandler": "^3.1.0",
         "@types/express": "^5.0.0",
         "@types/node": "^22.5.2",
         "typescript": "^5.9.3",
@@ -118,6 +120,7 @@
         "@xterm/addon-web-links": "^0.11.0",
         "@xterm/xterm": "^5.5.0",
         "bcrypt": "^6.0.0",
+        "bcryptjs": "^3.0.3",
         "clsx": "^2.1.1",
         "dexie": "^4.2.1",
         "dexie-react-hooks": "^4.2.0",
@@ -826,6 +829,8 @@
     "@types/debug": ["@types/debug@4.1.12", "", { "dependencies": { "@types/ms": "*" } }, "sha512-vIChWdVG3LG1SMxEvI/AK+FWJthlrqlTu7fbrlywTkkaONwk/UAGaULXRlf8vkzFBLVm0zkMdCquhL5aOjhXPQ=="],
 
     "@types/deep-eql": ["@types/deep-eql@4.0.2", "", {}, "sha512-c9h9dVVMigMPc4bwTvC5dxqtqJZwQPePsWjPlpSOnojbor6pGqdk541lfA7AqFQr5pB1BRdq0juY9db81BwyFw=="],
+
+    "@types/domhandler": ["@types/domhandler@3.1.0", "", { "dependencies": { "domhandler": "*" } }, "sha512-3AOfYUR/uv83OKeNzeJimXt6NRk/eCHkfOPp5Q8yX7ceE/WxxyDgEWnKb+b54bqVZmgjxMZLtWKDdmmREpZjTA=="],
 
     "@types/estree": ["@types/estree@1.0.8", "", {}, "sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w=="],
 
