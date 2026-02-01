@@ -175,6 +175,11 @@ async function readStdinJson() {
     // Log available secrets for debugging (without revealing values)
     console.error(`[runner] Internal tools secret: ${process.env.INTERNAL_TOOLS_SECRET ? "✓ present" : "✗ missing"}`)
 
+    // Log resume parameters
+    if (request.resumeSessionAt) {
+      console.error(`[runner] Resuming at message: ${request.resumeSessionAt}`)
+    }
+
     const agentQuery = query({
       prompt: request.message,
       options: {
@@ -190,6 +195,8 @@ async function readStdinJson() {
         systemPrompt: request.systemPrompt,
         // Session resumption: We use explicit session IDs for multi-conversation tracking
         resume: request.resume,
+        // Resume at specific message (for message deletion/editing)
+        resumeSessionAt: request.resumeSessionAt,
         // Alternative: continue: true - SDK auto-continues most recent conversation (no session ID needed)
         // continue: true,
       },

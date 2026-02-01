@@ -141,6 +141,8 @@ export interface AgentRequest {
   maxTurns?: number
   systemPrompt?: string
   resume?: string
+  /** Resume at a specific message UUID (for message deletion/editing) */
+  resumeSessionAt?: string
   /** User's API key (if they have their own) */
   apiKey?: string
   oauthTokens?: Record<string, string | undefined>

@@ -15,6 +15,13 @@
 | [Troubleshooting](./troubleshooting/README.md) | Common issues, solutions, postmortems |
 | [Deployment](./deployment/README.md) | Environment management and deployment (devops) |
 
+## Business & Strategy
+
+| Document | Purpose |
+|----------|---------|
+| [Business](./business/README.md) | Strategy, market analysis, external feedback |
+| [Panel Feedback - Philips 2026](./business/panel-feedback/philips-innovation-award-2026.md) | 5 panelist evaluations with actionable insights |
+
 ## Reference Documentation
 
 | Topic | Description |

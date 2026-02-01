@@ -36,16 +36,16 @@ export function WorkspaceInfoBar({
       className={`flex-shrink-0 border-b ${showWarning ? "border-amber-200 dark:border-amber-800/50 bg-amber-50/50 dark:bg-amber-900/20" : "border-black/[0.04] dark:border-white/[0.04]"}`}
       suppressHydrationWarning
     >
-      <div className="px-4 md:px-6 py-2.5 md:py-3 mx-auto w-full md:max-w-2xl">
+      <div className="px-3 md:px-6 py-2 md:py-2.5 mx-auto w-full md:max-w-2xl">
         {/* Workspace info bar */}
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-2">
           {/* Left: site name */}
           <div className="flex items-center min-w-0 flex-1" data-testid="workspace-section">
             {showWarning && (
               <AlertTriangle
-                size={16}
-                strokeWidth={1.75}
-                className="text-amber-500 dark:text-amber-400 mr-2 flex-shrink-0"
+                size={14}
+                strokeWidth={2}
+                className="text-amber-500 dark:text-amber-400 mr-1.5 flex-shrink-0"
               />
             )}
             {isTerminal ? (
@@ -59,7 +59,7 @@ export function WorkspaceInfoBar({
                 Select a site to start
               </button>
             ) : (
-              <span className="text-sm font-medium text-black/70 dark:text-white/70 truncate">
+              <span className="text-xs md:text-sm font-medium text-black/70 dark:text-white/70 truncate">
                 {workspace || "Loading..."}
               </span>
             )}
@@ -67,25 +67,25 @@ export function WorkspaceInfoBar({
 
           {/* Right: action buttons */}
           {workspace && (
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-1.5 flex-shrink-0">
               {/* Mobile/Tablet: Preview button - opens fullscreen overlay. Hidden on lg+ where side panel is used */}
               {!isSuperadminWorkspace && (
                 <button
                   type="button"
                   onClick={onMobilePreview}
-                  className="lg:hidden inline-flex items-center justify-center h-9 px-4 text-sm font-medium text-white dark:text-black bg-black dark:bg-white hover:brightness-[0.85] active:brightness-75 active:scale-95 rounded-full transition-all duration-150"
+                  className="lg:hidden inline-flex items-center justify-center h-7 md:h-8 px-3 text-xs font-medium text-white dark:text-black bg-black dark:bg-white hover:brightness-[0.85] active:brightness-75 active:scale-95 rounded-full transition-all duration-150"
                 >
                   Preview
                 </button>
               )}
 
-              {/* Desktop: All buttons */}
+              {/* Desktop: Open in new tab */}
               {!isSuperadminWorkspace && (
                 <a
                   href={`https://${workspace}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hidden sm:inline-flex items-center gap-1.5 h-8 px-3 text-xs font-medium text-black/50 dark:text-white/50 hover:text-black/80 dark:hover:text-white/80 bg-black/[0.04] dark:bg-white/[0.04] hover:bg-black/[0.08] dark:hover:bg-white/[0.08] active:scale-95 rounded-lg transition-all duration-150"
+                  className="hidden sm:inline-flex items-center gap-1 h-7 px-2.5 text-xs font-medium text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] active:scale-95 rounded-full transition-all duration-150"
                 >
                   <ExternalLink size={12} strokeWidth={2} />
                   <span>open</span>
@@ -95,24 +95,23 @@ export function WorkspaceInfoBar({
                 type="button"
                 onClick={onNewTabGroup}
                 data-testid="new-tab-group-button"
-                className="inline-flex items-center h-8 px-3 text-xs font-medium text-black/50 dark:text-white/50 hover:text-black/80 dark:hover:text-white/80 bg-black/[0.04] dark:bg-white/[0.04] hover:bg-black/[0.08] dark:hover:bg-white/[0.08] active:scale-95 rounded-lg transition-all duration-150"
+                className="inline-flex items-center h-7 px-2 md:px-2.5 text-xs font-medium text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] active:scale-95 rounded-full transition-all duration-150"
               >
-                <span className="hidden sm:inline">+ new group</span>
-                <span className="sm:hidden">+ new</span>
+                <span className="hidden sm:inline">+ new</span>
+                <span className="sm:hidden">+</span>
               </button>
               {showTabsToggle && onToggleTabs && (
                 <button
                   type="button"
                   onClick={onToggleTabs}
                   data-testid="toggle-tabs-button"
-                  className={`hidden md:inline-flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-lg transition-all duration-150 ${
+                  className={`inline-flex items-center justify-center size-7 rounded-full transition-all duration-150 ${
                     tabsExpanded
-                      ? "text-black/80 dark:text-white/80 bg-black/[0.08] dark:bg-white/[0.08]"
-                      : "text-black/50 dark:text-white/50 hover:text-black/80 dark:hover:text-white/80 bg-black/[0.04] dark:bg-white/[0.04] hover:bg-black/[0.08] dark:hover:bg-white/[0.08]"
+                      ? "text-black/70 dark:text-white/70 bg-black/[0.06] dark:bg-white/[0.06]"
+                      : "text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
                   }`}
                   title={tabsExpanded ? "Hide tabs" : "Show tabs"}
                 >
-                  <span>tabs</span>
                   {tabsExpanded ? <ChevronUp size={14} strokeWidth={2} /> : <ChevronDown size={14} strokeWidth={2} />}
                 </button>
               )}

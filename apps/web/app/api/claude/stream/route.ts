@@ -130,6 +130,7 @@ export async function POST(req: NextRequest) {
       additionalContext,
       analyzeImageUrls,
       planMode,
+      resumeSessionAt,
     } = parseResult.data
     logger.log("Conversation:", conversationId)
     logger.log(
@@ -514,6 +515,7 @@ export async function POST(req: NextRequest) {
                 model: effectiveModel,
                 maxTurns: maxTurns,
                 resume: existingSessionId || undefined,
+                resumeSessionAt: resumeSessionAt || undefined,
                 systemPrompt,
                 apiKey: effectiveApiKey || undefined,
                 oauthTokens,
@@ -576,6 +578,7 @@ export async function POST(req: NextRequest) {
         model: effectiveModel,
         maxTurns: maxTurns,
         resume: existingSessionId || undefined,
+        resumeSessionAt: resumeSessionAt || undefined,
         systemPrompt,
         apiKey: effectiveApiKey || undefined,
         sessionCookie,

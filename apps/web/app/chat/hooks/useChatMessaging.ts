@@ -99,6 +99,11 @@ export function useChatMessaging({
       if (!activeTabId || !tabGroupId) {
         throw new Error("[useChatMessaging] Cannot create request: activeTab or tabGroupId is missing")
       }
+
+      // Check if we need to resume at a specific message (user deleted messages)
+      const dexieState = useDexieMessageStore.getState()
+      const resumeSessionAt = dexieState.resumeSessionAtByTab[activeTabId] || undefined
+
       const baseBody = {
         message,
         tabId: activeTabId,
@@ -108,6 +113,8 @@ export function useChatMessaging({
         analyzeImageUrls: analyzeImageUrls?.length ? analyzeImageUrls : undefined,
         // Read plan mode directly from store to avoid stale closure
         planMode: getPlanModeState().planMode || undefined, // Only send if true
+        // Resume at specific message if user deleted messages
+        resumeSessionAt,
       }
       return isTerminal ? { ...baseBody, workspace: workspace || undefined } : baseBody
     },
@@ -420,6 +427,8 @@ export function useChatMessaging({
                       !isInterruptEvent(eventData)
                     ) {
                       setShowCompletionDots(true)
+                      // Clear resumeSessionAt after successful message send
+                      useDexieMessageStore.getState().clearResumeSessionAt(targetTabId)
                       // Pass targetTabId to ensure agent supervisor uses correct conversation
                       handleCompletionFeatures(targetTabId)
                     }

@@ -26,6 +26,7 @@ import { useStreamCancellation } from "@/features/chat/hooks/useStreamCancellati
 import { useStreamReconnect } from "@/features/chat/hooks/useStreamReconnect"
 import { ClientRequest, DevTerminalProvider, useDevTerminal } from "@/features/chat/lib/dev-terminal-context"
 import { renderMessage, shouldRenderMessage } from "@/features/chat/lib/message-renderer"
+import { MessageWrapper } from "@/features/chat/components/message-renderers/MessageWrapper"
 import { RetryProvider, useRetry } from "@/features/chat/lib/retry-context"
 import { SandboxProvider, useSandboxContext } from "@/features/chat/lib/sandbox-context"
 import { useAuth } from "@/features/deployment/hooks/useAuth"
@@ -607,14 +608,36 @@ function ChatPageContent() {
                   }
                   return shouldRenderMessage(message, isDebugMode)
                 })
-                .map(message => {
+                .map((message, index, filteredMessages) => {
                   const content = renderMessage(message, { onSubmitAnswer: sendMessage })
                   // Skip rendering wrapper if component returns null
                   if (!content) return null
+
+                  // Determine if this message can be deleted:
+                  // - Must have a previous assistant message with UUID to resume from
+                  // - Only user messages and assistant messages with visible content can be deleted
+                  const canDelete =
+                    sessionTabId != null &&
+                    index > 0 &&
+                    (message.type === "user" || message.type === "sdk_message") &&
+                    // Check if there's any previous assistant message with a UUID
+                    filteredMessages
+                      .slice(0, index)
+                      .some(m => {
+                        if (m.type !== "sdk_message") return false
+                        const sdkContent = m.content as { type?: string; uuid?: string }
+                        return sdkContent?.type === "assistant" && !!sdkContent?.uuid
+                      })
+
                   return (
-                    <div key={message.id} className="min-w-0 max-w-full overflow-hidden">
+                    <MessageWrapper
+                      key={message.id}
+                      messageId={message.id}
+                      tabId={sessionTabId ?? ""}
+                      canDelete={canDelete}
+                    >
                       {content}
-                    </div>
+                    </MessageWrapper>
                   )
                 })}
 

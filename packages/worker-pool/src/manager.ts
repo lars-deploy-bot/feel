@@ -22,7 +22,7 @@ import type {
 } from "./types.js"
 import { createConfig, getSocketPath } from "./config.js"
 import { createIpcServer, isWorkerMessage, type IpcServer } from "./ipc.js"
-import { isPathWithinWorkspace, PATHS } from "@webalive/shared"
+import { isPathWithinWorkspace, PATHS, SUPERADMIN } from "@webalive/shared"
 import * as path from "node:path"
 
 /** Pending query with callbacks */
@@ -67,8 +67,11 @@ function validateCredentials(credentials: WorkspaceCredentials): void {
   } else {
     // Canonical path traversal check using resolved paths
     const resolvedCwd = path.resolve(credentials.cwd)
-    if (!isPathWithinWorkspace(resolvedCwd, PATHS.SITES_ROOT)) {
-      errors.push(`cwd must be within ${PATHS.SITES_ROOT}, got: ${credentials.cwd}`)
+    // Allow both regular sites and the superadmin workspace (claude-bridge repo)
+    const isWithinSitesRoot = isPathWithinWorkspace(resolvedCwd, PATHS.SITES_ROOT)
+    const isSuperadminWorkspace = resolvedCwd === SUPERADMIN.WORKSPACE_PATH
+    if (!isWithinSitesRoot && !isSuperadminWorkspace) {
+      errors.push(`cwd must be within ${PATHS.SITES_ROOT} or be superadmin workspace, got: ${credentials.cwd}`)
     }
   }
 

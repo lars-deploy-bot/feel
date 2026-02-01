@@ -192,6 +192,7 @@ export function useTab(tabId: string | null, userId: string | null): DbTab | nul
 /**
  * Get messages for a tab (messages belong to tabs, NOT conversations).
  * Uses composite index [tabId+seq] for reliable ordering by sequence number.
+ * Filters out soft-deleted messages (those with deletedAt set).
  */
 export function useMessages(tabId: string | null, userId: string | null): DbMessage[] {
   return (
@@ -202,7 +203,12 @@ export function useMessages(tabId: string | null, userId: string | null): DbMess
         const db = getMessageDb(userId)
 
         // Order by seq (sequence number) for reliable ordering
-        return db.messages.where("[tabId+seq]").between([tabId, Dexie.minKey], [tabId, Dexie.maxKey]).toArray()
+        // Filter out soft-deleted messages
+        return db.messages
+          .where("[tabId+seq]")
+          .between([tabId, Dexie.minKey], [tabId, Dexie.maxKey])
+          .and(m => !m.deletedAt) // Exclude deleted messages
+          .toArray()
       },
       [tabId, userId],
       [],

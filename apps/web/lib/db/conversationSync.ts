@@ -12,9 +12,11 @@
  * - Lazy loading (metadata first, messages per-tab)
  * - Exponential backoff on failure
  * - Soft deletes only (never hard delete)
+ * - Cross-device sync: populates localStorage tabStore from Dexie on fetch
  */
 
 import { type DbConversation, type DbMessage, type DbTab, getMessageDb } from "./messageDb"
+import { syncDexieTabsToLocalStorage } from "./tabSync"
 
 // =============================================================================
 // Configuration
@@ -437,6 +439,10 @@ export async function fetchConversations(workspace: string, userId: string, _org
     // Server is source of truth for synced conversations
     // Local changes take precedence if pendingSync is true
 
+    // Collect tabs and conversations for cross-device sync to localStorage
+    const allServerTabs: DbTab[] = []
+    const allConversations: Array<{ id: string; title: string }> = []
+
     for (const convo of [...own, ...shared]) {
       const local = await db.conversations.get(convo.id)
 
@@ -445,6 +451,9 @@ export async function fetchConversations(workspace: string, userId: string, _org
         console.log(`[sync] Skipping server update for ${convo.id} - local changes pending`)
         continue
       }
+
+      // Track conversation for tab sync
+      allConversations.push({ id: convo.id, title: convo.title })
 
       // Upsert conversation from server
       const dbConvo: DbConversation = {
@@ -488,8 +497,13 @@ export async function fetchConversations(workspace: string, userId: string, _org
         }
 
         await db.tabs.put(dbTab)
+        allServerTabs.push(dbTab)
       }
     }
+
+    // Cross-device sync: populate localStorage tabStore with server tabs
+    // This enables clicking synced conversations in the sidebar to load correctly
+    syncDexieTabsToLocalStorage(workspace, allServerTabs, allConversations)
 
     console.log(`[sync] Fetched conversations for ${workspace}`, {
       own: own.length,

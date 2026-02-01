@@ -52,6 +52,9 @@ export const BodySchema = z.object({
   // Plan mode: Claude can only read/explore, not modify files
   // When enabled, permissionMode is set to 'plan' in the SDK
   planMode: z.boolean().optional(),
+  // Resume session at a specific message UUID (for message deletion/editing)
+  // When set, the SDK resumes from this message, excluding all messages after it
+  resumeSessionAt: z.string().uuid().optional(),
 })
 
 export type ValidatedBody = z.infer<typeof BodySchema>

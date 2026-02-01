@@ -539,6 +539,9 @@ async function handleQuery(ipc, requestId, payload) {
 
     console.error("[worker] MCP servers enabled:", Object.keys(mcpServers).join(", "))
     console.error("[worker] Resume session:", payload.resume || "none (new session)")
+    if (payload.resumeSessionAt) {
+      console.error("[worker] Resume at message:", payload.resumeSessionAt)
+    }
 
     timing("before_sdk_query")
     const agentQuery = query({
@@ -555,6 +558,7 @@ async function handleQuery(ipc, requestId, payload) {
         mcpServers,
         systemPrompt: payload.systemPrompt,
         resume: payload.resume,
+        resumeSessionAt: payload.resumeSessionAt,
         abortSignal: signal,
       },
     })

@@ -17,6 +17,7 @@ interface AgentRequest {
   model?: string
   maxTurns?: number
   resume?: string
+  resumeSessionAt?: string // Resume at specific message UUID (for message deletion)
   systemPrompt?: string | { type: "preset"; preset: "claude_code"; append?: string }
   apiKey?: string
   sessionCookie?: string // For authenticated API calls back to Bridge

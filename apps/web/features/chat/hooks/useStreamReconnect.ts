@@ -243,7 +243,7 @@ export function useStreamReconnect({
     }, 500)
 
     return () => clearTimeout(timeoutId)
-  }, [mounted, tabId, workspace]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [mounted, tabId, workspace, checkForBufferedMessages])
 
   // Listen for visibility changes
   useEffect(() => {
