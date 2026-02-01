@@ -1,5 +1,6 @@
 import { createSdkMcpServer } from "@anthropic-ai/claude-agent-sdk"
 import { askClarificationTool } from "./tools/ai/ask-clarification.js"
+import { askWebsiteConfigTool } from "./tools/ai/ask-website-config.js"
 import { debugWorkspaceTool } from "./tools/composite/debug-workspace.js"
 import { readServerLogsTool } from "./tools/debug/read-server-logs.js"
 import { getWorkflowTool } from "./tools/meta/get-workflow.js"
@@ -9,6 +10,7 @@ import { generatePersonaTool } from "./tools/personas/generate-persona.js"
 import { getAliveSuperTemplateTool } from "./tools/templates/get-template.js"
 import { checkCodebaseTool } from "./tools/workspace/check-codebase.js"
 import { copySharedAssetTool } from "./tools/workspace/copy-shared-asset.js"
+import { createWebsiteTool } from "./tools/workspace/create-website.js"
 import { deleteFileTool } from "./tools/workspace/delete-file.js"
 import { installPackageTool } from "./tools/workspace/install-package.js"
 import { restartServerTool } from "./tools/workspace/restart-server.js"
@@ -52,6 +54,7 @@ export const toolsInternalMcp = createSdkMcpServer({
     readServerLogsTool,
     generatePersonaTool,
     askClarificationTool,
+    askWebsiteConfigTool,
   ],
 })
 
@@ -65,6 +68,7 @@ export const toolsInternalMcp = createSdkMcpServer({
  * - install_package: Install a package in the user's workspace using bun
  * - check_codebase: Run TypeScript and ESLint checks on the codebase
  * - delete_file: Delete a file or directory from the workspace (with security protections)
+ * - create_website: Deploy a new website with automatic infrastructure setup
  *
  * Tool names follow MCP pattern: mcp__alive-workspace__<tool_name>
  */
@@ -78,5 +82,6 @@ export const workspaceInternalMcp = createSdkMcpServer({
     deleteFileTool,
     switchServeModeTool,
     copySharedAssetTool,
+    createWebsiteTool,
   ],
 })

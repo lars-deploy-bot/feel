@@ -58,6 +58,11 @@ export interface OAuthMcpProviderConfig {
    * Tools are auto-discovered at runtime, this is just for reference
    */
   knownTools?: readonly string[]
+  /**
+   * Whether this provider supports Personal Access Tokens (PAT) as an alternative to OAuth.
+   * When true, users can connect by providing their PAT directly instead of OAuth flow.
+   */
+  supportsPat?: boolean
 }
 
 /**
@@ -74,6 +79,44 @@ export type OAuthMcpProviderRegistry = Record<string, OAuthMcpProviderConfig>
  * 3. That's it! Token fetching, MCP config, and tool permissions work automatically
  */
 export const OAUTH_MCP_PROVIDERS = {
+  github: {
+    url: "https://api.githubcopilot.com/mcp/",
+    oauthKey: "github",
+    friendlyName: "GitHub",
+    defaultScopes: "repo user",
+    envPrefix: "GITHUB",
+    /**
+     * GitHub integration supports classic Personal Access Tokens (PAT).
+     * Users can connect by providing their PAT directly instead of going through OAuth.
+     */
+    supportsPat: true,
+    knownTools: [
+      // Repository operations
+      "mcp__github__list_repos",
+      "mcp__github__get_repo",
+      "mcp__github__create_repo",
+      // Branch operations
+      "mcp__github__list_branches",
+      "mcp__github__get_branch",
+      // File operations
+      "mcp__github__get_file_contents",
+      "mcp__github__create_or_update_file",
+      // Issue operations
+      "mcp__github__list_issues",
+      "mcp__github__get_issue",
+      "mcp__github__create_issue",
+      "mcp__github__update_issue",
+      // Pull request operations
+      "mcp__github__list_pull_requests",
+      "mcp__github__get_pull_request",
+      "mcp__github__create_pull_request",
+      // Commit operations
+      "mcp__github__list_commits",
+      "mcp__github__get_commit",
+      // User operations
+      "mcp__github__get_authenticated_user",
+    ],
+  },
   stripe: {
     url: "https://mcp.stripe.com",
     oauthKey: "stripe",
@@ -217,6 +260,21 @@ export function getOAuthMcpProviderKeys(): OAuthMcpProviderKey[] {
 }
 
 /**
+ * Check if a provider supports Personal Access Tokens (PAT)
+ *
+ * @param providerKey - The provider key to check
+ * @returns true if the provider supports PAT authentication
+ */
+export function providerSupportsPat(providerKey: string): boolean {
+  if (providerKey in OAUTH_MCP_PROVIDERS) {
+    const config = OAUTH_MCP_PROVIDERS[providerKey as OAuthMcpProviderKey]
+    // Use 'in' operator to safely check for optional property
+    return "supportsPat" in config && config.supportsPat === true
+  }
+  return false
+}
+
+/**
  * Type guard to check if a string is a valid OAuth MCP provider key
  *
  * @param key - The string to check
@@ -242,6 +300,19 @@ export function getOAuthKeyForProvider(providerKey: string): string {
   }
   // For non-MCP providers, use the key as-is
   return providerKey
+}
+
+/**
+ * Get provider configuration by key
+ *
+ * @param providerKey - The provider key (e.g., "github", "stripe")
+ * @returns The provider configuration or undefined if not found
+ */
+export function getOAuthMcpProviderConfig(providerKey: string): OAuthMcpProviderConfig | undefined {
+  if (providerKey in OAUTH_MCP_PROVIDERS) {
+    return OAUTH_MCP_PROVIDERS[providerKey as OAuthMcpProviderKey]
+  }
+  return undefined
 }
 
 /**

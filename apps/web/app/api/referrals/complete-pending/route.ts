@@ -19,8 +19,13 @@ import { createIamClient } from "@/lib/supabase/iam"
 import { createErrorResponse } from "@/features/auth/lib/auth"
 import { ErrorCodes } from "@/lib/error-codes"
 import { awardReferralCredits } from "@/lib/credits/add-credits"
+import { createDedupeCache } from "@webalive/shared"
 
 export const runtime = "nodejs"
+
+// Dedupe cache: prevent duplicate credit awards from webhook retries
+// TTL of 1 minute - enough to handle retries, short enough to allow legitimate retries
+export const referralDedupeCache = createDedupeCache({ ttlMs: 60 * 1000, maxSize: 1000 })
 
 export async function POST(req: Request) {
   // Parse JSON with robust error handling (handles throws AND null returns)
@@ -38,6 +43,16 @@ export async function POST(req: Request) {
 
   if (!userId || typeof userId !== "string") {
     return createErrorResponse(ErrorCodes.INVALID_REQUEST, 400, { field: "userId" })
+  }
+
+  // Dedupe: prevent duplicate processing of the same userId
+  if (referralDedupeCache.check(userId)) {
+    console.log(`[Referral] Ignoring duplicate complete-pending request for user ${userId}`)
+    return NextResponse.json({
+      ok: true,
+      deduplicated: true,
+      message: "Request already being processed",
+    })
   }
 
   const iam = await createIamClient("service")

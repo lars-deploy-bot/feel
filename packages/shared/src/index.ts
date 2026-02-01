@@ -74,6 +74,8 @@ export {
   isOAuthMcpTool,
   getMcpToolFriendlyName,
   getOAuthKeyForProvider,
+  getOAuthMcpProviderConfig,
+  providerSupportsPat,
   type OAuthMcpProviderConfig,
   type OAuthMcpProviderRegistry,
   type OAuthMcpProviderKey,
@@ -114,10 +116,16 @@ export {
   BRIDGE_ALWAYS_DISALLOWED_SDK_TOOLS,
   BRIDGE_PERMISSION_MODE,
   BRIDGE_SETTINGS_SOURCES,
+  PLAN_MODE_BLOCKED_TOOLS,
   type BridgeAllowedSDKTool,
   type BridgeDisallowedSDKTool,
   type BridgeAdminOnlySDKTool,
   type BridgeAlwaysDisallowedSDKTool,
+  type PlanModeBlockedTool,
+  // Tool permission helpers
+  allowTool,
+  denyTool,
+  filterToolsForPlanMode,
   // Helper functions
   getBridgeAllowedTools,
   getBridgeDisallowedTools,
@@ -141,3 +149,42 @@ export {
   DEFAULT_MAX_LINES,
   type TruncateOptions,
 } from "./output-limits.js"
+export {
+  // Retry utilities
+  retryAsync,
+  resolveRetryConfig,
+  computeBackoff,
+  sleepWithAbort,
+  type RetryConfig,
+  type RetryInfo,
+  type RetryOptions,
+  type BackoffPolicy,
+} from "./retry.js"
+export {
+  // Deduplication cache
+  createDedupeCache,
+  createPrefixedDedupeCache,
+  type DedupeCache,
+  type DedupeCacheOptions,
+} from "./dedupe.js"
+export {
+  // Error utilities
+  extractErrorCode,
+  isAbortError,
+  isFatalError,
+  isConfigError,
+  isTransientNetworkError,
+  isRetryableNetworkError,
+  formatUncaughtError,
+} from "./errors.js"
+export {
+  // External content security (prompt injection protection)
+  detectSuspiciousPatterns,
+  wrapExternalContent,
+  buildSafeExternalPrompt,
+  isExternalHookSession,
+  getHookType,
+  sanitizePromptInput,
+  type ExternalContentSource,
+  type WrapExternalContentOptions,
+} from "./external-content.js"

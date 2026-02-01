@@ -18,12 +18,12 @@ export function ChatEmptyState({ workspace, totalDomainCount, isLoading, onTempl
       <div className="max-w-md text-center space-y-6">
         {workspace ? (
           <>
-            <p className="text-lg text-black/90 dark:text-white/90 font-medium">What's next?</p>
+            <p className="text-lg text-black/80 dark:text-white/80 font-medium">What's next?</p>
             <div className="pt-2">
               <button
                 type="button"
                 onClick={onTemplatesClick}
-                className="px-4 py-2 rounded-md bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-sm font-medium text-black dark:text-white transition-colors"
+                className="h-10 px-5 rounded-xl bg-black/[0.05] dark:bg-white/[0.05] hover:bg-black/[0.08] dark:hover:bg-white/[0.08] active:bg-black/[0.12] dark:active:bg-white/[0.12] text-sm font-medium text-black/80 dark:text-white/80 transition-all duration-150 active:scale-95"
               >
                 Browse templates
               </button>
@@ -31,20 +31,20 @@ export function ChatEmptyState({ workspace, totalDomainCount, isLoading, onTempl
           </>
         ) : totalDomainCount === 0 ? (
           <>
-            <p className="text-lg text-black/90 dark:text-white/90 font-medium">
+            <p className="text-lg text-black/80 dark:text-white/80 font-medium">
               Welcome! You don't have any sites yet.
             </p>
             <div className="pt-2">
               <a
                 href="/deploy"
-                className="inline-block px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
+                className="inline-flex items-center justify-center h-10 px-5 rounded-xl bg-black dark:bg-white text-white dark:text-black text-sm font-medium hover:brightness-[0.85] active:brightness-75 active:scale-95 transition-all duration-150"
               >
                 Deploy your first site
               </a>
             </div>
           </>
         ) : (
-          <p className="text-lg text-black/60 dark:text-white/60 font-medium">Select a site above to start chatting</p>
+          <p className="text-lg text-black/50 dark:text-white/50 font-medium">Select a site above to start chatting</p>
         )}
       </div>
     </div>

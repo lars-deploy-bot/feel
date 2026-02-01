@@ -1,3 +1,5 @@
+import { retryAsync } from "@webalive/shared"
+
 interface NodeError extends Error {
   code?: string
 }
@@ -11,55 +13,72 @@ export interface SSLValidationResult {
   error?: string
 }
 
+/**
+ * Check if error is expected during SSL/site startup (should keep retrying)
+ */
+function isExpectedStartupError(error: unknown): boolean {
+  const errorMessage = error instanceof Error ? error.message : String(error)
+  const errorCode = isNodeError(error) ? error.code : undefined
+
+  return (
+    (error instanceof Error && error.name === "TimeoutError") ||
+    errorCode === "ECONNREFUSED" ||
+    errorCode === "ENOTFOUND" ||
+    errorMessage.includes("certificate") ||
+    errorMessage.includes("SSL") ||
+    errorMessage.includes("TLS") ||
+    errorMessage.includes("Site not ready")
+  )
+}
+
+/**
+ * Validate that a domain has a working SSL certificate and serves content.
+ * Uses exponential backoff with retries to wait for certificate provisioning.
+ */
 export async function validateSSLCertificate(domain: string): Promise<SSLValidationResult> {
-  const maxAttempts = 12
-  const delayMs = 5000
+  try {
+    await retryAsync(
+      async () => {
+        // Use GET to verify the site actually returns content, not just HEAD
+        const response = await fetch(`https://${domain}`, {
+          method: "GET",
+          signal: AbortSignal.timeout(10000),
+        })
 
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      console.log(`[SSL CHECK] Attempt ${attempt}/${maxAttempts} for ${domain}`)
+        // Only consider 200-299 as success (site is serving content)
+        // Don't accept 404, 500, etc. - the site should be fully working
+        if (!response.ok) {
+          throw new Error(`Site not ready - status ${response.status}`)
+        }
 
-      // Use GET to verify the site actually returns content, not just HEAD
-      const response = await fetch(`https://${domain}`, {
-        method: "GET",
-        signal: AbortSignal.timeout(10000),
-      })
-
-      // Only consider 200-299 as success (site is serving content)
-      // Don't accept 404, 500, etc. - the site should be fully working
-      if (response.ok) {
         const contentType = response.headers.get("content-type")
         console.log(`[SSL CHECK] Site ready for ${domain} (status: ${response.status}, content-type: ${contentType})`)
-        return { success: true }
-      }
+      },
+      {
+        attempts: 12,
+        minDelayMs: 5000,
+        maxDelayMs: 10000,
+        jitter: 0.1,
+        shouldRetry: isExpectedStartupError,
+        onRetry: ({ attempt, maxAttempts, delayMs, err }) => {
+          const errorMessage = err instanceof Error ? err.message : String(err)
+          console.log(`[SSL CHECK] Attempt ${attempt}/${maxAttempts} failed for ${domain}: ${errorMessage}`)
+          console.log(`[SSL CHECK] Waiting ${Math.round(delayMs / 1000)}s before next attempt...`)
+        },
+      },
+    )
 
-      console.log(`[SSL CHECK] Site not ready - status ${response.status} for ${domain}`)
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error)
-      console.log(`[SSL CHECK] Attempt ${attempt} failed: ${errorMessage}`)
+    return { success: true }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
 
-      const errorCode = isNodeError(error) ? error.code : undefined
-      const isExpectedError =
-        (error instanceof Error && error.name === "TimeoutError") ||
-        errorCode === "ECONNREFUSED" ||
-        errorCode === "ENOTFOUND" ||
-        errorMessage.includes("certificate") ||
-        errorMessage.includes("SSL") ||
-        errorMessage.includes("TLS")
-
-      if (!isExpectedError) {
-        console.error(`[SSL CHECK] Unexpected error: ${error}`)
-      }
+    if (!isExpectedStartupError(error)) {
+      console.error(`[SSL CHECK] Unexpected error for ${domain}:`, error)
     }
 
-    if (attempt < maxAttempts) {
-      console.log(`[SSL CHECK] Waiting ${delayMs / 1000}s before next attempt...`)
-      await new Promise(resolve => setTimeout(resolve, delayMs))
+    return {
+      success: false,
+      error: `Site not ready after retries: ${errorMessage}`,
     }
-  }
-
-  return {
-    success: false,
-    error: `Site not ready after ${(maxAttempts * delayMs) / 1000} seconds. The site may still be starting up.`,
   }
 }

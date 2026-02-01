@@ -49,6 +49,9 @@ export const BodySchema = z.object({
   // Image paths to fetch and include for Claude to analyze
   // Can be relative paths (/_images/...) or absolute URLs
   analyzeImageUrls: z.array(z.string().min(1)).optional(),
+  // Plan mode: Claude can only read/explore, not modify files
+  // When enabled, permissionMode is set to 'plan' in the SDK
+  planMode: z.boolean().optional(),
 })
 
 export type ValidatedBody = z.infer<typeof BodySchema>

@@ -14,6 +14,36 @@ import type { OAuthProviderCore, OAuthRefreshable, OAuthRevocable } from "./base
 import type { OAuthTokens } from "../types"
 
 /**
+ * Fetch with exponential backoff retry for transient failures
+ * Only retries on 5xx errors and network failures, not 4xx client errors
+ */
+async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3): Promise<Response> {
+  let lastError: Error | null = null
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const res = await fetch(url, options)
+      // Don't retry client errors (4xx) - only server errors (5xx)
+      if (res.ok || res.status < 500) {
+        return res
+      }
+      lastError = new Error(`HTTP ${res.status}: ${res.statusText}`)
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err))
+    }
+
+    if (attempt < maxRetries) {
+      // Exponential backoff: 1s, 2s, 4s with jitter
+      const baseDelay = Math.min(1000 * 2 ** (attempt - 1), 10000)
+      const jitter = Math.random() * 200
+      await new Promise(r => setTimeout(r, baseDelay + jitter))
+    }
+  }
+
+  throw lastError ?? new Error("Fetch failed after retries")
+}
+
+/**
  * Google-specific OAuth options
  */
 export interface GoogleAuthOptions {
@@ -79,7 +109,7 @@ export class GoogleProvider implements OAuthProviderCore, OAuthRefreshable, OAut
       params.append("redirect_uri", redirectUri)
     }
 
-    const res = await fetch("https://oauth2.googleapis.com/token", {
+    const res = await fetchWithRetry("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -91,6 +121,11 @@ export class GoogleProvider implements OAuthProviderCore, OAuthRefreshable, OAut
 
     if (!res.ok || data.error) {
       throw new Error(`Google OAuth failed: ${data.error_description || data.error || res.statusText}`)
+    }
+
+    // Warn if no refresh token received (indicates prompt=consent was not used)
+    if (!data.refresh_token) {
+      console.warn("[Google OAuth] No refresh_token received - user may need to re-authorize with prompt=consent")
     }
 
     return {
@@ -117,7 +152,7 @@ export class GoogleProvider implements OAuthProviderCore, OAuthRefreshable, OAut
       grant_type: "refresh_token",
     })
 
-    const res = await fetch("https://oauth2.googleapis.com/token", {
+    const res = await fetchWithRetry("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -128,7 +163,14 @@ export class GoogleProvider implements OAuthProviderCore, OAuthRefreshable, OAut
     const data = await res.json()
 
     if (!res.ok || data.error) {
-      throw new Error(`Google token refresh failed: ${data.error_description || data.error || res.statusText}`)
+      // Provide specific guidance for common errors
+      const errorMsg = data.error_description || data.error || res.statusText
+      if (data.error === "invalid_grant") {
+        throw new Error(
+          `Google token refresh failed: ${errorMsg}. The refresh token may have been revoked or expired. User must re-authenticate.`,
+        )
+      }
+      throw new Error(`Google token refresh failed: ${errorMsg}`)
     }
 
     return {

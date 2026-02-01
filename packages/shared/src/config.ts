@@ -287,6 +287,9 @@ export const DEFAULTS = {
 
   /** Template ID prefix - all template IDs must start with this */
   TEMPLATE_ID_PREFIX: "tmpl_",
+
+  /** Default template ID for new site deployments */
+  DEFAULT_TEMPLATE_ID: "tmpl_blank",
 } as const
 
 // =============================================================================

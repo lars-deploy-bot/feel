@@ -97,12 +97,9 @@ export function TabBar({
   }, [showClosedMenu])
 
   return (
-    <div
-      data-testid="tab-bar"
-      className="flex-shrink-0 border-b border-black/5 dark:border-white/5 bg-black/[0.01] dark:bg-white/[0.01]"
-    >
-      <div className="px-4 md:px-6 mx-auto w-full md:max-w-2xl">
-        <div className="flex items-center gap-1 py-1.5 overflow-x-auto scrollbar-hide">
+    <div data-testid="tab-bar" className="flex-shrink-0 border-b border-black/[0.04] dark:border-white/[0.04]">
+      <div className="px-3 md:px-6 mx-auto w-full md:max-w-2xl">
+        <div className="flex items-center gap-1 py-2 overflow-x-auto scrollbar-hide">
           {tabs.length > 0 && (
             <>
               {tabs.map(tab => {
@@ -115,10 +112,10 @@ export function TabBar({
                     data-testid={`tab-${tab.id}`}
                     data-tab-name={tab.name}
                     data-active={isActive}
-                    className={`group flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-colors min-w-0 ${
+                    className={`group flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-lg transition-all duration-150 min-w-0 ${
                       isActive
-                        ? "bg-black/10 dark:bg-white/10 text-black dark:text-white"
-                        : "text-black/50 dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/5 hover:text-black/70 dark:hover:text-white/70"
+                        ? "bg-black/[0.08] dark:bg-white/[0.08] text-black/80 dark:text-white/80"
+                        : "text-black/50 dark:text-white/50 bg-black/[0.03] dark:bg-white/[0.03] hover:bg-black/[0.06] dark:hover:bg-white/[0.06] hover:text-black/70 dark:hover:text-white/70"
                     }`}
                   >
                     {isEditing ? (
@@ -149,14 +146,14 @@ export function TabBar({
                           onTabClose(tab.id)
                         }}
                         data-testid={`close-tab-${tab.id}`}
-                        className={`p-0.5 rounded transition-colors hover:bg-black/10 dark:hover:bg-white/10 ${
+                        className={`size-5 flex items-center justify-center rounded-md transition-all duration-150 hover:bg-black/[0.08] dark:hover:bg-white/[0.08] ${
                           isActive
                             ? "opacity-60 hover:opacity-100"
                             : "opacity-0 group-hover:opacity-60 hover:!opacity-100"
                         }`}
                         aria-label={`Close ${tab.name}`}
                       >
-                        <X size={12} />
+                        <X size={12} strokeWidth={2} />
                       </button>
                     )}
                   </div>
@@ -166,10 +163,10 @@ export function TabBar({
                 type="button"
                 onClick={onAddTab}
                 data-testid="add-tab-button"
-                className="flex items-center justify-center p-1 text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 hover:bg-black/5 dark:hover:bg-white/5 rounded transition-colors"
+                className="flex items-center justify-center size-8 rounded-lg text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 bg-black/[0.03] dark:bg-white/[0.03] hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-all duration-150"
                 title="Add new tab"
               >
-                <Plus size={14} />
+                <Plus size={16} strokeWidth={1.75} />
               </button>
             </>
           )}
@@ -179,19 +176,19 @@ export function TabBar({
                 ref={closedBtnRef}
                 type="button"
                 onClick={() => setShowClosedMenu(prev => !prev)}
-                className="flex items-center justify-center p-1 text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 hover:bg-black/5 dark:hover:bg-white/5 rounded transition-colors"
+                className="flex items-center justify-center size-8 rounded-lg text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 bg-black/[0.03] dark:bg-white/[0.03] hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-all duration-150"
                 title="Reopen closed tab"
               >
-                <History size={14} />
+                <History size={16} strokeWidth={1.75} />
               </button>
               {showClosedMenu &&
                 createPortal(
                   <div
                     ref={closedMenuRef}
                     style={{ position: "fixed", top: menuPos.top, left: menuPos.left }}
-                    className="z-[9999] min-w-40 max-w-60 bg-white dark:bg-[#2a2a2a] border border-black/10 dark:border-white/10 rounded-lg shadow-lg py-1"
+                    className="z-[9999] min-w-44 max-w-64 bg-white dark:bg-neutral-900 border border-black/[0.08] dark:border-white/[0.08] rounded-xl shadow-xl ring-1 ring-black/[0.04] dark:ring-white/[0.04] py-1.5 animate-in fade-in slide-in-from-top-2 duration-150"
                   >
-                    <div className="px-2.5 py-1.5 text-[10px] font-medium text-black/40 dark:text-white/40 uppercase tracking-wide">
+                    <div className="px-3 py-2 text-[10px] font-medium text-black/40 dark:text-white/40 uppercase tracking-wider">
                       Closed tabs
                     </div>
                     {closedTabs.map(tab => (
@@ -202,7 +199,7 @@ export function TabBar({
                           onTabReopen(tab.id)
                           setShowClosedMenu(false)
                         }}
-                        className="w-full text-left px-2.5 py-1.5 text-xs text-black/70 dark:text-white/70 hover:bg-black/5 dark:hover:bg-white/5 transition-colors truncate"
+                        className="w-full text-left px-3 py-2 text-xs font-medium text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] active:bg-black/[0.08] dark:active:bg-white/[0.10] transition-colors truncate"
                       >
                         {tab.name}
                       </button>

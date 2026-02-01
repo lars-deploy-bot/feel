@@ -338,6 +338,12 @@ register(AI.ASK_CLARIFICATION, {
   },
 })
 
+register(AI.ASK_WEBSITE_CONFIG, {
+  autoExpand: true, // Always show the config form
+  transform: unwrapMcp,
+  getPreview: () => "configure website",
+})
+
 // --- Email tools ---
 register(EMAIL.COMPOSE, {
   autoExpand: true, // Always show the email card

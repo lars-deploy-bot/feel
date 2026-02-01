@@ -237,12 +237,31 @@ const CLIENT_SCRIPT = `
 `
 
 // The JSX dev runtime code as a string (will be bundled inline)
+// We use React.createElement instead of jsxDEV because Vite pre-bundles
+// react/jsx-dev-runtime in production mode where jsxDEV is undefined.
+// React.createElement works in both modes and provides the same functionality.
 const JSX_DEV_RUNTIME_CODE = `
 import * as React from "react"
-import * as ReactJSXDevRuntime from "react/jsx-dev-runtime"
 
-const _jsxDEV = ReactJSXDevRuntime.jsxDEV
-export const Fragment = ReactJSXDevRuntime.Fragment
+// Use React.createElement as a fallback-safe jsxDEV implementation
+// This works in both production and development builds
+function _jsxDEV(type, props, key, isStatic, source, self) {
+  // Extract children from props for createElement
+  const { children, ...restProps } = props || {}
+  if (key !== undefined) {
+    restProps.key = key
+  }
+  // React.createElement handles children correctly
+  if (children !== undefined) {
+    if (Array.isArray(children)) {
+      return React.createElement(type, restProps, ...children)
+    }
+    return React.createElement(type, restProps, children)
+  }
+  return React.createElement(type, restProps)
+}
+
+export const Fragment = React.Fragment
 
 const SOURCE_KEY = Symbol.for("__aliveSource__")
 const sourceElementMap = new Map()
@@ -368,6 +387,21 @@ export function aliveTagger(options: AliveTaggerOptions = {}): Plugin {
   return {
     name: "alive-tagger",
     enforce: "pre",
+
+    config(userConfig, { mode }) {
+      // Only modify config in development mode when enabled
+      if (!enabled || mode !== "development") {
+        return
+      }
+
+      // Exclude react/jsx-dev-runtime from pre-bundling so we can intercept it
+      // This ensures Vite doesn't bundle it in production mode (where jsxDEV is undefined)
+      return {
+        optimizeDeps: {
+          exclude: [...(userConfig.optimizeDeps?.exclude || []), "react/jsx-dev-runtime"],
+        },
+      }
+    },
 
     configResolved(resolvedConfig) {
       config = resolvedConfig

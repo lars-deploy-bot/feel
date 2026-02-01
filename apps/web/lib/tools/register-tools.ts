@@ -14,6 +14,7 @@ import {
   ClarificationQuestionsOutput,
   validateClarificationQuestions,
 } from "@/components/ui/chat/tools/ai/ClarificationQuestionsOutput"
+import { WebsiteConfigOutput, validateWebsiteConfig } from "@/components/ui/chat/tools/ai/WebsiteConfigOutput"
 
 // === Linear Components ===
 import { LinearIssueResult, validateLinearIssue } from "@/components/linear/LinearIssueResult"
@@ -50,7 +51,8 @@ registerComponent(EMAIL.CREATE_DRAFT, EmailDraftOutput, validateEmailDraft)
 registerComponent(EMAIL.REPLY, EmailDraftOutput, validateEmailDraft)
 
 // ============================================================
-// AI COMPONENTS (clarification questions)
+// AI COMPONENTS (clarification questions, website config)
 // ============================================================
 
 registerComponent(AI.ASK_CLARIFICATION, ClarificationQuestionsOutput, validateClarificationQuestions)
+registerComponent(AI.ASK_WEBSITE_CONFIG, WebsiteConfigOutput, validateWebsiteConfig)

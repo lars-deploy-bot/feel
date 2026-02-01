@@ -78,18 +78,27 @@ export const env = createEnv({
 /**
  * Get Anthropic API key with fallback logic
  *
- * Accepts either ANTHROPIC_API_KEY (Claude Code) or ANTH_API_SECRET (.env)
+ * Priority order:
+ * 1. ANTHROPIC_API_KEY env var (explicit API key)
+ * 2. ANTH_API_SECRET env var (legacy .env)
+ * 3. OAuth token from ~/.claude/.credentials.json (auto-refreshed)
+ * 4. Mock key for local development
+ *
  * In local dev mode (BRIDGE_ENV=local), allows a mock key for testing.
  */
 export function getAnthropicApiKey(): string {
   const apiKey = env.ANTHROPIC_API_KEY || env.ANTH_API_SECRET
   const isLocalDev = env.BRIDGE_ENV === "local"
 
-  if (!apiKey && !isLocalDev) {
+  if (apiKey) {
+    return apiKey
+  }
+
+  if (!isLocalDev) {
     throw new Error("ANTHROPIC_API_KEY or ANTH_API_SECRET is required (or set BRIDGE_ENV=local for development)")
   }
 
-  return apiKey || "sk-ant-mock-key-for-local-development"
+  return "sk-ant-mock-key-for-local-development"
 }
 
 /**

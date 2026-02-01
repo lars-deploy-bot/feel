@@ -1,4 +1,5 @@
 import { spawnSync, type SpawnSyncOptions, type SpawnSyncReturns } from "node:child_process"
+import { platform } from "node:os"
 import { sanitizeSubprocessEnv } from "./env-sanitizer.js"
 
 /**
@@ -55,11 +56,32 @@ export function safeSpawnSync(
   args: readonly string[],
   options?: SafeSpawnOptions,
 ): SpawnSyncReturns<string> {
+  const timeoutSecs = Math.ceil((options?.timeout ?? DEFAULT_TIMEOUT) / 1000)
+
+  // On Linux, use `timeout --kill-after=5` which:
+  // 1. Sends SIGTERM after timeout, then SIGKILL after 5 more seconds
+  // 2. Uses process groups to kill ALL descendants, not just direct child
+  // This prevents orphaned processes from commands like `turbo` that spawn children
+  if (platform() === "linux") {
+    return spawnSync("timeout", ["--kill-after=5", `${timeoutSecs}`, command, ...args], {
+      encoding: "utf-8",
+      maxBuffer: DEFAULT_MAX_BUFFER,
+      shell: false,
+      ...options,
+      // Don't pass timeout to spawnSync - we're using the timeout command instead
+      timeout: undefined,
+      // Always sanitize env - override if provided, otherwise use default
+      env: options?.env ?? sanitizeSubprocessEnv(),
+    })
+  }
+
+  // Fallback for non-Linux (macOS, Windows)
   return spawnSync(command, args, {
     encoding: "utf-8",
     timeout: DEFAULT_TIMEOUT,
     maxBuffer: DEFAULT_MAX_BUFFER,
     shell: false,
+    killSignal: "SIGKILL",
     ...options,
     // Always sanitize env - override if provided, otherwise use default
     env: options?.env ?? sanitizeSubprocessEnv(),

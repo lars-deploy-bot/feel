@@ -17,12 +17,13 @@ import { getMessageDb } from "@/lib/db/messageDb"
 import type { StructuredError } from "@/lib/error-codes"
 import { ErrorCodes, getErrorHelp, getErrorMessage } from "@/lib/error-codes"
 import { HttpError } from "@/lib/errors"
-import { isRetryableError, retryWithBackoff } from "@/lib/retry"
+import { retryAsync, isRetryableNetworkError } from "@webalive/shared"
 import { authStore } from "@/lib/stores/authStore"
 import { isDevelopment } from "@/lib/stores/debug-store"
 import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
 import { useBuilding, useGoal, useTargetUsers } from "@/lib/stores/goalStore"
 import { useApiKey, useModel } from "@/lib/stores/llmStore"
+import { getPlanModeState, usePlanMode } from "@/lib/stores/planModeStore"
 import { clearAbortController, setAbortController, useStreamingActions } from "@/lib/stores/streamingStore"
 import { useActiveTab } from "@/lib/stores/tabStore"
 
@@ -78,6 +79,7 @@ export function useChatMessaging({
   const streamingActions = useStreamingActions()
   const userApiKey = useApiKey()
   const userModel = useModel()
+  const planMode = usePlanMode()
   const { addEvent: addDevEvent } = useDevTerminal()
 
   // Agent supervisor state
@@ -103,10 +105,12 @@ export function useChatMessaging({
         apiKey: userApiKey || undefined,
         model: userModel,
         analyzeImageUrls: analyzeImageUrls?.length ? analyzeImageUrls : undefined,
+        // Read plan mode directly from store to avoid stale closure
+        planMode: getPlanModeState().planMode || undefined, // Only send if true
       }
       return isTerminal ? { ...baseBody, workspace: workspace || undefined } : baseBody
     },
-    [tabId, activeTab?.id, tabGroupId, userApiKey, userModel, isTerminal, workspace],
+    [tabId, activeTab?.id, tabGroupId, userApiKey, userModel, planMode, isTerminal, workspace],
   )
 
   const buildPromptForClaude = useCallback((userMessage: UIMessage): PromptBuildResult => {
@@ -273,7 +277,7 @@ export function useChatMessaging({
           })
         }
 
-        const response = await retryWithBackoff(
+        const response = await retryAsync(
           async () => {
             const res = await fetch("/api/claude/stream", {
               method: "POST",
@@ -301,10 +305,10 @@ export function useChatMessaging({
             return res
           },
           {
-            maxRetries: 3,
-            initialDelay: 1000,
-            maxDelay: 5000,
-            shouldRetry: error => isRetryableError(error),
+            attempts: 3,
+            minDelayMs: 1000,
+            maxDelayMs: 5000,
+            shouldRetry: error => isRetryableNetworkError(error),
           },
         )
 

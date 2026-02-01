@@ -1,6 +1,6 @@
 "use client"
 
-import { Camera, ClipboardList, Copy, MousePointer2 } from "lucide-react"
+import { Camera, ClipboardList, Copy, MousePointer2, FileText } from "lucide-react"
 import type { RefObject } from "react"
 import { useState } from "react"
 import toast from "react-hot-toast"
@@ -10,6 +10,7 @@ import { useDexieMessageStore } from "@/lib/db/dexieMessageStore"
 import { useTabMessages } from "@/lib/db/useTabMessages"
 import { useUserPrompts } from "@/lib/providers/UserPromptsStoreProvider"
 import { useSandbox, useSandboxMinimized } from "@/lib/stores/debug-store"
+import { usePlanMode, usePlanModeActions } from "@/lib/stores/planModeStore"
 import { useChatInput } from "./ChatInputContext"
 
 interface ToolbarProps {
@@ -29,6 +30,10 @@ export function Toolbar({ fileInputRef, onAddUserPrompt }: ToolbarProps) {
   const isSandboxOpen = useSandbox()
   const isSandboxMinimized = useSandboxMinimized()
   const showSelectorButton = isSandboxOpen && !isSandboxMinimized
+
+  // Plan mode state
+  const planMode = usePlanMode()
+  const { togglePlanMode } = usePlanModeActions()
 
   if (!config.enableCamera) {
     return null
@@ -156,6 +161,25 @@ export function Toolbar({ fileInputRef, onAddUserPrompt }: ToolbarProps) {
           <MousePointer2 className="size-4" />
         </button>
       )}
+
+      {/* Plan Mode Toggle */}
+      <button
+        type="button"
+        onClick={togglePlanMode}
+        className={`flex items-center justify-center size-8 rounded-full transition-colors ${
+          planMode
+            ? "bg-blue-500/20 text-blue-500 dark:text-blue-400"
+            : "hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70"
+        }`}
+        aria-label={planMode ? "Disable plan mode" : "Enable plan mode"}
+        title={
+          planMode
+            ? "Plan mode ON - Claude will only explore, not modify"
+            : "Plan mode OFF - Click to enable planning only"
+        }
+      >
+        <FileText className="size-4" />
+      </button>
 
       <button
         type="button"

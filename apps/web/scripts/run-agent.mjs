@@ -23,7 +23,7 @@ import {
   PERMISSION_MODE,
   SETTINGS_SOURCES,
 } from "../lib/claude/agent-constants.mjs"
-import { isOAuthMcpTool, DEFAULTS } from "@webalive/shared"
+import { isOAuthMcpTool, DEFAULTS, PLAN_MODE_BLOCKED_TOOLS, allowTool, denyTool } from "@webalive/shared"
 
 async function readStdinJson() {
   const chunks = []
@@ -98,13 +98,33 @@ async function readStdinJson() {
     const isSuperadmin = request.isSuperadmin === true
     console.error(`[runner] isAdmin: ${isAdmin}, isSuperadmin: ${isSuperadmin}`)
 
+    // Plan mode: use from request or fall back to default
+    const effectivePermissionMode = request.permissionMode || PERMISSION_MODE
+    const isPlanMode = effectivePermissionMode === "plan"
+    if (isPlanMode) {
+      console.error("[runner] 🔒 PLAN MODE ENABLED: Write/Edit/Bash tools will be blocked")
+    }
+
     // Get base allowed tools (SDK + internal MCP tools)
     // OAuth MCP tools are allowed dynamically in canUseTool
     // Admin users get Bash, BashOutput, KillShell tools
     // Superadmin users get ALL tools (Task, WebSearch included)
     const baseAllowedTools = getAllowedTools(targetCwd || process.cwd(), isAdmin, isSuperadmin)
     const disallowedTools = getDisallowedTools(isAdmin, isSuperadmin)
+
+    // Plan mode: Filter out blocked tools from allowedTools
+    // The SDK auto-allows tools in allowedTools without calling canUseTool,
+    // so we must remove them from the list to enforce plan mode restrictions
+    const effectiveAllowedTools = isPlanMode
+      ? baseAllowedTools.filter(t => !PLAN_MODE_BLOCKED_TOOLS.includes(t))
+      : baseAllowedTools
+
     console.error(`[runner] Base allowed tools count: ${baseAllowedTools.length}`)
+    if (isPlanMode) {
+      console.error(
+        `[runner] 🔒 PLAN MODE: Filtered to ${effectiveAllowedTools.length} tools (removed ${baseAllowedTools.length - effectiveAllowedTools.length} modification tools)`,
+      )
+    }
     if (isSuperadmin) {
       const hasTask = baseAllowedTools.includes("Task")
       const hasWebSearch = baseAllowedTools.includes("WebSearch")
@@ -118,45 +138,30 @@ async function readStdinJson() {
 
     /**
      * Tool permission handler - enforces disallowedTools blacklist and dynamic OAuth MCP tool permissions
+     * Uses allowTool/denyTool helpers from @webalive/shared
      * @type {import('@anthropic-ai/claude-agent-sdk').CanUseTool}
      */
     const canUseTool = async (toolName, input, _options) => {
-      // Explicit deny list takes precedence (respects admin status)
+      // Plan mode: block modification tools (backup check - primary filtering is in allowedTools)
+      if (isPlanMode && PLAN_MODE_BLOCKED_TOOLS.includes(toolName)) {
+        console.error(`[runner] 🔒 PLAN MODE: Blocked ${toolName}`)
+        return denyTool(`Tool "${toolName}" is not allowed in plan mode.`)
+      }
+
+      // Explicit deny list takes precedence
       if (disallowedTools.includes(toolName)) {
-        console.error(`[runner] SECURITY: Blocked explicitly disallowed tool: ${toolName}`)
-        return {
-          behavior: "deny",
-          message: `Tool "${toolName}" is explicitly disallowed for security reasons.`,
-        }
+        console.error(`[runner] SECURITY: Blocked ${toolName}`)
+        return denyTool(`Tool "${toolName}" is explicitly disallowed.`)
       }
 
-      // Check base allowed tools (SDK + internal MCP tools)
-      if (baseAllowedTools.includes(toolName)) {
-        console.error(`[runner] Tool allowed (base): ${toolName}`)
-        return {
-          behavior: "allow",
-          updatedInput: input,
-          updatedPermissions: [],
-        }
-      }
-
-      // Check OAuth MCP tools - auto-allowed if user has that provider connected
-      // Uses isOAuthMcpTool from @webalive/shared registry
-      if (isOAuthMcpTool(toolName, connectedProviders)) {
-        console.error(`[runner] Tool allowed (OAuth MCP): ${toolName}`)
-        return {
-          behavior: "allow",
-          updatedInput: input,
-          updatedPermissions: [],
-        }
+      // Check allowed tools (SDK + internal MCP + OAuth MCP)
+      if (baseAllowedTools.includes(toolName) || isOAuthMcpTool(toolName, connectedProviders)) {
+        return allowTool(input)
       }
 
       // Tool not in any allowed list
-      console.error(`[runner] SECURITY: Blocked unauthorized tool: ${toolName}`)
-      return {
-        behavior: "deny",
-        message: `Tool "${toolName}" is not permitted. Connect the required integration in Settings to use this tool.`,
-      }
+      console.error(`[runner] SECURITY: Unauthorized ${toolName}`)
+      return denyTool(`Tool "${toolName}" is not permitted.`)
     }
 
     // MCP tools use process.cwd() which is set by process.chdir() above
@@ -176,8 +181,8 @@ async function readStdinJson() {
         cwd: process.cwd(),
         model: request.model,
         maxTurns: request.maxTurns || DEFAULTS.CLAUDE_MAX_TURNS,
-        permissionMode: PERMISSION_MODE,
-        allowedTools: baseAllowedTools, // OAuth MCP tools handled dynamically in canUseTool
+        permissionMode: effectivePermissionMode,
+        allowedTools: effectiveAllowedTools, // Plan mode filters out modification tools
         disallowedTools, // Dynamic based on admin status
         canUseTool,
         settingSources: SETTINGS_SOURCES,

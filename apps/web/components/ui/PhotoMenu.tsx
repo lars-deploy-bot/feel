@@ -16,6 +16,7 @@ interface PhotoMenuProps {
 
 export function PhotoMenu({ isOpen, onClose, onSelectImage, triggerRef }: PhotoMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
+  const mobileSheetRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { workspace, isTerminal, mounted } = useWorkspace({ allowEmpty: true })
   const images = useImages()
@@ -26,18 +27,20 @@ export function PhotoMenu({ isOpen, onClose, onSelectImage, triggerRef }: PhotoM
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const [isFilePickerOpen, setIsFilePickerOpen] = useState(false)
 
-  // Desktop: click outside to close
+  // Click outside to close (desktop dropdown only - mobile uses backdrop)
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       // Don't close if file picker is open (prevents closing on mobile when native picker opens)
       if (isFilePickerOpen) return
       if (!(event.target instanceof Node)) return
 
-      const clickedMenu = menuRef.current?.contains(event.target)
+      // Check all possible containers
+      const clickedDesktopMenu = menuRef.current?.contains(event.target)
+      const clickedMobileSheet = mobileSheetRef.current?.contains(event.target)
       const clickedTrigger = triggerRef?.current?.contains(event.target)
       const clickedFileInput = fileInputRef.current?.contains(event.target)
 
-      if (!clickedMenu && !clickedTrigger && !clickedFileInput) {
+      if (!clickedDesktopMenu && !clickedMobileSheet && !clickedTrigger && !clickedFileInput) {
         onClose()
       }
     }
@@ -132,11 +135,16 @@ export function PhotoMenu({ isOpen, onClose, onSelectImage, triggerRef }: PhotoM
       type="button"
       onClick={handleUploadClick}
       disabled={uploading}
-      className="w-full h-12 border border-black/10 dark:border-white/10 rounded bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 active:bg-black/15 dark:active:bg-white/15 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+      className="w-full py-3 rounded-xl bg-black/[0.04] dark:bg-white/[0.06]
+        hover:bg-black/[0.08] dark:hover:bg-white/[0.10]
+        active:bg-black/[0.12] dark:active:bg-white/[0.14]
+        transition-colors duration-150
+        disabled:opacity-30 disabled:cursor-not-allowed
+        flex items-center justify-center gap-2"
       aria-label={uploading ? "Uploading images" : "Upload new images"}
     >
-      <Plus className="w-4 h-4 text-black/60 dark:text-white/60" />
-      <span className="text-sm font-medium text-black/80 dark:text-white/80">Add photos</span>
+      <Plus className="w-4 h-4 text-black/50 dark:text-white/50" />
+      <span className="text-sm font-[500] text-black/70 dark:text-white/70">Add photos</span>
     </button>
   )
 
@@ -164,7 +172,7 @@ export function PhotoMenu({ isOpen, onClose, onSelectImage, triggerRef }: PhotoM
             <img
               src={image.variants.thumb}
               alt=""
-              className="w-full h-auto rounded hover:opacity-80 active:opacity-60 transition-opacity pointer-events-none"
+              className="w-full h-auto rounded-lg hover:opacity-90 active:opacity-70 transition-opacity pointer-events-none"
             />
           </button>
           {/* Action buttons: always visible on mobile, hover on desktop */}
@@ -175,10 +183,13 @@ export function PhotoMenu({ isOpen, onClose, onSelectImage, triggerRef }: PhotoM
                 e.stopPropagation()
                 setDeleteConfirm(image.key)
               }}
-              className="p-1.5 bg-white dark:bg-zinc-900 hover:bg-red-50 dark:hover:bg-red-950 text-zinc-400 hover:text-red-600 dark:hover:text-red-400 rounded shadow-sm opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-200 cursor-pointer border border-black/5 dark:border-white/10"
+              className="p-1.5 rounded-md bg-black/60 dark:bg-white/80 text-white dark:text-black
+                hover:bg-black/80 dark:hover:bg-white
+                opacity-100 sm:opacity-0 sm:group-hover:opacity-100
+                transition-all duration-150 shadow-sm"
               aria-label="Delete image"
             >
-              <Trash2 className="w-3.5 h-3.5" />
+              <Trash2 className="w-3 h-3" />
             </button>
             <button
               type="button"
@@ -186,14 +197,16 @@ export function PhotoMenu({ isOpen, onClose, onSelectImage, triggerRef }: PhotoM
                 e.stopPropagation()
                 handleCopyUrl(image.key)
               }}
-              className={`p-1.5 rounded shadow-sm opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-200 cursor-pointer border ${
-                copiedKey === image.key
-                  ? "bg-green-50 dark:bg-green-950 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800"
-                  : "bg-white dark:bg-zinc-900 hover:bg-blue-50 dark:hover:bg-blue-950 text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 border-black/5 dark:border-white/10"
-              }`}
+              className={`p-1.5 rounded-md shadow-sm
+                opacity-100 sm:opacity-0 sm:group-hover:opacity-100
+                transition-all duration-150 ${
+                  copiedKey === image.key
+                    ? "bg-green-500 text-white"
+                    : "bg-black/60 dark:bg-white/80 text-white dark:text-black hover:bg-black/80 dark:hover:bg-white"
+                }`}
               aria-label="Copy image URL"
             >
-              {copiedKey === image.key ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              {copiedKey === image.key ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
             </button>
           </div>
         </div>
@@ -203,7 +216,7 @@ export function PhotoMenu({ isOpen, onClose, onSelectImage, triggerRef }: PhotoM
 
   const loadingState = (
     <div className="flex items-center justify-center py-8">
-      <p className="text-sm text-black/60 dark:text-white/60">Loading images...</p>
+      <p className="text-sm font-[300] text-black/40 dark:text-white/40">Loading...</p>
     </div>
   )
 
@@ -230,33 +243,37 @@ export function PhotoMenu({ isOpen, onClose, onSelectImage, triggerRef }: PhotoM
           type="button"
           className="absolute inset-0 bg-black/40"
           onClick={() => !isFilePickerOpen && onClose()}
+          tabIndex={-1}
           aria-label="Close"
         />
 
         {/* Bottom sheet */}
-        <div className="absolute bottom-0 left-0 right-0 h-[85vh] bg-white dark:bg-[#1a1a1a] rounded-t-2xl flex flex-col overflow-hidden">
+        <div
+          ref={mobileSheetRef}
+          className="absolute bottom-0 left-0 right-0 h-[85vh] bg-white dark:bg-neutral-900 rounded-t-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-200"
+        >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-black/10 dark:border-white/10">
-            <h2 className="text-base font-medium text-black dark:text-white">Photos</h2>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-black/[0.08] dark:border-white/[0.08]">
+            <h2 className="text-base font-[500] text-black dark:text-white">Photos</h2>
             <button
               type="button"
               onClick={() => !isFilePickerOpen && onClose()}
-              className="p-2 -mr-2 text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white"
+              className="p-2 -mr-2 rounded-full hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors"
               aria-label="Close"
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5 text-black/60 dark:text-white/60" />
             </button>
           </div>
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-4">
-            {loading ? loadingState : <div className="grid grid-cols-3 gap-3">{imageGrid}</div>}
+            {loading ? loadingState : <div className="grid grid-cols-3 gap-2">{imageGrid}</div>}
           </div>
 
           {/* Sticky upload button */}
-          <div className="p-4 border-t border-black/10 dark:border-white/10 bg-white dark:bg-[#1a1a1a]">
+          <div className="p-4 border-t border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-neutral-900">
             {uploadButton}
-            {uploading && <p className="text-sm text-black/60 dark:text-white/60 mt-2 text-center">Uploading...</p>}
+            {uploading && <p className="text-xs text-black/40 dark:text-white/40 mt-2 text-center">Uploading...</p>}
           </div>
         </div>
 
@@ -266,20 +283,20 @@ export function PhotoMenu({ isOpen, onClose, onSelectImage, triggerRef }: PhotoM
       {/* Desktop: Dropdown */}
       <div
         ref={menuRef}
-        className="hidden sm:block absolute top-full right-0 mt-2 bg-white dark:bg-[#2a2a2a] border border-black/10 dark:border-white/10 shadow-lg z-50 overflow-hidden"
-        style={{
-          width: "400px",
-          borderRadius: "2px",
-        }}
+        className="hidden sm:block absolute top-full right-0 mt-2 w-[380px]
+          bg-white dark:bg-neutral-900 rounded-2xl shadow-xl
+          ring-1 ring-black/[0.06] dark:ring-white/[0.06]
+          z-50 overflow-hidden
+          animate-in fade-in slide-in-from-bottom-2 duration-150"
       >
-        <div className="max-h-[400px] overflow-y-auto p-4">
-          {loading ? loadingState : <div className="grid grid-cols-4 gap-3">{imageGrid}</div>}
+        <div className="max-h-[360px] overflow-y-auto p-3">
+          {loading ? loadingState : <div className="grid grid-cols-4 gap-2">{imageGrid}</div>}
         </div>
 
         {/* Sticky upload button */}
-        <div className="p-4 border-t border-black/10 dark:border-white/10">
+        <div className="p-3 border-t border-black/[0.06] dark:border-white/[0.06]">
           {uploadButton}
-          {uploading && <p className="text-sm text-black/60 dark:text-white/60 mt-2 text-center">Uploading...</p>}
+          {uploading && <p className="text-xs text-black/40 dark:text-white/40 mt-2 text-center">Uploading...</p>}
         </div>
 
         {deleteModal}

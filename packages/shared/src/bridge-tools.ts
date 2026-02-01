@@ -92,6 +92,35 @@ export const BRIDGE_ALWAYS_DISALLOWED_SDK_TOOLS = ["Task", "WebSearch"] as const
 export type BridgeAlwaysDisallowedSDKTool = (typeof BRIDGE_ALWAYS_DISALLOWED_SDK_TOOLS)[number]
 
 /**
+ * Tools blocked in plan mode (read-only exploration).
+ *
+ * Plan mode allows Claude to explore and analyze without modifications.
+ * When plan mode is enabled, these tools are filtered OUT of allowedTools
+ * before passing to the SDK.
+ *
+ * ARCHITECTURE NOTE: The Claude SDK only calls canUseTool() for tools NOT in
+ * the allowedTools array. Tools IN allowedTools are auto-allowed without checking.
+ * Therefore, we must filter blocked tools from allowedTools, not just deny in canUseTool.
+ *
+ * See: docs/architecture/plan-mode.md
+ */
+export const PLAN_MODE_BLOCKED_TOOLS = [
+  // SDK file modification tools
+  "Write",
+  "Edit",
+  "MultiEdit",
+  "Bash",
+  "NotebookEdit",
+  // MCP tools that modify workspace
+  "mcp__alive-workspace__delete_file",
+  "mcp__alive-workspace__install_package",
+  "mcp__alive-workspace__restart_dev_server",
+  "mcp__alive-workspace__switch_serve_mode",
+  "mcp__alive-workspace__create_website",
+] as const
+export type PlanModeBlockedTool = (typeof PLAN_MODE_BLOCKED_TOOLS)[number]
+
+/**
  * MCP tools only available to superadmins.
  *
  * These are experimental/advanced tools not ready for general use.
@@ -142,6 +171,36 @@ export const BRIDGE_PERMISSION_MODE = "default" as const
  * Users can add workspace-specific skills in {workspace}/.claude/skills/ (project scope)
  */
 export const BRIDGE_SETTINGS_SOURCES = ["project", "user"] as const
+
+// =============================================================================
+// TOOL PERMISSION HELPERS
+// =============================================================================
+
+/**
+ * Tool permission response for allowing a tool.
+ */
+export function allowTool(input: Record<string, unknown>) {
+  return { behavior: "allow" as const, updatedInput: input, updatedPermissions: [] }
+}
+
+/**
+ * Tool permission response for denying a tool.
+ */
+export function denyTool(message: string) {
+  return { behavior: "deny" as const, message }
+}
+
+/**
+ * Filter allowed tools for plan mode.
+ *
+ * Plan mode is read-only exploration - must remove modification tools
+ * BEFORE passing to SDK (SDK auto-allows tools in allowedTools).
+ */
+export function filterToolsForPlanMode(allowedTools: string[], isPlanMode: boolean): string[] {
+  if (!isPlanMode) return allowedTools
+  const blocked: readonly string[] = PLAN_MODE_BLOCKED_TOOLS
+  return allowedTools.filter(t => !blocked.includes(t))
+}
 
 // =============================================================================
 // HELPER FUNCTIONS

@@ -8,6 +8,7 @@ import { getModelDisplayName } from "@/lib/models/claude-models"
 import { useCredits, useCreditsError, useCreditsLoading, useUserActions } from "@/lib/providers/UserStoreProvider"
 import { CLAUDE_MODELS, type ClaudeModel, DEFAULT_MODEL, useLLMStore } from "@/lib/stores/llmStore"
 import { useCurrentWorkspace } from "@/lib/stores/workspaceStore"
+import { infoCard, input, primaryButton, secondaryButton, select, smallButton, text, warningCard } from "../styles"
 import { SettingsTabLayout, type SettingsTabProps } from "./SettingsTabLayout"
 
 function isValidModel(value: string): value is ClaudeModel {
@@ -119,32 +120,32 @@ export function LLMSettings({ onClose }: SettingsTabProps) {
                   type="button"
                   onClick={handleUpgrade}
                   disabled={isUpgrading || !billing.loaded}
-                  className="w-full p-4 rounded-lg border-2 border-dashed border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-950/30 hover:bg-orange-100 dark:hover:bg-orange-950/50 transition-colors disabled:opacity-50"
+                  className={`w-full ${warningCard} hover:bg-amber-500/10 transition-colors disabled:opacity-40`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="text-left">
-                      <p className="text-sm font-medium text-orange-900 dark:text-orange-100">Running low on credits</p>
-                      <p className="text-xs text-orange-700 dark:text-orange-300 mt-0.5">
+                      <p className="text-sm font-medium text-amber-900 dark:text-amber-100">Running low on credits</p>
+                      <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
                         {credits?.toFixed(2)} remaining
                       </p>
                     </div>
-                    <span className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded-md transition-colors">
+                    <span className="px-3 py-1.5 bg-amber-600 text-white text-sm font-medium rounded-lg">
                       {isUpgrading ? "..." : "Top up"}
                     </span>
                   </div>
                 </button>
               ) : (
                 <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-medium text-black dark:text-white">Credits</h4>
+                  <h4 className={text.label}>Credits</h4>
                   <div className="flex items-center gap-3">
-                    <span className="text-lg font-semibold text-black dark:text-white">
+                    <span className="text-lg font-semibold text-black/90 dark:text-white/90">
                       {creditsLoading ? "..." : creditsError ? "—" : credits != null ? credits.toFixed(2) : "—"}
                     </span>
                     <button
                       type="button"
                       onClick={handleUpgrade}
                       disabled={isUpgrading || !billing.loaded}
-                      className="px-2.5 py-1 text-xs font-medium text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 rounded transition-colors disabled:opacity-50"
+                      className={smallButton}
                     >
                       {isUpgrading ? "..." : "Get more"}
                     </button>
@@ -156,11 +157,11 @@ export function LLMSettings({ onClose }: SettingsTabProps) {
         )}
 
         <div className="animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-100">
-          <label htmlFor="anthropic-api-key" className="block text-sm font-medium text-black dark:text-white mb-2">
+          <label htmlFor="anthropic-api-key" className={`block ${text.label} mb-1`}>
             Your API Key
-            <span className="ml-2 text-xs text-black/50 dark:text-white/50">(optional)</span>
+            <span className={`ml-2 ${text.muted}`}>(optional)</span>
           </label>
-          <p className="text-xs text-black/60 dark:text-white/60 mb-3">Use your own key to unlock all models</p>
+          <p className={`${text.description} mb-3`}>Use your own key to unlock all models</p>
           <div className="space-y-3">
             <div className="relative">
               <input
@@ -169,22 +170,22 @@ export function LLMSettings({ onClose }: SettingsTabProps) {
                 value={apiKeyInput}
                 onChange={handleInputChange}
                 placeholder="sk-ant-..."
-                className="w-full px-3 sm:px-4 py-2 sm:py-2.5 pr-20 bg-white dark:bg-[#2a2a2a] border border-black/20 dark:border-white/20 rounded text-sm text-black dark:text-white focus:outline-none focus:border-black dark:focus:border-white transition-colors font-mono"
+                className={`${input} pr-12 font-mono`}
                 aria-label="Anthropic API Key"
               />
               <button
                 type="button"
                 onClick={() => setShowApiKey(!showApiKey)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 transition-colors"
                 aria-label={showApiKey ? "Hide API key" : "Show API key"}
               >
-                {showApiKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                {showApiKey ? <EyeOff size={18} strokeWidth={1.75} /> : <Eye size={18} strokeWidth={1.75} />}
               </button>
             </div>
 
             {error && (
-              <div className="flex items-center gap-2 text-xs text-red-600 dark:text-red-400">
-                <div className="w-2 h-2 bg-red-600 dark:bg-red-400 rounded-full" />
+              <div className={`flex items-center gap-2 ${text.error}`}>
+                <div className="w-1.5 h-1.5 bg-red-500 rounded-full" />
                 {error}
               </div>
             )}
@@ -194,23 +195,19 @@ export function LLMSettings({ onClose }: SettingsTabProps) {
                 type="button"
                 onClick={handleSaveApiKey}
                 disabled={!isKeyChanged}
-                className="flex-1 px-4 py-3 sm:py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg sm:rounded text-sm font-medium hover:bg-black/80 dark:hover:bg-white/80 active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className={`flex-1 ${primaryButton}`}
               >
                 {isSaved ? "Saved!" : "Save API Key"}
               </button>
               {apiKey && (
-                <button
-                  type="button"
-                  onClick={handleClearApiKey}
-                  className="px-4 py-3 sm:py-2 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/50 rounded-lg sm:rounded text-sm font-medium hover:bg-red-100 dark:hover:bg-red-950/50 active:scale-[0.98] transition-all duration-200"
-                >
+                <button type="button" onClick={handleClearApiKey} className={secondaryButton}>
                   Clear
                 </button>
               )}
             </div>
             {apiKey && !error && (
-              <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
-                <div className="w-2 h-2 bg-green-600 dark:bg-green-400 rounded-full" />
+              <div className={`flex items-center gap-2 ${text.success}`}>
+                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
                 API key saved in browser
               </div>
             )}
@@ -218,10 +215,10 @@ export function LLMSettings({ onClose }: SettingsTabProps) {
         </div>
 
         <div className="animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-150">
-          <label htmlFor="claude-model" className="block text-sm font-medium text-black dark:text-white mb-2">
+          <label htmlFor="claude-model" className={`block ${text.label} mb-1`}>
             Model
           </label>
-          <p className="text-xs text-black/60 dark:text-white/60 mb-3">
+          <p className={`${text.description} mb-3`}>
             {apiKey || canSelectAnyModel
               ? "Choose which Claude model to use"
               : `Currently using ${getModelDisplayName(DEFAULT_MODEL)}`}
@@ -231,7 +228,7 @@ export function LLMSettings({ onClose }: SettingsTabProps) {
             value={model}
             onChange={handleModelChange}
             disabled={!apiKey && !canSelectAnyModel}
-            className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-white dark:bg-[#2a2a2a] border border-black/20 dark:border-white/20 rounded text-sm text-black dark:text-white focus:outline-none focus:border-black dark:focus:border-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className={select}
             aria-label="Claude Model Selection"
           >
             <option value={CLAUDE_MODELS.OPUS_4_5}>Claude Opus 4.5</option>
@@ -240,8 +237,8 @@ export function LLMSettings({ onClose }: SettingsTabProps) {
           </select>
         </div>
 
-        <div className="p-4 bg-black/5 dark:bg-white/5 rounded-lg border border-black/10 dark:border-white/10 animate-in fade-in-0 slide-in-from-bottom-2 duration-300 delay-200">
-          <p className="text-xs text-black/70 dark:text-white/70 leading-relaxed">
+        <div className={`${infoCard} animate-in fade-in-0 slide-in-from-bottom-2 duration-300 delay-200`}>
+          <p className={`${text.description} leading-relaxed`}>
             Your API key is stored only in your browser (hidden from view). When you send messages, we use your key to
             call Anthropic&apos;s API—but we never save it on our servers.
           </p>

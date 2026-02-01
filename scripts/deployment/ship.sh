@@ -1,60 +1,50 @@
 #!/bin/bash
 # =============================================================================
-# SHIP - Unified deployment script for Claude Bridge
+# SHIP - Claude Bridge Deployment Pipeline
 # =============================================================================
 #
 # Usage:
-#   ./ship.sh                    # Deploy staging → production (full pipeline)
+#   ./ship.sh                    # Deploy staging → production
 #   ./ship.sh --staging          # Deploy staging only
 #   ./ship.sh --production       # Deploy production only
 #   ./ship.sh --skip-e2e         # Skip E2E tests (faster)
-#   ./ship.sh --background       # Run in background with smart polling
 #
-# Examples:
-#   ./ship.sh                    # Full pipeline: staging then production
-#   ./ship.sh --staging          # Just staging
-#   ./ship.sh --skip-e2e         # Full pipeline without E2E tests
-#   ./ship.sh --background       # Run detached (for chat sessions)
+# The pipeline ensures only one deployment runs at a time across all
+# environments. Dev is handled separately (see deploy-dev.sh).
 #
 # Exit codes:
 #   0 - Success
-#   1 - Deployment failed
-#   2 - Timeout (background mode only)
+#   1 - Deployment failed or blocked
 #
 # =============================================================================
 
 set -euo pipefail
 
-SCRIPT_DIR="$(dirname "$0")"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-YELLOW='\033[1;33m'
-BOLD='\033[1m'
-NC='\033[0m'
+# Load libraries
+source "$SCRIPT_DIR/lib/common.sh"
+source "$SCRIPT_DIR/lib/lock.sh"
 
-# Defaults
+# =============================================================================
+# Configuration
+# =============================================================================
 DEPLOY_STAGING=true
 DEPLOY_PRODUCTION=true
 SKIP_E2E=false
-BACKGROUND=false
-LOG_FILE="/tmp/ship-deploy.log"
-MAX_WAIT_MINUTES=15
 
 # =============================================================================
-# Parse arguments
+# Parse Arguments
 # =============================================================================
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --staging)
+        --staging|-s)
             DEPLOY_STAGING=true
             DEPLOY_PRODUCTION=false
             shift
             ;;
-        --production)
+        --production|-p)
             DEPLOY_STAGING=false
             DEPLOY_PRODUCTION=true
             shift
@@ -63,16 +53,16 @@ while [[ $# -gt 0 ]]; do
             SKIP_E2E=true
             shift
             ;;
-        --background)
-            BACKGROUND=true
-            shift
+        --status)
+            lock_status
+            exit $?
             ;;
         --help|-h)
-            head -35 "$0" | tail -30
+            head -20 "$0" | tail -15
             exit 0
             ;;
         *)
-            echo -e "${RED}Unknown option: $1${NC}"
+            log_error "Unknown option: $1"
             echo "Use --help for usage"
             exit 1
             ;;
@@ -80,142 +70,96 @@ while [[ $# -gt 0 ]]; do
 done
 
 # =============================================================================
-# Background mode: fork and monitor
+# Determine Target
 # =============================================================================
-if [ "$BACKGROUND" = true ]; then
-    echo -e "${BLUE}Starting deployment in background...${NC}"
-
-    # Build the command to run
-    CMD="$0"
-    [ "$SKIP_E2E" = true ] && CMD="$CMD --skip-e2e"
-    [ "$DEPLOY_STAGING" = true ] && [ "$DEPLOY_PRODUCTION" = false ] && CMD="$CMD --staging"
-    [ "$DEPLOY_STAGING" = false ] && [ "$DEPLOY_PRODUCTION" = true ] && CMD="$CMD --production"
-
-    # Start in background
-    nohup $CMD > "$LOG_FILE" 2>&1 &
-    BG_PID=$!
-    echo "PID: $BG_PID"
-    echo "Log: $LOG_FILE"
-    echo ""
-
-    # Smart polling loop
-    start_time=$(date +%s)
-    max_seconds=$((MAX_WAIT_MINUTES * 60))
-
-    while true; do
-        elapsed=$(($(date +%s) - start_time))
-
-        # Timeout check
-        if [ $elapsed -gt $max_seconds ]; then
-            echo -e "\n${RED}Timeout after ${MAX_WAIT_MINUTES} minutes${NC}"
-            exit 2
-        fi
-
-        # Check if process finished
-        if ! ps -p $BG_PID > /dev/null 2>&1; then
-            echo ""
-            if grep -q "SHIP COMPLETE\|deployed successfully" "$LOG_FILE" 2>/dev/null; then
-                echo -e "${GREEN}✓ Deployment completed successfully!${NC}"
-                # Show summary
-                grep -E "Environment:|Port:|Build:|Total time:" "$LOG_FILE" | tail -8
-                exit 0
-            else
-                echo -e "${RED}✗ Deployment failed${NC}"
-                tail -30 "$LOG_FILE"
-                exit 1
-            fi
-        fi
-
-        # Show progress
-        current_phase=$(grep -oE '\[[0-9]/8\].*' "$LOG_FILE" 2>/dev/null | tail -1 | cut -c1-60 || echo "starting...")
-        elapsed_min=$((elapsed / 60))
-        elapsed_sec=$((elapsed % 60))
-        printf "\r[%02d:%02d] %-60s" $elapsed_min $elapsed_sec "$current_phase"
-
-        # Smart sleep: faster at start, slower later
-        if [ $elapsed -lt 120 ]; then
-            sleep 5
-        elif [ $elapsed -lt 300 ]; then
-            sleep 15
-        else
-            sleep 30
-        fi
-    done
+if [ "$DEPLOY_STAGING" = true ] && [ "$DEPLOY_PRODUCTION" = true ]; then
+    TARGET="staging+production"
+    TARGET_DISPLAY="staging → production"
+elif [ "$DEPLOY_STAGING" = true ]; then
+    TARGET="staging"
+    TARGET_DISPLAY="staging"
+else
+    TARGET="production"
+    TARGET_DISPLAY="production"
 fi
 
 # =============================================================================
-# Main deployment logic
+# Acquire Lock (includes orphan cleanup if stale lock detected)
+# =============================================================================
+if ! lock_acquire "$TARGET"; then
+    exit 1
+fi
+
+# =============================================================================
+# Main Pipeline
 # =============================================================================
 cd "$PROJECT_ROOT"
+timer_start
 
-echo -e "${BLUE}═══════════════════════════════════════════════════════${NC}"
-echo -e "${BLUE}${BOLD}🚀 SHIP: Claude Bridge Deployment${NC}"
-echo -e "${BLUE}═══════════════════════════════════════════════════════${NC}"
-echo ""
+banner "🚀 SHIP: Claude Bridge Deployment"
 
-# Show what we're deploying
-if [ "$DEPLOY_STAGING" = true ] && [ "$DEPLOY_PRODUCTION" = true ]; then
-    echo -e "Pipeline: ${BOLD}staging → production${NC}"
-elif [ "$DEPLOY_STAGING" = true ]; then
-    echo -e "Target: ${BOLD}staging only${NC}"
-else
-    echo -e "Target: ${BOLD}production only${NC}"
-fi
+echo -e "Target: ${BOLD}$TARGET_DISPLAY${NC}"
 [ "$SKIP_E2E" = true ] && echo -e "${YELLOW}⚠️  Skipping E2E tests${NC}"
 echo ""
 
-# Track overall timing
-SHIP_START=$(date +%s)
-
 # -----------------------------------------------------------------------------
-# Deploy staging
+# Deploy Staging
 # -----------------------------------------------------------------------------
 if [ "$DEPLOY_STAGING" = true ]; then
-    echo -e "${BLUE}[STAGING] Starting deployment...${NC}"
+    log_info "Deploying to staging..."
+    lock_update_phase "staging"
 
     if [ "$SKIP_E2E" = true ]; then
-        SKIP_E2E=1 "$PROJECT_ROOT/scripts/deployment/build-and-serve.sh" staging
+        SKIP_E2E=1 "$SCRIPT_DIR/build-and-serve.sh" staging
     else
-        "$PROJECT_ROOT/scripts/deployment/build-and-serve.sh" staging
+        "$SCRIPT_DIR/build-and-serve.sh" staging
     fi
 
-    echo -e "${GREEN}[STAGING] ✓ Deployed successfully${NC}"
+    log_success "Staging deployed"
     echo ""
 fi
 
 # -----------------------------------------------------------------------------
-# Deploy production
+# Deploy Production
 # -----------------------------------------------------------------------------
 if [ "$DEPLOY_PRODUCTION" = true ]; then
-    echo -e "${BLUE}[PRODUCTION] Starting deployment...${NC}"
+    log_info "Deploying to production..."
+    lock_update_phase "production"
 
     if [ "$SKIP_E2E" = true ]; then
-        SKIP_E2E=1 "$PROJECT_ROOT/scripts/deployment/build-and-serve.sh" production
+        SKIP_E2E=1 "$SCRIPT_DIR/build-and-serve.sh" production
     else
-        "$PROJECT_ROOT/scripts/deployment/build-and-serve.sh" production
+        "$SCRIPT_DIR/build-and-serve.sh" production
     fi
 
-    echo -e "${GREEN}[PRODUCTION] ✓ Deployed successfully${NC}"
+    log_success "Production deployed"
     echo ""
 fi
 
 # -----------------------------------------------------------------------------
 # Summary
 # -----------------------------------------------------------------------------
-SHIP_END=$(date +%s)
-TOTAL_TIME=$((SHIP_END - SHIP_START))
-TOTAL_MIN=$((TOTAL_TIME / 60))
-TOTAL_SEC=$((TOTAL_TIME % 60))
+lock_update_phase "complete"
+TOTAL_TIME=$(timer_elapsed)
 
-echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
-echo -e "${GREEN}${BOLD}✓✓✓ SHIP COMPLETE ✓✓✓${NC}"
-echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
-echo ""
-echo -e "Total time: ${BOLD}${TOTAL_MIN}m ${TOTAL_SEC}s${NC}"
+banner_success "✓ SHIP COMPLETE"
+
+echo -e "Total time: ${BOLD}$(format_duration $TOTAL_TIME)${NC}"
 echo ""
 
-# Quick health check
 echo -e "${BOLD}Health check:${NC}"
-[ "$DEPLOY_STAGING" = true ] && (curl -sf http://localhost:8998/ > /dev/null && echo "  Staging (8998): ✓" || echo "  Staging (8998): ✗")
-[ "$DEPLOY_PRODUCTION" = true ] && (curl -sf http://localhost:9000/ > /dev/null && echo "  Production (9000): ✓" || echo "  Production (9000): ✗")
+if [ "$DEPLOY_STAGING" = true ]; then
+    if health_check "http://localhost:8998/" 1 1; then
+        echo -e "  Staging (8998):    ${GREEN}✓${NC}"
+    else
+        echo -e "  Staging (8998):    ${RED}✗${NC}"
+    fi
+fi
+if [ "$DEPLOY_PRODUCTION" = true ]; then
+    if health_check "http://localhost:9000/" 1 1; then
+        echo -e "  Production (9000): ${GREEN}✓${NC}"
+    else
+        echo -e "  Production (9000): ${RED}✗${NC}"
+    fi
+fi
 echo ""

@@ -93,6 +93,7 @@ export type EmailTool = (typeof EMAIL)[keyof typeof EMAIL]
 
 export const AI = {
   ASK_CLARIFICATION: "mcp__alive-tools__ask_clarification",
+  ASK_WEBSITE_CONFIG: "mcp__alive-tools__ask_website_config",
 } as const
 
 export type AITool = (typeof AI)[keyof typeof AI]

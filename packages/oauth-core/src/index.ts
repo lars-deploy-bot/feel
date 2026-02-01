@@ -191,8 +191,27 @@ export class OAuthManager {
     const oauthProvider = getProvider(provider)
     const tokens = await oauthProvider.exchangeCode(code, config.client_id, config.client_secret, config.redirect_uri)
 
-    // 3. Store tokens for the authenticating user
-    await this.saveTokens(authenticatingUserId, provider, tokens)
+    // 3. Try to get user email for debugging (Google-specific)
+    let userEmail: string | undefined
+    if (provider === "google" && "getUserInfo" in oauthProvider) {
+      try {
+        const userInfo = await (oauthProvider as any).getUserInfo(tokens.access_token)
+        userEmail = userInfo?.email
+      } catch (e) {
+        // Non-critical, just log
+        console.warn(`[OAuth] Failed to fetch user email for ${provider}:`, e)
+      }
+    }
+
+    // 4. Store tokens for the authenticating user (with email if available)
+    await this.saveTokens(authenticatingUserId, provider, tokens, userEmail)
+
+    console.log(`[OAuth] Successfully stored tokens for ${provider}`, {
+      userId: authenticatingUserId.slice(0, 8) + "...",
+      email: userEmail || "unknown",
+      hasRefreshToken: !!tokens.refresh_token,
+      expiresIn: tokens.expires_in,
+    })
 
     return { success: true, scopes: tokens.scope }
   }
@@ -237,13 +256,14 @@ export class OAuthManager {
       )
     }
 
-    // Check if token is expired (with buffer)
+    // Check if token needs refresh
+    // Note: expires_at now stores "should refresh at" time (already includes buffer)
     const now = Date.now()
 
     if (tokenData.expires_at) {
-      const expiresAt = new Date(tokenData.expires_at).getTime()
+      const shouldRefreshAt = new Date(tokenData.expires_at).getTime()
 
-      if (now >= expiresAt - OAuthManager.TOKEN_EXPIRY_BUFFER_MS) {
+      if (now >= shouldRefreshAt) {
         // Token expired or expiring soon - attempt refresh
         if (!tokenData.refresh_token) {
           throw new Error(
@@ -282,9 +302,10 @@ export class OAuthManager {
               try {
                 const recentTokenData = JSON.parse(recentTokenBlob)
                 if (recentTokenData.expires_at) {
-                  const recentExpiresAt = new Date(recentTokenData.expires_at).getTime()
-                  if (Date.now() < recentExpiresAt - OAuthManager.TOKEN_EXPIRY_BUFFER_MS) {
+                  const shouldRefreshAt = new Date(recentTokenData.expires_at).getTime()
+                  if (Date.now() < shouldRefreshAt) {
                     // Token was refreshed by another request, use it
+                    console.log(`[OAuth] Token already refreshed by concurrent request for ${provider}`)
                     return recentTokenData.access_token
                   }
                 }
@@ -296,8 +317,21 @@ export class OAuthManager {
             // Proceed with refresh (we already checked it's refreshable above)
             const newTokens = await oauthProvider.refreshToken(tokenData.refresh_token!, clientId, clientSecret)
 
-            // Save the new tokens atomically
-            await this.saveTokens(userId, provider, newTokens)
+            // CRITICAL: Preserve the original refresh token if provider doesn't return a new one
+            // Google OAuth does NOT return a new refresh_token on refresh - we must keep the original
+            const refreshTokenToStore = newTokens.refresh_token || tokenData.refresh_token || undefined
+
+            // Save the new tokens atomically, preserving refresh token
+            await this.saveTokens(userId, provider, {
+              ...newTokens,
+              refresh_token: refreshTokenToStore,
+            })
+
+            console.log(`[OAuth] Token refreshed successfully for ${provider}`, {
+              userId: userId.slice(0, 8) + "...",
+              hasNewRefreshToken: !!newTokens.refresh_token,
+              preservedOriginal: !newTokens.refresh_token,
+            })
 
             // Return the new access token
             return newTokens.access_token
@@ -317,15 +351,32 @@ export class OAuthManager {
   }
 
   /**
+   * Calculates safe expiry timestamp with buffer
+   * Pattern from OpenClaw: subtract buffer and ensure minimum floor
+   */
+  private static coerceExpiresAt(expiresInSeconds: number, now: number = Date.now()): number {
+    // Subtract 5-minute buffer to refresh before actual expiry
+    const value = now + Math.max(0, Math.floor(expiresInSeconds)) * 1000 - OAuthManager.TOKEN_EXPIRY_BUFFER_MS
+    // Ensure at least 30 seconds from now (safety floor)
+    return Math.max(value, now + 30_000)
+  }
+
+  /**
    * Saves OAuth tokens for a user (Atomic JSON Blob Pattern)
    *
    * @param userId - User ID
    * @param provider - Provider name
    * @param tokens - OAuth tokens to store
+   * @param email - Optional user email for debugging
    */
-  async saveTokens(userId: string, provider: string, tokens: OAuthTokens): Promise<void> {
-    // Calculate expiry timestamp
-    const expiresAt = tokens.expires_in ? new Date(Date.now() + tokens.expires_in * 1000).toISOString() : null
+  async saveTokens(userId: string, provider: string, tokens: OAuthTokens, email?: string): Promise<void> {
+    const now = Date.now()
+
+    // Calculate expiry timestamp with buffer (OpenClaw pattern)
+    // This stores the time when we SHOULD refresh, not when token actually expires
+    const expiresAt = tokens.expires_in
+      ? new Date(OAuthManager.coerceExpiresAt(tokens.expires_in, now)).toISOString()
+      : null
 
     // Create atomic JSON blob containing all token data
     const tokenData = {
@@ -334,6 +385,10 @@ export class OAuthManager {
       expires_at: expiresAt,
       scope: tokens.scope || null,
       token_type: tokens.token_type || "Bearer",
+      // Store when token was saved for debugging
+      saved_at: new Date(now).toISOString(),
+      // Store email for debugging (pattern from Google Calendar MCP)
+      cached_email: email || null,
     }
 
     // Save as single encrypted JSON blob
@@ -633,6 +688,7 @@ export { getProvider, registerProvider, listProviders, hasProvider } from "./pro
 export type { OAuthProvider, OAuthProviderCore, OAuthRefreshable, OAuthRevocable } from "./providers/base"
 export { isRefreshable, isRevocable } from "./providers/base"
 export { GitHubProvider } from "./providers/github"
+export { GoogleProvider, type GoogleAuthOptions, type GoogleUserInfo } from "./providers/google"
 export { LINEAR_SCOPES, LinearProvider } from "./providers/linear"
 export { STRIPE_SCOPES, StripeProvider, type StripeTokenResponse } from "./providers/stripe"
 export { OAUTH_TOKENS_NAMESPACE, USER_ENV_KEYS_NAMESPACE } from "./types"

@@ -39,7 +39,7 @@ vi.mock("@/lib/credits/add-credits", () => ({
 }))
 
 // Import after mocking
-const { POST } = await import("../route")
+const { POST, referralDedupeCache } = await import("../route")
 const { createIamClient } = await import("@/lib/supabase/iam")
 const { awardReferralCredits } = await import("@/lib/credits/add-credits")
 
@@ -94,6 +94,8 @@ describe("POST /api/referrals/complete-pending", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     process.env.INTERNAL_WEBHOOK_SECRET = TEST_SECRET
+    // Clear dedupe cache between tests to prevent test interference
+    referralDedupeCache.clear()
   })
 
   afterEach(() => {

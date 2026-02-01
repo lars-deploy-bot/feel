@@ -51,8 +51,9 @@ import { getOrgCredits } from "@/lib/tokens"
 import { generateRequestId } from "@/lib/utils"
 import { runAgentChild } from "@/lib/workspace-execution/agent-child-runner"
 import { detectServeMode } from "@/lib/workspace-execution/command-runner"
+import { getValidAccessToken, hasOAuthCredentials } from "@/lib/anthropic-oauth"
 import { BodySchema } from "@/types/guards/api"
-import { DEFAULTS, WORKER_POOL, SUPERADMIN } from "@webalive/shared"
+import { DEFAULTS, WORKER_POOL, SUPERADMIN, filterToolsForPlanMode } from "@webalive/shared"
 import { getWorkerPool, type WorkerToParentMessage } from "@webalive/worker-pool"
 
 export const runtime = "nodejs"
@@ -128,6 +129,7 @@ export async function POST(req: NextRequest) {
       userId,
       additionalContext,
       analyzeImageUrls,
+      planMode,
     } = parseResult.data
     logger.log("Conversation:", conversationId)
     logger.log(
@@ -141,6 +143,7 @@ export async function POST(req: NextRequest) {
     if (userModel) {
       logger.log("Using user-selected model:", userModel)
     }
+    // Plan mode: see docs/architecture/plan-mode.md
 
     // Check input safety (skip for superadmins - they should never be interrupted)
     if (!user.isSuperadmin) {
@@ -165,6 +168,7 @@ export async function POST(req: NextRequest) {
     let cwd: string
     let resolvedWorkspaceName: string | null
     let tokenSource: TokenSource
+    let effectiveApiKey: string | undefined = userApiKey
 
     try {
       // Security: Verify workspace authorization BEFORE resolving paths
@@ -182,26 +186,53 @@ export async function POST(req: NextRequest) {
       }
       cwd = workspaceResult.workspace
 
-      // Determine which API key to use: org credits vs user-provided key
+      // Determine which API key to use: org credits vs user-provided key vs OAuth
       const orgCredits = (await getOrgCredits(resolvedWorkspaceName)) ?? 0
       const COST_ESTIMATE = 1 // Conservative estimate - 1 credit minimum for 200 credit starting balance
 
-      // Guard: reject if no sufficient credits AND no API key
-      if (orgCredits < COST_ESTIMATE && !userApiKey) {
-        logger.log(`Insufficient credits (${orgCredits}/${COST_ESTIMATE} required) and no fallback API key`)
+      // Case 1: Workspace has sufficient credits - use them
+      if (orgCredits >= COST_ESTIMATE) {
+        tokenSource = "workspace"
+        logger.log(`Using org credits (${orgCredits} available)`)
+      }
+      // Case 2: User provided their own API key - use it
+      else if (userApiKey) {
+        tokenSource = "user_provided"
+        logger.log(`Using user-provided API key (workspace has ${orgCredits} credits)`)
+      }
+      // Case 3: Try OAuth credentials from ~/.claude/.credentials.json
+      else if (hasOAuthCredentials()) {
+        logger.log(`Workspace has ${orgCredits} credits, trying OAuth credentials...`)
+        try {
+          const oauthResult = await getValidAccessToken()
+          if (oauthResult) {
+            effectiveApiKey = oauthResult.accessToken // Use OAuth token as API key
+            tokenSource = "user_provided" // Treat as user-provided (no credit deduction)
+            logger.log(`Using OAuth token (refreshed: ${oauthResult.refreshed})`)
+          } else {
+            logger.log("OAuth credentials exist but token retrieval failed")
+            return createErrorResponse(ErrorCodes.INSUFFICIENT_TOKENS, 402, {
+              workspace: resolvedWorkspaceName,
+              requestId,
+              message: "OAuth token expired and refresh failed",
+            })
+          }
+        } catch (oauthError) {
+          logger.error("OAuth token refresh failed:", oauthError)
+          return createErrorResponse(ErrorCodes.INSUFFICIENT_TOKENS, 402, {
+            workspace: resolvedWorkspaceName,
+            requestId,
+            message: oauthError instanceof Error ? oauthError.message : "OAuth refresh failed",
+          })
+        }
+      }
+      // Case 4: No credits, no API key, no OAuth - reject
+      else {
+        logger.log(`Insufficient credits (${orgCredits}/${COST_ESTIMATE} required) and no fallback API key or OAuth`)
         return createErrorResponse(ErrorCodes.INSUFFICIENT_TOKENS, 402, {
           workspace: resolvedWorkspaceName,
           requestId,
         })
-      }
-
-      // Cases 1 & 2: We're guaranteed to have either org credits or a user API key
-      tokenSource = orgCredits >= COST_ESTIMATE ? "workspace" : "user_provided"
-
-      if (tokenSource === "workspace") {
-        logger.log(`Using org credits (${orgCredits} available)`)
-      } else {
-        logger.log(`Using user-provided API key (workspace has ${orgCredits} credits)`)
       }
     } catch (workspaceError) {
       logger.error("Workspace resolution failed:", workspaceError)
@@ -408,6 +439,13 @@ export async function POST(req: NextRequest) {
 
     let childStream: ReadableStream<Uint8Array>
 
+    // Plan mode: Claude can only read/explore, not modify files
+    // When enabled, permissionMode is set to 'plan' in the SDK
+    const effectivePermissionMode = planMode ? "plan" : PERMISSION_MODE
+    if (planMode) {
+      logger.log("Plan mode enabled - Claude will only explore, not modify")
+    }
+
     if (WORKER_POOL.ENABLED) {
       // === PERSISTENT WORKER POOL ===
       // Reuses workers between requests for faster response times
@@ -438,27 +476,22 @@ export async function POST(req: NextRequest) {
       // Note: Internal MCP servers (alive-workspace, alive-tools) are created locally
       // in the worker because createSdkMcpServer returns function objects that cannot
       // be serialized via IPC. Only OAuth HTTP servers are passed here.
-      const allowedTools = getAllowedTools(cwd, user.isAdmin, isSuperadminWorkspace)
+      const baseAllowedTools = getAllowedTools(cwd, user.isAdmin, isSuperadminWorkspace)
       const disallowedTools = getDisallowedTools(user.isAdmin, isSuperadminWorkspace)
 
-      // Log admin/superadmin tools for debugging
-      if (isSuperadminWorkspace) {
-        const hasTask = allowedTools.includes("Task")
-        const hasWebSearch = allowedTools.includes("WebSearch")
-        logger.log(
-          `🔓 SUPERADMIN tools: Task=${hasTask}, WebSearch=${hasWebSearch}, allowedCount=${allowedTools.length}, disallowedCount=${disallowedTools.length}`,
-        )
-      } else if (user.isAdmin) {
-        const hasBash = allowedTools.includes("Bash")
-        logger.log(
-          `Admin tools: Bash=${hasBash}, allowedCount=${allowedTools.length}, disallowedCount=${disallowedTools.length}`,
-        )
+      // Plan mode: filter blocked tools BEFORE sending to worker
+      // See docs/architecture/plan-mode.md for why this must happen here
+      const allowedTools = filterToolsForPlanMode(baseAllowedTools, !!planMode)
+
+      // Log tool counts for debugging
+      if (planMode) {
+        logger.log(`Plan mode: ${allowedTools.length} tools (filtered from ${baseAllowedTools.length})`)
       }
 
       const agentConfig = {
         allowedTools,
         disallowedTools,
-        permissionMode: PERMISSION_MODE,
+        permissionMode: effectivePermissionMode,
         settingSources: SETTINGS_SOURCES,
         oauthMcpServers: getOAuthMcpServers(oauthTokens) as Record<string, unknown>,
         bridgeStreamTypes: BRIDGE_STREAM_TYPES,
@@ -482,7 +515,7 @@ export async function POST(req: NextRequest) {
                 maxTurns: maxTurns,
                 resume: existingSessionId || undefined,
                 systemPrompt,
-                apiKey: userApiKey || undefined,
+                apiKey: effectiveApiKey || undefined,
                 oauthTokens,
                 userEnvKeys, // User-defined environment keys for MCP servers
                 agentConfig,
@@ -544,11 +577,12 @@ export async function POST(req: NextRequest) {
         maxTurns: maxTurns,
         resume: existingSessionId || undefined,
         systemPrompt,
-        apiKey: userApiKey || undefined,
+        apiKey: effectiveApiKey || undefined,
         sessionCookie,
         oauthTokens, // OAuth tokens for connected MCP providers (stripe, linear, etc.)
         isAdmin: user.isAdmin, // Enable Bash tools for admins
         isSuperadmin: isSuperadminWorkspace, // Superadmin has all tools, runs as root
+        permissionMode: effectivePermissionMode, // Plan mode: "plan" = read-only exploration
       })
     }
 

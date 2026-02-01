@@ -69,7 +69,13 @@ export function useTabMessages(tabId: string | null, userId: string | null): Tab
 
     const now = Date.now()
 
-    return dbMessages.map(dbMsg => {
+    // CRITICAL: Ensure stable ordering by seq even during intermediate useLiveQuery states.
+    // Dexie's compound index returns results in order, but useLiveQuery can trigger
+    // intermediate re-renders before the query fully settles, causing visual glitches
+    // where messages briefly appear out of order. Explicit sort guarantees consistency.
+    const sortedMessages = [...dbMessages].sort((a, b) => a.seq - b.seq)
+
+    return sortedMessages.map(dbMsg => {
       const baseUIMessage = toUIMessage(dbMsg)
 
       // If this message is streaming...

@@ -163,8 +163,8 @@ export function getRegistryState(): Array<{
  * Runs every 5 minutes, removes entries older than 10 minutes
  * This is a safety net for streams that crashed or didn't clean up properly
  */
-const TTL_MS = 10 * 60 * 1000 // 10 minutes
-const CLEANUP_INTERVAL_MS = 5 * 60 * 1000 // 5 minutes
+const TTL_MS = 3 * 60 * 1000 // 3 minutes (reduced from 10 to catch orphans faster)
+const CLEANUP_INTERVAL_MS = 1 * 60 * 1000 // 1 minute (reduced from 5)
 
 let cleanupInterval: NodeJS.Timeout | null = null
 
@@ -201,7 +201,7 @@ export function startTTLCleanup(): void {
     }
   }, CLEANUP_INTERVAL_MS)
 
-  console.log("[Registry TTL] Cleanup started (check every 5min, TTL: 10min)")
+  console.log("[Registry TTL] Cleanup started (check every 1min, TTL: 3min)")
 }
 
 /**

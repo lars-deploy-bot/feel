@@ -183,12 +183,14 @@ export const useTabs = (workspace: string | null, tabGroupId?: string | null): T
     return tabs.filter(t => t.tabGroupId === tabGroupId && isOpen(t))
   })
 
-/** Get all closed tabs for a workspace, most recently closed first */
-export const useClosedTabs = (workspace: string | null): Tab[] =>
+/** Get closed tabs in a specific group, most recently closed first */
+export const useClosedTabs = (workspace: string | null, tabGroupId: string | null): Tab[] =>
   useTabDataStore(s => {
-    if (!workspace) return []
+    if (!workspace || !tabGroupId) return []
     const tabs = s.tabsByWorkspace[workspace] ?? []
-    return tabs.filter(isClosed).sort((a, b) => (b.closedAt as number) - (a.closedAt as number))
+    return tabs
+      .filter(t => t.tabGroupId === tabGroupId && isClosed(t))
+      .sort((a, b) => (b.closedAt as number) - (a.closedAt as number))
   })
 
 /**

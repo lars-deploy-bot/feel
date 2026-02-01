@@ -25,18 +25,46 @@ import process from "node:process"
 // IMPORTANT: Import these BEFORE dropping privileges!
 // After privilege drop, the worker can't read /root/webalive/claude-bridge/node_modules/
 import { query } from "@anthropic-ai/claude-agent-sdk"
-import { isOAuthMcpTool, GLOBAL_MCP_PROVIDERS, DEFAULTS } from "@webalive/shared"
+import { isOAuthMcpTool, GLOBAL_MCP_PROVIDERS, DEFAULTS, PLAN_MODE_BLOCKED_TOOLS, allowTool, denyTool, isAbortError, isTransientNetworkError, isFatalError, formatUncaughtError } from "@webalive/shared"
 import { workspaceInternalMcp, toolsInternalMcp } from "@alive-brug/tools"
 
-// Global unhandled rejection handler - last resort safety net
-process.on("unhandledRejection", (reason, promise) => {
-  console.error("[worker] FATAL: Unhandled promise rejection:", reason)
-  // Exit with error to avoid zombie worker state
+// Global unhandled rejection handler - smart handling based on error type
+// Pattern from OpenClaw: don't crash on transient network errors or intentional aborts
+process.on("unhandledRejection", (reason, _promise) => {
+  // AbortError is typically an intentional cancellation (e.g., during shutdown)
+  // Log it but don't crash - these are expected during graceful shutdown
+  if (isAbortError(reason)) {
+    console.warn("[worker] Suppressed AbortError (intentional cancellation):", formatUncaughtError(reason))
+    return
+  }
+
+  // Transient network errors shouldn't crash the worker
+  // They typically resolve on their own or will be retried
+  if (isTransientNetworkError(reason)) {
+    console.warn("[worker] Non-fatal network error (continuing):", formatUncaughtError(reason))
+    return
+  }
+
+  // Fatal errors should definitely crash
+  if (isFatalError(reason)) {
+    console.error("[worker] FATAL unhandled rejection:", formatUncaughtError(reason))
+    process.exit(1)
+    return
+  }
+
+  // Unknown errors - still crash to be safe, but with better logging
+  console.error("[worker] Unhandled promise rejection:", formatUncaughtError(reason))
   process.exit(1)
 })
 
 process.on("uncaughtException", (error) => {
-  console.error("[worker] FATAL: Uncaught exception:", error)
+  // Transient network errors in sync code (rare but possible)
+  if (isTransientNetworkError(error)) {
+    console.warn("[worker] Non-fatal uncaught exception (continuing):", formatUncaughtError(error))
+    return
+  }
+
+  console.error("[worker] FATAL: Uncaught exception:", formatUncaughtError(error))
   process.exit(1)
 })
 
@@ -67,15 +95,7 @@ function clearQueryState() {
   currentAbortController = null
 }
 
-/** Create tool permission "allow" response */
-function allowTool(input) {
-  return { behavior: "allow", updatedInput: input, updatedPermissions: [] }
-}
-
-/** Create tool permission "deny" response */
-function denyTool(message) {
-  return { behavior: "deny", message }
-}
+// allowTool and denyTool imported from @webalive/shared
 
 // =============================================================================
 // NDJSON IPC Client
@@ -416,6 +436,13 @@ async function handleQuery(ipc, requestId, payload) {
     // If payload has cookie, use it; otherwise clear any previous value
     process.env.BRIDGE_SESSION_COOKIE = payload.sessionCookie || ""
 
+    // Allow per-request API key override (e.g., from OAuth refresh)
+    // This enables using refreshed OAuth tokens without restarting workers
+    if (payload.apiKey) {
+      process.env.ANTHROPIC_API_KEY = payload.apiKey
+      console.error("[worker] Using request-provided API key")
+    }
+
     // Set user-defined environment keys (custom API keys from lockbox)
     // These are prefixed with USER_ to avoid conflicts with system env vars
     // SECURITY: Clear any previous user env keys before setting new ones
@@ -444,9 +471,23 @@ async function handleQuery(ipc, requestId, payload) {
     }
 
     console.error(`[worker] Allowed tools count: ${allowedTools.length}`)
+    console.error(`[worker] Permission mode: "${permissionMode}"`)
+
+    // Plan mode: block tools that modify files
+    // See docs/architecture/plan-mode.md for full explanation
+    const isPlanMode = permissionMode === "plan"
+    if (isPlanMode) {
+      console.error("[worker] PLAN MODE: Write/Edit/Bash tools will be blocked")
+    }
 
     // Tool permission handler
     const canUseTool = async (toolName, input, _options) => {
+      // Plan mode: block modification tools
+      if (isPlanMode && PLAN_MODE_BLOCKED_TOOLS.includes(toolName)) {
+        console.error(`[worker] PLAN MODE: Blocked modification tool: ${toolName}`)
+        return denyTool(`Tool "${toolName}" is not allowed in plan mode. Plan mode is for exploration only - Claude can read and analyze but not modify files.`)
+      }
+
       if (disallowedTools.includes(toolName)) {
         console.error(`[worker] SECURITY: Blocked disallowed tool: ${toolName}`)
         return denyTool(`Tool "${toolName}" is explicitly disallowed for security reasons.`)

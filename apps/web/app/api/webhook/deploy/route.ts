@@ -5,12 +5,17 @@ import path from "node:path"
 import { type NextRequest, NextResponse } from "next/server"
 import { createErrorResponse } from "@/features/auth/lib/auth"
 import { ErrorCodes } from "@/lib/error-codes"
+import { createDedupeCache } from "@webalive/shared"
 
 // Configuration
 const WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET || ""
 const DEPLOY_SCRIPT = path.join(process.cwd(), "../../scripts/deployment/build-and-serve.sh")
 const LOG_DIR = path.join(process.cwd(), "../../logs")
 const BRANCH = process.env.DEPLOY_BRANCH || "main" // Only deploy on this branch
+
+// Dedupe cache: prevent duplicate deployments from rapid webhook retries
+// TTL of 5 minutes - same commit won't trigger multiple deploys
+const deployDedupeCache = createDedupeCache({ ttlMs: 5 * 60 * 1000, maxSize: 100 })
 
 // Ensure logs directory exists
 if (!fs.existsSync(LOG_DIR)) {
@@ -77,6 +82,17 @@ export async function POST(req: NextRequest) {
       console.log(`[WEBHOOK] Ignoring push to ${branch} (not ${BRANCH})`)
       return NextResponse.json({
         message: `Deployment skipped (branch: ${branch}, expected: ${BRANCH})`,
+      })
+    }
+
+    // Dedupe: use latest commit SHA as deduplication key
+    const headCommit = body.after || body.head_commit?.id
+    if (headCommit && deployDedupeCache.check(headCommit)) {
+      console.log(`[WEBHOOK] Ignoring duplicate deployment for commit ${headCommit}`)
+      return NextResponse.json({
+        message: "Deployment already in progress for this commit",
+        commit: headCommit,
+        deduplicated: true,
       })
     }
 
