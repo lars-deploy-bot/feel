@@ -9,13 +9,13 @@ import { useCredits, useCreditsError, useCreditsLoading, useUserActions } from "
 import { CLAUDE_MODELS, type ClaudeModel, DEFAULT_MODEL, useLLMStore } from "@/lib/stores/llmStore"
 import { useCurrentWorkspace } from "@/lib/stores/workspaceStore"
 import { infoCard, input, primaryButton, secondaryButton, select, smallButton, text, warningCard } from "../styles"
-import { SettingsTabLayout, type SettingsTabProps } from "./SettingsTabLayout"
+import { SettingsTabLayout } from "./SettingsTabLayout"
 
 function isValidModel(value: string): value is ClaudeModel {
   return Object.values(CLAUDE_MODELS).includes(value as ClaudeModel)
 }
 
-export function LLMSettings({ onClose }: SettingsTabProps) {
+export function LLMSettings() {
   const { apiKey, model, setApiKey, setModel, clearApiKey, error } = useLLMStore()
   const [showApiKey, setShowApiKey] = useState(false)
   const [apiKeyInput, setApiKeyInput] = useState("")
@@ -82,7 +82,7 @@ export function LLMSettings({ onClose }: SettingsTabProps) {
   const isKeyChanged = apiKeyInput !== (apiKey || "")
 
   return (
-    <SettingsTabLayout title="AI Model" description="Configure your AI settings" onClose={onClose}>
+    <SettingsTabLayout title="AI Model" description="Configure your AI settings">
       <div className="space-y-4 sm:space-y-6">
         {/* Credits Display - Only show when using workspace credits */}
         {!apiKey && (

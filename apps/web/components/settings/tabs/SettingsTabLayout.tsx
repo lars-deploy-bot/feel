@@ -1,11 +1,6 @@
 "use client"
 
-import { X } from "lucide-react"
-import { iconButton, text } from "../styles"
-
-export interface SettingsTabProps {
-  onClose: () => void
-}
+import { text } from "../styles"
 
 /**
  * Reusable layout wrapper for all settings tabs
@@ -13,30 +8,18 @@ export interface SettingsTabProps {
 export function SettingsTabLayout({
   title,
   description,
-  onClose,
   children,
 }: {
   title: string
   description?: React.ReactNode
-  onClose: () => void
   children: React.ReactNode
 }) {
   return (
     <div>
-      {/* Header with title and close button (close button hidden on mobile - use main header) */}
-      <div className="flex items-start justify-between gap-4 pt-4 sm:pt-5 pb-3 sm:pb-4">
-        <div className="flex-1 min-w-0">
-          <h3 className="text-base sm:text-lg font-medium text-black/90 dark:text-white/90 mb-0.5 sm:mb-1">{title}</h3>
-          {description && <p className={`${text.description} sm:text-sm leading-relaxed`}>{description}</p>}
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className={`hidden sm:flex flex-shrink-0 ${iconButton}`}
-          aria-label="Close settings"
-        >
-          <X size={18} strokeWidth={1.75} />
-        </button>
+      {/* Header with title */}
+      <div className="pt-4 sm:pt-5 pb-3 sm:pb-4">
+        <h3 className="text-base sm:text-lg font-medium text-black/90 dark:text-white/90 mb-0.5 sm:mb-1">{title}</h3>
+        {description && <p className={`${text.description} sm:text-sm leading-relaxed`}>{description}</p>}
       </div>
 
       {/* Content */}

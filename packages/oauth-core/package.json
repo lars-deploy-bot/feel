@@ -39,6 +39,7 @@
   "dependencies": {
     "@alive-brug/redis": "workspace:*",
     "@webalive/database": "workspace:*",
+    "@webalive/shared": "workspace:*",
     "@supabase/supabase-js": "^2.81.1",
     "zod": "^3.25.0"
   },

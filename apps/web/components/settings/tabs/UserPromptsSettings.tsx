@@ -4,9 +4,9 @@ import { useState } from "react"
 import { PromptEditorModal } from "@/components/modals/PromptEditorModal"
 import { MarkdownDisplay } from "@/components/ui/chat/format/MarkdownDisplay"
 import { useUserPrompts, useUserPromptsActions } from "@/lib/providers/UserPromptsStoreProvider"
-import { SettingsTabLayout, type SettingsTabProps } from "./SettingsTabLayout"
+import { SettingsTabLayout } from "./SettingsTabLayout"
 
-export function UserPromptsSettings({ onClose }: SettingsTabProps) {
+export function UserPromptsSettings() {
   const prompts = useUserPrompts()
   const { addPrompt, updatePrompt, removePrompt } = useUserPromptsActions()
   const [editorState, setEditorState] = useState<{
@@ -41,7 +41,6 @@ export function UserPromptsSettings({ onClose }: SettingsTabProps) {
     <SettingsTabLayout
       title="User Prompts"
       description="Manage your saved prompt templates that appear in the chat toolbar"
-      onClose={onClose}
     >
       <div className="space-y-4 sm:space-y-6">
         {/* Add New Prompt Button */}

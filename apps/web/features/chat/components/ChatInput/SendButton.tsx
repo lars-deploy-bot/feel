@@ -14,7 +14,7 @@ export function SendButton() {
       <button
         type="button"
         onClick={onStop}
-        className="shrink-0 size-8 rounded-full text-xs font-medium bg-black dark:bg-white text-white dark:text-black hover:brightness-[0.85] active:brightness-75 transition-all duration-150 ease-in-out focus:outline-none focus-visible:ring-1 focus-visible:ring-ring flex items-center justify-center"
+        className="shrink-0 size-8 rounded-full text-xs font-medium bg-black dark:bg-white text-white dark:text-black hover:brightness-[0.85] active:brightness-75 transition-[filter] duration-150 ease-in-out focus:outline-none focus-visible:ring-1 focus-visible:ring-ring flex items-center justify-center"
         data-testid="stop-button"
       >
         <Square size={14} fill="currentColor" />
@@ -28,10 +28,10 @@ export function SendButton() {
       <button
         type="button"
         disabled
-        className="shrink-0 size-8 rounded-full text-xs font-medium bg-black/50 dark:bg-white/50 text-white dark:text-black transition-all duration-150 ease-in-out focus:outline-none flex items-center justify-center cursor-not-allowed"
+        className="shrink-0 size-8 rounded-full bg-black/50 dark:bg-white/50 focus:outline-none flex items-center justify-center cursor-not-allowed"
         data-testid="stopping-button"
       >
-        <PulsingDot size="sm" />
+        <PulsingDot size="sm" className="text-white dark:text-black" />
       </button>
     )
   }
@@ -41,7 +41,7 @@ export function SendButton() {
       type="button"
       onClick={onSubmit}
       disabled={!canSubmit}
-      className="shrink-0 size-8 rounded-full font-medium bg-black dark:bg-white text-white dark:text-black hover:brightness-[0.85] active:brightness-75 transition-all duration-150 ease-in-out disabled:opacity-30 disabled:hover:brightness-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring flex items-center justify-center"
+      className="shrink-0 size-8 rounded-full font-medium bg-black dark:bg-white text-white dark:text-black hover:brightness-[0.85] active:brightness-75 transition-[filter] duration-150 ease-in-out disabled:opacity-30 disabled:hover:brightness-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring flex items-center justify-center"
       data-testid="send-button"
     >
       <ArrowUp size={18} strokeWidth={2.5} />

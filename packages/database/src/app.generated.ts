@@ -18,26 +18,109 @@ export type Database = {
       conversations: {
         Row: {
           conversation_id: string
-          created_at: string | null
-          title: string | null
-          updated_at: string | null
           user_id: string
+          org_id: string
+          workspace: string
+          title: string
+          visibility: "private" | "shared"
+          message_count: number
+          last_message_at: string | null
+          first_user_message_id: string | null
+          auto_title_set: boolean
+          created_at: string
+          updated_at: string
+          deleted_at: string | null
+          archived_at: string | null
         }
         Insert: {
           conversation_id?: string
-          created_at?: string | null
-          title?: string | null
-          updated_at?: string | null
           user_id: string
+          org_id: string
+          workspace: string
+          title?: string
+          visibility?: "private" | "shared"
+          message_count?: number
+          last_message_at?: string | null
+          first_user_message_id?: string | null
+          auto_title_set?: boolean
+          created_at?: string
+          updated_at?: string
+          deleted_at?: string | null
+          archived_at?: string | null
         }
         Update: {
           conversation_id?: string
-          created_at?: string | null
-          title?: string | null
-          updated_at?: string | null
           user_id?: string
+          org_id?: string
+          workspace?: string
+          title?: string
+          visibility?: "private" | "shared"
+          message_count?: number
+          last_message_at?: string | null
+          first_user_message_id?: string | null
+          auto_title_set?: boolean
+          created_at?: string
+          updated_at?: string
+          deleted_at?: string | null
+          archived_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "conversations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "conversations_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["org_id"]
+          },
+        ]
+      }
+      conversation_tabs: {
+        Row: {
+          tab_id: string
+          conversation_id: string
+          name: string
+          position: number
+          message_count: number
+          last_message_at: string | null
+          created_at: string
+          closed_at: string | null
+        }
+        Insert: {
+          tab_id?: string
+          conversation_id: string
+          name?: string
+          position?: number
+          message_count?: number
+          last_message_at?: string | null
+          created_at?: string
+          closed_at?: string | null
+        }
+        Update: {
+          tab_id?: string
+          conversation_id?: string
+          name?: string
+          position?: number
+          message_count?: number
+          last_message_at?: string | null
+          created_at?: string
+          closed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_tabs_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["conversation_id"]
+          },
+        ]
       }
       domains: {
         Row: {
@@ -344,6 +427,56 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      messages: {
+        Row: {
+          message_id: string
+          tab_id: string
+          type: "user" | "assistant" | "tool_use" | "tool_result" | "thinking" | "system" | "sdk_message"
+          content: Json
+          version: number
+          status: "streaming" | "complete" | "interrupted" | "error"
+          seq: number
+          aborted_at: string | null
+          error_code: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          message_id?: string
+          tab_id: string
+          type: "user" | "assistant" | "tool_use" | "tool_result" | "thinking" | "system" | "sdk_message"
+          content: Json
+          version?: number
+          status?: "streaming" | "complete" | "interrupted" | "error"
+          seq: number
+          aborted_at?: string | null
+          error_code?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          message_id?: string
+          tab_id?: string
+          type?: "user" | "assistant" | "tool_use" | "tool_result" | "thinking" | "system" | "sdk_message"
+          content?: Json
+          version?: number
+          status?: "streaming" | "complete" | "interrupted" | "error"
+          seq?: number
+          aborted_at?: string | null
+          error_code?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_tab_id_fkey"
+            columns: ["tab_id"]
+            isOneToOne: false
+            referencedRelation: "conversation_tabs"
+            referencedColumns: ["tab_id"]
+          },
+        ]
       }
     }
     Views: {

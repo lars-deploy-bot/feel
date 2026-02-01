@@ -7,6 +7,7 @@
 
 import type { OAuthProvider } from "./base"
 import type { OAuthTokens, GraphQLError } from "../types"
+import { fetchWithRetry } from "../fetch-with-retry"
 
 export const LINEAR_SCOPES = ["read", "write", "issues:create"] as const
 
@@ -28,14 +29,18 @@ export class LinearProvider implements OAuthProvider {
       params.append("redirect_uri", redirectUri)
     }
 
-    const res = await fetch("https://api.linear.app/oauth/token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        Accept: "application/json",
+    const res = await fetchWithRetry(
+      "https://api.linear.app/oauth/token",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Accept: "application/json",
+        },
+        body: params.toString(),
       },
-      body: params.toString(),
-    })
+      { label: "Linear" },
+    )
 
     if (!res.ok) {
       const error = await res.text()
@@ -70,14 +75,18 @@ export class LinearProvider implements OAuthProvider {
       grant_type: "refresh_token",
     })
 
-    const res = await fetch("https://api.linear.app/oauth/token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        Accept: "application/json",
+    const res = await fetchWithRetry(
+      "https://api.linear.app/oauth/token",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Accept: "application/json",
+        },
+        body: params.toString(),
       },
-      body: params.toString(),
-    })
+      { label: "Linear" },
+    )
 
     if (!res.ok) {
       const error = await res.text()
@@ -109,13 +118,17 @@ export class LinearProvider implements OAuthProvider {
       client_secret: clientSecret,
     })
 
-    const res = await fetch("https://api.linear.app/oauth/revoke", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
+    const res = await fetchWithRetry(
+      "https://api.linear.app/oauth/revoke",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: params.toString(),
       },
-      body: params.toString(),
-    })
+      { label: "Linear" },
+    )
 
     if (!res.ok) {
       const error = await res.text()
@@ -166,14 +179,18 @@ export class LinearProvider implements OAuthProvider {
       }
     `
 
-    const res = await fetch("https://api.linear.app/graphql", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
+    const res = await fetchWithRetry(
+      "https://api.linear.app/graphql",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ query }),
       },
-      body: JSON.stringify({ query }),
-    })
+      { label: "Linear" },
+    )
 
     if (!res.ok) {
       const error = await res.text()

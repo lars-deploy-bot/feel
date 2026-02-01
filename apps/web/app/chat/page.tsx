@@ -51,6 +51,7 @@ import { AgentManagerIndicator, ChatEmptyState, ChatHeader, TabBar, WorkspaceInf
 import {
   useChatDragDrop,
   useChatMessaging,
+  useChatScroll,
   useModals,
   useStatusText,
   useTabIsolatedMessages,
@@ -84,11 +85,15 @@ function ChatPageContent() {
   )
   const { toggleSidebar } = useSidebarActions()
   const isSidebarOpen = useSidebarOpen()
-  const [shouldForceScroll, setShouldForceScroll] = useState(false)
-  const [userHasManuallyScrolled, setUserHasManuallyScrolled] = useState(false)
   const [subdomainInitialized, setSubdomainInitialized] = useState(false)
   const [_showCompletionDots, setShowCompletionDots] = useState(false)
   const modals = useModals()
+
+  // Smart scroll using Intersection Observer
+  const { containerRef, anchorRef, isScrolledAway, scrollToBottom, forceScrollToBottom } = useChatScroll({
+    threshold: 100,
+    debounceMs: 150,
+  })
 
   const { user } = useAuth()
   const selectedOrgId = useSelectedOrgId()
@@ -96,8 +101,6 @@ function ChatPageContent() {
 
   // Tabs are on by default for all users
   const showTabs = true
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const isAutoScrolling = useRef(false)
   const chatInputRef = useRef<ChatInputHandle | null>(null)
   const photoButtonRef = useRef<HTMLButtonElement>(null)
   const { setSSETerminal, setSSETerminalMinimized, setSandbox, setSandboxMinimized } = useDebugActions()
@@ -214,7 +217,7 @@ function ChatPageContent() {
     setMsg,
     addMessage,
     chatInputRef,
-    setShouldForceScroll,
+    forceScrollToBottom,
     setShowCompletionDots,
   })
 
@@ -350,53 +353,13 @@ function ChatPageContent() {
   // Calculate total domain count from organizations
   const totalDomainCount = organizations.reduce((sum, org) => sum + (org.workspace_count || 0), 0)
 
-  // Track manual scrolling
+  // Auto-scroll to bottom when new messages arrive (unless user scrolled away)
+  // Uses Intersection Observer under the hood - more reliable than scroll position math
   useEffect(() => {
-    const messagesContainer = messagesEndRef.current?.parentElement
-    if (!messagesContainer) return
-
-    const handleScroll = () => {
-      if (!isAutoScrolling.current) {
-        setUserHasManuallyScrolled(true)
-      }
+    if (!isScrolledAway && messages.length > 0) {
+      scrollToBottom("auto")
     }
-
-    messagesContainer.addEventListener("scroll", handleScroll)
-    return () => messagesContainer.removeEventListener("scroll", handleScroll)
-  }, [])
-
-  useEffect(() => {
-    const messagesContainer = messagesEndRef.current?.parentElement
-    if (!messagesContainer) return
-
-    let timeoutId: NodeJS.Timeout | null = null
-
-    const performScroll = () => {
-      isAutoScrolling.current = true
-      messagesEndRef.current?.scrollIntoView({ behavior: "auto" })
-      timeoutId = setTimeout(() => {
-        isAutoScrolling.current = false
-      }, 300)
-    }
-
-    if (shouldForceScroll) {
-      performScroll()
-      setShouldForceScroll(false)
-      setUserHasManuallyScrolled(false)
-    } else if (!userHasManuallyScrolled) {
-      performScroll()
-    } else {
-      const { scrollTop, scrollHeight, clientHeight } = messagesContainer
-      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100
-      if (isNearBottom) {
-        performScroll()
-      }
-    }
-
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId)
-    }
-  }, [messages, shouldForceScroll, userHasManuallyScrolled])
+  }, [messages, isScrolledAway, scrollToBottom])
 
   // Handle OAuth callback success/error params
   const urlSearchParams = typeof window !== "undefined" ? window.location.search : ""
@@ -583,7 +546,7 @@ function ChatPageContent() {
           )}
 
           {/* Messages */}
-          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+          <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
             <div className="p-4 mx-auto w-full md:max-w-2xl min-w-0">
               {messages.length === 0 && !busy && (
                 <ChatEmptyState
@@ -634,9 +597,31 @@ function ChatPageContent() {
                 }}
               />
 
-              <div ref={messagesEndRef} />
+              {/* Scroll anchor - Intersection Observer watches this to detect if user is at bottom */}
+              <div ref={anchorRef} className="h-px" />
             </div>
           </div>
+
+          {/* Jump to bottom button - shown when user scrolls up to read history */}
+          <AnimatePresence>
+            {isScrolledAway && messages.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                transition={{ duration: 0.15 }}
+                className="flex justify-center pb-2"
+              >
+                <button
+                  type="button"
+                  onClick={() => forceScrollToBottom()}
+                  className="px-3 py-1.5 rounded-full bg-black/80 dark:bg-white/90 text-white dark:text-black text-sm font-medium shadow-lg hover:bg-black dark:hover:bg-white transition-colors active:scale-95"
+                >
+                  ↓ New messages
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Input */}
           <div className="mx-auto w-full md:max-w-2xl">

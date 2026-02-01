@@ -76,6 +76,7 @@ export {
   getOAuthKeyForProvider,
   getOAuthMcpProviderConfig,
   providerSupportsPat,
+  providerSupportsOAuth,
   type OAuthMcpProviderConfig,
   type OAuthMcpProviderRegistry,
   type OAuthMcpProviderKey,

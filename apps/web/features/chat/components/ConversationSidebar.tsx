@@ -8,6 +8,7 @@ import { useDexieConversations, useDexieSession } from "@/lib/db/dexieMessageSto
 import type { DbConversation } from "@/lib/db/messageDb"
 import { useSidebarActions, useSidebarOpen } from "@/lib/stores/conversationSidebarStore"
 import { useAppHydrated } from "@/lib/stores/HydrationBoundary"
+import { useStreamingStore } from "@/lib/stores/streamingStore"
 
 // Shared style constants for DRY code
 const styles = {
@@ -71,6 +72,9 @@ export function ConversationSidebar({
   const [archiveModalOpen, setArchiveModalOpen] = useState(false)
   const [conversationToArchive, setConversationToArchive] = useState<DbConversation | null>(null)
 
+  // Get streaming state for all tabs to show activity indicator
+  const streamingTabs = useStreamingStore(state => state.tabs)
+
   // Memoized handlers
   const handleTabGroupClick = useCallback(
     (tabGroupId: string) => {
@@ -116,11 +120,25 @@ export function ConversationSidebar({
     return () => document.removeEventListener("keydown", handleEscape)
   }, [isOpen, closeSidebar])
 
+  // Check if any tab in a conversation is streaming
+  const isConversationStreaming = useCallback(
+    (conversationId: string) => {
+      // Check if any tab that belongs to this conversation is actively streaming
+      return Object.entries(streamingTabs).some(([tabId, tabState]) => {
+        // Tab IDs include the conversation ID, check if streaming
+        return tabId.includes(conversationId) && tabState.isStreamActive
+      })
+    },
+    [streamingTabs],
+  )
+
   // Shared sidebar content - rendered in both desktop and mobile
   const renderContent = (isMobile: boolean) => (
-    <div className="flex flex-col h-full w-[280px]">
+    <div className={`flex flex-col h-full ${isMobile ? "w-screen" : "w-[280px]"}`}>
+      {/* iOS 26 Liquid Glass: extend background into safe area, then add padding for content */}
+      {isMobile && <div className={`${styles.panel} shrink-0`} style={{ height: "env(safe-area-inset-top, 0px)" }} />}
       {/* Header */}
-      <div className={`h-14 flex items-center justify-between px-4 border-b ${styles.borderSubtle}`}>
+      <div className={`flex items-center justify-between px-4 py-3.5 border-b ${styles.borderSubtle}`}>
         <h2 className={`text-sm font-medium ${styles.textPrimary}`}>Conversations</h2>
         <CloseButton onClick={closeSidebar} isMobile={isMobile} />
       </div>
@@ -139,6 +157,7 @@ export function ConversationSidebar({
                   key={conversation.id}
                   conversation={conversation}
                   isActive={conversation.id === activeTabGroupId}
+                  isStreaming={isConversationStreaming(conversation.id)}
                   onClick={() => handleTabGroupClick(conversation.id)}
                   onArchive={handleArchiveClick}
                 />
@@ -148,8 +167,8 @@ export function ConversationSidebar({
         )}
       </div>
 
-      {/* Footer actions */}
-      <FooterActions onOpenInvite={onOpenInvite} onOpenSettings={onOpenSettings} />
+      {/* Footer actions - with safe area padding for mobile home indicator */}
+      <FooterActions onOpenInvite={onOpenInvite} onOpenSettings={onOpenSettings} isMobile={isMobile} />
     </div>
   )
 
@@ -212,33 +231,58 @@ function EmptyState({ children }: { children: React.ReactNode }) {
   return <div className={`px-4 py-8 text-center text-sm ${styles.textMuted}`}>{children}</div>
 }
 
-// Footer with share and settings
-function FooterActions({ onOpenInvite, onOpenSettings }: { onOpenInvite: () => void; onOpenSettings: () => void }) {
+// Footer with share and settings - uses safe area for mobile home indicator
+function FooterActions({
+  onOpenInvite,
+  onOpenSettings,
+  isMobile,
+}: {
+  onOpenInvite: () => void
+  onOpenSettings: () => void
+  isMobile?: boolean
+}) {
   return (
-    <div className={`border-t ${styles.borderSubtle} p-3 space-y-2`}>
-      {REFERRAL.ENABLED && (
+    <div className={`border-t ${styles.borderSubtle}`}>
+      <div className="p-3 space-y-2">
+        {REFERRAL.ENABLED && (
+          <button
+            type="button"
+            onClick={onOpenInvite}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl ${styles.activeFill} ${styles.hoverFillStrong} ${styles.transition} group`}
+          >
+            <Heart
+              size={18}
+              className={`${styles.textMuted} group-hover:text-black/60 dark:group-hover:text-white/60`}
+            />
+            <div className="flex-1 min-w-0 text-left">
+              <div className={`text-sm ${styles.textPrimary} truncate`}>Share Alive</div>
+              <div className={`text-xs ${styles.textMuted} truncate`}>with someone you love</div>
+            </div>
+            <ChevronRight size={14} className={styles.textSubtle} />
+          </button>
+        )}
         <button
           type="button"
-          onClick={onOpenInvite}
-          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl ${styles.activeFill} ${styles.hoverFillStrong} ${styles.transition} group`}
+          onClick={onOpenSettings}
+          className="inline-flex items-center justify-center size-10 rounded-xl text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 bg-black/[0.03] dark:bg-white/[0.03] hover:bg-black/[0.07] dark:hover:bg-white/[0.07] active:bg-black/[0.12] dark:active:bg-white/[0.12] active:scale-95 transition-all duration-150 ease-out"
+          aria-label="Settings"
         >
-          <Heart size={18} className={`${styles.textMuted} group-hover:text-black/60 dark:group-hover:text-white/60`} />
-          <div className="flex-1 min-w-0 text-left">
-            <div className={`text-sm ${styles.textPrimary} truncate`}>Share Alive</div>
-            <div className={`text-xs ${styles.textMuted} truncate`}>with someone you love</div>
-          </div>
-          <ChevronRight size={14} className={styles.textSubtle} />
+          <Settings2 size={18} strokeWidth={1.75} />
         </button>
-      )}
-      <button
-        type="button"
-        onClick={onOpenSettings}
-        className="inline-flex items-center justify-center size-10 rounded-xl text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 bg-black/[0.03] dark:bg-white/[0.03] hover:bg-black/[0.07] dark:hover:bg-white/[0.07] active:bg-black/[0.12] dark:active:bg-white/[0.12] active:scale-95 transition-all duration-150 ease-out"
-        aria-label="Settings"
-      >
-        <Settings2 size={18} strokeWidth={1.75} />
-      </button>
+      </div>
+      {/* iOS 26 Liquid Glass: extend background into bottom safe area */}
+      {isMobile && <div className={styles.panel} style={{ height: "env(safe-area-inset-bottom, 0px)" }} />}
     </div>
+  )
+}
+
+// Streaming indicator dot
+function StreamingDot() {
+  return (
+    <span className="relative flex size-2">
+      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+      <span className="relative inline-flex rounded-full size-2 bg-emerald-500" />
+    </span>
   )
 }
 
@@ -246,11 +290,13 @@ function FooterActions({ onOpenInvite, onOpenSettings }: { onOpenInvite: () => v
 function ConversationItem({
   conversation,
   isActive,
+  isStreaming,
   onClick,
   onArchive,
 }: {
   conversation: DbConversation
   isActive: boolean
+  isStreaming: boolean
   onClick: () => void
   onArchive: (e: React.MouseEvent, conversation: DbConversation) => void
 }) {
@@ -278,7 +324,10 @@ function ConversationItem({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <div className={`text-sm font-medium ${styles.textPrimary} line-clamp-2`}>{conversation.title}</div>
+          <div className={`text-sm font-medium ${styles.textPrimary} line-clamp-2 flex items-center gap-2`}>
+            {isStreaming && <StreamingDot />}
+            <span className="flex-1 min-w-0 truncate">{conversation.title}</span>
+          </div>
           <div className={`text-xs ${styles.textMuted} mt-0.5 flex items-center gap-1.5`}>
             <span>{formatTimestamp(conversation.updatedAt)}</span>
             <span className={styles.textSubtle}>·</span>

@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Loader2, AlertCircle, CheckCircle2, RefreshCw, Key, ExternalLink } from "lucide-react"
 import { getIntegrationUI } from "@/lib/integrations/registry"
-import { isValidOAuthMcpProviderKey, providerSupportsPat } from "@webalive/shared"
+import { isValidOAuthMcpProviderKey, providerSupportsPat, providerSupportsOAuth } from "@webalive/shared"
 
 // Constants
 const VISIBILITY_STATUS = {
@@ -394,12 +394,142 @@ function PatInput({
   )
 }
 
+/**
+ * Dual Connection Options Component
+ * Shows both OAuth and PAT options equally for providers that support both
+ */
+function DualConnectionOptions({
+  providerKey,
+  displayName,
+  onOAuthConnect,
+  onSuccess,
+  connecting,
+  size = "default",
+}: {
+  providerKey: string
+  displayName: string
+  onOAuthConnect: () => void
+  onSuccess: () => void
+  connecting: boolean
+  size?: "default" | "small"
+}) {
+  const [showPatInput, setShowPatInput] = useState(false)
+  const { connectWithPat, connecting: patConnecting, error: patError, clearError } = useConnectWithPat(providerKey)
+  const [token, setToken] = useState("")
+
+  const handlePatSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!token.trim()) return
+
+    const result = await connectWithPat(token.trim())
+    if (result.success) {
+      toast.success(`Connected to ${displayName} as ${result.username}`, {
+        icon: <CheckCircle2 className="h-4 w-4 text-emerald-500" />,
+      })
+      setToken("")
+      setShowPatInput(false)
+      onSuccess()
+    }
+  }
+
+  const sizeClasses = size === "small" ? "text-xs" : "text-sm"
+  const buttonPadding = size === "small" ? "px-3 py-1.5" : "px-4 py-2"
+  const inputPadding = size === "small" ? "px-2 py-1.5" : "px-3 py-2"
+
+  if (showPatInput) {
+    return (
+      <form onSubmit={handlePatSubmit} className="space-y-2">
+        <div className="flex gap-2">
+          <input
+            type="password"
+            value={token}
+            onChange={e => setToken(e.target.value)}
+            placeholder="ghp_xxxx or github_pat_xxxx"
+            className={`flex-1 ${inputPadding} ${sizeClasses} rounded-md border border-black/20 dark:border-white/20 bg-white dark:bg-zinc-900 text-black dark:text-white placeholder:text-black/40 dark:placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-black/20 dark:focus:ring-white/20`}
+          />
+          <button
+            type="submit"
+            disabled={patConnecting || !token.trim()}
+            className={`${buttonPadding} ${sizeClasses} font-medium rounded-md bg-black dark:bg-white text-white dark:text-black hover:bg-black/80 dark:hover:bg-white/80 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
+          >
+            {patConnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Connect"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setShowPatInput(false)
+              setToken("")
+              clearError()
+            }}
+            className={`${buttonPadding} ${sizeClasses} font-medium rounded-md border border-black/20 dark:border-white/20 text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-all duration-200`}
+          >
+            Cancel
+          </button>
+        </div>
+        {patError && <p className={`${sizeClasses} text-red-600 dark:text-red-400`}>{patError}</p>}
+        <p className={`${sizeClasses} text-black/50 dark:text-white/50`}>
+          <a
+            href="https://github.com/settings/tokens"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white underline underline-offset-2"
+          >
+            Create a token on GitHub
+            <ExternalLink className="h-3 w-3" />
+          </a>
+        </p>
+      </form>
+    )
+  }
+
+  // Show both buttons
+  return (
+    <div className="flex flex-col gap-2">
+      <div className={size === "small" ? "flex gap-2" : "flex flex-col gap-2"}>
+        {/* OAuth Button */}
+        <button
+          type="button"
+          onClick={onOAuthConnect}
+          disabled={connecting}
+          className={`${size === "small" ? "flex-1" : "w-full"} ${buttonPadding} ${sizeClasses} font-medium rounded-md bg-black dark:bg-white text-white dark:text-black hover:bg-black/80 dark:hover:bg-white/80 transition-all duration-200 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-1.5`}
+        >
+          {connecting ? (
+            <>
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Connecting...
+            </>
+          ) : (
+            <>
+              <ExternalLink className="h-3.5 w-3.5" />
+              Connect with OAuth
+            </>
+          )}
+        </button>
+        {/* PAT Button */}
+        <button
+          type="button"
+          onClick={() => {
+            setShowPatInput(true)
+            clearError()
+          }}
+          className={`${size === "small" ? "flex-1" : "w-full"} ${buttonPadding} ${sizeClasses} font-medium rounded-md border border-black/20 dark:border-white/20 text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-all duration-200 active:scale-95 flex items-center justify-center gap-1.5`}
+        >
+          <Key className="h-3.5 w-3.5" />
+          Use Token
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function IntegrationCard({ integration, onUpdate, layout = "grid" }: IntegrationCardProps) {
   const { disconnect, disconnecting, error: disconnectError } = useDisconnectIntegration(integration.provider_key)
   const { connect, connecting, error: connectError } = useConnectIntegration(integration.provider_key)
 
   const error = disconnectError || connectError
   const supportsPat = providerSupportsPat(integration.provider_key)
+  const supportsOAuth = providerSupportsOAuth(integration.provider_key)
+  const supportsBoth = supportsPat && supportsOAuth
 
   const handleConnect = async () => {
     const success = await connect()
@@ -523,6 +653,15 @@ function IntegrationCard({ integration, onUpdate, layout = "grid" }: Integration
                     "Disconnect"
                   )}
                 </button>
+              ) : supportsBoth ? (
+                <DualConnectionOptions
+                  providerKey={integration.provider_key}
+                  displayName={integration.display_name}
+                  onOAuthConnect={handleConnect}
+                  onSuccess={onUpdate}
+                  connecting={connecting}
+                  size="small"
+                />
               ) : supportsPat ? (
                 <PatInput
                   providerKey={integration.provider_key}
@@ -638,6 +777,14 @@ function IntegrationCard({ integration, onUpdate, layout = "grid" }: Integration
               "Disconnect"
             )}
           </button>
+        ) : supportsBoth ? (
+          <DualConnectionOptions
+            providerKey={integration.provider_key}
+            displayName={integration.display_name}
+            onOAuthConnect={handleConnect}
+            onSuccess={onUpdate}
+            connecting={connecting}
+          />
         ) : supportsPat ? (
           <PatInput
             providerKey={integration.provider_key}

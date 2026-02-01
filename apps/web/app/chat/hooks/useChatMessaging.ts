@@ -39,7 +39,8 @@ interface UseChatMessagingOptions {
   setMsg: (msg: string) => void
   addMessage: (message: UIMessage, targetTabId: string) => void
   chatInputRef: React.RefObject<ChatInputHandle | null>
-  setShouldForceScroll: (value: boolean) => void
+  /** Force scroll to bottom when user sends a message */
+  forceScrollToBottom: () => void
   setShowCompletionDots: (value: boolean) => void
 }
 
@@ -61,7 +62,7 @@ export function useChatMessaging({
   setMsg,
   addMessage,
   chatInputRef,
-  setShouldForceScroll,
+  forceScrollToBottom,
   setShowCompletionDots,
 }: UseChatMessagingOptions) {
   // Refs for request management
@@ -599,7 +600,7 @@ export function useChatMessaging({
       await addMessage(userMessage, targetTabId)
       setMsg("")
       chatInputRef.current?.clearAllAttachments()
-      setShouldForceScroll(true)
+      forceScrollToBottom()
 
       try {
         await sendStreaming(userMessage, targetTabId)
@@ -617,7 +618,7 @@ export function useChatMessaging({
       chatInputRef,
       addMessage,
       setMsg,
-      setShouldForceScroll,
+      forceScrollToBottom,
       sendStreaming,
     ],
   )

@@ -4,7 +4,7 @@ import { AlertTriangle, CheckCircle, Loader2, Mail, Play, Server, XCircle } from
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Toggle } from "@/components/ui/Toggle"
 import buildInfo from "@/lib/build-info.json"
-import { SettingsTabLayout, type SettingsTabProps } from "./SettingsTabLayout"
+import { SettingsTabLayout } from "./SettingsTabLayout"
 import { useSuperadmin } from "@/hooks/use-superadmin"
 import { EmailDraftDemo } from "@/components/ui/chat/tools/email/EmailDraftOutput"
 
@@ -204,7 +204,7 @@ function DeployOutput({ state, onClear }: { state: DeployState; onClear: () => v
   )
 }
 
-export function AdminSettings({ onClose }: SettingsTabProps) {
+export function AdminSettings() {
   const { state, runDeploy, clear } = useDeployStream()
   const [skipE2E, setSkipE2E] = useState(false)
   const [showEmailDemo, setShowEmailDemo] = useState(false)
@@ -217,7 +217,7 @@ export function AdminSettings({ onClose }: SettingsTabProps) {
   }
 
   return (
-    <SettingsTabLayout title="Admin" description="System information and admin tools" onClose={onClose}>
+    <SettingsTabLayout title="Admin" description="System information and admin tools">
       <div className="space-y-6">
         {/* Email Draft Demo - Superadmin only */}
         {isSuperadmin && (

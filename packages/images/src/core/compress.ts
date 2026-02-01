@@ -15,6 +15,25 @@ export interface CompressResult {
 }
 
 /**
+ * Normalize image to 8-bit color depth by converting through PNG
+ * This handles 16-bit images (Rgb16, Rgba16) that WebP doesn't support
+ */
+async function normalizeColorDepth(buffer: Buffer): Promise<Buffer> {
+  const transformer = new Transformer(buffer)
+
+  // napi-rs/image doesn't expose bit depth directly, so we normalize through PNG
+  // PNG conversion handles all color depths and outputs 8-bit when re-encoded
+  try {
+    // Convert to PNG (this normalizes color depth to 8-bit)
+    const normalized = await transformer.png()
+    return normalized
+  } catch {
+    // If PNG conversion fails, return original
+    return buffer
+  }
+}
+
+/**
  * Compress image using binary search for optimal quality
  * Based on huurmatcher's battle-tested approach
  *
@@ -30,8 +49,11 @@ export async function compressImage(buffer: Buffer, options: CompressOptions = {
     maxQuality = 100,
   } = options
 
+  // Normalize color depth (handles 16-bit images)
+  const normalizedBuffer = await normalizeColorDepth(buffer)
+
   // Create transformer
-  const transformer = new Transformer(buffer)
+  const transformer = new Transformer(normalizedBuffer)
   const metadata = await transformer.metadata()
 
   // Calculate resize dimensions (preserve aspect ratio)
@@ -61,8 +83,8 @@ export async function compressImage(buffer: Buffer, options: CompressOptions = {
   while (min <= max) {
     const mid = Math.floor((min + max) / 2)
 
-    // Create new transformer for this iteration
-    const testTransformer = new Transformer(buffer)
+    // Create new transformer for this iteration (use normalized buffer)
+    const testTransformer = new Transformer(normalizedBuffer)
 
     // Resize if dimensions changed
     if (resizeWidth !== metadata.width || resizeHeight !== metadata.height) {
@@ -84,7 +106,7 @@ export async function compressImage(buffer: Buffer, options: CompressOptions = {
 
   // If no suitable compression found, use lowest quality
   if (!bestBuffer) {
-    const fallbackTransformer = new Transformer(buffer)
+    const fallbackTransformer = new Transformer(normalizedBuffer)
     if (resizeWidth !== metadata.width || resizeHeight !== metadata.height) {
       fallbackTransformer.resize(resizeWidth, resizeHeight)
     }
@@ -107,7 +129,11 @@ export async function compressImage(buffer: Buffer, options: CompressOptions = {
  * Generate image variant (resize without binary search)
  */
 export async function generateVariant(buffer: Buffer, width: number, quality = 85): Promise<CompressResult> {
-  const transformer = new Transformer(buffer)
+  // Note: buffer should already be normalized when passed from compressImage output
+  // but we normalize again in case this is called directly
+  const normalizedBuffer = await normalizeColorDepth(buffer)
+
+  const transformer = new Transformer(normalizedBuffer)
   const metadata = await transformer.metadata()
 
   // Calculate height maintaining aspect ratio

@@ -7,6 +7,7 @@
 
 import type { OAuthProvider } from "./base"
 import type { OAuthTokens } from "../types"
+import { fetchWithRetry } from "../fetch-with-retry"
 
 export const STRIPE_SCOPES = ["read_write", "read_only"] as const
 
@@ -66,16 +67,20 @@ export class StripeProvider implements OAuthProvider {
       grant_type: "authorization_code",
     })
 
-    const res = await fetch("https://connect.stripe.com/oauth/token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        Accept: "application/json",
-        // Stripe uses API key as Basic Auth or in body
-        Authorization: `Bearer ${clientSecret}`,
+    const res = await fetchWithRetry(
+      "https://connect.stripe.com/oauth/token",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Accept: "application/json",
+          // Stripe uses API key as Basic Auth or in body
+          Authorization: `Bearer ${clientSecret}`,
+        },
+        body: params.toString(),
       },
-      body: params.toString(),
-    })
+      { label: "Stripe" },
+    )
 
     if (!res.ok) {
       const error = await res.text()
@@ -112,15 +117,19 @@ export class StripeProvider implements OAuthProvider {
       grant_type: "refresh_token",
     })
 
-    const res = await fetch("https://connect.stripe.com/oauth/token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        Accept: "application/json",
-        Authorization: `Bearer ${clientSecret}`,
+    const res = await fetchWithRetry(
+      "https://connect.stripe.com/oauth/token",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Accept: "application/json",
+          Authorization: `Bearer ${clientSecret}`,
+        },
+        body: params.toString(),
       },
-      body: params.toString(),
-    })
+      { label: "Stripe" },
+    )
 
     if (!res.ok) {
       const error = await res.text()
@@ -161,14 +170,18 @@ export class StripeProvider implements OAuthProvider {
       stripe_user_id: stripeUserId,
     })
 
-    const res = await fetch("https://connect.stripe.com/oauth/deauthorize", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        Authorization: `Bearer ${clientSecret}`,
+    const res = await fetchWithRetry(
+      "https://connect.stripe.com/oauth/deauthorize",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `Bearer ${clientSecret}`,
+        },
+        body: params.toString(),
       },
-      body: params.toString(),
-    })
+      { label: "Stripe" },
+    )
 
     if (!res.ok) {
       const error = await res.text()
@@ -193,12 +206,16 @@ export class StripeProvider implements OAuthProvider {
     charges_enabled: boolean
     payouts_enabled: boolean
   }> {
-    const res = await fetch("https://api.stripe.com/v1/account", {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
+    const res = await fetchWithRetry(
+      "https://api.stripe.com/v1/account",
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       },
-    })
+      { label: "Stripe" },
+    )
 
     if (!res.ok) {
       const error = await res.text()

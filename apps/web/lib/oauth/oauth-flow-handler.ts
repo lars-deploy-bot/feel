@@ -12,6 +12,7 @@ import { getProvider, GoogleProvider } from "@webalive/oauth-core"
 import { env } from "@webalive/env/server"
 import { getOAuthKeyForProvider } from "@webalive/shared"
 import { canUserAccessIntegration } from "@/lib/integrations/visibility"
+import { errorLogger } from "@/lib/error-logger"
 import { getOAuthInstance } from "@/lib/oauth/oauth-instances"
 import { getClientIdentifier } from "@/lib/auth/client-identifier"
 import { oauthInitiationRateLimiter, oauthOperationRateLimiter } from "@/lib/auth/rate-limiter"
@@ -272,16 +273,22 @@ export async function handleOAuthCallback(
     }
   }
 
+  // CRITICAL: Build redirect URI BEFORE try block so it's accessible in catch for logging
+  // This must match exactly what was used during authorization or Google will reject with "Bad Request"
+  const redirectUri = buildOAuthRedirectUri(baseUrl, provider as OAuthProvider)
+
   try {
     // Exchange code for tokens
     // Use oauthKey to get the actual OAuth provider (e.g., 'gmail' -> 'google')
     const oauthKey = getOAuthKeyForProvider(provider)
     const oauthManager = getOAuthInstance(oauthKey)
+
     await oauthManager.handleCallback(
       user.id, // instanceId (for env-based OAuth, same as userId)
       user.id, // authenticatingUserId
       oauthKey, // Use oauthKey for token storage
       code,
+      redirectUri, // Pass redirect URI to ensure it matches authorization
     )
 
     console.log(`[${provider} OAuth] Successfully connected user ${user.id}`)
@@ -293,8 +300,17 @@ export async function handleOAuthCallback(
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
-    console.error(`[${provider} OAuth] Callback failed:`, errorMessage)
-    console.error(`[${provider} OAuth] Full error:`, error)
+
+    // Centralized error logging with full context for debugging
+    errorLogger.oauth(`OAuth callback failed for ${provider}`, {
+      provider,
+      errorMessage,
+      redirectUri,
+      baseUrl,
+      userId: user.id,
+      stack: error instanceof Error ? error.stack : undefined,
+    })
+
     recordFailedAttempt(req, provider)
 
     // Security: Don't expose internal errors in production, but show in dev

@@ -77,3 +77,34 @@ export {
   type TemplateFrontmatter,
   type PartialTemplateFrontmatter,
 } from "./lib/template-frontmatter.js"
+
+// Agent-to-Agent (A2A) Session Tools
+export {
+  // Types
+  type SessionInfo,
+  type SessionMessage,
+  type SessionSendResult,
+  type AgentToAgentPolicy,
+  DEFAULT_A2A_POLICY,
+  isA2AAllowed,
+  // sessions_list
+  sessionsListSchema,
+  executeSessionsList,
+  sessionsListToolDefinition,
+  type SessionsListParams,
+  type SessionsListContext,
+  type SessionsListResult,
+  // sessions_send
+  sessionsSendSchema,
+  executeSessionsSend,
+  sessionsSendToolDefinition,
+  type SessionsSendParams,
+  type SessionsSendContext,
+  // sessions_history
+  sessionsHistorySchema,
+  executeSessionsHistory,
+  sessionsHistoryToolDefinition,
+  type SessionsHistoryParams,
+  type SessionsHistoryContext,
+  type SessionsHistoryResult,
+} from "./tools/sessions/index.js"

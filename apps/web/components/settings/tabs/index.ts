@@ -1,6 +1,6 @@
 // Settings tab components - extracted from SettingsModal for better maintainability
 
-export { SettingsTabLayout, type SettingsTabProps } from "./SettingsTabLayout"
+export { SettingsTabLayout } from "./SettingsTabLayout"
 export { AccountSettings } from "./AccountSettings"
 export { LLMSettings } from "./LLMSettings"
 export { GoalSettings } from "./GoalSettings"

@@ -7,6 +7,7 @@
 
 import type { OAuthProvider } from "./base"
 import type { OAuthTokens } from "../types"
+import { fetchWithRetry } from "../fetch-with-retry"
 
 export class GitHubProvider implements OAuthProvider {
   name = "github"
@@ -25,14 +26,18 @@ export class GitHubProvider implements OAuthProvider {
       params.append("redirect_uri", redirectUri)
     }
 
-    const res = await fetch("https://github.com/login/oauth/access_token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        Accept: "application/json",
+    const res = await fetchWithRetry(
+      "https://github.com/login/oauth/access_token",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Accept: "application/json",
+        },
+        body: params.toString(),
       },
-      body: params.toString(),
-    })
+      { label: "GitHub" },
+    )
 
     if (!res.ok) {
       const error = await res.text()
@@ -60,14 +65,18 @@ export class GitHubProvider implements OAuthProvider {
   async revokeToken(token: string, clientId: string, clientSecret: string): Promise<void> {
     const auth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64")
 
-    const res = await fetch(`https://api.github.com/applications/${clientId}/token`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Basic ${auth}`,
+    const res = await fetchWithRetry(
+      `https://api.github.com/applications/${clientId}/token`,
+      {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Basic ${auth}`,
+        },
+        body: JSON.stringify({ access_token: token }),
       },
-      body: JSON.stringify({ access_token: token }),
-    })
+      { label: "GitHub" },
+    )
 
     if (!res.ok && res.status !== 204) {
       const error = await res.text()

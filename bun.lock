@@ -221,6 +221,7 @@
         "@alive-brug/redis": "workspace:*",
         "@supabase/supabase-js": "^2.81.1",
         "@webalive/database": "workspace:*",
+        "@webalive/shared": "workspace:*",
         "zod": "^3.25.0",
       },
       "devDependencies": {

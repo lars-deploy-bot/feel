@@ -8,6 +8,7 @@ import { LockboxAdapter, type LockboxAdapterConfig } from "./storage"
 import { getProvider } from "./providers/index"
 import { createRefreshLockManager, type IRefreshLockManager } from "./refresh-lock"
 import { isRefreshable, isRevocable } from "./providers/base"
+import { oauthAudit } from "./audit"
 import {
   OAUTH_TOKENS_NAMESPACE,
   USER_ENV_KEYS_NAMESPACE,
@@ -164,56 +165,85 @@ export class OAuthManager {
     authenticatingUserId: string,
     provider: string,
     code: string,
+    /** Override redirect URI - MUST match the URI used during authorization */
+    redirectUriOverride?: string,
   ): Promise<{ success: boolean; scopes?: string }> {
-    // 1. Get OAuth app credentials - try database first, then env vars
-    let config = await this.getProviderConfig(tenantUserId, provider)
+    // Start audit trail
+    const correlationId = oauthAudit.authInitiated(provider, authenticatingUserId, tenantUserId)
 
-    // Fall back to environment variables for system-wide OAuth apps
-    if (!config) {
-      const envClientId = process.env[`${provider.toUpperCase()}_CLIENT_ID`]
-      const envClientSecret = process.env[`${provider.toUpperCase()}_CLIENT_SECRET`]
-      const envRedirectUri = process.env[`${provider.toUpperCase()}_REDIRECT_URI`]
+    try {
+      // 1. Get OAuth app credentials - try database first, then env vars
+      let config = await this.getProviderConfig(tenantUserId, provider)
 
-      if (envClientId && envClientSecret) {
-        config = {
-          client_id: envClientId,
-          client_secret: envClientSecret,
-          redirect_uri: envRedirectUri || undefined,
+      // Fall back to environment variables for system-wide OAuth apps
+      if (!config) {
+        const envClientId = process.env[`${provider.toUpperCase()}_CLIENT_ID`]
+        const envClientSecret = process.env[`${provider.toUpperCase()}_CLIENT_SECRET`]
+        const envRedirectUri = process.env[`${provider.toUpperCase()}_REDIRECT_URI`]
+
+        if (envClientId && envClientSecret) {
+          config = {
+            client_id: envClientId,
+            client_secret: envClientSecret,
+            // Use override redirect URI (from request context) or fall back to env var
+            redirect_uri: redirectUriOverride || envRedirectUri || undefined,
+          }
         }
       }
-    }
 
-    if (!config) {
-      throw new Error(`OAuth not configured for '${provider}'. Set environment variables or configure in database.`)
-    }
-
-    // 2. Get provider instance and exchange code for tokens
-    const oauthProvider = getProvider(provider)
-    const tokens = await oauthProvider.exchangeCode(code, config.client_id, config.client_secret, config.redirect_uri)
-
-    // 3. Try to get user email for debugging (Google-specific)
-    let userEmail: string | undefined
-    if (provider === "google" && "getUserInfo" in oauthProvider) {
-      try {
-        const userInfo = await (oauthProvider as any).getUserInfo(tokens.access_token)
-        userEmail = userInfo?.email
-      } catch (e) {
-        // Non-critical, just log
-        console.warn(`[OAuth] Failed to fetch user email for ${provider}:`, e)
+      // If config exists but no redirect URI, use override
+      if (config && redirectUriOverride && !config.redirect_uri) {
+        config.redirect_uri = redirectUriOverride
+      } else if (config && redirectUriOverride && config.redirect_uri !== redirectUriOverride) {
+        // Override takes precedence - this happens when app.alive.best calls but env has terminal.goalive.nl
+        config.redirect_uri = redirectUriOverride
       }
+
+      if (!config) {
+        const error = `OAuth not configured for '${provider}'. Set environment variables or configure in database.`
+        oauthAudit.authFailed(provider, error, { userId: authenticatingUserId, tenantId: tenantUserId, correlationId })
+        throw new Error(error)
+      }
+
+      // 2. Get provider instance and exchange code for tokens
+      const oauthProvider = getProvider(provider)
+      const tokens = await oauthProvider.exchangeCode(code, config.client_id, config.client_secret, config.redirect_uri)
+
+      // 3. Try to get user email for debugging (Google-specific)
+      let userEmail: string | undefined
+      if (provider === "google" && "getUserInfo" in oauthProvider) {
+        try {
+          const userInfo = await (oauthProvider as any).getUserInfo(tokens.access_token)
+          userEmail = userInfo?.email
+        } catch (e) {
+          // Non-critical, just log
+          console.warn(`[OAuth] Failed to fetch user email for ${provider}:`, e)
+        }
+      }
+
+      // 4. Store tokens for the authenticating user (with email if available)
+      await this.saveTokens(authenticatingUserId, provider, tokens, userEmail)
+
+      // Audit: auth completed
+      oauthAudit.authCompleted(provider, authenticatingUserId, {
+        tenantId: tenantUserId,
+        correlationId,
+        hasRefreshToken: !!tokens.refresh_token,
+      })
+
+      return { success: true, scopes: tokens.scope }
+    } catch (error) {
+      // Audit: auth failed (if not already logged above)
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      if (!errorMessage.includes("OAuth not configured")) {
+        oauthAudit.authFailed(provider, errorMessage, {
+          userId: authenticatingUserId,
+          tenantId: tenantUserId,
+          correlationId,
+        })
+      }
+      throw error
     }
-
-    // 4. Store tokens for the authenticating user (with email if available)
-    await this.saveTokens(authenticatingUserId, provider, tokens, userEmail)
-
-    console.log(`[OAuth] Successfully stored tokens for ${provider}`, {
-      userId: authenticatingUserId.slice(0, 8) + "...",
-      email: userEmail || "unknown",
-      hasRefreshToken: !!tokens.refresh_token,
-      expiresIn: tokens.expires_in,
-    })
-
-    return { success: true, scopes: tokens.scope }
   }
 
   /**
@@ -294,6 +324,9 @@ export class OAuthManager {
         // Use lock manager to prevent concurrent refresh attempts
         const lockKey = `${userId}:${provider}`
 
+        // Audit: token refresh started
+        const correlationId = oauthAudit.tokenRefreshStarted(provider, userId)
+
         try {
           const newAccessToken = await this.lockManager.withLock(lockKey, async () => {
             // Double-check if token is still expired (another request might have refreshed it)
@@ -305,7 +338,6 @@ export class OAuthManager {
                   const shouldRefreshAt = new Date(recentTokenData.expires_at).getTime()
                   if (Date.now() < shouldRefreshAt) {
                     // Token was refreshed by another request, use it
-                    console.log(`[OAuth] Token already refreshed by concurrent request for ${provider}`)
                     return recentTokenData.access_token
                   }
                 }
@@ -327,21 +359,20 @@ export class OAuthManager {
               refresh_token: refreshTokenToStore,
             })
 
-            console.log(`[OAuth] Token refreshed successfully for ${provider}`, {
-              userId: userId.slice(0, 8) + "...",
-              hasNewRefreshToken: !!newTokens.refresh_token,
-              preservedOriginal: !newTokens.refresh_token,
-            })
-
             // Return the new access token
             return newTokens.access_token
           })
 
+          // Audit: token refresh completed
+          oauthAudit.tokenRefreshCompleted(provider, userId, correlationId)
+
           return newAccessToken
         } catch (error) {
-          throw new Error(
-            `Token refresh failed for '${provider}': ${error instanceof Error ? error.message : "Unknown error"}. User may need to re-authenticate.`,
-          )
+          // Audit: token refresh failed
+          const errorMessage = error instanceof Error ? error.message : String(error)
+          oauthAudit.tokenRefreshFailed(provider, userId, errorMessage, correlationId)
+
+          throw new Error(`Token refresh failed for '${provider}': ${errorMessage}. User may need to re-authenticate.`)
         }
       }
     }
@@ -486,6 +517,9 @@ export class OAuthManager {
 
     // 4. Remove from local storage
     await this.disconnect(userId, provider)
+
+    // Audit: token revoked
+    oauthAudit.tokenRevoked(provider, userId, { tenantId: tenantUserId })
   }
 
   // ------------------------------------------------------------------
@@ -692,3 +726,23 @@ export { GoogleProvider, type GoogleAuthOptions, type GoogleUserInfo } from "./p
 export { LINEAR_SCOPES, LinearProvider } from "./providers/linear"
 export { STRIPE_SCOPES, StripeProvider, type StripeTokenResponse } from "./providers/stripe"
 export { OAUTH_TOKENS_NAMESPACE, USER_ENV_KEYS_NAMESPACE } from "./types"
+export {
+  oauthAudit,
+  ConsoleAuditLogger,
+  NoopAuditLogger,
+  type OAuthAuditEvent,
+  type OAuthAuditEventType,
+  type OAuthAuditLogger,
+} from "./audit"
+export { fetchWithRetry, FetchRetryError, type FetchWithRetryOptions } from "./fetch-with-retry"
+export {
+  deriveKey,
+  getKeyForVersion,
+  serializeMetadata,
+  parseMetadata,
+  CURRENT_KEY_VERSION,
+  type KeyVersion,
+  type KeyDerivationContext,
+  type EncryptionMetadata,
+} from "./key-derivation"
+export { type EncryptedPayloadV2 } from "./security"

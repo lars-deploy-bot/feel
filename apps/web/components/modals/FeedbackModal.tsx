@@ -1,7 +1,7 @@
 "use client"
 
-import { MessageCircle } from "lucide-react"
-import { useId, useState } from "react"
+import { Check, Loader2, Sparkles } from "lucide-react"
+import { useEffect, useId, useRef, useState } from "react"
 import { useAuth } from "@/features/deployment/hooks/useAuth"
 
 interface FeedbackModalProps {
@@ -13,11 +13,22 @@ interface FeedbackModalProps {
 export function FeedbackModal({ onClose, workspace, conversationId }: FeedbackModalProps) {
   const titleId = useId()
   const textareaId = useId()
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const { user } = useAuth()
   const [feedback, setFeedback] = useState("")
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Focus textarea on mount and handle Escape key
+  useEffect(() => {
+    textareaRef.current?.focus()
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose()
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [onClose])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -59,21 +70,21 @@ export function FeedbackModal({ onClose, workspace, conversationId }: FeedbackMo
   if (success) {
     return (
       <div
-        className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
         onClick={onClose}
         role="dialog"
         aria-modal="true"
       >
         <div
-          className="bg-white dark:bg-[#1a1a1a] rounded-lg p-8 max-w-md w-full shadow-xl animate-in fade-in-0 zoom-in-95 duration-200"
+          className="bg-white dark:bg-neutral-900 rounded-2xl p-8 max-w-sm w-full shadow-xl ring-1 ring-black/[0.08] dark:ring-white/[0.08] animate-in fade-in-0 zoom-in-95 duration-200"
           onClick={e => e.stopPropagation()}
           role="document"
         >
-          <div className="w-16 h-16 bg-green-50 dark:bg-green-950 rounded-full flex items-center justify-center mx-auto mb-6">
-            <MessageCircle className="w-8 h-8 text-green-500" />
+          <div className="size-12 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Check className="size-6 text-green-500" strokeWidth={2.5} />
           </div>
-          <h3 className="text-xl font-medium text-black dark:text-white mb-2 text-center">Thank you!</h3>
-          <p className="text-sm text-black/60 dark:text-white/60 text-center">Your feedback has been received</p>
+          <h3 className="text-lg font-medium text-black dark:text-white mb-1 text-center">Thank you!</h3>
+          <p className="text-sm text-black/50 dark:text-white/50 text-center">Your feedback helps us improve</p>
         </div>
       </div>
     )
@@ -81,64 +92,66 @@ export function FeedbackModal({ onClose, workspace, conversationId }: FeedbackMo
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
     >
       <div
-        className="bg-white dark:bg-[#1a1a1a] rounded-lg p-8 max-w-md w-full shadow-xl animate-in fade-in-0 zoom-in-95 duration-200"
+        className="bg-white dark:bg-neutral-900 rounded-2xl p-6 max-w-sm w-full shadow-xl ring-1 ring-black/[0.08] dark:ring-white/[0.08] animate-in fade-in-0 zoom-in-95 duration-200"
         onClick={e => e.stopPropagation()}
         role="document"
       >
-        <div className="w-16 h-16 bg-black/5 dark:bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
-          <MessageCircle className="w-8 h-8 text-black dark:text-white" />
+        <div className="size-12 bg-black/[0.04] dark:bg-white/[0.06] rounded-full flex items-center justify-center mx-auto mb-4">
+          <Sparkles className="size-6 text-black/70 dark:text-white/70" />
         </div>
-        <h3 id={titleId} className="text-xl font-medium text-black dark:text-white mb-6 text-center">
+        <h3 id={titleId} className="text-lg font-medium text-black dark:text-white mb-1 text-center">
           Send Feedback
         </h3>
+        <p className="text-sm text-black/40 dark:text-white/40 text-center mb-5">Help us make this better</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor={textareaId} className="block text-xs text-black/60 dark:text-white/60 mb-2 font-normal">
-              Tell us what you think
-            </label>
-            <textarea
-              id={textareaId}
-              value={feedback}
-              onChange={e => setFeedback(e.target.value)}
-              placeholder="Your feedback..."
-              rows={5}
-              className="w-full px-4 py-2.5 bg-white dark:bg-[#2a2a2a] border border-black/20 dark:border-white/20 rounded text-sm text-black dark:text-white focus:outline-none focus:border-black dark:focus:border-white transition-colors resize-none"
-              required
-              disabled={loading}
-              autoComplete="off"
-              data-1p-ignore
-            />
-          </div>
+          <textarea
+            ref={textareaRef}
+            id={textareaId}
+            value={feedback}
+            onChange={e => setFeedback(e.target.value)}
+            placeholder="What's on your mind?"
+            rows={4}
+            className="w-full px-4 py-3 bg-black/[0.02] dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl text-sm leading-relaxed text-black dark:text-white placeholder:text-black/30 dark:placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-black/[0.12] dark:focus:ring-white/[0.12] focus:border-transparent transition-all duration-150 resize-none"
+            required
+            disabled={loading}
+            autoComplete="off"
+            data-1p-ignore
+          />
 
           {error && (
-            <div className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/30 rounded p-3">
-              {error}
-            </div>
+            <div className="text-xs text-red-600 dark:text-red-400 bg-red-500/10 rounded-xl px-4 py-3">{error}</div>
           )}
 
-          <div className="flex gap-3 pt-2">
+          <div className="flex gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-6 py-3 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-black dark:text-white rounded transition-all font-medium"
+              className="flex-1 h-11 bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.07] dark:hover:bg-white/[0.09] active:bg-black/[0.10] dark:active:bg-white/[0.12] text-black/70 dark:text-white/70 rounded-xl transition-colors duration-150 font-medium text-sm"
               disabled={loading}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex-1 px-6 py-3 bg-black dark:bg-white text-white dark:text-black hover:bg-black/80 dark:hover:bg-white/80 rounded transition-all font-medium disabled:opacity-50"
-              disabled={loading}
+              className="flex-1 h-11 bg-black dark:bg-white text-white dark:text-black hover:brightness-[0.85] active:brightness-75 rounded-xl transition-[filter] duration-150 font-medium text-sm disabled:opacity-30 disabled:hover:brightness-100 flex items-center justify-center gap-2"
+              disabled={loading || !feedback.trim()}
             >
-              {loading ? "Sending..." : "Send"}
+              {loading ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Sending
+                </>
+              ) : (
+                "Send"
+              )}
             </button>
           </div>
         </form>
