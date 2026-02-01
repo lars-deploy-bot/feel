@@ -21,7 +21,7 @@ vi.mock("@alive-brug/redis", () => ({
   })),
 }))
 
-// Mock Supabase client
+// Mock Supabase client (not used by health route, but kept for reference)
 vi.mock("@supabase/supabase-js", () => ({
   createClient: vi.fn(() => ({
     from: vi.fn(() => ({
@@ -29,6 +29,10 @@ vi.mock("@supabase/supabase-js", () => ({
     })),
   })),
 }))
+
+// Mock global fetch for database health checks (health route uses direct fetch)
+const mockFetch = vi.fn()
+vi.stubGlobal("fetch", mockFetch)
 
 // Mock env functions
 vi.mock("@/lib/env/server", () => ({
@@ -64,6 +68,8 @@ describe("GET /api/health", () => {
     vi.clearAllMocks()
     // Reset singleton before each test so mocks take effect
     _resetHealthCheckRedis()
+    // Reset fetch mock
+    mockFetch.mockReset()
   })
 
   afterEach(() => {
@@ -72,7 +78,7 @@ describe("GET /api/health", () => {
 
   describe("Happy Path - All Services Connected", () => {
     it("should return 200 when all services are healthy", async () => {
-      // Setup: Redis and database both connected
+      // Setup: Redis connected
       vi.mocked(createRedisClient).mockReturnValue(
         mockRedis({
           ping: vi.fn().mockResolvedValue("PONG"),
@@ -80,13 +86,8 @@ describe("GET /api/health", () => {
         }),
       )
 
-      vi.mocked(createClient).mockReturnValue(
-        mockSupabase({
-          from: vi.fn().mockReturnValue({
-            select: vi.fn().mockResolvedValue({ error: null }),
-          }),
-        }),
-      )
+      // Setup: Database connected (via fetch mock)
+      mockFetch.mockResolvedValue(new Response(JSON.stringify([{ user_id: "test" }]), { status: 200 }))
 
       const response = await GET()
       const data = await response.json()
@@ -103,13 +104,8 @@ describe("GET /api/health", () => {
         }),
       )
 
-      vi.mocked(createClient).mockReturnValue(
-        mockSupabase({
-          from: vi.fn().mockReturnValue({
-            select: vi.fn().mockResolvedValue({ error: null }),
-          }),
-        }),
-      )
+      // Database connected via fetch mock
+      mockFetch.mockResolvedValue(new Response(JSON.stringify([{ user_id: "test" }]), { status: 200 }))
 
       const response = await GET()
       const data = await response.json()
@@ -160,13 +156,8 @@ describe("GET /api/health", () => {
         }),
       )
 
-      vi.mocked(createClient).mockReturnValue(
-        mockSupabase({
-          from: vi.fn().mockReturnValue({
-            select: vi.fn().mockResolvedValue({ error: null }),
-          }),
-        }),
-      )
+      // Database connected via fetch mock
+      mockFetch.mockResolvedValue(new Response(JSON.stringify([{ user_id: "test" }]), { status: 200 }))
 
       const response = await GET()
       const data = await response.json()
@@ -186,13 +177,8 @@ describe("GET /api/health", () => {
         }),
       )
 
-      vi.mocked(createClient).mockReturnValue(
-        mockSupabase({
-          from: vi.fn().mockReturnValue({
-            select: vi.fn().mockResolvedValue({ error: null }),
-          }),
-        }),
-      )
+      // Database connected via fetch mock
+      mockFetch.mockResolvedValue(new Response(JSON.stringify([{ user_id: "test" }]), { status: 200 }))
 
       const response = await GET()
       const data = await response.json()
@@ -211,13 +197,8 @@ describe("GET /api/health", () => {
         }),
       )
 
-      vi.mocked(createClient).mockReturnValue(
-        mockSupabase({
-          from: vi.fn().mockReturnValue({
-            select: vi.fn().mockRejectedValue(new Error("Database connection failed")),
-          }),
-        }),
-      )
+      // Database disconnected via fetch mock (network error)
+      mockFetch.mockRejectedValue(new Error("Database connection failed"))
 
       const response = await GET()
       const data = await response.json()
@@ -236,13 +217,8 @@ describe("GET /api/health", () => {
         }),
       )
 
-      vi.mocked(createClient).mockReturnValue(
-        mockSupabase({
-          from: vi.fn().mockReturnValue({
-            select: vi.fn().mockRejectedValue(new Error("Database error")),
-          }),
-        }),
-      )
+      // Database disconnected via fetch mock (network error)
+      mockFetch.mockRejectedValue(new Error("Database error"))
 
       const response = await GET()
       const data = await response.json()
@@ -263,13 +239,8 @@ describe("GET /api/health", () => {
         }),
       )
 
-      vi.mocked(createClient).mockReturnValue(
-        mockSupabase({
-          from: vi.fn().mockReturnValue({
-            select: vi.fn().mockResolvedValue({ error: null }),
-          }),
-        }),
-      )
+      // Database connected via fetch mock
+      mockFetch.mockResolvedValue(new Response(JSON.stringify([{ user_id: "test" }]), { status: 200 }))
 
       const response = await GET()
       const data = await response.json()
@@ -288,13 +259,8 @@ describe("GET /api/health", () => {
         }),
       )
 
-      vi.mocked(createClient).mockReturnValue(
-        mockSupabase({
-          from: vi.fn().mockReturnValue({
-            select: vi.fn().mockResolvedValue({ error: { message: "Query failed" } }),
-          }),
-        }),
-      )
+      // Database error (query failed, not disconnected) via fetch mock
+      mockFetch.mockResolvedValue(new Response(JSON.stringify({ message: "Query failed" }), { status: 400 }))
 
       const response = await GET()
       const data = await response.json()
@@ -315,13 +281,8 @@ describe("GET /api/health", () => {
         }),
       )
 
-      vi.mocked(createClient).mockReturnValue(
-        mockSupabase({
-          from: vi.fn().mockReturnValue({
-            select: vi.fn().mockResolvedValue({ error: null }),
-          }),
-        }),
-      )
+      // Database connected via fetch mock
+      mockFetch.mockResolvedValue(new Response(JSON.stringify([{ user_id: "test" }]), { status: 200 }))
 
       const response = await GET()
 
@@ -338,13 +299,8 @@ describe("GET /api/health", () => {
         }),
       )
 
-      vi.mocked(createClient).mockReturnValue(
-        mockSupabase({
-          from: vi.fn().mockReturnValue({
-            select: vi.fn().mockResolvedValue({ error: null }),
-          }),
-        }),
-      )
+      // Database connected via fetch mock
+      mockFetch.mockResolvedValue(new Response(JSON.stringify([{ user_id: "test" }]), { status: 200 }))
 
       const response = await GET()
       const data = await response.json()
