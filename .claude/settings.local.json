@@ -22,9 +22,14 @@
       "mcp__ide__getDiagnostics",
       "Skill"
     ],
-    "deny": ["Bash(rm -rf :*)", "Bash(bun test)"],
+    "deny": [
+      "Bash(rm -rf :*)",
+      "Bash(bun test)"
+    ],
     "ask": []
   },
-  "enabledMcpjsonServers": ["supabase"],
-  "enableAllProjectMcpServers": true
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "supabase"
+  ]
 }
