@@ -4,6 +4,7 @@ import { SECURITY, TEST_CONFIG } from "@webalive/shared"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { createCorsErrorResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { addCorsHeaders } from "@/lib/cors-utils"
+import { filterLocalDomains } from "@/lib/domains"
 import { ErrorCodes } from "@/lib/error-codes"
 import { createAppClient } from "@/lib/supabase/app"
 import { createIamClient } from "@/lib/supabase/iam"
@@ -53,7 +54,9 @@ export async function GET(req: NextRequest) {
     const app = await createAppClient("service")
     const { data: domains } = await app.from("domains").select("hostname").in("org_id", orgIds)
 
-    const workspaces = domains?.map(d => d.hostname) || []
+    // Filter to only include domains that exist on THIS server
+    const allHostnames = domains?.map(d => d.hostname) || []
+    const workspaces = filterLocalDomains(allHostnames)
 
     return createCorsSuccessResponse(origin, {
       workspaces,

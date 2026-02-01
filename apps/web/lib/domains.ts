@@ -1,4 +1,22 @@
+import { existsSync } from "node:fs"
+import { PATHS } from "@webalive/shared"
 import { createAppClient } from "@/lib/supabase/app"
+
+/**
+ * Check if a domain exists on this server (has a site directory)
+ * Used to filter domains from shared database to only show local domains
+ */
+export function domainExistsOnThisServer(hostname: string): boolean {
+  const sitePath = `${PATHS.SITES_ROOT}/${hostname}`
+  return existsSync(sitePath)
+}
+
+/**
+ * Filter a list of hostnames to only include those deployed on this server
+ */
+export function filterLocalDomains(hostnames: string[]): string[] {
+  return hostnames.filter(domainExistsOnThisServer)
+}
 
 export interface DomainConfig {
   domain_id: string

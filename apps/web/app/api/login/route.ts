@@ -5,6 +5,7 @@ import { createSessionToken } from "@/features/auth/lib/jwt"
 import { createCorsResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { COOKIE_NAMES, getSessionCookieOptions } from "@/lib/auth/cookies"
 import { addCorsHeaders } from "@/lib/cors-utils"
+import { filterLocalDomains } from "@/lib/domains"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 import { createAppClient } from "@/lib/supabase/app"
 import { createIamClient } from "@/lib/supabase/iam"
@@ -115,7 +116,9 @@ export async function POST(req: NextRequest) {
     const { data: domains } = await app.from("domains").select("hostname").in("org_id", orgIds)
 
     if (domains) {
-      workspaces.push(...domains.map(d => d.hostname))
+      // Filter to only include domains that exist on THIS server
+      const localDomains = filterLocalDomains(domains.map(d => d.hostname))
+      workspaces.push(...localDomains)
     }
   }
 
