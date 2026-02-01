@@ -644,8 +644,8 @@ function ChatPageContent() {
               ref={chatInputRef}
               message={msg}
               setMessage={setMsg}
-              busy={busy || (!workspace && mounted && !organizationsLoading)}
-              isReady={isChatReady}
+              busy={busy}
+              isReady={isChatReady && !!workspace}
               isStopping={isStopping}
               onSubmit={sendMessage}
               onStop={stopStreaming}
@@ -690,8 +690,8 @@ function ChatPageContent() {
               ref={chatInputRef}
               message={msg}
               setMessage={setMsg}
-              busy={busy || (!workspace && mounted && !organizationsLoading)}
-              isReady={isChatReady}
+              busy={busy}
+              isReady={isChatReady && !!workspace}
               isStopping={isStopping}
               onSubmit={sendMessage}
               onStop={stopStreaming}
