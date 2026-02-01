@@ -49,19 +49,20 @@ vi.mock("@webalive/env/server", () => ({
 // Import after mocking
 const { GET, _resetHealthCheckRedis } = await import("../route")
 const { createRedisClient } = await import("@alive-brug/redis")
-const { createClient } = await import("@supabase/supabase-js")
+// createClient no longer used - health route uses direct fetch
 
 // Type helpers for mocks - cast partial mocks to satisfy full type requirements
 type MockRedis = ReturnType<typeof createRedisClient>
-type MockSupabase = ReturnType<typeof createClient>
+// MockSupabase unused after refactoring to mockFetch
 
 function mockRedis(overrides: { ping: ReturnType<typeof vi.fn>; status: string }): MockRedis {
   return overrides as unknown as MockRedis
 }
 
-function mockSupabase(overrides: { from: ReturnType<typeof vi.fn> }): MockSupabase {
-  return overrides as unknown as MockSupabase
-}
+// Unused after refactoring to use mockFetch
+// function mockSupabase(overrides: { from: ReturnType<typeof vi.fn> }): MockSupabase {
+//   return overrides as unknown as MockSupabase
+// }
 
 describe("GET /api/health", () => {
   beforeEach(() => {
