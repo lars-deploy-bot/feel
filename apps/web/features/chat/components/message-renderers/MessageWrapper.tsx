@@ -4,7 +4,8 @@
  * MessageWrapper Component
  *
  * Wraps individual messages with hover actions like delete.
- * Uses CSS-only hover for accessibility (no JS hover state needed).
+ * Button positioned to the right on desktop (hidden on mobile).
+ * Uses opacity + pointer-events for smooth fade without layout shift.
  */
 
 import { Trash2 } from "lucide-react"
@@ -43,25 +44,33 @@ export function MessageWrapper({ messageId, tabId, canDelete, children }: Messag
   }
 
   return (
-    <div className="group relative min-w-0 max-w-full overflow-hidden">
-      {children}
+    <div className="group flex items-start gap-2 min-w-0 max-w-full overflow-visible">
+      {/* Message content */}
+      <div className="flex-1 min-w-0">{children}</div>
 
-      {/* Delete button - appears on CSS hover (group-hover) */}
+      {/* Delete button - to the right on desktop, hidden on mobile */}
       {canDelete && (
         <button
           type="button"
           onClick={handleDelete}
           disabled={isDeleting}
           className={cn(
-            "absolute -right-2 top-0 p-1.5 rounded-md",
-            "bg-white dark:bg-zinc-800 shadow-sm border border-zinc-200 dark:border-zinc-700",
+            "flex-shrink-0 p-2 rounded-lg",
             "text-zinc-400 hover:text-red-500 dark:text-zinc-500 dark:hover:text-red-400",
-            "opacity-0 group-hover:opacity-100 transition-opacity",
+            "hover:bg-red-50 dark:hover:bg-red-950/20",
+            // Desktop: hidden by default, shown on hover
+            "opacity-0 pointer-events-none",
+            "md:group-hover:opacity-100 md:group-hover:pointer-events-auto",
+            "transition-opacity duration-200",
+            // Mobile: completely hidden
+            "hidden md:block",
+            // Loading state
             "disabled:opacity-50 disabled:cursor-not-allowed",
           )}
           title="Delete this message and all messages after it"
+          aria-label="Delete message"
         >
-          <Trash2 size={14} />
+          <Trash2 size={16} strokeWidth={1.5} />
         </button>
       )}
     </div>
