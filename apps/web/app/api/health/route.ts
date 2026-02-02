@@ -16,21 +16,35 @@
  * }
  */
 
-import { readFileSync } from "node:fs"
-import { join } from "node:path"
+import { readFileSync, existsSync } from "node:fs"
+import { join, dirname } from "node:path"
+import { fileURLToPath } from "node:url"
 import { createRedisClient } from "@alive-brug/redis"
 import { getRedisUrl } from "@webalive/env/server"
 import { getSupabaseCredentials } from "@/lib/env/server"
 
 // Read build info at startup (file is generated at build time)
 function getBuildInfo(): { commit: string; branch: string; buildTime: string } {
-  try {
-    const buildInfoPath = join(process.cwd(), "lib/build-info.json")
-    const content = readFileSync(buildInfoPath, "utf-8")
-    return JSON.parse(content)
-  } catch {
-    return { commit: "unknown", branch: "unknown", buildTime: "unknown" }
+  // Try multiple paths since location varies between dev and production
+  const possiblePaths = [
+    join(process.cwd(), "lib/build-info.json"),
+    join(process.cwd(), "apps/web/lib/build-info.json"),
+    "/root/alive/.builds/staging/current/standalone/apps/web/lib/build-info.json",
+    "/root/alive/apps/web/lib/build-info.json",
+  ]
+
+  for (const buildInfoPath of possiblePaths) {
+    try {
+      if (existsSync(buildInfoPath)) {
+        const content = readFileSync(buildInfoPath, "utf-8")
+        return JSON.parse(content)
+      }
+    } catch {
+      // Continue to next path
+    }
   }
+
+  return { commit: "not-found", branch: "unknown", buildTime: "unknown" }
 }
 
 const buildInfo = getBuildInfo()
