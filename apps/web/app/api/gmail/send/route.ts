@@ -20,10 +20,15 @@ interface SendEmailRequest {
   threadId?: string
 }
 
-function createRawEmail(params: SendEmailRequest): string {
-  const { to, cc, bcc, subject, body } = params
+interface CreateRawEmailParams extends SendEmailRequest {
+  from: string
+}
+
+function createRawEmail(params: CreateRawEmailParams): string {
+  const { from, to, cc, bcc, subject, body } = params
 
   const headers = [
+    `From: ${from}`,
     `To: ${to.join(", ")}`,
     cc?.length ? `Cc: ${cc.join(", ")}` : null,
     bcc?.length ? `Bcc: ${bcc.join(", ")}` : null,
@@ -73,8 +78,17 @@ export async function POST(req: NextRequest) {
     oauth2Client.setCredentials({ access_token: accessToken })
     const gmail = new gmail_v1.Gmail({ auth: oauth2Client })
 
-    // 5. Send email
-    const raw = createRawEmail(body)
+    // 5. Get sender's email from Gmail profile
+    const profileResponse = await gmail.users.getProfile({ userId: "me" })
+    const senderEmail = profileResponse.data.emailAddress
+    if (!senderEmail) {
+      return createErrorResponse(ErrorCodes.INTEGRATION_ERROR, 500, {
+        reason: "Could not determine sender email address",
+      })
+    }
+
+    // 6. Send email with proper From header
+    const raw = createRawEmail({ ...body, from: senderEmail })
     const response = await gmail.users.messages.send({
       userId: "me",
       requestBody: {
