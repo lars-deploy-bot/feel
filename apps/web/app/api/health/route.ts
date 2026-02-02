@@ -16,10 +16,24 @@
  * }
  */
 
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
 import { createRedisClient } from "@alive-brug/redis"
 import { getRedisUrl } from "@webalive/env/server"
 import { getSupabaseCredentials } from "@/lib/env/server"
-import buildInfo from "@/lib/build-info.json"
+
+// Read build info at startup (file is generated at build time)
+function getBuildInfo(): { commit: string; branch: string; buildTime: string } {
+  try {
+    const buildInfoPath = join(process.cwd(), "lib/build-info.json")
+    const content = readFileSync(buildInfoPath, "utf-8")
+    return JSON.parse(content)
+  } catch {
+    return { commit: "unknown", branch: "unknown", buildTime: "unknown" }
+  }
+}
+
+const buildInfo = getBuildInfo()
 
 // Types
 type ServiceStatus = "connected" | "disconnected" | "error"
