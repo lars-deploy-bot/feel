@@ -2,7 +2,7 @@
 
 ## Issue Reported
 
-**User**: eedenlars@gmail.com (staging environment)
+**User**: admin@example.com (staging environment)
 **Symptom**: "I have this org selected but it's not loading in staging"
 
 ## Root Cause Found

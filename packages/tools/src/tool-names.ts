@@ -99,6 +99,16 @@ export const AI = {
 export type AITool = (typeof AI)[keyof typeof AI]
 
 // ============================================================
+// PLAN MODE TOOLS (SDK built-in)
+// ============================================================
+
+export const PLAN = {
+  EXIT_PLAN_MODE: "exitplanmode",
+} as const
+
+export type PlanTool = (typeof PLAN)[keyof typeof PLAN]
+
+// ============================================================
 // OTHER TOOLS
 // ============================================================
 
@@ -113,7 +123,7 @@ export type OtherTool = (typeof OTHER)[keyof typeof OTHER]
 // ALL TOOLS (union type)
 // ============================================================
 
-export type ToolName = LinearTool | StripeTool | FileOpTool | EmailTool | AITool | OtherTool
+export type ToolName = LinearTool | StripeTool | FileOpTool | EmailTool | AITool | PlanTool | OtherTool
 
 // For dynamic/unknown tools, use this explicitly
 export type AnyToolName = ToolName | (string & {})

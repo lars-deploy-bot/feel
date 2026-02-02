@@ -185,7 +185,7 @@ bun run build
 # 3. Restart dev/staging
 make dev  # or make staging
 
-# 4. Test with user: eedenlars@gmail.com on evermore.alive.best
+# 4. Test with user: admin@example.com on evermore.alive.best
 # 5. Trigger restart_dev_server tool
 # 6. Should succeed without "Authentication required" error
 ```

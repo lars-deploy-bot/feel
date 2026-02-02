@@ -23,20 +23,20 @@ Before running ANY SQL:
 **Location:** `apps/web/.env.production`
 
 ```bash
-DATABASE_URL=postgresql://postgres@db.qnvprftdorualkdyogka.supabase.co:5432/postgres
-DATABASE_PASSWORD=MUL86buNIvkRLf50
+DATABASE_URL=$DATABASE_URL
+DATABASE_PASSWORD=$DATABASE_PASSWORD
 ```
 
 ## How to Run SQL
 
 ### Single Query
 ```bash
-PGPASSWORD="MUL86buNIvkRLf50" psql "postgresql://postgres@db.qnvprftdorualkdyogka.supabase.co:5432/postgres" -c "YOUR SQL HERE"
+PGPASSWORD="$DATABASE_PASSWORD" psql "$DATABASE_URL" -c "YOUR SQL HERE"
 ```
 
 ### Multi-line / Complex Queries
 ```bash
-PGPASSWORD="MUL86buNIvkRLf50" psql "postgresql://postgres@db.qnvprftdorualkdyogka.supabase.co:5432/postgres" << 'EOF'
+PGPASSWORD="$DATABASE_PASSWORD" psql "$DATABASE_URL" << 'EOF'
 -- Your SQL here
 SELECT * FROM iam.users LIMIT 5;
 EOF
@@ -44,7 +44,7 @@ EOF
 
 ### Interactive Session
 ```bash
-PGPASSWORD="MUL86buNIvkRLf50" psql "postgresql://postgres@db.qnvprftdorualkdyogka.supabase.co:5432/postgres"
+PGPASSWORD="$DATABASE_PASSWORD" psql "$DATABASE_URL"
 ```
 
 ## Database Schemas
@@ -62,17 +62,17 @@ PGPASSWORD="MUL86buNIvkRLf50" psql "postgresql://postgres@db.qnvprftdorualkdyogk
 
 ### List tables in a schema
 ```bash
-PGPASSWORD="MUL86buNIvkRLf50" psql "postgresql://postgres@db.qnvprftdorualkdyogka.supabase.co:5432/postgres" -c "\dt iam.*"
+PGPASSWORD="$DATABASE_PASSWORD" psql "$DATABASE_URL" -c "\dt iam.*"
 ```
 
 ### Describe a table
 ```bash
-PGPASSWORD="MUL86buNIvkRLf50" psql "postgresql://postgres@db.qnvprftdorualkdyogka.supabase.co:5432/postgres" -c "\d iam.users"
+PGPASSWORD="$DATABASE_PASSWORD" psql "$DATABASE_URL" -c "\d iam.users"
 ```
 
 ### Count rows
 ```bash
-PGPASSWORD="MUL86buNIvkRLf50" psql "postgresql://postgres@db.qnvprftdorualkdyogka.supabase.co:5432/postgres" -c "SELECT COUNT(*) FROM iam.users"
+PGPASSWORD="$DATABASE_PASSWORD" psql "$DATABASE_URL" -c "SELECT COUNT(*) FROM iam.users"
 ```
 
 ## Safe Migration Pattern
@@ -80,7 +80,7 @@ PGPASSWORD="MUL86buNIvkRLf50" psql "postgresql://postgres@db.qnvprftdorualkdyogk
 For schema changes (CREATE TABLE, ALTER TABLE, etc.):
 
 ```bash
-PGPASSWORD="MUL86buNIvkRLf50" psql "postgresql://postgres@db.qnvprftdorualkdyogka.supabase.co:5432/postgres" << 'EOF'
+PGPASSWORD="$DATABASE_PASSWORD" psql "$DATABASE_URL" << 'EOF'
 -- Step 1: Create table
 CREATE TABLE IF NOT EXISTS app.new_table (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -154,7 +154,7 @@ This updates the generated types in `packages/database/src/*.generated.ts`.
 
 ```bash
 # Shorthand for running SQL (copy this pattern)
-PGPASSWORD="MUL86buNIvkRLf50" psql "postgresql://postgres@db.qnvprftdorualkdyogka.supabase.co:5432/postgres" -c "SQL"
+PGPASSWORD="$DATABASE_PASSWORD" psql "$DATABASE_URL" -c "SQL"
 ```
 
 ## Environment Note

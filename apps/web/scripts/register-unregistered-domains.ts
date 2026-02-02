@@ -5,7 +5,7 @@
  *
  * Usage: bun scripts/register-unregistered-domains.ts <email>
  *
- * Example: bun scripts/register-unregistered-domains.ts eedenlars@gmail.com
+ * Example: bun scripts/register-unregistered-domains.ts user@example.com
  *
  * NOTE: This script uses direct Supabase clients to avoid Next.js dependencies
  */
@@ -21,7 +21,7 @@ const [email] = process.argv.slice(2)
 
 if (!email) {
   console.error("❌ Usage: bun scripts/register-unregistered-domains.ts <email>")
-  console.error("   Example: bun scripts/register-unregistered-domains.ts eedenlars@gmail.com")
+  console.error("   Example: bun scripts/register-unregistered-domains.ts user@example.com")
   process.exit(1)
 }
 

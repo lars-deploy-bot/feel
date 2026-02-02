@@ -706,9 +706,7 @@ pm2 restart claude-bridge-dev --update-env
 
 # 5. Health check (curl API endpoint)
 sleep 5
-curl -f -X POST "http://localhost:8997/api/login" \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"eedenlars@gmail.com","password":"supersecret"}' && \
+curl -f -s "http://localhost:8997/api/health" && \
   echo "✅ Health check passed" || \
   echo "⚠️  Health check failed"
 

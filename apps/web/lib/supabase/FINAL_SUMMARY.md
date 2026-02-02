@@ -150,14 +150,14 @@ bun run gen:db:force
 ## Environment Variables
 
 ```bash
-SUPABASE_URL="https://qnvprftdorualkdyogka.supabase.co"
-SUPABASE_PROJECT_ID="qnvprftdorualkdyogka"
-SUPABASE_ACCESS_TOKEN="sbp_6ca324931b5b474b237262ad734e9399d07f1c4c"
+SUPABASE_URL="https://your-project.supabase.co"
+SUPABASE_PROJECT_ID="your-project-id"
+SUPABASE_ACCESS_TOKEN="sbp_..."
 SUPABASE_SERVICE_ROLE_KEY="eyJ..."
 SUPABASE_ANON_KEY="eyJ..."
 
 # Client-side (browser)
-NEXT_PUBLIC_SUPABASE_URL="https://qnvprftdorualkdyogka.supabase.co"
+NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
 NEXT_PUBLIC_SUPABASE_ANON_KEY="eyJ..."
 ```
 

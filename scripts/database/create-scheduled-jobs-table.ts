@@ -110,7 +110,7 @@ console.log("SQL to create app.scheduled_jobs table");
 console.log("=".repeat(80));
 console.log("");
 console.log("Run this SQL in the Supabase Dashboard SQL Editor:");
-console.log("https://supabase.com/dashboard/project/qnvprftdorualkdyogka/sql/new");
+console.log("https://supabase.com/dashboard/project/<your-project-id>/sql/new");
 console.log("");
 console.log("-".repeat(80));
 console.log(CREATE_TABLE_SQL);

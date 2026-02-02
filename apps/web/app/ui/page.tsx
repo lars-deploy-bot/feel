@@ -2,7 +2,7 @@
  * UI Component Preview Page
  *
  * A Storybook-like component library for previewing all UI components.
- * Only accessible to superadmins (eedenlars@gmail.com).
+ * Only accessible to superadmins (users in SUPERADMIN_EMAILS env var).
  *
  * Categories: Primitives, General, Tools, Integrations
  */

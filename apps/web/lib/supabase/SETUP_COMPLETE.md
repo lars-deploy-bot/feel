@@ -11,13 +11,13 @@ Added Supabase credentials to `.env`:
 
 ```bash
 # Server-side
-SUPABASE_URL="https://qnvprftdorualkdyogka.supabase.co"
-SUPABASE_PROJECT_ID="qnvprftdorualkdyogka"
+SUPABASE_URL="https://your-project.supabase.co"
+SUPABASE_PROJECT_ID="your-project-id"
 SUPABASE_SERVICE_ROLE_KEY="eyJ..."
 SUPABASE_ANON_KEY="eyJ..."
 
 # Client-side (browser)
-NEXT_PUBLIC_SUPABASE_URL="https://qnvprftdorualkdyogka.supabase.co"
+NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
 NEXT_PUBLIC_SUPABASE_ANON_KEY="eyJ..."
 ```
 
@@ -72,7 +72,7 @@ All tests passed ✅:
 ```bash
 # 1. Server-side connection
 curl http://localhost:8998/api/test-supabase
-# ✅ Connected to qnvprftdorualkdyogka.supabase.co
+# ✅ Connected to your-project.supabase.co
 
 # 2. Environment variables
 curl http://localhost:8998/api/test-supabase-config

@@ -46,7 +46,7 @@ Implement server-side function that returns visible integrations for a user, hon
 
 ### ✅ 5. Seed Linear provider & owner access
 
-Insert Linear provider as `admin_only` visibility and grant initial access to `eedenlars@gmail.com`.
+Insert Linear provider as `admin_only` visibility and grant initial access to `admin@example.com`.
 
 **Status**: COMPLETED
 

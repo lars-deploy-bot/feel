@@ -20,11 +20,12 @@ ON CONFLICT (provider_key) DO UPDATE SET
   is_active = EXCLUDED.is_active,
   logo_path = EXCLUDED.logo_path;
 
--- 2. Grant access to the platform owner (eedenlars@gmail.com)
+-- 2. Grant access to the platform owner (replace with your admin email)
+-- IMPORTANT: Change 'admin@example.com' to your actual admin email
 INSERT INTO integrations.access_policies (provider_id, user_id)
 SELECT p.provider_id, u.user_id
 FROM integrations.providers p
-JOIN iam.users u ON u.email = 'eedenlars@gmail.com'
+JOIN iam.users u ON u.email = 'admin@example.com'  -- <-- CHANGE THIS
 WHERE p.provider_key = 'github'
 ON CONFLICT (provider_id, user_id) DO NOTHING;
 

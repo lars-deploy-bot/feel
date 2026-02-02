@@ -88,10 +88,8 @@ echo "✅ Dev server started"
 # Wait for server to initialize
 sleep 5
 
-echo "🔐 Verifying dev server is responding to API calls..."
-curl -f -X POST "http://localhost:$DEV_PORT/api/login" \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"eedenlars@gmail.com","password":"supersecret"}' > /dev/null 2>&1 && \
+echo "🔐 Verifying dev server is responding..."
+curl -f -s "http://localhost:$DEV_PORT/api/health" > /dev/null 2>&1 && \
   echo "✅ Dev server health check passed (API responding)" || \
   echo "⚠️  Dev server health check failed (API not responding)"
 

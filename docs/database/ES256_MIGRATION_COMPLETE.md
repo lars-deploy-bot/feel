@@ -77,10 +77,10 @@ Result: **22/22 passing** ✅
 # Staging (with login verification)
 make staging
 
-# Verify login
+# Verify login (use credentials from your environment)
 curl -s -X POST http://localhost:8998/api/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"eedenlars@gmail.com","password":"supersecret"}'
+  -d '{"email":"your@email.com","password":"your-password"}'
 
 # Production deployment - contact devops
 ```

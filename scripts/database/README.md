@@ -39,7 +39,7 @@ type Domain = AppDatabase["app"]["Tables"]["domains"]["Row"]
 ### Requirements
 
 The script reads environment variables from `apps/web/.env`:
-- `SUPABASE_PROJECT_ID` - Your Supabase project ID (default: qnvprftdorualkdyogka)
+- `SUPABASE_PROJECT_ID` - Your Supabase project ID
 
 ### Files in this directory
 

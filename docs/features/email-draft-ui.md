@@ -28,7 +28,7 @@ The UI component is complete with fake data for testing. The Gmail API integrati
 ### How to Test
 
 **Option 1: Preview UI Page (Recommended)**
-1. Log in as superadmin (eedenlars@gmail.com)
+1. Log in as superadmin (a superadmin user)
 2. Navigate to `/preview-ui`
 3. A Storybook-like component previewer shows the EmailDraftCard
 4. Test all states: Draft, Saved, Sending, Sent, Error
@@ -43,7 +43,7 @@ The UI component is complete with fake data for testing. The Gmail API integrati
    - Click Done to save or Cancel to discard
 
 **Option 2: Settings Toggle**
-1. Log in as superadmin (eedenlars@gmail.com)
+1. Log in as superadmin (a superadmin user)
 2. Go to **Settings > Admin**
 3. Toggle **"Email Draft Preview"**
 4. Two fake email drafts appear with working buttons

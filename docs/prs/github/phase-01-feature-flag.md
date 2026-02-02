@@ -25,7 +25,7 @@ Create the foundation: feature flag to restrict GitHub UI to **admin sites AND a
 
 const ADMIN_SITES = ['huurmatcher.alive.best'] as const;
 
-const ADMIN_USERS = ['eedenlars@gmail.com'] as const;
+const ADMIN_USERS = ['admin@example.com'] as const;
 
 /**
  * Check if GitHub UI should be shown for this workspace.
@@ -121,7 +121,7 @@ describe('isGitHubEnabledForSite', () => {
 
 describe('isGitHubAdmin', () => {
   it('returns true for admin user', () => {
-    expect(isGitHubAdmin('eedenlars@gmail.com')).toBe(true);
+    expect(isGitHubAdmin('admin@example.com')).toBe(true);
   });
 
   it('returns false for non-admin user', () => {
@@ -131,7 +131,7 @@ describe('isGitHubAdmin', () => {
 
 describe('isGitHubEnabled', () => {
   it('returns true for admin site + admin user', () => {
-    expect(isGitHubEnabled('huurmatcher.alive.best', 'eedenlars@gmail.com')).toBe(true);
+    expect(isGitHubEnabled('huurmatcher.alive.best', 'admin@example.com')).toBe(true);
   });
 
   it('returns false for admin site + non-admin user', () => {
@@ -139,7 +139,7 @@ describe('isGitHubEnabled', () => {
   });
 
   it('returns false for non-admin site + admin user', () => {
-    expect(isGitHubEnabled('random.alive.best', 'eedenlars@gmail.com')).toBe(false);
+    expect(isGitHubEnabled('random.alive.best', 'admin@example.com')).toBe(false);
   });
 
   it('returns false for non-admin site + non-admin user', () => {

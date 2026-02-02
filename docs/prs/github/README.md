@@ -50,7 +50,7 @@ GitHub integration is restricted during development to **admin sites AND admin u
 ```typescript
 // apps/web/lib/github/feature-flag.ts
 const ADMIN_SITES = ['huurmatcher.alive.best'] as const;
-const ADMIN_USERS = ['eedenlars@gmail.com'] as const;
+const ADMIN_USERS = ['admin@example.com'] as const;
 
 // Site-only check (for early client-side bailout)
 export function isGitHubEnabledForSite(workspace: string): boolean {

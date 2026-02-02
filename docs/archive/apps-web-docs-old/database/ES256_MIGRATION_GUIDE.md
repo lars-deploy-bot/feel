@@ -51,7 +51,7 @@ This guide explains how to migrate from Supabase's legacy HS256 (shared secret) 
 ### Step 2: Import Private Key to Supabase
 
 1. **Open Supabase Dashboard:**
-   - Go to: https://qnvprftdorualkdyogka.supabase.co
+   - Go to: https://your-project.supabase.co
    - Navigate to: Settings → API → JWT Settings → JWT Signing Keys
 
 2. **Delete Old Standby Key (Optional):**

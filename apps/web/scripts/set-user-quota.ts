@@ -7,7 +7,7 @@
  * Usage: bun scripts/set-user-quota.ts <email> <max_sites>
  *
  * Examples:
- *   bun scripts/set-user-quota.ts eedenlars@gmail.com 100
+ *   bun scripts/set-user-quota.ts admin@example.com 100
  *   bun scripts/set-user-quota.ts user@example.com 10
  */
 
@@ -35,7 +35,7 @@ if (!email || !maxSitesStr) {
   console.error("❌ Usage: bun scripts/set-user-quota.ts <email> <max_sites>")
   console.error("")
   console.error("Examples:")
-  console.error("  bun scripts/set-user-quota.ts eedenlars@gmail.com 100")
+  console.error("  bun scripts/set-user-quota.ts admin@example.com 100")
   console.error("  bun scripts/set-user-quota.ts user@example.com 10")
   process.exit(1)
 }

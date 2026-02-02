@@ -82,6 +82,13 @@ export const serverSchema = {
   // Infrastructure (optional)
   WILDCARD_TLD: z.string().optional(),
 
+  // Server identity
+  SERVER_IP: z.string().ip().optional(),
+
+  // Admin configuration (comma-separated emails)
+  ADMIN_EMAILS: z.string().optional(),
+  SUPERADMIN_EMAILS: z.string().optional(),
+
   // Redis configuration
   // REQUIRED in production/staging, optional in local dev (BRIDGE_ENV=local)
   // Validated at runtime by getRedisUrl() helper
@@ -149,6 +156,9 @@ export const runtimeEnv = {
   IMAGES_SIGNATURE_SECRET: process.env.IMAGES_SIGNATURE_SECRET,
   IMAGES_STORAGE_PATH: process.env.IMAGES_STORAGE_PATH,
   WILDCARD_TLD: process.env.WILDCARD_TLD,
+  SERVER_IP: process.env.SERVER_IP,
+  ADMIN_EMAILS: process.env.ADMIN_EMAILS,
+  SUPERADMIN_EMAILS: process.env.SUPERADMIN_EMAILS,
   REDIS_URL: process.env.REDIS_URL,
   NODE_ENV: process.env.NODE_ENV,
 

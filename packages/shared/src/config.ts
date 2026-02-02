@@ -94,7 +94,10 @@ const MAIN_DOMAIN = cfg(serverConfig.domains?.main, "goalive.nl")
 const WILDCARD_DOMAIN = cfg(serverConfig.domains?.wildcard, "alive.best")
 const PREVIEW_BASE = cfg(serverConfig.domains?.previewBase, "preview.terminal.goalive.nl")
 const COOKIE_DOMAIN = cfg(serverConfig.domains?.cookieDomain, ".terminal.goalive.nl")
-const SERVER_IP = cfg(serverConfig.serverIp, "138.201.56.93")
+
+// Server IP: from env var, then server config, then empty (must be configured)
+const SERVER_IP_ENV = !isBrowser && typeof process !== "undefined" ? process.env.SERVER_IP : undefined
+const SERVER_IP = SERVER_IP_ENV || cfg(serverConfig.serverIp, "")
 
 // =============================================================================
 // Path Constants
@@ -296,9 +299,22 @@ export const DEFAULTS = {
 // Superadmin Configuration
 // =============================================================================
 
+// Parse comma-separated emails from env var
+function parseEmailList(envValue: string | undefined): readonly string[] {
+  if (!envValue) return []
+  return envValue
+    .split(",")
+    .map(e => e.trim())
+    .filter(Boolean)
+}
+
+// Superadmin emails from env var (SUPERADMIN_EMAILS)
+const SUPERADMIN_EMAILS_ENV = !isBrowser && typeof process !== "undefined" ? process.env.SUPERADMIN_EMAILS : undefined
+const SUPERADMIN_EMAIL_LIST = parseEmailList(SUPERADMIN_EMAILS_ENV)
+
 export const SUPERADMIN = {
-  /** Emails with superadmin access (can edit Bridge itself) */
-  EMAILS: ["eedenlars@gmail.com"] as readonly string[],
+  /** Emails with superadmin access (can edit Bridge itself). Set via SUPERADMIN_EMAILS env var. */
+  EMAILS: SUPERADMIN_EMAIL_LIST,
 
   /** Special workspace name for Bridge editing */
   WORKSPACE_NAME: "claude-bridge",

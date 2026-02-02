@@ -55,40 +55,46 @@ async function addGmailProvider() {
 
   console.log("Gmail provider added:", data)
 
-  // Grant access to the platform owner
-  console.log("Granting access to eedenlars@gmail.com...")
-
-  // First get the provider_id
-  const { data: provider } = await integrations
-    .from("providers")
-    .select("provider_id")
-    .eq("provider_key", "gmail")
-    .single()
-
-  if (!provider) {
-    console.error("Could not find gmail provider")
-    process.exit(1)
-  }
-
-  // Get the user_id for eedenlars@gmail.com
-  const { data: user } = await iam.from("users").select("user_id").eq("email", "eedenlars@gmail.com").single()
-
-  if (!user) {
-    console.log("User eedenlars@gmail.com not found, skipping access policy")
+  // Grant access to admin user (optional - set ADMIN_EMAIL env var)
+  const adminEmail = process.env.ADMIN_EMAIL
+  if (!adminEmail) {
+    console.log("No ADMIN_EMAIL set, skipping access policy grant")
+    console.log("To grant access: ADMIN_EMAIL=admin@example.com bun run scripts/add-gmail-provider.ts")
   } else {
-    // Add access policy
-    const { error: policyError } = await integrations.from("access_policies").upsert(
-      {
-        provider_id: provider.provider_id,
-        user_id: user.user_id,
-      },
-      { onConflict: "provider_id,user_id" },
-    )
+    console.log(`Granting access to ${adminEmail}...`)
 
-    if (policyError) {
-      console.error("Failed to add access policy:", policyError)
+    // First get the provider_id
+    const { data: provider } = await integrations
+      .from("providers")
+      .select("provider_id")
+      .eq("provider_key", "gmail")
+      .single()
+
+    if (!provider) {
+      console.error("Could not find gmail provider")
+      process.exit(1)
+    }
+
+    // Get the user_id for the admin
+    const { data: user } = await iam.from("users").select("user_id").eq("email", adminEmail).single()
+
+    if (!user) {
+      console.log(`User ${adminEmail} not found, skipping access policy`)
     } else {
-      console.log("Access policy added for eedenlars@gmail.com")
+      // Add access policy
+      const { error: policyError } = await integrations.from("access_policies").upsert(
+        {
+          provider_id: provider.provider_id,
+          user_id: user.user_id,
+        },
+        { onConflict: "provider_id,user_id" },
+      )
+
+      if (policyError) {
+        console.error("Failed to add access policy:", policyError)
+      } else {
+        console.log(`Access policy added for ${adminEmail}`)
+      }
     }
   }
 

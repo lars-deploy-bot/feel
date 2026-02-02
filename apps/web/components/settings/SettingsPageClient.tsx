@@ -92,17 +92,23 @@ const allTabs: TabDefinition[] = [
   { id: "admin", label: "Admin", icon: Shield, adminOnly: true },
 ]
 
-export function SettingsPageClient() {
+interface SettingsPageClientProps {
+  onClose?: () => void // When provided, show close button
+  initialTab?: SettingsTab // Override URL param for tab selection
+  skipAuthCheck?: boolean // Skip /api/auth/me when used in overlay (chat already authed)
+}
+
+export function SettingsPageClient({ onClose, initialTab, skipAuthCheck }: SettingsPageClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user } = useAuth()
-  const [loading, setLoading] = useState(true)
-  const [authorized, setAuthorized] = useState(false)
+  const [loading, setLoading] = useState(!skipAuthCheck)
+  const [authorized, setAuthorized] = useState(skipAuthCheck ?? false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  // Get initial tab from URL or default to "account"
+  // Get initial tab from prop, URL, or default to "account"
   const tabParam = searchParams.get("tab") as SettingsTab | null
-  const [activeTab, setActiveTab] = useState<SettingsTab>(tabParam || "account")
+  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab || tabParam || "account")
 
   // Filter tabs based on admin status
   const tabs = allTabs.filter(tab => !tab.adminOnly || user?.isAdmin)
@@ -117,6 +123,8 @@ export function SettingsPageClient() {
   }, [tabParam, tabs])
 
   useEffect(() => {
+    if (skipAuthCheck) return
+
     async function checkAccess() {
       try {
         const res = await fetch("/api/auth/me", { credentials: "include" })
@@ -140,7 +148,7 @@ export function SettingsPageClient() {
     }
 
     checkAccess()
-  }, [router])
+  }, [router, skipAuthCheck])
 
   const handleTabChange = (tabId: SettingsTab) => {
     setActiveTab(tabId)
@@ -165,8 +173,13 @@ export function SettingsPageClient() {
 
   const currentTab = tabs.find(t => t.id === activeTab) || tabs[0]
 
+  // When used as overlay (onClose provided), use h-full; otherwise min-h-screen for full page
+  const containerClass = onClose
+    ? "h-full bg-zinc-50 dark:bg-zinc-950 flex flex-col md:flex-row"
+    : "min-h-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col md:flex-row"
+
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col md:flex-row">
+    <div className={containerClass}>
       {/* Mobile Header */}
       <header className="md:hidden flex items-center justify-between p-4 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 relative z-30">
         <div className="flex items-center gap-3">
@@ -187,6 +200,16 @@ export function SettingsPageClient() {
             </p>
           </button>
         </div>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 -mr-2 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            aria-label="Close settings"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
       </header>
 
       {/* Mobile Sidebar Overlay */}
@@ -214,11 +237,21 @@ export function SettingsPageClient() {
         `}
       >
         {/* Desktop header */}
-        <div className="hidden md:block p-4 border-b border-zinc-200 dark:border-zinc-800">
+        <div className="hidden md:flex p-4 border-b border-zinc-200 dark:border-zinc-800 items-center justify-between">
           <h1 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
             <Settings className="w-4 h-4 text-zinc-400" />
             Settings
           </h1>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 -mr-1.5 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+              aria-label="Close settings"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {/* Mobile close button area */}
@@ -226,9 +259,9 @@ export function SettingsPageClient() {
           <h1 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Settings</h1>
           <button
             type="button"
-            onClick={() => setSidebarOpen(false)}
+            onClick={() => (onClose ? onClose() : setSidebarOpen(false))}
             className="p-2 -mr-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 active:bg-zinc-200 dark:active:bg-zinc-700"
-            aria-label="Close menu"
+            aria-label={onClose ? "Close settings" : "Close menu"}
           >
             <X className="w-5 h-5" />
           </button>

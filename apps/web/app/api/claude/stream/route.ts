@@ -347,8 +347,8 @@ export async function POST(req: NextRequest) {
 
     // Force default model for credit users (cost management)
     // API key users can choose any model
-    // Exception: eedenlars@gmail.com can use any model
-    const isUnrestrictedUser = user.email === "eedenlars@gmail.com"
+    // Exception: Admins (set via ADMIN_EMAILS env var) can use any model
+    const isUnrestrictedUser = user.isAdmin
 
     // Determine model with proper type validation
     let effectiveModel: ClaudeModel

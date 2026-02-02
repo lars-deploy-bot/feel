@@ -1,7 +1,6 @@
 # IAM Schema Documentation
 
 **Generated**: 2025-11-14
-**Project**: qnvprftdorualkdyogka
 **Schema**: `iam`
 
 ## Tables

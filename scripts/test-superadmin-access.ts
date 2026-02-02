@@ -14,9 +14,17 @@ import { randomUUID } from "node:crypto"
 
 const DEV_SERVER = "http://localhost:8997"
 
-// Lars - the only superadmin
-const LARS_EMAIL = "eedenlars@gmail.com"
-const LARS_PASSWORD = "supersecret"
+// Test credentials - must be provided via environment variables
+const TEST_EMAIL = process.env.TEST_SUPERADMIN_EMAIL
+const TEST_PASSWORD = process.env.TEST_SUPERADMIN_PASSWORD
+
+if (!TEST_EMAIL || !TEST_PASSWORD) {
+  console.error("❌ Missing required environment variables:")
+  console.error("   TEST_SUPERADMIN_EMAIL - Email of a superadmin user")
+  console.error("   TEST_SUPERADMIN_PASSWORD - Password for that user")
+  console.error("\nUsage: TEST_SUPERADMIN_EMAIL=admin@example.com TEST_SUPERADMIN_PASSWORD=xxx bun scripts/test-superadmin-access.ts")
+  process.exit(1)
+}
 
 interface LoginResponse {
   ok: boolean
@@ -138,21 +146,21 @@ async function main() {
   let larsResult = false
   let unauthResult = false
 
-  // Test 1: Lars (should have access)
+  // Test 1: Superadmin (should have access)
   console.log("\n" + "-".repeat(60))
-  console.log("TEST 1: Lars (superadmin) - SHOULD have access")
+  console.log("TEST 1: Superadmin - SHOULD have access")
   console.log("-".repeat(60))
 
-  const larsSession = await login(LARS_EMAIL, LARS_PASSWORD)
-  if (!larsSession) {
-    console.log("❌ Could not login as Lars - skipping test")
+  const superadminSession = await login(TEST_EMAIL, TEST_PASSWORD)
+  if (!superadminSession) {
+    console.log("❌ Could not login as superadmin - skipping test")
   } else {
-    const larsAccess = await testClaudeBridgeAccess(larsSession, "Lars (superadmin)")
-    if (larsAccess) {
-      console.log("   ✅ PASS: Lars CAN access claude-bridge")
+    const superadminAccess = await testClaudeBridgeAccess(superadminSession, "Superadmin")
+    if (superadminAccess) {
+      console.log("   ✅ PASS: Superadmin CAN access claude-bridge")
       larsResult = true
     } else {
-      console.log("   ❌ FAIL: Lars should have access but was denied!")
+      console.log("   ❌ FAIL: Superadmin should have access but was denied!")
     }
   }
 
@@ -173,7 +181,7 @@ async function main() {
   console.log("\n" + "=".repeat(60))
   console.log("TEST SUMMARY")
   console.log("=".repeat(60))
-  console.log(`\n  Lars (superadmin) access:   ${larsResult ? "✅ PASS" : "❌ FAIL"}`)
+  console.log(`\n  Superadmin access:          ${larsResult ? "✅ PASS" : "❌ FAIL"}`)
   console.log(`  Unauthenticated blocked:    ${unauthResult ? "✅ PASS" : "❌ FAIL"}`)
 
   if (larsResult && unauthResult) {

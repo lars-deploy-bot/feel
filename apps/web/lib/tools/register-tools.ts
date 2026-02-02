@@ -22,9 +22,11 @@ import {
   validateClarificationQuestions,
 } from "@/components/ui/chat/tools/ai/ClarificationQuestionsOutput"
 import { validateWebsiteConfig, WebsiteConfigOutput } from "@/components/ui/chat/tools/ai/WebsiteConfigOutput"
+// === Plan Mode Components ===
+import { PlanApprovalOutput, validatePlanApproval } from "@/components/ui/chat/tools/plan/PlanApprovalOutput"
 // === Email Components (superadmin only) ===
 import { EmailDraftOutput, validateEmailDraft } from "@/components/ui/chat/tools/email/EmailDraftOutput"
-import { AI, EMAIL, LINEAR, registerComponent } from "./tool-registry"
+import { AI, EMAIL, LINEAR, PLAN, registerComponent } from "./tool-registry"
 
 // ============================================================
 // LINEAR COMPONENTS
@@ -53,3 +55,9 @@ registerComponent(EMAIL.REPLY, EmailDraftOutput, validateEmailDraft)
 
 registerComponent(AI.ASK_CLARIFICATION, ClarificationQuestionsOutput, validateClarificationQuestions)
 registerComponent(AI.ASK_WEBSITE_CONFIG, WebsiteConfigOutput, validateWebsiteConfig)
+
+// ============================================================
+// PLAN MODE COMPONENTS
+// ============================================================
+
+registerComponent(PLAN.EXIT_PLAN_MODE, PlanApprovalOutput, validatePlanApproval)

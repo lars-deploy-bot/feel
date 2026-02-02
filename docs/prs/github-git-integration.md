@@ -131,7 +131,7 @@ INSERT INTO app.integration_access (provider_key, org_id, granted_by)
 SELECT 'github', om.org_id, 'manual'
 FROM iam.org_memberships om
 JOIN iam.users u ON u.id = om.user_id
-WHERE u.email = 'eedenlars@gmail.com';
+WHERE u.email = 'admin@example.com';
 
 -- 3. Verify
 SELECT * FROM app.integration_visibility WHERE provider_key = 'github';

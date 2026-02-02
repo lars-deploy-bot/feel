@@ -17,7 +17,7 @@
  * ```
  */
 
-import { LINEAR, STRIPE, STRIPE_PATTERNS, FILE_OPS, AI, OTHER, EMAIL } from "./tool-names.js"
+import { LINEAR, STRIPE, STRIPE_PATTERNS, FILE_OPS, AI, OTHER, EMAIL, PLAN } from "./tool-names.js"
 
 // ============================================================
 // TYPES
@@ -353,6 +353,12 @@ register(EMAIL.COMPOSE, {
     const subject = d?.subject as string | undefined
     return subject ? `Draft: ${subject.slice(0, 30)}...` : "email draft"
   },
+})
+
+// --- Plan mode tools ---
+register(PLAN.EXIT_PLAN_MODE, {
+  autoExpand: true, // Always show the approval UI
+  getPreview: () => "plan ready for approval",
 })
 
 // --- Other ---

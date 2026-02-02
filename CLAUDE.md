@@ -138,7 +138,7 @@ Claude Bridge is a **multi-tenant development platform** that enables Claude AI 
 - **TURBOREPO Next.js 16 + React 19**: Modern App Router architecture using **Turborepo** for building and deploying the project.
 - **SSE streaming**: Real-time Claude responses via Server-Sent Events
 - **Tool-based interaction**: Limited to safe file operations (Read, Write, Edit, Glob, Grep)
-- **Superadmin access**: `eedenlars@gmail.com` can edit this repo via the frontend (workspace: `claude-bridge`, runs as root, all tools enabled)
+- **Superadmin access**: Users in `SUPERADMIN_EMAILS` env var can edit this repo via the frontend (workspace: `claude-bridge`, runs as root, all tools enabled)
 
 ## Monorepo Structure
 

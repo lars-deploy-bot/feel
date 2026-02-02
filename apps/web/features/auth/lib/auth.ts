@@ -32,16 +32,26 @@ export interface SessionUser {
 }
 
 /**
- * Hardcoded list of admin emails.
+ * Admin emails loaded from ADMIN_EMAILS environment variable.
  * These users can:
  * - Select any model without their own API key
  * - Toggle feature flags in Settings
  * Server-side only - never exposed to client code.
+ *
+ * Set via: ADMIN_EMAILS=admin1@example.com,admin2@example.com
  */
-const ADMIN_EMAILS = ["eedenlars@gmail.com", "barendbootsma@gmail.com"]
+function getAdminEmails(): string[] {
+  const envValue = process.env.ADMIN_EMAILS
+  if (!envValue) return []
+  return envValue
+    .split(",")
+    .map(e => e.trim())
+    .filter(Boolean)
+}
 
 function isAdminUser(email: string): boolean {
-  return ADMIN_EMAILS.some(e => e.toLowerCase() === email.toLowerCase())
+  const adminEmails = getAdminEmails()
+  return adminEmails.some(e => e.toLowerCase() === email.toLowerCase())
 }
 
 /**

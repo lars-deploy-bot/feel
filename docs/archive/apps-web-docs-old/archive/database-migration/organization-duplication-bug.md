@@ -27,7 +27,7 @@ Users who deploy multiple domains end up with **one organization per domain** in
 
 **Example:**
 ```
-User: eedenlars@gmail.com
+User: admin@example.com
 Expected: 1 organization with 8 domains
 Actual:   8 organizations with 1 domain each
 ```

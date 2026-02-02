@@ -112,7 +112,7 @@ Right now:
 
 * OAuth integrations are **hardcoded**.
 * All authenticated users see the same integrations.
-* You need an immediate rule: **Linear is visible only to `eedenlars@gmail.com`**, while everyone else should not even see it.
+* You need an immediate rule: **Linear is visible only to `admin@example.com`**, while everyone else should not even see it.
 
 Long‑term:
 
@@ -375,7 +375,7 @@ $;
 
 ### 4.5 Initial seeding for Linear visibility
 
-**Goal**: Make Linear admin‑only and initially visible only to `eedenlars@gmail.com`.
+**Goal**: Make Linear admin‑only and initially visible only to `admin@example.com`.
 
 ```sql
 BEGIN;
@@ -389,7 +389,7 @@ ON CONFLICT (provider_key) DO NOTHING;
 INSERT INTO integrations.access_policies (provider_id, user_id)
 SELECT p.provider_id, u.user_id
 FROM integrations.providers p
-JOIN iam.users u ON u.email = 'eedenlars@gmail.com'
+JOIN iam.users u ON u.email = 'admin@example.com'
 WHERE p.provider_key = 'linear'
 ON CONFLICT (provider_id, user_id) DO NOTHING;
 
@@ -595,7 +595,7 @@ Run the migrations, in order, on each environment (`local`, then `dev`, `staging
    * `integrations.access_policies`
    * indexes.
 4. **Create `integrations.get_available_integrations(p_user_id)` function.**
-5. **Seed Linear provider & owner access** via the insert statements for `eedenlars@gmail.com`.
+5. **Seed Linear provider & owner access** via the insert statements for `admin@example.com`.
 
 ### 7.2 Application code
 
