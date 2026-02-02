@@ -79,8 +79,7 @@ async function sendAndWaitForResponse(
 }
 
 test.describe("Tab Isolation", () => {
-  // TODO: Fix flaky test - times out waiting for chat ready on staging
-  test.skip("different tabs send different tabIds to the API", async ({ authenticatedPage, workerTenant }) => {
+  test("different tabs send different tabIds to the API", async ({ authenticatedPage, workerTenant }) => {
     const page = authenticatedPage
     const chatPage = new ChatPage(page)
 
@@ -135,8 +134,7 @@ test.describe("Tab Isolation", () => {
     expect(capturedTabIds[0]).not.toBe(capturedTabIds[1])
   })
 
-  // TODO: Fix flaky test - times out waiting for chat ready on staging
-  test.skip("switching tabs preserves each tab's tabId", async ({ authenticatedPage, workerTenant }) => {
+  test("switching tabs preserves each tab's tabId", async ({ authenticatedPage, workerTenant }) => {
     const page = authenticatedPage
     const chatPage = new ChatPage(page)
 
@@ -200,8 +198,7 @@ test.describe("Tab Isolation", () => {
     expect(counts).toEqual([2, 1])
   })
 
-  // TODO: Fix flaky test - times out waiting for chat ready on staging
-  test.skip("tabId in request matches UUID format", async ({ authenticatedPage, workerTenant }) => {
+  test("tabId in request matches UUID format", async ({ authenticatedPage, workerTenant }) => {
     const page = authenticatedPage
     const chatPage = new ChatPage(page)
 

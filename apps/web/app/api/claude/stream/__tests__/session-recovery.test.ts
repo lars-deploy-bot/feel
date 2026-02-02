@@ -10,7 +10,7 @@
  * These tests verify the recovery logic works correctly WITHOUT making real API calls.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest"
 
 // Types for our mocks
 interface MockQueryOptions {
@@ -294,6 +294,242 @@ describe("Session Recovery - No conversation found", () => {
   })
 })
 
+describe("Session Recovery - resumeSessionAt message not found", () => {
+  let mockSessionStore: MockSessionStore
+  let mockWorkerPool: MockWorkerPool
+  let queryCallCount: number
+  let lastQueryPayload: (MockQueryOptions["payload"] & { resumeSessionAt?: string }) | null
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    queryCallCount = 0
+    lastQueryPayload = null
+
+    mockSessionStore = {
+      get: vi.fn(),
+      set: vi.fn(),
+      delete: vi.fn(),
+    }
+
+    mockWorkerPool = {
+      query: vi.fn(),
+    }
+  })
+
+  afterEach(() => {
+    vi.resetAllMocks()
+  })
+
+  /**
+   * Simulates the session recovery logic including resumeSessionAt handling
+   * This tests the fix for: "No message found with message.uuid of: xxx"
+   */
+  async function runQueryWithMessageRecovery(
+    existingSessionId: string | null,
+    sessionKey: string,
+    resumeSessionAt: string | undefined,
+  ): Promise<{ success: boolean; retriedWithoutMessage: boolean; retriedWithoutSession: boolean; error?: string }> {
+    let _retriedWithoutMessage = false
+    let _retriedWithoutSession = false
+
+    const runQuery = async (resumeId: string | undefined, resumeAtMessage: string | undefined) => {
+      queryCallCount++
+      lastQueryPayload = {
+        message: "test message",
+        resume: resumeId,
+        resumeSessionAt: resumeAtMessage,
+      }
+
+      return mockWorkerPool.query({
+        requestId: "test-request-id",
+        payload: lastQueryPayload,
+      })
+    }
+
+    try {
+      await runQuery(existingSessionId || undefined, resumeSessionAt)
+      return { success: true, retriedWithoutMessage: false, retriedWithoutSession: false }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err)
+      const stderrMessage = (err as { stderr?: string })?.stderr || ""
+      const combinedMessage = `${errorMessage} ${stderrMessage}`
+
+      // NEW: Check for message not found error (resumeSessionAt points to non-existent message)
+      const isMessageNotFound = combinedMessage.includes("No message found with message.uuid of")
+
+      if (isMessageNotFound && resumeSessionAt && existingSessionId && sessionKey) {
+        _retriedWithoutMessage = true
+        try {
+          // Retry with session but WITHOUT resumeSessionAt - start from session beginning
+          await runQuery(existingSessionId, undefined)
+          return { success: true, retriedWithoutMessage: true, retriedWithoutSession: false }
+        } catch (retryErr) {
+          // If that also fails, check if it's a session not found error
+          const retryErrorMessage = retryErr instanceof Error ? retryErr.message : String(retryErr)
+          const retryStderrMessage = (retryErr as { stderr?: string })?.stderr || ""
+          const retryCombined = `${retryErrorMessage} ${retryStderrMessage}`
+          const isSessionNotFound =
+            retryCombined.includes("No conversation found") ||
+            (retryCombined.includes("session") && retryCombined.includes("not found"))
+
+          if (isSessionNotFound) {
+            _retriedWithoutSession = true
+            try {
+              await mockSessionStore.delete(sessionKey)
+              await runQuery(undefined, undefined)
+              return { success: true, retriedWithoutMessage: true, retriedWithoutSession: true }
+            } catch (finalErr) {
+              return {
+                success: false,
+                retriedWithoutMessage: true,
+                retriedWithoutSession: true,
+                error: finalErr instanceof Error ? finalErr.message : String(finalErr),
+              }
+            }
+          }
+
+          return {
+            success: false,
+            retriedWithoutMessage: true,
+            retriedWithoutSession: false,
+            error: retryErrorMessage,
+          }
+        }
+      }
+
+      // Existing session not found handling
+      const isSessionNotFound =
+        combinedMessage.includes("No conversation found") ||
+        (combinedMessage.includes("session") && combinedMessage.includes("not found"))
+
+      if (isSessionNotFound && existingSessionId && sessionKey) {
+        _retriedWithoutSession = true
+        try {
+          await mockSessionStore.delete(sessionKey)
+          await runQuery(undefined, undefined)
+          return { success: true, retriedWithoutMessage: false, retriedWithoutSession: true }
+        } catch (retryErr) {
+          return {
+            success: false,
+            retriedWithoutMessage: false,
+            retriedWithoutSession: true,
+            error: retryErr instanceof Error ? retryErr.message : String(retryErr),
+          }
+        }
+      }
+
+      return {
+        success: false,
+        retriedWithoutMessage: false,
+        retriedWithoutSession: false,
+        error: errorMessage,
+      }
+    }
+  }
+
+  describe("when resumeSessionAt points to non-existent message", () => {
+    it("should retry without resumeSessionAt when message not found", async () => {
+      const existingSessionId = "valid-session-abc123"
+      const sessionKey = "user::workspace::tab"
+      const staleMessageId = "c95d4d13-38ac-4d77-b5e9-bcf5cf6d0794"
+
+      // First call fails with "No message found"
+      // Second call (retry without resumeSessionAt) succeeds
+      const prodError = Object.assign(new Error("Claude Code process exited with code 1"), {
+        stderr: `No message found with message.uuid of: ${staleMessageId}\n`,
+      })
+
+      mockWorkerPool.query.mockRejectedValueOnce(prodError).mockResolvedValueOnce({ success: true })
+
+      const result = await runQueryWithMessageRecovery(existingSessionId, sessionKey, staleMessageId)
+
+      expect(result.success).toBe(true)
+      expect(result.retriedWithoutMessage).toBe(true)
+      expect(result.retriedWithoutSession).toBe(false)
+      expect(queryCallCount).toBe(2)
+
+      // Session should NOT be deleted - only the resumeSessionAt is cleared
+      expect(mockSessionStore.delete).not.toHaveBeenCalled()
+
+      // Second call should have session but NO resumeSessionAt
+      expect(lastQueryPayload?.resume).toBe(existingSessionId)
+      expect(lastQueryPayload?.resumeSessionAt).toBeUndefined()
+    })
+
+    it("should detect the exact production error pattern", async () => {
+      const existingSessionId = "608b5f2a-14c6-4fa2-9975-f0b5285ad58e"
+      const sessionKey = "user::workspace::tab"
+      const staleMessageId = "c95d4d13-38ac-4d77-b5e9-bcf5cf6d0794"
+
+      // This is the EXACT error from the production logs
+      const prodError = Object.assign(new Error("Claude Code process exited with code 1"), {
+        stderr:
+          "Spawning Claude Code process: node /root/webalive/claude-bridge/node_modules/@anthropic-ai/claude-agent-sdk/cli.js ...\n" +
+          `No message found with message.uuid of: ${staleMessageId}\n`,
+      })
+
+      mockWorkerPool.query.mockRejectedValueOnce(prodError).mockResolvedValueOnce({ success: true })
+
+      const result = await runQueryWithMessageRecovery(existingSessionId, sessionKey, staleMessageId)
+
+      expect(result.success).toBe(true)
+      expect(result.retriedWithoutMessage).toBe(true)
+    })
+
+    it("should fall back to full session recovery if retry without message also fails with session not found", async () => {
+      const existingSessionId = "stale-session-abc123"
+      const sessionKey = "user::workspace::tab"
+      const staleMessageId = "stale-message-id"
+
+      // First call: message not found
+      // Second call: session not found (both session and message are stale)
+      // Third call: success with fresh session
+      const messageNotFoundError = Object.assign(new Error("Claude Code process exited with code 1"), {
+        stderr: `No message found with message.uuid of: ${staleMessageId}\n`,
+      })
+      const sessionNotFoundError = new Error("No conversation found with session ID stale-session-abc123")
+
+      mockWorkerPool.query
+        .mockRejectedValueOnce(messageNotFoundError)
+        .mockRejectedValueOnce(sessionNotFoundError)
+        .mockResolvedValueOnce({ success: true })
+
+      const result = await runQueryWithMessageRecovery(existingSessionId, sessionKey, staleMessageId)
+
+      expect(result.success).toBe(true)
+      expect(result.retriedWithoutMessage).toBe(true)
+      expect(result.retriedWithoutSession).toBe(true)
+      expect(queryCallCount).toBe(3)
+
+      // Session should be deleted in the final fallback
+      expect(mockSessionStore.delete).toHaveBeenCalledWith(sessionKey)
+
+      // Final call should have NO session and NO resumeSessionAt
+      expect(lastQueryPayload?.resume).toBeUndefined()
+      expect(lastQueryPayload?.resumeSessionAt).toBeUndefined()
+    })
+
+    it("should NOT retry if resumeSessionAt is not provided", async () => {
+      const existingSessionId = "valid-session"
+      const sessionKey = "user::workspace::tab"
+
+      // This error should NOT trigger message recovery because there's no resumeSessionAt
+      const prodError = Object.assign(new Error("Claude Code process exited with code 1"), {
+        stderr: "No message found with message.uuid of: some-uuid\n",
+      })
+
+      mockWorkerPool.query.mockRejectedValueOnce(prodError)
+
+      const result = await runQueryWithMessageRecovery(existingSessionId, sessionKey, undefined)
+
+      // Should fail without retry since there's no resumeSessionAt to clear
+      expect(result.success).toBe(false)
+      expect(result.retriedWithoutMessage).toBe(false)
+      expect(queryCallCount).toBe(1)
+    })
+  })
+})
+
 describe("Session Recovery - Error Detection Patterns", () => {
   /**
    * Test the exact error detection logic used in route.ts
@@ -349,5 +585,40 @@ describe("Session Recovery - Error Detection Patterns", () => {
     expect(
       isSessionNotFoundError("Claude Code process exited with code 1", "[worker:claude-stderr] API key expired\n"),
     ).toBe(false)
+  })
+})
+
+describe("Message Recovery - Error Detection Patterns", () => {
+  /**
+   * Test the error detection logic for resumeSessionAt message not found
+   */
+  function isMessageNotFoundError(errorMessage: string, stderr = ""): boolean {
+    const combinedMessage = `${errorMessage} ${stderr}`
+    return combinedMessage.includes("No message found with message.uuid of")
+  }
+
+  it("should match the exact production error pattern", () => {
+    // This is the EXACT error from the production logs
+    expect(
+      isMessageNotFoundError(
+        "Claude Code process exited with code 1",
+        "No message found with message.uuid of: c95d4d13-38ac-4d77-b5e9-bcf5cf6d0794\n",
+      ),
+    ).toBe(true)
+  })
+
+  it("should match when error is in message (not just stderr)", () => {
+    expect(isMessageNotFoundError("No message found with message.uuid of: some-uuid-here")).toBe(true)
+  })
+
+  it("should NOT match session not found errors", () => {
+    expect(isMessageNotFoundError("No conversation found with session ID abc123")).toBe(false)
+    expect(isMessageNotFoundError("session not found")).toBe(false)
+  })
+
+  it("should NOT match unrelated errors", () => {
+    expect(isMessageNotFoundError("API key invalid")).toBe(false)
+    expect(isMessageNotFoundError("Rate limit exceeded")).toBe(false)
+    expect(isMessageNotFoundError("message delivery failed")).toBe(false) // different "message"
   })
 })

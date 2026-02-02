@@ -507,8 +507,8 @@ export async function POST(req: NextRequest) {
       let firstMessageReceived = false
       childStream = new ReadableStream<Uint8Array>({
         async start(controller) {
-          // Helper to run query with given resume session
-          const runQuery = async (resumeId: string | undefined) => {
+          // Helper to run query with given resume session and optional message position
+          const runQuery = async (resumeId: string | undefined, resumeAtMessage: string | undefined) => {
             return pool.query(credentials, {
               requestId,
               payload: {
@@ -516,7 +516,7 @@ export async function POST(req: NextRequest) {
                 model: effectiveModel,
                 maxTurns: maxTurns,
                 resume: resumeId,
-                resumeSessionAt: resumeSessionAt || undefined,
+                resumeSessionAt: resumeAtMessage,
                 systemPrompt,
                 apiKey: effectiveApiKey || undefined,
                 oauthTokens,
@@ -554,15 +554,61 @@ export async function POST(req: NextRequest) {
           }
 
           try {
-            await runQuery(existingSessionId || undefined)
+            await runQuery(existingSessionId || undefined, resumeSessionAt || undefined)
             controller.close()
           } catch (err) {
-            // Fallback: If session not found (worker restarted), clear stale session and retry
+            // Error recovery for stale session/message references
             // The error may come as "Claude Code process exited with code 1" with the actual
-            // "No conversation found" message in stderr, so we check both
+            // error message in stderr, so we check both
             const errorMessage = err instanceof Error ? err.message : String(err)
             const stderrMessage = (err as { stderr?: string })?.stderr || ""
             const combinedMessage = `${errorMessage} ${stderrMessage}`
+
+            // NEW: Check for "message not found" error (stale resumeSessionAt)
+            // This happens when the frontend sends a message ID that no longer exists in the session
+            const isMessageNotFound = combinedMessage.includes("No message found with message.uuid of")
+
+            if (isMessageNotFound && resumeSessionAt && existingSessionId && sessionKey) {
+              logger.log(
+                `[MESSAGE RECOVERY] Message "${resumeSessionAt}" not found in session "${existingSessionId}", retrying without resumeSessionAt...`,
+              )
+              try {
+                // Retry with session but WITHOUT resumeSessionAt - start from session beginning
+                await runQuery(existingSessionId, undefined)
+                controller.close()
+                return
+              } catch (retryErr) {
+                // If that also fails, check if it's a session not found error
+                const retryErrorMessage = retryErr instanceof Error ? retryErr.message : String(retryErr)
+                const retryStderrMessage = (retryErr as { stderr?: string })?.stderr || ""
+                const retryCombined = `${retryErrorMessage} ${retryStderrMessage}`
+                const isSessionNotFoundOnRetry =
+                  retryCombined.includes("No conversation found") ||
+                  (retryCombined.includes("session") && retryCombined.includes("not found"))
+
+                if (isSessionNotFoundOnRetry) {
+                  logger.log(
+                    `[SESSION RECOVERY] Session "${existingSessionId}" also not found, clearing and starting fresh...`,
+                  )
+                  try {
+                    await sessionStore.delete(sessionKey)
+                    await runQuery(undefined, undefined)
+                    controller.close()
+                    return
+                  } catch (finalErr) {
+                    logger.error("[SESSION RECOVERY] Final retry failed:", finalErr)
+                    controller.error(finalErr)
+                    return
+                  }
+                }
+
+                logger.error("[MESSAGE RECOVERY] Retry without message failed:", retryErr)
+                controller.error(retryErr)
+                return
+              }
+            }
+
+            // Existing: Check for "session not found" error (stale session ID)
             const isSessionNotFound =
               combinedMessage.includes("No conversation found") ||
               (combinedMessage.includes("session") && combinedMessage.includes("not found"))
@@ -577,7 +623,7 @@ export async function POST(req: NextRequest) {
                 logger.log("[SESSION RECOVERY] Cleared stale session, starting fresh conversation")
 
                 // Retry without resume - start fresh conversation
-                await runQuery(undefined)
+                await runQuery(undefined, undefined)
                 controller.close()
                 return
               } catch (retryErr) {

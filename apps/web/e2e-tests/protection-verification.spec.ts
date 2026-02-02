@@ -12,15 +12,35 @@
 
 import { SECURITY } from "@webalive/shared"
 import { expect, test } from "./fixtures"
-import { TEST_TIMEOUTS } from "./fixtures/test-data"
+import { TEST_SELECTORS, TEST_TIMEOUTS } from "./fixtures/test-data"
 import { login } from "./helpers"
-import { gotoChatFast } from "./helpers/assertions"
+import { gotoChatFast, waitForAppReady } from "./helpers/assertions"
 import { handlers } from "./lib/handlers"
 import { isLocalTestServer } from "./lib/test-env"
+import type { Page } from "@playwright/test"
+
+/**
+ * Wait for chat to be fully ready for sending messages.
+ * Fill message input and wait for send button to be enabled.
+ */
+async function waitForChatReady(page: Page) {
+  const input = page.locator(TEST_SELECTORS.messageInput)
+  const sendButton = page.locator(TEST_SELECTORS.sendButton)
+
+  // Fill a test message to trigger enable check
+  await input.fill("test")
+
+  // Wait for send button to be enabled - this proves chat is ready
+  await expect(sendButton).toBeEnabled({
+    timeout: TEST_TIMEOUTS.max,
+  })
+
+  // Clear the test message
+  await input.fill("")
+}
 
 test.describe("Protection System Verification", () => {
-  // TODO: Fix flaky test - times out waiting for message input on staging
-  test.skip("Layer 1: Catches unmocked calls at browser level", async ({ authenticatedPage, workerTenant }) => {
+  test("Layer 1: Catches unmocked calls at browser level", async ({ authenticatedPage, workerTenant }) => {
     // Register our own request monitor to verify Layer 1 works
     const apiCalls: string[] = []
     authenticatedPage.on("request", req => {
@@ -35,15 +55,13 @@ test.describe("Protection System Verification", () => {
     // Use fast navigation with pre-injected state
     await gotoChatFast(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
 
-    // Use TEST_TIMEOUTS.slow for primary wait (message input visibility)
-    // This is the main synchronization point after hydration
-    const messageInput = authenticatedPage.locator('[data-testid="message-input"]')
-    await expect(messageInput).toBeVisible({ timeout: TEST_TIMEOUTS.slow })
+    // Wait for chat to be fully ready (Dexie + tab initialized)
+    await waitForChatReady(authenticatedPage)
 
-    // Short timeout for send button - should already be ready after input is visible
+    // Now send the actual test message
+    const messageInput = authenticatedPage.locator('[data-testid="message-input"]')
     const sendButton = authenticatedPage.locator('[data-testid="send-button"]')
     await messageInput.fill("Test message")
-    await expect(sendButton).toBeEnabled({ timeout: TEST_TIMEOUTS.medium })
     await sendButton.click()
 
     // Wait for response (use .first() to avoid strict mode violations)

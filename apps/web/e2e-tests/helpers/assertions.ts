@@ -110,7 +110,8 @@ export async function gotoChat(page: Page) {
   await page.goto("/chat", { waitUntil: "domcontentloaded" })
   await waitForAppReady(page)
   // DOM marker is now an assertion, not the clock
-  await expect(page.locator(TEST_SELECTORS.workspaceReady)).toBeAttached({ timeout: TEST_TIMEOUTS.fast })
+  // Use medium timeout (3s) as confirmation - workspace-ready may lag slightly behind hydration
+  await expect(page.locator(TEST_SELECTORS.workspaceReady)).toBeAttached({ timeout: TEST_TIMEOUTS.medium })
 }
 
 /**
@@ -127,7 +128,8 @@ export async function gotoChatFast(page: Page, _workspace: string, _orgId: strin
   await waitForAppReady(page)
 
   // DOM marker is an assertion after hydration, not the synchronization primitive
-  await expect(page.locator(TEST_SELECTORS.workspaceReady)).toBeAttached({ timeout: TEST_TIMEOUTS.fast })
+  // Use medium timeout (3s) as confirmation - workspace-ready may lag slightly behind hydration
+  await expect(page.locator(TEST_SELECTORS.workspaceReady)).toBeAttached({ timeout: TEST_TIMEOUTS.medium })
 }
 
 /**
