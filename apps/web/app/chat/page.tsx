@@ -144,9 +144,9 @@ function ChatPageContent() {
     }
   }, [mounted, wkParam, workspace, setWorkspace])
 
-  // Superadmin workspace (claude-bridge) has no preview/sandbox
+  // Superadmin workspace (claude-bridge) shows terminal & code views only
   const isSuperadminWorkspace = workspace === SUPERADMIN.WORKSPACE_NAME
-  const showSandbox = showSandboxRaw && !isSuperadminWorkspace
+  const showSandbox = showSandboxRaw // Show for all workspaces
 
   const _userApiKey = useApiKey()
   const _userModel = useModel()
@@ -732,9 +732,9 @@ function ChatPageContent() {
         )}
       </AnimatePresence>
 
-      {/* Mobile preview overlay */}
+      {/* Mobile preview overlay - not shown for claude-bridge workspace */}
       <AnimatePresence>
-        {modals.mobilePreview && (
+        {modals.mobilePreview && !isSuperadminWorkspace && (
           <SandboxMobile onClose={modals.closeMobilePreview} busy={busy} statusText={statusText} onStop={stopStreaming}>
             <ChatInput
               ref={chatInputRef}

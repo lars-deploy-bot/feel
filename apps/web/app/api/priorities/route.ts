@@ -2,7 +2,7 @@ export const runtime = "nodejs"
 
 import { NextResponse } from "next/server"
 import Database from "better-sqlite3"
-import path from "path"
+import path from "node:path"
 
 const DB_PATH = path.join(process.cwd(), "../../use_this_to_remember.db")
 

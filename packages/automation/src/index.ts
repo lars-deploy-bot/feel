@@ -1,32 +1,21 @@
 /**
  * @webalive/automation
  *
- * Scheduled automation system for sites.
- * Enables users to set up recurring tasks like calendar syncs,
- * content updates, and scheduled publishing.
+ * Cron scheduling utilities for automation jobs.
+ * Uses croner for cron expression parsing (same as OpenClaw).
  *
  * @example
  * ```typescript
- * import {
- *   type AutomationJob,
- *   computeNextRunAtMs,
- *   dailyAt,
- *   validateCronExpression,
- * } from "@webalive/automation"
+ * import { computeNextRunAtMs, type AutomationSchedule } from "@webalive/automation"
  *
- * // Create a daily sync at 6 AM Amsterdam time
- * const schedule = dailyAt(6, "Europe/Amsterdam")
- *
- * // Validate a custom cron expression
- * const error = validateCronExpression("0 9 * * 1-5")
- * if (error) {
- *   console.error("Invalid cron:", error)
- * }
+ * // Compute next run for a cron schedule
+ * const schedule: AutomationSchedule = { kind: "cron", expr: "0 9 * * *", tz: "Europe/Amsterdam" }
+ * const nextMs = computeNextRunAtMs(schedule, Date.now())
  * ```
  */
 
-// Re-export all types
-export * from "./types.js"
+// Re-export types
+export type { AutomationSchedule, ScheduleAt, ScheduleEvery, ScheduleCron } from "./types.js"
 
-// Re-export scheduler utilities
-export * from "./scheduler.js"
+// Re-export scheduler
+export { computeNextRunAtMs } from "./scheduler.js"

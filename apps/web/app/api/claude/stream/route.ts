@@ -558,13 +558,19 @@ export async function POST(req: NextRequest) {
             controller.close()
           } catch (err) {
             // Fallback: If session not found (worker restarted), clear stale session and retry
+            // The error may come as "Claude Code process exited with code 1" with the actual
+            // "No conversation found" message in stderr, so we check both
             const errorMessage = err instanceof Error ? err.message : String(err)
+            const stderrMessage = (err as { stderr?: string })?.stderr || ""
+            const combinedMessage = `${errorMessage} ${stderrMessage}`
             const isSessionNotFound =
-              errorMessage.includes("No conversation found") ||
-              (errorMessage.includes("session") && errorMessage.includes("not found"))
+              combinedMessage.includes("No conversation found") ||
+              (combinedMessage.includes("session") && combinedMessage.includes("not found"))
 
             if (isSessionNotFound && existingSessionId && sessionKey) {
-              logger.log(`[SESSION RECOVERY] Session "${existingSessionId}" not found, clearing and retrying...`)
+              logger.log(
+                `[SESSION RECOVERY] Session "${existingSessionId}" not found (detected in: ${stderrMessage ? "stderr" : "message"}), clearing and retrying...`,
+              )
               try {
                 // Clear stale session from store
                 await sessionStore.delete(sessionKey)

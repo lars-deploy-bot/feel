@@ -36,6 +36,10 @@ export interface AutomationJobParams {
   workspace: string // hostname like "zomaar.alive.best"
   prompt: string
   timeoutSeconds?: number
+  /** Optional model override (e.g., "claude-sonnet-4-20250514") */
+  model?: string
+  /** Optional thinking prompt for agent guidance */
+  thinkingPrompt?: string
 }
 
 export interface AutomationJobResult {
@@ -55,7 +59,7 @@ export interface AutomationJobResult {
  * 4. Updates the job status in the database
  */
 export async function runAutomationJob(params: AutomationJobParams): Promise<AutomationJobResult> {
-  const { jobId, workspace, prompt, timeoutSeconds = 300 } = params
+  const { jobId, workspace, prompt, timeoutSeconds = 300, model, thinkingPrompt } = params
   const requestId = generateRequestId()
   const startTime = Date.now()
 
@@ -105,14 +109,20 @@ export async function runAutomationJob(params: AutomationJobParams): Promise<Aut
     console.log(`[Automation ${requestId}] OAuth ready (refreshed: ${oauthResult.refreshed})`)
 
     // Build system prompt for automation context
+    const automationContext = thinkingPrompt
+      ? `This is an automated task triggered by a scheduled automation.\n\nAgent guidance: ${thinkingPrompt}\n\nComplete the task efficiently and report what was done.`
+      : "This is an automated task triggered by a scheduled automation. The automation name is associated with this workspace. Complete the task efficiently and report what was done."
+
     const systemPrompt = getSystemPrompt({
       workspaceFolder: cwd,
       hasStripeMcpAccess: false,
       hasGmailAccess: false,
       isProduction: false,
-      additionalContext:
-        "This is an automated task triggered by a scheduled automation. The automation name is associated with this workspace. Complete the task efficiently and report what was done.",
+      additionalContext: automationContext,
     })
+
+    // Use specified model or default
+    const selectedModel = model || DEFAULT_MODEL
 
     // Use worker pool if enabled, otherwise fall back to child process
     const useWorkerPool = WORKER_POOL.ENABLED
@@ -159,7 +169,7 @@ export async function runAutomationJob(params: AutomationJobParams): Promise<Aut
           requestId,
           payload: {
             message: prompt,
-            model: DEFAULT_MODEL,
+            model: selectedModel,
             maxTurns: DEFAULTS.CLAUDE_MAX_TURNS,
             systemPrompt,
             // Don't pass apiKey - worker uses ~/.claude/.credentials.json
@@ -208,7 +218,7 @@ export async function runAutomationJob(params: AutomationJobParams): Promise<Aut
 
       const childStream = runAgentChild(cwd, {
         message: prompt,
-        model: DEFAULT_MODEL,
+        model: selectedModel,
         maxTurns: DEFAULTS.CLAUDE_MAX_TURNS,
         systemPrompt,
         // Don't pass apiKey - child process uses ~/.claude/.credentials.json

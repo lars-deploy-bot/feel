@@ -1,5 +1,5 @@
 "use client"
-import { PREVIEW_MESSAGES } from "@webalive/shared"
+import { PREVIEW_MESSAGES, SUPERADMIN } from "@webalive/shared"
 import { ExternalLink, RotateCw, Terminal, X } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { usePanelContext } from "@/features/chat/lib/sandbox-context"
@@ -12,6 +12,7 @@ import { PulsingDot } from "./ui/PulsingDot"
 
 export function Sandbox() {
   const { workspace } = useWorkspace({ allowEmpty: true })
+  const isSuperadminWorkspace = workspace === SUPERADMIN.WORKSPACE_NAME
   const {
     setSelectedElement,
     selectorActive,
@@ -264,7 +265,7 @@ export function Sandbox() {
         </div>
 
         {/* View switcher */}
-        <PanelViewMenu currentView={panel.view} onViewChange={setPanelView} />
+        <PanelViewMenu currentView={panel.view} onViewChange={setPanelView} isSuperadmin={isSuperadminWorkspace} />
 
         {/* Close - tablets only */}
         <button
@@ -279,7 +280,7 @@ export function Sandbox() {
 
       {/* Content */}
       <div className="flex-1 overflow-hidden relative">
-        {!workspace || !workspace.includes(".") ? (
+        {!workspace || (!workspace.includes(".") && !isSuperadminWorkspace) ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <p className="text-neutral-600 text-sm">{workspace ? "Invalid workspace" : "No site selected"}</p>

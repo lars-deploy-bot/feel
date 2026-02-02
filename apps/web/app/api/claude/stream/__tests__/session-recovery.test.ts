@@ -89,10 +89,14 @@ describe("Session Recovery - No conversation found", () => {
       return { success: true, retried: false }
     } catch (err) {
       // This is the exact logic from route.ts
+      // The error may come as "Claude Code process exited with code 1" with the actual
+      // "No conversation found" message in stderr, so we check both
       const errorMessage = err instanceof Error ? err.message : String(err)
+      const stderrMessage = (err as { stderr?: string })?.stderr || ""
+      const combinedMessage = `${errorMessage} ${stderrMessage}`
       const isSessionNotFound =
-        errorMessage.includes("No conversation found") ||
-        (errorMessage.includes("session") && errorMessage.includes("not found"))
+        combinedMessage.includes("No conversation found") ||
+        (combinedMessage.includes("session") && combinedMessage.includes("not found"))
 
       if (isSessionNotFound && existingSessionId && sessionKey) {
         try {
@@ -171,6 +175,28 @@ describe("Session Recovery - No conversation found", () => {
         expect(result.success).toBe(true)
         expect(mockSessionStore.delete).toHaveBeenCalledWith(sessionKey)
       }
+    })
+
+    it("should detect 'No conversation found' in stderr (actual production pattern)", async () => {
+      const existingSessionId = "stale-session-abc123"
+      const sessionKey = "user::workspace::tab"
+
+      // This is the ACTUAL error pattern from production:
+      // Error message is "Claude Code process exited with code 1"
+      // But "No conversation found" is in stderr
+      const prodError = Object.assign(new Error("Claude Code process exited with code 1"), {
+        stderr: "[worker:claude-stderr] No conversation found with session ID: stale-session-abc123\n",
+      })
+
+      mockWorkerPool.query.mockRejectedValueOnce(prodError).mockResolvedValueOnce({ success: true })
+
+      const result = await runQueryWithSessionRecovery(existingSessionId, sessionKey)
+
+      // Should have detected the error in stderr and retried
+      expect(result.success).toBe(true)
+      expect(result.retried).toBe(true)
+      expect(queryCallCount).toBe(2)
+      expect(mockSessionStore.delete).toHaveBeenCalledWith(sessionKey)
     })
 
     it("should propagate error if retry also fails", async () => {
@@ -271,11 +297,13 @@ describe("Session Recovery - No conversation found", () => {
 describe("Session Recovery - Error Detection Patterns", () => {
   /**
    * Test the exact error detection logic used in route.ts
+   * Now checks both message and stderr combined
    */
-  function isSessionNotFoundError(errorMessage: string): boolean {
+  function isSessionNotFoundError(errorMessage: string, stderr = ""): boolean {
+    const combinedMessage = `${errorMessage} ${stderr}`
     return (
-      errorMessage.includes("No conversation found") ||
-      (errorMessage.includes("session") && errorMessage.includes("not found"))
+      combinedMessage.includes("No conversation found") ||
+      (combinedMessage.includes("session") && combinedMessage.includes("not found"))
     )
   }
 
@@ -283,6 +311,16 @@ describe("Session Recovery - Error Detection Patterns", () => {
     // These are the actual error messages from Claude SDK
     expect(isSessionNotFoundError("No conversation found with session ID abc123")).toBe(true)
     expect(isSessionNotFoundError("No conversation found")).toBe(true)
+  })
+
+  it("should match session errors in stderr (production pattern)", () => {
+    // The actual production error - message says "exited with code 1", stderr has the real error
+    expect(
+      isSessionNotFoundError(
+        "Claude Code process exited with code 1",
+        "[worker:claude-stderr] No conversation found with session ID: abc123\n",
+      ),
+    ).toBe(true)
   })
 
   it("should match lowercase session errors", () => {
@@ -304,5 +342,12 @@ describe("Session Recovery - Error Detection Patterns", () => {
     expect(isSessionNotFoundError("Network error")).toBe(false)
     expect(isSessionNotFoundError("session expired")).toBe(false) // different error type
     expect(isSessionNotFoundError("conversation timeout")).toBe(false)
+  })
+
+  it("should NOT match when stderr is about different errors", () => {
+    // Make sure we don't accidentally match on "session" in unrelated stderr
+    expect(
+      isSessionNotFoundError("Claude Code process exited with code 1", "[worker:claude-stderr] API key expired\n"),
+    ).toBe(false)
   })
 })

@@ -7,6 +7,7 @@ import type { PanelView } from "../../lib/sandbox-context"
 interface PanelViewMenuProps {
   currentView: PanelView
   onViewChange: (view: PanelView) => void
+  isSuperadmin?: boolean
 }
 
 const VIEW_OPTIONS: { view: PanelView; label: string; icon: typeof Globe }[] = [
@@ -29,10 +30,13 @@ function useIsMobile(): boolean {
   return isMobile
 }
 
-export function PanelViewMenu({ currentView, onViewChange }: PanelViewMenuProps) {
+export function PanelViewMenu({ currentView, onViewChange, isSuperadmin }: PanelViewMenuProps) {
   const isMobile = useIsMobile()
   const [isOpen, setIsOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+
+  // Get available views based on workspace type
+  const availableViews = isSuperadmin ? VIEW_OPTIONS.filter(o => o.view !== "site") : VIEW_OPTIONS
 
   // Force back to site view if on mobile and in code/terminal view
   useEffect(() => {
@@ -40,6 +44,13 @@ export function PanelViewMenu({ currentView, onViewChange }: PanelViewMenuProps)
       onViewChange("site")
     }
   }, [isMobile, currentView, onViewChange])
+
+  // For superadmin, default to code view if somehow on site view
+  useEffect(() => {
+    if (isSuperadmin && currentView === "site") {
+      onViewChange("code")
+    }
+  }, [isSuperadmin, currentView, onViewChange])
 
   // Close on click outside
   useEffect(() => {
@@ -102,7 +113,7 @@ export function PanelViewMenu({ currentView, onViewChange }: PanelViewMenuProps)
           className="absolute top-full right-0 mt-1.5 w-32 bg-[#1a1a1a] border border-white/[0.08] rounded-lg shadow-xl shadow-black/40 z-50 overflow-hidden"
         >
           <div className="py-1">
-            {VIEW_OPTIONS.map(({ view, label, icon: Icon }) => {
+            {availableViews.map(({ view, label, icon: Icon }) => {
               const isActive = currentView === view
               return (
                 <button
