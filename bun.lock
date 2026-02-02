@@ -111,6 +111,7 @@
         "@supabase/ssr": "^0.7.0",
         "@supabase/supabase-js": "^2.81.1",
         "@types/bcrypt": "^6.0.0",
+        "@webalive/automation": "workspace:*",
         "@webalive/bridge-types": "workspace:*",
         "@webalive/database": "workspace:*",
         "@webalive/env": "workspace:*",
