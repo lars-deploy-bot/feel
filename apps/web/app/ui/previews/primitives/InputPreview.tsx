@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
 import { Check, Loader2 } from "lucide-react"
+import { useState } from "react"
 import { Input } from "@/components/ui/primitives/Input"
 
 export function InputPreview() {

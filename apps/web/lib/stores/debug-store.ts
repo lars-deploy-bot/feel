@@ -1,8 +1,8 @@
 "use client"
 
+import { DOMAINS, SUPERADMIN } from "@webalive/shared"
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
-import { DOMAINS, SUPERADMIN } from "@webalive/shared"
 import { useCurrentWorkspace } from "@/lib/stores/workspaceStore"
 
 const isDev = process.env.NODE_ENV === "development"

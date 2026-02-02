@@ -7,10 +7,10 @@
 
 "use client"
 
-import { useState } from "react"
-import { LinearIssuesResult } from "@/components/linear/LinearIssuesResult"
-import { FAKE_LINEAR_ISSUES } from "@/components/linear/fake-data"
 import { RotateCcw } from "lucide-react"
+import { useState } from "react"
+import { FAKE_LINEAR_ISSUES } from "@/components/linear/fake-data"
+import { LinearIssuesResult } from "@/components/linear/LinearIssuesResult"
 
 export function LinearIssuesPreview() {
   const [issueCount, setIssueCount] = useState(FAKE_LINEAR_ISSUES.length)

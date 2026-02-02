@@ -13,9 +13,9 @@ if (typeof window !== "undefined") {
 }
 
 import { createServerClient } from "@supabase/ssr"
+import type { IntegrationsDatabase as Database } from "@webalive/database"
 import { cookies } from "next/headers"
 import { getSupabaseCredentials, type KeyType } from "@/lib/env/server"
-import type { IntegrationsDatabase as Database } from "@webalive/database"
 
 /**
  * Creates a Supabase client for the integrations schema

@@ -99,6 +99,7 @@ export const ErrorCodes = {
   OAUTH_STATE_MISMATCH: "OAUTH_STATE_MISMATCH",
   INTEGRATION_ERROR: "INTEGRATION_ERROR",
   INTEGRATION_NOT_CONNECTED: "INTEGRATION_NOT_CONNECTED",
+  INTEGRATION_NOT_CONFIGURED: "INTEGRATION_NOT_CONFIGURED",
 
   // Referral errors (11xxx)
   REFERRAL_INVALID_CODE: "REFERRAL_INVALID_CODE",
@@ -405,6 +406,11 @@ export function getErrorMessage(code: ErrorCode, details?: Record<string, any>):
       return details?.provider
         ? `You are not connected to ${details.provider}. Please connect your account first in Settings.`
         : "You are not connected to this integration. Please connect your account first in Settings."
+
+    case ErrorCodes.INTEGRATION_NOT_CONFIGURED:
+      return details?.message || details?.provider
+        ? `${details.provider || "Integration"} is connected but not configured. Please complete the setup in Settings.`
+        : "Integration is connected but not fully configured. Please complete the setup in Settings."
 
     case ErrorCodes.TEST_MODE_BLOCK:
       return "I'm in test mode right now and can't make real API calls. Please mock this endpoint in your test."

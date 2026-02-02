@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { act, renderHook } from "@testing-library/react"
-import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest"
 import { useStreamCancellation } from "../useStreamCancellation"
 
 type UseStreamCancellationOptions = Parameters<typeof useStreamCancellation>[0]

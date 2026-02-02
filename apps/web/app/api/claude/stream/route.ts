@@ -1,16 +1,17 @@
+import { statSync } from "node:fs"
+import { DEFAULTS, filterToolsForPlanMode, SUPERADMIN, WORKER_POOL } from "@webalive/shared"
+import { getWorkerPool, type WorkerToParentMessage } from "@webalive/worker-pool"
 import { cookies, headers } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
-import { statSync } from "node:fs"
 import {
   createErrorResponse,
   getSafeSessionCookie,
   requireSessionUser,
   verifyWorkspaceAccess,
 } from "@/features/auth/lib/auth"
-import { fetchAndSaveAnalyzeImages, buildAnalyzeImagePrompt } from "@/lib/image-analyze/fetch-and-save"
 import {
-  type TabSessionKey,
   sessionStore,
+  type TabSessionKey,
   tabKey,
   tryLockConversation,
   unlockConversation,
@@ -19,30 +20,32 @@ import { hasSessionCookie } from "@/features/auth/types/guards"
 import { isInputSafe } from "@/features/chat/lib/formatMessage"
 import { getSystemPrompt } from "@/features/chat/lib/systemPrompt"
 import { resolveWorkspace } from "@/features/workspace/lib/workspace-utils"
+import { getValidAccessToken, hasOAuthCredentials } from "@/lib/anthropic-oauth"
 import { COOKIE_NAMES } from "@/lib/auth/cookies"
 import {
-  hasStripeMcpAccess,
+  BRIDGE_STREAM_TYPES,
   getAllowedTools,
   getDisallowedTools,
   getOAuthMcpServers,
+  hasStripeMcpAccess,
   PERMISSION_MODE,
   SETTINGS_SOURCES,
-  BRIDGE_STREAM_TYPES,
 } from "@/lib/claude/agent-constants.mjs"
-import { fetchOAuthTokens } from "@/lib/oauth/fetch-oauth-tokens"
-import { fetchUserEnvKeys } from "@/lib/oauth/fetch-user-env-keys"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { env } from "@/lib/env"
 import { ErrorCodes } from "@/lib/error-codes"
+import { buildAnalyzeImagePrompt, fetchAndSaveAnalyzeImages } from "@/lib/image-analyze/fetch-and-save"
 import { logInput } from "@/lib/input-logger"
 import { type ClaudeModel, DEFAULT_MODEL, isValidClaudeModel } from "@/lib/models/claude-models"
+import { fetchOAuthTokens } from "@/lib/oauth/fetch-oauth-tokens"
+import { fetchUserEnvKeys } from "@/lib/oauth/fetch-user-env-keys"
 import { createRequestLogger } from "@/lib/request-logger"
 import { registerCancellation, startTTLCleanup, unregisterCancellation } from "@/lib/stream/cancellation-registry"
 import { type CancelState, createNDJSONStream } from "@/lib/stream/ndjson-stream-handler"
 import {
-  createStreamBuffer,
   appendToStreamBuffer,
   completeStreamBuffer,
+  createStreamBuffer,
   errorStreamBuffer,
 } from "@/lib/stream/stream-buffer"
 import { createAppClient } from "@/lib/supabase/app"
@@ -51,10 +54,7 @@ import { getOrgCredits } from "@/lib/tokens"
 import { generateRequestId } from "@/lib/utils"
 import { runAgentChild } from "@/lib/workspace-execution/agent-child-runner"
 import { detectServeMode } from "@/lib/workspace-execution/command-runner"
-import { getValidAccessToken, hasOAuthCredentials } from "@/lib/anthropic-oauth"
 import { BodySchema } from "@/types/guards/api"
-import { DEFAULTS, WORKER_POOL, SUPERADMIN, filterToolsForPlanMode } from "@webalive/shared"
-import { getWorkerPool, type WorkerToParentMessage } from "@webalive/worker-pool"
 
 export const runtime = "nodejs"
 
@@ -130,6 +130,7 @@ export async function POST(req: NextRequest) {
       additionalContext,
       analyzeImageUrls,
       planMode,
+      resumeSessionAt,
     } = parseResult.data
     logger.log("Conversation:", conversationId)
     logger.log(
@@ -506,14 +507,16 @@ export async function POST(req: NextRequest) {
       let firstMessageReceived = false
       childStream = new ReadableStream<Uint8Array>({
         async start(controller) {
-          try {
-            await pool.query(credentials, {
+          // Helper to run query with given resume session
+          const runQuery = async (resumeId: string | undefined) => {
+            return pool.query(credentials, {
               requestId,
               payload: {
                 message: finalMessage,
                 model: effectiveModel,
                 maxTurns: maxTurns,
-                resume: existingSessionId || undefined,
+                resume: resumeId,
+                resumeSessionAt: resumeSessionAt || undefined,
                 systemPrompt,
                 apiKey: effectiveApiKey || undefined,
                 oauthTokens,
@@ -548,8 +551,42 @@ export async function POST(req: NextRequest) {
               },
               signal: workerAbortController.signal,
             })
+          }
+
+          try {
+            await runQuery(existingSessionId || undefined)
             controller.close()
           } catch (err) {
+            // Fallback: If session not found (worker restarted), clear stale session and retry
+            // The error may come as "Claude Code process exited with code 1" with the actual
+            // "No conversation found" message in stderr, so we check both
+            const errorMessage = err instanceof Error ? err.message : String(err)
+            const stderrMessage = (err as { stderr?: string })?.stderr || ""
+            const combinedMessage = `${errorMessage} ${stderrMessage}`
+            const isSessionNotFound =
+              combinedMessage.includes("No conversation found") ||
+              (combinedMessage.includes("session") && combinedMessage.includes("not found"))
+
+            if (isSessionNotFound && existingSessionId && sessionKey) {
+              logger.log(
+                `[SESSION RECOVERY] Session "${existingSessionId}" not found (detected in: ${stderrMessage ? "stderr" : "message"}), clearing and retrying...`,
+              )
+              try {
+                // Clear stale session from store
+                await sessionStore.delete(sessionKey)
+                logger.log("[SESSION RECOVERY] Cleared stale session, starting fresh conversation")
+
+                // Retry without resume - start fresh conversation
+                await runQuery(undefined)
+                controller.close()
+                return
+              } catch (retryErr) {
+                logger.error("[SESSION RECOVERY] Retry failed:", retryErr)
+                controller.error(retryErr)
+                return
+              }
+            }
+
             logger.error("Worker pool query failed:", err)
             controller.error(err)
           }
@@ -576,6 +613,7 @@ export async function POST(req: NextRequest) {
         model: effectiveModel,
         maxTurns: maxTurns,
         resume: existingSessionId || undefined,
+        resumeSessionAt: resumeSessionAt || undefined,
         systemPrompt,
         apiKey: effectiveApiKey || undefined,
         sessionCookie,

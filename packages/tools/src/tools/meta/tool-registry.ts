@@ -5,7 +5,7 @@
  * Internal tools are defined here. External MCP entries are auto-generated
  * from GLOBAL_MCP_PROVIDERS and OAUTH_MCP_PROVIDERS in @webalive/shared.
  */
-import { GLOBAL_MCP_PROVIDERS, OAUTH_MCP_PROVIDERS } from "@webalive/shared"
+import { GLOBAL_MCP_PROVIDERS, OAUTH_MCP_PROVIDERS, getTemplateIdsInline, DEFAULTS } from "@webalive/shared"
 
 /**
  * SDK Built-in Tools
@@ -489,8 +489,7 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
         name: "templateId",
         type: "string",
         required: false,
-        description:
-          "Template ID (tmpl_blank, tmpl_gallery, tmpl_event, tmpl_saas, tmpl_business). Default: tmpl_blank",
+        description: `Template ID (${getTemplateIdsInline()}). Default: ${DEFAULTS.DEFAULT_TEMPLATE_ID}`,
       },
     ],
   },

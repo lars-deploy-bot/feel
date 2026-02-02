@@ -1,7 +1,7 @@
 "use client"
 
 import { create } from "zustand"
-import { persist, createJSONStorage } from "zustand/middleware"
+import { createJSONStorage, persist } from "zustand/middleware"
 import type { TabId } from "@/lib/types/ids"
 import { TAB_VIEW_STORAGE_KEY } from "./storage-keys"
 

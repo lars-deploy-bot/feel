@@ -1,3 +1,4 @@
+import { env } from "@webalive/env/server"
 import { importJWK, jwtVerify, SignJWT } from "jose"
 import {
   JsonWebTokenError,
@@ -6,7 +7,6 @@ import {
   TokenExpiredError,
   verify as verifyHS256,
 } from "jsonwebtoken"
-import { env } from "@webalive/env/server"
 
 /**
  * JWT Configuration - Lazy Initialization

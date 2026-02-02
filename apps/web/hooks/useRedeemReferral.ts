@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect } from "react"
 import { REFERRAL } from "@webalive/shared"
-import { getStoredReferralCode, clearStoredReferralCode } from "@/lib/referral"
+import { useEffect } from "react"
+import { clearStoredReferralCode, getStoredReferralCode } from "@/lib/referral"
 
 const SESSION_KEY = "referral_redeem_attempted"
 

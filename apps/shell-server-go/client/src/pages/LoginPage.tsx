@@ -6,7 +6,7 @@ export function LoginPage() {
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [searchParams] = useSearchParams()
-  const navigate = useNavigate()
+  const _navigate = useNavigate()
   const fetchConfig = useConfigStore(s => s.fetchConfig)
 
   const errorType = searchParams.get("error")
@@ -78,7 +78,6 @@ export function LoginPage() {
             type="password"
             name="password"
             placeholder="Password"
-            autoFocus
             required
             value={password}
             onChange={e => setPassword(e.target.value)}

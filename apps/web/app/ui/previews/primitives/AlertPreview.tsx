@@ -1,6 +1,6 @@
 "use client"
 
-import { AlertTriangle, Info, CheckCircle } from "lucide-react"
+import { AlertTriangle, CheckCircle, Info } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export function AlertPreview() {

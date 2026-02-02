@@ -76,6 +76,7 @@ export {
   getOAuthKeyForProvider,
   getOAuthMcpProviderConfig,
   providerSupportsPat,
+  providerSupportsOAuth,
   type OAuthMcpProviderConfig,
   type OAuthMcpProviderRegistry,
   type OAuthMcpProviderKey,
@@ -188,3 +189,15 @@ export {
   type ExternalContentSource,
   type WrapExternalContentOptions,
 } from "./external-content.js"
+export {
+  // Website templates - SINGLE SOURCE OF TRUTH
+  TEMPLATES,
+  TEMPLATE_IDS,
+  isValidTemplateId,
+  getTemplateById,
+  getTemplateListForDocs,
+  getTemplateIdsInline,
+  type Template,
+  type TemplateIcon,
+  type TemplateId,
+} from "./templates.js"

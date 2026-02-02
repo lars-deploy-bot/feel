@@ -1,5 +1,5 @@
-import { EMAIL_TEMPLATES } from "@/config/emails"
 import { retryAsync } from "@webalive/shared"
+import { EMAIL_TEMPLATES } from "@/config/emails"
 
 interface SendReferralInviteParams {
   to: string

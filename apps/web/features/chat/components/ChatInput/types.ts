@@ -37,12 +37,28 @@ export interface SuperTemplateAttachment extends BaseAttachment {
 }
 
 // User Prompt template
+/** @deprecated Use SkillAttachment instead */
 export interface UserPromptAttachment extends BaseAttachment {
   kind: "user-prompt"
   promptType: string // e.g., "revise-code", "organize-code"
   data: string // The actual prompt text (sent to Claude SDK)
   displayName: string // e.g., "Revise Code", "Organize Code"
   userFacingDescription?: string // Short description shown to user in UI (instead of full prompt)
+}
+
+// Skill attachment (unified skills from API + user-created)
+export interface SkillAttachment extends BaseAttachment {
+  kind: "skill"
+  /** Skill ID (e.g., "revise-code" or "user-123456") */
+  skillId: string
+  /** Human-readable display name */
+  displayName: string
+  /** Short description for UI chip */
+  description: string
+  /** Full prompt text to prepend to message */
+  prompt: string
+  /** Source: "global" (system), "user" (localStorage), "project" (workspace) */
+  source: "global" | "user" | "project"
 }
 
 // File uploaded to workspace for SDK Read tool access
@@ -59,6 +75,7 @@ export type Attachment =
   | LibraryImageAttachment
   | SuperTemplateAttachment
   | UserPromptAttachment
+  | SkillAttachment
   | UploadedFileAttachment
 
 // Type guards
@@ -74,8 +91,13 @@ export function isSuperTemplateAttachment(attachment: Attachment): attachment is
   return attachment.kind === "supertemplate"
 }
 
+/** @deprecated Use isSkillAttachment instead */
 export function isUserPromptAttachment(attachment: Attachment): attachment is UserPromptAttachment {
   return attachment.kind === "user-prompt"
+}
+
+export function isSkillAttachment(attachment: Attachment): attachment is SkillAttachment {
+  return attachment.kind === "skill"
 }
 
 export function isUploadedFile(attachment: Attachment): attachment is UploadedFileAttachment {
@@ -164,7 +186,16 @@ export interface ChatInputHandle {
   addAttachment: (file: File) => Promise<void>
   addPhotobookImage: (imageKey: string) => void
   addSuperTemplateAttachment: (templateId: string, name: string, preview: string) => void
+  /** @deprecated Use addSkill instead */
   addUserPrompt: (promptType: string, data: string, displayName: string, userFacingDescription?: string) => void
+  /** Add a skill attachment */
+  addSkill: (
+    skillId: string,
+    displayName: string,
+    description: string,
+    prompt: string,
+    source: "global" | "user" | "project",
+  ) => void
   addFileForAnalysis: (file: File, workspace?: string) => Promise<void>
   getAttachments: () => Attachment[]
   clearLibraryImages: () => void

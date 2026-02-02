@@ -17,13 +17,14 @@
  *     return state.workerPool.activeWorkers === 0 && state.locks.count === 0
  *   }, { timeout: 5000 })
  */
+
+import { WORKER_POOL } from "@webalive/shared"
+import { getWorkerPool } from "@webalive/worker-pool"
 import { NextResponse } from "next/server"
 import { getLockedConversations } from "@/features/auth/types/session"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getRegistryState } from "@/lib/stream/cancellation-registry"
-import { WORKER_POOL } from "@webalive/shared"
-import { getWorkerPool } from "@webalive/worker-pool"
 
 export async function GET() {
   if (process.env.NODE_ENV === "production") {

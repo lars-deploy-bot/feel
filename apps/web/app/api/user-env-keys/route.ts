@@ -10,10 +10,10 @@
  */
 
 import { type NextRequest, NextResponse } from "next/server"
+import { getUserEnvKeysManager } from "@/lib/oauth/oauth-instances"
 import { z } from "zod"
 import { createErrorResponse, getSessionUser } from "@/features/auth/lib/auth"
 import { ErrorCodes } from "@/lib/error-codes"
-import { oauth } from "@webalive/oauth-core"
 
 /**
  * Schema for creating/updating an env key
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. Save the key
-    await oauth.setUserEnvKey(user.id, keyName, keyValue)
+    await getUserEnvKeysManager().setUserEnvKey(user.id, keyName, keyValue)
 
     console.log(`[User Env Keys] User ${user.id} set key: ${keyName}`)
 
@@ -100,7 +100,7 @@ export async function GET() {
     }
 
     // 2. Get list of key names
-    const keyNames = await oauth.listUserEnvKeyNames(user.id)
+    const keyNames = await getUserEnvKeysManager().listUserEnvKeyNames(user.id)
 
     return NextResponse.json({
       ok: true,
@@ -143,7 +143,7 @@ export async function DELETE(req: NextRequest) {
     const { keyName } = parseResult.data
 
     // 3. Delete the key
-    await oauth.deleteUserEnvKey(user.id, keyName)
+    await getUserEnvKeysManager().deleteUserEnvKey(user.id, keyName)
 
     console.log(`[User Env Keys] User ${user.id} deleted key: ${keyName}`)
 

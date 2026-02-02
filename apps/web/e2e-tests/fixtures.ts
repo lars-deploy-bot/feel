@@ -7,7 +7,7 @@
  */
 
 import { test as base, type Page } from "@playwright/test"
-import { COOKIE_NAMES, DOMAINS, TEST_CONFIG, createTestStorageState } from "@webalive/shared"
+import { COOKIE_NAMES, createTestStorageState, DOMAINS, TEST_CONFIG } from "@webalive/shared"
 import jwt from "jsonwebtoken"
 
 export interface TestUser {

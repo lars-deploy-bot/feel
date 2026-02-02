@@ -123,6 +123,24 @@ const {
 ⚠️ **No Cross-Tab Sync**: Each browser tab has its own independent session (by design -- tab = conversation)
 ⚠️ **Local Only**: Frontend session tracking stored in browser localStorage/Dexie
 
+## Storage Architecture
+
+### Two-Tier Persistence
+
+| Component | Storage Location | Survives Restart? |
+|-----------|------------------|-------------------|
+| Session ID mapping | Supabase `iam.sessions` table | ✅ Yes |
+| Conversation data | `/var/lib/claude-sessions/<workspace>/.claude/projects/*.jsonl` | ✅ Yes |
+| Frontend tab state | Browser localStorage/Dexie | ✅ Yes |
+
+### Session Recovery
+
+If a worker restarts and the session file is missing:
+1. Database still has the session ID
+2. Claude SDK returns "No conversation found"
+3. Stream route automatically clears stale session
+4. Retries as fresh conversation (graceful degradation)
+
 ## Current State
 
 ### Backend Storage -- Implemented

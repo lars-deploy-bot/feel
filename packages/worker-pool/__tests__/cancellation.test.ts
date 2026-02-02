@@ -37,7 +37,6 @@ import {
   // Type guards
   isCompleteMessage,
   isReadyMessage,
-  isCancelMessage,
   isCompleteResult,
   findMessageByType,
   filterMessagesByType,
@@ -193,7 +192,7 @@ function handleMessage(msg) {
 }
 
 /** Create a mock worker that ignores cancel messages (to test timeout fallback) */
-function createUnresponsiveWorkerCode(): string {
+function _createUnresponsiveWorkerCode(): string {
   return `
 import { createConnection } from "node:net"
 
@@ -287,7 +286,7 @@ describe("Cancellation Integration", () => {
   describe("Cancel Message Routing", () => {
     it("should send cancel message to worker when abort signal fires", async () => {
       // Track messages received by worker (from parent)
-      const parentToWorkerMessages: ParentToWorkerMessage[] = []
+      const _parentToWorkerMessages: ParentToWorkerMessage[] = []
       const workerToParentMessages: WorkerToParentMessage[] = []
       let workerReady = false
 
@@ -408,7 +407,7 @@ function send(msg) {
 
     it("should include correct requestId in cancel message", async () => {
       let workerReady = false
-      let receivedCancelRequestId: string | null = null
+      const _receivedCancelRequestId: string | null = null
 
       const requestIdTrackingWorker = `
 import { createConnection } from "node:net"
@@ -801,16 +800,16 @@ describe("AbortSignal Integration with Manager", () => {
    */
 
   let testDir: string
-  let socketPath: string
-  let mockWorkerPath: string
+  let _socketPath: string
+  let _mockWorkerPath: string
 
   beforeEach(async () => {
     // Create unique directory for each test
     const uniqueId = `${process.pid}-${Date.now()}-${++abortTestCounter}-${Math.random().toString(36).slice(2, 8)}`
     testDir = join(tmpdir(), `worker-pool-abort-${uniqueId}`)
     await mkdir(testDir, { recursive: true })
-    socketPath = join(testDir, "worker.sock")
-    mockWorkerPath = join(testDir, "mock-worker.mjs")
+    _socketPath = join(testDir, "worker.sock")
+    _mockWorkerPath = join(testDir, "mock-worker.mjs")
   })
 
   afterEach(async () => {

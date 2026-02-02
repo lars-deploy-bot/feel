@@ -2,8 +2,8 @@
 
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { FileTree } from "./FileTree"
 import { CodeViewer } from "./CodeViewer"
+import { FileTree } from "./FileTree"
 
 interface SandboxCodePanelProps {
   workspace: string

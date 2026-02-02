@@ -10,10 +10,10 @@
 "use client"
 
 import { useState } from "react"
-import type { ToolResultRendererProps } from "@/lib/tools/tool-registry"
 import { EmailDraftCard } from "@/components/email/EmailDraftCard"
 import type { EmailDraft } from "@/components/email/types"
 import { FAKE_EMAIL_DRAFTS } from "@/components/email/types"
+import type { ToolResultRendererProps } from "@/lib/tools/tool-registry"
 
 /**
  * Generate a unique key for storing sent status in localStorage

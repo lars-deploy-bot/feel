@@ -32,12 +32,12 @@ import type {
 
 // Import from shared - single source of truth
 import {
-  BRIDGE_ALLOWED_SDK_TOOLS,
   BRIDGE_ADMIN_ONLY_SDK_TOOLS,
+  BRIDGE_ALLOWED_SDK_TOOLS,
   BRIDGE_ALWAYS_DISALLOWED_SDK_TOOLS,
-  getBridgeDisallowedTools,
   type BridgeAllowedSDKTool,
   type BridgeDisallowedSDKTool,
+  getBridgeDisallowedTools,
 } from "@webalive/shared"
 
 // Re-export for use in tests

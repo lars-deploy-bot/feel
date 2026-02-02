@@ -36,7 +36,7 @@ GitHub Issue → Open Problem (this dir) → Fix Applied → Postmortem (moved t
 
 ## Current Open Problems
 
-- [oauth-core-architectural-issues.md](./oauth-core-architectural-issues.md) - Critical architectural debt in OAuth core package requiring major refactoring
+- [oauth-core-architectural-issues.md](./oauth-core-architectural-issues.md) - 🟡 OAuth core architectural debt (partially resolved: race conditions ✅, interface segregation ✅, retry/audit/crypto still open)
 
 ## Resolved (Moved to Archive)
 

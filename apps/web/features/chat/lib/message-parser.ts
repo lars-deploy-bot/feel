@@ -247,20 +247,12 @@ export function parseStreamEvent(
     const userMessage = getErrorMessage(errorCode, details) || errorData.message
     const helpText = getErrorHelp(errorCode, details)
 
-    let detailsText = ""
-    if (errorData.details && typeof errorData.details === "object") {
-      detailsText = JSON.stringify(errorData.details, null, 2)
-    } else if (errorData.details) {
-      detailsText = String(errorData.details)
-    }
-
     let fullMessage = userMessage
     if (helpText) {
       fullMessage += `\n\n${helpText}`
     }
-    if (detailsText && process.env.NODE_ENV === "development") {
-      fullMessage += `\n\nDetails: ${detailsText}`
-    }
+    // Show error ID for log correlation (not full details - those stay in backend logs)
+    fullMessage += `\n\n_Error ID: ${event.requestId}_`
 
     return {
       id: `${event.requestId}-error`,

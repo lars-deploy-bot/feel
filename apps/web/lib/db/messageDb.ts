@@ -87,6 +87,8 @@ export interface DbMessage {
   // Interruption metadata (optional)
   abortedAt?: number // Timestamp when user stopped the stream
   errorCode?: string // Error code if status === "error"
+  // Soft delete for message editing (messages "deleted" via resumeSessionAt)
+  deletedAt?: number // Timestamp when user deleted this message from context
   // Sync metadata
   syncedAt?: number
   pendingSync?: boolean // IMPORTANT: false during streaming, true only when finalized

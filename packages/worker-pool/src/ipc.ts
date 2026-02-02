@@ -159,7 +159,7 @@ export async function createIpcServer(options: IpcServerOptions): Promise<IpcSer
         server,
         sendMessage: (msg: ParentToWorkerMessage) => {
           if (clientSocket && !clientSocket.destroyed) {
-            clientSocket.write(JSON.stringify(msg) + "\n")
+            clientSocket.write(`${JSON.stringify(msg)}\n`)
           }
         },
         close: async () => {
@@ -220,7 +220,7 @@ export function createIpcClient(options: IpcClientOptions): Promise<IpcClient> {
         socket,
         sendMessage: (msg: WorkerToParentMessage) => {
           if (!socket.destroyed) {
-            socket.write(JSON.stringify(msg) + "\n")
+            socket.write(`${JSON.stringify(msg)}\n`)
           }
         },
         close: () => {

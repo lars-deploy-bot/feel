@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs"
 import path from "node:path"
-import { PATHS, TEST_CONFIG, SUPERADMIN } from "@webalive/shared"
+import { PATHS, SUPERADMIN, TEST_CONFIG } from "@webalive/shared"
 import { NextResponse } from "next/server"
 import { domainToSlug, normalizeDomain } from "@/features/manager/lib/domain-utils"
 import { ErrorCodes } from "@/lib/error-codes"

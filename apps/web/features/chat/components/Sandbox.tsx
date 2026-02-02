@@ -1,28 +1,30 @@
 "use client"
-import { ExternalLink, RotateCw, X } from "lucide-react"
+import { PREVIEW_MESSAGES, SUPERADMIN } from "@webalive/shared"
+import { ExternalLink, RotateCw, Terminal, X } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { PREVIEW_MESSAGES } from "@webalive/shared"
+import { usePanelContext } from "@/features/chat/lib/sandbox-context"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
-import { useSandboxContext } from "@/features/chat/lib/sandbox-context"
 import { useResizablePanel } from "@/lib/hooks/useResizablePanel"
 import { getPreviewUrl, getSiteUrl } from "@/lib/preview-utils"
 import { useDebugActions, useSandboxWidth } from "@/lib/stores/debug-store"
-import { SandboxModeMenu, SandboxCodePanel } from "./sandbox"
+import { PanelViewMenu, SandboxCodePanel } from "./sandbox"
 import { PulsingDot } from "./ui/PulsingDot"
 
 export function Sandbox() {
   const { workspace } = useWorkspace({ allowEmpty: true })
+  const isSuperadminWorkspace = workspace === SUPERADMIN.WORKSPACE_NAME
   const {
     setSelectedElement,
     selectorActive,
-    preview,
-    setPreviewMode,
+    deactivateSelector,
+    panel,
+    setPanelView,
     openFile,
     closeFile,
     toggleFolder,
     setTreeWidth,
     toggleTreeCollapsed,
-  } = useSandboxContext()
+  } = usePanelContext()
   const savedWidth = useSandboxWidth()
   const { setSandbox, setSandboxWidth } = useDebugActions()
   const { width, setWidth, isResizing, handleMouseDown } = useResizablePanel({
@@ -77,6 +79,13 @@ export function Sandbox() {
     return () => clearInterval(interval)
   }, [workspace, fetchPreviewToken])
 
+  // Reset selector state when sandbox unmounts (closes)
+  useEffect(() => {
+    return () => {
+      deactivateSelector()
+    }
+  }, [deactivateSelector])
+
   // Set to half viewport on first open (when no saved preference)
   useEffect(() => {
     if (savedWidth === null) {
@@ -102,6 +111,10 @@ export function Sandbox() {
 
   const handleIframeLoad = () => {
     setIsLoading(false)
+    // Sync selector state to newly loaded iframe
+    if (selectorActive && iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage({ type: "alive-tagger-activate" }, "*")
+    }
   }
 
   // Reset loading state when path changes
@@ -135,13 +148,7 @@ export function Sandbox() {
   }
 
   // Send activation/deactivation message to iframe when selectorActive changes
-  const isFirstRender = useRef(true)
   useEffect(() => {
-    // Skip first render - only send when user toggles the selector
-    if (isFirstRender.current) {
-      isFirstRender.current = false
-      return
-    }
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
         { type: selectorActive ? "alive-tagger-activate" : "alive-tagger-deactivate" },
@@ -215,7 +222,7 @@ export function Sandbox() {
       <div className="h-11 px-2 flex items-center gap-1.5 border-b border-white/[0.04] bg-neutral-900/50 shrink-0">
         {/* URL/Path display */}
         <div className="flex-1 h-7 flex items-center gap-1.5 bg-white/[0.03] rounded px-2 min-w-0">
-          {preview.mode === "site" && (
+          {panel.view === "site" && (
             <>
               <button
                 type="button"
@@ -244,15 +251,21 @@ export function Sandbox() {
               </a>
             </>
           )}
-          {preview.mode === "code" && (
+          {panel.view === "code" && (
             <span className="text-[13px] text-neutral-500 truncate">
-              {preview.filePath ? `/${preview.filePath}` : "Code"}
+              {panel.filePath ? `/${panel.filePath}` : "Code"}
             </span>
+          )}
+          {panel.view === "terminal" && (
+            <div className="flex items-center gap-1.5">
+              <Terminal size={12} strokeWidth={1.5} className="text-neutral-600" />
+              <span className="text-[13px] text-neutral-500">Terminal</span>
+            </div>
           )}
         </div>
 
-        {/* Mode switcher */}
-        <SandboxModeMenu currentMode={preview.mode} onModeChange={setPreviewMode} />
+        {/* View switcher */}
+        <PanelViewMenu currentView={panel.view} onViewChange={setPanelView} isSuperadmin={isSuperadminWorkspace} />
 
         {/* Close - tablets only */}
         <button
@@ -267,13 +280,13 @@ export function Sandbox() {
 
       {/* Content */}
       <div className="flex-1 overflow-hidden relative">
-        {!workspace || !workspace.includes(".") ? (
+        {!workspace || (!workspace.includes(".") && !isSuperadminWorkspace) ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <p className="text-neutral-600 text-sm">{workspace ? "Invalid workspace" : "No site selected"}</p>
             </div>
           </div>
-        ) : preview.mode === "site" ? (
+        ) : panel.view === "site" ? (
           <div className="h-full bg-white relative">
             {/* Loading state */}
             {(isLoading || !previewToken) && (
@@ -292,19 +305,26 @@ export function Sandbox() {
               />
             )}
           </div>
-        ) : preview.mode === "code" ? (
+        ) : panel.view === "code" ? (
           <SandboxCodePanel
             workspace={workspace}
-            filePath={preview.filePath}
-            expandedFolders={preview.expandedFolders}
-            treeWidth={preview.treeWidth}
-            treeCollapsed={preview.treeCollapsed}
+            filePath={panel.filePath}
+            expandedFolders={panel.expandedFolders}
+            treeWidth={panel.treeWidth}
+            treeCollapsed={panel.treeCollapsed}
             onSelectFile={openFile}
             onCloseFile={closeFile}
             onToggleFolder={toggleFolder}
             onSetTreeWidth={setTreeWidth}
             onToggleTreeCollapsed={toggleTreeCollapsed}
           />
+        ) : panel.view === "terminal" ? (
+          <div className="h-full bg-[#1e1e1e] flex items-center justify-center">
+            <div className="text-center text-neutral-500">
+              <Terminal size={48} strokeWidth={1} className="mx-auto mb-4 opacity-50" />
+              <p className="text-sm">Terminal coming soon</p>
+            </div>
+          </div>
         ) : null}
       </div>
     </div>

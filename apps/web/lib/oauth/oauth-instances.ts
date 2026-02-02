@@ -7,12 +7,12 @@
  * SINGLE SOURCE OF TRUTH: packages/shared/src/mcp-providers.ts
  */
 
-import { createOAuthManager, buildInstanceId, type OAuthManagerConfig } from "@webalive/oauth-core"
+import { buildInstanceId, createOAuthManager, type OAuthManagerConfig } from "@webalive/oauth-core"
 import {
+  type AllOAuthProviderKey,
+  isValidOAuthProviderKey,
   OAUTH_MCP_PROVIDERS,
   OAUTH_ONLY_PROVIDERS,
-  isValidOAuthProviderKey,
-  type AllOAuthProviderKey,
 } from "@webalive/shared"
 
 /**
@@ -149,9 +149,30 @@ export const getLinearOAuth = () => getOAuthInstance("linear")
 export const getStripeOAuth = () => getOAuthInstance("stripe")
 export const getGoogleOAuth = () => getOAuthInstance("google")
 
-// Re-export client-safe provider constants
-export { SUPPORTED_OAUTH_PROVIDERS, isOAuthProviderSupported } from "./providers"
+/**
+ * Get OAuth manager for user environment keys operations
+ * (not provider-specific, used for storing custom API keys)
+ */
+let userEnvKeysInstance: ReturnType<typeof createOAuthManager> | null = null
+
+export function getUserEnvKeysManager(): ReturnType<typeof createOAuthManager> {
+  if (!userEnvKeysInstance) {
+    const environment = getCurrentEnvironment()
+    const config: OAuthManagerConfig = {
+      provider: "user-env-keys",
+      instanceId: buildInstanceId("user-env-keys", environment),
+      namespace: "user_env_keys",
+      environment,
+      defaultTtlSeconds: undefined, // No TTL for user keys
+    }
+    userEnvKeysInstance = createOAuthManager(config)
+  }
+  return userEnvKeysInstance
+}
+
 export type { OAuthProvider } from "./providers"
+// Re-export client-safe provider constants
+export { isOAuthProviderSupported, SUPPORTED_OAUTH_PROVIDERS } from "./providers"
 
 // Export environment helper for debugging
 export { getCurrentEnvironment }

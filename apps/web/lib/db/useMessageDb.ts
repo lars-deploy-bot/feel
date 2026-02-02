@@ -12,7 +12,7 @@
 
 import Dexie from "dexie"
 import { useLiveQuery } from "dexie-react-hooks"
-import { getMessageDb, type DbConversation, type DbMessage, type DbTab } from "./messageDb"
+import { type DbConversation, type DbMessage, type DbTab, getMessageDb } from "./messageDb"
 
 // =============================================================================
 // Session Context
@@ -94,6 +94,37 @@ export function useSharedConversations(workspace: string | null, session: Sessio
 }
 
 /**
+ * Get archived conversations for a workspace.
+ * Shows user's own archived conversations that can be restored.
+ */
+export function useArchivedConversations(workspace: string | null, session: SessionContext | null): DbConversation[] {
+  return (
+    useLiveQuery(
+      async () => {
+        if (!workspace || !session?.userId || !session?.orgId) return []
+
+        const db = getMessageDb(session.userId)
+
+        // Get archived conversations (has archivedAt but not deletedAt)
+        return db.conversations
+          .where("[workspace+updatedAt]")
+          .between([workspace, Dexie.minKey], [workspace, Dexie.maxKey])
+          .and(
+            c =>
+              !c.deletedAt && // Not deleted
+              !!c.archivedAt && // Is archived
+              c.creatorId === session.userId, // User's own only (can't unarchive shared)
+          )
+          .reverse() // Most recently archived first
+          .toArray()
+      },
+      [workspace, session?.userId, session?.orgId],
+      [],
+    ) ?? []
+  )
+}
+
+/**
  * Get a single conversation by ID.
  */
 export function useConversation(id: string | null, userId: string | null): DbConversation | null {
@@ -161,6 +192,7 @@ export function useTab(tabId: string | null, userId: string | null): DbTab | nul
 /**
  * Get messages for a tab (messages belong to tabs, NOT conversations).
  * Uses composite index [tabId+seq] for reliable ordering by sequence number.
+ * Filters out soft-deleted messages (those with deletedAt set).
  */
 export function useMessages(tabId: string | null, userId: string | null): DbMessage[] {
   return (
@@ -171,7 +203,12 @@ export function useMessages(tabId: string | null, userId: string | null): DbMess
         const db = getMessageDb(userId)
 
         // Order by seq (sequence number) for reliable ordering
-        return db.messages.where("[tabId+seq]").between([tabId, Dexie.minKey], [tabId, Dexie.maxKey]).toArray()
+        // Filter out soft-deleted messages
+        return db.messages
+          .where("[tabId+seq]")
+          .between([tabId, Dexie.minKey], [tabId, Dexie.maxKey])
+          .and(m => !m.deletedAt) // Exclude deleted messages
+          .toArray()
       },
       [tabId, userId],
       [],

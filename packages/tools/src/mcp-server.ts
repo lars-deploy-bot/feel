@@ -7,6 +7,10 @@ import { getWorkflowTool } from "./tools/meta/get-workflow.js"
 import { listWorkflowsTool } from "./tools/meta/list-workflows.js"
 import { searchToolsTool } from "./tools/meta/search-tools.js"
 import { generatePersonaTool } from "./tools/personas/generate-persona.js"
+import { describeTableTool } from "./tools/supabase/describe-table.js"
+import { listProjectsTool } from "./tools/supabase/list-projects.js"
+import { listTablesTool } from "./tools/supabase/list-tables.js"
+import { runQueryTool } from "./tools/supabase/run-query.js"
 import { getAliveSuperTemplateTool } from "./tools/templates/get-template.js"
 import { checkCodebaseTool } from "./tools/workspace/check-codebase.js"
 import { copySharedAssetTool } from "./tools/workspace/copy-shared-asset.js"
@@ -84,4 +88,24 @@ export const workspaceInternalMcp = createSdkMcpServer({
     copySharedAssetTool,
     createWebsiteTool,
   ],
+})
+
+/**
+ * Supabase MCP Server
+ *
+ * Tools for interacting with user's Supabase projects via the Management API.
+ * Requires user to connect Supabase via OAuth and configure a project ref.
+ *
+ * **Available Tools:**
+ * - run_query: Execute SQL queries (SELECT, INSERT, CREATE TABLE, etc.)
+ * - list_projects: List all accessible Supabase projects
+ * - list_tables: List tables in the connected project
+ * - describe_table: Get detailed table schema
+ *
+ * Tool names follow MCP pattern: mcp__supabase__<tool_name>
+ */
+export const supabaseInternalMcp = createSdkMcpServer({
+  name: "supabase",
+  version: "1.0.0",
+  tools: [runQueryTool, listProjectsTool, listTablesTool, describeTableTool],
 })

@@ -13,7 +13,7 @@
 
 "use client"
 
-import { ExternalLink, CheckCircle2, Pencil, Plus, User, Folder, Clock } from "lucide-react"
+import { CheckCircle2, Clock, ExternalLink, Folder, Pencil, Plus, User } from "lucide-react"
 import type { ToolResultRendererProps } from "@/lib/tools/tool-registry"
 
 interface LinearMcpIssue {

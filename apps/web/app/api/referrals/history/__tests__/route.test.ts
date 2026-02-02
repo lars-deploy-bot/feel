@@ -11,8 +11,8 @@
  * - Pagination: limit, offset, total, hasMore
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { ErrorCodes } from "@/lib/error-codes"
 
 // Mock auth - pass through createErrorResponse

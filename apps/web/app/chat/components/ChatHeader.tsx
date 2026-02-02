@@ -46,7 +46,7 @@ export function ChatHeader({
 
   // Check if any toggle buttons will be visible
   const showDebugToggle = isDevelopment() || isSuperadminWorkspace
-  const showPreviewToggle = !isSuperadminWorkspace
+  const showPreviewToggle = true // Show for all workspaces - terminal & code for superadmin
 
   return (
     <div className="h-14 flex-shrink-0 border-b border-black/[0.04] dark:border-white/[0.04]">

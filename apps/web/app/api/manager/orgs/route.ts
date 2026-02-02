@@ -1,11 +1,11 @@
 import { createClient } from "@supabase/supabase-js"
+import type { AppDatabase } from "@webalive/database"
 import { type NextRequest, NextResponse } from "next/server"
 import { isManagerAuthenticated } from "@/features/auth/lib/auth"
 import { createCorsErrorResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getAllFeedback } from "@/lib/feedback"
-import type { AppDatabase } from "@webalive/database"
 import { createIamClient } from "@/lib/supabase/iam"
 import { generateRequestId } from "@/lib/utils"
 

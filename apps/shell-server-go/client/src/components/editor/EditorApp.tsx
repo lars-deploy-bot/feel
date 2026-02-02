@@ -323,7 +323,7 @@ export function EditorApp() {
         setCopyError("")
         loadFileTree()
         // Open the new file
-        const name = dest.split("/").pop() || dest
+        const _name = dest.split("/").pop() || dest
         handleFileSelect(dest)
       } else {
         setCopyError(result.error || "Copy failed")
@@ -429,7 +429,6 @@ export function EditorApp() {
                         value={newFileName}
                         onChange={e => setNewFileName(e.target.value)}
                         placeholder="path/to/file.ts"
-                        autoFocus
                         className="w-full bg-shell-bg border border-shell-border rounded px-2 py-1 text-sm text-white placeholder-shell-text-muted focus:outline-none focus:border-shell-accent"
                       />
                       <div className="flex gap-1 mt-1">
@@ -492,7 +491,6 @@ export function EditorApp() {
                     value={copyDestination}
                     onChange={e => setCopyDestination(e.target.value)}
                     className="flex-1 bg-shell-bg border border-shell-border rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-shell-accent"
-                    autoFocus
                   />
                   <button
                     type="submit"

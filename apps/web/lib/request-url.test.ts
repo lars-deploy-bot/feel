@@ -2,9 +2,9 @@
  * Tests for request URL utilities
  */
 
-import { describe, expect, it } from "vitest"
-import type { NextRequest } from "next/server"
 import { DOMAINS, PORTS } from "@webalive/shared"
+import type { NextRequest } from "next/server"
+import { describe, expect, it } from "vitest"
 import { getRequestUrls } from "./request-url"
 
 // Use constants for test URLs

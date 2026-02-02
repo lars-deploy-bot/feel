@@ -6,18 +6,19 @@
  */
 
 import crypto from "node:crypto"
-import type { NextRequest } from "next/server"
-import { cookies } from "next/headers"
-import { getProvider, GoogleProvider } from "@webalive/oauth-core"
 import { env } from "@webalive/env/server"
+import { GoogleProvider, getProvider } from "@webalive/oauth-core"
 import { getOAuthKeyForProvider } from "@webalive/shared"
-import { canUserAccessIntegration } from "@/lib/integrations/visibility"
-import { getOAuthInstance } from "@/lib/oauth/oauth-instances"
+import { cookies } from "next/headers"
+import type { NextRequest } from "next/server"
+import type { SessionUser } from "@/features/auth/lib/auth"
 import { getClientIdentifier } from "@/lib/auth/client-identifier"
 import { oauthInitiationRateLimiter, oauthOperationRateLimiter } from "@/lib/auth/rate-limiter"
 import { ErrorCodes } from "@/lib/error-codes"
-import type { SessionUser } from "@/features/auth/lib/auth"
-import { OAUTH_PROVIDER_CONFIG, buildOAuthRedirectUri, isOAuthProviderSupported, type OAuthProvider } from "./providers"
+import { errorLogger } from "@/lib/error-logger"
+import { canUserAccessIntegration } from "@/lib/integrations/visibility"
+import { getOAuthInstance } from "@/lib/oauth/oauth-instances"
+import { buildOAuthRedirectUri, isOAuthProviderSupported, OAUTH_PROVIDER_CONFIG, type OAuthProvider } from "./providers"
 
 const OAUTH_STATE_COOKIE_PREFIX = "oauth_state_"
 const STATE_COOKIE_MAX_AGE = 600 // 10 minutes
@@ -219,7 +220,9 @@ export async function initiateOAuthFlow(context: OAuthContext, config: OAuthConf
   // See: https://developers.google.com/identity/protocols/oauth2/web-server#offline
   let authUrl: string
   if (oauthKey === "google" && oauthProvider instanceof GoogleProvider) {
-    authUrl = oauthProvider.getAuthUrl(config.clientId, config.redirectUri, config.scopes, state, {
+    // Google getAuthUrl signature: (clientId, redirectUri, scope, state?, pkce?, options?)
+    // Pass undefined for pkce (not using PKCE), then GoogleAuthOptions
+    authUrl = oauthProvider.getAuthUrl(config.clientId, config.redirectUri, config.scopes, state, undefined, {
       forceConsent: true,
     })
   } else {
@@ -272,16 +275,22 @@ export async function handleOAuthCallback(
     }
   }
 
+  // CRITICAL: Build redirect URI BEFORE try block so it's accessible in catch for logging
+  // This must match exactly what was used during authorization or Google will reject with "Bad Request"
+  const redirectUri = buildOAuthRedirectUri(baseUrl, provider as OAuthProvider)
+
   try {
     // Exchange code for tokens
     // Use oauthKey to get the actual OAuth provider (e.g., 'gmail' -> 'google')
     const oauthKey = getOAuthKeyForProvider(provider)
     const oauthManager = getOAuthInstance(oauthKey)
+
     await oauthManager.handleCallback(
       user.id, // instanceId (for env-based OAuth, same as userId)
       user.id, // authenticatingUserId
       oauthKey, // Use oauthKey for token storage
       code,
+      redirectUri, // Pass redirect URI to ensure it matches authorization
     )
 
     console.log(`[${provider} OAuth] Successfully connected user ${user.id}`)
@@ -293,8 +302,17 @@ export async function handleOAuthCallback(
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
-    console.error(`[${provider} OAuth] Callback failed:`, errorMessage)
-    console.error(`[${provider} OAuth] Full error:`, error)
+
+    // Centralized error logging with full context for debugging
+    errorLogger.oauth(`OAuth callback failed for ${provider}`, {
+      provider,
+      errorMessage,
+      redirectUri,
+      baseUrl,
+      userId: user.id,
+      stack: error instanceof Error ? error.stack : undefined,
+    })
+
     recordFailedAttempt(req, provider)
 
     // Security: Don't expose internal errors in production, but show in dev

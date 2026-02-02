@@ -3,9 +3,10 @@
  *
  * Core routing logic - if these break, nothing works.
  */
+
+import { DOMAINS, getServiceName, getSiteHome, getSiteUser, PATHS } from "@webalive/shared"
 import { describe, expect, it } from "vitest"
-import { normalizeDomain, isValidDomain, domainToSlug } from "@/features/manager/lib/domain-utils"
-import { PATHS, DOMAINS, getServiceName, getSiteUser, getSiteHome } from "@webalive/shared"
+import { domainToSlug, isValidDomain, normalizeDomain } from "@/features/manager/lib/domain-utils"
 
 describe("Domain normalization", () => {
   it("normalizes domains correctly", () => {

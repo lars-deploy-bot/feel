@@ -26,8 +26,9 @@ import { useStreamCancellation } from "@/features/chat/hooks/useStreamCancellati
 import { useStreamReconnect } from "@/features/chat/hooks/useStreamReconnect"
 import { ClientRequest, DevTerminalProvider, useDevTerminal } from "@/features/chat/lib/dev-terminal-context"
 import { renderMessage, shouldRenderMessage } from "@/features/chat/lib/message-renderer"
+import { MessageWrapper } from "@/features/chat/components/message-renderers/MessageWrapper"
 import { RetryProvider, useRetry } from "@/features/chat/lib/retry-context"
-import { SandboxProvider, useSandboxContext } from "@/features/chat/lib/sandbox-context"
+import { PanelProvider, usePanelContext } from "@/features/chat/lib/sandbox-context"
 import { useAuth } from "@/features/deployment/hooks/useAuth"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
 import { useRedeemReferral } from "@/hooks/useRedeemReferral"
@@ -47,11 +48,20 @@ import { useStreamingActions } from "@/lib/stores/streamingStore"
 import { useTabActions } from "@/lib/stores/tabStore"
 import { useSelectedOrgId } from "@/lib/stores/workspaceStore"
 // Local components
-import { AgentManagerIndicator, ChatEmptyState, ChatHeader, TabBar, WorkspaceInfoBar } from "./components"
+import {
+  AgentManagerIndicator,
+  ChatEmptyState,
+  ChatHeader,
+  OfflineBanner,
+  TabBar,
+  WorkspaceInfoBar,
+} from "./components"
 import {
   useChatDragDrop,
   useChatMessaging,
+  useChatScroll,
   useModals,
+  useOnlineStatus,
   useStatusText,
   useTabIsolatedMessages,
   useTabsManagement,
@@ -69,6 +79,8 @@ function ChatPageContent() {
     addMessage,
     switchTab: switchDexieTab,
     archiveConversation,
+    unarchiveConversation,
+    renameConversation,
     setSession: setDexieSession,
   } = useDexieMessageActions()
   const dexieSession = useDexieSession()
@@ -84,11 +96,15 @@ function ChatPageContent() {
   )
   const { toggleSidebar } = useSidebarActions()
   const isSidebarOpen = useSidebarOpen()
-  const [shouldForceScroll, setShouldForceScroll] = useState(false)
-  const [userHasManuallyScrolled, setUserHasManuallyScrolled] = useState(false)
   const [subdomainInitialized, setSubdomainInitialized] = useState(false)
   const [_showCompletionDots, setShowCompletionDots] = useState(false)
   const modals = useModals()
+
+  // Smart scroll using Intersection Observer
+  const { containerRef, anchorRef, isScrolledAway, scrollToBottom, forceScrollToBottom } = useChatScroll({
+    threshold: 100,
+    debounceMs: 150,
+  })
 
   const { user } = useAuth()
   const selectedOrgId = useSelectedOrgId()
@@ -96,8 +112,6 @@ function ChatPageContent() {
 
   // Tabs are on by default for all users
   const showTabs = true
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const isAutoScrolling = useRef(false)
   const chatInputRef = useRef<ChatInputHandle | null>(null)
   const photoButtonRef = useRef<HTMLButtonElement>(null)
   const { setSSETerminal, setSSETerminalMinimized, setSandbox, setSandboxMinimized } = useDebugActions()
@@ -130,14 +144,14 @@ function ChatPageContent() {
     }
   }, [mounted, wkParam, workspace, setWorkspace])
 
-  // Superadmin workspace (claude-bridge) has no preview/sandbox
+  // Superadmin workspace (claude-bridge) shows terminal & code views only
   const isSuperadminWorkspace = workspace === SUPERADMIN.WORKSPACE_NAME
-  const showSandbox = showSandboxRaw && !isSuperadminWorkspace
+  const showSandbox = showSandboxRaw // Show for all workspaces
 
   const _userApiKey = useApiKey()
   const _userModel = useModel()
   const streamingActions = useStreamingActions()
-  const { registerElementSelectHandler } = useSandboxContext()
+  const { registerElementSelectHandler } = usePanelContext()
 
   // Custom hooks
   const statusText = useStatusText(busy, messages)
@@ -184,8 +198,20 @@ function ChatPageContent() {
     setDexieSession({ userId: user.id, orgId })
   }, [user?.id, selectedOrgId, organizations, dexieSession, setDexieSession])
 
+  // Fetch conversations from server when workspace changes
+  const { syncFromServer } = useDexieMessageActions()
+  useEffect(() => {
+    if (!mounted || !workspace || !dexieSession) return
+
+    // Fetch server conversations in background (non-blocking)
+    void syncFromServer(workspace)
+  }, [mounted, workspace, dexieSession, syncFromServer])
+
   // Check for session expiry
   const isSessionExpired = useIsSessionExpired()
+
+  // Track online/offline status for user feedback
+  const isOnline = useOnlineStatus()
 
   // Session values from useTabIsolatedMessages (single source of truth)
   // sessionTabId is the primary session key for Claude SDK (resume parameter)
@@ -214,7 +240,7 @@ function ChatPageContent() {
     setMsg,
     addMessage,
     chatInputRef,
-    setShouldForceScroll,
+    forceScrollToBottom,
     setShowCompletionDots,
   })
 
@@ -350,53 +376,13 @@ function ChatPageContent() {
   // Calculate total domain count from organizations
   const totalDomainCount = organizations.reduce((sum, org) => sum + (org.workspace_count || 0), 0)
 
-  // Track manual scrolling
+  // Auto-scroll to bottom when new messages arrive (unless user scrolled away)
+  // Uses Intersection Observer under the hood - more reliable than scroll position math
   useEffect(() => {
-    const messagesContainer = messagesEndRef.current?.parentElement
-    if (!messagesContainer) return
-
-    const handleScroll = () => {
-      if (!isAutoScrolling.current) {
-        setUserHasManuallyScrolled(true)
-      }
+    if (!isScrolledAway && messages.length > 0) {
+      scrollToBottom("auto")
     }
-
-    messagesContainer.addEventListener("scroll", handleScroll)
-    return () => messagesContainer.removeEventListener("scroll", handleScroll)
-  }, [])
-
-  useEffect(() => {
-    const messagesContainer = messagesEndRef.current?.parentElement
-    if (!messagesContainer) return
-
-    let timeoutId: NodeJS.Timeout | null = null
-
-    const performScroll = () => {
-      isAutoScrolling.current = true
-      messagesEndRef.current?.scrollIntoView({ behavior: "auto" })
-      timeoutId = setTimeout(() => {
-        isAutoScrolling.current = false
-      }, 300)
-    }
-
-    if (shouldForceScroll) {
-      performScroll()
-      setShouldForceScroll(false)
-      setUserHasManuallyScrolled(false)
-    } else if (!userHasManuallyScrolled) {
-      performScroll()
-    } else {
-      const { scrollTop, scrollHeight, clientHeight } = messagesContainer
-      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100
-      if (isNearBottom) {
-        performScroll()
-      }
-    }
-
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId)
-    }
-  }, [messages, shouldForceScroll, userHasManuallyScrolled])
+  }, [messages, isScrolledAway, scrollToBottom])
 
   // Handle OAuth callback success/error params
   const urlSearchParams = typeof window !== "undefined" ? window.location.search : ""
@@ -498,6 +484,22 @@ function ChatPageContent() {
     ],
   )
 
+  const handleRenameTabGroup = useCallback(
+    async (tabGroupIdToRename: string, title: string) => {
+      if (!tabGroupIdToRename || !title.trim()) return
+      await renameConversation(tabGroupIdToRename, title)
+    },
+    [renameConversation],
+  )
+
+  const handleUnarchiveTabGroup = useCallback(
+    async (tabGroupIdToUnarchive: string) => {
+      if (!tabGroupIdToUnarchive) return
+      await unarchiveConversation(tabGroupIdToUnarchive)
+    },
+    [unarchiveConversation],
+  )
+
   return (
     <div
       className="h-[100dvh] flex flex-row overflow-hidden dark:bg-[#1a1a1a] dark:text-white"
@@ -509,6 +511,9 @@ function ChatPageContent() {
         activeTabGroupId={sessionTabGroupId}
         onTabGroupSelect={handleTabGroupSelect}
         onArchiveTabGroup={handleArchiveTabGroup}
+        onUnarchiveTabGroup={handleUnarchiveTabGroup}
+        onRenameTabGroup={handleRenameTabGroup}
+        onNewConversation={handleNewTabGroup}
         onOpenSettings={modals.openSettings}
         onOpenInvite={modals.openInvite}
       />
@@ -533,6 +538,7 @@ function ChatPageContent() {
         onDragOver={handleChatDragOver}
         onDrop={handleChatDrop}
       >
+        <OfflineBanner isOnline={isOnline} />
         <ChatDropOverlay isDragging={isDragging} />
         <Suspense fallback={null}>
           <SubdomainInitializer
@@ -583,7 +589,7 @@ function ChatPageContent() {
           )}
 
           {/* Messages */}
-          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+          <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
             <div className="p-4 mx-auto w-full md:max-w-2xl min-w-0">
               {messages.length === 0 && !busy && (
                 <ChatEmptyState
@@ -602,14 +608,36 @@ function ChatPageContent() {
                   }
                   return shouldRenderMessage(message, isDebugMode)
                 })
-                .map(message => {
+                .map((message, index, filteredMessages) => {
                   const content = renderMessage(message, { onSubmitAnswer: sendMessage })
                   // Skip rendering wrapper if component returns null
                   if (!content) return null
+
+                  // Determine if this message can be deleted:
+                  // - Must have a previous assistant message with UUID to resume from
+                  // - Only user messages and assistant messages with visible content can be deleted
+                  const canDelete =
+                    sessionTabId != null &&
+                    index > 0 &&
+                    (message.type === "user" || message.type === "sdk_message") &&
+                    // Check if there's any previous assistant message with a UUID
+                    filteredMessages
+                      .slice(0, index)
+                      .some(m => {
+                        if (m.type !== "sdk_message") return false
+                        const sdkContent = m.content as { type?: string; uuid?: string }
+                        return sdkContent?.type === "assistant" && !!sdkContent?.uuid
+                      })
+
                   return (
-                    <div key={message.id} className="min-w-0 max-w-full overflow-hidden">
+                    <MessageWrapper
+                      key={message.id}
+                      messageId={message.id}
+                      tabId={sessionTabId ?? ""}
+                      canDelete={canDelete}
+                    >
                       {content}
-                    </div>
+                    </MessageWrapper>
                   )
                 })}
 
@@ -634,9 +662,31 @@ function ChatPageContent() {
                 }}
               />
 
-              <div ref={messagesEndRef} />
+              {/* Scroll anchor - Intersection Observer watches this to detect if user is at bottom */}
+              <div ref={anchorRef} className="h-px" />
             </div>
           </div>
+
+          {/* Jump to bottom button - shown when user scrolls up to read history */}
+          <AnimatePresence>
+            {isScrolledAway && messages.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                transition={{ duration: 0.15 }}
+                className="flex justify-center pb-2"
+              >
+                <button
+                  type="button"
+                  onClick={() => forceScrollToBottom()}
+                  className="px-3 py-1.5 rounded-full bg-black/80 dark:bg-white/90 text-white dark:text-black text-sm font-medium shadow-lg hover:bg-black dark:hover:bg-white transition-colors active:scale-95"
+                >
+                  ↓ New messages
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Input */}
           <div className="mx-auto w-full md:max-w-2xl">
@@ -682,9 +732,9 @@ function ChatPageContent() {
         )}
       </AnimatePresence>
 
-      {/* Mobile preview overlay */}
+      {/* Mobile preview overlay - not shown for claude-bridge workspace */}
       <AnimatePresence>
-        {modals.mobilePreview && (
+        {modals.mobilePreview && !isSuperadminWorkspace && (
           <SandboxMobile onClose={modals.closeMobilePreview} busy={busy} statusText={statusText} onStop={stopStreaming}>
             <ChatInput
               ref={chatInputRef}
@@ -740,9 +790,9 @@ function ChatPageWrapper() {
   return (
     <RetryProvider>
       <DevTerminalProvider>
-        <SandboxProvider>
+        <PanelProvider>
           <ChatPageContent />
-        </SandboxProvider>
+        </PanelProvider>
       </DevTerminalProvider>
     </RetryProvider>
   )

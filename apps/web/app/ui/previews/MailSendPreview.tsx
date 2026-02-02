@@ -6,10 +6,10 @@
 
 "use client"
 
-import { useState } from "react"
-import { EmailDraftCard, FAKE_EMAIL_DRAFTS, type EmailDraft } from "@/components/email"
-import { useIntegrations } from "@/hooks/use-integrations"
 import { RefreshCw, RotateCcw } from "lucide-react"
+import { useState } from "react"
+import { type EmailDraft, EmailDraftCard, FAKE_EMAIL_DRAFTS } from "@/components/email"
+import { useIntegrations } from "@/hooks/use-integrations"
 
 export function MailSendPreview() {
   const [draft, setDraft] = useState<EmailDraft>(FAKE_EMAIL_DRAFTS[0])

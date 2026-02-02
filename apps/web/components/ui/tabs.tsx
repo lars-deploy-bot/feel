@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useContext, createContext } from "react"
+import { createContext, useContext, useState } from "react"
 
 interface TabsProps {
   defaultValue?: string

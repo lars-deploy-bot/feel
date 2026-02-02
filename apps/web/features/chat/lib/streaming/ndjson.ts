@@ -8,8 +8,8 @@
  */
 
 import type { SDKMessage, SDKResultMessage } from "@anthropic-ai/claude-agent-sdk"
-import type { ErrorCode } from "@/lib/error-codes"
 import type { OAuthWarningContent } from "@webalive/shared"
+import type { ErrorCode } from "@/lib/error-codes"
 
 /**
  * Bridge Stream Type Constants

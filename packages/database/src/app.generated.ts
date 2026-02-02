@@ -15,27 +15,246 @@ export type Database = {
   }
   app: {
     Tables: {
-      conversations: {
+      automation_jobs: {
         Row: {
-          conversation_id: string
-          created_at: string | null
-          title: string | null
-          updated_at: string | null
+          action_format_prompt: string | null
+          action_model: string | null
+          action_prompt: string | null
+          action_source: Json | null
+          action_target_page: string | null
+          action_timeout_seconds: number | null
+          action_type: Database["app"]["Enums"]["automation_action_type"]
+          created_at: string
+          cron_schedule: string | null
+          cron_timezone: string | null
+          delete_after_run: boolean | null
+          description: string | null
+          id: string
+          is_active: boolean
+          last_run_at: string | null
+          last_run_duration_ms: number | null
+          last_run_error: string | null
+          last_run_status: Database["app"]["Enums"]["automation_run_status"] | null
+          name: string
+          next_run_at: string | null
+          org_id: string
+          run_at: string | null
+          running_at: string | null
+          site_id: string
+          trigger_type: Database["app"]["Enums"]["automation_trigger_type"]
+          updated_at: string
           user_id: string
+          webhook_secret: string | null
         }
         Insert: {
-          conversation_id?: string
-          created_at?: string | null
-          title?: string | null
-          updated_at?: string | null
+          action_format_prompt?: string | null
+          action_model?: string | null
+          action_prompt?: string | null
+          action_source?: Json | null
+          action_target_page?: string | null
+          action_timeout_seconds?: number | null
+          action_type: Database["app"]["Enums"]["automation_action_type"]
+          created_at?: string
+          cron_schedule?: string | null
+          cron_timezone?: string | null
+          delete_after_run?: boolean | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          last_run_at?: string | null
+          last_run_duration_ms?: number | null
+          last_run_error?: string | null
+          last_run_status?: Database["app"]["Enums"]["automation_run_status"] | null
+          name: string
+          next_run_at?: string | null
+          org_id: string
+          run_at?: string | null
+          running_at?: string | null
+          site_id: string
+          trigger_type: Database["app"]["Enums"]["automation_trigger_type"]
+          updated_at?: string
           user_id: string
+          webhook_secret?: string | null
         }
         Update: {
-          conversation_id?: string
-          created_at?: string | null
-          title?: string | null
-          updated_at?: string | null
+          action_format_prompt?: string | null
+          action_model?: string | null
+          action_prompt?: string | null
+          action_source?: Json | null
+          action_target_page?: string | null
+          action_timeout_seconds?: number | null
+          action_type?: Database["app"]["Enums"]["automation_action_type"]
+          created_at?: string
+          cron_schedule?: string | null
+          cron_timezone?: string | null
+          delete_after_run?: boolean | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          last_run_at?: string | null
+          last_run_duration_ms?: number | null
+          last_run_error?: string | null
+          last_run_status?: Database["app"]["Enums"]["automation_run_status"] | null
+          name?: string
+          next_run_at?: string | null
+          org_id?: string
+          run_at?: string | null
+          running_at?: string | null
+          site_id?: string
+          trigger_type?: Database["app"]["Enums"]["automation_trigger_type"]
+          updated_at?: string
           user_id?: string
+          webhook_secret?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_jobs_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "domains"
+            referencedColumns: ["domain_id"]
+          },
+        ]
+      }
+      automation_runs: {
+        Row: {
+          changes_made: string[] | null
+          completed_at: string | null
+          duration_ms: number | null
+          error: string | null
+          id: string
+          job_id: string
+          result: Json | null
+          started_at: string
+          status: Database["app"]["Enums"]["automation_run_status"]
+          trigger_context: Json | null
+          triggered_by: string | null
+        }
+        Insert: {
+          changes_made?: string[] | null
+          completed_at?: string | null
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          job_id: string
+          result?: Json | null
+          started_at?: string
+          status?: Database["app"]["Enums"]["automation_run_status"]
+          trigger_context?: Json | null
+          triggered_by?: string | null
+        }
+        Update: {
+          changes_made?: string[] | null
+          completed_at?: string | null
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          job_id?: string
+          result?: Json | null
+          started_at?: string
+          status?: Database["app"]["Enums"]["automation_run_status"]
+          trigger_context?: Json | null
+          triggered_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_runs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "automation_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversation_tabs: {
+        Row: {
+          closed_at: string | null
+          conversation_id: string
+          created_at: string
+          last_message_at: string | null
+          message_count: number
+          name: string
+          position: number
+          tab_id: string
+        }
+        Insert: {
+          closed_at?: string | null
+          conversation_id: string
+          created_at?: string
+          last_message_at?: string | null
+          message_count?: number
+          name?: string
+          position?: number
+          tab_id?: string
+        }
+        Update: {
+          closed_at?: string | null
+          conversation_id?: string
+          created_at?: string
+          last_message_at?: string | null
+          message_count?: number
+          name?: string
+          position?: number
+          tab_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_tabs_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["conversation_id"]
+          },
+        ]
+      }
+      conversations: {
+        Row: {
+          archived_at: string | null
+          auto_title_set: boolean
+          conversation_id: string
+          created_at: string
+          deleted_at: string | null
+          first_user_message_id: string | null
+          last_message_at: string | null
+          message_count: number
+          org_id: string
+          title: string
+          updated_at: string
+          user_id: string
+          visibility: string
+          workspace: string
+        }
+        Insert: {
+          archived_at?: string | null
+          auto_title_set?: boolean
+          conversation_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          first_user_message_id?: string | null
+          last_message_at?: string | null
+          message_count?: number
+          org_id: string
+          title?: string
+          updated_at?: string
+          user_id: string
+          visibility?: string
+          workspace: string
+        }
+        Update: {
+          archived_at?: string | null
+          auto_title_set?: boolean
+          conversation_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          first_user_message_id?: string | null
+          last_message_at?: string | null
+          message_count?: number
+          org_id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          visibility?: string
+          workspace?: string
         }
         Relationships: []
       }
@@ -47,6 +266,7 @@ export type Database = {
           is_test_env: boolean | null
           org_id: string | null
           port: number
+          server_id: string | null
           test_run_id: string | null
         }
         Insert: {
@@ -56,6 +276,7 @@ export type Database = {
           is_test_env?: boolean | null
           org_id?: string | null
           port: number
+          server_id?: string | null
           test_run_id?: string | null
         }
         Update: {
@@ -65,9 +286,18 @@ export type Database = {
           is_test_env?: boolean | null
           org_id?: string | null
           port?: number
+          server_id?: string | null
           test_run_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "domains_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["server_id"]
+          },
+        ]
       }
       errors: {
         Row: {
@@ -168,6 +398,80 @@ export type Database = {
           gateway_setting_id?: string
           is_enabled?: boolean
           updated_at?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          aborted_at: string | null
+          content: Json
+          created_at: string
+          error_code: string | null
+          message_id: string
+          seq: number
+          status: string
+          tab_id: string
+          type: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          aborted_at?: string | null
+          content: Json
+          created_at?: string
+          error_code?: string | null
+          message_id?: string
+          seq: number
+          status?: string
+          tab_id: string
+          type: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          aborted_at?: string | null
+          content?: Json
+          created_at?: string
+          error_code?: string | null
+          message_id?: string
+          seq?: number
+          status?: string
+          tab_id?: string
+          type?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_tab_id_fkey"
+            columns: ["tab_id"]
+            isOneToOne: false
+            referencedRelation: "conversation_tabs"
+            referencedColumns: ["tab_id"]
+          },
+        ]
+      }
+      servers: {
+        Row: {
+          created_at: string
+          hostname: string | null
+          ip: string
+          name: string
+          server_id: string
+        }
+        Insert: {
+          created_at?: string
+          hostname?: string | null
+          ip: string
+          name: string
+          server_id: string
+        }
+        Update: {
+          created_at?: string
+          hostname?: string | null
+          ip?: string
+          name?: string
+          server_id?: string
         }
         Relationships: []
       }
@@ -350,9 +654,119 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      finish_automation_job: {
+        Args: {
+          changes_param?: string[]
+          error_param?: string
+          job_id_param: string
+          next_run_param?: string
+          result_param?: Json
+          status_param: Database["app"]["Enums"]["automation_run_status"]
+        }
+        Returns: {
+          changes_made: string[] | null
+          completed_at: string | null
+          duration_ms: number | null
+          error: string | null
+          id: string
+          job_id: string
+          result: Json | null
+          started_at: string
+          status: Database["app"]["Enums"]["automation_run_status"]
+          trigger_context: Json | null
+          triggered_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "automation_runs"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      get_due_automation_jobs: {
+        Args: never
+        Returns: {
+          action_format_prompt: string | null
+          action_model: string | null
+          action_prompt: string | null
+          action_source: Json | null
+          action_target_page: string | null
+          action_timeout_seconds: number | null
+          action_type: Database["app"]["Enums"]["automation_action_type"]
+          created_at: string
+          cron_schedule: string | null
+          cron_timezone: string | null
+          delete_after_run: boolean | null
+          description: string | null
+          id: string
+          is_active: boolean
+          last_run_at: string | null
+          last_run_duration_ms: number | null
+          last_run_error: string | null
+          last_run_status: Database["app"]["Enums"]["automation_run_status"] | null
+          name: string
+          next_run_at: string | null
+          org_id: string
+          run_at: string | null
+          running_at: string | null
+          site_id: string
+          trigger_type: Database["app"]["Enums"]["automation_trigger_type"]
+          updated_at: string
+          user_id: string
+          webhook_secret: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "automation_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      start_automation_job: {
+        Args: { job_id_param: string }
+        Returns: {
+          action_format_prompt: string | null
+          action_model: string | null
+          action_prompt: string | null
+          action_source: Json | null
+          action_target_page: string | null
+          action_timeout_seconds: number | null
+          action_type: Database["app"]["Enums"]["automation_action_type"]
+          created_at: string
+          cron_schedule: string | null
+          cron_timezone: string | null
+          delete_after_run: boolean | null
+          description: string | null
+          id: string
+          is_active: boolean
+          last_run_at: string | null
+          last_run_duration_ms: number | null
+          last_run_error: string | null
+          last_run_status: Database["app"]["Enums"]["automation_run_status"] | null
+          name: string
+          next_run_at: string | null
+          org_id: string
+          run_at: string | null
+          running_at: string | null
+          site_id: string
+          trigger_type: Database["app"]["Enums"]["automation_trigger_type"]
+          updated_at: string
+          user_id: string
+          webhook_secret: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "automation_jobs"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       sub: { Args: never; Returns: string }
     }
     Enums: {
+      automation_action_type: "prompt" | "sync" | "publish"
+      automation_run_status: "pending" | "running" | "success" | "failure" | "skipped"
+      automation_trigger_type: "cron" | "webhook" | "one-time"
       severity_level: "info" | "warn" | "error" | "debug" | "fatal"
     }
     CompositeTypes: {
@@ -473,6 +887,9 @@ export type CompositeTypes<
 export const Constants = {
   app: {
     Enums: {
+      automation_action_type: ["prompt", "sync", "publish"],
+      automation_run_status: ["pending", "running", "success", "failure", "skipped"],
+      automation_trigger_type: ["cron", "webhook", "one-time"],
       severity_level: ["info", "warn", "error", "debug", "fatal"],
     },
   },

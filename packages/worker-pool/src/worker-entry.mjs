@@ -16,11 +16,15 @@
  *   WORKER_WORKSPACE_KEY - Workspace identifier
  */
 
-import { chownSync, copyFileSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, rmSync } from "node:fs"
+import { chownSync, copyFileSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, } from "node:fs"
 import { tmpdir } from "node:os"
 import { createConnection } from "node:net"
 import { join } from "node:path"
 import process from "node:process"
+
+// Base directory for stable session storage
+// Each workspace gets its own subdirectory to persist Claude session data
+const SESSIONS_BASE_DIR = "/var/lib/claude-sessions"
 
 // IMPORTANT: Import these BEFORE dropping privileges!
 // After privilege drop, the worker can't read /root/webalive/claude-bridge/node_modules/
@@ -95,6 +99,49 @@ function clearQueryState() {
   currentAbortController = null
 }
 
+/**
+ * Sanitize workspace key for use as a directory name.
+ * Replaces unsafe characters with underscores.
+ */
+function sanitizeWorkspaceKey(key) {
+  if (!key || typeof key !== "string") return "default"
+  // Replace any characters that could cause path issues
+  // Allow alphanumeric, dash, underscore, and dot
+  return key.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 100)
+}
+
+/**
+ * Ensure stable session home directory exists with proper ownership.
+ * Creates /var/lib/claude-sessions/<workspace>/ for persistent session storage.
+ *
+ * @param {string} workspaceKey - The workspace identifier
+ * @param {number} uid - Target user ID
+ * @param {number} gid - Target group ID
+ * @returns {string} Path to the stable home directory
+ */
+function ensureStableSessionHome(workspaceKey, uid, gid) {
+  const sanitizedKey = sanitizeWorkspaceKey(workspaceKey)
+  const stableHome = join(SESSIONS_BASE_DIR, sanitizedKey)
+
+  try {
+    // Create directory if it doesn't exist
+    if (!existsSync(stableHome)) {
+      mkdirSync(stableHome, { recursive: true, mode: 0o700 })
+      console.error(`[worker] Created stable session home: ${stableHome}`)
+    }
+
+    // Ensure correct ownership
+    chownSync(stableHome, uid, gid)
+
+    return stableHome
+  } catch (error) {
+    // If we can't create stable home (e.g., permissions), fall back to temp
+    console.error(`[worker] Failed to create stable session home: ${error.message}`)
+    console.error("[worker] Falling back to temp directory")
+    return null
+  }
+}
+
 // allowTool and denyTool imported from @webalive/shared
 
 // =============================================================================
@@ -165,7 +212,7 @@ class IpcClient {
       try {
         const msg = JSON.parse(line)
         this.onMessage?.(msg)
-      } catch (err) {
+      } catch (_err) {
         console.error("[worker] Failed to parse message:", line.slice(0, 200))
       }
     }
@@ -173,7 +220,7 @@ class IpcClient {
 
   send(msg) {
     if (this.socket && !this.socket.destroyed) {
-      this.socket.write(JSON.stringify(msg) + "\n")
+      this.socket.write(`${JSON.stringify(msg)}\n`)
     }
   }
 
@@ -207,39 +254,75 @@ function dropPrivileges() {
     }
   }
 
-  // Copy Claude credentials to temp location BEFORE dropping privileges
-  // SECURITY: Use mkdtempSync to create unpredictable directory (prevents symlink attacks)
+  // Set up HOME directory for Claude session persistence
+  // Uses stable directory per workspace so sessions survive worker restarts
   const originalHome = process.env.HOME || "/root"
   const credSource = join(originalHome, ".claude", ".credentials.json")
+  const workspaceKey = process.env.WORKER_WORKSPACE_KEY
 
-  if (existsSync(credSource)) {
-    // SECURITY: Verify source is a regular file, not a symlink
+  // Try to use stable session home for this workspace
+  // Falls back to temp directory if stable home creation fails
+  let workerHome = ensureStableSessionHome(workspaceKey, targetUid, targetGid)
+
+  if (workerHome) {
+    // Using stable session home - sessions will persist across restarts
+    const claudeDir = join(workerHome, ".claude")
+
+    // Create .claude subdirectory if it doesn't exist
+    if (!existsSync(claudeDir)) {
+      mkdirSync(claudeDir, { mode: 0o700 })
+      chownSync(claudeDir, targetUid, targetGid)
+    }
+
+    // Copy credentials if they exist and haven't been copied yet
+    if (existsSync(credSource)) {
+      const sourceStat = lstatSync(credSource)
+      if (!sourceStat.isFile()) {
+        console.error("[worker] SECURITY: Credential source is not a regular file, skipping copy")
+      } else {
+        const credDest = join(claudeDir, ".credentials.json")
+        // Always copy fresh credentials (they may have been refreshed)
+        copyFileSync(credSource, credDest)
+        chownSync(credDest, targetUid, targetGid)
+        console.error(`[worker] Copied credentials to ${workerHome}`)
+      }
+    }
+
+    // Copy global skills from /etc/claude-code/skills/ to user's .claude/skills/
+    const globalSkillsPath = "/etc/claude-code/skills"
+    const userSkillsPath = join(claudeDir, "skills")
+    if (existsSync(globalSkillsPath)) {
+      try {
+        cpSync(globalSkillsPath, userSkillsPath, { recursive: true })
+        console.error(`[worker] Copied global skills to ${userSkillsPath}`)
+      } catch (e) {
+        console.error(`[worker] Failed to copy skills: ${e.message}`)
+      }
+    }
+
+    process.env.HOME = workerHome
+    console.error(`[worker] Using stable session home: ${workerHome}`)
+  } else if (existsSync(credSource)) {
+    // Fallback: use temp directory (sessions won't persist, but won't crash)
+    console.error("[worker] WARN: Using temp home - sessions will not persist across restarts")
     const sourceStat = lstatSync(credSource)
     if (!sourceStat.isFile()) {
-      console.error(`[worker] SECURITY: Credential source is not a regular file, skipping copy`)
+      console.error("[worker] SECURITY: Credential source is not a regular file, skipping copy")
     } else {
-      // Create secure temp directory with unpredictable name (immune to symlink attacks)
-      // mkdtempSync creates directory with mode 0o700 by default
+      // Create temp directory as fallback (original behavior)
       const tempHome = mkdtempSync(join(tmpdir(), `claude-home-${targetUid}-`))
       const claudeDir = join(tempHome, ".claude")
       const credDest = join(claudeDir, ".credentials.json")
 
-      // Create .claude subdirectory with restrictive permissions
       mkdirSync(claudeDir, { mode: 0o700 })
-
-      // Copy credentials with explicit mode (not relying on umask)
       copyFileSync(credSource, credDest)
-
-      // Chown entire tree to target user
       chownSync(tempHome, targetUid, targetGid)
       chownSync(claudeDir, targetUid, targetGid)
       chownSync(credDest, targetUid, targetGid)
 
       process.env.HOME = tempHome
-      console.error(`[worker] Copied credentials to ${tempHome}`)
+      console.error(`[worker] Copied credentials to temp: ${tempHome}`)
 
-      // Copy global skills from /etc/claude-code/skills/ to user's .claude/skills/
-      // This makes skills available via "user" settingSources scope
       const globalSkillsPath = "/etc/claude-code/skills"
       const userSkillsPath = join(claudeDir, "skills")
       if (existsSync(globalSkillsPath)) {
@@ -291,7 +374,7 @@ function dropPrivileges() {
   if (targetCwd) {
     // SECURITY: Validate TARGET_CWD before use
     if (typeof targetCwd !== "string" || targetCwd.length === 0) {
-      console.error(`[worker] FATAL: TARGET_CWD must be non-empty string`)
+      console.error("[worker] FATAL: TARGET_CWD must be non-empty string")
       process.exit(1)
     }
     if (!targetCwd.startsWith("/")) {
@@ -430,6 +513,11 @@ async function handleQuery(ipc, requestId, payload) {
   currentAbortController = new AbortController()
   const { signal } = currentAbortController
 
+  // Declare these outside try so they're accessible in catch
+  let messageCount = 0
+  let queryResult = null
+  let stderrBuffer = [] // Captures Claude subprocess stderr for error debugging
+
   try {
     // SECURITY: Always set/clear session cookie at start of each request
     // This prevents cookie leakage between requests from different users
@@ -482,6 +570,16 @@ async function handleQuery(ipc, requestId, payload) {
 
     // Tool permission handler
     const canUseTool = async (toolName, input, _options) => {
+      // ExitPlanMode requires user approval - Claude cannot approve its own plan
+      // The user must click "Approve Plan" in the UI to exit plan mode
+      if (toolName === "ExitPlanMode") {
+        console.error(`[worker] PLAN MODE: ExitPlanMode blocked - requires user approval`)
+        return denyTool(
+          `You cannot approve your own plan. The user must review and approve the plan by clicking "Approve Plan" in the UI. ` +
+          `Present your plan clearly and wait for user approval before proceeding with implementation.`
+        )
+      }
+
       // Plan mode: block modification tools
       if (isPlanMode && PLAN_MODE_BLOCKED_TOOLS.includes(toolName)) {
         console.error(`[worker] PLAN MODE: Blocked modification tool: ${toolName}`)
@@ -525,8 +623,21 @@ async function handleQuery(ipc, requestId, payload) {
 
     console.error("[worker] MCP servers enabled:", Object.keys(mcpServers).join(", "))
     console.error("[worker] Resume session:", payload.resume || "none (new session)")
+    if (payload.resumeSessionAt) {
+      console.error("[worker] Resume at message:", payload.resumeSessionAt)
+    }
 
     timing("before_sdk_query")
+
+    // Capture stderr from Claude Code subprocess for error debugging
+    const stderrHandler = (message) => {
+      stderrBuffer.push(message)
+      // Keep only last 50 lines to avoid memory bloat
+      if (stderrBuffer.length > 50) stderrBuffer.shift()
+      // Also log to our stderr for journalctl
+      console.error(`[worker:claude-stderr] ${message}`)
+    }
+
     const agentQuery = query({
       prompt: payload.message,
       options: {
@@ -541,12 +652,12 @@ async function handleQuery(ipc, requestId, payload) {
         mcpServers,
         systemPrompt: payload.systemPrompt,
         resume: payload.resume,
+        resumeSessionAt: payload.resumeSessionAt,
         abortSignal: signal,
+        stderr: stderrHandler,
       },
     })
 
-    let messageCount = 0
-    let queryResult = null
     let firstMessageLogged = false
 
     for await (const message of agentQuery) {
@@ -619,8 +730,42 @@ async function handleQuery(ipc, requestId, payload) {
     const status = wasCancelled ? "cancelled" : "complete"
     console.error(`[worker] Query ${status}: ${messageCount} messages (total: ${queriesProcessed})`)
   } catch (error) {
-    console.error("[worker] Query error:", error?.stack || String(error))
-    ipc.send({ type: "error", requestId, error: error?.message || String(error), stack: error?.stack })
+    // Check if we already received a successful result before the error
+    // The Claude Code CLI sometimes exits with code 1 AFTER yielding all messages including the result
+    // In this case, treat it as success since we have the complete response
+    if (queryResult && queryResult.subtype === "success") {
+      console.error("[worker] Query completed with result before error - treating as success")
+      console.error("[worker] (Suppressed error:", error?.message || String(error), ")")
+
+      // Send completion with the result we already have
+      ipc.send({
+        type: "complete",
+        requestId,
+        result: {
+          type: bridgeStreamTypes.COMPLETE,
+          totalMessages: messageCount,
+          result: queryResult,
+          cancelled: false,
+        },
+      })
+
+      queriesProcessed++
+      console.error(`[worker] Query complete: ${messageCount} messages (total: ${queriesProcessed})`)
+    } else {
+      // No result yet - this is a real error
+      const stderrOutput = stderrBuffer?.length ? stderrBuffer.join("\n") : null
+      console.error("[worker] Query error:", error?.stack || String(error))
+      if (stderrOutput) {
+        console.error("[worker] Claude stderr:", stderrOutput)
+      }
+      ipc.send({
+        type: "error",
+        requestId,
+        error: error?.message || String(error),
+        stack: error?.stack,
+        stderr: stderrOutput,
+      })
+    }
   } finally {
     clearQueryState()
   }
@@ -633,7 +778,7 @@ function handleCancel(requestId) {
     // CRITICAL: Clear state immediately so worker can accept new queries
     // The handleQuery finally block will also call clearQueryState() but that's harmless
     clearQueryState()
-    console.error(`[worker] Query state cleared after cancel`)
+    console.error("[worker] Query state cleared after cancel")
   }
 }
 

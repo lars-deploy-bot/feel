@@ -1,7 +1,7 @@
 "use client"
 
-import type { DbMessage, DbMessageContent, DbMessageType, DbMessageStatus } from "./messageDb"
 import type { UIMessage } from "@/features/chat/lib/message-parser"
+import type { DbMessage, DbMessageContent, DbMessageStatus, DbMessageType } from "./messageDb"
 
 /**
  * Message Type Adapters

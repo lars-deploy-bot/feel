@@ -6,5 +6,5 @@
  */
 
 export { EmailDraftCard } from "./EmailDraftCard"
-export type { EmailDraft, EmailActionResult, EmailDraftOutputProps } from "./types"
+export type { EmailActionResult, EmailDraft, EmailDraftOutputProps } from "./types"
 export { FAKE_EMAIL_DRAFTS } from "./types"

@@ -5,10 +5,10 @@
  * No login flow, state pre-injected before navigation.
  */
 
+import { expect, test } from "./fixtures"
 import { TEST_MESSAGES, TEST_TIMEOUTS } from "./fixtures/test-data"
 import { handlers } from "./lib/handlers"
 import { ChatPage } from "./pages/ChatPage"
-import { expect, test } from "./fixtures"
 
 test.skip("has chat interface", async ({ authenticatedPage, workerTenant }) => {
   const chat = new ChatPage(authenticatedPage)

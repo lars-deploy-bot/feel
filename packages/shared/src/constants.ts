@@ -112,7 +112,7 @@ export const BRIDGE_INTERRUPT_SOURCES = {
  */
 export const WORKER_POOL = {
   /** Feature flag: Enable persistent workers (false = spawn-per-request) */
-  ENABLED: false,
+  ENABLED: true,
 
   /** Maximum number of workers to keep alive (~100MB memory per worker) */
   MAX_WORKERS: 20,

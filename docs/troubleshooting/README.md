@@ -45,11 +45,26 @@ ensurePathWithinWorkspace(resolved, workspace.root)
 
 ### Session Not Persisting
 
-**Error: Sessions lost after refresh**
+**Error: "No conversation found with session ID"**
 
-**Cause:** Using in-memory session store (loses on restart)
+**Cause:** Session ID exists in database but conversation data file is missing
 
-**Solution:** Implement Redis or database session store (see [Session Management](../architecture/session-management.md))
+**Current solution (automatic):**
+- Workers use stable HOME directories at `/var/lib/claude-sessions/<workspace>/`
+- Stream route automatically detects this error and recovers:
+  1. Clears stale session ID from database
+  2. Retries as fresh conversation
+
+**Manual verification:**
+```bash
+# Check session directory exists
+ls -la /var/lib/claude-sessions/
+
+# Check conversation files for a workspace
+ls -la /var/lib/claude-sessions/example-com/.claude/projects/
+```
+
+**See:** [Session Management](../architecture/session-management.md)
 
 ### Tool Not Whitelisted
 

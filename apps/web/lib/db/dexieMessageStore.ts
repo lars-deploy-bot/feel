@@ -21,19 +21,21 @@
 
 import Dexie from "dexie"
 import { create } from "zustand"
-import { getMessageDb, CURRENT_MESSAGE_VERSION, type DbConversation, type DbMessage, type DbTab } from "./messageDb"
-import { safeDb } from "./safeDb"
+import type { UIMessage } from "@/features/chat/lib/message-parser"
 import {
-  queueSync,
   fetchConversations,
   fetchTabMessages,
-  shareConversation as syncShareConversation,
-  unshareConversation as syncUnshareConversation,
-  deleteConversation as syncDeleteConversation,
+  queueSync,
   archiveConversation as syncArchiveConversation,
+  deleteConversation as syncDeleteConversation,
+  renameConversation as syncRenameConversation,
+  shareConversation as syncShareConversation,
+  unarchiveConversation as syncUnarchiveConversation,
+  unshareConversation as syncUnshareConversation,
 } from "./conversationSync"
-import { toDbMessageContent, extractTitle } from "./messageAdapters"
-import type { UIMessage } from "@/features/chat/lib/message-parser"
+import { extractTitle, toDbMessageContent } from "./messageAdapters"
+import { CURRENT_MESSAGE_VERSION, type DbConversation, type DbMessage, type DbTab, getMessageDb } from "./messageDb"
+import { safeDb } from "./safeDb"
 
 // =============================================================================
 // Types
@@ -63,6 +65,10 @@ interface DexieMessageStoreState {
   // Streaming state (per-tab, in-memory only - NOT persisted)
   activeStreamByTab: Record<string, string | null>
   streamingBuffers: Record<string, string>
+
+  // Message deletion state (per-tab)
+  // SDK UUID to resume from on next message send (set when user deletes messages)
+  resumeSessionAtByTab: Record<string, string | null>
 }
 
 interface DexieMessageStoreActions {
@@ -79,11 +85,23 @@ interface DexieMessageStoreActions {
   switchConversation: (id: string, tabId?: string) => void
   deleteConversation: (id: string) => Promise<void>
   archiveConversation: (id: string) => Promise<void>
+  unarchiveConversation: (id: string) => Promise<void>
+  renameConversation: (id: string, title: string) => Promise<void>
   shareConversation: (id: string) => Promise<void>
   unshareConversation: (id: string) => Promise<void>
 
   // Message management
   addMessage: (message: UIMessage, targetTabId: string) => Promise<void>
+  /**
+   * Delete all messages after (and including) the specified message.
+   * Returns the SDK UUID to use for resumeSessionAt, or null if deletion not possible.
+   * Messages are soft-deleted (hidden from UI) and the resume point is stored.
+   */
+  deleteMessagesAfter: (messageId: string, tabId: string) => Promise<string | null>
+  /** Get the current resumeSessionAt for a tab (if messages were deleted) */
+  getResumeSessionAt: (tabId: string) => string | null
+  /** Clear the resumeSessionAt for a tab (after successful message send) */
+  clearResumeSessionAt: (tabId: string) => void
 
   // Tab management
   addTab: (name?: string) => Promise<string>
@@ -185,6 +203,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
   isSyncing: false,
   activeStreamByTab: {},
   streamingBuffers: {},
+  resumeSessionAtByTab: {},
 
   setSession: session => set({ session }),
 
@@ -344,6 +363,18 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
     }
   },
 
+  unarchiveConversation: async id => {
+    const { session } = get()
+    if (!session) return
+    await syncUnarchiveConversation(id, session.userId)
+  },
+
+  renameConversation: async (id, title) => {
+    const { session } = get()
+    if (!session) return
+    await syncRenameConversation(id, session.userId, title)
+  },
+
   shareConversation: async id => {
     const { session } = get()
     if (!session) return
@@ -444,6 +475,80 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
       }
 
       queueSync(effectiveTabGroupId, session.userId)
+    })
+  },
+
+  deleteMessagesAfter: async (messageId, tabId) => {
+    const { session } = get()
+    if (!session) return null
+
+    const db = getMessageDb(session.userId)
+
+    // Get all messages for this tab, ordered by sequence
+    const allMessages = await db.messages
+      .where("[tabId+seq]")
+      .between([tabId, Dexie.minKey], [tabId, Dexie.maxKey])
+      .toArray()
+
+    // Find the target message index
+    const targetIndex = allMessages.findIndex(m => m.id === messageId)
+    if (targetIndex === -1) {
+      console.warn("[dexie] deleteMessagesAfter: message not found", messageId)
+      return null
+    }
+
+    // Find the previous assistant message to get its SDK UUID for resumeSessionAt
+    // We need to resume from the assistant message BEFORE the one we're deleting
+    let resumeUuid: string | null = null
+    for (let i = targetIndex - 1; i >= 0; i--) {
+      const msg = allMessages[i]
+      // Check if this is an SDK assistant message with a UUID
+      if (msg.content.kind === "sdk_message") {
+        const sdkData = msg.content.data as { type?: string; uuid?: string }
+        if (sdkData?.type === "assistant" && sdkData?.uuid) {
+          resumeUuid = sdkData.uuid
+          break
+        }
+      }
+    }
+
+    if (!resumeUuid) {
+      console.warn("[dexie] deleteMessagesAfter: no previous assistant message with UUID found")
+      // Can't delete if there's no previous assistant message to resume from
+      return null
+    }
+
+    // Soft-delete all messages from targetIndex onwards
+    const now = Date.now()
+    const messagesToDelete = allMessages.slice(targetIndex)
+
+    await safeDb(() =>
+      db.transaction("rw", db.messages, async () => {
+        for (const msg of messagesToDelete) {
+          await db.messages.update(msg.id, { deletedAt: now })
+        }
+      }),
+    )
+
+    console.log(`[dexie] Soft-deleted ${messagesToDelete.length} messages, will resume at UUID: ${resumeUuid}`)
+
+    // Store the resume point for the next API call
+    set(state => ({
+      resumeSessionAtByTab: { ...state.resumeSessionAtByTab, [tabId]: resumeUuid },
+    }))
+
+    return resumeUuid
+  },
+
+  getResumeSessionAt: tabId => {
+    return get().resumeSessionAtByTab[tabId] ?? null
+  },
+
+  clearResumeSessionAt: tabId => {
+    set(state => {
+      const newMap = { ...state.resumeSessionAtByTab }
+      delete newMap[tabId]
+      return { resumeSessionAtByTab: newMap }
     })
   },
 
@@ -711,6 +816,8 @@ export const useDexieMessageActions = () =>
     switchConversation: state.switchConversation,
     deleteConversation: state.deleteConversation,
     archiveConversation: state.archiveConversation,
+    unarchiveConversation: state.unarchiveConversation,
+    renameConversation: state.renameConversation,
     shareConversation: state.shareConversation,
     unshareConversation: state.unshareConversation,
     addMessage: state.addMessage,
@@ -727,6 +834,9 @@ export const useDexieMessageActions = () =>
     stopAssistantStream: state.stopAssistantStream,
     failAssistantStream: state.failAssistantStream,
     clearCurrentConversation: state.clearCurrentConversation,
+    deleteMessagesAfter: state.deleteMessagesAfter,
+    getResumeSessionAt: state.getResumeSessionAt,
+    clearResumeSessionAt: state.clearResumeSessionAt,
   }))
 
 // =============================================================================
@@ -734,10 +844,11 @@ export const useDexieMessageActions = () =>
 // =============================================================================
 
 export {
-  useConversations as useDexieConversations,
-  useSharedConversations as useDexieSharedConversations,
-  useMessages as useDexieMessages,
-  useTabs as useDexieTabs,
+  useArchivedConversations as useDexieArchivedConversations,
   useConversation as useDexieConversation,
+  useConversations as useDexieConversations,
   useCurrentConversationSafe as useDexieCurrentConversationSafe,
+  useMessages as useDexieMessages,
+  useSharedConversations as useDexieSharedConversations,
+  useTabs as useDexieTabs,
 } from "./useMessageDb"

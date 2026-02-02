@@ -14,42 +14,7 @@
 
 import { tool } from "@anthropic-ai/claude-agent-sdk"
 import { z } from "zod"
-
-/**
- * Available templates for website creation
- */
-const DEFAULT_TEMPLATES = [
-  {
-    id: "tmpl_blank",
-    name: "Blank Canvas",
-    description: "Minimal starter - build from scratch",
-    icon: "blank" as const,
-  },
-  {
-    id: "tmpl_gallery",
-    name: "Photo Gallery",
-    description: "Showcase images and portfolios",
-    icon: "gallery" as const,
-  },
-  {
-    id: "tmpl_event",
-    name: "Event Page",
-    description: "Perfect for launches, parties, or announcements",
-    icon: "event" as const,
-  },
-  {
-    id: "tmpl_saas",
-    name: "SaaS Landing",
-    description: "Modern product landing page",
-    icon: "saas" as const,
-  },
-  {
-    id: "tmpl_business",
-    name: "Business",
-    description: "Professional company website",
-    icon: "business" as const,
-  },
-]
+import { TEMPLATES } from "@webalive/shared"
 
 export const askWebsiteConfigParamsSchema = {
   context: z.string().optional().describe("Optional context about why a website is being created"),
@@ -79,7 +44,7 @@ export async function askWebsiteConfig(params: AskWebsiteConfigParams): Promise<
 
     const responseData = {
       type: "website_config",
-      templates: DEFAULT_TEMPLATES,
+      templates: TEMPLATES,
       defaultSlug,
       context,
     }

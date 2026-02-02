@@ -10,9 +10,9 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { useStreamingActions } from "@/lib/stores/streamingStore"
 import { parseStreamEvent, type UIMessage } from "../lib/message-parser"
 import { isValidStreamEvent } from "../lib/stream-guards"
-import { useStreamingActions } from "@/lib/stores/streamingStore"
 
 interface UseStreamReconnectOptions {
   /** Current tab ID (session key for Claude SDK) */
@@ -243,7 +243,7 @@ export function useStreamReconnect({
     }, 500)
 
     return () => clearTimeout(timeoutId)
-  }, [mounted, tabId, workspace]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [mounted, tabId, workspace, checkForBufferedMessages])
 
   // Listen for visibility changes
   useEffect(() => {

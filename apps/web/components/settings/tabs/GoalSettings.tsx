@@ -2,9 +2,9 @@
 
 import { useBuilding, useGoal, useGoalActions, useTargetUsers } from "@/lib/stores/goalStore"
 import { input, text } from "../styles"
-import { SettingsTabLayout, type SettingsTabProps } from "./SettingsTabLayout"
+import { SettingsTabLayout } from "./SettingsTabLayout"
 
-export function GoalSettings({ onClose }: SettingsTabProps) {
+export function GoalSettings() {
   const goal = useGoal()
   const building = useBuilding()
   const targetUsers = useTargetUsers()
@@ -14,7 +14,6 @@ export function GoalSettings({ onClose }: SettingsTabProps) {
     <SettingsTabLayout
       title="Project Context"
       description="Help the Agent Manager understand your project to give better suggestions"
-      onClose={onClose}
     >
       <div className="space-y-4 sm:space-y-5">
         {/* PR Goal */}

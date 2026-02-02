@@ -1,9 +1,9 @@
 // apps/web/app/api/referrals/history/route.ts
 
 import { type NextRequest, NextResponse } from "next/server"
-import { createIamClient } from "@/lib/supabase/iam"
 import { createErrorResponse, getSessionUser } from "@/features/auth/lib/auth"
 import { ErrorCodes } from "@/lib/error-codes"
+import { createIamClient } from "@/lib/supabase/iam"
 
 const DEFAULT_LIMIT = 50
 const MAX_LIMIT = 100

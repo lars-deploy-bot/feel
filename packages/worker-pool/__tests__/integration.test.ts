@@ -12,7 +12,7 @@ import { tmpdir } from "node:os"
 import { spawn } from "node:child_process"
 import { createIpcServer, createIpcClient, NdjsonParser, isWorkerMessage } from "../src/ipc"
 import type { ParentToWorkerMessage, WorkerToParentMessage, AgentRequest, AgentConfig } from "../src/types"
-import { BRIDGE_STREAM_TYPES, findMessageByType, isReadyMessage, isCompleteMessage } from "../src/types"
+import { BRIDGE_STREAM_TYPES, findMessageByType } from "../src/types"
 
 /** Create a minimal valid AgentConfig for testing */
 function createTestAgentConfig(): AgentConfig {

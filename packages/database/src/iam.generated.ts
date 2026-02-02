@@ -208,33 +208,33 @@ export type Database = {
       }
       sessions: {
         Row: {
-          tab_id: string
           created_at: string
           domain_id: string
           expires_at: string
           last_activity: string
           sdk_session_id: string
           session_id: string
+          tab_id: string
           user_id: string
         }
         Insert: {
-          tab_id: string
           created_at?: string
           domain_id: string
           expires_at: string
           last_activity?: string
           sdk_session_id: string
           session_id?: string
+          tab_id: string
           user_id: string
         }
         Update: {
-          tab_id?: string
           created_at?: string
           domain_id?: string
           expires_at?: string
           last_activity?: string
           sdk_session_id?: string
           session_id?: string
+          tab_id?: string
           user_id?: string
         }
         Relationships: [
@@ -242,6 +242,51 @@ export type Database = {
             foreignKeyName: "sessions_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      user_preferences: {
+        Row: {
+          created_at: string
+          current_workspace: string | null
+          preferences: Json
+          recent_workspaces: Json
+          selected_org_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_workspace?: string | null
+          preferences?: Json
+          recent_workspaces?: Json
+          selected_org_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_workspace?: string | null
+          preferences?: Json
+          recent_workspaces?: Json
+          selected_org_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_preferences_selected_org_id_fkey"
+            columns: ["selected_org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["org_id"]
+          },
+          {
+            foreignKeyName: "user_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
             referencedRelation: "users"
             referencedColumns: ["user_id"]
           },

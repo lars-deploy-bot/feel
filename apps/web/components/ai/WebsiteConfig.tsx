@@ -16,8 +16,8 @@
 
 "use client"
 
-import { useState, useCallback, useRef, useEffect } from "react"
-import { Globe, Sparkles, Image, Calendar, Rocket, Briefcase, Check, ChevronRight } from "lucide-react"
+import { Briefcase, Calendar, Check, ChevronRight, Globe, Image, Rocket, Sparkles } from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 export interface TemplateOption {
   id: string

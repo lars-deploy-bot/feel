@@ -10,10 +10,10 @@
  * NOTE: This script uses direct Supabase clients to avoid Next.js dependencies
  */
 
-import { readdirSync, existsSync, readFileSync } from "node:fs"
+import { existsSync, readdirSync, readFileSync } from "node:fs"
 import { createClient } from "@supabase/supabase-js"
-import { PATHS, FREE_CREDITS } from "@webalive/shared"
 import type { AppDatabase, IamDatabase } from "@webalive/database"
+import { FREE_CREDITS, PATHS } from "@webalive/shared"
 
 // Bun automatically loads .env files
 

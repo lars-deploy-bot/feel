@@ -12,7 +12,7 @@ import { StripeSearchOutput } from "@/components/ui/chat/tools/stripe/StripeSear
 import { StripeSubscriptionsOutput } from "@/components/ui/chat/tools/stripe/StripeSubscriptionsOutput"
 import { TaskOutput } from "@/components/ui/chat/tools/task/TaskOutput"
 import { WriteOutput } from "@/components/ui/chat/tools/write/WriteOutput"
-import { getToolRenderer, validateToolData, transformToolData } from "@/lib/tools/tool-registry"
+import { getToolRenderer, transformToolData, validateToolData } from "@/lib/tools/tool-registry"
 // Register all tools (display, renderers, previews)
 import "@/lib/tools/register-tools"
 

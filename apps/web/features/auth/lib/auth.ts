@@ -1,12 +1,12 @@
+import { env } from "@webalive/env/server"
+import { SECURITY, SUPERADMIN } from "@webalive/shared"
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
-import { SECURITY, SUPERADMIN } from "@webalive/shared"
 import { COOKIE_NAMES } from "@/lib/auth/cookies"
 import { type ErrorCode, ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 import { createAppClient } from "@/lib/supabase/app"
 import { createIamClient } from "@/lib/supabase/iam"
 import { verifySessionToken } from "./jwt"
-import { env } from "@webalive/env/server"
 
 /**
  * Custom error class for authentication failures

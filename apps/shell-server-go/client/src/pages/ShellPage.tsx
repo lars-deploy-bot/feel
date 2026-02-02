@@ -162,7 +162,7 @@ export function ShellPage() {
         ws.send(JSON.stringify({ type: "resize", cols: term.cols, rows: term.rows }))
         if (options?.initialCommand) {
           setTimeout(() => {
-            ws.send(JSON.stringify({ type: "input", data: options.initialCommand + "\n" }))
+            ws.send(JSON.stringify({ type: "input", data: `${options.initialCommand}\n` }))
           }, 100)
         }
       }
@@ -362,7 +362,7 @@ export function ShellPage() {
       // Ctrl+1-9: Switch to tab by number
       if (e.ctrlKey && !e.shiftKey && e.key >= "1" && e.key <= "9") {
         e.preventDefault()
-        const tabIndex = parseInt(e.key) - 1
+        const tabIndex = parseInt(e.key, 10) - 1
         if (tabIndex < tabs.length) {
           switchToTab(tabs[tabIndex].id)
         }
@@ -401,7 +401,7 @@ export function ShellPage() {
     const tab = tabsRef.current.find(t => t.id === id)
     if (!tab) return
     const newName = prompt("Tab name:", tab.name)
-    if (newName && newName.trim()) {
+    if (newName?.trim()) {
       setTabs(prev => prev.map(t => (t.id === id ? { ...t, name: newName.trim() } : t)))
       tab.name = newName.trim()
     }

@@ -15,6 +15,7 @@ import { chownSync, copyFileSync, existsSync, mkdirSync } from "node:fs"
 import { join } from "node:path"
 import process from "node:process"
 import { query } from "@anthropic-ai/claude-agent-sdk"
+import { allowTool, DEFAULTS, denyTool, isOAuthMcpTool, PLAN_MODE_BLOCKED_TOOLS } from "@webalive/shared"
 import {
   BRIDGE_STREAM_TYPES,
   getAllowedTools,
@@ -23,7 +24,6 @@ import {
   PERMISSION_MODE,
   SETTINGS_SOURCES,
 } from "../lib/claude/agent-constants.mjs"
-import { isOAuthMcpTool, DEFAULTS, PLAN_MODE_BLOCKED_TOOLS, allowTool, denyTool } from "@webalive/shared"
 
 async function readStdinJson() {
   const chunks = []
@@ -175,6 +175,11 @@ async function readStdinJson() {
     // Log available secrets for debugging (without revealing values)
     console.error(`[runner] Internal tools secret: ${process.env.INTERNAL_TOOLS_SECRET ? "✓ present" : "✗ missing"}`)
 
+    // Log resume parameters
+    if (request.resumeSessionAt) {
+      console.error(`[runner] Resuming at message: ${request.resumeSessionAt}`)
+    }
+
     const agentQuery = query({
       prompt: request.message,
       options: {
@@ -190,6 +195,8 @@ async function readStdinJson() {
         systemPrompt: request.systemPrompt,
         // Session resumption: We use explicit session IDs for multi-conversation tracking
         resume: request.resume,
+        // Resume at specific message (for message deletion/editing)
+        resumeSessionAt: request.resumeSessionAt,
         // Alternative: continue: true - SDK auto-continues most recent conversation (no session ID needed)
         // continue: true,
       },

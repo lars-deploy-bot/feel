@@ -5,11 +5,11 @@
  */
 
 import { createClient } from "@supabase/supabase-js"
-import { beforeEach, describe, expect, test, afterEach } from "vitest"
-import { getSupabaseCredentials } from "@/lib/env/server"
 import type { AppDatabase, IamDatabase } from "@webalive/database"
-import { assertSupabaseServiceEnv } from "@/lib/test-helpers/integration-env"
 import { LIMITS } from "@webalive/shared"
+import { afterEach, beforeEach, describe, expect, test } from "vitest"
+import { getSupabaseCredentials } from "@/lib/env/server"
+import { assertSupabaseServiceEnv } from "@/lib/test-helpers/integration-env"
 import { countUserSites, getUserMaxSites, getUserQuota, getUserQuotaByEmail } from "../user-quotas"
 
 const TEST_EMAIL = "test-user-quotas@example.com"

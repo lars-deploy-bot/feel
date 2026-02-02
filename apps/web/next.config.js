@@ -1,6 +1,6 @@
-import path from "node:path"
-import fs from "node:fs"
 import { execSync } from "node:child_process"
+import fs from "node:fs"
+import path from "node:path"
 
 /**
  * NOTE: Environment validation happens in the app itself via:
@@ -59,6 +59,7 @@ const nextConfig = {
       "../../packages/images/**/*",
       "../../packages/guides/**/*",
       "../../packages/site-controller/**/*",
+      "../../packages/worker-pool/**/*",
       // packages/tools dependencies (used in child process, not auto-traced)
       "../../node_modules/@anthropic-ai/**/*",
       "../../node_modules/groq-sdk/**/*",
@@ -73,6 +74,7 @@ const nextConfig = {
     "@webalive/worker-pool",
     "@webalive/oauth-core",
     "@webalive/database",
+    "better-sqlite3",
   ],
   transpilePackages: ["@alive-brug/guides", "@alive-brug/images", "@alive-brug/tools"],
 }

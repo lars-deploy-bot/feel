@@ -1,13 +1,18 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "ui": "stream",
+  "globalDependencies": ["tsconfig.json"],
   "globalEnv": ["CI", "NODE_ENV", "VERCEL", "VERCEL_ENV", "VERCEL_URL"],
   "tasks": {
     "dev": {
       "cache": false,
+      "persistent": true,
       "env": ["ANTHROPIC_API_KEY", "ANTH_API_SECRET", "BRIDGE_ENV", "LOCAL_TEMPLATE_PATH", "PLAYWRIGHT_TEST"]
     },
     "build": {
       "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "!**/*.test.ts", "!**/*.spec.ts", "!**/__tests__/**"],
+      "outputs": [".next/**", "!.next/cache/**", "!.next/lock", "dist/**"],
       "env": [
         "ANTHROPIC_API_KEY",
         "ANTH_API_SECRET",
@@ -31,18 +36,33 @@
         "IMAGES_STORAGE_PATH"
       ]
     },
-    "start": {},
+    "start": {
+      "dependsOn": ["build"],
+      "cache": false,
+      "persistent": true
+    },
     "type-check": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "!**/*.test.ts", "!**/*.spec.ts"],
+      "outputs": []
     },
     "lint": {
-      "dependsOn": ["^lint"]
+      "inputs": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx", "biome.json"],
+      "outputs": []
     },
     "format": {
-      "dependsOn": ["^format"]
+      "inputs": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx", "**/*.json", "biome.json"],
+      "outputs": []
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$"],
+      "outputs": ["coverage/**"],
+      "env": ["VITEST_POOL_ID"]
     },
     "@alive-brug/redis#start": {
-      "cache": false
+      "cache": false,
+      "persistent": true
     },
     "@alive-brug/redis#stop": {
       "cache": false
@@ -55,11 +75,13 @@
     },
     "@webalive/broker#dev": {
       "cache": false,
+      "persistent": true,
       "env": ["BROKER_SHARED_SECRET", "BROKER_PORT", "BROKER_HOST"]
     },
     "@webalive/broker#start": {
       "dependsOn": ["@webalive/broker#build"],
       "cache": false,
+      "persistent": true,
       "env": ["BROKER_SHARED_SECRET", "BROKER_PORT", "BROKER_HOST"]
     }
   }

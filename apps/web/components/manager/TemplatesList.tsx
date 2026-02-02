@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
 import type { AppDatabase } from "@webalive/database"
 import { DEFAULTS, DOMAINS, PATHS } from "@webalive/shared"
+import { useState } from "react"
 
 type Template = AppDatabase["app"]["Tables"]["templates"]["Row"]
 

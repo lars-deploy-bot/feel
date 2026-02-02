@@ -3,10 +3,10 @@
 import { Check, Copy, X } from "lucide-react"
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useFileContent } from "./hooks/useFileContent"
-import { getFileName } from "./lib/file-path"
 import { getFileColor } from "./lib/file-colors"
-import { TOKEN_COLORS, tokenizeLine, type Token } from "./lib/syntax"
-import { LoadingSpinner, ErrorMessage } from "./ui"
+import { getFileName } from "./lib/file-path"
+import { TOKEN_COLORS, type Token, tokenizeLine } from "./lib/syntax"
+import { ErrorMessage, LoadingSpinner } from "./ui"
 
 interface CodeViewerProps {
   workspace: string

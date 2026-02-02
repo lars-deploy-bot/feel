@@ -27,11 +27,11 @@ import type {
   SDKUserMessage,
 } from "@/features/chat/types/sdk-types"
 import {
+  type AgentManagerContent,
+  type AuthStatusContent,
   COMPONENT_TYPE,
   getMessageComponentType,
   isErrorResultMessage,
-  type AgentManagerContent,
-  type AuthStatusContent,
   type ToolProgressContent,
   type UIMessage,
 } from "./message-parser"

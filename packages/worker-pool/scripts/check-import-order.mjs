@@ -22,7 +22,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const WORKER_ENTRY_PATH = join(__dirname, "../src/worker-entry.mjs")
 
 // Patterns that indicate dynamic imports inside functions
-const DANGEROUS_PATTERNS = [
+const _DANGEROUS_PATTERNS = [
   // Dynamic import()
   {
     pattern: /^\s*(const|let|var)\s+\{[^}]+\}\s*=\s*await\s+import\s*\(/gm,

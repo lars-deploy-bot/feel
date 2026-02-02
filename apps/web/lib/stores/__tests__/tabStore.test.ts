@@ -5,7 +5,7 @@
  * MAX_TABS_PER_GROUP tabs. No global workspace limit.
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { useTabStore, MAX_TABS_PER_GROUP, type Tab } from "../tabStore"
+import { MAX_TABS_PER_GROUP, type Tab, useTabStore } from "../tabStore"
 
 // Use the same logic as the store: closedAt === undefined means open
 const isOpen = (tab: Tab): boolean => tab.closedAt === undefined

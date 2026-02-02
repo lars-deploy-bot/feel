@@ -7,10 +7,10 @@
 
 "use client"
 
-import { useState } from "react"
-import { LinearCommentResult, LinearCommentsResult } from "@/components/linear/LinearCommentResult"
-import { FAKE_LINEAR_COMMENT, FAKE_LINEAR_COMMENTS } from "@/components/linear/fake-data"
 import { RotateCcw } from "lucide-react"
+import { useState } from "react"
+import { FAKE_LINEAR_COMMENT, FAKE_LINEAR_COMMENTS } from "@/components/linear/fake-data"
+import { LinearCommentResult, LinearCommentsResult } from "@/components/linear/LinearCommentResult"
 
 type ViewMode = "single" | "list" | "create-empty" | "create-with-input"
 

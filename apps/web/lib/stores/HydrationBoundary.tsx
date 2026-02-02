@@ -6,7 +6,8 @@ import { useEffect, useRef, useSyncExternalStore } from "react"
 import "./store-registrations"
 
 // Import hydration functions from registry
-import { hydrateAll, isAllHydrated, type E2EReadiness } from "./hydration-registry"
+import { type E2EReadiness, hydrateAll, isAllHydrated } from "./hydration-registry"
+import { syncFromServer as syncWorkspacePreferences } from "./workspacePreferencesSync"
 
 // Re-export the E2EReadiness type for external use
 export type { E2EReadiness }
@@ -81,7 +82,14 @@ export function HydrationManager(): null {
     }
 
     // Delegate to hydration registry
-    hydrateAll().then(() => {
+    hydrateAll().then(async () => {
+      // Sync workspace preferences from server (cross-device sync)
+      // This runs after localStorage hydration so we can merge properly
+      try {
+        await syncWorkspacePreferences()
+      } catch (error) {
+        console.error("[HydrationManager] Failed to sync workspace preferences:", error)
+      }
       setAppHydrated(true)
     })
   }, [])

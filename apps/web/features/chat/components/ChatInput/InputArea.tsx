@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, type ClipboardEvent } from "react"
+import { type ClipboardEvent, useEffect, useRef } from "react"
 import { useChatInput } from "./ChatInputContext"
 
 export function InputArea() {

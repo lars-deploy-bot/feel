@@ -8,9 +8,10 @@
 
 "use client"
 
-import { useEffect, Suspense } from "react"
-import { useSearchParams, useRouter } from "next/navigation"
-import { Loader2, CheckCircle2, XCircle } from "lucide-react"
+import { CheckCircle2, Loader2, XCircle } from "lucide-react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Suspense, useEffect } from "react"
+import { clientLogger } from "@/lib/client-error-logger"
 import {
   OAUTH_CALLBACK_MESSAGE_TYPE,
   OAUTH_POPUP_CLOSE_DELAY,
@@ -33,6 +34,15 @@ function OAuthCallbackContent() {
   useEffect(() => {
     const hasOpener = window.opener && !window.opener.closed
     console.log("[OAuthCallback] hasOpener:", hasOpener, "integration:", integration, "status:", status)
+
+    // Log OAuth errors to centralized error system for debugging
+    if (status === "error" && message) {
+      clientLogger.oauth(`OAuth callback error for ${integration}`, {
+        provider: integration,
+        errorMessage: message,
+        hasOpener,
+      })
+    }
 
     const callbackMessage: OAuthCallbackMessage = {
       type: OAUTH_CALLBACK_MESSAGE_TYPE,

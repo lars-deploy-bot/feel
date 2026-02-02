@@ -18,8 +18,8 @@
 
 import { expect, type Request } from "@playwright/test"
 import { test } from "./fixtures"
-import { TEST_SELECTORS, TEST_TIMEOUTS } from "./fixtures/test-data"
 import { TEST_API } from "./fixtures/test-constants"
+import { TEST_SELECTORS, TEST_TIMEOUTS } from "./fixtures/test-data"
 import { handlers } from "./lib/handlers"
 import { ChatPage } from "./pages/ChatPage"
 

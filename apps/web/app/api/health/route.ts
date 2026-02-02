@@ -17,9 +17,8 @@
  */
 
 import { createRedisClient } from "@alive-brug/redis"
-import { createClient } from "@supabase/supabase-js"
-import { getSupabaseCredentials } from "@/lib/env/server"
 import { getRedisUrl } from "@webalive/env/server"
+import { getSupabaseCredentials } from "@/lib/env/server"
 
 // Types
 type ServiceStatus = "connected" | "disconnected" | "error"

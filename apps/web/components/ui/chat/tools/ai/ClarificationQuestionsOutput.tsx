@@ -7,10 +7,10 @@
 
 "use client"
 
-import { useState, useCallback } from "react"
+import { useCallback, useState } from "react"
 import {
-  ClarificationQuestions,
   type ClarificationQuestion,
+  ClarificationQuestions,
   type QuestionAnswer,
 } from "@/components/ai/ClarificationQuestions"
 import type { ToolResultRendererProps } from "@/lib/tools/tool-registry"

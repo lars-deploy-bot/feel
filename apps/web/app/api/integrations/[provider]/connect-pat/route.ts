@@ -11,6 +11,7 @@
  * not API responses. These are converted to proper ErrorCodes at the API boundary.
  */
 
+import { getOAuthKeyForProvider, providerSupportsPat } from "@webalive/shared"
 import { type NextRequest, NextResponse } from "next/server"
 import { createErrorResponse, getSessionUser } from "@/features/auth/lib/auth"
 import { getClientIdentifier } from "@/lib/auth/client-identifier"
@@ -19,7 +20,6 @@ import { ErrorCodes } from "@/lib/error-codes"
 import { validateProviderName } from "@/lib/integrations/validation"
 import { canUserAccessIntegration } from "@/lib/integrations/visibility"
 import { getOAuthInstance } from "@/lib/oauth/oauth-instances"
-import { providerSupportsPat, getOAuthKeyForProvider } from "@webalive/shared"
 
 /**
  * Validate GitHub PAT token by making a test API call

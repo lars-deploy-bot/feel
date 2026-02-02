@@ -5,9 +5,9 @@
  * Uses stored OAuth token from user's Gmail connection.
  */
 
+import { auth as gauth, gmail_v1 } from "@googleapis/gmail"
 import { type NextRequest, NextResponse } from "next/server"
-import { gmail_v1, auth as gauth } from "@googleapis/gmail"
-import { getSessionUser, createErrorResponse } from "@/features/auth/lib/auth"
+import { createErrorResponse, getSessionUser } from "@/features/auth/lib/auth"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getOAuthInstance } from "@/lib/oauth/oauth-instances"
 

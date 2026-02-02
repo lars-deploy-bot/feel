@@ -1,0 +1,49 @@
+/**
+ * Next.js Instrumentation
+ *
+ * This file is loaded when the Next.js server starts.
+ * Used to initialize background services like the CronService.
+ *
+ * @see https://nextjs.org/docs/app/building-your-application/optimizing/instrumentation
+ */
+
+export async function register() {
+  // Only run on the server, not during build
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    console.log("[Instrumentation] Initializing server-side services...")
+
+    // Start the CronService for automation scheduling
+    // Dynamically import to avoid issues during build
+    try {
+      const { startCronService } = await import("@/lib/automation/cron-service")
+
+      // Only start in production to avoid duplicate schedulers in dev
+      const isProduction = process.env.NODE_ENV === "production"
+
+      if (isProduction) {
+        await startCronService({
+          maxConcurrent: 3,
+          maxRetries: 3,
+          retryBaseDelayMs: 60_000,
+          onEvent: event => {
+            // Log events for debugging
+            console.log(`[CronService Event] ${event.action}:`, {
+              jobId: event.jobId,
+              status: event.status,
+              durationMs: event.durationMs,
+              error: event.error,
+            })
+          },
+        })
+        console.log("[Instrumentation] CronService started")
+      } else {
+        console.log("[Instrumentation] CronService disabled (not production)")
+      }
+    } catch (error) {
+      console.error("[Instrumentation] Failed to start CronService:", error)
+      // Don't crash the server if CronService fails to start
+    }
+
+    console.log("[Instrumentation] Server-side services initialized")
+  }
+}

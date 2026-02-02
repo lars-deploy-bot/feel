@@ -8,8 +8,8 @@
  * If you add a new provider there, TypeScript will require you to add it here.
  */
 
-import type { ComponentType } from "react"
 import type { OAuthMcpProviderKey } from "@webalive/shared"
+import type { ComponentType } from "react"
 
 /**
  * Props that integration UI components receive
@@ -50,6 +50,7 @@ export const INTEGRATION_UI_REGISTRY = {
   stripe: null, // No UI component yet - just shows connection status
   linear: null, // Issues viewable via Linear MCP tools, not settings panel
   gmail: null, // Email operations via Gmail MCP tools
+  supabase: null, // Database operations via Supabase MCP tools (run_query, etc.)
 } as const satisfies Record<OAuthMcpProviderKey, IntegrationUIConfig | null>
 
 /**

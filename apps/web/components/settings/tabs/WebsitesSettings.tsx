@@ -2,13 +2,13 @@
 
 import { AlertTriangle, Building2, Globe, Search } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
-import { AddWorkspaceModal } from "@/components/modals/AddWorkspaceModal"
+import { AddWebsiteModal } from "@/components/modals/AddWebsiteModal"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner"
 import { SearchInput } from "@/components/ui/SearchInput"
 import type { Organization } from "@/lib/api/types"
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
-import { SettingsTabLayout, type SettingsTabProps } from "./SettingsTabLayout"
+import { SettingsTabLayout } from "./SettingsTabLayout"
 import { orgSitesCache, useWorkspaceSwitch, WorkspacesGrid } from "./WorkspaceSettings"
 
 // Hook to fetch workspaces for all organizations
@@ -96,7 +96,7 @@ function OrgWebsitesGroup({
   )
 }
 
-export function WebsitesSettings({ onClose }: SettingsTabProps) {
+export function WebsitesSettings() {
   const { organizations, loading: orgsLoading } = useOrganizations()
   const { allWorkspaces, loading: websitesLoading, refetch } = useAllOrgWorkspaces(organizations)
   const { currentWorkspace, switchWorkspace } = useWorkspaceSwitch()
@@ -141,7 +141,6 @@ export function WebsitesSettings({ onClose }: SettingsTabProps) {
     <SettingsTabLayout
       title="Websites"
       description={`All your websites across ${organizations.length} organization${organizations.length !== 1 ? "s" : ""}`}
-      onClose={onClose}
     >
       <div className="space-y-5">
         {/* Warning when no workspace selected */}
@@ -177,7 +176,7 @@ export function WebsitesSettings({ onClose }: SettingsTabProps) {
           </div>
         )}
 
-        {showAddModal && <AddWorkspaceModal onClose={() => setShowAddModal(false)} onSuccess={refetch} />}
+        {showAddModal && <AddWebsiteModal onClose={() => setShowAddModal(false)} onSuccess={refetch} />}
       </div>
     </SettingsTabLayout>
   )

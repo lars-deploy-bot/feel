@@ -68,13 +68,13 @@ describe("SDK Tools Sync", () => {
     })
 
     it("should have correct tool counts in categories", () => {
-      // 13 SDK allowed + 1 Bridge-only (Skill) = 14 in ALLOWED_SDK_TOOLS
-      // 5 disallowed
-      // 13 + 5 = 18 SDK total
+      // 14 SDK allowed + 1 Bridge-only (Skill) = 15 in ALLOWED_SDK_TOOLS
+      // 4 disallowed (Task, WebSearch, ExitPlanMode, KillShell)
+      // 14 + 4 = 18 SDK total
       const allowedSDKOnly = ALLOWED_SDK_TOOLS.filter(t => !BRIDGE_ONLY_TOOLS.includes(t))
-      expect(ALLOWED_SDK_TOOLS.length).toBe(14) // 13 SDK + 1 Bridge-only
-      expect(allowedSDKOnly.length).toBe(13) // Pure SDK tools
-      expect(DISALLOWED_SDK_TOOLS.length).toBe(5)
+      expect(ALLOWED_SDK_TOOLS.length).toBe(15) // 14 SDK + 1 Bridge-only
+      expect(allowedSDKOnly.length).toBe(14) // Pure SDK tools
+      expect(DISALLOWED_SDK_TOOLS.length).toBe(4)
       expect(allowedSDKOnly.length + DISALLOWED_SDK_TOOLS.length).toBe(SDK_TOOL_NAMES.length)
     })
   })
@@ -93,9 +93,12 @@ describe("SDK Tools Sync", () => {
       expect(isAllowed("Grep")).toBe(true)
     })
 
-    it("should disallow shell access tools", () => {
-      expect(isDisallowed("Bash")).toBe(true)
-      expect(isDisallowed("BashOutput")).toBe(true)
+    it("should allow shell execution tools (Bash/BashOutput)", () => {
+      expect(isAllowed("Bash")).toBe(true)
+      expect(isAllowed("BashOutput")).toBe(true)
+    })
+
+    it("should disallow KillShell (admin-only)", () => {
       expect(isDisallowed("KillShell")).toBe(true)
     })
 
@@ -113,8 +116,9 @@ describe("SDK Tools Sync", () => {
       expect(isAllowed("ReadMcpResource")).toBe(true)
     })
 
-    it("should allow planning/workflow tools", () => {
-      expect(isAllowed("ExitPlanMode")).toBe(true)
+    it("should allow planning/workflow tools (except ExitPlanMode which requires user approval)", () => {
+      // ExitPlanMode is disallowed - Claude cannot approve its own plan
+      expect(isDisallowed("ExitPlanMode")).toBe(true)
       expect(isAllowed("TodoWrite")).toBe(true)
     })
 

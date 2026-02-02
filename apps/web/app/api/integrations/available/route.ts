@@ -10,12 +10,12 @@
  * Connection status is checked against lockbox.user_secrets (oauth-core storage)
  */
 
+import { getOAuthKeyForProvider } from "@webalive/shared"
 import { type NextRequest, NextResponse } from "next/server"
 import { createErrorResponse, getSessionUser } from "@/features/auth/lib/auth"
 import { ErrorCodes } from "@/lib/error-codes"
-import { createIntegrationsClient } from "@/lib/supabase/integrations"
 import { getOAuthInstance } from "@/lib/oauth/oauth-instances"
-import { getOAuthKeyForProvider } from "@webalive/shared"
+import { createIntegrationsClient } from "@/lib/supabase/integrations"
 
 export type TokenStatus = "valid" | "expired" | "needs_reauth" | "not_connected"
 

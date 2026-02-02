@@ -3,9 +3,9 @@ if (typeof window !== "undefined") {
 }
 
 import { createClient as createSupabaseClient } from "@supabase/supabase-js"
+import type { PublicDatabase as Database } from "@webalive/database"
 import { getSafeSessionCookie } from "@/features/auth/lib/auth"
 import { getSupabaseCredentials } from "@/lib/env/server"
-import type { PublicDatabase as Database } from "@webalive/database"
 
 /**
  * Create Supabase client with RLS enforcement using Claude Bridge's workspace JWT.

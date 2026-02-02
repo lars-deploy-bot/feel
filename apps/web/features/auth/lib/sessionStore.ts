@@ -7,9 +7,9 @@
  */
 
 import {
-  type TabSessionKey,
   hasExistingSession,
   isConversationLocked,
+  type TabSessionKey,
   tryLockConversation,
   unlockConversation,
 } from "@/features/auth/types/session"

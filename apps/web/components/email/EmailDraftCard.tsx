@@ -9,8 +9,8 @@
 
 "use client"
 
-import { useState, useRef, useEffect, type KeyboardEvent } from "react"
-import { Mail, Send, Save, Check, Loader2, AlertCircle, X, Plus, AlertTriangle, Settings } from "lucide-react"
+import { AlertCircle, AlertTriangle, Check, Loader2, Mail, Plus, Save, Send, Settings, X } from "lucide-react"
+import { type KeyboardEvent, useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import type { EmailDraft, EmailDraftOutputProps } from "./types"
 

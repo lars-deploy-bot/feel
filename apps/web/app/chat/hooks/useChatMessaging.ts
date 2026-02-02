@@ -1,5 +1,6 @@
 "use client"
 
+import { isRetryableNetworkError, retryAsync } from "@webalive/shared"
 import { useCallback, useRef } from "react"
 import toast from "react-hot-toast"
 import type { ChatInputHandle } from "@/features/chat/components/ChatInput/types"
@@ -17,7 +18,6 @@ import { getMessageDb } from "@/lib/db/messageDb"
 import type { StructuredError } from "@/lib/error-codes"
 import { ErrorCodes, getErrorHelp, getErrorMessage } from "@/lib/error-codes"
 import { HttpError } from "@/lib/errors"
-import { retryAsync, isRetryableNetworkError } from "@webalive/shared"
 import { authStore } from "@/lib/stores/authStore"
 import { isDevelopment } from "@/lib/stores/debug-store"
 import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
@@ -39,7 +39,8 @@ interface UseChatMessagingOptions {
   setMsg: (msg: string) => void
   addMessage: (message: UIMessage, targetTabId: string) => void
   chatInputRef: React.RefObject<ChatInputHandle | null>
-  setShouldForceScroll: (value: boolean) => void
+  /** Force scroll to bottom when user sends a message */
+  forceScrollToBottom: () => void
   setShowCompletionDots: (value: boolean) => void
 }
 
@@ -61,7 +62,7 @@ export function useChatMessaging({
   setMsg,
   addMessage,
   chatInputRef,
-  setShouldForceScroll,
+  forceScrollToBottom,
   setShowCompletionDots,
 }: UseChatMessagingOptions) {
   // Refs for request management
@@ -98,6 +99,11 @@ export function useChatMessaging({
       if (!activeTabId || !tabGroupId) {
         throw new Error("[useChatMessaging] Cannot create request: activeTab or tabGroupId is missing")
       }
+
+      // Check if we need to resume at a specific message (user deleted messages)
+      const dexieState = useDexieMessageStore.getState()
+      const resumeSessionAt = dexieState.resumeSessionAtByTab[activeTabId] || undefined
+
       const baseBody = {
         message,
         tabId: activeTabId,
@@ -107,6 +113,8 @@ export function useChatMessaging({
         analyzeImageUrls: analyzeImageUrls?.length ? analyzeImageUrls : undefined,
         // Read plan mode directly from store to avoid stale closure
         planMode: getPlanModeState().planMode || undefined, // Only send if true
+        // Resume at specific message if user deleted messages
+        resumeSessionAt,
       }
       return isTerminal ? { ...baseBody, workspace: workspace || undefined } : baseBody
     },
@@ -419,6 +427,8 @@ export function useChatMessaging({
                       !isInterruptEvent(eventData)
                     ) {
                       setShowCompletionDots(true)
+                      // Clear resumeSessionAt after successful message send
+                      useDexieMessageStore.getState().clearResumeSessionAt(targetTabId)
                       // Pass targetTabId to ensure agent supervisor uses correct conversation
                       handleCompletionFeatures(targetTabId)
                     }
@@ -599,7 +609,7 @@ export function useChatMessaging({
       await addMessage(userMessage, targetTabId)
       setMsg("")
       chatInputRef.current?.clearAllAttachments()
-      setShouldForceScroll(true)
+      forceScrollToBottom()
 
       try {
         await sendStreaming(userMessage, targetTabId)
@@ -617,7 +627,7 @@ export function useChatMessaging({
       chatInputRef,
       addMessage,
       setMsg,
-      setShouldForceScroll,
+      forceScrollToBottom,
       sendStreaming,
     ],
   )

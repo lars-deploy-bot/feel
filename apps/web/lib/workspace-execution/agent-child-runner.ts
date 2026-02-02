@@ -17,6 +17,7 @@ interface AgentRequest {
   model?: string
   maxTurns?: number
   resume?: string
+  resumeSessionAt?: string // Resume at specific message UUID (for message deletion)
   systemPrompt?: string | { type: "preset"; preset: "claude_code"; append?: string }
   apiKey?: string
   sessionCookie?: string // For authenticated API calls back to Bridge
@@ -46,7 +47,9 @@ export function shouldUseChildProcess(workspaceRoot: string): boolean {
 }
 
 export function runAgentChild(workspaceRoot: string, payload: AgentRequest): ReadableStream<Uint8Array> {
-  const runnerPath = resolve(process.cwd(), "scripts/run-agent.mjs")
+  // Use import.meta.dirname (ESM) or fallback to __dirname pattern
+  // The script is at apps/web/scripts/run-agent.mjs relative to this file
+  const runnerPath = resolve(import.meta.dirname, "../../scripts/run-agent.mjs")
 
   // SUPERADMIN: Skip privilege drop - run as root
   // Only applies when user is superadmin AND workspace is claude-bridge

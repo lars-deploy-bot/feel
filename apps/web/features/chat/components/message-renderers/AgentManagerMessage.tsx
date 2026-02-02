@@ -1,4 +1,4 @@
-import { Hand, CheckCircle, Bot } from "lucide-react"
+import { Bot, CheckCircle, Hand } from "lucide-react"
 import type { AgentManagerStatus } from "@/features/chat/lib/message-parser"
 
 interface AgentManagerMessageProps {

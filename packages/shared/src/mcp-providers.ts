@@ -63,6 +63,12 @@ export interface OAuthMcpProviderConfig {
    * When true, users can connect by providing their PAT directly instead of OAuth flow.
    */
   supportsPat?: boolean
+  /**
+   * Whether this provider supports OAuth flow.
+   * When true, users can connect via OAuth popup flow.
+   * Most providers use OAuth by default, but some (like GitHub) also support PAT.
+   */
+  supportsOAuth?: boolean
 }
 
 /**
@@ -90,6 +96,11 @@ export const OAUTH_MCP_PROVIDERS = {
      * Users can connect by providing their PAT directly instead of going through OAuth.
      */
     supportsPat: true,
+    /**
+     * GitHub also supports full OAuth 2.0 flow.
+     * Users can choose between OAuth (automatic) or PAT (manual).
+     */
+    supportsOAuth: true,
     knownTools: [
       // Repository operations
       "mcp__github__list_repos",
@@ -236,6 +247,24 @@ export const OAUTH_MCP_PROVIDERS = {
       "mcp__gmail__trash_email",
     ],
   },
+  supabase: {
+    url: "internal", // Tools are built into @alive-brug/tools, not a separate MCP server
+    oauthKey: "supabase",
+    friendlyName: "Supabase",
+    defaultScopes: "", // Supabase OAuth doesn't use scopes - grants full Management API access
+    envPrefix: "SUPABASE",
+    supportsOAuth: true,
+    knownTools: [
+      // Query execution
+      "mcp__supabase__run_query",
+      // Project management
+      "mcp__supabase__list_projects",
+      "mcp__supabase__get_project",
+      // Table operations (via SQL)
+      "mcp__supabase__list_tables",
+      "mcp__supabase__describe_table",
+    ],
+  },
 } as const satisfies OAuthMcpProviderRegistry
 
 /**
@@ -270,6 +299,25 @@ export function providerSupportsPat(providerKey: string): boolean {
     const config = OAUTH_MCP_PROVIDERS[providerKey as OAuthMcpProviderKey]
     // Use 'in' operator to safely check for optional property
     return "supportsPat" in config && config.supportsPat === true
+  }
+  return false
+}
+
+/**
+ * Check if a provider supports OAuth flow
+ *
+ * @param providerKey - The provider key to check
+ * @returns true if the provider supports OAuth authentication
+ */
+export function providerSupportsOAuth(providerKey: string): boolean {
+  if (providerKey in OAUTH_MCP_PROVIDERS) {
+    const config = OAUTH_MCP_PROVIDERS[providerKey as OAuthMcpProviderKey]
+    // Use 'in' operator to safely check for optional property
+    return "supportsOAuth" in config && config.supportsOAuth === true
+  }
+  // OAuth-only providers always support OAuth
+  if (providerKey in OAUTH_ONLY_PROVIDERS) {
+    return true
   }
   return false
 }

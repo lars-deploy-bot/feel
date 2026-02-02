@@ -4,7 +4,7 @@ import "./e2e-tests/lib/load-env"
 // Now safe to import modules that read process.env
 import { defineConfig } from "@playwright/test"
 import { DOMAINS, TEST_CONFIG } from "@webalive/shared"
-import { TEST_ENV, isRemoteEnv, TIMEOUTS } from "./e2e-tests/lib/test-env"
+import { isRemoteEnv, TEST_ENV, TIMEOUTS } from "./e2e-tests/lib/test-env"
 
 // Use TEST_CONFIG.PORT for testing to avoid conflicts with production (8999)
 const LOCAL_BASE_URL = `http://localhost:${TEST_CONFIG.PORT}`

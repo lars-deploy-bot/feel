@@ -1,16 +1,16 @@
 "use client"
 
+import { FEATURE_FLAGS, type FeatureFlagKey } from "@webalive/shared"
 import { RotateCcw } from "lucide-react"
 import { Toggle } from "@/components/ui/Toggle"
 import {
+  getFeatureFlagKeys,
   useFeatureFlag,
   useFeatureFlagActions,
   useFeatureFlagOverrides,
   useHasOverride,
-  getFeatureFlagKeys,
 } from "@/lib/stores/featureFlagStore"
-import { FEATURE_FLAGS, type FeatureFlagKey } from "@webalive/shared"
-import { SettingsTabLayout, type SettingsTabProps } from "./SettingsTabLayout"
+import { SettingsTabLayout } from "./SettingsTabLayout"
 
 function FeatureFlagToggle({ flagKey }: { flagKey: FeatureFlagKey }) {
   const value = useFeatureFlag(flagKey)
@@ -60,7 +60,7 @@ function FeatureFlagToggle({ flagKey }: { flagKey: FeatureFlagKey }) {
   )
 }
 
-export function FlagsSettings({ onClose }: SettingsTabProps) {
+export function FlagsSettings() {
   const { clearAllOverrides } = useFeatureFlagActions()
   const overrides = useFeatureFlagOverrides()
   const hasAnyOverrides = Object.keys(overrides).length > 0
@@ -70,7 +70,6 @@ export function FlagsSettings({ onClose }: SettingsTabProps) {
     <SettingsTabLayout
       title="Feature Flags"
       description="Toggle experimental features. Overrides persist in your browser."
-      onClose={onClose}
     >
       <div className="space-y-4">
         {/* Clear all button */}

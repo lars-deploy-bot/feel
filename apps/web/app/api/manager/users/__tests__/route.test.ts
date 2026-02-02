@@ -4,12 +4,12 @@
  * Tests the /api/manager/users endpoint that returns user list for the manager
  */
 
+import { DOMAINS } from "@webalive/shared"
 import type { RequestInit as NextRequestInit } from "next/dist/server/web/spec-extension/request"
 import { NextRequest } from "next/server"
 import { beforeAll, describe, expect, it, vi } from "vitest"
-import { DOMAINS } from "@webalive/shared"
-import { createIamClient } from "@/lib/supabase/iam"
 import { createAppClient } from "@/lib/supabase/app"
+import { createIamClient } from "@/lib/supabase/iam"
 
 // Mock auth check
 vi.mock("@/features/auth/lib/auth", () => ({

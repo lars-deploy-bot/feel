@@ -8,40 +8,12 @@
  * - Requires access_type: 'offline' to get refresh tokens
  * - Requires prompt: 'consent' to force refresh token on re-auth
  * - Supports token refresh (unlike GitHub OAuth Apps)
+ * - Supports PKCE for public clients (learned from n8n)
  */
 
-import type { OAuthProviderCore, OAuthRefreshable, OAuthRevocable } from "./base"
+import type { OAuthProviderCore, OAuthRefreshable, OAuthRevocable, PKCEOptions, TokenExchangeOptions } from "./base"
 import type { OAuthTokens } from "../types"
-
-/**
- * Fetch with exponential backoff retry for transient failures
- * Only retries on 5xx errors and network failures, not 4xx client errors
- */
-async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3): Promise<Response> {
-  let lastError: Error | null = null
-
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      const res = await fetch(url, options)
-      // Don't retry client errors (4xx) - only server errors (5xx)
-      if (res.ok || res.status < 500) {
-        return res
-      }
-      lastError = new Error(`HTTP ${res.status}: ${res.statusText}`)
-    } catch (err) {
-      lastError = err instanceof Error ? err : new Error(String(err))
-    }
-
-    if (attempt < maxRetries) {
-      // Exponential backoff: 1s, 2s, 4s with jitter
-      const baseDelay = Math.min(1000 * 2 ** (attempt - 1), 10000)
-      const jitter = Math.random() * 200
-      await new Promise(r => setTimeout(r, baseDelay + jitter))
-    }
-  }
-
-  throw lastError ?? new Error("Fetch failed after retries")
-}
+import { fetchWithRetry } from "../fetch-with-retry"
 
 /**
  * Google-specific OAuth options
@@ -91,35 +63,71 @@ export class GoogleProvider implements OAuthProviderCore, OAuthRefreshable, OAut
    *
    * IMPORTANT: Only returns refresh_token on FIRST authorization
    * or when prompt=consent was used in getAuthUrl
+   *
+   * Supports PKCE for public clients (no client_secret required)
    */
   async exchangeCode(
     code: string,
     clientId: string,
     clientSecret: string,
     redirectUri?: string,
+    options?: TokenExchangeOptions,
   ): Promise<GoogleTokenResponse> {
     const params = new URLSearchParams({
       client_id: clientId,
-      client_secret: clientSecret,
       code,
       grant_type: "authorization_code",
     })
+
+    // PKCE flow: use code_verifier instead of client_secret
+    if (options?.code_verifier) {
+      params.append("code_verifier", options.code_verifier)
+    }
+
+    // Add client_secret only if provided (confidential clients)
+    if (clientSecret) {
+      params.append("client_secret", clientSecret)
+    }
 
     if (redirectUri) {
       params.append("redirect_uri", redirectUri)
     }
 
-    const res = await fetchWithRetry("https://oauth2.googleapis.com/token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
+    // Additional body params (from n8n pattern)
+    if (options?.additionalBodyParams) {
+      for (const [key, value] of Object.entries(options.additionalBodyParams)) {
+        params.append(key, value)
+      }
+    }
+
+    const res = await fetchWithRetry(
+      "https://oauth2.googleapis.com/token",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: params.toString(),
       },
-      body: params.toString(),
-    })
+      { label: "Google" },
+    )
 
     const data = await res.json()
 
     if (!res.ok || data.error) {
+      // Log detailed error info for debugging (this is the critical place where errors are hidden)
+      console.error("[Google OAuth] Token exchange failed:", {
+        status: res.status,
+        statusText: res.statusText,
+        error: data.error,
+        errorDescription: data.error_description,
+        // Log redirect_uri for debugging mismatch issues (most common cause of "Bad Request")
+        redirectUriUsed: redirectUri || "(not provided)",
+        hint:
+          data.error === "invalid_grant" || res.status === 400
+            ? "This usually means redirect_uri mismatch. Check that the URI matches Google Cloud Console exactly."
+            : undefined,
+      })
       throw new Error(`Google OAuth failed: ${data.error_description || data.error || res.statusText}`)
     }
 
@@ -152,13 +160,17 @@ export class GoogleProvider implements OAuthProviderCore, OAuthRefreshable, OAut
       grant_type: "refresh_token",
     })
 
-    const res = await fetchWithRetry("https://oauth2.googleapis.com/token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
+    const res = await fetchWithRetry(
+      "https://oauth2.googleapis.com/token",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: params.toString(),
       },
-      body: params.toString(),
-    })
+      { label: "Google" },
+    )
 
     const data = await res.json()
 
@@ -191,12 +203,16 @@ export class GoogleProvider implements OAuthProviderCore, OAuthRefreshable, OAut
    */
   async revokeToken(token: string, _clientId: string, _clientSecret: string): Promise<void> {
     // Google token revocation doesn't need client credentials
-    const res = await fetch(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(token)}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
+    const res = await fetchWithRetry(
+      `https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(token)}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
       },
-    })
+      { label: "Google" },
+    )
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
@@ -211,16 +227,19 @@ export class GoogleProvider implements OAuthProviderCore, OAuthRefreshable, OAut
    * @param redirectUri - Callback URL (must match Cloud Console config)
    * @param scope - Space-separated scopes (use GMAIL_FULL_SCOPES for email)
    * @param state - Random state for CSRF protection
+   * @param pkce - PKCE challenge for public clients (optional)
    * @param options - Google-specific options
    * @returns Authorization URL to redirect user to
    *
    * @example
-   * // Full Gmail access
+   * // Full Gmail access with PKCE
+   * const pkce = generatePKCEChallenge()
    * const url = provider.getAuthUrl(
    *   clientId,
    *   'https://example.com/callback',
    *   GoogleProvider.GMAIL_FULL_SCOPES,
    *   crypto.randomUUID(),
+   *   pkce,
    *   { forceConsent: true }
    * )
    */
@@ -229,6 +248,7 @@ export class GoogleProvider implements OAuthProviderCore, OAuthRefreshable, OAut
     redirectUri: string,
     scope: string,
     state?: string,
+    pkce?: PKCEOptions,
     options?: GoogleAuthOptions,
   ): string {
     const params = new URLSearchParams({
@@ -241,6 +261,12 @@ export class GoogleProvider implements OAuthProviderCore, OAuthRefreshable, OAut
 
     if (state) {
       params.append("state", state)
+    }
+
+    // PKCE support for public clients (learned from n8n)
+    if (pkce) {
+      params.append("code_challenge", pkce.code_challenge)
+      params.append("code_challenge_method", pkce.code_challenge_method)
     }
 
     // Force consent to always get refresh token (even on re-auth)
@@ -269,11 +295,15 @@ export class GoogleProvider implements OAuthProviderCore, OAuthRefreshable, OAut
    * @returns User info (email, name, picture, etc.)
    */
   async getUserInfo(accessToken: string): Promise<GoogleUserInfo> {
-    const res = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
+    const res = await fetchWithRetry(
+      "https://www.googleapis.com/oauth2/v2/userinfo",
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       },
-    })
+      { label: "Google" },
+    )
 
     if (!res.ok) {
       const error = await res.text()

@@ -14,9 +14,9 @@ if (typeof window !== "undefined" && !isTestEnv) {
 
 import { createServerClient } from "@supabase/ssr"
 import { createClient } from "@supabase/supabase-js"
+import type { AppDatabase as Database } from "@webalive/database"
 import { cookies } from "next/headers"
 import { getSupabaseCredentials, type KeyType } from "@/lib/env/server"
-import type { AppDatabase as Database } from "@webalive/database"
 
 /**
  * Create a Supabase client scoped to the app schema
@@ -63,6 +63,9 @@ export async function createAppClient(keyType: KeyType = "service") {
 export type AppDatabase = Database
 
 // Tables
+export type AppConversation = Database["app"]["Tables"]["conversations"]["Row"]
+export type AppConversationTab = Database["app"]["Tables"]["conversation_tabs"]["Row"]
+export type AppMessage = Database["app"]["Tables"]["messages"]["Row"]
 export type AppDomain = Database["app"]["Tables"]["domains"]["Row"]
 export type AppError = Database["app"]["Tables"]["errors"]["Row"]
 export type AppFeedback = Database["app"]["Tables"]["feedback"]["Row"]
@@ -72,6 +75,9 @@ export type AppUserOnboarding = Database["app"]["Tables"]["user_onboarding"]["Ro
 export type AppUserProfile = Database["app"]["Tables"]["user_profile"]["Row"]
 
 // Insert types
+export type AppConversationInsert = Database["app"]["Tables"]["conversations"]["Insert"]
+export type AppConversationTabInsert = Database["app"]["Tables"]["conversation_tabs"]["Insert"]
+export type AppMessageInsert = Database["app"]["Tables"]["messages"]["Insert"]
 export type AppDomainInsert = Database["app"]["Tables"]["domains"]["Insert"]
 export type AppErrorInsert = Database["app"]["Tables"]["errors"]["Insert"]
 export type AppFeedbackInsert = Database["app"]["Tables"]["feedback"]["Insert"]
@@ -81,6 +87,9 @@ export type AppUserOnboardingInsert = Database["app"]["Tables"]["user_onboarding
 export type AppUserProfileInsert = Database["app"]["Tables"]["user_profile"]["Insert"]
 
 // Update types
+export type AppConversationUpdate = Database["app"]["Tables"]["conversations"]["Update"]
+export type AppConversationTabUpdate = Database["app"]["Tables"]["conversation_tabs"]["Update"]
+export type AppMessageUpdate = Database["app"]["Tables"]["messages"]["Update"]
 export type AppDomainUpdate = Database["app"]["Tables"]["domains"]["Update"]
 export type AppErrorUpdate = Database["app"]["Tables"]["errors"]["Update"]
 export type AppFeedbackUpdate = Database["app"]["Tables"]["feedback"]["Update"]

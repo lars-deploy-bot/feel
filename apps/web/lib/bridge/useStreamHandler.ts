@@ -15,18 +15,18 @@
  */
 
 import { useCallback, useRef } from "react"
+import type { UIMessage } from "@/features/chat/lib/message-parser"
 import { useDexieMessageStore } from "@/lib/db/dexieMessageStore"
 import {
   type BridgeEvent,
   type BridgeMessageEvent,
+  isBridgeCompleteEvent,
+  isBridgeErrorEvent,
   isBridgeEvent,
+  isBridgeInterruptEvent,
   isBridgeMessageEvent,
   isBridgeStartEvent,
-  isBridgeCompleteEvent,
-  isBridgeInterruptEvent,
-  isBridgeErrorEvent,
 } from "./streamTypes"
-import type { UIMessage } from "@/features/chat/lib/message-parser"
 
 // =============================================================================
 // Types

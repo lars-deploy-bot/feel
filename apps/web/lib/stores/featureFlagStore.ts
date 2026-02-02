@@ -1,8 +1,8 @@
 "use client"
 
+import { FEATURE_FLAGS, type FeatureFlagKey } from "@webalive/shared"
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
-import { FEATURE_FLAGS, type FeatureFlagKey } from "@webalive/shared"
 
 /**
  * Feature flag overrides stored per-user in localStorage.

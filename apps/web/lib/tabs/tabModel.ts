@@ -10,7 +10,7 @@
  * - Reusable across data and view stores
  */
 
-import type { TabId, TabGroupId } from "@/lib/types/ids"
+import type { TabGroupId, TabId } from "@/lib/types/ids"
 
 // ============================================================================
 // Constants

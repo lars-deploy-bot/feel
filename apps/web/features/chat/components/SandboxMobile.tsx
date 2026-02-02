@@ -1,11 +1,11 @@
 "use client"
-import { RotateCw, Square, X } from "lucide-react"
+import { PREVIEW_MESSAGES } from "@webalive/shared"
 import { motion } from "framer-motion"
+import { RotateCw, Square, X } from "lucide-react"
 import type { ReactNode } from "react"
 import { useEffect, useRef, useState } from "react"
-import { PREVIEW_MESSAGES } from "@webalive/shared"
+import { usePanelContext } from "@/features/chat/lib/sandbox-context"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
-import { useSandboxContext } from "@/features/chat/lib/sandbox-context"
 import { getPreviewUrl } from "@/lib/preview-utils"
 import { PulsingDot } from "./ui/PulsingDot"
 
@@ -19,7 +19,7 @@ interface SandboxMobileProps {
 
 export function SandboxMobile({ onClose, children, busy, statusText, onStop }: SandboxMobileProps) {
   const { workspace } = useWorkspace({ allowEmpty: true })
-  const { setSelectedElement } = useSandboxContext()
+  const { setSelectedElement, selectorActive, deactivateSelector } = usePanelContext()
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [path, setPath] = useState("/")
   const [isLoading, setIsLoading] = useState(true)
@@ -38,6 +38,10 @@ export function SandboxMobile({ onClose, children, busy, statusText, onStop }: S
 
   const handleIframeLoad = () => {
     setIsLoading(false)
+    // Sync selector state to newly loaded iframe
+    if (selectorActive && iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage({ type: "alive-tagger-activate" }, "*")
+    }
   }
 
   // Reset loading state when path changes
@@ -94,6 +98,23 @@ export function SandboxMobile({ onClose, children, busy, statusText, onStop }: S
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [onClose])
+
+  // Send activation/deactivation message to iframe when selectorActive changes
+  useEffect(() => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: selectorActive ? "alive-tagger-activate" : "alive-tagger-deactivate" },
+        "*",
+      )
+    }
+  }, [selectorActive])
+
+  // Reset selector state when mobile sandbox unmounts (closes)
+  useEffect(() => {
+    return () => {
+      deactivateSelector()
+    }
+  }, [deactivateSelector])
 
   return (
     <motion.div

@@ -13,11 +13,11 @@
  */
 
 import { createClient } from "@supabase/supabase-js"
+import type { AppDatabase, IamDatabase } from "@webalive/database"
 import { llmTokensToCredits } from "@/lib/credits"
 import { getSupabaseCredentials } from "@/lib/env/server"
 import { createAppClient } from "@/lib/supabase/app"
 import { createIamClient } from "@/lib/supabase/iam"
-import type { AppDatabase, IamDatabase } from "@webalive/database"
 
 // Test-aware client creation (bypasses Next.js cookies in tests)
 const isTestEnv = process.env.NODE_ENV === "test"

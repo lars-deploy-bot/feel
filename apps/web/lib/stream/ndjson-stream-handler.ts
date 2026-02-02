@@ -18,14 +18,15 @@
  * applying credit charges, and sending typed messages to client.
  */
 
-import { type TabSessionKey, sessionStore } from "@/features/auth/lib/sessionStore"
+import type { OAuthWarning } from "@webalive/shared"
+import { sessionStore, type TabSessionKey } from "@/features/auth/lib/sessionStore"
 import type { BridgeErrorMessage, StreamMessage } from "@/features/chat/lib/streaming/ndjson"
 import { BridgeStreamType, createWarningMessage, encodeNDJSON } from "@/features/chat/lib/streaming/ndjson"
 import { isAssistantMessageWithUsage, isBridgeMessageEvent } from "@/features/chat/types/guards"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
+import { logStreamError } from "@/lib/error-logger"
 import type { ClaudeModel } from "@/lib/models/claude-models"
 import { calculateCreditsToCharge } from "@/lib/models/model-pricing"
-import type { OAuthWarning } from "@webalive/shared"
 import { chargeCreditsDirectly } from "@/lib/tokens"
 
 /**
@@ -490,7 +491,10 @@ export function createNDJSONStream(config: StreamHandlerConfig): ReadableStream<
 
         console.log(`[NDJSON Stream ${requestId}] Child process stream complete`)
       } catch (error) {
-        console.error(`[NDJSON Stream ${requestId}] Child process stream error:`, error)
+        // Log detailed error with build info for backend tracking
+        logStreamError({ requestId, workspace: conversationWorkspace, model, error })
+
+        // Send minimal error to frontend (user sees error ID for correlation)
         const errorMessage: BridgeErrorMessage = {
           type: BridgeStreamType.ERROR,
           requestId,
@@ -500,7 +504,6 @@ export function createNDJSONStream(config: StreamHandlerConfig): ReadableStream<
             error: ErrorCodes.STREAM_ERROR,
             code: ErrorCodes.STREAM_ERROR,
             message: getErrorMessage(ErrorCodes.STREAM_ERROR),
-            details: { error: String(error) },
           },
         }
         controller.enqueue(encodeNDJSON(errorMessage))

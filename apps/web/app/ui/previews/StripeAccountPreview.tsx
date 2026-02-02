@@ -7,10 +7,10 @@
 
 "use client"
 
-import { useState } from "react"
-import { StripeAccountOutput } from "@/components/ui/chat/tools/stripe/StripeAccountOutput"
-import { FAKE_STRIPE_ACCOUNT, FAKE_STRIPE_ACCOUNT_MINIMAL } from "@/components/ui/chat/tools/stripe/fake-data"
 import { RotateCcw } from "lucide-react"
+import { useState } from "react"
+import { FAKE_STRIPE_ACCOUNT, FAKE_STRIPE_ACCOUNT_MINIMAL } from "@/components/ui/chat/tools/stripe/fake-data"
+import { StripeAccountOutput } from "@/components/ui/chat/tools/stripe/StripeAccountOutput"
 
 type AccountType = "full" | "minimal" | "empty"
 

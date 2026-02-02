@@ -1,8 +1,8 @@
 "use client"
 
 import { LogOut, Moon, Sun } from "lucide-react"
-import { useTheme } from "next-themes"
 import { useRouter } from "next/navigation"
+import { useTheme } from "next-themes"
 import { useAuth } from "@/features/deployment/hooks/useAuth"
 import { useWorkspaceActions } from "@/lib/stores/workspaceStore"
 import {
@@ -13,9 +13,9 @@ import {
   selectionCardInactive,
   text,
 } from "../styles"
-import { SettingsTabLayout, type SettingsTabProps } from "./SettingsTabLayout"
+import { SettingsTabLayout } from "./SettingsTabLayout"
 
-export function AccountSettings({ onClose }: SettingsTabProps) {
+export function AccountSettings() {
   // Get email from auth session (read-only)
   const { user } = useAuth()
   const router = useRouter()
@@ -44,7 +44,7 @@ export function AccountSettings({ onClose }: SettingsTabProps) {
   }
 
   return (
-    <SettingsTabLayout title="Profile" description="Your account information and preferences" onClose={onClose}>
+    <SettingsTabLayout title="Profile" description="Your account information and preferences">
       <div className="space-y-4 sm:space-y-6">
         <div className="animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-75">
           <p className={`${text.label} mb-2`}>Email Address</p>

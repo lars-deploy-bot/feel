@@ -3,14 +3,14 @@
 import { Building2, ChevronDown, UserMinus } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import toast from "react-hot-toast"
-import { AddWorkspaceModal } from "@/components/modals/AddWorkspaceModal"
+import { AddWebsiteModal } from "@/components/modals/AddWebsiteModal"
 import { DeleteModal } from "@/components/modals/DeleteModal"
 import type { Organization } from "@/lib/api/types"
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
 import { canRemoveMember } from "@/lib/permissions/org-permissions"
 import { useCurrentWorkspace, useSelectedOrgId, useWorkspaceActions } from "@/lib/stores/workspaceStore"
 import { input, primaryButton, secondaryButton, smallButton, text } from "../styles"
-import { SettingsTabLayout, type SettingsTabProps } from "./SettingsTabLayout"
+import { SettingsTabLayout } from "./SettingsTabLayout"
 
 interface OrgMember {
   user_id: string
@@ -389,12 +389,12 @@ function _OrgSitesSection({ orgId }: { orgId: string }) {
         onRetry={refetch}
       />
 
-      {showAddModal && <AddWorkspaceModal onClose={() => setShowAddModal(false)} onSuccess={refetch} />}
+      {showAddModal && <AddWebsiteModal onClose={() => setShowAddModal(false)} onSuccess={refetch} />}
     </div>
   )
 }
 
-export function WorkspaceSettings({ onClose }: SettingsTabProps) {
+export function WorkspaceSettings() {
   const { organizations, currentUserId, loading, error, refetch } = useOrganizations()
   const selectedOrgId = useSelectedOrgId()
   const { setSelectedOrg } = useWorkspaceActions()
@@ -435,7 +435,7 @@ export function WorkspaceSettings({ onClose }: SettingsTabProps) {
   }
 
   return (
-    <SettingsTabLayout title="Workspace" description="Invite teammates and manage your organization" onClose={onClose}>
+    <SettingsTabLayout title="Workspace" description="Invite teammates and manage your organization">
       {/* Errors */}
       {error && (
         <div className="px-4 py-3 bg-red-500/5 dark:bg-red-500/5 border border-red-500/10 dark:border-red-500/10 rounded-xl space-y-2">

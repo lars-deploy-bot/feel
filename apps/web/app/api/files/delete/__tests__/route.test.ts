@@ -12,8 +12,8 @@
 import { existsSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { NextRequest, NextResponse } from "next/server"
 import { BRIDGE_ENV } from "@webalive/shared"
+import { NextRequest, NextResponse } from "next/server"
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 
 // Mock auth functions

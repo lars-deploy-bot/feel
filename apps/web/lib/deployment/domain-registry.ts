@@ -9,10 +9,10 @@
  */
 
 import { createClient } from "@supabase/supabase-js"
+import type { AppDatabase, IamDatabase } from "@webalive/database"
 import { getUserDefaultOrgId } from "@/lib/deployment/org-resolver"
 import { type ErrorCode, ErrorCodes } from "@/lib/error-codes"
 import { verifyPassword } from "@/types/guards/api"
-import type { AppDatabase, IamDatabase } from "@webalive/database"
 
 /** Full domain information including infrastructure and ownership */
 export interface DomainInfo {

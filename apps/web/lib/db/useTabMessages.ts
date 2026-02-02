@@ -14,10 +14,10 @@
  */
 
 import { useMemo } from "react"
-import { useMessages } from "./useMessageDb"
+import type { UIMessage } from "@/features/chat/lib/message-parser"
 import { useDexieMessageStore } from "./dexieMessageStore"
 import { toUIMessage } from "./messageAdapters"
-import type { UIMessage } from "@/features/chat/lib/message-parser"
+import { useMessages } from "./useMessageDb"
 
 // =============================================================================
 // Configuration

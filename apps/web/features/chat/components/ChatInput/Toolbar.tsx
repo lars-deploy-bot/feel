@@ -1,32 +1,42 @@
 "use client"
 
-import { Camera, ClipboardList, Copy, MousePointer2, FileText } from "lucide-react"
+import { Camera, ClipboardList, Copy, FileText, Globe, MousePointer2, User } from "lucide-react"
 import type { RefObject } from "react"
 import { useState } from "react"
 import toast from "react-hot-toast"
-import { useSandboxContext } from "@/features/chat/lib/sandbox-context"
+import { usePanelContext } from "@/features/chat/lib/sandbox-context"
 import { formatMessagesAsText } from "@/features/chat/utils/format-messages"
 import { useDexieMessageStore } from "@/lib/db/dexieMessageStore"
 import { useTabMessages } from "@/lib/db/useTabMessages"
-import { useUserPrompts } from "@/lib/providers/UserPromptsStoreProvider"
+import { useAllSkills, useSkillsLoading } from "@/lib/providers/SkillsStoreProvider"
 import { useSandbox, useSandboxMinimized } from "@/lib/stores/debug-store"
 import { usePlanMode, usePlanModeActions } from "@/lib/stores/planModeStore"
 import { useChatInput } from "./ChatInputContext"
+import type { Skill } from "@/lib/stores/skillsStore"
 
 interface ToolbarProps {
   fileInputRef: RefObject<HTMLInputElement | null>
   onOpenTemplates?: () => void
+  /** @deprecated Use onAddSkill instead */
   onAddUserPrompt?: (promptType: string, data: any, displayName: string, userFacingDescription?: string) => void
+  onAddSkill?: (
+    skillId: string,
+    displayName: string,
+    description: string,
+    prompt: string,
+    source: "global" | "user" | "project",
+  ) => void
 }
 
-export function Toolbar({ fileInputRef, onAddUserPrompt }: ToolbarProps) {
+export function Toolbar({ fileInputRef, onAddUserPrompt, onAddSkill }: ToolbarProps) {
   const { config } = useChatInput()
   const [showPromptMenu, setShowPromptMenu] = useState(false)
-  const prompts = useUserPrompts()
+  const skills = useAllSkills()
+  const isLoading = useSkillsLoading()
   const currentTabId = useDexieMessageStore(s => s.currentTabId)
   const userId = useDexieMessageStore(s => s.session?.userId ?? null)
   const messages = useTabMessages(currentTabId, userId)
-  const { activateSelector, selectorActive } = useSandboxContext()
+  const { activateSelector, selectorActive } = usePanelContext()
   const isSandboxOpen = useSandbox()
   const isSandboxMinimized = useSandboxMinimized()
   const showSelectorButton = isSandboxOpen && !isSandboxMinimized
@@ -43,9 +53,20 @@ export function Toolbar({ fileInputRef, onAddUserPrompt }: ToolbarProps) {
     fileInputRef.current?.click()
   }
 
-  const handleAddPrompt = (promptType: string, data: any, displayName: string, userFacingDescription?: string) => {
+  /** @deprecated Use handleAddSkill instead */
+  const _handleAddPrompt = (promptType: string, data: any, displayName: string, userFacingDescription?: string) => {
     if (!onAddUserPrompt) return
     onAddUserPrompt(promptType, data, displayName, userFacingDescription)
+    setShowPromptMenu(false)
+  }
+
+  const handleAddSkill = (skill: Skill) => {
+    if (onAddSkill) {
+      onAddSkill(skill.id, skill.displayName, skill.description, skill.prompt, skill.source)
+    } else if (onAddUserPrompt) {
+      // Fallback to legacy handler
+      onAddUserPrompt(skill.id, skill.prompt, skill.displayName, skill.description)
+    }
     setShowPromptMenu(false)
   }
 
@@ -104,35 +125,36 @@ export function Toolbar({ fileInputRef, onAddUserPrompt }: ToolbarProps) {
             {/* Menu */}
             <div className="absolute bottom-full left-0 mb-2 w-64 bg-white dark:bg-neutral-900 border border-black/[0.08] dark:border-white/[0.08] rounded-2xl shadow-xl ring-1 ring-black/[0.04] dark:ring-white/[0.04] z-20 max-h-96 overflow-y-auto overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-150">
               <div className="p-1.5 space-y-0.5">
-                {prompts.length === 0 ? (
+                {isLoading ? (
                   <div className="px-3 py-5 text-center text-xs text-black/35 dark:text-white/35">
-                    No saved prompts. Add some in Settings.
+                    Loading skills...
+                  </div>
+                ) : skills.length === 0 ? (
+                  <div className="px-3 py-5 text-center text-xs text-black/35 dark:text-white/35">
+                    No skills available. Add some in Settings.
                   </div>
                 ) : (
-                  prompts.map(prompt => (
+                  skills.map(skill => (
                     <button
-                      key={prompt.id}
+                      key={skill.id}
                       type="button"
-                      onClick={() =>
-                        handleAddPrompt(
-                          prompt.promptType,
-                          prompt.data,
-                          prompt.displayName,
-                          prompt.userFacingDescription,
-                        )
-                      }
+                      onClick={() => handleAddSkill(skill)}
                       className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-black/[0.04] dark:hover:bg-white/[0.06] active:bg-black/[0.07] dark:active:bg-white/[0.09] transition-colors"
                     >
                       <div className="flex items-center gap-2.5">
                         <div className="size-8 flex items-center justify-center rounded-lg bg-purple-500/10 shrink-0">
-                          <ClipboardList className="size-4 text-purple-600 dark:text-purple-400" />
+                          {skill.source === "global" ? (
+                            <Globe className="size-4 text-purple-600 dark:text-purple-400" />
+                          ) : (
+                            <User className="size-4 text-purple-600 dark:text-purple-400" />
+                          )}
                         </div>
                         <div className="min-w-0">
                           <div className="text-[13px] font-medium text-black/80 dark:text-white/80 truncate">
-                            {prompt.displayName}
+                            {skill.displayName}
                           </div>
                           <div className="text-[11px] text-black/40 dark:text-white/40 truncate">
-                            {prompt.userFacingDescription || prompt.data}
+                            {skill.description}
                           </div>
                         </div>
                       </div>

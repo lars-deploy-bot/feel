@@ -61,9 +61,24 @@ const isAuth = await isWorkspaceAuthenticated(workspace)
 
 **Files**:
 - `features/auth/lib/sessionStore.ts` - Store interface and implementation
-- `app/api/claude/stream/route.ts` - Usage
+- `packages/worker-pool/src/worker-entry.mjs` - Stable HOME directories
+- `app/api/claude/stream/route.ts` - Usage and recovery
 
-**Storage**: Supabase IAM (`iam.sessions` table) with in-memory domain_id cache
+### Two-Tier Storage
+
+| Component | Storage | Persists? |
+|-----------|---------|-----------|
+| Session ID mapping | Supabase `iam.sessions` table | ✅ Yes |
+| Conversation data (`.jsonl`) | `/var/lib/claude-sessions/<workspace>/.claude/projects/` | ✅ Yes |
+
+**Session ID** (database):
+- Maps `(user_id, domain_id, tab_id)` → SDK session ID
+- 24-hour expiry, domain lookups cached (5-minute TTL)
+
+**Conversation Data** (filesystem):
+- Claude SDK stores full conversation history in `.jsonl` files
+- Stable per-workspace directories survive worker restarts
+- Located at `/var/lib/claude-sessions/<workspace-slug>/.claude/projects/<hash>/`
 
 **Key Format**:
 ```typescript
@@ -96,10 +111,15 @@ interface SessionStore {
 2. Backend constructs key: `tabKey({ userId, workspace, tabId })`
 3. Lookup existing SDK session: `const sessionId = await sessionStore.get(key)`
 4. If found, pass to SDK: `query({ resume: sessionId, ... })`
-5. SDK restores conversation context, skips re-executing previous tools
+5. SDK restores conversation context from stable HOME directory, skips re-executing previous tools
 6. After query completes, save new session ID: `await sessionStore.set(key, newSessionId)`
 
-**Benefits**: User can refresh page, continue conversation without tools re-running. Sessions survive server restarts.
+**Session Recovery**: If session ID exists in DB but conversation data is missing (e.g., manual deletion), the stream route automatically:
+1. Detects "No conversation found" error
+2. Clears stale session ID from database
+3. Retries as fresh conversation
+
+**Benefits**: User can refresh page, continue conversation without tools re-running. Sessions survive server restarts AND worker restarts.
 
 ---
 
@@ -236,9 +256,10 @@ const conversationLockTimestamps = new Map<string, number>()  // Lock acquisitio
 2. JWT cookies still valid (stored in browser) → **System 1** ✓
 3. Frontend still has tabId (localStorage/Dexie) → **System 3** ✓
 4. Backend sessionStore reloads from Supabase → **System 2** ✓
-5. Conversation locks cleared (in-memory) → **System 4** ✗
-6. Next message: Backend resumes SDK session from Supabase
-7. Conversation continues (sessions survive restarts)
+5. Conversation data persists at `/var/lib/claude-sessions/` → **System 2** ✓
+6. Conversation locks cleared (in-memory) → **System 4** ✗
+7. Next message: Backend resumes SDK session from Supabase + filesystem
+8. Conversation continues (sessions survive restarts AND worker restarts)
 
 ---
 
@@ -267,8 +288,10 @@ const conversationLockTimestamps = new Map<string, number>()  // Lock acquisitio
 ## Current Limitations
 
 **System 2 (Backend Persistence)**:
-- ✅ Supabase-backed, survives restarts
+- ✅ Supabase-backed session IDs survive restarts
+- ✅ Conversation data persists at `/var/lib/claude-sessions/<workspace>/`
 - ✅ 24-hour session expiry
+- ✅ Automatic recovery if session file missing (clears stale ID, starts fresh)
 - Domain cache entries expire after 5 minutes
 
 **System 4 (Conversation Locking)**:

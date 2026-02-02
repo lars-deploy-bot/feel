@@ -14,9 +14,9 @@
 import { describe, expect, test } from "vitest"
 import { CLAUDE_MODELS } from "../claude-models"
 import {
+  CREDITS_PER_USD,
   calculateCreditsToCharge,
   calculateUSDCost,
-  CREDITS_PER_USD,
   creditsToUSD,
   getModelPricingInfo,
   MODEL_PRICING,

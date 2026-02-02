@@ -12,7 +12,6 @@ import type {
   WorkerPoolConfig,
   WorkerHandle,
   WorkerInfo,
-  WorkerState,
   WorkspaceCredentials,
   QueryOptions,
   QueryResult,
@@ -23,7 +22,7 @@ import type {
 } from "./types.js"
 import { createConfig, getSocketPath } from "./config.js"
 import { createIpcServer, isWorkerMessage, type IpcServer } from "./ipc.js"
-import { isPathWithinWorkspace, PATHS } from "@webalive/shared"
+import { isPathWithinWorkspace, PATHS, SUPERADMIN } from "@webalive/shared"
 import * as path from "node:path"
 
 /** Pending query with callbacks */
@@ -41,6 +40,14 @@ interface PendingQuery {
 interface WorkerHandleInternal extends WorkerHandle {
   ipc: IpcServer | null
   pendingQueries: Map<string, PendingQuery>
+}
+
+/** Queued request waiting for worker to become available */
+interface QueuedRequest {
+  credentials: WorkspaceCredentials
+  options: QueryOptions
+  resolve: (result: QueryResult) => void
+  reject: (error: Error) => void
 }
 
 /**
@@ -68,8 +75,11 @@ function validateCredentials(credentials: WorkspaceCredentials): void {
   } else {
     // Canonical path traversal check using resolved paths
     const resolvedCwd = path.resolve(credentials.cwd)
-    if (!isPathWithinWorkspace(resolvedCwd, PATHS.SITES_ROOT)) {
-      errors.push(`cwd must be within ${PATHS.SITES_ROOT}, got: ${credentials.cwd}`)
+    // Allow both regular sites and the superadmin workspace (claude-bridge repo)
+    const isWithinSitesRoot = isPathWithinWorkspace(resolvedCwd, PATHS.SITES_ROOT)
+    const isSuperadminWorkspace = resolvedCwd === SUPERADMIN.WORKSPACE_PATH
+    if (!isWithinSitesRoot && !isSuperadminWorkspace) {
+      errors.push(`cwd must be within ${PATHS.SITES_ROOT} or be superadmin workspace, got: ${credentials.cwd}`)
     }
   }
 
@@ -87,10 +97,16 @@ function validateCredentials(credentials: WorkspaceCredentials): void {
  * WorkerPoolManager
  *
  * Singleton that manages persistent worker processes.
- * Each worker serves a single workspace and stays alive between requests.
+ * Multiple workers can serve the same workspace (keyed by workspaceKey:instanceId).
+ * When all workers for a workspace are busy, a new instance is spawned.
  */
 export class WorkerPoolManager extends EventEmitter {
+  // Workers keyed by "workspaceKey:instanceId" (e.g., "example.com:0", "example.com:1")
   private workers = new Map<string, WorkerHandleInternal>()
+  // Track next instance ID per workspace
+  private nextInstanceId = new Map<string, number>()
+  // Queue requests when all workers are busy (keyed by base workspaceKey)
+  private requestQueues = new Map<string, QueuedRequest[]>()
   private config: WorkerPoolConfig
   private evictionTimer: ReturnType<typeof setInterval> | null = null
   private isShuttingDown = false
@@ -105,34 +121,41 @@ export class WorkerPoolManager extends EventEmitter {
   // ==========================================================================
 
   /**
-   * Get or create a worker for a workspace (internal use only)
+   * Get or create a worker for a workspace.
+   * Multiple workers can exist for the same workspace (different instances).
+   * Returns an available worker or spawns a new one if capacity allows.
+   * Returns null if all workers are busy and pool is at capacity (caller should queue).
    */
-  private async getOrCreateWorker(credentials: WorkspaceCredentials): Promise<WorkerHandleInternal> {
+  private async getOrCreateWorker(credentials: WorkspaceCredentials): Promise<WorkerHandleInternal | null> {
     // Validate credentials before any operations
     validateCredentials(credentials)
 
     const { workspaceKey } = credentials
 
-    // Return existing worker if available
-    const existing = this.workers.get(workspaceKey)
-    if (existing && existing.state !== "dead" && existing.state !== "shutting_down") {
-      existing.lastActivity = new Date()
-      return existing
-    }
-
-    // Check capacity before spawning
-    if (this.workers.size >= this.config.maxWorkers) {
-      const evicted = await this.evictWorker()
-      if (!evicted) {
-        throw new Error(
-          `Worker pool at capacity (${this.config.maxWorkers} workers, all busy). ` +
-            `Cannot spawn worker for ${workspaceKey}. Try again later.`,
-        )
+    // First, try to find an available (ready) worker for this workspace
+    for (const [key, worker] of this.workers) {
+      if (key.startsWith(`${workspaceKey}:`) && worker.state === "ready") {
+        worker.lastActivity = new Date()
+        return worker
       }
     }
 
-    // Spawn new worker
-    return this.spawnWorker(credentials)
+    // No available worker - try to spawn a new instance
+    if (this.workers.size >= this.config.maxWorkers) {
+      // Pool at capacity - try to evict an idle worker from another workspace
+      const evicted = await this.evictWorker()
+      if (!evicted) {
+        // All workers busy - return null to signal caller should queue
+        return null
+      }
+    }
+
+    // Get next instance ID for this workspace
+    const instanceId = this.nextInstanceId.get(workspaceKey) ?? 0
+    this.nextInstanceId.set(workspaceKey, instanceId + 1)
+
+    // Spawn new worker with instance-specific key
+    return this.spawnWorker(credentials, instanceId)
   }
 
   /**
@@ -164,6 +187,12 @@ export class WorkerPoolManager extends EventEmitter {
     const worker = await this.getOrCreateWorker(credentials)
     timing("got_or_created_worker")
 
+    // If no worker available (pool at capacity, all busy), queue the request
+    if (!worker) {
+      console.log(`[pool ${requestId}] All workers busy, queueing request for ${credentials.workspaceKey}`)
+      return this.queueRequest(credentials, options)
+    }
+
     // Check again after async work - abort might have fired during spawn
     if (signal?.aborted) {
       console.error(`[pool] Signal aborted during worker spawn for ${requestId} - returning early`)
@@ -183,11 +212,10 @@ export class WorkerPoolManager extends EventEmitter {
       return { success: true, cancelled: true }
     }
 
-    // Check if worker is available
+    // Double-check worker is ready (shouldn't happen but safety check)
     if (worker.state === "busy") {
-      throw new Error(
-        `Worker is busy processing another request. Please wait for it to complete before sending a new message.`,
-      )
+      console.log(`[pool ${requestId}] Worker became busy, queueing request for ${credentials.workspaceKey}`)
+      return this.queueRequest(credentials, options)
     }
 
     if (worker.state !== "ready") {
@@ -361,16 +389,85 @@ export class WorkerPoolManager extends EventEmitter {
   }
 
   override emit<K extends keyof WorkerPoolEvents>(event: K, data: WorkerPoolEvents[K]): boolean {
+    // When a worker becomes idle, process any queued requests for its workspace
+    if (event === "worker:idle") {
+      const { workspaceKey: workerKey } = data as WorkerPoolEvents["worker:idle"]
+      // Extract base workspace key (remove instance suffix)
+      const baseWorkspaceKey = workerKey.includes(":") ? workerKey.split(":")[0] : workerKey
+      this.processQueue(baseWorkspaceKey)
+    }
     return super.emit(event, data)
+  }
+
+  // ==========================================================================
+  // Request Queue Methods
+  // ==========================================================================
+
+  /**
+   * Queue a request when all workers are busy.
+   * Returns a promise that resolves when the request is eventually processed.
+   */
+  private queueRequest(credentials: WorkspaceCredentials, options: QueryOptions): Promise<QueryResult> {
+    const { workspaceKey } = credentials
+
+    return new Promise((resolve, reject) => {
+      // Get or create queue for this workspace
+      let queue = this.requestQueues.get(workspaceKey)
+      if (!queue) {
+        queue = []
+        this.requestQueues.set(workspaceKey, queue)
+      }
+
+      const queuedRequest: QueuedRequest = {
+        credentials,
+        options,
+        resolve,
+        reject,
+      }
+
+      queue.push(queuedRequest)
+      console.log(`[pool] Queued request ${options.requestId} for ${workspaceKey} (queue size: ${queue.length})`)
+
+      // Handle abort while queued
+      options.signal?.addEventListener("abort", () => {
+        const idx = queue!.indexOf(queuedRequest)
+        if (idx !== -1) {
+          queue!.splice(idx, 1)
+          console.log(`[pool] Removed aborted request ${options.requestId} from queue`)
+          resolve({ success: true, cancelled: true })
+        }
+      })
+    })
+  }
+
+  /**
+   * Process queued requests for a workspace when a worker becomes available.
+   */
+  private processQueue(workspaceKey: string): void {
+    const queue = this.requestQueues.get(workspaceKey)
+    if (!queue || queue.length === 0) return
+
+    // Take the first request from the queue
+    const request = queue.shift()
+    if (!request) return
+
+    console.log(
+      `[pool] Processing queued request ${request.options.requestId} for ${workspaceKey} (remaining: ${queue.length})`,
+    )
+
+    // Process the request (this will find the now-available worker)
+    this.query(request.credentials, request.options).then(request.resolve).catch(request.reject)
   }
 
   // ==========================================================================
   // Private Methods
   // ==========================================================================
 
-  private async spawnWorker(credentials: WorkspaceCredentials): Promise<WorkerHandleInternal> {
+  private async spawnWorker(credentials: WorkspaceCredentials, instanceId: number = 0): Promise<WorkerHandleInternal> {
     const { workspaceKey, uid, gid, cwd } = credentials
-    const socketPath = getSocketPath(this.config.socketDir, workspaceKey)
+    // Use instance-specific key for multiple workers per workspace
+    const workerKey = `${workspaceKey}:${instanceId}`
+    const socketPath = getSocketPath(this.config.socketDir, workerKey)
 
     // Ensure socket directory exists with restricted permissions (only owner can access)
     await mkdir(this.config.socketDir, { recursive: true })
@@ -382,14 +479,14 @@ export class WorkerPoolManager extends EventEmitter {
       onMessage: msg => {
         // Validate message structure before processing
         if (!isWorkerMessage(msg)) {
-          console.error(`[pool] Invalid message from worker ${workspaceKey}:`, msg)
+          console.error(`[pool] Invalid message from worker ${workerKey}:`, msg)
           return
         }
-        this.handleWorkerMessage(workspaceKey, msg)
+        this.handleWorkerMessage(workerKey, msg)
       },
-      onConnect: () => console.error(`[pool] Worker ${workspaceKey} connected`),
-      onDisconnect: () => this.handleWorkerDisconnect(workspaceKey),
-      onError: err => this.emit("pool:error", { error: err, context: workspaceKey }),
+      onConnect: () => console.error(`[pool] Worker ${workerKey} connected`),
+      onDisconnect: () => this.handleWorkerDisconnect(workerKey),
+      onError: err => this.emit("pool:error", { error: err, context: workerKey }),
     })
 
     // Spawn worker process
@@ -418,7 +515,7 @@ export class WorkerPoolManager extends EventEmitter {
       process: child,
       socket: null,
       state: "starting",
-      workspaceKey,
+      workspaceKey: workerKey, // Use workerKey (includes instance) for lookups
       credentials,
       createdAt: new Date(),
       lastActivity: new Date(),
@@ -431,19 +528,19 @@ export class WorkerPoolManager extends EventEmitter {
 
     // Handle process events
     child.on("exit", (code, signal) => {
-      this.handleWorkerExit(workspaceKey, code, signal)
+      this.handleWorkerExit(workerKey, code, signal)
     })
 
     child.on("error", err => {
-      this.emit("pool:error", { error: err, context: `spawn:${workspaceKey}` })
+      this.emit("pool:error", { error: err, context: `spawn:${workerKey}` })
       handle.state = "dead"
       // Clean up IPC server on spawn error to prevent resource leak
       handle.ipc?.close()
       this.rejectPendingQueries(handle, `Worker spawn error: ${err.message}`)
     })
 
-    this.workers.set(workspaceKey, handle)
-    this.emit("worker:spawned", { workspaceKey, pid: child.pid! })
+    this.workers.set(workerKey, handle)
+    this.emit("worker:spawned", { workspaceKey: workerKey, pid: child.pid! })
 
     // Start eviction timer if not running
     this.startEvictionTimer()
@@ -513,7 +610,13 @@ export class WorkerPoolManager extends EventEmitter {
         } else if (msg.type === "error") {
           pending.cleanup()
           const errorMessage = "error" in msg && typeof msg.error === "string" ? msg.error : "Unknown error"
-          pending.reject(new Error(errorMessage))
+          const stderr = "stderr" in msg && typeof msg.stderr === "string" ? msg.stderr : undefined
+          const error = new Error(errorMessage)
+          // Attach stderr to error for upstream logging
+          if (stderr) {
+            ;(error as Error & { stderr?: string }).stderr = stderr
+          }
+          pending.reject(error)
         }
         break
       }
@@ -629,7 +732,7 @@ export class WorkerPoolManager extends EventEmitter {
     worker.ipc?.sendMessage(msg)
   }
 
-  private async gracefulShutdown(worker: WorkerHandleInternal, reason: string): Promise<void> {
+  private async gracefulShutdown(worker: WorkerHandleInternal, _reason: string): Promise<void> {
     if (worker.state === "shutting_down" || worker.state === "dead") return
 
     worker.state = "shutting_down"

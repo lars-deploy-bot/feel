@@ -1,6 +1,6 @@
 import { WORKSPACE_STORAGE, type WorkspaceStorageValue } from "@webalive/shared"
-import { gotoChatFast } from "./helpers/assertions"
 import { expect, test } from "./fixtures"
+import { gotoChatFast } from "./helpers/assertions"
 
 /**
  * Organization and Workspace Selection - Worker Isolated

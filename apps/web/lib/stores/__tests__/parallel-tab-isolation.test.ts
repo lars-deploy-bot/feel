@@ -25,8 +25,8 @@
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { useTabDataStore } from "../tabDataStore"
+import { useTabActions, useTabStore } from "../tabStore"
 import { useTabViewStore } from "../tabViewStore"
-import { useTabStore, useTabActions } from "../tabStore"
 
 // ============================================================================
 // Test Helpers
