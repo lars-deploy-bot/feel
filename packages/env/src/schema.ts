@@ -61,7 +61,7 @@ export const serverSchema = {
   STRIPE_CLIENT_ID: z.string().optional(), // Stripe Connect Client ID (ca_xxx)
   STRIPE_CLIENT_SECRET: z.string().optional(), // Platform API secret key
   STRIPE_REDIRECT_URI: z.string().optional(), // Optional, derived from baseUrl
-  FLOWGLAD_SECRET_KEY: z.string().min(1, "FLOWGLAD_SECRET_KEY is required"), // Flowglad billing/payment integration
+  FLOWGLAD_SECRET_KEY: z.string().optional(), // Flowglad billing/payment integration
   LINEAR_CLIENT_ID: z.string().optional(),
   LINEAR_CLIENT_SECRET: z.string().optional(),
   LINEAR_REDIRECT_URI: z.string().optional(),
