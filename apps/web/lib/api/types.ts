@@ -30,8 +30,8 @@ export interface Organization {
   org_id: string
   name: string
   credits: number
-  workspace_count?: number
-  role?: "owner" | "admin" | "member"
+  workspace_count: number
+  role: "owner" | "admin" | "member"
 }
 
 export interface OrganizationsResponse {

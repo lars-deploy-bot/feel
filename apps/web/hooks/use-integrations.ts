@@ -5,7 +5,9 @@
 
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query"
 import { useCallback, useState } from "react"
-import type { AvailableIntegration } from "@/app/api/integrations/available/route"
+import { ApiError, delly, getty, postty } from "@/lib/api/api-client"
+import type { Res } from "@/lib/api/schemas"
+import { validateRequest } from "@/lib/api/schemas"
 import { clientLogger } from "@/lib/client-error-logger"
 import {
   isOAuthCallbackMessage,
@@ -14,17 +16,16 @@ import {
   OAUTH_POPUP_WIDTH,
   OAUTH_STORAGE_KEY,
 } from "@/lib/oauth/popup-constants"
-import { queryKeys, ApiError, fetcher } from "@/lib/tanstack"
+import { queryKeys } from "@/lib/tanstack"
+
+type AvailableIntegration = Res<"integrations/available">["integrations"][number]
+type IntegrationsResponse = Res<"integrations/available">
 
 interface UseIntegrationsResult {
   integrations: AvailableIntegration[]
   loading: boolean
   error: string | null
   refetch: () => Promise<void>
-}
-
-interface IntegrationsResponse {
-  integrations: AvailableIntegration[]
 }
 
 /**
@@ -34,22 +35,7 @@ interface IntegrationsResponse {
 export function useIntegrations(): UseIntegrationsResult {
   const query = useQuery<IntegrationsResponse, ApiError>({
     queryKey: queryKeys.integrations.list(),
-    queryFn: async () => {
-      const response = await fetch("/api/integrations/available", {
-        method: "GET",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new ApiError(errorData.error || `Failed to fetch integrations: ${response.statusText}`, response.status)
-      }
-
-      return response.json()
-    },
+    queryFn: () => getty("integrations/available"),
     staleTime: 5 * 60 * 1000, // 5 min - integrations don't change often
   })
 
@@ -239,21 +225,8 @@ export function useConnectIntegration(providerKey: string) {
 export function useDisconnectIntegration(providerKey: string) {
   const queryClient = useQueryClient()
 
-  const mutation = useMutation<void, ApiError, void>({
-    mutationFn: async () => {
-      const response = await fetch(`/api/integrations/${providerKey}`, {
-        method: "DELETE",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new ApiError(errorData.error || `Failed to disconnect from ${providerKey}`, response.status)
-      }
-    },
+  const mutation = useMutation<Res<"integrations/disconnect">, ApiError, void>({
+    mutationFn: () => delly("integrations/disconnect", undefined, `/api/integrations/${providerKey}`),
     onSuccess: () => {
       // Invalidate integrations cache to refresh
       queryClient.invalidateQueries({ queryKey: queryKeys.integrations.all })
@@ -280,25 +253,10 @@ export function useDisconnectIntegration(providerKey: string) {
 export function useConnectWithPat(providerKey: string) {
   const queryClient = useQueryClient()
 
-  const mutation = useMutation<{ username?: string }, ApiError, string>({
+  const mutation = useMutation<Res<"integrations/connect">, ApiError, string>({
     mutationFn: async (token: string) => {
-      const response = await fetch(`/api/integrations/${providerKey}`, {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ token }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        const errorMessage = data.details?.reason || data.error || `Failed to connect to ${providerKey}`
-        throw new ApiError(errorMessage, response.status)
-      }
-
-      return { username: data.username }
+      const validated = validateRequest("integrations/connect", { token })
+      return postty("integrations/connect", validated, undefined, `/api/integrations/${providerKey}`)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.integrations.all })

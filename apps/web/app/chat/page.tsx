@@ -147,10 +147,16 @@ function ChatPageContent() {
   // Sync tab ID to URL for shareable links and browser history
   const [tabParam, setTabParam] = useQueryState("tab")
   const { setActiveTab: setStoreActiveTab } = useTabActions()
+  const initialTabRestored = useRef(false)
 
-  // On mount: if URL has a tab param, restore it
+  // On mount: if URL has a tab param, restore it (ONCE only)
   useEffect(() => {
-    if (!mounted || !workspace || !dexieSession || !tabParam) return
+    if (!mounted || !workspace || !dexieSession || initialTabRestored.current) return
+    if (!tabParam) {
+      // No tab param in URL - mark as restored so we don't try again
+      initialTabRestored.current = true
+      return
+    }
 
     // Check if the tab exists and switch to it
     const allTabs = workspaceTabs
@@ -159,11 +165,13 @@ function ChatPageContent() {
       console.log("[ChatPage] Restoring tab from URL param:", tabParam)
       setStoreActiveTab(workspace, tabParam)
     }
+    // Mark as restored whether we found the tab or not
+    initialTabRestored.current = true
   }, [mounted, workspace, dexieSession, tabParam, workspaceTabs, sessionTabId, setStoreActiveTab])
 
   // When active tab changes, update URL (shallow, no navigation)
   useEffect(() => {
-    if (!mounted || !sessionTabId) return
+    if (!mounted || !sessionTabId || !initialTabRestored.current) return
 
     // Only update if different to avoid loops
     if (tabParam !== sessionTabId) {

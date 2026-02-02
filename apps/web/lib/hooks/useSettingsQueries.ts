@@ -1,26 +1,19 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { useEffect } from "react"
+import { ApiError, getty } from "@/lib/api/api-client"
 import type { Organization } from "@/lib/api/types"
+import type { Res } from "@/lib/api/schemas"
 import { authStore } from "@/lib/stores/authStore"
 import { useWorkspaceActions } from "@/lib/stores/workspaceStore"
-import { fetcher, ApiError } from "@/lib/tanstack/fetcher"
 import { queryKeys } from "@/lib/tanstack/queryKeys"
 
 // ============================================
-// Types
+// Types (derived from Zod schemas in schemas.ts)
 // ============================================
 
-export interface OrgMember {
-  user_id: string
-  email: string
-  display_name: string | null
-  role: "owner" | "admin" | "member"
-}
-
-interface OrganizationsResponse {
-  organizations: Organization[]
-  current_user_id?: string
-}
+export type OrgMember = Res<"auth/org-members">["members"][number]
+export type AutomationJob = Res<"automations">["automations"][number]
+export type Site = Res<"sites">["sites"][number]
 
 // ============================================
 // Organization Queries
@@ -29,11 +22,14 @@ interface OrganizationsResponse {
 /**
  * Fetch user organizations with full response (includes current_user_id)
  *
+ * Uses getty for type-safe, Zod-validated responses.
+ *
  * Benefits:
  * - Automatic caching (10 min fresh - orgs rarely change)
  * - Automatic deduplication (10 components = 1 request)
  * - Type-safe query key for invalidation
  * - Auth store integration (handles 401, marks authenticated on success)
+ * - Zod validation ensures response shape is correct
  *
  * @example
  * const { data, isLoading, error } = useOrganizationsQuery()
@@ -42,22 +38,17 @@ interface OrganizationsResponse {
 export function useOrganizationsQuery() {
   const { validateAndCleanup } = useWorkspaceActions()
 
-  const query = useQuery<OrganizationsResponse, ApiError>({
+  const query = useQuery<Res<"auth/organizations">, ApiError>({
     queryKey: queryKeys.organizations.list(),
     queryFn: async () => {
-      const response = await fetch("/api/auth/organizations", { credentials: "include" })
-
-      if (!response.ok) {
-        if (response.status === 401) {
+      try {
+        return await getty("auth/organizations")
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 401) {
           authStore.handleSessionExpired("Your session has expired. Please log in again to continue.")
-          throw new ApiError("Session expired", 401)
         }
-        const errorData = await response.json().catch(() => ({}))
-        throw new ApiError(errorData.error || `HTTP ${response.status}`, response.status)
+        throw error
       }
-
-      const data = await response.json()
-      return data as OrganizationsResponse
     },
     staleTime: 10 * 60 * 1000, // 10 min - orgs rarely change
   })
@@ -66,7 +57,7 @@ export function useOrganizationsQuery() {
   useEffect(() => {
     if (query.data?.organizations) {
       authStore.setAuthenticated()
-      validateAndCleanup(query.data.organizations)
+      validateAndCleanup(query.data.organizations as Organization[])
     }
   }, [query.data, validateAndCleanup])
 
@@ -82,12 +73,13 @@ export function useOrganizationsQuery() {
  * Per-org caching prevents unnecessary refetches
  *
  * @example
- * const { data: workspaces } = useWorkspacesQuery(orgId)
+ * const { data } = useWorkspacesQuery(orgId)
+ * // data?.workspaces is string[]
  */
 export function useWorkspacesQuery(orgId: string) {
-  return useQuery<string[], ApiError>({
+  return useQuery<Res<"auth/workspaces">, ApiError>({
     queryKey: queryKeys.workspaces.forOrg(orgId),
-    queryFn: () => fetcher.get<string[]>(`/api/auth/workspaces?org_id=${orgId}`),
+    queryFn: () => getty("auth/workspaces", undefined, `/api/auth/workspaces?org_id=${orgId}`),
     enabled: !!orgId,
   })
 }
@@ -101,13 +93,16 @@ export function useWorkspacesQuery(orgId: string) {
  * - Repeated opens: instant from cache (0 requests)
  *
  * @example
- * const { data: allWorkspaces } = useAllWorkspacesQuery(organizations)
- * // Returns: { "org-id-1": ["site1.com", "site2.com"], "org-id-2": ["site3.com"] }
+ * const { data } = useAllWorkspacesQuery(organizations)
+ * // data?.workspaces is Record<string, string[]>
  */
 export function useAllWorkspacesQuery(organizations: Organization[]) {
   return useQuery<Record<string, string[]>, ApiError>({
     queryKey: queryKeys.workspaces.allForUser(),
-    queryFn: () => fetcher.get<Record<string, string[]>>("/api/auth/all-workspaces"),
+    queryFn: async () => {
+      const response = await getty("auth/all-workspaces")
+      return response.workspaces
+    },
     enabled: organizations.length > 0,
   })
 }
@@ -121,12 +116,13 @@ export function useAllWorkspacesQuery(organizations: Organization[]) {
  * Cached per org with type-safe key for invalidation
  *
  * @example
- * const { data: members } = useOrgMembersQuery(orgId)
+ * const { data } = useOrgMembersQuery(orgId)
+ * // data?.members is OrgMember[]
  */
 export function useOrgMembersQuery(orgId: string) {
-  return useQuery<OrgMember[], ApiError>({
+  return useQuery<Res<"auth/org-members">, ApiError>({
     queryKey: queryKeys.orgMembers.forOrg(orgId),
-    queryFn: () => fetcher.get<OrgMember[]>(`/api/auth/organizations/${orgId}/members`),
+    queryFn: () => getty("auth/org-members", undefined, `/api/auth/org-members?orgId=${orgId}`),
     enabled: !!orgId,
   })
 }
@@ -135,41 +131,17 @@ export function useOrgMembersQuery(orgId: string) {
 // Automation Queries
 // ============================================
 
-export interface AutomationJob {
-  id: string
-  site_id: string
-  name: string
-  description: string | null
-  trigger_type: "cron" | "webhook" | "one-time"
-  cron_schedule: string | null
-  cron_timezone: string | null
-  run_at: string | null
-  action_type: "prompt" | "sync" | "publish"
-  action_prompt: string | null
-  action_source: string | null
-  action_target_page: string | null
-  is_active: boolean
-  last_run_at: string | null
-  last_run_status: string | null
-  next_run_at: string | null
-  created_at: string
-  hostname?: string
-}
-
-interface AutomationsResponse {
-  automations: AutomationJob[]
-}
-
 /**
  * Fetch automations for current user
  *
  * @example
  * const { data, isLoading, refetch } = useAutomationsQuery()
+ * // data?.automations is AutomationJob[]
  */
 export function useAutomationsQuery() {
-  return useQuery<AutomationsResponse, ApiError>({
+  return useQuery<Res<"automations">, ApiError>({
     queryKey: queryKeys.automations.list(),
-    queryFn: () => fetcher.get<AutomationsResponse>("/api/automations"),
+    queryFn: () => getty("automations"),
     staleTime: 2 * 60 * 1000, // 2 min - automations can change
   })
 }
@@ -178,26 +150,17 @@ export function useAutomationsQuery() {
 // Sites Queries
 // ============================================
 
-export interface Site {
-  id: string
-  hostname: string
-  org_id: string
-}
-
-interface SitesResponse {
-  sites: Site[]
-}
-
 /**
  * Fetch sites for current user (used in automations, etc.)
  *
  * @example
  * const { data } = useSitesQuery()
+ * // data?.sites is Site[]
  */
 export function useSitesQuery() {
-  return useQuery<SitesResponse, ApiError>({
+  return useQuery<Res<"sites">, ApiError>({
     queryKey: queryKeys.sites.list(),
-    queryFn: () => fetcher.get<SitesResponse>("/api/sites"),
+    queryFn: () => getty("sites"),
     staleTime: 5 * 60 * 1000, // 5 min - sites rarely change
   })
 }

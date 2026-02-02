@@ -413,6 +413,13 @@ export function WorkspaceSettings() {
     editor.cancelEdit()
   }
 
+  // Auto-fetch members when org is selected (moved from render to useEffect)
+  useEffect(() => {
+    if (selectedOrgId && !members.orgMembers[selectedOrgId] && members.expandedOrgId !== selectedOrgId) {
+      members.toggleMembers(selectedOrgId)
+    }
+  }, [selectedOrgId, members])
+
   const getCurrentUserRole = (orgId: string): "owner" | "admin" | "member" | null => {
     const org = organizations.find(o => o.org_id === orgId)
     return org?.role || null
@@ -494,11 +501,6 @@ export function WorkspaceSettings() {
             (() => {
               const selectedOrg = organizations.find(org => org.org_id === selectedOrgId)
               if (!selectedOrg) return null
-
-              // Auto-fetch members when org is selected
-              if (!members.orgMembers[selectedOrg.org_id] && members.expandedOrgId !== selectedOrg.org_id) {
-                members.toggleMembers(selectedOrg.org_id)
-              }
 
               return (
                 <div className="space-y-5">

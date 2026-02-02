@@ -1,23 +1,13 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect } from "react"
+import { ApiError, getty } from "@/lib/api/api-client"
+import type { Res } from "@/lib/api/schemas"
 import { useAuthStatus } from "@/lib/stores/authStore"
 import { queryKeys } from "@/lib/tanstack/queryKeys"
 
-export interface User {
-  id: string
-  email: string
-  name: string | null
-  /** Whether user can select any model without their own API key */
-  canSelectAnyModel: boolean
-  /** Whether user has admin privileges (can toggle feature flags, etc.) */
-  isAdmin: boolean
-}
-
-interface ApiUserResponse {
-  ok: boolean
-  user?: User | null
-  error?: string
-}
+// User type derived from the schema
+type UserResponse = Res<"user">
+export type User = NonNullable<UserResponse["user"]>
 
 /**
  * Fetch current user from /api/user
@@ -36,26 +26,19 @@ interface ApiUserResponse {
  * - 401 errors handled gracefully (return null)
  */
 function useUserQuery() {
-  return useQuery<User | null, Error, User | null>({
+  return useQuery<User | null, ApiError, User | null>({
     queryKey: queryKeys.user.detail(),
     queryFn: async () => {
-      const response = await fetch("/api/user", { credentials: "include" })
-
-      // Handle 401 specially - not an error, just unauthenticated
-      if (response.status === 401) {
-        return null
+      try {
+        const data = await getty("user")
+        return data.user || null
+      } catch (error) {
+        // Handle 401 specially - not an error, just unauthenticated
+        if (error instanceof ApiError && error.status === 401) {
+          return null
+        }
+        throw error
       }
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: Failed to fetch user`)
-      }
-
-      const data: ApiUserResponse = await response.json()
-      if (!data.ok) {
-        throw new Error(data.error || "Invalid response")
-      }
-
-      return data.user || null
     },
     // User data doesn't change often - keep fresh for 5 min
     staleTime: 5 * 60 * 1000,

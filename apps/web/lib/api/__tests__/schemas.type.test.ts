@@ -23,6 +23,19 @@ describe("API Schema Type System", () => {
         | "manager/templates/create"
         | "manager/templates/update"
         | "manager/templates/delete"
+        | "auth/organizations"
+        | "auth/all-workspaces"
+        | "auth/workspaces"
+        | "auth/org-members"
+        | "auth/org-members/delete"
+        | "auth/organizations/update"
+        | "user/update"
+        | "deploy-subdomain"
+        | "automations"
+        | "sites"
+        | "integrations/available"
+        | "integrations/disconnect"
+        | "integrations/connect"
       >()
     })
 
@@ -92,10 +105,12 @@ describe("API Schema Type System", () => {
       expectTypeOf<UserRes>().toHaveProperty("user")
       expectTypeOf<UserRes>().toMatchTypeOf<{
         user: {
-          userId: string
+          id: string
           email: string
-          displayName?: string
-          workspaces: string[]
+          name: string | null
+          canSelectAnyModel: boolean
+          isAdmin: boolean
+          isSuperadmin: boolean
         } | null
       }>()
     })
@@ -158,10 +173,12 @@ describe("API Schema Type System", () => {
       // User can be null
       expectTypeOf<UserRes>().toEqualTypeOf<{
         user: {
-          userId: string
+          id: string
           email: string
-          displayName?: string
-          workspaces: string[]
+          name: string | null
+          canSelectAnyModel: boolean
+          isAdmin: boolean
+          isSuperadmin: boolean
         } | null
       }>()
     })

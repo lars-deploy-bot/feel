@@ -22,7 +22,7 @@ export const endpointPath = <E extends Endpoint>(endpoint: E) => {
   return endpointStr.startsWith("/") ? `/api${endpointStr}` : `/api/${endpointStr}`
 }
 
-export type Method = "GET" | "POST" | "PUT" | "DELETE"
+export type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE"
 
 export interface ApiInit<E extends Endpoint> extends Omit<RequestInit, "body" | "method"> {
   method?: Method

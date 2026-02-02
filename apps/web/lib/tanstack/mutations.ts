@@ -10,7 +10,8 @@
 
 import { useMutation, useQueryClient, type UseMutationOptions } from "@tanstack/react-query"
 import toast from "react-hot-toast"
-import { fetcher, type ApiError } from "./fetcher"
+import { ApiError, delly, patchy, postty } from "@/lib/api/api-client"
+import { validateRequest, type Res } from "@/lib/api/schemas"
 import { queryKeys } from "./queryKeys"
 
 // ============================================
@@ -35,16 +36,17 @@ interface UpdateOrgParams {
  * Automatically invalidates org cache on success
  */
 export function useUpdateOrganization(
-  options?: UseMutationOptions<{ ok: boolean }, ApiError, UpdateOrgParams, MutationContext<unknown>>,
+  options?: UseMutationOptions<Res<"auth/organizations/update">, ApiError, UpdateOrgParams, MutationContext<unknown>>,
 ) {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: async ({ orgId, name }: UpdateOrgParams) => {
-      return fetcher.patch<{ ok: boolean }>("/api/auth/organizations", {
+      const body = validateRequest("auth/organizations/update", {
         org_id: orgId,
         name,
       })
+      return patchy("auth/organizations/update", body, undefined, "/api/auth/organizations")
     },
     onSuccess: () => {
       // Invalidate org queries to refetch
@@ -73,22 +75,18 @@ interface CreateWebsiteParams {
  * Invalidates workspace cache on success
  */
 export function useCreateWebsite(
-  options?: UseMutationOptions<
-    { ok: boolean; domain: string },
-    ApiError,
-    CreateWebsiteParams,
-    MutationContext<unknown>
-  >,
+  options?: UseMutationOptions<Res<"deploy-subdomain">, ApiError, CreateWebsiteParams, MutationContext<unknown>>,
 ) {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: async ({ domain, orgId, templateId }: CreateWebsiteParams) => {
-      return fetcher.post<{ ok: boolean; domain: string }>("/api/deploy-subdomain", {
+      const body = validateRequest("deploy-subdomain", {
         domain,
         org_id: orgId,
         template_id: templateId,
       })
+      return postty("deploy-subdomain", body)
     },
     onSuccess: data => {
       // Invalidate workspace queries
@@ -116,13 +114,13 @@ interface RemoveMemberParams {
  * Invalidates member cache on success
  */
 export function useRemoveOrgMember(
-  options?: UseMutationOptions<{ ok: boolean }, ApiError, RemoveMemberParams, MutationContext<unknown>>,
+  options?: UseMutationOptions<Res<"auth/org-members/delete">, ApiError, RemoveMemberParams, MutationContext<unknown>>,
 ) {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: async ({ orgId, userId }: RemoveMemberParams) => {
-      return fetcher.delete<{ ok: boolean }>(`/api/auth/organizations/${orgId}/members/${userId}`)
+      return delly("auth/org-members/delete", undefined, `/api/auth/organizations/${orgId}/members/${userId}`)
     },
     onSuccess: (_, { orgId }) => {
       // Invalidate member queries for this org
@@ -149,13 +147,14 @@ interface UpdateUserParams {
  * Update user profile
  */
 export function useUpdateUser(
-  options?: UseMutationOptions<{ ok: boolean }, ApiError, UpdateUserParams, MutationContext<unknown>>,
+  options?: UseMutationOptions<Res<"user/update">, ApiError, UpdateUserParams, MutationContext<unknown>>,
 ) {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: async (params: UpdateUserParams) => {
-      return fetcher.patch<{ ok: boolean }>("/api/user", params)
+      const body = validateRequest("user/update", params)
+      return patchy("user/update", body, undefined, "/api/user")
     },
     onSuccess: () => {
       // Invalidate user queries

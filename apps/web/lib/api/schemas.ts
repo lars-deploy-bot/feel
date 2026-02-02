@@ -70,16 +70,19 @@ export const apiSchemas = {
   /**
    * GET /api/user
    * Get current authenticated user
+   * Returns full SessionUser object from getSessionUser()
    */
   user: {
     req: z.undefined().brand<"UserRequest">(), // GET has no body
     res: z.object({
       user: z
         .object({
-          userId: z.string(),
+          id: z.string(),
           email: z.string().email(),
-          displayName: z.string().optional(),
-          workspaces: z.array(z.string()),
+          name: z.string().nullable(),
+          canSelectAnyModel: z.boolean(),
+          isAdmin: z.boolean(),
+          isSuperadmin: z.boolean(),
         })
         .nullable(),
     }),
@@ -240,6 +243,247 @@ export const apiSchemas = {
       ok: z.boolean(),
       deleted: z.boolean(),
       template_id: z.string(),
+    }),
+  },
+  // ============================================================================
+  // AUTH ENDPOINTS (used by TanStack Query)
+  // ============================================================================
+
+  /**
+   * GET /api/auth/organizations
+   * Get user's organizations with workspace counts
+   */
+  "auth/organizations": {
+    req: z.undefined().brand<"AuthOrganizationsRequest">(),
+    res: z.object({
+      ok: z.literal(true),
+      organizations: z.array(
+        z.object({
+          org_id: z.string(),
+          name: z.string(),
+          credits: z.number(),
+          workspace_count: z.number(),
+          role: z.enum(["owner", "admin", "member"]),
+        }),
+      ),
+      current_user_id: z.string().optional(),
+    }),
+  },
+
+  /**
+   * GET /api/auth/all-workspaces
+   * Get all workspaces for all orgs in one request
+   */
+  "auth/all-workspaces": {
+    req: z.undefined().brand<"AuthAllWorkspacesRequest">(),
+    res: z.object({
+      ok: z.literal(true),
+      workspaces: z.record(z.string(), z.array(z.string())),
+    }),
+  },
+
+  /**
+   * GET /api/auth/workspaces?org_id=xxx
+   * Get workspaces for a specific org
+   */
+  "auth/workspaces": {
+    req: z.undefined().brand<"AuthWorkspacesRequest">(),
+    res: z.object({
+      ok: z.literal(true),
+      workspaces: z.array(z.string()),
+    }),
+  },
+
+  /**
+   * GET /api/auth/org-members?orgId=xxx
+   * Get members of an organization
+   */
+  "auth/org-members": {
+    req: z.undefined().brand<"AuthOrgMembersRequest">(),
+    res: z.object({
+      ok: z.literal(true),
+      members: z.array(
+        z.object({
+          user_id: z.string(),
+          email: z.string(),
+          display_name: z.string().nullable(),
+          role: z.enum(["owner", "admin", "member"]),
+        }),
+      ),
+    }),
+  },
+
+  /**
+   * DELETE /api/auth/organizations/{orgId}/members/{userId}
+   * Remove member from organization
+   * Note: Uses pathOverride for dynamic route
+   */
+  "auth/org-members/delete": {
+    req: z.undefined().brand<"AuthOrgMembersDeleteRequest">(),
+    res: z.object({
+      ok: z.boolean(),
+    }),
+  },
+
+  /**
+   * PATCH /api/auth/organizations
+   * Update organization details
+   */
+  "auth/organizations/update": {
+    req: z
+      .object({
+        org_id: z.string(),
+        name: z.string(),
+      })
+      .brand<"AuthOrganizationsUpdateRequest">(),
+    res: z.object({
+      ok: z.boolean(),
+    }),
+  },
+
+  /**
+   * PATCH /api/user
+   * Update user profile
+   */
+  "user/update": {
+    req: z
+      .object({
+        name: z.string().optional(),
+        email: z.string().email().optional(),
+      })
+      .brand<"UserUpdateRequest">(),
+    res: z.object({
+      ok: z.boolean(),
+    }),
+  },
+
+  /**
+   * POST /api/deploy-subdomain
+   * Create a new website
+   */
+  "deploy-subdomain": {
+    req: z
+      .object({
+        domain: z.string(),
+        org_id: z.string(),
+        template_id: z.string().optional(),
+      })
+      .brand<"DeploySubdomainRequest">(),
+    res: z.object({
+      ok: z.boolean(),
+      domain: z.string(),
+    }),
+  },
+
+  // ============================================================================
+  // AUTOMATIONS & SITES (used by TanStack Query)
+  // ============================================================================
+
+  /**
+   * GET /api/automations
+   * List automation jobs
+   */
+  automations: {
+    req: z.undefined().brand<"AutomationsRequest">(),
+    res: z.object({
+      ok: z.literal(true),
+      automations: z.array(
+        z.object({
+          id: z.string(),
+          site_id: z.string(),
+          name: z.string(),
+          description: z.string().nullable(),
+          trigger_type: z.enum(["cron", "webhook", "one-time"]),
+          cron_schedule: z.string().nullable(),
+          cron_timezone: z.string().nullable(),
+          run_at: z.string().nullable(),
+          action_type: z.enum(["prompt", "sync", "publish"]),
+          action_prompt: z.string().nullable(),
+          action_source: z.string().nullable(),
+          action_target_page: z.string().nullable(),
+          is_active: z.boolean(),
+          last_run_at: z.string().nullable(),
+          last_run_status: z.string().nullable(),
+          next_run_at: z.string().nullable(),
+          created_at: z.string(),
+          hostname: z.string().optional(),
+        }),
+      ),
+      total: z.number().optional(),
+    }),
+  },
+
+  /**
+   * GET /api/sites
+   * List sites for user's organizations
+   */
+  sites: {
+    req: z.undefined().brand<"SitesRequest">(),
+    res: z.object({
+      sites: z.array(
+        z.object({
+          id: z.string(),
+          hostname: z.string(),
+          org_id: z.string(),
+        }),
+      ),
+    }),
+  },
+
+  // ============================================================================
+  // INTEGRATIONS (used by TanStack Query)
+  // ============================================================================
+
+  /**
+   * GET /api/integrations/available
+   * Get available integrations for the current user
+   */
+  "integrations/available": {
+    req: z.undefined().brand<"IntegrationsAvailableRequest">(),
+    res: z.object({
+      integrations: z.array(
+        z.object({
+          provider_key: z.string(),
+          display_name: z.string(),
+          logo_path: z.string().nullable(),
+          is_connected: z.boolean(),
+          visibility_status: z.string(),
+          token_status: z.enum(["valid", "expired", "needs_reauth", "not_connected"]).optional(),
+          status_message: z.string().optional(),
+        }),
+      ),
+      user_id: z.string().optional(),
+    }),
+  },
+
+  /**
+   * DELETE /api/integrations/[provider]
+   * Disconnect user from a provider
+   * Uses pathOverride for dynamic provider path
+   */
+  "integrations/disconnect": {
+    req: z.undefined().brand<"IntegrationsDisconnectRequest">(),
+    res: z.object({
+      ok: z.literal(true),
+      message: z.string(),
+    }),
+  },
+
+  /**
+   * POST /api/integrations/[provider]
+   * Connect user to a provider using a Personal Access Token (PAT)
+   * Uses pathOverride for dynamic provider path
+   */
+  "integrations/connect": {
+    req: z
+      .object({
+        token: z.string().min(1),
+      })
+      .brand<"IntegrationsConnectRequest">(),
+    res: z.object({
+      ok: z.literal(true),
+      message: z.string(),
+      username: z.string().optional(),
     }),
   },
 } as const
