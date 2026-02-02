@@ -3,22 +3,27 @@
  *
  * Tests the Lua script for unread message retrieval.
  * Verifies the off-by-one fix in the GET_UNREAD_SCRIPT.
+ *
+ * NOTE: These tests require Redis and are skipped in CI.
  */
 
 import { createRedisClient } from "@alive-brug/redis"
 import { getRedisUrl } from "@webalive/env/server"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 
-describe("Stream Buffer - Lua Script (GET_UNREAD_SCRIPT)", () => {
+// Skip these tests in CI (no Redis available)
+const isCI = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true"
+
+describe.skipIf(isCI)("Stream Buffer - Lua Script (GET_UNREAD_SCRIPT)", () => {
   let redis: ReturnType<typeof createRedisClient>
 
   beforeAll(() => {
     redis = createRedisClient(getRedisUrl())
-  })
+  }, 15000)
 
   afterAll(async () => {
     await redis.quit()
-  })
+  }, 15000)
 
   it("correctly retrieves unread messages on first read", async () => {
     // Lua script for testing (same as in stream-buffer.ts)

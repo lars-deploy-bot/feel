@@ -11,6 +11,12 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+// Mock navigator for Node.js environment (CI)
+if (typeof navigator === "undefined") {
+  // @ts-expect-error - mocking global navigator for tests
+  global.navigator = { onLine: true }
+}
+
 // Mock Dexie database
 const mockConversationsGet = vi.fn()
 const mockConversationsUpdate = vi.fn()
