@@ -96,7 +96,8 @@ if ! "$SCRIPT_DIR/../validation/detect-workspace-issues.sh" >/dev/null 2>&1; the
 fi
 
 # Remove circular symlinks from bun
-rm -f templates/site-template/site-template packages/*/$(basename packages/*) 2>/dev/null || true
+rm -f templates/site-template/site-template 2>/dev/null || true
+for pkg in packages/*/; do rm -f "$pkg/$(basename "$pkg")" 2>/dev/null || true; done
 
 # =============================================================================
 # Phase 4: Build

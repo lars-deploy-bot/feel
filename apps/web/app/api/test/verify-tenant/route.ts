@@ -43,9 +43,16 @@ export async function GET(req: Request) {
       return Response.json({ ready: false, missing: "user" })
     }
 
-    // 2. Check if user has org membership
-    const { data: membership } = await iam.from("org_memberships").select("org_id").eq("user_id", user.user_id).single()
+    // 2. Check if user has at least one org membership
+    // Note: Use limit(1) instead of single() because test users may have accumulated
+    // multiple memberships from repeated test runs (bootstrap creates new orgs each time)
+    const { data: memberships } = await iam
+      .from("org_memberships")
+      .select("org_id")
+      .eq("user_id", user.user_id)
+      .limit(1)
 
+    const membership = memberships?.[0]
     if (!membership) {
       return Response.json({ ready: false, missing: "membership" })
     }
@@ -58,17 +65,15 @@ export async function GET(req: Request) {
     }
 
     // 4. Check if domain exists (extract workspace from email pattern)
-    const workerIndex = email.match(/worker(\d+)@/)?.[1]
+    // Email format is e2e_w{N}@bridge.local (TEST_CONFIG.WORKER_EMAIL_PREFIX = "e2e_w")
+    const workerIndex = email.match(/e2e_w(\d+)@/)?.[1]
     if (workerIndex !== undefined) {
       const workspace = `${TEST_CONFIG.WORKSPACE_PREFIX}${workerIndex}.${TEST_CONFIG.EMAIL_DOMAIN}`
-      const { data: domain } = await app
-        .from("domains")
-        .select("hostname")
-        .eq("hostname", workspace)
-        .eq("org_id", membership.org_id)
-        .single()
+      // Use limit(1) instead of single() - we just need to verify at least one domain exists
+      // The domain might be associated with any of the user's orgs (from accumulated test runs)
+      const { data: domains } = await app.from("domains").select("hostname").eq("hostname", workspace).limit(1)
 
-      if (!domain) {
+      if (!domains || domains.length === 0) {
         return Response.json({ ready: false, missing: "domain" })
       }
     }

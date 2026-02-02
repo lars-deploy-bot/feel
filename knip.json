@@ -32,7 +32,6 @@
     "**/lib/db/**",
     "**/lib/supabase/*.types.ts",
     "packages/template/**",
-    "packages/tools/lovable-folder-only-use-for-inspiration/**",
     "**/scripts/**",
     "*.config.{js,ts}",
     "apps/web/lib/agent-workspace-helpers.mjs"

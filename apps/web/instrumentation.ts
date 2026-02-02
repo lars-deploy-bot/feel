@@ -12,13 +12,12 @@ export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     console.log("[Instrumentation] Initializing server-side services...")
 
+    // Only start services in production to avoid duplicate schedulers in dev
+    const isProduction = process.env.NODE_ENV === "production"
+
     // Start the CronService for automation scheduling
-    // Dynamically import to avoid issues during build
     try {
       const { startCronService } = await import("@/lib/automation/cron-service")
-
-      // Only start in production to avoid duplicate schedulers in dev
-      const isProduction = process.env.NODE_ENV === "production"
 
       if (isProduction) {
         await startCronService({

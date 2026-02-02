@@ -38,7 +38,7 @@ We expect to add more workflows over time. Follow the pattern:
 
 ## Purpose
 
-These workflows guide the AI agent through step-by-step processes for common tasks. They use **Alive's actual tools** (not Lovable's) and are tailored to our multi-workspace architecture.
+These workflows guide the AI agent through step-by-step processes for common tasks. They use **Alive's tools** and are tailored to our multi-workspace architecture.
 
 ## Available Workflows
 

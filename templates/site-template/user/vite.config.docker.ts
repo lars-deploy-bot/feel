@@ -1,6 +1,6 @@
 import path from "node:path"
 import react from "@vitejs/plugin-react-swc"
-import { componentTagger } from "lovable-tagger"
+import { aliveTagger } from "@alive-game/alive-tagger"
 import { defineConfig } from "vite"
 
 // https://vitejs.dev/config/
@@ -27,7 +27,7 @@ export default defineConfig(({ mode }) => ({
     port: 3594,
     allowedHosts: ["blank.alive.best"],
   },
-  plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+  plugins: [react(), mode === "development" && aliveTagger()].filter(Boolean),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

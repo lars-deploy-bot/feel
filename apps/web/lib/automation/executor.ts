@@ -47,6 +47,8 @@ export interface AutomationJobResult {
   durationMs: number
   error?: string
   response?: string
+  /** Full Claude SDK message stream for logging/debugging */
+  messages?: unknown[]
 }
 
 /**
@@ -74,6 +76,9 @@ export async function runAutomationJob(params: AutomationJobParams): Promise<Aut
     .select("trigger_type, cron_schedule, cron_timezone, run_at")
     .eq("id", jobId)
     .single()
+
+  // Track messages outside try block so we can log partial results on failure
+  const allMessages: unknown[] = []
 
   try {
     // Mark job as running
@@ -127,8 +132,8 @@ export async function runAutomationJob(params: AutomationJobParams): Promise<Aut
     // Use worker pool if enabled, otherwise fall back to child process
     const useWorkerPool = WORKER_POOL.ENABLED
 
-    // Collect messages
-    const messages: string[] = []
+    // Collect messages (text only for response assembly)
+    const textMessages: string[] = []
     let finalResponse = ""
 
     if (useWorkerPool) {
@@ -180,13 +185,16 @@ export async function runAutomationJob(params: AutomationJobParams): Promise<Aut
           onMessage: (msg: any) => {
             console.log(`[Automation ${requestId}] Message:`, JSON.stringify(msg).substring(0, 500))
 
+            // Store ALL messages for full conversation log
             if (msg.type === "message" && "content" in msg) {
+              allMessages.push(msg.content)
+
               const content = msg.content as any
               // Check both direct content and nested content structure
               if (content.role === "assistant" && Array.isArray(content.content)) {
                 for (const block of content.content) {
                   if (block.type === "text") {
-                    messages.push(block.text)
+                    textMessages.push(block.text)
                   }
                 }
               }
@@ -194,7 +202,7 @@ export async function runAutomationJob(params: AutomationJobParams): Promise<Aut
               if (content.messageType === "assistant" && content.content?.content) {
                 for (const block of content.content.content) {
                   if (block.type === "text") {
-                    messages.push(block.text)
+                    textMessages.push(block.text)
                   }
                 }
               }
@@ -248,11 +256,14 @@ export async function runAutomationJob(params: AutomationJobParams): Promise<Aut
             if (!line.trim()) continue
             try {
               const msg = JSON.parse(line)
+              // Store ALL messages for full conversation log
+              allMessages.push(msg)
+
               // Extract text from assistant messages
               if (msg.role === "assistant" && Array.isArray(msg.content)) {
                 for (const block of msg.content) {
                   if (block.type === "text") {
-                    messages.push(block.text)
+                    textMessages.push(block.text)
                   }
                 }
               }
@@ -272,10 +283,10 @@ export async function runAutomationJob(params: AutomationJobParams): Promise<Aut
 
     const durationMs = Date.now() - startTime
 
-    // Use final response or concatenate messages
-    const response = finalResponse || messages.join("\n\n")
+    // Use final response or concatenate text messages
+    const response = finalResponse || textMessages.join("\n\n")
 
-    console.log(`[Automation ${requestId}] Completed in ${durationMs}ms`)
+    console.log(`[Automation ${requestId}] Completed in ${durationMs}ms, ${allMessages.length} messages captured`)
 
     // Compute next run time for cron jobs
     let nextRunAt: string | null = null
@@ -302,7 +313,7 @@ export async function runAutomationJob(params: AutomationJobParams): Promise<Aut
       })
       .eq("id", jobId)
 
-    // Create run record
+    // Create run record with full message log
     await supabase.from("automation_runs").insert({
       job_id: jobId,
       started_at: new Date(startTime).toISOString(),
@@ -310,6 +321,7 @@ export async function runAutomationJob(params: AutomationJobParams): Promise<Aut
       duration_ms: durationMs,
       status: "success",
       result: { response: response.substring(0, 10000) }, // Limit stored response size
+      messages: allMessages, // Full conversation log
       triggered_by: "manual",
     })
 
@@ -317,6 +329,7 @@ export async function runAutomationJob(params: AutomationJobParams): Promise<Aut
       success: true,
       durationMs,
       response,
+      messages: allMessages,
     }
   } catch (error) {
     const durationMs = Date.now() - startTime
@@ -349,7 +362,7 @@ export async function runAutomationJob(params: AutomationJobParams): Promise<Aut
       })
       .eq("id", jobId)
 
-    // Create run record
+    // Create run record with whatever messages we captured before failure
     await supabase.from("automation_runs").insert({
       job_id: jobId,
       started_at: new Date(startTime).toISOString(),
@@ -357,6 +370,7 @@ export async function runAutomationJob(params: AutomationJobParams): Promise<Aut
       duration_ms: durationMs,
       status: "failure",
       error: errorMessage,
+      messages: allMessages.length > 0 ? allMessages : null, // Include partial log if any
       triggered_by: "manual",
     })
 
@@ -364,6 +378,7 @@ export async function runAutomationJob(params: AutomationJobParams): Promise<Aut
       success: false,
       durationMs,
       error: errorMessage,
+      messages: allMessages.length > 0 ? allMessages : undefined,
     }
   }
 }

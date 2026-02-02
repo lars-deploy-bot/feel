@@ -185,17 +185,17 @@ const cleanup = initAliveTagger()
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Comparison: alive-tagger vs React Grab vs lovable-tagger
+## Comparison: alive-tagger vs React Grab
 
-| Feature | alive-tagger | React Grab | lovable-tagger |
-|---------|-------------|------------|----------------|
-| **Approach** | Vite plugin + client | Runtime fiber traversal | Vite plugin |
-| **Data attachment** | Build-time via refs | Runtime fiber inspection | Build-time via refs |
-| **Symbol key** | `__aliveSource__` | `__jsxSource__` | `__jsxSource__` |
-| **Selection UI** | Built-in (Cmd+Click) | Built-in | None |
-| **Communication** | postMessage | HTTP localhost:4567 | None |
-| **Env requirement** | None (dev mode auto) | None | `LOVABLE_DEV_SERVER=true` |
-| **Designed for** | Claude Bridge iframe | Claude Code CLI | Lovable.dev |
+| Feature | alive-tagger | React Grab |
+|---------|-------------|------------|
+| **Approach** | Vite plugin + client | Runtime fiber traversal |
+| **Data attachment** | Build-time via refs | Runtime fiber inspection |
+| **Symbol key** | `__aliveSource__` | `__jsxSource__` |
+| **Selection UI** | Built-in (Cmd+Click) | Built-in |
+| **Communication** | postMessage | HTTP localhost:4567 |
+| **Env requirement** | None (dev mode auto) | None |
+| **Designed for** | Claude Bridge iframe | Claude Code CLI |
 
 ## Integration with Claude Bridge
 

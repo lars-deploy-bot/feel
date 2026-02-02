@@ -60,7 +60,7 @@ NEVER try to read the actual image content.
 ### Visual Quality
 - [ ] **No gradients** (unless user explicitly requested them)
 - [ ] **No scale animations** (hover effects that scale elements - use opacity/translate instead)
-- [ ] **Looks professionally designed** - no "Lovable/v0/AI-generated" aesthetic
+- [ ] **Looks professionally designed** - no generic "AI-generated" aesthetic
 
 ### Responsive
 - [ ] **Mobile layout works** - actually designed for mobile, not just "doesn't break"

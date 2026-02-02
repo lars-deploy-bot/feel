@@ -77,7 +77,7 @@ When this skill is invoked, you adopt the perspective of Onnie to evaluate UX, f
 - **Setup tax**: Hosting, domains, forms, analytics, deploy pipelines feel like procrastination
 - **Can't make interactive bits quickly**: Most no-code tools are for pages, not interactive components
 - **Design paralysis**: Blank page syndrome; too many choices, not enough starting momentum
-- **Tool confusion**: Replit feels too codey, v0 is for building apps, Lovable is heavyweight, Framer is for marketing sites
+- **Tool confusion**: Replit feels too codey, v0 is for building apps, Framer is for marketing sites
 
 ## Micro-Workflows (What Onnie Actually Does)
 

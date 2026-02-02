@@ -331,12 +331,14 @@ async function executeJob(job: AutomationJob, _opts: { forced: boolean }): Promi
         status: "success",
         durationMs,
         summary: extractSummary(result.response),
+        messages: result.messages,
       })
     } else {
       await finishJob(job, {
         status: "failure",
         durationMs,
         error: result.error,
+        messages: result.messages,
       })
     }
   } catch (error) {
@@ -358,6 +360,7 @@ async function finishJob(
     durationMs: number
     error?: string
     summary?: string
+    messages?: unknown[]
   },
 ): Promise<void> {
   if (!state) return
@@ -425,7 +428,7 @@ async function finishJob(
     await state.supabase.from("automation_jobs").update(updateData).eq("id", job.id)
   }
 
-  // Create run record
+  // Create run record with full message log
   await state.supabase.from("automation_runs").insert({
     job_id: job.id,
     started_at: new Date(now - result.durationMs).toISOString(),
@@ -434,6 +437,7 @@ async function finishJob(
     status: result.status,
     error: result.error,
     result: result.summary ? { summary: result.summary } : null,
+    messages: result.messages ?? null, // Full conversation log
     triggered_by: "scheduler",
   })
 
@@ -448,7 +452,7 @@ async function finishJob(
     nextRunAtMs: nextRunAt ? new Date(nextRunAt).getTime() : undefined,
   })
 
-  // Log to run log
+  // Log to run log (includes full messages for debugging)
   await appendRunLog(job.id, {
     action: "finished",
     status: result.status,
@@ -458,6 +462,7 @@ async function finishJob(
     durationMs: result.durationMs,
     nextRunAtMs: nextRunAt ? new Date(nextRunAt).getTime() : undefined,
     retryAttempt: consecutiveFailures > 0 ? consecutiveFailures : undefined,
+    messages: result.messages,
   }).catch(() => {}) // Don't fail if logging fails
 
   // Post summary to user's chat (if successful)

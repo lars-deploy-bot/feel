@@ -1,60 +1,16 @@
 "use client"
 
 import { AlertTriangle, Building2, Globe, Search } from "lucide-react"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useState } from "react"
 import { AddWebsiteModal } from "@/components/modals/AddWebsiteModal"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner"
 import { SearchInput } from "@/components/ui/SearchInput"
 import type { Organization } from "@/lib/api/types"
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
+import { useAllWorkspacesQuery } from "@/lib/hooks/useSettingsQueries"
 import { SettingsTabLayout } from "./SettingsTabLayout"
-import { orgSitesCache, useWorkspaceSwitch, WorkspacesGrid } from "./WorkspaceSettings"
-
-// Hook to fetch workspaces for all organizations
-function useAllOrgWorkspaces(organizations: Organization[]) {
-  const [allWorkspaces, setAllWorkspaces] = useState<Record<string, string[]>>({})
-  const [loading, setLoading] = useState(true)
-
-  const fetchAll = useCallback(async () => {
-    if (organizations.length === 0) {
-      setLoading(false)
-      return
-    }
-
-    setLoading(true)
-    const results: Record<string, string[]> = {}
-
-    await Promise.all(
-      organizations.map(async org => {
-        const cached = orgSitesCache.get(org.org_id)
-        if (cached) {
-          results[org.org_id] = cached
-          return
-        }
-
-        try {
-          const res = await fetch(`/api/auth/workspaces?org_id=${org.org_id}`, { credentials: "include" })
-          const data = res.ok ? await res.json() : null
-          const workspaces = data?.ok ? data.workspaces : []
-          results[org.org_id] = workspaces
-          if (workspaces.length) orgSitesCache.set(org.org_id, workspaces)
-        } catch {
-          results[org.org_id] = []
-        }
-      }),
-    )
-
-    setAllWorkspaces(results)
-    setLoading(false)
-  }, [organizations])
-
-  useEffect(() => {
-    fetchAll()
-  }, [fetchAll])
-
-  return { allWorkspaces, loading, refetch: fetchAll }
-}
+import { useWorkspaceSwitch, WorkspacesGrid } from "./WorkspaceSettings"
 
 // Organization group header with workspace grid
 function OrgWebsitesGroup({
@@ -98,7 +54,7 @@ function OrgWebsitesGroup({
 
 export function WebsitesSettings() {
   const { organizations, loading: orgsLoading } = useOrganizations()
-  const { allWorkspaces, loading: websitesLoading, refetch } = useAllOrgWorkspaces(organizations)
+  const { data: allWorkspaces = {}, isLoading: websitesLoading, refetch } = useAllWorkspacesQuery(organizations)
   const { currentWorkspace, switchWorkspace } = useWorkspaceSwitch()
   const [showAddModal, setShowAddModal] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")

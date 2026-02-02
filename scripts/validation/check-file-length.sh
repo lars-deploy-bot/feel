@@ -34,7 +34,6 @@ FILES=$(find . -type f \( -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name
     ! -path "*/*.bundle.js" \
     ! -path "*/*.generated.*" \
     ! -path "*/*.types.ts" \
-    ! -path "*/lovable-folder-only-use-for-inspiration/*" \
     2>/dev/null | sort)
 
 WARNINGS=()

@@ -42,6 +42,8 @@ export type RunLogEntry = {
   nextRunAtMs?: number
   /** Retry attempt number */
   retryAttempt?: number
+  /** Full Claude SDK message stream (for debugging) */
+  messages?: unknown[]
 }
 
 export type RunLogConfig = {

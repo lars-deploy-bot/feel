@@ -16,7 +16,7 @@
  *   WORKER_WORKSPACE_KEY - Workspace identifier
  */
 
-import { chownSync, copyFileSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, } from "node:fs"
+import { chownSync, cpSync, existsSync, mkdirSync, mkdtempSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { createConnection } from "node:net"
 import { join } from "node:path"
@@ -257,8 +257,13 @@ function dropPrivileges() {
   // Set up HOME directory for Claude session persistence
   // Uses stable directory per workspace so sessions survive worker restarts
   const originalHome = process.env.HOME || "/root"
-  const credSource = join(originalHome, ".claude", ".credentials.json")
   const workspaceKey = process.env.WORKER_WORKSPACE_KEY
+
+  // CRITICAL: Set CLAUDE_CONFIG_DIR to use single source of truth for credentials
+  // This ensures all workers use /root/.claude/.credentials.json regardless of HOME
+  // When /login refreshes the token, all workers immediately see the new token
+  // Sessions (conversation history) still persist per-workspace via HOME
+  process.env.CLAUDE_CONFIG_DIR = join(originalHome, ".claude")
 
   // Try to use stable session home for this workspace
   // Falls back to temp directory if stable home creation fails
@@ -274,19 +279,9 @@ function dropPrivileges() {
       chownSync(claudeDir, targetUid, targetGid)
     }
 
-    // Copy credentials if they exist and haven't been copied yet
-    if (existsSync(credSource)) {
-      const sourceStat = lstatSync(credSource)
-      if (!sourceStat.isFile()) {
-        console.error("[worker] SECURITY: Credential source is not a regular file, skipping copy")
-      } else {
-        const credDest = join(claudeDir, ".credentials.json")
-        // Always copy fresh credentials (they may have been refreshed)
-        copyFileSync(credSource, credDest)
-        chownSync(credDest, targetUid, targetGid)
-        console.error(`[worker] Copied credentials to ${workerHome}`)
-      }
-    }
+    // Note: Credentials are NOT copied here anymore.
+    // CLAUDE_CONFIG_DIR points to /root/.claude/ so all workers share one credentials file.
+    // This ensures token refreshes from /login are immediately visible to all workers.
 
     // Copy global skills from /etc/claude-code/skills/ to user's .claude/skills/
     const globalSkillsPath = "/etc/claude-code/skills"
@@ -302,36 +297,29 @@ function dropPrivileges() {
 
     process.env.HOME = workerHome
     console.error(`[worker] Using stable session home: ${workerHome}`)
-  } else if (existsSync(credSource)) {
+    console.error(`[worker] Using shared credentials from: ${process.env.CLAUDE_CONFIG_DIR}`)
+  } else {
     // Fallback: use temp directory (sessions won't persist, but won't crash)
     console.error("[worker] WARN: Using temp home - sessions will not persist across restarts")
-    const sourceStat = lstatSync(credSource)
-    if (!sourceStat.isFile()) {
-      console.error("[worker] SECURITY: Credential source is not a regular file, skipping copy")
-    } else {
-      // Create temp directory as fallback (original behavior)
-      const tempHome = mkdtempSync(join(tmpdir(), `claude-home-${targetUid}-`))
-      const claudeDir = join(tempHome, ".claude")
-      const credDest = join(claudeDir, ".credentials.json")
+    const tempHome = mkdtempSync(join(tmpdir(), `claude-home-${targetUid}-`))
+    const claudeDir = join(tempHome, ".claude")
 
-      mkdirSync(claudeDir, { mode: 0o700 })
-      copyFileSync(credSource, credDest)
-      chownSync(tempHome, targetUid, targetGid)
-      chownSync(claudeDir, targetUid, targetGid)
-      chownSync(credDest, targetUid, targetGid)
+    mkdirSync(claudeDir, { mode: 0o700 })
+    chownSync(tempHome, targetUid, targetGid)
+    chownSync(claudeDir, targetUid, targetGid)
 
-      process.env.HOME = tempHome
-      console.error(`[worker] Copied credentials to temp: ${tempHome}`)
+    process.env.HOME = tempHome
+    console.error(`[worker] Using temp home: ${tempHome}`)
+    console.error(`[worker] Using shared credentials from: ${process.env.CLAUDE_CONFIG_DIR}`)
 
-      const globalSkillsPath = "/etc/claude-code/skills"
-      const userSkillsPath = join(claudeDir, "skills")
-      if (existsSync(globalSkillsPath)) {
-        try {
-          cpSync(globalSkillsPath, userSkillsPath, { recursive: true })
-          console.error(`[worker] Copied global skills to ${userSkillsPath}`)
-        } catch (e) {
-          console.error(`[worker] Failed to copy skills: ${e.message}`)
-        }
+    const globalSkillsPath = "/etc/claude-code/skills"
+    const userSkillsPath = join(claudeDir, "skills")
+    if (existsSync(globalSkillsPath)) {
+      try {
+        cpSync(globalSkillsPath, userSkillsPath, { recursive: true })
+        console.error(`[worker] Copied global skills to ${userSkillsPath}`)
+      } catch (e) {
+        console.error(`[worker] Failed to copy skills: ${e.message}`)
       }
     }
   }
@@ -524,12 +512,8 @@ async function handleQuery(ipc, requestId, payload) {
     // If payload has cookie, use it; otherwise clear any previous value
     process.env.BRIDGE_SESSION_COOKIE = payload.sessionCookie || ""
 
-    // Allow per-request API key override (e.g., from OAuth refresh)
-    // This enables using refreshed OAuth tokens without restarting workers
-    if (payload.apiKey) {
-      process.env.ANTHROPIC_API_KEY = payload.apiKey
-      console.error("[worker] Using request-provided API key")
-    }
+    // Note: Credentials are shared via CLAUDE_CONFIG_DIR pointing to /root/.claude/
+    // No need to update credentials per-query - the SDK reads from the shared location.
 
     // Set user-defined environment keys (custom API keys from lockbox)
     // These are prefixed with USER_ to avoid conflicts with system env vars

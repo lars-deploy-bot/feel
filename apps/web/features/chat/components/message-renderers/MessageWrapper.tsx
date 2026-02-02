@@ -29,6 +29,8 @@ export function MessageWrapper({ messageId, tabId, canDelete, children }: Messag
     if (isDeleting) return
     setIsDeleting(true)
 
+    console.log("[MessageWrapper] Deleting message:", { messageId, tabId, canDelete })
+
     try {
       const resumeUuid = await deleteMessagesAfter(messageId, tabId)
       if (resumeUuid) {
@@ -43,35 +45,47 @@ export function MessageWrapper({ messageId, tabId, canDelete, children }: Messag
     }
   }
 
+  // Button to the RIGHT of message (horizontal flex layout)
+  // Only show button container on desktop when canDelete is true
   return (
-    <div className="group flex items-start gap-2 min-w-0 max-w-full overflow-visible">
-      {/* Message content */}
-      <div className="flex-1 min-w-0">{children}</div>
+    <div className={cn("group flex items-start", canDelete && "gap-1")}>
+      {/* Message content - takes available space */}
+      <div className="min-w-0 flex-1">{children}</div>
 
-      {/* Delete button - to the right on desktop, hidden on mobile */}
+      {/* Delete button - to the right, shown on hover (desktop only) */}
       {canDelete && (
-        <button
-          type="button"
-          onClick={handleDelete}
-          disabled={isDeleting}
+        <div
           className={cn(
-            "flex-shrink-0 p-2 rounded-lg",
-            "text-zinc-400 hover:text-red-500 dark:text-zinc-500 dark:hover:text-red-400",
-            "hover:bg-red-50 dark:hover:bg-red-950/20",
-            // Desktop: hidden by default, shown on hover
-            "opacity-0 pointer-events-none",
-            "md:group-hover:opacity-100 md:group-hover:pointer-events-auto",
-            "transition-opacity duration-200",
-            // Mobile: completely hidden
-            "hidden md:block",
-            // Loading state
-            "disabled:opacity-50 disabled:cursor-not-allowed",
+            // Fixed width container so layout doesn't shift
+            "w-8 flex-shrink-0",
+            // Desktop only
+            "hidden md:flex",
+            // Center the button
+            "items-start justify-center pt-1",
           )}
-          title="Delete this message and all messages after it"
-          aria-label="Delete message"
         >
-          <Trash2 size={16} strokeWidth={1.5} />
-        </button>
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className={cn(
+              "p-1.5 rounded-md",
+              // Colors
+              "text-zinc-400 hover:text-red-500 dark:text-zinc-500 dark:hover:text-red-400",
+              "hover:bg-red-50 dark:hover:bg-red-950/30",
+              // Hidden by default, shown on group hover
+              "opacity-0 pointer-events-none",
+              "group-hover:opacity-100 group-hover:pointer-events-auto",
+              "transition-opacity duration-150",
+              // Loading state
+              "disabled:opacity-50 disabled:cursor-not-allowed",
+            )}
+            title="Delete this message and all messages after it"
+            aria-label="Delete message"
+          >
+            <Trash2 size={14} strokeWidth={1.5} />
+          </button>
+        </div>
       )}
     </div>
   )

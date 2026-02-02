@@ -1,38 +1,14 @@
 "use client"
 
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Calendar, Clock, Globe, Pause, Pencil, Play, Plus, RefreshCw, Trash2, Zap } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner"
 import { Modal } from "@/components/ui/Modal"
+import { useAutomationsQuery, useSitesQuery, type AutomationJob, type Site } from "@/lib/hooks/useSettingsQueries"
+import { queryKeys, ApiError } from "@/lib/tanstack"
 import { SettingsTabLayout } from "./SettingsTabLayout"
-
-type AutomationJob = {
-  id: string
-  site_id: string
-  name: string
-  description: string | null
-  trigger_type: "cron" | "webhook" | "one-time"
-  cron_schedule: string | null
-  cron_timezone: string | null
-  run_at: string | null
-  action_type: "prompt" | "sync" | "publish"
-  action_prompt: string | null
-  action_source: string | null
-  action_target_page: string | null
-  is_active: boolean
-  last_run_at: string | null
-  last_run_status: string | null
-  next_run_at: string | null
-  created_at: string
-  hostname?: string
-}
-
-type Site = {
-  id: string
-  hostname: string
-  org_id: string
-}
 
 type FormData = {
   site_id: string
@@ -533,72 +509,138 @@ function AutomationFormModal({
 }
 
 export function AutomationsSettings() {
-  const [automations, setAutomations] = useState<AutomationJob[]>([])
-  const [sites, setSites] = useState<Site[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
+  const { data: automationsData, isLoading: automationsLoading, error: automationsError } = useAutomationsQuery()
+  const { data: sitesData } = useSitesQuery()
+
+  const automations = automationsData?.automations ?? []
+  const sites = sitesData?.sites ?? []
+  const loading = automationsLoading
+  const error = automationsError?.message ?? null
+
   const [modalOpen, setModalOpen] = useState(false)
   const [editingJob, setEditingJob] = useState<AutomationJob | null>(null)
-  const [saving, setSaving] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
 
-  const fetchAutomations = useCallback(async () => {
-    try {
-      setLoading(true)
-      const res = await fetch("/api/automations", { credentials: "include" })
-      const data = await res.json()
-
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to fetch automations")
-      }
-
-      setAutomations(data.automations || [])
-      setError(null)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load automations")
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  const fetchSites = useCallback(async () => {
-    try {
-      const res = await fetch("/api/sites", { credentials: "include" })
-      const data = await res.json()
-      if (res.ok) {
-        setSites(data.sites || [])
-      }
-    } catch {
-      // Ignore site fetch errors
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchAutomations()
-    fetchSites()
-  }, [fetchAutomations, fetchSites])
-
-  const handleToggle = useCallback(async (id: string, active: boolean) => {
-    // Optimistic update
-    setAutomations(prev => prev.map(a => (a.id === id ? { ...a, is_active: active } : a)))
-
-    try {
+  // Toggle mutation with optimistic update
+  const toggleMutation = useMutation<void, ApiError, { id: string; active: boolean }, { previous: unknown }>({
+    mutationFn: async ({ id, active }) => {
       const res = await fetch(`/api/automations/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ is_active: active }),
         credentials: "include",
       })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new ApiError(data.error || "Failed to toggle automation", res.status)
+      }
+    },
+    onMutate: async ({ id, active }) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: queryKeys.automations.list() })
+      // Snapshot previous value
+      const previous = queryClient.getQueryData(queryKeys.automations.list())
+      // Optimistic update
+      queryClient.setQueryData(queryKeys.automations.list(), (old: { automations: AutomationJob[] } | undefined) => ({
+        automations: old?.automations.map(a => (a.id === id ? { ...a, is_active: active } : a)) ?? [],
+      }))
+      return { previous }
+    },
+    onError: (_err, _vars, context) => {
+      // Revert on error
+      if (context?.previous) {
+        queryClient.setQueryData(queryKeys.automations.list(), context.previous)
+      }
+    },
+  })
+
+  // Save mutation (create/update)
+  const saveMutation = useMutation<void, ApiError, { formData: FormData; editingJobId?: string }>({
+    mutationFn: async ({ formData, editingJobId }) => {
+      const url = editingJobId ? `/api/automations/${editingJobId}` : "/api/automations"
+      const method = editingJobId ? "PATCH" : "POST"
+
+      const body: Record<string, unknown> = {
+        name: formData.name,
+        description: formData.description || null,
+        is_active: formData.is_active,
+      }
+
+      if (!editingJobId) {
+        body.site_id = formData.site_id
+        body.trigger_type = formData.trigger_type
+        body.action_type = formData.action_type
+      }
+
+      if (formData.trigger_type === "cron") {
+        body.cron_schedule = formData.cron_schedule
+        body.cron_timezone = formData.cron_timezone
+      } else if (formData.trigger_type === "one-time") {
+        body.run_at = new Date(formData.run_at).toISOString()
+      }
+
+      if (formData.action_type === "prompt") {
+        body.action_prompt = formData.action_prompt
+      }
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        credentials: "include",
+      })
 
       if (!res.ok) {
-        // Revert on error
-        setAutomations(prev => prev.map(a => (a.id === id ? { ...a, is_active: !active } : a)))
+        const data = await res.json().catch(() => ({}))
+        throw new ApiError(data.error || "Failed to save automation", res.status)
       }
-    } catch {
-      // Revert on error
-      setAutomations(prev => prev.map(a => (a.id === id ? { ...a, is_active: !active } : a)))
-    }
-  }, [])
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.automations.all })
+      setModalOpen(false)
+      setEditingJob(null)
+    },
+    onError: err => {
+      alert(err.message || "Failed to save")
+    },
+  })
+
+  // Delete mutation with optimistic update
+  const deleteMutation = useMutation<void, ApiError, string, { previous: unknown }>({
+    mutationFn: async id => {
+      const res = await fetch(`/api/automations/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      })
+      if (!res.ok) {
+        throw new ApiError("Failed to delete automation", res.status)
+      }
+    },
+    onMutate: async id => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.automations.list() })
+      const previous = queryClient.getQueryData(queryKeys.automations.list())
+      queryClient.setQueryData(queryKeys.automations.list(), (old: { automations: AutomationJob[] } | undefined) => ({
+        automations: old?.automations.filter(a => a.id !== id) ?? [],
+      }))
+      return { previous }
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKeys.automations.list(), context.previous)
+      }
+    },
+    onSettled: () => {
+      setDeleteConfirm(null)
+    },
+  })
+
+  const handleToggle = useCallback(
+    (id: string, active: boolean) => {
+      toggleMutation.mutate({ id, active })
+    },
+    [toggleMutation],
+  )
 
   const handleEdit = useCallback((job: AutomationJob) => {
     setEditingJob(job)
@@ -612,81 +654,20 @@ export function AutomationsSettings() {
 
   const handleSave = useCallback(
     async (formData: FormData) => {
-      setSaving(true)
-      try {
-        const url = editingJob ? `/api/automations/${editingJob.id}` : "/api/automations"
-        const method = editingJob ? "PATCH" : "POST"
-
-        const body: Record<string, unknown> = {
-          name: formData.name,
-          description: formData.description || null,
-          is_active: formData.is_active,
-        }
-
-        if (!editingJob) {
-          body.site_id = formData.site_id
-          body.trigger_type = formData.trigger_type
-          body.action_type = formData.action_type
-        }
-
-        if (formData.trigger_type === "cron") {
-          body.cron_schedule = formData.cron_schedule
-          body.cron_timezone = formData.cron_timezone
-        } else if (formData.trigger_type === "one-time") {
-          body.run_at = new Date(formData.run_at).toISOString()
-        }
-
-        if (formData.action_type === "prompt") {
-          body.action_prompt = formData.action_prompt
-        }
-
-        const res = await fetch(url, {
-          method,
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-          credentials: "include",
-        })
-
-        if (!res.ok) {
-          const data = await res.json()
-          throw new Error(data.error || "Failed to save automation")
-        }
-
-        setModalOpen(false)
-        setEditingJob(null)
-        fetchAutomations()
-      } catch (err) {
-        alert(err instanceof Error ? err.message : "Failed to save")
-      } finally {
-        setSaving(false)
-      }
+      saveMutation.mutate({ formData, editingJobId: editingJob?.id })
     },
-    [editingJob, fetchAutomations],
+    [editingJob, saveMutation],
   )
 
   const handleDelete = useCallback(
-    async (id: string) => {
+    (id: string) => {
       if (deleteConfirm !== id) {
         setDeleteConfirm(id)
         return
       }
-
-      try {
-        const res = await fetch(`/api/automations/${id}`, {
-          method: "DELETE",
-          credentials: "include",
-        })
-
-        if (res.ok) {
-          setAutomations(prev => prev.filter(a => a.id !== id))
-        }
-      } catch {
-        // Ignore delete errors
-      } finally {
-        setDeleteConfirm(null)
-      }
+      deleteMutation.mutate(id)
     },
-    [deleteConfirm],
+    [deleteConfirm, deleteMutation],
   )
 
   // Reset delete confirmation when clicking elsewhere
@@ -753,7 +734,7 @@ export function AutomationsSettings() {
         sites={sites}
         editingJob={editingJob}
         onSave={handleSave}
-        saving={saving}
+        saving={saveMutation.isPending}
       />
     </SettingsTabLayout>
   )

@@ -3,6 +3,7 @@ import { NuqsAdapter } from "nuqs/adapters/next/app"
 import { AuthModal } from "@/components/modals/AuthModal"
 import { FlowgladProviderWrapper } from "@/components/providers/FlowgladProviderWrapper"
 import { GlobalErrorHandler } from "@/components/providers/GlobalErrorHandler"
+import { QueryClientProvider } from "@/lib/providers/QueryClientProvider"
 import { ThemeProvider } from "@/components/providers/theme-provider"
 import { SkillsStoreProvider } from "@/lib/providers/SkillsStoreProvider"
 import { UserStoreProvider } from "@/lib/providers/UserStoreProvider"
@@ -40,14 +41,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <NextTopLoader color="#000" height={2} showSpinner={false} />
         <NuqsAdapter>
           <ThemeProvider>
-            <FlowgladProviderWrapper>
-              <UserStoreProvider>
-                <SkillsStoreProvider>
-                  {children}
-                  <AuthModal />
-                </SkillsStoreProvider>
-              </UserStoreProvider>
-            </FlowgladProviderWrapper>
+            <QueryClientProvider>
+              <FlowgladProviderWrapper>
+                <UserStoreProvider>
+                  <SkillsStoreProvider>
+                    {children}
+                    <AuthModal />
+                  </SkillsStoreProvider>
+                </UserStoreProvider>
+              </FlowgladProviderWrapper>
+            </QueryClientProvider>
           </ThemeProvider>
         </NuqsAdapter>
       </body>

@@ -1,8 +1,10 @@
 /**
  * React hook for fetching and managing available integrations
+ * Uses TanStack Query for caching and deduplication
  */
 
-import { useCallback, useEffect, useState } from "react"
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query"
+import { useCallback, useState } from "react"
 import type { AvailableIntegration } from "@/app/api/integrations/available/route"
 import { clientLogger } from "@/lib/client-error-logger"
 import {
@@ -12,6 +14,7 @@ import {
   OAUTH_POPUP_WIDTH,
   OAUTH_STORAGE_KEY,
 } from "@/lib/oauth/popup-constants"
+import { queryKeys, ApiError, fetcher } from "@/lib/tanstack"
 
 interface UseIntegrationsResult {
   integrations: AvailableIntegration[]
@@ -20,59 +23,43 @@ interface UseIntegrationsResult {
   refetch: () => Promise<void>
 }
 
+interface IntegrationsResponse {
+  integrations: AvailableIntegration[]
+}
+
 /**
  * Hook to fetch available integrations for the current user
+ * Now uses TanStack Query for caching (5 min stale time)
  */
 export function useIntegrations(): UseIntegrationsResult {
-  const [integrations, setIntegrations] = useState<AvailableIntegration[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const fetchIntegrations = useCallback(async () => {
-    console.log("[useIntegrations] fetchIntegrations called")
-    setLoading(true)
-    setError(null)
-
-    try {
+  const query = useQuery<IntegrationsResponse, ApiError>({
+    queryKey: queryKeys.integrations.list(),
+    queryFn: async () => {
       const response = await fetch("/api/integrations/available", {
         method: "GET",
         credentials: "include",
-        cache: "no-store",
         headers: {
           "Content-Type": "application/json",
-          "Cache-Control": "no-cache",
         },
       })
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || `Failed to fetch integrations: ${response.statusText}`)
+        throw new ApiError(errorData.error || `Failed to fetch integrations: ${response.statusText}`, response.status)
       }
 
-      const data = await response.json()
-      console.log(
-        "[useIntegrations] API response:",
-        data.integrations?.map((i: AvailableIntegration) => ({ key: i.provider_key, connected: i.is_connected })),
-      )
-      setIntegrations(data.integrations || [])
-    } catch (err) {
-      console.error("[useIntegrations] Error fetching integrations:", err)
-      setError(err instanceof Error ? err.message : "Failed to load integrations")
-      setIntegrations([])
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchIntegrations()
-  }, [fetchIntegrations])
+      return response.json()
+    },
+    staleTime: 5 * 60 * 1000, // 5 min - integrations don't change often
+  })
 
   return {
-    integrations,
-    loading,
-    error,
-    refetch: fetchIntegrations,
+    integrations: query.data?.integrations ?? [],
+    loading: query.isLoading,
+    error: query.error?.message ?? null,
+    refetch: async () => {
+      await query.refetch()
+    },
   }
 }
 
@@ -196,8 +183,10 @@ function openOAuthPopup(provider: string): Promise<{ success: boolean; error?: s
 
 /**
  * Hook to connect to an integration via popup OAuth flow
+ * Automatically invalidates integrations cache on success
  */
 export function useConnectIntegration(providerKey: string) {
+  const queryClient = useQueryClient()
   const [connecting, setConnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -210,9 +199,11 @@ export function useConnectIntegration(providerKey: string) {
       const result = await openOAuthPopup(providerKey)
       console.log("[useConnectIntegration] OAuth result:", result)
 
-      if (!result.success && result.error && result.error !== "Authorization cancelled") {
+      if (result.success) {
+        // Invalidate integrations cache to refresh the list
+        queryClient.invalidateQueries({ queryKey: queryKeys.integrations.all })
+      } else if (result.error && result.error !== "Authorization cancelled") {
         setError(result.error)
-        // Log to centralized error system for debugging
         clientLogger.oauth(`OAuth connection failed for ${providerKey}`, {
           provider: providerKey,
           errorMessage: result.error,
@@ -223,7 +214,6 @@ export function useConnectIntegration(providerKey: string) {
       console.error("[useConnectIntegration] Error:", err)
       const errorMsg = "Failed to open authorization window"
       setError(errorMsg)
-      // Log to centralized error system for debugging
       clientLogger.oauth(`OAuth popup failed for ${providerKey}`, {
         provider: providerKey,
         errorMessage: errorMsg,
@@ -233,7 +223,7 @@ export function useConnectIntegration(providerKey: string) {
     } finally {
       setConnecting(false)
     }
-  }, [providerKey])
+  }, [providerKey, queryClient])
 
   return {
     connect,
@@ -244,16 +234,13 @@ export function useConnectIntegration(providerKey: string) {
 
 /**
  * Hook to disconnect from an integration
+ * Uses TanStack mutation with automatic cache invalidation
  */
 export function useDisconnectIntegration(providerKey: string) {
-  const [disconnecting, setDisconnecting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
 
-  const disconnect = useCallback(async () => {
-    setDisconnecting(true)
-    setError(null)
-
-    try {
+  const mutation = useMutation<void, ApiError, void>({
+    mutationFn: async () => {
       const response = await fetch(`/api/integrations/${providerKey}`, {
         method: "DELETE",
         credentials: "include",
@@ -264,96 +251,82 @@ export function useDisconnectIntegration(providerKey: string) {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || `Failed to disconnect from ${providerKey}`)
+        throw new ApiError(errorData.error || `Failed to disconnect from ${providerKey}`, response.status)
       }
-
-      // Optionally trigger a refetch of integrations
-      window.location.reload() // or use a state management solution
-    } catch (err) {
-      console.error(`[useDisconnectIntegration] Error disconnecting from ${providerKey}:`, err)
-      const errorMsg = err instanceof Error ? err.message : "Failed to disconnect"
-      setError(errorMsg)
-      // Log to centralized error system for debugging
+    },
+    onSuccess: () => {
+      // Invalidate integrations cache to refresh
+      queryClient.invalidateQueries({ queryKey: queryKeys.integrations.all })
+    },
+    onError: err => {
       clientLogger.integration(`Disconnect failed for ${providerKey}`, {
         provider: providerKey,
-        errorMessage: errorMsg,
-        error: err,
+        errorMessage: err.message,
       })
-    } finally {
-      setDisconnecting(false)
-    }
-  }, [providerKey])
+    },
+  })
 
   return {
-    disconnect,
-    disconnecting,
-    error,
+    disconnect: mutation.mutateAsync,
+    disconnecting: mutation.isPending,
+    error: mutation.error?.message ?? null,
   }
 }
 
 /**
  * Hook to connect to an integration using a Personal Access Token (PAT)
- * Used for providers like GitHub that support PAT authentication
+ * Uses TanStack mutation with automatic cache invalidation
  */
 export function useConnectWithPat(providerKey: string) {
-  const [connecting, setConnecting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
+
+  const mutation = useMutation<{ username?: string }, ApiError, string>({
+    mutationFn: async (token: string) => {
+      const response = await fetch(`/api/integrations/${providerKey}`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ token }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        const errorMessage = data.details?.reason || data.error || `Failed to connect to ${providerKey}`
+        throw new ApiError(errorMessage, response.status)
+      }
+
+      return { username: data.username }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.integrations.all })
+    },
+    onError: err => {
+      clientLogger.integration(`PAT connection failed for ${providerKey}`, {
+        provider: providerKey,
+        errorMessage: err.message,
+      })
+    },
+  })
 
   const connectWithPat = useCallback(
     async (token: string): Promise<{ success: boolean; username?: string }> => {
-      setConnecting(true)
-      setError(null)
-
       try {
-        console.log(`[useConnectWithPat] Connecting to ${providerKey} with PAT`)
-
-        const response = await fetch(`/api/integrations/${providerKey}`, {
-          method: "POST",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ token }),
-        })
-
-        const data = await response.json()
-
-        if (!response.ok) {
-          const errorMessage = data.details?.reason || data.error || `Failed to connect to ${providerKey}`
-          setError(errorMessage)
-          // Log to centralized error system for debugging
-          clientLogger.integration(`PAT connection failed for ${providerKey}`, {
-            provider: providerKey,
-            errorMessage,
-            statusCode: response.status,
-          })
-          return { success: false }
-        }
-
-        console.log(`[useConnectWithPat] Successfully connected to ${providerKey}:`, data.username)
-        return { success: true, username: data.username }
-      } catch (err) {
-        console.error(`[useConnectWithPat] Error connecting to ${providerKey}:`, err)
-        const errorMsg = err instanceof Error ? err.message : "Failed to connect"
-        setError(errorMsg)
-        // Log to centralized error system for debugging
-        clientLogger.integration(`PAT connection error for ${providerKey}`, {
-          provider: providerKey,
-          errorMessage: errorMsg,
-          error: err,
-        })
+        const result = await mutation.mutateAsync(token)
+        return { success: true, username: result.username }
+      } catch {
         return { success: false }
-      } finally {
-        setConnecting(false)
       }
     },
-    [providerKey],
+    [mutation],
   )
 
   return {
     connectWithPat,
-    connecting,
-    error,
-    clearError: useCallback(() => setError(null), []),
+    connecting: mutation.isPending,
+    error: mutation.error?.message ?? null,
+    clearError: useCallback(() => mutation.reset(), [mutation]),
   }
 }

@@ -18,6 +18,13 @@ import {
 import { lazy, Suspense, useState } from "react"
 import { useAuth } from "@/features/deployment/hooks/useAuth"
 import { useIsDesktop } from "@/hooks/useMediaQuery"
+import {
+  AccountSettingsSkeleton,
+  GeneralSkeleton,
+  IntegrationsSettingsSkeleton,
+  WebsitesSettingsSkeleton,
+  WorkspaceSettingsSkeleton,
+} from "@/components/ui/SettingsSkeletons"
 
 // Lazy load tab components - only load on demand to speed up modal opening
 const AccountSettings = lazy(() =>
@@ -193,21 +200,61 @@ export function SettingsModal({ onClose, initialTab }: SettingsModalProps) {
           {/* Scrollable Content */}
           <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-2 sm:py-0 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:pb-0">
             <div className="animate-in fade-in-0 duration-200">
-              <Suspense
-                fallback={<div className="py-12 text-center text-black/40 dark:text-white/40 text-sm">Loading...</div>}
-              >
-                {activeTab === "account" && <AccountSettings />}
-                {activeTab === "llm" && <LLMSettings />}
-                {activeTab === "goal" && <GoalSettings />}
-                {activeTab === "prompts" && <UserPromptsSettings />}
-                {activeTab === "organization" && <WorkspaceSettings />}
-                {activeTab === "websites" && <WebsitesSettings />}
-                {activeTab === "automations" && <AutomationsSettings />}
-                {activeTab === "integrations" && <IntegrationsListWithHeader />}
-                {activeTab === "keys" && <UserEnvKeysWithHeader />}
-                {activeTab === "flags" && <FlagsSettings />}
-                {activeTab === "admin" && <AdminSettings />}
-              </Suspense>
+              {activeTab === "account" && (
+                <Suspense fallback={<AccountSettingsSkeleton />}>
+                  <AccountSettings />
+                </Suspense>
+              )}
+              {activeTab === "llm" && (
+                <Suspense fallback={<GeneralSkeleton />}>
+                  <LLMSettings />
+                </Suspense>
+              )}
+              {activeTab === "goal" && (
+                <Suspense fallback={<GeneralSkeleton />}>
+                  <GoalSettings />
+                </Suspense>
+              )}
+              {activeTab === "prompts" && (
+                <Suspense fallback={<GeneralSkeleton />}>
+                  <UserPromptsSettings />
+                </Suspense>
+              )}
+              {activeTab === "organization" && (
+                <Suspense fallback={<WorkspaceSettingsSkeleton />}>
+                  <WorkspaceSettings />
+                </Suspense>
+              )}
+              {activeTab === "websites" && (
+                <Suspense fallback={<WebsitesSettingsSkeleton />}>
+                  <WebsitesSettings />
+                </Suspense>
+              )}
+              {activeTab === "automations" && (
+                <Suspense fallback={<GeneralSkeleton />}>
+                  <AutomationsSettings />
+                </Suspense>
+              )}
+              {activeTab === "integrations" && (
+                <Suspense fallback={<IntegrationsSettingsSkeleton />}>
+                  <IntegrationsListWithHeader />
+                </Suspense>
+              )}
+              {activeTab === "keys" && (
+                <Suspense fallback={<GeneralSkeleton />}>
+                  <UserEnvKeysWithHeader />
+                </Suspense>
+              )}
+              {activeTab === "flags" && (
+                <Suspense fallback={<GeneralSkeleton />}>
+                  <FlagsSettings />
+                </Suspense>
+              )}
+              {activeTab === "admin" && (
+                <Suspense fallback={<GeneralSkeleton />}>
+                  <AdminSettings />
+                </Suspense>
+              )}
             </div>
           </div>
         </div>

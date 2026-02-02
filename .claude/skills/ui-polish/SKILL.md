@@ -5,7 +5,7 @@ description: Finishing touches and polish patterns for UI components. Use when r
 
 # UI Polish Guide
 
-Learnings and best practices for making components feel smooth, modern, and intentional. Sourced from real research on ChatGPT, Lovable, shadcn/ui, Radix, and modern CSS patterns.
+Learnings and best practices for making components feel smooth, modern, and intentional. Sourced from real research on ChatGPT, shadcn/ui, Radix, and modern CSS patterns.
 
 ## Table of Contents
 
@@ -47,7 +47,7 @@ hover:ring-black/[0.10]
 - Can be layered: border for structure, ring for interactive feedback
 - Smooth transitions without layout jank
 
-**Reference:** ChatGPT uses `ring-1 ring-black/[0.08]` with hover/focus transitions. Lovable uses `rounded-3.5xl` with `shadow-xl` and `ring-1`.
+**Reference:** ChatGPT uses `ring-1 ring-black/[0.08]` with hover/focus transitions.
 
 ---
 
@@ -77,7 +77,7 @@ focus:outline-none focus-visible:ring-1 focus-visible:ring-ring
 - Stop square: `size={14} fill="currentColor"` (filled, compact)
 - Spinner: `size={14}` with `animate-spin`
 
-**Reference:** Both ChatGPT and Lovable use circular send buttons with arrow-up icons. Lovable layers `brightness` hover with `before:` gradient overlays.
+**Reference:** ChatGPT uses circular send buttons with arrow-up icons. Modern UIs layer `brightness` hover with `before:` gradient overlays.
 
 ---
 
@@ -225,7 +225,7 @@ transition-colors
 </InputContainer>
 ```
 
-**Reference:** Lovable places +, attach, theme, plan, settings, and send all in the bottom row of the same container.
+**Reference:** Modern AI chat UIs place +, attach, theme, plan, settings, and send all in the bottom row of the same container.
 
 ---
 

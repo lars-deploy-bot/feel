@@ -65,19 +65,21 @@ export function Sandbox() {
   }, [])
 
   // Fetch token on mount and when workspace changes
+  // Skip for superadmin workspace (no site to preview - uses code view instead)
   useEffect(() => {
-    if (workspace) {
+    if (workspace && !isSuperadminWorkspace) {
       fetchPreviewToken()
     }
     return () => tokenFetchRef.current?.abort()
-  }, [workspace, fetchPreviewToken])
+  }, [workspace, isSuperadminWorkspace, fetchPreviewToken])
 
   // Refresh token every 4 minutes (tokens expire in 5 minutes)
+  // Skip for superadmin workspace
   useEffect(() => {
-    if (!workspace) return
+    if (!workspace || isSuperadminWorkspace) return
     const interval = setInterval(fetchPreviewToken, 4 * 60 * 1000)
     return () => clearInterval(interval)
-  }, [workspace, fetchPreviewToken])
+  }, [workspace, isSuperadminWorkspace, fetchPreviewToken])
 
   // Reset selector state when sandbox unmounts (closes)
   useEffect(() => {

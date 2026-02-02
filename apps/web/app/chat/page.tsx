@@ -144,6 +144,33 @@ function ChatPageContent() {
     }
   }, [mounted, wkParam, workspace, setWorkspace])
 
+  // Sync tab ID to URL for shareable links and browser history
+  const [tabParam, setTabParam] = useQueryState("tab")
+  const { setActiveTab: setStoreActiveTab } = useTabActions()
+
+  // On mount: if URL has a tab param, restore it
+  useEffect(() => {
+    if (!mounted || !workspace || !dexieSession || !tabParam) return
+
+    // Check if the tab exists and switch to it
+    const allTabs = workspaceTabs
+    const targetTab = allTabs.find(t => t.id === tabParam && !t.closedAt)
+    if (targetTab && sessionTabId !== tabParam) {
+      console.log("[ChatPage] Restoring tab from URL param:", tabParam)
+      setStoreActiveTab(workspace, tabParam)
+    }
+  }, [mounted, workspace, dexieSession, tabParam, workspaceTabs, sessionTabId, setStoreActiveTab])
+
+  // When active tab changes, update URL (shallow, no navigation)
+  useEffect(() => {
+    if (!mounted || !sessionTabId) return
+
+    // Only update if different to avoid loops
+    if (tabParam !== sessionTabId) {
+      void setTabParam(sessionTabId, { shallow: true })
+    }
+  }, [mounted, sessionTabId, tabParam, setTabParam])
+
   // Superadmin workspace (claude-bridge) shows terminal & code views only
   const isSuperadminWorkspace = workspace === SUPERADMIN.WORKSPACE_NAME
   const showSandbox = showSandboxRaw // Show for all workspaces
@@ -590,7 +617,7 @@ function ChatPageContent() {
 
           {/* Messages */}
           <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
-            <div className="p-4 mx-auto w-full md:max-w-2xl min-w-0">
+            <div className="p-4 mx-auto w-full md:max-w-[calc(42rem+2rem)] min-w-0">
               {messages.length === 0 && !busy && (
                 <ChatEmptyState
                   workspace={workspace}
