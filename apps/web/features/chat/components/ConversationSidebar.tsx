@@ -494,17 +494,28 @@ function ArchivedConversationItem({
             Archived {formatTimestamp(conversation.archivedAt ?? conversation.updatedAt)}
           </div>
         </div>
-        <button
-          type="button"
+        {/* biome-ignore lint/a11y/useSemanticElements: Nested buttons are invalid HTML, using span with role instead */}
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: Interactive span inside button for secondary action */}
+        {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: aria-label needed for screen readers */}
+        <span
+          role="button"
+          tabIndex={0}
           onClick={e => {
             e.stopPropagation()
             onRestore()
+          }}
+          onKeyDown={e => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault()
+              e.stopPropagation()
+              onRestore()
+            }
           }}
           className={`opacity-40 md:opacity-0 md:group-hover:opacity-100 size-7 rounded-full flex items-center justify-center ${styles.hoverFillStrong} ${styles.transitionAll} active:scale-95 md:hover:scale-110`}
           aria-label="Restore without opening"
         >
           <ArchiveRestore size={13} className={styles.textMuted} />
-        </button>
+        </span>
       </div>
     </button>
   )

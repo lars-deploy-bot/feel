@@ -5,6 +5,7 @@ import { createSessionToken } from "@/features/auth/lib/jwt"
 import { createCorsResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { COOKIE_NAMES, getSessionCookieOptions } from "@/lib/auth/cookies"
 import { addCorsHeaders } from "@/lib/cors-utils"
+import { filterLocalDomains } from "@/lib/domains"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 import { createAppClient } from "@/lib/supabase/app"
 import { createIamClient } from "@/lib/supabase/iam"
@@ -110,12 +111,16 @@ export async function POST(req: NextRequest) {
   if (memberships && memberships.length > 0) {
     const orgIds = memberships.map(m => m.org_id)
 
-    // Get all domains for these orgs
+    // Get all domains for these orgs (include is_test_env to handle test domains)
     const app = await createAppClient("service")
-    const { data: domains } = await app.from("domains").select("hostname").in("org_id", orgIds)
+    const { data: domains } = await app.from("domains").select("hostname, is_test_env").in("org_id", orgIds)
 
     if (domains) {
-      workspaces.push(...domains.map(d => d.hostname))
+      // Filter to only include domains that exist on THIS server
+      // Exception: test domains (is_test_env=true) are always included - they don't exist on filesystem
+      const realDomains = domains.filter(d => !d.is_test_env).map(d => d.hostname)
+      const testDomains = domains.filter(d => d.is_test_env).map(d => d.hostname)
+      workspaces.push(...filterLocalDomains(realDomains), ...testDomains)
     }
   }
 

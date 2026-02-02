@@ -1,53 +1,43 @@
-# Claude Bridge Systemd Services
+# Systemd Service Templates
 
-Service files for running claude-bridge environments and infrastructure.
+These are **templates only**. Do not copy them directly to /etc/systemd/system/.
 
-## Installation
+## Server-Agnostic Setup
+
+The actual service files are **generated** from `/var/lib/claude-bridge/server-config.json`:
 
 ```bash
-# Copy to systemd
-sudo cp ops/systemd/*.service /etc/systemd/system/
+# Generate service files
+bun run gen:systemd
 
-# Reload systemd
+# Install generated services
+sudo cp /var/lib/claude-bridge/generated/claude-bridge-*.service /etc/systemd/system/
 sudo systemctl daemon-reload
 
-# Enable services (start on boot)
-sudo systemctl enable claude-bridge-production
-sudo systemctl enable claude-bridge-staging
-sudo systemctl enable caddy-shell
+# Start services
+sudo systemctl start claude-bridge-dev
+sudo systemctl enable claude-bridge-dev  # auto-start on boot
 ```
 
-## Usage
+## Available Services
 
-```bash
-# Start/stop/restart
-sudo systemctl start claude-bridge-production
-sudo systemctl stop claude-bridge-staging
-sudo systemctl restart claude-bridge-dev
+- `claude-bridge-dev.service` - Development server (port 8997)
+- `claude-bridge-staging.service` - Staging server (port 8998)
+- `claude-bridge-production.service` - Production server (port 9000)
+- `claude-bridge-broker.service` - WebSocket broker
 
-# View logs
-journalctl -u claude-bridge-production -f
-journalctl -u claude-bridge-staging -n 50
+## Configuration
+
+All paths are read from `/var/lib/claude-bridge/server-config.json`:
+
+```json
+{
+  "serverId": "srv-example",
+  "paths": {
+    "bridgeRoot": "/root/alive",
+    "sitesRoot": "/srv/webalive/sites"
+  }
+}
 ```
 
-## Ports
-
-| Service | Port | Purpose |
-|---------|------|---------|
-| Production | 9000 | Claude Bridge production |
-| Staging | 8998 | Claude Bridge staging |
-| Dev | 8997 | Claude Bridge dev |
-| caddy-shell | 8443 | Isolated Caddy for shell SSE connections |
-
-## Services
-
-### Claude Bridge Services
-- Production/staging run from `.builds/{env}/current/standalone`
-- Dev runs directly from source with `bun run dev`
-- All services use EnvironmentFile for secrets (not committed to git)
-
-### caddy-shell.service
-Isolated Caddy instance for Go shell domains (shell.terminal.goalive.nl, go.goalive.nl, sk.goalive.nl).
-This instance is **never auto-reloaded** to preserve long-lived SSE connections.
-
-See [CADDY_SHELL_ISOLATION.md](../docs/operations/CADDY_SHELL_ISOLATION.md) for full documentation.
+See `ops/server-config.example.json` for full schema.

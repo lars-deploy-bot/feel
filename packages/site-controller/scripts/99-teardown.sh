@@ -14,7 +14,10 @@ REMOVE_PORT=${REMOVE_PORT:-true}
 
 log_info "Tearing down site: $SITE_DOMAIN"
 
+# =============================================================================
 # Stop systemd service
+# =============================================================================
+
 if service_exists "$SERVICE_NAME"; then
     log_info "Stopping service: $SERVICE_NAME"
     systemctl stop "$SERVICE_NAME" || log_warn "Failed to stop service"
@@ -28,9 +31,41 @@ else
     log_info "Service does not exist, skipping: $SERVICE_NAME"
 fi
 
+# =============================================================================
 # Remove from Caddy configuration
-if [[ -n "${CADDYFILE_PATH:-}" ]] && [[ -f "$CADDYFILE_PATH" ]]; then
-    log_info "Removing from Caddy configuration..."
+# =============================================================================
+
+# Get bridge root from env or use default
+BRIDGE_ROOT="${BRIDGE_ROOT:-/root/webalive/claude-bridge}"
+SERVER_CONFIG="/var/lib/claude-bridge/server-config.json"
+
+if [[ -f "$SERVER_CONFIG" ]]; then
+    # =========================================================================
+    # Generator mode: Regenerate Caddyfile from database
+    # =========================================================================
+    # The domain should already be deleted from DB before this script runs.
+    # Regenerating will produce a Caddyfile without the deleted domain.
+    log_info "Using generator mode for Caddy configuration..."
+
+    cd "$BRIDGE_ROOT"
+    if bun run --cwd packages/site-controller routing:generate; then
+        log_info "Validating Caddy configuration..."
+        if caddy validate --config /etc/caddy/Caddyfile 2>/dev/null; then
+            log_info "Reloading Caddy..."
+            systemctl reload caddy || log_warn "Failed to reload Caddy"
+            log_success "Caddy configuration regenerated"
+        else
+            log_warn "Caddy configuration validation failed"
+        fi
+    else
+        log_warn "Failed to regenerate Caddy configuration"
+    fi
+
+elif [[ -n "${CADDYFILE_PATH:-}" ]] && [[ -f "$CADDYFILE_PATH" ]]; then
+    # =========================================================================
+    # Legacy mode: Direct Caddyfile editing
+    # =========================================================================
+    log_info "Using legacy mode for Caddy configuration..."
 
     # Acquire lock
     CADDY_LOCK_PATH=${CADDY_LOCK_PATH:-/tmp/caddyfile.lock}
@@ -40,9 +75,10 @@ if [[ -n "${CADDYFILE_PATH:-}" ]] && [[ -f "$CADDYFILE_PATH" ]]; then
     # Escape dots in domain for regex matching
     ESCAPED_DOMAIN=$(echo "$SITE_DOMAIN" | sed 's/\./\\./g')
 
-    # Generate preview subdomain (e.g., windowsxp.alive.best -> windowsxp-alive-best.preview.terminal.goalive.nl)
+    # Generate preview subdomain
     PREVIEW_LABEL=$(echo "$SITE_DOMAIN" | tr '.' '-')
-    PREVIEW_DOMAIN="${PREVIEW_LABEL}.preview.terminal.goalive.nl"
+    PREVIEW_BASE="${PREVIEW_BASE:-preview.terminal.goalive.nl}"
+    PREVIEW_DOMAIN="${PREVIEW_LABEL}.${PREVIEW_BASE}"
     ESCAPED_PREVIEW=$(echo "$PREVIEW_DOMAIN" | sed 's/\./\\./g')
 
     CADDY_CHANGED=false
@@ -76,13 +112,19 @@ if [[ -n "${CADDYFILE_PATH:-}" ]] && [[ -f "$CADDYFILE_PATH" ]]; then
     flock -u 200
 fi
 
+# =============================================================================
 # Remove environment file
+# =============================================================================
+
 if [[ -n "${ENV_FILE_PATH:-}" ]] && [[ -f "$ENV_FILE_PATH" ]]; then
     log_info "Removing environment file: $ENV_FILE_PATH"
     rm -f "$ENV_FILE_PATH"
 fi
 
+# =============================================================================
 # Remove port from registry (if requested)
+# =============================================================================
+
 if [[ "$REMOVE_PORT" == "true" ]]; then
     if [[ -n "${REGISTRY_PATH:-}" ]] && [[ -f "$REGISTRY_PATH" ]]; then
         log_info "Removing port assignment from registry..."
@@ -95,7 +137,10 @@ else
     log_info "Keeping port assignment in registry (REMOVE_PORT=false)"
 fi
 
+# =============================================================================
 # Remove user if requested
+# =============================================================================
+
 if [[ "$REMOVE_USER" == "true" ]]; then
     SITE_USER="site-${SITE_SLUG}"
     if user_exists "$SITE_USER"; then
@@ -105,9 +150,15 @@ if [[ "$REMOVE_USER" == "true" ]]; then
     fi
 fi
 
+# =============================================================================
 # Remove files if requested
+# =============================================================================
+
 if [[ "$REMOVE_FILES" == "true" ]]; then
-    TARGET_DIR="/srv/webalive/sites/${SITE_DOMAIN}"
+    # Get sites root from env or use default
+    SITES_ROOT="${SITES_ROOT:-/srv/webalive/sites}"
+    TARGET_DIR="${SITES_ROOT}/${SITE_DOMAIN}"
+
     if [[ -d "$TARGET_DIR" ]]; then
         log_info "Removing files: $TARGET_DIR"
         rm -rf "$TARGET_DIR"
@@ -115,7 +166,7 @@ if [[ "$REMOVE_FILES" == "true" ]]; then
     fi
 
     # Remove symlink
-    SYMLINK_PATH="/srv/webalive/sites/$(echo "$SITE_DOMAIN" | tr '.' '-')"
+    SYMLINK_PATH="${SITES_ROOT}/$(echo "$SITE_DOMAIN" | tr '.' '-')"
     if [[ -L "$SYMLINK_PATH" ]]; then
         rm -f "$SYMLINK_PATH"
     fi

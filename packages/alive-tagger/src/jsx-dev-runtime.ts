@@ -12,7 +12,6 @@
  */
 
 import type * as React from "react"
-// @ts-expect-error - React 19 jsx-dev-runtime types may not be available in all TS versions
 import * as ReactJSXDevRuntime from "react/jsx-dev-runtime"
 
 // Original jsxDEV from React

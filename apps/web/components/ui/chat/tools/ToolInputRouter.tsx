@@ -4,6 +4,7 @@ import { GlobInput } from "@/components/ui/chat/tools/glob/GlobInput"
 import { GrepInput } from "@/components/ui/chat/tools/grep/GrepInput"
 import { ReadInput } from "@/components/ui/chat/tools/read/ReadInput"
 import { TaskInput } from "@/components/ui/chat/tools/task/TaskInput"
+import { WebFetchInput } from "@/components/ui/chat/tools/webfetch/WebFetchInput"
 import { WriteInput } from "@/components/ui/chat/tools/write/WriteInput"
 
 interface ToolInputRouterProps {
@@ -56,6 +57,12 @@ export function ToolInputRouter({ toolName, input }: ToolInputRouterProps) {
     case "task":
       if (input.description && input.prompt && input.subagent_type) {
         return <TaskInput {...input} />
+      }
+      break
+
+    case "webfetch":
+      if (input.url && input.prompt) {
+        return <WebFetchInput {...input} />
       }
       break
 

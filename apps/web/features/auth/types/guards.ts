@@ -4,6 +4,9 @@ import { DEFAULTS, DOMAINS } from "@webalive/shared"
 
 /**
  * Authentication and CORS guards
+ *
+ * SERVER-AGNOSTIC: CORS is permissive for any HTTPS origin when credentials
+ * are required. Security is enforced via session cookies, not CORS origin checks.
  */
 
 /**
@@ -60,10 +63,35 @@ export function isOriginAliveBestDomain(origin: string): boolean {
 }
 
 /**
- * Check if an origin is allowed (file check + fallback pattern check)
+ * Check if an origin is a valid HTTPS origin (server-agnostic mode)
+ * Allows any HTTPS origin - security is enforced via session cookies
+ */
+export function isValidHttpsOrigin(origin: string): boolean {
+  return origin.startsWith("https://")
+}
+
+/**
+ * Check if an origin is localhost (development)
+ */
+export function isLocalhostOrigin(origin: string): boolean {
+  return origin.startsWith("http://localhost") || origin.startsWith("http://127.0.0.1")
+}
+
+/**
+ * Check if an origin is allowed
+ *
+ * SERVER-AGNOSTIC: Allows any HTTPS origin or localhost.
+ * Security is enforced via httpOnly session cookies with sameSite=lax,
+ * not via CORS origin restrictions.
  */
 export function isOriginAllowed(origin: string): boolean {
-  return isOriginInAllowedDomains(origin) || isOriginGoaliveNLDomain(origin) || isOriginAliveBestDomain(origin)
+  return (
+    isOriginInAllowedDomains(origin) ||
+    isOriginGoaliveNLDomain(origin) ||
+    isOriginAliveBestDomain(origin) ||
+    isValidHttpsOrigin(origin) ||
+    isLocalhostOrigin(origin)
+  )
 }
 
 /**

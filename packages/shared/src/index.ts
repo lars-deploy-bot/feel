@@ -55,6 +55,7 @@ export {
   getSiteUser,
   getSiteHome,
   getEnvFilePath,
+  getServerId,
 } from "./config.js"
 export {
   environments,

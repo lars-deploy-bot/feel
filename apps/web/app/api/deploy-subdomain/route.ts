@@ -16,6 +16,7 @@ import { incrementTemplateDeployCount } from "@/lib/deployment/template-stats"
 import { validateTemplateFromDb } from "@/lib/deployment/template-validation"
 import { getUserQuota, getUserQuotaByEmail } from "@/lib/deployment/user-quotas"
 import { ErrorCodes } from "@/lib/error-codes"
+import { errorLogger } from "@/lib/error-logger"
 import { siteMetadataStore } from "@/lib/siteMetadataStore"
 import { loadDomainPasswords } from "@/types/guards/api"
 
@@ -210,10 +211,17 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Validate SSL certificate (skip in test mode for speed)
+    // Fire-and-forget SSL check - deployment already succeeded, this is just logging
+    // Cloudflare domains can take 30-60s for edge cert provisioning, don't block on it
     if (process.env.SKIP_SSL_VALIDATION !== "true") {
-      await validateSSLCertificate(fullDomain)
-      // Still continue if validation fails - deployment succeeded, cert might just be slow
+      validateSSLCertificate(fullDomain).catch(err => {
+        errorLogger.capture({
+          category: "deployment",
+          source: "backend",
+          message: `SSL check failed for ${fullDomain} (non-blocking)`,
+          details: { domain: fullDomain, error: err instanceof Error ? err.message : String(err) },
+        })
+      })
     }
 
     const response: DeploySubdomainResponse = {

@@ -6,8 +6,8 @@
  * This file contains ALL hardcoded infrastructure constants used throughout
  * the WebAlive platform. Always import from this file - never hardcode values.
  *
- * IMPORTANT: This package is browser-safe and contains NO Node.js dependencies.
- * It can be safely imported in both client and server code.
+ * SERVER-AGNOSTIC: Values are loaded from /var/lib/claude-bridge/server-config.json
+ * when running on a server. Falls back to defaults for local dev and browser.
  *
  * Organization:
  * - PATHS: Filesystem paths
@@ -18,33 +18,118 @@
  * - SECURITY: Security-related constants
  */
 
+// =============================================================================
+// Server Config Loading (server-side only)
+// =============================================================================
+
+interface ServerConfigFile {
+  serverId?: string
+  paths?: {
+    bridgeRoot?: string
+    sitesRoot?: string
+    imagesStorage?: string
+  }
+  domains?: {
+    main?: string
+    wildcard?: string
+    previewBase?: string
+    cookieDomain?: string
+    frameAncestors?: string[]
+  }
+  serverIp?: string
+}
+
+// Check if we're in a browser environment
+const isBrowser = typeof globalThis !== "undefined" && "window" in globalThis
+
 /**
- * Path constants
+ * Attempt to load server-config.json (server-side only)
+ * Returns empty object in browser or if file doesn't exist
  */
+function loadServerConfig(): ServerConfigFile {
+  // Skip in browser environment
+  if (isBrowser) {
+    return {}
+  }
+
+  // Skip if process.env indicates we should use defaults
+  if (typeof process !== "undefined" && process.env?.SKIP_SERVER_CONFIG === "true") {
+    return {}
+  }
+
+  try {
+    // Dynamic require to avoid bundler issues
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require("node:fs")
+    const configPath = "/var/lib/claude-bridge/server-config.json"
+
+    if (!fs.existsSync(configPath)) {
+      return {}
+    }
+
+    const raw = fs.readFileSync(configPath, "utf8")
+    return JSON.parse(raw) as ServerConfigFile
+  } catch {
+    // File doesn't exist or can't be read - use defaults
+    return {}
+  }
+}
+
+// Load server config once at module initialization
+const serverConfig = loadServerConfig()
+
+// Helper to get value from server config or use default
+function cfg<T>(serverValue: T | undefined, defaultValue: T): T {
+  return serverValue !== undefined ? serverValue : defaultValue
+}
+
+// =============================================================================
+// Derived values from server config
+// =============================================================================
+
+const BRIDGE_ROOT = cfg(serverConfig.paths?.bridgeRoot, "/root/webalive/claude-bridge")
+const SITES_ROOT = cfg(serverConfig.paths?.sitesRoot, "/srv/webalive/sites")
+const IMAGES_STORAGE = cfg(serverConfig.paths?.imagesStorage, "/srv/webalive/storage")
+const MAIN_DOMAIN = cfg(serverConfig.domains?.main, "goalive.nl")
+const WILDCARD_DOMAIN = cfg(serverConfig.domains?.wildcard, "alive.best")
+const PREVIEW_BASE = cfg(serverConfig.domains?.previewBase, "preview.terminal.goalive.nl")
+const COOKIE_DOMAIN = cfg(serverConfig.domains?.cookieDomain, ".terminal.goalive.nl")
+const SERVER_IP = cfg(serverConfig.serverIp, "138.201.56.93")
+
+// =============================================================================
+// Path Constants
+// =============================================================================
+
 export const PATHS = {
   /** Root directory for webalive project */
   WEBALIVE_ROOT: "/root/webalive",
 
   /** Claude Bridge root directory */
-  BRIDGE_ROOT: "/root/webalive/claude-bridge",
+  BRIDGE_ROOT,
 
   /** Site directory (systemd-managed) */
-  SITES_ROOT: "/srv/webalive/sites",
+  SITES_ROOT,
 
   /** Template directory for new sites */
-  TEMPLATE_PATH: "/root/webalive/claude-bridge/templates/site-template",
+  TEMPLATE_PATH: `${BRIDGE_ROOT}/templates/site-template`,
 
   /** Site controller deployment scripts directory */
-  SCRIPTS_DIR: "/root/webalive/claude-bridge/packages/site-controller/scripts",
+  SCRIPTS_DIR: `${BRIDGE_ROOT}/packages/site-controller/scripts`,
 
   /** Domain password registry */
   REGISTRY_PATH: "/var/lib/claude-bridge/domain-passwords.json",
 
-  /** Server config (contains server IP, etc.) */
+  /** Server config (contains server identity and paths) */
   SERVER_CONFIG: "/var/lib/claude-bridge/server-config.json",
 
-  /** Caddyfile location for reverse proxy configuration */
-  CADDYFILE_PATH: "/root/webalive/claude-bridge/ops/caddy/Caddyfile",
+  /** Generated routing files directory */
+  GENERATED_DIR: "/var/lib/claude-bridge/generated",
+
+  /** Caddyfile location for reverse proxy configuration (legacy - now generated) */
+  CADDYFILE_PATH: `${BRIDGE_ROOT}/ops/caddy/Caddyfile`,
+
+  /** Generated Caddyfile for sites */
+  CADDYFILE_SITES: "/var/lib/claude-bridge/generated/Caddyfile.sites",
 
   /** Systemd service environment files */
   SYSTEMD_ENV_DIR: "/etc/sites",
@@ -53,62 +138,64 @@ export const PATHS = {
   CADDY_LOCK: "/tmp/caddyfile.lock",
 
   /** Image storage base path */
-  IMAGES_STORAGE: "/srv/webalive/storage",
+  IMAGES_STORAGE,
 
   /** Site backup repository */
   BACKUP_REPO: "/srv/webalive",
 } as const
 
-/**
- * Domain and URL constants
- */
+// =============================================================================
+// Domain Constants
+// =============================================================================
+
 export const DOMAINS = {
   /** Wildcard domain for automatic subdomain deployment */
-  WILDCARD: "alive.best",
+  WILDCARD: WILDCARD_DOMAIN,
 
   /** Main platform domain */
-  MAIN: "goalive.nl",
+  MAIN: MAIN_DOMAIN,
 
   /** Main domain suffix for CORS/origin checks */
-  MAIN_SUFFIX: ".goalive.nl",
+  MAIN_SUFFIX: `.${MAIN_DOMAIN}`,
 
   /** Production bridge URL */
-  BRIDGE_PROD: "https://terminal.goalive.nl",
+  BRIDGE_PROD: `https://terminal.${MAIN_DOMAIN}`,
 
   /** Production bridge hostname */
-  BRIDGE_PROD_HOST: "terminal.goalive.nl",
+  BRIDGE_PROD_HOST: `terminal.${MAIN_DOMAIN}`,
 
   /** Development bridge URL */
-  BRIDGE_DEV: "https://dev.terminal.goalive.nl",
+  BRIDGE_DEV: `https://dev.terminal.${MAIN_DOMAIN}`,
 
   /** Development bridge hostname */
-  BRIDGE_DEV_HOST: "dev.terminal.goalive.nl",
+  BRIDGE_DEV_HOST: `dev.terminal.${MAIN_DOMAIN}`,
 
   /** Staging bridge URL */
-  BRIDGE_STAGING: "https://staging.terminal.goalive.nl",
+  BRIDGE_STAGING: `https://staging.terminal.${MAIN_DOMAIN}`,
 
   /** Staging bridge hostname */
-  BRIDGE_STAGING_HOST: "staging.terminal.goalive.nl",
+  BRIDGE_STAGING_HOST: `staging.terminal.${MAIN_DOMAIN}`,
 
   /** Staging domain suffix */
-  STAGING_SUFFIX: ".staging.goalive.nl",
+  STAGING_SUFFIX: `.staging.${MAIN_DOMAIN}`,
 
   /** Dev domain suffix */
-  DEV_SUFFIX: ".dev.goalive.nl",
+  DEV_SUFFIX: `.dev.${MAIN_DOMAIN}`,
 
   /** Preview subdomain base (e.g., windowsxp-alive-best.preview.terminal.goalive.nl) */
-  PREVIEW_BASE: "preview.terminal.goalive.nl",
+  PREVIEW_BASE,
 
   /** Authentication forward endpoint for previews */
-  PREVIEW_AUTH: "https://dev.terminal.goalive.nl/api/auth/preview-guard",
+  PREVIEW_AUTH: `https://dev.terminal.${MAIN_DOMAIN}/api/auth/preview-guard`,
 
-  /** Cookie domain for cross-subdomain sharing (leading dot allows *.terminal.goalive.nl) */
-  COOKIE_DOMAIN: ".terminal.goalive.nl",
+  /** Cookie domain for cross-subdomain sharing (leading dot allows *.terminal.DOMAIN) */
+  COOKIE_DOMAIN,
 } as const
 
-/**
- * Port configuration
- */
+// =============================================================================
+// Port Configuration
+// =============================================================================
+
 export const PORTS = {
   /** Port range for site deployments */
   SITE_RANGE: {
@@ -126,9 +213,10 @@ export const PORTS = {
   STAGING: 8998,
 } as const
 
-/**
- * Timeout and timing constants (all in milliseconds unless specified)
- */
+// =============================================================================
+// Timeout Configuration
+// =============================================================================
+
 export const TIMEOUTS = {
   /** Service startup wait time */
   SERVICE_WAIT: 3000,
@@ -153,15 +241,16 @@ export const TIMEOUTS = {
   FLOCK: 30,
 } as const
 
-/**
- * Default configuration values
- */
+// =============================================================================
+// Default Values
+// =============================================================================
+
 export const DEFAULTS = {
   /** Server IP for DNS validation */
-  SERVER_IP: "138.201.56.93",
+  SERVER_IP,
 
   /** Wildcard domain (alias for DOMAINS.WILDCARD for backward compatibility) */
-  WILDCARD_DOMAIN: "alive.best",
+  WILDCARD_DOMAIN,
 
   /** Port range (alias for PORTS.SITE_RANGE for backward compatibility) */
   PORT_RANGE: {
@@ -194,7 +283,7 @@ export const DEFAULTS = {
   CLAUDE_MAX_TURNS: 50,
 
   /** Default fallback origin for CORS */
-  FALLBACK_ORIGIN: "https://terminal.goalive.nl",
+  FALLBACK_ORIGIN: `https://terminal.${MAIN_DOMAIN}`,
 
   /** Template ID prefix - all template IDs must start with this */
   TEMPLATE_ID_PREFIX: "tmpl_",
@@ -203,10 +292,10 @@ export const DEFAULTS = {
   DEFAULT_TEMPLATE_ID: "tmpl_blank",
 } as const
 
-/**
- * Superadmin configuration
- * Superadmins can edit the Claude Bridge repository itself
- */
+// =============================================================================
+// Superadmin Configuration
+// =============================================================================
+
 export const SUPERADMIN = {
   /** Emails with superadmin access (can edit Bridge itself) */
   EMAILS: ["eedenlars@gmail.com"] as readonly string[],
@@ -215,25 +304,42 @@ export const SUPERADMIN = {
   WORKSPACE_NAME: "claude-bridge",
 
   /** Path to Bridge repository */
-  WORKSPACE_PATH: "/root/webalive/claude-bridge",
+  WORKSPACE_PATH: BRIDGE_ROOT,
 } as const
 
-/**
- * Security constants
- */
-export const SECURITY = {
-  /** Allowed workspace base directories */
-  ALLOWED_WORKSPACE_BASES: ["/srv/webalive/sites", "/root/webalive/sites"] as readonly string[],
+// =============================================================================
+// Security Configuration
+// =============================================================================
 
-  /** CORS allowed origins */
-  CORS_ORIGINS: [
+// Build CORS origins from configured domains
+const buildCorsOrigins = (): readonly string[] => {
+  const origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "https://terminal.goalive.nl",
-    "https://dev.terminal.goalive.nl",
-    "https://staging.terminal.goalive.nl",
-    "https://app.alive.best",
-  ] as readonly string[],
+    `https://terminal.${MAIN_DOMAIN}`,
+    `https://dev.terminal.${MAIN_DOMAIN}`,
+    `https://staging.terminal.${MAIN_DOMAIN}`,
+    `https://app.${WILDCARD_DOMAIN}`,
+  ]
+
+  // Add frame ancestors from server config if present
+  if (serverConfig.domains?.frameAncestors) {
+    for (const ancestor of serverConfig.domains.frameAncestors) {
+      if (!origins.includes(ancestor)) {
+        origins.push(ancestor)
+      }
+    }
+  }
+
+  return origins
+}
+
+export const SECURITY = {
+  /** Allowed workspace base directories */
+  ALLOWED_WORKSPACE_BASES: [SITES_ROOT, "/root/webalive/sites"] as readonly string[],
+
+  /** CORS allowed origins */
+  CORS_ORIGINS: buildCorsOrigins(),
 
   /** Environment-specific test credentials */
   LOCAL_TEST: {
@@ -244,10 +350,10 @@ export const SECURITY = {
   },
 } as const
 
-/**
- * Bridge environment values
- * Must match the zod enum in @webalive/env schema
- */
+// =============================================================================
+// Bridge Environment
+// =============================================================================
+
 export const BRIDGE_ENV = {
   LOCAL: "local",
   DEV: "dev",
@@ -256,6 +362,10 @@ export const BRIDGE_ENV = {
 } as const
 
 export type BridgeEnv = (typeof BRIDGE_ENV)[keyof typeof BRIDGE_ENV]
+
+// =============================================================================
+// Helper Functions
+// =============================================================================
 
 /**
  * Generate systemd service name from slug
@@ -283,4 +393,12 @@ export function getSiteHome(domain: string): string {
  */
 export function getEnvFilePath(slug: string): string {
   return `${PATHS.SYSTEMD_ENV_DIR}/${slug}.env`
+}
+
+/**
+ * Get the current server ID (from server-config.json)
+ * Returns undefined if not configured
+ */
+export function getServerId(): string | undefined {
+  return serverConfig.serverId
 }

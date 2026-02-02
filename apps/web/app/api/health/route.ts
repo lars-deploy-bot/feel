@@ -16,10 +16,37 @@
  * }
  */
 
+import { readFileSync, existsSync } from "node:fs"
+import { join } from "node:path"
 import { createRedisClient } from "@alive-brug/redis"
-import { createClient } from "@supabase/supabase-js"
 import { getRedisUrl } from "@webalive/env/server"
 import { getSupabaseCredentials } from "@/lib/env/server"
+
+// Read build info at startup (file is generated at build time)
+function getBuildInfo(): { commit: string; branch: string; buildTime: string } {
+  // Try multiple paths since location varies between dev and production
+  const possiblePaths = [
+    join(process.cwd(), "lib/build-info.json"),
+    join(process.cwd(), "apps/web/lib/build-info.json"),
+    "/root/alive/.builds/staging/current/standalone/apps/web/lib/build-info.json",
+    "/root/alive/apps/web/lib/build-info.json",
+  ]
+
+  for (const buildInfoPath of possiblePaths) {
+    try {
+      if (existsSync(buildInfoPath)) {
+        const content = readFileSync(buildInfoPath, "utf-8")
+        return JSON.parse(content)
+      }
+    } catch {
+      // Continue to next path
+    }
+  }
+
+  return { commit: "not-found", branch: "unknown", buildTime: "unknown" }
+}
+
+const buildInfo = getBuildInfo()
 
 // Types
 type ServiceStatus = "connected" | "disconnected" | "error"
@@ -34,6 +61,10 @@ interface ServiceHealth {
 
 interface HealthResponse {
   status: OverallStatus
+  build: {
+    commit: string
+    time: string
+  }
   services: {
     redis: ServiceHealth
     database: ServiceHealth
@@ -103,30 +134,47 @@ async function checkRedis(): Promise<ServiceHealth> {
 
 /**
  * Check Supabase/PostgreSQL connectivity
+ * Queries iam.users table to verify database connection
  */
 async function checkDatabase(): Promise<ServiceHealth> {
   const start = performance.now()
   try {
     const { url, key } = getSupabaseCredentials("service")
-    const supabase = createClient(url, key, {
-      db: { schema: "iam" },
-    })
 
-    // Simple query to verify connection - count users (fast operation)
-    const { error } = await supabase.from("users").select("id", { count: "exact", head: true })
+    // Query iam.users via PostgREST with schema header
+    // Supabase requires the schema to be exposed in API settings,
+    // or we use the Accept-Profile header for custom schemas
+    const response = await fetch(`${url}/rest/v1/users?select=user_id&limit=1`, {
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        "Accept-Profile": "iam", // Request from iam schema
+      },
+    })
     const responseTimeMs = Math.round(performance.now() - start)
 
-    if (error) {
+    if (response.ok) {
       return {
-        status: "error",
+        status: "connected",
         responseTimeMs,
-        error: error.message,
+        details: { schema: "iam", table: "users" },
       }
     }
 
+    // Parse error response
+    const errorBody = await response.text()
+    let errorMsg = `HTTP ${response.status}`
+    try {
+      const parsed = JSON.parse(errorBody)
+      errorMsg = parsed.message || parsed.error || parsed.hint || errorMsg
+    } catch {
+      if (errorBody) errorMsg = errorBody.slice(0, 200)
+    }
+
     return {
-      status: "connected",
+      status: "error",
       responseTimeMs,
+      error: errorMsg,
     }
   } catch (error) {
     const responseTimeMs = Math.round(performance.now() - start)
@@ -180,6 +228,10 @@ export async function GET() {
 
   const response: HealthResponse = {
     status,
+    build: {
+      commit: buildInfo.commit,
+      time: buildInfo.buildTime,
+    },
     services: {
       redis,
       database,

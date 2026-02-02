@@ -31,6 +31,11 @@ vi.mock("@/types/guards/api", () => ({
   verifyPassword: vi.fn(),
 }))
 
+// Mock domain filtering (bypasses file system check)
+vi.mock("@/lib/domains", () => ({
+  filterLocalDomains: vi.fn((hostnames: string[]) => hostnames),
+}))
+
 // Import after mocking
 const { POST } = await import("../route")
 const { createIamClient } = await import("@/lib/supabase/iam")
