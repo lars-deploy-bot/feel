@@ -221,9 +221,6 @@ function determineOverallStatus(redis: ServiceHealth, database: ServiceHealth): 
 export async function GET() {
   const start = performance.now()
 
-  // Debug: log build info
-  console.log("[Health] Build info:", JSON.stringify(buildInfo))
-
   // Check all services in parallel
   const [redis, database] = await Promise.all([checkRedis(), checkDatabase()])
 
