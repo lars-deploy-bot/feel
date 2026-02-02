@@ -11,6 +11,7 @@ import { StripeResourcesOutput } from "@/components/ui/chat/tools/stripe/StripeR
 import { StripeSearchOutput } from "@/components/ui/chat/tools/stripe/StripeSearchOutput"
 import { StripeSubscriptionsOutput } from "@/components/ui/chat/tools/stripe/StripeSubscriptionsOutput"
 import { TaskOutput } from "@/components/ui/chat/tools/task/TaskOutput"
+import { WebFetchOutput } from "@/components/ui/chat/tools/webfetch/WebFetchOutput"
 import { WriteOutput } from "@/components/ui/chat/tools/write/WriteOutput"
 import { getToolRenderer, transformToolData, validateToolData } from "@/lib/tools/tool-registry"
 // Register all tools (display, renderers, previews)
@@ -213,6 +214,18 @@ export function ToolOutputRouter({ toolName, content, toolInput, onSubmitAnswer 
         return <TaskOutput {...content} />
       }
       break
+
+    case "webfetch": {
+      // WebFetch returns a string response, toolInput has url/prompt
+      const url = (toolInput as Record<string, unknown>)?.url as string | undefined
+      if (typeof content === "string" || content.content) {
+        return <WebFetchOutput content={typeof content === "string" ? content : content.content} url={url} />
+      }
+      if (content.error) {
+        return <WebFetchOutput error={content.error} url={url} />
+      }
+      break
+    }
 
     case "mcp__stripe__list_subscriptions": {
       const subscriptions = unwrapMcp(content)

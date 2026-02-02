@@ -53,6 +53,16 @@ function getToolLabel(tool: PendingTool): string {
     return String(input.description)
   }
 
+  if (name === "webfetch" && input?.url) {
+    try {
+      const url = new URL(String(input.url))
+      return `fetching: ${url.hostname}`
+    } catch {
+      const urlStr = String(input.url)
+      return `fetching: ${urlStr.length > 30 ? `${urlStr.slice(0, 30)}...` : urlStr}`
+    }
+  }
+
   return tool.toolName
 }
 

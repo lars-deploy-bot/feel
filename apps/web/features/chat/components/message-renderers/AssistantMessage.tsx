@@ -107,6 +107,8 @@ function ToolUseItem({ item }: { item: ContentItem }): React.ReactNode {
           return "running"
         case "task":
           return "delegating"
+        case "webfetch":
+          return "fetching"
         default:
           return toolName.toLowerCase()
       }
@@ -118,6 +120,16 @@ function ToolUseItem({ item }: { item: ContentItem }): React.ReactNode {
         const filePath = input.file_path as string
         if (filePath) {
           return filePath.split("/").pop() || filePath
+        }
+      }
+      if (name === "webfetch") {
+        const url = input.url as string
+        if (url) {
+          try {
+            return new URL(url).hostname.replace(/^www\./, "")
+          } catch {
+            return url.length > 30 ? `${url.slice(0, 30)}...` : url
+          }
         }
       }
       return null

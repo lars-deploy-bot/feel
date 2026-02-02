@@ -1,4 +1,5 @@
 import { retryAsync } from "@webalive/shared"
+import { errorLogger } from "@/lib/error-logger"
 
 interface NodeError extends Error {
   code?: string
@@ -42,7 +43,7 @@ export async function validateSSLCertificate(domain: string): Promise<SSLValidat
         // Use GET to verify the site actually returns content, not just HEAD
         const response = await fetch(`https://${domain}`, {
           method: "GET",
-          signal: AbortSignal.timeout(10000),
+          signal: AbortSignal.timeout(5000),
         })
 
         // Only consider 200-299 as success (site is serving content)
@@ -55,16 +56,14 @@ export async function validateSSLCertificate(domain: string): Promise<SSLValidat
         console.log(`[SSL CHECK] Site ready for ${domain} (status: ${response.status}, content-type: ${contentType})`)
       },
       {
-        attempts: 12,
-        minDelayMs: 5000,
-        maxDelayMs: 10000,
+        // Fast check: 3 attempts × 2s = max 6-9s total (was 12 × 5-10s = 60-120s)
+        // Cloudflare domains have unpredictable SSL provisioning, don't block on it
+        attempts: 3,
+        minDelayMs: 2000,
+        maxDelayMs: 3000,
         jitter: 0.1,
         shouldRetry: isExpectedStartupError,
-        onRetry: ({ attempt, maxAttempts, delayMs, err }) => {
-          const errorMessage = err instanceof Error ? err.message : String(err)
-          console.log(`[SSL CHECK] Attempt ${attempt}/${maxAttempts} failed for ${domain}: ${errorMessage}`)
-          console.log(`[SSL CHECK] Waiting ${Math.round(delayMs / 1000)}s before next attempt...`)
-        },
+        // No onRetry logging - it's fire-and-forget, caller handles errors
       },
     )
 
@@ -73,7 +72,13 @@ export async function validateSSLCertificate(domain: string): Promise<SSLValidat
     const errorMessage = error instanceof Error ? error.message : String(error)
 
     if (!isExpectedStartupError(error)) {
-      console.error(`[SSL CHECK] Unexpected error for ${domain}:`, error)
+      errorLogger.capture({
+        category: "ssl-validation",
+        source: "backend",
+        message: `Unexpected SSL error for ${domain}`,
+        details: { domain, error: errorMessage },
+        stack: error instanceof Error ? error.stack : undefined,
+      })
     }
 
     return {

@@ -164,33 +164,39 @@ EOF
 fi
 
 # =============================================================================
-# SSL Certificate Check (both modes)
+# Local Service Health Check (fast, reliable)
 # =============================================================================
+# We check localhost:port instead of the public URL because:
+# 1. Cloudflare-proxied domains have unpredictable SSL provisioning times
+# 2. DNS propagation is outside our control
+# 3. The local service is what we actually deployed
 
-log_info "Waiting for SSL certificates to be provisioned..."
-
-check_https_ready() {
-    local domain="$1"
-    local max_attempts=15
+check_local_service() {
+    local port="$1"
+    local max_attempts=5
     local attempt=1
 
     while [ $attempt -le $max_attempts ]; do
-        if curl -f -s -o /dev/null -w "%{http_code}" --max-time 5 "https://$domain/" 2>/dev/null | grep -q "^[23]"; then
+        if curl -f -s -o /dev/null --max-time 2 "http://localhost:$port/" 2>/dev/null; then
             return 0
         fi
-        log_info "  Attempt $attempt/$max_attempts - waiting for SSL cert..."
-        sleep 2
+        log_info "  Attempt $attempt/$max_attempts - waiting for service on port $port..."
+        sleep 1
         attempt=$((attempt + 1))
     done
     return 1
 }
 
-# Check main domain
-log_info "Checking main domain: https://$SITE_DOMAIN"
-if check_https_ready "$SITE_DOMAIN"; then
-    log_success "Main domain SSL ready"
+# Get port from environment or skip check
+if [[ -n "${SITE_PORT:-}" ]]; then
+    log_info "Checking local service on port $SITE_PORT"
+    if check_local_service "$SITE_PORT"; then
+        log_success "Local service responding on port $SITE_PORT"
+    else
+        log_warn "Local service not responding (systemd may still be starting)"
+    fi
 else
-    log_warn "Main domain not yet accessible (DNS may not be configured)"
+    log_info "Skipping local health check (SITE_PORT not set in generator mode)"
 fi
 
 log_success "Caddy configuration complete"

@@ -13,6 +13,7 @@ import {
   Boxes,
   ChevronDown,
   CreditCard,
+  Globe,
   Layout,
   LayoutList,
   Loader2,
@@ -51,6 +52,7 @@ import { GlobOutputPreview } from "./previews/tools/GlobOutputPreview"
 import { GrepOutputPreview } from "./previews/tools/GrepOutputPreview"
 // Tool Outputs
 import { ReadOutputPreview } from "./previews/tools/ReadOutputPreview"
+import { WebFetchPreview } from "./previews/tools/WebFetchPreview"
 import { WriteOutputPreview } from "./previews/tools/WriteOutputPreview"
 import { WebsiteConfigPreview } from "./previews/WebsiteConfigPreview"
 
@@ -92,6 +94,7 @@ const CATEGORIES = {
       glob: { id: "glob", name: "Glob Output", component: GlobOutputPreview },
       grep: { id: "grep", name: "Grep Output", component: GrepOutputPreview },
       bash: { id: "bash", name: "Bash Output", component: BashOutputPreview },
+      webfetch: { id: "webfetch", name: "WebFetch", component: WebFetchPreview },
     },
   },
   ai: {
