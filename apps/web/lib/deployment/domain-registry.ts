@@ -271,7 +271,6 @@ async function validateProvidedOrgId(orgId: string): Promise<void> {
  */
 async function createDomainEntry(hostname: string, port: number, orgId: string): Promise<void> {
   // Get server ID for multi-server isolation
-  const { getServerId } = await import("@webalive/shared/config")
   const serverId = getServerId()
   if (!serverId) {
     throw new DomainRegistrationError(

@@ -41,7 +41,7 @@
     "gen:systemd": "bun packages/site-controller/src/infra/generate-systemd.ts",
     "gen:routing": "bun packages/site-controller/src/infra/generate-routing.ts",
     "gen:all": "bun run gen:systemd && bun run gen:routing",
-    "deploy-site": "bun scripts/test-deployment.ts",
+    "deploy-site": "bun scripts/deploy-site.ts",
     "setup-webhook": "./scripts/maintenance/setup-webhook.sh",
     "update-cors": "./scripts/maintenance/update-cors-domains.sh",
     "widget": "cd apps/widget-server && ./build.sh && go run main.go",
