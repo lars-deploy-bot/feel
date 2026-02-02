@@ -19,6 +19,7 @@
 import { createRedisClient } from "@alive-brug/redis"
 import { getRedisUrl } from "@webalive/env/server"
 import { getSupabaseCredentials } from "@/lib/env/server"
+import buildInfo from "@/lib/build-info.json"
 
 // Types
 type ServiceStatus = "connected" | "disconnected" | "error"
@@ -33,6 +34,10 @@ interface ServiceHealth {
 
 interface HealthResponse {
   status: OverallStatus
+  build: {
+    commit: string
+    time: string
+  }
   services: {
     redis: ServiceHealth
     database: ServiceHealth
@@ -196,6 +201,10 @@ export async function GET() {
 
   const response: HealthResponse = {
     status,
+    build: {
+      commit: buildInfo.commit,
+      time: buildInfo.buildTime,
+    },
     services: {
       redis,
       database,
