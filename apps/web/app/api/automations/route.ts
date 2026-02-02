@@ -10,6 +10,7 @@ import { getSessionUser } from "@/features/auth/lib/auth"
 import { getSupabaseCredentials } from "@/lib/env/server"
 import { ErrorCodes } from "@/lib/error-codes"
 import { structuredErrorResponse } from "@/lib/api/responses"
+import { computeNextRunAtMs } from "@webalive/automation"
 
 type AutomationJob = {
   id: string
@@ -166,6 +167,17 @@ export async function POST(req: NextRequest) {
       return structuredErrorResponse(ErrorCodes.SITE_NOT_FOUND, { status: 404 })
     }
 
+    // Compute next_run_at based on schedule
+    let nextRunAt: string | null = null
+    if (body.trigger_type === "cron" && body.cron_schedule) {
+      const nextMs = computeNextRunAtMs({ kind: "cron", expr: body.cron_schedule, tz: body.cron_timezone }, Date.now())
+      if (nextMs) {
+        nextRunAt = new Date(nextMs).toISOString()
+      }
+    } else if (body.trigger_type === "one-time" && body.run_at) {
+      nextRunAt = body.run_at
+    }
+
     const { data, error } = await supabase
       .from("automation_jobs")
       .insert({
@@ -183,6 +195,7 @@ export async function POST(req: NextRequest) {
         action_source: body.action_source,
         action_target_page: body.action_target_page,
         is_active: body.is_active ?? true,
+        next_run_at: nextRunAt,
       })
       .select()
       .single()

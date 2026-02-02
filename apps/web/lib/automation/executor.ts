@@ -12,6 +12,7 @@
 import { statSync } from "node:fs"
 import { DEFAULTS, WORKER_POOL } from "@webalive/shared"
 import { createClient } from "@supabase/supabase-js"
+import { computeNextRunAtMs } from "@webalive/automation"
 import { getValidAccessToken, hasOAuthCredentials } from "@/lib/anthropic-oauth"
 import { getOrgCredits } from "@/lib/credits/supabase-credits"
 import { getSystemPrompt } from "@/features/chat/lib/systemPrompt"
@@ -62,6 +63,13 @@ export async function runAutomationJob(params: AutomationJobParams): Promise<Aut
 
   const { url, key } = getSupabaseCredentials("service")
   const supabase = createClient(url, key, { db: { schema: "app" } })
+
+  // Fetch job details for schedule info (needed to compute next_run_at)
+  const { data: jobData } = await supabase
+    .from("automation_jobs")
+    .select("trigger_type, cron_schedule, cron_timezone, run_at")
+    .eq("id", jobId)
+    .single()
 
   try {
     // Mark job as running
@@ -259,6 +267,18 @@ export async function runAutomationJob(params: AutomationJobParams): Promise<Aut
 
     console.log(`[Automation ${requestId}] Completed in ${durationMs}ms`)
 
+    // Compute next run time for cron jobs
+    let nextRunAt: string | null = null
+    if (jobData?.trigger_type === "cron" && jobData.cron_schedule) {
+      const nextMs = computeNextRunAtMs(
+        { kind: "cron", expr: jobData.cron_schedule, tz: jobData.cron_timezone || undefined },
+        Date.now(),
+      )
+      if (nextMs) {
+        nextRunAt = new Date(nextMs).toISOString()
+      }
+    }
+
     // Update job with success
     await supabase
       .from("automation_jobs")
@@ -268,6 +288,7 @@ export async function runAutomationJob(params: AutomationJobParams): Promise<Aut
         last_run_status: "success",
         last_run_error: null,
         last_run_duration_ms: durationMs,
+        next_run_at: nextRunAt,
       })
       .eq("id", jobId)
 
@@ -293,6 +314,18 @@ export async function runAutomationJob(params: AutomationJobParams): Promise<Aut
 
     console.error(`[Automation ${requestId}] Failed:`, errorMessage)
 
+    // Compute next run time for cron jobs (even on failure, schedule next attempt)
+    let nextRunAt: string | null = null
+    if (jobData?.trigger_type === "cron" && jobData.cron_schedule) {
+      const nextMs = computeNextRunAtMs(
+        { kind: "cron", expr: jobData.cron_schedule, tz: jobData.cron_timezone || undefined },
+        Date.now(),
+      )
+      if (nextMs) {
+        nextRunAt = new Date(nextMs).toISOString()
+      }
+    }
+
     // Update job with failure
     await supabase
       .from("automation_jobs")
@@ -302,6 +335,7 @@ export async function runAutomationJob(params: AutomationJobParams): Promise<Aut
         last_run_status: "failure",
         last_run_error: errorMessage,
         last_run_duration_ms: durationMs,
+        next_run_at: nextRunAt,
       })
       .eq("id", jobId)
 

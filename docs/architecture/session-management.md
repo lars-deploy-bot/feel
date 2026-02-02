@@ -251,9 +251,11 @@ fetch('/api/debug/sessions')
 
 ## Common Issues
 
-**Sessions not persisting across restarts:**
-- Using InMemorySessionStore (expected behavior)
-- Solution: Implement Redis or database store
+**Sessions not persisting across worker restarts:**
+- Session ID exists in DB but conversation data file is missing
+- Cause: Workers used ephemeral temp HOME directories
+- Solution: Workers now use stable HOME at `/var/lib/claude-sessions/<workspace>/`
+- Automatic recovery: "No conversation found" triggers session clear and fresh start
 
 **Conversation locked indefinitely:**
 - Server crashed without releasing lock

@@ -17,12 +17,12 @@ export interface ElementSelection {
   columnNumber?: number
 }
 
-/** Preview mode for the sandbox panel */
-export type PreviewMode = "site" | "code"
+/** View mode for the right panel (site preview, code editor, terminal) */
+export type PanelView = "site" | "code" | "terminal"
 
-/** State for the preview panel */
-export interface PreviewState {
-  mode: PreviewMode
+/** State for the right panel */
+export interface PanelState {
+  view: PanelView
   /** Current path in site preview (URL path) */
   sitePath: string
   /** Currently open file path (for code view) */
@@ -35,13 +35,18 @@ export interface PreviewState {
   treeCollapsed: boolean
 }
 
-interface SandboxContextType {
+/** @deprecated Use PanelView instead */
+export type PreviewMode = PanelView
+/** @deprecated Use PanelState instead */
+export type PreviewState = PanelState
+
+interface PanelContextType {
   entries: SandboxEntry[]
   addEntry: (entry: Omit<SandboxEntry, "id" | "timestamp">) => void
   clearEntries: () => void
   /** Currently selected element (from alive-tagger) */
   selectedElement: ElementSelection | null
-  /** Set selected element - called from Sandbox when receiving postMessage */
+  /** Set selected element - called from panel when receiving postMessage */
   setSelectedElement: (element: ElementSelection | null) => void
   /** Callback for when element is selected - set by chat page to insert into input */
   onElementSelect: ((element: ElementSelection) => void) | null
@@ -53,10 +58,10 @@ interface SandboxContextType {
   activateSelector: () => void
   /** Deactivate element selector mode */
   deactivateSelector: () => void
-  /** Preview panel state */
-  preview: PreviewState
-  /** Set preview mode */
-  setPreviewMode: (mode: PreviewMode) => void
+  /** Panel state */
+  panel: PanelState
+  /** Set panel view */
+  setPanelView: (view: PanelView) => void
   /** Open a file in code view */
   openFile: (filePath: string) => void
   /** Close current file */
@@ -71,12 +76,12 @@ interface SandboxContextType {
   setSitePath: (path: string) => void
 }
 
-const SandboxContext = createContext<SandboxContextType | undefined>(undefined)
+const PanelContext = createContext<PanelContextType | undefined>(undefined)
 
 const DEFAULT_TREE_WIDTH = 200
 
-const DEFAULT_PREVIEW_STATE: PreviewState = {
-  mode: "site",
+const DEFAULT_PANEL_STATE: PanelState = {
+  view: "site",
   sitePath: "/",
   filePath: null,
   expandedFolders: new Set<string>(),
@@ -84,11 +89,11 @@ const DEFAULT_PREVIEW_STATE: PreviewState = {
   treeCollapsed: false,
 }
 
-export function SandboxProvider({ children }: { children: ReactNode }) {
+export function PanelProvider({ children }: { children: ReactNode }) {
   const [entries, setEntries] = useState<SandboxEntry[]>([])
   const [selectedElement, setSelectedElementState] = useState<ElementSelection | null>(null)
   const [onElementSelect, setOnElementSelect] = useState<((element: ElementSelection) => void) | null>(null)
-  const [preview, setPreview] = useState<PreviewState>(DEFAULT_PREVIEW_STATE)
+  const [panel, setPanel] = useState<PanelState>(DEFAULT_PANEL_STATE)
   const [selectorActive, setSelectorActive] = useState(false)
 
   const addEntry = (entry: Omit<SandboxEntry, "id" | "timestamp">) => {
@@ -130,8 +135,8 @@ export function SandboxProvider({ children }: { children: ReactNode }) {
     setOnElementSelect(() => handler)
   }, [])
 
-  const setPreviewMode = useCallback((mode: PreviewMode) => {
-    setPreview(prev => ({ ...prev, mode }))
+  const setPanelView = useCallback((view: PanelView) => {
+    setPanel(prev => ({ ...prev, view }))
   }, [])
 
   const openFile = useCallback((filePath: string) => {
@@ -142,21 +147,21 @@ export function SandboxProvider({ children }: { children: ReactNode }) {
       parentPaths.push(parts.slice(0, i).join("/"))
     }
 
-    setPreview(prev => {
+    setPanel(prev => {
       const newExpanded = new Set(prev.expandedFolders)
       for (const p of parentPaths) {
         newExpanded.add(p)
       }
-      return { ...prev, mode: "code", filePath, expandedFolders: newExpanded }
+      return { ...prev, view: "code", filePath, expandedFolders: newExpanded }
     })
   }, [])
 
   const closeFile = useCallback(() => {
-    setPreview(prev => ({ ...prev, filePath: null }))
+    setPanel(prev => ({ ...prev, filePath: null }))
   }, [])
 
   const toggleFolder = useCallback((path: string) => {
-    setPreview(prev => {
+    setPanel(prev => {
       const newExpanded = new Set(prev.expandedFolders)
       if (newExpanded.has(path)) {
         newExpanded.delete(path)
@@ -168,19 +173,19 @@ export function SandboxProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const setTreeWidth = useCallback((width: number) => {
-    setPreview(prev => ({ ...prev, treeWidth: width }))
+    setPanel(prev => ({ ...prev, treeWidth: width }))
   }, [])
 
   const toggleTreeCollapsed = useCallback(() => {
-    setPreview(prev => ({ ...prev, treeCollapsed: !prev.treeCollapsed }))
+    setPanel(prev => ({ ...prev, treeCollapsed: !prev.treeCollapsed }))
   }, [])
 
   const setSitePath = useCallback((sitePath: string) => {
-    setPreview(prev => ({ ...prev, sitePath }))
+    setPanel(prev => ({ ...prev, sitePath }))
   }, [])
 
   return (
-    <SandboxContext.Provider
+    <PanelContext.Provider
       value={{
         entries,
         addEntry,
@@ -192,8 +197,8 @@ export function SandboxProvider({ children }: { children: ReactNode }) {
         selectorActive,
         activateSelector,
         deactivateSelector,
-        preview,
-        setPreviewMode,
+        panel,
+        setPanelView,
         openFile,
         closeFile,
         toggleFolder,
@@ -203,14 +208,19 @@ export function SandboxProvider({ children }: { children: ReactNode }) {
       }}
     >
       {children}
-    </SandboxContext.Provider>
+    </PanelContext.Provider>
   )
 }
 
-export function useSandboxContext() {
-  const context = useContext(SandboxContext)
+export function usePanelContext() {
+  const context = useContext(PanelContext)
   if (!context) {
-    throw new Error("useSandboxContext must be used within SandboxProvider")
+    throw new Error("usePanelContext must be used within PanelProvider")
   }
   return context
 }
+
+/** @deprecated Use PanelProvider instead */
+export const SandboxProvider = PanelProvider
+/** @deprecated Use usePanelContext instead */
+export const useSandboxContext = usePanelContext

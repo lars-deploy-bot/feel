@@ -9,6 +9,10 @@ StartLimitBurst=3
 Type=simple
 WorkingDirectory=/root/webalive/claude-bridge/.builds/staging/current/standalone
 
+# Ensure Claude session storage directory exists
+ExecStartPre=/usr/bin/mkdir -p /var/lib/claude-sessions
+ExecStartPre=/usr/bin/chmod 755 /var/lib/claude-sessions
+
 # Main executable
 ExecStart=/usr/local/bin/bun /root/webalive/claude-bridge/.builds/staging/current/standalone/apps/web/server.js
 

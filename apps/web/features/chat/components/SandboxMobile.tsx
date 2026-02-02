@@ -4,7 +4,7 @@ import { motion } from "framer-motion"
 import { RotateCw, Square, X } from "lucide-react"
 import type { ReactNode } from "react"
 import { useEffect, useRef, useState } from "react"
-import { useSandboxContext } from "@/features/chat/lib/sandbox-context"
+import { usePanelContext } from "@/features/chat/lib/sandbox-context"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
 import { getPreviewUrl } from "@/lib/preview-utils"
 import { PulsingDot } from "./ui/PulsingDot"
@@ -19,7 +19,7 @@ interface SandboxMobileProps {
 
 export function SandboxMobile({ onClose, children, busy, statusText, onStop }: SandboxMobileProps) {
   const { workspace } = useWorkspace({ allowEmpty: true })
-  const { setSelectedElement, selectorActive, deactivateSelector } = useSandboxContext()
+  const { setSelectedElement, selectorActive, deactivateSelector } = usePanelContext()
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [path, setPath] = useState("/")
   const [isLoading, setIsLoading] = useState(true)

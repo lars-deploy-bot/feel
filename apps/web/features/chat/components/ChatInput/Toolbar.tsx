@@ -4,7 +4,7 @@ import { Camera, ClipboardList, Copy, FileText, Globe, MousePointer2, User } fro
 import type { RefObject } from "react"
 import { useState } from "react"
 import toast from "react-hot-toast"
-import { useSandboxContext } from "@/features/chat/lib/sandbox-context"
+import { usePanelContext } from "@/features/chat/lib/sandbox-context"
 import { formatMessagesAsText } from "@/features/chat/utils/format-messages"
 import { useDexieMessageStore } from "@/lib/db/dexieMessageStore"
 import { useTabMessages } from "@/lib/db/useTabMessages"
@@ -36,7 +36,7 @@ export function Toolbar({ fileInputRef, onAddUserPrompt, onAddSkill }: ToolbarPr
   const currentTabId = useDexieMessageStore(s => s.currentTabId)
   const userId = useDexieMessageStore(s => s.session?.userId ?? null)
   const messages = useTabMessages(currentTabId, userId)
-  const { activateSelector, selectorActive } = useSandboxContext()
+  const { activateSelector, selectorActive } = usePanelContext()
   const isSandboxOpen = useSandbox()
   const isSandboxMinimized = useSandboxMinimized()
   const showSelectorButton = isSandboxOpen && !isSandboxMinimized

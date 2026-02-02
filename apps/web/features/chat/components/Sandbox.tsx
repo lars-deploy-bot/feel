@@ -1,13 +1,13 @@
 "use client"
 import { PREVIEW_MESSAGES } from "@webalive/shared"
-import { ExternalLink, RotateCw, X } from "lucide-react"
+import { ExternalLink, RotateCw, Terminal, X } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { useSandboxContext } from "@/features/chat/lib/sandbox-context"
+import { usePanelContext } from "@/features/chat/lib/sandbox-context"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
 import { useResizablePanel } from "@/lib/hooks/useResizablePanel"
 import { getPreviewUrl, getSiteUrl } from "@/lib/preview-utils"
 import { useDebugActions, useSandboxWidth } from "@/lib/stores/debug-store"
-import { SandboxCodePanel, SandboxModeMenu } from "./sandbox"
+import { PanelViewMenu, SandboxCodePanel } from "./sandbox"
 import { PulsingDot } from "./ui/PulsingDot"
 
 export function Sandbox() {
@@ -16,14 +16,14 @@ export function Sandbox() {
     setSelectedElement,
     selectorActive,
     deactivateSelector,
-    preview,
-    setPreviewMode,
+    panel,
+    setPanelView,
     openFile,
     closeFile,
     toggleFolder,
     setTreeWidth,
     toggleTreeCollapsed,
-  } = useSandboxContext()
+  } = usePanelContext()
   const savedWidth = useSandboxWidth()
   const { setSandbox, setSandboxWidth } = useDebugActions()
   const { width, setWidth, isResizing, handleMouseDown } = useResizablePanel({
@@ -221,7 +221,7 @@ export function Sandbox() {
       <div className="h-11 px-2 flex items-center gap-1.5 border-b border-white/[0.04] bg-neutral-900/50 shrink-0">
         {/* URL/Path display */}
         <div className="flex-1 h-7 flex items-center gap-1.5 bg-white/[0.03] rounded px-2 min-w-0">
-          {preview.mode === "site" && (
+          {panel.view === "site" && (
             <>
               <button
                 type="button"
@@ -250,15 +250,21 @@ export function Sandbox() {
               </a>
             </>
           )}
-          {preview.mode === "code" && (
+          {panel.view === "code" && (
             <span className="text-[13px] text-neutral-500 truncate">
-              {preview.filePath ? `/${preview.filePath}` : "Code"}
+              {panel.filePath ? `/${panel.filePath}` : "Code"}
             </span>
+          )}
+          {panel.view === "terminal" && (
+            <div className="flex items-center gap-1.5">
+              <Terminal size={12} strokeWidth={1.5} className="text-neutral-600" />
+              <span className="text-[13px] text-neutral-500">Terminal</span>
+            </div>
           )}
         </div>
 
-        {/* Mode switcher */}
-        <SandboxModeMenu currentMode={preview.mode} onModeChange={setPreviewMode} />
+        {/* View switcher */}
+        <PanelViewMenu currentView={panel.view} onViewChange={setPanelView} />
 
         {/* Close - tablets only */}
         <button
@@ -279,7 +285,7 @@ export function Sandbox() {
               <p className="text-neutral-600 text-sm">{workspace ? "Invalid workspace" : "No site selected"}</p>
             </div>
           </div>
-        ) : preview.mode === "site" ? (
+        ) : panel.view === "site" ? (
           <div className="h-full bg-white relative">
             {/* Loading state */}
             {(isLoading || !previewToken) && (
@@ -298,19 +304,26 @@ export function Sandbox() {
               />
             )}
           </div>
-        ) : preview.mode === "code" ? (
+        ) : panel.view === "code" ? (
           <SandboxCodePanel
             workspace={workspace}
-            filePath={preview.filePath}
-            expandedFolders={preview.expandedFolders}
-            treeWidth={preview.treeWidth}
-            treeCollapsed={preview.treeCollapsed}
+            filePath={panel.filePath}
+            expandedFolders={panel.expandedFolders}
+            treeWidth={panel.treeWidth}
+            treeCollapsed={panel.treeCollapsed}
             onSelectFile={openFile}
             onCloseFile={closeFile}
             onToggleFolder={toggleFolder}
             onSetTreeWidth={setTreeWidth}
             onToggleTreeCollapsed={toggleTreeCollapsed}
           />
+        ) : panel.view === "terminal" ? (
+          <div className="h-full bg-[#1e1e1e] flex items-center justify-center">
+            <div className="text-center text-neutral-500">
+              <Terminal size={48} strokeWidth={1} className="mx-auto mb-4 opacity-50" />
+              <p className="text-sm">Terminal coming soon</p>
+            </div>
+          </div>
         ) : null}
       </div>
     </div>

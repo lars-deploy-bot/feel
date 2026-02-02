@@ -28,7 +28,7 @@ import { ClientRequest, DevTerminalProvider, useDevTerminal } from "@/features/c
 import { renderMessage, shouldRenderMessage } from "@/features/chat/lib/message-renderer"
 import { MessageWrapper } from "@/features/chat/components/message-renderers/MessageWrapper"
 import { RetryProvider, useRetry } from "@/features/chat/lib/retry-context"
-import { SandboxProvider, useSandboxContext } from "@/features/chat/lib/sandbox-context"
+import { PanelProvider, usePanelContext } from "@/features/chat/lib/sandbox-context"
 import { useAuth } from "@/features/deployment/hooks/useAuth"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
 import { useRedeemReferral } from "@/hooks/useRedeemReferral"
@@ -151,7 +151,7 @@ function ChatPageContent() {
   const _userApiKey = useApiKey()
   const _userModel = useModel()
   const streamingActions = useStreamingActions()
-  const { registerElementSelectHandler } = useSandboxContext()
+  const { registerElementSelectHandler } = usePanelContext()
 
   // Custom hooks
   const statusText = useStatusText(busy, messages)
@@ -790,9 +790,9 @@ function ChatPageWrapper() {
   return (
     <RetryProvider>
       <DevTerminalProvider>
-        <SandboxProvider>
+        <PanelProvider>
           <ChatPageContent />
-        </SandboxProvider>
+        </PanelProvider>
       </DevTerminalProvider>
     </RetryProvider>
   )

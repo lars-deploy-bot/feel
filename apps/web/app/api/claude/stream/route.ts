@@ -507,14 +507,15 @@ export async function POST(req: NextRequest) {
       let firstMessageReceived = false
       childStream = new ReadableStream<Uint8Array>({
         async start(controller) {
-          try {
-            await pool.query(credentials, {
+          // Helper to run query with given resume session
+          const runQuery = async (resumeId: string | undefined) => {
+            return pool.query(credentials, {
               requestId,
               payload: {
                 message: finalMessage,
                 model: effectiveModel,
                 maxTurns: maxTurns,
-                resume: existingSessionId || undefined,
+                resume: resumeId,
                 resumeSessionAt: resumeSessionAt || undefined,
                 systemPrompt,
                 apiKey: effectiveApiKey || undefined,
@@ -550,8 +551,36 @@ export async function POST(req: NextRequest) {
               },
               signal: workerAbortController.signal,
             })
+          }
+
+          try {
+            await runQuery(existingSessionId || undefined)
             controller.close()
           } catch (err) {
+            // Fallback: If session not found (worker restarted), clear stale session and retry
+            const errorMessage = err instanceof Error ? err.message : String(err)
+            const isSessionNotFound =
+              errorMessage.includes("No conversation found") ||
+              (errorMessage.includes("session") && errorMessage.includes("not found"))
+
+            if (isSessionNotFound && existingSessionId && sessionKey) {
+              logger.log(`[SESSION RECOVERY] Session "${existingSessionId}" not found, clearing and retrying...`)
+              try {
+                // Clear stale session from store
+                await sessionStore.delete(sessionKey)
+                logger.log("[SESSION RECOVERY] Cleared stale session, starting fresh conversation")
+
+                // Retry without resume - start fresh conversation
+                await runQuery(undefined)
+                controller.close()
+                return
+              } catch (retryErr) {
+                logger.error("[SESSION RECOVERY] Retry failed:", retryErr)
+                controller.error(retryErr)
+                return
+              }
+            }
+
             logger.error("Worker pool query failed:", err)
             controller.error(err)
           }

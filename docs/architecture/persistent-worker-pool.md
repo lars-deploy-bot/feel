@@ -144,7 +144,75 @@ const CONFIG = {
 2. Main detects via process 'exit' event
 3. Active requests get error message
 4. Next request spawns new worker
-5. Sessions resume normally (persisted in Supabase)
+5. Sessions resume normally (see Session Persistence below)
+
+## Session Persistence
+
+### Two-Tier Storage
+
+| What | Where | Survives Restart? |
+|------|-------|-------------------|
+| Session ID mapping | Supabase `iam.sessions` table | ✅ Yes |
+| Conversation data (`.jsonl`) | `/var/lib/claude-sessions/<workspace>/.claude/projects/` | ✅ Yes |
+
+### How It Works
+
+Each worker uses a **stable HOME directory** per workspace instead of ephemeral temp directories:
+
+```
+/var/lib/claude-sessions/
+├── example-com/
+│   └── .claude/
+│       ├── .credentials.json
+│       └── projects/
+│           └── <hash>/
+│               └── session_abc123.jsonl  ← Conversation history
+├── demo-goalive-nl/
+│   └── .claude/
+│       └── projects/
+│           └── ...
+```
+
+**Implementation**: `packages/worker-pool/src/worker-entry.mjs`
+
+```javascript
+const SESSIONS_BASE_DIR = "/var/lib/claude-sessions"
+
+function ensureStableSessionHome(workspaceKey, uid, gid) {
+  const sanitizedKey = sanitizeWorkspaceKey(workspaceKey)
+  const stableHome = join(SESSIONS_BASE_DIR, sanitizedKey)
+  // Create with proper ownership, fallback to temp if fails
+  ...
+}
+```
+
+### Session Recovery Fallback
+
+If a session file is missing despite having a session ID in the database (e.g., manual deletion), the stream route automatically recovers:
+
+1. Worker returns "No conversation found with session ID"
+2. Route detects this error pattern
+3. Clears stale session ID from database
+4. Retries query without resume → starts fresh conversation
+
+**Implementation**: `apps/web/app/api/claude/stream/route.ts`
+
+```typescript
+if (isSessionNotFound && existingSessionId && sessionKey) {
+  await sessionStore.delete(sessionKey)  // Clear stale
+  await runQuery(undefined)              // Retry fresh
+}
+```
+
+### Systemd Integration
+
+The base directory is created on service start:
+
+```ini
+# In ops/systemd/claude-bridge-*.service
+ExecStartPre=/usr/bin/mkdir -p /var/lib/claude-sessions
+ExecStartPre=/usr/bin/chmod 755 /var/lib/claude-sessions
+```
 
 ## Security (Unchanged)
 

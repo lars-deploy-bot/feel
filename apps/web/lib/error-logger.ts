@@ -142,3 +142,104 @@ export const errorLogger = {
   frontend: (message: string, details?: Record<string, unknown>, meta?: Partial<ErrorLogEntry>) =>
     captureError({ category: "frontend", source: "frontend", message, details, ...meta }),
 }
+
+// ============================================================================
+// Stream Error Logging (with build info for debugging)
+// ============================================================================
+
+interface BuildInfo {
+  branch: string
+  buildTime: string
+  env: string
+}
+
+let buildInfo: BuildInfo | null = null
+
+function getBuildInfo(): BuildInfo {
+  if (buildInfo) return buildInfo
+
+  let branch = "unknown"
+  let buildTime = "unknown"
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const info = require("@/lib/build-info.json") as { branch?: string; buildTime?: string }
+    branch = info.branch ?? "unknown"
+    buildTime = info.buildTime ?? "unknown"
+  } catch {
+    // File may not exist in dev mode
+  }
+
+  buildInfo = {
+    branch,
+    buildTime,
+    env: process.env.BRIDGE_ENV ?? process.env.NODE_ENV ?? "unknown",
+  }
+
+  return buildInfo
+}
+
+export interface StreamErrorContext {
+  requestId: string
+  workspace: string
+  model: string
+  error: unknown
+}
+
+/**
+ * Log a stream error with full context for debugging
+ *
+ * Logs both to journalctl (structured for grep) and to the error buffer (queryable via API).
+ *
+ * To find errors:
+ *   journalctl -u claude-bridge-staging | grep "STREAM_ERROR:ERROR_ID"
+ *   Or query: GET /api/logs/error?category=stream
+ */
+export function logStreamError(context: StreamErrorContext): void {
+  const { requestId, workspace, model, error } = context
+  const info = getBuildInfo()
+
+  const errorMessage = error instanceof Error ? error.message : String(error)
+  const errorStack = error instanceof Error ? error.stack : undefined
+  // Check for stderr attached by worker-pool (contains actual Claude subprocess output)
+  const stderr = error instanceof Error && "stderr" in error ? (error as Error & { stderr?: string }).stderr : undefined
+
+  // Structured log line for easy grep in journalctl
+  console.error(
+    `[STREAM_ERROR:${requestId}] ${errorMessage} | ` +
+      `build=${info.branch}@${info.buildTime} env=${info.env} workspace=${workspace} model=${model}`,
+  )
+
+  // Claude subprocess stderr - THE ACTUAL ERROR (if available)
+  if (stderr) {
+    console.error(`[STREAM_ERROR:${requestId}] Claude stderr:\n${stderr}`)
+  }
+
+  // Stack trace on separate line if available
+  if (errorStack) {
+    console.error(`[STREAM_ERROR:${requestId}] Stack:`, errorStack)
+  }
+
+  // Also capture in queryable error buffer
+  captureError({
+    category: "stream",
+    source: "backend",
+    message: errorMessage,
+    requestId,
+    details: {
+      workspace,
+      model,
+      build: `${info.branch}@${info.buildTime}`,
+      env: info.env,
+      stderr, // Include stderr in queryable buffer too
+    },
+    stack: errorStack,
+  })
+}
+
+/**
+ * Get build info for health checks or debugging endpoints
+ */
+export function getServerBuildInfo(): BuildInfo {
+  return getBuildInfo()
+}
