@@ -10,6 +10,7 @@
 
 import { createClient } from "@supabase/supabase-js"
 import type { AppDatabase, IamDatabase } from "@webalive/database"
+import { getServerId } from "@webalive/shared"
 import { getUserDefaultOrgId } from "@/lib/deployment/org-resolver"
 import { type ErrorCode, ErrorCodes } from "@/lib/error-codes"
 import { verifyPassword } from "@/types/guards/api"
@@ -269,11 +270,23 @@ async function validateProvidedOrgId(orgId: string): Promise<void> {
  * Create domain entry in app schema
  */
 async function createDomainEntry(hostname: string, port: number, orgId: string): Promise<void> {
+  // Get server ID for multi-server isolation
+  const { getServerId } = await import("@webalive/shared/config")
+  const serverId = getServerId()
+  if (!serverId) {
+    throw new DomainRegistrationError(
+      ErrorCodes.DEPLOYMENT_FAILED,
+      "Server ID not configured. Set serverId in /var/lib/claude-bridge/server-config.json",
+      { domain: hostname },
+    )
+  }
+
   const app = await getAppClient()
   const { error: domainError } = await app.from("domains").insert({
     hostname,
     port,
     org_id: orgId,
+    server_id: serverId,
     is_test_env: false,
   })
 
