@@ -667,29 +667,28 @@ function ChatPageContent() {
             </div>
           </div>
 
-          {/* Jump to bottom button - shown when user scrolls up to read history */}
-          <AnimatePresence>
-            {isScrolledAway && messages.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                transition={{ duration: 0.15 }}
-                className="flex justify-center pb-2"
-              >
-                <button
-                  type="button"
-                  onClick={() => forceScrollToBottom()}
-                  className="px-3 py-1.5 rounded-full bg-black/80 dark:bg-white/90 text-white dark:text-black text-sm font-medium shadow-lg hover:bg-black dark:hover:bg-white transition-colors active:scale-95"
-                >
-                  ↓ New messages
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
           {/* Input */}
-          <div className="mx-auto w-full md:max-w-2xl">
+          <div className="relative mx-auto w-full md:max-w-2xl">
+            {/* Jump to bottom button - positioned above input, transparent background */}
+            <AnimatePresence>
+              {isScrolledAway && messages.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute left-0 right-0 bottom-full mb-2 z-10 flex justify-center pointer-events-none"
+                >
+                  <button
+                    type="button"
+                    onClick={() => forceScrollToBottom()}
+                    className="pointer-events-auto px-3 py-1.5 rounded-full bg-black/80 dark:bg-white/90 text-white dark:text-black text-sm font-medium shadow-lg hover:bg-black dark:hover:bg-white transition-colors active:scale-95"
+                  >
+                    ↓ New messages
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
             <ChatInput
               ref={chatInputRef}
               message={msg}

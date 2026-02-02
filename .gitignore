@@ -179,3 +179,4 @@ apps/shell-server/.env*
 # Generated routing files (created by routing:generate script)
 # These are server-specific and should not be committed
 # Location: /var/lib/claude-bridge/generated/
+.uploads/

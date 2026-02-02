@@ -17,8 +17,7 @@
  */
 
 import { readFileSync, existsSync } from "node:fs"
-import { join, dirname } from "node:path"
-import { fileURLToPath } from "node:url"
+import { join } from "node:path"
 import { createRedisClient } from "@alive-brug/redis"
 import { getRedisUrl } from "@webalive/env/server"
 import { getSupabaseCredentials } from "@/lib/env/server"
