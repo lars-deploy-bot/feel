@@ -1,4 +1,7 @@
-import { Globe } from "lucide-react"
+"use client"
+
+import { ChevronRight, Globe } from "lucide-react"
+import { useState } from "react"
 
 interface WebFetchInputProps {
   url: string
@@ -6,49 +9,49 @@ interface WebFetchInputProps {
 }
 
 /**
- * Extract a clean display label from the URL.
- * Strips protocol and www, keeps host + first path segment.
+ * Extract hostname for compact display
  */
-function getUrlLabel(url: string): string {
+function getHostname(url: string): string {
   try {
-    const parsed = new URL(url)
-    const host = parsed.hostname.replace(/^www\./, "")
-    // Include first path segment if meaningful
-    const pathParts = parsed.pathname.split("/").filter(Boolean)
-    if (pathParts.length > 0 && pathParts[0].length < 30) {
-      return `${host}/${pathParts[0]}`
-    }
-    return host
+    return new URL(url).hostname.replace(/^www\./, "")
   } catch {
-    // Fallback for invalid URLs
-    return url.length > 40 ? `${url.slice(0, 40)}...` : url
+    return url.length > 30 ? `${url.slice(0, 30)}...` : url
   }
 }
 
-/**
- * Truncate prompt to a reasonable display length
- */
-function truncatePrompt(prompt: string, maxLength = 60): string {
-  if (prompt.length <= maxLength) return prompt
-  return `${prompt.slice(0, maxLength)}...`
-}
-
 export function WebFetchInput({ url, prompt }: WebFetchInputProps) {
-  const urlLabel = getUrlLabel(url)
-  const truncatedPrompt = truncatePrompt(prompt)
+  const [expanded, setExpanded] = useState(false)
+  const hostname = getHostname(url)
 
   return (
-    <div className="space-y-2 text-xs">
-      <div className="flex items-start gap-2">
-        <Globe className="w-4 h-4 text-black/40 dark:text-white/40 flex-shrink-0 mt-0.5" />
-        <div className="min-w-0 flex-1">
-          <div className="text-black/60 dark:text-white/60 font-medium mb-1">Fetching: {urlLabel}</div>
-          <div className="text-black/50 dark:text-white/50">{truncatedPrompt}</div>
+    <div className="text-xs">
+      {/* Compact chip - always visible */}
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.07] dark:hover:bg-white/[0.09] transition-colors text-left"
+      >
+        <ChevronRight
+          className={`w-3 h-3 text-black/40 dark:text-white/40 transition-transform duration-150 ${expanded ? "rotate-90" : ""}`}
+        />
+        <Globe className="w-3.5 h-3.5 text-black/40 dark:text-white/40" />
+        <span className="text-black/70 dark:text-white/70">Fetching</span>
+        <span className="text-black/50 dark:text-white/50 font-diatype-mono">{hostname}</span>
+      </button>
+
+      {/* Expanded details */}
+      {expanded && (
+        <div className="mt-2 ml-1 pl-3 border-l-2 border-black/[0.06] dark:border-white/[0.08] space-y-1.5">
+          <div>
+            <span className="text-black/40 dark:text-white/40">URL: </span>
+            <span className="text-black/60 dark:text-white/60 font-diatype-mono break-all">{url}</span>
+          </div>
+          <div>
+            <span className="text-black/40 dark:text-white/40">Prompt: </span>
+            <span className="text-black/60 dark:text-white/60">{prompt}</span>
+          </div>
         </div>
-      </div>
-      <div className="text-black/30 dark:text-white/30 font-diatype-mono text-[10px] truncate" title={url}>
-        {url}
-      </div>
+      )}
     </div>
   )
 }
