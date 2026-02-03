@@ -225,19 +225,23 @@ export async function setupBrowser(proxy?: ProxyConfig): Promise<{ browser: Brow
   // Track the profile directory for cleanup
   browserProfileDirs.set(browser, userDataDir)
 
-  const cookies: CookieData[] = [
-    {
-      name: "SOCS",
-      value: "CAESHAgCEhJnd3NfMjAyNDA5MjQtMF9SQzIaAmVuIAEaBgiAjt23Bg",
-      domain: ".google.com",
-      path: "/",
-      secure: true,
-      sameSite: "Lax",
-      expires: new Date("2026-10-28T14:13:10.467Z").getTime(),
-    },
-  ]
-
-  await browser.setCookie(...cookies)
+  // SOCS cookie bypasses Google consent dialog
+  // Get from env or use empty (will show consent dialog if missing)
+  const socsCookieValue = process.env.GOOGLE_SOCS_COOKIE
+  if (socsCookieValue) {
+    const cookies: CookieData[] = [
+      {
+        name: "SOCS",
+        value: socsCookieValue,
+        domain: ".google.com",
+        path: "/",
+        secure: true,
+        sameSite: "Lax",
+        expires: Date.now() + 365 * 24 * 60 * 60 * 1000, // 1 year from now
+      },
+    ]
+    await browser.setCookie(...cookies)
+  }
   return { browser }
 }
 

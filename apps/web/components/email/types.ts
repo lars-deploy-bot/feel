@@ -89,8 +89,8 @@ John`,
   },
   {
     id: "draft-002",
-    to: ["team@company.com"],
-    cc: ["manager@company.com"],
+    to: ["team@example.com"],
+    cc: ["manager@example.com"],
     subject: "Meeting Notes - Sprint Planning",
     body: `Team,
 

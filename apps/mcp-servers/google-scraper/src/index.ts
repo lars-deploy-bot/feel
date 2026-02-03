@@ -10,6 +10,35 @@
  *   node dist/index.js --transport http --port 8083  # HTTP transport
  */
 
+// Validate required environment variables
+function validateEnv(): void {
+  const required = ["GOOGLE_SOCS_COOKIE"] as const
+  const missing = required.filter(key => !process.env[key])
+
+  if (missing.length > 0) {
+    console.error("=".repeat(70))
+    console.error("FATAL: Missing required environment variables")
+    console.error("=".repeat(70))
+    console.error("")
+    for (const key of missing) {
+      console.error(`  - ${key}`)
+    }
+    console.error("")
+    console.error("Create a .env file in apps/mcp-servers/google-scraper/ with:")
+    console.error("  GOOGLE_SOCS_COOKIE=<your-cookie-value>")
+    console.error("")
+    console.error("To get the SOCS cookie value:")
+    console.error("  1. Open browser dev tools (F12)")
+    console.error("  2. Go to google.com/maps and accept cookies")
+    console.error("  3. In dev tools: Application > Cookies > google.com")
+    console.error("  4. Find 'SOCS' cookie and copy its value")
+    console.error("=".repeat(70))
+    process.exit(1)
+  }
+}
+
+validateEnv()
+
 import { Server } from "@modelcontextprotocol/sdk/server/index.js"
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js"

@@ -63,7 +63,7 @@ const allTools = [
       properties: {
         query: {
           type: "string",
-          description: "Gmail search query (e.g., 'is:unread', 'from:boss@company.com', 'subject:urgent')",
+          description: "Gmail search query (e.g., 'is:unread', 'from:boss@example.com', 'subject:urgent')",
         },
         maxResults: {
           type: "number",

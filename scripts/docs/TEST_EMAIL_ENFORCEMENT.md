@@ -37,7 +37,7 @@ const user = await createTestUser(email)
 const user = await createTestUser("test@example.com")
 
 // ❌ SECURITY ERROR: Not an allowed domain
-const user = await createTestUser("test@mysite.com")
+const user = await createTestUser("test@notallowed.invalid")
 
 // ❌ SECURITY ERROR: Production domain
 const user = await createTestUser("test@alive.best")

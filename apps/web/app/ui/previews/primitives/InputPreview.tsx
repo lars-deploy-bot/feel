@@ -36,7 +36,7 @@ export function InputPreview() {
         <h3 className="text-sm font-medium text-black/60 dark:text-white/60 mb-4">States</h3>
         <div className="space-y-4">
           <Input label="Default State" placeholder="Default input..." state="default" />
-          <Input label="Success State" value="valid@email.com" state="success" successMessage="Email is valid" />
+          <Input label="Success State" value="valid@example.com" state="success" successMessage="Email is valid" />
           <Input label="Error State" value="invalid" state="error" errorMessage="Please enter a valid email address" />
           <Input label="Loading State" value="checking..." state="loading" />
         </div>

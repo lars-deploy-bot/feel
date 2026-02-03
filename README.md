@@ -80,9 +80,14 @@ Claude Bridge enables developers to interact with Claude AI in the context of sp
 ```bash
 # Required
 ANTHROPIC_API_KEY=your_claude_api_key
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+DATABASE_URL=postgresql://user:password@localhost:5432/claude_bridge
 JWT_SECRET=your-jwt-secret-min-32-chars
+LOCKBOX_MASTER_KEY=your-32-byte-hex-key  # Generate: openssl rand -hex 32
+
+# Supabase (if using Supabase)
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
 # Optional
 BRIDGE_PASSCODE=your_manager_passcode  # For /manager admin panel access only
@@ -97,6 +102,47 @@ DEPLOY_BRANCH=main                         # Only deploy on this branch (default
 BRIDGE_ENV=local                        # Enables local template mode + test user (test/test)
 LOCAL_TEMPLATE_PATH=.alive/template     # Relative workspace path to template
 ```
+
+### Database Setup
+
+Claude Bridge uses PostgreSQL with multiple schemas for multi-tenant isolation. You can use **Supabase** (recommended) or **self-hosted PostgreSQL**.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      PostgreSQL                             │
+│  ┌─────────┐  ┌─────────┐  ┌──────────────┐  ┌───────────┐ │
+│  │   iam   │  │   app   │  │ integrations │  │  lockbox  │ │
+│  │─────────│  │─────────│  │──────────────│  │───────────│ │
+│  │ users   │  │ domains │  │ providers    │  │ secrets   │ │
+│  │ orgs    │  │ convos  │  │ tokens       │  │ keys      │ │
+│  │ sessions│  │ messages│  │ policies     │  │           │ │
+│  └─────────┘  └─────────┘  └──────────────┘  └───────────┘ │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Quick Setup:**
+
+```bash
+# 1. Set your database connection
+export DATABASE_URL="postgresql://user:pass@localhost:5432/claude_bridge"
+
+# 2. Run interactive setup
+cd packages/database
+bun run db:setup
+
+# 3. Apply schema
+bun run db:push
+
+# 4. Seed initial data (templates, providers)
+psql $DATABASE_URL < seed/initial.sql
+```
+
+**For detailed instructions:** See [`docs/database/SETUP.md`](./docs/database/SETUP.md)
+
+**Database Package:** The schema is defined as code using [Drizzle ORM](https://orm.drizzle.team/) in [`packages/database`](./packages/database/README.md). This enables:
+- Type-safe database queries
+- Automatic migration generation
+- Works with any PostgreSQL (Supabase, self-hosted, Docker)
 
 ### Local Development Login
 When `BRIDGE_ENV=local` is set, you can use the test credentials:
@@ -422,9 +468,13 @@ claude-bridge/
 │   ├── features/             # Feature documentation
 │   └── sessions/             # Session management
 ├── packages/                 # Workspace packages
+│   ├── database/             # Database schema (Drizzle ORM)
+│   │   ├── src/schema/       # TypeScript schema definitions
+│   │   ├── migrations/       # SQL migrations
+│   │   └── seed/             # Initial seed data
 │   ├── template/             # Site template
 │   ├── tools/                # Tool definitions for Claude
-│   ├── deploy-scripts/       # Site deployment (sitectl TypeScript tool)
+│   ├── site-controller/      # Site deployment orchestration
 │   └── images/               # Image handling utilities
 ├── Caddyfile                 # Reverse proxy config
 └── package.json              # Monorepo configuration

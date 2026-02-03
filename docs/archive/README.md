@@ -1,21 +1,61 @@
-# Documentation Archive
+# Archive
 
-This directory contains the small set of historical docs we still consider useful for future reference.
+Historical documentation, completed work, and open investigations.
 
-## Contents
+**Size**: 1.4M | **Files**: ~80 documents organized by stage
 
-### PR Plans & Specs
-- `prs/` - Drafts, plans, and staged PR write-ups
+## Sections
 
-### Postmortems
-- `postmortems/` - Incident reports, analyses, and resolutions
+### [active/](./active/)
+**Open blockers and planned work** - Current investigations, PRs in progress, unresolved problems
 
-### Completed Features
-- `completed-features/` - Detailed implementation write-ups for major migrations
+- `open-problems/` - Known issues being investigated
+- `prs/` - Planned features and implementation guides
+- `work-in-progress-2024-12/` - Active work items
 
-### Open Problems
-- `open-problems/` - Known issues that may resurface
+### [completed/](./completed/)
+**Finished work** - Migrations, features that shipped, resolved refactoring
 
-## Why Archived?
+- Implementation plans that executed
+- Bug fixes with resolutions
+- Completed features
 
-These documents are valuable for future debugging and decisions but are not part of the active docs tree.
+### [outdated/](./outdated/)
+**Historical postmortems and reports** - Lessons learned, but resolved
+
+- `postmortems/` - Past incidents with resolutions
+- Reports and old analysis
+
+### [reference/](./reference/)
+**Technical deep-dives** - Useful for understanding patterns, but not actively changing
+
+- `diagrams/` - Sequence diagrams, flow charts
+- `streaming/` - SSE implementation patterns
+- `error-management/` - Error handling architecture
+- `sessions/` - Session management details
+
+### [legacy/](./legacy/)
+**Pre-current-architecture** - Historical context, don't reference for new work
+
+- Old documentation from before major refactoring
+
+## How to Use Archive
+
+**Search across archive:**
+```bash
+grep -r "your-topic" archive/
+```
+
+**Find a specific feature:**
+```bash
+find archive/ -name "*feature-name*"
+```
+
+**Check if something's resolved:**
+```bash
+ls archive/outdated/postmortems/ | grep "2025-"
+```
+
+---
+
+**Tip**: If docs are missing from main, check archive first before assuming they're lost.

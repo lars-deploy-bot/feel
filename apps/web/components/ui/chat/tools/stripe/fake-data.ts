@@ -8,7 +8,7 @@ export const FAKE_STRIPE_CUSTOMERS = [
   {
     id: "cus_ABC123",
     name: "Acme Corporation",
-    email: "billing@acme.com",
+    email: "billing@example.com",
     created: Math.floor(Date.now() / 1000) - 90 * 24 * 60 * 60,
     balance: 0,
     currency: "usd",
@@ -17,7 +17,7 @@ export const FAKE_STRIPE_CUSTOMERS = [
   {
     id: "cus_DEF456",
     name: "TechStart Inc",
-    email: "finance@techstart.io",
+    email: "finance@example.com",
     created: Math.floor(Date.now() / 1000) - 45 * 24 * 60 * 60,
     balance: -5000,
     currency: "usd",
@@ -26,7 +26,7 @@ export const FAKE_STRIPE_CUSTOMERS = [
   {
     id: "cus_GHI789",
     name: "Global Services Ltd",
-    email: "accounts@globalservices.com",
+    email: "accounts@example.com",
     created: Math.floor(Date.now() / 1000) - 180 * 24 * 60 * 60,
     balance: 15000,
     currency: "eur",
@@ -35,7 +35,7 @@ export const FAKE_STRIPE_CUSTOMERS = [
   {
     id: "cus_JKL012",
     name: null,
-    email: "john.doe@personal.com",
+    email: "john.doe@example.com",
     created: Math.floor(Date.now() / 1000) - 7 * 24 * 60 * 60,
     balance: 0,
     currency: "usd",
@@ -46,7 +46,7 @@ export const FAKE_STRIPE_CUSTOMERS = [
 export const FAKE_STRIPE_ACCOUNT = {
   account_id: "acct_1234567890",
   display_name: "Acme Corporation",
-  email: "billing@acme.com",
+  email: "billing@example.com",
   country: "US",
   default_currency: "usd",
 }
