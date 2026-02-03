@@ -5,9 +5,23 @@
 set -o pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SERVER_IP="138.201.56.93"
-SITES_DIR="/srv/webalive/sites"
-LEGACY_SITES_DIR="/root/webalive/sites"
+
+# Load server IP from config or environment
+CONFIG_FILE="/var/lib/claude-bridge/server-config.json"
+if [ -n "$SERVER_IP" ]; then
+    : # Use environment variable
+elif [ -f "$CONFIG_FILE" ]; then
+    SERVER_IP=$(grep -o '"serverIp"[[:space:]]*:[[:space:]]*"[^"]*"' "$CONFIG_FILE" | cut -d'"' -f4)
+fi
+
+if [ -z "$SERVER_IP" ]; then
+    echo "❌ ERROR: SERVER_IP not set. Set SERVER_IP env var or create $CONFIG_FILE"
+    exit 1
+fi
+
+# Load paths from config or use defaults
+SITES_DIR="${SITES_DIR:-/srv/webalive/sites}"
+LEGACY_SITES_DIR="${LEGACY_SITES_DIR:-/root/webalive/sites}"
 
 echo "🔍 Adding verification files to all sites..."
 echo "Server IP: $SERVER_IP"

@@ -51,7 +51,7 @@ This section explains how E2E tests work across different environments.
 │                    STAGING / PRODUCTION                          │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│   Same Server (138.201.56.93)                                   │
+│   Same Server (YOUR_SERVER_IP)                                   │
 │   ┌─────────────────┐      ┌─────────────────┐                 │
 │   │  Playwright     │ ───► │  Deployed App   │                 │
 │   │  (6 workers)    │      │  (systemd)      │                 │

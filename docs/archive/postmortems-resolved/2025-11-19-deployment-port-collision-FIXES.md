@@ -273,7 +273,7 @@ node    1223622 site-saaslanding-alive-best   22u  IPv4 50160323      0t0  TCP *
 ```bash
 $ journalctl -u site@saaslanding-alive-best.service -n 3
 Nov 19 16:22:35 claude-server site-saaslanding-alive-best[1223622]:   ➜  Local:   http://localhost:3465/
-Nov 19 16:22:35 claude-server site-saaslanding-alive-best[1223622]:   ➜  Network: http://138.201.56.93:3465/
+Nov 19 16:22:35 claude-server site-saaslanding-alive-best[1223622]:   ➜  Network: http://YOUR_SERVER_IP:3465/
 ```
 
 ✅ **Direct Service Access Works**

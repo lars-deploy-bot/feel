@@ -126,7 +126,7 @@ Every generated file includes:
 // Auto-generated iam schema types
 // Generated: 2025-11-14T13:10:52.874Z
 // Run: bun run gen:db
-// Project: qnvprftdorualkdyogka
+// Project: YOUR_PROJECT_ID
 ```
 
 ## Key Takeaways

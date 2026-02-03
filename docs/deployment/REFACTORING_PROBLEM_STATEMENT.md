@@ -161,7 +161,7 @@ stateDiagram-v2
     note left of ValidateDNS
         DNS validation (if not wildcard):
         - dig +short for A record
-        - Check points to 138.201.56.93
+        - Check points to YOUR_SERVER_IP
         - Detect Cloudflare proxy IPs
         - Throw error if proxied or wrong IP
     end note
@@ -553,7 +553,7 @@ PORT=3333
 
 4. **DNS Pre-Validated for Wildcard**
    - `*.alive.best` → skip DNS checks (we control wildcard)
-   - Custom domains → must point to `138.201.56.93` (no Cloudflare proxy orange cloud)
+   - Custom domains → must point to `YOUR_SERVER_IP` (no Cloudflare proxy orange cloud)
    - Assumption: Wildcard DNS configured correctly at registrar
 
 5. **Concurrent Deployments Won't Conflict**

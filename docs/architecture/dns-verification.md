@@ -15,7 +15,7 @@ Each site includes a verification file at:
 
 This file contains the server's origin IP address:
 ```
-138.201.56.93
+YOUR_SERVER_IP
 ```
 
 ### Verification Process
@@ -138,7 +138,7 @@ Extend the verification file format:
 
 ```json
 {
-  "server_ip": "138.201.56.93",
+  "server_ip": "YOUR_SERVER_IP",
   "domain": "example.com",
   "deployed_at": "2025-11-10T17:00:00Z",
   "version": "1.0"
@@ -178,7 +178,7 @@ This would provide:
 
 **Solutions**:
 1. Check server config: `cat /var/lib/claude-bridge/server-config.json`
-2. Update verification file: `echo "138.201.56.93" > /srv/webalive/sites/domain/user/public/.well-known/bridge-verify.txt`
+2. Update verification file: `echo "YOUR_SERVER_IP" > /srv/webalive/sites/domain/user/public/.well-known/bridge-verify.txt`
 3. Fix ownership: `chown site-domain-slug:site-domain-slug /srv/webalive/sites/domain/user/public/.well-known/bridge-verify.txt`
 
 ## Related Files

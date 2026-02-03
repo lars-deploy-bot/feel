@@ -179,7 +179,7 @@ import { validateDns, assignPort } from '@webalive/site-controller'
 
 const dns = await validateDns({
   domain: 'example.com',
-  serverIp: '138.201.56.93',
+  serverIp: 'YOUR_SERVER_IP',
   wildcardDomain: '*.alive.best',
 })
 

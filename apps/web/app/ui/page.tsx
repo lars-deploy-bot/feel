@@ -13,7 +13,6 @@ import {
   Boxes,
   ChevronDown,
   CreditCard,
-  Globe,
   Layout,
   LayoutList,
   Loader2,
@@ -24,7 +23,9 @@ import {
   X,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useState } from "react"
+import { useAdminUser } from "@/hooks/use-superadmin"
+import { AutomationConfigPreview } from "./previews/AutomationConfigPreview"
 import { ClarificationQuestionsPreview } from "./previews/ClarificationQuestionsPreview"
 import { EmptyStatePreview } from "./previews/general/EmptyStatePreview"
 import { LoadingSpinnerPreview } from "./previews/general/LoadingSpinnerPreview"
@@ -104,6 +105,7 @@ const CATEGORIES = {
     components: {
       clarification: { id: "clarification", name: "Clarification Questions", component: ClarificationQuestionsPreview },
       websiteConfig: { id: "websiteConfig", name: "Website Config", component: WebsiteConfigPreview },
+      automationConfig: { id: "automationConfig", name: "Automation Config", component: AutomationConfigPreview },
     },
   },
   mail: {
@@ -139,37 +141,10 @@ type CategoryId = keyof typeof CATEGORIES
 
 export default function PreviewUIPage() {
   const router = useRouter()
-  const [loading, setLoading] = useState(true)
-  const [authorized, setAuthorized] = useState(false)
+  const { loading, isSuperadmin } = useAdminUser()
   const [activeCategory, setActiveCategory] = useState<CategoryId>("primitives")
   const [activeComponent, setActiveComponent] = useState<string>("button")
   const [sidebarOpen, setSidebarOpen] = useState(false)
-
-  useEffect(() => {
-    async function checkAccess() {
-      try {
-        const res = await fetch("/api/auth/me", { credentials: "include" })
-        if (!res.ok) {
-          router.push("/")
-          return
-        }
-
-        const data = await res.json()
-        if (!data.ok || !data.user?.isSuperadmin) {
-          router.push("/")
-          return
-        }
-
-        setAuthorized(true)
-      } catch {
-        router.push("/")
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    checkAccess()
-  }, [router])
 
   // When category changes, select first component
   const handleCategoryChange = (categoryId: CategoryId) => {
@@ -187,7 +162,9 @@ export default function PreviewUIPage() {
     )
   }
 
-  if (!authorized) {
+  if (!isSuperadmin) {
+    // Only redirect once, after loading is complete
+    router.push("/")
     return null
   }
 

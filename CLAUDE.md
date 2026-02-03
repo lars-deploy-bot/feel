@@ -57,8 +57,6 @@ These domains are **NOT** Vite website templates. Do not deploy them as sites:
 | `go.goalive.nl` | Go shell-server | `shell-server-go.service` | 3888 | nginx → caddy-shell (8443) → 3888 |
 | `shell.terminal.goalive.nl` | Go shell-server | `shell-server-go.service` | 3889 | nginx → caddy-shell (8443) → 3889 |
 | `sk.goalive.nl` | Go shell-server | `shell-server-go.service` | 3889 | nginx → caddy-shell (8443) → 3889 |
-| `n8n.goalive.nl` | n8n workflow automation | `n8n` (docker) | 5678 | nginx → caddy-shell (8443) → 5678 |
-
 **Nginx SNI routing**: These domains route through `caddy-shell` (not main Caddy) for SSE/WebSocket isolation. Config: `/etc/nginx/nginx.conf` and `/etc/caddy/caddy-shell.Caddyfile`.
 
 ## Architecture Smell Detector
@@ -785,11 +783,40 @@ Self-hosted open-source tools running on this server. Each service has its own d
 ```
 /opt/services/
 ├── mailcow/            # Self-hosted email server
-├── n8n/                # Workflow automation platform
 └── supabase/           # Self-hosted Supabase instance
 ```
 
 **Management**: Services typically run via Docker Compose or systemd. Check individual directories for their `docker-compose.yml` or service configuration.
+
+## Automation System
+
+We have a custom in-process automation scheduler (NOT n8n). Jobs are stored in Supabase `app.automation_jobs` and executed by the CronService.
+
+**Key files:**
+- `apps/web/lib/automation/cron-service.ts` - Main scheduler (setTimeout-based, wakes when next job is due)
+- `apps/web/lib/automation/executor.ts` - Runs automation prompts via Claude
+- `packages/automation/` - Cron expression parsing utilities
+
+**How it works:**
+1. Jobs stored in `app.automation_jobs` with cron schedule, prompt, and site reference
+2. CronService runs in-process, wakes precisely when next job is due
+3. Executor runs the prompt against the site's workspace using Claude
+4. Results stored in `app.automation_runs`, status broadcast via SSE
+
+**API endpoints:**
+- `GET/POST /api/automations` - List/create automations
+- `POST /api/automations/[id]/trigger` - Manually trigger a job
+- `GET /api/automations/[id]/runs` - Get run history
+- `GET /api/automations/events` - SSE stream for real-time status
+
+**Debugging:**
+```bash
+# Check if cron service is running (look for "[CronService]" logs)
+journalctl -u claude-bridge-staging | grep CronService | tail -20
+
+# Check automation_jobs table
+sqlite3 use_this_to_remember.db "SELECT 'Check app.automation_jobs in Supabase'"
+```
 
 ## External Reference Repos
 

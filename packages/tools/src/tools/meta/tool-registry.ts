@@ -350,6 +350,28 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
       },
     ],
   },
+  {
+    name: "ask_automation_config",
+    category: "meta",
+    description:
+      "Show an interactive form for the user to configure a scheduled automation. Use when the user wants to schedule a task - presents a wizard to set task name, prompt, website, and schedule (once, daily, weekly, monthly, or custom cron). After submission, create the automation via the API.",
+    contextCost: "low",
+    enabled: true,
+    parameters: [
+      {
+        name: "context",
+        type: "string",
+        required: false,
+        description: "Optional context about why an automation is being created",
+      },
+      {
+        name: "defaultSiteId",
+        type: "string",
+        required: false,
+        description: "Optional default site ID to pre-select",
+      },
+    ],
+  },
 
   // Other tools
   {

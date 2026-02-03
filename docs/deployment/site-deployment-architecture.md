@@ -80,7 +80,7 @@ Create directory structure:
 │   ├── styles.css          # Styling
 │   ├── public/             # Static assets
 │   │   └── .well-known/
-│   │       └── bridge-verify.txt  # DNS verification (138.201.56.93)
+│   │       └── bridge-verify.txt  # DNS verification (YOUR_SERVER_IP)
 │   ├── js/                 # JavaScript modules
 │   └── pages/              # Additional pages
 ├── package.json            # Dependencies
@@ -204,7 +204,7 @@ Update user metadata:
 DNS verification file deployed at:
 https://example.com/.well-known/bridge-verify.txt
   ↓
-Contents: 138.201.56.93 (server IP)
+Contents: YOUR_SERVER_IP (server IP)
   ↓
 Purpose:
 - Validates traffic reaches origin server
@@ -227,7 +227,7 @@ POST-deployment checks:
    → Expected: HTTP 200 (with valid HTTPS)
   ↓
 4. curl https://example.com/.well-known/bridge-verify.txt
-   → Expected: "138.201.56.93"
+   → Expected: "YOUR_SERVER_IP"
   ↓
 All checks pass → Deployment SUCCESS ✓
 ```
@@ -327,7 +327,7 @@ See: **[CURRENT_ARCHITECTURE.md](./CURRENT_ARCHITECTURE.md)**
 | **Caddy Config** | `/root/webalive/claude-bridge/Caddyfile` | WebAlive routing |
 | **Caddy System** | `/etc/caddy/Caddyfile` | System config + imports |
 | **Port Registry** | `/var/lib/claude-bridge/domain-passwords.json` | Port assignments |
-| **DNS Verification** | `{domain}/.well-known/bridge-verify.txt` | IP verification (138.201.56.93) |
+| **DNS Verification** | `{domain}/.well-known/bridge-verify.txt` | IP verification (YOUR_SERVER_IP) |
 
 ---
 
@@ -443,7 +443,7 @@ journalctl -u site@example-com.service -f
 | **Permission denied** | User can't read/write files | Fix ownership: `chown -R site-{slug}:{slug}` |
 | **Port conflict** | Port already in use | Check registry, assign new port |
 | **503 Bad Gateway** | Caddy can't reach backend | Verify service is active, port is correct |
-| **DNS not resolving** | Domain doesn't point to server | Update DNS A record to 138.201.56.93 |
+| **DNS not resolving** | Domain doesn't point to server | Update DNS A record to YOUR_SERVER_IP |
 
 ### **Restart/Reload Commands**
 

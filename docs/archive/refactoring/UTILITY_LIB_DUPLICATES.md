@@ -14,7 +14,7 @@
 **Impact:** 30+ files
 **Priority:** CRITICAL - Single source of truth needed
 
-**SERVER_IP = "138.201.56.93"** duplicated in:
+**SERVER_IP = "YOUR_SERVER_IP"** duplicated in:
 - `scripts/sites/deploy-site-systemd.sh` (line 31)
 - `scripts/sites/add-verification-files.sh` (line 8)
 - `packages/deploy-scripts/src/dns/validation.ts` (line 5)
@@ -41,7 +41,7 @@ Create central configuration package:
 ```typescript
 // packages/config/src/index.ts
 export const SERVER_CONFIG = {
-  IP: "138.201.56.93",
+  IP: "YOUR_SERVER_IP",
   WILDCARD_DOMAIN: "alive.best",
   WORKSPACE_BASE: "/srv/webalive/sites",
   PORT_RANGE: {

@@ -1,7 +1,7 @@
 # OpenClaw Installation Report
 
 **Date:** January 25-26, 2026 (Updated: January 31, 2026)
-**Server:** claude-server (138.201.56.93)
+**Server:** claude-server (YOUR_SERVER_IP)
 **Status:** Installed and Running
 
 > **Update (Jan 31, 2026):** ClawdBot has been renamed to **OpenClaw**. Official repo: https://github.com/openclaw/openclaw · Website: https://openclaw.ai · The CLI is now `openclaw`. Service renamed to `openclaw-gateway.service`. Currently running v2026.1.30.

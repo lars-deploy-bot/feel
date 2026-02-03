@@ -46,11 +46,14 @@ export function useBrowserCleanup({
       const requestId = currentRequestIdRef.current
 
       // Build cancel payload - prefer requestId, fallback to tabId
+      // Include clientStack marker so server can identify this as a page unload cancel
+      const clientStack = "PAGE_UNLOAD_BEACON: beforeunload event fired"
+
       let payload: Record<string, string>
       if (requestId) {
-        payload = { requestId }
+        payload = { requestId, clientStack }
       } else if (tabId && tabGroupId && workspace) {
-        payload = { tabId, tabGroupId, workspace }
+        payload = { tabId, tabGroupId, workspace, clientStack }
       } else {
         // Can't build valid cancel request
         console.warn("[useBrowserCleanup] Cannot send cancel beacon - missing identifiers")

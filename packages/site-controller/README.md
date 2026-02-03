@@ -39,7 +39,7 @@ const result = await SiteOrchestrator.deploy({
   domain: 'example.com',
   slug: 'example-com',
   templatePath: '/path/to/template',
-  serverIp: '138.201.56.93',
+  serverIp: 'YOUR_SERVER_IP',
   wildcardDomain: 'alive.best',
   rollbackOnFailure: true
 })

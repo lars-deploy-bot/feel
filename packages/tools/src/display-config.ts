@@ -344,6 +344,12 @@ register(AI.ASK_WEBSITE_CONFIG, {
   getPreview: () => "configure website",
 })
 
+register(AI.ASK_AUTOMATION_CONFIG, {
+  autoExpand: true, // Always show the config form
+  transform: unwrapMcp,
+  getPreview: () => "configure automation",
+})
+
 // --- Email tools ---
 register(EMAIL.COMPOSE, {
   autoExpand: true, // Always show the email card

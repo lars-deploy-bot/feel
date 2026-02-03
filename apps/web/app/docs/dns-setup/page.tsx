@@ -3,6 +3,9 @@
 import { CheckCircle2, Clock, Globe, Zap } from "lucide-react"
 import { useState } from "react"
 
+// Server IP for DNS configuration - configure via NEXT_PUBLIC_SERVER_IP
+const SERVER_IP = process.env.NEXT_PUBLIC_SERVER_IP || "YOUR_SERVER_IP"
+
 export default function DNSSetupPage() {
   const [provider, setProvider] = useState("")
 
@@ -52,7 +55,7 @@ export default function DNSSetupPage() {
                     <span className="text-gray-600 dark:text-gray-400">Name:</span> <strong>@</strong>
                   </div>
                   <div>
-                    <span className="text-gray-600 dark:text-gray-400">IPv4:</span> <strong>138.201.56.93</strong>
+                    <span className="text-gray-600 dark:text-gray-400">IPv4:</span> <strong>{SERVER_IP}</strong>
                   </div>
                 </div>
               </div>
@@ -92,7 +95,7 @@ export default function DNSSetupPage() {
             </Step>
             <Step number={5} title="Update the value">
               Click edit and change the value to{" "}
-              <code className="bg-gray-100 px-2 py-1 rounded text-sm font-bold">138.201.56.93</code>
+              <code className="bg-gray-100 px-2 py-1 rounded text-sm font-bold">{SERVER_IP}</code>
             </Step>
             <Step number={6} title="Save">
               Click <strong>Save</strong> and you're all set!
@@ -124,7 +127,7 @@ export default function DNSSetupPage() {
               <code className="bg-gray-100 dark:bg-zinc-800 px-2 py-1 rounded text-sm">@</code>
             </Step>
             <Step number={5} title="Update the value">
-              Change the value to <code className="bg-gray-100 px-2 py-1 rounded text-sm font-bold">138.201.56.93</code>
+              Change the value to <code className="bg-gray-100 px-2 py-1 rounded text-sm font-bold">{SERVER_IP}</code>
             </Step>
             <Step number={6} title="Save">
               Click the checkmark to save.
@@ -156,7 +159,7 @@ export default function DNSSetupPage() {
               <code className="bg-gray-100 dark:bg-zinc-800 px-2 py-1 rounded text-sm">@</code>
             </Step>
             <Step number={5} title="Update the value">
-              Set the value to <code className="bg-gray-100 px-2 py-1 rounded text-sm font-bold">138.201.56.93</code>
+              Set the value to <code className="bg-gray-100 px-2 py-1 rounded text-sm font-bold">{SERVER_IP}</code>
             </Step>
             <Step number={6} title="Save">
               Click <strong>Save</strong> and you're done!
@@ -194,7 +197,7 @@ export default function DNSSetupPage() {
                     <span className="text-gray-600 dark:text-gray-400">Host:</span> <strong>@</strong>
                   </div>
                   <div>
-                    <span className="text-gray-600 dark:text-gray-400">Value:</span> <strong>138.201.56.93</strong>
+                    <span className="text-gray-600 dark:text-gray-400">Value:</span> <strong>{SERVER_IP}</strong>
                   </div>
                 </div>
               </div>
@@ -235,7 +238,7 @@ export default function DNSSetupPage() {
                     <span className="text-gray-600 dark:text-gray-400">Naam:</span> <strong>@</strong>
                   </div>
                   <div>
-                    <span className="text-gray-600 dark:text-gray-400">Waarde:</span> <strong>138.201.56.93</strong>
+                    <span className="text-gray-600 dark:text-gray-400">Waarde:</span> <strong>{SERVER_IP}</strong>
                   </div>
                 </div>
               </div>
@@ -276,7 +279,7 @@ export default function DNSSetupPage() {
                     <span className="text-gray-600 dark:text-gray-400">Host:</span> <strong>@</strong>
                   </div>
                   <div>
-                    <span className="text-gray-600 dark:text-gray-400">IP Address:</span> <strong>138.201.56.93</strong>
+                    <span className="text-gray-600 dark:text-gray-400">IP Address:</span> <strong>{SERVER_IP}</strong>
                   </div>
                 </div>
               </div>
@@ -309,7 +312,7 @@ export default function DNSSetupPage() {
                 </div>
                 <div>
                   <span className="text-gray-600 dark:text-gray-400">Value/Points to:</span>{" "}
-                  <strong>138.201.56.93</strong>
+                  <strong>{SERVER_IP}</strong>
                 </div>
               </div>
             </Step>
@@ -424,7 +427,7 @@ export default function DNSSetupPage() {
                       dnschecker.org →
                     </a>{" "}
                     to check your domain shows{" "}
-                    <code className="bg-white dark:bg-zinc-800 px-2 py-1 rounded text-sm font-mono">138.201.56.93</code>
+                    <code className="bg-white dark:bg-zinc-800 px-2 py-1 rounded text-sm font-mono">{SERVER_IP}</code>
                   </p>
                 </div>
               </div>

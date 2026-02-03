@@ -135,7 +135,7 @@ stateDiagram-v2
 5. **Line 28**: `SetNewSiteDir` - Secure systemd location `/srv/webalive/sites/$DOMAIN`
 6. **Line 29**: `SetCaddyfile` - Path to WebAlive routing config
 7. **Line 30**: `SetDomainPasswordsFile` - Port registry location
-8. **Line 31**: `SetServerIP` - `138.201.56.93` (server's public IP)
+8. **Line 31**: `SetServerIP` - `YOUR_SERVER_IP` (server's public IP)
 9. **Line 32**: `ReadPassword` - From `DEPLOY_PASSWORD` env var (optional)
 10. **Line 33**: `ReadEmail` - From `DEPLOY_EMAIL` env var (required)
 11. **Line 35**: `PrintDeployingMessage` - Initial deployment announcement
@@ -189,7 +189,7 @@ stateDiagram-v2
 1. **Email validation**: Required for all deployments (exit 17 if missing)
 2. **Password handling**: Optional - if provided, hash it; if missing, link to existing account
 3. **Wildcard detection**: `*.alive.best` domains skip DNS validation (trusted)
-4. **DNS validation**: Custom domains must point to `138.201.56.93` with no Cloudflare proxy
+4. **DNS validation**: Custom domains must point to `YOUR_SERVER_IP` with no Cloudflare proxy
 5. **AAAA warning**: Non-blocking warning if IPv6 records found
 
 **Special Behaviors:**

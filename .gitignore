@@ -181,3 +181,16 @@ apps/shell-server/.env*
 # Location: /var/lib/claude-bridge/generated/
 .uploads/
 domain-passwords.json.lock
+
+# Live Caddy configurations (contain customer domains)
+# Keep example files, ignore production configs
+ops/caddy/Caddyfile
+ops/caddy/Caddyfile.main
+ops/caddy/Caddyfile.restore_backup
+ops/caddy/Caddyfile.shell
+!ops/caddy/Caddyfile.example
+!ops/caddy/Caddyfile.snippets
+!ops/caddy/etc/
+
+# Agent memory database (development context)
+use_this_to_remember.db

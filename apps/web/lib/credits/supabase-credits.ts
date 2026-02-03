@@ -16,36 +16,27 @@ import { createClient } from "@supabase/supabase-js"
 import type { AppDatabase, IamDatabase } from "@webalive/database"
 import { llmTokensToCredits } from "@/lib/credits"
 import { getSupabaseCredentials } from "@/lib/env/server"
-import { createAppClient } from "@/lib/supabase/app"
-import { createIamClient } from "@/lib/supabase/iam"
 
-// Test-aware client creation (bypasses Next.js cookies in tests)
-const isTestEnv = process.env.NODE_ENV === "test"
+// Always use direct service role clients (no cookies needed for service operations)
+// This allows the credit system to work in both request contexts (API routes)
+// and non-request contexts (automation executor, background jobs)
 
 async function getIamClient() {
-  if (isTestEnv) {
-    const { url, key } = getSupabaseCredentials("service")
-    return createClient<IamDatabase>(url, key, {
-      db: {
-        schema: "iam",
-      },
-    })
-  }
-
-  return createIamClient("service")
+  const { url, key } = getSupabaseCredentials("service")
+  return createClient<IamDatabase>(url, key, {
+    db: {
+      schema: "iam",
+    },
+  })
 }
 
 async function getAppClient() {
-  if (isTestEnv) {
-    const { url, key } = getSupabaseCredentials("service")
-    return createClient<AppDatabase>(url, key, {
-      db: {
-        schema: "app",
-      },
-    })
-  }
-
-  return createAppClient("service")
+  const { url, key } = getSupabaseCredentials("service")
+  return createClient<AppDatabase>(url, key, {
+    db: {
+      schema: "app",
+    },
+  })
 }
 
 /**

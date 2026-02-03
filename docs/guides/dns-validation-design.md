@@ -25,7 +25,7 @@ fi
 
 When users enable Cloudflare's proxy (orange cloud), DNS returns Cloudflare's edge IPs instead of the origin server IP:
 
-- **Expected:** `138.201.56.93` (our server)
+- **Expected:** `YOUR_SERVER_IP` (our server)
 - **Actual:** `104.21.x.x` or `172.67.x.x` (Cloudflare IPs)
 - **Result:** Deployment fails immediately
 

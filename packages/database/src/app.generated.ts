@@ -3,7 +3,7 @@
 // DO NOT EDIT MANUALLY - Run 'bun run gen:types' to regenerate
 //
 // Schema: app
-// Project: qnvprftdorualkdyogka
+// Project: YOUR_PROJECT_ID
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 

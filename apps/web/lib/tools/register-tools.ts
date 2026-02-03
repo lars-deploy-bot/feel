@@ -21,6 +21,7 @@ import {
   ClarificationQuestionsOutput,
   validateClarificationQuestions,
 } from "@/components/ui/chat/tools/ai/ClarificationQuestionsOutput"
+import { AutomationConfigOutput, validateAutomationConfig } from "@/components/ui/chat/tools/ai/AutomationConfigOutput"
 import { validateWebsiteConfig, WebsiteConfigOutput } from "@/components/ui/chat/tools/ai/WebsiteConfigOutput"
 // === Plan Mode Components ===
 import { PlanApprovalOutput, validatePlanApproval } from "@/components/ui/chat/tools/plan/PlanApprovalOutput"
@@ -55,6 +56,7 @@ registerComponent(EMAIL.REPLY, EmailDraftOutput, validateEmailDraft)
 
 registerComponent(AI.ASK_CLARIFICATION, ClarificationQuestionsOutput, validateClarificationQuestions)
 registerComponent(AI.ASK_WEBSITE_CONFIG, WebsiteConfigOutput, validateWebsiteConfig)
+registerComponent(AI.ASK_AUTOMATION_CONFIG, AutomationConfigOutput, validateAutomationConfig)
 
 // ============================================================
 // PLAN MODE COMPONENTS

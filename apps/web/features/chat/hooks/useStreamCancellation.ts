@@ -123,6 +123,9 @@ export function useStreamCancellation({
       console.log("[useStreamCancellation] Cancellation complete, states reset")
     }
 
+    // Capture stack trace for debugging (helps identify where cancel originated)
+    const clientStack = new Error().stack?.split("\n").slice(1, 6).join("\n") // First 5 frames
+
     // Send cancel request and wait for confirmation
     // Backend now waits for cleanup to complete before responding, so response = safe to send new message
     const sendCancelRequest = async () => {
@@ -130,13 +133,23 @@ export function useStreamCancellation({
         if (requestIdToCancel) {
           // Primary path: Cancel by requestId
           console.log("[useStreamCancellation] Sending cancel with requestId:", requestIdToCancel)
-          const validatedRequest = validateRequest("claude/stream/cancel", { requestId: requestIdToCancel })
+          console.log("[useStreamCancellation] Stack trace:", clientStack)
+          const validatedRequest = validateRequest("claude/stream/cancel", {
+            requestId: requestIdToCancel,
+            clientStack, // Send stack for server-side debugging
+          })
           const response = await postty("claude/stream/cancel", validatedRequest)
           console.log("[useStreamCancellation] Cancel response:", JSON.stringify(response))
         } else if (tabId.length > 0 && tabGroupId && workspace) {
           // Fallback path: Cancel by tabId (super-early Stop)
           console.log("[useStreamCancellation] Sending cancel with tabId fallback:", tabId)
-          const validatedRequest = validateRequest("claude/stream/cancel", { tabGroupId, tabId, workspace })
+          console.log("[useStreamCancellation] Stack trace:", clientStack)
+          const validatedRequest = validateRequest("claude/stream/cancel", {
+            tabGroupId,
+            tabId,
+            workspace,
+            clientStack, // Send stack for server-side debugging
+          })
           const response = await postty("claude/stream/cancel", validatedRequest)
           console.log("[useStreamCancellation] Cancel response (fallback):", JSON.stringify(response))
         } else {
