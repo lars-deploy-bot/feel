@@ -98,12 +98,18 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       "action_prompt",
       "action_source",
       "action_target_page",
+      "skills",
       "is_active",
     ]
 
     for (const field of allowedFields) {
       if (field in body) {
-        updates[field] = body[field]
+        // Validate skills array
+        if (field === "skills") {
+          updates[field] = Array.isArray(body[field]) ? body[field].filter((s: unknown) => typeof s === "string") : []
+        } else {
+          updates[field] = body[field]
+        }
       }
     }
 

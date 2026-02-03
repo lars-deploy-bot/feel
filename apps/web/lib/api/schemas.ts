@@ -401,6 +401,7 @@ export const apiSchemas = {
           action_prompt: z.string().nullable(),
           action_source: z.string().nullable(),
           action_target_page: z.string().nullable(),
+          skills: z.array(z.string()).nullable(),
           is_active: z.boolean(),
           last_run_at: z.string().nullable(),
           last_run_status: z.string().nullable(),
@@ -414,12 +415,42 @@ export const apiSchemas = {
   },
 
   /**
+   * POST /api/automations
+   * Create a new automation job
+   */
+  "automations/create": {
+    req: z.undefined().brand<"AutomationsCreateRequest">(), // Body validated in handler
+    res: z.object({
+      ok: z.literal(true),
+      automation: z.object({
+        id: z.string(),
+        site_id: z.string(),
+        name: z.string(),
+        description: z.string().nullable(),
+        trigger_type: z.enum(["cron", "webhook", "one-time"]),
+        cron_schedule: z.string().nullable(),
+        cron_timezone: z.string().nullable(),
+        run_at: z.string().nullable(),
+        action_type: z.enum(["prompt", "sync", "publish"]),
+        action_prompt: z.string().nullable(),
+        action_source: z.string().nullable(),
+        action_target_page: z.string().nullable(),
+        skills: z.array(z.string()).nullable(),
+        is_active: z.boolean(),
+        next_run_at: z.string().nullable(),
+        created_at: z.string(),
+      }),
+    }),
+  },
+
+  /**
    * GET /api/sites
    * List sites for user's organizations
    */
   sites: {
     req: z.undefined().brand<"SitesRequest">(),
     res: z.object({
+      ok: z.literal(true),
       sites: z.array(
         z.object({
           id: z.string(),
@@ -427,6 +458,38 @@ export const apiSchemas = {
           org_id: z.string(),
         }),
       ),
+    }),
+  },
+
+  /**
+   * GET /api/automations/[id]/runs
+   * List runs for an automation job
+   */
+  "automations/runs": {
+    req: z.undefined().brand<"AutomationsRunsRequest">(),
+    res: z.object({
+      runs: z.array(
+        z.object({
+          id: z.string(),
+          job_id: z.string(),
+          started_at: z.string(),
+          completed_at: z.string().nullable(),
+          duration_ms: z.number().nullable(),
+          status: z.enum(["pending", "running", "success", "failure", "skipped"]),
+          error: z.string().nullable(),
+          triggered_by: z.string().nullable(),
+          changes_made: z.array(z.string()).nullable(),
+        }),
+      ),
+      job: z.object({
+        id: z.string(),
+        name: z.string(),
+      }),
+      pagination: z.object({
+        limit: z.number(),
+        offset: z.number(),
+        total: z.number(),
+      }),
     }),
   },
 

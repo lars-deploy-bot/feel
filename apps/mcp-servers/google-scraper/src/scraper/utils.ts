@@ -2,8 +2,14 @@ import type { Browser, CookieData, Page } from "puppeteer"
 import puppeteerExtra from "puppeteer-extra"
 import StealthPlugin from "puppeteer-extra-plugin-stealth"
 import * as cheerio from "cheerio"
+import * as fs from "node:fs"
+import * as path from "node:path"
+import * as os from "node:os"
 import type { ProxyConfig } from "./types.js"
 import { REVIEW_TAB_SELECTORS, DAY_MAP } from "./i18n.js"
+
+// Track browser profile directories for cleanup
+const browserProfileDirs = new WeakMap<Browser, string>()
 
 // Re-export i18n utilities for convenience
 export { REVIEW_TAB_SELECTORS, isRelativeTime, extractAuthorFromLabel } from "./i18n.js"
@@ -196,8 +202,12 @@ export async function checkBrowserAvailability(): Promise<boolean> {
 export async function setupBrowser(proxy?: ProxyConfig): Promise<{ browser: Browser }> {
   puppeteer.use(StealthPlugin())
 
+  // Create a unique temp directory for this browser instance
+  const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "puppeteer-scraper-"))
+
   const launchOptions: Record<string, unknown> = {
     headless: true,
+    userDataDir,
     args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
   }
 
@@ -211,6 +221,9 @@ export async function setupBrowser(proxy?: ProxyConfig): Promise<{ browser: Brow
   }
 
   const browser = await puppeteer.launch(launchOptions)
+
+  // Track the profile directory for cleanup
+  browserProfileDirs.set(browser, userDataDir)
 
   const cookies: CookieData[] = [
     {
@@ -259,9 +272,21 @@ export async function navigateToGoogleMaps(page: Page, query: string): Promise<v
 }
 
 export async function cleanupBrowser(browser: Browser): Promise<void> {
+  // Get the profile directory before closing
+  const profileDir = browserProfileDirs.get(browser)
+
   const pages = await browser.pages()
   await Promise.all(pages.map(page => page.close()))
   await browser.close()
+
+  // Clean up the temp profile directory
+  if (profileDir && fs.existsSync(profileDir)) {
+    try {
+      fs.rmSync(profileDir, { recursive: true, force: true })
+    } catch {
+      // Ignore cleanup errors - directory will be cleaned on next restart
+    }
+  }
 }
 
 export async function detectFeed(page: Page): Promise<boolean> {

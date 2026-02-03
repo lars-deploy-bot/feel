@@ -32,6 +32,8 @@ describe("API Schema Type System", () => {
         | "user/update"
         | "deploy-subdomain"
         | "automations"
+        | "automations/create"
+        | "automations/runs"
         | "sites"
         | "integrations/available"
         | "integrations/disconnect"

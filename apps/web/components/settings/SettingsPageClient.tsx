@@ -9,7 +9,6 @@ import {
   Globe,
   Key,
   Link,
-  Loader2,
   Menu,
   Settings,
   Shield,
@@ -18,8 +17,7 @@ import {
   X,
   Zap,
 } from "lucide-react"
-import { useRouter, useSearchParams } from "next/navigation"
-import { lazy, Suspense, useEffect, useState } from "react"
+import { lazy, Suspense, useState } from "react"
 import { useAuth } from "@/features/deployment/hooks/useAuth"
 
 // Lazy load tab components - same as SettingsModal
@@ -58,18 +56,21 @@ const AutomationsSettings = lazy(() =>
   import("@/components/settings/tabs/AutomationsSettings").then(m => ({ default: m.AutomationsSettings })),
 )
 
-type SettingsTab =
-  | "account"
-  | "llm"
-  | "goal"
-  | "prompts"
-  | "organization"
-  | "websites"
-  | "automations"
-  | "integrations"
-  | "keys"
-  | "flags"
-  | "admin"
+const SETTINGS_TABS = [
+  "account",
+  "llm",
+  "goal",
+  "prompts",
+  "organization",
+  "websites",
+  "automations",
+  "integrations",
+  "keys",
+  "flags",
+  "admin",
+] as const
+
+type SettingsTab = (typeof SETTINGS_TABS)[number]
 
 interface TabDefinition {
   id: SettingsTab
@@ -93,93 +94,34 @@ const allTabs: TabDefinition[] = [
 ]
 
 interface SettingsPageClientProps {
-  onClose?: () => void // When provided, show close button
-  initialTab?: SettingsTab // Override URL param for tab selection
-  skipAuthCheck?: boolean // Skip /api/auth/me when used in overlay (chat already authed)
+  onClose: () => void
+  initialTab?: SettingsTab
 }
 
-export function SettingsPageClient({ onClose, initialTab, skipAuthCheck }: SettingsPageClientProps) {
-  const router = useRouter()
-  const searchParams = useSearchParams()
+export function SettingsPageClient({ onClose, initialTab }: SettingsPageClientProps) {
   const { user } = useAuth()
-  const [loading, setLoading] = useState(!skipAuthCheck)
-  const [authorized, setAuthorized] = useState(skipAuthCheck ?? false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-
-  // Get initial tab from prop, URL, or default to "account"
-  const tabParam = searchParams.get("tab") as SettingsTab | null
-  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab || tabParam || "account")
 
   // Filter tabs based on admin status
   const tabs = allTabs.filter(tab => !tab.adminOnly || user?.isAdmin)
 
-  // Validate tab param is valid
-  useEffect(() => {
-    if (tabParam && !tabs.some(t => t.id === tabParam)) {
-      setActiveTab("account")
-    } else if (tabParam) {
-      setActiveTab(tabParam)
+  // Initialize active tab from prop, validated against visible tabs
+  const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
+    if (initialTab && tabs.some(t => t.id === initialTab)) {
+      return initialTab
     }
-  }, [tabParam, tabs])
-
-  useEffect(() => {
-    if (skipAuthCheck) return
-
-    async function checkAccess() {
-      try {
-        const res = await fetch("/api/auth/me", { credentials: "include" })
-        if (!res.ok) {
-          router.push("/")
-          return
-        }
-
-        const data = await res.json()
-        if (!data.ok || !data.user) {
-          router.push("/")
-          return
-        }
-
-        setAuthorized(true)
-      } catch {
-        router.push("/")
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    checkAccess()
-  }, [router, skipAuthCheck])
+    return "account"
+  })
 
   const handleTabChange = (tabId: SettingsTab) => {
     setActiveTab(tabId)
     setSidebarOpen(false)
-    // Update URL without navigation
-    const url = new URL(window.location.href)
-    url.searchParams.set("tab", tabId)
-    window.history.replaceState({}, "", url.toString())
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-white dark:bg-zinc-950 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-zinc-400" />
-      </div>
-    )
-  }
-
-  if (!authorized) {
-    return null
   }
 
   const currentTab = tabs.find(t => t.id === activeTab) || tabs[0]
 
-  // When used as overlay (onClose provided), use h-full; otherwise min-h-screen for full page
-  const containerClass = onClose
-    ? "h-full bg-zinc-50 dark:bg-zinc-950 flex flex-col md:flex-row"
-    : "min-h-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col md:flex-row"
-
   return (
-    <div className={containerClass}>
+    <div className="h-full bg-zinc-50 dark:bg-zinc-950 flex flex-col md:flex-row">
       {/* Mobile Header */}
       <header className="md:hidden flex items-center justify-between p-4 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 relative z-30">
         <div className="flex items-center gap-3">
@@ -200,16 +142,14 @@ export function SettingsPageClient({ onClose, initialTab, skipAuthCheck }: Setti
             </p>
           </button>
         </div>
-        {onClose && (
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 -mr-2 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-            aria-label="Close settings"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={onClose}
+          className="p-2 -mr-2 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+          aria-label="Close settings"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </header>
 
       {/* Mobile Sidebar Overlay */}
@@ -242,16 +182,14 @@ export function SettingsPageClient({ onClose, initialTab, skipAuthCheck }: Setti
             <Settings className="w-4 h-4 text-zinc-400" />
             Settings
           </h1>
-          {onClose && (
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-1.5 -mr-1.5 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-              aria-label="Close settings"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 -mr-1.5 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            aria-label="Close settings"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
         {/* Mobile close button area */}
@@ -259,9 +197,9 @@ export function SettingsPageClient({ onClose, initialTab, skipAuthCheck }: Setti
           <h1 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Settings</h1>
           <button
             type="button"
-            onClick={() => (onClose ? onClose() : setSidebarOpen(false))}
+            onClick={onClose}
             className="p-2 -mr-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 active:bg-zinc-200 dark:active:bg-zinc-700"
-            aria-label={onClose ? "Close settings" : "Close menu"}
+            aria-label="Close settings"
           >
             <X className="w-5 h-5" />
           </button>

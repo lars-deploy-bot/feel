@@ -13,6 +13,7 @@ import { statSync } from "node:fs"
 import { DEFAULTS, WORKER_POOL } from "@webalive/shared"
 import { createClient } from "@supabase/supabase-js"
 import { computeNextRunAtMs } from "@webalive/automation"
+import { getSkillById, listGlobalSkills, type SkillListItem } from "@alive-brug/tools"
 import { getValidAccessToken, hasOAuthCredentials } from "@/lib/anthropic-oauth"
 import { getOrgCredits } from "@/lib/credits/supabase-credits"
 import { getSystemPrompt } from "@/features/chat/lib/systemPrompt"
@@ -40,6 +41,34 @@ export interface AutomationJobParams {
   model?: string
   /** Optional thinking prompt for agent guidance */
   thinkingPrompt?: string
+  /** Skill IDs to load and prepend to prompt */
+  skills?: string[]
+}
+
+/**
+ * Load skill prompts by IDs and combine them into a single context block
+ */
+async function loadSkillPrompts(skillIds: string[]): Promise<string | null> {
+  if (!skillIds || skillIds.length === 0) return null
+
+  const globalSkills = await listGlobalSkills()
+  const loadedSkills: SkillListItem[] = []
+
+  for (const skillId of skillIds) {
+    const skill = getSkillById(globalSkills, skillId)
+    if (skill) {
+      loadedSkills.push(skill)
+    } else {
+      console.warn(`[Automation] Skill not found: ${skillId}`)
+    }
+  }
+
+  if (loadedSkills.length === 0) return null
+
+  // Format skills as context blocks
+  const skillBlocks = loadedSkills.map(skill => `<skill name="${skill.displayName}">\n${skill.prompt}\n</skill>`)
+
+  return `The following skills have been loaded to guide your work:\n\n${skillBlocks.join("\n\n")}`
 }
 
 export interface AutomationJobResult {
@@ -61,7 +90,7 @@ export interface AutomationJobResult {
  * 4. Updates the job status in the database
  */
 export async function runAutomationJob(params: AutomationJobParams): Promise<AutomationJobResult> {
-  const { jobId, workspace, prompt, timeoutSeconds = 300, model, thinkingPrompt } = params
+  const { jobId, workspace, prompt, timeoutSeconds = 300, model, thinkingPrompt, skills } = params
   const requestId = generateRequestId()
   const startTime = Date.now()
 
@@ -73,9 +102,21 @@ export async function runAutomationJob(params: AutomationJobParams): Promise<Aut
   // Fetch job details for schedule info (needed to compute next_run_at)
   const { data: jobData } = await supabase
     .from("automation_jobs")
-    .select("trigger_type, cron_schedule, cron_timezone, run_at")
+    .select("trigger_type, cron_schedule, cron_timezone, run_at, skills")
     .eq("id", jobId)
     .single()
+
+  // Load skill prompts if specified
+  const skillIds = skills ?? (jobData?.skills as string[] | null) ?? []
+  const skillContext = await loadSkillPrompts(skillIds)
+  if (skillContext) {
+    console.log(`[Automation ${requestId}] Loaded ${skillIds.length} skill(s)`)
+  }
+
+  // Build the full prompt with skill context prepended
+  const fullPrompt = skillContext
+    ? `${skillContext}\n\n---\n\nNow, please complete the following task:\n\n${prompt}`
+    : prompt
 
   // Track messages outside try block so we can log partial results on failure
   const allMessages: unknown[] = []
@@ -173,7 +214,7 @@ export async function runAutomationJob(params: AutomationJobParams): Promise<Aut
         await pool.query(credentials, {
           requestId,
           payload: {
-            message: prompt,
+            message: fullPrompt,
             model: selectedModel,
             maxTurns: DEFAULTS.CLAUDE_MAX_TURNS,
             systemPrompt,
@@ -225,7 +266,7 @@ export async function runAutomationJob(params: AutomationJobParams): Promise<Aut
       console.log(`[Automation ${requestId}] Using child process runner (worker pool not enabled)`)
 
       const childStream = runAgentChild(cwd, {
-        message: prompt,
+        message: fullPrompt,
         model: selectedModel,
         maxTurns: DEFAULTS.CLAUDE_MAX_TURNS,
         systemPrompt,

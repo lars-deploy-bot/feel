@@ -2,15 +2,14 @@
 import { SUPERADMIN } from "@webalive/shared"
 import { AnimatePresence, motion } from "framer-motion"
 import { PanelLeft } from "lucide-react"
-import { useRouter } from "next/navigation"
 import { useQueryState } from "nuqs"
 import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
 import { FeedbackModal } from "@/components/modals/FeedbackModal"
 import { InviteModal } from "@/components/modals/InviteModal"
 import { SessionExpiredModal } from "@/components/modals/SessionExpiredModal"
+import { SettingsOverlay } from "@/components/settings/SettingsOverlay"
 import { SuperTemplatesModal } from "@/components/modals/SuperTemplatesModal"
-// SettingsOverlay removed - now uses route-based overlay via intercepting routes
 import { ChatDropOverlay } from "@/features/chat/components/ChatDropOverlay"
 import { ChatInput } from "@/features/chat/components/ChatInput"
 import type { ChatInputHandle } from "@/features/chat/components/ChatInput/types"
@@ -72,7 +71,6 @@ import {
 const BUILD_VERSION = "2025-11-12-direct-execution"
 
 function ChatPageContent() {
-  const router = useRouter()
   const [msg, setMsg] = useState("")
   const storeTabId = useDexieCurrentTabId()
   const storeTabGroupId = useDexieCurrentConversationId()
@@ -101,15 +99,6 @@ function ChatPageContent() {
   const [subdomainInitialized, setSubdomainInitialized] = useState(false)
   const [_showCompletionDots, setShowCompletionDots] = useState(false)
   const modals = useModals()
-
-  // Route-based settings navigation (uses intercepting routes for overlay)
-  const openSettings = useCallback(
-    (tab?: string) => {
-      const url = tab ? `/settings?tab=${tab}` : "/settings"
-      router.push(url)
-    },
-    [router],
-  )
 
   // Smart scroll using Intersection Observer
   const { containerRef, anchorRef, isScrolledAway, scrollToBottom, forceScrollToBottom } = useChatScroll({
@@ -560,7 +549,7 @@ function ChatPageContent() {
         onUnarchiveTabGroup={handleUnarchiveTabGroup}
         onRenameTabGroup={handleRenameTabGroup}
         onNewConversation={handleNewTabGroup}
-        onOpenSettings={openSettings}
+        onOpenSettings={modals.openSettings}
         onOpenInvite={modals.openInvite}
       />
 
@@ -599,7 +588,7 @@ function ChatPageContent() {
             isSuperadminWorkspace={isSuperadminWorkspace}
             onFeedbackClick={modals.openFeedback}
             onTemplatesClick={modals.openTemplates}
-            onSettingsClick={openSettings}
+            onSettingsClick={modals.openSettings}
             showPhotoMenu={modals.photoMenu}
             onPhotoMenuToggle={modals.togglePhotoMenu}
             onPhotoMenuClose={modals.closePhotoMenu}
@@ -612,7 +601,7 @@ function ChatPageContent() {
             mounted={mounted}
             isTerminal={isTerminal}
             isSuperadminWorkspace={isSuperadminWorkspace}
-            onSelectSite={() => openSettings("websites")}
+            onSelectSite={() => modals.openSettings("websites")}
             onNewTabGroup={handleNewTabGroup}
             onMobilePreview={modals.openMobilePreview}
             onToggleTabs={handleToggleTabs}
@@ -812,7 +801,12 @@ function ChatPageContent() {
           conversationId={tabId ?? undefined}
         />
       )}
-      {/* Settings now uses route-based overlay via intercepting routes - see @modal/(.)settings */}
+      {modals.settings && (
+        <SettingsOverlay
+          onClose={modals.closeSettings}
+          initialTab={modals.settings === "websites" ? "websites" : undefined}
+        />
+      )}
       {modals.templates && (
         <SuperTemplatesModal onClose={modals.closeTemplates} onInsertTemplate={handleInsertTemplate} />
       )}

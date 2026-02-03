@@ -2,7 +2,7 @@
  * Custom TanStack Query hooks for error handling and debugging
  */
 
-import { type UseQueryResult } from "@tanstack/react-query"
+import type { UseQueryResult } from "@tanstack/react-query"
 import { useCallback } from "react"
 import toast from "react-hot-toast"
 import { ApiError } from "./fetcher"

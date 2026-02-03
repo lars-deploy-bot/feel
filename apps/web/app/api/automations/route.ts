@@ -10,24 +10,11 @@ import { getSessionUser } from "@/features/auth/lib/auth"
 import { getSupabaseCredentials } from "@/lib/env/server"
 import { ErrorCodes } from "@/lib/error-codes"
 import { structuredErrorResponse } from "@/lib/api/responses"
+import { alrighty } from "@/lib/api/server"
 import { computeNextRunAtMs } from "@webalive/automation"
+import type { Res } from "@/lib/api/schemas"
 
-type AutomationJob = {
-  id: string
-  site_id: string
-  name: string
-  description: string | null
-  trigger_type: "cron" | "webhook" | "one-time"
-  cron_schedule: string | null
-  action_type: "prompt" | "sync" | "publish"
-  is_active: boolean
-  last_run_at: string | null
-  last_run_status: string | null
-  next_run_at: string | null
-  created_at: string
-  // Joined from domains
-  hostname?: string
-}
+type AutomationJob = Res<"automations">["automations"][number]
 
 /**
  * GET /api/automations - List automations for user's organizations
@@ -63,7 +50,13 @@ export async function GET(req: NextRequest) {
         description,
         trigger_type,
         cron_schedule,
+        cron_timezone,
+        run_at,
         action_type,
+        action_prompt,
+        action_source,
+        action_target_page,
+        skills,
         is_active,
         last_run_at,
         last_run_status,
@@ -99,7 +92,13 @@ export async function GET(req: NextRequest) {
       description: row.description,
       trigger_type: row.trigger_type,
       cron_schedule: row.cron_schedule,
+      cron_timezone: row.cron_timezone,
+      run_at: row.run_at,
       action_type: row.action_type,
+      action_prompt: row.action_prompt,
+      action_source: row.action_source,
+      action_target_page: row.action_target_page,
+      skills: row.skills,
       is_active: row.is_active,
       last_run_at: row.last_run_at,
       last_run_status: row.last_run_status,
@@ -108,7 +107,7 @@ export async function GET(req: NextRequest) {
       hostname: row.domains?.hostname,
     }))
 
-    return NextResponse.json({ ok: true, automations, total: automations.length })
+    return alrighty("automations", { ok: true, automations, total: automations.length })
   } catch (error) {
     console.error("[Automations API] GET error:", error)
     return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
@@ -178,6 +177,9 @@ export async function POST(req: NextRequest) {
       nextRunAt = body.run_at
     }
 
+    // Validate skills if provided (must be array of strings)
+    const skills = Array.isArray(body.skills) ? body.skills.filter((s: unknown) => typeof s === "string") : []
+
     const { data, error } = await supabase
       .from("automation_jobs")
       .insert({
@@ -194,6 +196,7 @@ export async function POST(req: NextRequest) {
         action_prompt: body.action_prompt,
         action_source: body.action_source,
         action_target_page: body.action_target_page,
+        skills: skills.length > 0 ? skills : [],
         is_active: body.is_active ?? true,
         next_run_at: nextRunAt,
       })
@@ -205,7 +208,7 @@ export async function POST(req: NextRequest) {
       return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
     }
 
-    return NextResponse.json({ ok: true, automation: data }, { status: 201 })
+    return alrighty("automations/create", { ok: true, automation: data }, { status: 201 })
   } catch (error) {
     console.error("[Automations API] POST error:", error)
     return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })

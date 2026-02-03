@@ -24,6 +24,7 @@ export type Database = {
           action_target_page: string | null
           action_timeout_seconds: number | null
           action_type: Database["app"]["Enums"]["automation_action_type"]
+          consecutive_failures: number | null
           created_at: string
           cron_schedule: string | null
           cron_timezone: string | null
@@ -41,6 +42,7 @@ export type Database = {
           run_at: string | null
           running_at: string | null
           site_id: string
+          skills: string[] | null
           trigger_type: Database["app"]["Enums"]["automation_trigger_type"]
           updated_at: string
           user_id: string
@@ -54,6 +56,7 @@ export type Database = {
           action_target_page?: string | null
           action_timeout_seconds?: number | null
           action_type: Database["app"]["Enums"]["automation_action_type"]
+          consecutive_failures?: number | null
           created_at?: string
           cron_schedule?: string | null
           cron_timezone?: string | null
@@ -71,6 +74,7 @@ export type Database = {
           run_at?: string | null
           running_at?: string | null
           site_id: string
+          skills?: string[] | null
           trigger_type: Database["app"]["Enums"]["automation_trigger_type"]
           updated_at?: string
           user_id: string
@@ -84,6 +88,7 @@ export type Database = {
           action_target_page?: string | null
           action_timeout_seconds?: number | null
           action_type?: Database["app"]["Enums"]["automation_action_type"]
+          consecutive_failures?: number | null
           created_at?: string
           cron_schedule?: string | null
           cron_timezone?: string | null
@@ -101,6 +106,7 @@ export type Database = {
           run_at?: string | null
           running_at?: string | null
           site_id?: string
+          skills?: string[] | null
           trigger_type?: Database["app"]["Enums"]["automation_trigger_type"]
           updated_at?: string
           user_id?: string
@@ -124,6 +130,7 @@ export type Database = {
           error: string | null
           id: string
           job_id: string
+          messages: Json | null
           result: Json | null
           started_at: string
           status: Database["app"]["Enums"]["automation_run_status"]
@@ -137,6 +144,7 @@ export type Database = {
           error?: string | null
           id?: string
           job_id: string
+          messages?: Json | null
           result?: Json | null
           started_at?: string
           status?: Database["app"]["Enums"]["automation_run_status"]
@@ -150,6 +158,7 @@ export type Database = {
           error?: string | null
           id?: string
           job_id?: string
+          messages?: Json | null
           result?: Json | null
           started_at?: string
           status?: Database["app"]["Enums"]["automation_run_status"]
@@ -670,6 +679,7 @@ export type Database = {
           error: string | null
           id: string
           job_id: string
+          messages: Json | null
           result: Json | null
           started_at: string
           status: Database["app"]["Enums"]["automation_run_status"]
@@ -693,6 +703,7 @@ export type Database = {
           action_target_page: string | null
           action_timeout_seconds: number | null
           action_type: Database["app"]["Enums"]["automation_action_type"]
+          consecutive_failures: number | null
           created_at: string
           cron_schedule: string | null
           cron_timezone: string | null
@@ -710,6 +721,7 @@ export type Database = {
           run_at: string | null
           running_at: string | null
           site_id: string
+          skills: string[] | null
           trigger_type: Database["app"]["Enums"]["automation_trigger_type"]
           updated_at: string
           user_id: string
@@ -732,6 +744,7 @@ export type Database = {
           action_target_page: string | null
           action_timeout_seconds: number | null
           action_type: Database["app"]["Enums"]["automation_action_type"]
+          consecutive_failures: number | null
           created_at: string
           cron_schedule: string | null
           cron_timezone: string | null
@@ -749,6 +762,7 @@ export type Database = {
           run_at: string | null
           running_at: string | null
           site_id: string
+          skills: string[] | null
           trigger_type: Database["app"]["Enums"]["automation_trigger_type"]
           updated_at: string
           user_id: string

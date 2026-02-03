@@ -5,10 +5,11 @@
  * Returns domain_id and hostname for use in automation configuration.
  */
 
-import { type NextRequest, NextResponse } from "next/server"
+import { type NextRequest } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { ErrorCodes } from "@/lib/error-codes"
 import { structuredErrorResponse } from "@/lib/api/responses"
+import { alrighty } from "@/lib/api/server"
 import { createAppClient } from "@/lib/supabase/app"
 import { createIamClient } from "@/lib/supabase/iam"
 
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest) {
     const { data: memberships } = await iam.from("org_memberships").select("org_id").eq("user_id", user.id)
 
     if (!memberships || memberships.length === 0) {
-      return NextResponse.json({ sites: [] })
+      return alrighty("sites", { ok: true, sites: [] })
     }
 
     let orgIds = memberships.map(m => m.org_id)
@@ -49,13 +50,15 @@ export async function GET(req: NextRequest) {
       .order("hostname")
 
     const sites =
-      domains?.map(d => ({
-        id: d.domain_id,
-        hostname: d.hostname,
-        org_id: d.org_id,
-      })) || []
+      domains
+        ?.filter(d => d.org_id !== null)
+        .map(d => ({
+          id: d.domain_id,
+          hostname: d.hostname,
+          org_id: d.org_id as string, // filtered above
+        })) || []
 
-    return NextResponse.json({ sites })
+    return alrighty("sites", { ok: true, sites })
   } catch (error) {
     console.error("[Sites API] GET error:", error)
     return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })

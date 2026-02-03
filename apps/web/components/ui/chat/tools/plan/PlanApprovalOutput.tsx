@@ -44,7 +44,7 @@ interface PlanApprovalOutputProps extends ToolResultRendererProps<PlanApprovalDa
   onSubmitAnswer?: (message: string) => void
 }
 
-export function PlanApprovalOutput({ data, onSubmitAnswer }: PlanApprovalOutputProps) {
+export function PlanApprovalOutput({ data: _data, onSubmitAnswer }: PlanApprovalOutputProps) {
   const [approved, setApproved] = useState(false)
   const { disablePlanMode } = usePlanModeActions()
 

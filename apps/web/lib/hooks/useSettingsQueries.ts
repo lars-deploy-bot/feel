@@ -13,6 +13,7 @@ import { queryKeys } from "@/lib/tanstack/queryKeys"
 
 export type OrgMember = Res<"auth/org-members">["members"][number]
 export type AutomationJob = Res<"automations">["automations"][number]
+export type AutomationRun = Res<"automations/runs">["runs"][number]
 export type Site = Res<"sites">["sites"][number]
 
 // ============================================
@@ -162,5 +163,21 @@ export function useSitesQuery() {
     queryKey: queryKeys.sites.list(),
     queryFn: () => getty("sites"),
     staleTime: 5 * 60 * 1000, // 5 min - sites rarely change
+  })
+}
+
+/**
+ * Fetch runs for a specific automation job
+ *
+ * @example
+ * const { data } = useAutomationRunsQuery(jobId)
+ * // data?.runs is AutomationRun[]
+ */
+export function useAutomationRunsQuery(jobId: string | null) {
+  return useQuery<Res<"automations/runs">, ApiError>({
+    queryKey: queryKeys.automations.runs(jobId ?? ""),
+    queryFn: () => getty("automations/runs", undefined, `/api/automations/${jobId}/runs?limit=10`),
+    enabled: !!jobId,
+    staleTime: 30 * 1000, // 30 sec - runs can change frequently
   })
 }
