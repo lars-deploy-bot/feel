@@ -1,7 +1,8 @@
 "use client"
 
 import { QueryClientProvider as TanStackQueryClientProvider } from "@tanstack/react-query"
-import React, { useMemo } from "react"
+import type React from "react"
+import { useMemo } from "react"
 import { createQueryClient } from "@/lib/tanstack/config"
 import QueryDevTools from "@/lib/tanstack/devtools"
 

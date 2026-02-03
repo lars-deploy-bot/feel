@@ -1,4 +1,4 @@
-import { appendFileSync, mkdirSync } from "fs"
+import { appendFileSync, mkdirSync } from "node:fs"
 import { type NextRequest, NextResponse } from "next/server"
 import { createErrorResponse, requireSessionUser, verifyWorkspaceAccess } from "@/features/auth/lib/auth"
 import { tabKey } from "@/features/auth/lib/sessionStore"
@@ -52,7 +52,7 @@ function logCancelDebug(entry: CancelDebugEntry): void {
     // Ensure log directory exists
     mkdirSync("/var/log/claude-bridge", { recursive: true })
 
-    const logLine = JSON.stringify(entry) + "\n"
+    const logLine = `${JSON.stringify(entry)}\n`
     appendFileSync(CANCEL_DEBUG_LOG, logLine)
   } catch (err) {
     // Don't let logging failures break the endpoint
@@ -72,7 +72,7 @@ function detectCancelSource(req: NextRequest): "sendBeacon" | "fetch" | "unknown
   // - Sec-Fetch-Mode: cors
 
   const secFetchMode = req.headers.get("sec-fetch-mode")
-  const secFetchDest = req.headers.get("sec-fetch-dest")
+  const _secFetchDest = req.headers.get("sec-fetch-dest")
 
   // sendBeacon in some browsers sets sec-fetch-mode to "no-cors"
   if (secFetchMode === "no-cors") {
@@ -105,10 +105,10 @@ export async function POST(req: NextRequest) {
   const contentType = req.headers.get("content-type") ?? undefined
   const origin = req.headers.get("origin") ?? undefined
   const secFetchMode = req.headers.get("sec-fetch-mode")
-  const secFetchDest = req.headers.get("sec-fetch-dest")
+  const _secFetchDest = req.headers.get("sec-fetch-dest")
 
   console.log(`[Cancel Stream] Source detection: ${source}`)
-  console.log(`[Cancel Stream] Headers: sec-fetch-mode=${secFetchMode}, sec-fetch-dest=${secFetchDest}`)
+  console.log(`[Cancel Stream] Headers: sec-fetch-mode=${secFetchMode}, sec-fetch-dest=${_secFetchDest}`)
   console.log(`[Cancel Stream] Referer: ${referer}`)
   console.log(`[Cancel Stream] User-Agent: ${userAgent?.substring(0, 100)}`)
 

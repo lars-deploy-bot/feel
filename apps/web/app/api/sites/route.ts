@@ -5,7 +5,7 @@
  * Returns domain_id and hostname for use in automation configuration.
  */
 
-import { type NextRequest } from "next/server"
+import type { NextRequest } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { ErrorCodes } from "@/lib/error-codes"
 import { structuredErrorResponse } from "@/lib/api/responses"

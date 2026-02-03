@@ -495,8 +495,6 @@ function ArchivedConversationItem({
           </div>
         </div>
         {/* biome-ignore lint/a11y/useSemanticElements: Nested buttons are invalid HTML, using span with role instead */}
-        {/* biome-ignore lint/a11y/noStaticElementInteractions: Interactive span inside button for secondary action */}
-        {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: aria-label needed for screen readers */}
         <span
           role="button"
           tabIndex={0}

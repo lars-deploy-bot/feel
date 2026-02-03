@@ -4,7 +4,7 @@
  * List and manage automation jobs for an organization.
  */
 
-import { type NextRequest, NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { getSupabaseCredentials } from "@/lib/env/server"

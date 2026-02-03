@@ -5,7 +5,7 @@
 
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query"
 import { useCallback, useState } from "react"
-import { ApiError, delly, getty, postty } from "@/lib/api/api-client"
+import { type ApiError, delly, getty, postty } from "@/lib/api/api-client"
 import type { Res } from "@/lib/api/schemas"
 import { validateRequest } from "@/lib/api/schemas"
 import { clientLogger } from "@/lib/client-error-logger"
