@@ -76,8 +76,12 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     const { url, key } = getSupabaseCredentials("service")
     const supabase = createClient(url, key, { db: { schema: "app" } })
 
+    // Import validators
+    const { validateCronSchedule, validateTimezone, validateTimeout, validateActionPrompt, formatNextRuns } =
+      await import("@/lib/automation/validation")
+
     // Check ownership first
-    const { data: existing } = await supabase.from("automation_jobs").select("user_id").eq("id", id).single()
+    const { data: existing } = await supabase.from("automation_jobs").select("*").eq("id", id).single()
 
     if (!existing) {
       return structuredErrorResponse(ErrorCodes.SITE_NOT_FOUND, { status: 404 })
@@ -116,8 +120,65 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     if (Object.keys(updates).length === 0) {
       return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
         status: 400,
-        details: { field: "update fields" },
+        details: { message: "No valid fields to update" },
       })
+    }
+
+    // Validate schedule changes
+    if ("cron_schedule" in updates || "cron_timezone" in updates) {
+      const cronExpr = (updates.cron_schedule as string) || (existing as any).cron_schedule
+      const cronTz = (updates.cron_timezone as string) || (existing as any).cron_timezone
+
+      if (cronExpr) {
+        const cronCheck = validateCronSchedule(cronExpr, cronTz)
+        if (!cronCheck.valid) {
+          return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
+            status: 400,
+            details: { field: "cron_schedule", message: cronCheck.error },
+          })
+        }
+
+        // Recompute next_run_at with the new schedule
+        const { computeNextRunAtMs } = await import("@webalive/automation")
+        const nextMs = computeNextRunAtMs({ kind: "cron", expr: cronExpr, tz: cronTz }, Date.now())
+        if (nextMs) {
+          updates.next_run_at = new Date(nextMs).toISOString()
+        }
+      }
+    }
+
+    // Validate timezone changes
+    if ("cron_timezone" in updates) {
+      const tzCheck = validateTimezone(updates.cron_timezone as string)
+      if (!tzCheck.valid) {
+        return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
+          status: 400,
+          details: { field: "cron_timezone", message: tzCheck.error },
+        })
+      }
+    }
+
+    // Validate timeout if changed
+    if ("action_timeout_seconds" in body) {
+      const timeoutCheck = validateTimeout(body.action_timeout_seconds)
+      if (!timeoutCheck.valid) {
+        return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
+          status: 400,
+          details: { field: "action_timeout_seconds", message: timeoutCheck.error },
+        })
+      }
+      updates.action_timeout_seconds = body.action_timeout_seconds
+    }
+
+    // Validate prompt if changed
+    if ("action_prompt" in updates) {
+      const promptCheck = validateActionPrompt((existing as any).action_type, updates.action_prompt as string)
+      if (!promptCheck.valid) {
+        return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
+          status: 400,
+          details: { field: "action_prompt", message: promptCheck.error },
+        })
+      }
     }
 
     const { data, error } = await supabase.from("automation_jobs").update(updates).eq("id", id).select().single()
@@ -127,7 +188,14 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
     }
 
-    return NextResponse.json({ automation: data })
+    // Get next runs preview if schedule was updated
+    let nextRunsDisplay: string | undefined
+    if (data.trigger_type === "cron" && data.cron_schedule) {
+      const cronCheck = validateCronSchedule(data.cron_schedule, data.cron_timezone)
+      nextRunsDisplay = formatNextRuns(cronCheck.nextRuns)
+    }
+
+    return NextResponse.json({ automation: data, nextRunsPreview: nextRunsDisplay })
   } catch (error) {
     console.error("[Automations API] PATCH error:", error)
     return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })

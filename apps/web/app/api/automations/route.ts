@@ -126,33 +126,79 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json()
 
-    // Validate required fields
-    if (!body.site_id || !body.name || !body.trigger_type || !body.action_type) {
+    // Import validators
+    const {
+      validateRequiredFields,
+      validateActionType,
+      validateTriggerType,
+      validateActionPrompt,
+      validateTimeout,
+      validateCronSchedule,
+      validateTimezone,
+      validateSiteId,
+      formatNextRuns,
+    } = await import("@/lib/automation/validation")
+
+    // Step 1: Validate required fields
+    const requiredCheck = validateRequiredFields(body, ["site_id", "name", "trigger_type", "action_type"])
+    if (!requiredCheck.valid) {
       return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
         status: 400,
-        details: { field: "site_id, name, trigger_type, action_type" },
+        details: { message: `Missing required fields: ${requiredCheck.missing?.join(", ")}` },
       })
     }
 
-    // Validate trigger-specific fields
-    if (body.trigger_type === "cron" && !body.cron_schedule) {
+    // Step 2: Validate action_type
+    const actionTypeCheck = validateActionType(body.action_type)
+    if (!actionTypeCheck.valid) {
       return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
         status: 400,
-        details: { field: "cron_schedule" },
+        details: { field: "action_type", message: actionTypeCheck.error },
       })
     }
 
-    if (body.trigger_type === "one-time" && !body.run_at) {
+    // Step 3: Validate trigger_type and trigger-specific fields
+    const triggerCheck = validateTriggerType(body.trigger_type, body)
+    if (!triggerCheck.valid) {
       return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
         status: 400,
-        details: { field: "run_at" },
+        details: { field: body.trigger_type, message: triggerCheck.error },
       })
     }
 
-    if (body.action_type === "prompt" && !body.action_prompt) {
+    // Step 4: Validate action_prompt if prompt type
+    const promptCheck = validateActionPrompt(body.action_type, body.action_prompt)
+    if (!promptCheck.valid) {
       return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
         status: 400,
-        details: { field: "action_prompt" },
+        details: { field: "action_prompt", message: promptCheck.error },
+      })
+    }
+
+    // Step 5: Validate timeout if provided
+    const timeoutCheck = validateTimeout(body.action_timeout_seconds)
+    if (!timeoutCheck.valid) {
+      return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
+        status: 400,
+        details: { field: "action_timeout_seconds", message: timeoutCheck.error },
+      })
+    }
+
+    // Step 6: Validate timezone if provided
+    const tzCheck = validateTimezone(body.cron_timezone)
+    if (!tzCheck.valid) {
+      return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
+        status: 400,
+        details: { field: "cron_timezone", message: tzCheck.error },
+      })
+    }
+
+    // Step 7: Validate site exists and get hostname
+    const siteCheck = await validateSiteId(body.site_id)
+    if (!siteCheck.valid) {
+      return structuredErrorResponse(ErrorCodes.SITE_NOT_FOUND, {
+        status: 404,
+        details: { field: "site_id", message: siteCheck.error },
       })
     }
 
@@ -166,13 +212,24 @@ export async function POST(req: NextRequest) {
       return structuredErrorResponse(ErrorCodes.SITE_NOT_FOUND, { status: 404 })
     }
 
-    // Compute next_run_at based on schedule
+    // Step 8: Validate and compute cron schedule if present
     let nextRunAt: string | null = null
+    let nextRunsDisplay: string | undefined
     if (body.trigger_type === "cron" && body.cron_schedule) {
+      const cronCheck = validateCronSchedule(body.cron_schedule, body.cron_timezone)
+      if (!cronCheck.valid) {
+        return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
+          status: 400,
+          details: { field: "cron_schedule", message: cronCheck.error },
+        })
+      }
+
+      // Compute next_run_at and get preview
       const nextMs = computeNextRunAtMs({ kind: "cron", expr: body.cron_schedule, tz: body.cron_timezone }, Date.now())
       if (nextMs) {
         nextRunAt = new Date(nextMs).toISOString()
       }
+      nextRunsDisplay = formatNextRuns(cronCheck.nextRuns)
     } else if (body.trigger_type === "one-time" && body.run_at) {
       nextRunAt = body.run_at
     }
@@ -208,7 +265,11 @@ export async function POST(req: NextRequest) {
       return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
     }
 
-    return alrighty("automations/create", { ok: true, automation: data }, { status: 201 })
+    const response: any = { ok: true, automation: data }
+    if (nextRunsDisplay) {
+      response.nextRunsPreview = nextRunsDisplay
+    }
+    return alrighty("automations/create", response, { status: 201 })
   } catch (error) {
     console.error("[Automations API] POST error:", error)
     return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })

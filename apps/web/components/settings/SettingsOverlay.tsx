@@ -1,13 +1,14 @@
 "use client"
 
 import { useEffect } from "react"
+import { Suspense } from "react"
 import { SettingsPageClient } from "./SettingsPageClient"
 
 type SettingsTab =
   | "account"
   | "llm"
   | "goal"
-  | "prompts"
+  | "skills"
   | "organization"
   | "websites"
   | "automations"
@@ -24,6 +25,7 @@ interface SettingsOverlayProps {
 /**
  * Full-screen settings overlay.
  * Close via: X button, ESC key, or clicking backdrop (on desktop).
+ * Uses Suspense to handle nuqs URL param hydration.
  */
 export function SettingsOverlay({ onClose, initialTab }: SettingsOverlayProps) {
   // ESC key closes overlay
@@ -41,7 +43,9 @@ export function SettingsOverlay({ onClose, initialTab }: SettingsOverlayProps) {
       aria-label="Settings"
       data-testid="settings-overlay"
     >
-      <SettingsPageClient onClose={onClose} initialTab={initialTab} />
+      <Suspense fallback={null}>
+        <SettingsPageClient onClose={onClose} initialTab={initialTab} />
+      </Suspense>
     </div>
   )
 }

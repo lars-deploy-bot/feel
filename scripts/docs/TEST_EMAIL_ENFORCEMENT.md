@@ -34,7 +34,7 @@ const user = await createTestUser(email)
 
 ```typescript
 // ❌ SECURITY ERROR: Real email domain
-const user = await createTestUser("test@gmail.com")
+const user = await createTestUser("test@example.com")
 
 // ❌ SECURITY ERROR: Not an allowed domain
 const user = await createTestUser("test@mysite.com")
@@ -47,7 +47,7 @@ const user = await createTestUser("test@alive.best")
 
 ```
 SECURITY ERROR: Test users MUST use test email domains!
-Provided: test@gmail.com
+Provided: test@example.com
 Allowed domains: @test.com, @example.com, @localhost, @test.local
 Example: test-user@test.com
 ```
@@ -62,7 +62,7 @@ const TEST_SITES = [
 ]
 
 // NOT this:
-// { email: "tc1@gmail.com" }  // ❌ WILL FAIL
+// { email: "tc1@example.com" }  // ❌ WILL FAIL
 ```
 
 ## Why This Matters
@@ -122,7 +122,7 @@ Checks if an email uses an allowed test domain.
 
 ```typescript
 isTestEmail("user@test.com")     // → true
-isTestEmail("user@gmail.com")    // → false
+isTestEmail("user@example.com")    // → false
 ```
 
 ### `validateTestEmail(email)`
@@ -131,7 +131,7 @@ Throws an error if email doesn't use allowed domain.
 
 ```typescript
 validateTestEmail("user@test.com")    // ✓ No error
-validateTestEmail("user@gmail.com")   // ✗ Throws SECURITY ERROR
+validateTestEmail("user@example.com")   // ✗ Throws SECURITY ERROR
 ```
 
 ### `createTestUser(email?, credits?)`
@@ -154,8 +154,8 @@ const user = await createTestUser("mytest@test.com", 1000)
 | Action | Enforcement |
 |--------|------------|
 | Create test user with `@test.com` | ✅ Works |
-| Create test user with `@gmail.com` | ❌ Throws error |
+| Create test user with `@example.com` | ❌ Throws error |
 | Cleanup users with `@test.com` | ✅ Deleted safely |
-| Cleanup users with `@gmail.com` | ⚠️ Skipped (even if `is_test_env=true`) |
+| Cleanup users with `@example.com` | ⚠️ Skipped (even if `is_test_env=true`) |
 
 **Result:** Impossible to accidentally delete real users, even with lazy devs! 🎉

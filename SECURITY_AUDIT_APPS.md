@@ -15,7 +15,7 @@
 #### File: `/root/webalive/claude-bridge/apps/shell-server-go/.env.production`
 ```env
 PORT=3888
-SHELL_PASSWORD=/scKm1L9yjcX6iDJVK51swnlbiikX2Kw+o8olGb10hU=
+SHELL_PASSWORD=your-secret-here
 NODE_ENV=production
 ```
 - 🔴 **Production password exposed in repository**
@@ -23,7 +23,7 @@ NODE_ENV=production
 
 #### File: `/root/webalive/claude-bridge/apps/shell-server-go/.env`
 ```env
-SHELL_PASSWORD=/scKm1L9yjcX6iDJVK51swnlbiikX2Kw+o8olGb10hU=
+SHELL_PASSWORD=your-secret-here
 ```
 - 🔴 **Production password exposed in repository**
 - 🔴 **Must be removed and added to .gitignore**

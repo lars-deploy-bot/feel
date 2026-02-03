@@ -210,8 +210,9 @@ async function armTimer(): Promise<void> {
 
   const delay = Math.max(0, nextWakeMs - Date.now())
   const clampedDelay = Math.min(delay, MAX_TIMEOUT_MS)
+  const nextWakeDate = new Date(nextWakeMs)
 
-  console.log(`[CronService] Next wake in ${Math.round(clampedDelay / 1000)}s`)
+  console.log(`[CronService] Next wake: ${nextWakeDate.toISOString()} (in ${Math.round(clampedDelay / 1000)}s)`)
 
   state.timer = setTimeout(() => {
     void onTimerTick().catch(err => {
@@ -268,11 +269,18 @@ async function runDueJobs(): Promise<void> {
 
   if (!dueJobs?.length) return
 
-  console.log(`[CronService] Found ${dueJobs.length} due job(s)`)
+  const jobNames = dueJobs.map(j => `"${j.name}"`).join(", ")
+  console.log(`[CronService] Found ${dueJobs.length} due job(s): ${jobNames}`)
 
   // Filter out already running and respect concurrency limit
   const availableSlots = state.config.maxConcurrent - state.runningJobs.size
   const jobsToRun = dueJobs.filter(j => !state!.runningJobs.has(j.id)).slice(0, availableSlots)
+
+  if (jobsToRun.length < dueJobs.length) {
+    console.log(
+      `[CronService] Concurrency limit: executing ${jobsToRun.length}/${dueJobs.length} jobs (${state.runningJobs.size}/${state.config.maxConcurrent} slots in use)`,
+    )
+  }
 
   // Execute jobs concurrently
   await Promise.all(jobsToRun.map(job => executeJob(job, { forced: false })))
@@ -393,14 +401,16 @@ async function finishJob(
 
     if (consecutiveFailures >= state.config.maxRetries) {
       // Too many failures, disable the job
-      console.warn(`[CronService] Job ${job.id} disabled after ${consecutiveFailures} consecutive failures`)
+      console.warn(
+        `[CronService] Job "${job.name}" (${job.id}) DISABLED after ${consecutiveFailures}/${state.config.maxRetries} failures. Last error: ${result.error}`,
+      )
       isActive = false
     } else {
       // Exponential backoff for retry
       const backoffMs = state.config.retryBaseDelayMs * 2 ** (consecutiveFailures - 1)
       nextRunAt = new Date(now + backoffMs).toISOString()
       console.log(
-        `[CronService] Job ${job.id} will retry in ${Math.round(backoffMs / 1000)}s (attempt ${consecutiveFailures}/${state.config.maxRetries})`,
+        `[CronService] Job "${job.name}" (${job.id}) failed: ${result.error || "unknown error"} (attempt ${consecutiveFailures}/${state.config.maxRetries}) - retrying in ${Math.round(backoffMs / 1000)}s`,
       )
     }
   }
@@ -510,10 +520,15 @@ async function postSummaryToChat(job: AutomationJob, summary: string): Promise<v
       status: "success",
       summary,
     })
-  } catch {
-    // SSE broadcast failed, not critical
+    console.log(`[CronService] Job "${job.name}" (${job.id}) completed and broadcasted to user ${job.user_id}`)
+  } catch (error) {
+    // SSE broadcast failed, not critical but log it
+    console.warn(
+      `[CronService] Failed to broadcast completion for job "${job.name}" (${job.id}):`,
+      error instanceof Error ? error.message : String(error),
+    )
   }
 
-  // Log for debugging
-  console.log(`[CronService] Job "${job.name}" completed: ${summary}`)
+  // Log summary for debugging
+  console.log(`[CronService] Job "${job.name}" (${job.id}) summary: ${summary}`)
 }

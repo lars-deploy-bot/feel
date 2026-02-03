@@ -221,7 +221,7 @@ NEXT_PUBLIC_APP_URL=https://app.yourdomain.com
 
 ### Test Isolation ✅
 - Test emails use `@bridge-vitest.internal`, `@bridge-playwright.internal`
-- Test credentials in `.env.test` are mock values
+- Test credentials in `.env.test` (copied from `.env.test.example`) are mock values
 - Production domains not in test files
 
 ### .gitignore ✅

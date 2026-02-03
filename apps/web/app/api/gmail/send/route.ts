@@ -10,6 +10,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createErrorResponse, getSessionUser } from "@/features/auth/lib/auth"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getOAuthInstance } from "@/lib/oauth/oauth-instances"
+import type { GmailSendResponse } from "@/lib/types/gmail-api"
 
 interface SendEmailRequest {
   to: string[]
@@ -24,11 +25,15 @@ interface CreateRawEmailParams extends SendEmailRequest {
   from: string
 }
 
+function formatFromAddress(email: string): string {
+  return `<${email}>`
+}
+
 function createRawEmail(params: CreateRawEmailParams): string {
   const { from, to, cc, bcc, subject, body } = params
 
   const headers = [
-    `From: ${from}`,
+    `From: ${formatFromAddress(from)}`,
     `To: ${to.join(", ")}`,
     cc?.length ? `Cc: ${cc.join(", ")}` : null,
     bcc?.length ? `Bcc: ${bcc.join(", ")}` : null,
@@ -99,11 +104,18 @@ export async function POST(req: NextRequest) {
 
     console.log(`[Gmail Send] Email sent by user ${user.id}, ID: ${response.data.id}`)
 
-    return NextResponse.json({
+    if (!response.data.id) {
+      return createErrorResponse(ErrorCodes.INTEGRATION_ERROR, 500, {
+        reason: "Gmail API did not return message ID",
+      })
+    }
+
+    const result: GmailSendResponse = {
       ok: true,
       messageId: response.data.id,
-      threadId: response.data.threadId,
-    })
+      threadId: response.data.threadId || undefined,
+    }
+    return NextResponse.json(result)
   } catch (error) {
     console.error("[Gmail Send] Error:", error)
     const message = error instanceof Error ? error.message : "Failed to send email"

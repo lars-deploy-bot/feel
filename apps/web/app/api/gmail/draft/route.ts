@@ -10,6 +10,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createErrorResponse, getSessionUser } from "@/features/auth/lib/auth"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getOAuthInstance } from "@/lib/oauth/oauth-instances"
+import type { GmailDraftResponse } from "@/lib/types/gmail-api"
 
 interface SaveDraftRequest {
   to: string[]
@@ -19,10 +20,19 @@ interface SaveDraftRequest {
   threadId?: string
 }
 
-function createRawEmail(params: SaveDraftRequest): string {
-  const { to, cc, subject, body } = params
+interface CreateRawEmailParams extends SaveDraftRequest {
+  from: string
+}
+
+function formatFromAddress(email: string): string {
+  return `<${email}>`
+}
+
+function createRawEmail(params: CreateRawEmailParams): string {
+  const { from, to, cc, subject, body } = params
 
   const headers = [
+    `From: ${formatFromAddress(from)}`,
     `To: ${to.join(", ")}`,
     cc?.length ? `Cc: ${cc.join(", ")}` : null,
     `Subject: ${subject}`,
@@ -71,8 +81,17 @@ export async function POST(req: NextRequest) {
     oauth2Client.setCredentials({ access_token: accessToken })
     const gmail = new gmail_v1.Gmail({ auth: oauth2Client })
 
-    // 5. Create draft
-    const raw = createRawEmail(body)
+    // 5. Get sender's email from Gmail profile
+    const profileResponse = await gmail.users.getProfile({ userId: "me" })
+    const senderEmail = profileResponse.data.emailAddress
+    if (!senderEmail) {
+      return createErrorResponse(ErrorCodes.INTEGRATION_ERROR, 500, {
+        reason: "Could not determine sender email address",
+      })
+    }
+
+    // 6. Create draft
+    const raw = createRawEmail({ ...body, from: senderEmail })
     const response = await gmail.users.drafts.create({
       userId: "me",
       requestBody: {
@@ -85,11 +104,18 @@ export async function POST(req: NextRequest) {
 
     console.log(`[Gmail Draft] Draft saved by user ${user.id}, ID: ${response.data.id}`)
 
-    return NextResponse.json({
+    if (!response.data.id) {
+      return createErrorResponse(ErrorCodes.INTEGRATION_ERROR, 500, {
+        reason: "Gmail API did not return draft ID",
+      })
+    }
+
+    const result: GmailDraftResponse = {
       ok: true,
       draftId: response.data.id,
-      messageId: response.data.message?.id,
-    })
+      messageId: response.data.message?.id || undefined,
+    }
+    return NextResponse.json(result)
   } catch (error) {
     console.error("[Gmail Draft] Error:", error)
     const message = error instanceof Error ? error.message : "Failed to save draft"

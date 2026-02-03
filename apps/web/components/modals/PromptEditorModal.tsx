@@ -87,7 +87,7 @@ export function PromptEditorModal({
         <div className="px-5 py-3 border-b border-black/10 dark:border-white/10 flex items-center justify-between bg-gradient-to-br from-amber-50/50 to-yellow-50/50 dark:from-amber-950/20 dark:to-yellow-950/20">
           <div>
             <h2 id="prompt-editor-title" className="text-xl font-semibold text-black dark:text-white">
-              {mode === "add" ? "Add New Prompt" : "Edit Prompt"}
+              {mode === "add" ? "Add New Skill" : "Edit Skill"}
             </h2>
             <p className="text-xs text-black/60 dark:text-white/60 mt-1">
               Use <kbd className="px-1.5 py-0.5 bg-black/10 dark:bg-white/10 rounded text-[10px]">Cmd+Enter</kbd> to
@@ -104,10 +104,10 @@ export function PromptEditorModal({
           </button>
         </div>
 
-        {/* Prompt Name */}
+        {/* Skill Name */}
         <div className="px-5 py-3 border-b border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02]">
           <label htmlFor="prompt-name" className="block text-sm font-medium text-black dark:text-white mb-1.5">
-            Prompt Name
+            Skill Name
           </label>
           <input
             id="prompt-name"
@@ -123,7 +123,7 @@ export function PromptEditorModal({
         <div className="flex-1 flex flex-col overflow-hidden min-h-0">
           <div className="px-5 py-2 border-b border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02] flex items-center justify-between">
             <label htmlFor="prompt-content" className="text-sm font-medium text-black dark:text-white">
-              Prompt Content
+              Skill Content
             </label>
             <button
               type="button"
@@ -174,7 +174,7 @@ export function PromptEditorModal({
             disabled={!canSave}
             className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-amber-600"
           >
-            {mode === "add" ? "Add Prompt" : "Save Changes"}
+            {mode === "add" ? "Add Skill" : "Save Changes"}
           </button>
         </div>
       </div>

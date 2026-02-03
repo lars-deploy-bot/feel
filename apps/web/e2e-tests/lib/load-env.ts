@@ -7,7 +7,7 @@
  * Usage: import "./e2e-tests/lib/load-env" // First import!
  *
  * ENV_FILE selects which environment:
- * - .env.test       → local (default)
+ * - .env.test       → local (default, copy from .env.test.example)
  * - .env.staging    → staging
  * - .env.production → production
  */
@@ -15,11 +15,15 @@
 import { existsSync } from "node:fs"
 import dotenv from "dotenv"
 
-const ENV_FILE = process.env.ENV_FILE || ".env.test"
+const DEFAULT_ENV_FILE = ".env.test"
+const FALLBACK_ENV_FILE = ".env.test.example"
+const ENV_FILE = process.env.ENV_FILE || (existsSync(DEFAULT_ENV_FILE) ? DEFAULT_ENV_FILE : FALLBACK_ENV_FILE)
 
 if (!existsSync(ENV_FILE)) {
   throw new Error(
-    `\n❌ Missing env file: ${ENV_FILE}\n   Available: .env.test (local), .env.staging, .env.production\n   Usage: ENV_FILE=.env.staging bun run test:e2e\n`,
+    `\n❌ Missing env file: ${ENV_FILE}\n` +
+      "   Available: .env.test (local), .env.test.example, .env.staging, .env.production\n" +
+      "   Usage: ENV_FILE=.env.staging bun run test:e2e\n",
   )
 }
 

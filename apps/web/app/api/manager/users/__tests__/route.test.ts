@@ -197,7 +197,7 @@ describe("GET /api/manager/users", () => {
           data: [
             {
               user_id: "real-1",
-              email: "real.user@gmail.com",
+              email: "real.user@example.com",
               display_name: "Real User",
               created_at: "2024-01-01",
               status: "active",
@@ -216,7 +216,7 @@ describe("GET /api/manager/users", () => {
       expect(data.users).toEqual([
         {
           user_id: "real-1",
-          email: "real.user@gmail.com",
+          email: "real.user@example.com",
           display_name: "Real User",
           created_at: "2024-01-01",
           status: "active",

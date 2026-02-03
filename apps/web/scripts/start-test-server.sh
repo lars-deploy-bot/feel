@@ -11,7 +11,7 @@ fi
 # CRITICAL: Override JWT_SECRET to match TEST_CONFIG.JWT_SECRET from @webalive/shared
 # This ensures JWTs created by fixtures.ts can be verified by the server
 # Single source of truth: packages/shared/src/constants.ts -> TEST_CONFIG.JWT_SECRET
-# If you change this, update the constant in constants.ts AND .env.test
+# If you change this, update the constant in constants.ts AND .env.test (copied from .env.test.example)
 export JWT_SECRET=test-jwt-secret-for-e2e-tests
 
 export BRIDGE_ENV=local

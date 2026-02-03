@@ -194,3 +194,9 @@ ops/caddy/Caddyfile.shell
 
 # Agent memory database (development context)
 use_this_to_remember.db
+
+# Operations infrastructure (ops-only, never distribute)
+# These are server management scripts, not part of the npm package
+ops/scripts/site-modes.json
+/var/lib/webalive/
+/var/log/webalive-*.log

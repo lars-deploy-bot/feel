@@ -64,7 +64,29 @@ export async function POST(_req: NextRequest, context: RouteContext) {
       return structuredErrorResponse(ErrorCodes.SITE_NOT_FOUND, { status: 404, details: { resource: "site" } })
     }
 
-    console.log(`[Automation Trigger] Running job "${job.name}" for site ${hostname}`)
+    // Pre-execution validation
+    const { validateActionPrompt, validateWorkspace } = await import("@/lib/automation/validation")
+
+    // Validate that job has a prompt
+    const promptCheck = validateActionPrompt(job.action_type, job.action_prompt)
+    if (!promptCheck.valid) {
+      return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
+        status: 400,
+        details: { message: promptCheck.error },
+      })
+    }
+
+    // Validate workspace exists
+    const wsCheck = await validateWorkspace(hostname)
+    if (!wsCheck.valid) {
+      return structuredErrorResponse(ErrorCodes.SITE_NOT_FOUND, {
+        status: 404,
+        details: { message: wsCheck.error },
+      })
+    }
+
+    const startedAt = new Date()
+    console.log(`[Automation Trigger] Running job "${job.name}" for site ${hostname} at ${startedAt.toISOString()}`)
 
     // Run the automation
     const result = await runAutomationJob({
@@ -76,9 +98,13 @@ export async function POST(_req: NextRequest, context: RouteContext) {
       timeoutSeconds: job.action_timeout_seconds || 300,
     })
 
+    // Return complete response with timing info
     return NextResponse.json({
       ok: result.success,
+      startedAt: startedAt.toISOString(),
+      completedAt: new Date().toISOString(),
       durationMs: result.durationMs,
+      timeoutSeconds: job.action_timeout_seconds || 300,
       error: result.error,
       response: result.response,
     })

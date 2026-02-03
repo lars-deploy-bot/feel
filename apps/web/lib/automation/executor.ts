@@ -94,7 +94,32 @@ export async function runAutomationJob(params: AutomationJobParams): Promise<Aut
   const requestId = generateRequestId()
   const startTime = Date.now()
 
-  console.log(`[Automation ${requestId}] Starting job ${jobId} for ${workspace}`)
+  // === PHASE 1: Input Validation ===
+  if (!workspace?.trim()) {
+    return {
+      success: false,
+      durationMs: 0,
+      error: "Workspace hostname is required",
+    }
+  }
+
+  if (!prompt?.trim()) {
+    return {
+      success: false,
+      durationMs: 0,
+      error: "Automation prompt cannot be empty",
+    }
+  }
+
+  if (!Number.isInteger(timeoutSeconds) || timeoutSeconds < 1 || timeoutSeconds > 3600) {
+    return {
+      success: false,
+      durationMs: 0,
+      error: `Invalid timeout: ${timeoutSeconds}. Must be between 1 and 3600 seconds (1 hour).`,
+    }
+  }
+
+  console.log(`[Automation ${requestId}] Starting job ${jobId} for ${workspace} (timeout: ${timeoutSeconds}s)`)
 
   const { url, key } = getSupabaseCredentials("service")
   const supabase = createClient(url, key, { db: { schema: "app" } })
@@ -125,32 +150,57 @@ export async function runAutomationJob(params: AutomationJobParams): Promise<Aut
     // Mark job as running
     await supabase.from("automation_jobs").update({ running_at: new Date().toISOString() }).eq("id", jobId)
 
-    // Resolve workspace path
-    const cwd = resolveWorkspacePath(workspace)
+    // === PHASE 2: Workspace Validation ===
+    // resolveWorkspacePath() throws if /user/src directory doesn't exist
+    let cwd: string
+    try {
+      cwd = resolveWorkspacePath(workspace)
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error)
+      if (errorMsg.includes("ENOENT") || errorMsg.includes("no such file")) {
+        throw new Error(
+          `Site "${workspace}" is not properly deployed. The required directory structure (/user/src) is missing. ` +
+            "The site may need to be redeployed. Please check that the site deployment completed successfully.",
+        )
+      }
+      if (errorMsg.includes("escaped")) {
+        throw new Error(`Invalid workspace path for "${workspace}". This is a security error - contact support.`)
+      }
+      throw new Error(`Failed to access workspace "${workspace}": ${errorMsg}`)
+    }
+
     if (!cwd) {
-      throw new Error(`Workspace not found: ${workspace}`)
+      throw new Error(
+        `Site not found: "${workspace}". Verify that the site exists and is accessible. Check your workspace configuration.`,
+      )
     }
 
     console.log(`[Automation ${requestId}] Workspace: ${cwd}`)
 
+    // === PHASE 3: Credits Validation ===
     // Check credits and OAuth credentials
     // DON'T pass apiKey - let Claude Code read ~/.claude/.credentials.json directly
     // This is the same as the main chat flow
     const orgCredits = (await getOrgCredits(workspace)) ?? 0
-    const COST_ESTIMATE = 1
+    const COST_ESTIMATE = 1 // Minimum credits required per automation run
 
     if (orgCredits < COST_ESTIMATE) {
-      throw new Error(`Insufficient credits: ${orgCredits} < ${COST_ESTIMATE}`)
+      throw new Error(
+        `Insufficient credits: You have ${orgCredits} credit(s) but need ${COST_ESTIMATE}. Please upgrade your plan to continue using automations.`,
+      )
     }
 
+    // === PHASE 4: OAuth Validation ===
     if (!hasOAuthCredentials()) {
-      throw new Error("No OAuth credentials found")
+      throw new Error(
+        "No OAuth credentials found. Please authenticate with Anthropic in settings before running automations.",
+      )
     }
 
     // Ensure token is fresh (refresh if needed)
     const oauthResult = await getValidAccessToken()
     if (!oauthResult) {
-      throw new Error("Failed to get valid OAuth token")
+      throw new Error("Failed to refresh authentication token. Please re-authenticate in settings and try again.")
     }
     console.log(`[Automation ${requestId}] OAuth ready (refreshed: ${oauthResult.refreshed})`)
 
@@ -376,7 +426,7 @@ export async function runAutomationJob(params: AutomationJobParams): Promise<Aut
     const durationMs = Date.now() - startTime
     const errorMessage = error instanceof Error ? error.message : String(error)
 
-    console.error(`[Automation ${requestId}] Failed:`, errorMessage)
+    console.error(`[Automation ${requestId}] Failed after ${durationMs}ms:`, errorMessage)
 
     // Compute next run time for cron jobs (even on failure, schedule next attempt)
     let nextRunAt: string | null = null
@@ -391,29 +441,37 @@ export async function runAutomationJob(params: AutomationJobParams): Promise<Aut
     }
 
     // Update job with failure
-    await supabase
-      .from("automation_jobs")
-      .update({
-        running_at: null,
-        last_run_at: new Date(startTime).toISOString(),
-        last_run_status: "failure",
-        last_run_error: errorMessage,
-        last_run_duration_ms: durationMs,
-        next_run_at: nextRunAt,
-      })
-      .eq("id", jobId)
+    try {
+      await supabase
+        .from("automation_jobs")
+        .update({
+          running_at: null,
+          last_run_at: new Date(startTime).toISOString(),
+          last_run_status: "failure",
+          last_run_error: errorMessage,
+          last_run_duration_ms: durationMs,
+          next_run_at: nextRunAt,
+        })
+        .eq("id", jobId)
+    } catch (dbError) {
+      console.error(`[Automation ${requestId}] Failed to update job status:`, dbError)
+    }
 
     // Create run record with whatever messages we captured before failure
-    await supabase.from("automation_runs").insert({
-      job_id: jobId,
-      started_at: new Date(startTime).toISOString(),
-      completed_at: new Date().toISOString(),
-      duration_ms: durationMs,
-      status: "failure",
-      error: errorMessage,
-      messages: allMessages.length > 0 ? allMessages : null, // Include partial log if any
-      triggered_by: "manual",
-    })
+    try {
+      await supabase.from("automation_runs").insert({
+        job_id: jobId,
+        started_at: new Date(startTime).toISOString(),
+        completed_at: new Date().toISOString(),
+        duration_ms: durationMs,
+        status: "failure",
+        error: errorMessage,
+        messages: allMessages.length > 0 ? allMessages : null, // Include partial log if any
+        triggered_by: "manual",
+      })
+    } catch (dbError) {
+      console.error(`[Automation ${requestId}] Failed to create run record:`, dbError)
+    }
 
     return {
       success: false,

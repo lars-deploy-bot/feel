@@ -53,3 +53,57 @@ export function computeNextRunAtMs(schedule: AutomationSchedule, nowMs: number):
     return undefined
   }
 }
+
+/**
+ * Validate a cron expression and return error details
+ *
+ * @param expr - Cron expression string
+ * @param tz - Optional timezone (IANA format)
+ * @returns Validation result with error message if invalid
+ */
+export function validateCronExpression(
+  expr: string | null | undefined,
+  tz?: string | null,
+): {
+  valid: boolean
+  error?: string
+  nextRuns?: Date[]
+} {
+  if (!expr?.trim()) {
+    return { valid: false, error: "Cron expression cannot be empty" }
+  }
+
+  try {
+    const cron = new Cron(expr.trim(), {
+      timezone: tz?.trim() || undefined,
+      catch: false,
+    })
+
+    // Get next 3 run times for preview
+    const now = new Date()
+    const nextRuns: Date[] = []
+    let current = now
+
+    for (let i = 0; i < 3; i++) {
+      const next = cron.nextRun(current)
+      if (!next) break
+      nextRuns.push(next)
+      current = next
+    }
+
+    return {
+      valid: true,
+      nextRuns,
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    const friendlyMessage = message.includes("Invalid")
+      ? `Invalid cron expression: "${expr}". ${message}`
+      : `Invalid cron expression: "${expr}". Check syntax at crontab.guru`
+
+    return {
+      valid: false,
+      error: friendlyMessage,
+    }
+  }
+}

@@ -14,6 +14,7 @@ import { EmailDraftCard } from "@/components/email/EmailDraftCard"
 import type { EmailDraft } from "@/components/email/types"
 import { FAKE_EMAIL_DRAFTS } from "@/components/email/types"
 import type { ToolResultRendererProps } from "@/lib/tools/tool-registry"
+import type { GmailSendResponse, GmailDraftResponse, GmailErrorResponse } from "@/lib/types/gmail-api"
 
 /**
  * Generate a unique key for storing sent status in localStorage
@@ -102,15 +103,17 @@ export function EmailDraftOutput({ data }: ToolResultRendererProps<unknown>) {
         }),
       })
 
-      const result = await response.json()
+      const result: GmailSendResponse | GmailErrorResponse = await response.json()
 
-      if (!response.ok || !result.success) {
-        throw new Error(result.message || result.reason || "Failed to send email")
+      if (!response.ok || !result.ok) {
+        throw new Error(
+          (result as GmailErrorResponse).message || (result as GmailErrorResponse).reason || "Failed to send email",
+        )
       }
 
       // Persist sent status so it survives page refresh
       markEmailAsSent(emailDraft)
-      setDraft({ ...emailDraft, status: "sent", id: result.messageId })
+      setDraft({ ...emailDraft, status: "sent", id: (result as GmailSendResponse).messageId })
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to send email"
       setError(message)
@@ -136,13 +139,15 @@ export function EmailDraftOutput({ data }: ToolResultRendererProps<unknown>) {
         }),
       })
 
-      const result = await response.json()
+      const result: GmailDraftResponse | GmailErrorResponse = await response.json()
 
-      if (!response.ok || !result.success) {
-        throw new Error(result.message || result.reason || "Failed to save draft")
+      if (!response.ok || !result.ok) {
+        throw new Error(
+          (result as GmailErrorResponse).message || (result as GmailErrorResponse).reason || "Failed to save draft",
+        )
       }
 
-      setDraft({ ...emailDraft, status: "saved", id: result.draftId })
+      setDraft({ ...emailDraft, status: "saved", id: (result as GmailDraftResponse).draftId })
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to save draft"
       setError(message)

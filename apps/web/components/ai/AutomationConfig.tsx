@@ -389,11 +389,15 @@ export function AutomationConfig({ data, onComplete, onSkip }: AutomationConfigP
           {/* Step: Schedule */}
           {step === "schedule" && (
             <div className="h-full duration-300 animate-in fade-in slide-in-from-right-4">
-              <div className="flex h-full flex-col gap-4 overflow-y-auto p-4 outline-none">
-                {/* Schedule type */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Frequency</label>
-                  <div className="flex flex-col gap-0.5">
+              <div className="flex h-full flex-col gap-0 overflow-y-auto outline-none">
+                {/* Section 1: Schedule Type */}
+                <div className="flex flex-col gap-4 px-4 pt-4 pb-6 border-b border-black/[0.08] dark:border-white/[0.08]">
+                  <div className="flex flex-col gap-2">
+                    <h3 className="text-sm font-semibold text-black dark:text-white">When should it run?</h3>
+                    <p className="text-xs text-black/50 dark:text-white/50">Choose how often this automation repeats</p>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
                     {REPEAT_OPTIONS.map(option => {
                       const isSelected = scheduleType === option.value
                       return (
@@ -401,22 +405,24 @@ export function AutomationConfig({ data, onComplete, onSkip }: AutomationConfigP
                           key={option.value}
                           type="button"
                           onClick={() => setScheduleType(option.value)}
-                          className={`group flex cursor-pointer items-start gap-2.5 rounded-lg py-2 px-2 transition-colors text-left ${
-                            isSelected ? "bg-zinc-100 dark:bg-zinc-800" : "hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                          className={`flex cursor-pointer items-start gap-3 rounded-xl p-3 transition-all duration-150 text-left ${
+                            isSelected
+                              ? "bg-blue-500/10 dark:bg-blue-500/10 border border-blue-500/30 dark:border-blue-500/30"
+                              : "bg-black/[0.02] dark:bg-white/[0.02] border border-transparent hover:bg-black/[0.05] dark:hover:bg-white/[0.05]"
                           }`}
                         >
-                          <div className="flex h-5 items-center">
+                          <div className="flex h-5 w-5 items-center justify-center pt-0.5 flex-shrink-0">
                             <div
-                              className={`size-2.5 border rounded-full transition-colors ${
+                              className={`size-4 rounded-full border-2 transition-all ${
                                 isSelected
-                                  ? "border-zinc-900 dark:border-zinc-100 bg-zinc-900 dark:bg-zinc-100"
-                                  : "border-zinc-400 dark:border-zinc-600 bg-white dark:bg-zinc-950"
+                                  ? "border-blue-600 dark:border-blue-400 bg-blue-600 dark:bg-blue-400"
+                                  : "border-black/30 dark:border-white/30 bg-white dark:bg-black"
                               }`}
                             />
                           </div>
-                          <div className="flex flex-col">
-                            <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{option.label}</p>
-                            <p className="text-xs text-zinc-500 dark:text-zinc-400">{option.description}</p>
+                          <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                            <p className="text-sm font-medium text-black dark:text-white">{option.label}</p>
+                            <p className="text-xs text-black/50 dark:text-white/50">{option.description}</p>
                           </div>
                         </button>
                       )
@@ -424,62 +430,160 @@ export function AutomationConfig({ data, onComplete, onSkip }: AutomationConfigP
                   </div>
                 </div>
 
-                {/* Time & Date */}
-                {scheduleType !== "custom" && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="flex flex-col gap-1.5">
-                      <label htmlFor="schedule-time" className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                        Time
-                      </label>
-                      <div className="relative">
-                        <Clock
-                          size={14}
-                          className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none"
-                        />
-                        <input
-                          id="schedule-time"
-                          type="time"
-                          value={scheduleTime}
-                          onChange={e => setScheduleTime(e.target.value)}
-                          className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-transparent pl-9 pr-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus-visible:outline-none hover:border-zinc-300 dark:hover:border-zinc-600"
-                        />
+                {/* Section 2: Time & Date Inputs */}
+                <div
+                  className={`flex flex-col gap-4 px-4 py-6 ${scheduleType === "custom" ? "border-b border-black/[0.08] dark:border-white/[0.08]" : ""}`}
+                >
+                  {scheduleType !== "custom" && (
+                    <>
+                      <div className="flex flex-col gap-2">
+                        <h3 className="text-sm font-semibold text-black dark:text-white">Schedule details</h3>
+                        <p className="text-xs text-black/50 dark:text-white/50">Set the time and other specifics</p>
                       </div>
-                    </div>
 
-                    {scheduleType === "once" && (
-                      <div className="flex flex-col gap-1.5">
-                        <label htmlFor="schedule-date" className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                          Date
-                        </label>
-                        <div className="relative">
-                          <Calendar
-                            size={14}
-                            className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none"
-                          />
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-2">
+                          <label
+                            htmlFor="schedule-time"
+                            className="text-xs font-semibold text-black dark:text-white uppercase tracking-wider opacity-70"
+                          >
+                            Time
+                          </label>
+                          <div className="relative">
+                            <Clock
+                              size={16}
+                              className="absolute left-3 top-1/2 -translate-y-1/2 text-black/40 dark:text-white/40 pointer-events-none"
+                            />
+                            <input
+                              id="schedule-time"
+                              type="time"
+                              value={scheduleTime}
+                              onChange={e => setScheduleTime(e.target.value)}
+                              className="w-full rounded-xl border border-black/[0.08] dark:border-white/[0.08] bg-black/[0.02] dark:bg-white/[0.02] pl-10 pr-3 py-2.5 text-sm text-black dark:text-white placeholder:text-black/30 dark:placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/30 transition-all hover:border-black/[0.12] dark:hover:border-white/[0.12]"
+                            />
+                          </div>
+                        </div>
+
+                        {scheduleType === "once" && (
+                          <div className="flex flex-col gap-2">
+                            <label
+                              htmlFor="schedule-date"
+                              className="text-xs font-semibold text-black dark:text-white uppercase tracking-wider opacity-70"
+                            >
+                              Date
+                            </label>
+                            <div className="relative">
+                              <Calendar
+                                size={16}
+                                className="absolute left-3 top-1/2 -translate-y-1/2 text-black/40 dark:text-white/40 pointer-events-none"
+                              />
+                              <input
+                                id="schedule-date"
+                                type="date"
+                                value={scheduleDate}
+                                onChange={e => setScheduleDate(e.target.value)}
+                                className="w-full rounded-xl border border-black/[0.08] dark:border-white/[0.08] bg-black/[0.02] dark:bg-white/[0.02] pl-10 pr-3 py-2.5 text-sm text-black dark:text-white placeholder:text-black/30 dark:placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/30 transition-all hover:border-black/[0.12] dark:hover:border-white/[0.12]"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {scheduleType !== "once" && (
+                          <div className="flex flex-col gap-2">
+                            <label
+                              htmlFor="schedule-timezone"
+                              className="text-xs font-semibold text-black dark:text-white uppercase tracking-wider opacity-70"
+                            >
+                              Timezone
+                            </label>
+                            <select
+                              id="schedule-timezone"
+                              value={timezone}
+                              onChange={e => setTimezone(e.target.value)}
+                              className="w-full rounded-xl border border-black/[0.08] dark:border-white/[0.08] bg-black/[0.02] dark:bg-white/[0.02] px-3 py-2.5 text-sm text-black dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/30 transition-all hover:border-black/[0.12] dark:hover:border-white/[0.12] cursor-pointer"
+                            >
+                              {TIMEZONES.map(tz => (
+                                <option key={tz.value} value={tz.value}>
+                                  {tz.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {/* Custom cron */}
+                  {scheduleType === "custom" && (
+                    <>
+                      <div className="flex flex-col gap-2">
+                        <h3 className="text-sm font-semibold text-black dark:text-white">Custom schedule</h3>
+                        <p className="text-xs text-black/50 dark:text-white/50">
+                          Enter a cron expression for advanced scheduling
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col gap-3">
+                        <div className="flex flex-col gap-2">
+                          <label
+                            htmlFor="cron-expression"
+                            className="text-xs font-semibold text-black dark:text-white uppercase tracking-wider opacity-70"
+                          >
+                            Cron expression
+                          </label>
                           <input
-                            id="schedule-date"
-                            type="date"
-                            value={scheduleDate}
-                            onChange={e => setScheduleDate(e.target.value)}
-                            className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-transparent pl-9 pr-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus-visible:outline-none hover:border-zinc-300 dark:hover:border-zinc-600"
+                            id="cron-expression"
+                            type="text"
+                            value={cronExpression}
+                            onChange={e => {
+                              setCronExpression(e.target.value)
+                              if (cronError) setCronError(null)
+                            }}
+                            onBlur={() => {
+                              if (cronExpression.trim()) setCronError(validateCron(cronExpression))
+                            }}
+                            placeholder="0 9 * * 1-5"
+                            aria-invalid={!!cronError}
+                            className={`w-full rounded-xl border bg-black/[0.02] dark:bg-white/[0.02] px-3 py-2.5 text-sm font-mono placeholder:text-black/30 dark:placeholder:text-white/30 focus:outline-none transition-all text-black dark:text-white ${
+                              cronError
+                                ? "border-red-300 dark:border-red-700 focus:ring-1 focus:ring-red-500/50"
+                                : "border-black/[0.08] dark:border-white/[0.08] focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/30 hover:border-black/[0.12] dark:hover:border-white/[0.12]"
+                            }`}
                           />
                         </div>
-                      </div>
-                    )}
 
-                    {scheduleType !== "once" && (
-                      <div className="flex flex-col gap-1.5">
+                        {cronError && (
+                          <p
+                            className="text-xs text-red-500 dark:text-red-400 bg-red-500/5 dark:bg-red-500/5 border border-red-200/30 dark:border-red-700/30 rounded-lg px-3 py-2"
+                            role="alert"
+                          >
+                            {cronError}
+                          </p>
+                        )}
+
+                        <div className="bg-blue-500/5 dark:bg-blue-500/5 border border-blue-200/30 dark:border-blue-700/30 rounded-lg px-3 py-2.5">
+                          <p className="text-xs text-black/60 dark:text-white/60 leading-relaxed">
+                            <span className="font-semibold">Format:</span> minute hour day month weekday
+                            <br />
+                            <span className="font-mono text-black/50 dark:text-white/50">0 9 * * 1-5</span> = weekdays
+                            at 9am
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-2 pt-2">
                         <label
-                          htmlFor="schedule-timezone"
-                          className="text-sm font-medium text-zinc-900 dark:text-zinc-100"
+                          htmlFor="cron-timezone"
+                          className="text-xs font-semibold text-black dark:text-white uppercase tracking-wider opacity-70"
                         >
                           Timezone
                         </label>
                         <select
-                          id="schedule-timezone"
+                          id="cron-timezone"
                           value={timezone}
                           onChange={e => setTimezone(e.target.value)}
-                          className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-transparent px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus-visible:outline-none hover:border-zinc-300 dark:hover:border-zinc-600 cursor-pointer"
+                          className="w-full rounded-xl border border-black/[0.08] dark:border-white/[0.08] bg-black/[0.02] dark:bg-white/[0.02] px-3 py-2.5 text-sm text-black dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/30 transition-all hover:border-black/[0.12] dark:hover:border-white/[0.12] cursor-pointer"
                         >
                           {TIMEZONES.map(tz => (
                             <option key={tz.value} value={tz.value}>
@@ -488,64 +592,9 @@ export function AutomationConfig({ data, onComplete, onSkip }: AutomationConfigP
                           ))}
                         </select>
                       </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Custom cron */}
-                {scheduleType === "custom" && (
-                  <div className="flex flex-col gap-1.5">
-                    <label htmlFor="cron-expression" className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                      Cron expression
-                    </label>
-                    <input
-                      id="cron-expression"
-                      type="text"
-                      value={cronExpression}
-                      onChange={e => {
-                        setCronExpression(e.target.value)
-                        if (cronError) setCronError(null)
-                      }}
-                      onBlur={() => {
-                        if (cronExpression.trim()) setCronError(validateCron(cronExpression))
-                      }}
-                      placeholder="0 9 * * 1-5"
-                      aria-invalid={!!cronError}
-                      className={`w-full rounded-lg border bg-transparent px-3 py-2 text-sm font-mono placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus-visible:outline-none text-zinc-900 dark:text-zinc-100 ${
-                        cronError
-                          ? "border-red-300 dark:border-red-700"
-                          : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600"
-                      }`}
-                    />
-                    {cronError && (
-                      <p className="text-xs text-red-500 dark:text-red-400" role="alert">
-                        {cronError}
-                      </p>
-                    )}
-                    <p className="text-xs text-zinc-400 dark:text-zinc-500">
-                      Format: minute hour day month weekday (e.g., "0 9 * * 1-5" = weekdays at 9am)
-                    </p>
-
-                    {/* Timezone for custom */}
-                    <div className="mt-2">
-                      <label htmlFor="cron-timezone" className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                        Timezone
-                      </label>
-                      <select
-                        id="cron-timezone"
-                        value={timezone}
-                        onChange={e => setTimezone(e.target.value)}
-                        className="w-full mt-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-transparent px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus-visible:outline-none hover:border-zinc-300 dark:hover:border-zinc-600 cursor-pointer"
-                      >
-                        {TIMEZONES.map(tz => (
-                          <option key={tz.value} value={tz.value}>
-                            {tz.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                )}
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           )}

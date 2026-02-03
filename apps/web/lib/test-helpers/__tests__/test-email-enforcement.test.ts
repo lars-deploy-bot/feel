@@ -18,7 +18,7 @@ describe("Test Email Domain Enforcement", () => {
 
     it("should not contain any real or common test domains", () => {
       const bannedDomains = [
-        "@gmail.com",
+        "@example.com",
         "@yahoo.com",
         "@outlook.com",
         "@hotmail.com",
@@ -43,7 +43,7 @@ describe("Test Email Domain Enforcement", () => {
     })
 
     it("should return false for real and common test domains", () => {
-      expect(isTestEmail("user@gmail.com")).toBe(false)
+      expect(isTestEmail("user@example.com")).toBe(false)
       expect(isTestEmail("user@yahoo.com")).toBe(false)
       expect(isTestEmail("user@test.com")).toBe(false) // Too generic!
       expect(isTestEmail("user@example.com")).toBe(false) // Too generic!
@@ -65,18 +65,18 @@ describe("Test Email Domain Enforcement", () => {
     })
 
     it("should throw for real email domains", () => {
-      expect(() => validateTestEmail("user@gmail.com")).toThrow("SECURITY ERROR")
+      expect(() => validateTestEmail("user@example.com")).toThrow("SECURITY ERROR")
       expect(() => validateTestEmail("user@yahoo.com")).toThrow("SECURITY ERROR")
       expect(() => validateTestEmail("user@alive.best")).toThrow("SECURITY ERROR")
     })
 
     it("should throw with helpful error message", () => {
       try {
-        validateTestEmail("user@gmail.com")
+        validateTestEmail("user@example.com")
         expect(true).toBe(false) // Should not reach here
       } catch (error) {
         expect((error as Error).message).toContain("SECURITY ERROR")
-        expect((error as Error).message).toContain("user@gmail.com")
+        expect((error as Error).message).toContain("user@example.com")
         expect((error as Error).message).toContain("@bridge-vitest.internal")
         expect((error as Error).message).toContain("@bridge-playwright.internal")
       }
@@ -103,7 +103,7 @@ describe("Test Email Domain Enforcement", () => {
     })
 
     it("should throw when trying to use non-allowed domain", () => {
-      expect(() => generateTestEmail("test", "@gmail.com")).toThrow()
+      expect(() => generateTestEmail("test", "@example.com")).toThrow()
     })
 
     it("should generate unique emails", () => {

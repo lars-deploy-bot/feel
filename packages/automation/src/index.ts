@@ -17,5 +17,5 @@
 // Re-export types
 export type { AutomationSchedule, ScheduleAt, ScheduleEvery, ScheduleCron } from "./types.js"
 
-// Re-export scheduler
-export { computeNextRunAtMs } from "./scheduler.js"
+// Re-export scheduler functions
+export { computeNextRunAtMs, validateCronExpression } from "./scheduler.js"

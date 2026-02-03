@@ -99,14 +99,14 @@ export function Toolbar({ fileInputRef, onAddUserPrompt, onAddSkill }: ToolbarPr
         <Copy className="size-4" />
       </button>
 
-      {/* User Prompts Menu */}
+      {/* Skills Menu */}
       <div className="relative">
         <button
           type="button"
           onClick={() => setShowPromptMenu(!showPromptMenu)}
           className="flex items-center justify-center size-8 rounded-full hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 transition-colors"
-          aria-label="User prompts"
-          title="User prompts"
+          aria-label="Skills"
+          title="Skills"
         >
           <ClipboardList className="size-4" />
         </button>

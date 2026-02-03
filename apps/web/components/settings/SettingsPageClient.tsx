@@ -17,6 +17,7 @@ import {
   X,
   Zap,
 } from "lucide-react"
+import { useQueryState } from "nuqs"
 import { lazy, Suspense, useState } from "react"
 import { useAuth } from "@/features/deployment/hooks/useAuth"
 
@@ -60,7 +61,7 @@ const SETTINGS_TABS = [
   "account",
   "llm",
   "goal",
-  "prompts",
+  "skills",
   "organization",
   "websites",
   "automations",
@@ -83,7 +84,7 @@ const allTabs: TabDefinition[] = [
   { id: "account", label: "Profile", icon: User },
   { id: "llm", label: "AI", icon: Bot },
   { id: "goal", label: "Project", icon: Target },
-  { id: "prompts", label: "Prompts", icon: ClipboardList },
+  { id: "skills", label: "Skills", icon: ClipboardList },
   { id: "organization", label: "Workspace", icon: Building2 },
   { id: "websites", label: "Websites", icon: Globe },
   { id: "automations", label: "Automations", icon: Zap },
@@ -105,16 +106,22 @@ export function SettingsPageClient({ onClose, initialTab }: SettingsPageClientPr
   // Filter tabs based on admin status
   const tabs = allTabs.filter(tab => !tab.adminOnly || user?.isAdmin)
 
-  // Initialize active tab from prop, validated against visible tabs
-  const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
-    if (initialTab && tabs.some(t => t.id === initialTab)) {
-      return initialTab
-    }
-    return "account"
+  // Use URL search params to persist active tab across page reloads
+  const [activeTab, setActiveTab] = useQueryState<SettingsTab>("tab", {
+    defaultValue: initialTab || "account",
+    parse: value => {
+      const parsed = value as SettingsTab
+      // Validate that the parsed value is a valid tab
+      if (tabs.some(t => t.id === parsed)) {
+        return parsed
+      }
+      return initialTab || "account"
+    },
+    serialize: value => value,
   })
 
   const handleTabChange = (tabId: SettingsTab) => {
-    setActiveTab(tabId)
+    void setActiveTab(tabId)
     setSidebarOpen(false)
   }
 
@@ -238,7 +245,7 @@ export function SettingsPageClient({ onClose, initialTab }: SettingsPageClientPr
               {activeTab === "account" && <AccountSettings />}
               {activeTab === "llm" && <LLMSettings />}
               {activeTab === "goal" && <GoalSettings />}
-              {activeTab === "prompts" && <UserPromptsSettings />}
+              {activeTab === "skills" && <UserPromptsSettings />}
               {activeTab === "organization" && <WorkspaceSettings />}
               {activeTab === "websites" && <WebsitesSettings />}
               {activeTab === "automations" && <AutomationsSettings />}

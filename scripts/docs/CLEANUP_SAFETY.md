@@ -27,7 +27,7 @@ Test users **CANNOT** be created without using allowed test domains:
 createTestUser("mytest@test.com")
 
 // ❌ FAILS - Throws SECURITY ERROR
-createTestUser("mytest@gmail.com")
+createTestUser("mytest@example.com")
 ```
 
 ### 2. Double-Check for User Deletion
