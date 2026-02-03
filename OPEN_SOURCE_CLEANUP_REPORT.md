@@ -103,7 +103,7 @@ Found in 55+ TypeScript files for:
 
 ## MEDIUM: Email Address
 
-**Email:** `goalive@goalive.nl`
+**Email:** `admin@example.com`
 
 Found in: `docs/prs/github/phase-06-repo-creation.md`
 

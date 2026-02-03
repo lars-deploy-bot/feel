@@ -87,7 +87,7 @@ export async function initializeRepo(
     // Already initialized, just add remote
   } catch {
     await git(['init'], workspacePath);
-    await git(['config', 'user.email', 'goalive@goalive.nl'], workspacePath);
+    await git(['config', 'user.email', 'admin@example.com'], workspacePath);
     await git(['config', 'user.name', 'GoAlive'], workspacePath);
   }
 

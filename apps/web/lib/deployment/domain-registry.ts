@@ -139,7 +139,7 @@ export async function getAllDomains(includeTestData = false): Promise<DomainInfo
       credits: orgId ? (orgMap.get(orgId)?.credits ?? 0) : 0,
       orgId: orgId ?? "",
       orgName: orgId ? (orgMap.get(orgId)?.name ?? "Unknown") : "Unknown",
-      ownerEmail: orgId ? (userMap.get(ownerMap.get(orgId) ?? "") ?? "unknown@goalive.nl") : "unknown@goalive.nl",
+      ownerEmail: orgId ? (userMap.get(ownerMap.get(orgId) ?? "") ?? "unknown@example.com") : "unknown@example.com",
       createdAt: d.created_at ?? new Date().toISOString(),
     }
   })

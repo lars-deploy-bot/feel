@@ -223,7 +223,7 @@ export function IntegrationsList({ layout = "grid", filter }: IntegrationsListPr
             variant="outline"
             size="sm"
             onClick={() => {
-              window.open("mailto:support@goalive.nl?subject=Request%20Integration%20Access", "_blank")
+              window.open("mailto:support@example.com?subject=Request%20Integration%20Access", "_blank")
             }}
           >
             Request Access
