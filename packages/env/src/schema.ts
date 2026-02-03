@@ -87,6 +87,7 @@ export const serverSchema = {
 
   // Admin configuration (comma-separated emails)
   ADMIN_EMAILS: z.string().optional(),
+  // SUPERADMIN_EMAILS is REQUIRED in production/staging (validated at runtime by getSuperadminEmails)
   SUPERADMIN_EMAILS: z.string().optional(),
 
   // Redis configuration

@@ -128,5 +128,34 @@ export function getRedisUrl(): string {
   return redisUrl || LOCAL_DEV_REDIS_URL
 }
 
+/**
+ * Get superadmin emails with environment-aware validation
+ *
+ * - Production/Staging: SUPERADMIN_EMAILS is REQUIRED (throws if missing)
+ * - Local dev (BRIDGE_ENV=local): Returns empty array (all users are effectively superadmin)
+ *
+ * This prevents the "no superadmin" scenario in production.
+ */
+export function getSuperadminEmails(): readonly string[] {
+  const emailsEnv = env.SUPERADMIN_EMAILS
+  const isLocalDev = env.BRIDGE_ENV === "local"
+
+  if (!emailsEnv && !isLocalDev) {
+    throw new Error(
+      "SUPERADMIN_EMAILS is required in production/staging. " +
+        "Set SUPERADMIN_EMAILS environment variable (comma-separated emails) or use BRIDGE_ENV=local for development.",
+    )
+  }
+
+  if (!emailsEnv) {
+    return []
+  }
+
+  return emailsEnv
+    .split(",")
+    .map(e => e.trim().toLowerCase())
+    .filter(Boolean)
+}
+
 // Re-export schema types for convenience
 export type { serverSchema, clientSchema } from "./schema"
