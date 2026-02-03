@@ -1,14 +1,37 @@
 # Getting Started
 
-Quick setup guide for Claude Bridge local development.
+The fastest way to set up Claude Bridge.
 
-## Prerequisites
+---
 
-- **Bun** 1.2.22+ (runtime & package manager)
-- **Anthropic API Key** (get from console.anthropic.com)
-- **Node.js** (for compatibility, though we use Bun)
+## Quick Start (Claude Code)
 
-## Quick Start
+If you have [Claude Code](https://claude.ai/claude-code) installed:
+
+```bash
+git clone <repository>
+cd claude-bridge
+claude
+```
+
+Then tell Claude:
+
+> Set me up for local development. Follow the instructions in `scripts/setup/SETUP_INSTRUCTIONS.md`
+
+Claude will:
+1. Install dependencies
+2. Create your local workspace
+3. Configure your environment
+4. Start the dev server
+
+---
+
+## Manual Setup
+
+### Prerequisites
+
+- **Bun** 1.2.22+ (`curl -fsSL https://bun.sh/install | bash`)
+- **Anthropic API Key** ([console.anthropic.com](https://console.anthropic.com))
 
 ### 1. Clone & Install
 
@@ -18,109 +41,97 @@ cd claude-bridge
 bun install
 ```
 
-### 2. Run Setup Script
+### 2. Create Local Workspace
 
 ```bash
 bun run setup
 ```
-
-This creates:
-- `.alive/template/` - Your local test workspace (gitignored)
-- Configuration instructions for `.env.local`
 
 ### 3. Configure Environment
 
 Create `apps/web/.env.local`:
 
 ```bash
-# Required
 BRIDGE_ENV=local
-LOCAL_TEMPLATE_PATH=/absolute/path/to/claude-bridge/.alive/template
-ANTHROPIC_API_KEY=sk-ant-...
-
-# Optional
-BRIDGE_PASSCODE=your-password  # If unset, any passcode works in local mode
+LOCAL_TEMPLATE_PATH=/your/path/to/claude-bridge/.alive/template
+ANTH_API_SECRET=sk-ant-your-key-here
 ```
 
-**Note**: Use the absolute path shown by the setup script.
+Get the correct path:
+```bash
+echo "$(pwd)/.alive/template"
+```
 
-### 4. Start Development Server
+### 4. Start Dev Server
 
 ```bash
-bun run dev
+bun run web
 ```
 
-Server starts at `http://localhost:8999`
+### 5. Login
 
-### 5. Login with Test Credentials
+Open `http://localhost:8999`
 
-- **Workspace**: `test`
-- **Passcode**: `test`
+- **Email**: `test@bridge.local`
+- **Password**: `test`
 
-## Local Development Architecture
+---
 
-```
-Local Mode (BRIDGE_ENV=local)
-├── Test workspace: .alive/template (gitignored)
-├── Seed template: packages/template/user (committed)
-├── Test credentials: workspace="test", passcode="test"
-└── Bypasses domain password validation
-```
+## What You Get
 
-## Environment Variables
+| Component | Description |
+|-----------|-------------|
+| Chat Interface | Talk to Claude with file access |
+| Local Workspace | `.alive/template/` - your sandbox |
+| Test User | `test@bridge.local` / `test` |
+| Hot Reload | Changes reflect immediately |
 
-| Variable | Required | Description | Example |
-|----------|----------|-------------|---------|
-| `BRIDGE_ENV` | Yes | Enable local dev mode | `local` |
-| `LOCAL_TEMPLATE_PATH` | Yes | Absolute path to workspace | `/Users/you/claude-bridge/.alive/template` |
-| `ANTHROPIC_API_KEY` | Yes | Claude API key | `sk-ant-...` |
-| `BRIDGE_PASSCODE` | No | Bridge passcode (any works if unset) | `your-password` |
+---
 
 ## Common Commands
 
 ```bash
-bun run dev           # Start dev server (port 8999)
-bun run build         # Build for production
-bun run test          # Run unit tests (always use "bun run test", never "bun run test")
-bun run test:e2e      # Run E2E tests (requires chromium: bunx playwright install chromium)
-bun run format        # Format code (Biome)
-bun run lint          # Lint code (Biome)
+bun run web          # Start web dev server
+bun run dev          # Full dev environment
+bun run test         # Run unit tests
+bun run format       # Format code
+bun run lint         # Lint code
+bun run setup        # Reset workspace
 ```
 
-## Resetting Your Workspace
+---
 
-Start fresh:
+## Need More?
 
-```bash
-rm -rf .alive/template
-bun run setup
-```
+- **Database Setup**: [`docs/database/SETUP.md`](./database/SETUP.md) - Full user accounts, credits
+- **Architecture**: [`docs/architecture/README.md`](./architecture/README.md) - How it works
+- **Security**: [`docs/security/README.md`](./security/README.md) - Security model
+- **Testing**: [`docs/testing/README.md`](./testing/README.md) - Writing tests
+- **AI Guidelines**: [`CLAUDE.md`](../CLAUDE.md) - For Claude Code users
+
+---
 
 ## Troubleshooting
 
-### Error: "LOCAL_TEMPLATE_PATH environment variable required"
+### "LOCAL_TEMPLATE_PATH must be an absolute path"
 
-**Fix**: Run `bun run setup` and add the path to `.env.local`
+Use full path starting with `/`:
+```bash
+LOCAL_TEMPLATE_PATH=$(pwd)/.alive/template
+```
 
-### Error: "Local template workspace does not exist"
+### "Local template workspace does not exist"
 
-**Fix**: Run `bun run setup` to create the workspace
+```bash
+bun run setup
+```
 
-### Error: "LOCAL_TEMPLATE_PATH must be an absolute path"
+### "Port 8999 in use"
 
-**Fix**: Use the full absolute path (e.g., `/Users/you/claude-bridge/.alive/template`), not relative paths
+```bash
+lsof -i :8999 | awk 'NR>1 {print $2}' | xargs kill -9
+```
 
-### Changes not appearing
+### "Test credentials don't work"
 
-Ensure:
-1. `BRIDGE_ENV=local` in `.env.local`
-2. `LOCAL_TEMPLATE_PATH` is correct
-3. Logged in with `test`/`test`
-4. Restarted dev server after changing `.env.local`
-
-## Next Steps
-
-- [Architecture Overview](./architecture/README.md) - Understand system design
-- [Security Guide](./security/README.md) - Security patterns and enforcement
-- [Testing Guide](./testing/README.md) - Write tests for your changes
-- [Features](./features/README.md) - Explore available features
+Ensure `BRIDGE_ENV=local` is set in `apps/web/.env.local`.

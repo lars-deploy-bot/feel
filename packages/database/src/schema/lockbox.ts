@@ -1,94 +1,129 @@
 /**
- * Lockbox Schema - Encrypted Secrets Storage
+ * Lockbox Schema - Encrypted Secret Storage
  *
- * Secure storage for API keys, OAuth tokens, and other sensitive data.
- * All secrets are encrypted with AES-256-GCM using the LOCKBOX_MASTER_KEY.
+ * Tables for storing encrypted user secrets using AES-256-GCM.
+ * Production uses bytea for ciphertext/iv/auth_tag; open source can use text (base64).
  */
-import { relations } from "drizzle-orm"
-import { boolean, index, integer, jsonb, pgSchema, text, timestamp, uuid } from "drizzle-orm/pg-core"
+import { relations, sql } from "drizzle-orm"
+import {
+  boolean,
+  check,
+  foreignKey,
+  index,
+  integer,
+  jsonb,
+  pgSchema,
+  text,
+  timestamp,
+  unique,
+  uniqueIndex,
+  uuid,
+  customType,
+} from "drizzle-orm/pg-core"
+
+// Import IAM schema for foreign keys
+import { users } from "./iam"
 
 // Define the Lockbox schema
 export const lockboxSchema = pgSchema("lockbox")
+
+// Custom bytea type for binary data
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType() {
+    return "bytea"
+  },
+})
 
 // ============================================================================
 // TABLES
 // ============================================================================
 
 /**
- * User secrets - Encrypted secrets per user
- * Used for OAuth tokens, API keys, and other sensitive data
+ * User secrets - Encrypted secrets per user (OAuth tokens, API keys, etc.)
+ * Uses AES-256-GCM encryption with IV and auth tag
  */
 export const userSecrets = lockboxSchema.table(
   "user_secrets",
   {
-    userSecretId: uuid("user_secret_id").defaultRandom().primaryKey(),
+    userSecretId: uuid("user_secret_id").defaultRandom().primaryKey().notNull(),
     userId: text("user_id").notNull(),
-    instanceId: uuid("instance_id").defaultRandom().notNull(), // For multi-instance deployments
-    namespace: text("namespace").default("default").notNull(), // Grouping (e.g., 'oauth', 'apikey')
-    name: text("name").notNull(), // Secret identifier (e.g., 'linear_access_token')
-
-    // Encrypted data (AES-256-GCM)
-    ciphertext: text("ciphertext").notNull(),
-    iv: text("iv").notNull(), // Initialization vector
-    authTag: text("auth_tag").notNull(), // Authentication tag
-
-    // Metadata
-    scope: jsonb("scope").default({}).notNull(), // Access scope/permissions
-    version: integer("version").default(1).notNull(), // For versioning secrets
-    isCurrent: boolean("is_current").default(true).notNull(), // Latest version flag
-    expiresAt: timestamp("expires_at", { withTimezone: true }),
-    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
-    deletedAt: timestamp("deleted_at", { withTimezone: true }), // Soft delete
-
+    instanceId: text("instance_id").default("default").notNull(),
+    namespace: text("namespace").default("default").notNull(),
+    name: text("name").notNull(), // Production uses citext for case-insensitive
+    ciphertext: bytea("ciphertext").notNull(),
+    iv: bytea("iv").notNull(),
+    authTag: bytea("auth_tag").notNull(),
+    scope: jsonb("scope").default({}).notNull(),
+    version: integer("version").default(1).notNull(),
+    isCurrent: boolean("is_current").default(true).notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true, mode: "string" }),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true, mode: "string" }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true, mode: "string" }),
     createdBy: text("created_by"),
     updatedBy: text("updated_by"),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).defaultNow().notNull(),
   },
   table => [
-    index("user_secrets_user_id_idx").on(table.userId),
-    index("user_secrets_namespace_idx").on(table.namespace),
-    index("user_secrets_name_idx").on(table.name),
-    index("user_secrets_user_namespace_name_idx").on(table.userId, table.namespace, table.name),
-    index("user_secrets_is_current_idx").on(table.isCurrent),
+    index("idx_user_secrets_expires_at").on(table.expiresAt).where(sql`(expires_at IS NOT NULL)`),
+    uniqueIndex("user_secrets_instance_version_idx").on(
+      table.userId,
+      table.instanceId,
+      table.namespace,
+      table.name,
+      table.version,
+    ),
+    uniqueIndex("user_secrets_one_current_per_instance_idx")
+      .on(table.userId, table.instanceId, table.namespace, table.name)
+      .where(sql`(is_current = true)`),
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [users.userId],
+      name: "user_secrets_user_fk",
+    }).onDelete("cascade"),
+    check("user_secrets_auth_tag_check", sql`octet_length(auth_tag) = 16`),
+    check("user_secrets_iv_check", sql`octet_length(iv) = 12`),
+    check("user_secrets_name_check", sql`(char_length(name) >= 1) AND (char_length(name) <= 128)`),
+    check("user_secrets_version_check", sql`version > 0`),
   ],
 )
 
 /**
  * Secret keys - API keys for programmatic access
- * Used for bearer token authentication to Claude Bridge API
+ * Stores hashed keys (not the actual secret)
  */
 export const secretKeys = lockboxSchema.table(
   "secret_keys",
   {
-    secretId: uuid("secret_id").defaultRandom().primaryKey(),
+    secretId: uuid("secret_id").defaultRandom().primaryKey().notNull(),
     userId: text("user_id").notNull(),
-    instanceId: uuid("instance_id").defaultRandom().notNull(),
-    keyId: text("key_id").notNull().unique(), // Public key identifier (sk_live_xxx)
-    name: text("name").notNull(), // User-friendly name
-    secretHash: text("secret_hash").notNull(), // bcrypt hash of the secret
-
-    // Permissions
-    scopes: jsonb("scopes").default([]).notNull(), // API scopes
-    environment: text("environment").default("production").notNull(), // 'development', 'production'
-
-    // Rate limiting
-    rateLimitPm: integer("rate_limit_pm"), // Requests per minute
-
-    // State
-    expiresAt: timestamp("expires_at", { withTimezone: true }),
-    revokedAt: timestamp("revoked_at", { withTimezone: true }),
-    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
-
+    instanceId: text("instance_id").default("default").notNull(),
+    keyId: text("key_id").notNull(), // Public key identifier
+    name: text("name").notNull(), // Human-readable name
+    secretHash: text("secret_hash").notNull(), // Hashed secret for verification
+    scopes: jsonb("scopes").default([]).notNull(),
+    environment: text("environment").default("live").notNull(),
+    rateLimitPm: integer("rate_limit_pm"), // Rate limit per minute
+    expiresAt: timestamp("expires_at", { withTimezone: true, mode: "string" }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true, mode: "string" }),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true, mode: "string" }),
     createdBy: text("created_by"),
     updatedBy: text("updated_by"),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).defaultNow().notNull(),
   },
   table => [
-    index("secret_keys_user_id_idx").on(table.userId),
-    index("secret_keys_key_id_idx").on(table.keyId),
-    index("secret_keys_secret_hash_idx").on(table.secretHash),
+    index("idx_secret_keys_secret_hash").on(table.secretHash),
+    index("secret_keys_user_idx").on(table.userId),
+    index("secret_keys_user_instance_idx").on(table.userId, table.instanceId),
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [users.userId],
+      name: "secret_keys_user_fk",
+    }).onDelete("cascade"),
+    unique("secret_keys_key_id_key").on(table.keyId),
+    check("secret_keys_env_len_check", sql`char_length(environment) > 0`),
+    check("secret_keys_name_check", sql`(char_length(name) >= 1) AND (char_length(name) <= 128)`),
   ],
 )
 
@@ -96,5 +131,16 @@ export const secretKeys = lockboxSchema.table(
 // RELATIONS
 // ============================================================================
 
-// Note: Lockbox tables intentionally don't have foreign key relations to IAM tables
-// to maintain schema isolation. User IDs are stored as text and validated at application level.
+export const userSecretsRelations = relations(userSecrets, ({ one }) => ({
+  user: one(users, {
+    fields: [userSecrets.userId],
+    references: [users.userId],
+  }),
+}))
+
+export const secretKeysRelations = relations(secretKeys, ({ one }) => ({
+  user: one(users, {
+    fields: [secretKeys.userId],
+    references: [users.userId],
+  }),
+}))

@@ -80,6 +80,8 @@ export {
   messagesRelations,
   automationJobsRelations,
   automationRunsRelations,
+  userQuotasRelations,
+  userOnboardingRelations,
 } from "./app"
 
 // ============================================================================
@@ -91,11 +93,9 @@ export {
   // Tables
   providers,
   accessPolicies,
-  userTokens,
   // Relations
   providersRelations,
   accessPoliciesRelations,
-  userTokensRelations,
 } from "./integrations"
 
 // ============================================================================
@@ -107,4 +107,7 @@ export {
   // Tables
   userSecrets,
   secretKeys,
+  // Relations
+  userSecretsRelations,
+  secretKeysRelations,
 } from "./lockbox"
