@@ -19,6 +19,7 @@
 import { BridgeStreamType } from "@/features/chat/lib/streaming/ndjson"
 import { expect, test } from "./fixtures"
 import { TEST_TIMEOUTS } from "./fixtures/test-data"
+import { parseNDJSONEventTypes } from "./lib/ndjson"
 import { StreamBuilder } from "./lib/stream-builder"
 import { ChatPage } from "./pages/ChatPage"
 
@@ -27,23 +28,6 @@ interface ChatStreamRequestBody {
   tabId: string
   tabGroupId: string
   model: string
-}
-
-/**
- * Parse NDJSON response body into individual stream event types.
- * Used to verify the SSE lifecycle (stream_start → stream_message → stream_complete).
- */
-function parseNDJSONEventTypes(body: string): string[] {
-  return body
-    .split("\n")
-    .filter(line => line.trim().length > 0)
-    .map(line => {
-      const parsed: unknown = JSON.parse(line)
-      if (typeof parsed !== "object" || parsed === null || !("type" in parsed) || typeof parsed.type !== "string") {
-        throw new Error(`Unexpected NDJSON event format: ${line}`)
-      }
-      return parsed.type
-    })
 }
 
 function parseChatStreamRequestBody(rawBody: string | null): ChatStreamRequestBody {

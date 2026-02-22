@@ -165,7 +165,7 @@ async function getTerminalWorkspace(body: WorkspaceRequestBody, requestId: strin
   }
 
   // Allow "test" or "test.alive.local" workspace in local development mode (for E2E tests)
-  // Test workspace is created by e2e-tests/genuine-setup.ts
+  // Test workspaces are managed by live staging E2E bootstrap
   const testWorkspace = `test.${TEST_CONFIG.EMAIL_DOMAIN}`
   if (env.STREAM_ENV === "local" && (customWorkspace === "test" || customWorkspace === testWorkspace)) {
     return await resolveWorktreeIfRequested("/tmp/test-workspace", body, requestId)

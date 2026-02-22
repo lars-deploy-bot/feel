@@ -6,6 +6,8 @@
  * Only accessible in test environments.
  */
 
+import { existsSync } from "node:fs"
+import path from "node:path"
 import * as Sentry from "@sentry/nextjs"
 import { env } from "@webalive/env/server"
 import { TEST_CONFIG } from "@webalive/shared"
@@ -133,6 +135,11 @@ export async function GET(req: Request) {
 
       if (!domains || domains.length === 0) {
         return Response.json({ ready: false, missing: "domain" })
+      }
+
+      const workspacePath = path.join("/srv/webalive/sites", workspace, "user")
+      if (!existsSync(workspacePath)) {
+        return Response.json({ ready: false, missing: "workspace_fs" })
       }
     }
 

@@ -102,6 +102,11 @@ const nextConfig = {
       "../../node_modules/zod/**/*",
     ],
   },
+  outputFileTracingExcludes: {
+    // Exclude nested workspace node_modules symlinks from standalone tracing.
+    // They can conflict with traced copies and break chunk loading at runtime.
+    "/api/claude/stream/route": ["../../packages/**/node_modules/**"],
+  },
   serverExternalPackages: ["@napi-rs/image", "@webalive/site-controller", "@webalive/oauth-core"],
   transpilePackages: [
     "@webalive/guides",
