@@ -10,7 +10,7 @@ import { existsSync } from "node:fs"
 import path from "node:path"
 import * as Sentry from "@sentry/nextjs"
 import { env } from "@webalive/env/server"
-import { TEST_CONFIG } from "@webalive/shared"
+import { PATHS, TEST_CONFIG } from "@webalive/shared"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { ErrorCodes } from "@/lib/error-codes"
 import { createAppClient } from "@/lib/supabase/app"
@@ -137,7 +137,7 @@ export async function GET(req: Request) {
         return Response.json({ ready: false, missing: "domain" })
       }
 
-      const workspacePath = path.join("/srv/webalive/sites", workspace, "user")
+      const workspacePath = path.join(PATHS.SITES_ROOT, workspace, "user")
       if (!existsSync(workspacePath)) {
         return Response.json({ ready: false, missing: "workspace_fs" })
       }
