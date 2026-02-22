@@ -154,11 +154,22 @@ export function useOrgMembersQuery(orgId: string) {
  * const { data, isLoading, refetch } = useAutomationsQuery()
  * // data?.automations is AutomationJob[]
  */
-export function useAutomationsQuery() {
+/**
+ * Fetch automations, optionally filtered by site.
+ *
+ * @param siteId Three-state:
+ *   - `undefined` — not resolved yet, query disabled (waiting for sites to load)
+ *   - `null` — resolved, no filter (show all automations)
+ *   - `string` — resolved, filter by this site_id
+ */
+export function useAutomationsQuery(siteId: string | null | undefined) {
+  const resolved = siteId !== undefined
+  const path = siteId ? `/api/automations?site_id=${siteId}` : undefined
   return useQuery<Res<"automations">, ApiError>({
-    queryKey: queryKeys.automations.list(),
-    queryFn: () => getty("automations"),
+    queryKey: queryKeys.automations.list(siteId),
+    queryFn: () => getty("automations", undefined, path),
     staleTime: 2 * 60 * 1000, // 2 min - automations can change
+    enabled: resolved,
   })
 }
 

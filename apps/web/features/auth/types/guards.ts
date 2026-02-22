@@ -12,22 +12,30 @@ import { DEFAULTS, DOMAINS } from "@webalive/shared"
 /**
  * Check if a session cookie exists
  */
-export function hasSessionCookie(cookie: any): cookie is { value: string } {
-  return cookie !== undefined && cookie !== null
+export function hasSessionCookie(cookie: unknown): cookie is { value: string } {
+  if (typeof cookie !== "object" || cookie === null) {
+    return false
+  }
+  const candidate = cookie as { value?: unknown }
+  return typeof candidate.value === "string"
 }
 
 /**
  * Check if a session cookie value is valid
  */
-export function isValidSessionCookie(value: any): value is string {
+export function isValidSessionCookie(value: unknown): value is string {
   return typeof value === "string" && value.length > 0
 }
 
 /**
  * Check if a user object is valid
  */
-export function hasValidUser(user: any): boolean {
-  return user !== null && user !== undefined && typeof user.id === "string"
+export function hasValidUser(user: unknown): boolean {
+  if (typeof user !== "object" || user === null) {
+    return false
+  }
+  const candidate = user as { id?: unknown }
+  return typeof candidate.id === "string"
 }
 
 /**

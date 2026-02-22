@@ -8,7 +8,7 @@ import {
   type Req,
   type Res,
   type SchemaRegistry,
-} from "../index"
+} from "../index.js"
 
 // Test schema registry
 const schemas = {

@@ -39,6 +39,7 @@ describe("API Schema Type System", () => {
         | "import-repo"
         | "automations"
         | "automations/create"
+        | "automations/delete"
         | "automations/trigger"
         | "automations/update"
         | "automations/runs"

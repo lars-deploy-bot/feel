@@ -119,7 +119,7 @@ export function AutomationSidePanel({ isOpen, onClose, sites, editingJob, onSave
       action_timeout_seconds: timeoutSeconds ? Number(timeoutSeconds) : null,
       action_model: model || null,
       skills,
-      is_active: true,
+      is_active: editingJob?.is_active ?? true,
     })
   }
 

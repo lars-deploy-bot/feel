@@ -6,7 +6,7 @@
 
 import * as Sentry from "@sentry/nextjs"
 import { computeNextRunAtMs } from "@webalive/automation"
-import { isAliveWorkspace } from "@webalive/shared"
+import { isAliveWorkspace, isValidClaudeModel } from "@webalive/shared"
 import { protectedRoute } from "@/features/auth/lib/protectedRoute"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import type { Res } from "@/lib/api/schemas"
@@ -51,6 +51,8 @@ export const GET = protectedRoute(async ({ user, req }) => {
         action_prompt,
         action_source,
         action_target_page,
+        action_model,
+        action_timeout_seconds,
         skills,
         email_address,
         is_active,
@@ -82,8 +84,13 @@ export const GET = protectedRoute(async ({ user, req }) => {
     return structuredErrorResponse(ErrorCodes.QUERY_FAILED, { status: 500 })
   }
 
+  if (!data) {
+    Sentry.captureMessage("[Automations API] Query returned null data without error")
+    return structuredErrorResponse(ErrorCodes.QUERY_FAILED, { status: 500 })
+  }
+
   // Flatten the joined data
-  const automations: AutomationJob[] = (data || []).map(row => ({
+  const automations: AutomationJob[] = data.map(row => ({
     id: row.id,
     site_id: row.site_id,
     name: row.name,
@@ -96,8 +103,10 @@ export const GET = protectedRoute(async ({ user, req }) => {
     action_prompt: row.action_prompt,
     action_source: typeof row.action_source === "string" ? row.action_source : null,
     action_target_page: row.action_target_page,
+    action_model: isValidClaudeModel(row.action_model) ? row.action_model : null,
+    action_timeout_seconds: row.action_timeout_seconds,
     skills: row.skills,
-    email_address: row.email_address ?? null,
+    email_address: row.email_address,
     is_active: row.is_active,
     status: row.status,
     last_run_at: row.last_run_at,
