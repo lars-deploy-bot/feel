@@ -565,7 +565,7 @@ function lastSummary(a: Agent): string {
   const last = msgs[msgs.length - 1]
   if (!last) return "No output"
   const firstLine = last.content.split("\n")[0] ?? ""
-  return firstLine.length > 120 ? firstLine.slice(0, 120) + "..." : firstLine
+  return firstLine.length > 120 ? `${firstLine.slice(0, 120)}...` : firstLine
 }
 
 // ─── Briefing Components ────────────────────────────────────────────────────
@@ -647,9 +647,13 @@ function ConversationView({ messages }: { messages: ConversationMessage[] }) {
                 return part.split(/(#\d+)/).map((sub, k) => {
                   if (/^#\d+$/.test(sub)) {
                     return (
-                      <a key={k} href="#" className="text-blue-500 hover:text-blue-600 dark:text-blue-400 font-medium">
+                      <button
+                        type="button"
+                        key={k}
+                        className="text-blue-500 hover:text-blue-600 dark:text-blue-400 font-medium"
+                      >
                         {sub}
-                      </a>
+                      </button>
                     )
                   }
                   return sub
@@ -839,13 +843,13 @@ function AgentDetailPanel({
                   return part.split(/(#\d+)/).map((sub, k) => {
                     if (/^#\d+$/.test(sub)) {
                       return (
-                        <a
+                        <button
+                          type="button"
                           key={k}
-                          href="#"
                           className="text-blue-500 hover:text-blue-600 dark:text-blue-400 font-medium"
                         >
                           {sub}
-                        </a>
+                        </button>
                       )
                     }
                     return sub

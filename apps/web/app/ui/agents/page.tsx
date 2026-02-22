@@ -1,29 +1,25 @@
 "use client"
 
 import {
-  Activity,
   ArrowLeft,
   Calendar,
   CheckCircle2,
   Clock,
   Copy,
   Globe,
-  History,
   Mail,
-  MoreHorizontal,
   Pause,
   Pencil,
   Play,
   Plus,
   RotateCw,
-  Sparkles,
   Trash2,
   Webhook,
   X,
   XCircle,
   Zap,
 } from "lucide-react"
-import { useCallback, useMemo, useRef, useState } from "react"
+import { useMemo, useState } from "react"
 
 // ─── Types & Stub Data ─────────────────────────────────────────────────────
 

@@ -10,7 +10,6 @@
 import {
   Calendar,
   Check,
-  ChevronDown,
   Clock,
   DollarSign,
   Flame,
@@ -21,7 +20,6 @@ import {
   Plus,
   RotateCw,
   ScrollText,
-  Server,
   Shield,
   TestTube,
   Webhook,

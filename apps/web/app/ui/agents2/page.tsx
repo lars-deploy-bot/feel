@@ -8,12 +8,10 @@
  */
 
 import {
-  ArrowUpRight,
   Calendar,
   Check,
   CheckCircle2,
   ChevronDown,
-  Clock,
   Copy,
   Flame,
   Globe,
@@ -25,11 +23,10 @@ import {
   RotateCw,
   Trash2,
   Webhook,
-  X,
   XCircle,
   Zap,
 } from "lucide-react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useMemo, useState } from "react"
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -535,7 +532,7 @@ function AgentRow({ agent, isExpanded, onToggle }: { agent: Agent; isExpanded: b
                 Recent runs
               </div>
               <div className="space-y-0">
-                {runs.map((run, i) => (
+                {runs.map((run, _i) => (
                   <div key={run.id} className="flex items-start gap-2.5 py-2 group/run">
                     {/* Status icon */}
                     <div className="mt-0.5 shrink-0">

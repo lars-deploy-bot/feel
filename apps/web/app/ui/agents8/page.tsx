@@ -7,23 +7,23 @@
  * Three panels: your world, the briefing, the next action.
  */
 
-import { useState } from "react"
 import {
-  Check,
-  Scale,
-  ChevronRight,
-  Sparkles,
-  Clock,
-  FileText,
-  Link2,
   ArrowUpRight,
-  Gavel,
+  Check,
+  ChevronRight,
+  Clock,
   Code2,
-  Users,
-  TrendingUp,
+  FileText,
+  Gavel,
+  Link2,
+  Scale,
   Send,
+  Sparkles,
+  TrendingUp,
+  Users,
   Zap,
 } from "lucide-react"
+import { useState } from "react"
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -635,8 +635,8 @@ function ActionsPanel({
                 {action.type === "email" && action.prefill && <EmailCompose action={action} />}
 
                 {action.type === "link" && (
-                  <a
-                    href="#"
+                  <button
+                    type="button"
                     className="flex items-center gap-2 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
                   >
                     <img
@@ -649,7 +649,7 @@ function ActionsPanel({
                     />
                     <span className="text-[13px] font-medium text-zinc-900 dark:text-white">{action.label}</span>
                     <ArrowUpRight size={12} className="text-zinc-400 ml-auto" />
-                  </a>
+                  </button>
                 )}
               </div>
             ))}

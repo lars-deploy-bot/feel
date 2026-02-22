@@ -12,19 +12,7 @@
  * for something irreversible.
  */
 
-import {
-  ArrowUp,
-  Check,
-  ChevronDown,
-  ChevronRight,
-  Circle,
-  GitBranch,
-  Loader2,
-  Lock,
-  MessageSquare,
-  Users,
-  Zap,
-} from "lucide-react"
+import { ArrowUp, Check, ChevronDown, ChevronRight, Circle, Loader2, Lock, Users } from "lucide-react"
 import { useRef, useState } from "react"
 
 // ─── Types ──────────────────────────────────────────────────────────────────

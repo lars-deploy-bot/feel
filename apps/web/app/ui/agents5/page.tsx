@@ -10,7 +10,7 @@
  * The human is a team lead, not a reviewer.
  */
 
-import { ArrowUp, Check, ChevronRight, GitBranch, Loader2, MessageSquare, Terminal, Zap } from "lucide-react"
+import { ArrowUp, Check, ChevronRight, Loader2, MessageSquare } from "lucide-react"
 import { useRef, useState } from "react"
 
 // ─── Types ──────────────────────────────────────────────────────────────────

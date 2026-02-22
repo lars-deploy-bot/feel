@@ -15,15 +15,14 @@
 
 import {
   ArrowUp,
-  Check,
+  BarChart3,
   ExternalLink,
+  FlaskConical,
+  Minus,
   TrendingDown,
   TrendingUp,
-  Minus,
-  Zap,
-  FlaskConical,
   Wrench,
-  BarChart3,
+  Zap,
 } from "lucide-react"
 import { useState } from "react"
 
