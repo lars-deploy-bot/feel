@@ -129,6 +129,9 @@ export const STREAM_INTERNAL_MCP_TOOLS = [
   "mcp__alive-tools__ask_clarification",
   "mcp__alive-tools__ask_website_config",
   "mcp__alive-tools__ask_automation_config",
+  "mcp__alive-tools__create_automation",
+  "mcp__alive-tools__list_automations",
+  "mcp__alive-tools__trigger_automation",
   "mcp__alive-tools__generate_persona",
   "mcp__alive-workspace__check_codebase",
   "mcp__alive-workspace__restart_dev_server",
@@ -210,6 +213,9 @@ export const STREAM_TOOL_POLICY_REGISTRY = {
   "mcp__alive-tools__ask_clarification": policy({ reason: "Clarification tool is allowed." }),
   "mcp__alive-tools__ask_website_config": policy({ reason: "Website config collection is allowed." }),
   "mcp__alive-tools__ask_automation_config": policy({ reason: "Automation config collection is allowed." }),
+  "mcp__alive-tools__create_automation": policy({ reason: "Automation creation is allowed.", planMode: "block" }),
+  "mcp__alive-tools__list_automations": policy({ reason: "Listing automations is allowed." }),
+  "mcp__alive-tools__trigger_automation": policy({ reason: "Triggering automations is allowed.", planMode: "block" }),
   "mcp__alive-tools__generate_persona": policy({ reason: "Persona generation is allowed." }),
 
   // Internal MCP tools (alive-workspace, site-only)

@@ -2,14 +2,25 @@
 
 Shared utilities for MCP tools.
 
+## tools-api.ts
+
+Typed API client for MCP tools → API server calls.
+Uses `@alive-brug/alrighty` `createClient` with a subset of the API schemas.
+
+**Exports:**
+- `toolsGetty(endpoint, init?, pathOverride?)` - Typed GET
+- `toolsPostty(endpoint, body, init?, pathOverride?)` - Typed POST
+- `ApiError` - Error class for API failures
+
 ## api-client.ts
 
-HTTP client for calling Bridge API routes from MCP tools.
+Low-level HTTP client for MCP tools → API server calls.
+Use `tools-api.ts` for typed calls; use this for untyped workspace tool calls.
 
 **Auto-validates** `workspaceRoot` in request body before HTTP call.
 
 **Exports:**
-- `callBridgeApi(options)` - Makes HTTP request, auto-validates workspace, formats response
+- `callApi(options)` - Makes HTTP request, auto-validates workspace, formats response
 - `successResult(message)` - Creates success ToolResult
 - `errorResult(message, details?)` - Creates error ToolResult
 

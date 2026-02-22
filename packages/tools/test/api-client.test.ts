@@ -2,9 +2,9 @@ import { COOKIE_NAMES } from "@webalive/shared"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 /**
- * BRIDGE API CLIENT SECRET HEADER TESTS
+ * API CLIENT SECRET HEADER TESTS
  *
- * These tests verify that the stream-api-client correctly includes
+ * These tests verify that the api-client correctly includes
  * the INTERNAL_TOOLS_SECRET header for internal-tools API calls.
  *
  * Critical security checks:
@@ -25,13 +25,13 @@ vi.mock("../src/lib/workspace-validator.js", () => ({
   validateWorkspacePath: vi.fn(), // No-op, allows all paths
 }))
 
-import { callBridgeApi } from "../src/lib/api-client.js"
+import { callApi } from "../src/lib/api-client.js"
 
 // Mock fetch globally
 const mockFetch = vi.fn()
 global.fetch = mockFetch as any
 
-describe("callBridgeApi - Internal Tools Secret Header", () => {
+describe("callApi - Internal Tools Secret Header", () => {
   beforeEach(() => {
     process.env.PORT = "1234" // Fake port for tests (fetch is mocked)
     process.env.INTERNAL_TOOLS_SECRET = "test-secret-xyz"
@@ -61,7 +61,7 @@ describe("callBridgeApi - Internal Tools Secret Header", () => {
    * Internal tools endpoints MUST include X-Internal-Tools-Secret header
    */
   it("should include secret header for internal-tools endpoints (THE MISSING HEADER BUG)", async () => {
-    await callBridgeApi({
+    await callApi({
       endpoint: "/api/internal-tools/read-logs",
       body: { workspace: "test.com", workspaceRoot: "/srv/webalive/sites/test.com/user" },
     })
@@ -91,7 +91,7 @@ describe("callBridgeApi - Internal Tools Secret Header", () => {
 
     for (const endpoint of regularEndpoints) {
       mockFetch.mockClear()
-      await callBridgeApi({
+      await callApi({
         endpoint,
         body: { workspaceRoot: "/srv/webalive/sites/test.com/user" },
       })
@@ -113,7 +113,7 @@ describe("callBridgeApi - Internal Tools Secret Header", () => {
 
     for (const endpoint of allEndpoints) {
       mockFetch.mockClear()
-      await callBridgeApi({
+      await callApi({
         endpoint,
         body: { workspaceRoot: "/srv/webalive/sites/test.com/user" },
       })
@@ -135,7 +135,7 @@ describe("callBridgeApi - Internal Tools Secret Header", () => {
   it("should handle missing env secret gracefully (THE MISSING ENV SECRET BUG)", async () => {
     delete process.env.INTERNAL_TOOLS_SECRET
 
-    await callBridgeApi({
+    await callApi({
       endpoint: "/api/internal-tools/read-logs",
       body: { workspace: "test.com", workspaceRoot: "/srv/webalive/sites/test.com/user" },
     })
@@ -155,7 +155,7 @@ describe("callBridgeApi - Internal Tools Secret Header", () => {
   it("should not send empty secret header (THE EMPTY SECRET BUG)", async () => {
     process.env.INTERNAL_TOOLS_SECRET = ""
 
-    await callBridgeApi({
+    await callApi({
       endpoint: "/api/internal-tools/read-logs",
       body: { workspace: "test.com", workspaceRoot: "/srv/webalive/sites/test.com/user" },
     })
@@ -181,7 +181,7 @@ describe("callBridgeApi - Internal Tools Secret Header", () => {
 
     for (const endpoint of internalToolsPaths) {
       mockFetch.mockClear()
-      await callBridgeApi({
+      await callApi({
         endpoint,
         body: { test: "data" },
       })
@@ -210,7 +210,7 @@ describe("callBridgeApi - Internal Tools Secret Header", () => {
 
     for (const endpoint of nonInternalToolsPaths) {
       mockFetch.mockClear()
-      await callBridgeApi({
+      await callApi({
         endpoint,
         body: { test: "data" },
       })
@@ -228,7 +228,7 @@ describe("callBridgeApi - Internal Tools Secret Header", () => {
    * Both session cookie AND secret header should be present for internal-tools
    */
   it("should include both session and secret for internal-tools (THE COMBINATION BUG)", async () => {
-    await callBridgeApi({
+    await callApi({
       endpoint: "/api/internal-tools/read-logs",
       body: { workspace: "test.com", workspaceRoot: "/srv/webalive/sites/test.com/user" },
     })
@@ -257,7 +257,7 @@ describe("callBridgeApi - Internal Tools Secret Header", () => {
  * 4. PORT must be in valid range (1-65535)
  * 5. Whitespace should be trimmed before parsing
  */
-describe("callBridgeApi - PORT Environment Variable Validation", () => {
+describe("callApi - PORT Environment Variable Validation", () => {
   beforeEach(() => {
     process.env.ALIVE_SESSION_COOKIE = "test-session"
     mockFetch.mockClear()
@@ -286,7 +286,7 @@ describe("callBridgeApi - PORT Environment Variable Validation", () => {
   it("should return error when PORT is undefined (THE MISSING PORT BUG)", async () => {
     delete process.env.PORT
 
-    const result = await callBridgeApi({
+    const result = await callApi({
       endpoint: "/api/test",
       body: {},
     })
@@ -304,7 +304,7 @@ describe("callBridgeApi - PORT Environment Variable Validation", () => {
   it("should return error when PORT is empty string (THE EMPTY PORT BUG)", async () => {
     process.env.PORT = ""
 
-    const result = await callBridgeApi({
+    const result = await callApi({
       endpoint: "/api/test",
       body: {},
     })
@@ -322,7 +322,7 @@ describe("callBridgeApi - PORT Environment Variable Validation", () => {
   it("should return error when PORT is whitespace-only (THE WHITESPACE PORT BUG)", async () => {
     process.env.PORT = "   "
 
-    const result = await callBridgeApi({
+    const result = await callApi({
       endpoint: "/api/test",
       body: {},
     })
@@ -343,7 +343,7 @@ describe("callBridgeApi - PORT Environment Variable Validation", () => {
     for (const port of invalidPorts) {
       process.env.PORT = port
 
-      const result = await callBridgeApi({
+      const result = await callApi({
         endpoint: "/api/test",
         body: {},
       })
@@ -365,7 +365,7 @@ describe("callBridgeApi - PORT Environment Variable Validation", () => {
     for (const port of invalidPorts) {
       process.env.PORT = port
 
-      const result = await callBridgeApi({
+      const result = await callApi({
         endpoint: "/api/test",
         body: {},
       })
@@ -387,7 +387,7 @@ describe("callBridgeApi - PORT Environment Variable Validation", () => {
     for (const port of decimalPorts) {
       process.env.PORT = port
 
-      const result = await callBridgeApi({
+      const result = await callApi({
         endpoint: "/api/test",
         body: {},
       })
@@ -410,7 +410,7 @@ describe("callBridgeApi - PORT Environment Variable Validation", () => {
       mockFetch.mockClear()
       process.env.PORT = port
 
-      await callBridgeApi({
+      await callApi({
         endpoint: "/api/test",
         body: {},
       })
@@ -435,7 +435,7 @@ describe("callBridgeApi - PORT Environment Variable Validation", () => {
       mockFetch.mockClear()
       process.env.PORT = port
 
-      await callBridgeApi({
+      await callApi({
         endpoint: "/api/test",
         body: {},
       })
@@ -454,7 +454,7 @@ describe("callBridgeApi - PORT Environment Variable Validation", () => {
   it("should preserve URL format after validation (THE URL FORMAT TEST)", async () => {
     process.env.PORT = "3000"
 
-    await callBridgeApi({
+    await callApi({
       endpoint: "/api/test",
       body: {},
     })
@@ -480,7 +480,7 @@ describe("callBridgeApi - PORT Environment Variable Validation", () => {
     for (const value of specialValues) {
       process.env.PORT = value
 
-      const result = await callBridgeApi({
+      const result = await callApi({
         endpoint: "/api/test",
         body: {},
       })
@@ -511,7 +511,7 @@ describe("callBridgeApi - PORT Environment Variable Validation", () => {
  * - Use COOKIE_NAMES.SESSION in header construction
  * - These tests prevent regression by verifying correct cookie name usage
  */
-describe("callBridgeApi - Cookie Name Authentication (THE COOKIE NAME BUG)", () => {
+describe("callApi - Cookie Name Authentication (THE COOKIE NAME BUG)", () => {
   beforeEach(() => {
     process.env.PORT = "1234" // Fake port for tests (fetch is mocked)
     process.env.ALIVE_SESSION_COOKIE = "jwt-token-123"
@@ -539,7 +539,7 @@ describe("callBridgeApi - Cookie Name Authentication (THE COOKIE NAME BUG)", () 
    * Cookie header MUST use "auth_session_v3" not "session"
    */
   it("should use 'auth_session_v3' cookie name from shared constant, not hardcoded 'session'", async () => {
-    await callBridgeApi({
+    await callApi({
       endpoint: "/api/restart-workspace",
       body: { workspaceRoot: "/srv/webalive/sites/test.com/user" },
     })
@@ -560,7 +560,7 @@ describe("callBridgeApi - Cookie Name Authentication (THE COOKIE NAME BUG)", () 
    * Verify cookie name matches the shared constant value
    */
   it("should use COOKIE_NAMES.SESSION constant value (auth_session)", async () => {
-    await callBridgeApi({
+    await callApi({
       endpoint: "/api/test",
       body: {},
     })
@@ -578,7 +578,7 @@ describe("callBridgeApi - Cookie Name Authentication (THE COOKIE NAME BUG)", () 
    * Verify cookie format is exactly "auth_session_v3=<value>" with no spaces
    */
   it("should format cookie header correctly without extra spaces", async () => {
-    await callBridgeApi({
+    await callApi({
       endpoint: "/api/test",
       body: {},
     })
@@ -609,7 +609,7 @@ describe("callBridgeApi - Cookie Name Authentication (THE COOKIE NAME BUG)", () 
       mockFetch.mockClear()
       process.env.ALIVE_SESSION_COOKIE = token
 
-      await callBridgeApi({ endpoint: "/api/test", body: {} })
+      await callApi({ endpoint: "/api/test", body: {} })
 
       const [_, options] = mockFetch.mock.calls[0]
       expect(options.headers.Cookie).toBe(`auth_session_v3=${token}`)
@@ -630,7 +630,7 @@ describe("callBridgeApi - Cookie Name Authentication (THE COOKIE NAME BUG)", () 
 
     for (const endpoint of endpoints) {
       mockFetch.mockClear()
-      await callBridgeApi({ endpoint, body: { workspaceRoot: "/srv/webalive/sites/test.com/user" } })
+      await callApi({ endpoint, body: { workspaceRoot: "/srv/webalive/sites/test.com/user" } })
 
       const [_, options] = mockFetch.mock.calls[0]
 
@@ -648,7 +648,7 @@ describe("callBridgeApi - Cookie Name Authentication (THE COOKIE NAME BUG)", () 
   it("should omit Cookie header when ALIVE_SESSION_COOKIE is undefined", async () => {
     delete process.env.ALIVE_SESSION_COOKIE
 
-    await callBridgeApi({
+    await callApi({
       endpoint: "/api/test",
       body: {},
     })
@@ -666,7 +666,7 @@ describe("callBridgeApi - Cookie Name Authentication (THE COOKIE NAME BUG)", () 
   it("should omit Cookie header when ALIVE_SESSION_COOKIE is empty string", async () => {
     process.env.ALIVE_SESSION_COOKIE = ""
 
-    await callBridgeApi({
+    await callApi({
       endpoint: "/api/test",
       body: {},
     })
@@ -684,7 +684,7 @@ describe("callBridgeApi - Cookie Name Authentication (THE COOKIE NAME BUG)", () 
   it("should include cookie alongside other headers without conflict", async () => {
     process.env.INTERNAL_TOOLS_SECRET = "secret-123"
 
-    await callBridgeApi({
+    await callApi({
       endpoint: "/api/internal-tools/test",
       body: {},
     })

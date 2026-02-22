@@ -111,6 +111,9 @@ export const AI = {
   ASK_CLARIFICATION: "mcp__alive-tools__ask_clarification",
   ASK_WEBSITE_CONFIG: "mcp__alive-tools__ask_website_config",
   ASK_AUTOMATION_CONFIG: "mcp__alive-tools__ask_automation_config",
+  CREATE_AUTOMATION: "mcp__alive-tools__create_automation",
+  LIST_AUTOMATIONS: "mcp__alive-tools__list_automations",
+  TRIGGER_AUTOMATION: "mcp__alive-tools__trigger_automation",
 } as const
 
 export type AITool = (typeof AI)[keyof typeof AI]

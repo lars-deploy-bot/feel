@@ -2,7 +2,7 @@
  * Supabase Management API Client for MCP Tools
  *
  * Handles authentication, project ref resolution, and API calls.
- * OAuth tokens and project ref are fetched from the Bridge API.
+ * OAuth tokens and project ref are fetched from the API server.
  */
 
 import { COOKIE_NAMES } from "@webalive/shared"
@@ -26,7 +26,7 @@ function getApiBaseUrl(): string {
 }
 
 /**
- * Supabase connection context retrieved from Bridge
+ * Supabase connection context retrieved from the API server
  */
 export interface SupabaseContext {
   accessToken: string
@@ -34,9 +34,9 @@ export interface SupabaseContext {
 }
 
 /**
- * Get Supabase access token and project ref from Bridge API
+ * Get Supabase access token and project ref from the API server
  *
- * The Bridge stores:
+ * The server stores:
  * - OAuth tokens in lockbox.user_secrets (via oauth-core)
  * - Project ref in org-level settings (user configures after OAuth)
  */

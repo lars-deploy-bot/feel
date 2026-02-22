@@ -1,5 +1,5 @@
 import { tool } from "@anthropic-ai/claude-agent-sdk"
-import { callBridgeApi, type ToolResult } from "../../lib/api-client.js"
+import { callApi, type ToolResult } from "../../lib/api-client.js"
 
 export const restartServerParamsSchema = {}
 
@@ -18,11 +18,11 @@ export type RestartServerParams = Record<string, never>
  * Most workspace tools should use direct execution (see install-package.ts).
  */
 export async function restartServer(_params: RestartServerParams): Promise<ToolResult> {
-  // Security: Use process.cwd() set by Bridge - never accept workspace from user
+  // Security: Use process.cwd() set by parent process - never accept workspace from user
   const workspaceRoot = process.cwd()
 
-  // callBridgeApi automatically validates workspaceRoot and includes session cookie
-  const result = await callBridgeApi({
+  // callApi automatically validates workspaceRoot and includes session cookie
+  const result = await callApi({
     endpoint: "/api/restart-workspace",
     body: { workspaceRoot },
   })

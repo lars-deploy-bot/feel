@@ -1,7 +1,7 @@
 import { tool } from "@anthropic-ai/claude-agent-sdk"
 import { DEFAULTS, getTemplateIdsInline, getTemplateListForDocs } from "@webalive/shared"
 import { z } from "zod"
-import { callBridgeApi, errorResult, type ToolResult } from "../../lib/api-client.js"
+import { callApi, errorResult, type ToolResult } from "../../lib/api-client.js"
 
 // Reserved slugs that cannot be used (mirrors server-side validation)
 const RESERVED_SLUGS = [
@@ -80,7 +80,7 @@ export type CreateWebsiteParams = {
 }
 
 /**
- * Create a new website using the Bridge deployment API.
+ * Create a new website using the deployment API.
  *
  * This tool calls the /api/deploy-subdomain endpoint which handles:
  * - DNS validation
@@ -109,7 +109,7 @@ export async function createWebsite(params: CreateWebsiteParams): Promise<ToolRe
   }
 
   try {
-    const result = await callBridgeApi({
+    const result = await callApi({
       endpoint: "/api/deploy-subdomain",
       method: "POST",
       body: {

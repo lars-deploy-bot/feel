@@ -6,6 +6,10 @@
  * from GLOBAL_MCP_PROVIDERS in @webalive/shared.
  */
 import { DEFAULTS, GLOBAL_MCP_PROVIDERS, getTemplateIdsInline, OAUTH_MCP_PROVIDERS } from "@webalive/shared"
+import { z } from "zod"
+import { createAutomationParamsSchema } from "../automations/create-automation.js"
+import { listAutomationsParamsSchema } from "../automations/list-automations.js"
+import { triggerAutomationParamsSchema } from "../automations/trigger-automation.js"
 
 /**
  * SDK Built-in Tools
@@ -66,6 +70,29 @@ export interface ToolMetadata {
     required: boolean
     description: string
   }[]
+}
+
+/**
+ * Extracts registry-compatible parameter metadata from a Zod schema record.
+ * This is the format used by `tool()` in the Claude Agent SDK.
+ *
+ * Eliminates duplication: define params once as Zod schemas with `.describe()`,
+ * then use `zodToParams(schema)` in the registry instead of manual parameter arrays.
+ */
+export function zodToParams(schema: Record<string, z.ZodTypeAny>): ToolMetadata["parameters"] {
+  const shape = z.object(schema)
+  const jsonSchema = z.toJSONSchema(shape) as {
+    required?: string[]
+    properties?: Record<string, { type?: string; description?: string }>
+  }
+  const required = new Set(jsonSchema.required)
+
+  return Object.entries(jsonSchema.properties ?? {}).map(([name, prop]) => ({
+    name,
+    type: prop.type ?? "string",
+    required: required.has(name),
+    description: prop.description ?? "",
+  }))
 }
 
 const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
@@ -358,7 +385,7 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
     name: "ask_automation_config",
     category: "meta",
     description:
-      "Show an interactive form for the user to configure a scheduled automation. Use when the user wants to schedule a task - presents a wizard to set task name, prompt, website, and schedule (once, daily, weekly, monthly, or custom cron). After submission, create the automation via the API.",
+      "Show an interactive form for the user to configure a scheduled automation. Use when the user wants to schedule a task - presents a wizard to set task name, prompt, website, and schedule (once, daily, weekly, monthly, or custom cron). After submission, use create_automation with the user's choices.",
     contextCost: "low",
     enabled: true,
     parameters: [
@@ -375,6 +402,31 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
         description: "Optional default site ID to pre-select",
       },
     ],
+  },
+  {
+    name: "create_automation",
+    category: "meta",
+    description:
+      "Create a new automation that runs Claude on a schedule or one-time. Use after the user submits the ask_automation_config form.",
+    contextCost: "medium",
+    enabled: true,
+    parameters: zodToParams(createAutomationParamsSchema),
+  },
+  {
+    name: "list_automations",
+    category: "meta",
+    description: "List the user's automations with their status, schedule, and run history.",
+    contextCost: "low",
+    enabled: true,
+    parameters: zodToParams(listAutomationsParamsSchema),
+  },
+  {
+    name: "trigger_automation",
+    category: "meta",
+    description: "Manually trigger an automation to run immediately, bypassing its schedule.",
+    contextCost: "low",
+    enabled: true,
+    parameters: zodToParams(triggerAutomationParamsSchema),
   },
 
   // Other tools
