@@ -1,6 +1,6 @@
 import { ZodError } from "zod"
-import { ApiError } from "./error"
-import type { ClientOptions, Endpoint, Req, Res, SchemaRegistry } from "./types"
+import { ApiError } from "./error.js"
+import type { ClientOptions, Endpoint, Req, Res, SchemaRegistry } from "./types.js"
 
 function resolvePath(
   basePath: string,

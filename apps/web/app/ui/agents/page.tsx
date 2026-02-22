@@ -783,9 +783,12 @@ function FormField({
   description?: string
   children: React.ReactNode
 }) {
+  const id = label.toLowerCase().replace(/\s+/g, "-")
   return (
     <div>
-      <label className="text-sm font-medium text-zinc-900 dark:text-white">{label}</label>
+      <label htmlFor={id} className="text-sm font-medium text-zinc-900 dark:text-white">
+        {label}
+      </label>
       {description && <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 mb-2">{description}</p>}
       {!description && <div className="mt-1.5" />}
       {children}

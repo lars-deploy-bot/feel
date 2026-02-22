@@ -66,9 +66,11 @@ describe("Session Guards", () => {
       expect(hasSessionCookie({ value: "" })).toBe(true) // empty but exists
     })
 
-    it("returns false for missing cookies", () => {
+    it("returns false for invalid cookie shapes", () => {
       expect(hasSessionCookie(null)).toBe(false)
       expect(hasSessionCookie(undefined)).toBe(false)
+      expect(hasSessionCookie({})).toBe(false)
+      expect(hasSessionCookie({ value: 123 })).toBe(false)
     })
   })
 
