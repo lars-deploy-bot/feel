@@ -5,6 +5,10 @@
  * long-lived worker process.  Extracted from worker-entry.mjs so the
  * security invariants can be tested behaviourally.
  */
+import { RESERVED_USER_ENV_KEYS } from "@webalive/shared"
+
+const RESERVED_USER_ENV_KEY_SET = new Set<string>(RESERVED_USER_ENV_KEYS)
+const VALID_USER_ENV_KEY_PATTERN = /^[A-Z][A-Z0-9_]*$/
 
 /** Subset of the IPC payload that affects process.env */
 export interface EnvPayload {
@@ -32,6 +36,7 @@ export interface EnvPrepResult {
  *     — prevents workspace .env files from overriding OAuth credentials
  *  4. All previous USER_* keys are deleted before new ones are applied
  *  5. USER_* key names are validated (uppercase alphanumeric + underscore)
+ *  6. Reserved env keys (for example ASK_LARS_KEY) are never injected
  */
 export function prepareRequestEnv(payload: EnvPayload): EnvPrepResult {
   // 1. Session cookie — always overwrite to prevent cross-user leakage
@@ -65,10 +70,11 @@ export function prepareRequestEnv(payload: EnvPayload): EnvPrepResult {
   const userEnvKeys = payload.userEnvKeys || {}
   let appliedCount = 0
   for (const [keyName, keyValue] of Object.entries(userEnvKeys)) {
-    if (/^[A-Z][A-Z0-9_]*$/.test(keyName)) {
-      process.env[`USER_${keyName}`] = keyValue
-      appliedCount++
-    }
+    if (!VALID_USER_ENV_KEY_PATTERN.test(keyName)) continue
+    if (RESERVED_USER_ENV_KEY_SET.has(keyName)) continue
+
+    process.env[`USER_${keyName}`] = keyValue
+    appliedCount++
   }
 
   return { authSource: "oauth", userEnvKeyCount: appliedCount }

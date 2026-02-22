@@ -22,6 +22,13 @@ import { TEST_TIMEOUTS } from "./fixtures/test-data"
 import { StreamBuilder } from "./lib/stream-builder"
 import { ChatPage } from "./pages/ChatPage"
 
+interface ChatStreamRequestBody {
+  message: string
+  tabId: string
+  tabGroupId: string
+  model: string
+}
+
 /**
  * Parse NDJSON response body into individual stream event types.
  * Used to verify the SSE lifecycle (stream_start → stream_message → stream_complete).
@@ -39,23 +46,66 @@ function parseNDJSONEventTypes(body: string): string[] {
     })
 }
 
+function parseChatStreamRequestBody(rawBody: string | null): ChatStreamRequestBody {
+  if (!rawBody) {
+    throw new Error("Missing /api/claude/stream request body")
+  }
+
+  const parsed: unknown = JSON.parse(rawBody)
+  if (typeof parsed !== "object" || parsed === null) {
+    throw new Error("Invalid /api/claude/stream request payload")
+  }
+
+  const candidate = parsed as Record<string, unknown>
+  const message = candidate.message
+  const tabId = candidate.tabId
+  const tabGroupId = candidate.tabGroupId
+  const model = candidate.model
+
+  if (typeof message !== "string" || message.length === 0) {
+    throw new Error("Invalid /api/claude/stream payload: missing message")
+  }
+  if (typeof tabId !== "string" || tabId.length === 0) {
+    throw new Error("Invalid /api/claude/stream payload: missing tabId")
+  }
+  if (typeof tabGroupId !== "string" || tabGroupId.length === 0) {
+    throw new Error("Invalid /api/claude/stream payload: missing tabGroupId")
+  }
+  if (typeof model !== "string" || model.length === 0) {
+    throw new Error("Invalid /api/claude/stream payload: missing model")
+  }
+
+  return { message, tabId, tabGroupId, model }
+}
+
+function expectLifecycleOrder(eventTypes: string[]): void {
+  const startIdx = eventTypes.indexOf(BridgeStreamType.START)
+  const messageIdx = eventTypes.indexOf(BridgeStreamType.MESSAGE)
+  const completeIdx = eventTypes.indexOf(BridgeStreamType.COMPLETE)
+  const doneIdx = eventTypes.indexOf(BridgeStreamType.DONE)
+
+  expect(startIdx).toBeGreaterThanOrEqual(0)
+  expect(messageIdx).toBeGreaterThanOrEqual(0)
+  expect(completeIdx).toBeGreaterThanOrEqual(0)
+  expect(doneIdx).toBeGreaterThanOrEqual(0)
+  expect(startIdx).toBeLessThan(messageIdx)
+  expect(messageIdx).toBeLessThan(completeIdx)
+  expect(completeIdx).toBeLessThan(doneIdx)
+}
+
 test.describe("Critical Chat Path", () => {
   test("single message round-trip with stream lifecycle", async ({ authenticatedPage, workerTenant }) => {
     const userMessage = "Hello from critical test"
     const assistantResponse = "I received your message. Everything works."
 
-    // Build a deterministic stream with full lifecycle
-    const stream = new StreamBuilder().start().text(assistantResponse).complete()
-
-    // Track the intercepted request/response for lifecycle verification
-    let capturedRequestBody: string | null = null
-    let capturedResponseBody: string | null = null
+    // Track request payloads for contract verification
+    const capturedRequestBodies: ChatStreamRequestBody[] = []
 
     await authenticatedPage.route("**/api/claude/stream", async route => {
-      capturedRequestBody = route.request().postData()
+      const requestBody = parseChatStreamRequestBody(route.request().postData())
+      capturedRequestBodies.push(requestBody)
 
-      const ndjsonBody = stream.toNDJSON()
-      capturedResponseBody = ndjsonBody
+      const ndjsonBody = new StreamBuilder().start().text(assistantResponse).complete().toNDJSON()
 
       await route.fulfill({
         status: 200,
@@ -77,7 +127,11 @@ test.describe("Critical Chat Path", () => {
     await expect(chat.sendButton).toBeVisible({ timeout: TEST_TIMEOUTS.fast })
 
     // Send message
+    const responsePromise = authenticatedPage.waitForResponse(
+      response => response.url().includes("/api/claude/stream") && response.request().method() === "POST",
+    )
     await chat.sendMessage(userMessage)
+    const response = await responsePromise
 
     // Verify user message appears in UI
     await chat.expectMessage(userMessage)
@@ -91,30 +145,17 @@ test.describe("Critical Chat Path", () => {
     await chat.expectSendButtonEnabled()
 
     // --- Stream lifecycle verification ---
-    // The request was made
-    expect(capturedRequestBody).toBeTruthy()
-    const requestBody: unknown = JSON.parse(capturedRequestBody ?? "")
-    expect(requestBody).toMatchObject({ message: userMessage })
+    expect(capturedRequestBodies).toHaveLength(1)
 
-    // The response contained correct NDJSON lifecycle events
-    expect(capturedResponseBody).toBeTruthy()
-    const eventTypes = parseNDJSONEventTypes(capturedResponseBody!)
+    const firstRequest = capturedRequestBodies[0]
+    if (!firstRequest) {
+      throw new Error("Critical chat round-trip capture is incomplete")
+    }
 
-    // Verify exact lifecycle order: stream_start → stream_message → stream_complete → stream_done
-    expect(eventTypes[0]).toBe(BridgeStreamType.START)
-    expect(eventTypes).toContain(BridgeStreamType.MESSAGE)
-    expect(eventTypes).toContain(BridgeStreamType.COMPLETE)
-    expect(eventTypes[eventTypes.length - 1]).toBe(BridgeStreamType.DONE)
+    expect(firstRequest.message).toBe(userMessage)
 
-    // Verify ordering: start before message before complete before done
-    const startIdx = eventTypes.indexOf(BridgeStreamType.START)
-    const messageIdx = eventTypes.indexOf(BridgeStreamType.MESSAGE)
-    const completeIdx = eventTypes.indexOf(BridgeStreamType.COMPLETE)
-    const doneIdx = eventTypes.indexOf(BridgeStreamType.DONE)
-
-    expect(startIdx).toBeLessThan(messageIdx)
-    expect(messageIdx).toBeLessThan(completeIdx)
-    expect(completeIdx).toBeLessThan(doneIdx)
+    const responseBody = await response.text()
+    expectLifecycleOrder(parseNDJSONEventTypes(responseBody))
   })
 
   test("multi-turn context retention", async ({ authenticatedPage, workerTenant }) => {
@@ -123,15 +164,19 @@ test.describe("Critical Chat Path", () => {
     const secondUserMessage = "What is my name?"
     const secondAssistantResponse = "Your name is Alice, as you told me."
 
-    let turnCount = 0
+    const capturedRequestBodies: ChatStreamRequestBody[] = []
 
     await authenticatedPage.route("**/api/claude/stream", async route => {
-      turnCount++
+      const requestBody = parseChatStreamRequestBody(route.request().postData())
+      capturedRequestBodies.push(requestBody)
+
+      const turnCount = capturedRequestBodies.length
 
       const isFirstTurn = turnCount === 1
       const responseText = isFirstTurn ? firstAssistantResponse : secondAssistantResponse
 
       const stream = new StreamBuilder().start().text(responseText).complete({ totalTurns: turnCount })
+      const ndjsonBody = stream.toNDJSON()
 
       await route.fulfill({
         status: 200,
@@ -141,7 +186,7 @@ test.describe("Critical Chat Path", () => {
           Connection: "keep-alive",
           "X-Accel-Buffering": "no",
         },
-        body: stream.toNDJSON(),
+        body: ndjsonBody,
       })
     })
 
@@ -149,7 +194,11 @@ test.describe("Critical Chat Path", () => {
     await chat.gotoFast(workerTenant.workspace, workerTenant.orgId)
 
     // --- Turn 1: establish context ---
+    const firstResponsePromise = authenticatedPage.waitForResponse(
+      response => response.url().includes("/api/claude/stream") && response.request().method() === "POST",
+    )
     await chat.sendMessage(firstUserMessage)
+    const firstResponse = await firstResponsePromise
     await chat.expectMessage(firstUserMessage)
     await chat.expectMessage(firstAssistantResponse)
 
@@ -159,12 +208,33 @@ test.describe("Critical Chat Path", () => {
     await chat.messageInput.fill("") // clear before sending the real message
 
     // --- Turn 2: verify context retained ---
+    const secondResponsePromise = authenticatedPage.waitForResponse(
+      response => response.url().includes("/api/claude/stream") && response.request().method() === "POST",
+    )
     await chat.sendMessage(secondUserMessage)
+    const secondResponse = await secondResponsePromise
     await chat.expectMessage(secondUserMessage)
     await chat.expectMessage(secondAssistantResponse)
 
-    // Verify both turns completed (2 requests intercepted)
-    expect(turnCount).toBe(2)
+    // Verify both turns stayed in the SAME conversation key (tab ID and tab group ID)
+    expect(capturedRequestBodies).toHaveLength(2)
+
+    const firstRequest = capturedRequestBodies[0]
+    const secondRequest = capturedRequestBodies[1]
+
+    if (!firstRequest || !secondRequest) {
+      throw new Error("Critical multi-turn capture is incomplete")
+    }
+
+    expect(firstRequest.message).toBe(firstUserMessage)
+    expect(secondRequest.message).toBe(secondUserMessage)
+    expect(secondRequest.tabId).toBe(firstRequest.tabId)
+    expect(secondRequest.tabGroupId).toBe(firstRequest.tabGroupId)
+
+    const firstResponseBody = await firstResponse.text()
+    const secondResponseBody = await secondResponse.text()
+    expectLifecycleOrder(parseNDJSONEventTypes(firstResponseBody))
+    expectLifecycleOrder(parseNDJSONEventTypes(secondResponseBody))
 
     // Verify all 4 messages are visible in the UI (both turns in one conversation)
     await chat.expectMessage(firstUserMessage)
