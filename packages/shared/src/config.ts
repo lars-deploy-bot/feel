@@ -44,6 +44,89 @@ export function requireEnv(key: string): string {
 export const CONFIG_PATH = !isBrowser && typeof process !== "undefined" ? (process.env.SERVER_CONFIG_PATH ?? "") : ""
 
 /**
+ * Sensible defaults for local/standalone development.
+ * Infers aliveRoot from this file's location in the monorepo,
+ * and uses ~/.alive/ for workspace-related paths.
+ */
+function fileUrlToPathSafe(url: URL): string {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { fileURLToPath } = require("node:url") as { fileURLToPath: (url: URL | string) => string }
+    return fileURLToPath(url)
+  } catch {
+    // Fallback for strict ESM runtimes where require() is unavailable.
+    return decodeURIComponent(url.pathname)
+  }
+}
+
+function extractAliveRootFromPath(filePath: string): string | undefined {
+  const normalized = filePath.replace(/\\/g, "/")
+  const match = normalized.match(/^(.*)\/packages\/shared\/(?:src|dist)(?:\/|$)/)
+  return match?.[1]
+}
+
+function findAliveRootFromCwd(startDir: string): string {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require("node:fs") as { existsSync: (path: string) => boolean }
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const path = require("node:path") as { dirname: (path: string) => string; join: (...paths: string[]) => string }
+
+    let current = startDir
+    while (true) {
+      const hasTurbo = fs.existsSync(path.join(current, "turbo.json"))
+      const hasSharedConfig = fs.existsSync(path.join(current, "packages", "shared", "src", "config.ts"))
+      if (hasTurbo && hasSharedConfig) {
+        return current
+      }
+
+      const parent = path.dirname(current)
+      if (parent === current) break
+      current = parent
+    }
+  } catch {
+    // Ignore and fallback to the provided cwd
+  }
+  return startDir
+}
+
+export function resolveLocalAliveRoot(moduleUrl: string, cwd: string): string {
+  if (moduleUrl.startsWith("file://")) {
+    try {
+      const modulePath = fileUrlToPathSafe(new URL(moduleUrl))
+      const fromModulePath = extractAliveRootFromPath(modulePath)
+      if (fromModulePath) return fromModulePath
+    } catch {
+      // Fall through to cwd-based discovery.
+    }
+  } else {
+    const fromModulePath = extractAliveRootFromPath(moduleUrl)
+    if (fromModulePath) return fromModulePath
+  }
+
+  return findAliveRootFromCwd(cwd)
+}
+
+function localDefaults(): Partial<ServerConfig> {
+  const cwd = !isBrowser && typeof process !== "undefined" ? process.cwd() : "/tmp"
+  const aliveRoot = resolveLocalAliveRoot(import.meta.url, cwd)
+  const home = process.env.HOME ?? "/tmp"
+  return {
+    paths: {
+      aliveRoot,
+      sitesRoot: `${home}/.alive/workspaces`,
+      imagesStorage: `${home}/.alive/storage`,
+    },
+    domains: {
+      main: "localhost",
+      wildcard: "localhost",
+      cookieDomain: "localhost",
+      previewBase: "localhost",
+    },
+  }
+}
+
+/**
  * Load server-config.json - STRICT MODE
  * If config file exists, load it (works in tests too)
  * Browser: returns empty object
@@ -71,20 +154,20 @@ function loadServerConfig(): Partial<ServerConfig> {
     return {}
   }
 
+  const streamEnv = process.env.STREAM_ENV
+  const isLocalDev = streamEnv === "local" || streamEnv === "standalone"
+  const isTestEnv = process.env.CI === "true" || process.env.VITEST === "true"
+
   if (!CONFIG_PATH) {
-    // In CI/test without config, return empty (tests will skip config-dependent assertions)
-    if (process.env.CI === "true" || process.env.VITEST === "true") {
-      return {}
-    }
+    if (isTestEnv) return {}
+    if (isLocalDev) return localDefaults()
     throw new Error(
       "FATAL: SERVER_CONFIG_PATH env var is not set. " + "Set it to the absolute path of your server-config.json.",
     )
   }
 
   if (!fs.existsSync(CONFIG_PATH)) {
-    if (process.env.CI === "true" || process.env.VITEST === "true") {
-      return {}
-    }
+    if (isTestEnv) return {}
     throw new Error(`FATAL: Server config not found at ${CONFIG_PATH} (from SERVER_CONFIG_PATH env var).`)
   }
 
