@@ -225,6 +225,8 @@ export const apiSchemas = {
    * Create a new template (manager auth required)
    */
   "manager/templates/create": {
+    // Schema key is a lookup identifier; actual route is /api/manager/templates.
+    path: "manager/templates",
     req: z
       .object({
         template_id: z.string().optional(),
@@ -258,6 +260,8 @@ export const apiSchemas = {
    * Update an existing template (manager auth required)
    */
   "manager/templates/update": {
+    // Schema key is a lookup identifier; actual route is /api/manager/templates.
+    path: "manager/templates",
     req: z
       .object({
         template_id: z.string(),
@@ -292,6 +296,9 @@ export const apiSchemas = {
    * Delete a template (manager auth required)
    */
   "manager/templates/delete": {
+    // Schema key is a lookup identifier; actual route is /api/manager/templates.
+    // Note: callers still pass query params (e.g. ?template_id=...) via pathOverride.
+    path: "manager/templates",
     req: z.undefined().brand<"ManagerTemplatesDeleteRequest">(),
     res: z.object({
       ok: z.boolean(),
@@ -420,6 +427,8 @@ export const apiSchemas = {
    * Add a member to an organization by email
    */
   "auth/org-members/create": {
+    // Schema key is a lookup identifier; actual route is /api/auth/org-members.
+    path: "auth/org-members",
     req: z
       .object({
         orgId: z.string().min(1),
@@ -443,6 +452,8 @@ export const apiSchemas = {
    * Remove a member from an organization
    */
   "auth/org-members/delete": {
+    // Schema key is a lookup identifier; actual route is /api/auth/org-members.
+    path: "auth/org-members",
     req: z
       .object({
         orgId: z.string().min(1),
@@ -460,6 +471,8 @@ export const apiSchemas = {
    * Update organization details
    */
   "auth/organizations/update": {
+    // Schema key is a lookup identifier; actual route is /api/auth/organizations.
+    path: "auth/organizations",
     req: z
       .object({
         org_id: z.string(),
@@ -476,6 +489,8 @@ export const apiSchemas = {
    * Update user profile
    */
   "user/update": {
+    // Schema key is a lookup identifier; actual route is /api/user.
+    path: "user",
     req: z
       .object({
         name: z.string().optional(),
@@ -677,6 +692,8 @@ export const apiSchemas = {
    * Create a new automation job
    */
   "automations/create": {
+    // Schema key is a lookup identifier; actual route is /api/automations.
+    path: "automations",
     req: z
       .object({
         site_id: z.string().min(1),
@@ -728,6 +745,8 @@ export const apiSchemas = {
    * Update an existing automation job
    */
   "automations/update": {
+    // Dynamic route: /api/automations/[id].
+    // Callers must pass pathOverride with the concrete automation ID.
     req: z
       .object({
         name: z.string().min(1).optional(),
@@ -792,6 +811,8 @@ export const apiSchemas = {
    * Create a worktree
    */
   "worktrees/create": {
+    // Schema key is a lookup identifier; actual route is /api/worktrees.
+    path: "worktrees",
     req: z
       .object({
         workspace: z.string(),
@@ -813,6 +834,9 @@ export const apiSchemas = {
    * Remove a worktree
    */
   "worktrees/delete": {
+    // Schema key is a lookup identifier; actual route is /api/worktrees.
+    // Note: callers still pass query params (workspace/slug) via pathOverride.
+    path: "worktrees",
     req: z.undefined().brand<"WorktreesDeleteRequest">(),
     res: z.object({
       ok: z.literal(true),
@@ -824,6 +848,8 @@ export const apiSchemas = {
    * Manually trigger an automation to run immediately
    */
   "automations/trigger": {
+    // Dynamic route: /api/automations/[id]/trigger.
+    // Callers must pass pathOverride with the concrete automation ID.
     req: z.object({}).brand<"AutomationsTriggerRequest">(),
     res: z.object({
       ok: z.literal(true),
@@ -841,6 +867,8 @@ export const apiSchemas = {
    * List runs for an automation job
    */
   "automations/runs": {
+    // Dynamic route: /api/automations/[id]/runs.
+    // Callers must pass pathOverride with the concrete automation ID.
     req: z.undefined().brand<"AutomationsRunsRequest">(),
     res: z.object({
       runs: z.array(
@@ -901,6 +929,8 @@ export const apiSchemas = {
    * Uses pathOverride for dynamic provider path
    */
   "integrations/disconnect": {
+    // Dynamic route: /api/integrations/[provider].
+    // Callers must pass pathOverride with the concrete provider key.
     req: z.undefined().brand<"IntegrationsDisconnectRequest">(),
     res: z.object({
       ok: z.literal(true),
@@ -914,6 +944,8 @@ export const apiSchemas = {
    * Uses pathOverride for dynamic provider path
    */
   "integrations/connect": {
+    // Dynamic route: /api/integrations/[provider].
+    // Callers must pass pathOverride with the concrete provider key.
     req: z
       .object({
         token: z.string().min(1),
@@ -983,6 +1015,8 @@ export const apiSchemas = {
    * Send a message to another session (A2A communication)
    */
   "sessions/send": {
+    // Schema key is a lookup identifier; actual route is /api/sessions.
+    path: "sessions",
     req: z
       .object({
         targetSessionKey: z.string().min(1),

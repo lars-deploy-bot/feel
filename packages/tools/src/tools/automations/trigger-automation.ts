@@ -17,16 +17,27 @@ export const triggerAutomationParamsSchema = {
     .describe("The automation job ID to trigger"),
 }
 
+const triggerAutomationRuntimeParamsSchema = z.object(triggerAutomationParamsSchema).strict()
+
 export async function triggerAutomation(
   params: z.infer<z.ZodObject<typeof triggerAutomationParamsSchema>>,
 ): Promise<ToolResult> {
+  const parsedParams = triggerAutomationRuntimeParamsSchema.safeParse(params)
+  if (!parsedParams.success) {
+    const message = parsedParams.error.issues.map(issue => issue.message).join("; ")
+    return errorResult("Invalid automation ID", message || "Input validation failed.")
+  }
+
+  const safeParams = parsedParams.data
+  const encodedAutomationId = encodeURIComponent(safeParams.automation_id)
+
   try {
     const validated = validateToolsRequest("automations/trigger", {})
     const data = await api().postty(
       "automations/trigger",
       validated,
       undefined,
-      `/api/automations/${params.automation_id}/trigger`,
+      `/api/automations/${encodedAutomationId}/trigger`,
     )
 
     return {
@@ -35,7 +46,7 @@ export async function triggerAutomation(
           type: "text",
           text: `Automation queued successfully.
 
-**Automation ID:** ${params.automation_id}
+**Automation ID:** ${safeParams.automation_id}
 **Status:** ${data.status}
 **Started At:** ${data.startedAt}
 **Timeout:** ${data.timeoutSeconds}s

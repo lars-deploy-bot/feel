@@ -10,8 +10,10 @@ import { errorResult, type ToolResult } from "../../lib/api-client.js"
 import { ApiError, api } from "../../lib/tools-api.js"
 
 export const listAutomationsParamsSchema = {
-  site_id: z.string().optional().describe("Filter by site/domain ID"),
+  site_id: z.string().optional().describe("Filter by site/domain ID or hostname"),
 }
+
+const listAutomationsRuntimeParamsSchema = z.object(listAutomationsParamsSchema).strict()
 
 function formatTimestamp(timestamp: string): string {
   const parsed = new Date(timestamp)
@@ -21,8 +23,28 @@ function formatTimestamp(timestamp: string): string {
 export async function listAutomations(
   params: z.infer<z.ZodObject<typeof listAutomationsParamsSchema>>,
 ): Promise<ToolResult> {
+  const parsedParams = listAutomationsRuntimeParamsSchema.safeParse(params)
+  if (!parsedParams.success) {
+    const message = parsedParams.error.issues.map(issue => issue.message).join("; ")
+    return errorResult("Invalid automation filter", message || "Input validation failed.")
+  }
+
+  const safeParams = parsedParams.data
+
   try {
-    const queryParams = params.site_id ? `?site_id=${encodeURIComponent(params.site_id)}` : ""
+    let resolvedSiteId: string | undefined
+    if (safeParams.site_id) {
+      const sites = await api().getty("sites")
+      const matchedSite = sites.sites.find(
+        site => site.id === safeParams.site_id || site.hostname === safeParams.site_id,
+      )
+      if (!matchedSite) {
+        return errorResult("Invalid automation filter", "site_id is not accessible for the current user.")
+      }
+      resolvedSiteId = matchedSite.id
+    }
+
+    const queryParams = resolvedSiteId ? `?site_id=${encodeURIComponent(resolvedSiteId)}` : ""
 
     const data = await api().getty("automations", undefined, `/api/automations${queryParams}`)
     const { automations, total } = data
@@ -71,7 +93,7 @@ Use this to show the user their current automations, check if an automation is r
 or find an automation ID for triggering/updating.
 
 Optional filter:
-- site_id: Only show automations for a specific site`,
+- site_id: Only show automations for a specific site (site ID or hostname)`,
   listAutomationsParamsSchema,
   async args => {
     return listAutomations(args)

@@ -25,19 +25,29 @@ export const createAutomationParamsSchema = {
   is_active: z.boolean().optional().describe("Whether the automation starts active (default: true)"),
 }
 
+const createAutomationRuntimeParamsSchema = z.object(createAutomationParamsSchema).strict()
+
 export async function createAutomation(
   params: z.infer<z.ZodObject<typeof createAutomationParamsSchema>>,
 ): Promise<ToolResult> {
-  if (params.trigger_type === "cron" && !params.cron_schedule) {
+  const parsedParams = createAutomationRuntimeParamsSchema.safeParse(params)
+  if (!parsedParams.success) {
+    const message = parsedParams.error.issues.map(issue => issue.message).join("; ")
+    return errorResult("Invalid automation configuration", message || "Input validation failed.")
+  }
+
+  const safeParams = parsedParams.data
+
+  if (safeParams.trigger_type === "cron" && !safeParams.cron_schedule) {
     return errorResult("Invalid automation configuration", "cron_schedule is required for cron automations.")
   }
 
-  if (params.trigger_type === "one-time" && !params.run_at) {
+  if (safeParams.trigger_type === "one-time" && !safeParams.run_at) {
     return errorResult("Invalid automation configuration", "run_at is required for one-time automations.")
   }
 
-  if (params.run_at) {
-    const parsed = new Date(params.run_at)
+  if (safeParams.run_at) {
+    const parsed = new Date(safeParams.run_at)
     if (Number.isNaN(parsed.getTime())) {
       return errorResult("Invalid automation configuration", "run_at must be a valid ISO timestamp.")
     }
@@ -45,17 +55,17 @@ export async function createAutomation(
 
   try {
     const validated = validateToolsRequest("automations/create", {
-      site_id: params.site_id,
-      name: params.name,
-      trigger_type: params.trigger_type,
-      action_type: params.action_type,
-      action_prompt: params.action_prompt,
-      cron_schedule: params.cron_schedule ?? null,
-      cron_timezone: params.cron_timezone ?? null,
-      run_at: params.run_at ?? null,
-      action_model: params.action_model ?? null,
+      site_id: safeParams.site_id,
+      name: safeParams.name,
+      trigger_type: safeParams.trigger_type,
+      action_type: safeParams.action_type,
+      action_prompt: safeParams.action_prompt,
+      cron_schedule: safeParams.cron_schedule ?? null,
+      cron_timezone: safeParams.cron_timezone ?? null,
+      run_at: safeParams.run_at ?? null,
+      action_model: safeParams.action_model ?? null,
       skills: [],
-      is_active: params.is_active ?? true,
+      is_active: safeParams.is_active ?? true,
     })
     const data = await api().postty("automations/create", validated)
 

@@ -7,6 +7,15 @@ export type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE"
  * `req` is optional - omit it for GET/DELETE endpoints.
  */
 export interface EndpointSchema {
+  /**
+   * Optional URL path override for this endpoint.
+   *
+   * Use when the schema key is a lookup key rather than the actual route path.
+   * Examples:
+   * - key: "automations/create", path: "automations"
+   * - key: "automations/trigger", path left undefined, call-site passes dynamic pathOverride
+   */
+  path?: string
   req?: z.ZodTypeAny
   res: z.ZodTypeAny
 }

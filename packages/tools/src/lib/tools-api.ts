@@ -12,10 +12,16 @@ import { z } from "zod"
 // ---------------------------------------------------------------------------
 // Schemas — subset matching the API routes that MCP tools call.
 // The server validates the same shapes via handleBody/alrighty.
+//
+// Route mapping rules (important for AI-generated code):
+// 1) `pathOverride` at callsite (highest priority, used for dynamic routes)
+// 2) schema `path` field (for key/route mismatches like "automations/create" -> /api/automations)
+// 3) fallback to `/api/${schemaKey}`
 // ---------------------------------------------------------------------------
 
 const ClaudeModelSchema = z.enum(Object.values(CLAUDE_MODELS) as [string, ...string[]])
-const TriggerTypeSchema = z.enum(["cron", "one-time", "email", "webhook"])
+const ToolCreateTriggerTypeSchema = z.enum(["cron", "one-time"])
+const ToolCreateActionTypeSchema = z.enum(["prompt"])
 
 export const toolsSchemas = {
   /** GET /api/automations */
@@ -42,12 +48,17 @@ export const toolsSchemas = {
 
   /** POST /api/automations */
   "automations/create": {
+    // Schema key is a lookup identifier; actual route is /api/automations.
+    // This prevents accidental /api/automations/create requests when callers omit pathOverride.
+    path: "automations",
     req: z
       .object({
         site_id: z.string().min(1),
         name: z.string().min(1),
-        trigger_type: TriggerTypeSchema,
-        action_type: z.enum(["prompt", "sync", "publish"]),
+        // Intentionally narrower than the server schema: MCP create_automation
+        // currently supports only schedule-based prompt jobs.
+        trigger_type: ToolCreateTriggerTypeSchema,
+        action_type: ToolCreateActionTypeSchema,
         action_prompt: z.string().nullable().optional(),
         cron_schedule: z.string().nullable().optional(),
         cron_timezone: z.string().nullable().optional(),
@@ -75,6 +86,7 @@ export const toolsSchemas = {
 
   /** POST /api/automations/[id]/trigger (no body — ID is in URL path) */
   "automations/trigger": {
+    // Dynamic route: caller must pass pathOverride with the concrete automation ID.
     req: z.object({}).brand<"AutomationsTriggerRequest">(),
     res: z.object({
       ok: z.literal(true),
@@ -110,6 +122,7 @@ export const toolsSchemas = {
 type ToolsClient = ReturnType<typeof createClient<typeof toolsSchemas>>
 
 let _client: ToolsClient | null = null
+let _clientCacheKey: string | null = null
 
 function getApiBaseUrl(): string {
   const portEnv = process.env.PORT
@@ -127,19 +140,25 @@ function getApiBaseUrl(): string {
 }
 
 function getClient(): ToolsClient {
-  if (_client) return _client
+  const basePath = `${getApiBaseUrl()}/api`
+  const sessionCookie = process.env.ALIVE_SESSION_COOKIE?.trim() || undefined
+  const cacheKey = `${basePath}|${sessionCookie ?? ""}`
 
-  const sessionCookie = process.env.ALIVE_SESSION_COOKIE
+  if (_client && _clientCacheKey === cacheKey) {
+    return _client
+  }
+
   const headers: Record<string, string> = {}
   if (sessionCookie) {
     headers.Cookie = `${COOKIE_NAMES.SESSION}=${sessionCookie}`
   }
 
   _client = createClient(toolsSchemas, {
-    basePath: `${getApiBaseUrl()}/api`,
+    basePath,
     credentials: "omit",
     headers,
   })
+  _clientCacheKey = cacheKey
 
   return _client
 }

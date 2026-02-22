@@ -2,17 +2,22 @@
  * Automation Config Output
  *
  * Renders the ask_automation_config tool result as an interactive form.
- * When the user submits, their configuration is sent back to Claude for creation.
+ * The form creates the automation directly via API, then sends Claude
+ * an informational confirmation message.
  */
 
 "use client"
 
+import { type ClaudeModel, isValidClaudeModel } from "@webalive/shared"
 import { useCallback, useState } from "react"
 import {
   AutomationConfig,
   type AutomationConfigData,
   type AutomationConfigResult,
 } from "@/components/ai/AutomationConfig"
+import { ApiError, postty } from "@/lib/api/api-client"
+import { validateRequest } from "@/lib/api/schemas"
+import { scheduleResultToApiPayload } from "@/lib/automation/schedule-conversion"
 import type { ToolResultRendererProps } from "@/lib/tools/tool-registry"
 
 /**
@@ -26,6 +31,9 @@ interface AutomationConfigToolData {
   }>
   defaultSiteId?: string
   context?: string
+  defaultName?: string
+  defaultPrompt?: string
+  defaultModel?: string
 }
 
 /**
@@ -49,39 +57,42 @@ export function validateAutomationConfig(data: unknown): data is AutomationConfi
   return true
 }
 
-/**
- * Format the result for submission to Claude
- */
-function formatResultForSubmission(result: AutomationConfigResult): string {
-  const lines: string[] = ["Here's my automation configuration:", ""]
-  lines.push(`**Task name:** ${result.name}`)
-  lines.push(`**Website:** ${result.siteName} (site_id: ${result.siteId})`)
-
-  // Format schedule
-  let scheduleDesc = ""
+function formatScheduleDescription(result: AutomationConfigResult): string {
   switch (result.scheduleType) {
     case "once":
-      scheduleDesc = `Once on ${result.scheduleDate} at ${result.scheduleTime}`
-      break
+      return `Once on ${result.scheduleDate} at ${result.scheduleTime}`
     case "daily":
-      scheduleDesc = `Daily at ${result.scheduleTime} (${result.timezone})`
-      break
+      return `Daily at ${result.scheduleTime} (${result.timezone})`
     case "weekly":
-      scheduleDesc = `Weekly at ${result.scheduleTime} (${result.timezone})`
-      break
+      return `Weekly at ${result.scheduleTime} (${result.timezone})`
     case "monthly":
-      scheduleDesc = `Monthly at ${result.scheduleTime} (${result.timezone})`
-      break
+      return `Monthly at ${result.scheduleTime} (${result.timezone})`
     case "custom":
-      scheduleDesc = `Cron: ${result.cronExpression} (${result.timezone})`
-      break
+      return `Cron: ${result.cronExpression} (${result.timezone})`
   }
-  lines.push(`**Schedule:** ${scheduleDesc}`)
-  lines.push(`**Model:** ${result.model}`)
-  lines.push(`**Prompt:** ${result.prompt}`)
-  lines.push("")
-  lines.push("Please create this automation now.")
-  return lines.join("\n")
+}
+
+function formatAutomationCreatedMessage(result: AutomationConfigResult): string {
+  const schedule = formatScheduleDescription(result)
+  return `Automation "${result.name}" created successfully for ${result.siteName}. Schedule: ${schedule}`
+}
+
+function buildCreateAutomationRequest(result: AutomationConfigResult) {
+  const schedulePayload = scheduleResultToApiPayload(result)
+
+  return validateRequest("automations/create", {
+    site_id: result.siteId,
+    name: result.name,
+    trigger_type: schedulePayload.trigger_type,
+    action_type: "prompt",
+    action_prompt: result.prompt,
+    action_model: result.model,
+    cron_schedule: schedulePayload.trigger_type === "cron" ? schedulePayload.cron_schedule : null,
+    cron_timezone: schedulePayload.trigger_type === "cron" ? schedulePayload.cron_timezone : null,
+    run_at: schedulePayload.trigger_type === "one-time" ? schedulePayload.run_at : null,
+    is_active: true,
+    skills: [],
+  })
 }
 
 interface AutomationConfigOutputProps extends ToolResultRendererProps<AutomationConfigToolData> {
@@ -89,38 +100,58 @@ interface AutomationConfigOutputProps extends ToolResultRendererProps<Automation
 }
 
 export function AutomationConfigOutput({ data, onSubmitAnswer }: AutomationConfigOutputProps) {
-  const [submitted, setSubmitted] = useState(false)
-  const [skipped, setSkipped] = useState(false)
+  const [status, setStatus] = useState<"idle" | "submitting" | "submitted" | "canceled">("idle")
   const [submittedResult, setSubmittedResult] = useState<AutomationConfigResult | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+
+  const defaultModel: ClaudeModel | undefined = isValidClaudeModel(data.defaultModel) ? data.defaultModel : undefined
 
   const configData: AutomationConfigData = {
     sites: data.sites,
     defaultSiteId: data.defaultSiteId,
     context: data.context,
+    defaultName: data.defaultName,
+    defaultPrompt: data.defaultPrompt,
+    defaultModel,
   }
 
   const handleComplete = useCallback(
-    (result: AutomationConfigResult) => {
-      setSubmittedResult(result)
-      setSubmitted(true)
+    async (result: AutomationConfigResult) => {
+      if (status === "submitting") return
 
-      const message = formatResultForSubmission(result)
-      onSubmitAnswer?.(message)
+      setSubmitError(null)
+      setStatus("submitting")
+
+      try {
+        const request = buildCreateAutomationRequest(result)
+        await postty("automations/create", request)
+
+        setSubmittedResult(result)
+        setStatus("submitted")
+        onSubmitAnswer?.(formatAutomationCreatedMessage(result))
+      } catch (error) {
+        setStatus("idle")
+        if (error instanceof ApiError) {
+          setSubmitError(error.message)
+          return
+        }
+        setSubmitError(error instanceof Error ? error.message : "Failed to create automation")
+      }
     },
-    [onSubmitAnswer],
+    [onSubmitAnswer, status],
   )
 
-  const handleSkip = useCallback(() => {
-    setSkipped(true)
-    onSubmitAnswer?.("I'd like to skip creating an automation for now.")
+  const handleCancel = useCallback(() => {
+    setSubmitError(null)
+    setStatus("canceled")
+    onSubmitAnswer?.("User canceled automation configuration.")
   }, [onSubmitAnswer])
 
-  // Show completion state
-  if (submitted || skipped) {
+  if (status === "submitted" || status === "canceled") {
     return (
       <div className="mt-2 p-3 rounded-lg bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5">
-        <p className="text-xs text-black/50 dark:text-white/50">{skipped ? "Skipped" : "Configuration submitted"}</p>
-        {submittedResult && !skipped && (
+        <p className="text-xs text-black/50 dark:text-white/50">{status === "canceled" ? "Canceled" : "Created"}</p>
+        {submittedResult && status === "submitted" && (
           <div className="mt-2 space-y-1">
             <div className="text-xs">
               <span className="text-black/40 dark:text-white/40">Task: </span>
@@ -132,13 +163,7 @@ export function AutomationConfigOutput({ data, onSubmitAnswer }: AutomationConfi
             </div>
             <div className="text-xs">
               <span className="text-black/40 dark:text-white/40">Schedule: </span>
-              <span className="text-black/70 dark:text-white/70">
-                {submittedResult.scheduleType === "once"
-                  ? `${submittedResult.scheduleDate} at ${submittedResult.scheduleTime}`
-                  : submittedResult.scheduleType === "custom"
-                    ? submittedResult.cronExpression
-                    : `${submittedResult.scheduleType} at ${submittedResult.scheduleTime}`}
-              </span>
+              <span className="text-black/70 dark:text-white/70">{formatScheduleDescription(submittedResult)}</span>
             </div>
           </div>
         )}
@@ -148,7 +173,25 @@ export function AutomationConfigOutput({ data, onSubmitAnswer }: AutomationConfi
 
   return (
     <div className="mt-2">
-      <AutomationConfig data={configData} onComplete={handleComplete} onSkip={handleSkip} />
+      {status === "submitting" && (
+        <div className="mb-2 rounded-lg border border-black/5 bg-black/[0.02] px-3 py-2 text-xs text-black/50 dark:border-white/5 dark:bg-white/[0.02] dark:text-white/50">
+          Creating automation...
+        </div>
+      )}
+      {submitError && (
+        <div
+          className="mb-2 rounded-lg border border-red-200/60 bg-red-500/5 px-3 py-2 text-xs text-red-600 dark:border-red-700/40 dark:text-red-400"
+          role="alert"
+        >
+          {submitError}
+        </div>
+      )}
+      <div
+        className={status === "submitting" ? "pointer-events-none opacity-50" : ""}
+        aria-busy={status === "submitting"}
+      >
+        <AutomationConfig data={configData} onComplete={handleComplete} onCancel={handleCancel} />
+      </div>
     </div>
   )
 }

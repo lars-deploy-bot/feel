@@ -31,6 +31,9 @@ export interface AutomationConfigData {
   sites: SiteOption[]
   defaultSiteId?: string
   context?: string
+  defaultName?: string
+  defaultPrompt?: string
+  defaultModel?: ClaudeModel
 }
 
 export interface AutomationConfigResult {
@@ -49,7 +52,7 @@ export interface AutomationConfigResult {
 interface AutomationConfigProps {
   data: AutomationConfigData
   onComplete: (result: AutomationConfigResult) => void
-  onSkip?: () => void
+  onCancel?: () => void
 }
 
 // =============================================================================
@@ -80,20 +83,37 @@ const TIMEZONES = [
 
 type RepeatValue = (typeof REPEAT_OPTIONS)[number]["value"]
 
+function getInitialSiteSelection(data: AutomationConfigData): { siteId: string; siteSearch: string } {
+  if (data.defaultSiteId) {
+    const byId = data.sites.find(site => site.id === data.defaultSiteId)
+    if (byId) {
+      return { siteId: byId.id, siteSearch: byId.hostname }
+    }
+  }
+
+  if (data.sites.length === 1) {
+    const onlySite = data.sites[0]
+    return { siteId: onlySite?.id ?? "", siteSearch: onlySite?.hostname ?? "" }
+  }
+
+  return { siteId: "", siteSearch: "" }
+}
+
 // =============================================================================
 // COMPONENT
 // =============================================================================
 
-export function AutomationConfig({ data, onComplete, onSkip }: AutomationConfigProps) {
+export function AutomationConfig({ data, onComplete, onCancel }: AutomationConfigProps) {
   const [step, setStep] = useState<"basics" | "schedule" | "confirm">("basics")
+  const initialSiteSelection = getInitialSiteSelection(data)
 
   // Basic fields
-  const [name, setName] = useState("")
-  const [prompt, setPrompt] = useState("")
-  const [siteId, setSiteId] = useState(data.defaultSiteId || "")
-  const [siteSearch, setSiteSearch] = useState("")
+  const [name, setName] = useState(data.defaultName || "")
+  const [prompt, setPrompt] = useState(data.defaultPrompt || "")
+  const [siteId, setSiteId] = useState(initialSiteSelection.siteId)
+  const [siteSearch, setSiteSearch] = useState(initialSiteSelection.siteSearch)
   const [siteDropdownOpen, setSiteDropdownOpen] = useState(false)
-  const [model, setModel] = useState<ClaudeModel>(CLAUDE_MODELS.OPUS_4_6)
+  const [model, setModel] = useState<ClaudeModel>(data.defaultModel || CLAUDE_MODELS.HAIKU_4_5)
 
   // Schedule fields
   const [scheduleType, setScheduleType] = useState<RepeatValue>("daily")
@@ -113,16 +133,6 @@ export function AutomationConfig({ data, onComplete, onSkip }: AutomationConfigP
 
   const nameInputRef = useRef<HTMLInputElement>(null)
   const promptInputRef = useRef<HTMLTextAreaElement>(null)
-
-  // Initialize site search from defaultSiteId
-  useEffect(() => {
-    if (data.defaultSiteId) {
-      const site = data.sites.find(s => s.id === data.defaultSiteId)
-      if (site) {
-        setSiteSearch(site.hostname)
-      }
-    }
-  }, [data.defaultSiteId, data.sites])
 
   // Focus first input on mount
   useEffect(() => {
@@ -156,6 +166,7 @@ export function AutomationConfig({ data, onComplete, onSkip }: AutomationConfigP
     if (step === "basics") {
       const nameErr = validateName(name)
       const promptErr = validatePrompt(prompt)
+      const selectedSite = data.sites.find(site => site.id === siteId)
 
       if (nameErr) {
         setNameError(nameErr)
@@ -167,11 +178,13 @@ export function AutomationConfig({ data, onComplete, onSkip }: AutomationConfigP
         promptInputRef.current?.focus()
         return
       }
-      if (!siteId) {
+      if (!selectedSite) {
         // Auto-select first site if only one
         if (data.sites.length === 1) {
-          setSiteId(data.sites[0].id)
-          setSiteSearch(data.sites[0].hostname)
+          const onlySite = data.sites[0]
+          if (!onlySite) return
+          setSiteId(onlySite.id)
+          setSiteSearch(onlySite.hostname)
         } else {
           return // Can't proceed without site
         }
@@ -195,11 +208,14 @@ export function AutomationConfig({ data, onComplete, onSkip }: AutomationConfigP
   }, [step])
 
   const handleSubmit = useCallback(() => {
-    const site = data.sites.find(s => s.id === siteId)
-    if (!site) return
+    const site = data.sites.find(s => s.id === siteId) ?? (data.sites.length === 1 ? data.sites[0] : undefined)
+    if (!site) {
+      setStep("basics")
+      return
+    }
 
     onComplete({
-      siteId,
+      siteId: site.id,
       siteName: site.hostname,
       name,
       prompt,
@@ -222,6 +238,7 @@ export function AutomationConfig({ data, onComplete, onSkip }: AutomationConfigP
     timezone,
     data.sites,
     onComplete,
+    setStep,
   ])
 
   const handleKeyDown = useCallback(
@@ -248,9 +265,9 @@ export function AutomationConfig({ data, onComplete, onSkip }: AutomationConfigP
     confirm: "Confirm",
   }
 
-  const selectedSite = data.sites.find(s => s.id === siteId)
-
-  const canProceedBasics = name.trim().length >= 3 && prompt.trim().length >= 10 && siteId
+  const selectedSite = data.sites.find(s => s.id === siteId) ?? (data.sites.length === 1 ? data.sites[0] : undefined)
+  const hasValidSiteSelection = data.sites.some(site => site.id === siteId) || data.sites.length === 1
+  const canProceedBasics = name.trim().length >= 3 && prompt.trim().length >= 10 && hasValidSiteSelection
   const canProceedSchedule = scheduleType !== "custom" || cronExpression.trim().length > 0
 
   return (
@@ -295,7 +312,7 @@ export function AutomationConfig({ data, onComplete, onSkip }: AutomationConfigP
                       if (name.trim()) setNameError(validateName(name))
                     }}
                     onKeyDown={handleKeyDown}
-                    placeholder="Daily news summary"
+                    placeholder="Automation name"
                     aria-invalid={!!nameError}
                     aria-describedby={nameError ? "name-error" : undefined}
                     className={`w-full rounded-lg border bg-transparent px-3 py-2 text-sm transition-colors duration-150 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus-visible:outline-none text-zinc-900 dark:text-zinc-100 ${
@@ -330,7 +347,7 @@ export function AutomationConfig({ data, onComplete, onSkip }: AutomationConfigP
                     onBlur={() => {
                       if (prompt.trim()) setPromptError(validatePrompt(prompt))
                     }}
-                    placeholder="Search for yesterday's AI news and send me a brief summary..."
+                    placeholder="Describe what this automation should do..."
                     rows={3}
                     aria-invalid={!!promptError}
                     aria-describedby={promptError ? "prompt-error" : undefined}
@@ -702,15 +719,15 @@ export function AutomationConfig({ data, onComplete, onSkip }: AutomationConfigP
         {/* Footer */}
         <div className="flex h-12 items-center justify-between px-3 py-2">
           {/* Left Button */}
-          {step === "basics" ? (
+          {step === "basics" && onCancel ? (
             <button
               type="button"
-              onClick={onSkip}
+              onClick={onCancel}
               className="inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-colors duration-100 ease-in-out focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400 border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600 rounded-md gap-1.5 h-7 px-4 py-2 text-zinc-700 dark:text-zinc-300"
             >
-              Skip
+              Cancel
             </button>
-          ) : (
+          ) : step !== "basics" ? (
             <button
               type="button"
               onClick={handleBack}
@@ -718,6 +735,8 @@ export function AutomationConfig({ data, onComplete, onSkip }: AutomationConfigP
             >
               Back
             </button>
+          ) : (
+            <div className="h-7 w-16" />
           )}
 
           {/* Progress Indicator */}
