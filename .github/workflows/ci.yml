@@ -129,20 +129,25 @@ jobs:
 
       - name: Detect risky path changes for critical chat E2E
         id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            run_e2e:
+              - 'apps/web/app/api/claude/**'
+              - 'apps/web/app/api/sessions/**'
+              - 'apps/web/app/api/auth/**'
+              - 'apps/web/features/chat/**'
+              - 'apps/web/lib/stream/**'
+              - 'apps/web/lib/sessions/**'
+              - 'apps/web/e2e-tests/chat-critical.spec.ts'
+              - 'apps/web/e2e-tests/lib/stream-builder.ts'
+              - 'apps/web/e2e-tests/pages/ChatPage.ts'
+
+      - name: Report critical chat E2E requirement
         run: |
-          set -euo pipefail
-          BASE_REF="${{ github.base_ref }}"
-          git fetch origin "${BASE_REF}" --depth=1
-
-          CHANGED_FILES="$(git diff --name-only "origin/${BASE_REF}...${{ github.sha }}")"
-          echo "Changed files:"
-          echo "${CHANGED_FILES}"
-
-          if echo "${CHANGED_FILES}" | grep -Eq '^(apps/web/app/api/claude/|apps/web/app/api/sessions/|apps/web/app/api/auth/|apps/web/features/chat/|apps/web/lib/stream/|apps/web/lib/sessions/|apps/web/e2e-tests/chat-critical\.spec\.ts|apps/web/e2e-tests/lib/stream-builder\.ts|apps/web/e2e-tests/pages/ChatPage\.ts)'; then
-            echo "run_e2e=true" >> "$GITHUB_OUTPUT"
+          if [[ "${{ steps.filter.outputs.run_e2e }}" == "true" ]]; then
             echo "Critical chat E2E required for this PR."
           else
-            echo "run_e2e=false" >> "$GITHUB_OUTPUT"
             echo "Critical chat E2E not required for this PR."
           fi
 
