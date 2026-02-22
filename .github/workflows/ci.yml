@@ -168,18 +168,24 @@ jobs:
       - name: Create E2E env file
         working-directory: apps/web
         run: |
-          cat > .env.staging <<'EOF'
-          TEST_ENV=staging
-          NEXT_PUBLIC_APP_URL=https://staging.sonno.tech
-          NEXT_PUBLIC_PREVIEW_BASE=sonno.tech
-          EOF
+          E2E_SECRET="$(grep '^E2E_TEST_SECRET=' .env.staging | cut -d'=' -f2-)"
+          if [[ -z "${E2E_SECRET}" ]]; then
+            echo "::error::Missing E2E_TEST_SECRET in apps/web/.env.staging"
+            exit 1
+          fi
+
+          {
+            echo "TEST_ENV=staging"
+            echo "NEXT_PUBLIC_APP_URL=https://staging.sonno.tech"
+            echo "NEXT_PUBLIC_PREVIEW_BASE=sonno.tech"
+            printf 'E2E_TEST_SECRET=%s\n' "${E2E_SECRET}"
+          } > .env.staging
 
       - name: Validate critical E2E secret
-        env:
-          E2E_TEST_SECRET: ${{ secrets.ASK_LARS_KEY }}
         run: |
+          E2E_TEST_SECRET="$(grep '^E2E_TEST_SECRET=' apps/web/.env.staging | cut -d'=' -f2-)"
           if [[ -z "${E2E_TEST_SECRET}" ]]; then
-            echo "::error::Missing required secret for critical chat E2E: ASK_LARS_KEY"
+            echo "::error::Missing required secret for critical chat E2E: E2E_TEST_SECRET"
             exit 1
           fi
 
@@ -192,7 +198,6 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.CI_CONTRACT_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.CI_CONTRACT_SUPABASE_ANON_KEY }}
           JWT_SECRET: ${{ secrets.CI_CONTRACT_JWT_SECRET }}
-          E2E_TEST_SECRET: ${{ secrets.ASK_LARS_KEY }}
           STREAM_ENV: local
           SKIP_ENV_VALIDATION: "1"
         run: bun run test:e2e:critical
