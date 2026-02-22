@@ -28,11 +28,19 @@ vi.mock("@sentry/nextjs", () => ({
   captureException: captureExceptionMock,
 }))
 
-const { POST } = await import("../route")
+const { DELETE, GET, POST } = await import("../route")
 
 function createPostRequest(body: Record<string, unknown>): NextRequest {
   return new NextRequest("http://localhost/api/user-env-keys", {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+}
+
+function createDeleteRequest(body: Record<string, unknown>): NextRequest {
+  return new NextRequest("http://localhost/api/user-env-keys", {
+    method: "DELETE",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   })
@@ -100,6 +108,105 @@ describe("POST /api/user-env-keys", () => {
     setUserEnvKeyMock.mockRejectedValue(error)
 
     const response = await POST(createPostRequest({ keyName: "OPENAI_API_KEY", keyValue: "secret" }))
+    const json = await response.json()
+
+    expect(response.status).toBe(500)
+    expect(json.error).toBe(ErrorCodes.INTERNAL_ERROR)
+    expect(captureExceptionMock).toHaveBeenCalledWith(error)
+  })
+})
+
+describe("GET /api/user-env-keys", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    listUserEnvKeyNamesMock.mockResolvedValue([])
+  })
+
+  it("returns 401 when unauthenticated", async () => {
+    getSessionUserMock.mockResolvedValue(null)
+
+    const response = await GET()
+    const json = await response.json()
+
+    expect(response.status).toBe(401)
+    expect(json.error).toBe(ErrorCodes.UNAUTHORIZED)
+  })
+
+  it("returns 200 with key names when authenticated", async () => {
+    getSessionUserMock.mockResolvedValue({ id: "user-1" })
+    listUserEnvKeyNamesMock.mockResolvedValue(["OPENAI_API_KEY", "GITHUB_TOKEN"])
+
+    const response = await GET()
+    const json = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(json.ok).toBe(true)
+    expect(json.keys).toEqual([
+      { name: "OPENAI_API_KEY", hasValue: true },
+      { name: "GITHUB_TOKEN", hasValue: true },
+    ])
+    expect(listUserEnvKeyNamesMock).toHaveBeenCalledWith("user-1")
+  })
+
+  it("returns 500 when key listing fails", async () => {
+    getSessionUserMock.mockResolvedValue({ id: "user-1" })
+    const error = new Error("list failed")
+    listUserEnvKeyNamesMock.mockRejectedValue(error)
+
+    const response = await GET()
+    const json = await response.json()
+
+    expect(response.status).toBe(500)
+    expect(json.error).toBe(ErrorCodes.INTERNAL_ERROR)
+    expect(captureExceptionMock).toHaveBeenCalledWith(error)
+  })
+})
+
+describe("DELETE /api/user-env-keys", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    deleteUserEnvKeyMock.mockResolvedValue(undefined)
+  })
+
+  it("returns 401 when unauthenticated", async () => {
+    getSessionUserMock.mockResolvedValue(null)
+
+    const response = await DELETE(createDeleteRequest({ keyName: "OPENAI_API_KEY" }))
+    const json = await response.json()
+
+    expect(response.status).toBe(401)
+    expect(json.error).toBe(ErrorCodes.UNAUTHORIZED)
+  })
+
+  it("returns 400 for invalid delete request body", async () => {
+    getSessionUserMock.mockResolvedValue({ id: "user-1" })
+
+    const response = await DELETE(createDeleteRequest({ keyName: "" }))
+    const json = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(json.error).toBe(ErrorCodes.INVALID_REQUEST)
+    expect(json.details.field).toBe("keyName")
+  })
+
+  it("returns 200 and deletes key on valid request", async () => {
+    getSessionUserMock.mockResolvedValue({ id: "user-1" })
+
+    const response = await DELETE(createDeleteRequest({ keyName: "OPENAI_API_KEY" }))
+    const json = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(json.ok).toBe(true)
+    expect(json.keyName).toBe("OPENAI_API_KEY")
+    expect(deleteUserEnvKeyMock).toHaveBeenCalledWith("user-1", "OPENAI_API_KEY")
+  })
+
+  it("returns 500 when delete fails", async () => {
+    getSessionUserMock.mockResolvedValue({ id: "user-1" })
+    const error = new Error("delete failed")
+    deleteUserEnvKeyMock.mockRejectedValue(error)
+
+    const response = await DELETE(createDeleteRequest({ keyName: "OPENAI_API_KEY" }))
     const json = await response.json()
 
     expect(response.status).toBe(500)
