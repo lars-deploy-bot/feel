@@ -1,7 +1,7 @@
 import { tool } from "@anthropic-ai/claude-agent-sdk"
 import { truncateOutput } from "@webalive/shared"
 import { z } from "zod"
-import { callBridgeApi } from "../../lib/api-client.js"
+import { callApi } from "../../lib/api-client.js"
 
 export const readServerLogsParamsSchema = {
   workspace: z
@@ -48,8 +48,8 @@ export async function readServerLogs(params: ReadServerLogsParams): Promise<Read
   const { workspace, search, search_regex, lines = 100, since } = params
 
   try {
-    // Call Bridge API to read logs (runs as root with proper privileges)
-    const apiResult = await callBridgeApi({
+    // Call API to read logs (runs as root with proper privileges)
+    const apiResult = await callApi({
       endpoint: "/api/internal-tools/read-logs",
       body: {
         workspace,

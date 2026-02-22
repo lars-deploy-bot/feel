@@ -350,6 +350,21 @@ register(AI.ASK_AUTOMATION_CONFIG, {
   getPreview: () => "configure automation",
 })
 
+register(AI.CREATE_AUTOMATION, {
+  autoExpand: true,
+  getPreview: () => "create automation",
+})
+
+register(AI.LIST_AUTOMATIONS, {
+  autoExpand: false,
+  getPreview: () => "list automations",
+})
+
+register(AI.TRIGGER_AUTOMATION, {
+  autoExpand: true,
+  getPreview: () => "trigger automation",
+})
+
 // --- Calendar tools ---
 register(CALENDAR.COMPOSE_EVENT, {
   autoExpand: true, // Always show the event draft card

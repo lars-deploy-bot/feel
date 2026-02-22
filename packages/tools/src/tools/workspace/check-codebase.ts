@@ -79,7 +79,7 @@ export type CheckCodebaseParams = Record<string, never>
  * - Both commands executed with isolated, sanitized environment
  */
 export async function checkCodebase(_params: CheckCodebaseParams): Promise<ToolResult> {
-  // Security: Use process.cwd() set by Bridge - never accept workspace from user
+  // Security: Use process.cwd() set by parent process - never accept workspace from user
   const workspaceRoot = process.cwd()
 
   try {

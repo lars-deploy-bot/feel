@@ -3,13 +3,13 @@
  *
  * Supports two modes:
  * 1. **Full mode** (default): All Claude Code tools enabled
- * 2. **Bridge mode**: Site builder permissions with workspace isolation
+ * 2. **Workspace mode**: Site builder permissions with workspace isolation
  *
  * Uses the Claude Code instance credentials - no API key needed.
  *
  * @example
  * ```typescript
- * import { askAIFull, askBridge } from "@webalive/tools"
+ * import { askAIFull, askWorkspace } from "@webalive/tools"
  *
  * // Full mode - all tools enabled
  * const result = await askAIFull({
@@ -17,14 +17,14 @@
  *   cwd: "/path/to/project",
  * })
  *
- * // Bridge mode - site builder permissions for a specific workspace
+ * // Workspace mode - site builder permissions for a specific workspace
  * const result2 = await askAIFull({
  *   prompt: "Add a new component",
- *   workspace: "example.com",  // Enables Bridge mode
+ *   workspace: "example.com",  // Enables Workspace mode
  * })
  *
- * // Bridge mode with OAuth tokens
- * const text = await askBridge("Create a checkout", "mysite.com", { stripe: "sk_..." })
+ * // Workspace mode with OAuth tokens
+ * const text = await askWorkspace("Create a checkout", "mysite.com", { stripe: "sk_..." })
  * ```
  */
 
@@ -81,13 +81,13 @@ export interface AskAIFullOptions {
   /** The prompt/task to send to Claude */
   prompt: string
 
-  /** Working directory (full mode only, ignored in Bridge mode) */
+  /** Working directory (full mode only, ignored in Workspace mode) */
   cwd?: string
 
-  /** Workspace domain - enables Bridge mode (e.g., "example.com") */
+  /** Workspace domain - enables Workspace mode (e.g., "example.com") */
   workspace?: string
 
-  /** OAuth tokens for integrations (Bridge mode) */
+  /** OAuth tokens for integrations (Workspace mode) */
   oauthTokens?: Record<string, string>
 
   /** Model to use (defaults to DEFAULTS.CLAUDE_MODEL) */
@@ -140,7 +140,7 @@ export interface AskAIFullResult {
  * Ask Claude with configurable tool access.
  *
  * **Full Mode** (no workspace): All Claude Code tools
- * **Bridge Mode** (workspace provided): Site builder permissions
+ * **Workspace Mode** (workspace provided): Site builder permissions
  */
 export async function askAIFull(options: AskAIFullOptions): Promise<AskAIFullResult> {
   const {
@@ -154,10 +154,10 @@ export async function askAIFull(options: AskAIFullOptions): Promise<AskAIFullRes
     onMessage,
   } = options
 
-  const isBridgeMode = !!workspace
-  const mode = isBridgeMode ? "default" : "full"
+  const isWorkspaceMode = !!workspace
+  const mode = isWorkspaceMode ? "default" : "full"
   const workspacePath = workspace ? getWorkspacePath(workspace) : undefined
-  const cwd = isBridgeMode ? workspacePath! : (options.cwd ?? process.cwd())
+  const cwd = isWorkspaceMode ? workspacePath! : (options.cwd ?? process.cwd())
 
   // Configure based on mode
   let permissionMode = options.permissionMode
@@ -168,7 +168,7 @@ export async function askAIFull(options: AskAIFullOptions): Promise<AskAIFullRes
   let settingSources = options.settingSources ?? ["project"]
   let connectedProviders: string[] = []
 
-  if (isBridgeMode) {
+  if (isWorkspaceMode) {
     permissionMode = permissionMode ?? STREAM_PERMISSION_MODE
     // Cast to SettingsSource[] - "managed" is valid for Claude Code but not in SDK types
     settingSources = [...STREAM_SETTINGS_SOURCES] as SettingsSource[]
@@ -274,8 +274,8 @@ export async function ask(prompt: string, cwd?: string): Promise<string> {
   return result.text
 }
 
-/** Ask in Bridge mode (site builder permissions) */
-export async function askBridge(
+/** Ask in Workspace mode (site builder permissions) */
+export async function askWorkspace(
   prompt: string,
   workspace: string,
   oauthTokens?: Record<string, string>,

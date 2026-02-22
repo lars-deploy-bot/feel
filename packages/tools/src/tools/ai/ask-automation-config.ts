@@ -14,6 +14,7 @@
 
 import { tool } from "@anthropic-ai/claude-agent-sdk"
 import { z } from "zod"
+import { api } from "../../lib/tools-api.js"
 
 export const askAutomationConfigParamsSchema = {
   context: z.string().optional().describe("Optional context about why an automation is being created"),
@@ -32,28 +33,29 @@ export interface AskAutomationConfigResult {
 }
 
 /**
- * Site info passed to the tool via context
- * This is injected by the tool executor, not from parameters
+ * Fetch the user's sites from the API using the typed client.
  */
-export interface AutomationToolContext {
-  sites: Array<{ id: string; hostname: string }>
+async function fetchUserSites(): Promise<Array<{ id: string; hostname: string }>> {
+  try {
+    const data = await api().getty("sites")
+    return data.sites.map(s => ({ id: s.id, hostname: s.hostname }))
+  } catch {
+    return []
+  }
 }
 
 /**
  * Show the automation configuration form to the user.
  *
- * Returns JSON that the frontend renders as an interactive multi-step form.
+ * Fetches the user's sites from the API, then returns JSON
+ * that the frontend renders as an interactive multi-step form.
  * When the user submits their configuration, it's sent back to Claude as a message.
  */
-export async function askAutomationConfig(
-  params: AskAutomationConfigParams,
-  context?: AutomationToolContext,
-): Promise<AskAutomationConfigResult> {
+export async function askAutomationConfig(params: AskAutomationConfigParams): Promise<AskAutomationConfigResult> {
   try {
     const { context: userContext, defaultSiteId } = params
 
-    // Get sites from context (injected by executor) or return empty
-    const sites = context?.sites ?? []
+    const sites = await fetchUserSites()
 
     if (sites.length === 0) {
       return {
@@ -123,8 +125,6 @@ Example flow:
 4. You: Create the automation via POST /api/automations`,
   askAutomationConfigParamsSchema,
   async args => {
-    // Note: In actual execution, the context with sites will be injected
-    // by the tool executor. This is a placeholder that returns empty sites.
     return askAutomationConfig(args)
   },
 )

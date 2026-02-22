@@ -11,10 +11,11 @@ import * as Sentry from "@sentry/nextjs"
 import { claimJob, extractSummary, type FinishHooks, finishJob } from "@webalive/automation-engine"
 import type { AppDatabase } from "@webalive/database"
 import { getServerId, isAliveWorkspace } from "@webalive/shared"
-import { type NextRequest, NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 import { broadcastAutomationEvent } from "@/app/api/automations/events/route"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
+import { alrighty } from "@/lib/api/server"
 import { pokeCronService } from "@/lib/automation/cron-service"
 import { executeJob } from "@/lib/automation/execute"
 import { getAutomationExecutionGate } from "@/lib/automation/execution-guard"
@@ -180,10 +181,10 @@ export async function POST(_req: NextRequest, context: RouteContext) {
       }
     })()
 
-    return NextResponse.json(
+    return alrighty(
+      "automations/trigger",
       {
-        ok: true,
-        status: "queued",
+        status: "queued" as const,
         startedAt: ctx.claimedAt,
         timeoutSeconds,
         monitor: {
