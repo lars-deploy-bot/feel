@@ -123,6 +123,9 @@ export const ErrorCodes = {
   INVALID_PROVIDER: "INVALID_PROVIDER",
   OAUTH_CONFIG_ERROR: "OAUTH_CONFIG_ERROR",
   OAUTH_STATE_MISMATCH: "OAUTH_STATE_MISMATCH",
+  OAUTH_ACCESS_DENIED: "OAUTH_ACCESS_DENIED",
+  OAUTH_MISSING_REQUIRED_SCOPES: "OAUTH_MISSING_REQUIRED_SCOPES",
+  OAUTH_PROVIDER_ERROR: "OAUTH_PROVIDER_ERROR",
   INTEGRATION_ERROR: "INTEGRATION_ERROR",
   INTEGRATION_NOT_CONNECTED: "INTEGRATION_NOT_CONNECTED",
   INTEGRATION_NOT_CONFIGURED: "INTEGRATION_NOT_CONFIGURED",
@@ -509,6 +512,17 @@ export function getErrorMessage(code: ErrorCode, details?: Record<string, any>):
 
     case ErrorCodes.OAUTH_STATE_MISMATCH:
       return "OAuth security verification failed. This may be a security issue or an expired authorization. Please try connecting again."
+
+    case ErrorCodes.OAUTH_ACCESS_DENIED:
+      return "Authorization was cancelled or denied. Please try connecting again."
+
+    case ErrorCodes.OAUTH_MISSING_REQUIRED_SCOPES:
+      return "Required permissions were not granted. Please reconnect and approve all requested scopes."
+
+    case ErrorCodes.OAUTH_PROVIDER_ERROR:
+      return details?.provider
+        ? `${details.provider} returned an authorization error. Please try again.`
+        : "The OAuth provider returned an authorization error. Please try again."
 
     case ErrorCodes.INTEGRATION_ERROR:
       return details?.provider

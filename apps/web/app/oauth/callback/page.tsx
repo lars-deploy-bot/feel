@@ -9,37 +9,55 @@
 "use client"
 
 import { CheckCircle2, Loader2, XCircle } from "lucide-react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import { Suspense, useEffect } from "react"
 import { clientLogger } from "@/lib/client-error-logger"
+import { getOAuthErrorMessage } from "@/lib/oauth/oauth-error-taxonomy"
 import {
   OAUTH_CALLBACK_MESSAGE_TYPE,
   OAUTH_POPUP_CLOSE_DELAY,
   OAUTH_STORAGE_KEY,
   type OAuthCallbackMessage,
+  type OAuthErrorAction,
 } from "@/lib/oauth/popup-constants"
 
 function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1)
 }
 
+function normalizeErrorAction(value: string | null): OAuthErrorAction | undefined {
+  switch (value) {
+    case "retry":
+    case "reconnect":
+    case "switch_context":
+    case "contact_admin":
+      return value
+    default:
+      return undefined
+  }
+}
+
 function OAuthCallbackContent() {
   const searchParams = useSearchParams()
-  const router = useRouter()
 
   const integration = searchParams.get("integration") || ""
   const status = searchParams.get("status") as "success" | "error" | null
   const message = searchParams.get("message")
+  const errorCode = searchParams.get("error_code")
+  const errorAction = normalizeErrorAction(searchParams.get("error_action"))
+  const resolvedMessage = getOAuthErrorMessage({ errorCode, message, provider: integration || undefined })
 
   useEffect(() => {
     const hasOpener = window.opener && !window.opener.closed
     console.log("[OAuthCallback] hasOpener:", hasOpener, "integration:", integration, "status:", status)
 
     // Log OAuth errors to centralized error system for debugging
-    if (status === "error" && message) {
+    if (status === "error") {
       clientLogger.oauth(`OAuth callback error for ${integration}`, {
         provider: integration,
-        errorMessage: message,
+        errorCode,
+        errorAction,
+        errorMessage: resolvedMessage,
         hasOpener,
       })
     }
@@ -48,7 +66,9 @@ function OAuthCallbackContent() {
       type: OAUTH_CALLBACK_MESSAGE_TYPE,
       integration,
       status: status || "error",
-      message: message || undefined,
+      message: status === "error" ? resolvedMessage : undefined,
+      error_code: errorCode || undefined,
+      error_action: errorAction,
     }
 
     // Always write to localStorage as fallback (window.opener can be lost during cross-origin redirects)
@@ -75,7 +95,7 @@ function OAuthCallbackContent() {
       console.log("[OAuthCallback] No opener detected, waiting for localStorage to be read")
       setTimeout(() => window.close(), OAUTH_POPUP_CLOSE_DELAY)
     }
-  }, [integration, status, message, router])
+  }, [integration, status, errorCode, errorAction, resolvedMessage])
 
   const providerName = integration ? capitalize(integration) : "Integration"
 
@@ -83,7 +103,7 @@ function OAuthCallbackContent() {
     <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#0a0a0a]">
       <div className="text-center p-8 max-w-sm">
         <StatusIcon status={status} />
-        <StatusText status={status} providerName={providerName} message={message} />
+        <StatusText status={status} providerName={providerName} message={resolvedMessage} />
         {status && (
           <button
             type="button"
@@ -129,7 +149,7 @@ function StatusText({
 }: {
   status: "success" | "error" | null
   providerName: string
-  message: string | null
+  message: string
 }) {
   if (status === "success") {
     return (
@@ -143,9 +163,7 @@ function StatusText({
     return (
       <>
         <h1 className="text-lg font-semibold text-black dark:text-white mb-2">Connection Failed</h1>
-        <p className="text-sm text-black/60 dark:text-white/60">
-          {message || "Something went wrong. Please try again."}
-        </p>
+        <p className="text-sm text-black/60 dark:text-white/60">{message}</p>
       </>
     )
   }

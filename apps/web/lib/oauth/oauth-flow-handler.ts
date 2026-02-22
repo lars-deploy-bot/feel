@@ -7,7 +7,7 @@
 
 import crypto from "node:crypto"
 import { env } from "@webalive/env/server"
-import { GoogleProvider, getProvider } from "@webalive/oauth-core"
+import { GoogleProvider, getProvider, OAuthMissingRequiredScopesError } from "@webalive/oauth-core"
 import { getOAuthKeyForProvider } from "@webalive/shared"
 import { cookies } from "next/headers"
 import type { NextRequest } from "next/server"
@@ -17,12 +17,33 @@ import { oauthInitiationRateLimiter, oauthOperationRateLimiter } from "@/lib/aut
 import { type ErrorCode, ErrorCodes } from "@/lib/error-codes"
 import { errorLogger } from "@/lib/error-logger"
 import { canUserAccessIntegration } from "@/lib/integrations/visibility"
+import {
+  buildOAuthCallbackRedirectUrl,
+  createOAuthErrorPayload,
+  createOAuthSuccessPayload,
+  mapProviderErrorToOAuthCode,
+} from "@/lib/oauth/oauth-error-taxonomy"
 import { getOAuthInstance } from "@/lib/oauth/oauth-instances"
 import { buildOAuthRedirectUri, isOAuthProviderSupported, OAUTH_PROVIDER_CONFIG, type OAuthProvider } from "./providers"
 
 const OAUTH_STATE_COOKIE_PREFIX = "oauth_state_"
 const STATE_COOKIE_MAX_AGE = 600 // 10 minutes
 const STATE_TOKEN_BYTES = 32
+
+/**
+ * Normalize a scope string into a deduplicated sorted array.
+ * Handles both space-separated (OAuth standard) and comma-separated (some providers) formats.
+ */
+function normalizeScopes(scopeString: string): string[] {
+  return [
+    ...new Set(
+      scopeString
+        .split(/[,\s]+/)
+        .map(scope => scope.trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  ].sort()
+}
 
 /**
  * OAuth Flow Result Types
@@ -260,7 +281,13 @@ export async function handleOAuthCallback(
     recordFailedAttempt(req, provider)
     return {
       type: "redirect",
-      url: `${baseUrl}/oauth/callback?integration=${provider}&status=error&message=Invalid+state`,
+      url: buildOAuthCallbackRedirectUrl(
+        baseUrl,
+        createOAuthErrorPayload({
+          integration: provider,
+          errorCode: ErrorCodes.OAUTH_STATE_MISMATCH,
+        }),
+      ),
     }
   }
 
@@ -271,13 +298,25 @@ export async function handleOAuthCallback(
     recordFailedAttempt(req, provider)
     return {
       type: "redirect",
-      url: `${baseUrl}/oauth/callback?integration=${provider}&status=error&message=${encodeURIComponent("Access denied")}`,
+      url: buildOAuthCallbackRedirectUrl(
+        baseUrl,
+        createOAuthErrorPayload({
+          integration: provider,
+          errorCode: ErrorCodes.FORBIDDEN,
+          provider,
+        }),
+      ),
     }
   }
 
   // CRITICAL: Build redirect URI BEFORE try block so it's accessible in catch for logging
   // This must match exactly what was used during authorization or Google will reject with "Bad Request"
   const redirectUri = buildOAuthRedirectUri(baseUrl, provider as OAuthProvider)
+
+  // Resolve required scopes: env-override > provider config defaults
+  const callbackConfig = getOAuthConfig(provider, baseUrl)
+  const scopeSource = callbackConfig?.scopes?.trim() || OAUTH_PROVIDER_CONFIG[provider as OAuthProvider].defaultScopes
+  const requiredScopes = normalizeScopes(scopeSource)
 
   try {
     // Exchange code for tokens
@@ -291,6 +330,8 @@ export async function handleOAuthCallback(
       oauthKey, // Use oauthKey for token storage
       code,
       redirectUri, // Pass redirect URI to ensure it matches authorization
+      undefined, // codeVerifier (PKCE not used)
+      requiredScopes,
     )
 
     console.log(`[${provider} OAuth] Successfully connected user ${user.id}`)
@@ -298,14 +339,19 @@ export async function handleOAuthCallback(
 
     return {
       type: "redirect",
-      url: `${baseUrl}/oauth/callback?integration=${provider}&status=success`,
+      url: buildOAuthCallbackRedirectUrl(baseUrl, createOAuthSuccessPayload(provider)),
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
+    let errorCode: ErrorCode = ErrorCodes.INTEGRATION_ERROR
+    if (error instanceof OAuthMissingRequiredScopesError) {
+      errorCode = ErrorCodes.OAUTH_MISSING_REQUIRED_SCOPES
+    }
 
     // Centralized error logging with full context for debugging
     errorLogger.oauth(`OAuth callback failed for ${provider}`, {
       provider,
+      errorCode,
       errorMessage,
       redirectUri,
       baseUrl,
@@ -315,15 +361,21 @@ export async function handleOAuthCallback(
 
     recordFailedAttempt(req, provider)
 
-    // Security: Don't expose internal errors in production, but show in dev
-    const isDev = process.env.NODE_ENV === "development"
-    const sanitizedMessage = isDev
-      ? `Connection failed: ${errorMessage}`
-      : "Connection failed. Please try again or contact support."
+    // Security: Don't expose internal error details to users.
+    // Scope names are logged server-side via errorLogger.oauth above.
+    const message = process.env.NODE_ENV === "development" ? `Connection failed: ${errorMessage}` : undefined
 
     return {
       type: "redirect",
-      url: `${baseUrl}/oauth/callback?integration=${provider}&status=error&message=${encodeURIComponent(sanitizedMessage)}`,
+      url: buildOAuthCallbackRedirectUrl(
+        baseUrl,
+        createOAuthErrorPayload({
+          integration: provider,
+          errorCode,
+          message,
+          provider,
+        }),
+      ),
     }
   }
 }
@@ -337,14 +389,21 @@ export function handleProviderError(
   errorDescription: string | null,
   baseUrl: string,
 ): OAuthFlowResult {
-  const description = errorDescription || error
-  console.error(`[${provider} OAuth] Provider returned error:`, description)
-
-  // Security: Don't expose provider error details
-  const sanitizedMessage = `${provider} authorization failed. Please try again.`
+  const errorCode = mapProviderErrorToOAuthCode(error)
+  console.error(`[${provider} OAuth] Provider returned error:`, {
+    code: errorCode,
+    description: errorDescription || error,
+  })
 
   return {
     type: "redirect",
-    url: `${baseUrl}/oauth/callback?integration=${provider}&status=error&message=${encodeURIComponent(sanitizedMessage)}`,
+    url: buildOAuthCallbackRedirectUrl(
+      baseUrl,
+      createOAuthErrorPayload({
+        integration: provider,
+        errorCode,
+        provider,
+      }),
+    ),
   }
 }
