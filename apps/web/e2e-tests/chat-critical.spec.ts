@@ -31,7 +31,10 @@ function parseNDJSONEventTypes(body: string): string[] {
     .split("\n")
     .filter(line => line.trim().length > 0)
     .map(line => {
-      const parsed = JSON.parse(line) as { type: string }
+      const parsed: unknown = JSON.parse(line)
+      if (typeof parsed !== "object" || parsed === null || !("type" in parsed) || typeof parsed.type !== "string") {
+        throw new Error(`Unexpected NDJSON event format: ${line}`)
+      }
       return parsed.type
     })
 }
@@ -90,8 +93,8 @@ test.describe("Critical Chat Path", () => {
     // --- Stream lifecycle verification ---
     // The request was made
     expect(capturedRequestBody).toBeTruthy()
-    const requestBody = JSON.parse(capturedRequestBody!) as { message: string }
-    expect(requestBody.message).toBe(userMessage)
+    const requestBody: unknown = JSON.parse(capturedRequestBody ?? "")
+    expect(requestBody).toMatchObject({ message: userMessage })
 
     // The response contained correct NDJSON lifecycle events
     expect(capturedResponseBody).toBeTruthy()
@@ -150,8 +153,10 @@ test.describe("Critical Chat Path", () => {
     await chat.expectMessage(firstUserMessage)
     await chat.expectMessage(firstAssistantResponse)
 
-    // Verify stream complete: input is interactable again
-    await expect(chat.messageInput).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
+    // Verify stream complete: send button re-enabled
+    await chat.messageInput.fill("ready")
+    await chat.expectSendButtonEnabled()
+    await chat.messageInput.fill("") // clear before sending the real message
 
     // --- Turn 2: verify context retained ---
     await chat.sendMessage(secondUserMessage)
