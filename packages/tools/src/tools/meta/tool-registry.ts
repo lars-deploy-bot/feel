@@ -358,7 +358,7 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
     name: "ask_automation_config",
     category: "meta",
     description:
-      "Show an interactive form for the user to configure a scheduled automation. Use when the user wants to schedule a task - presents a wizard to set task name, prompt, website, and schedule (once, daily, weekly, monthly, or custom cron). After submission, create the automation via the API.",
+      "Show an interactive form for the user to configure a scheduled automation. Use when the user wants to schedule a task - presents a wizard to set task name, prompt, website, and schedule (once, daily, weekly, monthly, or custom cron). After submission, use create_automation with the user's choices.",
     contextCost: "low",
     enabled: true,
     parameters: [
@@ -374,6 +374,47 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
         required: false,
         description: "Optional default site ID to pre-select",
       },
+    ],
+  },
+  {
+    name: "create_automation",
+    category: "meta",
+    description:
+      "Create a new automation that runs Claude on a schedule or one-time. Use after the user submits the ask_automation_config form.",
+    contextCost: "medium",
+    enabled: true,
+    parameters: [
+      { name: "site_id", type: "string", required: true, description: "Domain ID of the site" },
+      { name: "name", type: "string", required: true, description: "Human-readable name" },
+      { name: "trigger_type", type: "string", required: true, description: "'cron' or 'one-time'" },
+      {
+        name: "action_type",
+        type: "string",
+        required: true,
+        description: "Type of action to run (currently only 'prompt')",
+      },
+      { name: "action_prompt", type: "string", required: true, description: "What Claude should do" },
+      { name: "cron_schedule", type: "string", required: false, description: "Cron expression for recurring" },
+      { name: "cron_timezone", type: "string", required: false, description: "Timezone for cron" },
+      { name: "run_at", type: "string", required: false, description: "ISO timestamp for one-time" },
+    ],
+  },
+  {
+    name: "list_automations",
+    category: "meta",
+    description: "List the user's automations with their status, schedule, and run history.",
+    contextCost: "low",
+    enabled: true,
+    parameters: [{ name: "site_id", type: "string", required: false, description: "Filter by site/domain ID" }],
+  },
+  {
+    name: "trigger_automation",
+    category: "meta",
+    description: "Manually trigger an automation to run immediately, bypassing its schedule.",
+    contextCost: "low",
+    enabled: true,
+    parameters: [
+      { name: "automation_id", type: "string", required: true, description: "The automation job ID to trigger" },
     ],
   },
 

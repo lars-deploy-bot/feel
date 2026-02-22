@@ -820,6 +820,23 @@ export const apiSchemas = {
   },
 
   /**
+   * POST /api/automations/[id]/trigger
+   * Manually trigger an automation to run immediately
+   */
+  "automations/trigger": {
+    req: z.object({}).brand<"AutomationsTriggerRequest">(),
+    res: z.object({
+      ok: z.literal(true),
+      status: z.enum(["queued"]),
+      startedAt: z.string(),
+      timeoutSeconds: z.number(),
+      monitor: z.object({
+        runsPath: z.string(),
+      }),
+    }),
+  },
+
+  /**
    * GET /api/automations/[id]/runs
    * List runs for an automation job
    */
@@ -962,10 +979,6 @@ export const apiSchemas = {
   },
 
   /**
-   * POST /api/drive/delete
-   * Delete a file or directory in the drive
-   */
-  /**
    * POST /api/sessions
    * Send a message to another session (A2A communication)
    */
@@ -983,46 +996,6 @@ export const apiSchemas = {
       runId: z.string().optional(),
       sessionKey: z.string().optional(),
       message: z.string().optional(),
-    }),
-  },
-
-  /**
-   * PATCH /api/scheduled/[jobId]
-   * Update a scheduled task
-   */
-  "scheduled/update": {
-    req: z
-      .object({
-        name: z.string().optional(),
-        description: z.string().optional(),
-        schedule: z
-          .discriminatedUnion("kind", [
-            z.object({ kind: z.literal("at"), atMs: z.number() }),
-            z.object({ kind: z.literal("every"), everyMs: z.number(), anchorMs: z.number().optional() }),
-            z.object({ kind: z.literal("cron"), expr: z.string(), tz: z.string().optional() }),
-          ])
-          .optional(),
-        payload: z
-          .discriminatedUnion("kind", [
-            z.object({ kind: z.literal("systemEvent"), text: z.string() }),
-            z.object({
-              kind: z.literal("agentTurn"),
-              message: z.string(),
-              model: z.string().optional(),
-              timeoutSeconds: z.number().optional(),
-              deliver: z.boolean().optional(),
-              channel: z.string().optional(),
-              to: z.string().optional(),
-            }),
-          ])
-          .optional(),
-        enabled: z.boolean().optional(),
-        deleteAfterRun: z.boolean().optional(),
-      })
-      .brand<"ScheduledUpdateRequest">(),
-    res: z.object({
-      ok: z.boolean(),
-      job: z.record(z.string(), z.unknown()),
     }),
   },
 

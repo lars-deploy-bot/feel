@@ -55,7 +55,7 @@ export function validateAutomationConfig(data: unknown): data is AutomationConfi
 function formatResultForSubmission(result: AutomationConfigResult): string {
   const lines: string[] = ["Here's my automation configuration:", ""]
   lines.push(`**Task name:** ${result.name}`)
-  lines.push(`**Website:** ${result.siteName}`)
+  lines.push(`**Website:** ${result.siteName} (site_id: ${result.siteId})`)
 
   // Format schedule
   let scheduleDesc = ""

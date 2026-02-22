@@ -1,6 +1,6 @@
 import { tool } from "@anthropic-ai/claude-agent-sdk"
 import { z } from "zod"
-import { callBridgeApi, errorResult, type ToolResult } from "../../lib/api-client.js"
+import { callApi, errorResult, type ToolResult } from "../../lib/api-client.js"
 import { extractDomainFromWorkspace } from "../../lib/workspace-validator.js"
 
 export const deleteFileParamsSchema = {
@@ -37,7 +37,7 @@ export async function deleteFile(params: DeleteFileParams): Promise<ToolResult> 
     return errorResult("Invalid path", "Path cannot be empty")
   }
 
-  // Security: Get workspace from process.cwd() set by Bridge
+  // Security: Get workspace from process.cwd() set by parent process
   const workspaceRoot = process.cwd()
 
   // Extract workspace domain from path using shared validator
@@ -50,7 +50,7 @@ export async function deleteFile(params: DeleteFileParams): Promise<ToolResult> 
     return errorResult("Invalid workspace configuration", message)
   }
 
-  const response = await callBridgeApi({
+  const response = await callApi({
     endpoint: "/api/files/delete",
     body: {
       path,

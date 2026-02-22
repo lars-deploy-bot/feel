@@ -1,8 +1,10 @@
 /**
- * Shared Bridge API Client for MCP Tools
+ * Shared API Client for MCP Tools
  *
- * Provides a clean, DRY interface for tools to call back to the Bridge API.
+ * Provides a clean, DRY interface for tools to call back to the API server.
  * Handles port resolution, error formatting, and response parsing.
+ *
+ * For typed API calls (automations, sites), use tools-api.ts instead.
  */
 
 import { COOKIE_NAMES } from "@webalive/shared"
@@ -11,10 +13,10 @@ import { validateWorkspacePath } from "./workspace-validator.js"
 /**
  * Get internal API base URL for localhost calls.
  *
- * ⚠️  INTERNAL USE ONLY - for MCP tool → Bridge API calls on same server.
+ * ⚠️  INTERNAL USE ONLY - for MCP tool → API server calls on same host.
  * DO NOT use for external URLs (use domain from environments.ts instead).
  */
-function getApiBaseUrl(): string {
+export function getApiBaseUrl(): string {
   // PORT is set by systemd and inherited by child process
   const portEnv = process.env.PORT
 
@@ -55,10 +57,12 @@ export interface ApiCallOptions {
 }
 
 /**
- * Call Bridge API and return formatted tool result
- * Automatically validates workspaceRoot if present in body
+ * Call API server and return formatted tool result.
+ * Automatically validates workspaceRoot if present in body.
+ *
+ * For typed API calls, prefer tools-api.ts (toolsGetty/toolsPostty).
  */
-export async function callBridgeApi(options: ApiCallOptions): Promise<ToolResult> {
+export async function callApi(options: ApiCallOptions): Promise<ToolResult> {
   const { endpoint, method = "POST", body, timeout = 60000 } = options
 
   // Security: Auto-validate workspaceRoot if present (fail fast)
@@ -77,7 +81,7 @@ export async function callBridgeApi(options: ApiCallOptions): Promise<ToolResult
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), timeout)
 
-    // Include session cookie from environment (set by Alive)
+    // Include session cookie from environment
     const sessionCookie = process.env.ALIVE_SESSION_COOKIE
 
     // Include internal tools secret for privileged API calls
@@ -143,7 +147,7 @@ export async function callBridgeApi(options: ApiCallOptions): Promise<ToolResult
     }
 
     return {
-      content: [{ type: "text", text: `✗ Failed to reach Bridge API\n\nError: ${errorMessage}` }],
+      content: [{ type: "text", text: `✗ Failed to reach API server\n\nError: ${errorMessage}` }],
       isError: true,
     }
   }

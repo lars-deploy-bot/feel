@@ -46,7 +46,7 @@ export type InstallPackageParams = {
 export async function installPackage(params: InstallPackageParams): Promise<ToolResult> {
   const { packageName, version, dev = false } = params
 
-  // Security: Use process.cwd() set by Bridge - never accept workspace from user
+  // Security: Use process.cwd() set by parent process - never accept workspace from user
   const workspaceRoot = process.cwd()
 
   try {
