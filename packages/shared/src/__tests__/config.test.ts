@@ -14,16 +14,6 @@ import {
 
 const CONFIG_MODULE_URL = new URL("../config.ts", import.meta.url).href
 
-type ConfigProbe = {
-  aliveRoot: string
-  sitesRoot: string
-  imagesStorage: string
-  mainDomain: string
-  mainSuffix: string
-  allowedBases: string[]
-  workspacePath: string
-}
-
 function runConfigProbe(envOverrides: Record<string, string | undefined>) {
   const env = { ...process.env }
   for (const [key, value] of Object.entries(envOverrides)) {
@@ -47,7 +37,7 @@ console.log(JSON.stringify({
 }));
 `
 
-  return spawnSync("bun", ["-e", script], { env, encoding: "utf8" })
+  return spawnSync("bun", ["-e", script], { env, encoding: "utf8", timeout: 10_000 })
 }
 
 describe("resolveTemplatePath", () => {
@@ -108,15 +98,18 @@ describe("local/standalone config defaults", () => {
     })
 
     expect(result.status).toBe(0)
-    const parsed = JSON.parse(result.stdout) as ConfigProbe
-    expect(parsed.sitesRoot).toBe(`${home}/.alive/workspaces`)
-    expect(parsed.imagesStorage).toBe(`${home}/.alive/storage`)
-    expect(parsed.mainDomain).toBe("localhost")
-    expect(parsed.mainSuffix).toBe(".localhost")
-    expect(parsed.allowedBases).toEqual([`${home}/.alive/workspaces`])
-    expect(parsed.workspacePath).toBe(parsed.aliveRoot)
-    expect(parsed.aliveRoot).toBeTruthy()
-    expect(parsed.aliveRoot).not.toContain("%20")
+    const parsed: unknown = JSON.parse(result.stdout)
+    expect(parsed).toMatchObject({
+      sitesRoot: `${home}/.alive/workspaces`,
+      imagesStorage: `${home}/.alive/storage`,
+      mainDomain: "localhost",
+      mainSuffix: ".localhost",
+      allowedBases: [`${home}/.alive/workspaces`],
+    })
+    const p = parsed as Record<string, unknown>
+    expect(p.workspacePath).toBe(p.aliveRoot)
+    expect(p.aliveRoot).toBeTruthy()
+    expect(p.aliveRoot).not.toContain("%20")
   })
 
   it("uses local defaults when STREAM_ENV=standalone and SERVER_CONFIG_PATH is unset", () => {
@@ -130,11 +123,13 @@ describe("local/standalone config defaults", () => {
     })
 
     expect(result.status).toBe(0)
-    const parsed = JSON.parse(result.stdout) as ConfigProbe
-    expect(parsed.sitesRoot).toBe(`${home}/.alive/workspaces`)
-    expect(parsed.mainDomain).toBe("localhost")
-    expect(parsed.mainSuffix).toBe(".localhost")
-    expect(parsed.allowedBases).toEqual([`${home}/.alive/workspaces`])
+    const parsed: unknown = JSON.parse(result.stdout)
+    expect(parsed).toMatchObject({
+      sitesRoot: `${home}/.alive/workspaces`,
+      mainDomain: "localhost",
+      mainSuffix: ".localhost",
+      allowedBases: [`${home}/.alive/workspaces`],
+    })
   })
 
   it("fails fast in local mode when SERVER_CONFIG_PATH is explicitly set but missing", () => {

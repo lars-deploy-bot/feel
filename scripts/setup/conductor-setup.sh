@@ -88,5 +88,6 @@ cat <<EOF
     Password: test
 
   Note:
-    If you connect to a real Supabase project, set JWT_SECRET to that project's JWT secret.
+    If you connect to a real Supabase project, set JWT_SECRET to that project's JWT secret
+    and replace LOCKBOX_MASTER_KEY with a securely generated 64-hex-character key.
 EOF
