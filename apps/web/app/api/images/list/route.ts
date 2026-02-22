@@ -67,7 +67,8 @@ export async function GET(request: NextRequest) {
     // 4. Resolve workspace (same logic as upload/delete)
     const workspaceResult = await resolveWorkspace(host, body, requestId)
     if (!workspaceResult.success) {
-      return workspaceResult.response
+      const errorBody = await workspaceResult.response.json()
+      return Response.json({ ...errorBody, requestId }, { status: workspaceResult.response.status })
     }
 
     // 5. Convert workspace to tenant ID
