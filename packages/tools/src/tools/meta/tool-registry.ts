@@ -6,6 +6,10 @@
  * from GLOBAL_MCP_PROVIDERS in @webalive/shared.
  */
 import { DEFAULTS, GLOBAL_MCP_PROVIDERS, getTemplateIdsInline, OAUTH_MCP_PROVIDERS } from "@webalive/shared"
+import { z } from "zod"
+import { createAutomationParamsSchema } from "../automations/create-automation.js"
+import { listAutomationsParamsSchema } from "../automations/list-automations.js"
+import { triggerAutomationParamsSchema } from "../automations/trigger-automation.js"
 
 /**
  * SDK Built-in Tools
@@ -66,6 +70,29 @@ export interface ToolMetadata {
     required: boolean
     description: string
   }[]
+}
+
+/**
+ * Extracts registry-compatible parameter metadata from a Zod schema record.
+ * This is the format used by `tool()` in the Claude Agent SDK.
+ *
+ * Eliminates duplication: define params once as Zod schemas with `.describe()`,
+ * then use `zodToParams(schema)` in the registry instead of manual parameter arrays.
+ */
+export function zodToParams(schema: Record<string, z.ZodTypeAny>): ToolMetadata["parameters"] {
+  const shape = z.object(schema)
+  const jsonSchema = z.toJSONSchema(shape) as {
+    required?: string[]
+    properties?: Record<string, { type?: string; description?: string }>
+  }
+  const required = new Set(jsonSchema.required)
+
+  return Object.entries(jsonSchema.properties ?? {}).map(([name, prop]) => ({
+    name,
+    type: prop.type ?? "string",
+    required: required.has(name),
+    description: prop.description ?? "",
+  }))
 }
 
 const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
@@ -383,21 +410,7 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
       "Create a new automation that runs Claude on a schedule or one-time. Use after the user submits the ask_automation_config form.",
     contextCost: "medium",
     enabled: true,
-    parameters: [
-      { name: "site_id", type: "string", required: true, description: "Domain ID of the site" },
-      { name: "name", type: "string", required: true, description: "Human-readable name" },
-      { name: "trigger_type", type: "string", required: true, description: "'cron' or 'one-time'" },
-      {
-        name: "action_type",
-        type: "string",
-        required: true,
-        description: "Type of action to run (currently only 'prompt')",
-      },
-      { name: "action_prompt", type: "string", required: true, description: "What Claude should do" },
-      { name: "cron_schedule", type: "string", required: false, description: "Cron expression for recurring" },
-      { name: "cron_timezone", type: "string", required: false, description: "Timezone for cron" },
-      { name: "run_at", type: "string", required: false, description: "ISO timestamp for one-time" },
-    ],
+    parameters: zodToParams(createAutomationParamsSchema),
   },
   {
     name: "list_automations",
@@ -405,7 +418,7 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
     description: "List the user's automations with their status, schedule, and run history.",
     contextCost: "low",
     enabled: true,
-    parameters: [{ name: "site_id", type: "string", required: false, description: "Filter by site/domain ID" }],
+    parameters: zodToParams(listAutomationsParamsSchema),
   },
   {
     name: "trigger_automation",
@@ -413,9 +426,7 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
     description: "Manually trigger an automation to run immediately, bypassing its schedule.",
     contextCost: "low",
     enabled: true,
-    parameters: [
-      { name: "automation_id", type: "string", required: true, description: "The automation job ID to trigger" },
-    ],
+    parameters: zodToParams(triggerAutomationParamsSchema),
   },
 
   // Other tools
