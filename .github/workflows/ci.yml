@@ -138,7 +138,7 @@ jobs:
           echo "Changed files:"
           echo "${CHANGED_FILES}"
 
-          if echo "${CHANGED_FILES}" | grep -Eq '^(apps/web/app/api/claude/|apps/web/app/api/sessions/|apps/web/app/api/auth/|apps/web/features/chat/|apps/web/lib/stream/|apps/web/lib/sessions/)'; then
+          if echo "${CHANGED_FILES}" | grep -Eq '^(apps/web/app/api/claude/|apps/web/app/api/sessions/|apps/web/app/api/auth/|apps/web/features/chat/|apps/web/lib/stream/|apps/web/lib/sessions/|apps/web/e2e-tests/chat-critical\.spec\.ts|apps/web/e2e-tests/lib/stream-builder\.ts|apps/web/e2e-tests/pages/ChatPage\.ts)'; then
             echo "run_e2e=true" >> "$GITHUB_OUTPUT"
             echo "Critical chat E2E required for this PR."
           else
@@ -170,6 +170,7 @@ jobs:
         run: |
           cat > .env.staging <<'EOF'
           TEST_ENV=staging
+          NEXT_PUBLIC_APP_URL=https://staging.sonno.tech
           NEXT_PUBLIC_PREVIEW_BASE=sonno.tech
           EOF
 
@@ -182,6 +183,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.CI_CONTRACT_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.CI_CONTRACT_SUPABASE_ANON_KEY }}
           JWT_SECRET: ${{ secrets.CI_CONTRACT_JWT_SECRET }}
+          E2E_TEST_SECRET: ${{ secrets.E2E_TEST_SECRET }}
           STREAM_ENV: local
           SKIP_ENV_VALIDATION: "1"
         run: bun run test:e2e:critical

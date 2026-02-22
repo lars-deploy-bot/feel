@@ -104,8 +104,19 @@ async function ensureWorkspaceFilesystem(workspace: string): Promise<void> {
     throw new Error(`Workspace slug too long for linux user: ${linuxUser}`)
   }
 
-  const workspaceRoot = path.join(SITES_ROOT, workspace)
-  const workspaceUserDir = path.join(workspaceRoot, "user")
+  const resolvedSitesRoot = path.resolve(SITES_ROOT)
+  const resolvedWorkspaceRoot = path.resolve(path.join(SITES_ROOT, workspace))
+  const relativeWorkspacePath = path.relative(resolvedSitesRoot, resolvedWorkspaceRoot)
+
+  if (
+    relativeWorkspacePath.length === 0 ||
+    relativeWorkspacePath.startsWith("..") ||
+    path.isAbsolute(relativeWorkspacePath)
+  ) {
+    throw new Error(`Workspace path escapes SITES_ROOT: ${workspace}`)
+  }
+
+  const workspaceUserDir = path.join(resolvedWorkspaceRoot, "user")
 
   // Keep every run deterministic: clear stale files from previous E2E runs.
   await rm(workspaceUserDir, { recursive: true, force: true })
@@ -125,12 +136,12 @@ async function ensureWorkspaceFilesystem(workspace: string): Promise<void> {
 
   if (currentUid === 0) {
     const { uid, gid } = await ensureSystemUser(linuxUser)
-    await execFileAsync("chown", ["-R", `${uid}:${gid}`, workspaceRoot])
+    await execFileAsync("chown", ["-R", `${uid}:${gid}`, resolvedWorkspaceRoot])
     return
   }
 
   // Non-root deployment: align ownership to the app process user.
-  await execFileAsync("chown", ["-R", `${currentUid}:${currentGid}`, workspaceRoot]).catch(() => {
+  await execFileAsync("chown", ["-R", `${currentUid}:${currentGid}`, resolvedWorkspaceRoot]).catch(() => {
     // If chown is not permitted, the directory is already process-owned in non-root mode.
   })
 }

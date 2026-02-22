@@ -17,8 +17,8 @@
         "./.playwright-mcp"
       ],
       "env": {
-        "TMPDIR": "./.tmp",
-        "BUN_INSTALL_CACHE_DIR": "./.tmp/bun-cache"
+        "TMPDIR": "/tmp",
+        "BUN_INSTALL_CACHE_DIR": "/tmp/bun-cache-mcp"
       }
     }
   }
