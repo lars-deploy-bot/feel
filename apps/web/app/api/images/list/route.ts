@@ -1,19 +1,31 @@
 import * as Sentry from "@sentry/nextjs"
-import { cookies } from "next/headers"
 import type { NextRequest } from "next/server"
-import { hasSessionCookie } from "@/features/auth/types/guards"
+import { getSessionUser, verifyWorkspaceAccess } from "@/features/auth/lib/auth"
 import { resolveWorkspace } from "@/features/workspace/lib/workspace-utils"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 import { imageStorage } from "@/lib/storage"
 import { workspaceToTenantId } from "@/lib/tenant-utils"
 import { generateRequestId } from "@/lib/utils"
 
+interface ParsedImageKey {
+  contentHash: string
+  variant: string
+  key: string
+}
+
+interface GroupedImage {
+  key: string
+  variants: Record<string, string>
+  uploadedAt: string
+}
+
 export async function GET(request: NextRequest) {
+  const requestId = generateRequestId()
+
   try {
     // 1. Auth check
-    const jar = await cookies()
-    const requestId = generateRequestId()
-    if (!hasSessionCookie(jar)) {
+    const user = await getSessionUser()
+    if (!user) {
       return Response.json(
         {
           ok: false,
@@ -25,7 +37,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // 2. Resolve workspace (same logic as upload)
+    // 2. Build workspace body from query params
     const host = request.headers.get("host") || ""
     const searchParams = request.nextUrl.searchParams
     const workspaceParam = searchParams.get("workspace")
@@ -38,15 +50,30 @@ export async function GET(request: NextRequest) {
           ? { workspace: workspaceParam }
           : {}
 
+    // 3. Verify workspace authorization before path resolution
+    const authorizedWorkspace = await verifyWorkspaceAccess(user, body, `[Image List ${requestId}]`)
+    if (!authorizedWorkspace) {
+      return Response.json(
+        {
+          ok: false,
+          error: ErrorCodes.WORKSPACE_NOT_AUTHENTICATED,
+          message: getErrorMessage(ErrorCodes.WORKSPACE_NOT_AUTHENTICATED),
+          requestId,
+        },
+        { status: 401 },
+      )
+    }
+
+    // 4. Resolve workspace (same logic as upload/delete)
     const workspaceResult = await resolveWorkspace(host, body, requestId)
     if (!workspaceResult.success) {
       return workspaceResult.response
     }
 
-    // 3. Convert workspace to tenant ID
+    // 5. Convert workspace to tenant ID
     const tenantId = workspaceToTenantId(workspaceResult.workspace)
 
-    // 4. List images for this tenant
+    // 6. List images for this tenant
     const listResult = await imageStorage.list(tenantId)
     if (listResult.error) {
       return Response.json(
@@ -60,8 +87,8 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // 5. Convert keys to structured format
-    const images = listResult.data
+    // 7. Convert keys to structured format
+    const images: ParsedImageKey[] = listResult.data
       .map(key => {
         // Parse key: t/{tenantId}/o/{hash}/v/{variant}.webp
         const match = key.match(/^t\/([^/]+)\/o\/([^/]+)\/v\/([^.]+)\.webp$/)
@@ -70,13 +97,11 @@ export async function GET(request: NextRequest) {
         const [, , contentHash, variant] = match
         return { contentHash, variant, key }
       })
-      .filter(Boolean)
+      .filter((img): img is ParsedImageKey => img !== null)
 
-    // 6. Group by content hash and create variant URLs
-    const groupedImages: Record<string, any> = {}
+    // 8. Group by content hash and create variant URLs
+    const groupedImages: Record<string, GroupedImage> = {}
     for (const img of images) {
-      if (!img) continue
-
       if (!groupedImages[img.contentHash]) {
         groupedImages[img.contentHash] = {
           key: `${tenantId}/${img.contentHash}`,
@@ -90,6 +115,7 @@ export async function GET(request: NextRequest) {
 
     const formattedImages = Object.values(groupedImages)
 
+    // 9. Return grouped images
     return Response.json({
       ok: true,
       images: formattedImages,
@@ -98,7 +124,6 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("List images error:", error)
     Sentry.captureException(error)
-    const requestId = Math.random().toString(36).substring(7)
     return Response.json(
       {
         ok: false,
