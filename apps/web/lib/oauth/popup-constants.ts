@@ -21,20 +21,28 @@ export const OAUTH_POPUP_CLOSE_DELAY = 1500
 /** localStorage key prefix for fallback when window.opener is lost during cross-origin OAuth redirect */
 export const OAUTH_STORAGE_KEY = "oauth_callback_result"
 
+export type OAuthErrorAction = "retry" | "reconnect" | "switch_context" | "contact_admin"
+
 /** OAuth callback message structure */
 export interface OAuthCallbackMessage {
   type: typeof OAUTH_CALLBACK_MESSAGE_TYPE
   integration: string
   status: "success" | "error"
   message?: string
+  error_code?: string
+  error_action?: OAuthErrorAction
 }
 
 /** Type guard for OAuth callback messages */
 export function isOAuthCallbackMessage(data: unknown): data is OAuthCallbackMessage {
+  if (typeof data !== "object" || data === null) return false
+  if (!("type" in data) || (data as OAuthCallbackMessage).type !== OAUTH_CALLBACK_MESSAGE_TYPE) return false
+
+  const status = (data as OAuthCallbackMessage).status
+  if (status !== "success" && status !== "error") return false
+
   return (
-    typeof data === "object" &&
-    data !== null &&
-    "type" in data &&
-    (data as OAuthCallbackMessage).type === OAUTH_CALLBACK_MESSAGE_TYPE
+    typeof (data as OAuthCallbackMessage).integration === "string" &&
+    (data as OAuthCallbackMessage).integration.length > 0
   )
 }

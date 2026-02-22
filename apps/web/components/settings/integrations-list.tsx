@@ -151,6 +151,8 @@ export function IntegrationsList({ layout = "grid", filter }: IntegrationsListPr
       url.searchParams.delete("integration")
       url.searchParams.delete("status")
       url.searchParams.delete("message")
+      url.searchParams.delete("error_code")
+      url.searchParams.delete("error_action")
       window.history.replaceState({}, "", url.toString())
     }
   }, [urlSearchParams, refetch])
@@ -533,7 +535,13 @@ function DualConnectionOptions({
 
 function IntegrationCard({ integration, onUpdate, layout = "grid" }: IntegrationCardProps) {
   const { disconnect, disconnecting, error: disconnectError } = useDisconnectIntegration(integration.provider_key)
-  const { connect, connecting, error: connectError } = useConnectIntegration(integration.provider_key)
+  const {
+    connect,
+    connecting,
+    error: connectError,
+  } = useConnectIntegration(integration.provider_key, {
+    isReconnect: integration.token_status === TOKEN_STATUS.NEEDS_REAUTH,
+  })
 
   const error = disconnectError || connectError
   const supportsPat = providerSupportsPat(integration.provider_key)

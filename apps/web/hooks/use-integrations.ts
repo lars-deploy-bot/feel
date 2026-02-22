@@ -5,16 +5,25 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useCallback, useState } from "react"
+import {
+  trackIntegrationOAuthCallbackFailed,
+  trackIntegrationOAuthCallbackSucceeded,
+  trackIntegrationOAuthInitiated,
+  trackIntegrationOAuthReconnectOutcome,
+} from "@/lib/analytics/events"
 import { type ApiError, delly, getty, postty } from "@/lib/api/api-client"
 import type { Res } from "@/lib/api/schemas"
 import { validateRequest } from "@/lib/api/schemas"
 import { clientLogger } from "@/lib/client-error-logger"
+import { getOAuthErrorMessage } from "@/lib/oauth/oauth-error-taxonomy"
 import {
   isOAuthCallbackMessage,
   OAUTH_POPUP_HEIGHT,
   OAUTH_POPUP_POLL_INTERVAL,
   OAUTH_POPUP_WIDTH,
   OAUTH_STORAGE_KEY,
+  type OAuthCallbackMessage,
+  type OAuthErrorAction,
 } from "@/lib/oauth/popup-constants"
 import { queryKeys } from "@/lib/tanstack"
 
@@ -71,8 +80,13 @@ export function useIntegrationStatus(providerKey: string): {
  * Falls back to redirect if popup is blocked.
  * Uses storage event listener as fallback when window.opener is lost during cross-origin OAuth redirect.
  */
-function openOAuthPopup(provider: string): Promise<{ success: boolean; error?: string }> {
+function openOAuthPopup(
+  provider: string,
+  options?: { isReconnect?: boolean },
+): Promise<{ success: boolean; error?: string; errorCode?: string; errorAction?: OAuthErrorAction }> {
   return new Promise(resolve => {
+    trackIntegrationOAuthInitiated(provider, options)
+
     // Clear any stale localStorage value before starting
     try {
       localStorage.removeItem(OAUTH_STORAGE_KEY)
@@ -109,11 +123,36 @@ function openOAuthPopup(provider: string): Promise<{ success: boolean; error?: s
       }
     }
 
-    const handleResult = (data: { status: string; message?: string }, source: string) => {
+    const handleResult = (data: OAuthCallbackMessage, source: string) => {
       console.log(`[openOAuthPopup] OAuth callback via ${source}, status:`, data.status)
+      const success = data.status === "success"
+
+      if (success) {
+        trackIntegrationOAuthCallbackSucceeded(provider, options)
+      } else {
+        trackIntegrationOAuthCallbackFailed({
+          provider,
+          error_code: data.error_code,
+          error_action: data.error_action,
+          message: data.message,
+        })
+      }
+      if (options?.isReconnect) {
+        trackIntegrationOAuthReconnectOutcome({
+          provider,
+          success,
+          error_code: success ? undefined : data.error_code,
+        })
+      }
+
       cleanup()
       popup.close()
-      resolve({ success: data.status === "success", error: data.message })
+      resolve({
+        success,
+        error: data.message,
+        errorCode: data.error_code,
+        errorAction: data.error_action,
+      })
     }
 
     // Primary: postMessage from popup
@@ -160,6 +199,16 @@ function openOAuthPopup(provider: string): Promise<{ success: boolean; error?: s
           // Ignore
         }
         console.log("[openOAuthPopup] Popup closed without result")
+        trackIntegrationOAuthCallbackFailed({
+          provider,
+          message: "Authorization cancelled",
+        })
+        if (options?.isReconnect) {
+          trackIntegrationOAuthReconnectOutcome({
+            provider,
+            success: false,
+          })
+        }
         cleanup()
         resolve({ success: false, error: "Authorization cancelled" })
       }
@@ -171,10 +220,11 @@ function openOAuthPopup(provider: string): Promise<{ success: boolean; error?: s
  * Hook to connect to an integration via popup OAuth flow
  * Automatically invalidates integrations cache on success
  */
-export function useConnectIntegration(providerKey: string) {
+export function useConnectIntegration(providerKey: string, options?: { isReconnect?: boolean }) {
   const queryClient = useQueryClient()
   const [connecting, setConnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const isReconnect = options?.isReconnect === true
 
   const connect = useCallback(async (): Promise<boolean> => {
     setConnecting(true)
@@ -182,17 +232,26 @@ export function useConnectIntegration(providerKey: string) {
 
     try {
       console.log(`[useConnectIntegration] Starting OAuth for ${providerKey}`)
-      const result = await openOAuthPopup(providerKey)
+      const result = await openOAuthPopup(providerKey, { isReconnect })
       console.log("[useConnectIntegration] OAuth result:", result)
 
       if (result.success) {
         // Invalidate integrations cache to refresh the list
         queryClient.invalidateQueries({ queryKey: queryKeys.integrations.all })
-      } else if (result.error && result.error !== "Authorization cancelled") {
-        setError(result.error)
+      } else {
+        const resolvedError = getOAuthErrorMessage({
+          errorCode: result.errorCode,
+          message: result.error,
+          provider: providerKey,
+        })
+        if (resolvedError !== "Authorization cancelled") {
+          setError(resolvedError)
+        }
         clientLogger.oauth(`OAuth connection failed for ${providerKey}`, {
           provider: providerKey,
-          errorMessage: result.error,
+          errorCode: result.errorCode,
+          errorAction: result.errorAction,
+          errorMessage: resolvedError,
         })
       }
       return result.success
@@ -209,7 +268,7 @@ export function useConnectIntegration(providerKey: string) {
     } finally {
       setConnecting(false)
     }
-  }, [providerKey, queryClient])
+  }, [providerKey, queryClient, isReconnect])
 
   return {
     connect,

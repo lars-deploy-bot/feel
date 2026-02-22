@@ -5,6 +5,8 @@
  * Prevents XSS and misleading notifications
  */
 
+import { getOAuthErrorAction, getOAuthErrorMessage } from "@/lib/oauth/oauth-error-taxonomy"
+import type { OAuthErrorAction } from "@/lib/oauth/popup-constants"
 import { isOAuthProviderSupported } from "@/lib/oauth/providers"
 
 /**
@@ -12,6 +14,27 @@ import { isOAuthProviderSupported } from "@/lib/oauth/providers"
  */
 const VALID_STATUSES = ["success", "error"] as const
 type OAuthStatus = (typeof VALID_STATUSES)[number]
+
+function sanitizeErrorCode(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined
+  const normalized = value.trim()
+  if (!normalized) return undefined
+  if (!/^[A-Z0-9_]+$/.test(normalized)) return undefined
+  return normalized
+}
+
+function sanitizeErrorAction(value: unknown): OAuthErrorAction | undefined {
+  if (typeof value !== "string") return undefined
+  switch (value) {
+    case "retry":
+    case "reconnect":
+    case "switch_context":
+    case "contact_admin":
+      return value
+    default:
+      return undefined
+  }
+}
 
 /**
  * Sanitize provider name for display
@@ -111,12 +134,16 @@ function sanitizeMessageForDisplay(message: unknown, defaultMessage: string): st
 export function validateOAuthToastParams(params: URLSearchParams): {
   status: OAuthStatus
   provider: string
+  errorCode?: string
+  errorAction?: OAuthErrorAction
   successMessage?: string
   errorMessage?: string
 } | null {
   const integration = params.get("integration")
   const status = params.get("status")
   const message = params.get("message")
+  const errorCode = sanitizeErrorCode(params.get("error_code"))
+  const errorAction = sanitizeErrorAction(params.get("error_action")) ?? getOAuthErrorAction(errorCode)
 
   // Validate provider
   const sanitizedProvider = sanitizeProviderForDisplay(integration)
@@ -142,12 +169,19 @@ export function validateOAuthToastParams(params: URLSearchParams): {
   }
 
   // Error case: sanitize the message
-  const defaultErrorMessage = `Failed to connect to ${sanitizedProvider}`
-  const sanitizedMessage = sanitizeMessageForDisplay(message, defaultErrorMessage)
+  const fallbackErrorMessage = `Failed to connect to ${sanitizedProvider}`
+  const messageFromCode = getOAuthErrorMessage({
+    errorCode,
+    message,
+    provider: sanitizedProvider,
+  })
+  const sanitizedMessage = sanitizeMessageForDisplay(messageFromCode, fallbackErrorMessage)
 
   return {
     status: "error",
     provider: sanitizedProvider,
+    errorCode,
+    errorAction,
     errorMessage: sanitizedMessage,
   }
 }

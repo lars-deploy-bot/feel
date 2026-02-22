@@ -1,4 +1,3 @@
-import { AsyncLocalStorage } from "node:async_hooks"
 import { vi } from "vitest"
 
 process.env.TZ = "UTC"
@@ -36,11 +35,21 @@ if (process.env.CI) {
 }
 
 // AsyncLocalStorage for test request context
-const testRequestContext = new AsyncLocalStorage<Request>()
+// Lazy-loaded to avoid crashing happy-dom tests (node:async_hooks is not available in browser environments)
+let testRequestContext: import("node:async_hooks").AsyncLocalStorage<Request> | null = null
 
-// Export function to run code with request context
-export function runWithRequestContext<T>(request: Request, fn: () => T | Promise<T>): Promise<T> {
-  return Promise.resolve(testRequestContext.run(request, fn))
+async function getRequestContext(): Promise<import("node:async_hooks").AsyncLocalStorage<Request>> {
+  if (!testRequestContext) {
+    const { AsyncLocalStorage } = await import("node:async_hooks")
+    testRequestContext = new AsyncLocalStorage<Request>()
+  }
+  return testRequestContext
+}
+
+// Export function to run code with request context (node-environment tests only)
+export async function runWithRequestContext<T>(request: Request, fn: () => T | Promise<T>): Promise<T> {
+  const ctx = await getRequestContext()
+  return Promise.resolve(ctx.run(request, fn))
 }
 
 // Helper to parse cookie strings
@@ -59,7 +68,7 @@ function parseCookies(cookieString: string) {
 vi.mock("next/headers", () => {
   return {
     cookies: async () => {
-      const request = testRequestContext.getStore() ?? null
+      const request = testRequestContext?.getStore() ?? null
       const cookieHeader = request?.headers?.get("cookie") || ""
       const cookieMap = parseCookies(cookieHeader)
 
@@ -74,7 +83,7 @@ vi.mock("next/headers", () => {
       }
     },
     headers: async () => {
-      const request = testRequestContext.getStore() ?? null
+      const request = testRequestContext?.getStore() ?? null
       return {
         get: (name: string) => request?.headers?.get(name) || null,
         has: (name: string) => request?.headers?.has(name) || false,

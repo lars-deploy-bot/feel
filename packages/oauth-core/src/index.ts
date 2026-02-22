@@ -17,6 +17,30 @@ import {
   USER_ENV_KEYS_NAMESPACE,
 } from "./types"
 
+function normalizeScopes(scopeString: string | undefined): Set<string> {
+  if (!scopeString) {
+    return new Set()
+  }
+
+  const scopes = scopeString
+    .split(/[,\s]+/)
+    .map(scope => scope.trim().toLowerCase())
+    .filter(Boolean)
+
+  return new Set(scopes)
+}
+
+export class OAuthMissingRequiredScopesError extends Error {
+  readonly code = "MISSING_REQUIRED_SCOPES" as const
+  readonly missingScopes: string[]
+
+  constructor(missingScopes: string[]) {
+    super(`Missing required OAuth scopes: ${missingScopes.join(", ")}`)
+    this.name = "OAuthMissingRequiredScopesError"
+    this.missingScopes = missingScopes
+  }
+}
+
 export class OAuthManager {
   private storage: LockboxAdapter
   private config: OAuthManagerConfig
@@ -169,6 +193,8 @@ export class OAuthManager {
     redirectUriOverride?: string,
     /** PKCE code_verifier - required if PKCE was used during authorization */
     codeVerifier?: string,
+    /** Required scopes that must be present in granted token scopes */
+    requiredScopes?: string[],
   ): Promise<{ success: boolean; scopes?: string }> {
     // Start audit trail
     const correlationId = oauthAudit.authInitiated(provider, authenticatingUserId, tenantUserId)
@@ -219,7 +245,29 @@ export class OAuthManager {
         },
       )
 
-      // 3. Try to get user email for debugging (Google-specific)
+      // 3. Validate required scopes before persisting tokens
+      if (requiredScopes && requiredScopes.length > 0) {
+        const grantedScopes = normalizeScopes(tokens.scope)
+        const normalizedRequiredScopes = requiredScopes.map(scope => scope.trim().toLowerCase()).filter(Boolean)
+        const missingScopes = normalizedRequiredScopes.filter(scope => !grantedScopes.has(scope))
+
+        if (missingScopes.length > 0) {
+          oauthAudit.log("auth_failed", provider, {
+            userId: authenticatingUserId,
+            tenantId: tenantUserId,
+            correlationId,
+            success: false,
+            error: "Missing required OAuth scopes",
+            metadata: {
+              missingScopes: missingScopes.join(","),
+              grantedScopes: tokens.scope || "",
+            },
+          })
+          throw new OAuthMissingRequiredScopesError(missingScopes)
+        }
+      }
+
+      // 4. Try to get user email for debugging (Google-specific)
       let userEmail: string | undefined
       if (provider === "google" && "getUserInfo" in oauthProvider) {
         try {
@@ -231,7 +279,7 @@ export class OAuthManager {
         }
       }
 
-      // 4. Store tokens for the authenticating user (with email if available)
+      // 5. Store tokens for the authenticating user (with email if available)
       await this.saveTokens(authenticatingUserId, provider, tokens, userEmail)
 
       // Audit: auth completed

@@ -11,6 +11,7 @@ import { AuthenticationError, requireSessionUser } from "@/features/auth/lib/aut
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { ErrorCodes } from "@/lib/error-codes"
 import { validateProviderName } from "@/lib/integrations/validation"
+import { buildOAuthCallbackRedirectUrl, createOAuthErrorPayload } from "@/lib/oauth/oauth-error-taxonomy"
 import {
   checkRateLimit,
   getOAuthConfig,
@@ -104,6 +105,9 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ provider: string }> },
 ): Promise<NextResponse> {
+  const { baseUrl } = getRequestUrls(req)
+  let providerForError: string | null = null
+
   try {
     // 1. Parse and validate request
     const parsed = await parseOAuthRequest(req, params)
@@ -112,7 +116,7 @@ export async function GET(
     }
 
     const { provider, code, state, error, errorDescription } = parsed
-    const { baseUrl } = getRequestUrls(req)
+    providerForError = provider
 
     // 2. Require authentication
     const user = await requireSessionUser()
@@ -124,7 +128,16 @@ export async function GET(
         rateLimit.minutesRemaining !== 1 ? "s" : ""
       }.`
       return NextResponse.redirect(
-        new URL(`/oauth/callback?integration=${provider}&status=error&message=${encodeURIComponent(message)}`, baseUrl),
+        new URL(
+          buildOAuthCallbackRedirectUrl(
+            baseUrl,
+            createOAuthErrorPayload({
+              integration: provider,
+              errorCode: ErrorCodes.TOO_MANY_REQUESTS,
+              message,
+            }),
+          ),
+        ),
       )
     }
 
@@ -149,11 +162,16 @@ export async function GET(
     if (!config) {
       Sentry.captureMessage(`[${provider} OAuth] Missing configuration`, "error")
       console.error(`[${provider} OAuth] Missing configuration`)
-      const sanitizedMessage = `${provider} integration is not available. Please contact your administrator.`
       return NextResponse.redirect(
         new URL(
-          `/oauth/callback?integration=${provider}&status=error&message=${encodeURIComponent(sanitizedMessage)}`,
-          baseUrl,
+          buildOAuthCallbackRedirectUrl(
+            baseUrl,
+            createOAuthErrorPayload({
+              integration: provider,
+              errorCode: ErrorCodes.OAUTH_CONFIG_ERROR,
+              provider,
+            }),
+          ),
         ),
       )
     }
@@ -169,6 +187,20 @@ export async function GET(
     // Log unexpected errors (but don't expose details)
     Sentry.captureException(error)
     console.error("[OAuth] Unexpected error:", error)
+    if (providerForError) {
+      return NextResponse.redirect(
+        new URL(
+          buildOAuthCallbackRedirectUrl(
+            baseUrl,
+            createOAuthErrorPayload({
+              integration: providerForError,
+              errorCode: ErrorCodes.INTEGRATION_ERROR,
+              provider: providerForError,
+            }),
+          ),
+        ),
+      )
+    }
     return structuredErrorResponse(ErrorCodes.INTEGRATION_ERROR, { status: 500 })
   }
 }

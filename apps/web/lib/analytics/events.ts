@@ -379,6 +379,41 @@ export function trackIntegrationConnected(provider: string) {
   capture("integration_connected", { provider })
 }
 
+/** OAuth popup/initiation started for integration */
+export function trackIntegrationOAuthInitiated(provider: string, options?: { isReconnect?: boolean }) {
+  capture("integration_oauth_initiated", {
+    provider,
+    is_reconnect: options?.isReconnect === true,
+  })
+}
+
+/** OAuth callback completed successfully */
+export function trackIntegrationOAuthCallbackSucceeded(provider: string, options?: { isReconnect?: boolean }) {
+  capture("integration_oauth_callback_succeeded", {
+    provider,
+    is_reconnect: options?.isReconnect === true,
+  })
+}
+
+/** OAuth callback failed */
+export function trackIntegrationOAuthCallbackFailed(properties: {
+  provider: string
+  error_code?: string
+  error_action?: string
+  message?: string
+}) {
+  capture("integration_oauth_callback_failed", properties)
+}
+
+/** Reconnect attempt result for integrations that require re-auth */
+export function trackIntegrationOAuthReconnectOutcome(properties: {
+  provider: string
+  success: boolean
+  error_code?: string
+}) {
+  capture("integration_oauth_reconnect_outcome", properties)
+}
+
 /** User disconnects an integration */
 export function trackIntegrationDisconnected(provider: string) {
   capture("integration_disconnected", { provider })
