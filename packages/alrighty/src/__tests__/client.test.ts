@@ -22,6 +22,12 @@ const schemas = {
     req: z.object({ name: z.string() }),
     res: z.object({ ok: z.boolean() }),
   },
+  // POST endpoint where schema key is a lookup key, not the route path
+  "automations/create": {
+    path: "automations",
+    req: z.object({ name: z.string() }),
+    res: z.object({ ok: z.boolean(), id: z.string() }),
+  },
   // PATCH endpoint
   "user/patch": {
     req: z.object({ name: z.string().optional() }),
@@ -182,6 +188,21 @@ describe("createClient", () => {
         code: "REQUEST_VALIDATION_ERROR",
       })
     })
+
+    it("uses schema path override when endpoint key differs from route path", async () => {
+      mockFetch.mockReturnValue(mockResponse({ ok: true, id: "auto_1" }))
+
+      const { postty } = createClient(schemas)
+      await postty("automations/create", { name: "Daily sync" })
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        "/api/automations",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ name: "Daily sync" }),
+        }),
+      )
+    })
   })
 
   describe("putty (PUT)", () => {
@@ -282,6 +303,15 @@ describe("createClient", () => {
       await postty("login", { email: "a@b.com", password: "s" }, undefined, "/v2/auth/login")
 
       expect(mockFetch).toHaveBeenCalledWith("/v2/auth/login", expect.anything())
+    })
+
+    it("prefers pathOverride over schema path", async () => {
+      mockFetch.mockReturnValue(mockResponse({ ok: true, id: "auto_1" }))
+
+      const { postty } = createClient(schemas)
+      await postty("automations/create", { name: "Daily sync" }, undefined, "/api/custom/automations")
+
+      expect(mockFetch).toHaveBeenCalledWith("/api/custom/automations", expect.anything())
     })
 
     it("uses pathOverride for DELETE", async () => {

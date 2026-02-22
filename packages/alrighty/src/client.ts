@@ -2,6 +2,31 @@ import { ZodError } from "zod"
 import { ApiError } from "./error"
 import type { ClientOptions, Endpoint, Req, Res, SchemaRegistry } from "./types"
 
+function resolvePath(
+  basePath: string,
+  endpoint: string,
+  schemaPath: string | undefined,
+  pathOverride: string | undefined,
+): string {
+  if (pathOverride) {
+    // Relative paths (e.g. "/api/automations") need the origin from basePath.
+    // In browsers, fetch("/api/...") works (relative to page origin), but in
+    // Node.js/Bun there is no implicit origin — fetch throws "URL is invalid".
+    if (pathOverride.startsWith("/") && /^https?:\/\//.test(basePath)) {
+      const origin = basePath.replace(/^(https?:\/\/[^/]+).*$/, "$1")
+      return `${origin}${pathOverride}`
+    }
+    return pathOverride
+  }
+
+  const rawPath = schemaPath ?? endpoint
+  if (/^https?:\/\//.test(rawPath)) {
+    return rawPath
+  }
+
+  return `${basePath.replace(/\/$/, "")}/${rawPath.replace(/^\//, "")}`
+}
+
 /**
  * Creates a typed API client from a schema registry
  */
@@ -15,7 +40,8 @@ export function createClient<T extends SchemaRegistry>(schemas: T, options: Clie
     init?: Omit<RequestInit, "body" | "method">,
     pathOverride?: string,
   ): Promise<Res<T, E>> {
-    const path = pathOverride ?? `${basePath.replace(/\/$/, "")}/${String(endpoint).replace(/^\//, "")}`
+    const schemaPath = schemas[endpoint]?.path
+    const path = resolvePath(basePath, String(endpoint), schemaPath, pathOverride)
     const hasBody = method !== "GET"
 
     // Validate request body against schema (runs even for undefined to catch missing required fields)

@@ -9,6 +9,32 @@ import { getWorkspacePath } from "@webalive/shared"
 import { Cron } from "croner"
 import { createServiceAppClient } from "@/lib/supabase/service"
 
+export const MIN_CRON_INTERVAL_MINUTES = 5
+const MIN_CRON_INTERVAL_MS = MIN_CRON_INTERVAL_MINUTES * 60 * 1000
+const CRON_INTERVAL_VALIDATION_RUNS = 20
+
+function findShortestCronIntervalMs(cron: Cron, now: Date): number | null {
+  let previousRun: Date | null = null
+  let probe = now
+  let shortestIntervalMs: number | null = null
+
+  for (let i = 0; i < CRON_INTERVAL_VALIDATION_RUNS; i++) {
+    const next = cron.nextRun(probe)
+    if (!next) break
+
+    if (previousRun) {
+      const intervalMs = next.getTime() - previousRun.getTime()
+      if (!Number.isFinite(intervalMs) || intervalMs <= 0) break
+      shortestIntervalMs = shortestIntervalMs === null ? intervalMs : Math.min(shortestIntervalMs, intervalMs)
+    }
+
+    previousRun = next
+    probe = new Date(next.getTime() + 1)
+  }
+
+  return shortestIntervalMs
+}
+
 /**
  * Validate a cron schedule and get the next 3 run times
  */
@@ -30,8 +56,16 @@ export function validateCronSchedule(
       catch: false,
     })
 
-    // Get next 3 run times for preview
     const now = new Date()
+    const shortestIntervalMs = findShortestCronIntervalMs(cron, now)
+    if (shortestIntervalMs !== null && shortestIntervalMs < MIN_CRON_INTERVAL_MS) {
+      return {
+        valid: false,
+        error: `Cron schedule runs too frequently. Minimum interval is every ${MIN_CRON_INTERVAL_MINUTES} minutes.`,
+      }
+    }
+
+    // Get next 3 run times for preview
     const nextRuns: Date[] = []
     let current = now
 
@@ -39,7 +73,7 @@ export function validateCronSchedule(
       const next = cron.nextRun(current)
       if (!next) break
       nextRuns.push(next)
-      current = next
+      current = new Date(next.getTime() + 1)
     }
 
     return {

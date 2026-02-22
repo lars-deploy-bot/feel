@@ -48,6 +48,14 @@ console.log(data.id)
 const user = await get('users/[id]', undefined, '/api/users/123')
 ```
 
+Route mapping rules for `createClient()`:
+
+1. `pathOverride` argument (highest priority)
+2. schema `path` field (if present)
+3. fallback: `basePath + endpoint key`
+
+Use schema `path` when endpoint keys are lookup names like `"automations/create"` but the real route is `/api/automations`.
+
 ### Server
 
 ```ts

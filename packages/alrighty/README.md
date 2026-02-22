@@ -129,4 +129,18 @@ try {
 
 - `res` is **required** - every endpoint needs a response schema
 - `req` is **optional** - omit for GET/DELETE endpoints
+- `path` is **optional** - override URL derivation when schema key is not the route path
 - Endpoints without `req` can only use `getty` or `deletty` (TypeScript enforced)
+
+### `path` override example
+
+```typescript
+const apiSchemas = {
+  // Lookup key differs from real route path
+  "automations/create": {
+    path: "automations", // -> /api/automations
+    req: z.object({ name: z.string() }),
+    res: z.object({ ok: z.literal(true) }),
+  },
+} as const satisfies SchemaRegistry
+```

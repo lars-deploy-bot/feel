@@ -27,22 +27,22 @@ const SAMPLE_DATA: AutomationConfigData = {
 
 export function AutomationConfigPreview() {
   const [result, setResult] = useState<AutomationConfigResult | null>(null)
-  const [skipped, setSkipped] = useState(false)
+  const [canceled, setCanceled] = useState(false)
   const [key, setKey] = useState(0)
 
   const handleComplete = (completedResult: AutomationConfigResult) => {
     setResult(completedResult)
-    setSkipped(false)
+    setCanceled(false)
   }
 
-  const handleSkip = () => {
-    setSkipped(true)
+  const handleCancel = () => {
+    setCanceled(true)
     setResult(null)
   }
 
   const reset = () => {
     setResult(null)
-    setSkipped(false)
+    setCanceled(false)
     setKey(k => k + 1)
   }
 
@@ -73,16 +73,16 @@ export function AutomationConfigPreview() {
       <div className="flex flex-col-reverse md:flex-row gap-6 md:gap-8">
         {/* Component Preview */}
         <div className="flex-1 md:max-w-xl">
-          {result || skipped ? (
+          {result || canceled ? (
             <div className="overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 w-full max-w-xl">
               <div className="flex items-center justify-between bg-zinc-100 dark:bg-zinc-900 px-3 py-3">
                 <span className="pl-1 font-normal text-zinc-900 dark:text-zinc-100 text-sm">
-                  {skipped ? "Skipped" : "Configuration Submitted"}
+                  {canceled ? "Canceled" : "Configuration Submitted"}
                 </span>
               </div>
               <div className="p-4 border-t border-zinc-200 dark:border-zinc-800">
-                {skipped ? (
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400">User chose to skip configuration.</p>
+                {canceled ? (
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">User chose to cancel configuration.</p>
                 ) : (
                   <div className="space-y-3">
                     <div>
@@ -125,7 +125,7 @@ export function AutomationConfigPreview() {
               </div>
             </div>
           ) : (
-            <AutomationConfig key={key} data={SAMPLE_DATA} onComplete={handleComplete} onSkip={handleSkip} />
+            <AutomationConfig key={key} data={SAMPLE_DATA} onComplete={handleComplete} onCancel={handleCancel} />
           )}
         </div>
 

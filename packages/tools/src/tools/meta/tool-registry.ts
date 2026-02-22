@@ -7,9 +7,8 @@
  */
 import { DEFAULTS, GLOBAL_MCP_PROVIDERS, getTemplateIdsInline, OAUTH_MCP_PROVIDERS } from "@webalive/shared"
 import { z } from "zod"
-import { createAutomationParamsSchema } from "../automations/create-automation.js"
+import { askAutomationConfigParamsSchema } from "../ai/ask-automation-config.js"
 import { listAutomationsParamsSchema } from "../automations/list-automations.js"
-import { triggerAutomationParamsSchema } from "../automations/trigger-automation.js"
 
 /**
  * SDK Built-in Tools
@@ -83,16 +82,125 @@ export function zodToParams(schema: Record<string, z.ZodTypeAny>): ToolMetadata[
   const shape = z.object(schema)
   const jsonSchema = z.toJSONSchema(shape) as {
     required?: string[]
-    properties?: Record<string, { type?: string; description?: string }>
+    properties?: Record<string, JsonSchemaNode>
   }
-  const required = new Set(jsonSchema.required)
+  const required = new Set(jsonSchema.required ?? [])
 
-  return Object.entries(jsonSchema.properties ?? {}).map(([name, prop]) => ({
-    name,
-    type: prop.type ?? "string",
-    required: required.has(name),
-    description: prop.description ?? "",
-  }))
+  return Object.entries(jsonSchema.properties ?? {}).map(([name, prop]) => {
+    const enumValues = extractEnumValues(prop)
+    const enumHint = enumValues.length > 0 ? `Allowed values: ${enumValues.join(", ")}.` : ""
+    const description = [prop.description ?? "", enumHint].filter(Boolean).join(" ").trim()
+
+    return {
+      name,
+      type: inferParameterType(prop),
+      required: required.has(name),
+      description,
+    }
+  })
+}
+
+type JsonSchemaNode = {
+  type?: string | string[]
+  description?: string
+  const?: unknown
+  enum?: unknown[]
+  anyOf?: JsonSchemaNode[]
+  oneOf?: JsonSchemaNode[]
+  allOf?: JsonSchemaNode[]
+}
+
+function inferParameterType(schema: JsonSchemaNode): string {
+  if (typeof schema.type === "string") {
+    return normalizeParameterType(schema.type)
+  }
+
+  if (Array.isArray(schema.type)) {
+    const nonNullType = schema.type.find(type => type !== "null")
+    if (nonNullType) {
+      return normalizeParameterType(nonNullType)
+    }
+  }
+
+  const enumType = inferEnumType(schema.enum)
+  if (enumType) {
+    return enumType
+  }
+
+  const constType = inferLiteralType(schema.const)
+  if (constType) {
+    return constType
+  }
+
+  for (const branch of [...(schema.oneOf ?? []), ...(schema.anyOf ?? []), ...(schema.allOf ?? [])]) {
+    const branchType = inferParameterType(branch)
+    if (branchType !== "string") {
+      return branchType
+    }
+    if (extractEnumValues(branch).length > 0) {
+      return branchType
+    }
+  }
+
+  return "string"
+}
+
+function inferEnumType(values: unknown[] | undefined): string | null {
+  if (!values || values.length === 0) return null
+  const first = values[0]
+  if (typeof first === "string") return "string"
+  if (typeof first === "number") return "number"
+  if (typeof first === "boolean") return "boolean"
+  if (Array.isArray(first)) return "array"
+  if (first && typeof first === "object") return "object"
+  return null
+}
+
+function inferLiteralType(value: unknown): string | null {
+  if (typeof value === "string") return "string"
+  if (typeof value === "number") return "number"
+  if (typeof value === "boolean") return "boolean"
+  if (Array.isArray(value)) return "array"
+  if (value && typeof value === "object") return "object"
+  return null
+}
+
+function normalizeParameterType(type: string): string {
+  if (type === "integer") return "number"
+  if (type === "null") return "string"
+  if (type === "string" || type === "number" || type === "boolean" || type === "array" || type === "object") {
+    return type
+  }
+  return "string"
+}
+
+function extractEnumValues(schema: JsonSchemaNode): string[] {
+  const values: string[] = []
+  const seen = new Set<string>()
+
+  const addValue = (value: unknown): void => {
+    if (typeof value !== "string" && typeof value !== "number" && typeof value !== "boolean") {
+      return
+    }
+    const key = JSON.stringify(value)
+    if (seen.has(key)) return
+    seen.add(key)
+    values.push(typeof value === "string" ? `"${value}"` : String(value))
+  }
+
+  const visit = (node: JsonSchemaNode): void => {
+    addValue(node.const)
+
+    for (const value of node.enum ?? []) {
+      addValue(value)
+    }
+    for (const child of [...(node.oneOf ?? []), ...(node.anyOf ?? []), ...(node.allOf ?? [])]) {
+      visit(child)
+    }
+  }
+
+  visit(schema)
+  return values
 }
 
 const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
@@ -385,32 +493,10 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
     name: "ask_automation_config",
     category: "meta",
     description:
-      "Show an interactive form for the user to configure a scheduled automation. Use when the user wants to schedule a task - presents a wizard to set task name, prompt, website, and schedule (once, daily, weekly, monthly, or custom cron). After submission, use create_automation with the user's choices.",
-    contextCost: "low",
-    enabled: true,
-    parameters: [
-      {
-        name: "context",
-        type: "string",
-        required: false,
-        description: "Optional context about why an automation is being created",
-      },
-      {
-        name: "defaultSiteId",
-        type: "string",
-        required: false,
-        description: "Optional default site ID to pre-select",
-      },
-    ],
-  },
-  {
-    name: "create_automation",
-    category: "meta",
-    description:
-      "Create a new automation that runs Claude on a schedule or one-time. Use after the user submits the ask_automation_config form.",
+      "Show an interactive form for the user to configure a scheduled automation. Use when the user wants to schedule a task - presents a wizard to set task name, prompt, model, website, and schedule (once, daily, weekly, monthly, or custom cron). Always pre-fill values from the user's request when possible. After the user submits, the frontend creates the automation directly; do NOT call create_automation.",
     contextCost: "medium",
     enabled: true,
-    parameters: zodToParams(createAutomationParamsSchema),
+    parameters: zodToParams(askAutomationConfigParamsSchema),
   },
   {
     name: "list_automations",
@@ -419,14 +505,6 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
     contextCost: "low",
     enabled: true,
     parameters: zodToParams(listAutomationsParamsSchema),
-  },
-  {
-    name: "trigger_automation",
-    category: "meta",
-    description: "Manually trigger an automation to run immediately, bypassing its schedule.",
-    contextCost: "low",
-    enabled: true,
-    parameters: zodToParams(triggerAutomationParamsSchema),
   },
 
   // Other tools
