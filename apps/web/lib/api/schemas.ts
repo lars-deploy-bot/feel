@@ -820,6 +820,17 @@ export const apiSchemas = {
   },
 
   /**
+   * DELETE /api/automations/[id]
+   * Delete an automation job
+   */
+  "automations/delete": {
+    req: z.undefined().brand<"AutomationsDeleteRequest">(),
+    res: z.object({
+      ok: z.literal(true),
+    }),
+  },
+
+  /**
    * POST /api/automations/[id]/trigger
    * Manually trigger an automation to run immediately
    */

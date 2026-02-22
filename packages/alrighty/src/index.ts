@@ -1,5 +1,5 @@
-export { createClient } from "./client"
-export { ApiError } from "./error"
+export { createClient } from "./client.js"
+export { ApiError } from "./error.js"
 export type {
   ClientOptions,
   Endpoint,
@@ -11,4 +11,4 @@ export type {
   Res,
   ResPayload,
   SchemaRegistry,
-} from "./types"
+} from "./types.js"
