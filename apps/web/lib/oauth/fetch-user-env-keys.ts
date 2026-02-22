@@ -5,6 +5,7 @@
  * These keys can be passed to MCP servers for custom integrations.
  */
 
+import { RESERVED_USER_ENV_KEYS } from "@webalive/shared"
 import { getUserEnvKeysManager } from "./oauth-instances"
 
 interface Logger {
@@ -38,7 +39,23 @@ export interface UserEnvKeysFetchResult {
  */
 export async function fetchUserEnvKeys(userId: string, logger?: Logger): Promise<UserEnvKeysFetchResult> {
   try {
-    const envKeys = await getUserEnvKeysManager().getAllUserEnvKeys(userId)
+    const rawEnvKeys = await getUserEnvKeysManager().getAllUserEnvKeys(userId)
+    const reservedKeySet = new Set<string>(RESERVED_USER_ENV_KEYS)
+    const envKeys: Record<string, string> = {}
+    let blockedCount = 0
+
+    for (const [keyName, keyValue] of Object.entries(rawEnvKeys)) {
+      if (reservedKeySet.has(keyName)) {
+        blockedCount++
+        continue
+      }
+      envKeys[keyName] = keyValue
+    }
+
+    if (blockedCount > 0) {
+      logger?.log(`Blocked ${blockedCount} reserved user environment key(s) from agent runtime`)
+    }
+
     const count = Object.keys(envKeys).length
 
     if (count > 0) {

@@ -41,6 +41,21 @@ export const ENV_VARS = {
 } as const
 
 /**
+ * Reserved user env keys that must never be injected into agent/runtime env.
+ *
+ * Defense-in-depth:
+ * - Blocked at user env write API
+ * - Filtered again when loading user env keys for worker execution
+ */
+export const RESERVED_USER_ENV_KEYS = [
+  "ANTHROPIC_API_KEY",
+  "ANTH_API_SECRET",
+  "ASK_LARS_KEY",
+  "JWT_SECRET",
+  "LOCKBOX_MASTER_KEY",
+] as const
+
+/**
  * Test Configuration
  *
  * Constants for E2E test isolation and worker management.

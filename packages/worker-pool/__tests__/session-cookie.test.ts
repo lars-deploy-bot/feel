@@ -424,13 +424,31 @@ describe("Environment Isolation: Behavioral Tests", () => {
     expect(process.env["USER_HAS SPACE"]).toBeUndefined()
   })
 
+  it("blocks reserved user env keys from being injected", () => {
+    prepareRequestEnv({
+      oauthAccessToken: "token",
+      userEnvKeys: {
+        ASK_LARS_KEY: "must-not-leak",
+        ANTHROPIC_API_KEY: "must-not-leak",
+        SAFE_TOKEN: "ok",
+      },
+    })
+
+    expect(process.env.USER_ASK_LARS_KEY).toBeUndefined()
+    expect(process.env.USER_ANTHROPIC_API_KEY).toBeUndefined()
+    expect(process.env.USER_SAFE_TOKEN).toBe("ok")
+  })
+
   it("throws when oauthAccessToken is missing", () => {
     // @ts-expect-error — testing runtime guard for missing required field
     expect(() => prepareRequestEnv({})).toThrow("oauthAccessToken is required")
   })
 
   it("returns correct authSource and userEnvKeyCount", () => {
-    const result = prepareRequestEnv({ oauthAccessToken: "oauth-jwt-123", userEnvKeys: { A: "1", B: "2" } })
+    const result = prepareRequestEnv({
+      oauthAccessToken: "oauth-jwt-123",
+      userEnvKeys: { A: "1", ASK_LARS_KEY: "blocked", B: "2" },
+    })
     expect(result.authSource).toBe("oauth")
     expect(result.userEnvKeyCount).toBe(2)
   })

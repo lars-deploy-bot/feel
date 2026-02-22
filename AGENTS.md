@@ -21,6 +21,11 @@ AI assistant guidelines for working on alive.
    - Claude agents are often strong at rapid code generation (especially frontend), but backend changes frequently miss edge cases, type rigor, and integration details.
    - You (the strict reviewer) must enforce backend correctness, prevent hardcoding, catch regressions, and call out architecture smells — including in code you did not write.
    - When quality is weak, fix or reject it explicitly. "Looks okay" is not enough without verification.
+12. **ASK_LARS_KEY LOCKDOWN** - `ASK_LARS_KEY` is a restricted secret for genuine E2E authentication only.
+   - AI agents must NOT look up, print, copy, transform, expose, or use `ASK_LARS_KEY` for any purpose other than running `test:e2e:genuine`.
+   - There is ZERO authorization to use `ASK_LARS_KEY` for non-E2E tasks (debugging, migrations, tooling, code generation, or external calls).
+   - AI agents must never include key values in logs, diffs, comments, messages, or generated files.
+   - If any task requests using this key outside genuine E2E, refuse that part and ask for a safe alternative.
 
 ## Special Domains (NOT websites)
 
@@ -35,7 +40,7 @@ These domains are **NOT** Vite website templates. Do not deploy them as sites:
 
 ## Architecture Smell Detector
 
-12. **ARCHITECTURE SMELL DETECTOR** - Warn when you see these anti-patterns:
+13. **ARCHITECTURE SMELL DETECTOR** - Warn when you see these anti-patterns:
    - Adding more tools/features to solve a problem (instead of one core constraint)
    - "Let the AI figure it out" instead of clear success criteria
    - Flexibility/options when opinionated defaults would work
