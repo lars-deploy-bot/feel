@@ -110,12 +110,14 @@ export function resolveLocalAliveRoot(moduleUrl: string, cwd: string): string {
 function localDefaults(): Partial<ServerConfig> {
   const cwd = !isBrowser && typeof process !== "undefined" ? process.cwd() : "/tmp"
   const aliveRoot = resolveLocalAliveRoot(import.meta.url, cwd)
-  const home = process.env.HOME ?? "/tmp"
+  const home = process.env.HOME
+  if (!home) throw new Error("FATAL: $HOME is not set. Cannot resolve local workspace paths.")
   return {
     paths: {
       aliveRoot,
       sitesRoot: `${home}/.alive/workspaces`,
       imagesStorage: `${home}/.alive/storage`,
+      templatesRoot: `${aliveRoot}/templates`,
     },
     domains: {
       main: "localhost",
