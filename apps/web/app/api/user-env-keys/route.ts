@@ -10,12 +10,15 @@
  */
 
 import * as Sentry from "@sentry/nextjs"
+import { RESERVED_USER_ENV_KEYS } from "@webalive/shared"
 import { type NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getUserEnvKeysManager } from "@/lib/oauth/oauth-instances"
+
+const RESERVED_USER_ENV_KEY_SET = new Set<string>(RESERVED_USER_ENV_KEYS)
 
 /**
  * Schema for creating/updating an env key
@@ -67,8 +70,7 @@ export async function POST(req: NextRequest) {
     const { keyName, keyValue } = parseResult.data
 
     // 3. Check if this is a reserved key name
-    const RESERVED_KEYS = ["ANTHROPIC_API_KEY", "ANTH_API_SECRET", "JWT_SECRET", "LOCKBOX_MASTER_KEY"]
-    if (RESERVED_KEYS.includes(keyName)) {
+    if (RESERVED_USER_ENV_KEY_SET.has(keyName)) {
       return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
         status: 400,
         details: {

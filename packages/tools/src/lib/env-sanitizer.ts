@@ -22,6 +22,7 @@ const DENIED_ENV_KEYS = new Set([
   // Third-party secrets
   "ANTHROPIC_API_KEY",
   "ANTH_API_SECRET",
+  "ASK_LARS_KEY",
   "GROQ_API_SECRET",
   "STRIPE_OAUTH_TOKEN",
   "LINEAR_CLIENT_SECRET",

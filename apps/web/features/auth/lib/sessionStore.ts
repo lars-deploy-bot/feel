@@ -80,6 +80,14 @@ interface DomainCacheEntry {
 const domainIdCache = new Map<string, DomainCacheEntry>()
 const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 
+/**
+ * Invalidate hostname -> domain_id cache entry.
+ * Needed when bootstrap/deployment reassigns a hostname to a new domain_id.
+ */
+export function invalidateSessionDomainCache(hostname: string): void {
+  domainIdCache.delete(hostname)
+}
+
 interface SupabaseErrorLike {
   code?: string
   message: string

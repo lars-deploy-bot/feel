@@ -29,9 +29,14 @@ vi.mock("@sentry/nextjs", () => ({
   captureException: vi.fn(),
 }))
 
+vi.mock("node:fs", () => ({
+  existsSync: vi.fn(() => true),
+}))
+
 const { GET } = await import("../route")
 const { createIamClient } = await import("@/lib/supabase/iam")
 const { createAppClient } = await import("@/lib/supabase/app")
+const { existsSync } = await import("node:fs")
 
 interface DbErrorLike {
   code?: string
@@ -126,6 +131,7 @@ function createRequest(email?: string): Request {
 describe("GET /api/test/verify-tenant", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(existsSync).mockReturnValue(true)
     vi.mocked(createIamClient).mockResolvedValue(createMockIamClient() as never)
     vi.mocked(createAppClient).mockResolvedValue(createMockAppClient() as never)
   })
@@ -211,6 +217,17 @@ describe("GET /api/test/verify-tenant", () => {
 
     expect(res.status).toBe(200)
     expect(json).toEqual({ ready: false, missing: "domain" })
+  })
+
+  it("returns missing:workspace_fs when workspace directory does not exist", async () => {
+    vi.mocked(existsSync).mockReturnValue(false)
+
+    const email = `${TEST_CONFIG.WORKER_EMAIL_PREFIX}0@${TEST_CONFIG.EMAIL_DOMAIN}`
+    const res = await GET(createRequest(email))
+    const json = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(json).toEqual({ ready: false, missing: "workspace_fs" })
   })
 
   it("returns 500 and reports to sentry on unexpected errors", async () => {
