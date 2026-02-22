@@ -12,7 +12,7 @@ import path from "node:path"
 import { promisify } from "node:util"
 import * as Sentry from "@sentry/nextjs"
 import { env } from "@webalive/env/server"
-import { TEST_CONFIG } from "@webalive/shared"
+import { PATHS, TEST_CONFIG } from "@webalive/shared"
 import { hash } from "bcrypt"
 import { invalidateUserAuthzCache, invalidateWorkspaceAuthzCache } from "@/features/auth/lib/auth"
 import { invalidateSessionDomainCache } from "@/features/auth/lib/sessionStore"
@@ -23,7 +23,6 @@ import { createAppClient } from "@/lib/supabase/app"
 import { createIamClient } from "@/lib/supabase/iam"
 
 const execFileAsync = promisify(execFile)
-const SITES_ROOT = "/srv/webalive/sites"
 const MAX_LINUX_USERNAME_LENGTH = 32
 
 interface BootstrapRequest {
@@ -104,8 +103,8 @@ async function ensureWorkspaceFilesystem(workspace: string): Promise<void> {
     throw new Error(`Workspace slug too long for linux user: ${linuxUser}`)
   }
 
-  const resolvedSitesRoot = path.resolve(SITES_ROOT)
-  const resolvedWorkspaceRoot = path.resolve(path.join(SITES_ROOT, workspace))
+  const resolvedSitesRoot = path.resolve(PATHS.SITES_ROOT)
+  const resolvedWorkspaceRoot = path.resolve(path.join(PATHS.SITES_ROOT, workspace))
   const relativeWorkspacePath = path.relative(resolvedSitesRoot, resolvedWorkspaceRoot)
 
   if (
