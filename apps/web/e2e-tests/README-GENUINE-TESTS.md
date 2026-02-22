@@ -7,7 +7,8 @@ This directory contains E2E tests that make **REAL API calls** to test the full 
 - **These tests consume actual API credits/tokens**
 - They make real requests to the Anthropic Claude API
 - They should be run sparingly (not in CI by default)
-- Ensure you have a valid `ANTHROPIC_API_KEY` in `.env`
+- Ensure you export a valid `ASK_LARS_KEY` before running
+- `ASK_LARS_KEY` is genuine-E2E-only: AI agents must not retrieve, print, copy, or use it for any other task.
 
 ## Test Types
 
@@ -40,9 +41,10 @@ bun run test:e2e:genuine:headed
 
 ## Prerequisites
 
-1. **Environment Variables**: Ensure `.env` contains:
+1. **Environment Variables**: Ensure `ASK_LARS_KEY` is available in your shell
+   (or present in the env file loaded via `ENV_FILE`, default `.env.staging`):
    ```bash
-   ANTHROPIC_API_KEY=sk-ant-...
+   ASK_LARS_KEY=sk-ant-...
    SUPABASE_URL=https://...
    SUPABASE_SERVICE_ROLE_KEY=...
    JWT_SECRET=...
@@ -118,7 +120,7 @@ If responses don't stream properly:
 ### API Errors
 
 If Claude API returns errors:
-1. Verify ANTHROPIC_API_KEY is valid
+1. Verify `ASK_LARS_KEY` is valid
 2. Check API quota/limits
 3. Review API error message in response
 
@@ -160,7 +162,7 @@ To run in CI for specific branches/releases:
     cd apps/web
     bun run test:e2e:genuine
   env:
-    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    ASK_LARS_KEY: ${{ secrets.ASK_LARS_KEY }}
 ```
 
 ## Cost Considerations

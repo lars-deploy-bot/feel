@@ -58,7 +58,7 @@ const projects = Array.from({ length: NUM_WORKERS }, (_, i) => ({
 export default defineConfig({
   testDir: "./e2e-tests",
   testMatch: "**/*.spec.ts",
-  testIgnore: "**/*-genuine.spec.ts",
+  testIgnore: "**/*-live.spec.ts",
   timeout: TIMEOUTS.DEFAULT,
   retries: process.env.CI ? 2 : 1,
 

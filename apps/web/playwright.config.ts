@@ -25,7 +25,7 @@ if (desiredWorkers > maxWorkers) {
 export default defineConfig({
   testDir: "./e2e-tests",
   testMatch: "**/*.spec.ts", // Standard Playwright convention
-  testIgnore: "**/*-genuine.spec.ts", // Exclude genuine tests (run separately with playwright.genuine.config.ts)
+  testIgnore: "**/*-live.spec.ts", // Exclude live API tests (run separately with playwright.live.config.ts)
   timeout: TIMEOUTS.DEFAULT,
   retries: process.env.CI ? 2 : 1, // Retry flaky tests (more retries in CI)
   workers: desiredWorkers, // Validated against TEST_CONFIG.MAX_WORKERS

@@ -5,8 +5,21 @@
       "url": "https://mcp.supabase.com/mcp?read_only=true&features=docs%2Cdatabase%2Cdebugging%2Cdevelopment"
     },
     "playwright": {
-      "command": "npx",
-      "args": ["@playwright/mcp@latest", "--headless", "--no-sandbox", "--caps", "devtools", "--ignore-https-errors"]
+      "command": "bunx",
+      "args": [
+        "@playwright/mcp@0.0.68",
+        "--headless",
+        "--no-sandbox",
+        "--caps",
+        "devtools",
+        "--ignore-https-errors",
+        "--output-dir",
+        "./.playwright-mcp"
+      ],
+      "env": {
+        "TMPDIR": "/tmp",
+        "BUN_INSTALL_CACHE_DIR": "/tmp/bun-cache-mcp"
+      }
     }
   }
 }

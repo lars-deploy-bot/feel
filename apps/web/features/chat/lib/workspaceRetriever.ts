@@ -165,7 +165,7 @@ async function getTerminalWorkspace(body: WorkspaceRequestBody, requestId: strin
   }
 
   // Allow "test" or "test.alive.local" workspace in local development mode (for E2E tests)
-  // Test workspace is created by e2e-tests/genuine-setup.ts
+  // Test workspaces are managed by live staging E2E bootstrap
   const testWorkspace = `test.${TEST_CONFIG.EMAIL_DOMAIN}`
   if (env.STREAM_ENV === "local" && (customWorkspace === "test" || customWorkspace === testWorkspace)) {
     return await resolveWorktreeIfRequested("/tmp/test-workspace", body, requestId)
@@ -182,15 +182,11 @@ async function getTerminalWorkspace(body: WorkspaceRequestBody, requestId: strin
     domainToSlug(normalizedDomain), // Fall back to hyphens (legacy sites)
   ]
 
-  let workspacePath: string | null = null
   let fullPath: string | null = null
 
   for (const candidate of candidates) {
-    // Build the workspace path
-    const candidatePath = candidate.startsWith("webalive/sites/") ? candidate : `webalive/sites/${candidate}`
-
     // Always append /user to the workspace path
-    const candidatePathWithUser = candidatePath.endsWith("/user") ? candidatePath : `${candidatePath}/user`
+    const candidatePathWithUser = candidate.endsWith("/user") ? candidate : `${candidate}/user`
 
     // Prevent path traversal attacks
     const normalized = path.normalize(candidatePathWithUser)
@@ -200,25 +196,23 @@ async function getTerminalWorkspace(body: WorkspaceRequestBody, requestId: strin
     }
 
     // Build full path and validate it's within workspace boundaries
-    const candidateFullPath = path.join("/srv", normalized)
+    const candidateFullPath = path.join(PATHS.SITES_ROOT, normalized)
 
     // Validate path is within workspace
-    // Use candidate + "/user" (not normalized which includes "webalive/sites/" prefix)
-    const validation = resolveAndValidatePath(`${candidate}/user`, "/srv/webalive/sites")
+    const validation = resolveAndValidatePath(`${candidate}/user`, PATHS.SITES_ROOT)
     if (!validation.valid) {
       console.warn(`[Workspace ${requestId}] Invalid path validation: ${validation.error}`)
       continue
     }
 
     if (existsSync(candidateFullPath)) {
-      workspacePath = normalized
       fullPath = candidateFullPath
       break
     }
   }
 
   // If no workspace found after trying both conventions
-  if (!workspacePath || !fullPath) {
+  if (!fullPath) {
     const attemptedPaths = candidates.map(c => path.join(PATHS.SITES_ROOT, c, "user"))
     console.error(`[Workspace ${requestId}] Workspace not found. Tried: ${attemptedPaths.join(", ")}`)
     return {

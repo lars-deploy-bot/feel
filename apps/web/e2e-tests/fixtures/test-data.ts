@@ -76,8 +76,7 @@ export const TEST_SELECTORS = {
 } as const
 
 /**
- * Test workspace configuration
- * This workspace is created by genuine-setup.ts for genuine E2E tests
+ * Test workspace configuration for live staging E2E tests
  */
 export const TEST_WORKSPACE = {
   /** Physical path where test workspace is created */
