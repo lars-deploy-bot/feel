@@ -15,6 +15,14 @@ import dotenv from "dotenv"
 const DEFAULT_ENV_FILE = ".env.staging"
 const ENV_FILE = (process.env.ENV_FILE || DEFAULT_ENV_FILE).trim()
 
+if (ENV_FILE !== DEFAULT_ENV_FILE) {
+  throw new Error(
+    `\n❌ Invalid ENV_FILE=${ENV_FILE} for E2E.\n` +
+      "   E2E is hard-pinned to .env.staging.\n" +
+      "   Use: ENV_FILE=.env.staging bun run test:e2e\n",
+  )
+}
+
 if (!existsSync(ENV_FILE)) {
   throw new Error(
     `\n❌ Missing env file: ${ENV_FILE}\n` +

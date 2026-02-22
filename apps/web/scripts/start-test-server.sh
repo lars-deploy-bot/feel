@@ -3,18 +3,26 @@ set -euo pipefail
 
 ENV_FILE_PATH="${ENV_FILE:-.env.staging}"
 
-# Load selected env file for local test server mode.
-# Playwright already loads env via load-env.ts, but this keeps script usage consistent
-# when run directly.
-if [ -f "$ENV_FILE_PATH" ]; then
-  set -a
-  source "$ENV_FILE_PATH"
-  set +a
-  echo "[Test Server] Loaded environment from $ENV_FILE_PATH"
+# E2E must always run against staging.
+if [ "$ENV_FILE_PATH" != ".env.staging" ]; then
+  echo "[Test Server] Invalid ENV_FILE=$ENV_FILE_PATH"
+  echo "[Test Server] E2E is hard-pinned to .env.staging."
+  exit 1
 fi
 
-if [ "${TEST_ENV:-}" = "production" ]; then
-  echo "[Test Server] Production E2E is disabled. Use staging."
+if [ ! -f "$ENV_FILE_PATH" ]; then
+  echo "[Test Server] Missing required env file: $ENV_FILE_PATH"
+  exit 1
+fi
+
+set -a
+source "$ENV_FILE_PATH"
+set +a
+echo "[Test Server] Loaded environment from $ENV_FILE_PATH"
+
+if [ "${TEST_ENV:-}" != "staging" ]; then
+  echo "[Test Server] Invalid TEST_ENV=${TEST_ENV:-<unset>}"
+  echo "[Test Server] E2E is hard-pinned to staging."
   exit 1
 fi
 

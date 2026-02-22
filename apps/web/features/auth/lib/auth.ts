@@ -115,6 +115,14 @@ export function invalidateUserAuthzCache(userId: string): void {
   userOrgMembershipCache.delete(userId)
 }
 
+/**
+ * Invalidate cached workspace -> org mapping.
+ * Required when domains are reassigned across E2E runs.
+ */
+export function invalidateWorkspaceAuthzCache(workspace: string): void {
+  workspaceOrgCache.delete(workspace)
+}
+
 function hasScope(payload: SessionPayloadV3 | null, requiredScope: SessionScope): boolean {
   return Array.isArray(payload?.scopes) && payload.scopes.includes(requiredScope)
 }
