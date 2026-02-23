@@ -10,13 +10,13 @@ import * as Sentry from "@sentry/nextjs"
 import { env } from "@webalive/env/server"
 import { STANDALONE } from "@webalive/shared"
 import { cookies } from "next/headers"
-import { NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { verifySessionToken } from "@/features/auth/lib/jwt"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { COOKIE_NAMES } from "@/lib/auth/cookies"
 import { ErrorCodes } from "@/lib/error-codes"
-import { generateRequestId } from "@/lib/utils"
+import { getRequestId } from "@/lib/request-id"
 
 const CreateWorkspaceSchema = z.object({
   name: z
@@ -42,8 +42,8 @@ async function hasValidStandaloneSession(): Promise<boolean> {
  * GET /api/workspaces/local
  * List all local workspaces
  */
-export async function GET() {
-  const requestId = generateRequestId()
+export async function GET(request: NextRequest) {
+  const requestId = getRequestId(request)
 
   // Only available in standalone mode
   if (env.STREAM_ENV !== "standalone") {
@@ -83,7 +83,7 @@ export async function GET() {
  * Create a new local workspace
  */
 export async function POST(req: Request) {
-  const requestId = generateRequestId()
+  const requestId = getRequestId(req)
 
   // Only available in standalone mode
   if (env.STREAM_ENV !== "standalone") {
