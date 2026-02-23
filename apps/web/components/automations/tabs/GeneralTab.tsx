@@ -1,6 +1,6 @@
 import type { ClaudeModel } from "@webalive/shared"
 import { isAliveWorkspace, isValidClaudeModel } from "@webalive/shared"
-import { useState } from "react"
+import { SiteCombobox } from "@/components/automations/SiteCombobox"
 import { MODEL_OPTIONS } from "@/lib/automation/form-options"
 import type { Site } from "@/lib/hooks/useSettingsQueries"
 
@@ -38,9 +38,6 @@ export function GeneralTab({
   timeoutSeconds,
   onTimeoutChange,
 }: GeneralTabProps) {
-  const [siteDropdownOpen, setSiteDropdownOpen] = useState(false)
-  const filteredSites = sites.filter(s => s.hostname.toLowerCase().includes(siteSearch.toLowerCase()))
-
   return (
     <div className="space-y-3">
       {/* Title */}
@@ -58,53 +55,18 @@ export function GeneralTab({
 
       {/* Website */}
       <Field label="Website" htmlFor="auto-site">
-        <div className="relative">
-          <input
-            id="auto-site"
-            type="text"
-            role="combobox"
-            aria-expanded={siteDropdownOpen && filteredSites.length > 0}
-            aria-controls="auto-site-listbox"
-            aria-autocomplete="list"
-            value={siteSearch}
-            onChange={e => {
-              onSiteSearchChange(e.target.value)
-              setSiteDropdownOpen(true)
-              if (!e.target.value) onSiteSelect("", "")
-            }}
-            onFocus={() => setSiteDropdownOpen(true)}
-            onBlur={() => setTimeout(() => setSiteDropdownOpen(false), 150)}
-            placeholder="Select website..."
-            autoComplete="off"
-            className={inputClass}
-          />
-          {siteDropdownOpen && filteredSites.length > 0 && (
-            <div
-              id="auto-site-listbox"
-              role="listbox"
-              className="absolute z-20 top-full left-0 right-0 mt-1.5 max-h-48 overflow-auto rounded-2xl bg-white dark:bg-neutral-900 border border-black/[0.08] dark:border-white/[0.08] shadow-xl ring-1 ring-black/[0.04] dark:ring-white/[0.04] animate-in fade-in slide-in-from-bottom-2 duration-150"
-            >
-              {filteredSites.slice(0, 8).map(site => (
-                <button
-                  key={site.id}
-                  type="button"
-                  role="option"
-                  aria-selected={siteId === site.id}
-                  onMouseDown={e => {
-                    e.preventDefault()
-                    onSiteSelect(site.id, site.hostname)
-                    setSiteDropdownOpen(false)
-                  }}
-                  className={`w-full px-4 py-2.5 text-left text-sm rounded-xl hover:bg-black/[0.04] dark:hover:bg-white/[0.06] active:bg-black/[0.07] dark:active:bg-white/[0.09] transition-colors ${
-                    siteId === site.id ? "bg-black/[0.04] dark:bg-white/[0.06]" : ""
-                  }`}
-                >
-                  {isAliveWorkspace(site.hostname) ? "Alive Platform (superadmin)" : site.hostname}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <SiteCombobox
+          id="auto-site"
+          sites={sites}
+          selectedId={siteId}
+          searchValue={siteSearch}
+          onSelect={onSiteSelect}
+          onSearchChange={onSiteSearchChange}
+          renderLabel={site => (isAliveWorkspace(site.hostname) ? "Alive Platform (superadmin)" : site.hostname)}
+          className={inputClass}
+          dropdownClassName="absolute z-20 top-full left-0 right-0 mt-1.5 max-h-48 overflow-auto rounded-2xl bg-white dark:bg-neutral-900 border border-black/[0.08] dark:border-white/[0.08] shadow-xl ring-1 ring-black/[0.04] dark:ring-white/[0.04] animate-in fade-in slide-in-from-bottom-2 duration-150"
+          itemClassName="w-full px-4 py-2.5 text-left text-sm rounded-xl hover:bg-black/[0.04] dark:hover:bg-white/[0.06] active:bg-black/[0.07] dark:active:bg-white/[0.09] transition-colors"
+        />
       </Field>
 
       {/* Model & Timeout */}
