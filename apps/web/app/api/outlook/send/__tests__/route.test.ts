@@ -84,6 +84,20 @@ describe("POST /api/outlook/send", () => {
 
   // --- Validation ---
 
+  it("returns 400 on malformed JSON body", async () => {
+    const req = new NextRequest("http://localhost/api/outlook/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "not json",
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    expect(data.ok).toBe(false)
+    expect(data.error).toBe("INVALID_REQUEST")
+    expect(data.reason).toContain("Malformed JSON")
+  })
+
   it("returns 400 when 'to' is missing", async () => {
     const res = await POST(createRequest({ subject: "Hi", body: "hey" }))
     expect(res.status).toBe(400)

@@ -21,7 +21,15 @@ export async function POST(req: NextRequest) {
       return structuredErrorResponse(ErrorCodes.UNAUTHORIZED, { status: 401 })
     }
 
-    const body: EmailMessage = await req.json()
+    let body: EmailMessage
+    try {
+      body = await req.json()
+    } catch (_parseError) {
+      return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
+        status: 400,
+        details: { reason: "Malformed JSON body" },
+      })
+    }
     if (!body.to?.length || !body.subject || !body.body) {
       return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
         status: 400,
