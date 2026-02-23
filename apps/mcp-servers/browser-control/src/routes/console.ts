@@ -11,6 +11,7 @@ import { parseJsonBody, sendError, sendJson } from "../http.js"
 export async function handleConsole(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const body = await parseJsonBody(req)
   const domain = body.domain as string
+  const sessionId = (body.sessionId as string) || undefined
   const clear = body.clear === true
 
   if (!domain) {
@@ -19,7 +20,7 @@ export async function handleConsole(req: IncomingMessage, res: ServerResponse): 
   }
 
   try {
-    const session = await browserPool.getSession(domain)
+    const session = await browserPool.getSession(domain, sessionId)
 
     const result = {
       url: session.page.url(),

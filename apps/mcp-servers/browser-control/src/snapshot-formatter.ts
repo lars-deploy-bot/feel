@@ -311,15 +311,23 @@ export function parseRoleRef(raw: string): string | null {
   return /^e\d+$/.test(normalized) ? normalized : null
 }
 
+/** Thrown for invalid user input (should map to HTTP 400). */
+export class UserInputError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "UserInputError"
+  }
+}
+
 /**
- * Require a valid ref from user input. Throws if missing or invalid.
+ * Require a valid ref from user input. Throws UserInputError if missing or invalid.
  */
 export function requireRef(value: unknown): string {
   const raw = typeof value === "string" ? value.trim() : ""
   const roleRef = raw ? parseRoleRef(raw) : null
   const ref = roleRef ?? (raw.startsWith("@") ? raw.slice(1) : raw)
   if (!ref) {
-    throw new Error("ref is required")
+    throw new UserInputError("ref is required")
   }
   return ref
 }
@@ -332,12 +340,12 @@ export function refLocator(page: Page, ref: string, roleRefs: RoleRefMap | undef
   const normalized = ref.startsWith("@") ? ref.slice(1) : ref.startsWith("ref=") ? ref.slice(4) : ref
 
   if (!/^e\d+$/.test(normalized)) {
-    throw new Error(`Invalid ref format: "${ref}". Expected e1, e2, etc.`)
+    throw new UserInputError(`Invalid ref format: "${ref}". Expected e1, e2, etc.`)
   }
 
   const info = roleRefs?.[normalized]
   if (!info) {
-    throw new Error(`Unknown ref "${normalized}". Run a new snapshot and use a ref from that snapshot.`)
+    throw new UserInputError(`Unknown ref "${normalized}". Run a new snapshot and use a ref from that snapshot.`)
   }
 
   const locator = info.name

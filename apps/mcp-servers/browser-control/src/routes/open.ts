@@ -12,6 +12,7 @@ import { resolveUrl } from "../port-resolver.js"
 export async function handleOpen(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const body = await parseJsonBody(req)
   const domain = body.domain as string
+  const sessionId = (body.sessionId as string) || undefined
   const path = (body.path as string) ?? "/"
 
   if (!domain) {
@@ -28,7 +29,7 @@ export async function handleOpen(req: IncomingMessage, res: ServerResponse): Pro
   }
 
   try {
-    const session = await browserPool.getSession(domain)
+    const session = await browserPool.getSession(domain, sessionId)
     const response = await session.page.goto(url, {
       waitUntil: "domcontentloaded",
       timeout: 30_000,

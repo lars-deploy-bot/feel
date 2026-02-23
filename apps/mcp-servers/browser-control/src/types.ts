@@ -37,6 +37,8 @@ export interface WorkspaceSession {
   context: BrowserContext
   page: Page
   domain: string
+  /** Caller-provided session identifier. Isolates browser state between parallel chats on the same domain. */
+  sessionId: string
   lastUsed: number
   consoleMessages: ConsoleEntry[]
   pageErrors: PageError[]

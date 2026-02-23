@@ -42,6 +42,11 @@ class BrowserPool {
   private cleanupTimer: ReturnType<typeof setInterval> | null = null
   private connecting: Promise<Browser> | null = null
 
+  /** Build the map key that isolates sessions per domain+caller. */
+  private sessionKey(domain: string, sessionId: string): string {
+    return `${domain}::${sessionId}`
+  }
+
   async ensureBrowser(): Promise<Browser> {
     if (this.browser?.isConnected()) {
       return this.browser
@@ -85,8 +90,9 @@ class BrowserPool {
     return browser
   }
 
-  async getSession(domain: string): Promise<WorkspaceSession> {
-    const existing = this.sessions.get(domain)
+  async getSession(domain: string, sessionId = "default"): Promise<WorkspaceSession> {
+    const key = this.sessionKey(domain, sessionId)
+    const existing = this.sessions.get(key)
     if (existing) {
       existing.lastUsed = Date.now()
 
@@ -96,8 +102,8 @@ class BrowserPool {
         return existing
       } catch {
         // Page crashed or was closed, recreate
-        console.log(`[browser-pool] Session for ${domain} is stale, recreating`)
-        await this.destroySession(domain)
+        console.log(`[browser-pool] Session ${key} is stale, recreating`)
+        await this.destroySession(key)
       }
     }
 
@@ -118,6 +124,7 @@ class BrowserPool {
       context,
       page,
       domain,
+      sessionId,
       lastUsed: Date.now(),
       consoleMessages: [],
       pageErrors: [],
@@ -151,13 +158,13 @@ class BrowserPool {
       }
     })
 
-    this.sessions.set(domain, session)
-    console.log(`[browser-pool] Created session for ${domain} (${this.sessions.size}/${MAX_SESSIONS})`)
+    this.sessions.set(key, session)
+    console.log(`[browser-pool] Created session ${key} (${this.sessions.size}/${MAX_SESSIONS})`)
     return session
   }
 
-  private async destroySession(domain: string): Promise<void> {
-    const session = this.sessions.get(domain)
+  private async destroySession(key: string): Promise<void> {
+    const session = this.sessions.get(key)
     if (!session) return
 
     try {
@@ -165,22 +172,22 @@ class BrowserPool {
     } catch {
       // ignore
     }
-    this.sessions.delete(domain)
-    console.log(`[browser-pool] Destroyed session for ${domain}`)
+    this.sessions.delete(key)
+    console.log(`[browser-pool] Destroyed session ${key}`)
   }
 
   private async evictLRU(): Promise<void> {
-    let oldest: { domain: string; lastUsed: number } | null = null
+    let oldest: { key: string; lastUsed: number } | null = null
 
-    for (const [domain, session] of this.sessions) {
+    for (const [key, session] of this.sessions) {
       if (!oldest || session.lastUsed < oldest.lastUsed) {
-        oldest = { domain, lastUsed: session.lastUsed }
+        oldest = { key, lastUsed: session.lastUsed }
       }
     }
 
     if (oldest) {
-      console.log(`[browser-pool] Evicting LRU session: ${oldest.domain}`)
-      await this.destroySession(oldest.domain)
+      console.log(`[browser-pool] Evicting LRU session: ${oldest.key}`)
+      await this.destroySession(oldest.key)
     }
   }
 
@@ -188,14 +195,14 @@ class BrowserPool {
     const now = Date.now()
     const toRemove: string[] = []
 
-    for (const [domain, session] of this.sessions) {
+    for (const [key, session] of this.sessions) {
       if (now - session.lastUsed > IDLE_TIMEOUT_MS) {
-        toRemove.push(domain)
+        toRemove.push(key)
       }
     }
 
-    for (const domain of toRemove) {
-      await this.destroySession(domain)
+    for (const key of toRemove) {
+      await this.destroySession(key)
     }
   }
 
@@ -205,8 +212,8 @@ class BrowserPool {
       this.cleanupTimer = null
     }
 
-    for (const domain of [...this.sessions.keys()]) {
-      await this.destroySession(domain)
+    for (const key of [...this.sessions.keys()]) {
+      await this.destroySession(key)
     }
 
     if (this.browser) {

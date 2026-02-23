@@ -15,6 +15,7 @@ import { takeSnapshot } from "../snapshot-formatter.js"
 export async function handleSnapshot(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const body = await parseJsonBody(req)
   const domain = body.domain as string
+  const sessionId = (body.sessionId as string) || undefined
   const interactive = body.interactive === true
 
   if (!domain) {
@@ -23,7 +24,7 @@ export async function handleSnapshot(req: IncomingMessage, res: ServerResponse):
   }
 
   try {
-    const session = await browserPool.getSession(domain)
+    const session = await browserPool.getSession(domain, sessionId)
     const currentUrl = session.page.url()
 
     if (currentUrl === "about:blank") {

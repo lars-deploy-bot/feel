@@ -10,7 +10,9 @@
     "type-check": "tsgo --noEmit",
     "lint": "biome lint .",
     "format": "biome format --write .",
-    "ci": "biome ci ."
+    "ci": "biome ci .",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "playwright-core": "^1.52.0",
@@ -19,6 +21,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.3.14",
     "@types/node": "24.9.1",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vitest": "4.0.17"
   }
 }

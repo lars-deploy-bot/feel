@@ -17,6 +17,9 @@ import { extractDomainFromWorkspace, validateWorkspacePath } from "../../lib/wor
 const BROWSER_CONTROL_URL = "http://127.0.0.1:5061"
 const REQUEST_TIMEOUT_MS = 60_000
 
+/** Unique per worker process — isolates browser sessions between parallel chats. */
+const SESSION_ID = `worker-${process.pid}`
+
 const browserActions = z.enum(["open", "screenshot", "snapshot", "click", "fill", "type", "console", "status"])
 
 export const browserParamsSchema = {
@@ -79,7 +82,13 @@ async function callBrowserService(
     if (message.includes("aborted")) {
       throw new Error("Browser request timed out after 60s")
     }
-    if (message.includes("ECONNREFUSED")) {
+    // Bun uses "Unable to connect", Node uses "ECONNREFUSED", etc.
+    if (
+      message.includes("ECONNREFUSED") ||
+      message.includes("Unable to connect") ||
+      message.includes("ConnectionRefused") ||
+      message.includes("fetch failed")
+    ) {
       throw new Error(
         "Browser control service is not running. It needs to be started as a systemd service (browser-control.service).",
       )
@@ -107,7 +116,10 @@ export async function browserAction(params: BrowserParams): Promise<ToolResult> 
   try {
     switch (params.action) {
       case "status": {
-        const { data } = await callBrowserService(`/status/${domain}`, "GET")
+        const { ok, data } = await callBrowserService(`/status/${domain}`, "GET")
+        if (!ok) {
+          return errorResult("Status check failed", String(data.error))
+        }
         return {
           content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
           isError: false,
@@ -117,6 +129,7 @@ export async function browserAction(params: BrowserParams): Promise<ToolResult> 
       case "open": {
         const { ok, data } = await callBrowserService("/open", "POST", {
           domain,
+          sessionId: SESSION_ID,
           path: params.path ?? "/",
         })
         if (!ok) {
@@ -136,6 +149,7 @@ export async function browserAction(params: BrowserParams): Promise<ToolResult> 
       case "screenshot": {
         const { ok, data } = await callBrowserService("/screenshot", "POST", {
           domain,
+          sessionId: SESSION_ID,
           fullPage: params.fullPage ?? true,
         })
         if (!ok) {
@@ -163,6 +177,7 @@ export async function browserAction(params: BrowserParams): Promise<ToolResult> 
       case "snapshot": {
         const { ok, data } = await callBrowserService("/snapshot", "POST", {
           domain,
+          sessionId: SESSION_ID,
           interactive: params.interactive ?? false,
         })
         if (!ok) {
@@ -190,6 +205,7 @@ export async function browserAction(params: BrowserParams): Promise<ToolResult> 
       case "type": {
         const { ok, data } = await callBrowserService("/act", "POST", {
           domain,
+          sessionId: SESSION_ID,
           action: params.action,
           ref: params.ref,
           value: params.value,
@@ -207,6 +223,7 @@ export async function browserAction(params: BrowserParams): Promise<ToolResult> 
       case "console": {
         const { ok, data } = await callBrowserService("/console", "POST", {
           domain,
+          sessionId: SESSION_ID,
           clear: params.clear ?? false,
         })
         if (!ok) {

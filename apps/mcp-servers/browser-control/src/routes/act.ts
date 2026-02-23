@@ -11,11 +11,12 @@
 import type { IncomingMessage, ServerResponse } from "node:http"
 import { browserPool } from "../browser-pool.js"
 import { parseJsonBody, sendError, sendJson } from "../http.js"
-import { normalizeTimeoutMs, refLocator, requireRef, toAIFriendlyError } from "../snapshot-formatter.js"
+import { normalizeTimeoutMs, refLocator, requireRef, toAIFriendlyError, UserInputError } from "../snapshot-formatter.js"
 
 export async function handleAct(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const body = await parseJsonBody(req)
   const domain = body.domain as string
+  const sessionId = (body.sessionId as string) || undefined
   const action = body.action as string
   const rawRef = body.ref as string | undefined
   const value = body.value as string | undefined
@@ -27,7 +28,7 @@ export async function handleAct(req: IncomingMessage, res: ServerResponse): Prom
   }
 
   try {
-    const session = await browserPool.getSession(domain)
+    const session = await browserPool.getSession(domain, sessionId)
     const currentUrl = session.page.url()
 
     if (currentUrl === "about:blank") {
@@ -106,6 +107,7 @@ export async function handleAct(req: IncomingMessage, res: ServerResponse): Prom
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    sendError(res, 500, message)
+    const status = err instanceof UserInputError ? 400 : 500
+    sendError(res, status, message)
   }
 }
