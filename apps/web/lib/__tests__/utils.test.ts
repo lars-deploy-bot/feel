@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
-import { generateRequestId, truncateDeep } from "@/lib/utils"
+import { generateRequestId } from "@/lib/request-id"
+import { truncateDeep } from "@/lib/utils"
 
 describe("Utility Functions", () => {
   describe("generateRequestId", () => {

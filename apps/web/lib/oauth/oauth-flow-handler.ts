@@ -316,7 +316,14 @@ export async function handleOAuthCallback(
   // Resolve required scopes: env-override > provider config defaults
   const callbackConfig = getOAuthConfig(provider, baseUrl)
   const scopeSource = callbackConfig?.scopes?.trim() || OAUTH_PROVIDER_CONFIG[provider as OAuthProvider].defaultScopes
-  const requiredScopes = normalizeScopes(scopeSource)
+  const requiredScopes = normalizeScopes(scopeSource).filter(scope => {
+    // Microsoft never returns offline_access in the granted scope string,
+    // even though it's required in the auth request for refresh tokens.
+    // MicrosoftProvider.getAuthUrl() injects it automatically - but if ops
+    // include it in MICROSOFT_SCOPES env var, validation would falsely fail.
+    if (provider === "microsoft" && scope === "offline_access") return false
+    return true
+  })
 
   try {
     // Exchange code for tokens

@@ -291,6 +291,35 @@ export const OAUTH_MCP_PROVIDERS = {
       "mcp__supabase__describe_table",
     ],
   },
+  outlook: {
+    url: "http://localhost:8088/mcp",
+    oauthKey: "microsoft", // Uses Microsoft OAuth (Outlook is a Microsoft service)
+    friendlyName: "Outlook",
+    supportsOAuth: true,
+    defaultScopes: [
+      "https://graph.microsoft.com/Mail.ReadWrite",
+      "https://graph.microsoft.com/Mail.Send",
+      "https://graph.microsoft.com/User.Read",
+    ].join(" "),
+    envPrefix: "MICROSOFT",
+    knownTools: [
+      // Profile
+      "mcp__outlook__get_profile",
+      // Compose (returns data for UI - user must click Send/Save)
+      "mcp__outlook__compose_email",
+      // Read operations
+      "mcp__outlook__search_emails",
+      "mcp__outlook__get_email",
+      "mcp__outlook__list_folders",
+      // Folder operations
+      "mcp__outlook__move_to_folder",
+      // Actions
+      "mcp__outlook__archive_email",
+      "mcp__outlook__mark_as_read",
+      "mcp__outlook__mark_as_unread",
+      "mcp__outlook__trash_email",
+    ],
+  },
 } as const satisfies OAuthMcpProviderRegistry
 
 /**
@@ -458,6 +487,25 @@ export function getMcpToolFriendlyName(toolName: string): { provider: string; ac
 }
 
 // =============================================================================
+// Microsoft Graph Scope Constants (single source of truth)
+// =============================================================================
+
+/**
+ * Microsoft Graph scope URIs.
+ *
+ * Defined here (in @webalive/shared) because both the provider registry below
+ * and @webalive/oauth-core's MicrosoftProvider need them. oauth-core depends
+ * on shared, so constants flow downward without circular imports.
+ */
+export const MICROSOFT_GRAPH_SCOPES = {
+  OFFLINE_ACCESS: "offline_access",
+  MAIL_READ: "https://graph.microsoft.com/Mail.Read",
+  MAIL_READWRITE: "https://graph.microsoft.com/Mail.ReadWrite",
+  MAIL_SEND: "https://graph.microsoft.com/Mail.Send",
+  USER_READ: "https://graph.microsoft.com/User.Read",
+} as const
+
+// =============================================================================
 // OAuth-Only Providers (no MCP server, just token storage)
 // =============================================================================
 
@@ -505,6 +553,19 @@ export const OAUTH_ONLY_PROVIDERS = {
       "https://www.googleapis.com/auth/userinfo.email",
     ].join(" "),
     envPrefix: "GOOGLE",
+  },
+  microsoft: {
+    friendlyName: "Microsoft",
+    // offline_access is NOT included here — it's a request-time hint that controls
+    // whether a refresh token is returned, not a resource scope. Microsoft doesn't
+    // echo it back in the token response scope field, so including it would cause
+    // false missing_required_scopes errors during callback validation.
+    defaultScopes: [
+      MICROSOFT_GRAPH_SCOPES.MAIL_READWRITE,
+      MICROSOFT_GRAPH_SCOPES.MAIL_SEND,
+      MICROSOFT_GRAPH_SCOPES.USER_READ,
+    ].join(" "),
+    envPrefix: "MICROSOFT",
   },
 } as const satisfies OAuthOnlyProviderRegistry
 
