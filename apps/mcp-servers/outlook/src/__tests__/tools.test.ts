@@ -144,6 +144,29 @@ describe("compose_email", () => {
     expect(result.isError).toBe(true)
     expect(result.content[0].text).toContain("recipient")
   })
+
+  it("rejects invalid email addresses", async () => {
+    const result = await executeTool(dummyClient(), "compose_email", {
+      to: "notanemail",
+      subject: "Test",
+      body: "Body",
+    })
+
+    expect(result.isError).toBe(true)
+    expect(result.content[0].text).toContain("Invalid email")
+    expect(result.content[0].text).toContain("notanemail")
+  })
+
+  it("rejects mixed valid and invalid emails", async () => {
+    const result = await executeTool(dummyClient(), "compose_email", {
+      to: "valid@example.com, bad-addr, also@ok.com",
+      subject: "Test",
+      body: "Body",
+    })
+
+    expect(result.isError).toBe(true)
+    expect(result.content[0].text).toContain("bad-addr")
+  })
 })
 
 // ============================================================

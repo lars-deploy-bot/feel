@@ -235,9 +235,11 @@ export class OutlookClient {
   }
 
   async archiveEmail(messageId: string): Promise<void> {
-    // Use well-known folder name — works regardless of locale
-    const folder = await this.graphFetch<GraphFolder>("/me/mailFolders/archive")
-    await this.moveToFolder(messageId, folder.id)
+    // Well-known name "archive" works as destinationId regardless of locale
+    await this.graphFetch(`/me/messages/${messageId}/move`, {
+      method: "POST",
+      body: JSON.stringify({ destinationId: "archive" }),
+    })
   }
 
   async markAsRead(messageId: string): Promise<void> {
@@ -255,9 +257,11 @@ export class OutlookClient {
   }
 
   async trashEmail(messageId: string): Promise<void> {
-    // Use well-known folder name — works regardless of locale
-    const folder = await this.graphFetch<GraphFolder>("/me/mailFolders/deleteditems")
-    await this.moveToFolder(messageId, folder.id)
+    // Well-known name "deleteditems" works as destinationId regardless of locale
+    await this.graphFetch(`/me/messages/${messageId}/move`, {
+      method: "POST",
+      body: JSON.stringify({ destinationId: "deleteditems" }),
+    })
   }
 }
 

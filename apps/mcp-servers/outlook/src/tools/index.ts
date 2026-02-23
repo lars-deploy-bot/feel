@@ -13,6 +13,9 @@
 import { z } from "zod"
 import type { OutlookClient } from "../outlook-client.js"
 
+/** Lightweight email check — catches obvious junk without being overly strict */
+const looksLikeEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)
+
 // All tool definitions
 const allTools = [
   {
@@ -224,7 +227,7 @@ export async function executeTool(
       case "compose_email": {
         const { to, subject, body, cc, bcc, threadId } = composeEmailSchema.parse(args)
 
-        // Split comma-separated addresses into arrays
+        // Split comma-separated addresses into arrays and validate format
         const toArray = to
           .split(",")
           .map(s => s.trim())
@@ -233,6 +236,14 @@ export async function executeTool(
         if (toArray.length === 0) {
           return {
             content: [{ type: "text", text: "Error: At least one recipient email address is required" }],
+            isError: true,
+          }
+        }
+
+        const invalidTo = toArray.filter(addr => !looksLikeEmail(addr))
+        if (invalidTo.length > 0) {
+          return {
+            content: [{ type: "text", text: `Error: Invalid email address(es): ${invalidTo.join(", ")}` }],
             isError: true,
           }
         }
