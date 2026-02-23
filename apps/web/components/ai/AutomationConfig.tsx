@@ -17,16 +17,14 @@
 import { CLAUDE_MODELS, type ClaudeModel, getModelDisplayName } from "@webalive/shared"
 import { Calendar, Check, ChevronRight, Clock, Cpu, Globe, Zap } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
+import { getInitialSiteSelection, SiteCombobox, type SiteOption } from "@/components/automations/SiteCombobox"
 import { MODEL_OPTIONS, TIMEZONE_OPTIONS } from "@/lib/automation/form-options"
 
 // =============================================================================
 // TYPES
 // =============================================================================
 
-export interface SiteOption {
-  id: string
-  hostname: string
-}
+export type { SiteOption }
 
 export interface AutomationConfigData {
   sites: SiteOption[]
@@ -70,36 +68,19 @@ const REPEAT_OPTIONS = [
 
 type RepeatValue = (typeof REPEAT_OPTIONS)[number]["value"]
 
-function getInitialSiteSelection(data: AutomationConfigData): { siteId: string; siteSearch: string } {
-  if (data.defaultSiteId) {
-    const byId = data.sites.find(site => site.id === data.defaultSiteId)
-    if (byId) {
-      return { siteId: byId.id, siteSearch: byId.hostname }
-    }
-  }
-
-  if (data.sites.length === 1) {
-    const onlySite = data.sites[0]
-    return { siteId: onlySite?.id ?? "", siteSearch: onlySite?.hostname ?? "" }
-  }
-
-  return { siteId: "", siteSearch: "" }
-}
-
 // =============================================================================
 // COMPONENT
 // =============================================================================
 
 export function AutomationConfig({ data, onComplete, onCancel }: AutomationConfigProps) {
   const [step, setStep] = useState<"basics" | "schedule" | "confirm">("basics")
-  const initialSiteSelection = getInitialSiteSelection(data)
+  const initialSiteSelection = getInitialSiteSelection(data.sites, data.defaultSiteId)
 
   // Basic fields
   const [name, setName] = useState(data.defaultName || "")
   const [prompt, setPrompt] = useState(data.defaultPrompt || "")
   const [siteId, setSiteId] = useState(initialSiteSelection.siteId)
   const [siteSearch, setSiteSearch] = useState(initialSiteSelection.siteSearch)
-  const [siteDropdownOpen, setSiteDropdownOpen] = useState(false)
   const [model, setModel] = useState<ClaudeModel>(data.defaultModel || CLAUDE_MODELS.HAIKU_4_5)
 
   // Schedule fields
@@ -125,8 +106,6 @@ export function AutomationConfig({ data, onComplete, onCancel }: AutomationConfi
   useEffect(() => {
     nameInputRef.current?.focus()
   }, [])
-
-  const filteredSites = data.sites.filter(s => s.hostname.toLowerCase().includes(siteSearch.toLowerCase()))
 
   const validateName = useCallback((value: string): string | null => {
     if (!value.trim()) return "Please enter a name"
@@ -360,44 +339,17 @@ export function AutomationConfig({ data, onComplete, onCancel }: AutomationConfi
                     <label htmlFor="automation-site" className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
                       Website
                     </label>
-                    <div className="relative">
-                      <input
-                        id="automation-site"
-                        type="text"
-                        value={siteSearch}
-                        onChange={e => {
-                          setSiteSearch(e.target.value)
-                          setSiteDropdownOpen(true)
-                          if (!e.target.value) setSiteId("")
-                        }}
-                        onFocus={() => setSiteDropdownOpen(true)}
-                        onBlur={() => setTimeout(() => setSiteDropdownOpen(false), 150)}
-                        placeholder="Select website..."
-                        autoComplete="off"
-                        className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-transparent px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus-visible:outline-none hover:border-zinc-300 dark:hover:border-zinc-600"
-                      />
-                      {siteDropdownOpen && filteredSites.length > 0 && (
-                        <div className="absolute z-20 top-full left-0 right-0 mt-1.5 max-h-48 overflow-auto rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 shadow-lg">
-                          {filteredSites.slice(0, 8).map(site => (
-                            <button
-                              key={site.id}
-                              type="button"
-                              onMouseDown={e => {
-                                e.preventDefault()
-                                setSiteId(site.id)
-                                setSiteSearch(site.hostname)
-                                setSiteDropdownOpen(false)
-                              }}
-                              className={`w-full px-3 py-2 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors ${
-                                siteId === site.id ? "bg-zinc-100 dark:bg-zinc-800" : ""
-                              }`}
-                            >
-                              {site.hostname}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                    <SiteCombobox
+                      id="automation-site"
+                      sites={data.sites}
+                      selectedId={siteId}
+                      searchValue={siteSearch}
+                      onSelect={(id, hostname) => {
+                        setSiteId(id)
+                        setSiteSearch(hostname)
+                      }}
+                      onSearchChange={setSiteSearch}
+                    />
                   </div>
                 )}
 
