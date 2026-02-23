@@ -67,6 +67,7 @@ export { emailInternalMcp, supabaseInternalMcp, toolsInternalMcp, workspaceInter
 export type {
   AITool,
   AutomationTool,
+  BrowserTool,
   EmailTool,
   FileOpTool,
   LinearTool,
@@ -75,7 +76,7 @@ export type {
   ToolName,
 } from "./tool-names.js"
 // Tool name constants
-export { AI, AUTOMATION, CALENDAR, EMAIL, FILE_OPS, LINEAR, OTHER, STRIPE } from "./tool-names.js"
+export { AI, AUTOMATION, BROWSER, CALENDAR, EMAIL, FILE_OPS, LINEAR, OTHER, STRIPE } from "./tool-names.js"
 export {
   getEnabledMcpToolNames,
   setSearchToolsConnectedProviders,
