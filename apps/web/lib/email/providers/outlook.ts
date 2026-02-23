@@ -58,7 +58,8 @@ function buildGraphMessage(message: EmailMessage) {
     toRecipients: message.to.map(toRecipient),
     ...(message.cc?.length ? { ccRecipients: message.cc.map(toRecipient) } : {}),
     ...(message.bcc?.length ? { bccRecipients: message.bcc.map(toRecipient) } : {}),
-    ...(message.threadId ? { conversationId: message.threadId } : {}),
+    // Note: Graph API's conversationId is read-only — cannot be set on create.
+    // Thread tracking for Outlook replies requires replying to a specific message ID.
   }
 }
 

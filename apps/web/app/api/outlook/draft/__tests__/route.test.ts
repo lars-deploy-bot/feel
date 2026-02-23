@@ -32,7 +32,6 @@ vi.stubGlobal("fetch", mockFetch)
 
 const { POST } = await import("../route")
 const { getSessionUser } = await import("@/features/auth/lib/auth")
-const { getOAuthInstance } = await import("@/lib/oauth/oauth-instances")
 
 function createRequest(body: Record<string, unknown>): NextRequest {
   return new NextRequest("http://localhost/api/outlook/draft", {
@@ -52,8 +51,15 @@ describe("POST /api/outlook/draft", () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    vi.mocked(getSessionUser).mockResolvedValue({ id: "user-1" } as never)
-    vi.mocked(getOAuthInstance).mockReturnValue({ getAccessToken: mockGetAccessToken } as never)
+    vi.mocked(getSessionUser).mockResolvedValue({
+      id: "user-1",
+      email: "test@example.com",
+      name: "Test User",
+      canSelectAnyModel: false,
+      isAdmin: false,
+      isSuperadmin: false,
+      enabledModels: [],
+    })
     mockGetAccessToken.mockResolvedValue("access-token-1")
 
     // Default: /me returns profile, /me/messages returns draft
@@ -169,12 +175,11 @@ describe("POST /api/outlook/draft", () => {
     })
   })
 
-  it("calls Graph API with correct payload including cc and threadId", async () => {
+  it("calls Graph API with correct payload including cc", async () => {
     const res = await POST(
       createRequest({
         ...validBody,
         cc: ["cc@example.com"],
-        threadId: "thread_1",
       }),
     )
     expect(res.status).toBe(200)
@@ -187,7 +192,6 @@ describe("POST /api/outlook/draft", () => {
     const payload = JSON.parse((draftCall![1] as { body: string }).body)
     expect(payload.toRecipients).toEqual([{ emailAddress: { address: "recipient@example.com" } }])
     expect(payload.ccRecipients).toEqual([{ emailAddress: { address: "cc@example.com" } }])
-    expect(payload.conversationId).toBe("thread_1")
   })
 
   // --- API failure ---

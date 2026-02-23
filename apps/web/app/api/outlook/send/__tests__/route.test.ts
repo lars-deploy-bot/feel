@@ -32,7 +32,6 @@ vi.stubGlobal("fetch", mockFetch)
 
 const { POST } = await import("../route")
 const { getSessionUser } = await import("@/features/auth/lib/auth")
-const { getOAuthInstance } = await import("@/lib/oauth/oauth-instances")
 
 function createRequest(body: Record<string, unknown>): NextRequest {
   return new NextRequest("http://localhost/api/outlook/send", {
@@ -52,8 +51,15 @@ describe("POST /api/outlook/send", () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    vi.mocked(getSessionUser).mockResolvedValue({ id: "user-1" } as never)
-    vi.mocked(getOAuthInstance).mockReturnValue({ getAccessToken: mockGetAccessToken } as never)
+    vi.mocked(getSessionUser).mockResolvedValue({
+      id: "user-1",
+      email: "test@example.com",
+      name: "Test User",
+      canSelectAnyModel: false,
+      isAdmin: false,
+      isSuperadmin: false,
+      enabledModels: [],
+    })
     mockGetAccessToken.mockResolvedValue("access-token-1")
 
     // Default: /me returns profile, /me/sendMail returns 202
