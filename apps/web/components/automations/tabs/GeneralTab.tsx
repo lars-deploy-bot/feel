@@ -1,12 +1,8 @@
 import type { ClaudeModel } from "@webalive/shared"
-import { CLAUDE_MODELS, getModelDisplayName, isAliveWorkspace, isValidClaudeModel } from "@webalive/shared"
+import { isAliveWorkspace, isValidClaudeModel } from "@webalive/shared"
 import { useState } from "react"
+import { MODEL_OPTIONS } from "@/lib/automation/form-options"
 import type { Site } from "@/lib/hooks/useSettingsQueries"
-
-const MODEL_OPTIONS: { label: string; value: ClaudeModel }[] = Object.values(CLAUDE_MODELS).map(id => ({
-  label: getModelDisplayName(id),
-  value: id,
-}))
 
 const selectChevron = {
   backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,

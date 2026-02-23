@@ -9,7 +9,7 @@
  * both @webalive/oauth-core and @webalive/shared.
  */
 
-import { GoogleProvider } from "@webalive/oauth-core"
+import { GoogleProvider } from "@webalive/oauth-core/providers/google"
 import { OAUTH_MCP_PROVIDERS, OAUTH_ONLY_PROVIDERS } from "@webalive/shared"
 import { describe, expect, it } from "vitest"
 

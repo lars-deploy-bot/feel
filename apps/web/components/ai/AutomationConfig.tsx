@@ -17,6 +17,7 @@
 import { CLAUDE_MODELS, type ClaudeModel, getModelDisplayName } from "@webalive/shared"
 import { Calendar, Check, ChevronRight, Clock, Cpu, Globe, Zap } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
+import { MODEL_OPTIONS, TIMEZONE_OPTIONS } from "@/lib/automation/form-options"
 
 // =============================================================================
 // TYPES
@@ -66,20 +67,6 @@ const REPEAT_OPTIONS = [
   { label: "Monthly", value: "monthly", description: "Every month on the same date" },
   { label: "Custom", value: "custom", description: "Use a cron expression" },
 ] as const
-
-const MODEL_OPTIONS = [
-  { label: getModelDisplayName(CLAUDE_MODELS.OPUS_4_6), value: CLAUDE_MODELS.OPUS_4_6 },
-  { label: getModelDisplayName(CLAUDE_MODELS.SONNET_4_6), value: CLAUDE_MODELS.SONNET_4_6 },
-  { label: getModelDisplayName(CLAUDE_MODELS.HAIKU_4_5), value: CLAUDE_MODELS.HAIKU_4_5 },
-]
-
-const TIMEZONES = [
-  { label: "Amsterdam (CET)", value: "Europe/Amsterdam" },
-  { label: "London (GMT)", value: "Europe/London" },
-  { label: "New York (EST)", value: "America/New_York" },
-  { label: "Los Angeles (PST)", value: "America/Los_Angeles" },
-  { label: "UTC", value: "UTC" },
-]
 
 type RepeatValue = (typeof REPEAT_OPTIONS)[number]["value"]
 
@@ -566,7 +553,7 @@ export function AutomationConfig({ data, onComplete, onCancel }: AutomationConfi
                               onChange={e => setTimezone(e.target.value)}
                               className="w-full rounded-xl border border-black/[0.08] dark:border-white/[0.08] bg-black/[0.02] dark:bg-white/[0.02] px-3 py-2.5 text-sm text-black dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/30 transition-all hover:border-black/[0.12] dark:hover:border-white/[0.12] cursor-pointer"
                             >
-                              {TIMEZONES.map(tz => (
+                              {TIMEZONE_OPTIONS.map(tz => (
                                 <option key={tz.value} value={tz.value}>
                                   {tz.label}
                                 </option>
@@ -649,7 +636,7 @@ export function AutomationConfig({ data, onComplete, onCancel }: AutomationConfi
                           onChange={e => setTimezone(e.target.value)}
                           className="w-full rounded-xl border border-black/[0.08] dark:border-white/[0.08] bg-black/[0.02] dark:bg-white/[0.02] px-3 py-2.5 text-sm text-black dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/30 transition-all hover:border-black/[0.12] dark:hover:border-white/[0.12] cursor-pointer"
                         >
-                          {TIMEZONES.map(tz => (
+                          {TIMEZONE_OPTIONS.map(tz => (
                             <option key={tz.value} value={tz.value}>
                               {tz.label}
                             </option>
