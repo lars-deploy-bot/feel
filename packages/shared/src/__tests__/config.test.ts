@@ -163,7 +163,8 @@ describe("resolveLocalAliveRoot", () => {
   })
 
   it("falls back to cwd discovery for non-file bundled urls", () => {
-    const root = resolveLocalAliveRoot("/_next/static/media/index.69a18fca.js", process.cwd())
+    const knownCwd = new URL(".", import.meta.url).pathname
+    const root = resolveLocalAliveRoot("/_next/static/media/index.69a18fca.js", knownCwd)
     expect(existsSync(join(root, "turbo.json"))).toBe(true)
     expect(existsSync(join(root, "packages", "shared", "src", "config.ts"))).toBe(true)
   })
