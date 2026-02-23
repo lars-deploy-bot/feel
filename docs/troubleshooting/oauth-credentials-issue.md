@@ -1,5 +1,9 @@
 # OAuth Credentials Issue: "Invalid API key" Error
 
+> **Authoritative reference:** [`docs/knowledge/ANTHROPIC_OAUTH_DO_NOT_DELETE.md`](../knowledge/ANTHROPIC_OAUTH_DO_NOT_DELETE.md)
+> This page covers one specific failure mode. For the full OAuth architecture, token lifecycle,
+> lock contract, and all failure modes, see the knowledge doc.
+
 ## The Error
 
 Users on production (e.g., `alive.best`) see:

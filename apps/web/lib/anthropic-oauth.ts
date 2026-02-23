@@ -1,11 +1,15 @@
 /**
  * Anthropic OAuth Token Refresh
  *
- * Automatically refreshes expired OAuth tokens for Claude Pro/Max subscriptions.
- * Based on OpenClaw's implementation from @mariozechner/pi-ai.
+ * READ FIRST: docs/knowledge/ANTHROPIC_OAUTH_DO_NOT_DELETE.md
  *
- * Uses proper-lockfile for file-based locking to prevent race conditions
- * when multiple processes try to refresh the same token simultaneously.
+ * This file refreshes expired OAuth tokens for Claude Pro/Max subscriptions.
+ * It coordinates with Claude Code CLI via a shared directory lock on ~/.claude.
+ * The lock target, retry parameters, and double-check pattern are all derived
+ * from reverse-engineering the CLI binary — see the knowledge doc for details.
+ *
+ * DO NOT change the lock target, retry config, or refresh flow without reading
+ * and updating the knowledge doc first.
  */
 
 import fs from "node:fs"
@@ -23,18 +27,20 @@ const ANTHROPIC_CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
 const TOKEN_EXPIRY_BUFFER_MS = 5 * 60 * 1000
 
 // Path to Claude Code credentials
-const CLAUDE_CREDENTIALS_PATH = path.join(os.homedir(), ".claude", ".credentials.json")
+const CLAUDE_DIR = path.join(os.homedir(), ".claude")
+const CLAUDE_CREDENTIALS_PATH = path.join(CLAUDE_DIR, ".credentials.json")
 
-// Lock options matching OpenClaw's configuration
+// Lock the DIRECTORY (~/.claude), not the credentials file.
+// Claude Code CLI locks the same directory. See: docs/knowledge/ANTHROPIC_OAUTH_DO_NOT_DELETE.md § "The Lock Contract"
 const LOCK_OPTIONS = {
   retries: {
-    retries: 10,
-    factor: 2,
-    minTimeout: 100,
-    maxTimeout: 10_000,
+    retries: 5,
+    factor: 1,
+    minTimeout: 1000,
+    maxTimeout: 2_000,
     randomize: true,
   },
-  stale: 30_000, // Consider lock stale after 30 seconds
+  stale: 10_000, // Match CLI's stale timeout
 } as const
 
 export interface ClaudeOAuthCredentials {
@@ -187,8 +193,10 @@ function saveCredentials(credentials: ClaudeOAuthCredentials): void {
       fs.mkdirSync(dir, { recursive: true, mode: 0o700 })
     }
 
-    // Write with secure permissions
-    fs.writeFileSync(CLAUDE_CREDENTIALS_PATH, JSON.stringify(existingData), { mode: 0o600 })
+    // Write with 644 — workers need read access after UID drop.
+    // CLI writes 600, but our systemd path unit or this code must ensure 644.
+    // See: docs/knowledge/ANTHROPIC_OAUTH_DO_NOT_DELETE.md § "Permission requirements"
+    fs.writeFileSync(CLAUDE_CREDENTIALS_PATH, JSON.stringify(existingData), { mode: 0o644 })
 
     console.log("[anthropic-oauth] Saved refreshed credentials to disk")
   } catch (error) {
@@ -208,11 +216,16 @@ async function refreshTokenWithLock(): Promise<ClaudeOAuthCredentials | null> {
     return null
   }
 
+  // Ensure lock target directory exists
+  if (!fs.existsSync(CLAUDE_DIR)) {
+    fs.mkdirSync(CLAUDE_DIR, { recursive: true, mode: 0o700 })
+  }
+
   let release: (() => Promise<void>) | undefined
 
   try {
-    console.log("[anthropic-oauth] Acquiring file lock...")
-    release = await lockfile.lock(CLAUDE_CREDENTIALS_PATH, LOCK_OPTIONS)
+    console.log("[anthropic-oauth] Acquiring directory lock on ~/.claude ...")
+    release = await lockfile.lock(CLAUDE_DIR, LOCK_OPTIONS)
     console.log("[anthropic-oauth] Lock acquired")
 
     // Re-read credentials after acquiring lock (another process may have refreshed)

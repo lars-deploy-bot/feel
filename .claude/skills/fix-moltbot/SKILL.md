@@ -5,6 +5,8 @@ description: Fix the OpenClaw/Moltbot gateway when its Anthropic OAuth credentia
 
 # Fix Moltbot (OpenClaw Gateway)
 
+> **OAuth reference:** [`docs/knowledge/ANTHROPIC_OAUTH_DO_NOT_DELETE.md`](../../../docs/knowledge/ANTHROPIC_OAUTH_DO_NOT_DELETE.md)
+
 The OpenClaw gateway (`openclaw-gateway.service`) runs as a Telegram/WhatsApp bot at `/opt/services/clawdbot/`. It authenticates to Anthropic via OAuth tokens stored in an auth-profiles file. These tokens expire and need periodic refresh.
 
 ## Diagnosis
