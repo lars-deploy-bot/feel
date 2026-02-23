@@ -76,10 +76,6 @@ export type {
 } from "./tool-names.js"
 // Tool name constants
 export { AI, AUTOMATION, CALENDAR, EMAIL, FILE_OPS, LINEAR, OTHER, STRIPE } from "./tool-names.js"
-// Automation MCP Tools
-export { createAutomation, createAutomationParamsSchema } from "./tools/automations/create-automation.js"
-export { listAutomations, listAutomationsParamsSchema } from "./tools/automations/list-automations.js"
-export { triggerAutomation, triggerAutomationParamsSchema } from "./tools/automations/trigger-automation.js"
 export {
   getEnabledMcpToolNames,
   setSearchToolsConnectedProviders,
