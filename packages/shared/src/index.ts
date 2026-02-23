@@ -108,6 +108,14 @@ export {
   type WrapExternalContentOptions,
   wrapExternalContent,
 } from "./external-content.js"
+export {
+  getDescriptorsByServer,
+  getInternalMcpToolNames,
+  INTERNAL_TOOL_DESCRIPTORS,
+  type InternalMcpServer,
+  type InternalToolDescriptor,
+  qualifiedMcpName,
+} from "./internal-tool-descriptors.js"
 export { generateInviteCode } from "./invite-code.js"
 export {
   type AllOAuthProviderKey,

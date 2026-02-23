@@ -1,6 +1,5 @@
 {
   "lockfileVersion": 1,
-  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "alive-mono",
@@ -373,7 +372,6 @@
       "dependencies": {
         "@alive-brug/alrighty": "workspace:*",
         "@anthropic-ai/claude-agent-sdk": "^0.2.34",
-        "@webalive/database": "workspace:*",
         "@webalive/shared": "workspace:*",
         "zod": "^4.1.5",
       },
