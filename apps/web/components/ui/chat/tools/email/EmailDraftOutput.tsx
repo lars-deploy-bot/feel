@@ -4,7 +4,7 @@
  * Renders email drafts created by Claude with Send/Save actions.
  * CRITICAL: Claude can draft emails, but ONLY the user can click Send.
  *
- * Calls /api/gmail/send and /api/gmail/draft for actual Gmail operations.
+ * Provider-aware: routes to /api/gmail/* or /api/outlook/* based on toolName.
  */
 
 "use client"
@@ -13,10 +13,20 @@ import { useCallback, useState } from "react"
 import { EmailDraftCard } from "@/components/email/EmailDraftCard"
 import type { EmailDraft } from "@/components/email/types"
 import { FAKE_EMAIL_DRAFTS } from "@/components/email/types"
+import { ApiError, postty } from "@/lib/api/api-client"
+import { validateRequest } from "@/lib/api/schemas"
 import { useDexieMessageActions } from "@/lib/db/dexieMessageStore"
 import type { ToolResultRendererProps } from "@/lib/tools/tool-registry"
-import type { GmailDraftResponse, GmailErrorResponse, GmailSendResponse } from "@/lib/types/gmail-api"
 import { patchEmailDraftToolResultContent, toPersistedEmailDraftStatus } from "./emailDraftState"
+
+/**
+ * Derive email endpoint prefix from toolName.
+ * Outlook tools → "outlook", everything else → "gmail".
+ */
+function getEmailProvider(toolName: string): "outlook" | "gmail" {
+  if (toolName.toLowerCase().includes("outlook")) return "outlook"
+  return "gmail"
+}
 
 /**
  * Parse email draft from tool output
@@ -55,10 +65,11 @@ function parseEmailDraft(data: unknown): EmailDraft | null {
  * - mcp__gmail__compose_email
  * - mcp__gmail__create_draft
  */
-export function EmailDraftOutput({ data, tabId, toolUseId }: ToolResultRendererProps<unknown>) {
+export function EmailDraftOutput({ data, tabId, toolUseId, toolName }: ToolResultRendererProps<unknown>) {
   const [draft, setDraft] = useState<EmailDraft | null>(() => parseEmailDraft(data))
   const [error, setError] = useState<string | null>(null)
   const { updateToolResultContentByToolUseId } = useDexieMessageActions()
+  const provider = getEmailProvider(toolName)
 
   const persistDraftState = useCallback(
     async (nextDraft: EmailDraft) => {
@@ -75,85 +86,75 @@ export function EmailDraftOutput({ data, tabId, toolUseId }: ToolResultRendererP
     [tabId, toolUseId, updateToolResultContentByToolUseId],
   )
 
-  // Handle send action - calls /api/gmail/send
+  // Handle send action - calls /api/{provider}/send
   const handleSend = async (emailDraft: EmailDraft) => {
     setDraft({ ...emailDraft, status: "sending" })
     setError(null)
 
     try {
-      const response = await fetch("/api/gmail/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: emailDraft.to,
-          cc: emailDraft.cc,
-          bcc: emailDraft.bcc,
-          subject: emailDraft.subject,
-          body: emailDraft.body,
-          threadId: emailDraft.threadId,
-        }),
-      })
-
-      const result: GmailSendResponse | GmailErrorResponse = await response.json()
-
-      if (!response.ok || !result.ok) {
-        throw new Error(
-          (result as GmailErrorResponse).message || (result as GmailErrorResponse).reason || "Failed to send email",
-        )
+      const sendPayload = {
+        to: emailDraft.to,
+        cc: emailDraft.cc,
+        bcc: emailDraft.bcc,
+        subject: emailDraft.subject,
+        body: emailDraft.body,
+        threadId: emailDraft.threadId,
       }
+
+      // Use provider-specific endpoint for type-safe request/response
+      const result =
+        provider === "outlook"
+          ? await postty("outlook/send", validateRequest("outlook/send", sendPayload))
+          : await postty("gmail/send", validateRequest("gmail/send", sendPayload))
 
       const nextDraft = {
         ...emailDraft,
         status: "sent",
-        id: (result as GmailSendResponse).messageId,
-        threadId: (result as GmailSendResponse).threadId || emailDraft.threadId,
+        id: result.messageId,
+        threadId: result.threadId || emailDraft.threadId,
       } satisfies EmailDraft
 
       setDraft(nextDraft)
       await persistDraftState(nextDraft)
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to send email"
+      const message =
+        err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Failed to send email"
       setError(message)
       setDraft({ ...emailDraft, status: "draft" })
     }
   }
 
-  // Handle save draft action - calls /api/gmail/draft
+  // Handle save draft action - calls /api/{provider}/draft
   const handleSaveDraft = async (emailDraft: EmailDraft) => {
     setDraft({ ...emailDraft, status: "saving" })
     setError(null)
 
     try {
-      const response = await fetch("/api/gmail/draft", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: emailDraft.to,
-          cc: emailDraft.cc,
-          subject: emailDraft.subject,
-          body: emailDraft.body,
-          threadId: emailDraft.threadId,
-        }),
-      })
-
-      const result: GmailDraftResponse | GmailErrorResponse = await response.json()
-
-      if (!response.ok || !result.ok) {
-        throw new Error(
-          (result as GmailErrorResponse).message || (result as GmailErrorResponse).reason || "Failed to save draft",
-        )
+      const draftPayload = {
+        to: emailDraft.to,
+        cc: emailDraft.cc,
+        subject: emailDraft.subject,
+        body: emailDraft.body,
+        threadId: emailDraft.threadId,
       }
+
+      // Use provider-specific endpoint for type-safe request/response
+      const result =
+        provider === "outlook"
+          ? await postty("outlook/draft", validateRequest("outlook/draft", draftPayload))
+          : await postty("gmail/draft", validateRequest("gmail/draft", draftPayload))
 
       const nextDraft = {
         ...emailDraft,
         status: "saved",
-        id: (result as GmailDraftResponse).draftId,
+        id: result.draftId,
       } satisfies EmailDraft
 
       setDraft(nextDraft)
       await persistDraftState(nextDraft)
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to save draft"
+      const message =
+        err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Failed to save draft"
       setError(message)
       setDraft({ ...emailDraft, status: "draft" })
     }

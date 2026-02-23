@@ -29,7 +29,7 @@ import { validateWebsiteConfig, WebsiteConfigOutput } from "@/components/ui/chat
 import { EmailDraftOutput, validateEmailDraft } from "@/components/ui/chat/tools/email/EmailDraftOutput"
 // === Plan Mode Components ===
 import { PlanApprovalOutput, validatePlanApproval } from "@/components/ui/chat/tools/plan/PlanApprovalOutput"
-import { AI, CALENDAR, EMAIL, LINEAR, PLAN, registerComponent } from "./tool-registry"
+import { AI, CALENDAR, EMAIL, LINEAR, OUTLOOK, PLAN, registerComponent } from "./tool-registry"
 
 // ============================================================
 // LINEAR COMPONENTS
@@ -51,6 +51,12 @@ registerComponent(LINEAR.LIST_COMMENTS, LinearCommentsResult, validateLinearComm
 registerComponent(EMAIL.COMPOSE, EmailDraftOutput, validateEmailDraft)
 registerComponent(EMAIL.CREATE_DRAFT, EmailDraftOutput, validateEmailDraft)
 registerComponent(EMAIL.REPLY, EmailDraftOutput, validateEmailDraft)
+
+// ============================================================
+// OUTLOOK COMPONENTS (Outlook email via Microsoft Graph)
+// ============================================================
+
+registerComponent(OUTLOOK.COMPOSE, EmailDraftOutput, validateEmailDraft)
 
 // ============================================================
 // CALENDAR COMPONENTS (Google Calendar integration)

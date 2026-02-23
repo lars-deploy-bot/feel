@@ -17,7 +17,7 @@
  * ```
  */
 
-import { AI, CALENDAR, EMAIL, FILE_OPS, LINEAR, OTHER, PLAN, STRIPE, STRIPE_PATTERNS } from "./tool-names.js"
+import { AI, CALENDAR, EMAIL, FILE_OPS, LINEAR, OTHER, OUTLOOK, PLAN, STRIPE, STRIPE_PATTERNS } from "./tool-names.js"
 
 // ============================================================
 // TYPES
@@ -428,6 +428,18 @@ register(EMAIL.COMPOSE, {
     const d = data as Record<string, unknown> | null
     const subject = d?.subject as string | undefined
     return subject ? `Draft: ${subject.slice(0, 30)}...` : "email draft"
+  },
+})
+
+// --- Outlook tools ---
+register(OUTLOOK.COMPOSE, {
+  autoExpand: true, // Always show the email card
+  transform: unwrapMcp,
+  getPreview: data => {
+    const subject: unknown = typeof data === "object" && data !== null ? Reflect.get(data, "subject") : undefined
+    return typeof subject === "string"
+      ? `Draft: ${subject.slice(0, 30)}${subject.length > 30 ? "..." : ""}`
+      : "email draft"
   },
 })
 

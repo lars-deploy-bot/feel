@@ -74,7 +74,7 @@ export const outlookProvider: EmailProvider = {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ message: buildGraphMessage(message) }),
+      body: JSON.stringify({ message: buildGraphMessage(message), saveToSentItems: true }),
     })
 
     if (!res.ok) {
