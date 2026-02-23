@@ -23,6 +23,10 @@ const HOST = "127.0.0.1"
 // Auth secret — must match INTERNAL_TOOLS_SECRET in the worker environment
 const INTERNAL_SECRET = process.env.INTERNAL_TOOLS_SECRET ?? ""
 
+if (!INTERNAL_SECRET) {
+  console.warn("[browser-control] WARNING: INTERNAL_TOOLS_SECRET is not set. Auth is disabled.")
+}
+
 function isAuthorized(req: IncomingMessage): boolean {
   // If no secret is configured, allow all (dev mode)
   if (!INTERNAL_SECRET) return true

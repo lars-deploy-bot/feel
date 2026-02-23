@@ -5,7 +5,7 @@
  * Uses stored roleRefs from the last snapshot to resolve element refs.
  * Adapted from OpenClaw's interaction patterns.
  *
- * Body: { domain, action, ref?, value?, text? }
+ * Body: { domain: string, sessionId?: string, action: string, ref?: string, value?: string, text?: string }
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http"
@@ -14,13 +14,20 @@ import { parseJsonBody, sendError, sendJson } from "../http.js"
 import { normalizeTimeoutMs, refLocator, requireRef, toAIFriendlyError, UserInputError } from "../snapshot-formatter.js"
 
 export async function handleAct(req: IncomingMessage, res: ServerResponse): Promise<void> {
-  const body = await parseJsonBody(req)
-  const domain = body.domain as string
-  const sessionId = (body.sessionId as string) || undefined
-  const action = body.action as string
-  const rawRef = body.ref as string | undefined
-  const value = body.value as string | undefined
-  const text = body.text as string | undefined
+  let body: Record<string, unknown>
+  try {
+    body = await parseJsonBody(req)
+  } catch (err) {
+    sendError(res, 400, err instanceof Error ? err.message : "Invalid request body")
+    return
+  }
+
+  const domain = typeof body.domain === "string" ? body.domain : ""
+  const sessionId = typeof body.sessionId === "string" ? body.sessionId : undefined
+  const action = typeof body.action === "string" ? body.action : ""
+  const rawRef = typeof body.ref === "string" ? body.ref : undefined
+  const value = typeof body.value === "string" ? body.value : undefined
+  const text = typeof body.text === "string" ? body.text : undefined
 
   if (!domain) {
     sendError(res, 400, "domain is required")

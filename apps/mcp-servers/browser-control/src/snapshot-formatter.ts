@@ -495,11 +495,13 @@ export async function takeSnapshot(page: Page, options?: RoleSnapshotOptions): P
     })
 
     let tree = snapshot
+    let truncated = false
     if (tree.length > MAX_CHARS) {
       tree = `${tree.slice(0, MAX_CHARS)}\n\n... (truncated at ${MAX_CHARS} characters)`
+      truncated = true
     }
 
-    const stats = getRoleSnapshotStats(snapshot, refs)
+    const stats = { ...getRoleSnapshotStats(tree, refs), truncated }
     const title = await page.title().catch(() => "")
     const url = page.url()
 

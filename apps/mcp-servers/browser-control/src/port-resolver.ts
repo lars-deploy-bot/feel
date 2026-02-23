@@ -7,9 +7,12 @@
  */
 
 import { readFileSync } from "node:fs"
+import { z } from "zod"
 
 const PORT_MAP_PATH = "/var/lib/alive/generated/port-map.json"
 const CACHE_TTL_MS = 15_000 // 15 seconds
+
+const portMapSchema = z.record(z.string(), z.number())
 
 let cachedMap: Record<string, number> | null = null
 let cachedAt = 0
@@ -22,7 +25,7 @@ function loadPortMap(): Record<string, number> {
 
   try {
     const raw = readFileSync(PORT_MAP_PATH, "utf-8")
-    cachedMap = JSON.parse(raw) as Record<string, number>
+    cachedMap = portMapSchema.parse(JSON.parse(raw))
     cachedAt = now
     return cachedMap
   } catch (err) {
@@ -46,7 +49,7 @@ export function resolveUrl(domain: string, path?: string): string {
   const portMap = loadPortMap()
   const port = portMap[domain]
 
-  if (!port) {
+  if (port === undefined) {
     throw new Error(`Domain "${domain}" not found in port map. The site may not be deployed or the port map is stale.`)
   }
 

@@ -7,13 +7,20 @@ import { resolveUrl } from "../port-resolver.js"
  * POST /open
  * Navigate to the workspace site (or a path within it).
  *
- * Body: { domain: string, path?: string }
+ * Body: { domain: string, sessionId?: string, path?: string }
  */
 export async function handleOpen(req: IncomingMessage, res: ServerResponse): Promise<void> {
-  const body = await parseJsonBody(req)
-  const domain = body.domain as string
-  const sessionId = (body.sessionId as string) || undefined
-  const path = (body.path as string) ?? "/"
+  let body: Record<string, unknown>
+  try {
+    body = await parseJsonBody(req)
+  } catch (err) {
+    sendError(res, 400, err instanceof Error ? err.message : "Invalid request body")
+    return
+  }
+
+  const domain = typeof body.domain === "string" ? body.domain : ""
+  const sessionId = typeof body.sessionId === "string" ? body.sessionId : undefined
+  const path = typeof body.path === "string" ? body.path : "/"
 
   if (!domain) {
     sendError(res, 400, "domain is required")

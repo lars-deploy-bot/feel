@@ -39,16 +39,7 @@ export const browserParamsSchema = {
   clear: z.boolean().optional().describe("Clear console buffer after reading. Used with 'console' action."),
 }
 
-export type BrowserParams = {
-  action: z.infer<typeof browserActions>
-  path?: string
-  ref?: string
-  value?: string
-  text?: string
-  fullPage?: boolean
-  interactive?: boolean
-  clear?: boolean
-}
+type BrowserParams = z.infer<z.ZodObject<typeof browserParamsSchema>>
 
 async function callBrowserService(
   endpoint: string,
@@ -73,8 +64,11 @@ async function callBrowserService(
 
     clearTimeout(timeoutId)
 
-    const data = (await response.json()) as Record<string, unknown>
-    return { ok: response.ok, status: response.status, data }
+    const data: unknown = await response.json()
+    if (typeof data !== "object" || data === null || Array.isArray(data)) {
+      throw new Error("Unexpected response format from browser-control service")
+    }
+    return { ok: response.ok, status: response.status, data: data as Record<string, unknown> }
   } catch (err) {
     clearTimeout(timeoutId)
     const message = err instanceof Error ? err.message : String(err)
@@ -159,12 +153,9 @@ export async function browserAction(params: BrowserParams): Promise<ToolResult> 
           content: [
             {
               type: "image",
-              source: {
-                type: "base64",
-                media_type: "image/png",
-                data: data.image as string,
-              },
-            } as unknown as { type: "text"; text: string },
+              data: String(data.image),
+              mimeType: "image/png",
+            },
             {
               type: "text",
               text: `Screenshot of ${data.url} (${data.title})`,
@@ -184,8 +175,10 @@ export async function browserAction(params: BrowserParams): Promise<ToolResult> 
           return errorResult("Snapshot failed", String(data.error))
         }
 
-        const stats = data.stats as { refs: number; interactive: number; lines: number; chars: number } | undefined
-        const refCount = stats?.interactive ?? stats?.refs ?? 0
+        const stats =
+          typeof data.stats === "object" && data.stats !== null ? (data.stats as Record<string, unknown>) : {}
+        const refCount =
+          typeof stats.interactive === "number" ? stats.interactive : typeof stats.refs === "number" ? stats.refs : 0
         const header = `Page: ${data.url} | Title: ${data.title} | Interactive elements: ${refCount}`
         const refHelp = refCount > 0 ? "\n\nUse refs (e.g., click ref=e1) to interact with elements." : ""
 
@@ -230,22 +223,29 @@ export async function browserAction(params: BrowserParams): Promise<ToolResult> 
           return errorResult("Console read failed", String(data.error))
         }
 
-        const messages = data.consoleMessages as Array<{ type: string; text: string; timestamp: string }>
-        const errors = data.pageErrors as Array<{ message: string; timestamp: string }>
+        const messages = Array.isArray(data.consoleMessages) ? data.consoleMessages : []
+        const errors = Array.isArray(data.pageErrors) ? data.pageErrors : []
 
         const parts: string[] = []
 
         if (errors.length > 0) {
           parts.push(`--- Page Errors (${errors.length}) ---`)
           for (const err of errors) {
-            parts.push(`[${err.timestamp}] ${err.message}`)
+            if (typeof err === "object" && err !== null) {
+              parts.push(
+                `[${String((err as Record<string, unknown>).timestamp)}] ${String((err as Record<string, unknown>).message)}`,
+              )
+            }
           }
         }
 
         if (messages.length > 0) {
           parts.push(`--- Console Messages (${messages.length}) ---`)
           for (const msg of messages) {
-            parts.push(`[${msg.timestamp}] [${msg.type}] ${msg.text}`)
+            if (typeof msg === "object" && msg !== null) {
+              const m = msg as Record<string, unknown>
+              parts.push(`[${String(m.timestamp)}] [${String(m.type)}] ${String(m.text)}`)
+            }
           }
         }
 
@@ -285,6 +285,6 @@ export const browserTool = tool(
 **Refs:** After snapshot, use the ref IDs (e1, e2, ...) to target elements for click/fill.`,
   browserParamsSchema,
   async args => {
-    return browserAction(args as BrowserParams)
+    return browserAction(args)
   },
 )

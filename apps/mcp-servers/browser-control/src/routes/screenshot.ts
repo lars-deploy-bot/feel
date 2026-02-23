@@ -6,13 +6,20 @@ import { parseJsonBody, sendError, sendJson } from "../http.js"
  * POST /screenshot
  * Take a screenshot of the current page.
  *
- * Body: { domain: string, fullPage?: boolean }
+ * Body: { domain: string, sessionId?: string, fullPage?: boolean }
  * Returns: { image: string (base64 PNG), url, title }
  */
 export async function handleScreenshot(req: IncomingMessage, res: ServerResponse): Promise<void> {
-  const body = await parseJsonBody(req)
-  const domain = body.domain as string
-  const sessionId = (body.sessionId as string) || undefined
+  let body: Record<string, unknown>
+  try {
+    body = await parseJsonBody(req)
+  } catch (err) {
+    sendError(res, 400, err instanceof Error ? err.message : "Invalid request body")
+    return
+  }
+
+  const domain = typeof body.domain === "string" ? body.domain : ""
+  const sessionId = typeof body.sessionId === "string" ? body.sessionId : undefined
   const fullPage = body.fullPage !== false // default true
 
   if (!domain) {

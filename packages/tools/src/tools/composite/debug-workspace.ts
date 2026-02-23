@@ -1,5 +1,6 @@
 import { tool } from "@anthropic-ai/claude-agent-sdk"
 import { z } from "zod"
+import type { ToolResult } from "../../lib/api-client.js"
 import { readServerLogs } from "../debug/read-server-logs.js"
 
 /**
@@ -22,10 +23,7 @@ export type DebugWorkspaceParams = {
   since?: string
 }
 
-export type DebugWorkspaceResult = {
-  content: Array<{ type: "text"; text: string }>
-  isError: boolean
-}
+export type DebugWorkspaceResult = ToolResult
 
 export async function debugWorkspace(params: DebugWorkspaceParams): Promise<DebugWorkspaceResult> {
   const { workspace, lines = 200, since } = params

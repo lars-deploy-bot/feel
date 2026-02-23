@@ -19,10 +19,21 @@ export function sendError(res: ServerResponse, status: number, message: string):
   sendJson(res, { error: message }, status)
 }
 
+const MAX_BODY_BYTES = 1_048_576 // 1 MB
+
 export async function parseJsonBody(req: IncomingMessage): Promise<Record<string, unknown>> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = []
-    req.on("data", (chunk: Buffer) => chunks.push(chunk))
+    let totalBytes = 0
+    req.on("data", (chunk: Buffer) => {
+      totalBytes += chunk.length
+      if (totalBytes > MAX_BODY_BYTES) {
+        req.destroy()
+        reject(new Error("Request body too large"))
+        return
+      }
+      chunks.push(chunk)
+    })
     req.on("end", () => {
       try {
         const raw = Buffer.concat(chunks).toString("utf-8")
@@ -30,7 +41,12 @@ export async function parseJsonBody(req: IncomingMessage): Promise<Record<string
           resolve({})
           return
         }
-        resolve(JSON.parse(raw) as Record<string, unknown>)
+        const parsed: unknown = JSON.parse(raw)
+        if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+          reject(new Error("Invalid JSON body: expected an object"))
+          return
+        }
+        resolve(parsed as Record<string, unknown>)
       } catch (err) {
         reject(new Error(`Invalid JSON body: ${String(err)}`))
       }

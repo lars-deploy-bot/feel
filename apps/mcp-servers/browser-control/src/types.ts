@@ -18,6 +18,7 @@ export interface RoleSnapshotStats {
   chars: number
   refs: number
   interactive: number
+  truncated?: boolean
 }
 
 export interface RoleSnapshotOptions {

@@ -1,7 +1,7 @@
 import { tool } from "@anthropic-ai/claude-agent-sdk"
 import { truncateOutput } from "@webalive/shared"
 import { z } from "zod"
-import { callApi } from "../../lib/api-client.js"
+import { callApi, type ToolResult } from "../../lib/api-client.js"
 
 export const readServerLogsParamsSchema = {
   workspace: z
@@ -35,10 +35,7 @@ export type ReadServerLogsParams = {
   since?: string
 }
 
-export type ReadServerLogsResult = {
-  content: Array<{ type: "text"; text: string }>
-  isError: boolean
-}
+export type ReadServerLogsResult = ToolResult
 
 function sanitizeSearchTerm(search: string): string {
   return search.replace(/[;&|`$()<>]/g, "")
@@ -66,7 +63,8 @@ export async function readServerLogs(params: ReadServerLogsParams): Promise<Read
     }
 
     // Parse API response (output field contains JSON string with logs data)
-    const apiResponse = JSON.parse(apiResult.content[0].text)
+    const firstBlock = apiResult.content[0]
+    const apiResponse = JSON.parse(firstBlock?.type === "text" ? firstBlock.text : "{}")
     const { logs: stdout, service: serviceName, status: serviceStatus } = apiResponse
 
     if (!stdout || stdout.trim() === "") {

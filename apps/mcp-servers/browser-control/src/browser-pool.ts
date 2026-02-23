@@ -96,9 +96,12 @@ class BrowserPool {
     if (existing) {
       existing.lastUsed = Date.now()
 
-      // Check if page is still usable
+      // Check if page is still usable (timeout prevents hanging on unresponsive pages)
       try {
-        await existing.page.title()
+        await Promise.race([
+          existing.page.title(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("stale")), 2_000)),
+        ])
         return existing
       } catch {
         // Page crashed or was closed, recreate
