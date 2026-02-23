@@ -653,6 +653,64 @@ const INTERNAL_TOOL_METADATA: Array<Omit<ToolMetadata, "enabled">> = [
       },
     ],
   },
+
+  {
+    name: "browser",
+    category: "workspace",
+    description:
+      "Control a headless browser to QA the website. Open pages, take screenshots, read the accessibility tree with element refs (e1, e2, ...), click elements, fill forms, and read console logs/errors. Workflow: open -> snapshot -> click/fill -> screenshot to verify.",
+    contextCost: "high",
+    parameters: [
+      {
+        name: "action",
+        type: "string",
+        required: true,
+        description: "open, screenshot, snapshot, click, fill, type, console, status",
+      },
+      {
+        name: "path",
+        type: "string",
+        required: false,
+        description: "URL path for 'open' action (e.g., '/about')",
+      },
+      {
+        name: "ref",
+        type: "string",
+        required: false,
+        description: "Element ref from snapshot (e.g., 'e3') for click/fill actions",
+      },
+      {
+        name: "value",
+        type: "string",
+        required: false,
+        description: "Value for 'fill' action",
+      },
+      {
+        name: "text",
+        type: "string",
+        required: false,
+        description: "Text for 'type' action",
+      },
+      {
+        name: "fullPage",
+        type: "boolean",
+        required: false,
+        description: "Full page screenshot (default: true)",
+      },
+      {
+        name: "interactive",
+        type: "boolean",
+        required: false,
+        description: "Only show interactive elements in snapshot (default: false)",
+      },
+      {
+        name: "clear",
+        type: "boolean",
+        required: false,
+        description: "Clear console buffer after reading",
+      },
+    ],
+  },
 ]
 
 /**
