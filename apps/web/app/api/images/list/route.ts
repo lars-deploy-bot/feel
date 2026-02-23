@@ -3,9 +3,9 @@ import type { NextRequest } from "next/server"
 import { getSessionUser, verifyWorkspaceAccess } from "@/features/auth/lib/auth"
 import { resolveWorkspace } from "@/features/workspace/lib/workspace-utils"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
+import { getRequestId } from "@/lib/request-id"
 import { imageStorage } from "@/lib/storage"
 import { workspaceToTenantId } from "@/lib/tenant-utils"
-import { generateRequestId } from "@/lib/utils"
 
 interface ParsedImageKey {
   contentHash: string
@@ -20,7 +20,7 @@ interface GroupedImage {
 }
 
 export async function GET(request: NextRequest) {
-  const requestId = generateRequestId()
+  const requestId = getRequestId(request)
 
   try {
     // 1. Auth check
