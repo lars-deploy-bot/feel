@@ -160,8 +160,13 @@ function loadServerConfig(): Partial<ServerConfig> {
   const isLocalDev = streamEnv === "local" || streamEnv === "standalone"
   const isTestEnv = process.env.CI === "true" || process.env.VITEST === "true"
 
+  if (isTestEnv) {
+    // Tests must be deterministic and independent of host-level server config.
+    // Always ignore server config in test mode, even when SERVER_CONFIG_PATH is set.
+    return {}
+  }
+
   if (!CONFIG_PATH) {
-    if (isTestEnv) return {}
     if (isLocalDev) return localDefaults()
     throw new Error(
       "FATAL: SERVER_CONFIG_PATH env var is not set. " + "Set it to the absolute path of your server-config.json.",
@@ -169,7 +174,6 @@ function loadServerConfig(): Partial<ServerConfig> {
   }
 
   if (!fs.existsSync(CONFIG_PATH)) {
-    if (isTestEnv) return {}
     throw new Error(`FATAL: Server config not found at ${CONFIG_PATH} (from SERVER_CONFIG_PATH env var).`)
   }
 
