@@ -26,7 +26,8 @@ export async function listProjects(_params: ListProjectsParams): Promise<ToolRes
   // Allow partial context (connected but no project selected yet)
   if (isToolError(context)) {
     // Check if it's specifically "no project configured" - that's OK for listing
-    const errorText = context.content[0]?.text || ""
+    const firstBlock = context.content[0]
+    const errorText = firstBlock?.type === "text" ? firstBlock.text : ""
     if (errorText.includes("No Supabase project configured")) {
       // Need to fetch token directly since context fetch failed
       // This is a limitation - we need the token even without project ref

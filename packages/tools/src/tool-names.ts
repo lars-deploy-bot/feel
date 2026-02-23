@@ -138,6 +138,16 @@ export const PLAN = {
 export type PlanTool = (typeof PLAN)[keyof typeof PLAN]
 
 // ============================================================
+// BROWSER TOOLS (alive-workspace MCP)
+// ============================================================
+
+export const BROWSER = {
+  BROWSER: "mcp__alive-workspace__browser",
+} as const
+
+export type BrowserTool = (typeof BROWSER)[keyof typeof BROWSER]
+
+// ============================================================
 // OTHER TOOLS
 // ============================================================
 
@@ -160,6 +170,7 @@ export type ToolName =
   | CalendarTool
   | AITool
   | AutomationTool
+  | BrowserTool
   | PlanTool
   | OtherTool
 

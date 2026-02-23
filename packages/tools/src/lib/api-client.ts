@@ -43,8 +43,14 @@ export function getApiBaseUrl(): string {
   return `http://localhost:${port}`
 }
 
+export interface ImageContentBlock {
+  type: "image"
+  data: string
+  mimeType: string
+}
+
 export interface ToolResult {
-  content: Array<{ type: "text"; text: string }>
+  content: Array<{ type: "text"; text: string } | ImageContentBlock>
   isError: boolean
   [key: string]: unknown
 }

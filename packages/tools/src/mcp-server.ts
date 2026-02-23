@@ -15,6 +15,7 @@ import { listProjectsTool } from "./tools/supabase/list-projects.js"
 import { listTablesTool } from "./tools/supabase/list-tables.js"
 import { runQueryTool } from "./tools/supabase/run-query.js"
 import { getAliveSuperTemplateTool } from "./tools/templates/get-template.js"
+import { browserTool } from "./tools/workspace/browser.js"
 import { checkCodebaseTool } from "./tools/workspace/check-codebase.js"
 import { copySharedAssetTool } from "./tools/workspace/copy-shared-asset.js"
 import { createWebsiteTool } from "./tools/workspace/create-website.js"
@@ -92,6 +93,7 @@ export const workspaceInternalMcp = createSdkMcpServer({
     switchServeModeTool,
     copySharedAssetTool,
     createWebsiteTool,
+    browserTool,
   ],
 })
 
