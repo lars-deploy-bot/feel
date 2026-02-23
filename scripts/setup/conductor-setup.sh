@@ -7,22 +7,37 @@ command -v bun >/dev/null 2>&1 || {
     exit 1
 }
 
+# Resolve project root from this script location so setup works from any CWD.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+if [ ! -f "$PROJECT_ROOT/package.json" ]; then
+    echo "Error: package.json not found at $PROJECT_ROOT"
+    exit 1
+fi
+
 echo "Setting up workspace..."
 
-bun install || {
+(
+    cd "$PROJECT_ROOT"
+    bun install
+) || {
     echo "Error: Failed to install dependencies"
     exit 1
 }
 
 # Creates .alive/template directory
-bun run setup || {
+(
+    cd "$PROJECT_ROOT"
+    bun run setup
+) || {
     echo "Error: Project setup failed"
     exit 1
 }
 
 # Generate .env.local for local dev
-ENV_DEST="./apps/web/.env.local"
-TEMPLATE_PATH="$(pwd)/.alive/template"
+ENV_DEST="$PROJECT_ROOT/apps/web/.env.local"
+TEMPLATE_PATH="$PROJECT_ROOT/.alive/template"
 
 mkdir -p "$(dirname "$ENV_DEST")"
 touch "$ENV_DEST"
@@ -50,14 +65,17 @@ ensure_env_var() {
 
 upsert_env_var "STREAM_ENV" "local"
 upsert_env_var "LOCAL_TEMPLATE_PATH" "$TEMPLATE_PATH"
-ensure_env_var "NEXT_PUBLIC_PREVIEW_BASE" "sonno.tech"
+ensure_env_var "NEXT_PUBLIC_PREVIEW_BASE" "localhost"
 
 # Minimal placeholders for local env validation. Real Supabase values can still
 # be provided in apps/web/.env.local and will be preserved.
 ensure_env_var "SUPABASE_URL" "https://placeholder.supabase.co"
 ensure_env_var "SUPABASE_ANON_KEY" "eyJ.placeholder"
+ensure_env_var "SUPABASE_SERVICE_ROLE_KEY" "eyJ.placeholder"
 ensure_env_var "NEXT_PUBLIC_SUPABASE_URL" "https://placeholder.supabase.co"
 ensure_env_var "NEXT_PUBLIC_SUPABASE_ANON_KEY" "eyJ.placeholder"
+ensure_env_var "JWT_SECRET" "local-dev-jwt-secret-change-me"
+ensure_env_var "LOCKBOX_MASTER_KEY" "0000000000000000000000000000000000000000000000000000000000000000"
 
 cat <<EOF
 
@@ -66,6 +84,10 @@ cat <<EOF
   bun run dev  # Start dev server at http://localhost:8997
 
   Login:
-    Workspace: test
-    Passcode:  test
+    Email:    test@stream.local
+    Password: test
+
+  Note:
+    If you connect to a real Supabase project, set JWT_SECRET to that project's JWT secret
+    and replace LOCKBOX_MASTER_KEY with a securely generated 64-hex-character key.
 EOF

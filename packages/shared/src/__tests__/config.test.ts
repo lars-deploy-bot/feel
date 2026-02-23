@@ -1,5 +1,48 @@
+import { spawnSync } from "node:child_process"
+import { existsSync } from "node:fs"
+import { join } from "node:path"
 import { describe, expect, it } from "vitest"
-import { isAliveWorkspace, resolveTemplatePath, SUPERADMIN } from "../config"
+import {
+  DOMAINS,
+  isAliveWorkspace,
+  PATHS,
+  resolveLocalAliveRoot,
+  resolveTemplatePath,
+  SECURITY,
+  SUPERADMIN,
+} from "../config"
+
+function assertRecord(v: unknown): asserts v is Record<string, unknown> {
+  if (typeof v !== "object" || v === null) throw new Error(`Expected object, got ${typeof v}`)
+}
+
+const CONFIG_MODULE_URL = new URL("../config.ts", import.meta.url).href
+
+function runConfigProbe(envOverrides: Record<string, string | undefined>) {
+  const env = { ...process.env }
+  for (const [key, value] of Object.entries(envOverrides)) {
+    if (typeof value === "undefined") {
+      delete env[key]
+    } else {
+      env[key] = value
+    }
+  }
+
+  const script = `
+import { DOMAINS, PATHS, SECURITY, SUPERADMIN } from "${CONFIG_MODULE_URL}";
+console.log(JSON.stringify({
+  aliveRoot: PATHS.ALIVE_ROOT,
+  sitesRoot: PATHS.SITES_ROOT,
+  imagesStorage: PATHS.IMAGES_STORAGE,
+  mainDomain: DOMAINS.MAIN,
+  mainSuffix: DOMAINS.MAIN_SUFFIX,
+  allowedBases: [...SECURITY.ALLOWED_WORKSPACE_BASES],
+  workspacePath: SUPERADMIN.WORKSPACE_PATH
+}));
+`
+
+  return spawnSync("bun", ["-e", script], { env, encoding: "utf8", timeout: 10_000 })
+}
 
 describe("resolveTemplatePath", () => {
   // In test environment, TEMPLATES_ROOT defaults to "/srv/webalive/templates"
@@ -44,6 +87,99 @@ describe("resolveTemplatePath", () => {
 
   it("throws for trailing slash (empty last segment)", () => {
     expect(() => resolveTemplatePath("/foo/bar/")).toThrow("Invalid template source_path")
+  })
+})
+
+describe("local/standalone config defaults", () => {
+  it("uses local defaults when STREAM_ENV=local and SERVER_CONFIG_PATH is unset", () => {
+    const home = `/tmp/alive-config-test-${Date.now()}`
+    const result = runConfigProbe({
+      STREAM_ENV: "local",
+      HOME: home,
+      SERVER_CONFIG_PATH: undefined,
+      CI: undefined,
+      VITEST: undefined,
+    })
+
+    expect(result.status).toBe(0)
+    const parsed: unknown = JSON.parse(result.stdout)
+    expect(parsed).toMatchObject({
+      sitesRoot: `${home}/.alive/workspaces`,
+      imagesStorage: `${home}/.alive/storage`,
+      mainDomain: "localhost",
+      mainSuffix: ".localhost",
+      allowedBases: [`${home}/.alive/workspaces`],
+    })
+    assertRecord(parsed)
+    expect(parsed.workspacePath).toBe(parsed.aliveRoot)
+    expect(parsed.aliveRoot).toBeTruthy()
+    expect(parsed.aliveRoot).not.toContain("%20")
+  })
+
+  it("uses local defaults when STREAM_ENV=standalone and SERVER_CONFIG_PATH is unset", () => {
+    const home = `/tmp/alive-config-test-${Date.now()}`
+    const result = runConfigProbe({
+      STREAM_ENV: "standalone",
+      HOME: home,
+      SERVER_CONFIG_PATH: undefined,
+      CI: undefined,
+      VITEST: undefined,
+    })
+
+    expect(result.status).toBe(0)
+    const parsed: unknown = JSON.parse(result.stdout)
+    expect(parsed).toMatchObject({
+      sitesRoot: `${home}/.alive/workspaces`,
+      mainDomain: "localhost",
+      mainSuffix: ".localhost",
+      allowedBases: [`${home}/.alive/workspaces`],
+    })
+  })
+
+  it("fails fast in local mode when SERVER_CONFIG_PATH is explicitly set but missing", () => {
+    const missingPath = `/tmp/missing-server-config-${Date.now()}.json`
+    const result = runConfigProbe({
+      STREAM_ENV: "local",
+      SERVER_CONFIG_PATH: missingPath,
+      CI: undefined,
+      VITEST: undefined,
+    })
+
+    expect(result.status).not.toBe(0)
+    const output = `${result.stdout}\n${result.stderr}`
+    expect(output).toContain(`Server config not found at ${missingPath}`)
+  })
+})
+
+describe("resolveLocalAliveRoot", () => {
+  it("extracts repo root from file:// module url", () => {
+    const root = resolveLocalAliveRoot("file:///Users/dev/alive/packages/shared/src/config.ts", "/tmp/fallback")
+    expect(root).toBe("/Users/dev/alive")
+  })
+
+  it("extracts repo root from absolute path module url", () => {
+    const root = resolveLocalAliveRoot("/Users/dev/alive/packages/shared/dist/config.js", "/tmp/fallback")
+    expect(root).toBe("/Users/dev/alive")
+  })
+
+  it("falls back to cwd discovery for non-file bundled urls", () => {
+    const knownCwd = new URL(".", import.meta.url).pathname
+    const root = resolveLocalAliveRoot("/_next/static/media/index.69a18fca.js", knownCwd)
+    expect(existsSync(join(root, "turbo.json"))).toBe(true)
+    expect(existsSync(join(root, "packages", "shared", "src", "config.ts"))).toBe(true)
+  })
+})
+
+describe("config values in test environment", () => {
+  it("test env returns empty config (not local defaults)", () => {
+    // Tests run with VITEST=true, so they should get {} not localDefaults()
+    expect(PATHS.ALIVE_ROOT).toBe("")
+    expect(PATHS.SITES_ROOT).toBe("")
+    expect(DOMAINS.MAIN).toBe("")
+  })
+
+  it("ALLOWED_WORKSPACE_BASES is empty in test env", () => {
+    expect(SECURITY.ALLOWED_WORKSPACE_BASES).toEqual([])
   })
 })
 
