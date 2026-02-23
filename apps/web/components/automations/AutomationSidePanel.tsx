@@ -4,6 +4,7 @@ import type { ClaudeModel } from "@webalive/shared"
 import { isValidClaudeModel } from "@webalive/shared"
 import { useEffect, useState } from "react"
 import { isScheduleTrigger, type TriggerType } from "@/lib/api/schemas"
+import { toZonedDateTimeIso } from "@/lib/automation/schedule-conversion"
 import type { AutomationJob, Site } from "@/lib/hooks/useSettingsQueries"
 import { GeneralTab } from "./tabs/GeneralTab"
 import { PromptTab } from "./tabs/PromptTab"
@@ -111,7 +112,7 @@ export function AutomationSidePanel({ isOpen, onClose, sites, editingJob, onSave
       trigger_type: effectiveTrigger,
       cron_schedule: hasSchedule && !isOneTimeSubmit ? cronSchedule : "",
       cron_timezone: hasSchedule ? timezone : "",
-      run_at: hasSchedule && isOneTimeSubmit ? new Date(`${oneTimeDate}T${oneTimeTime}`).toISOString() : "",
+      run_at: hasSchedule && isOneTimeSubmit ? toZonedDateTimeIso(oneTimeDate, oneTimeTime, timezone) : "",
       action_type: "prompt",
       action_prompt: prompt,
       action_source: "",

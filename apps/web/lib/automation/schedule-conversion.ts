@@ -100,7 +100,7 @@ function getTimezoneDateParts(timestamp: number, formatter: Intl.DateTimeFormat)
   return { year, month, day, hour, minute, second }
 }
 
-function toZonedDateTimeIso(scheduleDate: string, scheduleTime: string, timezone: string): string {
+export function toZonedDateTimeIso(scheduleDate: string, scheduleTime: string, timezone: string): string {
   const { year, month, day } = parseScheduleDate(scheduleDate)
   const { hour, minute } = parseScheduleTime(scheduleTime)
   const formatter = createTimezoneFormatter(timezone)

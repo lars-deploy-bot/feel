@@ -9,7 +9,8 @@ import { EmptyState } from "@/components/ui/EmptyState"
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner"
 import { trackAutomationCreated, trackAutomationDeleted, trackAutomationsViewed } from "@/lib/analytics/events"
 import { delly, patchy, postty } from "@/lib/api/api-client"
-import { isScheduleTrigger, type Res, validateRequest } from "@/lib/api/schemas"
+import { type Res, validateRequest } from "@/lib/api/schemas"
+import { buildCreatePayload, buildUpdatePayload } from "@/lib/automation/build-payload"
 import { type AutomationJob, useAutomationsQuery, useSitesQuery } from "@/lib/hooks/useSettingsQueries"
 import { useCurrentWorkspace } from "@/lib/stores/workspaceStore"
 import { type ApiError, queryKeys } from "@/lib/tanstack"
@@ -163,67 +164,11 @@ export function AutomationsSettings() {
   const saveMutation = useMutation<unknown, ApiError, { formData: AutomationFormData; editingJobId?: string }>({
     mutationFn: ({ formData, editingJobId }) => {
       if (editingJobId) {
-        // Update — build partial update payload
-        const updateFields: Record<string, unknown> = {
-          name: formData.name,
-          description: formData.description ? formData.description : null,
-          is_active: formData.is_active,
-        }
-
-        if (isScheduleTrigger(formData.trigger_type)) {
-          if (formData.trigger_type === "cron") {
-            updateFields.cron_schedule = formData.cron_schedule
-            updateFields.cron_timezone = formData.cron_timezone
-          } else if (formData.trigger_type === "one-time") {
-            updateFields.run_at = new Date(formData.run_at).toISOString()
-          }
-        }
-
-        if (formData.action_type === "prompt") {
-          updateFields.action_prompt = formData.action_prompt
-        } else if (formData.action_type === "sync") {
-          updateFields.action_source = formData.action_source
-          updateFields.action_target_page = formData.action_target_page
-        }
-
-        updateFields.skills = formData.skills
-        updateFields.action_timeout_seconds = formData.action_timeout_seconds
-        updateFields.action_model = formData.action_model
-
-        const body = validateRequest("automations/update", updateFields)
+        const body = buildUpdatePayload(formData, formData.trigger_type)
         return patchy("automations/update", body, undefined, `/api/automations/${editingJobId}`)
       }
 
-      // Create — full payload
-      const createFields: Record<string, unknown> = {
-        site_id: formData.site_id,
-        name: formData.name,
-        trigger_type: formData.trigger_type,
-        action_type: formData.action_type,
-        description: formData.description ? formData.description : null,
-        is_active: formData.is_active,
-        skills: formData.skills,
-        action_timeout_seconds: formData.action_timeout_seconds,
-        action_model: formData.action_model,
-      }
-
-      if (isScheduleTrigger(formData.trigger_type)) {
-        if (formData.trigger_type === "cron") {
-          createFields.cron_schedule = formData.cron_schedule
-          createFields.cron_timezone = formData.cron_timezone
-        } else if (formData.trigger_type === "one-time") {
-          createFields.run_at = new Date(formData.run_at).toISOString()
-        }
-      }
-
-      if (formData.action_type === "prompt") {
-        createFields.action_prompt = formData.action_prompt
-      } else if (formData.action_type === "sync") {
-        createFields.action_source = formData.action_source
-        createFields.action_target_page = formData.action_target_page
-      }
-
-      const body = validateRequest("automations/create", createFields)
+      const body = buildCreatePayload(formData)
       return postty("automations/create", body)
     },
     onSuccess: (_data, variables) => {
