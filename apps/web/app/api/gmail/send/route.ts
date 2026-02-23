@@ -6,13 +6,13 @@
  */
 
 import * as Sentry from "@sentry/nextjs"
-import { type NextRequest, NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
+import { alrighty, handleBody, isHandleBodyError } from "@/lib/api/server"
 import { gmailProvider } from "@/lib/email/providers/gmail"
-import { type EmailMessage, EmailProviderError } from "@/lib/email/types"
+import { EmailProviderError } from "@/lib/email/types"
 import { ErrorCodes } from "@/lib/error-codes"
-import type { GmailSendResponse } from "@/lib/types/gmail-api"
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,22 +21,15 @@ export async function POST(req: NextRequest) {
       return structuredErrorResponse(ErrorCodes.UNAUTHORIZED, { status: 401 })
     }
 
-    const body: EmailMessage = await req.json()
-    if (!body.to?.length || !body.subject || !body.body) {
-      return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
-        status: 400,
-        details: { reason: "Missing required fields: to, subject, body" },
-      })
-    }
+    const parsed = await handleBody("gmail/send", req)
+    if (isHandleBodyError(parsed)) return parsed
 
-    const result = await gmailProvider.sendEmail(user.id, body)
+    const result = await gmailProvider.sendEmail(user.id, parsed)
 
-    const response: GmailSendResponse = {
-      ok: true,
+    return alrighty("gmail/send", {
       messageId: result.messageId,
       threadId: result.threadId,
-    }
-    return NextResponse.json(response)
+    })
   } catch (error) {
     if (error instanceof EmailProviderError) {
       Sentry.captureException(error)

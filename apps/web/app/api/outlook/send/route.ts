@@ -6,13 +6,13 @@
  */
 
 import * as Sentry from "@sentry/nextjs"
-import { type NextRequest, NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
+import { alrighty, handleBody, isHandleBodyError } from "@/lib/api/server"
 import { outlookProvider } from "@/lib/email/providers/outlook"
-import { type EmailMessage, EmailProviderError } from "@/lib/email/types"
+import { EmailProviderError } from "@/lib/email/types"
 import { ErrorCodes } from "@/lib/error-codes"
-import type { OutlookSendResponse } from "@/lib/types/outlook-api"
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,30 +21,15 @@ export async function POST(req: NextRequest) {
       return structuredErrorResponse(ErrorCodes.UNAUTHORIZED, { status: 401 })
     }
 
-    let body: EmailMessage
-    try {
-      body = await req.json()
-    } catch (_parseError) {
-      return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
-        status: 400,
-        details: { reason: "Malformed JSON body" },
-      })
-    }
-    if (!body.to?.length || !body.subject || !body.body) {
-      return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
-        status: 400,
-        details: { reason: "Missing required fields: to, subject, body" },
-      })
-    }
+    const parsed = await handleBody("outlook/send", req)
+    if (isHandleBodyError(parsed)) return parsed
 
-    const result = await outlookProvider.sendEmail(user.id, body)
+    const result = await outlookProvider.sendEmail(user.id, parsed)
 
-    const response: OutlookSendResponse = {
-      ok: true,
+    return alrighty("outlook/send", {
       messageId: result.messageId,
       threadId: result.threadId,
-    }
-    return NextResponse.json(response)
+    })
   } catch (error) {
     if (error instanceof EmailProviderError) {
       Sentry.captureException(error)

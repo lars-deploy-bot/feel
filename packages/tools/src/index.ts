@@ -72,11 +72,12 @@ export type {
   FileOpTool,
   LinearTool,
   OtherTool,
+  OutlookTool,
   StripeTool,
   ToolName,
 } from "./tool-names.js"
 // Tool name constants
-export { AI, AUTOMATION, BROWSER, CALENDAR, EMAIL, FILE_OPS, LINEAR, OTHER, STRIPE } from "./tool-names.js"
+export { AI, AUTOMATION, BROWSER, CALENDAR, EMAIL, FILE_OPS, LINEAR, OTHER, OUTLOOK, STRIPE } from "./tool-names.js"
 export {
   getEnabledMcpToolNames,
   setSearchToolsConnectedProviders,

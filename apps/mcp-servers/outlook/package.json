@@ -1,0 +1,48 @@
+{
+  "name": "@webalive/mcp-outlook",
+  "version": "1.0.0",
+  "description": "Outlook MCP server with Bearer token authentication via Microsoft Graph API",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eenlars/alive",
+    "directory": "apps/mcp-servers/outlook"
+  },
+  "keywords": [
+    "mcp",
+    "outlook",
+    "email",
+    "microsoft-graph",
+    "oauth",
+    "model-context-protocol"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "mcp-outlook": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "type-check": "tsgo --noEmit",
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "ci": "biome ci ."
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "commander": "^13.1.0",
+    "express": "^4.21.2",
+    "zod": "^4.1.5"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.5.2",
+    "typescript": "^5.9.3",
+    "vitest": "4.0.17"
+  }
+}
