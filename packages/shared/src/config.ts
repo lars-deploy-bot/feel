@@ -130,7 +130,8 @@ function localDefaults(): Partial<ServerConfig> {
 
 /**
  * Load server-config.json - STRICT MODE
- * If config file exists, load it (works in tests too)
+ * In normal runtime, load config file when present.
+ * In tests, always return empty config for deterministic behavior.
  * Browser: returns empty object
  * Server without config: throws FATAL error
  *
