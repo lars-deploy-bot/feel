@@ -13,6 +13,10 @@
     "./providers/google": {
       "import": "./dist/providers/google.js",
       "types": "./dist/providers/google.d.ts"
+    },
+    "./providers/microsoft": {
+      "import": "./dist/providers/microsoft.js",
+      "types": "./dist/providers/microsoft.d.ts"
     }
   },
   "files": [

@@ -135,6 +135,8 @@ export {
   isOAuthMcpTool,
   isValidOAuthMcpProviderKey,
   isValidOAuthProviderKey,
+  // Microsoft Graph scope constants (single source of truth)
+  MICROSOFT_GRAPH_SCOPES,
   // OAuth MCP providers (require authentication)
   OAUTH_MCP_PROVIDERS,
   // OAuth-only providers (no MCP server, just token storage)

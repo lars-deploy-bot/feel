@@ -44,6 +44,16 @@ export const sharedConfig = {
     conditions: ["development", "browser"],
     alias: {
       // Point to source, not dist - let TypeScript handle compilation
+      "@webalive/oauth-core/providers/google": join(process.cwd(), "../../packages/oauth-core/src/providers/google.ts"),
+      "@webalive/oauth-core/providers/microsoft": join(
+        process.cwd(),
+        "../../packages/oauth-core/src/providers/microsoft.ts",
+      ),
+      // Point workspace packages to source so tests don't depend on stale dist/
+      "@webalive/shared/constants": join(process.cwd(), "../../packages/shared/src/constants.ts"),
+      "@webalive/shared/environments": join(process.cwd(), "../../packages/shared/src/environments.ts"),
+      "@webalive/shared/database": join(process.cwd(), "../../packages/shared/src/database/index.ts"),
+      "@webalive/shared": join(process.cwd(), "../../packages/shared/src/index.ts"),
       "@webalive/tools/display": join(process.cwd(), "../../packages/tools/src/display.ts"),
       "@webalive/tools": join(process.cwd(), "../../packages/tools/src/index.ts"),
       "@webalive/site-controller": join(process.cwd(), "../../packages/site-controller"),

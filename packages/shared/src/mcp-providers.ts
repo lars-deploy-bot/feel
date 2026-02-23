@@ -458,6 +458,25 @@ export function getMcpToolFriendlyName(toolName: string): { provider: string; ac
 }
 
 // =============================================================================
+// Microsoft Graph Scope Constants (single source of truth)
+// =============================================================================
+
+/**
+ * Microsoft Graph scope URIs.
+ *
+ * Defined here (in @webalive/shared) because both the provider registry below
+ * and @webalive/oauth-core's MicrosoftProvider need them. oauth-core depends
+ * on shared, so constants flow downward without circular imports.
+ */
+export const MICROSOFT_GRAPH_SCOPES = {
+  OFFLINE_ACCESS: "offline_access",
+  MAIL_READ: "https://graph.microsoft.com/Mail.Read",
+  MAIL_READWRITE: "https://graph.microsoft.com/Mail.ReadWrite",
+  MAIL_SEND: "https://graph.microsoft.com/Mail.Send",
+  USER_READ: "https://graph.microsoft.com/User.Read",
+} as const
+
+// =============================================================================
 // OAuth-Only Providers (no MCP server, just token storage)
 // =============================================================================
 
@@ -505,6 +524,18 @@ export const OAUTH_ONLY_PROVIDERS = {
       "https://www.googleapis.com/auth/userinfo.email",
     ].join(" "),
     envPrefix: "GOOGLE",
+  },
+  microsoft: {
+    friendlyName: "Microsoft",
+    // NOTE: offline_access is NOT listed here because Microsoft doesn't return it
+    // in the granted scope string. MicrosoftProvider.getAuthUrl() adds it automatically.
+    // defaultScopes is used for scope validation at callback time.
+    defaultScopes: [
+      MICROSOFT_GRAPH_SCOPES.MAIL_READWRITE,
+      MICROSOFT_GRAPH_SCOPES.MAIL_SEND,
+      MICROSOFT_GRAPH_SCOPES.USER_READ,
+    ].join(" "),
+    envPrefix: "MICROSOFT",
   },
 } as const satisfies OAuthOnlyProviderRegistry
 

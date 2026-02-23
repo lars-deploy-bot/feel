@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest"
 import { generatePKCEChallenge } from "../pkce"
-import { GitHubProvider, GoogleProvider, LinearProvider } from "../providers"
+import {
+  GitHubProvider,
+  GoogleProvider,
+  getProvider,
+  hasProvider,
+  LinearProvider,
+  listProviders,
+  MicrosoftProvider,
+} from "../providers"
 
 /**
  * Helper: split a space-delimited scope string into a sorted array for comparison.
@@ -156,6 +164,138 @@ describe("OAuth Providers", () => {
     })
   })
 
+  describe("MicrosoftProvider", () => {
+    const microsoft = new MicrosoftProvider()
+
+    describe("#getAuthUrl", () => {
+      it("returns valid authorization URL with scopes", () => {
+        const url = microsoft.getAuthUrl(
+          "client123",
+          "http://localhost:3000/callback",
+          "https://graph.microsoft.com/Mail.Read https://graph.microsoft.com/User.Read",
+          "state123",
+        )
+
+        expect(url).toContain("https://login.microsoftonline.com/common/oauth2/v2.0/authorize")
+        expect(url).toContain("client_id=client123")
+        expect(url).toContain("redirect_uri=")
+        expect(url).toContain("state=state123")
+        expect(url).toContain("response_type=code")
+
+        // Verify requested scopes are forwarded
+        const urlObj = new URL(url)
+        const scope = urlObj.searchParams.get("scope") ?? ""
+        expect(scope).toContain("Mail.Read")
+        expect(scope).toContain("User.Read")
+      })
+
+      it("always injects offline_access for refresh tokens", () => {
+        const url = microsoft.getAuthUrl(
+          "client123",
+          "http://localhost:3000/callback",
+          "https://graph.microsoft.com/Mail.Read",
+        )
+
+        const urlObj = new URL(url)
+        const scope = urlObj.searchParams.get("scope") ?? ""
+        expect(scope).toContain("offline_access")
+      })
+
+      it("does not duplicate offline_access if already present", () => {
+        const url = microsoft.getAuthUrl(
+          "client123",
+          "http://localhost:3000/callback",
+          "offline_access https://graph.microsoft.com/Mail.Read",
+        )
+
+        // Count occurrences of offline_access in the scope parameter
+        const urlObj = new URL(url)
+        const scope = urlObj.searchParams.get("scope") || ""
+        const occurrences = scope.split("offline_access").length - 1
+        expect(occurrences).toBe(1)
+      })
+
+      it("includes prompt=consent", () => {
+        const url = microsoft.getAuthUrl("client123", "http://localhost:3000/callback", "User.Read")
+
+        expect(url).toContain("prompt=consent")
+      })
+
+      it("includes PKCE challenge when provided", () => {
+        const pkce = generatePKCEChallenge()
+
+        const url = microsoft.getAuthUrl("client123", "http://localhost:3000/callback", "User.Read", "state123", pkce)
+
+        expect(url).toContain(`code_challenge=${pkce.code_challenge}`)
+        expect(url).toContain("code_challenge_method=S256")
+      })
+
+      it("includes state when provided", () => {
+        const url = microsoft.getAuthUrl("client123", "http://localhost:3000/callback", "User.Read", "random-state-123")
+
+        expect(url).toContain("state=random-state-123")
+      })
+
+      it("omits state when not provided", () => {
+        const url = microsoft.getAuthUrl("client123", "http://localhost:3000/callback", "User.Read")
+
+        expect(url).not.toContain("state=")
+      })
+    })
+
+    // -----------------------------------------------------------------------
+    // Scope contract tests
+    //
+    // Validates that scope profiles are composed correctly and that
+    // offline_access is handled properly (requested but not validated).
+    // -----------------------------------------------------------------------
+
+    describe("scope contracts", () => {
+      describe("Outlook readwrite profile", () => {
+        it("contains offline_access + Mail.ReadWrite + Mail.Send + User.Read", () => {
+          const { OFFLINE_ACCESS, MAIL_READWRITE, MAIL_SEND, USER_READ } = MicrosoftProvider.SCOPES
+          expect(scopeSet(MicrosoftProvider.OUTLOOK_READWRITE_SCOPES)).toEqual(
+            [OFFLINE_ACCESS, MAIL_READWRITE, MAIL_SEND, USER_READ].sort(),
+          )
+        })
+
+        it("does NOT include Mail.Read (use Mail.ReadWrite instead)", () => {
+          const scopes = scopeSet(MicrosoftProvider.OUTLOOK_READWRITE_SCOPES)
+          expect(scopes).not.toContain(MicrosoftProvider.SCOPES.MAIL_READ)
+        })
+      })
+
+      describe("Outlook readonly profile", () => {
+        it("contains offline_access + Mail.Read + User.Read", () => {
+          const { OFFLINE_ACCESS, MAIL_READ, USER_READ } = MicrosoftProvider.SCOPES
+          expect(scopeSet(MicrosoftProvider.OUTLOOK_READONLY_SCOPES)).toEqual(
+            [OFFLINE_ACCESS, MAIL_READ, USER_READ].sort(),
+          )
+        })
+
+        it("does NOT include Mail.ReadWrite (mutually exclusive with readonly)", () => {
+          expect(MicrosoftProvider.OUTLOOK_READONLY_SCOPES).not.toContain(MicrosoftProvider.SCOPES.MAIL_READWRITE)
+        })
+
+        it("does NOT include Mail.Send (readonly should not send)", () => {
+          expect(MicrosoftProvider.OUTLOOK_READONLY_SCOPES).not.toContain(MicrosoftProvider.SCOPES.MAIL_SEND)
+        })
+      })
+
+      describe("profiles are distinct", () => {
+        it("readwrite and readonly share only User.Read and offline_access", () => {
+          const readwriteScopes = scopeSet(MicrosoftProvider.OUTLOOK_READWRITE_SCOPES)
+          const readonlyScopes = scopeSet(MicrosoftProvider.OUTLOOK_READONLY_SCOPES)
+
+          const overlap = readwriteScopes.filter(s => readonlyScopes.includes(s))
+          expect(overlap.sort()).toEqual(
+            [MicrosoftProvider.SCOPES.USER_READ, MicrosoftProvider.SCOPES.OFFLINE_ACCESS].sort(),
+          )
+        })
+      })
+    })
+  })
+
   describe("URL Encoding", () => {
     const google = new GoogleProvider()
 
@@ -187,6 +327,21 @@ describe("OAuth Providers", () => {
       const url = google.getAuthUrl("client123", "http://localhost:3000/callback", "email")
 
       expect(url).not.toContain("state=")
+    })
+  })
+
+  describe("Provider Registry", () => {
+    it("microsoft is registered", () => {
+      expect(hasProvider("microsoft")).toBe(true)
+    })
+
+    it("getProvider returns MicrosoftProvider instance", () => {
+      const provider = getProvider("microsoft")
+      expect(provider.name).toBe("microsoft")
+    })
+
+    it("listProviders includes microsoft", () => {
+      expect(listProviders()).toContain("microsoft")
     })
   })
 })
