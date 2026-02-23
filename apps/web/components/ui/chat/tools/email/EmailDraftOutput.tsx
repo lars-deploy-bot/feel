@@ -4,7 +4,7 @@
  * Renders email drafts created by Claude with Send/Save actions.
  * CRITICAL: Claude can draft emails, but ONLY the user can click Send.
  *
- * Calls /api/gmail/send and /api/gmail/draft for actual Gmail operations.
+ * Provider-aware: routes to /api/gmail/* or /api/outlook/* based on toolName.
  */
 
 "use client"
@@ -17,6 +17,15 @@ import { useDexieMessageActions } from "@/lib/db/dexieMessageStore"
 import type { ToolResultRendererProps } from "@/lib/tools/tool-registry"
 import type { GmailDraftResponse, GmailErrorResponse, GmailSendResponse } from "@/lib/types/gmail-api"
 import { patchEmailDraftToolResultContent, toPersistedEmailDraftStatus } from "./emailDraftState"
+
+/**
+ * Derive API base path from toolName.
+ * Outlook tools → /api/outlook, everything else → /api/gmail.
+ */
+function getEmailApiBase(toolName: string): string {
+  if (toolName.toLowerCase().includes("outlook")) return "/api/outlook"
+  return "/api/gmail"
+}
 
 /**
  * Parse email draft from tool output
@@ -55,10 +64,11 @@ function parseEmailDraft(data: unknown): EmailDraft | null {
  * - mcp__gmail__compose_email
  * - mcp__gmail__create_draft
  */
-export function EmailDraftOutput({ data, tabId, toolUseId }: ToolResultRendererProps<unknown>) {
+export function EmailDraftOutput({ data, tabId, toolUseId, toolName }: ToolResultRendererProps<unknown>) {
   const [draft, setDraft] = useState<EmailDraft | null>(() => parseEmailDraft(data))
   const [error, setError] = useState<string | null>(null)
   const { updateToolResultContentByToolUseId } = useDexieMessageActions()
+  const apiBase = getEmailApiBase(toolName)
 
   const persistDraftState = useCallback(
     async (nextDraft: EmailDraft) => {
@@ -81,7 +91,7 @@ export function EmailDraftOutput({ data, tabId, toolUseId }: ToolResultRendererP
     setError(null)
 
     try {
-      const response = await fetch("/api/gmail/send", {
+      const response = await fetch(`${apiBase}/send`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -124,7 +134,7 @@ export function EmailDraftOutput({ data, tabId, toolUseId }: ToolResultRendererP
     setError(null)
 
     try {
-      const response = await fetch("/api/gmail/draft", {
+      const response = await fetch(`${apiBase}/draft`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

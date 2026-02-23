@@ -122,6 +122,28 @@ describe("compose_email", () => {
     expect(result.isError).toBe(true)
     expect(result.content[0].text).toContain("Error")
   })
+
+  it("rejects empty recipient list after splitting", async () => {
+    const result = await executeTool(dummyClient(), "compose_email", {
+      to: ",",
+      subject: "Test",
+      body: "Body",
+    })
+
+    expect(result.isError).toBe(true)
+    expect(result.content[0].text).toContain("recipient")
+  })
+
+  it("rejects whitespace-only recipient", async () => {
+    const result = await executeTool(dummyClient(), "compose_email", {
+      to: "  ,  ,  ",
+      subject: "Test",
+      body: "Body",
+    })
+
+    expect(result.isError).toBe(true)
+    expect(result.content[0].text).toContain("recipient")
+  })
 })
 
 // ============================================================

@@ -229,6 +229,14 @@ export async function executeTool(
           .split(",")
           .map(s => s.trim())
           .filter(Boolean)
+
+        if (toArray.length === 0) {
+          return {
+            content: [{ type: "text", text: "Error: At least one recipient email address is required" }],
+            isError: true,
+          }
+        }
+
         const ccArray = cc
           ? cc
               .split(",")

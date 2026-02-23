@@ -235,13 +235,9 @@ export class OutlookClient {
   }
 
   async archiveEmail(messageId: string): Promise<void> {
-    // Graph has a dedicated archive folder
-    const folders = await this.listFolders()
-    const archive = folders.find(f => f.displayName.toLowerCase() === "archive")
-    if (!archive) {
-      throw new Error("Archive folder not found. Create it in Outlook first.")
-    }
-    await this.moveToFolder(messageId, archive.id)
+    // Use well-known folder name — works regardless of locale
+    const folder = await this.graphFetch<GraphFolder>("/me/mailFolders/archive")
+    await this.moveToFolder(messageId, folder.id)
   }
 
   async markAsRead(messageId: string): Promise<void> {
@@ -259,13 +255,9 @@ export class OutlookClient {
   }
 
   async trashEmail(messageId: string): Promise<void> {
-    // Move to Deleted Items folder
-    const folders = await this.listFolders()
-    const trash = folders.find(f => f.displayName.toLowerCase() === "deleted items")
-    if (!trash) {
-      throw new Error("Deleted Items folder not found")
-    }
-    await this.moveToFolder(messageId, trash.id)
+    // Use well-known folder name — works regardless of locale
+    const folder = await this.graphFetch<GraphFolder>("/me/mailFolders/deleteditems")
+    await this.moveToFolder(messageId, folder.id)
   }
 }
 
