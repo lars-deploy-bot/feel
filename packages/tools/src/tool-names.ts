@@ -88,6 +88,16 @@ export const EMAIL = {
 export type EmailTool = (typeof EMAIL)[keyof typeof EMAIL]
 
 // ============================================================
+// OUTLOOK TOOLS (Outlook integration via Microsoft Graph)
+// ============================================================
+
+export const OUTLOOK = {
+  COMPOSE: "mcp__outlook__compose_email",
+} as const
+
+export type OutlookTool = (typeof OUTLOOK)[keyof typeof OUTLOOK]
+
+// ============================================================
 // CALENDAR TOOLS (Google Calendar integration)
 // ============================================================
 
@@ -157,6 +167,7 @@ export type ToolName =
   | StripeTool
   | FileOpTool
   | EmailTool
+  | OutlookTool
   | CalendarTool
   | AITool
   | AutomationTool

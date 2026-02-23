@@ -28,9 +28,10 @@ export type {
   FileOpTool,
   LinearTool,
   OtherTool,
+  OutlookTool,
   PlanTool,
   StripeTool,
   ToolName,
 } from "./tool-names.js"
 // Tool name constants
-export { AI, CALENDAR, EMAIL, FILE_OPS, LINEAR, OTHER, PLAN, STRIPE } from "./tool-names.js"
+export { AI, CALENDAR, EMAIL, FILE_OPS, LINEAR, OTHER, OUTLOOK, PLAN, STRIPE } from "./tool-names.js"
