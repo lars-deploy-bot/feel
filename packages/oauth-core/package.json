@@ -9,6 +9,10 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./providers/google": {
+      "import": "./dist/providers/google.js",
+      "types": "./dist/providers/google.d.ts"
     }
   },
   "files": [
