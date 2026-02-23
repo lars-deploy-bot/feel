@@ -969,6 +969,98 @@ export const apiSchemas = {
     }),
   },
   // ============================================================================
+  // EMAIL (Gmail + Outlook)
+  // ============================================================================
+
+  /**
+   * POST /api/gmail/send
+   * Send an email via Gmail API
+   */
+  "gmail/send": {
+    req: z
+      .object({
+        to: z.array(z.string()).min(1),
+        cc: z.array(z.string()).optional(),
+        bcc: z.array(z.string()).optional(),
+        subject: z.string().min(1),
+        body: z.string().min(1),
+        threadId: z.string().optional(),
+      })
+      .brand<"GmailSendRequest">(),
+    res: z.object({
+      ok: z.literal(true),
+      messageId: z.string(),
+      threadId: z.string().optional(),
+    }),
+  },
+
+  /**
+   * POST /api/gmail/draft
+   * Save a draft via Gmail API
+   */
+  "gmail/draft": {
+    req: z
+      .object({
+        to: z.array(z.string()).min(1),
+        cc: z.array(z.string()).optional(),
+        bcc: z.array(z.string()).optional(),
+        subject: z.string().min(1),
+        body: z.string().min(1),
+        threadId: z.string().optional(),
+      })
+      .brand<"GmailDraftRequest">(),
+    res: z.object({
+      ok: z.literal(true),
+      draftId: z.string(),
+      messageId: z.string().optional(),
+    }),
+  },
+
+  /**
+   * POST /api/outlook/send
+   * Send an email via Microsoft Graph
+   */
+  "outlook/send": {
+    req: z
+      .object({
+        to: z.array(z.string()).min(1),
+        cc: z.array(z.string()).optional(),
+        bcc: z.array(z.string()).optional(),
+        subject: z.string().min(1),
+        body: z.string().min(1),
+        threadId: z.string().optional(),
+      })
+      .brand<"OutlookSendRequest">(),
+    res: z.object({
+      ok: z.literal(true),
+      messageId: z.string(),
+      threadId: z.string().optional(),
+    }),
+  },
+
+  /**
+   * POST /api/outlook/draft
+   * Save a draft via Microsoft Graph
+   */
+  "outlook/draft": {
+    req: z
+      .object({
+        to: z.array(z.string()).min(1),
+        cc: z.array(z.string()).optional(),
+        bcc: z.array(z.string()).optional(),
+        subject: z.string().min(1),
+        body: z.string().min(1),
+        threadId: z.string().optional(),
+      })
+      .brand<"OutlookDraftRequest">(),
+    res: z.object({
+      ok: z.literal(true),
+      draftId: z.string(),
+      messageId: z.string().optional(),
+    }),
+  },
+
+  // ============================================================================
   // DRIVE (file storage panel)
   // ============================================================================
 

@@ -2,15 +2,16 @@
  * Outlook Send API
  *
  * Sends an email via Microsoft Graph when user clicks Send button.
- * Mirrors the Gmail send route structure for consistency.
+ * Thin route handler — business logic lives in lib/email/.
  */
 
 import * as Sentry from "@sentry/nextjs"
-import { type NextRequest, NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
+import { alrighty, handleBody, isHandleBodyError } from "@/lib/api/server"
 import { outlookProvider } from "@/lib/email/providers/outlook"
-import { type EmailMessage, EmailProviderError } from "@/lib/email/types"
+import { EmailProviderError } from "@/lib/email/types"
 import { ErrorCodes } from "@/lib/error-codes"
 
 export async function POST(req: NextRequest) {
@@ -20,18 +21,12 @@ export async function POST(req: NextRequest) {
       return structuredErrorResponse(ErrorCodes.UNAUTHORIZED, { status: 401 })
     }
 
-    const body: EmailMessage = await req.json()
-    if (!body.to?.length || !body.subject || !body.body) {
-      return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
-        status: 400,
-        details: { reason: "Missing required fields: to, subject, body" },
-      })
-    }
+    const parsed = await handleBody("outlook/send", req)
+    if (isHandleBodyError(parsed)) return parsed
 
-    const result = await outlookProvider.sendEmail(user.id, body)
+    const result = await outlookProvider.sendEmail(user.id, parsed)
 
-    return NextResponse.json({
-      ok: true,
+    return alrighty("outlook/send", {
       messageId: result.messageId,
       threadId: result.threadId,
     })

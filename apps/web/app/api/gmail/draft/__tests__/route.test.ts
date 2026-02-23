@@ -90,15 +90,11 @@ describe("POST /api/gmail/draft", () => {
     expect(data.error).toBe("UNAUTHORIZED")
   })
 
-  // --- Validation ---
+  // --- Validation (now via handleBody / Zod) ---
 
   it("returns 400 when 'to' is missing", async () => {
     const res = await POST(createRequest({ subject: "Hi", body: "hey" }))
     expect(res.status).toBe(400)
-    const data = await res.json()
-    expect(data.ok).toBe(false)
-    expect(data.error).toBe("INVALID_REQUEST")
-    expect(data.reason).toContain("Missing required fields")
   })
 
   it("returns 400 when 'to' is empty array", async () => {
