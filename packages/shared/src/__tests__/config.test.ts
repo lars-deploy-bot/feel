@@ -12,6 +12,10 @@ import {
   SUPERADMIN,
 } from "../config"
 
+function assertRecord(v: unknown): asserts v is Record<string, unknown> {
+  if (typeof v !== "object" || v === null) throw new Error(`Expected object, got ${typeof v}`)
+}
+
 const CONFIG_MODULE_URL = new URL("../config.ts", import.meta.url).href
 
 function runConfigProbe(envOverrides: Record<string, string | undefined>) {
@@ -106,10 +110,10 @@ describe("local/standalone config defaults", () => {
       mainSuffix: ".localhost",
       allowedBases: [`${home}/.alive/workspaces`],
     })
-    const p = parsed as Record<string, unknown>
-    expect(p.workspacePath).toBe(p.aliveRoot)
-    expect(p.aliveRoot).toBeTruthy()
-    expect(p.aliveRoot).not.toContain("%20")
+    assertRecord(parsed)
+    expect(parsed.workspacePath).toBe(parsed.aliveRoot)
+    expect(parsed.aliveRoot).toBeTruthy()
+    expect(parsed.aliveRoot).not.toContain("%20")
   })
 
   it("uses local defaults when STREAM_ENV=standalone and SERVER_CONFIG_PATH is unset", () => {
