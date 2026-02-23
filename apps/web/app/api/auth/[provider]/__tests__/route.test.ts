@@ -283,6 +283,106 @@ describe("GET /api/auth/[provider]", () => {
     expect(captureExceptionMock).toHaveBeenCalledTimes(1)
   })
 
+  // --- Outlook (Microsoft OAuth) path ---
+
+  it("initiates Outlook OAuth flow via microsoft provider", async () => {
+    getOAuthConfigMock.mockReturnValueOnce({
+      clientId: "ms-client-id",
+      clientSecret: "ms-client-secret",
+      redirectUri: "http://localhost/api/auth/outlook",
+      scopes: "https://graph.microsoft.com/Mail.ReadWrite https://graph.microsoft.com/Mail.Send",
+    })
+    initiateOAuthFlowMock.mockResolvedValueOnce({
+      type: "redirect",
+      url: "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=ms-client-id&state=xyz",
+    })
+
+    const res = await GET(createRequest("/api/auth/outlook"), {
+      params: Promise.resolve({ provider: "outlook" }),
+    })
+    const redirectUrl = readRedirectLocation(res)
+
+    expect(redirectUrl.origin).toBe("https://login.microsoftonline.com")
+    expect(initiateOAuthFlowMock).toHaveBeenCalledTimes(1)
+    // Context must carry "outlook" as the provider, not "microsoft"
+    expect(initiateOAuthFlowMock).toHaveBeenCalledWith(
+      expect.objectContaining({ provider: "outlook" }),
+      expect.objectContaining({ clientId: "ms-client-id" }),
+    )
+  })
+
+  it("handles Outlook callback success", async () => {
+    handleOAuthCallbackMock.mockResolvedValueOnce({
+      type: "redirect",
+      url: "http://localhost/oauth/callback?integration=outlook&status=success",
+    })
+
+    const res = await GET(createRequest("/api/auth/outlook?code=ms-auth-code&state=valid-state"), {
+      params: Promise.resolve({ provider: "outlook" }),
+    })
+    const redirectUrl = readRedirectLocation(res)
+
+    expect(redirectUrl.searchParams.get("integration")).toBe("outlook")
+    expect(redirectUrl.searchParams.get("status")).toBe("success")
+    expect(handleOAuthCallbackMock).toHaveBeenCalledWith(
+      expect.objectContaining({ provider: "outlook" }),
+      "ms-auth-code",
+      "valid-state",
+      expect.any(NextRequest),
+    )
+  })
+
+  it("handles Microsoft OAuth provider returning access_denied for Outlook", async () => {
+    handleProviderErrorMock.mockReturnValueOnce({
+      type: "redirect",
+      url: "http://localhost/oauth/callback?integration=outlook&status=error&error_code=OAUTH_ACCESS_DENIED&error_action=retry",
+    })
+
+    const res = await GET(createRequest("/api/auth/outlook?error=access_denied"), {
+      params: Promise.resolve({ provider: "outlook" }),
+    })
+    const redirectUrl = readRedirectLocation(res)
+
+    expect(redirectUrl.searchParams.get("integration")).toBe("outlook")
+    expect(redirectUrl.searchParams.get("error_code")).toBe("OAUTH_ACCESS_DENIED")
+    expect(handleProviderErrorMock).toHaveBeenCalledWith("outlook", "access_denied", null, "http://localhost")
+  })
+
+  it("redirects with OAUTH_CONFIG_ERROR when Outlook config is missing", async () => {
+    getOAuthConfigMock.mockReturnValueOnce(null)
+
+    const res = await GET(createRequest("/api/auth/outlook"), {
+      params: Promise.resolve({ provider: "outlook" }),
+    })
+    const redirectUrl = readRedirectLocation(res)
+
+    expect(redirectUrl.searchParams.get("error_code")).toBe(ErrorCodes.OAUTH_CONFIG_ERROR)
+    expect(captureMessageMock).toHaveBeenCalledWith("[outlook OAuth] Missing configuration", "error")
+  })
+
+  // --- Microsoft (OAuth-only provider) path ---
+
+  it("accepts microsoft as a valid OAuth-only provider", async () => {
+    getOAuthConfigMock.mockReturnValueOnce({
+      clientId: "ms-client-id",
+      clientSecret: "ms-client-secret",
+      redirectUri: "http://localhost/api/auth/microsoft",
+      scopes: "https://graph.microsoft.com/Mail.ReadWrite",
+    })
+    initiateOAuthFlowMock.mockResolvedValueOnce({
+      type: "redirect",
+      url: "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=ms-client-id",
+    })
+
+    const res = await GET(createRequest("/api/auth/microsoft"), {
+      params: Promise.resolve({ provider: "microsoft" }),
+    })
+    const redirectUrl = readRedirectLocation(res)
+
+    expect(redirectUrl.origin).toBe("https://login.microsoftonline.com")
+    expect(initiateOAuthFlowMock).toHaveBeenCalledTimes(1)
+  })
+
   // --- Redirect structure validation ---
 
   it("never leaks internal error messages in redirect URL for non-dev environments", async () => {

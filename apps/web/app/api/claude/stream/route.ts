@@ -420,6 +420,8 @@ export async function POST(req: NextRequest) {
     const { envKeys: userEnvKeys } = userEnvKeysResult
     const hasStripeConnection = !!oauthTokens.stripe
     const hasGmailConnection = !!oauthTokens.gmail
+    const hasOutlookConnection = !!oauthTokens.outlook
+    // TODO(calendar): detect oauthTokens.outlook_calendar when Outlook calendar MCP is wired
 
     // Log warnings for debugging
     if (oauthWarnings.length > 0) {
@@ -453,12 +455,17 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Build list of connected email providers for provider-aware prompt guidance
+    const connectedEmailProviders: Array<"gmail" | "outlook"> = []
+    if (hasGmailConnection) connectedEmailProviders.push("gmail")
+    if (hasOutlookConnection) connectedEmailProviders.push("outlook")
+
     const systemPrompt = getSystemPrompt({
       projectId,
       userId,
       workspaceFolder: cwd,
       hasStripeMcpAccess: hasStripeMcpAccess(resolvedWorkspaceName, hasStripeConnection),
-      hasGmailAccess: hasGmailConnection,
+      connectedEmailProviders,
       additionalContext,
       isProduction: isProductionMode,
     })
