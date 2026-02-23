@@ -16,8 +16,7 @@ import {
   type AutomationConfigResult,
 } from "@/components/ai/AutomationConfig"
 import { ApiError, postty } from "@/lib/api/api-client"
-import { validateRequest } from "@/lib/api/schemas"
-import { scheduleResultToApiPayload } from "@/lib/automation/schedule-conversion"
+import { buildCreatePayload, configResultToFormData } from "@/lib/automation/build-payload"
 import type { ToolResultRendererProps } from "@/lib/tools/tool-registry"
 
 /**
@@ -77,24 +76,6 @@ function formatAutomationCreatedMessage(result: AutomationConfigResult): string 
   return `Automation "${result.name}" created successfully for ${result.siteName}. Schedule: ${schedule}`
 }
 
-function buildCreateAutomationRequest(result: AutomationConfigResult) {
-  const schedulePayload = scheduleResultToApiPayload(result)
-
-  return validateRequest("automations/create", {
-    site_id: result.siteId,
-    name: result.name,
-    trigger_type: schedulePayload.trigger_type,
-    action_type: "prompt",
-    action_prompt: result.prompt,
-    action_model: result.model,
-    cron_schedule: schedulePayload.trigger_type === "cron" ? schedulePayload.cron_schedule : null,
-    cron_timezone: schedulePayload.trigger_type === "cron" ? schedulePayload.cron_timezone : null,
-    run_at: schedulePayload.trigger_type === "one-time" ? schedulePayload.run_at : null,
-    is_active: true,
-    skills: [],
-  })
-}
-
 interface AutomationConfigOutputProps extends ToolResultRendererProps<AutomationConfigToolData> {
   onSubmitAnswer?: (message: string) => void
 }
@@ -123,7 +104,7 @@ export function AutomationConfigOutput({ data, onSubmitAnswer }: AutomationConfi
       setStatus("submitting")
 
       try {
-        const request = buildCreateAutomationRequest(result)
+        const request = buildCreatePayload(configResultToFormData(result))
         await postty("automations/create", request)
 
         setSubmittedResult(result)
