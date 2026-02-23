@@ -291,6 +291,35 @@ export const OAUTH_MCP_PROVIDERS = {
       "mcp__supabase__describe_table",
     ],
   },
+  outlook: {
+    url: "http://localhost:8088/mcp",
+    oauthKey: "microsoft", // Uses Microsoft OAuth (Outlook is a Microsoft service)
+    friendlyName: "Outlook",
+    supportsOAuth: true,
+    defaultScopes: [
+      "https://graph.microsoft.com/Mail.ReadWrite",
+      "https://graph.microsoft.com/Mail.Send",
+      "https://graph.microsoft.com/User.Read",
+    ].join(" "),
+    envPrefix: "MICROSOFT",
+    knownTools: [
+      // Profile
+      "mcp__outlook__get_profile",
+      // Compose (returns data for UI - user must click Send/Save)
+      "mcp__outlook__compose_email",
+      // Read operations
+      "mcp__outlook__search_emails",
+      "mcp__outlook__get_email",
+      "mcp__outlook__list_folders",
+      // Folder operations
+      "mcp__outlook__move_to_folder",
+      // Actions
+      "mcp__outlook__archive_email",
+      "mcp__outlook__mark_as_read",
+      "mcp__outlook__mark_as_unread",
+      "mcp__outlook__trash_email",
+    ],
+  },
 } as const satisfies OAuthMcpProviderRegistry
 
 /**
@@ -527,9 +556,10 @@ export const OAUTH_ONLY_PROVIDERS = {
   },
   microsoft: {
     friendlyName: "Microsoft",
-    // NOTE: offline_access is NOT listed here because Microsoft doesn't return it
-    // in the granted scope string. MicrosoftProvider.getAuthUrl() adds it automatically.
-    // defaultScopes is used for scope validation at callback time.
+    // offline_access is NOT included here — it's a request-time hint that controls
+    // whether a refresh token is returned, not a resource scope. Microsoft doesn't
+    // echo it back in the token response scope field, so including it would cause
+    // false missing_required_scopes errors during callback validation.
     defaultScopes: [
       MICROSOFT_GRAPH_SCOPES.MAIL_READWRITE,
       MICROSOFT_GRAPH_SCOPES.MAIL_SEND,

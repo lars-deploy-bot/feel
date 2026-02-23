@@ -2,66 +2,26 @@
  * Gmail Send API
  *
  * Sends an email via Gmail API when user clicks Send button.
- * Uses stored OAuth token from user's Gmail connection.
+ * Thin route handler — business logic lives in lib/email/.
  */
 
-import { auth as gauth, gmail_v1 } from "@googleapis/gmail"
 import * as Sentry from "@sentry/nextjs"
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
+import { gmailProvider } from "@/lib/email/providers/gmail"
+import { type EmailMessage, EmailProviderError } from "@/lib/email/types"
 import { ErrorCodes } from "@/lib/error-codes"
-import { getOAuthInstance } from "@/lib/oauth/oauth-instances"
 import type { GmailSendResponse } from "@/lib/types/gmail-api"
-
-interface SendEmailRequest {
-  to: string[]
-  cc?: string[]
-  bcc?: string[]
-  subject: string
-  body: string
-  threadId?: string
-}
-
-interface CreateRawEmailParams extends SendEmailRequest {
-  from: string
-}
-
-function formatFromAddress(email: string): string {
-  return `<${email}>`
-}
-
-function createRawEmail(params: CreateRawEmailParams): string {
-  const { from, to, cc, bcc, subject, body } = params
-
-  const headers = [
-    `From: ${formatFromAddress(from)}`,
-    `To: ${to.join(", ")}`,
-    cc?.length ? `Cc: ${cc.join(", ")}` : null,
-    bcc?.length ? `Bcc: ${bcc.join(", ")}` : null,
-    `Subject: ${subject}`,
-    "MIME-Version: 1.0",
-    "Content-Type: text/plain; charset=utf-8",
-    "",
-    body,
-  ]
-    .filter(Boolean)
-    .join("\r\n")
-
-  // Base64url encode
-  return Buffer.from(headers).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")
-}
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. Authenticate user
     const user = await getSessionUser()
     if (!user) {
       return structuredErrorResponse(ErrorCodes.UNAUTHORIZED, { status: 401 })
     }
 
-    // 2. Parse request body
-    const body: SendEmailRequest = await req.json()
+    const body: EmailMessage = await req.json()
     if (!body.to?.length || !body.subject || !body.body) {
       return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
         status: 400,
@@ -69,61 +29,23 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // 3. Get Gmail OAuth token
-    const oauthManager = getOAuthInstance("google")
-    let accessToken: string
-    try {
-      accessToken = await oauthManager.getAccessToken(user.id, "google")
-    } catch (error) {
-      console.error("[Gmail Send] Failed to get OAuth token:", error)
-      Sentry.captureException(error)
-      return structuredErrorResponse(ErrorCodes.INTEGRATION_ERROR, {
-        status: 403,
-        details: { reason: "Gmail not connected. Please connect Gmail in Settings." },
-      })
-    }
+    const result = await gmailProvider.sendEmail(user.id, body)
 
-    // 4. Create Gmail client
-    const oauth2Client = new gauth.OAuth2()
-    oauth2Client.setCredentials({ access_token: accessToken })
-    const gmail = new gmail_v1.Gmail({ auth: oauth2Client })
-
-    // 5. Get sender's email from Gmail profile
-    const profileResponse = await gmail.users.getProfile({ userId: "me" })
-    const senderEmail = profileResponse.data.emailAddress
-    if (!senderEmail) {
-      return structuredErrorResponse(ErrorCodes.INTEGRATION_ERROR, {
-        status: 500,
-        details: { reason: "Could not determine sender email address" },
-      })
-    }
-
-    // 6. Send email with proper From header
-    const raw = createRawEmail({ ...body, from: senderEmail })
-    const response = await gmail.users.messages.send({
-      userId: "me",
-      requestBody: {
-        raw,
-        threadId: body.threadId,
-      },
-    })
-
-    console.log(`[Gmail Send] Email sent by user ${user.id}, ID: ${response.data.id}`)
-
-    if (!response.data.id) {
-      return structuredErrorResponse(ErrorCodes.INTEGRATION_ERROR, {
-        status: 500,
-        details: { reason: "Gmail API did not return message ID" },
-      })
-    }
-
-    const result: GmailSendResponse = {
+    const response: GmailSendResponse = {
       ok: true,
-      messageId: response.data.id,
-      threadId: response.data.threadId || undefined,
+      messageId: result.messageId,
+      threadId: result.threadId,
     }
-    return NextResponse.json(result)
+    return NextResponse.json(response)
   } catch (error) {
+    if (error instanceof EmailProviderError) {
+      Sentry.captureException(error)
+      const status = error.code === "not_connected" ? 403 : 500
+      return structuredErrorResponse(ErrorCodes.INTEGRATION_ERROR, {
+        status,
+        details: { reason: error.message },
+      })
+    }
     console.error("[Gmail Send] Error:", error)
     Sentry.captureException(error)
     const message = error instanceof Error ? error.message : "Failed to send email"
