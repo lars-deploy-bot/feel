@@ -12,7 +12,6 @@ const configSchema = z.object({
 
 export type Config = z.infer<typeof configSchema>
 
-// Validate config at module initialization
 const validateConfig = (): Config => {
   // Support both SUPABASE_SERVICE_ROLE_KEY (apps/web standard) and SUPABASE_SERVICE_KEY (legacy)
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY
@@ -31,18 +30,20 @@ const validateConfig = (): Config => {
   return result.data
 }
 
-// Validate at module load time - FAIL FAST, NO RECOVERY
-const cachedConfig: Config = validateConfig()
+let cachedConfig: Config | null = null
 
 export function getConfig(): Config {
+  if (!cachedConfig) {
+    cachedConfig = validateConfig()
+  }
   return cachedConfig
 }
 
 /**
- * Master key for encryption - validated at startup
+ * Master key for encryption - validated on first use
  */
 const validateMasterKey = (): Buffer => {
-  const key = Buffer.from(cachedConfig.LOCKBOX_MASTER_KEY, "hex")
+  const key = Buffer.from(getConfig().LOCKBOX_MASTER_KEY, "hex")
 
   if (key.length !== 32) {
     throw new Error("[OAuth Core] LOCKBOX_MASTER_KEY must decode to exactly 32 bytes")
@@ -51,9 +52,11 @@ const validateMasterKey = (): Buffer => {
   return key
 }
 
-// Validate master key at module load
-const masterKeyBuffer: Buffer = validateMasterKey()
+let masterKeyBuffer: Buffer | null = null
 
 export function getMasterKey(): Buffer {
+  if (!masterKeyBuffer) {
+    masterKeyBuffer = validateMasterKey()
+  }
   return masterKeyBuffer
 }

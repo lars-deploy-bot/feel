@@ -751,10 +751,28 @@ export function buildInstanceId(
   return parts.join(":")
 }
 
-// Singleton instance for backwards compatibility
-// DEPRECATED: Use createOAuthManager() or new OAuthManager() with explicit config instead
-// The web app uses this singleton pattern throughout
-export const oauth = new OAuthManager()
+let oauthSingleton: OAuthManager | null = null
+
+function getOAuthSingleton(): OAuthManager {
+  if (!oauthSingleton) {
+    oauthSingleton = new OAuthManager()
+  }
+  return oauthSingleton
+}
+
+// Singleton for backwards compatibility, but initialized lazily to avoid import-time side effects.
+// DEPRECATED: Use createOAuthManager() or new OAuthManager() with explicit config instead.
+export const oauth: OAuthManager = new Proxy({} as OAuthManager, {
+  get(_target, prop) {
+    const instance = getOAuthSingleton()
+    const value = Reflect.get(instance, prop)
+    return typeof value === "function" ? value.bind(instance) : value
+  },
+  set(_target, prop, value) {
+    const instance = getOAuthSingleton()
+    return Reflect.set(instance, prop, value)
+  },
+})
 
 export {
   ConsoleAuditLogger,
