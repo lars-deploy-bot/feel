@@ -1,11 +1,20 @@
 /**
  * Tool Registry
  *
- * Central registry of all MCP tools with their metadata.
- * Internal tools are defined here. External MCP entries are auto-generated
- * from GLOBAL_MCP_PROVIDERS in @webalive/shared.
+ * Discovery metadata for all MCP tools (used by search_tools).
+ *
+ * Internal tool identity (name, server, enabled state, stream policy) comes from
+ * INTERNAL_TOOL_DESCRIPTORS in @webalive/shared — the single source of truth.
+ * This file adds discovery metadata (description, parameters, contextCost, category).
+ * External MCP entries are auto-generated from GLOBAL_MCP_PROVIDERS.
  */
-import { DEFAULTS, GLOBAL_MCP_PROVIDERS, getTemplateIdsInline, OAUTH_MCP_PROVIDERS } from "@webalive/shared"
+import {
+  DEFAULTS,
+  GLOBAL_MCP_PROVIDERS,
+  getTemplateIdsInline,
+  INTERNAL_TOOL_DESCRIPTORS,
+  OAUTH_MCP_PROVIDERS,
+} from "@webalive/shared"
 import { z } from "zod"
 import { askAutomationConfigParamsSchema } from "../ai/ask-automation-config.js"
 import { listAutomationsParamsSchema } from "../automations/list-automations.js"
@@ -203,7 +212,26 @@ function extractEnumValues(schema: JsonSchemaNode): string[] {
   return values
 }
 
-const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
+/**
+ * Enabled tool names derived from INTERNAL_TOOL_DESCRIPTORS.
+ * Registry entries matching these names get enabled=true; all others get enabled=false.
+ * This ensures `enabled` state is always in sync with the canonical descriptor source.
+ */
+const DESCRIPTOR_ENABLED_NAMES = new Set(INTERNAL_TOOL_DESCRIPTORS.filter(d => d.enabled).map(d => d.name))
+
+/**
+ * Internal tool metadata — discovery information for search_tools.
+ *
+ * The `enabled` field is derived from INTERNAL_TOOL_DESCRIPTORS (the single source of truth).
+ * Metadata-only entries (not in descriptors) are automatically disabled.
+ *
+ * To add a new tool:
+ * 1. Add descriptor in packages/shared/src/internal-tool-descriptors.ts
+ * 2. Add metadata entry here
+ * 3. Register implementation in mcp-server.ts
+ * Sync tests will catch any missing steps.
+ */
+const INTERNAL_TOOL_METADATA: Array<Omit<ToolMetadata, "enabled">> = [
   // Meta tools (tool discovery)
   {
     name: "search_tools",
@@ -211,7 +239,6 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
     description:
       "Discovers available tools by category using progressive disclosure. Returns tool metadata with configurable detail levels.",
     contextCost: "low",
-    enabled: true,
     parameters: [
       {
         name: "category",
@@ -235,7 +262,6 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
     description:
       "Lists all available workflow types. Use this to discover what workflows exist before calling get_workflow.",
     contextCost: "low",
-    enabled: true,
     parameters: [],
   },
   {
@@ -244,7 +270,6 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
     description:
       "Retrieves full workflow decision trees for common development tasks (bug debugging, new features, package installation, website shippable check, functionality check). Returns the complete workflow content.",
     contextCost: "medium",
-    enabled: true,
     parameters: [
       {
         name: "workflow_type",
@@ -262,7 +287,6 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
     category: "composite",
     description: "All-in-one debugging: reads logs + analyzes patterns + suggests fixes. USE THIS FIRST for debugging.",
     contextCost: "medium",
-    enabled: true,
     parameters: [
       {
         name: "workspace",
@@ -289,7 +313,6 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
     category: "composite",
     description: "Searches AND retrieves guides in one call. Reduces round trips from 2+ to 1.",
     contextCost: "high",
-    enabled: false,
     parameters: [
       {
         name: "query",
@@ -318,7 +341,6 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
     category: "batch",
     description: "Retrieves multiple guides in one call (max 5). Reduces round trips for bulk operations.",
     contextCost: "high",
-    enabled: false,
     parameters: [
       {
         name: "requests",
@@ -341,7 +363,6 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
     category: "documentation",
     description: "Lists available development guides with result hints. Context-efficient modes available.",
     contextCost: "low",
-    enabled: false,
     parameters: [
       {
         name: "category",
@@ -362,7 +383,6 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
     category: "documentation",
     description: "Retrieves full guide content. Can return large markdown documents.",
     contextCost: "high",
-    enabled: false,
     parameters: [
       {
         name: "category",
@@ -385,7 +405,6 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
     category: "documentation",
     description: "Retrieves Alive Super Template content for implementing specific features.",
     contextCost: "high",
-    enabled: true,
     parameters: [
       {
         name: "template_id",
@@ -403,7 +422,6 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
     description:
       "Reads systemd logs with summary mode, regex filtering, and result hints. Advanced filtering available.",
     contextCost: "high",
-    enabled: true,
     parameters: [
       {
         name: "workspace",
@@ -451,7 +469,6 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
     description:
       "Ask the user clarification questions when their request is ambiguous. Presents 1-3 multiple choice questions with custom input option. Use when planning complex tasks or when user intent needs clarification.",
     contextCost: "low",
-    enabled: true,
     parameters: [
       {
         name: "questions",
@@ -473,7 +490,6 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
     description:
       "Show an interactive form for the user to configure a new website. Use when the user wants to create a website - presents a wizard to choose subdomain, template, and optional description. After submission, use create_website with the user's choices.",
     contextCost: "low",
-    enabled: true,
     parameters: [
       {
         name: "context",
@@ -495,7 +511,6 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
     description:
       "Show an interactive form for the user to configure a scheduled automation. Use when the user wants to schedule a task - presents a wizard to set task name, prompt, model, website, and schedule (once, daily, weekly, monthly, or custom cron). Always pre-fill values from the user's request when possible. After the user submits, the frontend creates the automation directly; do NOT call create_automation.",
     contextCost: "medium",
-    enabled: true,
     parameters: zodToParams(askAutomationConfigParamsSchema),
   },
   {
@@ -503,7 +518,6 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
     category: "meta",
     description: "List the user's automations with their status, schedule, and run history.",
     contextCost: "low",
-    enabled: true,
     parameters: zodToParams(listAutomationsParamsSchema),
   },
 
@@ -513,7 +527,6 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
     category: "development",
     description: "Generates persona content for testing",
     contextCost: "medium",
-    enabled: true,
   },
   {
     name: "check_codebase",
@@ -521,7 +534,6 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
     description:
       "Runs TypeScript type checking (tsc) and ESLint to verify code quality. Use BEFORE committing code, after making changes, or when debugging type errors. Returns detailed information about any TypeScript errors or lint warnings found.",
     contextCost: "medium",
-    enabled: true,
     parameters: [],
   },
   {
@@ -529,7 +541,6 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
     category: "workspace",
     description: "Restarts systemd dev server for a workspace",
     contextCost: "low",
-    enabled: true,
     parameters: [
       {
         name: "workspace",
@@ -544,7 +555,6 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
     category: "workspace",
     description: "Install a package in the user's workspace using bun",
     contextCost: "low",
-    enabled: true,
     parameters: [
       {
         name: "package_name",
@@ -560,7 +570,6 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
     description:
       "Delete a file or directory from the workspace. Cannot delete protected files (index.ts, package.json) or directories (node_modules, .git).",
     contextCost: "low",
-    enabled: true,
     parameters: [
       {
         name: "path",
@@ -582,7 +591,6 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
     description:
       "Switch between development server (hot reload) and production build serving. Use 'build' mode for faster page loads when testing, 'dev' mode for active development.",
     contextCost: "low",
-    enabled: true,
     parameters: [
       {
         name: "mode",
@@ -604,7 +612,6 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
     description:
       "Copy shared assets (fonts, icons) to workspace with correct file ownership. Available: fonts/satoshi.",
     contextCost: "low",
-    enabled: true,
     parameters: [
       {
         name: "asset",
@@ -625,7 +632,6 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
     category: "workspace",
     description: `Deploy a new website with automatic infrastructure setup. Creates subdomain, SSL, systemd service, and Caddy reverse proxy. The site is immediately live at https://{slug}.${DEFAULTS.WILDCARD_DOMAIN}`,
     contextCost: "high",
-    enabled: true,
     parameters: [
       {
         name: "slug",
@@ -647,9 +653,16 @@ const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = [
       },
     ],
   },
-
-  // External MCP entries are auto-generated below from shared registries
 ]
+
+/**
+ * Internal tool registry with `enabled` derived from INTERNAL_TOOL_DESCRIPTORS.
+ * Metadata-only entries (not in descriptors) are automatically disabled.
+ */
+const INTERNAL_TOOL_REGISTRY: ToolMetadata[] = INTERNAL_TOOL_METADATA.map(meta => ({
+  ...meta,
+  enabled: DESCRIPTOR_ENABLED_NAMES.has(meta.name),
+}))
 
 /**
  * Auto-generate external MCP entries from shared registries.

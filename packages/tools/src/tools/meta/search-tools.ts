@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks"
 import { tool } from "@anthropic-ai/claude-agent-sdk"
+import { getInternalMcpToolNames } from "@webalive/shared"
 import { z } from "zod"
 import {
   DETAIL_LEVELS,
@@ -171,20 +172,9 @@ Examples:
 )
 
 /**
- * Get list of enabled MCP tool names with mcp__ prefixes
- * Used by Alive to configure allowedTools
+ * Get list of enabled internal MCP tool names with mcp__ prefixes.
+ * Derived from INTERNAL_TOOL_DESCRIPTORS (single source of truth).
  */
 export function getEnabledMcpToolNames(): string[] {
-  return getSearchToolRegistry()
-    .filter(tool => tool.enabled)
-    .map(tool => {
-      // Map tool names to their actual MCP tool names
-      if (tool.category === "workspace") {
-        return `mcp__alive-workspace__${tool.name}`
-      }
-      if (tool.category === "external-mcp") {
-        return tool.name // External MCP servers don't get prefixes
-      }
-      return `mcp__alive-tools__${tool.name}`
-    })
+  return getInternalMcpToolNames({ enabled: true })
 }

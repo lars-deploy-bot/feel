@@ -108,6 +108,14 @@ export {
   type WrapExternalContentOptions,
   wrapExternalContent,
 } from "./external-content.js"
+export {
+  getDescriptorsByServer,
+  getInternalMcpToolNames,
+  INTERNAL_TOOL_DESCRIPTORS,
+  type InternalMcpServer,
+  type InternalToolDescriptor,
+  qualifiedMcpName,
+} from "./internal-tool-descriptors.js"
 export { generateInviteCode } from "./invite-code.js"
 export {
   type AllOAuthProviderKey,
@@ -127,6 +135,8 @@ export {
   isOAuthMcpTool,
   isValidOAuthMcpProviderKey,
   isValidOAuthProviderKey,
+  // Microsoft Graph scope constants (single source of truth)
+  MICROSOFT_GRAPH_SCOPES,
   // OAuth MCP providers (require authentication)
   OAUTH_MCP_PROVIDERS,
   // OAuth-only providers (no MCP server, just token storage)

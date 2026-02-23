@@ -115,3 +115,15 @@ export function isRefreshable(provider: OAuthProviderCore): provider is OAuthPro
 export function isRevocable(provider: OAuthProviderCore): provider is OAuthProviderCore & OAuthRevocable {
   return "revokeToken" in provider && typeof provider.revokeToken === "function"
 }
+
+/**
+ * Provider that can fetch user info (email, name) after OAuth flow.
+ * Used to populate cached_email for debugging.
+ */
+export interface UserInfoProvider {
+  getUserInfo(accessToken: string): Promise<{ email?: string | null; mail?: string | null }>
+}
+
+export function isUserInfoProvider(provider: OAuthProviderCore): provider is OAuthProviderCore & UserInfoProvider {
+  return "getUserInfo" in provider && typeof provider.getUserInfo === "function"
+}

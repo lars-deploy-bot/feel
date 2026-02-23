@@ -1,3 +1,12 @@
+/**
+ * Shared option arrays for automation forms.
+ *
+ * Single source of truth for model and timezone dropdowns used in:
+ *   - AutomationConfig (chat flow)
+ *   - GeneralTab (settings side panel)
+ *   - TriggerTab (settings side panel)
+ */
+
 import type { ClaudeModel } from "@webalive/shared"
 import { CLAUDE_MODELS, getModelDisplayName } from "@webalive/shared"
 

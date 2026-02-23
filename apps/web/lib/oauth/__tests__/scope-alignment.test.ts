@@ -10,6 +10,7 @@
  */
 
 import { GoogleProvider } from "@webalive/oauth-core/providers/google"
+import { MicrosoftProvider } from "@webalive/oauth-core/providers/microsoft"
 import { OAUTH_MCP_PROVIDERS, OAUTH_ONLY_PROVIDERS } from "@webalive/shared"
 import { describe, expect, it } from "vitest"
 
@@ -36,5 +37,29 @@ describe("Google OAuth scope alignment across packages", () => {
     // Every scope from both profiles must be present in the combined set
     const expectedUnion = [...new Set([...gmailScopes, ...calendarScopes])].sort()
     expect(googleOnlyScopes).toEqual(expectedUnion)
+  })
+})
+
+describe("Microsoft OAuth scope alignment across packages", () => {
+  it("Microsoft OAuth-only defaultScopes matches OUTLOOK_READWRITE_SCOPES minus offline_access", () => {
+    const sharedScopes = scopeSet(OAUTH_ONLY_PROVIDERS.microsoft.defaultScopes)
+    const providerScopes = scopeSet(MicrosoftProvider.OUTLOOK_READWRITE_SCOPES).filter(s => s !== "offline_access")
+
+    // defaultScopes should match the readwrite profile without offline_access
+    // because offline_access is injected by getAuthUrl but excluded from validation
+    expect(sharedScopes).toEqual(providerScopes)
+  })
+
+  it("Microsoft OAuth-only defaultScopes does NOT include offline_access", () => {
+    // offline_access must not be in defaultScopes because Microsoft doesn't return it
+    // in the granted scope string, and defaultScopes is used for scope validation
+    expect(OAUTH_ONLY_PROVIDERS.microsoft.defaultScopes).not.toContain("offline_access")
+  })
+
+  it("MicrosoftProvider.getAuthUrl always adds offline_access even when not in scope string", () => {
+    const provider = new MicrosoftProvider()
+    // Pass only the validation scopes (no offline_access)
+    const url = provider.getAuthUrl("client123", "http://localhost/cb", OAUTH_ONLY_PROVIDERS.microsoft.defaultScopes)
+    expect(url).toContain("offline_access")
   })
 })

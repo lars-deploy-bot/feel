@@ -1,19 +1,20 @@
 /**
  * Tool Registry Sync Test
  *
- * PURPOSE: Ensures that tools registered in MCP servers match the TOOL_REGISTRY.
- * This prevents developers from forgetting to update both places when adding/removing tools.
- *
- * SECURITY: This is a critical sync test - prevents misconfiguration where:
- * - Tools exist but aren't allowed (security risk - tool available but not registered)
- * - Tools are allowed but don't exist (runtime error - tool registered but not implemented)
+ * PURPOSE: Ensures all internal tool surfaces are synchronized.
+ * The single source of truth is INTERNAL_TOOL_DESCRIPTORS in @webalive/shared.
+ * This test verifies that:
+ * - MCP server registrations match descriptors
+ * - Tool registry metadata matches descriptors
+ * - Descriptor-to-server grouping is correct
  *
  * When this test fails:
- * 1. Check if you added a tool to mcp-server.ts but forgot tool-registry.ts (or vice versa)
- * 2. Check if you disabled a tool in tool-registry.ts but didn't remove from mcp-server.ts
- * 3. Check if tool names match exactly (e.g., "search_tools" vs "searchTools")
+ * 1. If you added a tool: add a descriptor in internal-tool-descriptors.ts first
+ * 2. Then add metadata in tool-registry.ts and implementation in mcp-server.ts
+ * 3. Sync tests will catch any missing steps
  */
 
+import { INTERNAL_TOOL_DESCRIPTORS } from "@webalive/shared"
 import { describe, expect, it } from "vitest"
 import { toolsInternalMcp, workspaceInternalMcp } from "../src/mcp-server.js"
 import { TOOL_REGISTRY } from "../src/tools/meta/tool-registry.js"
@@ -50,9 +51,9 @@ describe("Tool Registry Sync", () => {
 
     if (missingFromRegistry.length > 0) {
       throw new Error(
-        "❌ Tools in MCP servers but missing or disabled in TOOL_REGISTRY:\n" +
+        "Tools in MCP servers but missing or disabled in TOOL_REGISTRY:\n" +
           `   ${missingFromRegistry.join(", ")}\n\n` +
-          "   Fix: Add these tools to packages/tools/src/tools/meta/tool-registry.ts with enabled=true or superadminOnly=true",
+          "   Fix: Add metadata to packages/tools/src/tools/meta/tool-registry.ts",
       )
     }
 
@@ -66,17 +67,49 @@ describe("Tool Registry Sync", () => {
 
     if (missingFromMcp.length > 0) {
       throw new Error(
-        "❌ Tools enabled/superadminOnly in TOOL_REGISTRY but missing from MCP servers:\n" +
+        "Tools enabled/superadminOnly in TOOL_REGISTRY but missing from MCP servers:\n" +
           `   ${missingFromMcp.join(", ")}\n\n` +
           "   Fix: Either:\n" +
           "   1. Add these tools to packages/tools/src/mcp-server.ts (toolsInternalMcp or workspaceInternalMcp)\n" +
-          `   2. Or set enabled=false and superadminOnly=false in tool-registry.ts if they're intentionally disabled`,
+          `   2. Or set superadminOnly=false if they're intentionally disabled`,
       )
     }
 
     // Verify sync
     expect(mcpToolNames.size).toBe(registryAvailableTools.size)
     expect([...mcpToolNames].sort()).toEqual([...registryAvailableTools].sort())
+  })
+
+  it("should have a descriptor for every enabled registry tool", () => {
+    const descriptorNames = new Set(INTERNAL_TOOL_DESCRIPTORS.filter(d => d.enabled).map(d => d.name))
+    const enabledRegistryTools = TOOL_REGISTRY.filter(t => t.enabled && t.category !== "external-mcp")
+
+    const missingDescriptors = enabledRegistryTools.filter(t => !descriptorNames.has(t.name)).map(t => t.name)
+
+    if (missingDescriptors.length > 0) {
+      throw new Error(
+        "Enabled tools in TOOL_REGISTRY but missing from INTERNAL_TOOL_DESCRIPTORS:\n" +
+          `   ${missingDescriptors.join(", ")}\n\n` +
+          "   Fix: Add a descriptor in packages/shared/src/internal-tool-descriptors.ts",
+      )
+    }
+    expect(missingDescriptors).toHaveLength(0)
+  })
+
+  it("should have registry metadata for every enabled descriptor", () => {
+    const registryNames = new Set(TOOL_REGISTRY.map(t => t.name))
+    const enabledDescriptors = INTERNAL_TOOL_DESCRIPTORS.filter(d => d.enabled)
+
+    const missingMetadata = enabledDescriptors.filter(d => !registryNames.has(d.name)).map(d => d.name)
+
+    if (missingMetadata.length > 0) {
+      throw new Error(
+        "Enabled descriptors with no registry metadata:\n" +
+          `   ${missingMetadata.join(", ")}\n\n` +
+          "   Fix: Add metadata in packages/tools/src/tools/meta/tool-registry.ts",
+      )
+    }
+    expect(missingMetadata).toHaveLength(0)
   })
 
   it("should have valid metadata for all tools in TOOL_REGISTRY", () => {
@@ -121,7 +154,7 @@ describe("Tool Registry Sync", () => {
 
     if (disabledButInMcp.length > 0) {
       throw new Error(
-        "❌ Tools marked as disabled (non-superadminOnly) in TOOL_REGISTRY but still in MCP servers:\n" +
+        "Tools marked as disabled (non-superadminOnly) in TOOL_REGISTRY but still in MCP servers:\n" +
           `   ${disabledButInMcp.join(", ")}\n\n` +
           "   Fix: Remove these tools from packages/tools/src/mcp-server.ts (or set superadminOnly=true if intended)",
       )
@@ -155,7 +188,7 @@ describe("Tool Registry Sync", () => {
 
     if (wrongServerTools.length > 0) {
       throw new Error(
-        "❌ Tools registered in wrong MCP server:\n" +
+        "Tools registered in wrong MCP server:\n" +
           `   ${wrongServerTools.join("\n   ")}\n\n` +
           "   Fix: Workspace category tools must be in workspaceInternalMcp, others in toolsInternalMcp",
       )
@@ -164,10 +197,36 @@ describe("Tool Registry Sync", () => {
     expect(wrongServerTools).toHaveLength(0)
   })
 
-  it("should have parameter metadata matching implementation for tools with parameters", () => {
-    // This test ensures registry parameter metadata is accurate
-    // We can't directly access Zod schemas, but we can verify consistency
+  it("should have MCP server grouping consistent with descriptor mcpServer field", () => {
+    const workspaceToolNames = new Set<string>(Object.keys(workspaceInternalMcp.instance._registeredTools || {}))
+    const aliveToolNames = new Set<string>(Object.keys(toolsInternalMcp.instance._registeredTools || {}))
 
+    const mismatches: string[] = []
+
+    for (const d of INTERNAL_TOOL_DESCRIPTORS.filter(d => d.enabled)) {
+      if (d.mcpServer === "alive-workspace") {
+        if (!workspaceToolNames.has(d.name)) {
+          mismatches.push(`${d.name}: descriptor says alive-workspace but not in workspaceInternalMcp`)
+        }
+      } else if (d.mcpServer === "alive-tools") {
+        if (!aliveToolNames.has(d.name)) {
+          mismatches.push(`${d.name}: descriptor says alive-tools but not in toolsInternalMcp`)
+        }
+      }
+    }
+
+    if (mismatches.length > 0) {
+      throw new Error(
+        "Descriptor mcpServer field doesn't match actual MCP server registration:\n" +
+          `   ${mismatches.join("\n   ")}\n\n` +
+          "   Fix: Ensure descriptor mcpServer matches the MCP server in mcp-server.ts",
+      )
+    }
+
+    expect(mismatches).toHaveLength(0)
+  })
+
+  it("should have parameter metadata matching implementation for tools with parameters", () => {
     const toolsWithInconsistentParams: string[] = []
 
     for (const tool of TOOL_REGISTRY.filter(t => t.enabled)) {
@@ -209,7 +268,7 @@ describe("Tool Registry Sync", () => {
 
     if (toolsWithInconsistentParams.length > 0) {
       throw new Error(
-        "❌ Tools with inconsistent parameter metadata:\n" +
+        "Tools with inconsistent parameter metadata:\n" +
           `   ${toolsWithInconsistentParams.join("\n   ")}\n\n` +
           "   Fix: Ensure parameter metadata is complete and accurate",
       )
@@ -237,7 +296,7 @@ describe("Tool Registry Sync", () => {
 
     if (toolsWithWeakDescriptions.length > 0) {
       throw new Error(
-        "❌ Tools with weak/placeholder descriptions:\n" +
+        "Tools with weak/placeholder descriptions:\n" +
           `   ${toolsWithWeakDescriptions.join("\n   ")}\n\n` +
           "   Fix: Write clear, specific descriptions that explain what the tool does",
       )
@@ -255,7 +314,7 @@ describe("Tool Registry Sync", () => {
     if (toolNames.length !== uniqueNames.size) {
       const duplicates = toolNames.filter((name, index) => toolNames.indexOf(name) !== index)
       throw new Error(
-        `❌ Duplicate tool names found:\n   ${duplicates.join(", ")}\n\n   Fix: Each tool must have a unique name`,
+        `Duplicate tool names found:\n   ${duplicates.join(", ")}\n\n   Fix: Each tool must have a unique name`,
       )
     }
   })
@@ -283,10 +342,42 @@ describe("Tool Registry Sync", () => {
 
     // This is a warning test, not a hard failure - just flag for review
     if (toolsWithSuspiciousCost.length > 0) {
-      console.warn(`⚠️  Tools with potentially incorrect contextCost:\n   ${toolsWithSuspiciousCost.join("\n   ")}`)
+      console.warn(`Tools with potentially incorrect contextCost:\n   ${toolsWithSuspiciousCost.join("\n   ")}`)
     }
 
     // Don't fail the test, just validate the format was correct (already tested above)
     expect(true).toBe(true)
+  })
+
+  it("should derive enabled state from descriptors (no manual enabled=true in metadata)", () => {
+    // This test ensures INTERNAL_TOOL_METADATA doesn't accidentally include `enabled`,
+    // and that the enabled state comes purely from INTERNAL_TOOL_DESCRIPTORS.
+    const descriptorEnabled = new Set(INTERNAL_TOOL_DESCRIPTORS.filter(d => d.enabled).map(d => d.name))
+    const registryEnabled = new Set(
+      TOOL_REGISTRY.filter(t => t.enabled && t.category !== "external-mcp").map(t => t.name),
+    )
+
+    // Every enabled registry tool must be in descriptors
+    const extraEnabled = [...registryEnabled].filter(name => !descriptorEnabled.has(name))
+    if (extraEnabled.length > 0) {
+      throw new Error(
+        "Tools enabled in registry but not in descriptors:\n" +
+          `   ${extraEnabled.join(", ")}\n\n` +
+          "   Fix: enabled state must come from INTERNAL_TOOL_DESCRIPTORS, not the registry",
+      )
+    }
+
+    // Every enabled descriptor must appear in registry
+    const missingEnabled = [...descriptorEnabled].filter(name => !registryEnabled.has(name))
+    if (missingEnabled.length > 0) {
+      throw new Error(
+        "Tools enabled in descriptors but not in registry:\n" +
+          `   ${missingEnabled.join(", ")}\n\n` +
+          "   Fix: Add metadata for these tools in tool-registry.ts",
+      )
+    }
+
+    expect(extraEnabled).toHaveLength(0)
+    expect(missingEnabled).toHaveLength(0)
   })
 })

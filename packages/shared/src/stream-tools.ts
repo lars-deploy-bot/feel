@@ -1,7 +1,11 @@
 /**
  * Stream Tools Configuration
  *
- * SOURCE OF TRUTH for Stream tool permissions and configuration.
+ * Stream tool permissions and runtime configuration.
+ *
+ * Internal MCP tool policies are generated from INTERNAL_TOOL_DESCRIPTORS
+ * (packages/shared/src/internal-tool-descriptors.ts — the single source of truth).
+ * SDK tool policies are maintained here (SDK tools are external to our codebase).
  *
  * This file defines:
  * - A single per-tool policy registry (SDK + internal MCP tools)
@@ -15,6 +19,11 @@
  */
 
 import { PATHS, SUPERADMIN } from "./config.js"
+import {
+  INTERNAL_TOOL_DESCRIPTORS,
+  type InternalToolDescriptor,
+  qualifiedMcpName,
+} from "./internal-tool-descriptors.js"
 import { GLOBAL_MCP_PROVIDERS, getGlobalMcpToolNames, isOAuthMcpTool, OAUTH_MCP_PROVIDERS } from "./mcp-providers.js"
 
 // =============================================================================
@@ -119,36 +128,22 @@ export const STREAM_SDK_TOOL_NAMES = [
 ] as const
 export type StreamSdkToolName = (typeof STREAM_SDK_TOOL_NAMES)[number]
 
-export const STREAM_INTERNAL_MCP_TOOLS = [
-  "mcp__alive-tools__search_tools",
-  "mcp__alive-tools__list_workflows",
-  "mcp__alive-tools__get_workflow",
-  "mcp__alive-tools__debug_workspace",
-  "mcp__alive-tools__get_alive_super_template",
-  "mcp__alive-tools__read_server_logs",
-  "mcp__alive-tools__ask_clarification",
-  "mcp__alive-tools__ask_website_config",
-  "mcp__alive-tools__ask_automation_config",
-  "mcp__alive-tools__list_automations",
-  "mcp__alive-tools__generate_persona",
-  "mcp__alive-workspace__check_codebase",
-  "mcp__alive-workspace__restart_dev_server",
-  "mcp__alive-workspace__install_package",
-  "mcp__alive-workspace__delete_file",
-  "mcp__alive-workspace__switch_serve_mode",
-  "mcp__alive-workspace__copy_shared_asset",
-  "mcp__alive-workspace__create_website",
-] as const
-export type StreamInternalMcpToolName = (typeof STREAM_INTERNAL_MCP_TOOLS)[number]
+/**
+ * Derived from INTERNAL_TOOL_DESCRIPTORS (single source of truth).
+ * Only enabled tools get a stream policy entry.
+ */
+export const STREAM_INTERNAL_MCP_TOOLS: readonly string[] = INTERNAL_TOOL_DESCRIPTORS.filter(d => d.enabled).map(
+  qualifiedMcpName,
+)
+export type StreamInternalMcpToolName = string
 
-export type StreamPolicyToolName = StreamSdkToolName | StreamInternalMcpToolName
+export type StreamPolicyToolName = StreamSdkToolName | (string & {})
 
 const ALL_ROLES = ["member", "admin", "superadmin"] as const
 const ADMIN_AND_SUPERADMIN = ["admin", "superadmin"] as const
 const SUPERADMIN_ONLY = ["superadmin"] as const
 const MEMBER_ONLY = ["member"] as const
 const BOTH_WORKSPACE_KINDS = ["site", "platform"] as const
-const SITE_WORKSPACE_ONLY = ["site"] as const
 
 function policy(overrides: Partial<StreamToolPolicy> & Pick<StreamToolPolicy, "reason">): StreamToolPolicy {
   return {
@@ -161,10 +156,37 @@ function policy(overrides: Partial<StreamToolPolicy> & Pick<StreamToolPolicy, "r
 }
 
 /**
- * Single registry that defines execution + visibility policy per tool.
+ * Build a StreamToolPolicy from an InternalToolDescriptor.
+ * Applies descriptor overrides to the default policy.
  */
-export const STREAM_TOOL_POLICY_REGISTRY = {
-  // SDK tools (file + shell + planning + MCP bridge)
+function descriptorToPolicy(d: InternalToolDescriptor): StreamToolPolicy {
+  return policy({
+    reason: d.reason,
+    ...(d.workspaceKinds ? { workspaceKinds: d.workspaceKinds as readonly StreamWorkspaceKind[] } : {}),
+    ...(d.planMode ? { planMode: d.planMode } : {}),
+    ...(d.visibility ? { visibility: d.visibility as StreamToolVisibility } : {}),
+    ...(d.roles ? { roles: d.roles as readonly StreamToolRole[] } : {}),
+  })
+}
+
+/**
+ * Generate internal MCP policy entries from INTERNAL_TOOL_DESCRIPTORS.
+ * Only enabled tools get policy entries (disabled tools aren't registered).
+ */
+function generateInternalMcpPolicies(): Record<string, StreamToolPolicy> {
+  const entries: Record<string, StreamToolPolicy> = {}
+  for (const d of INTERNAL_TOOL_DESCRIPTORS) {
+    if (d.enabled) {
+      entries[qualifiedMcpName(d)] = descriptorToPolicy(d)
+    }
+  }
+  return entries
+}
+
+/**
+ * SDK tool policies (hand-maintained — SDK tools are external to our codebase).
+ */
+const SDK_TOOL_POLICIES: Record<StreamSdkToolName, StreamToolPolicy> = {
   Read: policy({ reason: "Workspace-scoped file reads are allowed." }),
   Write: policy({ reason: "Workspace file writes are allowed in normal mode.", planMode: "block" }),
   Edit: policy({ reason: "Workspace file edits are allowed in normal mode.", planMode: "block" }),
@@ -200,56 +222,18 @@ export const STREAM_TOOL_POLICY_REGISTRY = {
     requiresUserApproval: true,
     planMode: "block",
   }),
+} as const satisfies Record<StreamSdkToolName, StreamToolPolicy>
 
-  // Internal MCP tools (alive-tools)
-  "mcp__alive-tools__search_tools": policy({ reason: "Internal tool discovery is allowed." }),
-  "mcp__alive-tools__list_workflows": policy({ reason: "Workflow discovery is allowed." }),
-  "mcp__alive-tools__get_workflow": policy({ reason: "Workflow reads are allowed." }),
-  "mcp__alive-tools__debug_workspace": policy({ reason: "Workspace diagnostics are allowed." }),
-  "mcp__alive-tools__get_alive_super_template": policy({ reason: "Template reads are allowed." }),
-  "mcp__alive-tools__read_server_logs": policy({ reason: "Server log reads are allowed." }),
-  "mcp__alive-tools__ask_clarification": policy({ reason: "Clarification tool is allowed." }),
-  "mcp__alive-tools__ask_website_config": policy({ reason: "Website config collection is allowed." }),
-  "mcp__alive-tools__ask_automation_config": policy({ reason: "Automation config collection is allowed." }),
-  "mcp__alive-tools__list_automations": policy({ reason: "Listing automations is allowed." }),
-  "mcp__alive-tools__generate_persona": policy({ reason: "Persona generation is allowed." }),
-
-  // Internal MCP tools (alive-workspace, site-only)
-  "mcp__alive-workspace__check_codebase": policy({
-    reason: "Codebase analysis is site-workspace only.",
-    workspaceKinds: SITE_WORKSPACE_ONLY,
-  }),
-  "mcp__alive-workspace__restart_dev_server": policy({
-    reason: "Dev server restart mutates runtime state and is site-workspace only.",
-    workspaceKinds: SITE_WORKSPACE_ONLY,
-    planMode: "block",
-  }),
-  "mcp__alive-workspace__install_package": policy({
-    reason: "Package install mutates dependencies and is site-workspace only.",
-    workspaceKinds: SITE_WORKSPACE_ONLY,
-    planMode: "block",
-  }),
-  "mcp__alive-workspace__delete_file": policy({
-    reason: "File deletion mutates workspace and is site-workspace only.",
-    workspaceKinds: SITE_WORKSPACE_ONLY,
-    planMode: "block",
-  }),
-  "mcp__alive-workspace__switch_serve_mode": policy({
-    reason: "Serve mode changes runtime behavior and is site-workspace only.",
-    workspaceKinds: SITE_WORKSPACE_ONLY,
-    planMode: "block",
-  }),
-  "mcp__alive-workspace__copy_shared_asset": policy({
-    reason: "Copying assets mutates workspace and is site-workspace only.",
-    workspaceKinds: SITE_WORKSPACE_ONLY,
-    planMode: "block",
-  }),
-  "mcp__alive-workspace__create_website": policy({
-    reason: "Website creation mutates workspace and is site-workspace only.",
-    workspaceKinds: SITE_WORKSPACE_ONLY,
-    planMode: "block",
-  }),
-} as const satisfies Record<StreamPolicyToolName, StreamToolPolicy>
+/**
+ * Single registry that defines execution + visibility policy per tool.
+ *
+ * SDK tool policies are hand-maintained (SDK tools are external).
+ * Internal MCP tool policies are generated from INTERNAL_TOOL_DESCRIPTORS.
+ */
+export const STREAM_TOOL_POLICY_REGISTRY: Record<string, StreamToolPolicy> = {
+  ...SDK_TOOL_POLICIES,
+  ...generateInternalMcpPolicies(),
+}
 
 function isInternalPolicyTool(toolName: string): boolean {
   return toolName.startsWith("mcp__alive-")
@@ -270,7 +254,7 @@ const OPTIONAL_INTERNAL_PREFIX_POLICIES: ReadonlyArray<{
 ]
 
 function getPolicyForTool(toolName: string): StreamToolPolicy | undefined {
-  const exact = STREAM_TOOL_POLICY_REGISTRY[toolName as StreamPolicyToolName]
+  const exact = STREAM_TOOL_POLICY_REGISTRY[toolName]
   if (exact) return exact
 
   const prefixMatch = OPTIONAL_INTERNAL_PREFIX_POLICIES.find(entry => toolName.startsWith(entry.prefix))
@@ -558,10 +542,10 @@ export function filterToolsForPlanMode(allowedTools: string[], isPlanMode: boole
   if (!isPlanMode) return allowedTools
 
   return allowedTools.filter(tool => {
-    const policy = STREAM_TOOL_POLICY_REGISTRY[tool as StreamPolicyToolName]
+    const toolPolicy = STREAM_TOOL_POLICY_REGISTRY[tool]
     // If no registry entry (e.g. external MCP tool), keep it
-    if (!policy) return true
-    return policy.planMode !== "block"
+    if (!toolPolicy) return true
+    return toolPolicy.planMode !== "block"
   })
 }
 

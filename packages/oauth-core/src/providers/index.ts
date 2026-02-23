@@ -8,6 +8,7 @@ import type { OAuthProvider } from "./base"
 import { GitHubProvider } from "./github"
 import { GoogleProvider } from "./google"
 import { LinearProvider } from "./linear"
+import { MicrosoftProvider } from "./microsoft"
 import { StripeProvider } from "./stripe"
 import { SupabaseProvider } from "./supabase"
 
@@ -18,6 +19,7 @@ const providers = new Map<string, OAuthProvider>()
 providers.set("github", new GitHubProvider())
 providers.set("google", new GoogleProvider())
 providers.set("linear", new LinearProvider())
+providers.set("microsoft", new MicrosoftProvider())
 providers.set("stripe", new StripeProvider())
 providers.set("supabase", new SupabaseProvider())
 
@@ -69,5 +71,5 @@ export function hasProvider(name: string): boolean {
 }
 
 // Re-export types and implementations
-export { GitHubProvider, GoogleProvider, LinearProvider, StripeProvider, SupabaseProvider }
+export { GitHubProvider, GoogleProvider, LinearProvider, MicrosoftProvider, StripeProvider, SupabaseProvider }
 export type { OAuthProvider }

@@ -5,7 +5,7 @@
  */
 
 import { oauthAudit } from "./audit"
-import { isRefreshable, isRevocable } from "./providers/base"
+import { isRefreshable, isRevocable, isUserInfoProvider } from "./providers/base"
 import { getProvider } from "./providers/index"
 import { createRefreshLockManager, type IRefreshLockManager } from "./refresh-lock"
 import { LockboxAdapter, type LockboxAdapterConfig } from "./storage"
@@ -267,12 +267,12 @@ export class OAuthManager {
         }
       }
 
-      // 4. Try to get user email for debugging (Google-specific)
+      // 4. Try to get user email for debugging (any provider with getUserInfo)
       let userEmail: string | undefined
-      if (provider === "google" && "getUserInfo" in oauthProvider) {
+      if (isUserInfoProvider(oauthProvider)) {
         try {
-          const userInfo = await (oauthProvider as any).getUserInfo(tokens.access_token)
-          userEmail = userInfo?.email
+          const userInfo = await oauthProvider.getUserInfo(tokens.access_token)
+          userEmail = userInfo?.email ?? userInfo?.mail ?? undefined
         } catch (e) {
           // Non-critical, just log
           console.warn(`[OAuth] Failed to fetch user email for ${provider}:`, e)
@@ -816,11 +816,12 @@ export type {
   PKCEOptions,
   TokenExchangeOptions,
 } from "./providers/base"
-export { isRefreshable, isRevocable } from "./providers/base"
+export { isRefreshable, isRevocable, isUserInfoProvider, type UserInfoProvider } from "./providers/base"
 export { GitHubProvider } from "./providers/github"
 export { type GoogleAuthOptions, GoogleProvider, type GoogleUserInfo } from "./providers/google"
 export { getProvider, hasProvider, listProviders, registerProvider } from "./providers/index"
 export { LINEAR_SCOPES, LinearProvider } from "./providers/linear"
+export { MicrosoftProvider, type MicrosoftUserInfo } from "./providers/microsoft"
 export { STRIPE_SCOPES, StripeProvider, type StripeTokenResponse } from "./providers/stripe"
 export {
   createRefreshLockManager,
