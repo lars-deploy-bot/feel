@@ -9,7 +9,7 @@
  * - Descriptor-to-server grouping is correct
  *
  * When this test fails:
- * 1. If you added a tool: add a descriptor in internal-tool-descriptors.ts first
+ * 1. If you added a tool: add a descriptor in packages/shared/src/tools/internal-tool-descriptors.ts first
  * 2. Then add metadata in tool-registry.ts and implementation in mcp-server.ts
  * 3. Sync tests will catch any missing steps
  */
@@ -80,31 +80,31 @@ describe("Tool Registry Sync", () => {
     expect([...mcpToolNames].sort()).toEqual([...registryAvailableTools].sort())
   })
 
-  it("should have a descriptor for every enabled registry tool", () => {
-    const descriptorNames = new Set(INTERNAL_TOOL_DESCRIPTORS.filter(d => d.enabled).map(d => d.name))
-    const enabledRegistryTools = TOOL_REGISTRY.filter(t => t.enabled && t.category !== "external-mcp")
+  it("should have a descriptor for every internal registry tool (enabled and disabled)", () => {
+    const descriptorNames = new Set(INTERNAL_TOOL_DESCRIPTORS.map(d => d.name))
+    const internalRegistryTools = TOOL_REGISTRY.filter(t => t.category !== "external-mcp")
 
-    const missingDescriptors = enabledRegistryTools.filter(t => !descriptorNames.has(t.name)).map(t => t.name)
+    const missingDescriptors = internalRegistryTools.filter(t => !descriptorNames.has(t.name)).map(t => t.name)
 
     if (missingDescriptors.length > 0) {
       throw new Error(
-        "Enabled tools in TOOL_REGISTRY but missing from INTERNAL_TOOL_DESCRIPTORS:\n" +
+        "Internal tools in TOOL_REGISTRY but missing from INTERNAL_TOOL_DESCRIPTORS:\n" +
           `   ${missingDescriptors.join(", ")}\n\n` +
-          "   Fix: Add a descriptor in packages/shared/src/internal-tool-descriptors.ts",
+          "   Fix: Add a descriptor in packages/shared/src/tools/internal-tool-descriptors.ts",
       )
     }
     expect(missingDescriptors).toHaveLength(0)
   })
 
-  it("should have registry metadata for every enabled descriptor", () => {
+  it("should have registry metadata for every descriptor", () => {
     const registryNames = new Set(TOOL_REGISTRY.map(t => t.name))
-    const enabledDescriptors = INTERNAL_TOOL_DESCRIPTORS.filter(d => d.enabled)
+    const descriptors = INTERNAL_TOOL_DESCRIPTORS
 
-    const missingMetadata = enabledDescriptors.filter(d => !registryNames.has(d.name)).map(d => d.name)
+    const missingMetadata = descriptors.filter(d => !registryNames.has(d.name)).map(d => d.name)
 
     if (missingMetadata.length > 0) {
       throw new Error(
-        "Enabled descriptors with no registry metadata:\n" +
+        "Descriptors with no registry metadata:\n" +
           `   ${missingMetadata.join(", ")}\n\n` +
           "   Fix: Add metadata in packages/tools/src/tools/meta/tool-registry.ts",
       )

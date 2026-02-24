@@ -27,9 +27,7 @@ Examples:
 - Increment MAJOR (1.0.0 → 2.0.0) for breaking changes in approach
 
 **NEVER:**
-- ❌ Put templates in the guides folder (`30-guides/`)
 - ❌ Use templates in any folder besides `templates/`
-- ❌ Mix templates with guides (they are fundamentally different)
 
 ---
 
@@ -110,33 +108,9 @@ Ready to implement this template
 - **Format**: `feature-name-v1.0.0.md`
 - **Goal**: Someone follows it and has a working feature
 
-### Guides
-- **Purpose**: General development patterns, best practices, reference material
-- **Content**: Knowledge about architecture, security, performance, organization
-- **Use When**: Learning concepts, design patterns, general best practices
-- **Location**: `packages/tools/internals-folder/30-guides/` or other category folders
-- **Format**: Descriptive markdown files
-- **Goal**: Someone learns a pattern and applies it themselves
+### Key Rule: Templates Are Self-Contained
 
-### Key Rule: NEVER Mix Them
-
-❌ **WRONG:**
-```
-Put an implementation template in the guides folder
-"See the guide for the complete code"
-Reference guides inside templates
-```
-
-✅ **CORRECT:**
-```
-Template in templates/ folder with COMPLETE code
-Guide in 30-guides/ folder with CONCEPTS
-Keep them separate - templates are self-contained
-```
-
-**Example Relationship:**
-- Template: `map-basic-markers-v1.0.0.md` (step-by-step implementation)
-- Guide: `09-leaflet-map-integration.md` (advanced patterns, concepts, best practices)
+Templates must include ALL code needed. Never reference external files or assume the reader has seen other docs.
 
 A template is **actionable**. A guide is **educational**.
 
@@ -363,9 +337,8 @@ L.control.zoom({ position: 'bottomright' }).addTo(map);
 ## When Creating a Template
 
 1. **Research existing similar templates** - Don't reinvent the wheel
-2. **Check the guide folder** - There might be a related guide in `30-guides/`
-3. **Test the code** - If possible, test the full flow yourself
-4. **Be specific** - "Interactive Map" is better than "Map Component"
+2. **Test the code** - If possible, test the full flow yourself
+3. **Be specific** - "Interactive Map" is better than "Map Component"
 5. **Set realistic time estimates** - Factor in reading time
 6. **Document gotchas** - React 18 issues, marker icons, etc.
 

@@ -9,7 +9,7 @@ import {
   getWorkspacePath,
   isHeavyBashCommand,
   isStreamClientVisibleTool,
-} from "../stream-tools"
+} from "../tools/stream-tools"
 
 describe("isHeavyBashCommand", () => {
   it("flags known heavy monorepo commands", () => {

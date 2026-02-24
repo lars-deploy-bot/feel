@@ -2,7 +2,7 @@
  * @webalive/tools
  *
  * Comprehensive MCP tool suite for Alive development platform.
- * Provides guides, debugging tools, and diagnostic capabilities.
+ * Provides debugging, automation, and workspace capabilities.
  *
  * @example
  * ```typescript

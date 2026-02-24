@@ -91,7 +91,6 @@ const nextConfig = {
     "/api/claude/stream/route": [
       "../../packages/tools/**/*",
       "../../packages/images/**/*",
-      "../../packages/guides/**/*",
       "../../packages/site-controller/**/*",
       "../../packages/worker-pool/**/*",
       "../../packages/shared/**/*",
@@ -109,7 +108,6 @@ const nextConfig = {
   },
   serverExternalPackages: ["@napi-rs/image", "@webalive/site-controller", "@webalive/oauth-core"],
   transpilePackages: [
-    "@webalive/guides",
     "@webalive/images",
     "@webalive/tools",
     "@webalive/shared",

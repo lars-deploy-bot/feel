@@ -59,7 +59,6 @@ export const sharedConfig = {
       "@webalive/site-controller": join(process.cwd(), "../../packages/site-controller"),
       "@webalive/images": join(process.cwd(), "../../packages/images"),
       "@webalive/template": join(process.cwd(), "../../packages/template"),
-      "@webalive/guides": join(process.cwd(), "../../packages/guides"),
       // Ensure single React copy for DOM testing environments (prevents "Invalid hook call" errors)
       react: reactDir,
       "react-dom": reactDomDir,
@@ -77,7 +76,6 @@ export const sharedConfig = {
       "@webalive/site-controller",
       "@webalive/images",
       "@webalive/template",
-      "@webalive/guides",
       // Process React in SSR for proper jsdom integration
       "react",
       "react-dom",

@@ -124,7 +124,7 @@ export async function searchTools(params: SearchToolsParams): Promise<SearchTool
     output += "\n**Context efficiency tips:**\n"
     output += "- Tools marked 'high' context cost return large results—use filtering parameters\n"
     output += "- For `read_server_logs`, use `summary_only: true` to get stats without full logs\n"
-    output += "- For `list_guides`, use `detail_level: 'brief'` to get only titles\n"
+    output += "- Prefer `detail_level: 'minimal'` for first-pass discovery\n"
 
     return {
       content: [
