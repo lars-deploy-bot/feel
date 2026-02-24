@@ -181,9 +181,8 @@ export const INTERNAL_TOOL_DESCRIPTORS: readonly InternalToolDescriptor[] = [
     name: "browser",
     mcpServer: "alive-workspace",
     enabled: true,
-    reason: "Browser control is site-workspace only and blocked in plan mode.",
-    workspaceKinds: ["site"],
-    planMode: "block",
+    reason: "Browser control is available in site and platform workspaces.",
+    workspaceKinds: ["site", "platform"],
   },
 ] as const
 
