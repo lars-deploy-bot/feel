@@ -102,7 +102,6 @@ apps/web/
 | [@webalive/oauth-core](../../packages/oauth-core/README.md) | Multi-tenant OAuth with AES-256-GCM encryption |
 | [@webalive/redis](../../packages/redis/README.md) | Redis client with automatic retry |
 | [@webalive/template](../../packages/template/README.md) | Template for new site deployments |
-| [@webalive/guides](../../packages/guides/README.md) | Shared guide templates |
 | [@webalive/images](../../packages/images/README.md) | Shared images and assets |
 
 ### Database

@@ -4,7 +4,7 @@
  * Stream tool permissions and runtime configuration.
  *
  * Internal MCP tool policies are generated from INTERNAL_TOOL_DESCRIPTORS
- * (packages/shared/src/internal-tool-descriptors.ts — the single source of truth).
+ * (packages/shared/src/tools/internal-tool-descriptors.ts — the single source of truth).
  * SDK tool policies are maintained here (SDK tools are external to our codebase).
  *
  * This file defines:
@@ -18,13 +18,13 @@
  * - worker-pool tool permission enforcement
  */
 
-import { PATHS, SUPERADMIN } from "./config.js"
+import { PATHS, SUPERADMIN } from "../config.js"
+import { GLOBAL_MCP_PROVIDERS, getGlobalMcpToolNames, isOAuthMcpTool, OAUTH_MCP_PROVIDERS } from "../mcp-providers.js"
 import {
   INTERNAL_TOOL_DESCRIPTORS,
   type InternalToolDescriptor,
   qualifiedMcpName,
 } from "./internal-tool-descriptors.js"
-import { GLOBAL_MCP_PROVIDERS, getGlobalMcpToolNames, isOAuthMcpTool, OAUTH_MCP_PROVIDERS } from "./mcp-providers.js"
 
 // =============================================================================
 // STREAM TOOL POLICY TYPES
