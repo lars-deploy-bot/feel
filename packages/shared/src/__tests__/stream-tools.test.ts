@@ -80,6 +80,7 @@ describe("getWorkspacePath", () => {
 describe("stream tool role policy", () => {
   const enabledMcpTools = () => [
     "mcp__alive-workspace__check_codebase",
+    "mcp__alive-workspace__browser",
     "mcp__alive-tools__search_tools",
     "mcp__stripe__search_docs",
   ]
@@ -131,6 +132,7 @@ describe("stream tool role policy", () => {
     const allowed = getStreamAllowedTools(enabledMcpTools, true, true, true)
 
     expect(allowed).not.toContain("mcp__alive-workspace__check_codebase")
+    expect(allowed).toContain("mcp__alive-workspace__browser")
     expect(allowed).toContain("mcp__alive-tools__search_tools")
   })
 
@@ -189,6 +191,7 @@ describe("stream tool role policy", () => {
     expect(runtime.allowedTools).not.toContain("Write")
     expect(runtime.allowedTools).not.toContain("Edit")
     expect(runtime.allowedTools).not.toContain("Bash")
+    expect(runtime.allowedTools).toContain("mcp__alive-workspace__browser")
     expect(runtime.disallowedTools).toContain("Write")
     expect(runtime.disallowedTools).toContain("Edit")
   })
