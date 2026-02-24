@@ -90,6 +90,7 @@ export function Workbench() {
       style={{ width: `${width}px` }}
     >
       {/* Resize handle */}
+      {/* biome-ignore lint/a11y/useSemanticElements: div needed for child visual indicator */}
       <div
         role="separator"
         aria-orientation="vertical"

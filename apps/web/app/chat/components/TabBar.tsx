@@ -102,6 +102,9 @@ function TabPill({
 
   return (
     <div
+      role="tab"
+      tabIndex={0}
+      aria-selected={isActive}
       data-testid={`tab-${tab.id}`}
       data-tab-name={tab.name}
       data-active={isActive}

@@ -124,7 +124,7 @@ export function SwitcherDropdown<T>({
   // ─── Render ──────────────────────────────────────────────────────────────
 
   return createPortal(
-    <div ref={menuRef} style={{ position: "fixed" }} className={DROPDOWN} onKeyDown={handleKeyDown}>
+    <div role="listbox" ref={menuRef} style={{ position: "fixed" }} className={DROPDOWN} onKeyDown={handleKeyDown}>
       <div className="flex items-center gap-2 px-3 border-b border-black/[0.06] dark:border-white/[0.06]">
         <Search size={14} strokeWidth={2} className="text-black/25 dark:text-white/25 shrink-0" />
         <input

@@ -243,7 +243,7 @@ function FakeTerminal() {
   )
 }
 
-function FakeDrive() {
+function _FakeDrive() {
   const items = [
     { folder: true, name: "public", color: "#0066FF" },
     { folder: true, name: "src", color: "#0066FF" },

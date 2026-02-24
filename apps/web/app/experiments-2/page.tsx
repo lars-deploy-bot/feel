@@ -282,6 +282,7 @@ function TheMagnet() {
   }, [])
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: decorative mouse-tracking container
     <div
       ref={containerRef}
       className="flex items-center justify-center p-20"
@@ -386,6 +387,7 @@ function TheEcho() {
   }
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: decorative ripple effect container
     <div ref={containerRef} className="relative h-48 cursor-pointer overflow-hidden" onClick={handleClick}>
       <div className="absolute inset-0 flex items-center justify-center">
         <span className="text-[10px] font-medium text-black/15 tracking-[0.3em] uppercase select-none">
