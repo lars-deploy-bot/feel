@@ -1,9 +1,10 @@
 "use client"
 
 import {
-  Building2,
   ChevronDown,
+  ChevronRight,
   ClipboardList,
+  CreditCard,
   Flag,
   Globe,
   Key,
@@ -12,7 +13,6 @@ import {
   Menu,
   Settings,
   Shield,
-  Target,
   X,
   Zap,
 } from "lucide-react"
@@ -21,17 +21,15 @@ import { lazy, Suspense, useEffect, useState } from "react"
 import { useAuth } from "@/features/deployment/hooks/useAuth"
 import { trackSettingsTabChanged } from "@/lib/analytics/events"
 import { clientLogger } from "@/lib/client-error-logger"
+import { useOrganizations } from "@/lib/hooks/useOrganizations"
 import { resetPostHogIdentity } from "@/lib/posthog"
-import { useWorkspaceActions } from "@/lib/stores/workspaceStore"
+import { useSelectedOrgId, useWorkspaceActions } from "@/lib/stores/workspaceStore"
 import { QUERY_KEYS } from "@/lib/url/queryState"
 import { SettingsTabLayout } from "./tabs/SettingsTabLayout"
 
-// Lazy load tab components - same as SettingsModal
+// Lazy load tab components
 const GeneralSettings = lazy(() =>
   import("@/components/settings/tabs/GeneralSettings").then(m => ({ default: m.GeneralSettings })),
-)
-const GoalSettings = lazy(() =>
-  import("@/components/settings/tabs/GoalSettings").then(m => ({ default: m.GoalSettings })),
 )
 const SkillsSettings = lazy(() =>
   import("@/components/settings/tabs/SkillsSettings").then(m => ({ default: m.SkillsSettings })),
@@ -57,10 +55,13 @@ const UserEnvKeysSettings = lazy(() =>
 const AutomationsSettings = lazy(() =>
   import("@/components/settings/tabs/AutomationsSettings").then(m => ({ default: m.AutomationsSettings })),
 )
+const BillingSettings = lazy(() =>
+  import("@/components/settings/tabs/BillingSettings").then(m => ({ default: m.BillingSettings })),
+)
 
 const SETTINGS_TABS = [
   "general",
-  "goal",
+  "billing",
   "skills",
   "organization",
   "websites",
@@ -78,17 +79,19 @@ interface TabDefinition {
   label: string
   icon: React.ComponentType<{ className?: string }>
   adminOnly?: boolean
+  /** Rendered at sidebar bottom as org card instead of in the nav list */
+  pinned?: boolean
 }
 
 const allTabs: TabDefinition[] = [
   { id: "general", label: "General", icon: Settings },
-  { id: "goal", label: "Project", icon: Target },
+  { id: "billing", label: "Billing", icon: CreditCard },
   { id: "skills", label: "Skills", icon: ClipboardList },
   { id: "websites", label: "Websites", icon: Globe },
   { id: "automations", label: "Agents", icon: Zap },
   { id: "integrations", label: "Integrations", icon: Link },
   { id: "keys", label: "API Keys", icon: Key },
-  { id: "organization", label: "Organization", icon: Building2 },
+  { id: "organization", label: "Organization", icon: Settings, pinned: true },
   { id: "flags", label: "Flags", icon: Flag, adminOnly: true },
   { id: "admin", label: "Admin", icon: Shield, adminOnly: true },
 ]
@@ -105,14 +108,10 @@ export function SettingsPageClient({ onClose, initialTab }: SettingsPageClientPr
   const [hydrated, setHydrated] = useState(false)
 
   const handleLogout = () => {
-    // Clear local state and redirect immediately — don't wait for the server
     resetPostHogIdentity()
     setCurrentWorkspace(null)
-    // Derive root domain: app.alive.best → alive.best, staging.sonno.tech → sonno.tech
-    // Uses window.location.href because this is a cross-domain redirect (Next.js router is same-origin only)
     const parts = window.location.hostname.split(".")
     const logoutUrl = parts.length > 2 ? `https://${parts.slice(1).join(".")}` : "/"
-    // Fire logout before navigating — sendBeacon survives page unload
     const logoutFired = navigator.sendBeacon("/api/logout")
     if (!logoutFired) {
       fetch("/api/logout", { method: "POST", credentials: "include" }).catch((error: unknown) => {
@@ -122,27 +121,20 @@ export function SettingsPageClient({ onClose, initialTab }: SettingsPageClientPr
     window.location.href = logoutUrl
   }
 
-  // Mark hydration as complete after first render
-  // This prevents hydration mismatch when user data loads asynchronously
   useEffect(() => {
     setHydrated(true)
   }, [])
 
-  // Filter tabs based on admin status only after hydration completes
-  // During initial hydration, show all tabs to prevent server/client mismatch
+  // All tabs visible to this user (org is in here — the tab system is complete)
   const tabs = hydrated && !loading ? allTabs.filter(tab => !tab.adminOnly || !!user?.isAdmin) : allTabs
+  // Split for render: nav list vs. pinned bottom card
+  const navTabs = tabs.filter(t => !t.pinned)
 
-  // Use URL search params to persist active tab across page reloads
   const [activeTab, setActiveTab] = useQueryState(QUERY_KEYS.settingsTab, {
     defaultValue: initialTab || "general",
     parse: (value: string) => {
       const parsed = value as SettingsTab
-      // Validate that the parsed value is a valid tab
-      // Note: During hydration, tabs might not be fully loaded yet,
-      // so we validate against ALL_TABS instead of filtered tabs
-      if (SETTINGS_TABS.includes(parsed)) {
-        return parsed
-      }
+      if (SETTINGS_TABS.includes(parsed)) return parsed
       return initialTab || "general"
     },
     serialize: (value: string) => value,
@@ -154,13 +146,12 @@ export function SettingsPageClient({ onClose, initialTab }: SettingsPageClientPr
     setSidebarOpen(false)
   }
 
-  // Derive effective tab - if activeTab points to an admin-only tab the user can't see,
-  // fall back to the first available tab
+  // effectiveTab works on the full `tabs` list — org is in there, no special cases
   const effectiveTab = tabs.find(t => t.id === activeTab) || tabs[0]
   const currentTab = effectiveTab || { id: "general" as const, label: "General", icon: Settings }
   const isWideTab = currentTab.id === "automations"
 
-  // Sync URL to effective tab if user doesn't have access to the URL-specified tab
+  // Sync URL if user can't access the tab (e.g. admin-only)
   useEffect(() => {
     if (hydrated && !loading && effectiveTab && effectiveTab.id !== activeTab) {
       void setActiveTab(effectiveTab.id)
@@ -215,7 +206,7 @@ export function SettingsPageClient({ onClose, initialTab }: SettingsPageClientPr
       <aside
         className={`
           fixed md:relative top-0 left-0 bottom-0 z-50
-          w-64 md:w-52 h-full md:h-auto
+          w-64 md:w-[280px] h-full md:h-auto
           border-r border-zinc-200 dark:border-zinc-800
           bg-white dark:bg-zinc-900
           flex-shrink-0 flex flex-col
@@ -224,19 +215,11 @@ export function SettingsPageClient({ onClose, initialTab }: SettingsPageClientPr
         `}
       >
         {/* Desktop header */}
-        <div className="hidden md:flex p-4 border-b border-zinc-200 dark:border-zinc-800 items-center justify-between">
+        <div className="hidden md:flex p-4 border-b border-zinc-200 dark:border-zinc-800 items-center">
           <h1 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
             <Settings className="w-4 h-4 text-zinc-400" />
             Settings
           </h1>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 -mr-1.5 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-            aria-label="Close settings"
-          >
-            <X className="w-4 h-4" />
-          </button>
         </div>
 
         {/* Mobile close button area */}
@@ -252,8 +235,9 @@ export function SettingsPageClient({ onClose, initialTab }: SettingsPageClientPr
           </button>
         </div>
 
+        {/* Nav tabs */}
         <nav className="p-2 space-y-1 overflow-y-auto flex-1">
-          {tabs.map(tab => {
+          {navTabs.map(tab => {
             const Icon = tab.icon
             const isActive = activeTab === tab.id
             return (
@@ -274,21 +258,24 @@ export function SettingsPageClient({ onClose, initialTab }: SettingsPageClientPr
           })}
         </nav>
 
-        {/* Logout — pinned to bottom */}
-        <div className="flex-shrink-0 p-2 border-t border-zinc-200 dark:border-zinc-800">
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-3 md:py-2 rounded-lg md:rounded-md text-sm text-red-600 dark:text-red-400 hover:bg-red-500/8 active:bg-red-500/12 transition-colors"
-            data-testid="logout-button"
-          >
-            <LogOut className="w-5 h-5 md:w-4 md:h-4 flex-shrink-0" />
-            Log out
-          </button>
+        {/* Organization + Logout — pinned to bottom */}
+        <div className="flex-shrink-0 border-t border-zinc-200 dark:border-zinc-800">
+          <OrgCard isActive={activeTab === "organization"} onSelect={() => handleTabChange("organization")} />
+          <div className="px-2 pb-2">
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm text-zinc-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-500/5 transition-colors"
+              data-testid="logout-button"
+            >
+              <LogOut className="w-4 h-4 flex-shrink-0" />
+              Log out
+            </button>
+          </div>
         </div>
       </aside>
 
-      {/* Main Content — single scroll container, overscroll-contain prevents bleed to body */}
+      {/* Main Content */}
       <main
         className={
           isWideTab
@@ -301,7 +288,7 @@ export function SettingsPageClient({ onClose, initialTab }: SettingsPageClientPr
             fallback={<div className="py-12 text-center text-zinc-400 dark:text-zinc-500 text-sm">Loading...</div>}
           >
             {activeTab === "general" && <GeneralSettings />}
-            {activeTab === "goal" && <GoalSettings />}
+            {activeTab === "billing" && <BillingSettings />}
             {activeTab === "skills" && <SkillsSettings />}
             {activeTab === "organization" && <WorkspaceSettings />}
             {activeTab === "websites" && <WebsitesSettings />}
@@ -314,6 +301,32 @@ export function SettingsPageClient({ onClose, initialTab }: SettingsPageClientPr
         </div>
       </main>
     </div>
+  )
+}
+
+/** Org identity card — reads its own data from stores */
+function OrgCard({ isActive, onSelect }: { isActive: boolean; onSelect: () => void }) {
+  const { organizations } = useOrganizations()
+  const selectedOrgId = useSelectedOrgId()
+  const name = organizations.find(o => o.org_id === selectedOrgId)?.name ?? null
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`w-full flex items-center gap-3 px-4 py-3 transition-colors ${
+        isActive ? "bg-zinc-100 dark:bg-zinc-800" : "hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+      }`}
+    >
+      <div className="w-8 h-8 rounded-lg bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center flex-shrink-0">
+        <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">{(name || "O")[0].toUpperCase()}</span>
+      </div>
+      <div className="flex-1 min-w-0 text-left">
+        <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{name || "Organization"}</p>
+        <p className="text-xs text-zinc-400 dark:text-zinc-500">Manage</p>
+      </div>
+      <ChevronRight className="w-4 h-4 text-zinc-300 dark:text-zinc-600 flex-shrink-0" />
+    </button>
   )
 }
 

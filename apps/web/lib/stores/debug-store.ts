@@ -75,7 +75,7 @@ export const useDebugStoreBase = create<DebugStore>()(
       }
       return {
         isDebugView: false,
-        showSandbox: false,
+        showSandbox: true,
         isSandboxMinimized: true,
         sandboxWidth: null,
         actions,

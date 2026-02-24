@@ -51,6 +51,10 @@ export const ErrorCodes = {
   DOMAIN_ALREADY_EXISTS: "DOMAIN_ALREADY_EXISTS",
   TOO_MANY_REQUESTS: "TOO_MANY_REQUESTS",
 
+  // Model errors (3.5xxx)
+  MODEL_NOT_AVAILABLE: "MODEL_NOT_AVAILABLE",
+  MODEL_INVALID: "MODEL_INVALID",
+
   // Conversation errors (4xxx)
   CONVERSATION_BUSY: "CONVERSATION_BUSY",
   SESSION_CORRUPT: "SESSION_CORRUPT",
@@ -283,6 +287,17 @@ export function getErrorMessage(code: ErrorCode, details?: Record<string, any>):
       return details?.field
         ? `The ${details.field} field is missing or invalid. Please check your input.`
         : "Something is missing or incorrect in your request. Please check your input and try again."
+
+    case ErrorCodes.MODEL_NOT_AVAILABLE:
+      if (details?.retired) {
+        return `The model "${details.model}" has been retired. Your model has been reset — please try again.`
+      }
+      return details?.model
+        ? `You don't have access to the model "${details.model}". Please select a different model in Settings.`
+        : "You don't have access to the requested model. Please select a different model in Settings."
+
+    case ErrorCodes.MODEL_INVALID:
+      return details?.model ? `"${details.model}" is not a recognized model.` : "The requested model is not recognized."
 
     case ErrorCodes.CONVERSATION_BUSY:
       return "I'm still working on your previous request. Please wait for me to finish before sending another message."

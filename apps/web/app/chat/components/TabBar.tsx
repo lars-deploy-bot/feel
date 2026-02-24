@@ -72,11 +72,13 @@ export function TabBar({
   const closedMenuRef = useRef<HTMLDivElement>(null)
   const [menuPos, setMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 })
 
-  // Position the portal dropdown below the trigger button
+  // Position the portal dropdown below the trigger button, clamped to viewport
   useEffect(() => {
     if (!showClosedMenu || !closedBtnRef.current) return
     const rect = closedBtnRef.current.getBoundingClientRect()
-    setMenuPos({ top: rect.bottom + 4, left: rect.left })
+    const menuWidth = 224 // max-w-56 = 14rem = 224px
+    const left = Math.min(rect.left, window.innerWidth - menuWidth - 8)
+    setMenuPos({ top: rect.bottom + 4, left: Math.max(8, left) })
   }, [showClosedMenu])
 
   // Close dropdown when clicking outside

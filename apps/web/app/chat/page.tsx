@@ -1,7 +1,7 @@
 "use client"
 import { SUPERADMIN } from "@webalive/shared"
 import { AnimatePresence, motion } from "framer-motion"
-import { PanelLeft } from "lucide-react"
+
 import { useQueryState } from "nuqs"
 import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
@@ -63,14 +63,7 @@ import { useTabActions } from "@/lib/stores/tabStore"
 import { useSelectedOrgId } from "@/lib/stores/workspaceStore"
 import { QUERY_KEYS } from "@/lib/url/queryState"
 // Local components
-import {
-  AgentManagerIndicator,
-  ChatEmptyState,
-  ChatHeader,
-  OfflineBanner,
-  TabBar,
-  WorkspaceInfoBar,
-} from "./components"
+import { AgentManagerIndicator, ChatEmptyState, Nav, OfflineBanner, TabBar } from "./components"
 import {
   useChatDragDrop,
   useChatMessaging,
@@ -126,7 +119,6 @@ function ChatPageContent() {
   const _isAdmin = user?.isAdmin ?? false
 
   // Tabs are on by default for all users
-  const showTabs = true
   const chatInputRef = useRef<ChatInputHandle | null>(null)
   const photoButtonRef = useRef<HTMLButtonElement>(null)
   const showSandboxRaw = useSandbox()
@@ -441,13 +433,11 @@ function ChatPageContent() {
     tabs,
     closedTabs,
     activeTab: activeTabInGroup,
-    tabsExpanded,
     handleAddTab,
     handleTabSelect,
     handleTabClose,
     handleTabRename,
     handleTabReopen,
-    handleToggleTabs,
     handleOpenTabGroupInTab,
   } = useTabsManagement({
     workspace: tabWorkspace,
@@ -646,266 +636,246 @@ function ChatPageContent() {
 
   return (
     <div
-      className="h-[100dvh] flex flex-row overflow-hidden dark:bg-[#1a1a1a] dark:text-white"
+      className="h-[100dvh] flex flex-col overflow-hidden dark:bg-[#1a1a1a] dark:text-white"
       data-testid={mounted && workspace ? "workspace-ready" : "workspace-loading"}
       data-chat-ready={isChatReady}
     >
-      <ConversationSidebar
-        workspace={tabWorkspace}
-        activeTabGroupId={sessionTabGroupId}
-        onTabGroupSelect={handleTabGroupSelect}
-        onArchiveTabGroup={handleArchiveTabGroup}
-        onUnarchiveTabGroup={handleUnarchiveTabGroup}
-        onRenameTabGroup={handleRenameTabGroup}
-        onNewConversation={handleNewTabGroup}
-        onNewWorktree={handleNewWorktree}
-        onOpenSettings={modals.openSettings}
-        onOpenInvite={modals.openInvite}
+      {/* Full-width top bar */}
+      <Nav
+        isSuperadminWorkspace={isSuperadminWorkspace}
+        onFeedbackClick={modals.openFeedback}
+        onTemplatesClick={modals.openTemplates}
+        isSettingsOpen={!!modals.settings}
+        onSettingsClick={modals.toggleSettings}
+        showPhotoMenu={modals.photoMenu}
+        onPhotoMenuToggle={modals.togglePhotoMenu}
+        onPhotoMenuClose={modals.closePhotoMenu}
+        photoButtonRef={photoButtonRef}
+        chatInputRef={chatInputRef}
+        workspace={workspace}
+        worktree={worktree}
+        isSidebarOpen={isSidebarOpen}
+        onToggleSidebar={toggleSidebar}
+        onSelectWorktree={setWorktree}
+        worktreeModalOpen={worktreeModalOpen}
+        onWorktreeModalOpenChange={setWorktreeModalOpen}
       />
 
-      {!isSidebarOpen && (
-        <button
-          type="button"
-          onClick={toggleSidebar}
-          suppressHydrationWarning={true}
-          className="fixed top-[6px] left-3 z-40 inline-flex items-center justify-center size-10 rounded-xl text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 bg-black/[0.03] dark:bg-white/[0.03] hover:bg-black/[0.07] dark:hover:bg-white/[0.07] active:bg-black/[0.12] dark:active:bg-white/[0.12] active:scale-95 transition-all duration-150 ease-out"
-          aria-label="Open tab groups"
+      {/* Content area: relative container for settings overlay */}
+      <div className="flex-1 flex flex-row overflow-hidden min-h-0 relative">
+        <ConversationSidebar
+          workspace={tabWorkspace}
+          activeTabGroupId={sessionTabGroupId}
+          onTabGroupSelect={handleTabGroupSelect}
+          onArchiveTabGroup={handleArchiveTabGroup}
+          onUnarchiveTabGroup={handleUnarchiveTabGroup}
+          onRenameTabGroup={handleRenameTabGroup}
+          onNewConversation={handleNewTabGroup}
+          onNewWorktree={handleNewWorktree}
+          onOpenSettings={modals.openSettings}
+          onOpenInvite={modals.openInvite}
+        />
+
+        <div
+          className="flex-1 flex flex-col overflow-hidden relative min-w-0"
+          role="application"
+          aria-label="Chat area"
+          onDragEnter={handleChatDragEnter}
+          onDragLeave={handleChatDragLeave}
+          onDragOver={handleChatDragOver}
+          onDrop={handleChatDrop}
         >
-          <PanelLeft size={18} strokeWidth={1.75} />
-        </button>
-      )}
-
-      <div
-        className="flex-1 flex flex-col overflow-hidden relative min-w-0"
-        role="application"
-        aria-label="Chat area"
-        onDragEnter={handleChatDragEnter}
-        onDragLeave={handleChatDragLeave}
-        onDragOver={handleChatDragOver}
-        onDrop={handleChatDrop}
-      >
-        <OfflineBanner isOnline={isOnline} />
-        <ChatDropOverlay isDragging={isDragging} />
-        <Suspense fallback={null}>
-          <SubdomainInitializer
-            onInitialize={handleSubdomainInitialize}
-            onInitialized={handleSubdomainInitialized}
-            isInitialized={subdomainInitialized}
-            isMounted={mounted}
-          />
-        </Suspense>
-        <div className="flex-1 min-h-0 flex flex-col">
-          <ChatHeader
-            isSuperadminWorkspace={isSuperadminWorkspace}
-            onFeedbackClick={modals.openFeedback}
-            onTemplatesClick={modals.openTemplates}
-            onSettingsClick={modals.openSettings}
-            showPhotoMenu={modals.photoMenu}
-            onPhotoMenuToggle={modals.togglePhotoMenu}
-            onPhotoMenuClose={modals.closePhotoMenu}
-            photoButtonRef={photoButtonRef}
-            chatInputRef={chatInputRef}
-          />
-
-          <WorkspaceInfoBar
-            workspace={workspace}
-            worktree={worktree}
-            mounted={mounted}
-            isTerminal={isTerminal}
-            isSuperadminWorkspace={isSuperadminWorkspace}
-            onSelectSite={() => modals.openSettings("websites")}
-            onNewTabGroup={handleNewTabGroup}
-            onMobilePreview={modals.openMobilePreview}
-            onSelectWorktree={setWorktree}
-            worktreeModalOpen={worktreeModalOpen}
-            onWorktreeModalOpenChange={setWorktreeModalOpen}
-            onToggleTabs={handleToggleTabs}
-            showTabsToggle={showTabs && !!workspace}
-            tabsExpanded={tabsExpanded}
-          />
-
-          {/* Tabs - shown when there are tabs, or when there are closed tabs to reopen */}
-          {showTabs && (tabs.length > 0 || closedTabs.length > 0) && (
-            <TabBar
-              tabs={tabs}
-              closedTabs={closedTabs}
-              activeTabId={activeTabInGroup?.id ?? null}
-              onTabSelect={handleTabSelect}
-              onTabClose={handleTabClose}
-              onTabRename={handleTabRename}
-              onTabReopen={handleTabReopen}
-              onAddTab={handleAddTab}
+          <OfflineBanner isOnline={isOnline} />
+          <ChatDropOverlay isDragging={isDragging} />
+          <Suspense fallback={null}>
+            <SubdomainInitializer
+              onInitialize={handleSubdomainInitialize}
+              onInitialized={handleSubdomainInitialized}
+              isInitialized={subdomainInitialized}
+              isMounted={mounted}
             />
-          )}
-
-          {/* Messages */}
-          <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-8">
-            <div className="p-4 mx-auto w-full md:max-w-[calc(42rem+2rem)] min-w-0">
-              {messages.length === 0 && !busy && (
-                <ChatEmptyState
-                  workspace={workspace}
-                  totalDomainCount={totalDomainCount}
-                  isLoading={organizationsLoading}
-                  onTemplatesClick={modals.openTemplates}
-                  onImportGithub={() => setGithubImportOpen(true)}
-                  onSelectSite={() => modals.openSettings("websites")}
-                />
-              )}
-
-              {(() => {
-                const filteredMessages = messages.filter(message => {
-                  // Hide "compacting" indicator once compaction completes (compact_boundary exists)
-                  if (message.type === "compacting" && messages.some(m => m.type === "compact_boundary")) {
-                    return false
-                  }
-                  return shouldRenderMessage(message, isDebugMode)
-                })
-
-                // Group consecutive exploration tool results (Read, Glob, Grep)
-                const renderItems: RenderItem[] = groupToolMessages(filteredMessages)
-
-                return renderItems.map(item => {
-                  if (item.type === "group") {
-                    return (
-                      <CollapsibleToolGroup
-                        key={`group-${item.messages[0].id}`}
-                        messages={item.messages}
-                        tabId={sessionTabId ?? undefined}
-                        onSubmitAnswer={sendMessage}
-                      />
-                    )
-                  }
-
-                  const { message, index } = item
-                  const content = renderMessage(message, {
-                    onSubmitAnswer: sendMessage,
-                    tabId: sessionTabId ?? undefined,
-                  })
-                  // Skip rendering wrapper if component returns null
-                  if (!content) return null
-
-                  // Determine if this message can be deleted:
-                  // - Must have a previous assistant message with UUID to resume from
-                  // - Only user messages and assistant messages with visible content can be deleted
-                  const canDelete =
-                    sessionTabId != null &&
-                    index > 0 &&
-                    (message.type === "user" || message.type === "sdk_message") &&
-                    // Check if there's any previous assistant message with a UUID
-                    filteredMessages.slice(0, index).some(m => {
-                      if (m.type !== "sdk_message") return false
-                      const sdkContent = m.content as { type?: string; uuid?: string }
-                      return sdkContent?.type === "assistant" && !!sdkContent?.uuid
-                    })
-
-                  return (
-                    <MessageWrapper
-                      key={message.id}
-                      messageId={message.id}
-                      tabId={sessionTabId ?? ""}
-                      canDelete={canDelete}
-                    >
-                      {content}
-                    </MessageWrapper>
-                  )
-                })
-              })()}
-
-              {/* Show pending tools (currently executing) - replaces generic "thinking" when tools are running */}
-              {/* Suppress "thinking" during context compaction (compacting without compact_boundary) */}
-              <PendingToolsIndicator
-                tabId={sessionTabId}
-                suppressThinking={
-                  messages.some(m => m.type === "compacting") && !messages.some(m => m.type === "compact_boundary")
-                }
+          </Suspense>
+          <div className="flex-1 min-h-0 flex flex-col">
+            {/* Tabs - shown when there are tabs, or when there are closed tabs to reopen */}
+            {(tabs.length > 0 || closedTabs.length > 0) && (
+              <TabBar
+                tabs={tabs}
+                closedTabs={closedTabs}
+                activeTabId={activeTabInGroup?.id ?? null}
+                onTabSelect={handleTabSelect}
+                onTabClose={handleTabClose}
+                onTabRename={handleTabRename}
+                onTabReopen={handleTabReopen}
+                onAddTab={handleAddTab}
               />
+            )}
 
-              <AgentManagerIndicator
-                isEvaluating={isEvaluatingProgress}
+            {/* Messages */}
+            <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-8">
+              <div className="p-4 mx-auto w-full md:max-w-[calc(42rem+2rem)] min-w-0">
+                {messages.length === 0 && !busy && (
+                  <ChatEmptyState
+                    workspace={workspace}
+                    totalDomainCount={totalDomainCount}
+                    isLoading={organizationsLoading}
+                    onTemplatesClick={modals.openTemplates}
+                    onImportGithub={() => setGithubImportOpen(true)}
+                    onSelectSite={() => modals.openSettings("websites")}
+                  />
+                )}
+
+                {(() => {
+                  const filteredMessages = messages.filter(message => {
+                    // Hide "compacting" indicator once compaction completes (compact_boundary exists)
+                    if (message.type === "compacting" && messages.some(m => m.type === "compact_boundary")) {
+                      return false
+                    }
+                    return shouldRenderMessage(message, isDebugMode)
+                  })
+
+                  // Group consecutive exploration tool results (Read, Glob, Grep)
+                  const renderItems: RenderItem[] = groupToolMessages(filteredMessages)
+
+                  return renderItems.map(item => {
+                    if (item.type === "group") {
+                      return (
+                        <CollapsibleToolGroup
+                          key={`group-${item.messages[0].id}`}
+                          messages={item.messages}
+                          tabId={sessionTabId ?? undefined}
+                          onSubmitAnswer={sendMessage}
+                        />
+                      )
+                    }
+
+                    const { message, index } = item
+                    const content = renderMessage(message, {
+                      onSubmitAnswer: sendMessage,
+                      tabId: sessionTabId ?? undefined,
+                    })
+                    // Skip rendering wrapper if component returns null
+                    if (!content) return null
+
+                    // Determine if this message can be deleted:
+                    // - Must have a previous assistant message with UUID to resume from
+                    // - Only user messages and assistant messages with visible content can be deleted
+                    const canDelete =
+                      sessionTabId != null &&
+                      index > 0 &&
+                      (message.type === "user" || message.type === "sdk_message") &&
+                      // Check if there's any previous assistant message with a UUID
+                      filteredMessages.slice(0, index).some(m => {
+                        if (m.type !== "sdk_message") return false
+                        const sdkContent = m.content as { type?: string; uuid?: string }
+                        return sdkContent?.type === "assistant" && !!sdkContent?.uuid
+                      })
+
+                    return (
+                      <MessageWrapper
+                        key={message.id}
+                        messageId={message.id}
+                        tabId={sessionTabId ?? ""}
+                        canDelete={canDelete}
+                      >
+                        {content}
+                      </MessageWrapper>
+                    )
+                  })
+                })()}
+
+                {/* Show pending tools (currently executing) - replaces generic "thinking" when tools are running */}
+                {/* Suppress "thinking" during context compaction (compacting without compact_boundary) */}
+                <PendingToolsIndicator
+                  tabId={sessionTabId}
+                  suppressThinking={
+                    messages.some(m => m.type === "compacting") && !messages.some(m => m.type === "compact_boundary")
+                  }
+                />
+
+                <AgentManagerIndicator
+                  isEvaluating={isEvaluatingProgress}
+                  message={msg}
+                  workspace={workspace}
+                  agentManagerAbortRef={agentManagerAbortRef}
+                  agentManagerTimeoutRef={agentManagerTimeoutRef}
+                  onCancel={() => {
+                    if (msg.startsWith("agentmanager>")) setMsg("")
+                    // isEvaluatingProgress is managed by useChatMessaging hook
+                  }}
+                />
+
+                {/* Scroll anchor - Intersection Observer watches this to detect if user is at bottom */}
+                <div ref={anchorRef} className="h-px" />
+              </div>
+            </div>
+
+            {/* Input */}
+            <div className="relative mx-auto w-full md:max-w-2xl">
+              {/* Jump to bottom button - positioned above input, transparent background */}
+              {isHydrated && (
+                <AnimatePresence>
+                  {isScrolledAway && messages.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute left-0 right-0 bottom-full mb-2 z-10 flex justify-center pointer-events-none"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => forceScrollToBottom()}
+                        className="pointer-events-auto px-3 py-1.5 rounded-full bg-black/80 dark:bg-white/90 text-white dark:text-black text-sm font-medium shadow-lg hover:bg-black dark:hover:bg-white transition-colors active:scale-95"
+                      >
+                        ↓ New messages
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              )}
+              <ChatInput
+                ref={chatInputRef}
                 message={msg}
-                workspace={workspace}
-                agentManagerAbortRef={agentManagerAbortRef}
-                agentManagerTimeoutRef={agentManagerTimeoutRef}
-                onCancel={() => {
-                  if (msg.startsWith("agentmanager>")) setMsg("")
-                  // isEvaluatingProgress is managed by useChatMessaging hook
+                setMessage={setMsg}
+                busy={busy}
+                isReady={isChatReady && !!workspace}
+                isStopping={isStopping}
+                onSubmit={sendMessage}
+                onStop={stopStreaming}
+                onOpenTemplates={modals.openTemplates}
+                config={{
+                  enableAttachments: true,
+                  enableCamera: true,
+                  maxAttachments: 5,
+                  maxFileSize: 20 * 1024 * 1024,
+                  workspace: workspace ?? undefined,
+                  worktree: requestWorktree,
+                  placeholder:
+                    !workspace && mounted && !organizationsLoading
+                      ? "Select a site to start chatting..."
+                      : "Tell me what to change...",
+                  onAttachmentUpload: handleAttachmentUpload,
                 }}
               />
-
-              {/* Scroll anchor - Intersection Observer watches this to detect if user is at bottom */}
-              <div ref={anchorRef} className="h-px" />
             </div>
           </div>
-
-          {/* Input */}
-          <div className="relative mx-auto w-full md:max-w-2xl">
-            {/* Jump to bottom button - positioned above input, transparent background */}
-            {isHydrated && (
-              <AnimatePresence>
-                {isScrolledAway && messages.length > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute left-0 right-0 bottom-full mb-2 z-10 flex justify-center pointer-events-none"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => forceScrollToBottom()}
-                      className="pointer-events-auto px-3 py-1.5 rounded-full bg-black/80 dark:bg-white/90 text-white dark:text-black text-sm font-medium shadow-lg hover:bg-black dark:hover:bg-white transition-colors active:scale-95"
-                    >
-                      ↓ New messages
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            )}
-            <ChatInput
-              ref={chatInputRef}
-              message={msg}
-              setMessage={setMsg}
-              busy={busy}
-              isReady={isChatReady && !!workspace}
-              isStopping={isStopping}
-              onSubmit={sendMessage}
-              onStop={stopStreaming}
-              onOpenTemplates={modals.openTemplates}
-              config={{
-                enableAttachments: true,
-                enableCamera: true,
-                maxAttachments: 5,
-                maxFileSize: 20 * 1024 * 1024,
-                workspace: workspace ?? undefined,
-                worktree: requestWorktree,
-                placeholder:
-                  !workspace && mounted && !organizationsLoading
-                    ? "Select a site to start chatting..."
-                    : "Tell me what to change...",
-                onAttachmentUpload: handleAttachmentUpload,
-              }}
-            />
-          </div>
         </div>
-      </div>
 
-      {/* Side panel sandbox - desktop only */}
-      {isHydrated && (
-        <AnimatePresence>
-          {showSandbox && (
-            <motion.div
-              key="desktop-sandbox"
-              initial={{ width: 0 }}
-              animate={{ width: "auto" }}
-              exit={{ width: 0 }}
-              transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
-              className="hidden md:flex h-full overflow-hidden"
-            >
-              <Sandbox />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      )}
+        {/* Side panel sandbox - desktop only */}
+        {showSandbox && (
+          <div className="hidden md:flex h-full overflow-hidden">
+            <Sandbox />
+          </div>
+        )}
+
+        {/* Settings overlay — covers content area, nav stays visible */}
+        {modals.settings && (
+          <SettingsOverlay
+            onClose={modals.closeSettings}
+            initialTab={modals.settings === "websites" ? "websites" : undefined}
+          />
+        )}
+      </div>
 
       {/* Mobile preview overlay - not shown for alive workspace */}
       {isHydrated && (
@@ -950,12 +920,7 @@ function ChatPageContent() {
           conversationId={tabId ?? undefined}
         />
       )}
-      {modals.settings && (
-        <SettingsOverlay
-          onClose={modals.closeSettings}
-          initialTab={modals.settings === "websites" ? "websites" : undefined}
-        />
-      )}
+
       {modals.templates && (
         <SuperTemplatesModal onClose={modals.closeTemplates} onInsertTemplate={handleInsertTemplate} />
       )}

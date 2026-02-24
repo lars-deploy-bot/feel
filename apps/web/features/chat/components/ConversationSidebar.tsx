@@ -10,7 +10,6 @@ import {
   GitBranch,
   Heart,
   MessageSquare,
-  PanelLeftClose,
   Pencil,
   Settings2,
   X,
@@ -47,20 +46,6 @@ const styles = {
   transition: "transition-colors duration-150 ease-in-out",
   transitionAll: "transition-all duration-150 ease-in-out",
 } as const
-
-// Reusable close button component
-function CloseButton({ onClick, isMobile }: { onClick: () => void; isMobile?: boolean }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`${styles.iconButton} ${styles.transitionAll}`}
-      aria-label="Close sidebar"
-    >
-      {isMobile ? <X size={18} strokeWidth={1.75} /> : <PanelLeftClose size={18} strokeWidth={1.75} />}
-    </button>
-  )
-}
 
 // New Chat button — shows dropdown with Worktree option only when WORKTREES flag is enabled
 function NewChatDropdown({
@@ -286,14 +271,6 @@ export function ConversationSidebar({
   // Shared sidebar content - rendered in both desktop and mobile
   const renderContent = (isMobile: boolean) => (
     <div className={`flex flex-col h-full ${isMobile ? "w-screen" : "w-[280px]"}`}>
-      {/* iOS 26 Liquid Glass: extend background into safe area, then add padding for content */}
-      {isMobile && <div className={`${styles.panel} shrink-0`} style={{ height: "env(safe-area-inset-top, 0px)" }} />}
-      {/* Header */}
-      <div className={`flex items-center justify-between px-4 py-3.5 border-b ${styles.borderSubtle}`}>
-        <h2 className={`text-sm font-medium ${styles.textPrimary}`}>Conversations</h2>
-        <CloseButton onClick={closeSidebar} isMobile={isMobile} />
-      </div>
-
       {/* Conversation list */}
       <div className="flex-1 overflow-y-auto flex flex-col">
         {conversations.length === 0 && archivedConversations.length === 0 ? (
@@ -392,16 +369,16 @@ export function ConversationSidebar({
         {renderContent(false)}
       </aside>
 
-      {/* Mobile sidebar - overlay */}
+      {/* Mobile sidebar - overlay, starts below top bar (h-14 = 3.5rem) */}
       {isOpen && (
         <>
           <div
-            className={`md:hidden fixed inset-0 ${styles.backdrop} z-50`}
+            className={`md:hidden fixed top-14 inset-x-0 bottom-0 ${styles.backdrop} z-50`}
             onClick={closeSidebar}
             aria-hidden="true"
           />
           <aside
-            className={`md:hidden fixed inset-y-0 left-0 ${styles.panel} z-50 flex flex-col shadow-xl`}
+            className={`md:hidden fixed top-14 left-0 bottom-0 ${styles.panel} z-50 flex flex-col shadow-xl`}
             aria-label="Conversation history"
           >
             {renderContent(true)}

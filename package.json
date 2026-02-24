@@ -101,5 +101,8 @@
   },
   "dependencies": {
     "@types/node": "^24.10.0"
+  },
+  "patchedDependencies": {
+    "@flowglad/react@0.18.0": "patches/@flowglad%2Freact@0.18.0.patch"
   }
 }
