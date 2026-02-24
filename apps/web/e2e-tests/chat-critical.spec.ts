@@ -17,6 +17,7 @@
  */
 
 import { BridgeStreamType } from "@/features/chat/lib/streaming/ndjson"
+import { isClaudeStreamPostRequest, isClaudeStreamPostResponse } from "@/lib/stream/claude-stream-request-matchers"
 import { expect, test } from "./fixtures"
 import { TEST_API } from "./fixtures/test-constants"
 import { TEST_TIMEOUTS } from "./fixtures/test-data"
@@ -29,18 +30,6 @@ interface ChatStreamRequestBody {
   tabId: string
   tabGroupId: string
   model: string
-}
-
-function isClaudeStreamPostResponse(response: { url(): string; request(): { method(): string } }): boolean {
-  if (response.request().method() !== "POST") {
-    return false
-  }
-
-  try {
-    return new URL(response.url()).pathname === TEST_API.CLAUDE_STREAM
-  } catch {
-    return false
-  }
 }
 
 function parseChatStreamRequestBody(rawBody: string | null): ChatStreamRequestBody {
@@ -98,8 +87,10 @@ test.describe("Critical Chat Path", () => {
     // Track request payloads for contract verification
     const capturedRequestBodies: ChatStreamRequestBody[] = []
 
-    await authenticatedPage.route("**/api/claude/stream", async route => {
-      const requestBody = parseChatStreamRequestBody(route.request().postData())
+    await authenticatedPage.route(`**${TEST_API.CLAUDE_STREAM}`, async route => {
+      const request = route.request()
+      expect(isClaudeStreamPostRequest(request)).toBe(true)
+      const requestBody = parseChatStreamRequestBody(request.postData())
       capturedRequestBodies.push(requestBody)
 
       const ndjsonBody = new StreamBuilder().start().text(assistantResponse).complete().toNDJSON()
@@ -161,8 +152,10 @@ test.describe("Critical Chat Path", () => {
 
     const capturedRequestBodies: ChatStreamRequestBody[] = []
 
-    await authenticatedPage.route("**/api/claude/stream", async route => {
-      const requestBody = parseChatStreamRequestBody(route.request().postData())
+    await authenticatedPage.route(`**${TEST_API.CLAUDE_STREAM}`, async route => {
+      const request = route.request()
+      expect(isClaudeStreamPostRequest(request)).toBe(true)
+      const requestBody = parseChatStreamRequestBody(request.postData())
       capturedRequestBodies.push(requestBody)
 
       const turnCount = capturedRequestBodies.length
@@ -244,7 +237,7 @@ test.describe("Critical Chat Path", () => {
     let reconnectCallCount = 0
     let cancelCallCount = 0
 
-    await authenticatedPage.route("**/api/claude/stream/reconnect", async route => {
+    await authenticatedPage.route(`**${TEST_API.CLAUDE_STREAM_RECONNECT}`, async route => {
       reconnectCallCount += 1
       await route.fulfill({
         status: 200,
@@ -253,7 +246,7 @@ test.describe("Critical Chat Path", () => {
       })
     })
 
-    await authenticatedPage.route("**/api/claude/stream/cancel", async route => {
+    await authenticatedPage.route(`**${TEST_API.CLAUDE_STREAM_CANCEL}`, async route => {
       cancelCallCount += 1
       await route.fulfill({
         status: 200,
@@ -262,7 +255,9 @@ test.describe("Critical Chat Path", () => {
       })
     })
 
-    await authenticatedPage.route("**/api/claude/stream", async route => {
+    await authenticatedPage.route(`**${TEST_API.CLAUDE_STREAM}`, async route => {
+      const request = route.request()
+      expect(isClaudeStreamPostRequest(request)).toBe(true)
       const ndjsonBody = new StreamBuilder().start().text(assistantResponse).complete().toNDJSON()
       await route.fulfill({
         status: 200,
@@ -282,20 +277,26 @@ test.describe("Critical Chat Path", () => {
 
     const responsePromise = authenticatedPage.waitForResponse(isClaudeStreamPostResponse)
 
-    await authenticatedPage.evaluate(async () => {
-      await Promise.all([
-        fetch("/api/claude/stream/reconnect", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ requestId: "test", sinceTimestamp: Date.now() }),
-        }),
-        fetch("/api/claude/stream/cancel", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ requestId: "test" }),
-        }),
-      ])
-    })
+    await authenticatedPage.evaluate(
+      async ({ cancelPath, reconnectPath }) => {
+        await Promise.all([
+          fetch(reconnectPath, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ requestId: "test", sinceTimestamp: Date.now() }),
+          }),
+          fetch(cancelPath, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ requestId: "test" }),
+          }),
+        ])
+      },
+      {
+        cancelPath: TEST_API.CLAUDE_STREAM_CANCEL,
+        reconnectPath: TEST_API.CLAUDE_STREAM_RECONNECT,
+      },
+    )
 
     expect(reconnectCallCount).toBe(1)
     expect(cancelCallCount).toBe(1)

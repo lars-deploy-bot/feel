@@ -13,9 +13,10 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk"
-import { expect, type Page, type Request, type Response, type TestInfo, test } from "@playwright/test"
+import { expect, type Page, type Request, type TestInfo, test } from "@playwright/test"
 import { TEST_CONFIG, WORKSPACE_STORAGE, type WorkspaceStorageValue } from "@webalive/shared"
-import { PATTERNS, TEST_API, TEST_MESSAGES, TEST_MODELS } from "./fixtures/test-constants"
+import { isClaudeStreamPostRequest, isClaudeStreamPostResponse } from "@/lib/stream/claude-stream-request-matchers"
+import { PATTERNS, TEST_MESSAGES, TEST_MODELS } from "./fixtures/test-constants"
 import { TEST_TIMEOUTS } from "./fixtures/test-data"
 import { login } from "./helpers"
 import { requireProjectBaseUrl } from "./lib/base-url"
@@ -177,16 +178,6 @@ async function sendMessage(page: Page, message: string): Promise<void> {
   await sendButton.click()
 }
 
-function isClaudeStreamPostRequest(request: Request): boolean {
-  const url = new URL(request.url())
-  return request.method() === "POST" && url.pathname === TEST_API.CLAUDE_STREAM
-}
-
-function isClaudeStreamPostResponse(response: Response): boolean {
-  const url = new URL(response.url())
-  return response.request().method() === "POST" && url.pathname === TEST_API.CLAUDE_STREAM
-}
-
 function parseChatRequest(request: Request): ChatRequest {
   const postData = request.postData()
   if (!postData) {
@@ -266,9 +257,9 @@ test.describe("Chat API - Request Validation", () => {
     await messageInput.fill(TEST_MESSAGES.SIMPLE)
 
     // Setup request/response promises BEFORE clicking send (event-based approach)
-    const requestPromise = page.waitForRequest((req: Request) => isClaudeStreamPostRequest(req))
+    const requestPromise = page.waitForRequest(isClaudeStreamPostRequest)
 
-    const responsePromise = page.waitForResponse((res: Response) => isClaudeStreamPostResponse(res))
+    const responsePromise = page.waitForResponse(isClaudeStreamPostResponse)
 
     // Get the captured request and response
     await sendMessage(page, TEST_MESSAGES.SIMPLE)
@@ -329,7 +320,7 @@ test.describe("Chat API - Request Validation", () => {
       timeout: TEST_TIMEOUTS.max,
     })
 
-    const responsePromise = page.waitForResponse((res: Response) => isClaudeStreamPostResponse(res))
+    const responsePromise = page.waitForResponse(isClaudeStreamPostResponse)
 
     await sendMessage(page, TEST_MESSAGES.SIMPLE)
 
@@ -363,8 +354,8 @@ test.describe("Chat API - Request Validation", () => {
     const secondPrompt =
       "What did you just explain in your previous answer? Restate the same core idea in one sentence."
 
-    const firstRequestPromise = page.waitForRequest((req: Request) => isClaudeStreamPostRequest(req))
-    const firstResponsePromise = page.waitForResponse((res: Response) => isClaudeStreamPostResponse(res))
+    const firstRequestPromise = page.waitForRequest(isClaudeStreamPostRequest)
+    const firstResponsePromise = page.waitForResponse(isClaudeStreamPostResponse)
 
     await sendMessage(page, firstPrompt)
 
@@ -382,8 +373,8 @@ test.describe("Chat API - Request Validation", () => {
     const firstAssistantText = extractAssistantTextFromNDJSON(firstNDJSON)
     expect(firstAssistantText.length).toBeGreaterThan(20)
 
-    const secondRequestPromise = page.waitForRequest((req: Request) => isClaudeStreamPostRequest(req))
-    const secondResponsePromise = page.waitForResponse((res: Response) => isClaudeStreamPostResponse(res))
+    const secondRequestPromise = page.waitForRequest(isClaudeStreamPostRequest)
+    const secondResponsePromise = page.waitForResponse(isClaudeStreamPostResponse)
 
     await sendMessage(page, secondPrompt)
 
