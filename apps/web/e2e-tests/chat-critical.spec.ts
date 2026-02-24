@@ -18,6 +18,7 @@
 
 import { BridgeStreamType } from "@/features/chat/lib/streaming/ndjson"
 import { expect, test } from "./fixtures"
+import { TEST_API } from "./fixtures/test-constants"
 import { TEST_TIMEOUTS } from "./fixtures/test-data"
 import { parseNDJSONEventTypes } from "./lib/ndjson"
 import { StreamBuilder } from "./lib/stream-builder"
@@ -28,6 +29,18 @@ interface ChatStreamRequestBody {
   tabId: string
   tabGroupId: string
   model: string
+}
+
+function isClaudeStreamPostResponse(response: { url(): string; request(): { method(): string } }): boolean {
+  if (response.request().method() !== "POST") {
+    return false
+  }
+
+  try {
+    return new URL(response.url()).pathname === TEST_API.CLAUDE_STREAM
+  } catch {
+    return false
+  }
 }
 
 function parseChatStreamRequestBody(rawBody: string | null): ChatStreamRequestBody {
@@ -111,9 +124,7 @@ test.describe("Critical Chat Path", () => {
     await expect(chat.sendButton).toBeVisible({ timeout: TEST_TIMEOUTS.fast })
 
     // Send message
-    const responsePromise = authenticatedPage.waitForResponse(
-      response => response.url().endsWith("/api/claude/stream") && response.request().method() === "POST",
-    )
+    const responsePromise = authenticatedPage.waitForResponse(isClaudeStreamPostResponse)
     await chat.sendMessage(userMessage)
     const response = await responsePromise
 
@@ -178,9 +189,7 @@ test.describe("Critical Chat Path", () => {
     await chat.gotoFast(workerTenant.workspace, workerTenant.orgId)
 
     // --- Turn 1: establish context ---
-    const firstResponsePromise = authenticatedPage.waitForResponse(
-      response => response.url().endsWith("/api/claude/stream") && response.request().method() === "POST",
-    )
+    const firstResponsePromise = authenticatedPage.waitForResponse(isClaudeStreamPostResponse)
     await chat.sendMessage(firstUserMessage)
     const firstResponse = await firstResponsePromise
     await chat.expectMessage(firstUserMessage)
@@ -192,9 +201,7 @@ test.describe("Critical Chat Path", () => {
     await chat.messageInput.fill("") // clear before sending the real message
 
     // --- Turn 2: verify context retained ---
-    const secondResponsePromise = authenticatedPage.waitForResponse(
-      response => response.url().endsWith("/api/claude/stream") && response.request().method() === "POST",
-    )
+    const secondResponsePromise = authenticatedPage.waitForResponse(isClaudeStreamPostResponse)
     await chat.sendMessage(secondUserMessage)
     const secondResponse = await secondResponsePromise
     await chat.expectMessage(secondUserMessage)
@@ -225,5 +232,79 @@ test.describe("Critical Chat Path", () => {
     await chat.expectMessage(firstAssistantResponse)
     await chat.expectMessage(secondUserMessage)
     await chat.expectMessage(secondAssistantResponse)
+  })
+
+  test("stream response matcher ignores reconnect and cancel endpoints", async ({
+    authenticatedPage,
+    workerTenant,
+  }) => {
+    const userMessage = "Matcher guard test"
+    const assistantResponse = "Stream endpoint matched correctly."
+
+    let reconnectCallCount = 0
+    let cancelCallCount = 0
+
+    await authenticatedPage.route("**/api/claude/stream/reconnect", async route => {
+      reconnectCallCount += 1
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ok: true }),
+      })
+    })
+
+    await authenticatedPage.route("**/api/claude/stream/cancel", async route => {
+      cancelCallCount += 1
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ok: true }),
+      })
+    })
+
+    await authenticatedPage.route("**/api/claude/stream", async route => {
+      const ndjsonBody = new StreamBuilder().start().text(assistantResponse).complete().toNDJSON()
+      await route.fulfill({
+        status: 200,
+        contentType: "application/x-ndjson; charset=utf-8",
+        headers: {
+          "Cache-Control": "no-cache, no-transform",
+          Connection: "keep-alive",
+          "X-Accel-Buffering": "no",
+        },
+        body: ndjsonBody,
+      })
+    })
+
+    const chat = new ChatPage(authenticatedPage)
+    await chat.gotoFast(workerTenant.workspace, workerTenant.orgId)
+    await expect(chat.messageInput).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
+
+    const responsePromise = authenticatedPage.waitForResponse(isClaudeStreamPostResponse)
+
+    await authenticatedPage.evaluate(async () => {
+      await Promise.all([
+        fetch("/api/claude/stream/reconnect", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ requestId: "test", sinceTimestamp: Date.now() }),
+        }),
+        fetch("/api/claude/stream/cancel", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ requestId: "test" }),
+        }),
+      ])
+    })
+
+    expect(reconnectCallCount).toBe(1)
+    expect(cancelCallCount).toBe(1)
+
+    await chat.sendMessage(userMessage)
+    const response = await responsePromise
+
+    expect(new URL(response.url()).pathname).toBe(TEST_API.CLAUDE_STREAM)
+    await chat.expectMessage(userMessage)
+    await chat.expectMessage(assistantResponse)
   })
 })
