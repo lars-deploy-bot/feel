@@ -108,14 +108,6 @@ export {
   type WrapExternalContentOptions,
   wrapExternalContent,
 } from "./external-content.js"
-export {
-  getDescriptorsByServer,
-  getInternalMcpToolNames,
-  INTERNAL_TOOL_DESCRIPTORS,
-  type InternalMcpServer,
-  type InternalToolDescriptor,
-  qualifiedMcpName,
-} from "./internal-tool-descriptors.js"
 export { generateInviteCode } from "./invite-code.js"
 export {
   type AllOAuthProviderKey,
@@ -236,6 +228,26 @@ export {
   type TokenResponse,
 } from "./stream-tokens.js"
 export {
+  getTemplateById,
+  getTemplateIdsInline,
+  getTemplateListForDocs,
+  isValidTemplateId,
+  TEMPLATE_IDS,
+  // Website templates - SINGLE SOURCE OF TRUTH
+  TEMPLATES,
+  type Template,
+  type TemplateIcon,
+  type TemplateId,
+} from "./templates.js"
+export {
+  getDescriptorsByServer,
+  getInternalMcpToolNames,
+  INTERNAL_TOOL_DESCRIPTORS,
+  type InternalMcpServer,
+  type InternalToolDescriptor,
+  qualifiedMcpName,
+} from "./tools/internal-tool-descriptors.js"
+export {
   // Tool permission helpers
   allowTool,
   buildStreamToolRuntimeConfig,
@@ -270,19 +282,7 @@ export {
   type StreamToolRuntimeConfig,
   type StreamToolVisibility,
   type StreamWorkspaceKind,
-} from "./stream-tools.js"
-export {
-  getTemplateById,
-  getTemplateIdsInline,
-  getTemplateListForDocs,
-  isValidTemplateId,
-  TEMPLATE_IDS,
-  // Website templates - SINGLE SOURCE OF TRUTH
-  TEMPLATES,
-  type Template,
-  type TemplateIcon,
-  type TemplateId,
-} from "./templates.js"
+} from "./tools/stream-tools.js"
 export {
   getRequiredDirectories,
   WORKSPACE_DIRS,

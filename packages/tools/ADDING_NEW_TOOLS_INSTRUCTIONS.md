@@ -1,6 +1,6 @@
 # Adding New Tools to @webalive/tools
 
-This package contains custom MCP tools that extend Claude's capabilities in the Alive application. Tools are organized by category: `guides/`, `debug/`, and `workspace/`.
+This package contains custom MCP tools that extend Claude's capabilities in the Alive application. Tools are organized by category: `debug/`, `workspace/`, `templates/`, `meta/`, and more.
 
 ## Architecture Overview
 
@@ -338,14 +338,12 @@ packages/tools/
 │   ├── index.ts                          # Main exports
 │   ├── mcp-server.ts                     # MCP server definitions
 │   ├── tools/
-│   │   ├── guides/                       # Guide tools
-│   │   │   ├── list-guides.ts
-│   │   │   └── get-guide.ts
 │   │   ├── debug/                        # Debugging tools
 │   │   │   └── read-server-logs.ts
+│   │   ├── meta/                         # Tool discovery & registry
+│   │   ├── templates/                    # Template tools
 │   │   └── workspace/                    # Workspace management
 │   │       └── restart-server.ts
-│   └── internals-folder/                 # Knowledge base
 ├── dist/                                  # Compiled output
 ├── package.json
 ├── tsconfig.json

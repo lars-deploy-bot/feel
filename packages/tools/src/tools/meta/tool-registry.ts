@@ -226,7 +226,7 @@ const DESCRIPTOR_ENABLED_NAMES = new Set(INTERNAL_TOOL_DESCRIPTORS.filter(d => d
  * Metadata-only entries (not in descriptors) are automatically disabled.
  *
  * To add a new tool:
- * 1. Add descriptor in packages/shared/src/internal-tool-descriptors.ts
+ * 1. Add descriptor in packages/shared/src/tools/internal-tool-descriptors.ts
  * 2. Add metadata entry here
  * 3. Register implementation in mcp-server.ts
  * Sync tests will catch any missing steps.
@@ -308,97 +308,6 @@ const INTERNAL_TOOL_METADATA: Array<Omit<ToolMetadata, "enabled">> = [
       },
     ],
   },
-  {
-    name: "find_guide",
-    category: "composite",
-    description: "Searches AND retrieves guides in one call. Reduces round trips from 2+ to 1.",
-    contextCost: "high",
-    parameters: [
-      {
-        name: "query",
-        type: "string",
-        required: true,
-        description: "Search query (e.g., 'authentication', 'vite errors')",
-      },
-      {
-        name: "category",
-        type: "string",
-        required: false,
-        description: "Optional category filter",
-      },
-      {
-        name: "auto_retrieve",
-        type: "boolean",
-        required: false,
-        description: "If true, retrieves best match. If false, lists matches. Default: true",
-      },
-    ],
-  },
-
-  // Batch operations
-  {
-    name: "batch_get_guides",
-    category: "batch",
-    description: "Retrieves multiple guides in one call (max 5). Reduces round trips for bulk operations.",
-    contextCost: "high",
-    parameters: [
-      {
-        name: "requests",
-        type: "array",
-        required: true,
-        description: "Array of guide requests (max 5), each with category and optional topic",
-      },
-      {
-        name: "include_separator",
-        type: "boolean",
-        required: false,
-        description: "Add separators between guides. Default: true",
-      },
-    ],
-  },
-
-  // Documentation tools
-  {
-    name: "list_guides",
-    category: "documentation",
-    description: "Lists available development guides with result hints. Context-efficient modes available.",
-    contextCost: "low",
-    parameters: [
-      {
-        name: "category",
-        type: "string",
-        required: false,
-        description: "Guide category (e.g., '30-guides', 'workflows')",
-      },
-      {
-        name: "detail_level",
-        type: "string",
-        required: false,
-        description: "'brief' (titles only) or 'full' (titles + descriptions). Default: 'brief'",
-      },
-    ],
-  },
-  {
-    name: "get_guide",
-    category: "documentation",
-    description: "Retrieves full guide content. Can return large markdown documents.",
-    contextCost: "high",
-    parameters: [
-      {
-        name: "category",
-        type: "string",
-        required: true,
-        description: "Guide category",
-      },
-      {
-        name: "topic",
-        type: "string",
-        required: false,
-        description: "Filter by topic keyword",
-      },
-    ],
-  },
-
   // Template tools
   {
     name: "get_alive_super_template",
