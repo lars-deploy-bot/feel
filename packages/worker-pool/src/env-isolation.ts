@@ -4,6 +4,8 @@
  * Prevents credential/secret leakage between requests handled by the same
  * long-lived worker process.  Extracted from worker-entry.mjs so the
  * security invariants can be tested behaviourally.
+ *
+ * OAuth token flow: docs/knowledge/ANTHROPIC_OAUTH_DO_NOT_DELETE.md § "Token Flow Through the System"
  */
 import { RESERVED_USER_ENV_KEYS } from "@webalive/shared"
 

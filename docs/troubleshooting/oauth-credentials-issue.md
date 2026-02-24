@@ -1,5 +1,9 @@
 # OAuth Credentials Issue: "Invalid API key" Error
 
+> **Authoritative reference:** [`docs/knowledge/ANTHROPIC_OAUTH_DO_NOT_DELETE.md`](../knowledge/ANTHROPIC_OAUTH_DO_NOT_DELETE.md)
+> This page covers one specific failure mode. For the full OAuth architecture, token lifecycle,
+> lock contract, and all failure modes, see the knowledge doc.
+
 ## The Error
 
 Users on production (e.g., `alive.best`) see:
@@ -11,9 +15,10 @@ Invalid API key · Fix external API key
 
 **Three separate issues combined:**
 
-> Note: This only shows up with the persistent worker pool (`WORKER_POOL.ENABLED=true`).
-> The per-request runner in `apps/web/scripts/run-agent.mjs` copies credentials each request,
-> so stale handles and root traversal issues are much less likely there.
+> Note: This primarily shows up with the persistent worker pool (`WORKER_POOL.ENABLED=true`).
+> The per-request runner in `apps/web/scripts/run-agent.mjs` uses request-scoped
+> `CLAUDE_CODE_OAUTH_TOKEN` and sets `HOME` to workspace, so root credential-file
+> traversal/read failures are much less likely there.
 
 ### 1. OAuth Tokens ≠ API Keys
 
@@ -27,9 +32,10 @@ We incorrectly tried to pass OAuth tokens as `ANTHROPIC_API_KEY`:
 process.env.ANTHROPIC_API_KEY = oauthAccessToken
 ```
 
-The SDK rejects this because OAuth tokens require the SDK to read from `.credentials.json` and handle the OAuth protocol internally.
+The SDK rejects this because OAuth tokens are not API keys. They must be provided through
+the OAuth channel (`CLAUDE_CODE_OAUTH_TOKEN`) or managed credentials flow.
 
-### 2. File Permission Problem
+### 2. File Permission Problem (Worker Pool Path)
 
 Workers drop privileges from root to site-specific users (e.g., `site-alive-best`):
 ```
@@ -39,7 +45,7 @@ Sets CLAUDE_CONFIG_DIR=/root/.claude
     ↓
 Drops to UID 958 (site-alive-best)
     ↓
-SDK tries to read /root/.claude/.credentials.json
+SDK tries to access shared state under /root/.claude (credentials and/or projects)
     ↓
 FAILS - file has 600 permissions (root only)
 ```
@@ -49,7 +55,8 @@ The credentials file:
 -rw------- 1 root root 771 /root/.claude/.credentials.json
 ```
 
-Non-root users cannot read this file. This is especially common after a token refresh because `apps/web/lib/anthropic-oauth.ts` writes the file with `0600` for security.
+Non-root users cannot read this file. This is especially common after CLI `/login` or CLI refresh,
+because Claude Code writes `0600` by default.
 
 Also ensure directory traversal is allowed (typical in production here, but not guaranteed):
 ```
@@ -88,16 +95,11 @@ If your security policy does not allow opening `/root` to traversal, move the cr
 
 ### 2. Don't Pass OAuth Tokens as API Keys
 
-Let the SDK read credentials directly:
+Use request-scoped OAuth token auth:
 ```javascript
-// CORRECT - let SDK handle OAuth internally
-if (payload.apiKey) {
-  // User-provided real API key
-  process.env.ANTHROPIC_API_KEY = payload.apiKey
-} else {
-  // OAuth - SDK reads from CLAUDE_CONFIG_DIR
-  delete process.env.ANTHROPIC_API_KEY
-}
+// CORRECT - OAuth token channel only
+process.env.ANTHROPIC_API_KEY = "" // prevent workspace .env from overriding auth
+process.env.CLAUDE_CODE_OAUTH_TOKEN = payload.oauthAccessToken
 ```
 
 ### 3. Restart Workers After /login (Stale Handles)
@@ -116,9 +118,10 @@ systemctl restart alive-production
 
 By default, `/root/.claude/.credentials.json` is the single credentials source:
 - CLI writes here after `/login`
-- All workers read from here via `CLAUDE_CONFIG_DIR=/root/.claude` (unless the service sets a different `CLAUDE_CONFIG_DIR`)
+- Web OAuth refresh logic reads/writes here (`apps/web/lib/anthropic-oauth.ts`)
+- Worker pool monitors this file for changes and restarts idle workers on updates
 - File permissions: `644` (readable by all)
-- Per-request runner (when worker pool is disabled) copies from here to a temp HOME
+- Per-request runner (when worker pool is disabled) receives `CLAUDE_CODE_OAUTH_TOKEN` from parent and sets `HOME` to workspace
 
 ## Architecture
 
@@ -136,8 +139,9 @@ By default, `/root/.claude/.credentials.json` is the single credentials source:
 │ Drop to       │         │ Drop to       │         │ Drop to       │
 │ site-alice    │         │ site-bob      │         │ site-alive    │
 │      ↓        │         │      ↓        │         │      ↓        │
-│ SDK reads     │         │ SDK reads     │         │ SDK reads     │
-│ credentials   │         │ credentials   │         │ credentials   │
+│ Uses request  │         │ Uses request  │         │ Uses request  │
+│ OAuth token   │         │ OAuth token   │         │ OAuth token   │
+│ from payload  │         │ from payload  │         │ from payload  │
 └───────────────┘         └───────────────┘         └───────────────┘
 ```
 
@@ -168,6 +172,6 @@ ls -la /root/.claude/.credentials.json
 - `/etc/systemd/system/claude-credentials-fix.service` - Fixes permissions (if installed)
 - `scripts/sync-credentials.sh` - Restarts service on credential changes
 - `packages/worker-pool/src/worker-entry.mjs` - Worker credential handling
-- `apps/web/scripts/run-agent.mjs` - Per-request runner credential copy
+- `apps/web/scripts/run-agent.mjs` - Per-request runner (request-scoped OAuth token, workspace HOME)
 - `apps/web/app/api/claude/stream/route.ts` - API route
 - `apps/web/lib/anthropic-oauth.ts` - OAuth helpers

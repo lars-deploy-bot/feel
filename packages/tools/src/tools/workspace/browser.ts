@@ -10,6 +10,7 @@
  */
 
 import { tool } from "@anthropic-ai/claude-agent-sdk"
+import { retryAsync } from "@webalive/shared"
 import { z } from "zod"
 import { errorResult, type ToolResult } from "../../lib/api-client.js"
 import { extractDomainFromWorkspace, validateWorkspacePath } from "../../lib/workspace-validator.js"
@@ -47,48 +48,66 @@ async function callBrowserService(
   body?: Record<string, unknown>,
 ): Promise<{ ok: boolean; status: number; data: Record<string, unknown> }> {
   const internalSecret = process.env.INTERNAL_TOOLS_SECRET
-
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
-
-  try {
-    const response = await fetch(`${BROWSER_CONTROL_URL}${endpoint}`, {
-      method,
-      headers: {
-        "Content-Type": "application/json",
-        ...(internalSecret ? { "X-Internal-Secret": internalSecret } : {}),
-      },
-      body: method === "POST" ? JSON.stringify(body) : undefined,
-      signal: controller.signal,
-    })
-
-    clearTimeout(timeoutId)
-
-    const data: unknown = await response.json()
-    if (typeof data !== "object" || data === null || Array.isArray(data)) {
-      throw new Error("Unexpected response format from browser-control service")
-    }
-    return { ok: response.ok, status: response.status, data: data as Record<string, unknown> }
-  } catch (err) {
-    clearTimeout(timeoutId)
-    const message = err instanceof Error ? err.message : String(err)
-
-    if (message.includes("aborted")) {
-      throw new Error("Browser request timed out after 60s")
-    }
-    // Bun uses "Unable to connect", Node uses "ECONNREFUSED", etc.
-    if (
-      message.includes("ECONNREFUSED") ||
-      message.includes("Unable to connect") ||
-      message.includes("ConnectionRefused") ||
-      message.includes("fetch failed")
-    ) {
-      throw new Error(
-        "Browser control service is not running. It needs to be started as a systemd service (browser-control.service).",
-      )
-    }
-    throw err
+  if (!internalSecret) {
+    throw new Error("INTERNAL_TOOLS_SECRET is required to call browser-control")
   }
+
+  return retryAsync(
+    async () => {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+
+      try {
+        const response = await fetch(`${BROWSER_CONTROL_URL}${endpoint}`, {
+          method,
+          headers: {
+            "Content-Type": "application/json",
+            "X-Internal-Secret": internalSecret,
+          },
+          body: method === "POST" ? JSON.stringify(body) : undefined,
+          signal: controller.signal,
+        })
+
+        clearTimeout(timeoutId)
+
+        const data: unknown = await response.json()
+        if (typeof data !== "object" || data === null || Array.isArray(data)) {
+          throw new Error("Unexpected response format from browser-control service")
+        }
+        return { ok: response.ok, status: response.status, data: data as Record<string, unknown> }
+      } catch (err) {
+        clearTimeout(timeoutId)
+        const message = err instanceof Error ? err.message : String(err)
+
+        if (message.includes("aborted")) {
+          throw new Error("Browser request timed out after 60s")
+        }
+        // Bun uses "Unable to connect", Node uses "ECONNREFUSED", etc.
+        if (
+          message.includes("ECONNREFUSED") ||
+          message.includes("Unable to connect") ||
+          message.includes("ConnectionRefused") ||
+          message.includes("fetch failed")
+        ) {
+          throw new Error(
+            "Browser control service is not running. It needs to be started as a systemd service (browser-control.service).",
+          )
+        }
+        throw err
+      }
+    },
+    {
+      attempts: 3,
+      minDelayMs: 500,
+      shouldRetry: err => {
+        const message = err instanceof Error ? err.message : String(err)
+        // Don't retry timeouts, connection refused (service down), or auth errors
+        if (message.includes("timed out") || message.includes("not running")) return false
+        // Retry transient network errors
+        return true
+      },
+    },
+  )
 }
 
 export async function browserAction(params: BrowserParams): Promise<ToolResult> {
@@ -149,11 +168,14 @@ export async function browserAction(params: BrowserParams): Promise<ToolResult> 
         if (!ok) {
           return errorResult("Screenshot failed", String(data.error))
         }
+        if (typeof data.image !== "string") {
+          return errorResult("Screenshot failed", "Missing image data from browser-control service")
+        }
         return {
           content: [
             {
               type: "image",
-              data: String(data.image),
+              data: data.image,
               mimeType: "image/png",
             },
             {
