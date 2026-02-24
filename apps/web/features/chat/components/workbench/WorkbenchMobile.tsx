@@ -4,8 +4,8 @@ import { RotateCw, Square, X } from "lucide-react"
 import type { ReactNode } from "react"
 import { useEffect } from "react"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
-import { usePreviewEngine } from "./hooks/usePreviewEngine"
 import { PulsingDot } from "../ui/PulsingDot"
+import { usePreviewEngine } from "./hooks/usePreviewEngine"
 
 interface WorkbenchMobileProps {
   onClose: () => void

@@ -3,11 +3,11 @@
 import { PanelLeftClose, PanelLeftOpen, RefreshCw } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { trackDriveFileDeleted, trackDrivePanelOpened } from "@/lib/analytics/events"
+import { PanelBar } from "../ui"
 import { DrivePreview } from "./DrivePreview"
 import { DriveTree, invalidateDriveCache } from "./DriveTree"
 import { DriveUpload } from "./DriveUpload"
 import { deleteDriveItem } from "./drive-api"
-import { PanelBar } from "../ui"
 
 interface DrivePanelProps {
   workspace: string

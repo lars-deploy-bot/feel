@@ -1,12 +1,12 @@
 "use client"
 
+import { SUPERADMIN } from "@webalive/shared"
 import { ChevronDown } from "lucide-react"
 import { useCallback, useMemo, useRef, useState } from "react"
 import type { Organization } from "@/lib/api/types"
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
 import { useWorkspacesQuery } from "@/lib/hooks/useSettingsQueries"
 import { useSelectedOrgId, useWorkspaceActions } from "@/lib/stores/workspaceStore"
-import { SUPERADMIN } from "@webalive/shared"
 import { SwitcherDropdown } from "./SwitcherDropdown"
 
 // ─── Accessors (stable references, defined outside component) ────────────────
