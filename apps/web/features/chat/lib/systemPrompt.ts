@@ -23,11 +23,8 @@ const EMAIL_COMPOSE_TOOL: Record<EmailProvider, string> = {
 /**
  * Providers with a complete compose → UI renderer → send/draft pipeline.
  * Only these get the "use compose_email for all email requests" instruction.
- * Outlook's MCP read/search/archive tools work, but compose has no renderer
- * or send endpoint yet — adding it here before wiring would instruct Claude
- * to produce output the user can't act on.
  */
-const EMAIL_COMPOSE_PIPELINE_READY = new Set<EmailProvider>(["gmail"])
+const EMAIL_COMPOSE_PIPELINE_READY = new Set<EmailProvider>(["gmail", "outlook"])
 
 export function getSystemPrompt(params: SystemPromptParams = {}): string {
   const {
