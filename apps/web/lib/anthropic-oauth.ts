@@ -1,11 +1,15 @@
 /**
  * Anthropic OAuth Token Refresh
  *
- * Automatically refreshes expired OAuth tokens for Claude Pro/Max subscriptions.
- * Based on OpenClaw's implementation from @mariozechner/pi-ai.
+ * READ FIRST: docs/knowledge/ANTHROPIC_OAUTH_DO_NOT_DELETE.md
  *
- * Uses proper-lockfile for file-based locking to prevent race conditions
- * when multiple processes try to refresh the same token simultaneously.
+ * This file refreshes expired OAuth tokens for Claude Pro/Max subscriptions.
+ * It coordinates with Claude Code CLI via a shared directory lock on ~/.claude.
+ * The lock target, retry parameters, and double-check pattern are all derived
+ * from reverse-engineering the CLI binary — see the knowledge doc for details.
+ *
+ * DO NOT change the lock target, retry config, or refresh flow without reading
+ * and updating the knowledge doc first.
  */
 
 import fs from "node:fs"
@@ -13,7 +17,7 @@ import os from "node:os"
 import path from "node:path"
 import * as Sentry from "@sentry/nextjs"
 import { retryAsync } from "@webalive/shared"
-import lockfile from "proper-lockfile"
+import lockfile, { type LockOptions } from "proper-lockfile"
 
 // Anthropic OAuth constants (same as Claude Code / OpenClaw)
 const ANTHROPIC_TOKEN_URL = "https://console.anthropic.com/v1/oauth/token"
@@ -23,19 +27,26 @@ const ANTHROPIC_CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
 const TOKEN_EXPIRY_BUFFER_MS = 5 * 60 * 1000
 
 // Path to Claude Code credentials
-const CLAUDE_CREDENTIALS_PATH = path.join(os.homedir(), ".claude", ".credentials.json")
+const CLAUDE_DIR = path.join(os.homedir(), ".claude")
+const CLAUDE_CREDENTIALS_PATH = path.join(CLAUDE_DIR, ".credentials.json")
+// 0o711 means:
+// - owner (current process user) gets rwx and can create lock files + write credentials
+// - group/others get --x for traversal only (needed in UID-drop worker paths)
+// We set this explicitly to avoid umask-dependent directory modes.
+const CLAUDE_DIR_MODE = 0o711
 
-// Lock options matching OpenClaw's configuration
-const LOCK_OPTIONS = {
+// Lock the DIRECTORY (~/.claude), not the credentials file.
+// Claude Code CLI locks the same directory. See: docs/knowledge/ANTHROPIC_OAUTH_DO_NOT_DELETE.md § "The Lock Contract"
+const LOCK_OPTIONS: LockOptions = {
   retries: {
-    retries: 10,
-    factor: 2,
-    minTimeout: 100,
-    maxTimeout: 10_000,
+    retries: 5,
+    factor: 1,
+    minTimeout: 1000,
+    maxTimeout: 2_000,
     randomize: true,
   },
-  stale: 30_000, // Consider lock stale after 30 seconds
-} as const
+  stale: 10_000, // Match CLI's stale timeout
+}
 
 export interface ClaudeOAuthCredentials {
   accessToken: string
@@ -52,8 +63,31 @@ interface ClaudeCredentialsFile {
 
 interface TokenRefreshResponse {
   access_token: string
-  refresh_token: string
+  refresh_token?: string
   expires_in: number
+}
+
+/**
+ * Ensure ~/.claude exists with deterministic permissions and is writable.
+ * We lock this directory and write credentials under it, so write+execute are required.
+ */
+function ensureClaudeDirForWrites(): void {
+  // Create directory with explicit mode so behavior is deterministic across services/umasks.
+  if (!fs.existsSync(CLAUDE_DIR)) {
+    fs.mkdirSync(CLAUDE_DIR, { recursive: true, mode: CLAUDE_DIR_MODE })
+  }
+
+  try {
+    // W_OK + X_OK is required here:
+    // - proper-lockfile needs to create/remove lock artifacts under the directory
+    // - credential refresh needs to overwrite .credentials.json
+    fs.accessSync(CLAUDE_DIR, fs.constants.W_OK | fs.constants.X_OK)
+  } catch (error) {
+    throw new Error(
+      `[anthropic-oauth] CLAUDE_DIR is not writable/executable: ${CLAUDE_DIR}. Check directory permissions.`,
+      { cause: error },
+    )
+  }
 }
 
 /**
@@ -143,7 +177,9 @@ async function refreshTokenInternal(refreshToken: string): Promise<ClaudeOAuthCr
 
       const newCredentials: ClaudeOAuthCredentials = {
         accessToken: data.access_token,
-        refreshToken: data.refresh_token,
+        // Match CLI defensive behavior: if refresh_token is omitted, retain existing token.
+        // This is rare, but dropping the token here would permanently break future refreshes.
+        refreshToken: data.refresh_token ?? refreshToken,
         expiresAt: Date.now() + data.expires_in * 1000,
       }
 
@@ -168,33 +204,47 @@ async function refreshTokenInternal(refreshToken: string): Promise<ClaudeOAuthCr
  * Save refreshed credentials back to ~/.claude/.credentials.json
  */
 function saveCredentials(credentials: ClaudeOAuthCredentials): void {
-  try {
-    let existingData: ClaudeCredentialsFile = {}
+  let existingData: ClaudeCredentialsFile = {}
 
-    if (fs.existsSync(CLAUDE_CREDENTIALS_PATH)) {
+  if (fs.existsSync(CLAUDE_CREDENTIALS_PATH)) {
+    try {
+      // Preserve any non-OAuth top-level fields in the credentials file.
       const content = fs.readFileSync(CLAUDE_CREDENTIALS_PATH, "utf-8")
       existingData = JSON.parse(content)
+    } catch (error) {
+      // Preserve availability: malformed JSON should not block saving a newly-refreshed token set.
+      // We continue with an empty object and rewrite a clean claudeAiOauth payload.
+      console.warn("[anthropic-oauth] Existing credentials JSON is invalid; overwriting with refreshed credentials")
+      Sentry.captureException(error)
     }
+  }
 
+  try {
     existingData.claudeAiOauth = {
       ...existingData.claudeAiOauth,
       ...credentials,
     }
 
-    // Ensure directory exists
-    const dir = path.dirname(CLAUDE_CREDENTIALS_PATH)
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true, mode: 0o700 })
-    }
+    // Ensure ~/.claude exists and is writable for lock and credential writes.
+    ensureClaudeDirForWrites()
 
-    // Write with secure permissions
-    fs.writeFileSync(CLAUDE_CREDENTIALS_PATH, JSON.stringify(existingData), { mode: 0o600 })
+    // Write with 644 — workers need read access after UID drop.
+    // CLI writes 600, but our systemd path unit or this code must ensure 644.
+    // See: docs/knowledge/ANTHROPIC_OAUTH_DO_NOT_DELETE.md § "Permission requirements"
+    fs.writeFileSync(CLAUDE_CREDENTIALS_PATH, JSON.stringify(existingData), { mode: 0o644 })
+    // writeFileSync mode only applies on file creation. If the CLI wrote the file with 0o600,
+    // permissions remain unchanged. Explicit chmod ensures workers can read after UID drop.
+    fs.chmodSync(CLAUDE_CREDENTIALS_PATH, 0o644)
 
     console.log("[anthropic-oauth] Saved refreshed credentials to disk")
   } catch (error) {
     console.error("[anthropic-oauth] Failed to save credentials:", error)
     Sentry.captureException(error)
-    // Don't throw - the refresh succeeded, just saving failed
+    // IMPORTANT: this must throw.
+    // Anthropic uses rotating refresh tokens, so a successful refresh response means the previous
+    // refresh token is now dead. If we fail to persist the new token and still return success,
+    // the system is effectively locked out until manual re-auth (/login).
+    throw error
   }
 }
 
@@ -203,25 +253,32 @@ function saveCredentials(credentials: ClaudeOAuthCredentials): void {
  * Prevents race conditions when multiple processes try to refresh simultaneously.
  */
 async function refreshTokenWithLock(): Promise<ClaudeOAuthCredentials | null> {
-  // Ensure credentials file exists before locking
+  // Fast exit: if credentials file doesn't exist, do not create ~/.claude solely for locking.
+  // This keeps this function side-effect free when OAuth is not configured.
   if (!fs.existsSync(CLAUDE_CREDENTIALS_PATH)) {
     return null
   }
 
+  // Ensure lock target directory exists and is writable for lockfile creation.
+  ensureClaudeDirForWrites()
+
   let release: (() => Promise<void>) | undefined
 
   try {
-    console.log("[anthropic-oauth] Acquiring file lock...")
-    release = await lockfile.lock(CLAUDE_CREDENTIALS_PATH, LOCK_OPTIONS)
+    console.log("[anthropic-oauth] Acquiring directory lock on ~/.claude ...")
+    release = await lockfile.lock(CLAUDE_DIR, LOCK_OPTIONS)
     console.log("[anthropic-oauth] Lock acquired")
 
-    // Re-read credentials after acquiring lock (another process may have refreshed)
+    // Critical race-avoidance step:
+    // Re-read credentials after acquiring lock because another process may have refreshed
+    // (and rotated the refresh token) while we were waiting.
     const credentials = readClaudeCredentials()
     if (!credentials) {
       return null
     }
 
-    // Check again if token is still expired (another process may have refreshed while we waited)
+    // If token is no longer expired after lock, another process already completed refresh.
+    // Return the latest disk value without making another refresh call.
     if (!isTokenExpired(credentials.expiresAt)) {
       console.log("[anthropic-oauth] Token was refreshed by another process")
       return credentials
