@@ -23,6 +23,25 @@ export interface EventDraft {
   recurrence?: string[]
 }
 
+export interface DeleteEventDraft {
+  type?: "delete_event_draft"
+  eventId: string
+  calendarId?: string
+  summary?: string
+  location?: string
+  start?: {
+    dateTime?: string
+    date?: string
+    timeZone?: string
+  }
+  end?: {
+    dateTime?: string
+    date?: string
+    timeZone?: string
+  }
+  htmlLink?: string
+}
+
 export interface CalendarEvent {
   id: string
   calendarId: string
@@ -100,6 +119,16 @@ export interface MeetingSuggestion {
 
 export interface CalendarEventDraftOutputProps {
   data: EventDraft
+  toolName: string
+  isError?: boolean
+  toolInput?: unknown
+  toolUseId?: string
+  tabId?: string
+  onSubmitAnswer?: (message: string) => void
+}
+
+export interface CalendarEventDeleteOutputProps {
+  data: DeleteEventDraft
   toolName: string
   isError?: boolean
   toolInput?: unknown

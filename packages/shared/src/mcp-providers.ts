@@ -267,6 +267,7 @@ export const OAUTH_MCP_PROVIDERS = {
       "mcp__google_calendar__check_availability",
       // Compose (returns data for UI - user must click Create Event)
       "mcp__google_calendar__compose_calendar_event",
+      "mcp__google_calendar__compose_delete_event",
       // Meeting proposals
       "mcp__google_calendar__propose_meeting",
       // NOTE: create_event, update_event, delete_event are NOT MCP tools

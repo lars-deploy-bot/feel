@@ -108,7 +108,12 @@ export function getOAuthConfig(provider: string, baseUrl?: string): OAuthConfig 
   // 3) Typed provider defaults from OAUTH_PROVIDER_CONFIG
   const providerScopes = process.env[`${providerKey.toUpperCase()}_SCOPES`]
   const sharedScopes = providerKey === envPrefix.toLowerCase() ? process.env[`${envPrefix}_SCOPES`] : undefined
-  const scopes = providerScopes || sharedScopes || config.defaultScopes
+  let scopes = config.defaultScopes
+  if (providerScopes !== undefined) {
+    scopes = providerScopes
+  } else if (sharedScopes !== undefined) {
+    scopes = sharedScopes
+  }
 
   return { clientId, clientSecret, redirectUri, scopes }
 }

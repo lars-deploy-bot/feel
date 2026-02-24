@@ -22,6 +22,7 @@ export function PromptEditorModal({
   const titleId = useId()
   const nameInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const prevViewRef = useRef<"edit" | "preview">("edit")
   const [displayName, setDisplayName] = useState(initialDisplayName)
   const [data, setData] = useState(initialData)
   const [mounted, setMounted] = useState(false)
@@ -35,9 +36,10 @@ export function PromptEditorModal({
 
   // When switching to edit, focus the textarea
   useEffect(() => {
-    if (view === "edit" && mounted) {
+    if (view === "edit" && mounted && prevViewRef.current !== "edit") {
       requestAnimationFrame(() => textareaRef.current?.focus())
     }
+    prevViewRef.current = view
   }, [view, mounted])
 
   const handleSave = () => {

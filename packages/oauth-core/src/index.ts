@@ -30,13 +30,13 @@ function normalizeScopes(scopeString: string | undefined): Set<string> {
   return new Set(scopes)
 }
 
-const PROVIDER_CREDENTIAL_ALIASES: Record<string, string> = {
+const providerCredentialAliases: Record<string, string> = {
   google_calendar: "google",
 }
 
 function resolveCredentialProvider(provider: string): string {
   const normalizedProvider = provider.toLowerCase()
-  return PROVIDER_CREDENTIAL_ALIASES[normalizedProvider] ?? normalizedProvider
+  return providerCredentialAliases[normalizedProvider] ?? normalizedProvider
 }
 
 export class OAuthMissingRequiredScopesError extends Error {

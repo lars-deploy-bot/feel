@@ -366,6 +366,16 @@ register(CALENDAR.COMPOSE_EVENT, {
   },
 })
 
+register(CALENDAR.COMPOSE_DELETE_EVENT, {
+  autoExpand: true, // Always show delete confirmation card
+  transform: unwrapMcp,
+  getPreview: data => {
+    const d = data as Record<string, unknown> | null
+    const summary = d?.summary as string | undefined
+    return summary ? `Delete: ${summary.slice(0, 30)}${summary.length > 30 ? "..." : ""}` : "delete event"
+  },
+})
+
 register(CALENDAR.PROPOSE_MEETING, {
   autoExpand: true, // Always show the meeting proposal
   transform: unwrapMcp,
