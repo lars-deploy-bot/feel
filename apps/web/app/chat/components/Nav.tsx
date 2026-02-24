@@ -3,6 +3,7 @@
 import { Image, Layers, MessageCircle, PanelLeft, PanelLeftClose, Settings } from "lucide-react"
 import type { RefObject } from "react"
 import { PhotoMenu } from "@/components/ui/PhotoMenu"
+import { OrganizationWorkspaceSwitcher } from "@/components/workspace/OrganizationWorkspaceSwitcher"
 import { WorktreeSwitcher } from "@/components/workspace/WorktreeSwitcher"
 import type { ChatInputHandle } from "@/features/chat/components/ChatInput/types"
 import {
@@ -12,7 +13,6 @@ import {
   trackPhotosClicked,
   trackSettingsClicked,
 } from "@/lib/analytics/events"
-import { OrganizationWorkspaceSwitcher } from "@/components/workspace/OrganizationWorkspaceSwitcher"
 import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
 
 interface NavProps {
