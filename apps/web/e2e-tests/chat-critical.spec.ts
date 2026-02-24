@@ -112,7 +112,7 @@ test.describe("Critical Chat Path", () => {
 
     // Send message
     const responsePromise = authenticatedPage.waitForResponse(
-      response => response.url().includes("/api/claude/stream") && response.request().method() === "POST",
+      response => response.url().endsWith("/api/claude/stream") && response.request().method() === "POST",
     )
     await chat.sendMessage(userMessage)
     const response = await responsePromise
@@ -179,7 +179,7 @@ test.describe("Critical Chat Path", () => {
 
     // --- Turn 1: establish context ---
     const firstResponsePromise = authenticatedPage.waitForResponse(
-      response => response.url().includes("/api/claude/stream") && response.request().method() === "POST",
+      response => response.url().endsWith("/api/claude/stream") && response.request().method() === "POST",
     )
     await chat.sendMessage(firstUserMessage)
     const firstResponse = await firstResponsePromise
@@ -193,7 +193,7 @@ test.describe("Critical Chat Path", () => {
 
     // --- Turn 2: verify context retained ---
     const secondResponsePromise = authenticatedPage.waitForResponse(
-      response => response.url().includes("/api/claude/stream") && response.request().method() === "POST",
+      response => response.url().endsWith("/api/claude/stream") && response.request().method() === "POST",
     )
     await chat.sendMessage(secondUserMessage)
     const secondResponse = await secondResponsePromise
