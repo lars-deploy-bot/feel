@@ -2,7 +2,7 @@
 
 import type { OrgRole } from "@webalive/shared"
 import { Building2, ChevronDown, UserMinus } from "lucide-react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import toast from "react-hot-toast"
 import { AddWebsiteModal } from "@/components/modals/AddWebsiteModal"
 import { DeleteModal } from "@/components/modals/DeleteModal"

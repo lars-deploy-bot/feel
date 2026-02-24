@@ -318,10 +318,10 @@ export function createWorkspaceStorageValue(workspace: string, orgId: string | n
  * Preview Navigation Messages - Single Source of Truth
  *
  * PostMessage types used for communication between preview iframes
- * and the Sandbox component. Used by:
+ * and the Workbench component. Used by:
  * - Go preview-proxy script injection (apps/preview-proxy)
  * - Vite plugin in site template (templates/site-template)
- * - Sandbox components (apps/web/features/chat/components)
+ * - Workbench components (apps/web/features/chat/components)
  */
 export const PREVIEW_MESSAGES = {
   /** Sent when navigation starts (before page unloads) */
@@ -370,9 +370,9 @@ export const FEATURE_FLAGS = {
   },
 
   /**
-   * Drive - File manager panel in the sandbox.
-   * Disabled by default. When enabled, shows the Drive panel option
-   * in the sandbox view switcher for browsing and uploading files.
+   * Drive - File manager view in the workbench.
+   * Disabled by default. When enabled, shows the Drive option
+   * in the workbench view switcher for browsing and uploading files.
    */
   DRIVE: {
     defaultValue: false,
@@ -412,7 +412,7 @@ export const STORE_STORAGE_KEYS = {
   /** Tab view store (sessionStorage) - per-browser-tab UI state */
   TAB_VIEW: "claude-tab-view",
   LLM: "alive-llm-settings-v2",
-  DEBUG: "alive-debug-view-v7",
+  DEBUG: "alive-debug-view-v8",
   FEATURE_FLAG: "feature-flag-overrides-v1",
   SESSION: "claude-session-storage",
   GOAL: "goal-storage",
@@ -454,7 +454,7 @@ export interface TestStorageStateOptions {
   /** Optional debug settings override */
   debug?: {
     isDebugView?: boolean
-    showSandbox?: boolean
+    showWorkbench?: boolean
   }
 }
 
@@ -486,9 +486,9 @@ export function createTestStorageState(options: TestStorageStateOptions): Storag
     value: JSON.stringify({
       state: {
         isDebugView: options.debug?.isDebugView ?? false,
-        showSandbox: options.debug?.showSandbox ?? false,
-        isSandboxMinimized: false,
-        sandboxWidth: null,
+        showWorkbench: options.debug?.showWorkbench ?? false,
+        isWorkbenchMinimized: false,
+        workbenchWidth: null,
       },
     }),
   })

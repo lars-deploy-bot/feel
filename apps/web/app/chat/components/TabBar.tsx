@@ -1,34 +1,46 @@
 "use client"
 
-import { History, Plus, X } from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { History, Plus } from "lucide-react"
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { trackTabClosed, trackTabCreated, trackTabReopened } from "@/lib/analytics/events"
 import type { Tab } from "@/lib/stores/tabStore"
 
-interface TabBarProps {
-  tabs: Tab[]
-  closedTabs: Tab[]
-  activeTabId: string | null
-  onTabSelect: (tabId: string) => void
-  onTabClose: (tabId: string) => void
-  onTabRename: (tabId: string, name: string) => void
-  onTabReopen: (tabId: string) => void
-  onAddTab: () => void
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function timeAgo(timestamp: number): string {
+  const seconds = Math.floor((Date.now() - timestamp) / 1000)
+  if (seconds < 60) return "just now"
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  return `${days}d ago`
 }
 
-/** Hook for inline tab name editing */
+// ─── Shared styles ───────────────────────────────────────────────────────────
+
+const ISLAND_BG = "bg-black/[0.025] dark:bg-white/[0.04] border border-black/[0.03] dark:border-white/[0.04]"
+
+const ACTION_CIRCLE = `flex items-center justify-center size-8 rounded-full ${ISLAND_BG} transition-all duration-200`
+
+const PILL_ACTIVE =
+  "bg-white dark:bg-white/10 text-black dark:text-white shadow-[0_1px_4px_rgba(0,0,0,0.1),0_0_1px_rgba(0,0,0,0.05)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.3),0_0_1px_rgba(255,255,255,0.05)]"
+
+const PILL_INACTIVE = "text-black/35 dark:text-white/35 hover:text-black/55 dark:hover:text-white/55 cursor-pointer"
+
+// ─── Inline edit hook ────────────────────────────────────────────────────────
+
 function useInlineEdit(onSave: (id: string, value: string) => void) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editValue, setEditValue] = useState("")
-  const inputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    if (editingId) {
-      inputRef.current?.focus()
-      inputRef.current?.select()
-    }
-  }, [editingId])
+  const inputRef = useCallback((el: HTMLInputElement | null) => {
+    if (!el) return
+    el.focus()
+    el.select()
+  }, [])
 
   const startEdit = useCallback((id: string, currentValue: string) => {
     setEditingId(id)
@@ -55,6 +67,174 @@ function useInlineEdit(onSave: (id: string, value: string) => void) {
   return { editingId, editValue, setEditValue, inputRef, startEdit, commitEdit, handleKeyDown }
 }
 
+// ─── Tab Pill ────────────────────────────────────────────────────────────────
+
+interface TabPillProps {
+  tab: Tab
+  isActive: boolean
+  canClose: boolean
+  editingId: string | null
+  editValue: string
+  inputRef: (el: HTMLInputElement | null) => void
+  onSelect: () => void
+  onClose: () => void
+  onStartEdit: () => void
+  onEditChange: (value: string) => void
+  onEditCommit: () => void
+  onEditKeyDown: (e: React.KeyboardEvent) => void
+}
+
+function TabPill({
+  tab,
+  isActive,
+  canClose,
+  editingId,
+  editValue,
+  inputRef,
+  onSelect,
+  onClose,
+  onStartEdit,
+  onEditChange,
+  onEditCommit,
+  onEditKeyDown,
+}: TabPillProps) {
+  const isEditing = tab.id === editingId
+
+  return (
+    <div
+      data-testid={`tab-${tab.id}`}
+      data-tab-name={tab.name}
+      data-active={isActive}
+      className={`flex items-center gap-1.5 h-8 px-3.5 text-[13px] font-medium rounded-full transition-all duration-200 shrink-0 ${isActive ? PILL_ACTIVE : PILL_INACTIVE}`}
+      onClick={() => {
+        if (!isEditing) onSelect()
+      }}
+      onContextMenu={e => {
+        if (canClose) {
+          e.preventDefault()
+          trackTabClosed()
+          onClose()
+        }
+      }}
+    >
+      {isActive && <span className="size-1.5 rounded-full bg-emerald-500 shrink-0" />}
+      <div className="flex-1 min-w-0">
+        {isEditing ? (
+          <input
+            ref={inputRef}
+            type="text"
+            value={editValue}
+            onChange={e => onEditChange(e.target.value)}
+            onBlur={onEditCommit}
+            onKeyDown={onEditKeyDown}
+            className="w-full bg-transparent border-none outline-none text-[13px] font-medium text-black dark:text-white"
+          />
+        ) : (
+          <button
+            type="button"
+            onDoubleClick={onStartEdit}
+            className="w-full truncate text-left bg-transparent border-none cursor-pointer"
+          >
+            {tab.name}
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Closed Tabs Dropdown ────────────────────────────────────────────────────
+
+interface ClosedTabsDropdownProps {
+  tabs: Tab[]
+  triggerRef: React.RefObject<HTMLButtonElement | null>
+  onReopen: (tabId: string) => void
+  onClose: () => void
+}
+
+function ClosedTabsDropdown({ tabs, triggerRef, onReopen, onClose }: ClosedTabsDropdownProps) {
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  // Position centered below trigger
+  const reposition = useCallback(() => {
+    const trigger = triggerRef.current
+    const menu = menuRef.current
+    if (!trigger || !menu) return
+    const rect = trigger.getBoundingClientRect()
+    const menuWidth = menu.offsetWidth
+    const left = Math.max(8, Math.min(rect.left + rect.width / 2 - menuWidth / 2, window.innerWidth - menuWidth - 8))
+    menu.style.top = `${rect.bottom + 6}px`
+    menu.style.left = `${left}px`
+  }, [triggerRef])
+
+  useLayoutEffect(reposition, [reposition])
+
+  useEffect(() => {
+    window.addEventListener("resize", reposition)
+    window.addEventListener("scroll", reposition, true)
+    return () => {
+      window.removeEventListener("resize", reposition)
+      window.removeEventListener("scroll", reposition, true)
+    }
+  }, [reposition])
+
+  // Click outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node
+      if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) return
+      onClose()
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [triggerRef, onClose])
+
+  return createPortal(
+    <div
+      ref={menuRef}
+      style={{ position: "fixed" }}
+      className="z-[9999] flex flex-col gap-0.5 p-1.5 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl border border-black/[0.06] dark:border-white/[0.06] rounded-2xl shadow-[0_4px_16px_rgba(0,0,0,0.08)] min-w-[180px] max-w-[280px]"
+    >
+      {tabs.map((tab, i) => (
+        <button
+          key={tab.id}
+          type="button"
+          onClick={() => {
+            trackTabReopened()
+            onReopen(tab.id)
+          }}
+          className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left transition-all duration-150 hover:bg-white dark:hover:bg-white/10 hover:shadow-sm group/item"
+          style={i < 8 ? { animation: `fadeSlideIn 200ms ${i * 40}ms both` } : undefined}
+        >
+          <span className="size-1.5 rounded-full bg-black/10 dark:bg-white/10 shrink-0 group-hover/item:bg-emerald-500 transition-colors" />
+          <span className="flex-1 min-w-0 text-[13px] font-medium text-black/40 dark:text-white/40 group-hover/item:text-black dark:group-hover/item:text-white truncate transition-colors">
+            {tab.name}
+          </span>
+          {tab.closedAt && (
+            <span className="text-[10px] text-black/20 dark:text-white/20 shrink-0 tabular-nums">
+              {timeAgo(tab.closedAt)}
+            </span>
+          )}
+        </button>
+      ))}
+    </div>,
+    document.body,
+  )
+}
+
+// ─── TabBar ──────────────────────────────────────────────────────────────────
+
+interface TabBarProps {
+  tabs: Tab[]
+  closedTabs: Tab[]
+  activeTabId: string | null
+  onTabSelect: (tabId: string) => void
+  onTabClose: (tabId: string) => void
+  onTabRename: (tabId: string, name: string) => void
+  onTabReopen: (tabId: string) => void
+  onAddTab: () => void
+}
+
 export function TabBar({
   tabs,
   closedTabs,
@@ -67,105 +247,40 @@ export function TabBar({
 }: TabBarProps) {
   const { editingId, editValue, setEditValue, inputRef, startEdit, commitEdit, handleKeyDown } =
     useInlineEdit(onTabRename)
+
   const [showClosedMenu, setShowClosedMenu] = useState(false)
   const closedBtnRef = useRef<HTMLButtonElement>(null)
-  const closedMenuRef = useRef<HTMLDivElement>(null)
-  const [menuPos, setMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 })
-
-  // Position the portal dropdown below the trigger button, clamped to viewport
-  useEffect(() => {
-    if (!showClosedMenu || !closedBtnRef.current) return
-    const rect = closedBtnRef.current.getBoundingClientRect()
-    const menuWidth = 224 // max-w-56 = 14rem = 224px
-    const left = Math.min(rect.left, window.innerWidth - menuWidth - 8)
-    setMenuPos({ top: rect.bottom + 4, left: Math.max(8, left) })
-  }, [showClosedMenu])
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    if (!showClosedMenu) return
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as Node
-      if (
-        closedMenuRef.current &&
-        !closedMenuRef.current.contains(target) &&
-        closedBtnRef.current &&
-        !closedBtnRef.current.contains(target)
-      ) {
-        setShowClosedMenu(false)
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [showClosedMenu])
+  const closeMenu = useCallback(() => setShowClosedMenu(false), [])
 
   return (
-    <div data-testid="tab-bar" className="flex-shrink-0 border-b border-black/[0.06] dark:border-white/[0.06]">
+    <div data-testid="tab-bar" className="flex-shrink-0 overflow-hidden">
       <div className="px-3 md:px-6 mx-auto w-full">
-        <div className="flex items-center justify-between py-2 pb-0">
-          {/* Left side: tabs and add button */}
-          <div className="flex items-center gap-2 min-w-0 overflow-x-auto scrollbar-hide flex-1">
-            {tabs.length > 0 && (
-              <>
-                {tabs.map(tab => {
-                  const isActive = tab.id === activeTabId
-                  const isEditing = tab.id === editingId
+        <div className="group/bar flex flex-col items-center py-2">
+          {tabs.length > 0 && (
+            <div className="inline-flex items-center gap-2 min-w-0 overflow-x-auto scrollbar-hide">
+              {/* Island */}
+              <div className={`inline-flex items-center gap-1.5 px-1.5 py-1 rounded-full ${ISLAND_BG}`}>
+                {tabs.map(tab => (
+                  <TabPill
+                    key={tab.id}
+                    tab={tab}
+                    isActive={tab.id === activeTabId}
+                    canClose={tabs.length > 1}
+                    editingId={editingId}
+                    editValue={editValue}
+                    inputRef={inputRef}
+                    onSelect={() => onTabSelect(tab.id)}
+                    onClose={() => onTabClose(tab.id)}
+                    onStartEdit={() => startEdit(tab.id, tab.name)}
+                    onEditChange={setEditValue}
+                    onEditCommit={commitEdit}
+                    onEditKeyDown={handleKeyDown}
+                  />
+                ))}
+              </div>
 
-                  return (
-                    <div
-                      key={tab.id}
-                      data-testid={`tab-${tab.id}`}
-                      data-tab-name={tab.name}
-                      data-active={isActive}
-                      className={`group relative flex items-center h-9 px-3 text-xs font-medium rounded-t-lg transition-all duration-200 min-w-32 shrink-0 ${
-                        isActive
-                          ? "bg-black/[0.06] dark:bg-white/[0.06] text-black dark:text-white pb-0"
-                          : "text-black/60 dark:text-white/60 hover:text-black/80 dark:hover:text-white/80 hover:bg-black/[0.03] dark:hover:bg-white/[0.03]"
-                      }`}
-                    >
-                      {isActive && (
-                        <div className="absolute -bottom-2 left-0 right-0 h-0.5 bg-black dark:bg-white rounded-t transition-all duration-200" />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        {isEditing ? (
-                          <input
-                            ref={inputRef}
-                            type="text"
-                            value={editValue}
-                            onChange={e => setEditValue(e.target.value)}
-                            onBlur={commitEdit}
-                            onKeyDown={handleKeyDown}
-                            className="w-full bg-transparent border-none outline-none text-xs font-medium text-black dark:text-white"
-                          />
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => onTabSelect(tab.id)}
-                            onDoubleClick={() => startEdit(tab.id, tab.name)}
-                            className="w-full truncate text-left bg-transparent border-none cursor-pointer"
-                          >
-                            {tab.name}
-                          </button>
-                        )}
-                      </div>
-                      {tabs.length > 1 && !isEditing && (
-                        <button
-                          type="button"
-                          onClick={e => {
-                            e.stopPropagation()
-                            trackTabClosed()
-                            onTabClose(tab.id)
-                          }}
-                          data-testid={`close-tab-${tab.id}`}
-                          className="size-5 flex-shrink-0 flex items-center justify-center rounded-md transition-all duration-200 text-black/35 dark:text-white/35 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-hover:text-black/60 dark:group-hover:text-white/60 hover:bg-black/[0.08] dark:hover:bg-white/[0.08] ml-1"
-                          aria-label={`Close ${tab.name}`}
-                        >
-                          <X size={12} strokeWidth={2} />
-                        </button>
-                      )}
-                    </div>
-                  )
-                })}
+              {/* Action circles */}
+              <div className="inline-flex items-center gap-1 shrink-0">
                 <button
                   type="button"
                   onClick={() => {
@@ -173,55 +288,42 @@ export function TabBar({
                     onAddTab()
                   }}
                   data-testid="add-tab-button"
-                  className="flex items-center justify-center size-8 rounded-full text-black/50 dark:text-white/50 hover:text-black/80 dark:hover:text-white/80 hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-all duration-200 shrink-0"
+                  className={`${ACTION_CIRCLE} text-black/30 dark:text-white/30 hover:text-black/55 dark:hover:text-white/55 hover:bg-black/[0.05] dark:hover:bg-white/[0.08]`}
                   title="Add new tab"
                 >
-                  <Plus size={16} strokeWidth={2} />
+                  <Plus size={14} strokeWidth={2} />
                 </button>
-              </>
-            )}
-          </div>
-
-          {/* Right side: history/rewind button */}
-          {closedTabs.length > 0 && (
-            <div className="flex items-center shrink-0">
-              <button
-                ref={closedBtnRef}
-                type="button"
-                onClick={() => setShowClosedMenu(prev => !prev)}
-                className="flex items-center justify-center size-8 rounded-full text-black/50 dark:text-white/50 hover:text-black/80 dark:hover:text-white/80 hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-all duration-200"
-                title="Reopen closed tab"
-              >
-                <History size={16} strokeWidth={2} />
-              </button>
-              {showClosedMenu &&
-                createPortal(
-                  <div
-                    ref={closedMenuRef}
-                    style={{ position: "fixed", top: menuPos.top, left: menuPos.left }}
-                    className="z-[9999] min-w-40 max-w-56 bg-white dark:bg-neutral-900 border border-black/[0.08] dark:border-white/[0.08] rounded-2xl shadow-xl ring-1 ring-black/[0.04] dark:ring-white/[0.04] py-1 animate-in fade-in slide-in-from-top-2 duration-150"
+                {closedTabs.length > 0 && (
+                  <button
+                    ref={closedBtnRef}
+                    type="button"
+                    onClick={() => setShowClosedMenu(prev => !prev)}
+                    className={`${ACTION_CIRCLE} text-black/25 dark:text-white/25 hover:text-black/50 dark:hover:text-white/50 hover:bg-black/[0.05] dark:hover:bg-white/[0.08]`}
+                    title="Reopen closed tab"
                   >
-                    <div className="px-3 py-1.5 text-[10px] font-medium text-black/40 dark:text-white/40 uppercase tracking-wider">
-                      Closed
-                    </div>
-                    {closedTabs.map(tab => (
-                      <button
-                        key={tab.id}
-                        type="button"
-                        onClick={() => {
-                          trackTabReopened()
-                          onTabReopen(tab.id)
-                          setShowClosedMenu(false)
-                        }}
-                        className="w-full text-left px-3 py-1.5 text-xs font-medium text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] active:bg-black/[0.08] dark:active:bg-white/[0.10] transition-colors truncate"
-                      >
-                        {tab.name}
-                      </button>
-                    ))}
-                  </div>,
-                  document.body,
+                    <History size={14} strokeWidth={2} />
+                  </button>
                 )}
+              </div>
             </div>
+          )}
+
+          {tabs.length > 1 && (
+            <span className="text-[10px] text-black/0 dark:text-white/0 group-hover/bar:text-black/25 dark:group-hover/bar:text-white/25 transition-colors duration-300 mt-0.5 select-none">
+              right-click to archive
+            </span>
+          )}
+
+          {showClosedMenu && (
+            <ClosedTabsDropdown
+              tabs={closedTabs}
+              triggerRef={closedBtnRef}
+              onReopen={tabId => {
+                onTabReopen(tabId)
+                setShowClosedMenu(false)
+              }}
+              onClose={closeMenu}
+            />
           )}
         </div>
       </div>

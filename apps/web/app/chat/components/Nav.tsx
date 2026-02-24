@@ -67,7 +67,7 @@ export function Nav({
     <div className="h-12 flex-shrink-0 border-b border-black/[0.04] dark:border-white/[0.04]">
       <div className="h-full flex items-center px-2">
         {/* Left side: sidebar toggle + breadcrumb + worktree */}
-        <div className="flex items-center gap-1.5 min-w-0">
+        <div className="flex items-center gap-4 min-w-0">
           <button
             type="button"
             onClick={onToggleSidebar}

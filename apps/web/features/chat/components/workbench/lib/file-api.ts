@@ -1,5 +1,5 @@
 /**
- * File API client for sandbox views
+ * File API client for workbench views
  * Extracted to eliminate duplication between FilesView and CodeView
  */
 

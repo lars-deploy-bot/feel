@@ -210,6 +210,18 @@ input:-webkit-autofill:active {
   animation: shimmer 2s ease-in-out infinite;
 }
 
+/* Dropdown item staggered entrance */
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Hide scrollbar utility */
 .scrollbar-hide {
   -ms-overflow-style: none;

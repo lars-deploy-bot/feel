@@ -4,7 +4,7 @@ import { File, Image, X } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import { getFileColor } from "../lib/file-colors"
 import { getExtension, getFileName } from "../lib/file-path"
-import { ErrorMessage, LoadingSpinner } from "../ui"
+import { ErrorMessage, LoadingSpinner, PanelBar } from "../ui"
 import { readDriveFile } from "./drive-api"
 
 interface DrivePreviewProps {
@@ -31,7 +31,7 @@ export function DrivePreview({ workspace, worktree, filePath, onClose }: DrivePr
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="h-9 px-3 flex items-center gap-2 border-b border-black/[0.08] dark:border-white/[0.04] bg-neutral-100/50 dark:bg-neutral-900/30 shrink-0">
+      <PanelBar className="px-3 gap-2">
         <File size={14} strokeWidth={1.5} className={getFileColor(filename)} />
         <span className="text-[13px] text-neutral-700 dark:text-neutral-300 truncate flex-1">{filename}</span>
         <button
@@ -42,7 +42,7 @@ export function DrivePreview({ workspace, worktree, filePath, onClose }: DrivePr
         >
           <X size={14} strokeWidth={1.5} />
         </button>
-      </div>
+      </PanelBar>
 
       {/* Content */}
       <div className="flex-1 overflow-auto">

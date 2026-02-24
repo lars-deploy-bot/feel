@@ -7,6 +7,7 @@ import { DrivePreview } from "./DrivePreview"
 import { DriveTree, invalidateDriveCache } from "./DriveTree"
 import { DriveUpload } from "./DriveUpload"
 import { deleteDriveItem } from "./drive-api"
+import { PanelBar } from "../ui"
 
 interface DrivePanelProps {
   workspace: string
@@ -125,7 +126,7 @@ export function DrivePanel({ workspace, worktree }: DrivePanelProps) {
           style={{ width: treeWidth }}
         >
           {/* Header */}
-          <div className="h-9 px-2 flex items-center justify-between border-b border-black/[0.08] dark:border-white/[0.04] bg-neutral-100/50 dark:bg-neutral-900/30 shrink-0">
+          <PanelBar className="justify-between">
             <span className="text-[11px] font-medium text-neutral-500 uppercase tracking-wider">Drive</span>
             <div className="flex items-center gap-0.5">
               <button
@@ -145,7 +146,7 @@ export function DrivePanel({ workspace, worktree }: DrivePanelProps) {
                 <PanelLeftClose size={14} strokeWidth={1.5} />
               </button>
             </div>
-          </div>
+          </PanelBar>
 
           {/* Tree */}
           <div className="flex-1 overflow-hidden">
@@ -180,7 +181,7 @@ export function DrivePanel({ workspace, worktree }: DrivePanelProps) {
       {/* Preview area */}
       <div className="flex-1 flex flex-col min-w-0">
         {treeCollapsed && (
-          <div className="h-9 px-2 flex items-center border-b border-black/[0.08] dark:border-white/[0.04] bg-neutral-100/50 dark:bg-neutral-900/30 shrink-0">
+          <PanelBar>
             <button
               type="button"
               onClick={() => setTreeCollapsed(false)}
@@ -189,7 +190,7 @@ export function DrivePanel({ workspace, worktree }: DrivePanelProps) {
             >
               <PanelLeftOpen size={14} strokeWidth={1.5} />
             </button>
-          </div>
+          </PanelBar>
         )}
 
         {selectedFile ? (

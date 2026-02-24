@@ -7,13 +7,13 @@ import { RotateCw } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import "@xterm/xterm/css/xterm.css"
 
-interface SandboxTerminalProps {
+interface WorkbenchTerminalProps {
   workspace: string
 }
 
 type TerminalState = "connecting" | "connected" | "disconnected" | "error"
 
-export function SandboxTerminal({ workspace }: SandboxTerminalProps) {
+export function WorkbenchTerminal({ workspace }: WorkbenchTerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<Terminal | null>(null)
   const fitRef = useRef<FitAddon | null>(null)
@@ -180,7 +180,7 @@ export function SandboxTerminal({ workspace }: SandboxTerminalProps) {
       }
     })
 
-    // ResizeObserver for panel resizing (critical for the resizable sandbox panel)
+    // ResizeObserver for panel resizing (critical for the resizable workbench panel)
     const ro = new ResizeObserver(() => {
       try {
         fit.fit()

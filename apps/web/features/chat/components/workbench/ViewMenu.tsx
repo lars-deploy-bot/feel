@@ -1,18 +1,18 @@
 "use client"
 
-import { Activity, Code, FolderOpen, Globe, Terminal } from "lucide-react"
+import { Activity, Code, FolderOpen, Globe, LayoutGrid, Terminal } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
-import { trackSandboxModeChanged } from "@/lib/analytics/events"
+import { trackWorkbenchViewChanged } from "@/lib/analytics/events"
 import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
-import type { PanelView } from "../../lib/sandbox-context"
+import type { WorkbenchView } from "../../lib/workbench-context"
 
-interface PanelViewMenuProps {
-  currentView: PanelView
-  onViewChange: (view: PanelView) => void
+interface ViewMenuProps {
+  currentView: WorkbenchView
+  onViewChange: (view: WorkbenchView) => void
   isSuperadmin?: boolean
 }
 
-const VIEW_OPTIONS: { view: PanelView; label: string; icon: typeof Globe; superadminOnly?: boolean }[] = [
+const VIEW_OPTIONS: { view: WorkbenchView; label: string; icon: typeof Globe; superadminOnly?: boolean }[] = [
   { view: "site", label: "Preview", icon: Globe },
   { view: "code", label: "Code", icon: Code },
   { view: "drive", label: "Drive", icon: FolderOpen },
@@ -34,7 +34,7 @@ function useIsMobile(): boolean {
   return isMobile
 }
 
-export function PanelViewMenu({ currentView, onViewChange, isSuperadmin }: PanelViewMenuProps) {
+export function ViewMenu({ currentView, onViewChange, isSuperadmin }: ViewMenuProps) {
   const isMobile = useIsMobile()
   const [isOpen, setIsOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -49,8 +49,9 @@ export function PanelViewMenu({ currentView, onViewChange, isSuperadmin }: Panel
   })
 
   // Redirect when current view is no longer available (flag toggled off, mobile, superadmin)
+  // "home" is always valid (it's the picker, not in the menu)
   useEffect(() => {
-    if (!availableViews.some(v => v.view === currentView)) {
+    if (currentView !== "home" && !availableViews.some(v => v.view === currentView)) {
       onViewChange(isMobile ? "site" : (availableViews[0]?.view ?? "code"))
     }
   }, [availableViews, currentView, isMobile, onViewChange])
@@ -82,8 +83,8 @@ export function PanelViewMenu({ currentView, onViewChange, isSuperadmin }: Panel
     return () => document.removeEventListener("keydown", handleKeyDown)
   }, [isOpen])
 
-  const handleSelect = (view: PanelView) => {
-    trackSandboxModeChanged(view)
+  const handleSelect = (view: WorkbenchView) => {
+    trackWorkbenchViewChanged(view)
     onViewChange(view)
     setIsOpen(false)
   }
@@ -143,12 +144,30 @@ export function PanelViewMenu({ currentView, onViewChange, isSuperadmin }: Panel
                 </button>
               )
             })}
+            <div className="my-1 border-t border-black/[0.06] dark:border-white/[0.06]" />
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => handleSelect("home")}
+              className={`w-full px-3 py-1.5 text-left text-[13px] flex items-center gap-2 transition-colors ${
+                currentView === "home"
+                  ? "bg-black/[0.04] dark:bg-white/[0.06] text-black dark:text-white"
+                  : "text-neutral-500 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] hover:text-neutral-800 dark:hover:text-neutral-200"
+              }`}
+            >
+              <LayoutGrid
+                size={14}
+                strokeWidth={1.5}
+                className={
+                  currentView === "home" ? "text-black dark:text-white" : "text-neutral-400 dark:text-neutral-500"
+                }
+              />
+              <span className="flex-1">Home</span>
+              {currentView === "home" && <div className="w-1 h-1 rounded-full bg-emerald-500" />}
+            </button>
           </div>
         </div>
       )}
     </div>
   )
 }
-
-/** @deprecated Use PanelViewMenu instead */
-export { PanelViewMenu as SandboxModeMenu }

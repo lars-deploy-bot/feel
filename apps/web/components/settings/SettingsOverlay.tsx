@@ -23,7 +23,7 @@ interface SettingsOverlayProps {
 
 /**
  * Settings overlay — rendered inside the content area's relative container.
- * Covers sidebar + chat + sandbox but leaves the top nav visible.
+ * Covers sidebar + chat + workbench but leaves the top nav visible.
  * Close via: X button or ESC key.
  * Uses Suspense to handle nuqs URL param hydration.
  */

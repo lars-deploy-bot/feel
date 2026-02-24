@@ -18,8 +18,8 @@ import { ConversationSidebar } from "@/features/chat/components/ConversationSide
 import { CollapsibleToolGroup } from "@/features/chat/components/message-renderers/CollapsibleToolGroup"
 import { MessageWrapper } from "@/features/chat/components/message-renderers/MessageWrapper"
 import { PendingToolsIndicator } from "@/features/chat/components/PendingToolsIndicator"
-import { Sandbox } from "@/features/chat/components/Sandbox"
-import { SandboxMobile } from "@/features/chat/components/SandboxMobile"
+import { Workbench } from "@/features/chat/components/workbench/Workbench"
+import { WorkbenchMobile } from "@/features/chat/components/workbench/WorkbenchMobile"
 import { SubdomainInitializer } from "@/features/chat/components/SubdomainInitializer"
 // useTabSession removed - now using useActiveSession via useTabIsolatedMessages
 import { useBrowserCleanup } from "@/features/chat/hooks/useBrowserCleanup"
@@ -30,7 +30,7 @@ import { ClientRequest, DevTerminalProvider, useDevTerminal } from "@/features/c
 import { groupToolMessages, type RenderItem } from "@/features/chat/lib/group-tool-messages"
 import { renderMessage, shouldRenderMessage } from "@/features/chat/lib/message-renderer"
 import { RetryProvider, useRetry } from "@/features/chat/lib/retry-context"
-import { PanelProvider, usePanelContext } from "@/features/chat/lib/sandbox-context"
+import { WorkbenchProvider, useWorkbenchContext } from "@/features/chat/lib/workbench-context"
 import { useAuth } from "@/features/deployment/hooks/useAuth"
 import { useWorkspace } from "@/features/workspace/hooks/useWorkspace"
 import { validateWorktreeSlug } from "@/features/workspace/lib/worktree-utils"
@@ -55,7 +55,7 @@ import { useOrganizations } from "@/lib/hooks/useOrganizations"
 import { validateOAuthToastParams } from "@/lib/integrations/toast-validation"
 import { useIsSessionExpired } from "@/lib/stores/authStore"
 import { useSidebarActions, useSidebarOpen } from "@/lib/stores/conversationSidebarStore"
-import { useDebugVisible, useSandbox } from "@/lib/stores/debug-store"
+import { useDebugVisible, useWorkbench } from "@/lib/stores/debug-store"
 import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
 import { useAppHydrated } from "@/lib/stores/HydrationBoundary"
 import { useLastSeenStreamSeq, useStreamingActions } from "@/lib/stores/streamingStore"
@@ -121,7 +121,7 @@ function ChatPageContent() {
   // Tabs are on by default for all users
   const chatInputRef = useRef<ChatInputHandle | null>(null)
   const photoButtonRef = useRef<HTMLButtonElement>(null)
-  const showSandboxRaw = useSandbox()
+  const showWorkbenchRaw = useWorkbench()
   const isDebugMode = useDebugVisible()
   const { addEvent: addDevEvent } = useDevTerminal()
   const { workspace, worktree, workspaceKey, isTerminal, mounted, setWorkspace, setWorktree } = useWorkspace({
@@ -248,11 +248,11 @@ function ChatPageContent() {
 
   // Superadmin workspace (alive) shows terminal & code views only
   const isSuperadminWorkspace = workspace === SUPERADMIN.WORKSPACE_NAME
-  const showSandbox = showSandboxRaw // Show for all workspaces
+  const showWorkbench = showWorkbenchRaw // Show for all workspaces
 
   const streamingActions = useStreamingActions()
   const lastSeenStreamSeq = useLastSeenStreamSeq(sessionTabId)
-  const { registerElementSelectHandler } = usePanelContext()
+  const { registerElementSelectHandler } = useWorkbenchContext()
 
   // Custom hooks
   const statusText = useStatusText(busy, messages)
@@ -711,14 +711,13 @@ function ChatPageContent() {
             )}
 
             {/* Messages */}
-            <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-8">
-              <div className="p-4 mx-auto w-full md:max-w-[calc(42rem+2rem)] min-w-0">
+            <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-8 flex flex-col">
+              <div className="p-4 mx-auto w-full md:max-w-[calc(42rem+2rem)] min-w-0 flex-1">
                 {messages.length === 0 && !busy && (
                   <ChatEmptyState
                     workspace={workspace}
                     totalDomainCount={totalDomainCount}
                     isLoading={organizationsLoading}
-                    onTemplatesClick={modals.openTemplates}
                     onImportGithub={() => setGithubImportOpen(true)}
                     onSelectSite={() => modals.openSettings("websites")}
                   />
@@ -861,10 +860,10 @@ function ChatPageContent() {
           </div>
         </div>
 
-        {/* Side panel sandbox - desktop only */}
-        {showSandbox && (
+        {/* Workbench - desktop only */}
+        {showWorkbench && (
           <div className="hidden md:flex h-full overflow-hidden">
-            <Sandbox />
+            <Workbench />
           </div>
         )}
 
@@ -881,7 +880,7 @@ function ChatPageContent() {
       {isHydrated && (
         <AnimatePresence>
           {modals.mobilePreview && !isSuperadminWorkspace && (
-            <SandboxMobile
+            <WorkbenchMobile
               onClose={modals.closeMobilePreview}
               busy={busy}
               statusText={statusText}
@@ -908,7 +907,7 @@ function ChatPageContent() {
                   onAttachmentUpload: handleAttachmentUpload,
                 }}
               />
-            </SandboxMobile>
+            </WorkbenchMobile>
           )}
         </AnimatePresence>
       )}
@@ -943,9 +942,9 @@ function ChatPageWrapper() {
   return (
     <RetryProvider>
       <DevTerminalProvider>
-        <PanelProvider>
+        <WorkbenchProvider>
           <ChatPageContent />
-        </PanelProvider>
+        </WorkbenchProvider>
       </DevTerminalProvider>
     </RetryProvider>
   )

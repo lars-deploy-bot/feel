@@ -1,6 +1,6 @@
 # @webalive/alive-tagger
 
-Element selection and source tagging for Alive sandbox. Enables click-to-select UI elements with source file information, allowing Claude to know exactly which component and file the user is referring to.
+Element selection and source tagging for Alive workbench. Enables click-to-select UI elements with source file information, allowing Claude to know exactly which component and file the user is referring to.
 
 ## Features
 
@@ -160,7 +160,7 @@ const cleanup = initAliveTagger()
 ┌─────────────────────────────────────────────────────────────────────────┐
 │  Alive (terminal.alive.best)                                    │
 │  ┌──────────────────────┐  ┌──────────────────────────────────────────┐ │
-│  │  Chat Interface      │  │  Sandbox Component                       │ │
+│  │  Chat Interface      │  │  Workbench Component                       │ │
 │  │                      │  │  - Listens for 'alive-element-selected'  │ │
 │  │  Shows selected      │◀─┤  - Displays source info to user          │ │
 │  │  element context     │  │  - Injects into next Claude message      │ │
@@ -199,21 +199,21 @@ const cleanup = initAliveTagger()
 
 ## Integration with Alive
 
-The alive-tagger is integrated with Alive's sandbox preview. When a user Cmd+Clicks an element:
+The alive-tagger is integrated with Alive's workbench preview. When a user Cmd+Clicks an element:
 
-1. **Sandbox receives postMessage**: `Sandbox.tsx` and `SandboxMobile.tsx` listen for `alive-element-selected` messages
-2. **Context propagates via SandboxContext**: The selection is passed through `useSandboxContext()`
+1. **Workbench receives postMessage**: `Workbench.tsx` and `WorkbenchMobile.tsx` listen for `alive-element-selected` messages
+2. **Context propagates via WorkbenchContext**: The selection is passed through `useWorkbenchContext()`
 3. **Chat input auto-fills**: The selected element is formatted as `@ComponentName in src/path/file.tsx:lineNumber` and inserted into the chat input
 4. **User can send to Claude**: The reference helps Claude understand exactly which element/component to modify
 
 ### Key files:
-- `apps/web/features/chat/lib/sandbox-context.tsx` - Context with `setSelectedElement` and `registerElementSelectHandler`
-- `apps/web/features/chat/components/Sandbox.tsx` - Listens for postMessage, calls `setSelectedElement`
+- `apps/web/features/chat/lib/workbench-context.tsx` - Context with `setSelectedElement` and `registerElementSelectHandler`
+- `apps/web/features/chat/components/workbench/Workbench.tsx` - Listens for postMessage, calls `setSelectedElement`
 - `apps/web/app/chat/page.tsx` - Registers handler to insert selection into chat input
 
 ### Caddy Configuration
 
-For HMR to work properly in the sandbox iframe, the preview domain **must NOT** use `forward_auth`. The auth check interferes with WebSocket connections and causes the iframe to flash/reload every few seconds.
+For HMR to work properly in the workbench iframe, the preview domain **must NOT** use `forward_auth`. The auth check interferes with WebSocket connections and causes the iframe to flash/reload every few seconds.
 
 The site-controller at `packages/site-controller/scripts/05-caddy-inject.sh` generates preview domain configs WITHOUT `forward_auth` to avoid this issue.
 
