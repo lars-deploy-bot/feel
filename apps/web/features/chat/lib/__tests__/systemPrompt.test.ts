@@ -49,6 +49,21 @@ describe("getSystemPrompt", () => {
     expect(prompt).toContain("mcp__outlook__compose_email")
   })
 
+  it("includes disambiguation instruction when multiple email providers connected", () => {
+    const prompt = getSystemPrompt({ connectedEmailProviders: ["gmail", "outlook"] })
+
+    expect(prompt).toContain("MULTIPLE EMAIL ACCOUNTS:")
+    expect(prompt).toContain("ask which one to use")
+  })
+
+  it("omits disambiguation instruction when only one email provider connected", () => {
+    const gmailOnly = getSystemPrompt({ connectedEmailProviders: ["gmail"] })
+    const outlookOnly = getSystemPrompt({ connectedEmailProviders: ["outlook"] })
+
+    expect(gmailOnly).not.toContain("MULTIPLE EMAIL ACCOUNTS:")
+    expect(outlookOnly).not.toContain("MULTIPLE EMAIL ACCOUNTS:")
+  })
+
   // --- Stripe ---
 
   it("includes Stripe instruction when hasStripeMcpAccess is true", () => {
