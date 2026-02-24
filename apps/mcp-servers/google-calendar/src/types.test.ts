@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { EventDraftSchema } from "./types.js"
+import { DeleteEventDraftSchema, EventDraftSchema } from "./types.js"
 
 const baseDraft = {
   summary: "Planning",
@@ -35,6 +35,30 @@ describe("EventDraftSchema datetime formats", () => {
     const parsed = EventDraftSchema.safeParse({
       ...baseDraft,
       start: { dateTime: "not-a-date" },
+    })
+    expect(parsed.success).toBe(false)
+  })
+})
+
+describe("DeleteEventDraftSchema", () => {
+  it("accepts required delete identifiers", () => {
+    const parsed = DeleteEventDraftSchema.safeParse({
+      eventId: "evt_123",
+      calendarId: "primary",
+    })
+    expect(parsed.success).toBe(true)
+  })
+
+  it("defaults calendarId to primary", () => {
+    const parsed = DeleteEventDraftSchema.parse({
+      eventId: "evt_123",
+    })
+    expect(parsed.calendarId).toBe("primary")
+  })
+
+  it("rejects empty eventId", () => {
+    const parsed = DeleteEventDraftSchema.safeParse({
+      eventId: "",
     })
     expect(parsed.success).toBe(false)
   })

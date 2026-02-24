@@ -89,12 +89,12 @@ describe("POST /api/google/calendar/create-event", () => {
     )
 
     expect(response.status).toBe(401)
-    const data = await response.json()
+    const data: Record<string, unknown> = await response.json()
     expect(data.ok).toBe(false)
     expect(data.error).toBe("UNAUTHORIZED")
   })
 
-  it("creates an event successfully", async () => {
+  it("creates an event successfully via alrighty", async () => {
     const response = await POST(
       createRequest({
         summary: "Planning",
@@ -107,19 +107,14 @@ describe("POST /api/google/calendar/create-event", () => {
 
     expect(response.status).toBe(200)
 
-    const data = (await response.json()) as {
-      ok: boolean
-      eventId: string
-      calendarId: string
-      htmlLink: string
-    }
+    const data: Record<string, unknown> = await response.json()
 
     expect(data.ok).toBe(true)
     expect(data.eventId).toBe("evt_123")
     expect(data.calendarId).toBe("primary")
     expect(data.htmlLink).toContain("calendar.google.com")
 
-    expect(mockGetAccessToken).toHaveBeenCalledWith("user-123", "google")
+    expect(mockGetAccessToken).toHaveBeenCalledWith("user-123", "google_calendar")
     expect(mockSetCredentials).toHaveBeenCalledWith({ access_token: "token-123" })
     expect(mockInsert).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -133,7 +128,7 @@ describe("POST /api/google/calendar/create-event", () => {
     )
   })
 
-  it("returns 400 for invalid datetime payload", async () => {
+  it("returns 400 for invalid datetime payload via handleBody", async () => {
     const response = await POST(
       createRequest({
         summary: "Planning",
@@ -143,10 +138,8 @@ describe("POST /api/google/calendar/create-event", () => {
     )
 
     expect(response.status).toBe(400)
-    const data = await response.json()
-    expect(data.ok).toBe(false)
-    expect(data.error).toBe("INVALID_REQUEST")
-    expect(data.reason).toBe("Start must be ISO 8601 datetime")
+    const data: Record<string, unknown> = await response.json()
+    expect((data.error as Record<string, unknown>).code).toBe("VALIDATION_ERROR")
   })
 
   it("returns 400 when start is after end", async () => {
@@ -159,7 +152,7 @@ describe("POST /api/google/calendar/create-event", () => {
     )
 
     expect(response.status).toBe(400)
-    const data = await response.json()
+    const data: Record<string, unknown> = await response.json()
     expect(data.ok).toBe(false)
     expect(data.error).toBe("INVALID_REQUEST")
     expect(data.reason).toBe("Event start time must be before end time")
@@ -177,7 +170,7 @@ describe("POST /api/google/calendar/create-event", () => {
     )
 
     expect(response.status).toBe(403)
-    const data = await response.json()
+    const data: Record<string, unknown> = await response.json()
     expect(data.ok).toBe(false)
     expect(data.error).toBe("INTEGRATION_ERROR")
   })
@@ -194,7 +187,7 @@ describe("POST /api/google/calendar/create-event", () => {
     )
 
     expect(response.status).toBe(500)
-    const data = await response.json()
+    const data: Record<string, unknown> = await response.json()
     expect(data.ok).toBe(false)
     expect(data.error).toBe("INTEGRATION_ERROR")
   })

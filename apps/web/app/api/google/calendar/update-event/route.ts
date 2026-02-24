@@ -7,51 +7,12 @@
 
 import { calendar_v3, auth as gauth } from "@googleapis/calendar"
 import * as Sentry from "@sentry/nextjs"
-import { type NextRequest, NextResponse } from "next/server"
-import { z } from "zod"
+import type { NextRequest } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
+import { alrighty, handleBody, isHandleBodyError } from "@/lib/api/server"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getOAuthInstance } from "@/lib/oauth/oauth-instances"
-
-// Validation schema for event update
-const UpdateEventRequestSchema = z.object({
-  calendarId: z.string().min(1, "Calendar ID required"),
-  eventId: z.string().min(1, "Event ID required"),
-  summary: z.string().min(1, "Event title is required").optional(),
-  description: z.string().optional(),
-  start: z
-    .object({
-      dateTime: z.string().datetime("Start must be ISO 8601 datetime"),
-      timeZone: z.string().optional(),
-    })
-    .optional(),
-  end: z
-    .object({
-      dateTime: z.string().datetime("End must be ISO 8601 datetime"),
-      timeZone: z.string().optional(),
-    })
-    .optional(),
-  location: z.string().optional(),
-  attendees: z
-    .array(
-      z.object({
-        email: z.string().email("Invalid attendee email"),
-        optional: z.boolean().optional(),
-      }),
-    )
-    .optional(),
-  transparency: z.enum(["opaque", "transparent"]).optional(),
-})
-
-type UpdateEventRequest = z.infer<typeof UpdateEventRequestSchema>
-
-interface UpdateEventResponse {
-  ok: true
-  eventId: string
-  calendarId: string
-  htmlLink: string
-}
 
 export async function PATCH(req: NextRequest) {
   try {
@@ -62,19 +23,13 @@ export async function PATCH(req: NextRequest) {
     }
 
     // 2. Parse and validate request body
-    const bodyData = await req.json()
-    let body: UpdateEventRequest
-    try {
-      body = UpdateEventRequestSchema.parse(bodyData)
-    } catch (error) {
-      const message = error instanceof z.ZodError ? error.issues[0].message : "Invalid request body"
-      return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, { status: 400, details: { reason: message } })
-    }
+    const parsed = await handleBody("google/calendar/update-event", req)
+    if (isHandleBodyError(parsed)) return parsed
 
     // 3. Validate start < end if both provided
-    if (body.start?.dateTime && body.end?.dateTime) {
-      const startTime = new Date(body.start.dateTime).getTime()
-      const endTime = new Date(body.end.dateTime).getTime()
+    if (parsed.start?.dateTime && parsed.end?.dateTime) {
+      const startTime = new Date(parsed.start.dateTime).getTime()
+      const endTime = new Date(parsed.end.dateTime).getTime()
       if (startTime >= endTime) {
         return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
           status: 400,
@@ -84,10 +39,10 @@ export async function PATCH(req: NextRequest) {
     }
 
     // 4. Get Google Calendar OAuth token
-    const oauthManager = getOAuthInstance("google")
+    const oauthManager = getOAuthInstance("google_calendar")
     let accessToken: string
     try {
-      accessToken = await oauthManager.getAccessToken(user.id, "google")
+      accessToken = await oauthManager.getAccessToken(user.id, "google_calendar")
     } catch (error) {
       console.error("[Calendar Update] Failed to get OAuth token:", error)
       Sentry.captureException(error)
@@ -104,29 +59,29 @@ export async function PATCH(req: NextRequest) {
 
     // 6. Fetch current event (to preserve fields not being updated)
     const currentEvent = await calendar.events.get({
-      calendarId: body.calendarId,
-      eventId: body.eventId,
+      calendarId: parsed.calendarId,
+      eventId: parsed.eventId,
     })
 
     // 7. Build update object (only include fields provided in request)
     const updateData: calendar_v3.Schema$Event = {
-      summary: body.summary ?? currentEvent.data.summary,
-      description: body.description ?? currentEvent.data.description,
-      start: body.start || currentEvent.data.start,
-      end: body.end || currentEvent.data.end,
-      location: body.location ?? currentEvent.data.location,
+      summary: parsed.summary ?? currentEvent.data.summary,
+      description: parsed.description ?? currentEvent.data.description,
+      start: parsed.start || currentEvent.data.start,
+      end: parsed.end || currentEvent.data.end,
+      location: parsed.location ?? currentEvent.data.location,
       attendees:
-        body.attendees?.map(att => ({
+        parsed.attendees?.map(att => ({
           email: att.email,
           optional: att.optional || false,
         })) ?? currentEvent.data.attendees,
-      transparency: body.transparency ?? currentEvent.data.transparency,
+      transparency: parsed.transparency ?? currentEvent.data.transparency,
     }
 
     // 8. Update event
     const response = await calendar.events.update({
-      calendarId: body.calendarId,
-      eventId: body.eventId,
+      calendarId: parsed.calendarId,
+      eventId: parsed.eventId,
       requestBody: updateData,
     })
 
@@ -139,13 +94,11 @@ export async function PATCH(req: NextRequest) {
 
     console.log(`[Calendar Update] Event updated by user ${user.id}, ID: ${response.data.id}`)
 
-    const result: UpdateEventResponse = {
-      ok: true,
+    return alrighty("google/calendar/update-event", {
       eventId: response.data.id,
-      calendarId: body.calendarId,
+      calendarId: parsed.calendarId,
       htmlLink: response.data.htmlLink || "",
-    }
-    return NextResponse.json(result)
+    })
   } catch (error) {
     console.error("[Calendar Update] Error:", error)
     Sentry.captureException(error)

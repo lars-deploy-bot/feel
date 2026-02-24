@@ -108,6 +108,7 @@ export const CALENDAR = {
   SEARCH_EVENTS: "mcp__google_calendar__search_events",
   CHECK_AVAILABILITY: "mcp__google_calendar__check_availability",
   COMPOSE_EVENT: "mcp__google_calendar__compose_calendar_event",
+  COMPOSE_DELETE_EVENT: "mcp__google_calendar__compose_delete_event",
   PROPOSE_MEETING: "mcp__google_calendar__propose_meeting",
 } as const
 

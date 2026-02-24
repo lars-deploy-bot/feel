@@ -248,7 +248,7 @@ export const OAUTH_MCP_PROVIDERS = {
   },
   google_calendar: {
     url: "http://localhost:8087/mcp",
-    oauthKey: "google", // Reuses Google OAuth (same as Gmail)
+    oauthKey: "google_calendar", // Dedicated token slot (still uses Google OAuth provider + credentials)
     friendlyName: "Google Calendar",
     defaultScopes: [
       "https://www.googleapis.com/auth/calendar.events", // View/edit events
@@ -267,6 +267,7 @@ export const OAUTH_MCP_PROVIDERS = {
       "mcp__google_calendar__check_availability",
       // Compose (returns data for UI - user must click Create Event)
       "mcp__google_calendar__compose_calendar_event",
+      "mcp__google_calendar__compose_delete_event",
       // Meeting proposals
       "mcp__google_calendar__propose_meeting",
       // NOTE: create_event, update_event, delete_event are NOT MCP tools
