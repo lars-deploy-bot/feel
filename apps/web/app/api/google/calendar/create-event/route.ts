@@ -78,10 +78,10 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. Get Google Calendar OAuth token
-    const oauthManager = getOAuthInstance("google")
+    const oauthManager = getOAuthInstance("google_calendar")
     let accessToken: string
     try {
-      accessToken = await oauthManager.getAccessToken(user.id, "google")
+      accessToken = await oauthManager.getAccessToken(user.id, "google_calendar")
     } catch (error) {
       console.error("[Calendar Create] Failed to get OAuth token:", error)
       Sentry.captureException(error)

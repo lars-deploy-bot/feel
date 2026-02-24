@@ -119,7 +119,7 @@ describe("POST /api/google/calendar/create-event", () => {
     expect(data.calendarId).toBe("primary")
     expect(data.htmlLink).toContain("calendar.google.com")
 
-    expect(mockGetAccessToken).toHaveBeenCalledWith("user-123", "google")
+    expect(mockGetAccessToken).toHaveBeenCalledWith("user-123", "google_calendar")
     expect(mockSetCredentials).toHaveBeenCalledWith({ access_token: "token-123" })
     expect(mockInsert).toHaveBeenCalledWith(
       expect.objectContaining({

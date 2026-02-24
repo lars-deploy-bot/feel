@@ -14,10 +14,12 @@ import { SupabaseProvider } from "./supabase"
 
 // Provider instances
 const providers = new Map<string, OAuthProvider>()
+const googleProvider = new GoogleProvider()
 
 // Register built-in providers
 providers.set("github", new GitHubProvider())
-providers.set("google", new GoogleProvider())
+providers.set("google", googleProvider)
+providers.set("google_calendar", googleProvider)
 providers.set("linear", new LinearProvider())
 providers.set("microsoft", new MicrosoftProvider())
 providers.set("stripe", new StripeProvider())

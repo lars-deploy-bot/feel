@@ -56,10 +56,10 @@ export async function DELETE(req: NextRequest) {
     }
 
     // 3. Get Google Calendar OAuth token
-    const oauthManager = getOAuthInstance("google")
+    const oauthManager = getOAuthInstance("google_calendar")
     let accessToken: string
     try {
-      accessToken = await oauthManager.getAccessToken(user.id, "google")
+      accessToken = await oauthManager.getAccessToken(user.id, "google_calendar")
     } catch (error) {
       console.error("[Calendar Delete] Failed to get OAuth token:", error)
       Sentry.captureException(error)

@@ -64,8 +64,9 @@ describe("OAuth key mapping for Outlook", () => {
     expect(getOAuthKeyForProvider("outlook")).toBe("microsoft")
   })
 
-  it("follows the same pattern as gmail -> google", () => {
+  it("keeps gmail on google and isolates google_calendar", () => {
     expect(getOAuthKeyForProvider("gmail")).toBe("google")
+    expect(getOAuthKeyForProvider("google_calendar")).toBe("google_calendar")
     expect(getOAuthKeyForProvider("outlook")).toBe("microsoft")
   })
 })
@@ -127,6 +128,10 @@ describe("outlook auth support flags", () => {
 describe("existing providers unchanged", () => {
   it("gmail still maps to google", () => {
     expect(OAUTH_MCP_PROVIDERS.gmail.oauthKey).toBe("google")
+  })
+
+  it("google_calendar uses its own oauth key", () => {
+    expect(OAUTH_MCP_PROVIDERS.google_calendar.oauthKey).toBe("google_calendar")
   })
 
   it("stripe still maps to stripe", () => {

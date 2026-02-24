@@ -30,6 +30,15 @@ function normalizeScopes(scopeString: string | undefined): Set<string> {
   return new Set(scopes)
 }
 
+const PROVIDER_CREDENTIAL_ALIASES: Record<string, string> = {
+  google_calendar: "google",
+}
+
+function resolveCredentialProvider(provider: string): string {
+  const normalizedProvider = provider.toLowerCase()
+  return PROVIDER_CREDENTIAL_ALIASES[normalizedProvider] ?? normalizedProvider
+}
+
 export class OAuthMissingRequiredScopesError extends Error {
   readonly code = "MISSING_REQUIRED_SCOPES" as const
   readonly missingScopes: string[]
@@ -133,6 +142,20 @@ export class OAuthManager {
    * @returns Provider config or null if not configured
    */
   async getProviderConfig(tenantUserId: string, provider: string): Promise<ProviderConfig | null> {
+    const config = await this.readProviderConfig(tenantUserId, provider)
+    if (config) {
+      return config
+    }
+
+    const credentialProvider = resolveCredentialProvider(provider)
+    if (credentialProvider !== provider) {
+      return this.readProviderConfig(tenantUserId, credentialProvider)
+    }
+
+    return null
+  }
+
+  private async readProviderConfig(tenantUserId: string, provider: string): Promise<ProviderConfig | null> {
     const [clientId, clientSecret, redirectUri] = await Promise.all([
       this.storage.get(tenantUserId, "provider_config", `${provider}_client_id`),
       this.storage.get(tenantUserId, "provider_config", `${provider}_client_secret`),
@@ -202,12 +225,13 @@ export class OAuthManager {
     try {
       // 1. Get OAuth app credentials - try database first, then env vars
       let config = await this.getProviderConfig(tenantUserId, provider)
+      const credentialProvider = resolveCredentialProvider(provider)
 
       // Fall back to environment variables for system-wide OAuth apps
       if (!config) {
-        const envClientId = process.env[`${provider.toUpperCase()}_CLIENT_ID`]
-        const envClientSecret = process.env[`${provider.toUpperCase()}_CLIENT_SECRET`]
-        const envRedirectUri = process.env[`${provider.toUpperCase()}_REDIRECT_URI`]
+        const envClientId = process.env[`${credentialProvider.toUpperCase()}_CLIENT_ID`]
+        const envClientSecret = process.env[`${credentialProvider.toUpperCase()}_CLIENT_SECRET`]
+        const envRedirectUri = process.env[`${credentialProvider.toUpperCase()}_REDIRECT_URI`]
 
         if (envClientId && envClientSecret) {
           config = {
@@ -370,12 +394,14 @@ export class OAuthManager {
         // Get provider config (client credentials)
         // Note: For system-wide OAuth apps, we'd use env vars here instead
         // For now, assume we have LINEAR_CLIENT_ID and LINEAR_CLIENT_SECRET in env
-        const clientId = process.env[`${provider.toUpperCase()}_CLIENT_ID`]
-        const clientSecret = process.env[`${provider.toUpperCase()}_CLIENT_SECRET`]
+        const credentialProvider = resolveCredentialProvider(provider)
+        const credentialPrefix = credentialProvider.toUpperCase()
+        const clientId = process.env[`${credentialPrefix}_CLIENT_ID`]
+        const clientSecret = process.env[`${credentialPrefix}_CLIENT_SECRET`]
 
         if (!clientId || !clientSecret) {
           throw new Error(
-            `Missing OAuth credentials for '${provider}'. Set ${provider.toUpperCase()}_CLIENT_ID and ${provider.toUpperCase()}_CLIENT_SECRET.`,
+            `Missing OAuth credentials for '${provider}'. Set ${credentialPrefix}_CLIENT_ID and ${credentialPrefix}_CLIENT_SECRET.`,
           )
         }
 
@@ -546,11 +572,13 @@ export class OAuthManager {
   async revoke(tenantUserId: string, userId: string, provider: string): Promise<void> {
     // 1. Get OAuth app credentials - try database first, then env vars
     let config = await this.getProviderConfig(tenantUserId, provider)
+    const credentialProvider = resolveCredentialProvider(provider)
+    const credentialPrefix = credentialProvider.toUpperCase()
 
     // Fall back to environment variables for system-wide OAuth apps (e.g., Linear)
     if (!config) {
-      const envClientId = process.env[`${provider.toUpperCase()}_CLIENT_ID`]
-      const envClientSecret = process.env[`${provider.toUpperCase()}_CLIENT_SECRET`]
+      const envClientId = process.env[`${credentialPrefix}_CLIENT_ID`]
+      const envClientSecret = process.env[`${credentialPrefix}_CLIENT_SECRET`]
 
       if (envClientId && envClientSecret) {
         config = {
@@ -695,12 +723,14 @@ export class OAuthManager {
   async getAuthUrl(tenantUserId: string, provider: string, scope: string, state?: string): Promise<string> {
     // Try database config first, then fall back to environment variables
     let config = await this.getProviderConfig(tenantUserId, provider)
+    const credentialProvider = resolveCredentialProvider(provider)
+    const credentialPrefix = credentialProvider.toUpperCase()
 
     // Fall back to environment variables for system-wide OAuth apps
     if (!config) {
-      const envClientId = process.env[`${provider.toUpperCase()}_CLIENT_ID`]
-      const envClientSecret = process.env[`${provider.toUpperCase()}_CLIENT_SECRET`]
-      const envRedirectUri = process.env[`${provider.toUpperCase()}_REDIRECT_URI`]
+      const envClientId = process.env[`${credentialPrefix}_CLIENT_ID`]
+      const envClientSecret = process.env[`${credentialPrefix}_CLIENT_SECRET`]
+      const envRedirectUri = process.env[`${credentialPrefix}_REDIRECT_URI`]
 
       if (envClientId && envClientSecret) {
         config = {

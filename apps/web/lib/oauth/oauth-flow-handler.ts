@@ -102,8 +102,13 @@ export function getOAuthConfig(provider: string, baseUrl?: string): OAuthConfig 
     ? buildOAuthRedirectUri(baseUrl, providerKey)
     : process.env[`${envPrefix}_REDIRECT_URI`] || ""
 
-  // Scopes from env or use defaults from typed config
-  const scopes = process.env[`${envPrefix}_SCOPES`] || config.defaultScopes
+  // Scope override precedence:
+  // 1) Provider-specific override (e.g., GOOGLE_CALENDAR_SCOPES)
+  // 2) Shared override only for providers that match their env prefix (e.g., GOOGLE, MICROSOFT)
+  // 3) Typed provider defaults from OAUTH_PROVIDER_CONFIG
+  const providerScopes = process.env[`${providerKey.toUpperCase()}_SCOPES`]
+  const sharedScopes = providerKey === envPrefix.toLowerCase() ? process.env[`${envPrefix}_SCOPES`] : undefined
+  const scopes = providerScopes || sharedScopes || config.defaultScopes
 
   return { clientId, clientSecret, redirectUri, scopes }
 }
@@ -240,7 +245,7 @@ export async function initiateOAuthFlow(context: OAuthContext, config: OAuthConf
   // Without this, Google only returns refresh_token on FIRST auth, causing failures later
   // See: https://developers.google.com/identity/protocols/oauth2/web-server#offline
   let authUrl: string
-  if (oauthKey === "google" && oauthProvider instanceof GoogleProvider) {
+  if (oauthProvider instanceof GoogleProvider) {
     // Google getAuthUrl signature: (clientId, redirectUri, scope, state?, pkce?, options?)
     // Pass undefined for pkce (not using PKCE), then GoogleAuthOptions
     authUrl = oauthProvider.getAuthUrl(config.clientId, config.redirectUri, config.scopes, state, undefined, {
@@ -253,7 +258,7 @@ export async function initiateOAuthFlow(context: OAuthContext, config: OAuthConf
   console.log(`[${provider} OAuth] Initiating flow for user ${user.id}`, {
     redirectUri: config.redirectUri,
     scopeCount: config.scopes.split(" ").length,
-    forceConsent: oauthKey === "google",
+    forceConsent: oauthProvider instanceof GoogleProvider,
   })
 
   return {

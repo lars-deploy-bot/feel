@@ -248,7 +248,7 @@ export const OAUTH_MCP_PROVIDERS = {
   },
   google_calendar: {
     url: "http://localhost:8087/mcp",
-    oauthKey: "google", // Reuses Google OAuth (same as Gmail)
+    oauthKey: "google_calendar", // Dedicated token slot (still uses Google OAuth provider + credentials)
     friendlyName: "Google Calendar",
     defaultScopes: [
       "https://www.googleapis.com/auth/calendar.events", // View/edit events

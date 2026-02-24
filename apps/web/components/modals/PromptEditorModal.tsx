@@ -1,7 +1,7 @@
 "use client"
 
-import { Check, Copy, X } from "lucide-react"
-import { useEffect, useState } from "react"
+import { ArrowLeft, Eye, Pencil } from "lucide-react"
+import { useEffect, useId, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 
 interface PromptEditorModalProps {
@@ -19,26 +19,26 @@ export function PromptEditorModal({
   onSave,
   onCancel,
 }: PromptEditorModalProps) {
+  const titleId = useId()
+  const nameInputRef = useRef<HTMLInputElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [displayName, setDisplayName] = useState(initialDisplayName)
   const [data, setData] = useState(initialData)
   const [mounted, setMounted] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const [view, setView] = useState<"edit" | "preview">("edit")
 
   useEffect(() => {
     setMounted(true)
+    requestAnimationFrame(() => nameInputRef.current?.focus())
     return () => setMounted(false)
   }, [])
 
-  const handleCopy = async () => {
-    if (!data.trim()) return
-    try {
-      await navigator.clipboard.writeText(data)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch (err) {
-      console.error("Failed to copy:", err)
+  // When switching to edit, focus the textarea
+  useEffect(() => {
+    if (view === "edit" && mounted) {
+      requestAnimationFrame(() => textareaRef.current?.focus())
     }
-  }
+  }, [view, mounted])
 
   const handleSave = () => {
     if (displayName.trim() && data.trim()) {
@@ -47,12 +47,10 @@ export function PromptEditorModal({
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    // Cmd/Ctrl + Enter to save
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
       e.preventDefault()
       handleSave()
     }
-    // Escape to cancel
     if (e.key === "Escape") {
       e.preventDefault()
       onCancel()
@@ -61,121 +59,161 @@ export function PromptEditorModal({
 
   const canSave = displayName.trim() && data.trim()
 
-  // Don't render on server
   if (!mounted) return null
 
   return createPortal(
     <div
-      className="fixed inset-0 bg-black/70 z-[100] flex items-end sm:items-center justify-center sm:p-4 animate-in fade-in-0 duration-200"
-      onClick={onCancel}
+      className="fixed inset-0 z-[100] bg-white dark:bg-neutral-900 flex flex-col animate-in fade-in-0 slide-in-from-bottom-2 duration-200"
+      onKeyDown={handleKeyDown}
       role="dialog"
       aria-modal="true"
-      aria-labelledby="prompt-editor-title"
+      aria-labelledby={titleId}
     >
-      <div
-        className="bg-white dark:bg-[#1a1a1a] rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-xl h-[85vh] sm:h-auto sm:max-h-[80vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-300"
-        onClick={e => e.stopPropagation()}
-        onKeyDown={handleKeyDown}
-        role="document"
-      >
-        {/* Mobile pull indicator */}
-        <div className="sm:hidden w-full flex justify-center pt-2 pb-1">
-          <div className="w-10 h-1 bg-black/20 dark:bg-white/20 rounded-full" />
-        </div>
-
-        {/* Header */}
-        <div className="px-5 py-3 border-b border-black/10 dark:border-white/10 flex items-center justify-between bg-gradient-to-br from-amber-50/50 to-yellow-50/50 dark:from-amber-950/20 dark:to-yellow-950/20">
-          <div>
-            <h2 id="prompt-editor-title" className="text-xl font-semibold text-black dark:text-white">
-              {mode === "add" ? "Add New Skill" : "Edit Skill"}
-            </h2>
-            <p className="text-xs text-black/60 dark:text-white/60 mt-1">
-              Use <kbd className="px-1.5 py-0.5 bg-black/10 dark:bg-white/10 rounded text-[10px]">Cmd+Enter</kbd> to
-              save
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded transition-all duration-200"
-            aria-label="Close editor"
-          >
-            <X size={20} className="text-black/60 dark:text-white/60" />
-          </button>
-        </div>
-
-        {/* Skill Name */}
-        <div className="px-5 py-3 border-b border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02]">
-          <label htmlFor="prompt-name" className="block text-sm font-medium text-black dark:text-white mb-1.5">
-            Skill Name
-          </label>
-          <input
-            id="prompt-name"
-            type="text"
-            value={displayName}
-            onChange={e => setDisplayName(e.target.value)}
-            placeholder="e.g., 'Revise Code', 'Fix Bugs'"
-            className="w-full px-3 py-2 bg-white dark:bg-[#2a2a2a] border border-black/20 dark:border-white/20 rounded-lg text-sm text-black dark:text-white focus:outline-none focus:border-amber-500 dark:focus:border-amber-400 transition-colors"
-          />
-        </div>
-
-        {/* Editor */}
-        <div className="flex-1 flex flex-col overflow-hidden min-h-0">
-          <div className="px-5 py-2 border-b border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02] flex items-center justify-between">
-            <label htmlFor="prompt-content" className="text-sm font-medium text-black dark:text-white">
-              Skill Content
-            </label>
+      {/* Top bar */}
+      <div className="shrink-0 border-b border-black/[0.06] dark:border-white/[0.06]">
+        <div className="max-w-3xl mx-auto w-full px-6 h-14 flex items-center">
+          {/* Left */}
+          <div className="flex-1 flex justify-start">
             <button
               type="button"
-              onClick={handleCopy}
-              disabled={!data.trim()}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
-                copied
-                  ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
-                  : "bg-black/5 dark:bg-white/5 text-black/60 dark:text-white/60 hover:bg-black/10 dark:hover:bg-white/10 hover:text-black dark:hover:text-white"
-              } disabled:opacity-40 disabled:cursor-not-allowed`}
+              onClick={onCancel}
+              className="flex items-center gap-2 text-sm text-black/50 dark:text-white/50 hover:text-black/80 dark:hover:text-white/80 transition-colors duration-150 -ml-1"
             >
-              {copied ? (
-                <>
-                  <Check size={14} />
-                  Copied!
-                </>
-              ) : (
-                <>
-                  <Copy size={14} />
-                  Copy
-                </>
-              )}
+              <ArrowLeft size={16} />
+              <span>Back</span>
             </button>
           </div>
-          <div className="flex-1 p-4 overflow-y-auto">
-            <textarea
-              id="prompt-content"
-              value={data}
-              onChange={e => setData(e.target.value)}
-              placeholder="Enter your prompt text here"
-              className="w-full h-full min-h-[200px] px-3 py-2.5 bg-white dark:bg-[#2a2a2a] border border-black/20 dark:border-white/20 rounded-lg text-sm text-black dark:text-white focus:outline-none focus:border-amber-500 dark:focus:border-amber-400 transition-colors resize-none font-mono leading-relaxed"
-            />
+
+          {/* Center */}
+          <h2 id={titleId} className="shrink-0 text-sm font-medium text-black/70 dark:text-white/70">
+            {mode === "add" ? "New Skill" : "Edit Skill"}
+          </h2>
+
+          {/* Right - Preview / Edit toggle */}
+          <div className="flex-1 flex justify-end">
+            <div className="flex items-center bg-black/[0.04] dark:bg-white/[0.04] rounded-full p-0.5">
+              <button
+                type="button"
+                onClick={() => setView("edit")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-150 ${
+                  view === "edit"
+                    ? "bg-white dark:bg-white/[0.12] text-black dark:text-white shadow-sm"
+                    : "text-black/40 dark:text-white/40 hover:text-black/60 dark:hover:text-white/60"
+                }`}
+              >
+                <Pencil size={12} />
+                Edit
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("preview")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-150 ${
+                  view === "preview"
+                    ? "bg-white dark:bg-white/[0.12] text-black dark:text-white shadow-sm"
+                    : "text-black/40 dark:text-white/40 hover:text-black/60 dark:hover:text-white/60"
+                }`}
+              >
+                <Eye size={12} />
+                Preview
+              </button>
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* Footer */}
-        <div className="px-5 py-3 border-t border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02] flex items-center justify-end gap-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-4 py-2 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-black dark:text-white rounded-lg text-sm font-medium transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={!canSave}
-            className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-amber-600"
-          >
-            {mode === "add" ? "Add Skill" : "Save Changes"}
-          </button>
+      {/* Content area - centered, max-width for readability */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-3xl mx-auto w-full px-6 py-8">
+          {view === "edit" ? (
+            <div className="space-y-6">
+              {/* Name */}
+              <div>
+                <label
+                  htmlFor="prompt-name"
+                  className="block text-sm font-medium text-black/60 dark:text-white/60 mb-2"
+                >
+                  Name
+                </label>
+                <input
+                  ref={nameInputRef}
+                  id="prompt-name"
+                  type="text"
+                  value={displayName}
+                  onChange={e => setDisplayName(e.target.value)}
+                  placeholder="e.g. Code Review, Fix Bugs"
+                  className="w-full px-4 py-2.5 bg-black/[0.02] dark:bg-white/[0.02] border border-black/[0.08] dark:border-white/[0.08] rounded-xl text-sm text-black dark:text-white placeholder:text-black/30 dark:placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-black/[0.12] dark:focus:ring-white/[0.12] focus:border-black/[0.12] dark:focus:border-white/[0.12] transition-all duration-150"
+                />
+              </div>
+
+              {/* Prompt */}
+              <div className="flex flex-col">
+                <label
+                  htmlFor="prompt-content"
+                  className="block text-sm font-medium text-black/60 dark:text-white/60 mb-2"
+                >
+                  Prompt
+                </label>
+                <textarea
+                  ref={textareaRef}
+                  id="prompt-content"
+                  value={data}
+                  onChange={e => setData(e.target.value)}
+                  placeholder="Describe what this skill should do..."
+                  className="w-full min-h-[50vh] px-4 py-3 bg-black/[0.02] dark:bg-white/[0.02] border border-black/[0.08] dark:border-white/[0.08] rounded-xl text-sm leading-relaxed text-black dark:text-white placeholder:text-black/30 dark:placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-black/[0.12] dark:focus:ring-white/[0.12] focus:border-black/[0.12] dark:focus:border-white/[0.12] transition-all duration-150 resize-none"
+                />
+              </div>
+            </div>
+          ) : (
+            /* Preview mode - read-only, nice typography */
+            <div className="space-y-6">
+              <div>
+                <p className="text-xs text-black/40 dark:text-white/40 mb-1">Name</p>
+                <h3 className="text-lg font-medium text-black dark:text-white">
+                  {displayName || <span className="text-black/20 dark:text-white/20">Untitled</span>}
+                </h3>
+              </div>
+
+              <div className="border-t border-black/[0.06] dark:border-white/[0.06] pt-6">
+                <p className="text-xs text-black/40 dark:text-white/40 mb-3">Prompt</p>
+                {data ? (
+                  <div className="text-sm leading-relaxed text-black/80 dark:text-white/80 whitespace-pre-wrap">
+                    {data}
+                  </div>
+                ) : (
+                  <p className="text-sm text-black/20 dark:text-white/20">No content yet</p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Bottom bar */}
+      <div className="shrink-0 border-t border-black/[0.06] dark:border-white/[0.06]">
+        <div className="max-w-3xl mx-auto w-full px-6 h-16 flex items-center justify-between">
+          <p className="text-xs text-black/30 dark:text-white/30">
+            <kbd className="px-1.5 py-0.5 bg-black/[0.04] dark:bg-white/[0.04] rounded text-[10px] font-medium">
+              {"\u2318"}Enter
+            </kbd>{" "}
+            to save
+          </p>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="h-10 px-4 bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.07] dark:hover:bg-white/[0.09] active:bg-black/[0.10] dark:active:bg-white/[0.12] text-black/70 dark:text-white/70 rounded-xl text-sm font-medium transition-colors duration-150"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={!canSave}
+              className="h-10 px-5 bg-black dark:bg-white text-white dark:text-black hover:brightness-[0.85] active:brightness-75 active:scale-[0.98] rounded-xl text-sm font-medium transition-all duration-150 disabled:opacity-30 disabled:hover:brightness-100"
+            >
+              {mode === "add" ? "Add Skill" : "Save"}
+            </button>
+          </div>
         </div>
       </div>
     </div>,
