@@ -5,11 +5,15 @@
  * This ensures tests are change-resistant and maintainable.
  */
 
+import { CLAUDE_STREAM_ENDPOINTS } from "@/lib/stream/claude-stream-request-matchers"
+
 /**
  * API endpoints used in tests
  */
 export const TEST_API = {
-  CLAUDE_STREAM: "/api/claude/stream",
+  CLAUDE_STREAM: CLAUDE_STREAM_ENDPOINTS.STREAM,
+  CLAUDE_STREAM_RECONNECT: CLAUDE_STREAM_ENDPOINTS.RECONNECT,
+  CLAUDE_STREAM_CANCEL: CLAUDE_STREAM_ENDPOINTS.CANCEL,
   CLAUDE_POLLING: "/api/claude",
   LOGIN: "/api/login",
   VERIFY: "/api/verify",
