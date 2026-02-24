@@ -7,6 +7,10 @@
  * Import this file once at app initialization.
  */
 
+import {
+  CalendarEventDeleteOutput,
+  validateCalendarEventDeleteDraft,
+} from "@/components/calendar/CalendarEventDeleteOutput"
 // === Calendar Components ===
 import { CalendarEventDraftOutput, validateCalendarEventDraft } from "@/components/calendar/CalendarEventDraftOutput"
 import {
@@ -63,6 +67,7 @@ registerComponent(OUTLOOK.COMPOSE, EmailDraftOutput, validateEmailDraft)
 // ============================================================
 
 registerComponent(CALENDAR.COMPOSE_EVENT, CalendarEventDraftOutput, validateCalendarEventDraft)
+registerComponent(CALENDAR.COMPOSE_DELETE_EVENT, CalendarEventDeleteOutput, validateCalendarEventDeleteDraft)
 registerComponent(CALENDAR.PROPOSE_MEETING, CalendarEventDraftOutput, validateCalendarEventDraft)
 
 // Note: LIST_CALENDARS, LIST_EVENTS, GET_EVENT, SEARCH_EVENTS, CHECK_AVAILABILITY use default JSON rendering

@@ -1136,6 +1136,110 @@ export const apiSchemas = {
     }),
   },
 
+  // ============================================================================
+  // GOOGLE CALENDAR
+  // ============================================================================
+
+  /**
+   * POST /api/google/calendar/create-event
+   * Create a Google Calendar event (user-confirmed action)
+   */
+  "google/calendar/create-event": {
+    req: z
+      .object({
+        summary: z.string().min(1, "Event title is required"),
+        description: z.string().optional(),
+        start: z.object({
+          dateTime: z.string().datetime("Start must be ISO 8601 datetime"),
+          timeZone: z.string().optional(),
+        }),
+        end: z.object({
+          dateTime: z.string().datetime("End must be ISO 8601 datetime"),
+          timeZone: z.string().optional(),
+        }),
+        location: z.string().optional(),
+        attendees: z
+          .array(
+            z.object({
+              email: z.string().email("Invalid attendee email"),
+              optional: z.boolean().optional(),
+            }),
+          )
+          .optional(),
+        calendarId: z.string().default("primary"),
+        transparency: z.enum(["opaque", "transparent"]).optional(),
+        recurrence: z.array(z.string()).optional(),
+      })
+      .brand<"CalendarCreateEventRequest">(),
+    res: z.object({
+      ok: z.literal(true),
+      eventId: z.string(),
+      calendarId: z.string(),
+      htmlLink: z.string(),
+    }),
+  },
+
+  /**
+   * DELETE /api/google/calendar/delete-event
+   * Delete a Google Calendar event (user-confirmed action)
+   */
+  "google/calendar/delete-event": {
+    req: z
+      .object({
+        calendarId: z.string().min(1, "Calendar ID required"),
+        eventId: z.string().min(1, "Event ID required"),
+      })
+      .brand<"CalendarDeleteEventRequest">(),
+    res: z.object({
+      ok: z.literal(true),
+      eventId: z.string(),
+      calendarId: z.string(),
+    }),
+  },
+
+  /**
+   * PATCH /api/google/calendar/update-event
+   * Update an existing Google Calendar event (user-confirmed action)
+   */
+  "google/calendar/update-event": {
+    req: z
+      .object({
+        calendarId: z.string().min(1, "Calendar ID required"),
+        eventId: z.string().min(1, "Event ID required"),
+        summary: z.string().min(1, "Event title is required").optional(),
+        description: z.string().optional(),
+        start: z
+          .object({
+            dateTime: z.string().datetime("Start must be ISO 8601 datetime"),
+            timeZone: z.string().optional(),
+          })
+          .optional(),
+        end: z
+          .object({
+            dateTime: z.string().datetime("End must be ISO 8601 datetime"),
+            timeZone: z.string().optional(),
+          })
+          .optional(),
+        location: z.string().optional(),
+        attendees: z
+          .array(
+            z.object({
+              email: z.string().email("Invalid attendee email"),
+              optional: z.boolean().optional(),
+            }),
+          )
+          .optional(),
+        transparency: z.enum(["opaque", "transparent"]).optional(),
+      })
+      .brand<"CalendarUpdateEventRequest">(),
+    res: z.object({
+      ok: z.literal(true),
+      eventId: z.string(),
+      calendarId: z.string(),
+      htmlLink: z.string(),
+    }),
+  },
+
   /**
    * POST /api/drive/delete
    * Delete a file or directory in the drive

@@ -58,6 +58,9 @@ describe("API Schema Type System", () => {
         | "drive/list"
         | "drive/read"
         | "drive/delete"
+        | "google/calendar/create-event"
+        | "google/calendar/delete-event"
+        | "google/calendar/update-event"
         | "rename-site"
       >()
     })

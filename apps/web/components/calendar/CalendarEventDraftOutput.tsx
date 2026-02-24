@@ -10,6 +10,8 @@
 
 import { useCallback, useState } from "react"
 import toast from "react-hot-toast"
+import { postty } from "@/lib/api/api-client"
+import { validateRequest } from "@/lib/api/schemas"
 import { CalendarEventDraftCard } from "./CalendarEventDraftCard"
 import { normalizeDraftDateTimesForApi } from "./dateTime"
 import type { CalendarEventDraftOutputProps, EventDraft } from "./types"
@@ -37,21 +39,8 @@ export function CalendarEventDraftOutput({
       setIsLoading(true)
       try {
         const payload = normalizeDraftDateTimesForApi(eventData)
-
-        const response = await fetch("/api/google/calendar/create-event", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        })
-
-        if (!response.ok) {
-          const error = await response.json()
-          throw new Error(error.reason || "Failed to create event")
-        }
-
-        const result = await response.json()
+        const validated = validateRequest("google/calendar/create-event", payload)
+        const result = await postty("google/calendar/create-event", validated)
 
         toast.success(`"${payload.summary}" added to your calendar`)
 

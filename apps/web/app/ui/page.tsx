@@ -11,6 +11,7 @@
 
 import {
   Boxes,
+  CalendarDays,
   ChevronDown,
   CreditCard,
   Layout,
@@ -26,6 +27,8 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { useAdminUser } from "@/hooks/use-superadmin"
 import { AutomationConfigPreview } from "./previews/AutomationConfigPreview"
+import { CalendarEventDeletePreview } from "./previews/CalendarEventDeletePreview"
+import { CalendarEventDraftPreview } from "./previews/CalendarEventDraftPreview"
 import { ClarificationQuestionsPreview } from "./previews/ClarificationQuestionsPreview"
 import { EmptyStatePreview } from "./previews/general/EmptyStatePreview"
 import { LoadingSpinnerPreview } from "./previews/general/LoadingSpinnerPreview"
@@ -124,6 +127,15 @@ const CATEGORIES = {
       issue: { id: "issue", name: "Issue", component: LinearIssuePreview },
       issues: { id: "issues", name: "Issues List", component: LinearIssuesPreview },
       comment: { id: "comment", name: "Comment", component: LinearCommentPreview },
+    },
+  },
+  calendar: {
+    id: "calendar",
+    name: "Calendar",
+    icon: CalendarDays,
+    components: {
+      eventDraft: { id: "eventDraft", name: "Event Draft", component: CalendarEventDraftPreview },
+      eventDelete: { id: "eventDelete", name: "Delete Event", component: CalendarEventDeletePreview },
     },
   },
   stripe: {

@@ -65,6 +65,11 @@ function arrayLength(data: unknown): number {
   return Array.isArray(data) ? data.length : 0
 }
 
+/** Type guard: is value a non-null object? */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null
+}
+
 // ============================================================
 // PREVIEW GENERATORS
 // ============================================================
@@ -363,6 +368,15 @@ register(CALENDAR.COMPOSE_EVENT, {
     const d = data as Record<string, unknown> | null
     const summary = d?.summary as string | undefined
     return summary ? `Event: ${summary.slice(0, 30)}${summary.length > 30 ? "..." : ""}` : "event draft"
+  },
+})
+
+register(CALENDAR.COMPOSE_DELETE_EVENT, {
+  autoExpand: true, // Always show delete confirmation card
+  transform: unwrapMcp,
+  getPreview: data => {
+    const summary = isRecord(data) && typeof data.summary === "string" ? data.summary : undefined
+    return summary ? `Delete: ${summary.slice(0, 30)}${summary.length > 30 ? "..." : ""}` : "delete event"
   },
 })
 

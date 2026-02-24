@@ -7,47 +7,12 @@
 
 import { calendar_v3, auth as gauth } from "@googleapis/calendar"
 import * as Sentry from "@sentry/nextjs"
-import { type NextRequest, NextResponse } from "next/server"
-import { z } from "zod"
+import type { NextRequest } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
+import { alrighty, handleBody, isHandleBodyError } from "@/lib/api/server"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getOAuthInstance } from "@/lib/oauth/oauth-instances"
-
-// Validation schema for event creation
-const CreateEventRequestSchema = z.object({
-  summary: z.string().min(1, "Event title is required"),
-  description: z.string().optional(),
-  start: z.object({
-    dateTime: z.string().datetime("Start must be ISO 8601 datetime"),
-    timeZone: z.string().optional(),
-  }),
-  end: z.object({
-    dateTime: z.string().datetime("End must be ISO 8601 datetime"),
-    timeZone: z.string().optional(),
-  }),
-  location: z.string().optional(),
-  attendees: z
-    .array(
-      z.object({
-        email: z.string().email("Invalid attendee email"),
-        optional: z.boolean().optional(),
-      }),
-    )
-    .optional(),
-  calendarId: z.string().default("primary"),
-  transparency: z.enum(["opaque", "transparent"]).optional(),
-  recurrence: z.array(z.string()).optional(),
-})
-
-type CreateEventRequest = z.infer<typeof CreateEventRequestSchema>
-
-interface CreateEventResponse {
-  ok: true
-  eventId: string
-  calendarId: string
-  htmlLink: string
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -58,18 +23,12 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Parse and validate request body
-    const bodyData = await req.json()
-    let body: CreateEventRequest
-    try {
-      body = CreateEventRequestSchema.parse(bodyData)
-    } catch (error) {
-      const message = error instanceof z.ZodError ? error.issues[0].message : "Invalid request body"
-      return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, { status: 400, details: { reason: message } })
-    }
+    const parsed = await handleBody("google/calendar/create-event", req)
+    if (isHandleBodyError(parsed)) return parsed
 
     // 3. Validate start < end
-    const startTime = new Date(body.start.dateTime).getTime()
-    const endTime = new Date(body.end.dateTime).getTime()
+    const startTime = new Date(parsed.start.dateTime).getTime()
+    const endTime = new Date(parsed.end.dateTime).getTime()
     if (startTime >= endTime) {
       return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
         status: 400,
@@ -78,10 +37,10 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. Get Google Calendar OAuth token
-    const oauthManager = getOAuthInstance("google")
+    const oauthManager = getOAuthInstance("google_calendar")
     let accessToken: string
     try {
-      accessToken = await oauthManager.getAccessToken(user.id, "google")
+      accessToken = await oauthManager.getAccessToken(user.id, "google_calendar")
     } catch (error) {
       console.error("[Calendar Create] Failed to get OAuth token:", error)
       Sentry.captureException(error)
@@ -98,25 +57,25 @@ export async function POST(req: NextRequest) {
 
     // 6. Create event
     const response = await calendar.events.insert({
-      calendarId: body.calendarId,
+      calendarId: parsed.calendarId,
       requestBody: {
-        summary: body.summary,
-        description: body.description,
+        summary: parsed.summary,
+        description: parsed.description,
         start: {
-          dateTime: body.start.dateTime,
-          timeZone: body.start.timeZone,
+          dateTime: parsed.start.dateTime,
+          timeZone: parsed.start.timeZone,
         },
         end: {
-          dateTime: body.end.dateTime,
-          timeZone: body.end.timeZone,
+          dateTime: parsed.end.dateTime,
+          timeZone: parsed.end.timeZone,
         },
-        location: body.location,
-        attendees: body.attendees?.map(att => ({
+        location: parsed.location,
+        attendees: parsed.attendees?.map(att => ({
           email: att.email,
           optional: att.optional || false,
         })),
-        recurrence: body.recurrence,
-        transparency: body.transparency,
+        recurrence: parsed.recurrence,
+        transparency: parsed.transparency,
       },
     })
 
@@ -129,13 +88,11 @@ export async function POST(req: NextRequest) {
 
     console.log(`[Calendar Create] Event created by user ${user.id}, ID: ${response.data.id}`)
 
-    const result: CreateEventResponse = {
-      ok: true,
+    return alrighty("google/calendar/create-event", {
       eventId: response.data.id,
-      calendarId: body.calendarId,
+      calendarId: parsed.calendarId,
       htmlLink: response.data.htmlLink || "",
-    }
-    return NextResponse.json(result)
+    })
   } catch (error) {
     console.error("[Calendar Create] Error:", error)
     Sentry.captureException(error)

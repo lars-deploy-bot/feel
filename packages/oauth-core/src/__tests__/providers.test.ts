@@ -335,6 +335,11 @@ describe("OAuth Providers", () => {
       expect(hasProvider("microsoft")).toBe(true)
     })
 
+    it("google_calendar is registered as a Google alias", () => {
+      expect(hasProvider("google_calendar")).toBe(true)
+      expect(getProvider("google_calendar").name).toBe("google")
+    })
+
     it("getProvider returns MicrosoftProvider instance", () => {
       const provider = getProvider("microsoft")
       expect(provider.name).toBe("microsoft")

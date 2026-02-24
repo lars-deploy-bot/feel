@@ -15,12 +15,14 @@
  * - search_events: Search events by keyword
  * - check_availability: Get free/busy for scheduling
  * - compose_calendar_event: Return draft event data (does NOT create)
+ * - compose_delete_event: Return delete confirmation data (does NOT delete)
  */
 
 import type { calendar_v3 } from "@googleapis/calendar"
 import { checkAvailability, getEvent, listCalendars, listEvents, searchEvents } from "../calendar-client.js"
-import type { EventDraft } from "../types.js"
+import type { DeleteEventDraft, EventDraft } from "../types.js"
 import {
+  DeleteEventDraftSchema,
   EventDraftSchema,
   FreeBusyQuerySchema,
   ListEventsSchema,
@@ -235,6 +237,46 @@ const allTools = [
     },
   },
   {
+    name: "compose_delete_event",
+    description:
+      "Prepare a calendar event deletion card for user confirmation. This does NOT delete anything; user must click Delete.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        eventId: {
+          type: "string",
+          description: "Event ID to delete (required)",
+        },
+        calendarId: {
+          type: "string",
+          description: "Calendar ID containing the event (default: 'primary')",
+          default: "primary",
+        },
+        summary: {
+          type: "string",
+          description: "Optional event summary for display. If omitted, server fetches event details.",
+        },
+        location: {
+          type: "string",
+          description: "Optional location for display",
+        },
+        start: {
+          type: "object",
+          description: "Optional event start object for display",
+        },
+        end: {
+          type: "object",
+          description: "Optional event end object for display",
+        },
+        htmlLink: {
+          type: "string",
+          description: "Optional Google Calendar event URL",
+        },
+      },
+      required: ["eventId"],
+    },
+  },
+  {
     name: "propose_meeting",
     description:
       "Suggest a meeting with attendees and proposed times. Returns meeting proposal data for user review. The user must click to schedule.",
@@ -318,7 +360,7 @@ const allTools = [
   },
   {
     name: "update_event",
-    description: "DISABLED: Update an event. Use compose_calendar_event instead - user must click Update.",
+    description: "DISABLED: Update an event. Use compose_calendar_event instead - user must click Update Event.",
     inputSchema: {
       type: "object" as const,
       properties: {
@@ -331,7 +373,7 @@ const allTools = [
   },
   {
     name: "delete_event",
-    description: "DISABLED: Delete an event. Only available via REST API after user confirms.",
+    description: "DISABLED: Delete an event directly. Use compose_delete_event so user can confirm deletion in UI.",
     inputSchema: {
       type: "object" as const,
       properties: {
@@ -424,6 +466,34 @@ export async function executeTool(
         const validated = EventDraftSchema.parse(args)
         // Return the draft as-is for UI to render
         result = validated as EventDraft
+        break
+      }
+
+      case "compose_delete_event": {
+        const validated = DeleteEventDraftSchema.parse(args)
+
+        const draft: DeleteEventDraft = {
+          type: "delete_event_draft",
+          eventId: validated.eventId,
+          calendarId: validated.calendarId,
+          summary: validated.summary,
+          location: validated.location,
+          start: validated.start,
+          end: validated.end,
+          htmlLink: validated.htmlLink,
+        }
+
+        // Fetch details when caller only provided identifiers.
+        if (!draft.summary || !draft.start || !draft.end) {
+          const event = await getEvent(cal, draft.calendarId, draft.eventId)
+          draft.summary = draft.summary || event.summary
+          draft.location = draft.location || event.location
+          draft.start = draft.start || event.start
+          draft.end = draft.end || event.end
+          draft.htmlLink = draft.htmlLink || event.htmlLink
+        }
+
+        result = draft
         break
       }
 

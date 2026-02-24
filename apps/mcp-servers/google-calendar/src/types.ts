@@ -88,6 +88,26 @@ export interface EventDraft {
   recurrence?: string[] // iCalendar RRULE format
 }
 
+// Event delete draft - what Claude proposes before user confirms deletion
+export interface DeleteEventDraft {
+  type: "delete_event_draft"
+  eventId: string
+  calendarId: string
+  summary?: string
+  location?: string
+  start?: {
+    dateTime?: string
+    date?: string
+    timeZone?: string
+  }
+  end?: {
+    dateTime?: string
+    date?: string
+    timeZone?: string
+  }
+  htmlLink?: string
+}
+
 // Free/busy response
 export interface FreeBusy {
   calendars: Array<{
@@ -147,6 +167,28 @@ export const EventDraftSchema = z.object({
 })
 
 export type ValidatedEventDraft = z.infer<typeof EventDraftSchema>
+
+export const DeleteEventDraftSchema = z.object({
+  eventId: z.string().min(1, "Event ID is required"),
+  calendarId: z.string().default("primary"),
+  summary: z.string().optional(),
+  location: z.string().optional(),
+  start: z
+    .object({
+      dateTime: z.string().optional(),
+      date: z.string().optional(),
+      timeZone: z.string().optional(),
+    })
+    .optional(),
+  end: z
+    .object({
+      dateTime: z.string().optional(),
+      date: z.string().optional(),
+      timeZone: z.string().optional(),
+    })
+    .optional(),
+  htmlLink: z.string().url("htmlLink must be a valid URL").optional(),
+})
 
 export const FreeBusyQuerySchema = z.object({
   calendarIds: z.array(z.string()).min(1, "At least one calendar ID required"),
