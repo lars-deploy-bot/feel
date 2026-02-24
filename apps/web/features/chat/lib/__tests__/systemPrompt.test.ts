@@ -28,26 +28,40 @@ describe("getSystemPrompt", () => {
     expect(prompt).toContain("Never write emails as plain text")
   })
 
-  // --- Outlook (pipeline NOT ready yet) ---
+  // --- Outlook (pipeline ready) ---
 
-  it("does NOT include Outlook compose instruction because send pipeline is not wired", () => {
+  it("includes Outlook compose instruction when outlook connected", () => {
     const prompt = getSystemPrompt({ connectedEmailProviders: ["outlook"] })
 
-    // Outlook compose tool must NOT appear until UI renderer + send endpoint exist
-    expect(prompt).not.toContain("OUTLOOK:")
-    expect(prompt).not.toContain("mcp__outlook__compose_email")
+    expect(prompt).toContain("OUTLOOK:")
+    expect(prompt).toContain("mcp__outlook__compose_email")
+    expect(prompt).toContain("Never write emails as plain text")
   })
 
   // --- Both providers ---
 
-  it("includes Gmail but not Outlook compose when both are connected", () => {
+  it("includes both Gmail and Outlook compose when both are connected", () => {
     const prompt = getSystemPrompt({ connectedEmailProviders: ["gmail", "outlook"] })
 
     expect(prompt).toContain("GMAIL:")
     expect(prompt).toContain("mcp__gmail__compose_email")
-    // Outlook blocked until pipeline ships
-    expect(prompt).not.toContain("OUTLOOK:")
-    expect(prompt).not.toContain("mcp__outlook__compose_email")
+    expect(prompt).toContain("OUTLOOK:")
+    expect(prompt).toContain("mcp__outlook__compose_email")
+  })
+
+  it("includes disambiguation instruction when multiple email providers connected", () => {
+    const prompt = getSystemPrompt({ connectedEmailProviders: ["gmail", "outlook"] })
+
+    expect(prompt).toContain("MULTIPLE EMAIL ACCOUNTS:")
+    expect(prompt).toContain("ask which one to use")
+  })
+
+  it("omits disambiguation instruction when only one email provider connected", () => {
+    const gmailOnly = getSystemPrompt({ connectedEmailProviders: ["gmail"] })
+    const outlookOnly = getSystemPrompt({ connectedEmailProviders: ["outlook"] })
+
+    expect(gmailOnly).not.toContain("MULTIPLE EMAIL ACCOUNTS:")
+    expect(outlookOnly).not.toContain("MULTIPLE EMAIL ACCOUNTS:")
   })
 
   // --- Stripe ---

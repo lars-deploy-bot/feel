@@ -23,11 +23,8 @@ const EMAIL_COMPOSE_TOOL: Record<EmailProvider, string> = {
 /**
  * Providers with a complete compose → UI renderer → send/draft pipeline.
  * Only these get the "use compose_email for all email requests" instruction.
- * Outlook's MCP read/search/archive tools work, but compose has no renderer
- * or send endpoint yet — adding it here before wiring would instruct Claude
- * to produce output the user can't act on.
  */
-const EMAIL_COMPOSE_PIPELINE_READY = new Set<EmailProvider>(["gmail"])
+const EMAIL_COMPOSE_PIPELINE_READY = new Set<EmailProvider>(["gmail", "outlook"])
 
 export function getSystemPrompt(params: SystemPromptParams = {}): string {
   const {
@@ -52,13 +49,17 @@ export function getSystemPrompt(params: SystemPromptParams = {}): string {
 
   // Email provider instructions — only providers with a complete compose→send pipeline
   // get the "always use compose_email" instruction. Others still have read/search/archive.
-  for (const provider of connectedEmailProviders) {
-    if (!EMAIL_COMPOSE_PIPELINE_READY.has(provider)) continue
+  const readyProviders = connectedEmailProviders.filter(p => EMAIL_COMPOSE_PIPELINE_READY.has(p))
+
+  for (const provider of readyProviders) {
     const tool = EMAIL_COMPOSE_TOOL[provider]
     const label = provider.toUpperCase()
     prompt += ` ${label}: Use ${tool} for all email requests. Never write emails as plain text — always use the tool so the user can review and send.`
-    // TODO(calendar): When Outlook calendar is wired, add calendar guidance here
-    // (e.g., "Use mcp__outlook_calendar__compose_event for scheduling requests.")
+  }
+
+  if (readyProviders.length > 1) {
+    prompt +=
+      " MULTIPLE EMAIL ACCOUNTS: The user has multiple email accounts connected. When they ask to send or compose an email without specifying which account, ask which one to use. Never pick one silently."
   }
 
   prompt +=
