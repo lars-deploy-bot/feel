@@ -1,4 +1,4 @@
-import { parseAsString, parseAsStringLiteral, parseAsBoolean } from "nuqs"
+import { parseAsBoolean, parseAsString, parseAsStringLiteral } from "nuqs"
 
 /**
  * Single registry for all manager search params.

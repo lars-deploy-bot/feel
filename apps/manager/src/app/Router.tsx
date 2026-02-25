@@ -1,4 +1,4 @@
-import { Suspense, lazy } from "react"
+import { lazy, Suspense } from "react"
 import { Spinner } from "@/components/ui/Spinner"
 
 const OrgsPage = lazy(() => import("@/features/orgs/OrgsPage").then(m => ({ default: m.OrgsPage })))
