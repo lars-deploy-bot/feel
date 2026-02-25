@@ -1,7 +1,7 @@
 import { PulsingDot } from "../../ui/PulsingDot"
 
 /**
- * Consistent loading spinner for sandbox views
+ * Consistent loading spinner for workbench views
  */
 export function LoadingSpinner() {
   return (

@@ -4,8 +4,9 @@ import { PanelLeftClose, PanelLeftOpen } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { CodeViewer } from "./CodeViewer"
 import { FileTree } from "./FileTree"
+import { PanelBar } from "./ui"
 
-interface SandboxCodePanelProps {
+interface WorkbenchCodeViewProps {
   workspace: string
   worktree?: string | null
   filePath: string | null
@@ -22,7 +23,7 @@ interface SandboxCodePanelProps {
 const MIN_TREE_WIDTH = 120
 const MAX_TREE_WIDTH = 400
 
-export function SandboxCodePanel({
+export function WorkbenchCodeView({
   workspace,
   worktree,
   filePath,
@@ -34,7 +35,7 @@ export function SandboxCodePanel({
   onToggleFolder,
   onSetTreeWidth,
   onToggleTreeCollapsed,
-}: SandboxCodePanelProps) {
+}: WorkbenchCodeViewProps) {
   const [isResizing, setIsResizing] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -90,7 +91,7 @@ export function SandboxCodePanel({
           style={{ width: treeWidth }}
         >
           {/* Tree header */}
-          <div className="h-9 px-2 flex items-center justify-between border-b border-black/[0.08] dark:border-white/[0.04] bg-neutral-100/50 dark:bg-neutral-900/30 shrink-0">
+          <PanelBar className="justify-between">
             <span className="text-[11px] font-medium text-neutral-500 uppercase tracking-wider">Files</span>
             <button
               type="button"
@@ -100,7 +101,7 @@ export function SandboxCodePanel({
             >
               <PanelLeftClose size={14} strokeWidth={1.5} />
             </button>
-          </div>
+          </PanelBar>
 
           {/* Tree content */}
           <div className="flex-1 overflow-hidden">
@@ -131,7 +132,7 @@ export function SandboxCodePanel({
       <div className="flex-1 flex flex-col min-w-0">
         {/* Collapsed tree toggle */}
         {treeCollapsed && (
-          <div className="h-9 px-2 flex items-center border-b border-black/[0.08] dark:border-white/[0.04] bg-neutral-100/50 dark:bg-neutral-900/30 shrink-0">
+          <PanelBar>
             <button
               type="button"
               onClick={onToggleTreeCollapsed}
@@ -140,7 +141,7 @@ export function SandboxCodePanel({
             >
               <PanelLeftOpen size={14} strokeWidth={1.5} />
             </button>
-          </div>
+          </PanelBar>
         )}
 
         {/* Code content */}

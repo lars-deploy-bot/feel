@@ -1,7 +1,7 @@
 /**
- * E2E: Sandbox Terminal Integration
+ * E2E: Workbench Terminal Integration
  *
- * Verifies the terminal view in the Sandbox panel:
+ * Verifies the terminal view in the Workbench:
  * 1. Terminal lease API returns a valid WebSocket URL
  * 2. Terminal view renders xterm.js container (not the old placeholder)
  *
@@ -47,7 +47,7 @@ test("terminal lease API returns wsUrl on valid request", async ({ authenticated
   expect(response.body.wsUrl).toContain("lease=mock-lease-token")
 })
 
-test("sandbox terminal view renders xterm container", async ({ authenticatedPage, workerTenant }) => {
+test("workbench terminal view renders xterm container", async ({ authenticatedPage, workerTenant }) => {
   // Mock terminal lease — the component fetches this on mount
   await authenticatedPage.route("**/api/terminal/lease", route =>
     route.fulfill(
@@ -64,23 +64,23 @@ test("sandbox terminal view renders xterm container", async ({ authenticatedPage
   await gotoChatFast(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
   await expect(authenticatedPage.locator('[data-testid="message-input"]')).toBeVisible({ timeout: 3000 })
 
-  // Open sandbox and switch to terminal view
-  // The sandbox panel has a view menu — we need to open it and select Terminal
-  // First, open the sandbox panel by toggling it
+  // Open workbench and switch to terminal view
+  // The workbench has a view menu — we need to open it and select Terminal
+  // First, open the workbench by toggling it
   await authenticatedPage.evaluate(() => {
-    // Set sandbox open + terminal view via localStorage store update
-    const debugKey = "alive-debug-store"
+    // Set workbench open + terminal view via localStorage store update
+    const debugKey = "alive-debug-view-v8"
     const raw = localStorage.getItem(debugKey)
     if (raw) {
       const parsed = JSON.parse(raw)
-      parsed.state.showSandbox = true
+      parsed.state.showWorkbench = true
       localStorage.setItem(debugKey, JSON.stringify(parsed))
     } else {
-      localStorage.setItem(debugKey, JSON.stringify({ state: { showSandbox: true } }))
+      localStorage.setItem(debugKey, JSON.stringify({ state: { showWorkbench: true } }))
     }
   })
 
-  // Reload to pick up the sandbox visibility change
+  // Reload to pick up the workbench visibility change
   await authenticatedPage.reload({ waitUntil: "domcontentloaded" })
   await expect(authenticatedPage.locator('[data-testid="message-input"]')).toBeVisible({ timeout: 5000 })
 

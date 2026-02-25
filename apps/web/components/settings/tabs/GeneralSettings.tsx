@@ -1,78 +1,21 @@
 "use client"
 
-import type { FlowgladContextValues } from "@flowglad/nextjs"
-import { useBilling } from "@flowglad/nextjs"
 import { Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
-import { Component, type ErrorInfo, type ReactNode, useEffect, useState } from "react"
 import { useAuth } from "@/features/deployment/hooks/useAuth"
 import { getModelDisplayName } from "@/lib/models/claude-models"
-import { useCredits, useCreditsError, useCreditsLoading, useUserActions } from "@/lib/providers/UserStoreProvider"
 import { CLAUDE_MODELS, type ClaudeModel, DEFAULT_MODEL, useLLMStore } from "@/lib/stores/llmStore"
-import { useCurrentWorkspace } from "@/lib/stores/workspaceStore"
-import {
-  readOnlyField,
-  sectionDivider,
-  select,
-  selectionCardActive,
-  selectionCardInactive,
-  smallButton,
-  text,
-  warningCard,
-} from "../styles"
+import { readOnlyField, sectionDivider, select, selectionCardActive, selectionCardInactive, text } from "../styles"
 import { SettingsTabLayout } from "./SettingsTabLayout"
 
 function isValidModel(value: string): value is ClaudeModel {
   return Object.values(CLAUDE_MODELS).includes(value as ClaudeModel)
 }
 
-/** Error boundary that renders fallback instead of crashing the page */
-class BillingErrorBoundary extends Component<{ children: ReactNode; fallback: ReactNode }, { hasError: boolean }> {
-  state = { hasError: false }
-  static getDerivedStateFromError(): { hasError: boolean } {
-    return { hasError: true }
-  }
-  componentDidCatch(error: Error, info: ErrorInfo) {
-    console.warn("[BillingErrorBoundary] Caught:", error.message, info.componentStack)
-  }
-  render() {
-    if (this.state.hasError) return this.props.fallback
-    return this.props.children
-  }
-}
-
-/** Wrapper that calls useBilling inside an error boundary */
-function BillingProvider({ children }: { children: (billing: FlowgladContextValues) => ReactNode }) {
-  const billing = useBilling()
-  return <>{children(billing)}</>
-}
-
-/** Safe wrapper: renders children with billing data, falls back to not-loaded on error */
-function SafeBilling({ children }: { children: (billing: FlowgladContextValues) => ReactNode }) {
-  return (
-    <BillingErrorBoundary fallback={null}>
-      <BillingProvider>{children}</BillingProvider>
-    </BillingErrorBoundary>
-  )
-}
-
 export function GeneralSettings() {
-  // --- Profile state ---
   const { user } = useAuth()
   const { theme, setTheme } = useTheme()
-
-  const handleThemeChange = (newTheme: "light" | "dark" | "system") => {
-    setTheme(newTheme)
-  }
-
-  // --- AI state ---
   const { model, setModel } = useLLMStore()
-  const [isUpgrading, setIsUpgrading] = useState(false)
-
-  const credits = useCredits()
-  const creditsLoading = useCreditsLoading()
-  const creditsError = useCreditsError()
-  const { fetchCredits } = useUserActions()
 
   const canSelectAnyModel = user?.canSelectAnyModel ?? false
   const enabledModels = user?.enabledModels ?? []
@@ -83,51 +26,26 @@ export function GeneralSettings() {
     return modelId === DEFAULT_MODEL
   }
 
-  const workspace = useCurrentWorkspace()
-
-  useEffect(() => {
-    if (workspace) {
-      fetchCredits(workspace)
-    }
-  }, [fetchCredits, workspace])
-
-  // Reset model when current selection becomes unavailable
-  useEffect(() => {
-    if (!isModelAvailable(model)) {
-      const fallback = enabledModels.length > 0 ? enabledModels[0] : DEFAULT_MODEL
-      if (isValidModel(fallback)) {
-        setModel(fallback)
-      } else {
-        setModel(DEFAULT_MODEL)
-      }
-    }
-  }, [canSelectAnyModel, enabledModels, model, setModel])
-
+  const handleThemeChange = (newTheme: "light" | "dark" | "system") => setTheme(newTheme)
   const handleModelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value
-    if (isValidModel(value)) {
-      setModel(value)
-    }
+    if (isValidModel(value)) setModel(value)
   }
 
   return (
-    <SettingsTabLayout title="General" description="Your account, appearance, and AI model settings">
+    <SettingsTabLayout title="General" description="Account, appearance, and model preferences">
       <div className="space-y-4 sm:space-y-6">
         {/* Email */}
         <div className="animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-75">
           <p className={`${text.label} mb-0.5`}>Email Address</p>
-          <p className={`${text.muted} mb-2`}>
-            The email you signed up with. This is used for login and notifications.
-          </p>
+          <p className={`${text.muted} mb-2`}>Used for login and notifications.</p>
           <div className={readOnlyField}>{user?.email || "\u2014"}</div>
         </div>
 
         {/* Theme */}
         <div className={`${sectionDivider} animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-175`}>
           <p className={`${text.label} mb-0.5`}>Theme</p>
-          <p className={`${text.muted} mb-3`}>
-            Controls how the interface looks. System follows your device's setting.
-          </p>
+          <p className={`${text.muted} mb-3`}>System follows your device setting.</p>
           <div className="grid grid-cols-3 gap-2 sm:gap-3">
             <button
               type="button"
@@ -159,86 +77,7 @@ export function GeneralSettings() {
           </div>
         </div>
 
-        <SafeBilling>
-          {billing => (
-            <div className={`${sectionDivider} animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-50`}>
-              {(() => {
-                const isLow = credits != null && credits < 5
-                const handleUpgrade = async () => {
-                  if (!billing.loaded) return
-                  setIsUpgrading(true)
-                  try {
-                    const products = billing.pricingModel?.products
-                    const defaultProduct = products?.[0]
-                    if (billing.createCheckoutSession && defaultProduct?.defaultPrice) {
-                      const result = await billing.createCheckoutSession({
-                        priceId: defaultProduct.defaultPrice.id,
-                        successUrl: `${window.location.origin}/chat?upgraded=true`,
-                        cancelUrl: window.location.href,
-                        autoRedirect: true,
-                      })
-                      if (result && "url" in result && result.url) {
-                        window.location.href = result.url
-                      }
-                    } else if (billing.billingPortalUrl) {
-                      window.open(billing.billingPortalUrl, "_blank")
-                    }
-                  } catch (err) {
-                    console.error("Upgrade failed:", err)
-                  } finally {
-                    setIsUpgrading(false)
-                  }
-                }
-
-                return isLow ? (
-                  <button
-                    type="button"
-                    onClick={handleUpgrade}
-                    disabled={isUpgrading || !billing.loaded}
-                    className={`w-full ${warningCard} hover:bg-amber-500/10 transition-colors disabled:opacity-40`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="text-left">
-                        <p className="text-sm font-medium text-amber-900 dark:text-amber-100">Running low on credits</p>
-                        <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
-                          {credits?.toFixed(2)} remaining
-                        </p>
-                      </div>
-                      <span className="px-3 py-1.5 bg-amber-600 text-white text-sm font-medium rounded-lg">
-                        {isUpgrading ? "..." : "Top up"}
-                      </span>
-                    </div>
-                  </button>
-                ) : (
-                  <div className="flex items-center justify-between">
-                    <h4 className={text.label}>Credits</h4>
-                    <div className="flex items-center gap-3">
-                      <span className="text-lg font-semibold text-black/90 dark:text-white/90">
-                        {creditsLoading
-                          ? "..."
-                          : creditsError
-                            ? "\u2014"
-                            : credits != null
-                              ? credits.toFixed(2)
-                              : "\u2014"}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={handleUpgrade}
-                        disabled={isUpgrading || !billing.loaded}
-                        className={smallButton}
-                      >
-                        {isUpgrading ? "..." : "Get more"}
-                      </button>
-                    </div>
-                  </div>
-                )
-              })()}
-            </div>
-          )}
-        </SafeBilling>
-
-        {/* Model Selection */}
+        {/* Model */}
         <div className={`${sectionDivider} animate-in fade-in-0 slide-in-from-left-2 duration-300 delay-150`}>
           <label htmlFor="claude-model" className={`block ${text.label} mb-0.5`}>
             Model

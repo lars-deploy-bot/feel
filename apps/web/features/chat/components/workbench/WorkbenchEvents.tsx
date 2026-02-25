@@ -16,7 +16,7 @@ function getEventColor(eventName: string): string {
   return "text-red-400 font-semibold"
 }
 
-export function SandboxEventsPanel() {
+export function WorkbenchEvents() {
   const { events, clearEvents } = useDevTerminal()
   const [collapsedMessages, setCollapsedMessages] = useState<Set<number>>(new Set())
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)

@@ -20,6 +20,7 @@ interface ModalActions {
   closeInvite: () => void
   openSettings: (reason?: SettingsReason) => void
   closeSettings: () => void
+  toggleSettings: () => void
   openTemplates: () => void
   closeTemplates: () => void
   togglePhotoMenu: () => void
@@ -53,6 +54,7 @@ export function useModals(): ModalState & ModalActions {
     [],
   )
   const closeSettings = useCallback(() => setState(s => ({ ...s, settings: null })), [])
+  const toggleSettings = useCallback(() => setState(s => ({ ...s, settings: s.settings ? null : "manual" })), [])
 
   const openTemplates = useCallback(() => setState(s => ({ ...s, templates: true })), [])
   const closeTemplates = useCallback(() => setState(s => ({ ...s, templates: false })), [])
@@ -72,6 +74,7 @@ export function useModals(): ModalState & ModalActions {
       closeInvite,
       openSettings,
       closeSettings,
+      toggleSettings,
       openTemplates,
       closeTemplates,
       togglePhotoMenu,
@@ -87,6 +90,7 @@ export function useModals(): ModalState & ModalActions {
       closeInvite,
       openSettings,
       closeSettings,
+      toggleSettings,
       openTemplates,
       closeTemplates,
       togglePhotoMenu,

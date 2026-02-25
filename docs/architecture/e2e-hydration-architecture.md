@@ -60,7 +60,7 @@ const storageEntries = createTestStorageState({
   workspace: "e2e-w0.alive.local",
   orgId: "org-123",
   featureFlags: {},
-  debug: { isDebugView: false, showSSETerminal: false, showSandbox: false },
+  debug: { isDebugView: false, showSSETerminal: false, showWorkbench: false },
 })
 ```
 
@@ -127,7 +127,7 @@ export const STORE_STORAGE_KEYS = {
   MESSAGE: "claude-messages-v4",
   TAB: "claude-tabs-v1",
   LLM: "alive-llm-settings-v2",
-  DEBUG: "alive-debug-view-v7",
+  DEBUG: "alive-debug-view-v8",
   FEATURE_FLAG: "feature-flag-overrides-v1",
   SESSION: "claude-session-storage",
   GOAL: "goal-storage",

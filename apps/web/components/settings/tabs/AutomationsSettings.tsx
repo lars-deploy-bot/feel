@@ -1,8 +1,8 @@
 "use client"
 
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, Calendar, Globe, Mail, Pause, Play, Plus, Trash2, Zap } from "lucide-react"
-import { useCallback, useEffect, useState } from "react"
+import { ArrowLeft, Calendar, ChevronDown, Globe, Mail, Pause, Play, Plus, Trash2, Zap } from "lucide-react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { AutomationRunsView } from "@/components/automations/AutomationRunsView"
 import { type AutomationFormData, AutomationSidePanel } from "@/components/automations/AutomationSidePanel"
 import { EmptyState } from "@/components/ui/EmptyState"
@@ -122,18 +122,13 @@ export function AutomationsSettings() {
     trackAutomationsViewed()
   }, [])
 
-  const [selectedJob, setSelectedJob] = useState<AutomationJob | null>(null)
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [detailTab, setDetailTab] = useState<DetailTab>("overview")
 
-  // Keep selectedJob in sync with fresh data
-  useEffect(() => {
-    if (selectedJob) {
-      const fresh = automations.find(a => a.id === selectedJob.id)
-      if (fresh) setSelectedJob(fresh)
-    }
-  }, [automations, selectedJob?.id])
+  // Derive selected job from query data — always fresh, auto-clears on deletion
+  const selectedJob = selectedJobId ? (automations.find(a => a.id === selectedJobId) ?? null) : null
 
   // ─── Mutations ──────────────────────────────
 
@@ -176,7 +171,7 @@ export function AutomationsSettings() {
         trackAutomationCreated({ has_prompt: !!variables.formData.action_prompt })
       }
       queryClient.invalidateQueries({ queryKey: queryKeys.automations.all })
-      setSelectedJob(null)
+      setSelectedJobId(null)
       setIsCreating(false)
     },
     onError: (err: ApiError) => {
@@ -200,7 +195,7 @@ export function AutomationsSettings() {
     },
     onSuccess: () => {
       trackAutomationDeleted()
-      setSelectedJob(null)
+      setSelectedJobId(null)
     },
     onSettled: () => setDeleteConfirm(null),
   })
@@ -221,18 +216,18 @@ export function AutomationsSettings() {
   // ─── Callbacks ──────────────────────────────
 
   const handleCreate = useCallback(() => {
-    setSelectedJob(null)
+    setSelectedJobId(null)
     setIsCreating(true)
   }, [])
 
   const handleSelectJob = useCallback((job: AutomationJob) => {
-    setSelectedJob(job)
+    setSelectedJobId(job.id)
     setIsCreating(false)
     setDetailTab("overview")
   }, [])
 
   const handleBack = useCallback(() => {
-    setSelectedJob(null)
+    setSelectedJobId(null)
     setIsCreating(false)
   }, [])
 
@@ -262,6 +257,17 @@ export function AutomationsSettings() {
   }, [deleteConfirm])
 
   const activeCount = automations.filter(a => a.is_active).length
+
+  // Group active agents by hostname — recomputes when automations change (query refetch or optimistic update)
+  const sitesWithAgents = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const job of automations) {
+      if (!job.is_active) continue
+      const host = job.hostname || "No website"
+      map.set(host, (map.get(host) || 0) + 1)
+    }
+    return [...map.entries()].sort((a, b) => b[1] - a[1])
+  }, [automations])
 
   // ─── Loading / Error ──────────────────────────────
 
@@ -436,7 +442,7 @@ export function AutomationsSettings() {
   return (
     <SettingsTabLayout
       title="Agents"
-      description={`${activeCount} active agent${activeCount !== 1 ? "s" : ""} across your sites`}
+      description={<AgentSitesDropdown activeCount={activeCount} sitesWithAgents={sitesWithAgents} />}
       action={{ label: "Add Agent", icon: <Plus size={16} />, onClick: handleCreate }}
       className="h-full min-h-0 flex flex-col"
       contentClassName="flex-1 min-h-0"
@@ -546,6 +552,61 @@ function RunStatusBadge({ status }: { status: string }) {
       </span>
     )
   return <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded-full ${style}`}>{status}</span>
+}
+
+function AgentSitesDropdown({
+  activeCount,
+  sitesWithAgents,
+}: {
+  activeCount: number
+  sitesWithAgents: [string, number][]
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handle = (e: MouseEvent) => {
+      const target = e.target
+      if (!(target instanceof Node)) return
+      if (ref.current && !ref.current.contains(target)) setOpen(false)
+    }
+    document.addEventListener("mousedown", handle)
+    return () => document.removeEventListener("mousedown", handle)
+  }, [open])
+
+  if (sitesWithAgents.length === 0) {
+    return <>{`${activeCount} active agent${activeCount !== 1 ? "s" : ""}`}</>
+  }
+
+  return (
+    <div className="relative inline-block" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="inline-flex items-center gap-1 hover:text-black/70 dark:hover:text-white/70 transition-colors"
+      >
+        {`${activeCount} active agent${activeCount !== 1 ? "s" : ""} across ${sitesWithAgents.length} site${sitesWithAgents.length !== 1 ? "s" : ""}`}
+        <ChevronDown size={12} className={`transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-50 min-w-[200px] bg-white dark:bg-zinc-900 border border-black/10 dark:border-white/10 rounded-lg shadow-lg py-1">
+          {sitesWithAgents.map(([hostname, count]) => (
+            <div
+              key={hostname}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs text-black/70 dark:text-white/70"
+            >
+              <Globe size={12} className="shrink-0 text-black/40 dark:text-white/40" />
+              <span className="truncate flex-1">{hostname}</span>
+              <span className="text-black/40 dark:text-white/40 shrink-0">
+                {count} agent{count !== 1 ? "s" : ""}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function OverviewTab({ job }: { job: AutomationJob }) {

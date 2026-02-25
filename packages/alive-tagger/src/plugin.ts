@@ -2,7 +2,7 @@
  * Alive Tagger Vite Plugin
  *
  * Intercepts React's jsx-dev-runtime to inject source tracking into every element.
- * This enables click-to-select functionality in the Alive sandbox.
+ * This enables click-to-select functionality in the Alive workbench.
  */
 
 import type { Plugin, ResolvedConfig } from "vite"
@@ -13,7 +13,7 @@ import type { AliveTaggerOptions } from "./types"
 const CLIENT_SCRIPT = `
 <script type="module">
 (function() {
-  // Don't run if not in iframe (not in sandbox)
+  // Don't run if not in iframe (not in workbench)
   if (window.parent === window) return;
 
   // Check if already initialized

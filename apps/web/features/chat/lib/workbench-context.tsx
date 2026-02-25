@@ -1,7 +1,7 @@
 "use client"
 import { createContext, type ReactNode, useCallback, useContext, useState } from "react"
 
-export interface SandboxEntry {
+export interface WorkbenchEntry {
   id: string
   timestamp: string
   type: "log" | "error" | "info" | "success"
@@ -17,12 +17,12 @@ export interface ElementSelection {
   columnNumber?: number
 }
 
-/** View mode for the right panel (site preview, code editor, terminal, drive, events) */
-export type PanelView = "site" | "code" | "terminal" | "drive" | "events"
+/** View mode for the workbench (home picker, site preview, code editor, terminal, drive, events) */
+export type WorkbenchView = "home" | "site" | "code" | "terminal" | "drive" | "events"
 
-/** State for the right panel */
-export interface PanelState {
-  view: PanelView
+/** State for the workbench */
+export interface WorkbenchState {
+  view: WorkbenchView
   /** Current path in site preview (URL path) */
   sitePath: string
   /** Currently open file path (for code view) */
@@ -35,18 +35,13 @@ export interface PanelState {
   treeCollapsed: boolean
 }
 
-/** @deprecated Use PanelView instead */
-export type PreviewMode = PanelView
-/** @deprecated Use PanelState instead */
-export type PreviewState = PanelState
-
-interface PanelContextType {
-  entries: SandboxEntry[]
-  addEntry: (entry: Omit<SandboxEntry, "id" | "timestamp">) => void
+interface WorkbenchContextType {
+  entries: WorkbenchEntry[]
+  addEntry: (entry: Omit<WorkbenchEntry, "id" | "timestamp">) => void
   clearEntries: () => void
   /** Currently selected element (from alive-tagger) */
   selectedElement: ElementSelection | null
-  /** Set selected element - called from panel when receiving postMessage */
+  /** Set selected element - called from workbench when receiving postMessage */
   setSelectedElement: (element: ElementSelection | null) => void
   /** Callback for when element is selected - set by chat page to insert into input */
   onElementSelect: ((element: ElementSelection) => void) | null
@@ -58,10 +53,10 @@ interface PanelContextType {
   activateSelector: () => void
   /** Deactivate element selector mode */
   deactivateSelector: () => void
-  /** Panel state */
-  panel: PanelState
-  /** Set panel view */
-  setPanelView: (view: PanelView) => void
+  /** Workbench state */
+  workbench: WorkbenchState
+  /** Set workbench view */
+  setView: (view: WorkbenchView) => void
   /** Open a file in code view */
   openFile: (filePath: string) => void
   /** Close current file */
@@ -76,12 +71,12 @@ interface PanelContextType {
   setSitePath: (path: string) => void
 }
 
-const PanelContext = createContext<PanelContextType | undefined>(undefined)
+const WorkbenchContext = createContext<WorkbenchContextType | undefined>(undefined)
 
 const DEFAULT_TREE_WIDTH = 200
 
-const DEFAULT_PANEL_STATE: PanelState = {
-  view: "site",
+const DEFAULT_WORKBENCH_STATE: WorkbenchState = {
+  view: "home",
   sitePath: "/",
   filePath: null,
   expandedFolders: new Set<string>(),
@@ -89,15 +84,15 @@ const DEFAULT_PANEL_STATE: PanelState = {
   treeCollapsed: false,
 }
 
-export function PanelProvider({ children }: { children: ReactNode }) {
-  const [entries, setEntries] = useState<SandboxEntry[]>([])
+export function WorkbenchProvider({ children }: { children: ReactNode }) {
+  const [entries, setEntries] = useState<WorkbenchEntry[]>([])
   const [selectedElement, setSelectedElementState] = useState<ElementSelection | null>(null)
   const [onElementSelect, setOnElementSelect] = useState<((element: ElementSelection) => void) | null>(null)
-  const [panel, setPanel] = useState<PanelState>(DEFAULT_PANEL_STATE)
+  const [workbenchState, setWorkbenchState] = useState<WorkbenchState>(DEFAULT_WORKBENCH_STATE)
   const [selectorActive, setSelectorActive] = useState(false)
 
-  const addEntry = (entry: Omit<SandboxEntry, "id" | "timestamp">) => {
-    const newEntry: SandboxEntry = {
+  const addEntry = (entry: Omit<WorkbenchEntry, "id" | "timestamp">) => {
+    const newEntry: WorkbenchEntry = {
       ...entry,
       id: Math.random().toString(36).substring(7),
       timestamp: new Date().toISOString(),
@@ -135,8 +130,8 @@ export function PanelProvider({ children }: { children: ReactNode }) {
     setOnElementSelect(() => handler)
   }, [])
 
-  const setPanelView = useCallback((view: PanelView) => {
-    setPanel(prev => ({ ...prev, view }))
+  const setView = useCallback((view: WorkbenchView) => {
+    setWorkbenchState(prev => ({ ...prev, view }))
   }, [])
 
   const openFile = useCallback((filePath: string) => {
@@ -147,7 +142,7 @@ export function PanelProvider({ children }: { children: ReactNode }) {
       parentPaths.push(parts.slice(0, i).join("/"))
     }
 
-    setPanel(prev => {
+    setWorkbenchState(prev => {
       const newExpanded = new Set(prev.expandedFolders)
       for (const p of parentPaths) {
         newExpanded.add(p)
@@ -157,11 +152,11 @@ export function PanelProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const closeFile = useCallback(() => {
-    setPanel(prev => ({ ...prev, filePath: null }))
+    setWorkbenchState(prev => ({ ...prev, filePath: null }))
   }, [])
 
   const toggleFolder = useCallback((path: string) => {
-    setPanel(prev => {
+    setWorkbenchState(prev => {
       const newExpanded = new Set(prev.expandedFolders)
       if (newExpanded.has(path)) {
         newExpanded.delete(path)
@@ -173,19 +168,19 @@ export function PanelProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const setTreeWidth = useCallback((width: number) => {
-    setPanel(prev => ({ ...prev, treeWidth: width }))
+    setWorkbenchState(prev => ({ ...prev, treeWidth: width }))
   }, [])
 
   const toggleTreeCollapsed = useCallback(() => {
-    setPanel(prev => ({ ...prev, treeCollapsed: !prev.treeCollapsed }))
+    setWorkbenchState(prev => ({ ...prev, treeCollapsed: !prev.treeCollapsed }))
   }, [])
 
   const setSitePath = useCallback((sitePath: string) => {
-    setPanel(prev => ({ ...prev, sitePath }))
+    setWorkbenchState(prev => ({ ...prev, sitePath }))
   }, [])
 
   return (
-    <PanelContext.Provider
+    <WorkbenchContext.Provider
       value={{
         entries,
         addEntry,
@@ -197,8 +192,8 @@ export function PanelProvider({ children }: { children: ReactNode }) {
         selectorActive,
         activateSelector,
         deactivateSelector,
-        panel,
-        setPanelView,
+        workbench: workbenchState,
+        setView,
         openFile,
         closeFile,
         toggleFolder,
@@ -208,14 +203,14 @@ export function PanelProvider({ children }: { children: ReactNode }) {
       }}
     >
       {children}
-    </PanelContext.Provider>
+    </WorkbenchContext.Provider>
   )
 }
 
-export function usePanelContext() {
-  const context = useContext(PanelContext)
+export function useWorkbenchContext() {
+  const context = useContext(WorkbenchContext)
   if (!context) {
-    throw new Error("usePanelContext must be used within PanelProvider")
+    throw new Error("useWorkbenchContext must be used within WorkbenchProvider")
   }
   return context
 }

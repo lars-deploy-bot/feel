@@ -149,6 +149,7 @@ export {
   type ClaudeModel,
   DEFAULT_CLAUDE_MODEL,
   getModelDisplayName,
+  isRetiredModel,
   isValidClaudeModel,
 } from "./models.js"
 export {

@@ -9,7 +9,7 @@ Instead of proxying workspace content through Next.js (`/api/workspace-proxy`), 
 ## Architecture
 
 ```
-Browser (iframe in Sandbox.tsx)
+Browser (iframe in Workbench.tsx)
   ↓
 https://protino-alive-best.preview.terminal.alive.best/
   ↓
@@ -110,9 +110,9 @@ GET /api/auth/preview-guard
   → Return 200 if valid, 401 if missing/invalid
 ```
 
-### 5. Sandbox Component Update
+### 5. Workbench Component Update
 
-**Location:** `/root/alive/apps/web/features/chat/components/Sandbox.tsx`
+**Location:** `/root/alive/apps/web/features/chat/components/workbench/Workbench.tsx`
 
 **Changes:**
 ```typescript
@@ -142,7 +142,7 @@ function getPreviewUrl(workspace: string): string {
 ### Authentication Flow
 
 ```
-1. User loads sandbox iframe
+1. User loads workbench iframe
    ↓
 2. Browser requests https://protino-alive-best.preview.terminal.alive.best/
    ↓
@@ -254,7 +254,7 @@ curl -I https://protino-alive-best.preview.terminal.alive.best/ \
 
 ### 5. Iframe Functionality
 - Load https://dev.terminal.alive.best/chat
-- Open Sandbox panel (if not visible: toggle debug mode)
+- Open Workbench panel (if not visible: toggle debug mode)
 - Select workspace "protino.alive.best"
 - Verify:
   - ✅ Iframe loads without errors
@@ -331,13 +331,13 @@ caddy validate --config /root/alive/Caddyfile
 
 **Before:**
 ```typescript
-// Sandbox.tsx
+// Workbench.tsx
 <iframe src={`/api/workspace-proxy/${workspace}/`} />
 ```
 
 **After:**
 ```typescript
-// Sandbox.tsx
+// Workbench.tsx
 <iframe src={getPreviewUrl(workspace)} />
 // https://protino-alive-best.preview.terminal.alive.best/
 ```
@@ -380,9 +380,9 @@ export default defineConfig({
 ```
 
 ### 4. Console Integration
-Connect workspace server logs to Sandbox console tab:
+Connect workspace server logs to Workbench console tab:
 ```typescript
-// Stream systemd logs to Sandbox
+// Stream systemd logs to Workbench
 useEffect(() => {
   const ws = new WebSocket('wss://protino-alive-best.preview.terminal.alive.best/__logs')
   ws.onmessage = (event) => {
@@ -396,5 +396,5 @@ useEffect(() => {
 - **Caddyfile:** `/root/alive/Caddyfile`
 - **Generation script:** `/root/alive/scripts/generate-preview-caddyfile.ts`
 - **Auth guard:** `/root/alive/apps/web/app/api/auth/preview-guard/route.ts`
-- **Sandbox component:** `/root/alive/apps/web/features/chat/components/Sandbox.tsx`
+- **Workbench component:** `/root/alive/apps/web/features/chat/components/workbench/Workbench.tsx`
 - **Main docs:** `/root/alive/README.md`

@@ -34,7 +34,7 @@ import { env } from "@/lib/env"
 import { ErrorCodes } from "@/lib/error-codes"
 import { buildAnalyzeImagePrompt, fetchAndSaveAnalyzeImages } from "@/lib/image-analyze/fetch-and-save"
 import { logInput } from "@/lib/input-logger"
-import { type ClaudeModel, DEFAULT_MODEL, isValidClaudeModel } from "@/lib/models/claude-models"
+import { type ClaudeModel, DEFAULT_MODEL, isRetiredModel, isValidClaudeModel } from "@/lib/models/claude-models"
 import { fetchOAuthTokens } from "@/lib/oauth/fetch-oauth-tokens"
 import { fetchUserEnvKeys } from "@/lib/oauth/fetch-user-env-keys"
 import { getRequestId } from "@/lib/request-id"
@@ -157,7 +157,13 @@ export async function POST(req: NextRequest) {
       logger.log("Skipping input safety check (superadmin)")
     }
 
-    const host = (await headers()).get("host") || "localhost"
+    const host = (await headers()).get("host")
+    if (!host) {
+      return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
+        status: 400,
+        details: { field: "Host header", requestId },
+      })
+    }
     const origin = req.headers.get("origin")
     logger.log("Host:", host)
 
@@ -221,16 +227,20 @@ export async function POST(req: NextRequest) {
       }
 
       // Step 2: Determine billing (workspace credits vs OAuth/no-credit path)
-      const orgCredits = (await getOrgCredits(resolvedWorkspaceName)) ?? 0
+      const orgCredits = await getOrgCredits(resolvedWorkspaceName)
       const COST_ESTIMATE = 1
 
-      if (orgCredits >= COST_ESTIMATE) {
+      if (orgCredits !== null && orgCredits >= COST_ESTIMATE) {
         tokenSource = "workspace"
         logger.log(`Billing: workspace credits (${orgCredits} available)`)
       } else {
-        // Using OAuth - no credit deduction
+        // Using OAuth - no credit deduction (also handles transient credit lookup failures)
         tokenSource = "user_provided"
-        logger.log(`Billing: OAuth (no credit deduction, workspace has ${orgCredits} credits)`)
+        if (orgCredits === null) {
+          logger.warn("Credit lookup failed for workspace, falling back to OAuth:", resolvedWorkspaceName)
+        } else {
+          logger.log(`Billing: OAuth (no credit deduction, workspace has ${orgCredits} credits)`)
+        }
       }
     } catch (workspaceError) {
       logger.error("Workspace resolution failed:", workspaceError)
@@ -368,33 +378,29 @@ export async function POST(req: NextRequest) {
 
     logger.log("Working directory:", cwd)
 
-    // Force default model for credit users (cost management).
-    // OAuth/no-credit users can choose any model.
-    // Exception: Admins (set via ADMIN_EMAILS env var) can use any model.
-    // Exception: Users with specific enabled_models in their metadata.
+    // Resolve and validate the requested model.
+    // Admins can use any valid model. Other users on org credits need explicit access.
+    const requestedModel = userModel ?? env.CLAUDE_MODEL
+    if (!isValidClaudeModel(requestedModel)) {
+      const code = isRetiredModel(requestedModel) ? ErrorCodes.MODEL_NOT_AVAILABLE : ErrorCodes.MODEL_INVALID
+      return structuredErrorResponse(code, {
+        status: 400,
+        details: { requestId, model: requestedModel, retired: isRetiredModel(requestedModel) },
+      })
+    }
+
     const isUnrestrictedUser = user.isAdmin
-    const hasModelAccess = (model: string) => isUnrestrictedUser || user.enabledModels.includes(model)
+    const hasModelAccess =
+      isUnrestrictedUser || requestedModel === DEFAULT_MODEL || user.enabledModels.includes(requestedModel)
 
-    // Determine model with proper type validation
-    let effectiveModel: ClaudeModel
-    if (tokenSource === "workspace" && !isUnrestrictedUser) {
-      // Check if user has per-model access for their requested model
-      const requestedModel = userModel || env.CLAUDE_MODEL
-      if (isValidClaudeModel(requestedModel) && hasModelAccess(requestedModel)) {
-        effectiveModel = requestedModel
-      } else {
-        // ENFORCED for org credits - always use default
-        effectiveModel = DEFAULT_MODEL
-      }
-    } else {
-      // User's choice with OAuth/no-credit path or unrestricted user
-      const requestedModel = userModel || env.CLAUDE_MODEL
-      effectiveModel = isValidClaudeModel(requestedModel) ? requestedModel : DEFAULT_MODEL
+    if (tokenSource === "workspace" && !hasModelAccess) {
+      return structuredErrorResponse(ErrorCodes.MODEL_NOT_AVAILABLE, {
+        status: 403,
+        details: { requestId, model: requestedModel },
+      })
     }
 
-    if (tokenSource === "workspace" && userModel && userModel !== DEFAULT_MODEL && !hasModelAccess(userModel)) {
-      logger.log(`Model override: User requested ${userModel} but forcing ${DEFAULT_MODEL} for org credits`)
-    }
+    const effectiveModel: ClaudeModel = requestedModel
     logger.log("Claude model:", effectiveModel)
     logger.log("User isAdmin:", user.isAdmin)
     logger.log("User isSuperadmin:", user.isSuperadmin)

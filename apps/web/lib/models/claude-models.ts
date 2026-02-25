@@ -4,10 +4,16 @@
  * Re-exports from @webalive/shared - SINGLE SOURCE OF TRUTH
  */
 
-import { CLAUDE_MODELS, type ClaudeModel, getModelDisplayName, isValidClaudeModel } from "@webalive/shared"
+import {
+  CLAUDE_MODELS,
+  type ClaudeModel,
+  getModelDisplayName,
+  isRetiredModel,
+  isValidClaudeModel,
+} from "@webalive/shared"
 
 // Re-export everything from shared
-export { CLAUDE_MODELS, isValidClaudeModel, getModelDisplayName, type ClaudeModel }
+export { CLAUDE_MODELS, isValidClaudeModel, isRetiredModel, getModelDisplayName, type ClaudeModel }
 
 /**
  * Default model used for credit users and as initial state
