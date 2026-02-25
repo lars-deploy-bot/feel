@@ -6,7 +6,7 @@ import { SettingsPageClient } from "./SettingsPageClient"
 
 type SettingsTab =
   | "general"
-  | "goal"
+  | "billing"
   | "skills"
   | "organization"
   | "websites"
@@ -22,8 +22,9 @@ interface SettingsOverlayProps {
 }
 
 /**
- * Full-screen settings overlay.
- * Close via: X button, ESC key, or clicking backdrop (on desktop).
+ * Settings overlay — rendered inside the content area's relative container.
+ * Covers sidebar + chat + workbench but leaves the top nav visible.
+ * Close via: X button or ESC key.
  * Uses Suspense to handle nuqs URL param hydration.
  */
 export function SettingsOverlay({ onClose, initialTab }: SettingsOverlayProps) {
@@ -41,9 +42,9 @@ export function SettingsOverlay({ onClose, initialTab }: SettingsOverlayProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-white dark:bg-zinc-950"
+      className="absolute inset-0 z-40 bg-white dark:bg-zinc-950"
       role="dialog"
-      aria-modal="true"
+      aria-modal="false"
       aria-label="Settings"
       data-testid="settings-overlay"
     >

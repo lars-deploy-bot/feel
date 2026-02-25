@@ -431,11 +431,11 @@ export function trackSkillSelected(properties: { skill_id: string; skill_name: s
   capture("skill_selected", properties)
 }
 
-// ─── Sandbox / Preview Panel ────────────────────────────────────────────────
+// ─── Workbench ──────────────────────────────────────────────────────────────
 
-/** Sandbox mode changed (preview/code/terminal/files) */
-export function trackSandboxModeChanged(mode: string) {
-  capture("sandbox_mode_changed", { mode })
+/** Workbench view changed (preview/code/terminal/files) */
+export function trackWorkbenchViewChanged(mode: string) {
+  capture("workbench_view_changed", { mode })
 }
 
 /** Element selector activated */

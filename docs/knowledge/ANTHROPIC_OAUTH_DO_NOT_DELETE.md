@@ -67,7 +67,8 @@ This document is the authoritative reference for:
 **Key facts:**
 - `expiresAt` = `Date.now() + expires_in * 1000`
 - `expires_in` from Anthropic = **28800 seconds (8 hours)**
-- Both CLI and web app check expiry with a **5-minute buffer** (refresh 5 min early)
+- CLI checks expiry with a **5-minute buffer** (refresh ~5 min early)
+- Web app request path checks with a **5-minute buffer**, plus a proactive heartbeat that keeps at least **2 hours** of validity
 
 ---
 
@@ -81,6 +82,9 @@ CLI writes .credentials.json with fresh accessToken + refreshToken
     │
     ▼
 Token valid for 8 hours
+    │
+    ▼
+Background heartbeat checks every 15m; if <2h left, web app refreshes early
     │
     ▼
 At ~7h55m, next request triggers refresh (5-min buffer)
@@ -346,11 +350,12 @@ Our web app's refresh logic mirrors the CLI's pattern. The critical requirement 
 
 | Function | Purpose | Refreshes? |
 |----------|---------|------------|
-| `getValidAccessToken()` | Get token, refresh if expired | Yes (with lock) |
+| `getValidAccessToken({ minimumValidityMs? })` | Get token, refresh if expired/expiring soon | Yes (with lock) |
 | `hasOAuthCredentials()` | Check if credentials file exists and has refresh token | No |
 | `readClaudeCredentials()` | Read raw credentials from disk | No |
 | `getAccessTokenReadOnly()` | Get token without refreshing (returns `isExpired` flag) | No |
 | `isTokenExpired(expiresAt)` | Check if timestamp is within 5-min buffer | No |
+| `startOAuthRefreshHeartbeat()` | Background refresh cadence (15m checks, 2h minimum validity) | Yes (with lock) |
 
 ### Callers
 
@@ -406,6 +411,7 @@ Our web app's refresh logic mirrors the CLI's pattern. The critical requirement 
 ```
 
 **Key insight:** The token is read from disk once per request by `getValidAccessToken()`, then passed through the system as a string. Workers never read the credentials file directly — they receive the token via IPC and consume it through `CLAUDE_CODE_OAUTH_TOKEN` env var.
+Additionally, Next.js startup calls `startOAuthRefreshHeartbeat()` so refresh is not only request-driven.
 
 ---
 
@@ -483,7 +489,12 @@ Step 4 is critical. Without it, you'd refresh with a stale token that was alread
 
 **Symptom:** All automations fail with `Anthropic token refresh failed (400): {"error": "invalid_grant"}`
 
-**Cause:** Two processes raced to refresh. One consumed the token, the other got rejected.
+**Cause:** The active refresh token chain is invalid. Common reasons:
+- A refresh race consumed a token you later retried
+- Session/token chain was revoked upstream
+- Credentials persistence drift left a dead chain on disk
+
+**Current behavior:** Proactive heartbeat marks the failing refresh token chain as dead, escalates in Sentry after repeated failures, and suppresses repeated retry spam until credentials change (for example after `/login`).
 
 **Diagnosis:**
 ```bash
@@ -494,7 +505,7 @@ journalctl -u automation-worker --since "1 hour ago" | grep "invalid_grant"
 journalctl -u alive-production --since "1 hour ago" | grep "token refresh failed"
 ```
 
-**Fix:** Run `/login` in Claude Code CLI. See [Section 10](#10-recovery-procedures).
+**Fix:** Run `/login` in Claude Code CLI to mint a new chain. See [Section 10](#10-recovery-procedures).
 
 ### Failure 2: `Invalid API key` (stale file handle)
 
@@ -715,6 +726,7 @@ Every file in the codebase that touches OAuth, and its role:
 | `packages/worker-pool/src/env-isolation.ts` | Sets `CLAUDE_CODE_OAUTH_TOKEN` env var per request |
 | `packages/worker-pool/src/worker-entry.mjs` | Configures `CLAUDE_CONFIG_DIR`, receives token via IPC |
 | `packages/worker-pool/src/manager.ts` | Monitors credentials file for changes, restarts workers |
+| `apps/web/instrumentation.ts` | Starts proactive OAuth refresh heartbeat at server startup |
 
 ### Related documentation
 

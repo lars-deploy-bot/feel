@@ -1,6 +1,5 @@
 export { AgentManagerIndicator } from "./AgentManagerIndicator"
 export { ChatEmptyState } from "./ChatEmptyState"
-export { ChatHeader } from "./ChatHeader"
+export { Nav } from "./Nav"
 export { OfflineBanner } from "./OfflineBanner"
 export { TabBar } from "./TabBar"
-export { WorkspaceInfoBar } from "./WorkspaceInfoBar"

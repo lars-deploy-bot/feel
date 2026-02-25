@@ -27,10 +27,33 @@ export const DEFAULT_CLAUDE_MODEL: ClaudeModel = CLAUDE_MODELS.SONNET_4_6
 const VALID_MODELS = new Set<string>(Object.values(CLAUDE_MODELS))
 
 /**
+ * Old model IDs that are no longer supported.
+ * Used to give clear error messages instead of "not recognized".
+ */
+const RETIRED_MODELS = new Set([
+  "claude-3-opus-20240229",
+  "claude-3-sonnet-20240229",
+  "claude-3-haiku-20240307",
+  "claude-3-5-sonnet-20240620",
+  "claude-3-5-sonnet-20241022",
+  "claude-3-5-haiku-20241022",
+  "claude-opus-4-20250514",
+  "claude-sonnet-4-20250514",
+  "claude-haiku-4-5-20251001",
+])
+
+/**
  * Type guard to check if a value is a valid Claude model
  */
 export function isValidClaudeModel(value: unknown): value is ClaudeModel {
   return typeof value === "string" && VALID_MODELS.has(value)
+}
+
+/**
+ * Check if a model string is a known retired/old model
+ */
+export function isRetiredModel(value: string): boolean {
+  return RETIRED_MODELS.has(value)
 }
 
 /**

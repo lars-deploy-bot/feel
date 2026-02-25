@@ -2,13 +2,13 @@
 
 ## Summary
 
-The preview iframe in our `Sandbox` and `SandboxMobile` React components loads its content correctly (verified via Playwright accessibility snapshots and DOM inspection), but the `isLoading` state never transitions to `false`. This causes an opaque loading overlay (`PulsingDot` / "Opening your site") to permanently cover the fully-loaded iframe content.
+The preview iframe in our `Workbench` and `WorkbenchMobile` React components loads its content correctly (verified via Playwright accessibility snapshots and DOM inspection), but the `isLoading` state never transitions to `false`. This causes an opaque loading overlay (`PulsingDot` / "Opening your site") to permanently cover the fully-loaded iframe content.
 
 **Severity**: P1 — Preview is completely unusable. The iframe loads, but the user can never see it.
 
 **Affected components**:
-- `apps/web/features/chat/components/Sandbox.tsx` (desktop side panel)
-- `apps/web/features/chat/components/SandboxMobile.tsx` (mobile full-screen overlay)
+- `apps/web/features/chat/components/Workbench.tsx` (desktop side panel)
+- `apps/web/features/chat/components/WorkbenchMobile.tsx` (mobile full-screen overlay)
 
 ---
 
@@ -33,8 +33,8 @@ Browser (staging.alive.best/chat)
 
 | File | Purpose |
 |------|---------|
-| `apps/web/features/chat/components/Sandbox.tsx` | Desktop preview panel (side-by-side with chat) |
-| `apps/web/features/chat/components/SandboxMobile.tsx` | Mobile preview overlay (full-screen) |
+| `apps/web/features/chat/components/Workbench.tsx` | Desktop preview panel (side-by-side with chat) |
+| `apps/web/features/chat/components/WorkbenchMobile.tsx` | Mobile preview overlay (full-screen) |
 | `apps/web/app/api/preview-router/[[...path]]/route.ts` | Next.js route handler that proxies + injects nav script |
 | `apps/web/lib/preview-utils.ts` | `getPreviewUrl()` builds the preview subdomain URL |
 | `apps/web/lib/auth/preview-token.ts` | JWT token creation/verification for iframe auth |
@@ -42,7 +42,7 @@ Browser (staging.alive.best/chat)
 
 ### How the Loading Overlay Works
 
-In `Sandbox.tsx` (desktop), the overlay is controlled by two conditions (line 314):
+In `Workbench.tsx` (desktop), the overlay is controlled by two conditions (line 314):
 
 ```tsx
 {(isLoading || !previewToken) && (
@@ -52,7 +52,7 @@ In `Sandbox.tsx` (desktop), the overlay is controlled by two conditions (line 31
 )}
 ```
 
-In `SandboxMobile.tsx`, it's simpler (line 147):
+In `WorkbenchMobile.tsx`, it's simpler (line 147):
 ```tsx
 {isLoading && (
   <div className="absolute inset-0 z-10 ...">
@@ -65,7 +65,7 @@ Both overlays are **opaque** (`bg-white` / `bg-neutral-900`) and positioned `abs
 
 ### Iframe Rendering is Conditional (Desktop Only)
 
-In `Sandbox.tsx`, the iframe only renders after `previewToken` is fetched (line 319):
+In `Workbench.tsx`, the iframe only renders after `previewToken` is fetched (line 319):
 ```tsx
 {previewToken && (
   <iframe ref={setIframeRef} src={previewUrl} ... />
@@ -270,14 +270,14 @@ window.addEventListener('beforeunload', sendStart);
 The effect on `[path]` runs `setIsLoading(true)`. If the injected script's `sendPath()` causes `setPath("/")` which triggers a re-render, and if React's effect scheduling causes this effect to run AFTER the `load` event handler, it would reset the loading state.
 
 **Evidence for**:
-- In the desktop Sandbox, `setPath(newPath)` is called unconditionally (no `!== path` guard) on line 189
+- In the desktop Workbench, `setPath(newPath)` is called unconditionally (no `!== path` guard) on line 189
 - Setting state to the same value CAN cause effects to re-run in edge cases with React concurrent features
 
 **Evidence against**:
 - React 19 should bail out of re-rendering when `setPath("/")` is called with the same value as current state (`"/"`)
 - Even if a re-render happens, `useEffect([path])` shouldn't re-fire if `path` didn't change
 
-**Status**: Low probability but easy to test by adding a guard `if (newPath !== path)` in the desktop Sandbox message handler (SandboxMobile already has this guard).
+**Status**: Low probability but easy to test by adding a guard `if (newPath !== path)` in the desktop Workbench message handler (WorkbenchMobile already has this guard).
 
 ### Hypothesis E: The Iframe `load` Event Simply Never Fires for Proxied Content
 
@@ -313,7 +313,7 @@ If the browser receives a response without `Content-Length` and without chunked 
 
 ## Current State of the Code
 
-Both `Sandbox.tsx` and `SandboxMobile.tsx` currently use the **callback ref approach** (Attempt 3). The `onLoad` JSX prop has been removed from both iframes. The code compiles, passes type-check, lint, and all 17 E2E tests. The loading overlay is still stuck.
+Both `Workbench.tsx` and `WorkbenchMobile.tsx` currently use the **callback ref approach** (Attempt 3). The `onLoad` JSX prop has been removed from both iframes. The code compiles, passes type-check, lint, and all 17 E2E tests. The loading overlay is still stuck.
 
 ---
 
@@ -355,6 +355,6 @@ A reliable way to detect when a **cross-origin iframe** has finished loading its
 
 ## Files to Modify
 
-- `apps/web/features/chat/components/Sandbox.tsx` — Desktop loading logic
-- `apps/web/features/chat/components/SandboxMobile.tsx` — Mobile loading logic
+- `apps/web/features/chat/components/Workbench.tsx` — Desktop loading logic
+- `apps/web/features/chat/components/WorkbenchMobile.tsx` — Mobile loading logic
 - `apps/web/app/api/preview-router/[[...path]]/route.ts` — Potentially add a `preview-loaded` message to injected script

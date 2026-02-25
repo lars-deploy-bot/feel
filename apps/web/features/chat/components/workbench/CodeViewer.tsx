@@ -6,7 +6,7 @@ import { useFileContent } from "./hooks/useFileContent"
 import { getFileColor } from "./lib/file-colors"
 import { getFileName } from "./lib/file-path"
 import { TOKEN_COLORS, type Token, tokenizeLine } from "./lib/syntax"
-import { ErrorMessage, LoadingSpinner } from "./ui"
+import { ErrorMessage, LoadingSpinner, PanelBar } from "./ui"
 
 interface CodeViewerProps {
   workspace: string
@@ -95,7 +95,7 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="h-9 px-3 flex items-center gap-2 border-b border-black/[0.08] dark:border-white/[0.04] bg-neutral-100/50 dark:bg-neutral-900/30 shrink-0">
+      <PanelBar className="px-3 gap-2">
         <span className={`${getFileColor(filename)}`}>
           <svg
             width="14"
@@ -135,7 +135,7 @@ export function CodeViewer({ workspace, worktree, filePath, onClose }: CodeViewe
         >
           <X size={14} strokeWidth={1.5} />
         </button>
-      </div>
+      </PanelBar>
 
       {/* Content */}
       <div ref={scrollRef} className="flex-1 overflow-auto" onScroll={shouldVirtualize ? handleScroll : undefined}>

@@ -14,7 +14,7 @@ import { ErrorCodes } from "@/lib/error-codes"
  * This bypasses third-party cookie blocking in modern browsers.
  *
  * Flow:
- * 1. Sandbox component fetches token from this endpoint (with session cookie)
+ * 1. Workbench component fetches token from this endpoint (with session cookie)
  * 2. Token is appended to iframe src as query param
  * 3. Go preview-proxy validates the token from query param
  *

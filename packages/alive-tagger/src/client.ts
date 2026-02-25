@@ -1,7 +1,7 @@
 /**
  * Alive Tagger Client
  *
- * Beautiful element selection UI for the Alive sandbox.
+ * Beautiful element selection UI for the Alive workbench.
  * Inspired by React Grab's polished visual design.
  *
  * Usage:

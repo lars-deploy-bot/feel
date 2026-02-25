@@ -27,10 +27,12 @@ export async function register() {
     // Validate critical environment variables at startup
     try {
       const { getSuperadminEmails, getRedisUrl } = await import("@webalive/env/server")
+      const { startOAuthRefreshHeartbeat } = await import("./lib/anthropic-oauth")
 
       // These will throw if not configured correctly in production/staging
       const superadmins = getSuperadminEmails()
       const _redisUrl = getRedisUrl()
+      startOAuthRefreshHeartbeat()
 
       console.log(`[Instrumentation] Environment validated: ${superadmins.length} superadmin(s) configured`)
     } catch (error) {

@@ -4,7 +4,7 @@ import { Camera, ClipboardList, Copy, FileText, Globe, MousePointer2, User } fro
 import type { RefObject } from "react"
 import { useState } from "react"
 import toast from "react-hot-toast"
-import { usePanelContext } from "@/features/chat/lib/sandbox-context"
+import { useWorkbenchContext } from "@/features/chat/lib/workbench-context"
 import { formatMessagesAsText } from "@/features/chat/utils/format-messages"
 import {
   trackCameraUsed,
@@ -17,7 +17,7 @@ import {
 import { useDexieMessageStore } from "@/lib/db/dexieMessageStore"
 import { useTabMessages } from "@/lib/db/useTabMessages"
 import { useAllSkills, useSkillsLoading } from "@/lib/providers/SkillsStoreProvider"
-import { useSandbox, useSandboxMinimized } from "@/lib/stores/debug-store"
+import { useWorkbench, useWorkbenchMinimized } from "@/lib/stores/debug-store"
 import { usePlanMode, usePlanModeActions } from "@/lib/stores/planModeStore"
 import type { Skill } from "@/lib/stores/skillsStore"
 import { useChatInput } from "./ChatInputContext"
@@ -39,10 +39,10 @@ export function Toolbar({ fileInputRef, onAddUserPrompt, onAddSkill }: ToolbarPr
   const currentTabId = useDexieMessageStore(s => s.currentTabId)
   const userId = useDexieMessageStore(s => s.session?.userId ?? null)
   const messages = useTabMessages(currentTabId, userId)
-  const { activateSelector, selectorActive } = usePanelContext()
-  const isSandboxOpen = useSandbox()
-  const isSandboxMinimized = useSandboxMinimized()
-  const showSelectorButton = isSandboxOpen && !isSandboxMinimized
+  const { activateSelector, selectorActive } = useWorkbenchContext()
+  const isWorkbenchOpen = useWorkbench()
+  const isWorkbenchMinimized = useWorkbenchMinimized()
+  const showSelectorButton = isWorkbenchOpen && !isWorkbenchMinimized
 
   // Plan mode state
   const planMode = usePlanMode()
@@ -175,7 +175,7 @@ export function Toolbar({ fileInputRef, onAddUserPrompt, onAddSkill }: ToolbarPr
         )}
       </div>
 
-      {/* Select Element - only show when sandbox preview is open and visible */}
+      {/* Select Element - only show when workbench preview is open and visible */}
       {showSelectorButton && (
         <button
           type="button"

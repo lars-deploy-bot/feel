@@ -32,7 +32,7 @@ export function SettingsTabLayout({
       <div className="pt-4 sm:pt-5 pb-3 sm:pb-4 flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <h3 className="text-base sm:text-lg font-medium text-black/90 dark:text-white/90 mb-0.5 sm:mb-1">{title}</h3>
-          {description && <p className={`${text.description} sm:text-sm leading-relaxed`}>{description}</p>}
+          {description && <div className={`${text.description} sm:text-sm leading-relaxed`}>{description}</div>}
         </div>
         {action && (
           <button

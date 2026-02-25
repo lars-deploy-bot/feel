@@ -28,21 +28,21 @@ function isDevOrStaging(): boolean {
 // State interface
 interface DebugState {
   isDebugView: boolean
-  showSandbox: boolean
-  isSandboxMinimized: boolean
-  sandboxWidth: number | null // null = use default (half viewport)
+  showWorkbench: boolean
+  isWorkbenchMinimized: boolean
+  workbenchWidth: number | null // null = use default (half viewport)
 }
 
 // Actions interface - grouped under stable object (Guide §14.3)
 interface DebugActions {
   actions: {
     toggleView: () => void
-    toggleSandbox: () => void
-    toggleSandboxMinimized: () => void
+    toggleWorkbench: () => void
+    toggleWorkbenchMinimized: () => void
     setDebugView: (show: boolean) => void
-    setSandbox: (show: boolean) => void
-    setSandboxMinimized: (minimized: boolean) => void
-    setSandboxWidth: (width: number) => void
+    setWorkbench: (show: boolean) => void
+    setWorkbenchMinimized: (minimized: boolean) => void
+    setWorkbenchWidth: (width: number) => void
   }
 }
 
@@ -62,32 +62,32 @@ export const useDebugStoreBase = create<DebugStore>()(
     set => {
       const actions = {
         toggleView: () => set(state => ({ isDebugView: !state.isDebugView })),
-        toggleSandbox: () =>
+        toggleWorkbench: () =>
           set(state => ({
-            showSandbox: !state.showSandbox,
-            isSandboxMinimized: state.showSandbox ? state.isSandboxMinimized : false,
+            showWorkbench: !state.showWorkbench,
+            isWorkbenchMinimized: state.showWorkbench ? state.isWorkbenchMinimized : false,
           })),
-        toggleSandboxMinimized: () => set(state => ({ isSandboxMinimized: !state.isSandboxMinimized })),
+        toggleWorkbenchMinimized: () => set(state => ({ isWorkbenchMinimized: !state.isWorkbenchMinimized })),
         setDebugView: (show: boolean) => set({ isDebugView: show }),
-        setSandbox: (show: boolean) => set({ showSandbox: show }),
-        setSandboxMinimized: (minimized: boolean) => set({ isSandboxMinimized: minimized }),
-        setSandboxWidth: (width: number) => set({ sandboxWidth: width }),
+        setWorkbench: (show: boolean) => set({ showWorkbench: show }),
+        setWorkbenchMinimized: (minimized: boolean) => set({ isWorkbenchMinimized: minimized }),
+        setWorkbenchWidth: (width: number) => set({ workbenchWidth: width }),
       }
       return {
         isDebugView: false,
-        showSandbox: false,
-        isSandboxMinimized: true,
-        sandboxWidth: null,
+        showWorkbench: true,
+        isWorkbenchMinimized: true,
+        workbenchWidth: null,
         actions,
       }
     },
     {
-      name: "alive-debug-view-v7",
+      name: "alive-debug-view-v8",
       partialize: state => ({
         isDebugView: state.isDebugView,
-        showSandbox: state.showSandbox,
-        isSandboxMinimized: state.isSandboxMinimized,
-        sandboxWidth: state.sandboxWidth,
+        showWorkbench: state.showWorkbench,
+        isWorkbenchMinimized: state.isWorkbenchMinimized,
+        workbenchWidth: state.workbenchWidth,
       }),
       skipHydration: true,
     },
@@ -97,14 +97,14 @@ export const useDebugStoreBase = create<DebugStore>()(
 // Atomic selector: debug view state (Guide §14.1)
 export const useDebugView = () => useDebugStoreBase(state => state.isDebugView)
 
-// Atomic selector: Sandbox visibility (Guide §14.1)
-export const useSandbox = () => useDebugStoreBase(state => state.showSandbox)
+// Atomic selector: Workbench visibility (Guide §14.1)
+export const useWorkbench = () => useDebugStoreBase(state => state.showWorkbench)
 
-// Atomic selector: Sandbox minimized state (Guide §14.1)
-export const useSandboxMinimized = () => useDebugStoreBase(state => state.isSandboxMinimized)
+// Atomic selector: Workbench minimized state (Guide §14.1)
+export const useWorkbenchMinimized = () => useDebugStoreBase(state => state.isWorkbenchMinimized)
 
-// Atomic selector: Sandbox width (Guide §14.1)
-export const useSandboxWidth = () => useDebugStoreBase(state => state.sandboxWidth)
+// Atomic selector: Workbench width (Guide §14.1)
+export const useWorkbenchWidth = () => useDebugStoreBase(state => state.workbenchWidth)
 
 // Actions hook - stable reference (Guide §14.3)
 export const useDebugActions = () => useDebugStoreBase(state => state.actions)

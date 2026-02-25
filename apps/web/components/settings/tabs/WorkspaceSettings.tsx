@@ -2,7 +2,7 @@
 
 import type { OrgRole } from "@webalive/shared"
 import { Building2, ChevronDown, UserMinus } from "lucide-react"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import toast from "react-hot-toast"
 import { AddWebsiteModal } from "@/components/modals/AddWebsiteModal"
 import { DeleteModal } from "@/components/modals/DeleteModal"
@@ -80,35 +80,50 @@ function useOrgMembers() {
   const [removingMember, setRemovingMember] = useState<string | null>(null)
   const [memberToRemove, setMemberToRemove] = useState<{ orgId: string; userId: string; email: string } | null>(null)
 
-  const toggleMembers = async (orgId: string) => {
-    if (expandedOrgId === orgId) {
-      setExpandedOrgId(null)
-      return
-    }
-
-    setExpandedOrgId(orgId)
-
-    if (!orgMembers[orgId]) {
-      try {
-        setLoadingMembers(prev => ({ ...prev, [orgId]: true }))
-        const res = await fetch(`/api/auth/org-members?orgId=${orgId}`, { credentials: "include" })
-        const data = await res.json()
-        if (data.ok) {
-          setOrgMembers(prev => ({ ...prev, [orgId]: data.members }))
-        }
-      } catch (err) {
-        console.error("Failed to fetch members:", err)
-      } finally {
-        setLoadingMembers(prev => ({ ...prev, [orgId]: false }))
+  const fetchMembers = useCallback(async (orgId: string) => {
+    try {
+      setLoadingMembers(prev => ({ ...prev, [orgId]: true }))
+      const res = await fetch(`/api/auth/org-members?orgId=${orgId}`, { credentials: "include" })
+      const data = await res.json()
+      if (data.ok) {
+        setOrgMembers(prev => ({ ...prev, [orgId]: data.members }))
       }
+    } catch (err) {
+      console.error("Failed to fetch members:", err)
+    } finally {
+      setLoadingMembers(prev => ({ ...prev, [orgId]: false }))
     }
-  }
+  }, [])
 
-  const requestRemoveMember = (orgId: string, userId: string, email: string) => {
+  const toggleMembers = useCallback(
+    async (orgId: string) => {
+      if (expandedOrgId === orgId) {
+        setExpandedOrgId(null)
+        return
+      }
+      setExpandedOrgId(orgId)
+      if (!orgMembers[orgId]) {
+        await fetchMembers(orgId)
+      }
+    },
+    [expandedOrgId, orgMembers, fetchMembers],
+  )
+
+  // Fetch members for an org if not already loaded (no toggle side-effect)
+  const ensureMembers = useCallback(
+    (orgId: string) => {
+      if (!orgMembers[orgId]) {
+        fetchMembers(orgId)
+      }
+    },
+    [orgMembers, fetchMembers],
+  )
+
+  const requestRemoveMember = useCallback((orgId: string, userId: string, email: string) => {
     setMemberToRemove({ orgId, userId, email })
-  }
+  }, [])
 
-  const confirmRemoveMember = async () => {
+  const confirmRemoveMember = useCallback(async () => {
     if (!memberToRemove) return
 
     const { orgId, userId, email } = memberToRemove
@@ -138,21 +153,36 @@ function useOrgMembers() {
     } finally {
       setRemovingMember(null)
     }
-  }
+  }, [memberToRemove])
 
-  const cancelRemoveMember = () => setMemberToRemove(null)
+  const cancelRemoveMember = useCallback(() => setMemberToRemove(null), [])
 
-  return {
-    expandedOrgId,
-    orgMembers,
-    loadingMembers,
-    removingMember,
-    memberToRemove,
-    toggleMembers,
-    requestRemoveMember,
-    confirmRemoveMember,
-    cancelRemoveMember,
-  }
+  return useMemo(
+    () => ({
+      expandedOrgId,
+      orgMembers,
+      loadingMembers,
+      removingMember,
+      memberToRemove,
+      toggleMembers,
+      ensureMembers,
+      requestRemoveMember,
+      confirmRemoveMember,
+      cancelRemoveMember,
+    }),
+    [
+      expandedOrgId,
+      orgMembers,
+      loadingMembers,
+      removingMember,
+      memberToRemove,
+      toggleMembers,
+      ensureMembers,
+      requestRemoveMember,
+      confirmRemoveMember,
+      cancelRemoveMember,
+    ],
+  )
 }
 
 // Hook: Leave organization
@@ -235,13 +265,8 @@ function useOrgWorkspaces(orgId: string) {
   }, [orgId])
 
   useEffect(() => {
-    const cached = orgSitesCache.get(orgId)
-    if (cached) {
-      setWorkspaces(cached)
-      setLoading(false)
-    }
     fetchWorkspaces()
-  }, [fetchWorkspaces, orgId])
+  }, [fetchWorkspaces])
 
   return { workspaces, loading, error, refetch: fetchWorkspaces }
 }
@@ -414,12 +439,12 @@ export function WorkspaceSettings() {
     editor.cancelEdit()
   }
 
-  // Auto-fetch members when org is selected (moved from render to useEffect)
+  // Auto-fetch members when org is selected
   useEffect(() => {
-    if (selectedOrgId && !members.orgMembers[selectedOrgId] && members.expandedOrgId !== selectedOrgId) {
-      members.toggleMembers(selectedOrgId)
+    if (selectedOrgId) {
+      members.ensureMembers(selectedOrgId)
     }
-  }, [selectedOrgId, members])
+  }, [selectedOrgId, members.ensureMembers])
 
   const getCurrentUserRole = (orgId: string): OrgRole | null => {
     const org = organizations.find(o => o.org_id === orgId)

@@ -1,5 +1,5 @@
 /**
- * Consistent error display for sandbox views
+ * Consistent error display for workbench views
  */
 
 interface ErrorMessageProps {

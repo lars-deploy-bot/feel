@@ -82,6 +82,66 @@ describe("anthropic-oauth persistence safety", () => {
     }
   })
 
+  it("refreshes token when minimum validity window is below threshold", async () => {
+    const claudeDir = path.join(tempHome, ".claude")
+    const credentialsPath = path.join(claudeDir, ".credentials.json")
+
+    fs.mkdirSync(claudeDir, { recursive: true, mode: 0o711 })
+    fs.writeFileSync(
+      credentialsPath,
+      JSON.stringify({
+        claudeAiOauth: {
+          accessToken: "old-access",
+          refreshToken: "old-refresh",
+          expiresAt: Date.now() + 30 * 60 * 1000,
+        },
+      }),
+    )
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        return new Response(
+          JSON.stringify({
+            access_token: "new-access",
+            refresh_token: "new-refresh",
+            expires_in: 28_800,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        )
+      }),
+    )
+
+    const oauth = await import("../anthropic-oauth")
+    const result = await oauth.getValidAccessToken({ minimumValidityMs: 60 * 60 * 1000 })
+    expect(result).toEqual({ accessToken: "new-access", refreshed: true })
+  })
+
+  it("does not refresh when minimum validity window is already satisfied", async () => {
+    const claudeDir = path.join(tempHome, ".claude")
+    const credentialsPath = path.join(claudeDir, ".credentials.json")
+
+    fs.mkdirSync(claudeDir, { recursive: true, mode: 0o711 })
+    fs.writeFileSync(
+      credentialsPath,
+      JSON.stringify({
+        claudeAiOauth: {
+          accessToken: "old-access",
+          refreshToken: "old-refresh",
+          expiresAt: Date.now() + 3 * 60 * 60 * 1000,
+        },
+      }),
+    )
+
+    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", fetchMock)
+
+    const oauth = await import("../anthropic-oauth")
+    const result = await oauth.getValidAccessToken({ minimumValidityMs: 60 * 60 * 1000 })
+    expect(result).toEqual({ accessToken: "old-access", refreshed: false })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it("keeps old refresh token when token endpoint omits refresh_token", async () => {
     const claudeDir = path.join(tempHome, ".claude")
     const credentialsPath = path.join(claudeDir, ".credentials.json")
