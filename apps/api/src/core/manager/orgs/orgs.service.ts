@@ -1,13 +1,14 @@
-import { orgsRepo, membersRepo, domainsRepo } from "../../../db/repos"
+import { domainsRepo, membersRepo, orgsRepo } from "../../../db/repos"
 
 const VALID_ORG_ROLES = new Set(["owner", "admin", "member"])
 function isOrgRole(role: unknown): boolean {
   return typeof role === "string" && VALID_ORG_ROLES.has(role)
 }
-import { eventBus } from "../../../infra/events"
-import type { ManagerOrganization, ManagerOrgMember, ManagerOrgDomain } from "./orgs.types"
-import type { MemberRow } from "../../../db/repos/members.repo"
+
 import type { DomainRow } from "../../../db/repos/domains.repo"
+import type { MemberRow } from "../../../db/repos/members.repo"
+import { eventBus } from "../../../infra/events"
+import type { ManagerOrganization, ManagerOrgDomain, ManagerOrgMember } from "./orgs.types"
 
 function groupMembersByOrg(memberships: MemberRow[]): Record<string, ManagerOrgMember[]> {
   const grouped: Record<string, ManagerOrgMember[]> = {}

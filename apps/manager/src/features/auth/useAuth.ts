@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { api, ApiError } from "@/lib/api"
+import { ApiError, api } from "@/lib/api"
 
 export function useAuth() {
   const [authenticated, setAuthenticated] = useState(false)

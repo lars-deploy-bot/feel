@@ -1,8 +1,8 @@
 import { useState } from "react"
+import { Modal } from "@/components/overlays/Modal"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { Select } from "@/components/ui/Select"
-import { Modal } from "@/components/overlays/Modal"
 
 interface AddMemberModalProps {
   open: boolean

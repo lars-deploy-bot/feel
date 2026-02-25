@@ -16,9 +16,9 @@ function write(level: LogLevel, msg: string, data?: Record<string, unknown>): vo
   }
   const line = JSON.stringify(entry)
   if (level === "error") {
-    process.stderr.write(line + "\n")
+    process.stderr.write(`${line}\n`)
   } else {
-    process.stdout.write(line + "\n")
+    process.stdout.write(`${line}\n`)
   }
 }
 

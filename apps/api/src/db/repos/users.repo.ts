@@ -1,5 +1,5 @@
-import { iam } from "../clients"
 import { InternalError, NotFoundError } from "../../infra/errors"
+import { iam } from "../clients"
 
 export type UserRow = {
   user_id: string

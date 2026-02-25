@@ -1,6 +1,6 @@
-export * as orgsRepo from "./orgs.repo"
-export * as membersRepo from "./members.repo"
 export * as domainsRepo from "./domains.repo"
 export * as feedbackRepo from "./feedback.repo"
+export * as membersRepo from "./members.repo"
+export * as orgsRepo from "./orgs.repo"
 export * as templatesRepo from "./templates.repo"
 export * as usersRepo from "./users.repo"

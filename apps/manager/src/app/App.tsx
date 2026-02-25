@@ -1,7 +1,7 @@
 import { Toaster } from "react-hot-toast"
-import { useAuth } from "@/features/auth/useAuth"
-import { LoginPage } from "@/features/auth/LoginPage"
 import { Spinner } from "@/components/ui/Spinner"
+import { LoginPage } from "@/features/auth/LoginPage"
+import { useAuth } from "@/features/auth/useAuth"
 import { Layout } from "./Layout"
 
 export function App() {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
-import type { Organization } from "../orgs.types"
 import { orgsApi } from "../orgs.api"
+import type { Organization } from "../orgs.types"
 
 export function useOrgs() {
   const [orgs, setOrgs] = useState<Organization[]>([])

@@ -1,5 +1,5 @@
-import { app } from "../clients"
 import { InternalError } from "../../infra/errors"
+import { app } from "../clients"
 
 export type TemplateRow = {
   template_id: string

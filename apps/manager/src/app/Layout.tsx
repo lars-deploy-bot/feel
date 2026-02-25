@@ -1,7 +1,7 @@
 import { useState } from "react"
-import { Sidebar } from "@/components/layout/Sidebar"
-import { Header } from "@/components/layout/Header"
 import { ContentArea } from "@/components/layout/ContentArea"
+import { Header } from "@/components/layout/Header"
+import { Sidebar } from "@/components/layout/Sidebar"
 import { Router } from "./Router"
 
 interface LayoutProps {

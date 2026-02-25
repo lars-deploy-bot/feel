@@ -1,13 +1,13 @@
 import { Hono } from "hono"
+import { authMiddleware } from "../middleware/auth"
 import type { AppBindings } from "../types/hono"
-import { healthRoutes } from "./health/health.routes"
 import { authRoutes } from "./auth/auth.routes"
-import { orgsRoutes } from "./manager/orgs/orgs.routes"
-import { usersRoutes } from "./manager/users/users.routes"
+import { healthRoutes } from "./health/health.routes"
 import { domainsRoutes } from "./manager/domains/domains.routes"
 import { feedbackRoutes } from "./manager/feedback/feedback.routes"
+import { orgsRoutes } from "./manager/orgs/orgs.routes"
 import { templatesRoutes } from "./manager/templates/templates.routes"
-import { authMiddleware } from "../middleware/auth"
+import { usersRoutes } from "./manager/users/users.routes"
 
 /**
  * Mount all route groups onto a single Hono app.

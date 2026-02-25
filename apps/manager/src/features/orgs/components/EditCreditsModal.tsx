@@ -1,7 +1,7 @@
 import { useState } from "react"
+import { Modal } from "@/components/overlays/Modal"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
-import { Modal } from "@/components/overlays/Modal"
 
 interface EditCreditsModalProps {
   open: boolean

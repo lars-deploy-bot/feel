@@ -1,6 +1,6 @@
 import { Hono } from "hono"
 import type { AppBindings } from "../../../types/hono"
-import { listUsers, getUserById } from "./users.service"
+import { getUserById, listUsers } from "./users.service"
 
 export const usersRoutes = new Hono<AppBindings>()
 

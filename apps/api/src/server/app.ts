@@ -1,11 +1,11 @@
 import { Hono } from "hono"
-import type { AppBindings } from "../types/hono"
-import { requestIdMiddleware } from "../middleware/request-id"
-import { corsMiddleware } from "../middleware/cors"
-import { requestLoggerMiddleware } from "../middleware/request-logger"
-import { rateLimitMiddleware } from "../middleware/rate-limit"
-import { errorHandler } from "../middleware/error-handler"
 import { buildRoutes } from "../core"
+import { corsMiddleware } from "../middleware/cors"
+import { errorHandler } from "../middleware/error-handler"
+import { rateLimitMiddleware } from "../middleware/rate-limit"
+import { requestIdMiddleware } from "../middleware/request-id"
+import { requestLoggerMiddleware } from "../middleware/request-logger"
+import type { AppBindings } from "../types/hono"
 
 export function createApp(): Hono<AppBindings> {
   const app = new Hono<AppBindings>()

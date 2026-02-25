@@ -1,6 +1,6 @@
 import { Hono } from "hono"
 import type { AppBindings } from "../../types/hono"
-import { getHealth, getDeepHealth } from "./health.service"
+import { getDeepHealth, getHealth } from "./health.service"
 
 export const healthRoutes = new Hono<AppBindings>()
 

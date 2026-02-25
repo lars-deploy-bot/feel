@@ -1,9 +1,9 @@
 import { Hono } from "hono"
-import { setCookie, deleteCookie, getCookie } from "hono/cookie"
-import type { AppBindings } from "../../types/hono"
+import { deleteCookie, getCookie, setCookie } from "hono/cookie"
 import { AUTH } from "../../config/constants"
 import { UnauthorizedError } from "../../infra/errors"
 import { validate } from "../../shared/validation"
+import type { AppBindings } from "../../types/hono"
 import { loginBodySchema } from "./auth.schemas"
 import { verifyPasscode } from "./auth.service"
 

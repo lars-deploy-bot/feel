@@ -1,7 +1,7 @@
 import { useState } from "react"
+import { Modal } from "@/components/overlays/Modal"
 import { Button } from "@/components/ui/Button"
 import { Select } from "@/components/ui/Select"
-import { Modal } from "@/components/overlays/Modal"
 import type { Organization } from "../orgs.types"
 
 interface TransferDomainModalProps {

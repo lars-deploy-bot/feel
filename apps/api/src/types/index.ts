@@ -1,4 +1,4 @@
-export type { AppBindings, AppVariables, AppType, Env } from "./hono"
+export type { AppBindings, AppType, AppVariables, Env } from "./hono"
 
 import type { ErrorCode } from "../infra/errors"
 

@@ -34,6 +34,7 @@ export function Modal({ open, onClose, title, children, footer, className }: Mod
   return (
     <div
       ref={overlayRef}
+      role="dialog"
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px]"
       onClick={e => {
         if (e.target === overlayRef.current) onClose()
