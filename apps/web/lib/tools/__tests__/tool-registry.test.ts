@@ -13,9 +13,9 @@ describe("tool-display-config", () => {
       expect(config.autoExpand).toBe(true)
     })
 
-    it("returns exact match config for list tools (collapsed)", () => {
+    it("returns exact match config for list tools (expanded)", () => {
       const config = getToolConfig("mcp__linear__list_issues")
-      expect(config.autoExpand).toBe(false)
+      expect(config.autoExpand).toBe(true)
     })
 
     it("is case-insensitive", () => {
@@ -30,7 +30,7 @@ describe("tool-display-config", () => {
 
     it("matches wildcard patterns for Stripe lists", () => {
       const config = getToolConfig("mcp__stripe__list_subscriptions")
-      expect(config.autoExpand).toBe(false)
+      expect(config.autoExpand).toBe(true)
     })
 
     it("returns default config for unknown tools", () => {
@@ -48,16 +48,16 @@ describe("tool-display-config", () => {
   })
 
   describe("shouldAutoExpand", () => {
-    it("returns config value for errors (errors stay collapsed)", () => {
-      // Linear list_issues is configured as autoExpand: false - stays collapsed even on error
-      expect(shouldAutoExpand("mcp__linear__list_issues", true)).toBe(false)
+    it("returns config value for errors (custom UI stays expanded)", () => {
+      // All custom MCP tools auto-expand, even on error
+      expect(shouldAutoExpand("mcp__linear__list_issues", true)).toBe(true)
       // Unknown tool defaults to collapsed
       expect(shouldAutoExpand("unknown_tool", true)).toBe(false)
     })
 
     it("returns config value when not an error", () => {
       expect(shouldAutoExpand("mcp__linear__create_issue", false)).toBe(true)
-      expect(shouldAutoExpand("mcp__linear__list_issues", false)).toBe(false)
+      expect(shouldAutoExpand("mcp__linear__list_issues", false)).toBe(true)
     })
 
     it("returns false for unknown tools when not an error", () => {

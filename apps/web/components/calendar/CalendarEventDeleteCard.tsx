@@ -6,9 +6,8 @@
 
 "use client"
 
-import { AlertTriangle, CalendarClock, Check, Loader2, MapPin, Trash2 } from "lucide-react"
+import { AlertTriangle, Check, Loader2, Trash2 } from "lucide-react"
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
 import type { DeleteEventDraft } from "./types"
 
 interface CalendarEventDeleteCardProps {
@@ -32,18 +31,6 @@ function formatEventTime(value?: { dateTime?: string; date?: string }): string {
   }
 
   return "Unknown time"
-}
-
-function CalendarDisconnectedWarning() {
-  return (
-    <div className="flex items-center gap-2 p-2 text-xs bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 rounded-lg">
-      <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-      <span>Google Calendar not connected.</span>
-      <a href="/chat?settings=integrations" className="underline hover:no-underline">
-        Connect
-      </a>
-    </div>
-  )
 }
 
 export function CalendarEventDeleteCard({
@@ -74,70 +61,56 @@ export function CalendarEventDeleteCard({
 
   if (!isCalendarConnected) {
     return (
-      <div className="border border-amber-200 dark:border-amber-900 rounded-lg p-4 space-y-3 bg-white dark:bg-zinc-900">
-        <CalendarDisconnectedWarning />
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Connect your Google Calendar in Settings to delete events.
-        </p>
+      <div className="rounded-lg border border-black/[0.06] dark:border-white/[0.08] p-4 space-y-2">
+        <div className="flex items-center gap-2 text-[12px] text-black/50 dark:text-white/50">
+          <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+          <span>Google Calendar not connected.</span>
+          <a
+            href="/chat?settings=integrations"
+            className="text-blue-500 hover:text-blue-600 dark:hover:text-blue-400 underline"
+          >
+            Connect
+          </a>
+        </div>
       </div>
     )
   }
 
   if (deleted) {
     return (
-      <div className="border border-green-200 dark:border-green-900 rounded-lg p-4 bg-green-50 dark:bg-green-900/10">
-        <div className="flex items-center gap-2 text-green-700 dark:text-green-300">
-          <Check className="w-5 h-5" />
-          <span className="font-medium">Event deleted</span>
-        </div>
-        <p className="text-sm text-green-600 dark:text-green-400 mt-1">"{summary}" was removed from your calendar.</p>
+      <div className="flex items-center gap-2 py-2 text-[13px] text-black/60 dark:text-white/60">
+        <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+        <span>"{summary}" removed from your calendar</span>
       </div>
     )
   }
 
   return (
-    <div className="border border-red-200 dark:border-red-900/50 rounded-lg overflow-hidden bg-white dark:bg-zinc-900">
-      <div className="flex items-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-900/10 border-b border-red-200 dark:border-red-900/40">
-        <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
-        <h3 className="font-semibold text-sm text-red-800 dark:text-red-300">Delete Event</h3>
-      </div>
-
-      <div className="px-4 py-3 space-y-3">
-        <div>
-          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{summary}</p>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Calendar: {calendarId}</p>
+    <div className="rounded-lg border border-black/[0.06] dark:border-white/[0.08] overflow-hidden">
+      <div className="px-4 py-3 space-y-2">
+        <p className="text-[13px] font-medium text-black/80 dark:text-white/80">{summary}</p>
+        <div className="text-[11px] text-black/40 dark:text-white/40 space-y-0.5">
+          <p>Calendar: {calendarId}</p>
+          <p>
+            {formatEventTime(draft.start)} — {formatEventTime(draft.end)}
+          </p>
+          {draft.location && <p>{draft.location}</p>}
         </div>
 
-        <div className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-          <CalendarClock className="w-4 h-4 mt-0.5 text-zinc-500" />
-          <div>
-            <p>{formatEventTime(draft.start)}</p>
-            <p>{formatEventTime(draft.end)}</p>
-          </div>
-        </div>
-
-        {draft.location ? (
-          <div className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-            <MapPin className="w-4 h-4 mt-0.5 text-zinc-500" />
-            <p>{draft.location}</p>
-          </div>
-        ) : null}
-
-        {error ? (
-          <div className="flex items-start gap-2 p-2 text-xs bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-lg">
-            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+        {error && (
+          <div className="flex items-start gap-2 text-[12px] text-red-600 dark:text-red-400">
+            <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
             <span>{error}</span>
           </div>
-        ) : null}
+        )}
       </div>
 
-      <div className="flex items-center justify-end px-4 py-3 bg-zinc-50 dark:bg-zinc-800/50 border-t border-zinc-200 dark:border-zinc-700">
-        <Button
-          size="sm"
-          variant="destructive"
+      <div className="flex items-center justify-end px-4 py-3 border-t border-black/[0.06] dark:border-white/[0.08]">
+        <button
+          type="button"
           onClick={handleDelete}
           disabled={isDeleting || actionsDisabled || !isCalendarConnected}
-          className="flex items-center gap-2"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-red-500 text-white hover:bg-red-600 disabled:opacity-40 transition-colors duration-100"
         >
           {isDeleting ? (
             <>
@@ -150,7 +123,7 @@ export function CalendarEventDeleteCard({
               Delete Event
             </>
           )}
-        </Button>
+        </button>
       </div>
     </div>
   )

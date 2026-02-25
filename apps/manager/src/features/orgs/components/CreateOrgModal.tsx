@@ -1,3 +1,4 @@
+import { dollarsToTokens } from "@webalive/shared/constants"
 import { useState } from "react"
 import { Modal } from "@/components/overlays/Modal"
 import { Button } from "@/components/ui/Button"
@@ -6,21 +7,21 @@ import { Input } from "@/components/ui/Input"
 interface CreateOrgModalProps {
   open: boolean
   onClose: () => void
-  onCreate: (name: string, credits: number) => Promise<void>
+  onCreate: (name: string, tokens: number) => Promise<void>
 }
 
 export function CreateOrgModal({ open, onClose, onCreate }: CreateOrgModalProps) {
   const [name, setName] = useState("")
-  const [credits, setCredits] = useState("0")
+  const [dollars, setDollars] = useState("0")
   const [loading, setLoading] = useState(false)
 
   async function handleCreate() {
     if (!name.trim()) return
     setLoading(true)
     try {
-      await onCreate(name.trim(), Number.parseFloat(credits) || 0)
+      await onCreate(name.trim(), dollarsToTokens(Number.parseFloat(dollars) || 0))
       setName("")
-      setCredits("0")
+      setDollars("0")
       onClose()
     } finally {
       setLoading(false)
@@ -54,12 +55,12 @@ export function CreateOrgModal({ open, onClose, onCreate }: CreateOrgModalProps)
         />
         <Input
           id="org-credits"
-          label="Starting Credits"
+          label="Starting Balance ($)"
           type="number"
           step="0.01"
           min="0"
-          value={credits}
-          onChange={e => setCredits(e.target.value)}
+          value={dollars}
+          onChange={e => setDollars(e.target.value)}
         />
       </div>
     </Modal>

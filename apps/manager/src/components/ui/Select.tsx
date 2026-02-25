@@ -15,6 +15,10 @@ export function Select({ label, className, id, children, ...props }: SelectProps
       )}
       <select
         id={id}
+        data-1p-ignore
+        data-lpignore="true"
+        data-form-type="other"
+        autoComplete="off"
         className={cn(
           "w-full px-3 py-2 text-[13px] bg-surface border border-border rounded-input text-text-primary",
           "focus:outline-none focus:ring-2 focus:ring-text-primary/10 focus:border-text-primary/30",

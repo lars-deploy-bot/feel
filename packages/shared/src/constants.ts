@@ -22,6 +22,27 @@ export const COOKIE_NAMES = {
 export const SESSION_MAX_AGE = 30 * 24 * 60 * 60 // 30 days in seconds
 
 /**
+ * Token Pricing - Single Source of Truth
+ *
+ * 10 tokens = $1. All credit balances are stored as tokens.
+ * Use tokensToDollars() and dollarsToTokens() for conversion.
+ * DO NOT hardcode this ratio anywhere else.
+ */
+export const TOKENS_PER_DOLLAR = 10
+
+export function tokensToDollars(tokens: number): number {
+  return tokens / TOKENS_PER_DOLLAR
+}
+
+export function dollarsToTokens(dollars: number): number {
+  return dollars * TOKENS_PER_DOLLAR
+}
+
+export function formatTokensAsDollars(tokens: number): string {
+  return `$${tokensToDollars(tokens).toFixed(2)}`
+}
+
+/**
  * Free Credits - Single Source of Truth
  *
  * Credits given to new users when they sign up.

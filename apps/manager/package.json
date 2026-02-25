@@ -17,6 +17,10 @@
     "ci": "biome ci ."
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.90.21",
+    "@tanstack/react-virtual": "^3.13.19",
+    "@webalive/shared": "workspace:*",
+    "nuqs": "^2.8.8",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-hot-toast": "^2.5.3"

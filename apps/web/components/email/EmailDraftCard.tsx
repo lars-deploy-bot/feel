@@ -6,9 +6,8 @@
 
 "use client"
 
-import { AlertCircle, AlertTriangle, Check, Loader2, Save, Send, X } from "lucide-react"
+import { AlertCircle, AlertTriangle, Check, Loader2, Send, X } from "lucide-react"
 import { type KeyboardEvent, useEffect, useRef, useState } from "react"
-import { Button } from "@/components/ui/button"
 import type { EmailDraft, EmailDraftOutputProps } from "./types"
 
 function isValidEmail(email: string): boolean {
@@ -46,19 +45,19 @@ function EmailField({
   }
 
   return (
-    <div className="flex items-center gap-2 py-1.5 border-b border-zinc-100 dark:border-zinc-800">
-      <span className="text-xs text-zinc-400 w-6">{label}</span>
+    <div className="flex items-center gap-2 py-1.5 border-b border-black/[0.06] dark:border-white/[0.08]">
+      <span className="text-[11px] text-black/40 dark:text-white/40 w-6">{label}</span>
       <div className="flex-1 flex flex-wrap items-center gap-1.5">
         {emails.map(email => (
           <span
             key={email}
-            className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded"
+            className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium bg-black/[0.04] dark:bg-white/[0.06] text-black/60 dark:text-white/60 rounded-[6px]"
           >
             {email}
             <button
               type="button"
               onClick={() => onChange(emails.filter(e => e !== email))}
-              className="hover:text-red-500"
+              className="hover:text-black/80 dark:hover:text-white/80 transition-colors duration-100"
             >
               <X className="w-3 h-3" />
             </button>
@@ -71,21 +70,9 @@ function EmailField({
           onKeyDown={handleKeyDown}
           onBlur={() => addEmail()}
           placeholder={emails.length === 0 ? placeholder : ""}
-          className="flex-1 min-w-[120px] bg-transparent text-sm text-zinc-700 dark:text-zinc-300 placeholder-zinc-400 outline-none"
+          className="flex-1 min-w-[120px] bg-transparent text-[13px] text-black/70 dark:text-white/70 placeholder-black/30 dark:placeholder-white/30 outline-none"
         />
       </div>
-    </div>
-  )
-}
-
-function GmailWarning() {
-  return (
-    <div className="flex items-center gap-2 p-2 text-xs bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 rounded-lg">
-      <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-      <span>Gmail not connected.</span>
-      <a href="/chat?settings=integrations" className="underline hover:no-underline">
-        Connect
-      </a>
     </div>
   )
 }
@@ -151,19 +138,28 @@ export function EmailDraftCard({
   // Sent state - minimal
   if (isSent) {
     return (
-      <div className="flex items-center gap-2 p-3 text-sm bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 rounded-lg">
-        <Check className="w-4 h-4" />
+      <div className="flex items-center gap-2 py-2 text-[13px] text-black/60 dark:text-white/60">
+        <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
         <span>Email sent to {editedDraft.to.join(", ")}</span>
       </div>
     )
   }
 
   return (
-    <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden">
+    <div className="rounded-lg border border-black/[0.06] dark:border-white/[0.08] overflow-hidden">
       {/* Gmail warning */}
       {!isGmailConnected && canAct && (
-        <div className="p-3 border-b border-zinc-100 dark:border-zinc-800">
-          <GmailWarning />
+        <div className="px-3 pt-3">
+          <div className="flex items-center gap-2 text-[12px] text-black/50 dark:text-white/50">
+            <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>Gmail not connected.</span>
+            <a
+              href="/chat?settings=integrations"
+              className="text-blue-500 hover:text-blue-600 dark:hover:text-blue-400 underline"
+            >
+              Connect
+            </a>
+          </div>
         </div>
       )}
 
@@ -190,7 +186,7 @@ export function EmailDraftCard({
           <button
             type="button"
             onClick={() => setShowCcBcc(true)}
-            className="text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 py-1"
+            className="text-[11px] text-black/30 dark:text-white/30 hover:text-black/50 dark:hover:text-white/50 py-1 transition-colors duration-100"
           >
             + Cc/Bcc
           </button>
@@ -198,13 +194,13 @@ export function EmailDraftCard({
       </div>
 
       {/* Subject */}
-      <div className="px-3 py-2 border-b border-zinc-100 dark:border-zinc-800">
+      <div className="px-3 py-2 border-b border-black/[0.06] dark:border-white/[0.08]">
         <input
           type="text"
           value={editedDraft.subject}
           onChange={e => updateField("subject", e.target.value)}
           placeholder="Subject"
-          className="w-full text-sm font-medium text-zinc-900 dark:text-zinc-100 bg-transparent outline-none placeholder-zinc-400"
+          className="w-full text-[13px] font-medium text-black/80 dark:text-white/80 bg-transparent outline-none placeholder-black/30 dark:placeholder-white/30"
         />
       </div>
 
@@ -215,41 +211,40 @@ export function EmailDraftCard({
           value={editedDraft.body}
           onChange={e => updateField("body", e.target.value)}
           placeholder="Write your message..."
-          className="w-full text-sm text-zinc-700 dark:text-zinc-300 bg-transparent outline-none resize-none placeholder-zinc-400 leading-relaxed"
+          className="w-full text-[13px] text-black/60 dark:text-white/60 bg-transparent outline-none resize-none placeholder-black/30 dark:placeholder-white/30 leading-relaxed"
           style={{ minHeight: "120px" }}
         />
       </div>
 
       {/* Error */}
       {isError && draft.error && (
-        <div className="mx-3 mb-3 flex items-start gap-2 p-2 text-xs bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded">
-          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+        <div className="mx-3 mb-3 flex items-start gap-2 text-[12px] text-red-600 dark:text-red-400">
+          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
           <span>{draft.error}</span>
         </div>
       )}
 
       {/* Actions */}
       {canAct && (
-        <div className="flex items-center gap-2 px-3 py-2 bg-zinc-50 dark:bg-zinc-800/30 border-t border-zinc-100 dark:border-zinc-800">
-          <Button
+        <div className="flex items-center gap-2 px-3 py-2.5 border-t border-black/[0.06] dark:border-white/[0.08]">
+          <button
+            type="button"
             onClick={handleSend}
             disabled={isSending || !onSend || !isGmailConnected || editedDraft.to.length === 0}
-            size="sm"
-            className="gap-1.5"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-100 disabled:opacity-40 transition-colors duration-100"
           >
             {isSending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
             Send
-          </Button>
-          <Button
+          </button>
+          <button
+            type="button"
             onClick={handleSaveDraft}
             disabled={saving || !onSaveDraft || !isGmailConnected}
-            variant="outline"
-            size="sm"
-            className="gap-1.5"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-black/[0.06] dark:border-white/[0.08] text-black/60 dark:text-white/60 hover:bg-black/[0.03] dark:hover:bg-white/[0.04] disabled:opacity-40 transition-colors duration-100"
           >
-            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
             Save Draft
-          </Button>
+          </button>
         </div>
       )}
     </div>

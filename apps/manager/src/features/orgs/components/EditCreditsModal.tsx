@@ -1,3 +1,4 @@
+import { dollarsToTokens, tokensToDollars } from "@webalive/shared/constants"
 import { useState } from "react"
 import { Modal } from "@/components/overlays/Modal"
 import { Button } from "@/components/ui/Button"
@@ -6,19 +7,19 @@ import { Input } from "@/components/ui/Input"
 interface EditCreditsModalProps {
   open: boolean
   onClose: () => void
-  onSave: (credits: number) => Promise<void>
+  onSave: (tokens: number) => Promise<void>
   currentCredits: number
   orgName: string
 }
 
 export function EditCreditsModal({ open, onClose, onSave, currentCredits, orgName }: EditCreditsModalProps) {
-  const [credits, setCredits] = useState(String(currentCredits))
+  const [dollars, setDollars] = useState(String(tokensToDollars(currentCredits)))
   const [loading, setLoading] = useState(false)
 
   async function handleSave() {
     setLoading(true)
     try {
-      await onSave(Number.parseFloat(credits))
+      await onSave(dollarsToTokens(Number.parseFloat(dollars)))
       onClose()
     } finally {
       setLoading(false)
@@ -29,7 +30,7 @@ export function EditCreditsModal({ open, onClose, onSave, currentCredits, orgNam
     <Modal
       open={open}
       onClose={onClose}
-      title={`Edit Credits — ${orgName}`}
+      title={`Edit Balance — ${orgName}`}
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
@@ -43,12 +44,12 @@ export function EditCreditsModal({ open, onClose, onSave, currentCredits, orgNam
     >
       <Input
         id="credits"
-        label="Credits"
+        label="Balance ($)"
         type="number"
         step="0.01"
         min="0"
-        value={credits}
-        onChange={e => setCredits(e.target.value)}
+        value={dollars}
+        onChange={e => setDollars(e.target.value)}
         autoFocus
       />
     </Modal>

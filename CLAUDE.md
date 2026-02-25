@@ -131,12 +131,27 @@ Alive is a **multi-tenant development platform** that enables Claude AI to assis
 
 | App | Port | Purpose |
 |-----|------|---------|
-| `web` | 8997/9000 | Main Next.js app: Chat UI, Claude API, file ops, auth, deployments |
+| `web` | 8997/9000 | Next.js monolith: Chat UI, Claude API, file ops, auth, deployments |
+| `api` | 5080 | Hono on Bun. Standalone API — gradually taking over routes from `web` |
+| `manager` | 5090 | React + Vite admin dashboard. Frontend for `api` |
 | `shell-server-go` | - | Go rewrite of shell-server (WIP) |
 | `preview-proxy` | configurable | Go preview proxy for workspace preview subdomains |
 | `worker` | 5070 | Automation scheduler + executor (standalone Bun, survives web deploys) |
 | `image-processor` | 5012 | Python/FastAPI image manipulation service |
 | `mcp-servers/google-scraper` | - | MCP server for Google Maps business search |
+
+#### API Migration (In Progress)
+
+We're slowly decoupling from the Next.js monolith (`apps/web`) into a standalone API (`apps/api`, Hono on Bun) and standalone frontends (`apps/manager`, React + Vite). The goal: `apps/api` becomes the single API layer, `apps/web` shrinks to just the chat UI.
+
+**Rules:**
+- `apps/api` and `apps/manager` must **never** depend on `apps/web`. They share code only via `packages/`.
+- For browser-safe imports from `@webalive/shared`, use subpath imports (`@webalive/shared/constants`) to avoid pulling in Node-only modules.
+- Migrate routes one at a time. The old Next.js routes stay until the new ones are verified.
+
+**Dev / prod environments:**
+- **Dev**: `api` runs `bun --watch` on port 5080, `manager` runs Vite dev on 5090 (proxies `/api` → 5080). Start both separately.
+- **Prod**: `manager` builds to static files, `api` serves them + the API on port 5080 (single process). Caddy routes to it.
 
 ### Packages (Shared Libraries)
 

@@ -19,6 +19,8 @@ import type { UIMessage } from "@/features/chat/lib/message-parser"
 import { renderMessage, shouldRenderMessage } from "@/features/chat/lib/message-renderer"
 import { cn } from "@/lib/utils"
 import {
+  EDGE_AI_AUTOMATION,
+  EDGE_AI_CLARIFICATION,
   EDGE_ALL_ERRORS,
   EDGE_ASK_USER,
   EDGE_AT_THRESHOLD,
@@ -27,13 +29,22 @@ import {
   EDGE_BELOW_THRESHOLD,
   EDGE_BILLING_ERROR,
   EDGE_BROKEN_GROUP,
+  EDGE_CALENDAR,
+  EDGE_CALENDAR_DELETE,
+  EDGE_CALENDAR_MEETING,
   EDGE_EDIT,
+  EDGE_EMAIL,
   EDGE_EMPTY_TEXT,
   EDGE_ERROR_GROUP,
   EDGE_ERROR_RESULT,
   EDGE_GLOB,
   EDGE_GREP,
   EDGE_GROUP_TRAILING_TASK,
+  EDGE_LINEAR_COMMENT,
+  EDGE_LINEAR_COMMENTS,
+  EDGE_LINEAR_ISSUE,
+  EDGE_LINEAR_ISSUES,
+  EDGE_LINEAR_UPDATE,
   EDGE_LONG_GROUP,
   EDGE_MARKDOWN,
   EDGE_MAX_TURNS,
@@ -41,10 +52,18 @@ import {
   EDGE_MULTI_RESULT,
   EDGE_NETWORK_ERROR,
   EDGE_OVERLOADED,
+  EDGE_PLAN_APPROVAL,
+  EDGE_READ,
   EDGE_SESSION_CORRUPT,
+  EDGE_STRIPE_ACCOUNT,
+  EDGE_STRIPE_BALANCE,
+  EDGE_STRIPE_CUSTOMERS,
+  EDGE_STRIPE_PAYMENTS,
+  EDGE_STRIPE_SUBS,
   EDGE_TASK,
   EDGE_WEBFETCH,
   EDGE_WEBSEARCH,
+  EDGE_WEBSITE_CONFIG,
   EDGE_WRITE_BASH,
 } from "./edge-cases"
 import { MOCK_MESSAGES } from "./mock-messages"
@@ -63,12 +82,13 @@ const realConversation: UIMessage[] = (realConversationRaw as Array<Record<strin
 // CONVERSATIONS
 // =============================================================================
 
-type Category = "full" | "grouping" | "tools" | "errors"
+type Category = "full" | "grouping" | "tools" | "errors" | "custom"
 
 const CATEGORIES: { id: Category; label: string }[] = [
   { id: "full", label: "Full" },
   { id: "grouping", label: "Grouping" },
   { id: "tools", label: "Tools" },
+  { id: "custom", label: "Custom UI" },
   { id: "errors", label: "Errors" },
 ]
 
@@ -77,6 +97,8 @@ interface Conversation {
   label: string
   description: string
   category: Category
+  /** Visual grouping within a category (e.g. "Linear", "Stripe") */
+  group?: string
   messages: UIMessage[]
 }
 
@@ -169,6 +191,13 @@ const CONVERSATIONS: Conversation[] = [
     messages: EDGE_ERROR_RESULT,
   },
   {
+    id: "read",
+    label: "Read",
+    description: "Read a file with line numbers and content",
+    category: "tools",
+    messages: EDGE_READ,
+  },
+  {
     id: "edit",
     label: "Edit",
     description: "File edit with old_string → new_string replacement",
@@ -244,6 +273,156 @@ const CONVERSATIONS: Conversation[] = [
     description: "Headers, code blocks, lists, blockquotes in assistant text",
     category: "tools",
     messages: EDGE_MARKDOWN,
+  },
+  // Custom MCP UI — Linear
+  {
+    id: "linear-issue",
+    label: "Create issue",
+    description: "Single issue card with Created badge, priority, status, assignee",
+    category: "custom",
+    group: "Linear",
+    messages: EDGE_LINEAR_ISSUE,
+  },
+  {
+    id: "linear-update",
+    label: "Update issue",
+    description: "Issue card with Updated badge after status change",
+    category: "custom",
+    group: "Linear",
+    messages: EDGE_LINEAR_UPDATE,
+  },
+  {
+    id: "linear-issues",
+    label: "List issues",
+    description: "Table of 6 issues with filtering, sorting, hidden completed",
+    category: "custom",
+    group: "Linear",
+    messages: EDGE_LINEAR_ISSUES,
+  },
+  {
+    id: "linear-comment",
+    label: "Comment",
+    description: "Comment added to an issue (empty response with toolInput fallback)",
+    category: "custom",
+    group: "Linear",
+    messages: EDGE_LINEAR_COMMENT,
+  },
+  {
+    id: "linear-comments",
+    label: "List comments",
+    description: "3 comments thread on an issue",
+    category: "custom",
+    group: "Linear",
+    messages: EDGE_LINEAR_COMMENTS,
+  },
+  // Custom MCP UI — Stripe
+  {
+    id: "stripe-subs",
+    label: "Subscriptions",
+    description: "Subscriptions table with plan, amount, billing date, status",
+    category: "custom",
+    group: "Stripe",
+    messages: EDGE_STRIPE_SUBS,
+  },
+  {
+    id: "stripe-customers",
+    label: "Customers",
+    description: "Customer table with name, email, balance",
+    category: "custom",
+    group: "Stripe",
+    messages: EDGE_STRIPE_CUSTOMERS,
+  },
+  {
+    id: "stripe-balance",
+    label: "Balance",
+    description: "Account balance with available, pending, instant amounts",
+    category: "custom",
+    group: "Stripe",
+    messages: EDGE_STRIPE_BALANCE,
+  },
+  {
+    id: "stripe-account",
+    label: "Account",
+    description: "Account info card with display name and ID",
+    category: "custom",
+    group: "Stripe",
+    messages: EDGE_STRIPE_ACCOUNT,
+  },
+  {
+    id: "stripe-payments",
+    label: "Payments",
+    description: "Payment intents table with status, amount, customer",
+    category: "custom",
+    group: "Stripe",
+    messages: EDGE_STRIPE_PAYMENTS,
+  },
+  // Custom MCP UI — Email
+  {
+    id: "email-draft",
+    label: "Compose",
+    description: "Gmail email draft card with send/save actions",
+    category: "custom",
+    group: "Gmail",
+    messages: EDGE_EMAIL,
+  },
+  // Custom MCP UI — Calendar
+  {
+    id: "calendar-event",
+    label: "Create event",
+    description: "Event draft card with attendees and create action",
+    category: "custom",
+    group: "Calendar",
+    messages: EDGE_CALENDAR,
+  },
+  {
+    id: "calendar-delete",
+    label: "Delete event",
+    description: "Delete confirmation card for an existing event",
+    category: "custom",
+    group: "Calendar",
+    messages: EDGE_CALENDAR_DELETE,
+  },
+  {
+    id: "calendar-meeting",
+    label: "Propose meeting",
+    description: "Meeting proposal with suggested time slot",
+    category: "custom",
+    group: "Calendar",
+    messages: EDGE_CALENDAR_MEETING,
+  },
+  // Custom MCP UI — AI tools
+  {
+    id: "ai-clarification",
+    label: "Clarification",
+    description: "Interactive questionnaire with 2 questions and 3 options each",
+    category: "custom",
+    group: "AI",
+    messages: EDGE_AI_CLARIFICATION,
+  },
+  {
+    id: "website-config",
+    label: "Website config",
+    description: "Site creation form with template picker and subdomain input",
+    category: "custom",
+    group: "AI",
+    messages: EDGE_WEBSITE_CONFIG,
+  },
+  {
+    id: "ai-automation",
+    label: "Automation config",
+    description: "Automation job setup form with site picker and schedule",
+    category: "custom",
+    group: "AI",
+    messages: EDGE_AI_AUTOMATION,
+  },
+  // Custom MCP UI — Plan mode
+  {
+    id: "plan-approval",
+    label: "Approval",
+    description: "Exit plan mode — user must approve before Claude can execute",
+    category: "custom",
+    group: "Plan",
+    messages: EDGE_PLAN_APPROVAL,
   },
   // System errors
   {
@@ -639,6 +818,7 @@ function DarkModeToggle() {
 
 export default function Experiments3Page() {
   const [activeCategory, setActiveCategory] = useState<Category>("full")
+  const [activeGroup, setActiveGroup] = useState<string | null>(null)
   const [activeConvo, setActiveConvo] = useState(CONVERSATIONS[0].id)
   const conversation = CONVERSATIONS.find(c => c.id === activeConvo)!
   const [visibleCount, setVisibleCount] = useState(conversation.messages.length)
@@ -648,9 +828,30 @@ export default function Experiments3Page() {
 
   const filteredConversations = CONVERSATIONS.filter(c => c.category === activeCategory)
 
+  // Get unique groups for the active category
+  const groups = [...new Set(filteredConversations.map(c => c.group).filter(Boolean))] as string[]
+
+  // Filter by group if one is selected
+  const visibleConversations = activeGroup
+    ? filteredConversations.filter(c => c.group === activeGroup)
+    : filteredConversations
+
   const switchCategory = (cat: Category) => {
     setActiveCategory(cat)
-    const first = CONVERSATIONS.find(c => c.category === cat)
+    const catConvos = CONVERSATIONS.filter(c => c.category === cat)
+    const catGroups = [...new Set(catConvos.map(c => c.group).filter(Boolean))] as string[]
+    const firstGroup = catGroups.length > 0 ? catGroups[0] : null
+    setActiveGroup(firstGroup)
+    const first = firstGroup ? catConvos.find(c => c.group === firstGroup) : catConvos[0]
+    if (first) {
+      setActiveConvo(first.id)
+      setVisibleCount(first.messages.length)
+    }
+  }
+
+  const switchGroup = (group: string) => {
+    setActiveGroup(group)
+    const first = filteredConversations.find(c => c.group === group)
     if (first) {
       setActiveConvo(first.id)
       setVisibleCount(first.messages.length)
@@ -702,8 +903,33 @@ export default function Experiments3Page() {
               </button>
             ))}
           </div>
+          {/* Sub-tabs for groups (e.g. Linear, Stripe, Gmail...) */}
+          {groups.length > 0 && (
+            <div className="flex gap-1 mb-2">
+              {groups.map(group => (
+                <button
+                  key={group}
+                  type="button"
+                  onClick={() => switchGroup(group)}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors duration-100",
+                    activeGroup === group
+                      ? "bg-black/[0.06] dark:bg-white/[0.08] text-black/70 dark:text-white/70"
+                      : "text-black/30 dark:text-white/30 hover:text-black/50 dark:hover:text-white/50",
+                  )}
+                >
+                  {group}
+                  <span className="ml-1 text-[10px] text-black/20 dark:text-white/20">
+                    {filteredConversations.filter(c => c.group === group).length}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Conversation buttons */}
           <div className="flex flex-wrap gap-1 mb-2">
-            {filteredConversations.map(c => (
+            {visibleConversations.map(c => (
               <button
                 key={c.id}
                 type="button"
