@@ -17,7 +17,19 @@
  * ```
  */
 
-import { AI, CALENDAR, EMAIL, FILE_OPS, LINEAR, OTHER, OUTLOOK, PLAN, STRIPE, STRIPE_PATTERNS } from "./tool-names.js"
+import {
+  AI,
+  CALENDAR,
+  EMAIL,
+  FILE_OPS,
+  LINEAR,
+  OTHER,
+  OUTLOOK,
+  PLAN,
+  STRIPE,
+  STRIPE_PATTERNS,
+  WEB,
+} from "./tool-names.js"
 
 // ============================================================
 // TYPES
@@ -461,6 +473,34 @@ register(OUTLOOK.COMPOSE, {
 register(PLAN.EXIT_PLAN_MODE, {
   autoExpand: true, // Always show the approval UI
   getPreview: () => "plan ready for approval",
+})
+
+// --- Web tools ---
+register(WEB.FETCH, {
+  autoExpand: false,
+  getPreview: (_data, input) => {
+    const inp = input as Record<string, unknown> | null
+    if (inp?.url) {
+      try {
+        const hostname = new URL(String(inp.url)).hostname
+        return `Fetched ${hostname}`
+      } catch {
+        return `Fetched ${String(inp.url).slice(0, 40)}`
+      }
+    }
+    return "fetched"
+  },
+})
+register(WEB.SEARCH, {
+  autoExpand: false,
+  getPreview: (_data, input) => {
+    const inp = input as Record<string, unknown> | null
+    if (inp?.query) {
+      const q = String(inp.query)
+      return `Searched "${q.length > 35 ? `${q.slice(0, 35)}...` : q}"`
+    }
+    return "searched"
+  },
 })
 
 // --- Other ---

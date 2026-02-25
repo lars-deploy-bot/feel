@@ -80,7 +80,13 @@ function assistantToolUse(
 
 function toolResult(
   id: string,
-  results: Array<{ toolUseId: string; toolName: string; content: string; isError?: boolean }>,
+  results: Array<{
+    toolUseId: string
+    toolName: string
+    content: string
+    isError?: boolean
+    toolInput?: Record<string, unknown>
+  }>,
   parentToolUseId: string | null = null,
 ): UIMessage {
   return {
@@ -96,7 +102,7 @@ function toolResult(
           tool_use_id: r.toolUseId,
           content: r.content,
           tool_name: r.toolName,
-          tool_input: {},
+          tool_input: r.toolInput ?? {},
           ...(r.isError ? { is_error: true } : {}),
         })),
       },
@@ -416,7 +422,436 @@ The entry point is \`src/index.ts\`, which:
 ]
 
 // ===========================================================================
-// 10. Long exploration group (6 reads) then text — tests scroll behavior
+// 10. Error group — 4 Reads where 2 fail (errors inside a collapsed group)
+// ===========================================================================
+export const EDGE_ERROR_GROUP: UIMessage[] = (() => {
+  const msgs: UIMessage[] = [userMsg("eg-1", "Read the config files and check permissions")]
+
+  const files = [
+    { path: "config/app.ts", content: "export const config = { port: 3000 }", error: false },
+    {
+      path: "/etc/shadow",
+      content: "Error: Path traversal detected — /etc/shadow is outside the workspace boundary.",
+      error: true,
+    },
+    { path: "config/db.ts", content: "export const db = { host: 'localhost', port: 5432 }", error: false },
+    {
+      path: "/root/.ssh/id_rsa",
+      content: "Error: Path traversal detected — /root/.ssh/id_rsa is outside the workspace boundary.",
+      error: true,
+    },
+  ]
+
+  for (let i = 0; i < files.length; i++) {
+    const toolId = `toolu_eg_r${i + 1}`
+    msgs.push(assistantToolUse(`eg-${2 + i * 2}`, [{ toolId, name: "Read", input: { file_path: files[i].path } }]))
+    msgs.push(
+      toolResult(`eg-${3 + i * 2}`, [
+        { toolUseId: toolId, toolName: "Read", content: files[i].content, isError: files[i].error },
+      ]),
+    )
+  }
+  msgs.push(
+    assistantText(
+      `eg-${2 + files.length * 2}`,
+      "Two config files read successfully. The other two paths were blocked — they're outside the workspace.",
+    ),
+  )
+  return msgs
+})()
+
+// ===========================================================================
+// 11. All errors — 3 consecutive Reads that all fail
+// ===========================================================================
+export const EDGE_ALL_ERRORS: UIMessage[] = [
+  userMsg("ae-1", "Read these system files"),
+  assistantToolUse("ae-2", [{ toolId: "toolu_ae_r1", name: "Read", input: { file_path: "/etc/passwd" } }]),
+  toolResult("ae-3", [
+    {
+      toolUseId: "toolu_ae_r1",
+      toolName: "Read",
+      content: "Error: Path traversal detected — /etc/passwd is outside the workspace boundary.",
+      isError: true,
+    },
+  ]),
+  assistantToolUse("ae-4", [{ toolId: "toolu_ae_r2", name: "Read", input: { file_path: "/etc/shadow" } }]),
+  toolResult("ae-5", [
+    {
+      toolUseId: "toolu_ae_r2",
+      toolName: "Read",
+      content: "Error: Path traversal detected — /etc/shadow is outside the workspace boundary.",
+      isError: true,
+    },
+  ]),
+  assistantToolUse("ae-6", [{ toolId: "toolu_ae_r3", name: "Read", input: { file_path: "/var/log/syslog" } }]),
+  toolResult("ae-7", [
+    {
+      toolUseId: "toolu_ae_r3",
+      toolName: "Read",
+      content: "Error: Path traversal detected — /var/log/syslog is outside the workspace boundary.",
+      isError: true,
+    },
+  ]),
+  assistantText(
+    "ae-8",
+    "All three paths are outside the workspace. I can only access files within your project directory.",
+  ),
+]
+
+// ===========================================================================
+// 12. Server errors — network, auth, billing, max turns, session corrupt
+// ===========================================================================
+
+function errorResult(id: string, result: string): UIMessage {
+  return {
+    id,
+    type: "sdk_message",
+    timestamp: new Date(ts()),
+    content: { type: "result", is_error: true, result },
+  }
+}
+
+function sdkResult(id: string, subtype: string): UIMessage {
+  return {
+    id,
+    type: "sdk_message",
+    timestamp: new Date(ts()),
+    content: {
+      type: "result",
+      subtype,
+      is_error: true,
+      result: "",
+      duration_ms: 4200,
+      duration_api_ms: 3800,
+    },
+  }
+}
+
+/** Network offline — amber styling, retry button */
+export const EDGE_NETWORK_ERROR: UIMessage[] = [
+  userMsg("ne-1", "What's in the project readme?"),
+  assistantToolUse("ne-2", [{ toolId: "toolu_ne_r1", name: "Read", input: { file_path: "README.md" } }]),
+  toolResult("ne-3", [{ toolUseId: "toolu_ne_r1", toolName: "Read", content: "# My Project\n\nA modern web app." }]),
+  assistantText("ne-4", "The readme describes a modern web app. Let me check the"),
+  errorResult("ne-5", "Failed to fetch"),
+]
+
+/** Auth expired — Anthropic OAuth token died mid-conversation */
+export const EDGE_AUTH_ERROR: UIMessage[] = [
+  userMsg("auth-1", "Refactor the auth module"),
+  assistantText("auth-2", "I'll start by reading the current auth implementation."),
+  errorResult(
+    "auth-3",
+    JSON.stringify({
+      error: "API_AUTH_FAILED",
+      message: "API authentication failed. The API key may be expired or invalid.",
+      details: {
+        message: "OAuth token has expired. Please obtain a new token or refresh your existing token.",
+        apiRequestId: "req_011CUp5WQxZAVPq6593o1spz",
+      },
+    }),
+  ),
+]
+
+/** Billing — ran out of credits */
+export const EDGE_BILLING_ERROR: UIMessage[] = [
+  userMsg("bill-1", "Build me a dashboard"),
+  assistantText("bill-2", "I'll design a clean dashboard with"),
+  errorResult(
+    "bill-3",
+    JSON.stringify({
+      error: "INSUFFICIENT_CREDITS",
+      message: "You don't have enough credits to make this request.",
+      details: { balance: 0 },
+    }),
+  ),
+]
+
+/** Max turns — conversation too long */
+export const EDGE_MAX_TURNS: UIMessage[] = [
+  userMsg("mt-1", "Continue working on the refactor"),
+  assistantText("mt-2", "Let me pick up where we left off."),
+  sdkResult("mt-3", "error_max_turns"),
+]
+
+/** Session corrupt — tool call interrupted */
+export const EDGE_SESSION_CORRUPT: UIMessage[] = [
+  userMsg("sc-1", "Deploy the site"),
+  assistantToolUse("sc-2", [{ toolId: "toolu_sc_b1", name: "Bash", input: { command: "bun run build" } }]),
+  errorResult(
+    "sc-3",
+    JSON.stringify({
+      error: "SESSION_CORRUPT",
+      message:
+        "This conversation's session got interrupted during a tool call and can't be resumed. You can continue in a new tab with your conversation history.",
+    }),
+  ),
+]
+
+/** Overloaded — 529 from Anthropic */
+export const EDGE_OVERLOADED: UIMessage[] = [
+  userMsg("ol-1", "Explain this error"),
+  errorResult("ol-2", "HTTP 529: API is temporarily overloaded. Please try again in a moment."),
+]
+
+// ===========================================================================
+// 14. WebFetch — fetching a URL and returning content
+// ===========================================================================
+export const EDGE_WEBFETCH: UIMessage[] = [
+  userMsg("wf-1", "What does the Hono docs say about middleware?"),
+  assistantToolUse("wf-2", [
+    {
+      toolId: "toolu_wf_f1",
+      name: "WebFetch",
+      input: { url: "https://hono.dev/docs/guides/middleware", prompt: "Summarize the middleware documentation" },
+    },
+  ]),
+  toolResult("wf-3", [
+    {
+      toolUseId: "toolu_wf_f1",
+      toolName: "WebFetch",
+      toolInput: { url: "https://hono.dev/docs/guides/middleware", prompt: "Summarize the middleware documentation" },
+      content:
+        "Hono middleware runs before/after route handlers. Built-in middleware includes: cors(), logger(), prettyJSON(), secureHeaders(). Custom middleware uses `createMiddleware()`. Middleware can modify context, return early, or pass through with `await next()`.",
+    },
+  ]),
+  assistantText(
+    "wf-4",
+    "Hono has built-in middleware for CORS, logging, and security headers. You can create custom middleware with `createMiddleware()` — it works like Express middleware but with Hono's context object.",
+  ),
+]
+
+// ===========================================================================
+// 15. WebSearch — searching the web for information
+// ===========================================================================
+export const EDGE_WEBSEARCH: UIMessage[] = [
+  userMsg("ws-1", "What's the latest version of Bun?"),
+  assistantToolUse("ws-2", [
+    { toolId: "toolu_ws_s1", name: "WebSearch", input: { query: "bun runtime latest version 2026" } },
+  ]),
+  toolResult("ws-3", [
+    {
+      toolUseId: "toolu_ws_s1",
+      toolName: "WebSearch",
+      toolInput: { query: "bun runtime latest version 2026" },
+      content: JSON.stringify([
+        {
+          title: "Bun v1.2.22 Release",
+          url: "https://bun.sh/blog/bun-v1.2.22",
+          snippet: "Bun v1.2.22 includes performance improvements to the bundler and fixes for Node.js compatibility.",
+        },
+        {
+          title: "Bun — JavaScript runtime",
+          url: "https://bun.sh",
+          snippet: "Bun is an all-in-one JavaScript runtime & toolkit designed for speed.",
+        },
+      ]),
+    },
+  ]),
+  assistantText(
+    "ws-4",
+    "The latest version of Bun is **v1.2.22**, released with bundler performance improvements and Node.js compatibility fixes.",
+  ),
+]
+
+// ===========================================================================
+// 16. Edit — file modification with diff
+// ===========================================================================
+export const EDGE_EDIT: UIMessage[] = [
+  userMsg("ed-1", "Fix the typo in the config"),
+  assistantToolUse("ed-2", [
+    {
+      toolId: "toolu_ed_e1",
+      name: "Edit",
+      input: { file_path: "src/config.ts", old_string: "const prot = 3000", new_string: "const port = 3000" },
+    },
+  ]),
+  toolResult("ed-3", [
+    {
+      toolUseId: "toolu_ed_e1",
+      toolName: "Edit",
+      toolInput: { file_path: "src/config.ts", old_string: "const prot = 3000", new_string: "const port = 3000" },
+      content: "OK — edited src/config.ts",
+    },
+  ]),
+  assistantText("ed-4", "Fixed the typo: `prot` → `port` in `src/config.ts`."),
+]
+
+// ===========================================================================
+// 17. Glob — file discovery
+// ===========================================================================
+export const EDGE_GLOB: UIMessage[] = [
+  userMsg("gl-1", "Find all test files"),
+  assistantToolUse("gl-2", [{ toolId: "toolu_gl_g1", name: "Glob", input: { pattern: "src/**/*.test.ts" } }]),
+  toolResult("gl-3", [
+    {
+      toolUseId: "toolu_gl_g1",
+      toolName: "Glob",
+      toolInput: { pattern: "src/**/*.test.ts" },
+      content:
+        "src/__tests__/api.test.ts\nsrc/__tests__/auth.test.ts\nsrc/__tests__/utils.test.ts\nsrc/__tests__/db.test.ts\nsrc/routes/__tests__/users.test.ts",
+    },
+  ]),
+  assistantText("gl-4", "Found 5 test files across `src/__tests__/` and `src/routes/__tests__/`."),
+]
+
+// ===========================================================================
+// 18. Grep — content search
+// ===========================================================================
+export const EDGE_GREP: UIMessage[] = [
+  userMsg("gr-1", "Find all TODO comments"),
+  assistantToolUse("gr-2", [{ toolId: "toolu_gr_g1", name: "Grep", input: { pattern: "TODO:", path: "src/" } }]),
+  toolResult("gr-3", [
+    {
+      toolUseId: "toolu_gr_g1",
+      toolName: "Grep",
+      toolInput: { pattern: "TODO:", path: "src/" },
+      content:
+        "src/api.ts:12: // TODO: add rate limiting\nsrc/auth.ts:45: // TODO: refresh token logic\nsrc/db.ts:8: // TODO: connection pooling",
+    },
+  ]),
+  assistantText(
+    "gr-4",
+    "Found 3 TODOs: rate limiting in `api.ts`, token refresh in `auth.ts`, and connection pooling in `db.ts`.",
+  ),
+]
+
+// ===========================================================================
+// 19. Bash — running a command
+// ===========================================================================
+export const EDGE_BASH: UIMessage[] = [
+  userMsg("ba-1", "Run the tests"),
+  assistantToolUse("ba-2", [{ toolId: "toolu_ba_b1", name: "Bash", input: { command: "bun run test" } }]),
+  toolResult("ba-3", [
+    {
+      toolUseId: "toolu_ba_b1",
+      toolName: "Bash",
+      toolInput: { command: "bun run test" },
+      content:
+        "bun test v1.2.22\n\n✓ src/__tests__/api.test.ts (3 tests)\n✓ src/__tests__/auth.test.ts (5 tests)\n✓ src/__tests__/utils.test.ts (2 tests)\n\n 10 pass\n 0 fail\n 3 files | 10 tests\n\nDone in 245ms",
+    },
+  ]),
+  assistantText("ba-4", "All 10 tests pass across 3 files."),
+]
+
+// ===========================================================================
+// 20. AskUserQuestion — interactive clarification
+// ===========================================================================
+export const EDGE_ASK_USER: UIMessage[] = [
+  userMsg("aq-1", "Add authentication to the app"),
+  assistantToolUse("aq-2", [
+    {
+      toolId: "toolu_aq_q1",
+      name: "AskUserQuestion",
+      input: {
+        questions: [
+          {
+            question: "Which authentication method should we use?",
+            header: "Auth method",
+            options: [
+              {
+                label: "JWT tokens (Recommended)",
+                description: "Stateless auth with short-lived access tokens and refresh tokens",
+              },
+              { label: "Session cookies", description: "Server-side sessions stored in Redis with HTTP-only cookies" },
+              { label: "OAuth 2.0 (Google)", description: "Social login via Google OAuth with JWT fallback" },
+            ],
+            multiSelect: false,
+          },
+        ],
+      },
+    },
+  ]),
+  toolResult("aq-3", [
+    {
+      toolUseId: "toolu_aq_q1",
+      toolName: "AskUserQuestion",
+      content: JSON.stringify({
+        answers: { "Which authentication method should we use?": "JWT tokens (Recommended)" },
+      }),
+    },
+  ]),
+  assistantText("aq-4", "I'll implement JWT-based authentication with access and refresh tokens."),
+]
+
+// ===========================================================================
+// 21. MCP tool — browser screenshot
+// ===========================================================================
+export const EDGE_MCP_BROWSER: UIMessage[] = [
+  userMsg("mb-1", "Take a screenshot of the homepage"),
+  assistantToolUse("mb-2", [
+    {
+      toolId: "toolu_mb_b1",
+      name: "mcp__alive-workspace__browser",
+      input: { action: "screenshot", url: "http://localhost:3000" },
+    },
+  ]),
+  toolResult("mb-3", [
+    {
+      toolUseId: "toolu_mb_b1",
+      toolName: "mcp__alive-workspace__browser",
+      content: JSON.stringify({
+        success: true,
+        message: "Screenshot captured (1280x720)",
+        path: "/tmp/screenshot-001.png",
+      }),
+    },
+  ]),
+  assistantText(
+    "mb-4",
+    "Captured a screenshot of the homepage. The layout looks clean — the header, hero section, and footer are all rendering correctly.",
+  ),
+]
+
+// ===========================================================================
+// 22. Task subagent — standalone result
+// ===========================================================================
+export const EDGE_TASK: UIMessage[] = [
+  userMsg("tk-1", "Investigate the auth module"),
+  assistantToolUse(
+    "tk-2",
+    [
+      {
+        toolId: "toolu_tk_t1",
+        name: "Task",
+        input: { subagent_type: "Explore", description: "Explore auth", prompt: "Read auth files and summarize" },
+      },
+    ],
+    null,
+    "Let me use a subagent to explore the auth module.",
+  ),
+  assistantToolUse(
+    "tk-3",
+    [{ toolId: "toolu_tk_r1", name: "Read", input: { file_path: "src/auth.ts" } }],
+    "toolu_tk_t1",
+  ),
+  toolResult(
+    "tk-4",
+    [
+      {
+        toolUseId: "toolu_tk_r1",
+        toolName: "Read",
+        content: "export function verifyToken(token: string) {\n  return jwt.verify(token, SECRET)\n}",
+      },
+    ],
+    "toolu_tk_t1",
+  ),
+  assistantText("tk-5", "The auth module uses JWT verification with a shared SECRET.", "toolu_tk_t1"),
+  toolResult("tk-6", [
+    {
+      toolUseId: "toolu_tk_t1",
+      toolName: "Task",
+      content: "Auth module uses JWT with a shared SECRET constant for token verification.",
+    },
+  ]),
+  assistantText(
+    "tk-7",
+    "The auth module is straightforward — JWT-based token verification with a single shared secret.",
+  ),
+]
+
+// ===========================================================================
+// 13. Long exploration group (6 reads) then text — tests scroll behavior
 // ===========================================================================
 export const EDGE_LONG_GROUP: UIMessage[] = (() => {
   const msgs: UIMessage[] = [userMsg("lg-1", "Read all the API route files")]

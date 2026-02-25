@@ -10,6 +10,7 @@
 
 "use client"
 
+import { truncateMarkdown } from "@webalive/shared"
 import type { SDKAssistantMessage } from "@/features/chat/types/sdk-types"
 import { Check, ChevronDown, ChevronRight } from "lucide-react"
 import { useState } from "react"
@@ -18,7 +19,6 @@ import { getGroupSummary } from "@/features/chat/lib/group-tool-messages"
 import type { UIMessage } from "@/features/chat/lib/message-parser"
 import { renderMessage } from "@/features/chat/lib/message-renderer"
 import { cn } from "@/lib/utils"
-import { hasMarkdown } from "@/lib/utils/markdown-utils"
 import { interactiveText, mutedIcon, subtleText, toolIndicatorButton } from "./styles"
 
 interface CollapsibleToolGroupProps {
@@ -98,35 +98,28 @@ export function CollapsibleToolGroup({
 
       {isExpanded && (
         <div className="border-t border-black/[0.06] dark:border-white/[0.08]">
-          {/* Summary text (no scroll — renders fully) */}
-          {summaryText && (
-            <div className="px-3 pt-2 pb-1">
-              {hasMarkdown(summaryText) ? (
-                <MarkdownDisplay content={summaryText} />
-              ) : (
-                <div className="whitespace-pre-wrap break-words text-sm text-black dark:text-white leading-relaxed">
-                  {summaryText}
-                </div>
-              )}
-            </div>
-          )}
+          {summaryText ? (
+            <>
+              {/* Preview — truncated markdown, or full on "Show more" */}
+              <div className="px-3 pt-2 pb-1">
+                <MarkdownDisplay content={showFull ? summaryText : truncateMarkdown(summaryText, 200)} />
+              </div>
 
-          {/* "Show full output" toggle for raw tool results */}
-          <div className="px-3 pb-2">
-            <button
-              type="button"
-              onClick={() => setShowFull(!showFull)}
-              className={cn(toolIndicatorButton, interactiveText, "gap-1 px-1.5 py-0.5 rounded")}
-            >
-              <ChevronDown size={11} className={cn(mutedIcon, "transition-transform", showFull && "rotate-180")} />
-              <span>
-                {showFull ? "Hide" : "Show"} full output ({total} tool calls)
-              </span>
-            </button>
-          </div>
-
-          {showFull && (
-            <div className="border-t border-black/[0.06] dark:border-white/[0.08] px-3 pt-2 pb-1 space-y-0.5">
+              {/* Show more / Show less */}
+              <div className="px-3 pb-2">
+                <button
+                  type="button"
+                  onClick={() => setShowFull(!showFull)}
+                  className={cn(toolIndicatorButton, interactiveText, "gap-1 px-1.5 py-0.5 rounded")}
+                >
+                  <ChevronDown size={11} className={cn(mutedIcon, "transition-transform", showFull && "rotate-180")} />
+                  <span>{showFull ? "Show less" : "Show more"}</span>
+                </button>
+              </div>
+            </>
+          ) : (
+            /* No summary — show raw tool results directly */
+            <div className="px-3 pt-2 pb-1 space-y-0.5">
               {messages.map(message => (
                 <div key={message.id}>{renderMessage(message, { onSubmitAnswer, tabId })}</div>
               ))}

@@ -1,5 +1,6 @@
 "use client"
 
+import { TOKEN_COLORS, tokenizeLine } from "@/lib/utils/syntax"
 import type { Components } from "react-markdown"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
@@ -7,15 +8,15 @@ import { cn } from "@/lib/utils"
 
 // Design tokens — full class strings so Tailwind can scan them
 const t = {
-  border: "border-black/10 dark:border-white/10",
-  surface: "bg-black/5 dark:bg-white/5",
-  mono: "text-[13px] font-mono text-black/80 dark:text-white/80",
+  border: "border-black/[0.06] dark:border-white/[0.08]",
+  surface: "bg-black/[0.025] dark:bg-white/[0.04]",
   cell: "px-3 py-2",
   heading: "font-semibold mb-2",
 } as const
 
 const BLOCK_TAGS = new Set(["pre", "div", "blockquote", "ul", "ol", "table"])
 
+/** Extract language tag from hast node (e.g., "typescript" from class="language-typescript") */
 function extractLanguage(node: unknown): string | null {
   const n = node as
     | { children?: Array<{ type?: string; tagName?: string; properties?: Record<string, unknown> }> }
@@ -25,30 +26,50 @@ function extractLanguage(node: unknown): string | null {
   return /language-(\w+)/.exec((el.properties?.className as string[])?.join(" ") ?? "")?.[1] ?? null
 }
 
+/** Recursively extract raw text from a hast node tree */
+function extractText(node: unknown): string {
+  const n = node as { type?: string; value?: string; children?: unknown[] } | undefined
+  if (!n) return ""
+  if (n.type === "text") return n.value ?? ""
+  if (Array.isArray(n.children)) return n.children.map(extractText).join("")
+  return ""
+}
+
+/** Render code with syntax highlighting */
+function renderHighlightedCode(code: string, language: string) {
+  const lines = code.replace(/\n$/, "").split("\n")
+  return lines.map((line, i) => (
+    <span key={i}>
+      {tokenizeLine(line, language).map((token, j) => (
+        <span key={j} className={TOKEN_COLORS[token.type]}>
+          {token.value}
+        </span>
+      ))}
+      {i < lines.length - 1 ? "\n" : null}
+    </span>
+  ))
+}
+
 const components: Components = {
-  // Code blocks
-  pre: ({ children, node }) => {
+  // Code blocks — light fill, no border, shadow for depth
+  pre: ({ node }) => {
     const lang = node ? extractLanguage(node) : null
+    const rawText = node ? extractText(node) : ""
+
     return (
-      <div className={cn("my-3 rounded-md overflow-hidden border", t.border, t.surface)}>
-        {lang && (
-          <div className={cn("px-3 py-1 text-[10px] font-mono text-black/40 dark:text-white/40 border-b", t.border)}>
-            {lang}
-          </div>
-        )}
-        <pre className="p-3 overflow-x-auto">{children}</pre>
+      <div className={cn("my-3 rounded-lg overflow-hidden", t.surface)}>
+        <pre className="p-3 overflow-x-auto">
+          {lang && <div className="text-[10px] font-mono text-black/20 dark:text-white/20 mb-2">{lang}</div>}
+          <code className="text-[13px] font-mono leading-relaxed">{renderHighlightedCode(rawText, lang ?? "")}</code>
+        </pre>
       </div>
     )
   },
 
-  // Inline & block code
-  code: props => {
-    const { children, inline } = props as { children: React.ReactNode; inline?: boolean }
-    return inline ? (
-      <code className={cn("px-1.5 py-0.5 rounded", t.surface, t.mono)}>{children}</code>
-    ) : (
-      <code className={cn(t.mono, "leading-relaxed")}>{children}</code>
-    )
+  // Inline code
+  code: ({ children, className }) => {
+    if (className?.includes("language-")) return null
+    return <code className={cn("px-1.5 py-0.5 rounded-lg text-[13px] font-mono", t.surface)}>{children}</code>
   },
 
   // Headings

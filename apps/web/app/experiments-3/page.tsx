@@ -11,7 +11,7 @@
  * Switch between mock scenario and real conversation data.
  */
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { CollapsibleToolGroup } from "@/features/chat/components/message-renderers/CollapsibleToolGroup"
 import { MessageWrapper } from "@/features/chat/components/message-renderers/MessageWrapper"
 import { groupToolMessages, type RenderItem } from "@/features/chat/lib/group-tool-messages"
@@ -19,15 +19,32 @@ import type { UIMessage } from "@/features/chat/lib/message-parser"
 import { renderMessage, shouldRenderMessage } from "@/features/chat/lib/message-renderer"
 import { cn } from "@/lib/utils"
 import {
+  EDGE_ALL_ERRORS,
+  EDGE_ASK_USER,
   EDGE_AT_THRESHOLD,
+  EDGE_AUTH_ERROR,
+  EDGE_BASH,
   EDGE_BELOW_THRESHOLD,
+  EDGE_BILLING_ERROR,
   EDGE_BROKEN_GROUP,
+  EDGE_EDIT,
   EDGE_EMPTY_TEXT,
+  EDGE_ERROR_GROUP,
   EDGE_ERROR_RESULT,
+  EDGE_GLOB,
+  EDGE_GREP,
   EDGE_GROUP_TRAILING_TASK,
   EDGE_LONG_GROUP,
   EDGE_MARKDOWN,
+  EDGE_MAX_TURNS,
+  EDGE_MCP_BROWSER,
   EDGE_MULTI_RESULT,
+  EDGE_NETWORK_ERROR,
+  EDGE_OVERLOADED,
+  EDGE_SESSION_CORRUPT,
+  EDGE_TASK,
+  EDGE_WEBFETCH,
+  EDGE_WEBSEARCH,
   EDGE_WRITE_BASH,
 } from "./edge-cases"
 import { MOCK_MESSAGES } from "./mock-messages"
@@ -46,85 +63,230 @@ const realConversation: UIMessage[] = (realConversationRaw as Array<Record<strin
 // CONVERSATIONS
 // =============================================================================
 
+type Category = "full" | "grouping" | "tools" | "errors"
+
+const CATEGORIES: { id: Category; label: string }[] = [
+  { id: "full", label: "Full" },
+  { id: "grouping", label: "Grouping" },
+  { id: "tools", label: "Tools" },
+  { id: "errors", label: "Errors" },
+]
+
 interface Conversation {
   id: string
   label: string
   description: string
+  category: Category
   messages: UIMessage[]
 }
 
 const CONVERSATIONS: Conversation[] = [
+  // Full conversations
   {
     id: "real",
     label: "Real conversation",
     description: "74 messages — Task subagent reads 17 files, main agent does Glob/Read/Grep/Edit",
+    category: "full",
     messages: realConversation,
   },
   {
     id: "mock",
     label: "Parallel subagents",
     description: "26 messages — two parallel Task subagents with interleaved messages",
+    category: "full",
     messages: MOCK_MESSAGES,
   },
-  {
-    id: "error",
-    label: "Error result",
-    description: "Tool result with is_error: true (path traversal blocked)",
-    messages: EDGE_ERROR_RESULT,
-  },
+  // Grouping edge cases
   {
     id: "below-threshold",
     label: "2 reads (no group)",
     description: "2 consecutive exploration results — below MIN_GROUP_SIZE, should NOT collapse",
+    category: "grouping",
     messages: EDGE_BELOW_THRESHOLD,
   },
   {
     id: "at-threshold",
     label: "3 reads (groups)",
     description: "Exactly 3 consecutive exploration results — at MIN_GROUP_SIZE, SHOULD collapse",
+    category: "grouping",
     messages: EDGE_AT_THRESHOLD,
   },
   {
     id: "broken-group",
     label: "Read→Edit→Read",
     description: "Edit breaks consecutive exploration run, prevents grouping",
+    category: "grouping",
     messages: EDGE_BROKEN_GROUP,
-  },
-  {
-    id: "write-bash",
-    label: "Write + Bash",
-    description: "Mutation tools: Write creates file, Bash runs tests",
-    messages: EDGE_WRITE_BASH,
-  },
-  {
-    id: "multi-result",
-    label: "3 tools at once",
-    description: "Single SDK message with 3 parallel tool_use + 3 tool_result blocks",
-    messages: EDGE_MULTI_RESULT,
-  },
-  {
-    id: "empty-text",
-    label: "Empty text blocks",
-    description: "Assistant sends empty/whitespace text blocks — should be filtered",
-    messages: EDGE_EMPTY_TEXT,
-  },
-  {
-    id: "trailing-task",
-    label: "Group + Task done",
-    description: "Exploration group from subagent → trailing Task completed absorbed into group",
-    messages: EDGE_GROUP_TRAILING_TASK,
-  },
-  {
-    id: "markdown",
-    label: "Rich markdown",
-    description: "Headers, code blocks, lists, blockquotes in assistant text",
-    messages: EDGE_MARKDOWN,
   },
   {
     id: "long-group",
     label: "6 reads (big group)",
     description: "6 consecutive Read results → large collapsed group",
+    category: "grouping",
     messages: EDGE_LONG_GROUP,
+  },
+  {
+    id: "multi-result",
+    label: "3 tools at once",
+    description: "Single SDK message with 3 parallel tool_use + 3 tool_result blocks",
+    category: "grouping",
+    messages: EDGE_MULTI_RESULT,
+  },
+  {
+    id: "trailing-task",
+    label: "Group + Task done",
+    description: "Exploration group from subagent → trailing Task completed absorbed into group",
+    category: "grouping",
+    messages: EDGE_GROUP_TRAILING_TASK,
+  },
+  {
+    id: "empty-text",
+    label: "Empty text blocks",
+    description: "Assistant sends empty/whitespace text blocks — should be filtered",
+    category: "grouping",
+    messages: EDGE_EMPTY_TEXT,
+  },
+  {
+    id: "error-group",
+    label: "Errors in group",
+    description: "4 Reads where 2 fail — errors inside a collapsed exploration group",
+    category: "grouping",
+    messages: EDGE_ERROR_GROUP,
+  },
+  {
+    id: "all-errors",
+    label: "All errors in group",
+    description: "3 consecutive Reads that all fail — entire group is errors",
+    category: "grouping",
+    messages: EDGE_ALL_ERRORS,
+  },
+  // Tool rendering
+  {
+    id: "error",
+    label: "Error result",
+    description: "Tool result with is_error: true (path traversal blocked)",
+    category: "tools",
+    messages: EDGE_ERROR_RESULT,
+  },
+  {
+    id: "edit",
+    label: "Edit",
+    description: "File edit with old_string → new_string replacement",
+    category: "tools",
+    messages: EDGE_EDIT,
+  },
+  {
+    id: "write-bash",
+    label: "Write + Bash",
+    description: "Mutation tools: Write creates file, Bash runs tests",
+    category: "tools",
+    messages: EDGE_WRITE_BASH,
+  },
+  {
+    id: "bash",
+    label: "Bash",
+    description: "Standalone shell command execution with test output",
+    category: "tools",
+    messages: EDGE_BASH,
+  },
+  {
+    id: "glob",
+    label: "Glob",
+    description: "File pattern matching to discover project files",
+    category: "tools",
+    messages: EDGE_GLOB,
+  },
+  {
+    id: "grep",
+    label: "Grep",
+    description: "Content search across source files",
+    category: "tools",
+    messages: EDGE_GREP,
+  },
+  {
+    id: "webfetch",
+    label: "WebFetch",
+    description: "Fetch and summarize a web page",
+    category: "tools",
+    messages: EDGE_WEBFETCH,
+  },
+  {
+    id: "websearch",
+    label: "WebSearch",
+    description: "Search the web for current information",
+    category: "tools",
+    messages: EDGE_WEBSEARCH,
+  },
+  {
+    id: "ask-user",
+    label: "AskUserQuestion",
+    description: "Interactive clarification with multiple choice options",
+    category: "tools",
+    messages: EDGE_ASK_USER,
+  },
+  {
+    id: "task",
+    label: "Task subagent",
+    description: "Spawns a subagent to explore then returns result",
+    category: "tools",
+    messages: EDGE_TASK,
+  },
+  {
+    id: "mcp-browser",
+    label: "MCP browser",
+    description: "MCP tool: alive-workspace browser screenshot",
+    category: "tools",
+    messages: EDGE_MCP_BROWSER,
+  },
+  {
+    id: "markdown",
+    label: "Rich markdown",
+    description: "Headers, code blocks, lists, blockquotes in assistant text",
+    category: "tools",
+    messages: EDGE_MARKDOWN,
+  },
+  // System errors
+  {
+    id: "network-error",
+    label: "Network error",
+    description: "Connection lost mid-conversation — amber styling, retry button",
+    category: "errors",
+    messages: EDGE_NETWORK_ERROR,
+  },
+  {
+    id: "auth-error",
+    label: "Auth expired",
+    description: "Anthropic OAuth token expired — red error with request ID",
+    category: "errors",
+    messages: EDGE_AUTH_ERROR,
+  },
+  {
+    id: "billing-error",
+    label: "No credits",
+    description: "Insufficient credits — billing error with balance shown",
+    category: "errors",
+    messages: EDGE_BILLING_ERROR,
+  },
+  {
+    id: "max-turns",
+    label: "Max turns",
+    description: "SDK result with error_max_turns subtype — conversation too long",
+    category: "errors",
+    messages: EDGE_MAX_TURNS,
+  },
+  {
+    id: "session-corrupt",
+    label: "Session corrupt",
+    description: "Tool call interrupted — blue styling, continue in new tab",
+    category: "errors",
+    messages: EDGE_SESSION_CORRUPT,
+  },
+  {
+    id: "overloaded",
+    label: "Overloaded",
+    description: "HTTP 529 — API temporarily overloaded",
+    category: "errors",
+    messages: EDGE_OVERLOADED,
   },
 ]
 
@@ -416,13 +578,84 @@ function GroupingDebug({ messages }: { messages: UIMessage[] }) {
 // PAGE
 // =============================================================================
 
+function DarkModeToggle() {
+  const [dark, setDark] = useState(false)
+
+  useEffect(() => {
+    setDark(document.documentElement.classList.contains("dark"))
+  }, [])
+
+  const toggle = () => {
+    const next = !dark
+    setDark(next)
+    document.documentElement.classList.toggle("dark", next)
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      className="size-6 rounded-lg bg-black/[0.03] dark:bg-white/[0.06] flex items-center justify-center text-black/35 dark:text-white/35 hover:text-black/55 dark:hover:text-white/55 active:scale-95 transition-all duration-150"
+      title={dark ? "Light mode" : "Dark mode"}
+    >
+      {dark ? (
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2v2" />
+          <path d="M12 20v2" />
+          <path d="m4.93 4.93 1.41 1.41" />
+          <path d="m17.66 17.66 1.41 1.41" />
+          <path d="M2 12h2" />
+          <path d="M20 12h2" />
+          <path d="m6.34 17.66-1.41 1.41" />
+          <path d="m19.07 4.93-1.41 1.41" />
+        </svg>
+      ) : (
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+        </svg>
+      )}
+    </button>
+  )
+}
+
 export default function Experiments3Page() {
+  const [activeCategory, setActiveCategory] = useState<Category>("full")
   const [activeConvo, setActiveConvo] = useState(CONVERSATIONS[0].id)
   const conversation = CONVERSATIONS.find(c => c.id === activeConvo)!
   const [visibleCount, setVisibleCount] = useState(conversation.messages.length)
   const visible = conversation.messages.slice(0, visibleCount)
   const agentMap = buildAgentMap(visible)
   const agentLabels = buildAgentLabels(agentMap)
+
+  const filteredConversations = CONVERSATIONS.filter(c => c.category === activeCategory)
+
+  const switchCategory = (cat: Category) => {
+    setActiveCategory(cat)
+    const first = CONVERSATIONS.find(c => c.category === cat)
+    if (first) {
+      setActiveConvo(first.id)
+      setVisibleCount(first.messages.length)
+    }
+  }
 
   const switchConvo = (id: string) => {
     setActiveConvo(id)
@@ -436,7 +669,10 @@ export default function Experiments3Page() {
       <div className="shrink-0 border-b border-black/[0.06] dark:border-white/[0.08] bg-white/90 dark:bg-zinc-950/90 backdrop-blur-sm z-10">
         <div className="px-6 py-3">
           <div className="flex items-center justify-between mb-2">
-            <h1 className="text-sm font-medium text-black/60 dark:text-white/60 shrink-0">Stream Simulator</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-sm font-medium text-black/60 dark:text-white/60">Stream Simulator</h1>
+              <DarkModeToggle />
+            </div>
             <div className="text-right shrink-0 ml-4">
               <span className="text-2xl font-mono font-bold text-black/70 dark:text-white/70 tabular-nums">
                 {visibleCount}
@@ -446,8 +682,28 @@ export default function Experiments3Page() {
               </span>
             </div>
           </div>
+          <div className="flex gap-3 mb-2 border-b border-black/[0.06] dark:border-white/[0.08]">
+            {CATEGORIES.map(cat => (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => switchCategory(cat.id)}
+                className={cn(
+                  "pb-1.5 text-[11px] font-medium transition-colors border-b-2 -mb-px",
+                  activeCategory === cat.id
+                    ? "border-black dark:border-white text-black/70 dark:text-white/70"
+                    : "border-transparent text-black/30 dark:text-white/30 hover:text-black/50 dark:hover:text-white/50",
+                )}
+              >
+                {cat.label}
+                <span className="ml-1 text-[10px] text-black/20 dark:text-white/20">
+                  {CONVERSATIONS.filter(c => c.category === cat.id).length}
+                </span>
+              </button>
+            ))}
+          </div>
           <div className="flex flex-wrap gap-1 mb-2">
-            {CONVERSATIONS.map(c => (
+            {filteredConversations.map(c => (
               <button
                 key={c.id}
                 type="button"

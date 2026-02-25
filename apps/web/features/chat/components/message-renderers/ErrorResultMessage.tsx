@@ -115,6 +115,12 @@ function extractHumanMessage(raw: string): { message: string; isAuth: boolean } 
   return { message: cleaned, isAuth: false }
 }
 
+/** Status dot — small colored circle that conveys severity at a glance */
+function StatusDot({ color }: { color: "red" | "amber" | "blue" }) {
+  const colorClass = color === "amber" ? "bg-amber-500" : color === "blue" ? "bg-blue-500" : "bg-red-500"
+  return <span className={`size-1.5 rounded-full ${colorClass} flex-shrink-0`} />
+}
+
 export function ErrorResultMessage({ content }: ErrorResultMessageProps) {
   const { retryLastMessage } = useRetry()
   const errorMessage = content.result
@@ -306,125 +312,94 @@ export function ErrorResultMessage({ content }: ErrorResultMessageProps) {
   const helpText = getHelpText()
   const friendlyMessage = getFriendlyMessage()
 
-  // Use amber/yellow for network errors (recoverable), blue for session corrupt, red for other errors
-  const colorClass = isOffline
-    ? "border-amber-200 dark:border-amber-800/50 bg-amber-50/50 dark:bg-amber-950/30"
-    : isSessionCorrupt
-      ? "border-blue-200 dark:border-blue-800/50 bg-blue-50/50 dark:bg-blue-950/30"
-      : "border-red-200 dark:border-red-800/50 bg-red-50/50 dark:bg-red-950/30"
-  const textColor = isOffline
-    ? "text-amber-700 dark:text-amber-300"
-    : isSessionCorrupt
-      ? "text-blue-700 dark:text-blue-300"
-      : "text-red-700 dark:text-red-300"
-  const titleColor = isOffline
-    ? "text-amber-900 dark:text-amber-100"
-    : isSessionCorrupt
-      ? "text-blue-900 dark:text-blue-100"
-      : "text-red-900 dark:text-red-100"
-  const iconColor = isOffline
-    ? "text-amber-500 dark:text-amber-400"
-    : isSessionCorrupt
-      ? "text-blue-500 dark:text-blue-400"
-      : "text-red-500 dark:text-red-400"
-  const buttonClass = isSessionCorrupt
-    ? "text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/40 hover:bg-blue-200 dark:hover:bg-blue-900/60"
-    : isOffline
-      ? "text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-900/60"
-      : "text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/40 hover:bg-red-200 dark:hover:bg-red-900/60"
+  const dotColor = isOffline ? "amber" : isSessionCorrupt ? "blue" : "red"
 
   const getTitle = () => {
-    if (isOffline) return "Connection Failed"
-    if (isSessionCorrupt) return "Session Interrupted"
-    if (isAuthError) return "Authentication Error"
-    if (isWorkspace) return "Workspace Error"
-    return "Error"
+    if (isOffline) return "Connection failed"
+    if (isSessionCorrupt) return "Session interrupted"
+    if (isAuthError) return "Authentication error"
+    if (isWorkspace) return "Workspace error"
+    return "Something went wrong"
   }
 
   return (
-    <div className="py-3 mb-4">
-      <div className={`border ${colorClass} p-4 rounded`}>
-        <div className="flex items-start gap-3">
-          <div className="flex-shrink-0 mt-0.5">
-            {isOffline ? (
-              <WifiOff className={`w-5 h-5 ${iconColor}`} />
-            ) : (
-              <svg className={`w-5 h-5 ${iconColor}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                />
-              </svg>
-            )}
-          </div>
-          <div className="flex-1">
-            <h3 className={`text-sm font-medium ${titleColor} mb-1`}>{getTitle()}</h3>
-            <p className={`text-sm ${textColor} leading-relaxed`}>{friendlyMessage}</p>
+    <div className="py-2">
+      <div className="rounded-lg bg-black/[0.025] dark:bg-white/[0.04] px-4 py-3">
+        {/* Title row — dot + title inline, wifi icon on the right */}
+        <div className="flex items-center gap-2">
+          <StatusDot color={dotColor} />
+          <p className="text-[13px] font-medium text-black/80 dark:text-white/80 flex-1">{getTitle()}</p>
+          {isOffline && (
+            <WifiOff size={14} strokeWidth={1.75} className="text-black/40 dark:text-white/40 flex-shrink-0" />
+          )}
+        </div>
 
-            {helpText && (
-              <p
-                className={`text-xs mt-2 leading-relaxed ${isOffline ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"}`}
-              >
-                {helpText}
-              </p>
-            )}
+        {/* Body — full width, no indent */}
+        <p className="text-[13px] text-black/45 dark:text-white/45 leading-relaxed mt-1">{friendlyMessage}</p>
 
-            {details && (details.expectedPath || details.fullPath) && (
-              <div className="mt-3 p-2 bg-red-100/50 dark:bg-red-900/20 rounded text-xs font-mono text-red-800 dark:text-red-200">
-                {details.expectedPath && (
-                  <div>
-                    <span className="font-semibold">Expected:</span> {details.expectedPath}
-                  </div>
-                )}
-                {details.fullPath && (
-                  <div>
-                    <span className="font-semibold">Path:</span> {details.fullPath}
-                  </div>
-                )}
+        {helpText && <p className="text-[11px] text-black/30 dark:text-white/30 leading-relaxed mt-1.5">{helpText}</p>}
+
+        {details && (details.expectedPath || details.fullPath) && (
+          <div className="mt-2 rounded-lg bg-black/[0.025] dark:bg-white/[0.04] px-3 py-2 text-[11px] font-mono text-black/35 dark:text-white/35">
+            {details.expectedPath && (
+              <div>
+                <span className="text-black/50 dark:text-white/50">Expected:</span> {details.expectedPath}
               </div>
             )}
-
-            {errorCode && !isSessionCorrupt && (
-              <div className="mt-2 text-xs text-red-500/70 dark:text-red-400/70 font-mono">Error code: {errorCode}</div>
+            {details.fullPath && (
+              <div>
+                <span className="text-black/50 dark:text-white/50">Path:</span> {details.fullPath}
+              </div>
             )}
+          </div>
+        )}
 
+        {/* Metadata row — whisper-quiet */}
+        {(errorCode ||
+          (typeof parsedError?.details === "object" &&
+            parsedError.details &&
+            "apiRequestId" in parsedError.details)) && (
+          <div className="flex items-center gap-2 mt-2 text-[10px] font-mono text-black/20 dark:text-white/20">
+            {errorCode && !isSessionCorrupt && <span>{errorCode}</span>}
             {typeof parsedError?.details === "object" &&
               parsedError.details &&
               "apiRequestId" in parsedError.details &&
               parsedError.details.apiRequestId && (
-                <div className="mt-1 text-xs text-red-500/70 dark:text-red-400/70 font-mono">
-                  Request ID: {String(parsedError.details.apiRequestId)}
-                </div>
+                <>
+                  {errorCode && !isSessionCorrupt && (
+                    <span className="size-0.5 rounded-full bg-black/10 dark:bg-white/10" />
+                  )}
+                  <span>{String(parsedError.details.apiRequestId)}</span>
+                </>
               )}
-
-            {isSessionCorrupt && (
-              <button
-                type="button"
-                onClick={handleContinueInNewTab}
-                className={`mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium ${buttonClass} rounded transition-colors`}
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                Continue in new tab
-              </button>
-            )}
-
-            {canRetry && !isSessionCorrupt && (
-              <button
-                type="button"
-                onClick={() => {
-                  trackMessageRetried()
-                  retryLastMessage()
-                }}
-                className={`mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium ${buttonClass} rounded transition-colors`}
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                Retry
-              </button>
-            )}
           </div>
-        </div>
+        )}
+
+        {/* Action buttons */}
+        {isSessionCorrupt && (
+          <button
+            type="button"
+            onClick={handleContinueInNewTab}
+            className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-black/60 dark:text-white/60 bg-black/[0.03] dark:bg-white/[0.06] rounded-lg hover:bg-black/[0.06] dark:hover:bg-white/[0.1] active:scale-95 transition-all duration-150"
+          >
+            <ExternalLink size={14} strokeWidth={1.75} />
+            Continue in new tab
+          </button>
+        )}
+
+        {canRetry && !isSessionCorrupt && (
+          <button
+            type="button"
+            onClick={() => {
+              trackMessageRetried()
+              retryLastMessage()
+            }}
+            className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-black/60 dark:text-white/60 bg-black/[0.03] dark:bg-white/[0.06] rounded-lg hover:bg-black/[0.06] dark:hover:bg-white/[0.1] active:scale-95 transition-all duration-150"
+          >
+            <RotateCcw size={14} strokeWidth={1.75} />
+            Retry
+          </button>
+        )}
       </div>
     </div>
   )

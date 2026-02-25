@@ -5,7 +5,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useFileContent } from "./hooks/useFileContent"
 import { getFileColor } from "./lib/file-colors"
 import { getFileName } from "./lib/file-path"
-import { TOKEN_COLORS, type Token, tokenizeLine } from "./lib/syntax"
+import { TOKEN_COLORS, type Token, tokenizeLine } from "@/lib/utils/syntax"
 import { ErrorMessage, LoadingSpinner, PanelBar } from "./ui"
 
 interface CodeViewerProps {

@@ -229,6 +229,10 @@ export {
   type TokenResponse,
 } from "./stream-tokens.js"
 export {
+  // Text utilities
+  truncateMarkdown,
+} from "./text-utils.js"
+export {
   getTemplateById,
   getTemplateIdsInline,
   getTemplateListForDocs,
