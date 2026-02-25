@@ -25,6 +25,11 @@ const ANTHROPIC_CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
 
 // Refresh 5 minutes before actual expiry to prevent edge cases
 const TOKEN_EXPIRY_BUFFER_MS = 5 * 60 * 1000
+// Proactive refresh: maintain at least 2h validity to avoid hard refresh windows.
+const PROACTIVE_REFRESH_MIN_VALIDITY_MS = 2 * 60 * 60 * 1000
+const PROACTIVE_REFRESH_CHECK_INTERVAL_MS = 15 * 60 * 1000
+const INVALID_GRANT_ESCALATION_THRESHOLD = 3
+const INVALID_GRANT_SUPPRESSION_LOG_INTERVAL_MS = 60 * 60 * 1000
 
 // Path to Claude Code credentials
 const CLAUDE_DIR = path.join(os.homedir(), ".claude")
@@ -65,6 +70,24 @@ interface TokenRefreshResponse {
   access_token: string
   refresh_token?: string
   expires_in: number
+}
+
+interface AccessTokenOptions {
+  minimumValidityMs?: number
+}
+
+let proactiveRefreshTimer: NodeJS.Timeout | null = null
+let proactiveRefreshRunning = false
+let invalidGrantState: {
+  refreshToken: string | null
+  consecutiveFailures: number
+  escalated: boolean
+  lastSuppressionLogAt: number
+} = {
+  refreshToken: null,
+  consecutiveFailures: 0,
+  escalated: false,
+  lastSuppressionLogAt: 0,
 }
 
 /**
@@ -124,7 +147,31 @@ export function readClaudeCredentials(): ClaudeOAuthCredentials | null {
  * Check if token is expired (with buffer)
  */
 export function isTokenExpired(expiresAt: number): boolean {
-  return Date.now() >= expiresAt - TOKEN_EXPIRY_BUFFER_MS
+  return shouldRefreshToken(expiresAt, TOKEN_EXPIRY_BUFFER_MS)
+}
+
+function shouldRefreshToken(expiresAt: number, minimumValidityMs: number): boolean {
+  return Date.now() >= expiresAt - minimumValidityMs
+}
+
+function normalizeMinimumValidityMs(minimumValidityMs?: number): number {
+  if (typeof minimumValidityMs !== "number" || !Number.isFinite(minimumValidityMs) || minimumValidityMs < 0) {
+    return TOKEN_EXPIRY_BUFFER_MS
+  }
+  return minimumValidityMs
+}
+
+function isInvalidGrantRefreshError(error: unknown): boolean {
+  return error instanceof Error && error.message.includes("invalid_grant")
+}
+
+function resetInvalidGrantState(): void {
+  invalidGrantState = {
+    refreshToken: null,
+    consecutiveFailures: 0,
+    escalated: false,
+    lastSuppressionLogAt: 0,
+  }
 }
 
 /**
@@ -252,7 +299,9 @@ function saveCredentials(credentials: ClaudeOAuthCredentials): void {
  * Refresh token with file-based locking.
  * Prevents race conditions when multiple processes try to refresh simultaneously.
  */
-async function refreshTokenWithLock(): Promise<ClaudeOAuthCredentials | null> {
+async function refreshTokenWithLock(
+  minimumValidityMs = TOKEN_EXPIRY_BUFFER_MS,
+): Promise<ClaudeOAuthCredentials | null> {
   // Fast exit: if credentials file doesn't exist, do not create ~/.claude solely for locking.
   // This keeps this function side-effect free when OAuth is not configured.
   if (!fs.existsSync(CLAUDE_CREDENTIALS_PATH)) {
@@ -279,7 +328,7 @@ async function refreshTokenWithLock(): Promise<ClaudeOAuthCredentials | null> {
 
     // If token is no longer expired after lock, another process already completed refresh.
     // Return the latest disk value without making another refresh call.
-    if (!isTokenExpired(credentials.expiresAt)) {
+    if (!shouldRefreshToken(credentials.expiresAt, minimumValidityMs)) {
       console.log("[anthropic-oauth] Token was refreshed by another process")
       return credentials
     }
@@ -305,10 +354,11 @@ async function refreshTokenWithLock(): Promise<ClaudeOAuthCredentials | null> {
  * Uses file-based locking (proper-lockfile) to prevent race conditions
  * when multiple processes try to refresh the same token simultaneously.
  */
-export async function getValidAccessToken(): Promise<{
+export async function getValidAccessToken(options?: AccessTokenOptions): Promise<{
   accessToken: string
   refreshed: boolean
 } | null> {
+  const minimumValidityMs = normalizeMinimumValidityMs(options?.minimumValidityMs)
   const credentials = readClaudeCredentials()
 
   if (!credentials) {
@@ -316,18 +366,18 @@ export async function getValidAccessToken(): Promise<{
   }
 
   // Token still valid - no refresh needed
-  if (!isTokenExpired(credentials.expiresAt)) {
+  if (!shouldRefreshToken(credentials.expiresAt, minimumValidityMs)) {
     return {
       accessToken: credentials.accessToken,
       refreshed: false,
     }
   }
 
-  // Token expired - refresh with file lock
-  console.log("[anthropic-oauth] Token expired, refreshing...")
+  // Token expired/expiring soon - refresh with file lock
+  console.log("[anthropic-oauth] Token expired or nearing expiry, refreshing...")
 
   try {
-    const refreshed = await refreshTokenWithLock()
+    const refreshed = await refreshTokenWithLock(minimumValidityMs)
     if (!refreshed) {
       return null
     }
@@ -340,6 +390,114 @@ export async function getValidAccessToken(): Promise<{
     Sentry.captureException(error)
     throw error
   }
+}
+
+async function runProactiveRefreshTick(reason: "startup" | "interval"): Promise<void> {
+  if (proactiveRefreshRunning) {
+    return
+  }
+  proactiveRefreshRunning = true
+  let attemptedRefreshToken: string | null = null
+
+  try {
+    const credentials = readClaudeCredentials()
+    if (!credentials) {
+      return
+    }
+    const currentRefreshToken = credentials.refreshToken
+
+    // Reset dead-chain state when credentials rotate (e.g. after /login).
+    if (invalidGrantState.refreshToken && invalidGrantState.refreshToken !== currentRefreshToken) {
+      console.log("[anthropic-oauth] Detected refresh token change, clearing invalid_grant state")
+      resetInvalidGrantState()
+    }
+
+    // Avoid retrying a known-dead chain forever. Wait for a new login/token write.
+    if (invalidGrantState.refreshToken === currentRefreshToken && invalidGrantState.consecutiveFailures > 0) {
+      const now = Date.now()
+      if (now - invalidGrantState.lastSuppressionLogAt >= INVALID_GRANT_SUPPRESSION_LOG_INTERVAL_MS) {
+        invalidGrantState.lastSuppressionLogAt = now
+        console.error(
+          "[anthropic-oauth] Proactive refresh suppressed: refresh token chain is marked invalid_grant. Run /login to recover.",
+        )
+      }
+      return
+    }
+
+    if (!shouldRefreshToken(credentials.expiresAt, PROACTIVE_REFRESH_MIN_VALIDITY_MS)) {
+      return
+    }
+
+    const minutesLeft = Math.max(0, Math.round((credentials.expiresAt - Date.now()) / 60_000))
+    console.log(`[anthropic-oauth] Proactive refresh check (${reason}), token expires in ${minutesLeft} minute(s)`)
+
+    attemptedRefreshToken = currentRefreshToken
+    const result = await getValidAccessToken({ minimumValidityMs: PROACTIVE_REFRESH_MIN_VALIDITY_MS })
+    if (!result) {
+      console.warn("[anthropic-oauth] Proactive refresh skipped: credentials unavailable")
+      return
+    }
+
+    if (result.refreshed) {
+      resetInvalidGrantState()
+    }
+    console.log(`[anthropic-oauth] Proactive refresh done (refreshed: ${result.refreshed})`)
+  } catch (error) {
+    if (attemptedRefreshToken && isInvalidGrantRefreshError(error)) {
+      if (invalidGrantState.refreshToken === attemptedRefreshToken) {
+        invalidGrantState.consecutiveFailures += 1
+      } else {
+        invalidGrantState = {
+          refreshToken: attemptedRefreshToken,
+          consecutiveFailures: 1,
+          escalated: false,
+          lastSuppressionLogAt: 0,
+        }
+      }
+
+      const guidance = "Run /login in Claude Code CLI to re-authenticate."
+      console.error(
+        `[anthropic-oauth] CRITICAL: OAuth refresh failed with invalid_grant (failure #${invalidGrantState.consecutiveFailures}). ${guidance}`,
+      )
+
+      if (invalidGrantState.consecutiveFailures >= INVALID_GRANT_ESCALATION_THRESHOLD && !invalidGrantState.escalated) {
+        invalidGrantState.escalated = true
+        Sentry.captureMessage(
+          `[anthropic-oauth] Persistent invalid_grant on shared OAuth credentials after ${invalidGrantState.consecutiveFailures} attempts. ${guidance}`,
+          "error",
+        )
+      } else {
+        Sentry.captureException(error)
+      }
+      return
+    }
+
+    console.error("[anthropic-oauth] Proactive refresh failed:", error)
+    Sentry.captureException(error)
+  } finally {
+    proactiveRefreshRunning = false
+  }
+}
+
+/**
+ * Start periodic token refresh checks to keep OAuth credentials ahead of expiry.
+ * Safe to call multiple times; only one heartbeat is started per process.
+ */
+export function startOAuthRefreshHeartbeat(): void {
+  if (process.env.NODE_ENV === "test") {
+    return
+  }
+  if (proactiveRefreshTimer) {
+    return
+  }
+
+  console.log("[anthropic-oauth] Starting proactive OAuth refresh heartbeat")
+  void runProactiveRefreshTick("startup")
+
+  proactiveRefreshTimer = setInterval(() => {
+    void runProactiveRefreshTick("interval")
+  }, PROACTIVE_REFRESH_CHECK_INTERVAL_MS)
+  proactiveRefreshTimer.unref?.()
 }
 
 /**

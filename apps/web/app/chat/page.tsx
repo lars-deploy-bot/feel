@@ -676,7 +676,7 @@ function ChatPageContent() {
           onOpenInvite={modals.openInvite}
         />
 
-        <div
+        <section
           className="flex-1 flex flex-col overflow-hidden relative min-w-0"
           aria-label="Chat area"
           onDragEnter={handleChatDragEnter}
@@ -863,7 +863,7 @@ function ChatPageContent() {
               />
             </div>
           </div>
-        </div>
+        </section>
 
         {/* Workbench - desktop only */}
         {showWorkbench && (
