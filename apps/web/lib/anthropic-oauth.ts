@@ -12,6 +12,7 @@
  * and updating the knowledge doc first.
  */
 
+import { createHash } from "node:crypto"
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
@@ -28,12 +29,12 @@ const TOKEN_EXPIRY_BUFFER_MS = 5 * 60 * 1000
 // Proactive refresh: maintain at least 2h validity to avoid hard refresh windows.
 const PROACTIVE_REFRESH_MIN_VALIDITY_MS = 2 * 60 * 60 * 1000
 const PROACTIVE_REFRESH_CHECK_INTERVAL_MS = 15 * 60 * 1000
-const INVALID_GRANT_ESCALATION_THRESHOLD = 3
 const INVALID_GRANT_SUPPRESSION_LOG_INTERVAL_MS = 60 * 60 * 1000
 
 // Path to Claude Code credentials
 const CLAUDE_DIR = path.join(os.homedir(), ".claude")
 const CLAUDE_CREDENTIALS_PATH = path.join(CLAUDE_DIR, ".credentials.json")
+const DEAD_REFRESH_TOKEN_MARKER_PATH = path.join(CLAUDE_DIR, ".oauth-refresh-dead.json")
 // 0o711 means:
 // - owner (current process user) gets rwx and can create lock files + write credentials
 // - group/others get --x for traversal only (needed in UID-drop worker paths)
@@ -76,19 +77,22 @@ interface AccessTokenOptions {
   minimumValidityMs?: number
 }
 
+interface DeadRefreshTokenMarker {
+  refreshTokenHash: string
+  reason: "invalid_grant"
+  firstSeenAt: number
+  lastSeenAt: number
+  failures: number
+}
+
+interface RefreshWithLockResult {
+  credentials: ClaudeOAuthCredentials
+  refreshed: boolean
+}
+
 let proactiveRefreshTimer: NodeJS.Timeout | null = null
 let proactiveRefreshRunning = false
-let invalidGrantState: {
-  refreshToken: string | null
-  consecutiveFailures: number
-  escalated: boolean
-  lastSuppressionLogAt: number
-} = {
-  refreshToken: null,
-  consecutiveFailures: 0,
-  escalated: false,
-  lastSuppressionLogAt: 0,
-}
+let deadChainSuppressionLogAt = 0
 
 /**
  * Ensure ~/.claude exists with deterministic permissions and is writable.
@@ -165,34 +169,118 @@ function isInvalidGrantRefreshError(error: unknown): boolean {
   return error instanceof Error && error.message.includes("invalid_grant")
 }
 
-function resetInvalidGrantState(): void {
-  invalidGrantState = {
-    refreshToken: null,
-    consecutiveFailures: 0,
-    escalated: false,
-    lastSuppressionLogAt: 0,
+function hashRefreshToken(refreshToken: string): string {
+  return createHash("sha256").update(refreshToken).digest("hex")
+}
+
+function readDeadRefreshTokenMarker(): DeadRefreshTokenMarker | null {
+  try {
+    if (!fs.existsSync(DEAD_REFRESH_TOKEN_MARKER_PATH)) {
+      return null
+    }
+
+    const content = fs.readFileSync(DEAD_REFRESH_TOKEN_MARKER_PATH, "utf-8")
+    const parsed = JSON.parse(content) as Partial<DeadRefreshTokenMarker>
+    if (
+      typeof parsed.refreshTokenHash !== "string" ||
+      parsed.reason !== "invalid_grant" ||
+      typeof parsed.firstSeenAt !== "number" ||
+      typeof parsed.lastSeenAt !== "number" ||
+      typeof parsed.failures !== "number"
+    ) {
+      return null
+    }
+
+    return parsed as DeadRefreshTokenMarker
+  } catch (error) {
+    console.warn("[anthropic-oauth] Failed to read dead-refresh marker:", error)
+    return null
   }
 }
 
+function clearDeadRefreshTokenMarker(): void {
+  try {
+    if (fs.existsSync(DEAD_REFRESH_TOKEN_MARKER_PATH)) {
+      fs.unlinkSync(DEAD_REFRESH_TOKEN_MARKER_PATH)
+    }
+  } catch (error) {
+    console.warn("[anthropic-oauth] Failed to clear dead-refresh marker:", error)
+  }
+}
+
+function getDeadRefreshMarkerForToken(refreshToken: string): DeadRefreshTokenMarker | null {
+  const marker = readDeadRefreshTokenMarker()
+  if (!marker) {
+    return null
+  }
+
+  const tokenHash = hashRefreshToken(refreshToken)
+  if (marker.refreshTokenHash !== tokenHash) {
+    // Credentials rotated (for example /login). Dead-chain marker no longer applies.
+    clearDeadRefreshTokenMarker()
+    return null
+  }
+
+  return marker
+}
+
+function markRefreshTokenChainDead(refreshToken: string): DeadRefreshTokenMarker {
+  ensureClaudeDirForWrites()
+
+  const now = Date.now()
+  const refreshTokenHash = hashRefreshToken(refreshToken)
+  const existing = readDeadRefreshTokenMarker()
+  const isSameChain = existing?.refreshTokenHash === refreshTokenHash
+
+  const marker: DeadRefreshTokenMarker = {
+    refreshTokenHash,
+    reason: "invalid_grant",
+    firstSeenAt: isSameChain && existing ? existing.firstSeenAt : now,
+    lastSeenAt: now,
+    failures: isSameChain && existing ? existing.failures + 1 : 1,
+  }
+
+  fs.writeFileSync(DEAD_REFRESH_TOKEN_MARKER_PATH, JSON.stringify(marker), { mode: 0o644 })
+  fs.chmodSync(DEAD_REFRESH_TOKEN_MARKER_PATH, 0o644)
+  return marker
+}
+
+function logDeadChainSuppressed(marker: DeadRefreshTokenMarker, source: "heartbeat" | "on_demand" | "lock"): void {
+  const now = Date.now()
+  if (now - deadChainSuppressionLogAt < INVALID_GRANT_SUPPRESSION_LOG_INTERVAL_MS) {
+    return
+  }
+
+  deadChainSuppressionLogAt = now
+  console.error(
+    `[anthropic-oauth] ${source}: refresh chain marked dead (invalid_grant). ` +
+      `Suppressing refresh attempts (failures=${marker.failures}). Run /login to recover.`,
+  )
+}
+
 /**
- * Check if an error is retryable (network errors, 5xx, rate limits)
+ * Check if an error is retryable (network errors, 5xx, rate limits).
+ * Status code is extracted from the "(NNN)" pattern in our error messages
+ * (see refreshTokenInternal's throw format).
  */
 function isRetryableError(error: unknown): boolean {
-  if (error instanceof Error) {
-    // Network errors
-    if (error.message.includes("fetch failed") || error.message.includes("ECONNRESET")) {
-      return true
-    }
-    // Rate limiting or server errors
-    if (error.message.includes("429") || error.message.includes("5")) {
-      const statusMatch = error.message.match(/\((\d{3})\)/)
-      if (statusMatch) {
-        const status = parseInt(statusMatch[1], 10)
-        return status === 429 || status >= 500
-      }
-    }
+  if (!(error instanceof Error)) {
+    return false
   }
-  return false
+
+  // Network errors (no HTTP status code)
+  if (error.message.includes("fetch failed") || error.message.includes("ECONNRESET")) {
+    return true
+  }
+
+  // Extract HTTP status code from our error format: "...failed (429): ..."
+  const statusMatch = error.message.match(/\((\d{3})\)/)
+  if (!statusMatch) {
+    return false
+  }
+
+  const status = parseInt(statusMatch[1], 10)
+  return status === 429 || status >= 500
 }
 
 /**
@@ -299,9 +387,7 @@ function saveCredentials(credentials: ClaudeOAuthCredentials): void {
  * Refresh token with file-based locking.
  * Prevents race conditions when multiple processes try to refresh simultaneously.
  */
-async function refreshTokenWithLock(
-  minimumValidityMs = TOKEN_EXPIRY_BUFFER_MS,
-): Promise<ClaudeOAuthCredentials | null> {
+async function refreshTokenWithLock(minimumValidityMs = TOKEN_EXPIRY_BUFFER_MS): Promise<RefreshWithLockResult | null> {
   // Fast exit: if credentials file doesn't exist, do not create ~/.claude solely for locking.
   // This keeps this function side-effect free when OAuth is not configured.
   if (!fs.existsSync(CLAUDE_CREDENTIALS_PATH)) {
@@ -326,17 +412,48 @@ async function refreshTokenWithLock(
       return null
     }
 
+    // Circuit breaker: stop refreshing a known-dead chain.
+    const deadMarker = getDeadRefreshMarkerForToken(credentials.refreshToken)
+    if (deadMarker) {
+      if (!isTokenExpired(credentials.expiresAt)) {
+        // Access token may still be usable even if refresh chain is dead.
+        return { credentials, refreshed: false }
+      }
+      logDeadChainSuppressed(deadMarker, "lock")
+      return null
+    }
+
     // If token is no longer expired after lock, another process already completed refresh.
     // Return the latest disk value without making another refresh call.
     if (!shouldRefreshToken(credentials.expiresAt, minimumValidityMs)) {
       console.log("[anthropic-oauth] Token was refreshed by another process")
-      return credentials
+      return { credentials, refreshed: false }
     }
 
-    // Perform the actual refresh
-    const newCredentials = await refreshTokenInternal(credentials.refreshToken)
-    saveCredentials(newCredentials)
-    return newCredentials
+    try {
+      // Perform the actual refresh
+      const newCredentials = await refreshTokenInternal(credentials.refreshToken)
+      saveCredentials(newCredentials)
+      clearDeadRefreshTokenMarker()
+      return { credentials: newCredentials, refreshed: true }
+    } catch (error) {
+      if (!isInvalidGrantRefreshError(error)) {
+        throw error
+      }
+
+      const marker = markRefreshTokenChainDead(credentials.refreshToken)
+      const guidance = "Run /login in Claude Code CLI to re-authenticate."
+      console.error(
+        `[anthropic-oauth] CRITICAL: OAuth refresh returned invalid_grant (failure #${marker.failures}). ${guidance}`,
+      )
+
+      Sentry.captureMessage(`[anthropic-oauth] OAuth refresh chain marked dead (invalid_grant). ${guidance}`, "error")
+
+      if (!isTokenExpired(credentials.expiresAt)) {
+        return { credentials, refreshed: false }
+      }
+      return null
+    }
   } finally {
     if (release) {
       try {
@@ -365,25 +482,37 @@ export async function getValidAccessToken(options?: AccessTokenOptions): Promise
     return null
   }
 
+  const needsRefresh = shouldRefreshToken(credentials.expiresAt, minimumValidityMs)
   // Token still valid - no refresh needed
-  if (!shouldRefreshToken(credentials.expiresAt, minimumValidityMs)) {
+  if (!needsRefresh) {
     return {
       accessToken: credentials.accessToken,
       refreshed: false,
     }
   }
 
+  // Circuit breaker: if this refresh chain is known-dead, do not keep posting to Anthropic.
+  const deadMarker = getDeadRefreshMarkerForToken(credentials.refreshToken)
+  if (deadMarker) {
+    const readOnly = getReadOnlyAccessToken(credentials)
+    if (readOnly) {
+      return readOnly
+    }
+    logDeadChainSuppressed(deadMarker, "on_demand")
+    return null
+  }
+
   // Token expired/expiring soon - refresh with file lock
   console.log("[anthropic-oauth] Token expired or nearing expiry, refreshing...")
 
   try {
-    const refreshed = await refreshTokenWithLock(minimumValidityMs)
-    if (!refreshed) {
+    const refreshResult = await refreshTokenWithLock(minimumValidityMs)
+    if (!refreshResult) {
       return null
     }
     return {
-      accessToken: refreshed.accessToken,
-      refreshed: true,
+      accessToken: refreshResult.credentials.accessToken,
+      refreshed: refreshResult.refreshed,
     }
   } catch (error) {
     console.error("[anthropic-oauth] Token refresh failed:", error)
@@ -397,30 +526,15 @@ async function runProactiveRefreshTick(reason: "startup" | "interval"): Promise<
     return
   }
   proactiveRefreshRunning = true
-  let attemptedRefreshToken: string | null = null
 
   try {
     const credentials = readClaudeCredentials()
     if (!credentials) {
       return
     }
-    const currentRefreshToken = credentials.refreshToken
-
-    // Reset dead-chain state when credentials rotate (e.g. after /login).
-    if (invalidGrantState.refreshToken && invalidGrantState.refreshToken !== currentRefreshToken) {
-      console.log("[anthropic-oauth] Detected refresh token change, clearing invalid_grant state")
-      resetInvalidGrantState()
-    }
-
-    // Avoid retrying a known-dead chain forever. Wait for a new login/token write.
-    if (invalidGrantState.refreshToken === currentRefreshToken && invalidGrantState.escalated) {
-      const now = Date.now()
-      if (now - invalidGrantState.lastSuppressionLogAt >= INVALID_GRANT_SUPPRESSION_LOG_INTERVAL_MS) {
-        invalidGrantState.lastSuppressionLogAt = now
-        console.error(
-          "[anthropic-oauth] Proactive refresh suppressed: refresh token chain is marked invalid_grant. Run /login to recover.",
-        )
-      }
+    const deadMarker = getDeadRefreshMarkerForToken(credentials.refreshToken)
+    if (deadMarker) {
+      logDeadChainSuppressed(deadMarker, "heartbeat")
       return
     }
 
@@ -431,47 +545,14 @@ async function runProactiveRefreshTick(reason: "startup" | "interval"): Promise<
     const minutesLeft = Math.max(0, Math.round((credentials.expiresAt - Date.now()) / 60_000))
     console.log(`[anthropic-oauth] Proactive refresh check (${reason}), token expires in ${minutesLeft} minute(s)`)
 
-    attemptedRefreshToken = currentRefreshToken
     const result = await getValidAccessToken({ minimumValidityMs: PROACTIVE_REFRESH_MIN_VALIDITY_MS })
     if (!result) {
       console.warn("[anthropic-oauth] Proactive refresh skipped: credentials unavailable")
       return
     }
 
-    if (result.refreshed) {
-      resetInvalidGrantState()
-    }
     console.log(`[anthropic-oauth] Proactive refresh done (refreshed: ${result.refreshed})`)
   } catch (error) {
-    if (attemptedRefreshToken && isInvalidGrantRefreshError(error)) {
-      if (invalidGrantState.refreshToken === attemptedRefreshToken) {
-        invalidGrantState.consecutiveFailures += 1
-      } else {
-        invalidGrantState = {
-          refreshToken: attemptedRefreshToken,
-          consecutiveFailures: 1,
-          escalated: false,
-          lastSuppressionLogAt: 0,
-        }
-      }
-
-      const guidance = "Run /login in Claude Code CLI to re-authenticate."
-      console.error(
-        `[anthropic-oauth] CRITICAL: OAuth refresh failed with invalid_grant (failure #${invalidGrantState.consecutiveFailures}). ${guidance}`,
-      )
-
-      if (invalidGrantState.consecutiveFailures >= INVALID_GRANT_ESCALATION_THRESHOLD && !invalidGrantState.escalated) {
-        invalidGrantState.escalated = true
-        Sentry.captureMessage(
-          `[anthropic-oauth] Persistent invalid_grant on shared OAuth credentials after ${invalidGrantState.consecutiveFailures} attempts. ${guidance}`,
-          "error",
-        )
-      } else {
-        Sentry.captureException(error)
-      }
-      return
-    }
-
     console.error("[anthropic-oauth] Proactive refresh failed:", error)
     Sentry.captureException(error)
   } finally {
@@ -501,28 +582,35 @@ export function startOAuthRefreshHeartbeat(): void {
 }
 
 /**
- * Check if OAuth credentials are available and valid (or can be refreshed)
+ * Check if OAuth credentials file exists with a refresh token.
+ * This only checks presence — it does NOT check if the chain is alive or the token is valid.
+ * Use getValidAccessToken() for the full lifecycle (refresh, circuit breaker, dead-chain).
  */
 export function hasOAuthCredentials(): boolean {
   const credentials = readClaudeCredentials()
   return credentials !== null && !!credentials.refreshToken
 }
 
-/**
- * Get access token WITHOUT refreshing. Returns null if expired.
- * Use this in production to avoid competing with CLI for token refresh.
- * If token is expired, user should run /login in CLI.
- */
-export function getAccessTokenReadOnly(): {
-  accessToken: string
-  expiresAt: number
-  isExpired: boolean
-} | null {
-  const credentials = readClaudeCredentials()
-  if (!credentials) {
+function getReadOnlyAccessToken(
+  credentials?: ClaudeOAuthCredentials,
+): { accessToken: string; refreshed: false } | null {
+  const source = credentials ?? readClaudeCredentials()
+  if (!source) {
     return null
   }
 
+  const readOnly = toAccessTokenReadOnly(source)
+  if (!readOnly || readOnly.isExpired) {
+    return null
+  }
+  return { accessToken: readOnly.accessToken, refreshed: false }
+}
+
+function toAccessTokenReadOnly(credentials: ClaudeOAuthCredentials): {
+  accessToken: string
+  expiresAt: number
+  isExpired: boolean
+} {
   return {
     accessToken: credentials.accessToken,
     expiresAt: credentials.expiresAt,

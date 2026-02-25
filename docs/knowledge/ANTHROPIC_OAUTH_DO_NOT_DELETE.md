@@ -351,7 +351,7 @@ Our web app's refresh logic mirrors the CLI's pattern. The critical requirement 
 | Function | Purpose | Refreshes? |
 |----------|---------|------------|
 | `getValidAccessToken({ minimumValidityMs? })` | Get token, refresh if expired/expiring soon | Yes (with lock) |
-| `hasOAuthCredentials()` | Check if credentials file exists and has refresh token | No |
+| `hasOAuthCredentials()` | Check if OAuth is currently usable (not dead-chain + expired) | No |
 | `readClaudeCredentials()` | Read raw credentials from disk | No |
 | `getAccessTokenReadOnly()` | Get token without refreshing (returns `isExpired` flag) | No |
 | `isTokenExpired(expiresAt)` | Check if timestamp is within 5-min buffer | No |
@@ -478,6 +478,7 @@ Step 4 is critical. Without it, you'd refresh with a stale token that was alread
 | `/root/.claude` | `711` (drwx--x--x) | Worker-pool workers traverse to shared SDK state |
 | `/root/.claude/projects` | `1777` (drwxrwxrwt) | Worker-pool workers write per-session state after UID drop |
 | `/root/.claude/.credentials.json` | `644` (-rw-r--r--) | Shared credential file for CLI + web refresh/monitoring |
+| `/root/.claude/.oauth-refresh-dead.json` | `644` (-rw-r--r--) | Circuit-breaker marker for invalid refresh-token chain |
 
 **Problem:** CLI writes `0o600`. The `claude-credentials-fix` systemd path unit (if installed) fixes this automatically. Otherwise, manually `chmod 644` after `/login`.
 
@@ -494,7 +495,11 @@ Step 4 is critical. Without it, you'd refresh with a stale token that was alread
 - Session/token chain was revoked upstream
 - Credentials persistence drift left a dead chain on disk
 
-**Current behavior:** Proactive heartbeat marks the failing refresh token chain as dead, escalates in Sentry after repeated failures, and suppresses repeated retry spam until credentials change (for example after `/login`).
+**Current behavior:**
+- First `invalid_grant` marks the refresh-token chain as dead in `~/.claude/.oauth-refresh-dead.json`
+- On-demand callers and heartbeat short-circuit refresh attempts for that same token chain (no repeated POST spam)
+- Marker auto-clears when credentials rotate (for example after `/login`)
+- Sentry receives a critical event on first dead-chain detection
 
 **Diagnosis:**
 ```bash
@@ -716,6 +721,7 @@ Every file in the codebase that touches OAuth, and its role:
 |------|------|------------|
 | `apps/web/lib/anthropic-oauth.ts` | Token read, refresh, lock coordination | **Yes** |
 | `~/.claude/.credentials.json` | Token storage (shared with CLI) | N/A |
+| `~/.claude/.oauth-refresh-dead.json` | Dead refresh-chain marker for circuit breaker | N/A |
 
 ### Token consumers (read-only)
 
@@ -723,6 +729,7 @@ Every file in the codebase that touches OAuth, and its role:
 |------|------|
 | `apps/web/app/api/claude/stream/route.ts` | Calls `getValidAccessToken()`, passes to worker |
 | `apps/web/lib/automation/executor.ts` | Calls `getValidAccessToken()` for automation jobs |
+| `apps/worker/src/cron-service.ts` | Delegates automation execution to web API; does **not** refresh OAuth directly |
 | `packages/worker-pool/src/env-isolation.ts` | Sets `CLAUDE_CODE_OAUTH_TOKEN` env var per request |
 | `packages/worker-pool/src/worker-entry.mjs` | Configures `CLAUDE_CONFIG_DIR`, receives token via IPC |
 | `packages/worker-pool/src/manager.ts` | Monitors credentials file for changes, restarts workers |

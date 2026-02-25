@@ -142,6 +142,166 @@ describe("anthropic-oauth persistence safety", () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  it("suppresses repeated refresh attempts after invalid_grant for the same token chain", async () => {
+    const claudeDir = path.join(tempHome, ".claude")
+    const credentialsPath = path.join(claudeDir, ".credentials.json")
+
+    fs.mkdirSync(claudeDir, { recursive: true, mode: 0o711 })
+    fs.writeFileSync(
+      credentialsPath,
+      JSON.stringify({
+        claudeAiOauth: {
+          accessToken: "old-access",
+          refreshToken: "dead-refresh",
+          expiresAt: Date.now() - 60_000,
+        },
+      }),
+    )
+
+    const fetchMock = vi.fn(async () => {
+      return new Response(JSON.stringify({ error: "invalid_grant" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      })
+    })
+    vi.stubGlobal("fetch", fetchMock)
+
+    const oauth = await import("../anthropic-oauth")
+
+    const first = await oauth.getValidAccessToken()
+    expect(first).toBeNull()
+    const second = await oauth.getValidAccessToken()
+    expect(second).toBeNull()
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("returns refreshed=false when proactive window triggers refresh but invalid_grant falls back to existing token", async () => {
+    const claudeDir = path.join(tempHome, ".claude")
+    const credentialsPath = path.join(claudeDir, ".credentials.json")
+
+    fs.mkdirSync(claudeDir, { recursive: true, mode: 0o711 })
+    fs.writeFileSync(
+      credentialsPath,
+      JSON.stringify({
+        claudeAiOauth: {
+          accessToken: "still-valid-access",
+          refreshToken: "dead-refresh",
+          expiresAt: Date.now() + 30 * 60 * 1000,
+        },
+      }),
+    )
+
+    const fetchMock = vi.fn(async () => {
+      return new Response(JSON.stringify({ error: "invalid_grant" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      })
+    })
+    vi.stubGlobal("fetch", fetchMock)
+
+    const oauth = await import("../anthropic-oauth")
+
+    const first = await oauth.getValidAccessToken({ minimumValidityMs: 60 * 60 * 1000 })
+    expect(first).toEqual({ accessToken: "still-valid-access", refreshed: false })
+
+    const second = await oauth.getValidAccessToken({ minimumValidityMs: 60 * 60 * 1000 })
+    expect(second).toEqual({ accessToken: "still-valid-access", refreshed: false })
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("resumes refresh after credentials rotate (simulating /login)", async () => {
+    const claudeDir = path.join(tempHome, ".claude")
+    const credentialsPath = path.join(claudeDir, ".credentials.json")
+
+    fs.mkdirSync(claudeDir, { recursive: true, mode: 0o711 })
+    fs.writeFileSync(
+      credentialsPath,
+      JSON.stringify({
+        claudeAiOauth: {
+          accessToken: "old-access",
+          refreshToken: "dead-refresh",
+          expiresAt: Date.now() - 60_000,
+        },
+      }),
+    )
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "invalid_grant" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            access_token: "new-access-after-login",
+            refresh_token: "new-refresh-after-login",
+            expires_in: 28_800,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+    vi.stubGlobal("fetch", fetchMock)
+
+    const oauth = await import("../anthropic-oauth")
+    const first = await oauth.getValidAccessToken()
+    expect(first).toBeNull()
+
+    // Simulate /login writing a brand new token chain.
+    fs.writeFileSync(
+      credentialsPath,
+      JSON.stringify({
+        claudeAiOauth: {
+          accessToken: "login-access",
+          refreshToken: "fresh-refresh",
+          expiresAt: Date.now() - 60_000,
+        },
+      }),
+    )
+
+    const second = await oauth.getValidAccessToken()
+    expect(second).toEqual({ accessToken: "new-access-after-login", refreshed: true })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it("hasOAuthCredentials returns true even when chain is dead (presence-only check)", async () => {
+    const claudeDir = path.join(tempHome, ".claude")
+    const credentialsPath = path.join(claudeDir, ".credentials.json")
+
+    fs.mkdirSync(claudeDir, { recursive: true, mode: 0o711 })
+    fs.writeFileSync(
+      credentialsPath,
+      JSON.stringify({
+        claudeAiOauth: {
+          accessToken: "old-access",
+          refreshToken: "dead-refresh",
+          expiresAt: Date.now() - 60_000,
+        },
+      }),
+    )
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        return new Response(JSON.stringify({ error: "invalid_grant" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        })
+      }),
+    )
+
+    const oauth = await import("../anthropic-oauth")
+    // Trigger dead-chain marker
+    await oauth.getValidAccessToken()
+    // hasOAuthCredentials only checks file presence, not chain health.
+    // Dead-chain handling is done by getValidAccessToken, which returns null → OAUTH_EXPIRED.
+    expect(oauth.hasOAuthCredentials()).toBe(true)
+  })
+
   it("keeps old refresh token when token endpoint omits refresh_token", async () => {
     const claudeDir = path.join(tempHome, ".claude")
     const credentialsPath = path.join(claudeDir, ".credentials.json")
