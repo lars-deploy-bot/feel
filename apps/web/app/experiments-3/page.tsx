@@ -366,7 +366,7 @@ function getMessageSummary(message: UIMessage) {
       | undefined
     if (content) {
       for (const block of content) {
-        if (block.type === "text") summary += String(block.text).slice(0, 40) + " "
+        if (block.type === "text") summary += `${String(block.text).slice(0, 40)} `
         if (block.type === "tool_use") toolNames.push(String(block.name))
       }
     }
@@ -391,7 +391,7 @@ function buildDebugText(conversation: Conversation, visible: UIMessage[]) {
   const lines = [
     `scenario: ${conversation.label} (${conversation.description})`,
     `visible: ${visible.length}/${conversation.messages.length}`,
-    `---`,
+    "---",
   ]
   for (let i = 0; i < visible.length; i++) {
     const { label, detail } = getMessageSummary(visible[i])

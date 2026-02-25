@@ -11,13 +11,13 @@
 "use client"
 
 import { truncateMarkdown } from "@webalive/shared"
-import type { SDKAssistantMessage } from "@/features/chat/types/sdk-types"
 import { Check, ChevronDown, ChevronRight } from "lucide-react"
 import { useState } from "react"
 import { MarkdownDisplay } from "@/components/ui/chat/format/MarkdownDisplay"
 import { getGroupSummary } from "@/features/chat/lib/group-tool-messages"
 import type { UIMessage } from "@/features/chat/lib/message-parser"
 import { renderMessage } from "@/features/chat/lib/message-renderer"
+import type { SDKAssistantMessage } from "@/features/chat/types/sdk-types"
 import { cn } from "@/lib/utils"
 import { interactiveText, mutedIcon, subtleText, toolIndicatorButton } from "./styles"
 

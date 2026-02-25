@@ -1,10 +1,10 @@
 "use client"
 
-import { TOKEN_COLORS, tokenizeLine } from "@/lib/utils/syntax"
 import type { Components } from "react-markdown"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { cn } from "@/lib/utils"
+import { TOKEN_COLORS, tokenizeLine } from "@/lib/utils/syntax"
 
 // Design tokens — full class strings so Tailwind can scan them
 const t = {
@@ -95,7 +95,7 @@ const components: Components = {
     const hasBlock = node?.children?.some(
       (c: { type: string; tagName?: string }) => c.type === "element" && BLOCK_TAGS.has(c.tagName ?? ""),
     )
-    return hasBlock ? <>{children}</> : <p className="mb-3">{children}</p>
+    return hasBlock ? children : <p className="mb-3">{children}</p>
   },
   hr: () => <hr className={cn("my-4", t.border)} />,
 
