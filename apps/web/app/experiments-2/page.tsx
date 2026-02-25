@@ -33,6 +33,7 @@ function TheRedButton() {
     >
       <button
         type="button"
+        aria-label="Toggle red button"
         onClick={() => setPressed(p => !p)}
         className="size-28 rounded-full cursor-pointer transition-all duration-150 active:scale-90"
         style={{
@@ -69,6 +70,7 @@ function TheHeartbeat() {
     <div className="flex flex-col items-center justify-center p-14 gap-6">
       <button
         type="button"
+        aria-label="Increase heartbeat speed"
         onClick={() => setBpm(b => (b >= 180 ? 60 : b + 20))}
         className="size-20 rounded-full bg-[#1a1a1a] flex items-center justify-center cursor-pointer transition-transform ease-out"
         style={{
@@ -139,6 +141,7 @@ function TheBreath() {
     <div className="flex items-center justify-center p-16">
       <button
         type="button"
+        aria-label="Breath interaction"
         onMouseEnter={() => setHeld(true)}
         onMouseLeave={() => setHeld(false)}
         className="size-24 rounded-full cursor-pointer flex items-center justify-center"
@@ -291,6 +294,7 @@ function TheMagnet() {
     >
       <button
         type="button"
+        aria-label="Magnet button"
         className="size-16 rounded-full bg-black flex items-center justify-center cursor-pointer transition-transform duration-300 ease-out"
         style={{ transform: `translate(${offset.x}px, ${offset.y}px)` }}
       >
@@ -383,7 +387,7 @@ function ThePatience() {
 
 function TheEcho() {
   const [ripples, setRipples] = useState<{ id: number; x: number; y: number }[]>([])
-  const containerRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLButtonElement>(null)
   const nextId = useRef(0)
 
   const handleClick = (e: React.MouseEvent) => {
@@ -397,8 +401,13 @@ function TheEcho() {
   }
 
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: decorative ripple effect container
-    <div ref={containerRef} className="relative h-48 cursor-pointer overflow-hidden" onClick={handleClick}>
+    <button
+      type="button"
+      ref={containerRef}
+      aria-label="Create ripple"
+      className="relative h-48 w-full cursor-pointer overflow-hidden text-left"
+      onClick={handleClick}
+    >
       <div className="absolute inset-0 flex items-center justify-center">
         <span className="text-[10px] font-medium text-black/15 tracking-[0.3em] uppercase select-none">
           click anywhere
@@ -422,7 +431,7 @@ function TheEcho() {
           />
         </div>
       ))}
-    </div>
+    </button>
   )
 }
 

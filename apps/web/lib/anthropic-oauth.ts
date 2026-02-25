@@ -413,7 +413,7 @@ async function runProactiveRefreshTick(reason: "startup" | "interval"): Promise<
     }
 
     // Avoid retrying a known-dead chain forever. Wait for a new login/token write.
-    if (invalidGrantState.refreshToken === currentRefreshToken && invalidGrantState.consecutiveFailures > 0) {
+    if (invalidGrantState.refreshToken === currentRefreshToken && invalidGrantState.escalated) {
       const now = Date.now()
       if (now - invalidGrantState.lastSuppressionLogAt >= INVALID_GRANT_SUPPRESSION_LOG_INTERVAL_MS) {
         invalidGrantState.lastSuppressionLogAt = now

@@ -884,7 +884,7 @@ function ChatPageContent() {
       {/* Mobile preview overlay - not shown for alive workspace */}
       {isHydrated && (
         <AnimatePresence>
-          {modals.mobilePreview && !isSuperadminWorkspace && (
+          {showWorkbench && modals.mobilePreview && !isSuperadminWorkspace && (
             <WorkbenchMobile
               onClose={modals.closeMobilePreview}
               busy={busy}

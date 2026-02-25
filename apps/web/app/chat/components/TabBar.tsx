@@ -193,9 +193,20 @@ function ClosedTabsDropdown({ tabs, triggerRef, onReopen, onClose }: ClosedTabsD
     return () => document.removeEventListener("mousedown", handler)
   }, [triggerRef, onClose])
 
+  // Escape key to close
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose()
+    }
+    document.addEventListener("keydown", onKeyDown)
+    return () => document.removeEventListener("keydown", onKeyDown)
+  }, [onClose])
+
   return createPortal(
     <div
       ref={menuRef}
+      role="menu"
+      aria-label="Closed tabs"
       style={{ position: "fixed" }}
       className="z-[9999] flex flex-col gap-0.5 p-1.5 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl border border-black/[0.06] dark:border-white/[0.06] rounded-2xl shadow-[0_4px_16px_rgba(0,0,0,0.08)] min-w-[180px] max-w-[280px]"
     >
@@ -203,6 +214,7 @@ function ClosedTabsDropdown({ tabs, triggerRef, onReopen, onClose }: ClosedTabsD
         <button
           key={tab.id}
           type="button"
+          role="menuitem"
           onClick={() => {
             trackTabReopened()
             onReopen(tab.id)
