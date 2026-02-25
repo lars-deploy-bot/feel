@@ -1,7 +1,7 @@
 "use client"
 
 import { Globe } from "lucide-react"
-import { useEffect, useState } from "react"
+import { type ReactNode, useEffect, useState } from "react"
 import type { WorkbenchView } from "@/features/chat/lib/workbench-context"
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -18,8 +18,8 @@ function SceneTile({
   label: string
   sublabel: string
   onClick: () => void
-  icon?: React.ReactNode
-  children: React.ReactNode
+  icon?: ReactNode
+  children: ReactNode
 }) {
   return (
     <button type="button" onClick={onClick} className="group/tile cursor-pointer text-left w-full flex flex-col">

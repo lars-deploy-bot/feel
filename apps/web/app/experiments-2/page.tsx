@@ -313,6 +313,7 @@ function ThePatience() {
     if (intervalRef.current) clearInterval(intervalRef.current)
     setHolding(true)
     setComplete(false)
+    setProgress(0)
     intervalRef.current = setInterval(() => {
       setProgress(p => {
         if (p >= 100) {

@@ -79,22 +79,24 @@ export function usePreviewEngine({ workspace, skipTokenFetch, onNavigate }: UseP
 
   // --- Selector sync ---
 
+  const previewOrigin = workspace ? new URL(getPreviewUrl(workspace, { path: "/" })).origin : "*"
+
   // Sync selector state after iframe loads
   useEffect(() => {
     if (!isLoading && selectorActive && iframeRef.current?.contentWindow) {
-      iframeRef.current.contentWindow.postMessage({ type: "alive-tagger-activate" }, "*")
+      iframeRef.current.contentWindow.postMessage({ type: "alive-tagger-activate" }, previewOrigin)
     }
-  }, [isLoading, selectorActive])
+  }, [isLoading, selectorActive, previewOrigin])
 
   // Send activation/deactivation message when selectorActive changes
   useEffect(() => {
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
         { type: selectorActive ? "alive-tagger-activate" : "alive-tagger-deactivate" },
-        "*",
+        previewOrigin,
       )
     }
-  }, [selectorActive])
+  }, [selectorActive, previewOrigin])
 
   // Reset selector state on unmount
   useEffect(() => {
@@ -167,7 +169,7 @@ export function usePreviewEngine({ workspace, skipTokenFetch, onNavigate }: UseP
       window.removeEventListener("message", handleMessage)
       clearLoadingTimeout()
     }
-  }, [setSelectedElement, clearLoadingTimeout])
+  }, [workspace, setSelectedElement, clearLoadingTimeout])
 
   // --- Actions ---
 

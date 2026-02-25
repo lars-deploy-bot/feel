@@ -678,7 +678,6 @@ function ChatPageContent() {
 
         <div
           className="flex-1 flex flex-col overflow-hidden relative min-w-0"
-          role="application"
           aria-label="Chat area"
           onDragEnter={handleChatDragEnter}
           onDragLeave={handleChatDragLeave}

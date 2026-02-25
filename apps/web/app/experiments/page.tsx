@@ -68,7 +68,7 @@ function FakeBrowser({ tall }: { tall?: boolean }) {
           <div className="size-2 rounded-full bg-black/10" />
         </div>
         <div className="flex-1 h-4.5 bg-black/[0.04] rounded-md flex items-center px-2">
-          <span className="text-[10px] text-black/25 font-mono">mysite.alive.best</span>
+          <span className="text-[10px] text-black/25 font-mono">your-workspace</span>
         </div>
       </div>
       {/* Fake page */}

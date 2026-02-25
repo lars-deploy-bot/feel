@@ -293,6 +293,7 @@ export function TabBar({
                   }}
                   data-testid="add-tab-button"
                   className={`${ACTION_CIRCLE} text-black/30 dark:text-white/30 hover:text-black/55 dark:hover:text-white/55 hover:bg-black/[0.05] dark:hover:bg-white/[0.08]`}
+                  aria-label="Add new tab"
                   title="Add new tab"
                 >
                   <Plus size={14} strokeWidth={2} />
@@ -303,6 +304,9 @@ export function TabBar({
                     type="button"
                     onClick={() => setShowClosedMenu(prev => !prev)}
                     className={`${ACTION_CIRCLE} text-black/25 dark:text-white/25 hover:text-black/50 dark:hover:text-white/50 hover:bg-black/[0.05] dark:hover:bg-white/[0.08]`}
+                    aria-label="Reopen closed tab"
+                    aria-haspopup="menu"
+                    aria-expanded={showClosedMenu}
                     title="Reopen closed tab"
                   >
                     <History size={14} strokeWidth={2} />

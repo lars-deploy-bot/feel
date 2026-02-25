@@ -137,6 +137,7 @@ export function SwitcherDropdown<T>({
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder={placeholder}
+          aria-activedescendant={filtered[highlight] ? `switcher-item-${getKey(filtered[highlight])}` : undefined}
           className="flex-1 h-9 bg-transparent text-[13px] text-black dark:text-white placeholder:text-black/25 dark:placeholder:text-white/25 outline-none border-none"
         />
       </div>
@@ -151,6 +152,9 @@ export function SwitcherDropdown<T>({
             return (
               <button
                 key={key}
+                id={`switcher-item-${key}`}
+                role="option"
+                aria-selected={isActive}
                 type="button"
                 onClick={() => onSelect(item)}
                 className={`${ITEM} ${i === highlight ? ITEM_HIGHLIGHT : ITEM_HOVER}`}

@@ -17,7 +17,7 @@ Clean. Quiet. Intentional. The UI should feel like it's barely there — just en
 
 Our primary navigation pattern. A group of items inside a soft, barely-visible pill container.
 
-```
+```text
 ┌─────────────────────────────────────────────────┐
 │  ┌──────────┐  Tab 2   Fix bug   API refactor   │   ○+   ○↺
 │  │ Tab 1  ● │                                    │
@@ -99,7 +99,7 @@ We use opacity religiously. These values are non-negotiable:
 
 Frosted glass on a portal:
 
-```
+```text
 bg-white/80 dark:bg-neutral-900/80
 backdrop-blur-xl
 border border-black/[0.06]
@@ -135,7 +135,7 @@ Icon size: `16px` with `strokeWidth={1.75}` — thinner than default Lucide.
 
 Small instructional text that appears on hover:
 
-```
+```text
 text-[10px] text-black/0 group-hover/bar:text-black/25
 transition-colors duration-300 select-none
 ```
