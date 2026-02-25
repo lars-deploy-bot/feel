@@ -4,7 +4,7 @@ import { requireManagerAuth } from "@/features/manager/lib/api-helpers"
 import { createCorsErrorResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { ErrorCodes } from "@/lib/error-codes"
-import { getAllFeedback } from "@/lib/feedback"
+import { getAllFeedback, updateFeedback } from "@/lib/feedback"
 
 /**
  * GET /api/manager/feedback
@@ -51,6 +51,39 @@ export async function GET(req: NextRequest) {
       details: {
         message: error instanceof Error ? error.message : "Unknown error",
       },
+    })
+  }
+}
+
+/**
+ * PATCH /api/manager/feedback
+ * Update feedback entry (github issue, aware/fixed emails)
+ */
+export async function PATCH(req: NextRequest) {
+  const origin = req.headers.get("origin")
+
+  try {
+    const authError = await requireManagerAuth()
+    if (authError) return authError
+
+    const body = await req.json()
+    const { feedbackId, githubIssueUrl, awareEmailSent, fixedEmailSent } = body
+
+    if (!feedbackId || typeof feedbackId !== "string") {
+      return createCorsErrorResponse(origin, ErrorCodes.INVALID_REQUEST, 400, {
+        details: { message: "feedbackId is required" },
+      })
+    }
+
+    await updateFeedback(feedbackId, { githubIssueUrl, awareEmailSent, fixedEmailSent })
+
+    return createCorsSuccessResponse(origin, { success: true })
+  } catch (error) {
+    console.error("[Manager] Error updating feedback:", error)
+    Sentry.captureException(error)
+
+    return createCorsErrorResponse(origin, ErrorCodes.INTERNAL_ERROR, 500, {
+      details: { message: error instanceof Error ? error.message : "Unknown error" },
     })
   }
 }

@@ -50,6 +50,7 @@ export function shouldRenderMessage(message: UIMessage, isDebugMode: boolean): b
   // These always render to null - filter them out entirely
   if (componentType === COMPONENT_TYPE.COMPLETE) return false
   if (componentType === COMPONENT_TYPE.TOOL_PROGRESS) return false
+  if (componentType === COMPONENT_TYPE.TASK_NOTIFICATION) return false
   if (componentType === COMPONENT_TYPE.START) return false
 
   // System messages only show in debug mode

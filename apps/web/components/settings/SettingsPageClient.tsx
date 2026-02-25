@@ -78,7 +78,7 @@ interface TabDefinition {
   id: SettingsTab
   label: string
   icon: React.ComponentType<{ className?: string }>
-  adminOnly?: boolean
+  superadminOnly?: boolean
   /** Rendered at sidebar bottom as org card instead of in the nav list */
   pinned?: boolean
 }
@@ -92,8 +92,8 @@ const allTabs: TabDefinition[] = [
   { id: "integrations", label: "Integrations", icon: Link },
   { id: "keys", label: "API Keys", icon: Key },
   { id: "organization", label: "Organization", icon: Settings, pinned: true },
-  { id: "flags", label: "Flags", icon: Flag, adminOnly: true },
-  { id: "admin", label: "Admin", icon: Shield, adminOnly: true },
+  { id: "flags", label: "Flags", icon: Flag, superadminOnly: true },
+  { id: "admin", label: "Admin", icon: Shield, superadminOnly: true },
 ]
 
 interface SettingsPageClientProps {
@@ -126,7 +126,7 @@ export function SettingsPageClient({ onClose, initialTab }: SettingsPageClientPr
   }, [])
 
   // All tabs visible to this user (org is in here — the tab system is complete)
-  const tabs = hydrated && !loading ? allTabs.filter(tab => !tab.adminOnly || !!user?.isAdmin) : allTabs
+  const tabs = hydrated && !loading ? allTabs.filter(tab => !tab.superadminOnly || !!user?.isSuperadmin) : allTabs
   // Split for render: nav list vs. pinned bottom card
   const navTabs = tabs.filter(t => !t.pinned)
 

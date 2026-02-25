@@ -129,7 +129,7 @@ function ToolResult({
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
         aria-expanded={isExpanded}
-        className={cn(toolIndicatorButton, "mb-2", result.is_error ? errorInteractiveText : interactiveText)}
+        className={cn(toolIndicatorButton, "mb-1", result.is_error ? errorInteractiveText : interactiveText)}
       >
         <Icon size={ICON_SIZE} className={cn(mutedIcon, "flex-shrink-0")} />
         <span className="truncate">
