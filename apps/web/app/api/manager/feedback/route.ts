@@ -77,7 +77,7 @@ export async function PATCH(req: NextRequest) {
 
     await updateFeedback(feedbackId, { githubIssueUrl, awareEmailSent, fixedEmailSent })
 
-    return createCorsSuccessResponse(origin, { success: true })
+    return createCorsSuccessResponse(origin, { ok: true })
   } catch (error) {
     console.error("[Manager] Error updating feedback:", error)
     Sentry.captureException(error)
