@@ -9,8 +9,8 @@ export function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-surface-secondary">
-        <Spinner size="lg" />
+      <div className="min-h-screen flex items-center justify-center bg-bg">
+        <Spinner size="lg" className="text-nav-text" />
       </div>
     )
   }
@@ -21,9 +21,10 @@ export function App() {
         position="top-right"
         toastOptions={{
           style: {
-            borderRadius: "10px",
+            borderRadius: "8px",
             fontSize: "13px",
             padding: "10px 16px",
+            fontFamily: "Inter, sans-serif",
           },
         }}
       />

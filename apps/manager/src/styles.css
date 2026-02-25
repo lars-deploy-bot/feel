@@ -1,33 +1,43 @@
 @import "tailwindcss";
 
 @theme {
-  --color-surface: #ffffff;
-  --color-surface-secondary: #f8fafc;
-  --color-surface-tertiary: #f1f5f9;
-  --color-border: #e2e8f0;
-  --color-border-subtle: #f1f5f9;
-  --color-text-primary: #0f172a;
-  --color-text-secondary: #475569;
-  --color-text-tertiary: #94a3b8;
-  --color-accent: #6366f1;
-  --color-accent-hover: #4f46e5;
-  --color-accent-subtle: #eef2ff;
-  --color-success: #10b981;
-  --color-success-subtle: #ecfdf5;
-  --color-warning: #f59e0b;
-  --color-warning-subtle: #fffbeb;
-  --color-danger: #ef4444;
-  --color-danger-subtle: #fef2f2;
-  --radius-card: 14px;
-  --radius-badge: 9999px;
-  --radius-button: 10px;
-  --radius-input: 10px;
+	--color-bg: #09090b;
+	--color-surface: #ffffff;
+	--color-surface-secondary: #f4f4f5;
+	--color-surface-tertiary: #e4e4e7;
+	--color-border: #e4e4e7;
+	--color-border-subtle: #f4f4f5;
+	--color-text-primary: #18181b;
+	--color-text-secondary: #52525b;
+	--color-text-tertiary: #a1a1aa;
+	--color-accent: #3b82f6;
+	--color-accent-hover: #2563eb;
+	--color-accent-subtle: #eff6ff;
+	--color-success: #22c55e;
+	--color-success-subtle: #f0fdf4;
+	--color-warning: #eab308;
+	--color-warning-subtle: #fefce8;
+	--color-danger: #ef4444;
+	--color-danger-subtle: #fef2f2;
+	--color-nav-text: #52525b;
+	--color-nav-active: #fafafa;
+	--color-nav-hover: #a1a1aa;
+	--radius-card: 16px;
+	--radius-badge: 6px;
+	--radius-button: 8px;
+	--radius-input: 8px;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  background-color: #f8fafc;
-  color: #0f172a;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+	font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	background-color: var(--color-bg);
+	color: var(--color-text-primary);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+* {
+	scrollbar-width: thin;
+	scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
 }

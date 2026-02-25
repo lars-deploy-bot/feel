@@ -35,23 +35,23 @@ export function Modal({ open, onClose, title, children, footer, className }: Mod
     <div
       ref={overlayRef}
       role="dialog"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px]"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
       onClick={e => {
         if (e.target === overlayRef.current) onClose()
       }}
     >
       <div
         className={cn(
-          "bg-surface rounded-card border border-border shadow-xl w-full max-w-md",
-          "animate-[fadeIn_150ms_ease-out]",
+          "bg-surface rounded-card shadow-2xl w-full max-w-md",
+          "animate-[fadeIn_120ms_ease-out]",
           className,
         )}
       >
         <div className="px-6 py-4 border-b border-border">
-          <h2 className="text-base font-semibold text-text-primary">{title}</h2>
+          <h2 className="text-[14px] font-semibold text-text-primary">{title}</h2>
         </div>
         <div className="px-6 py-5">{children}</div>
-        {footer && <div className="px-6 py-4 border-t border-border flex justify-end gap-3">{footer}</div>}
+        {footer && <div className="px-6 py-4 border-t border-border flex justify-end gap-2">{footer}</div>}
       </div>
     </div>
   )

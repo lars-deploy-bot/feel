@@ -12,18 +12,15 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantStyles: Record<Variant, string> = {
-  primary:
-    "bg-accent text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)] hover:bg-accent-hover active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)]",
-  secondary:
-    "bg-white text-text-primary border border-border shadow-[inset_0_1px_0_0_rgba(255,255,255,0.8)] hover:bg-surface-secondary active:bg-surface-tertiary",
-  danger:
-    "bg-danger text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)] hover:bg-red-600 active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)]",
-  ghost: "text-text-secondary hover:bg-surface-tertiary active:bg-border",
+  primary: "bg-text-primary text-white hover:bg-zinc-800 active:bg-zinc-900",
+  secondary: "bg-surface text-text-primary border border-border hover:bg-surface-secondary active:bg-surface-tertiary",
+  danger: "bg-danger text-white hover:bg-red-600 active:bg-red-700",
+  ghost: "text-text-secondary hover:bg-surface-secondary active:bg-surface-tertiary",
 }
 
 const sizeStyles: Record<Size, string> = {
   sm: "px-3 py-1.5 text-xs",
-  md: "px-4 py-2 text-sm",
+  md: "px-4 py-2 text-[13px]",
 }
 
 export function Button({
@@ -40,8 +37,8 @@ export function Button({
       type="button"
       disabled={disabled || loading}
       className={cn(
-        "inline-flex items-center justify-center gap-2 font-medium rounded-button transition-all duration-150 cursor-pointer",
-        "disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none",
+        "inline-flex items-center justify-center gap-2 font-medium rounded-button transition-colors duration-100 cursor-pointer",
+        "disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none",
         variantStyles[variant],
         sizeStyles[size],
         className,

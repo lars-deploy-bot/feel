@@ -26,18 +26,14 @@ export function LoginPage({ onLogin }: LoginPageProps) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-surface-secondary">
+    <div className="min-h-screen flex items-center justify-center bg-bg">
       <div className="w-full max-w-sm">
-        <div className="bg-surface rounded-card border border-border p-8 shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
-          {/* Logo */}
-          <div className="flex justify-center mb-8">
-            <div className="w-12 h-12 rounded-2xl bg-accent flex items-center justify-center shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)]">
-              <span className="text-white text-lg font-bold">A</span>
-            </div>
+        <div className="bg-surface rounded-card p-8">
+          <div className="mb-8">
+            <h1 className="text-[15px] font-semibold text-text-primary tracking-tight">alive</h1>
           </div>
 
-          <h1 className="text-center text-lg font-semibold text-text-primary mb-1">Alive Manager</h1>
-          <p className="text-center text-sm text-text-tertiary mb-6">Enter your passcode to continue</p>
+          <p className="text-[13px] text-text-tertiary mb-6">Enter your passcode to continue</p>
 
           <form onSubmit={handleSubmit} autoComplete="off">
             <Input

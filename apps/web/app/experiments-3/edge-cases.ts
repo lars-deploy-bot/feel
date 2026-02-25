@@ -595,156 +595,161 @@ export const EDGE_OVERLOADED: UIMessage[] = [
 ]
 
 // ===========================================================================
-// 14. WebFetch — fetching a URL and returning content
+// 14. WebFetch — user asks about external docs
 // ===========================================================================
 export const EDGE_WEBFETCH: UIMessage[] = [
-  userMsg("wf-1", "What does the Anthropic docs say about tool use?"),
+  userMsg("wf-1", "Can you check the Hono docs for how middleware works?"),
   assistantToolUse("wf-2", [
     {
       toolId: "toolu_wf_f1",
       name: "WebFetch",
-      input: { url: "https://docs.anthropic.com/claude/docs/tool-use", prompt: "Summarize the tool use documentation" },
+      input: { url: "https://hono.dev/docs/guides/middleware", prompt: "How does middleware work in Hono?" },
     },
   ]),
   toolResult("wf-3", [
     {
       toolUseId: "toolu_wf_f1",
       toolName: "WebFetch",
-      toolInput: {
-        url: "https://docs.anthropic.com/claude/docs/tool-use",
-        prompt: "Summarize the tool use documentation",
-      },
+      toolInput: { url: "https://hono.dev/docs/guides/middleware", prompt: "How does middleware work in Hono?" },
       content:
-        "Tool use allows Claude to interact with external tools and APIs. You define tools with JSON Schema, Claude decides when to use them, and you execute the tool and return results. Supports parallel tool use, streaming, and error handling. Tools are defined in the `tools` parameter of the API request.",
+        "Hono middleware runs before and after route handlers using `app.use()`. Built-in middleware includes cors(), logger(), secureHeaders(), and compress(). Custom middleware is created with `createMiddleware<AppEnv>()` where you call `await next()` to proceed to the next handler. Middleware can modify the context, short-circuit the response, or add headers. Order matters — middleware runs in the order registered.",
     },
   ]),
   assistantText(
     "wf-4",
-    "The docs explain that tool use lets Claude call external functions. You define tools with JSON Schema, Claude chooses when to invoke them, and you return the results.",
+    "Hono middleware uses `app.use()` and runs in registration order. There's built-in middleware for CORS, logging, and security headers. For custom middleware, use `createMiddleware()` and call `await next()` to continue the chain.",
   ),
 ]
 
 // ===========================================================================
-// 15. WebSearch — searching the web for information
+// 15. WebSearch — user asks about something current
 // ===========================================================================
 export const EDGE_WEBSEARCH: UIMessage[] = [
-  userMsg("ws-1", "What's the latest version of Bun?"),
+  userMsg("ws-1", "Is there a way to do server components with Hono?"),
   assistantToolUse("ws-2", [
-    { toolId: "toolu_ws_s1", name: "WebSearch", input: { query: "bun runtime latest version 2026" } },
+    { toolId: "toolu_ws_s1", name: "WebSearch", input: { query: "hono server components react RSC 2026" } },
   ]),
   toolResult("ws-3", [
     {
       toolUseId: "toolu_ws_s1",
       toolName: "WebSearch",
-      toolInput: { query: "bun runtime latest version 2026" },
+      toolInput: { query: "hono server components react RSC 2026" },
       content:
-        "Bun v1.2.22 is the latest release as of February 2026. It includes performance improvements to the bundler, better Node.js compatibility, and fixes for the test runner. Bun is an all-in-one JavaScript runtime and toolkit designed for speed, serving as a drop-in replacement for Node.js.",
+        "Hono introduced experimental React Server Components support in v4.7 via `@hono/react-renderer`. It provides a lightweight RSC implementation that works with Hono's middleware system. The `createRenderer()` function wraps your routes with a React tree. Unlike Next.js, Hono's RSC is opt-in per route and doesn't require a build step for simple cases. Client components use the standard `'use client'` directive.",
     },
   ]),
   assistantText(
     "ws-4",
-    "The latest version of Bun is **v1.2.22**, released with bundler performance improvements and Node.js compatibility fixes.",
+    "Yes — Hono added experimental RSC support in v4.7 via `@hono/react-renderer`. It's lightweight and opt-in per route, unlike Next.js which requires RSC everywhere. You use `createRenderer()` to wrap routes with a React tree.",
   ),
 ]
 
 // ===========================================================================
-// 16. Edit — file modification with diff
+// 16. Edit — user asks to fix something specific
 // ===========================================================================
 export const EDGE_EDIT: UIMessage[] = [
-  userMsg("ed-1", "Fix the typo in the config"),
+  userMsg("ed-1", "The pricing section still says $9/month, it should be $12"),
   assistantToolUse("ed-2", [
     {
       toolId: "toolu_ed_e1",
       name: "Edit",
-      input: { file_path: "src/config.ts", old_string: "const prot = 3000", new_string: "const port = 3000" },
+      input: { file_path: "user/pages/pricing.tsx", old_string: "$9/month", new_string: "$12/month" },
     },
   ]),
   toolResult("ed-3", [
     {
       toolUseId: "toolu_ed_e1",
       toolName: "Edit",
-      toolInput: { file_path: "src/config.ts" },
-      content: JSON.stringify({ file_path: "src/config.ts", replacements: 1 }),
+      toolInput: { file_path: "user/pages/pricing.tsx" },
+      content: JSON.stringify({ file_path: "user/pages/pricing.tsx", replacements: 1 }),
     },
   ]),
-  assistantText("ed-4", "Fixed the typo: `prot` → `port` in `src/config.ts`."),
+  assistantText("ed-4", "Updated the pricing from $9/month to $12/month in `pricing.tsx`."),
 ]
 
 // ===========================================================================
-// 17. Glob — file discovery
+// 17. Glob — user exploring their project structure
 // ===========================================================================
 export const EDGE_GLOB: UIMessage[] = [
-  userMsg("gl-1", "Find all test files"),
-  assistantToolUse("gl-2", [{ toolId: "toolu_gl_g1", name: "Glob", input: { pattern: "src/**/*.test.ts" } }]),
+  userMsg("gl-1", "What pages does my site have?"),
+  assistantToolUse("gl-2", [{ toolId: "toolu_gl_g1", name: "Glob", input: { pattern: "user/pages/**/*.tsx" } }]),
   toolResult("gl-3", [
     {
       toolUseId: "toolu_gl_g1",
       toolName: "Glob",
-      toolInput: { pattern: "src/**/*.test.ts" },
+      toolInput: { pattern: "user/pages/**/*.tsx" },
       content: JSON.stringify({
         matches: [
-          "src/__tests__/api.test.ts",
-          "src/__tests__/auth.test.ts",
-          "src/__tests__/utils.test.ts",
-          "src/__tests__/db.test.ts",
-          "src/routes/__tests__/users.test.ts",
+          "user/pages/index.tsx",
+          "user/pages/about.tsx",
+          "user/pages/pricing.tsx",
+          "user/pages/contact.tsx",
+          "user/pages/blog/index.tsx",
+          "user/pages/blog/[slug].tsx",
         ],
-        count: 5,
+        count: 6,
       }),
     },
   ]),
-  assistantText("gl-4", "Found 5 test files across `src/__tests__/` and `src/routes/__tests__/`."),
+  assistantText(
+    "gl-4",
+    "Your site has 6 pages: a homepage, about, pricing, contact, and a blog with a dynamic slug route.",
+  ),
 ]
 
 // ===========================================================================
-// 18. Grep — content search
+// 18. Grep — user looking for something in their code
 // ===========================================================================
 export const EDGE_GREP: UIMessage[] = [
-  userMsg("gr-1", "Find all TODO comments"),
-  assistantToolUse("gr-2", [{ toolId: "toolu_gr_g1", name: "Grep", input: { pattern: "TODO:", path: "src/" } }]),
+  userMsg("gr-1", "Where do I handle form submissions?"),
+  assistantToolUse("gr-2", [
+    { toolId: "toolu_gr_g1", name: "Grep", input: { pattern: "onSubmit|handleSubmit", path: "user/" } },
+  ]),
   toolResult("gr-3", [
     {
       toolUseId: "toolu_gr_g1",
       toolName: "Grep",
-      toolInput: { pattern: "TODO:", path: "src/" },
+      toolInput: { pattern: "onSubmit|handleSubmit", path: "user/" },
       content: JSON.stringify({
-        files: ["src/api.ts", "src/auth.ts", "src/db.ts"],
-        count: 3,
+        files: ["user/pages/contact.tsx", "user/components/NewsletterForm.tsx"],
+        count: 2,
       }),
     },
   ]),
   assistantText(
     "gr-4",
-    "Found 3 TODOs: rate limiting in `api.ts`, token refresh in `auth.ts`, and connection pooling in `db.ts`.",
+    "Form submissions are handled in two places: `contact.tsx` (contact form) and `NewsletterForm.tsx` (email signup).",
   ),
 ]
 
 // ===========================================================================
-// 19. Bash — running a command
+// 19. Bash — user wants to install a package
 // ===========================================================================
 export const EDGE_BASH: UIMessage[] = [
-  userMsg("ba-1", "Run the tests"),
-  assistantToolUse("ba-2", [{ toolId: "toolu_ba_b1", name: "Bash", input: { command: "bun run test" } }]),
+  userMsg("ba-1", "Add the Resend package so I can send emails"),
+  assistantToolUse("ba-2", [{ toolId: "toolu_ba_b1", name: "Bash", input: { command: "bun add resend" } }]),
   toolResult("ba-3", [
     {
       toolUseId: "toolu_ba_b1",
       toolName: "Bash",
-      toolInput: { command: "bun run test" },
+      toolInput: { command: "bun add resend" },
       content: JSON.stringify({
-        output:
-          "bun test v1.2.22\n\n✓ src/__tests__/api.test.ts (3 tests)\n✓ src/__tests__/auth.test.ts (5 tests)\n✓ src/__tests__/utils.test.ts (2 tests)\n\n 10 pass\n 0 fail\n 3 files | 10 tests\n\nDone in 245ms",
+        output: "bun add v1.2.22\n\ninstalled resend@4.1.0\n\n1 package installed [312ms]",
         exitCode: 0,
       }),
     },
   ]),
-  assistantText("ba-4", "All 10 tests pass across 3 files."),
+  assistantText(
+    "ba-4",
+    "Installed `resend@4.1.0`. I can now set up an email sending function — do you have a Resend API key?",
+  ),
 ]
 
 // ===========================================================================
-// 20. AskUserQuestion — interactive clarification
+// 20. AskUserQuestion — clarifying what to build
 // ===========================================================================
 export const EDGE_ASK_USER: UIMessage[] = [
-  userMsg("aq-1", "Add authentication to the app"),
+  userMsg("aq-1", "I need a contact form on the site"),
   assistantToolUse("aq-2", [
     {
       toolId: "toolu_aq_q1",
@@ -752,15 +757,15 @@ export const EDGE_ASK_USER: UIMessage[] = [
       input: {
         questions: [
           {
-            question: "Which authentication method should we use?",
-            header: "Auth method",
+            question: "What should happen when someone submits the contact form?",
+            header: "Form action",
             options: [
               {
-                label: "JWT tokens (Recommended)",
-                description: "Stateless auth with short-lived access tokens and refresh tokens",
+                label: "Send email (Recommended)",
+                description: "Forward submissions to your email address using Resend",
               },
-              { label: "Session cookies", description: "Server-side sessions stored in Redis with HTTP-only cookies" },
-              { label: "OAuth 2.0 (Google)", description: "Social login via Google OAuth with JWT fallback" },
+              { label: "Save to database", description: "Store submissions in a database table for later review" },
+              { label: "Slack notification", description: "Post a message to a Slack channel with the form data" },
             ],
             multiSelect: false,
           },
@@ -773,23 +778,26 @@ export const EDGE_ASK_USER: UIMessage[] = [
       toolUseId: "toolu_aq_q1",
       toolName: "AskUserQuestion",
       content: JSON.stringify({
-        answers: { "Which authentication method should we use?": "JWT tokens (Recommended)" },
+        answers: { "What should happen when someone submits the contact form?": "Send email (Recommended)" },
       }),
     },
   ]),
-  assistantText("aq-4", "I'll implement JWT-based authentication with access and refresh tokens."),
+  assistantText(
+    "aq-4",
+    "I'll build the contact form with email forwarding via Resend. I'll need your email address and Resend API key to set it up.",
+  ),
 ]
 
 // ===========================================================================
-// 21. MCP tool — browser screenshot
+// 21. MCP tool — browser screenshot of the site
 // ===========================================================================
 export const EDGE_MCP_BROWSER: UIMessage[] = [
-  userMsg("mb-1", "Take a screenshot of the homepage"),
+  userMsg("mb-1", "Show me how the homepage looks right now"),
   assistantToolUse("mb-2", [
     {
       toolId: "toolu_mb_b1",
       name: "mcp__alive-workspace__browser",
-      input: { action: "screenshot", url: "http://localhost:3000" },
+      input: { action: "screenshot", url: "http://localhost:3352" },
     },
   ]),
   toolResult("mb-3", [
@@ -805,30 +813,34 @@ export const EDGE_MCP_BROWSER: UIMessage[] = [
   ]),
   assistantText(
     "mb-4",
-    "Captured a screenshot of the homepage. The layout looks clean — the header, hero section, and footer are all rendering correctly.",
+    "Here's the homepage. The hero section and navigation are rendering correctly. The pricing cards have some spacing issues on mobile — want me to fix that?",
   ),
 ]
 
 // ===========================================================================
-// 22. Task subagent — standalone result
+// 22. Task subagent — exploring codebase structure
 // ===========================================================================
 export const EDGE_TASK: UIMessage[] = [
-  userMsg("tk-1", "Investigate the auth module"),
+  userMsg("tk-1", "Can you check how the routing works in this project?"),
   assistantToolUse(
     "tk-2",
     [
       {
         toolId: "toolu_tk_t1",
         name: "Task",
-        input: { subagent_type: "Explore", description: "Explore auth", prompt: "Read auth files and summarize" },
+        input: {
+          subagent_type: "Explore",
+          description: "Explore routing",
+          prompt: "Read the routing setup and summarize how pages are served",
+        },
       },
     ],
     null,
-    "Let me use a subagent to explore the auth module.",
+    "Let me explore your routing setup.",
   ),
   assistantToolUse(
     "tk-3",
-    [{ toolId: "toolu_tk_r1", name: "Read", input: { file_path: "src/auth.ts" } }],
+    [{ toolId: "toolu_tk_r1", name: "Read", input: { file_path: "user/index.ts" } }],
     "toolu_tk_t1",
   ),
   toolResult(
@@ -837,27 +849,31 @@ export const EDGE_TASK: UIMessage[] = [
       {
         toolUseId: "toolu_tk_r1",
         toolName: "Read",
-        toolInput: { file_path: "src/auth.ts" },
-        content: JSON.stringify({
-          content: "export function verifyToken(token: string) {\n  return jwt.verify(token, SECRET)\n}",
-          total_lines: 3,
-          lines_returned: 3,
-        }),
+        toolInput: { file_path: "user/index.ts" },
+        content:
+          "     1→import { Hono } from 'hono'\n     2→import { serveStatic } from 'hono/bun'\n     3→import { renderer } from './renderer'\n     4→\n     5→const app = new Hono()\n     6→app.use(renderer())\n     7→app.use('/public/*', serveStatic({ root: './' }))\n     8→\n     9→app.get('/', c => c.render(<Home />))\n    10→app.get('/about', c => c.render(<About />))\n    11→app.get('/pricing', c => c.render(<Pricing />))\n    12→\n    13→export default app",
       },
     ],
     "toolu_tk_t1",
   ),
-  assistantText("tk-5", "The auth module uses JWT verification with a shared SECRET.", "toolu_tk_t1"),
+  assistantText(
+    "tk-5",
+    "It's a Hono app with server-side rendering and three routes: home, about, and pricing.",
+    "toolu_tk_t1",
+  ),
   toolResult("tk-6", [
     {
       toolUseId: "toolu_tk_t1",
       toolName: "Task",
-      content: JSON.stringify({ result: "Auth module uses JWT with a shared SECRET constant for token verification." }),
+      content: JSON.stringify({
+        result:
+          "Hono server at user/index.ts with 3 routes (/, /about, /pricing). Uses SSR via a custom renderer and serves static files from /public.",
+      }),
     },
   ]),
   assistantText(
     "tk-7",
-    "The auth module is straightforward — JWT-based token verification with a single shared secret.",
+    "Your site uses Hono with server-side rendering. There are 3 routes defined in `user/index.ts`: homepage, about, and pricing. Static files are served from the `public/` directory.",
   ),
 ]
 

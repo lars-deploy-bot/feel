@@ -15,10 +15,7 @@ import { useOrgs } from "./hooks/useOrgs"
 export function OrgsPage() {
   const { orgs, loading, error, refresh, updateCredits, deleteOrg, addMember, removeMember, createOrg } = useOrgs()
 
-  // Search
   const [search, setSearch] = useState("")
-
-  // Modal state
   const [editCreditsTarget, setEditCreditsTarget] = useState<{ orgId: string; credits: number; name: string } | null>(
     null,
   )
@@ -27,7 +24,6 @@ export function OrgsPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
 
-  // Filter orgs by search
   const filtered = search.trim()
     ? orgs.filter(org => {
         const q = search.toLowerCase()
@@ -39,7 +35,6 @@ export function OrgsPage() {
       })
     : orgs
 
-  // Stats
   const totalCredits = orgs.reduce((sum, org) => sum + org.credits, 0)
   const totalMembers = orgs.reduce((sum, org) => sum + org.member_count, 0)
   const totalProjects = orgs.reduce((sum, org) => sum + org.domain_count, 0)
@@ -66,7 +61,6 @@ export function OrgsPage() {
   if (error) {
     return (
       <EmptyState
-        icon="⚠️"
         title="Failed to load organizations"
         description={error}
         action={<Button onClick={refresh}>Retry</Button>}
@@ -78,38 +72,30 @@ export function OrgsPage() {
     <>
       <PageHeader
         title="Organizations"
-        description={`${orgs.length} organization${orgs.length !== 1 ? "s" : ""} across the platform`}
+        description={`${orgs.length} organization${orgs.length !== 1 ? "s" : ""}`}
         action={
-          <div className="flex items-center gap-2">
-            <Button size="sm" variant="secondary" onClick={refresh} loading={loading}>
-              Refresh
-            </Button>
-            <Button size="sm" variant="primary" onClick={() => setCreateOpen(true)}>
-              Create
-            </Button>
-          </div>
+          <Button size="sm" variant="primary" onClick={() => setCreateOpen(true)}>
+            Create
+          </Button>
         }
       />
 
-      {/* Stats Row */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="flex gap-10 mb-8 pb-8 border-b border-border">
         <StatCard label="Organizations" value={orgs.length} />
         <StatCard label="Total Credits" value={`$${totalCredits.toFixed(2)}`} />
         <StatCard label="Members" value={totalMembers} />
         <StatCard label="Projects" value={totalProjects} />
       </div>
 
-      {/* Search */}
-      <div className="mb-5">
+      <div className="mb-6">
         <Input
           placeholder="Search organizations, members, IDs..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="max-w-md"
+          className="max-w-sm"
         />
       </div>
 
-      {/* Org Cards */}
       {filtered.length === 0 ? (
         <EmptyState
           title={search ? "No matches" : "No organizations"}
@@ -123,7 +109,7 @@ export function OrgsPage() {
           }
         />
       ) : (
-        <div className="space-y-3">
+        <div className="divide-y divide-border">
           {filtered.map(org => (
             <OrgCard
               key={org.org_id}
@@ -137,7 +123,6 @@ export function OrgsPage() {
         </div>
       )}
 
-      {/* Modals */}
       {editCreditsTarget && (
         <EditCreditsModal
           open
