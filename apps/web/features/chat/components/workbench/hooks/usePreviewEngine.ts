@@ -122,8 +122,11 @@ export function usePreviewEngine({ workspace, skipTokenFetch, onNavigate }: UseP
   // - NAVIGATION sets isLoading=false (page loaded and script executed)
   // The iframe 'load' event is unreliable for cross-origin iframes in React 19.
   useEffect(() => {
+    const expectedOrigin = workspace ? new URL(getPreviewUrl(workspace, { path: "/" })).origin : null
+
     const handleMessage = (event: MessageEvent) => {
       if (event.source !== iframeRef.current?.contentWindow) return
+      if (expectedOrigin && event.origin !== expectedOrigin) return
 
       // Navigation started - show loading with safety timeout
       if (event.data?.type === PREVIEW_MESSAGES.NAVIGATION_START) {

@@ -160,7 +160,7 @@ Always ship dark variants. The pattern:
 | `border-black/[0.03]` | `border-white/[0.04]` |
 | `text-black/35` | `text-white/35` |
 | `bg-white` (active pill) | `bg-white/10` |
-| `bg-neutral-900/80` | — (dropdown glass) |
+| `bg-white/80` (dropdown glass) | `bg-neutral-900/80` |
 
 Dark borders and fills are slightly *more* opaque than light ones — dark backgrounds eat contrast.
 

@@ -44,7 +44,7 @@ export function SettingsOverlay({ onClose, initialTab }: SettingsOverlayProps) {
     <div
       className="absolute inset-0 z-40 bg-white dark:bg-zinc-950"
       role="dialog"
-      aria-modal="true"
+      aria-modal="false"
       aria-label="Settings"
       data-testid="settings-overlay"
     >

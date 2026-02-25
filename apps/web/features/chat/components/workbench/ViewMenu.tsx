@@ -52,7 +52,7 @@ export function ViewMenu({ currentView, onViewChange, isSuperadmin }: ViewMenuPr
   // "home" is always valid (it's the picker, not in the menu)
   useEffect(() => {
     if (currentView !== "home" && !availableViews.some(v => v.view === currentView)) {
-      onViewChange(isMobile ? "site" : (availableViews[0]?.view ?? "code"))
+      onViewChange(availableViews[0]?.view ?? "code")
     }
   }, [availableViews, currentView, isMobile, onViewChange])
 
@@ -61,7 +61,9 @@ export function ViewMenu({ currentView, onViewChange, isSuperadmin }: ViewMenuPr
     if (!isOpen) return
 
     function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      const target = event.target
+      if (!(target instanceof Node)) return
+      if (menuRef.current && !menuRef.current.contains(target)) {
         setIsOpen(false)
       }
     }

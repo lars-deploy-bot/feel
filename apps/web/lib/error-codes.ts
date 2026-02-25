@@ -290,7 +290,7 @@ export function getErrorMessage(code: ErrorCode, details?: Record<string, any>):
 
     case ErrorCodes.MODEL_NOT_AVAILABLE:
       if (details?.retired) {
-        return `The model "${details.model}" has been retired. Your model has been reset — please try again.`
+        return `The model "${details.model}" has been retired. Please select a different model in Settings.`
       }
       return details?.model
         ? `You don't have access to the model "${details.model}". Please select a different model in Settings.`

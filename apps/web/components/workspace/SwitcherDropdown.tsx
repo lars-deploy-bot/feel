@@ -72,7 +72,8 @@ export function SwitcherDropdown<T>({
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      const target = e.target as Node
+      const target = e.target
+      if (!(target instanceof Node)) return
       if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) return
       onClose()
     }
@@ -95,8 +96,10 @@ export function SwitcherDropdown<T>({
 
   // Scroll highlighted item into view
   useEffect(() => {
-    const el = listRef.current?.children[highlight] as HTMLElement | undefined
-    el?.scrollIntoView({ block: "nearest" })
+    const el = listRef.current?.children.item(highlight)
+    if (el instanceof HTMLElement) {
+      el.scrollIntoView({ block: "nearest" })
+    }
   }, [highlight])
 
   const handleKeyDown = useCallback(
@@ -104,6 +107,7 @@ export function SwitcherDropdown<T>({
       switch (e.key) {
         case "ArrowDown":
           e.preventDefault()
+          if (filtered.length === 0) break
           setHighlight(i => Math.min(i + 1, filtered.length - 1))
           break
         case "ArrowUp":

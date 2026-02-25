@@ -567,7 +567,9 @@ function AgentSitesDropdown({
   useEffect(() => {
     if (!open) return
     const handle = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      const target = e.target
+      if (!(target instanceof Node)) return
+      if (ref.current && !ref.current.contains(target)) setOpen(false)
     }
     document.addEventListener("mousedown", handle)
     return () => document.removeEventListener("mousedown", handle)

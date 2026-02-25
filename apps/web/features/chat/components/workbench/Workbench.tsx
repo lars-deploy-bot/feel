@@ -84,6 +84,15 @@ export function Workbench() {
 
   const isHome = workbench.view === "home"
 
+  type ViewOption = { view: WorkbenchView; label: string; icon: typeof Globe }
+  const opt = (view: WorkbenchView, label: string, icon: typeof Globe): ViewOption => ({ view, label, icon })
+  const viewOptions: ViewOption[] = [
+    ...(isSuperadminWorkspace ? [] : [opt("site", "Preview", Globe)]),
+    opt("code", "Code", Code),
+    opt("terminal", "Terminal", Terminal),
+    ...(isSuperadminWorkspace ? [opt("events", "Events", Activity)] : []),
+  ]
+
   return (
     <div
       className={`relative bg-white dark:bg-[#0d0d0d] flex flex-col border-l border-black/[0.08] dark:border-white/[0.04] h-full ${isResizing ? "select-none" : ""}`}
@@ -116,12 +125,7 @@ export function Workbench() {
       {/* View switcher — visible when not on home */}
       {!isHome && (
         <div className="h-9 px-2.5 flex items-center gap-1 shrink-0">
-          {[
-            { view: "site" as WorkbenchView, label: "Preview", icon: Globe },
-            { view: "code" as WorkbenchView, label: "Code", icon: Code },
-            { view: "terminal" as WorkbenchView, label: "Terminal", icon: Terminal },
-            ...(isSuperadminWorkspace ? [{ view: "events" as WorkbenchView, label: "Events", icon: Activity }] : []),
-          ].map(({ view, label, icon: Icon }) => {
+          {viewOptions.map(({ view, label, icon: Icon }) => {
             const active = workbench.view === view
             return (
               <button

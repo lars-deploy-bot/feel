@@ -37,6 +37,7 @@ const RETIRED_MODELS = new Set([
   "claude-3-5-sonnet-20240620",
   "claude-3-5-sonnet-20241022",
   "claude-3-5-haiku-20241022",
+  "claude-opus-4-20250514",
   "claude-sonnet-4-20250514",
   "claude-haiku-4-5-20251001",
 ])

@@ -228,22 +228,19 @@ export async function POST(req: NextRequest) {
 
       // Step 2: Determine billing (workspace credits vs OAuth/no-credit path)
       const orgCredits = await getOrgCredits(resolvedWorkspaceName)
-      if (orgCredits === null) {
-        logger.error("Credit lookup failed for workspace:", resolvedWorkspaceName)
-        return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, {
-          status: 500,
-          details: { message: "Could not verify workspace credits", requestId },
-        })
-      }
       const COST_ESTIMATE = 1
 
-      if (orgCredits >= COST_ESTIMATE) {
+      if (orgCredits !== null && orgCredits >= COST_ESTIMATE) {
         tokenSource = "workspace"
         logger.log(`Billing: workspace credits (${orgCredits} available)`)
       } else {
-        // Using OAuth - no credit deduction
+        // Using OAuth - no credit deduction (also handles transient credit lookup failures)
         tokenSource = "user_provided"
-        logger.log(`Billing: OAuth (no credit deduction, workspace has ${orgCredits} credits)`)
+        if (orgCredits === null) {
+          logger.warn("Credit lookup failed for workspace, falling back to OAuth:", resolvedWorkspaceName)
+        } else {
+          logger.log(`Billing: OAuth (no credit deduction, workspace has ${orgCredits} credits)`)
+        }
       }
     } catch (workspaceError) {
       logger.error("Workspace resolution failed:", workspaceError)
@@ -383,7 +380,7 @@ export async function POST(req: NextRequest) {
 
     // Resolve and validate the requested model.
     // Admins can use any valid model. Other users on org credits need explicit access.
-    const requestedModel = userModel || env.CLAUDE_MODEL
+    const requestedModel = userModel ?? env.CLAUDE_MODEL
     if (!isValidClaudeModel(requestedModel)) {
       const code = isRetiredModel(requestedModel) ? ErrorCodes.MODEL_NOT_AVAILABLE : ErrorCodes.MODEL_INVALID
       return structuredErrorResponse(code, {

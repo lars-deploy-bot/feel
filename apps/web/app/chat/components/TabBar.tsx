@@ -184,7 +184,8 @@ function ClosedTabsDropdown({ tabs, triggerRef, onReopen, onClose }: ClosedTabsD
   // Click outside
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      const target = e.target as Node
+      const target = e.target
+      if (!(target instanceof Node)) return
       if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) return
       onClose()
     }
@@ -262,7 +263,7 @@ export function TabBar({
           {tabs.length > 0 && (
             <div className="inline-flex items-center gap-2 min-w-0 overflow-x-auto scrollbar-hide">
               {/* Island */}
-              <div className={`inline-flex items-center gap-1.5 px-1.5 py-1 rounded-full ${ISLAND_BG}`}>
+              <div role="tablist" className={`inline-flex items-center gap-1.5 px-1.5 py-1 rounded-full ${ISLAND_BG}`}>
                 {tabs.map(tab => (
                   <TabPill
                     key={tab.id}

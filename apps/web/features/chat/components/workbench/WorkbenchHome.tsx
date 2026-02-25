@@ -62,7 +62,7 @@ function FakeBrowser() {
           <div className="size-2 rounded-full bg-black/10 dark:bg-white/10" />
         </div>
         <div className="flex-1 h-4 bg-black/[0.04] dark:bg-white/[0.04] rounded-md flex items-center px-2">
-          <span className="text-[10px] text-black/25 dark:text-white/20 font-mono">mysite.alive.best</span>
+          <span className="text-[10px] text-black/25 dark:text-white/20 font-mono">your-workspace</span>
         </div>
       </div>
       <div className="p-4 overflow-hidden min-h-[200px]">

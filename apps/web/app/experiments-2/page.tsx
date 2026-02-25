@@ -310,12 +310,14 @@ function ThePatience() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const startHold = () => {
+    if (intervalRef.current) clearInterval(intervalRef.current)
     setHolding(true)
     setComplete(false)
     intervalRef.current = setInterval(() => {
       setProgress(p => {
         if (p >= 100) {
           if (intervalRef.current) clearInterval(intervalRef.current)
+          intervalRef.current = null
           setComplete(true)
           setHolding(false)
           return 100
@@ -327,11 +329,18 @@ function ThePatience() {
 
   const endHold = () => {
     if (intervalRef.current) clearInterval(intervalRef.current)
+    intervalRef.current = null
     if (!complete) {
       setProgress(0)
       setHolding(false)
     }
   }
+
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+    }
+  }, [])
 
   return (
     <div className="flex flex-col items-center justify-center p-14 gap-5">

@@ -242,14 +242,18 @@ function FakeCodeEditor() {
 
 // ─── FAKE DRIVE ─────────────────────────────────────────────────────────────
 
+type DriveItem =
+  | { type: "folder"; name: string; color: string }
+  | { type: "file"; name: string; ext: string; color: string }
+
 function FakeDrive() {
-  const items = [
-    { type: "folder" as const, name: "public", color: "#0066FF" },
-    { type: "folder" as const, name: "src", color: "#0066FF" },
-    { type: "file" as const, name: "index.html", ext: "html", color: "#e06c75" },
-    { type: "file" as const, name: "package.json", ext: "json", color: "#98c379" },
-    { type: "file" as const, name: "styles.css", ext: "css", color: "#61afef" },
-    { type: "file" as const, name: "vite.config.ts", ext: "ts", color: "#0066FF" },
+  const items: DriveItem[] = [
+    { type: "folder", name: "public", color: "#0066FF" },
+    { type: "folder", name: "src", color: "#0066FF" },
+    { type: "file", name: "index.html", ext: "html", color: "#e06c75" },
+    { type: "file", name: "package.json", ext: "json", color: "#98c379" },
+    { type: "file", name: "styles.css", ext: "css", color: "#61afef" },
+    { type: "file", name: "vite.config.ts", ext: "ts", color: "#0066FF" },
   ]
 
   return (

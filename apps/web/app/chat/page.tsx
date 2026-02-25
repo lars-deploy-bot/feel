@@ -765,8 +765,14 @@ function ChatPageContent() {
                       // Check if there's any previous assistant message with a UUID
                       filteredMessages.slice(0, index).some(m => {
                         if (m.type !== "sdk_message") return false
-                        const sdkContent = m.content as { type?: string; uuid?: string }
-                        return sdkContent?.type === "assistant" && !!sdkContent?.uuid
+                        const sdkContent = m.content
+                        if (typeof sdkContent !== "object" || sdkContent === null) return false
+                        return (
+                          "type" in sdkContent &&
+                          sdkContent.type === "assistant" &&
+                          "uuid" in sdkContent &&
+                          !!sdkContent.uuid
+                        )
                       })
 
                     return (
