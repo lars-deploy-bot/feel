@@ -251,6 +251,20 @@ export function ToolOutputRouter({
       break
     }
 
+    case "websearch": {
+      // WebSearch returns a text summary — render as clean text
+      if (typeof content === "string") {
+        return (
+          <div className="p-2.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.04] max-h-48 overflow-auto">
+            <pre className="text-[11px] text-black/60 dark:text-white/60 font-diatype-mono leading-relaxed whitespace-pre-wrap break-words">
+              {content.length > 3000 ? `${content.slice(0, 3000)}...` : content}
+            </pre>
+          </div>
+        )
+      }
+      break
+    }
+
     case "mcp__stripe__list_subscriptions": {
       const subscriptions = unwrapMcp(content)
       if (Array.isArray(subscriptions) && subscriptions.length > 0 && subscriptions[0].id) {

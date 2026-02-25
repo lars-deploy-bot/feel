@@ -598,26 +598,29 @@ export const EDGE_OVERLOADED: UIMessage[] = [
 // 14. WebFetch — fetching a URL and returning content
 // ===========================================================================
 export const EDGE_WEBFETCH: UIMessage[] = [
-  userMsg("wf-1", "What does the Hono docs say about middleware?"),
+  userMsg("wf-1", "What does the Anthropic docs say about tool use?"),
   assistantToolUse("wf-2", [
     {
       toolId: "toolu_wf_f1",
       name: "WebFetch",
-      input: { url: "https://hono.dev/docs/guides/middleware", prompt: "Summarize the middleware documentation" },
+      input: { url: "https://docs.anthropic.com/claude/docs/tool-use", prompt: "Summarize the tool use documentation" },
     },
   ]),
   toolResult("wf-3", [
     {
       toolUseId: "toolu_wf_f1",
       toolName: "WebFetch",
-      toolInput: { url: "https://hono.dev/docs/guides/middleware", prompt: "Summarize the middleware documentation" },
+      toolInput: {
+        url: "https://docs.anthropic.com/claude/docs/tool-use",
+        prompt: "Summarize the tool use documentation",
+      },
       content:
-        "Hono middleware runs before/after route handlers. Built-in middleware includes: cors(), logger(), prettyJSON(), secureHeaders(). Custom middleware uses `createMiddleware()`. Middleware can modify context, return early, or pass through with `await next()`.",
+        "Tool use allows Claude to interact with external tools and APIs. You define tools with JSON Schema, Claude decides when to use them, and you execute the tool and return results. Supports parallel tool use, streaming, and error handling. Tools are defined in the `tools` parameter of the API request.",
     },
   ]),
   assistantText(
     "wf-4",
-    "Hono has built-in middleware for CORS, logging, and security headers. You can create custom middleware with `createMiddleware()` — it works like Express middleware but with Hono's context object.",
+    "The docs explain that tool use lets Claude call external functions. You define tools with JSON Schema, Claude chooses when to invoke them, and you return the results.",
   ),
 ]
 
@@ -634,18 +637,8 @@ export const EDGE_WEBSEARCH: UIMessage[] = [
       toolUseId: "toolu_ws_s1",
       toolName: "WebSearch",
       toolInput: { query: "bun runtime latest version 2026" },
-      content: JSON.stringify([
-        {
-          title: "Bun v1.2.22 Release",
-          url: "https://bun.sh/blog/bun-v1.2.22",
-          snippet: "Bun v1.2.22 includes performance improvements to the bundler and fixes for Node.js compatibility.",
-        },
-        {
-          title: "Bun — JavaScript runtime",
-          url: "https://bun.sh",
-          snippet: "Bun is an all-in-one JavaScript runtime & toolkit designed for speed.",
-        },
-      ]),
+      content:
+        "Bun v1.2.22 is the latest release as of February 2026. It includes performance improvements to the bundler, better Node.js compatibility, and fixes for the test runner. Bun is an all-in-one JavaScript runtime and toolkit designed for speed, serving as a drop-in replacement for Node.js.",
     },
   ]),
   assistantText(
@@ -670,8 +663,8 @@ export const EDGE_EDIT: UIMessage[] = [
     {
       toolUseId: "toolu_ed_e1",
       toolName: "Edit",
-      toolInput: { file_path: "src/config.ts", old_string: "const prot = 3000", new_string: "const port = 3000" },
-      content: "OK — edited src/config.ts",
+      toolInput: { file_path: "src/config.ts" },
+      content: JSON.stringify({ file_path: "src/config.ts", replacements: 1 }),
     },
   ]),
   assistantText("ed-4", "Fixed the typo: `prot` → `port` in `src/config.ts`."),
@@ -688,8 +681,16 @@ export const EDGE_GLOB: UIMessage[] = [
       toolUseId: "toolu_gl_g1",
       toolName: "Glob",
       toolInput: { pattern: "src/**/*.test.ts" },
-      content:
-        "src/__tests__/api.test.ts\nsrc/__tests__/auth.test.ts\nsrc/__tests__/utils.test.ts\nsrc/__tests__/db.test.ts\nsrc/routes/__tests__/users.test.ts",
+      content: JSON.stringify({
+        matches: [
+          "src/__tests__/api.test.ts",
+          "src/__tests__/auth.test.ts",
+          "src/__tests__/utils.test.ts",
+          "src/__tests__/db.test.ts",
+          "src/routes/__tests__/users.test.ts",
+        ],
+        count: 5,
+      }),
     },
   ]),
   assistantText("gl-4", "Found 5 test files across `src/__tests__/` and `src/routes/__tests__/`."),
@@ -706,8 +707,10 @@ export const EDGE_GREP: UIMessage[] = [
       toolUseId: "toolu_gr_g1",
       toolName: "Grep",
       toolInput: { pattern: "TODO:", path: "src/" },
-      content:
-        "src/api.ts:12: // TODO: add rate limiting\nsrc/auth.ts:45: // TODO: refresh token logic\nsrc/db.ts:8: // TODO: connection pooling",
+      content: JSON.stringify({
+        files: ["src/api.ts", "src/auth.ts", "src/db.ts"],
+        count: 3,
+      }),
     },
   ]),
   assistantText(
@@ -727,8 +730,11 @@ export const EDGE_BASH: UIMessage[] = [
       toolUseId: "toolu_ba_b1",
       toolName: "Bash",
       toolInput: { command: "bun run test" },
-      content:
-        "bun test v1.2.22\n\n✓ src/__tests__/api.test.ts (3 tests)\n✓ src/__tests__/auth.test.ts (5 tests)\n✓ src/__tests__/utils.test.ts (2 tests)\n\n 10 pass\n 0 fail\n 3 files | 10 tests\n\nDone in 245ms",
+      content: JSON.stringify({
+        output:
+          "bun test v1.2.22\n\n✓ src/__tests__/api.test.ts (3 tests)\n✓ src/__tests__/auth.test.ts (5 tests)\n✓ src/__tests__/utils.test.ts (2 tests)\n\n 10 pass\n 0 fail\n 3 files | 10 tests\n\nDone in 245ms",
+        exitCode: 0,
+      }),
     },
   ]),
   assistantText("ba-4", "All 10 tests pass across 3 files."),
@@ -831,7 +837,12 @@ export const EDGE_TASK: UIMessage[] = [
       {
         toolUseId: "toolu_tk_r1",
         toolName: "Read",
-        content: "export function verifyToken(token: string) {\n  return jwt.verify(token, SECRET)\n}",
+        toolInput: { file_path: "src/auth.ts" },
+        content: JSON.stringify({
+          content: "export function verifyToken(token: string) {\n  return jwt.verify(token, SECRET)\n}",
+          total_lines: 3,
+          lines_returned: 3,
+        }),
       },
     ],
     "toolu_tk_t1",
@@ -841,7 +852,7 @@ export const EDGE_TASK: UIMessage[] = [
     {
       toolUseId: "toolu_tk_t1",
       toolName: "Task",
-      content: "Auth module uses JWT with a shared SECRET constant for token verification.",
+      content: JSON.stringify({ result: "Auth module uses JWT with a shared SECRET constant for token verification." }),
     },
   ]),
   assistantText(
