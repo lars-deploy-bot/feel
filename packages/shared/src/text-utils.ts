@@ -14,5 +14,5 @@ export function truncateMarkdown(text: string, maxLen: number): string {
   const lastNewline = chunk.lastIndexOf("\n")
   // Snap to last newline if it's reasonably far in (>40% of maxLen)
   const cutPoint = lastNewline > maxLen * 0.4 ? lastNewline : maxLen
-  return text.slice(0, cutPoint).trimEnd() + "..."
+  return `${text.slice(0, cutPoint).trimEnd()}...`
 }
