@@ -104,8 +104,8 @@ function ToolResult({
   const toolName = result.tool_name || "Tool Result"
   const isDebugMode = useDebugVisible()
 
-  // Auto-expand based on tool config (errors always expand)
-  const [isExpanded, setIsExpanded] = useState(() => shouldAutoExpand(toolName, result.is_error ?? false))
+  const autoExpand = shouldAutoExpand(toolName, result.is_error ?? false)
+  const [isExpanded, setIsExpanded] = useState(() => autoExpand)
 
   if (!isStreamClientVisibleTool(toolName)) {
     return null
@@ -123,13 +123,29 @@ function ToolResult({
   // In debug mode, show both exact tool name and preview
   const displayPreview = isDebugMode ? `${toolName}: ${preview}` : preview
 
+  // Auto-expand tools render content directly — no toggle button
+  if (autoExpand) {
+    return (
+      <div className="mb-2 overflow-hidden">
+        <ToolOutputRouter
+          toolName={toolName}
+          content={displayContent}
+          toolInput={result.tool_input}
+          toolUseId={result.tool_use_id}
+          tabId={tabId}
+          onSubmitAnswer={onSubmitAnswer}
+        />
+      </div>
+    )
+  }
+
   return (
     <>
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
         aria-expanded={isExpanded}
-        className={cn(toolIndicatorButton, "mb-2", result.is_error ? errorInteractiveText : interactiveText)}
+        className={cn(toolIndicatorButton, "mb-1", result.is_error ? errorInteractiveText : interactiveText)}
       >
         <Icon size={ICON_SIZE} className={cn(mutedIcon, "flex-shrink-0")} />
         <span className="truncate">

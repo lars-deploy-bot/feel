@@ -13,9 +13,270 @@ Clean. Quiet. Intentional. The UI should feel like it's barely there — just en
 
 **One word:** Restrained.
 
-## The Island Pattern
+**No emojis. Ever.** Use minimal SVG icons or nothing at all. Emojis are visual noise.
 
-Our primary navigation pattern. A group of items inside a soft, barely-visible pill container.
+---
+
+## Layout: Clean Chrome
+
+Our primary layout pattern. A dark shell frames a floating white content surface. The chrome (navigation, structure) recedes. The content elevates. Your eye goes straight to the card.
+
+```text
+┌──────────────────────────────────────────────────┐
+│ dark bg (#09090b)                                │
+│                                                  │
+│  sidebar    ┌─ white card (rounded-[16px]) ───┐  │
+│  (text)     │                                 │  │
+│  alive      │   Content lives here            │  │
+│             │                                 │  │
+│  Orgs  ←    │   Stats, lists, forms           │  │
+│  Users      │                                 │  │
+│  Domains    │                                 │  │
+│             │                                 │  │
+│  sign out   └─────────────────────────────────┘  │
+│                                                  │
+└──────────────────────────────────────────────────┘
+```
+
+**Structure:**
+```tsx
+<div className="flex h-screen bg-bg overflow-hidden">
+  <aside className="w-48 flex-shrink-0 py-5 px-4">
+    {/* text-only nav on dark background */}
+  </aside>
+  <main className="flex-1 m-2 ml-0 bg-surface rounded-card overflow-y-auto">
+    <div className="max-w-5xl mx-auto px-8 py-8">
+      {/* content */}
+    </div>
+  </main>
+</div>
+```
+
+**Why it works:**
+- Dark bg + white card = natural depth without shadows
+- Sidebar disappears — just text on a dark wall
+- Card margin (`m-2 ml-0`) creates the floating effect
+- 16px border radius softens the card without looking bubbly
+- Content has generous padding (32px) and a max-width constraint
+
+**Login uses the same frame:** dark bg, centered white card, minimal text.
+
+---
+
+## Sidebar Navigation
+
+Text-only. No icons. No containers. No borders.
+
+```tsx
+// Logo: just the word
+<span className="text-[15px] font-semibold text-nav-active tracking-tight">alive</span>
+
+// Nav items
+active:   "text-nav-active font-medium"   // white, stands out
+inactive: "text-nav-text hover:text-nav-hover"  // zinc-600 → zinc-400
+```
+
+- `text-[13px]` for all nav items
+- `py-1.5 px-3 rounded-md` for click targets
+- Sign out at the bottom: `text-[12px] text-nav-text`
+- No active indicators (dots, bars, backgrounds) — text weight and color are enough
+
+---
+
+## Color System
+
+Built on the zinc scale. Monochrome by default. Color used sparingly and meaningfully.
+
+### Dark Shell
+| Token | Value | Use |
+|---|---|---|
+| `bg` | `#09090b` | Page background (zinc-950) |
+| `nav-text` | `#52525b` | Inactive sidebar items (zinc-600) |
+| `nav-active` | `#fafafa` | Active sidebar items (zinc-50) |
+| `nav-hover` | `#a1a1aa` | Hovered sidebar items (zinc-400) |
+
+### Content Surface
+| Token | Value | Use |
+|---|---|---|
+| `surface` | `#ffffff` | Card background |
+| `surface-secondary` | `#f4f4f5` | Subtle backgrounds (zinc-100) |
+| `surface-tertiary` | `#e4e4e7` | Hover/active backgrounds (zinc-200) |
+| `border` | `#e4e4e7` | Borders and dividers (zinc-200) |
+| `border-subtle` | `#f4f4f5` | Faint separators (zinc-100) |
+
+### Text (inside content card)
+| Token | Value | Use |
+|---|---|---|
+| `text-primary` | `#18181b` | Headings, names, values (zinc-900) |
+| `text-secondary` | `#52525b` | Body text, descriptions (zinc-600) |
+| `text-tertiary` | `#a1a1aa` | Labels, metadata, hints (zinc-400) |
+
+### Semantic Colors
+| Token | Value | Use |
+|---|---|---|
+| `accent` | `#3b82f6` | Links, interactive highlights (blue-500) |
+| `success` / `success-subtle` | `#22c55e` / `#f0fdf4` | Positive states |
+| `warning` / `warning-subtle` | `#eab308` / `#fefce8` | Caution states |
+| `danger` / `danger-subtle` | `#ef4444` / `#fef2f2` | Destructive actions |
+
+**Rule:** Accent blue is for links and highlights only. Primary actions use near-black buttons. The UI stays monochrome.
+
+---
+
+## Typography
+
+Font: `"Inter", -apple-system, BlinkMacSystemFont, sans-serif`
+Feature settings: `"cv02", "cv03", "cv04", "cv11"` (prettier alternates)
+
+| Element | Size | Weight | Color |
+|---|---|---|---|
+| Page title | `text-lg` (18px) | `font-semibold` | `text-primary` |
+| Nav items | `text-[13px]` | `font-medium` (active) / normal | nav tokens |
+| Body text | `text-[13px]` | normal | `text-primary` or `text-secondary` |
+| Labels | `text-[13px]` | `font-medium` | `text-primary` |
+| Section headers | `text-[11px]` | `font-medium` uppercase `tracking-wider` | `text-tertiary` |
+| Metadata | `text-[11px]` | normal | `text-tertiary` |
+| Stat numbers | `text-2xl` | `font-semibold` `tabular-nums` | `text-primary` |
+| Hints/errors | `text-[12px]` | normal | `text-tertiary` or `text-danger` |
+
+**No uppercase** except section headers inside expanded content. No letter-spacing except on those headers.
+
+---
+
+## Buttons
+
+Primary is near-black. This is deliberate — it's more restrained than a blue/indigo button.
+
+```ts
+primary:   "bg-text-primary text-white hover:bg-zinc-800"     // near-black
+secondary: "bg-surface border border-border hover:bg-surface-secondary"  // white with border
+ghost:     "text-text-secondary hover:bg-surface-secondary"   // just text
+danger:    "bg-danger text-white hover:bg-red-600"            // red, for destructive
+```
+
+- Sizes: `sm` (px-3 py-1.5 text-xs) and `md` (px-4 py-2 text-[13px])
+- Border radius: `8px` (`rounded-button`)
+- Transitions: `duration-100` (fast, not sluggish)
+- Disabled: `opacity-40` (not 50 — more intentional)
+- No shadows on buttons. No inset highlights. Flat and clean.
+
+---
+
+## Badges
+
+Small, slightly rounded rectangles. Not pills.
+
+```ts
+default: "bg-surface-secondary text-text-secondary"
+success: "bg-success-subtle text-emerald-700"
+warning: "bg-warning-subtle text-amber-700"
+danger:  "bg-danger-subtle text-red-700"
+accent:  "bg-accent-subtle text-blue-700"
+```
+
+- `text-[11px] font-medium`
+- `rounded-badge` (6px) — not fully rounded, more structured
+- `px-2 py-0.5` — compact
+
+---
+
+## Inputs
+
+Clean and quiet. Focus state uses dark tint, not blue rings.
+
+```tsx
+"border border-border rounded-input"                           // resting
+"focus:ring-2 focus:ring-text-primary/10 focus:border-text-primary/30"  // focused
+```
+
+- `text-[13px]` for input text
+- `px-3 py-2` for padding
+- Error state: `border-danger` with `text-[12px] text-danger` message below
+- Labels: `text-[13px] font-medium text-text-primary mb-1.5`
+- Transitions: `duration-100`
+
+---
+
+## Modals
+
+White card on a dark overlay. No blur — just darkness.
+
+```tsx
+// Overlay
+"bg-black/60"  // 60% black, no backdrop-blur
+
+// Card
+"bg-surface rounded-card shadow-2xl max-w-md"
+
+// Header: title with bottom border
+// Body: px-6 py-5
+// Footer: right-aligned buttons with top border, gap-2
+```
+
+- Animation: `fadeIn 120ms ease-out`
+- Escape closes. Click overlay closes.
+- No `X` close button — the overlay click and Escape are enough
+
+---
+
+## Stats
+
+Just numbers and labels. No card containers. No borders. Whitespace separates them.
+
+```tsx
+<div className="flex gap-10 pb-8 border-b border-border">
+  <div>
+    <p className="text-2xl font-semibold tabular-nums tracking-tight">{value}</p>
+    <p className="text-[12px] text-text-tertiary mt-1">{label}</p>
+  </div>
+  {/* repeat */}
+</div>
+```
+
+Number first, label below. The visual weight of the number speaks for itself.
+
+---
+
+## Lists
+
+Row-based with dividers. Not card-per-item.
+
+```tsx
+<div className="divide-y divide-border">
+  {items.map(item => (
+    <div className="py-4">
+      {/* row content */}
+    </div>
+  ))}
+</div>
+```
+
+- Expand inline for details (no separate page/modal)
+- Actions appear on hover or stay visible as ghost buttons
+- Destructive actions (Remove, Delete) use `text-danger`
+- Chevron for expand/collapse: 12x12 SVG, rotates 180deg
+
+---
+
+## Empty States
+
+Minimal. SVG icon in a dashed border box. Short text. Optional action button.
+
+```tsx
+<div className="w-10 h-10 rounded-lg border border-dashed border-border flex items-center justify-center">
+  <svg>...</svg>  // 16x16, strokeWidth 1.5
+</div>
+<h3 className="text-[13px] font-medium text-text-primary">{title}</h3>
+<p className="text-[12px] text-text-tertiary">{description}</p>
+```
+
+No emojis. No illustrations. No "Get started!" enthusiasm.
+
+---
+
+## The Island Pattern (Chat UI)
+
+Used in the main chat interface for tab navigation.
 
 ```text
 ┌─────────────────────────────────────────────────┐
@@ -23,83 +284,33 @@ Our primary navigation pattern. A group of items inside a soft, barely-visible p
 │  │ Tab 1  ● │                                    │
 │  └──────────┘                                    │
 └─────────────────────────────────────────────────┘
-                right-click to archive
 ```
 
-**What makes it ours:**
-- Container: `bg-black/[0.025]` with `border border-black/[0.03]` and `rounded-full` — you almost can't see it
-- Active item: white pill with a pronounced lift shadow, pops out of the container
-- Inactive items: `text-black/35` — they fade into the background until you need them
-- Action buttons (+ and archive) sit **outside** the island as their own matching circles
-
-**The shared constant:**
 ```ts
 const ISLAND_BG = "bg-black/[0.025] dark:bg-white/[0.04] border border-black/[0.03] dark:border-white/[0.04]"
-```
 
-Use this everywhere an island appears. Tab bar, segment controls, toggle groups.
-
-## The Dot
-
-A `size-1.5 rounded-full` circle. We use it sparingly:
-
-- **Emerald dot** (`bg-emerald-500`) — active/live state. Appears inside the active tab pill.
-- **Gray dot** (`bg-black/10`) — inactive/dormant. Used in dropdowns to show items that *could* become active.
-- **Black dot** (`bg-black`) — sometimes used as a separator between ghost text items.
-
-The dot is never decorative. It always means something.
-
-## The Active Pill
-
-When something is selected, it gets the full treatment:
-
-```ts
 const PILL_ACTIVE =
   "bg-white dark:bg-white/10 text-black dark:text-white shadow-[0_1px_4px_rgba(0,0,0,0.1),0_0_1px_rgba(0,0,0,0.05)]"
-```
 
-- White background lifts it above the island
-- Dual shadow: soft spread + tight 1px edge for depth
-- Text goes full black
-- Green dot appears
-
-**Inactive:**
-```ts
 const PILL_INACTIVE =
   "text-black/35 dark:text-white/35 hover:text-black/55 dark:hover:text-white/55 cursor-pointer"
 ```
 
-No background. No border. Just faded text that darkens on hover.
+- Active pill: white bg, dual shadow, green dot, full-black text
+- Inactive: no bg, no border, faded text
+- Action circles outside the island share `ISLAND_BG`
 
-## Opacity Scale
+### The Dot
 
-We use opacity religiously. These values are non-negotiable:
+`size-1.5 rounded-full` — used meaningfully:
+- Emerald (`bg-emerald-500`) — active/live
+- Gray (`bg-black/10`) — inactive/dormant
+- Black (`bg-black`) — separator
 
-| Value | Use |
-|---|---|
-| `/[0.025]` | Island/container background — barely there |
-| `/[0.03-0.04]` | Island borders — visible if you look for them |
-| `/[0.06-0.08]` | Dividers, dropdown borders |
-| `/10` | Dormant dots, faintest UI elements |
-| `/20-25` | Hint text, timestamps, icons at rest |
-| `/30` | Placeholder text |
-| `/35` | Inactive tab text, secondary content |
-| `/40-45` | Dropdown item text, muted labels |
-| `/50-55` | Icon hover states |
-| `full` | Active text, selected items |
-
-## Typography
-
-- **Tab pills:** `text-[13px] font-medium` — slightly larger than 12px, clear but not loud
-- **Hint text:** `text-[10px]` — the "right-click to archive" kind. Whisper-quiet.
-- **Timestamps:** `text-[10px] tabular-nums` — always monospaced for alignment
-- **No uppercase** except rare section headers in dropdowns
-
-## Dropdowns
+### Dropdowns (Chat)
 
 Frosted glass on a portal:
-
-```text
+```
 bg-white/80 dark:bg-neutral-900/80
 backdrop-blur-xl
 border border-black/[0.06]
@@ -107,71 +318,51 @@ rounded-2xl
 shadow-[0_4px_16px_rgba(0,0,0,0.08)]
 ```
 
-- Items stagger in with `fadeSlideIn` animation (200ms base, 40ms between items)
-- Each item has a gray dot that turns emerald on hover
-- Hover state matches the active pill: white background + subtle shadow
-- No heavy headers. No "Closed" label needed — context is obvious.
-- Timestamps in `text-[10px] text-black/20` at the right edge
+Items stagger with `fadeSlideIn` animation (200ms base, 40ms between items).
 
-## Action Circles
+---
 
-Standalone buttons that sit outside the island:
+## Opacity Scale (Chat UI)
 
-```ts
-const ACTION_CIRCLE = `flex items-center justify-center size-8 rounded-full ${ISLAND_BG} transition-all duration-200`
-```
+| Value | Use |
+|---|---|
+| `/[0.025]` | Island/container background |
+| `/[0.03-0.04]` | Island borders |
+| `/[0.06-0.08]` | Dividers, dropdown borders |
+| `/10` | Dormant dots |
+| `/20-25` | Hint text, timestamps |
+| `/30` | Placeholder text |
+| `/35` | Inactive tab text |
+| `/50-55` | Icon hover states |
+| `full` | Active text |
 
-Same background as the island. Same border. They belong to the same family but stand alone. Used for: add tab (+), archive history, settings toggles.
-
-## Nav Bar
-
-Top bar is `h-12` with a `border-b border-black/[0.04]` divider.
-
-Buttons: `rounded-lg` (not full), `bg-black/[0.03]`, `active:scale-95` for a tactile press feel.
-
-Icon size: `16px` with `strokeWidth={1.75}` — thinner than default Lucide.
-
-## Hover Hints
-
-Small instructional text that appears on hover:
-
-```text
-text-[10px] text-black/0 group-hover/bar:text-black/25
-transition-colors duration-300 select-none
-```
-
-Starts invisible. Fades to `text-black/25` — barely readable, just enough. Used for non-obvious interactions like "right-click to archive".
+---
 
 ## Transitions
 
-- **`duration-200`** — standard for everything (pills, hovers, color changes)
-- **`duration-150`** — nav buttons with `ease-out` for snappy feel
-- **`duration-300`** — hint text fade-in (slower = more subtle)
-- **`transition-all`** — when shadow + color + background all change together
-- **`transition-colors`** — when only color changes
-
-## Dark Mode
-
-Always ship dark variants. The pattern:
-
-| Light | Dark |
+| Duration | Use |
 |---|---|
-| `bg-black/[0.025]` | `bg-white/[0.04]` |
-| `border-black/[0.03]` | `border-white/[0.04]` |
-| `text-black/35` | `text-white/35` |
-| `bg-white` (active pill) | `bg-white/10` |
-| `bg-white/80` (dropdown glass) | `bg-neutral-900/80` |
+| `duration-100` | Buttons, inputs, nav items — snappy |
+| `duration-150` | Nav buttons with `ease-out` |
+| `duration-200` | Pills, hovers, color changes — standard |
+| `duration-300` | Hint text fade-in — slower = more subtle |
 
-Dark borders and fills are slightly *more* opaque than light ones — dark backgrounds eat contrast.
+Use `transition-colors` when only color changes. Use `transition-all` when shadow + color + bg change together.
+
+---
 
 ## What We Don't Do
 
+- No emojis (use SVG or nothing)
 - No gradients
-- No colored backgrounds on containers (only black/white at low opacity)
-- No visible borders on chips or cards (use fills or shadows)
-- No icons with strokeWidth > 2 (feels heavy)
-- No `rounded-md` — too small. Minimum `rounded-lg`, prefer `rounded-full` for interactive elements
-- No slide-in-from-left/right animations (feels like a mobile app transition)
-- No tooltips when a hover hint or the context already makes it clear
-- No "Untitled" as visible placeholder — name things or don't show them
-- No confirmation dialogs for reversible actions (archiving a tab just archives it)
+- No colored container backgrounds (only black/white at low opacity, or semantic fills for badges)
+- No card-per-item in lists (use rows with dividers)
+- No heavy shadows (dark bg provides contrast naturally)
+- No indigo/purple as primary action color (primary buttons are near-black)
+- No icons with strokeWidth > 2
+- No `rounded-md` — minimum `rounded-lg`
+- No slide-in-from-left/right animations
+- No tooltips when context is obvious
+- No "Untitled" as placeholder — name things or don't show them
+- No confirmation dialogs for reversible actions
+- No decorative elements that don't communicate something

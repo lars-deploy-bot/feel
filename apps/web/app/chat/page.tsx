@@ -737,12 +737,20 @@ function ChatPageContent() {
                   return renderItems.map(item => {
                     if (item.type === "group") {
                       return (
-                        <CollapsibleToolGroup
+                        <MessageWrapper
                           key={`group-${item.messages[0].id}`}
-                          messages={item.messages}
-                          tabId={sessionTabId ?? undefined}
-                          onSubmitAnswer={sendMessage}
-                        />
+                          messageId={item.messages[0].id}
+                          tabId={sessionTabId ?? ""}
+                          canDelete={false}
+                        >
+                          <CollapsibleToolGroup
+                            messages={item.messages}
+                            trailingTaskResult={item.trailingTaskResult}
+                            subagentSummary={item.subagentSummary}
+                            tabId={sessionTabId ?? undefined}
+                            onSubmitAnswer={sendMessage}
+                          />
+                        </MessageWrapper>
                       )
                     }
 

@@ -16,7 +16,7 @@ interface UserMessageProps {
  */
 export function UserMessage({ content, attachments }: UserMessageProps) {
   return (
-    <div className="flex justify-end mb-4">
+    <div className="flex justify-end mb-2">
       <div className="max-w-full md:max-w-2xl">
         {/* Attachments */}
         <ChatAttachments attachments={attachments} />

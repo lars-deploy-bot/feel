@@ -11,6 +11,9 @@ export interface FeedbackEntry {
   userAgent?: string
   timestamp: string
   status?: string
+  githubIssueUrl?: string
+  awareEmailSent?: string
+  fixedEmailSent?: string
 }
 
 interface FeedbackContext {
@@ -53,6 +56,32 @@ export async function addFeedbackEntry(entry: Omit<FeedbackEntry, "id" | "timest
     userAgent: entry.userAgent,
     timestamp: data.created_at || new Date().toISOString(),
     status: data.status || "pending",
+  }
+}
+
+/**
+ * Update feedback entry fields (github issue, aware email, fixed email)
+ */
+export async function updateFeedback(
+  feedbackId: string,
+  updates: {
+    githubIssueUrl?: string | null
+    awareEmailSent?: string | null
+    fixedEmailSent?: string | null
+  },
+): Promise<void> {
+  const app = await createAppClient("service")
+
+  const dbUpdates: Record<string, string | null> = {}
+  if ("githubIssueUrl" in updates) dbUpdates.github_issue_url = updates.githubIssueUrl ?? null
+  if ("awareEmailSent" in updates) dbUpdates.aware_email_sent = updates.awareEmailSent ?? null
+  if ("fixedEmailSent" in updates) dbUpdates.fixed_email_sent = updates.fixedEmailSent ?? null
+
+  const { error } = await app.from("feedback").update(dbUpdates).eq("feedback_id", feedbackId)
+
+  if (error) {
+    console.error("[Supabase Feedback] Failed to update feedback:", error)
+    throw new Error("Failed to update feedback")
   }
 }
 
@@ -105,6 +134,9 @@ export async function getAllFeedback(): Promise<FeedbackEntry[]> {
           userAgent: context?.userAgent,
           timestamp: item.created_at || new Date().toISOString(),
           status: item.status || "pending",
+          githubIssueUrl: item.github_issue_url ?? undefined,
+          awareEmailSent: item.aware_email_sent ?? undefined,
+          fixedEmailSent: item.fixed_email_sent ?? undefined,
         }
       }) || []
   )

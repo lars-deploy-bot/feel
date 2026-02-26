@@ -58,7 +58,8 @@ export function AssistantMessage({ content }: AssistantMessageProps) {
 function ToolUseItem({ item }: { item: ContentItem }): React.ReactNode {
   const isDebugMode = useDebugVisible()
   if (isTextBlock(item)) {
-    const text = item.text
+    const text = item.text.trim()
+    if (!text) return null
 
     // Check for OAuth/authentication errors first
     if (isOAuthError(text)) {
@@ -69,14 +70,14 @@ function ToolUseItem({ item }: { item: ContentItem }): React.ReactNode {
     // Text messages get more vertical spacing than tool results
     if (hasMarkdown(text)) {
       return (
-        <div className="mb-4">
+        <div className="mb-2">
           <MarkdownDisplay content={text} />
         </div>
       )
     }
 
     return (
-      <div className="mb-4 whitespace-pre-wrap break-words text-black dark:text-white font-normal leading-relaxed">
+      <div className="mb-2 whitespace-pre-wrap break-words text-black dark:text-white font-normal leading-relaxed">
         {text}
       </div>
     )
@@ -175,7 +176,7 @@ function DebugToolItem({
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
-        className={cn(toolIndicatorButton, interactiveText, "mb-2")}
+        className={cn(toolIndicatorButton, interactiveText, "mb-1")}
       >
         <ChevronRight size={ICON_SIZE} className={cn(mutedIcon, "transition-transform", isExpanded && "rotate-90")} />
         <Icon size={ICON_SIZE} className={mutedIcon} />

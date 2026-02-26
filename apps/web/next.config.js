@@ -69,6 +69,13 @@ const nextConfig = {
       )
     }
     // Sentry uses a tunnel API route (not a rewrite) — see app/api/monitoring/route.ts
+
+    // Manager v2 — proxy to standalone Vite app on port 5090
+    rewrites.push(
+      { source: "/manager-2", destination: "http://localhost:5090/" },
+      { source: "/manager-2/:path*", destination: "http://localhost:5090/:path*" },
+    )
+
     return rewrites
   },
   // Skip type checking during build (run separately with tsc)

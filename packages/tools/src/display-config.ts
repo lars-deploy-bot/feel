@@ -17,7 +17,19 @@
  * ```
  */
 
-import { AI, CALENDAR, EMAIL, FILE_OPS, LINEAR, OTHER, OUTLOOK, PLAN, STRIPE, STRIPE_PATTERNS } from "./tool-names.js"
+import {
+  AI,
+  CALENDAR,
+  EMAIL,
+  FILE_OPS,
+  LINEAR,
+  OTHER,
+  OUTLOOK,
+  PLAN,
+  STRIPE,
+  STRIPE_PATTERNS,
+  WEB,
+} from "./tool-names.js"
 
 // ============================================================
 // TYPES
@@ -139,12 +151,17 @@ const grepPreview = (data: unknown): string => {
   return "grep"
 }
 
-const bashPreview = (data: unknown): string => {
+const bashPreview = (data: unknown, input?: unknown): string => {
   const d = data as Record<string, unknown> | null
-  if (d?.exitCode !== undefined) {
-    return d.exitCode === 0 ? "completed" : `failed (${d.exitCode})`
+  const inp = input as Record<string, unknown> | null
+  const status = d?.exitCode !== undefined ? (d.exitCode === 0 ? "completed" : `failed (${d.exitCode})`) : null
+  // Show command snippet if available
+  if (inp?.command) {
+    const cmd = String(inp.command)
+    const short = cmd.length > 40 ? `${cmd.slice(0, 40)}...` : cmd
+    return status ? `${short} — ${status}` : short
   }
-  return "bash"
+  return status || "bash"
 }
 
 // ============================================================
@@ -203,7 +220,7 @@ register(LINEAR.GET_ISSUE, {
 })
 
 register(LINEAR.LIST_ISSUES, {
-  autoExpand: false,
+  autoExpand: true,
   transform: unwrapMcp,
   getPreview: linearIssuesPreview,
 })
@@ -215,7 +232,7 @@ register(LINEAR.CREATE_COMMENT, {
 })
 
 register(LINEAR.LIST_COMMENTS, {
-  autoExpand: false,
+  autoExpand: true,
   transform: unwrapMcp,
   getPreview: data => {
     const count = arrayLength(data)
@@ -224,7 +241,7 @@ register(LINEAR.LIST_COMMENTS, {
 })
 
 register(LINEAR.LIST_PROJECTS, {
-  autoExpand: false,
+  autoExpand: true,
   transform: unwrapMcp,
   getPreview: data => {
     const count = arrayLength(data)
@@ -233,7 +250,7 @@ register(LINEAR.LIST_PROJECTS, {
 })
 
 register(LINEAR.LIST_TEAMS, {
-  autoExpand: false,
+  autoExpand: true,
   transform: unwrapMcp,
   getPreview: data => {
     const count = arrayLength(data)
@@ -244,14 +261,14 @@ register(LINEAR.LIST_TEAMS, {
 // --- Stripe patterns ---
 register(STRIPE_PATTERNS.CREATE_ANY, { autoExpand: true })
 register(STRIPE_PATTERNS.UPDATE_ANY, { autoExpand: true })
-register(STRIPE_PATTERNS.LIST_ANY, { autoExpand: false })
-register(STRIPE_PATTERNS.GET_ANY, { autoExpand: false })
-register(STRIPE_PATTERNS.RETRIEVE_ANY, { autoExpand: false })
-register(STRIPE_PATTERNS.SEARCH_ANY, { autoExpand: false })
+register(STRIPE_PATTERNS.LIST_ANY, { autoExpand: true })
+register(STRIPE_PATTERNS.GET_ANY, { autoExpand: true })
+register(STRIPE_PATTERNS.RETRIEVE_ANY, { autoExpand: true })
+register(STRIPE_PATTERNS.SEARCH_ANY, { autoExpand: true })
 
 // --- Stripe specific ---
 register(STRIPE.LIST_SUBSCRIPTIONS, {
-  autoExpand: false,
+  autoExpand: true,
   transform: unwrapMcp,
   getPreview: data => {
     const count = arrayLength(data)
@@ -260,13 +277,13 @@ register(STRIPE.LIST_SUBSCRIPTIONS, {
 })
 
 register(STRIPE.LIST_CUSTOMERS, {
-  autoExpand: false,
+  autoExpand: true,
   transform: unwrapMcp,
   getPreview: stripeCustomersPreview,
 })
 
 register(STRIPE.FETCH_RESOURCES, {
-  autoExpand: false,
+  autoExpand: true,
   getPreview: data => {
     if (Array.isArray(data)) {
       const count = data.filter((item: Record<string, unknown>) => item.type === "text").length
@@ -277,12 +294,12 @@ register(STRIPE.FETCH_RESOURCES, {
 })
 
 register(STRIPE.RETRIEVE_BALANCE, {
-  autoExpand: false,
+  autoExpand: true,
   getPreview: () => "balance",
 })
 
 register(STRIPE.GET_ACCOUNT_INFO, {
-  autoExpand: false,
+  autoExpand: true,
   transform: unwrapMcp,
   getPreview: data => {
     const d = data as Record<string, unknown> | null
@@ -291,13 +308,13 @@ register(STRIPE.GET_ACCOUNT_INFO, {
 })
 
 register(STRIPE.LIST_PAYMENT_INTENTS, {
-  autoExpand: false,
+  autoExpand: true,
   transform: unwrapMcp,
   getPreview: stripePaymentIntentsPreview,
 })
 
 register(STRIPE.SEARCH_RESOURCES, {
-  autoExpand: false,
+  autoExpand: true,
   transform: unwrapMcp,
   getPreview: data => {
     const d = data as Record<string, unknown> | null
@@ -461,6 +478,34 @@ register(OUTLOOK.COMPOSE, {
 register(PLAN.EXIT_PLAN_MODE, {
   autoExpand: true, // Always show the approval UI
   getPreview: () => "plan ready for approval",
+})
+
+// --- Web tools ---
+register(WEB.FETCH, {
+  autoExpand: false,
+  getPreview: (_data, input) => {
+    const inp = input as Record<string, unknown> | null
+    if (inp?.url) {
+      try {
+        const hostname = new URL(String(inp.url)).hostname
+        return `Fetched ${hostname}`
+      } catch {
+        return `Fetched ${String(inp.url).slice(0, 40)}`
+      }
+    }
+    return "fetched"
+  },
+})
+register(WEB.SEARCH, {
+  autoExpand: false,
+  getPreview: (_data, input) => {
+    const inp = input as Record<string, unknown> | null
+    if (inp?.query) {
+      const q = String(inp.query)
+      return `Searched "${q.length > 35 ? `${q.slice(0, 35)}...` : q}"`
+    }
+    return "searched"
+  },
 })
 
 // --- Other ---

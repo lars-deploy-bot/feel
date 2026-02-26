@@ -12,6 +12,9 @@ export interface FeedbackEntry {
   userAgent?: string
   conversationId?: string
   email?: string
+  githubIssueUrl?: string
+  awareEmailSent?: string
+  fixedEmailSent?: string
 }
 
 export interface FeedbackStore {

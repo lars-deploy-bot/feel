@@ -70,6 +70,7 @@ export interface AgentManagerContent {
 }
 
 // Tool progress message content (from SDK)
+// parent_tool_use_id: null = main agent, "toolu_..." = subagent (see sdk-types.ts)
 export interface ToolProgressContent {
   type: "tool_progress"
   tool_use_id: string
@@ -103,6 +104,7 @@ export type UIMessage = {
     | "compacting"
     | "tool_progress"
     | "auth_status"
+    | "task_notification"
     | "interrupt"
     | "agent_manager"
   content: unknown
@@ -194,6 +196,16 @@ export function parseStreamEvent(
       // Ignore other status messages (e.g., status: null for session updates)
       if (systemMsg.subtype === "status") {
         return null
+      }
+      // Handle task_notification (subagent completed/failed/stopped)
+      // Has: task_id, status, output_file (full transcript), summary, uuid, session_id
+      if (systemMsg.subtype === "task_notification") {
+        return {
+          id: `${event.requestId}-task-${systemMsg.task_id}-${systemMsg.uuid}`,
+          type: "task_notification",
+          content: content,
+          ...baseMessage,
+        }
       }
     }
 
@@ -374,6 +386,7 @@ export const COMPONENT_TYPE = {
   COMPACTING: "compacting",
   TOOL_PROGRESS: "tool_progress",
   AUTH_STATUS: "auth_status",
+  TASK_NOTIFICATION: "task_notification",
   INTERRUPT: "interrupt",
   SYSTEM: "system",
   ASSISTANT: "assistant",
@@ -394,6 +407,7 @@ export function getMessageComponentType(message: UIMessage): ComponentType {
   if (message.type === "compacting") return COMPONENT_TYPE.COMPACTING
   if (message.type === "tool_progress") return COMPONENT_TYPE.TOOL_PROGRESS
   if (message.type === "auth_status") return COMPONENT_TYPE.AUTH_STATUS
+  if (message.type === "task_notification") return COMPONENT_TYPE.TASK_NOTIFICATION
   if (message.type === "interrupt") return COMPONENT_TYPE.INTERRUPT
   if (message.type === "agent_manager") return COMPONENT_TYPE.AGENT_MANAGER
 

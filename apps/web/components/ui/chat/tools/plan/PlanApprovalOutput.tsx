@@ -8,7 +8,7 @@
 
 "use client"
 
-import { CheckCircle, FileText } from "lucide-react"
+import { Check } from "lucide-react"
 import { useCallback, useState } from "react"
 import { usePlanModeActions } from "@/lib/stores/planModeStore"
 import type { ToolResultRendererProps } from "@/lib/tools/tool-registry"
@@ -65,44 +65,35 @@ export function PlanApprovalOutput({ data: _data, onSubmitAnswer }: PlanApproval
   // Show completion state
   if (approved) {
     return (
-      <div className="mt-2 p-3 rounded-lg bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-800/30">
-        <div className="flex items-center gap-2">
-          <CheckCircle className="size-4 text-emerald-600 dark:text-emerald-400" />
-          <p className="text-sm text-emerald-700 dark:text-emerald-300">
-            Plan approved - continuing with implementation
-          </p>
-        </div>
+      <div className="flex items-center gap-2 py-2 text-[13px] text-black/60 dark:text-white/60">
+        <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+        <span>Plan approved — continuing with implementation</span>
       </div>
     )
   }
 
   return (
-    <div className="mt-2 p-4 rounded-lg bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/50 dark:border-blue-800/30">
-      <div className="flex items-start gap-3">
-        <FileText className="size-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-        <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-medium text-blue-900 dark:text-blue-100">Plan Ready for Review</h3>
-          <p className="mt-1 text-xs text-blue-700/80 dark:text-blue-300/80">
-            Claude has created a plan and is waiting for your approval before proceeding with the implementation.
-          </p>
+    <div className="rounded-lg border border-black/[0.06] dark:border-white/[0.08] p-4">
+      <p className="text-[13px] font-medium text-black/80 dark:text-white/80">Plan Ready for Review</p>
+      <p className="mt-1 text-[12px] text-black/40 dark:text-white/40">
+        Claude has created a plan and is waiting for your approval before proceeding.
+      </p>
 
-          <div className="mt-4 flex gap-2">
-            <button
-              type="button"
-              onClick={handleApprove}
-              className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
-            >
-              Approve Plan
-            </button>
-            <button
-              type="button"
-              onClick={handleReject}
-              className="px-4 py-2 rounded-lg bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium border border-gray-300 dark:border-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
-            >
-              Request Changes
-            </button>
-          </div>
-        </div>
+      <div className="mt-4 flex gap-2">
+        <button
+          type="button"
+          onClick={handleApprove}
+          className="px-4 py-2 rounded-lg bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-[13px] font-medium hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors duration-100"
+        >
+          Approve Plan
+        </button>
+        <button
+          type="button"
+          onClick={handleReject}
+          className="px-4 py-2 rounded-lg border border-black/[0.06] dark:border-white/[0.08] text-black/60 dark:text-white/60 text-[13px] font-medium hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors duration-100"
+        >
+          Request Changes
+        </button>
       </div>
     </div>
   )

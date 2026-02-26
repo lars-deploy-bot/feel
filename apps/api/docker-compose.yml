@@ -1,0 +1,11 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        API_PORT: 5080
+    env_file: .env.development
+    ports:
+      - "5080:5080"
+    restart: unless-stopped

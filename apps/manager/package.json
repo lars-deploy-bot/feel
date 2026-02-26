@@ -1,0 +1,40 @@
+{
+  "name": "@webalive/manager",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Manager dashboard — React + Vite",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5090",
+    "build": "vite build",
+    "start": "bun server.ts",
+    "preview": "vite preview --port 5090",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "type-check": "tsgo --noEmit",
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "ci": "biome ci ."
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.90.21",
+    "@tanstack/react-virtual": "^3.13.19",
+    "@webalive/shared": "workspace:*",
+    "nuqs": "^2.8.8",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-hot-toast": "^2.5.3"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.3.14",
+    "@playwright/test": "^1.56.1",
+    "@tailwindcss/vite": "^4.1.15",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^4.5.2",
+    "tailwindcss": "^4.1.15",
+    "typescript": "5.9.3",
+    "vite": "^6.3.5",
+    "vitest": "^4.0.18"
+  }
+}

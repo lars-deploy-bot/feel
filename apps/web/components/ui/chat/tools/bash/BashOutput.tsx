@@ -12,16 +12,19 @@ function stripAnsi(str: string): string {
 }
 
 export function BashOutput({ output, exitCode, killed, shellId }: BashOutputProps) {
-  const getStatusText = () => {
-    if (killed) return "killed (timeout)"
-    return exitCode === 0 ? "completed" : `failed (${exitCode})`
-  }
+  // Status (completed/failed) is already shown in the preview button (bashPreview in display-config.ts)
+  // Only show extra status info when there's something the preview doesn't cover
+  const extraInfo = killed
+    ? "killed (timeout)"
+    : exitCode !== 0
+      ? `exit code ${exitCode}`
+      : shellId
+        ? `shell ${shellId}`
+        : null
 
   return (
     <div className="space-y-2">
-      <div className="text-xs text-black/40 dark:text-white/40 font-normal">
-        {getStatusText()} {shellId && `• shell ${shellId}`}
-      </div>
+      {extraInfo && <div className="text-xs text-black/40 dark:text-white/40 font-normal">{extraInfo}</div>}
       {output && (
         <div className="text-xs text-black/60 dark:text-white/60 font-diatype-mono leading-relaxed whitespace-pre-wrap bg-black/[0.03] dark:bg-white/[0.04] p-2 rounded-lg max-h-60 overflow-auto">
           {stripAnsi(output)}
