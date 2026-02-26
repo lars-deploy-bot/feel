@@ -870,6 +870,8 @@ export function useChatMessaging({
         setMsg("")
         chatInputRef.current?.clearAllAttachments()
         forceScrollToBottom()
+        // Re-focus the textarea after sending so user can keep typing
+        requestAnimationFrame(() => chatInputRef.current?.focus())
 
         await sendStreaming(userMessage, targetTabId)
       } finally {

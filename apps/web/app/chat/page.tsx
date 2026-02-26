@@ -270,6 +270,21 @@ function ChatPageContent() {
     })
   }, [registerElementSelectHandler])
 
+  // Re-focus the message input when the user returns to this browser tab,
+  // but only if nothing meaningful is focused (avoid stealing from modals/tool inputs)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) return
+      const active = document.activeElement
+      // Only re-focus if focus was lost to body (browser dropped it on tab switch)
+      if (!active || active === document.body) {
+        requestAnimationFrame(() => chatInputRef.current?.focus())
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange)
+  }, [])
+
   // Redeem referral code if stored (from invite link flow)
   useRedeemReferral()
 
