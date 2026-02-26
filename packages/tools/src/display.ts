@@ -34,4 +34,4 @@ export type {
   ToolName,
 } from "./tool-names.js"
 // Tool name constants
-export { AI, CALENDAR, EMAIL, FILE_OPS, LINEAR, OTHER, OUTLOOK, PLAN, STRIPE } from "./tool-names.js"
+export { AI, CALENDAR, EMAIL, FILE_OPS, LINEAR, OTHER, OUTLOOK, PLAN, STRIPE, WEB } from "./tool-names.js"

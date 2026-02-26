@@ -1,0 +1,46 @@
+import { api } from "@/lib/api"
+import type { User, UserEvent } from "./users.types"
+
+interface UsersListResponse {
+  data: User[]
+}
+
+interface UserEventsResponse {
+  data: UserEvent[]
+}
+
+export interface UserDevice {
+  browser: string | null
+  browser_version: string | null
+  os: string | null
+  os_version: string | null
+  device_type: string | null
+  screen: string | null
+  last_seen: string
+}
+
+export interface UserLocation {
+  city: string | null
+  country: string | null
+  region: string | null
+  timezone: string | null
+  last_seen: string
+}
+
+export interface UserProfile {
+  devices: UserDevice[]
+  locations: UserLocation[]
+  referrer: string | null
+  initial_referrer: string | null
+}
+
+interface UserProfileResponse {
+  data: UserProfile | null
+}
+
+export const usersApi = {
+  list: () => api.get<UsersListResponse>("/manager/users").then(r => r.data),
+  profile: (userId: string) => api.get<UserProfileResponse>(`/manager/users/${userId}/profile`).then(r => r.data),
+  events: (userId: string, limit = 50) =>
+    api.get<UserEventsResponse>(`/manager/users/${userId}/events?limit=${limit}`).then(r => r.data),
+}

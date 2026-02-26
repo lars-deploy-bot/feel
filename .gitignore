@@ -166,6 +166,32 @@ ehthumbs.db
 Thumbs.db
 feedback.json
 
+# Binary images (use external storage, not the repo)
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.webp
+# Allow specific favicons
+!apps/web/app/favicon.*
+
+# Wrong lock files (we use bun — only bun.lock allowed)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Database/binary data files
+*.db
+*.sqlite
+*.sqlite3
+
+# Scraped/debug HTML dumps
+apps/mcp-servers/google-scraper/test-html/
+
+# Local settings (machine-specific)
+settings.local.json
+
 # Cryptographic keys (NEVER COMMIT)
 *-private-key.json
 *.pem

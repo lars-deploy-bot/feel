@@ -45,11 +45,13 @@ export {
   COOKIE_NAMES,
   createTestStorageState,
   createWorkspaceStorageValue,
+  dollarsToTokens,
   ENV_VARS,
   FEATURE_FLAGS,
   type FeatureFlagDefinition,
   type FeatureFlagKey,
   FREE_CREDITS,
+  formatTokensAsDollars,
   LIMITS,
   PREVIEW_MESSAGES,
   REFERRAL,
@@ -64,6 +66,8 @@ export {
   type StreamType,
   TEST_CONFIG,
   type TestStorageStateOptions,
+  TOKENS_PER_DOLLAR,
+  tokensToDollars,
   WORKER_POOL,
   WORKSPACE_STORAGE,
   type WorkspaceStorageRecentItem,
@@ -240,6 +244,10 @@ export {
   type TemplateIcon,
   type TemplateId,
 } from "./templates.js"
+export {
+  // Text utilities
+  truncateMarkdown,
+} from "./text-utils.js"
 export {
   getDescriptorsByServer,
   getInternalMcpToolNames,

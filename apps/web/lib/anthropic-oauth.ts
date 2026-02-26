@@ -159,8 +159,13 @@ function shouldRefreshToken(expiresAt: number, minimumValidityMs: number): boole
 }
 
 function normalizeMinimumValidityMs(minimumValidityMs?: number): number {
-  if (typeof minimumValidityMs !== "number" || !Number.isFinite(minimumValidityMs) || minimumValidityMs < 0) {
+  if (minimumValidityMs === undefined) {
     return TOKEN_EXPIRY_BUFFER_MS
+  }
+  if (typeof minimumValidityMs !== "number" || !Number.isFinite(minimumValidityMs) || minimumValidityMs < 0) {
+    throw new TypeError(
+      `Invalid minimumValidityMs: ${String(minimumValidityMs)}. Expected a finite non-negative number.`,
+    )
   }
   return minimumValidityMs
 }

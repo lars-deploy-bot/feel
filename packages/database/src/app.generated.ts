@@ -376,26 +376,35 @@ export type Database = {
       }
       feedback: {
         Row: {
+          aware_email_sent: string | null
           content: string
           context: Json | null
           created_at: string | null
           feedback_id: string
+          fixed_email_sent: string | null
+          github_issue_url: string | null
           status: string | null
           user_id: string | null
         }
         Insert: {
+          aware_email_sent?: string | null
           content: string
           context?: Json | null
           created_at?: string | null
           feedback_id?: string
+          fixed_email_sent?: string | null
+          github_issue_url?: string | null
           status?: string | null
           user_id?: string | null
         }
         Update: {
+          aware_email_sent?: string | null
           content?: string
           context?: Json | null
           created_at?: string | null
           feedback_id?: string
+          fixed_email_sent?: string | null
+          github_issue_url?: string | null
           status?: string | null
           user_id?: string | null
         }

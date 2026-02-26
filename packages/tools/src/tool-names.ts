@@ -162,6 +162,13 @@ export type BrowserTool = (typeof BROWSER)[keyof typeof BROWSER]
 // OTHER TOOLS
 // ============================================================
 
+export const WEB = {
+  FETCH: "webfetch",
+  SEARCH: "websearch",
+} as const
+
+export type WebTool = (typeof WEB)[keyof typeof WEB]
+
 export const OTHER = {
   BASH: "bash",
   TASK: "task",
@@ -183,6 +190,7 @@ export type ToolName =
   | AITool
   | AutomationTool
   | BrowserTool
+  | WebTool
   | PlanTool
   | OtherTool
 
