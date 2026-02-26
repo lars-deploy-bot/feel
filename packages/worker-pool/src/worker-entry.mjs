@@ -16,7 +16,7 @@
  *   WORKER_WORKSPACE_KEY - Workspace identifier
  */
 
-import { chmodSync, chownSync, existsSync, mkdirSync, mkdtempSync } from "node:fs"
+import { chmodSync, chownSync, existsSync, mkdirSync, mkdtempSync, statSync } from "node:fs"
 import { createConnection } from "node:net"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -360,6 +360,26 @@ function dropPrivileges() {
       console.error(`[worker] Ignoring invalid CLAUDE_CONFIG_DIR (must be absolute): ${configuredClaudeDir}`)
     }
     process.env.CLAUDE_CONFIG_DIR = defaultClaudeDir
+  }
+
+  // Self-healing: ensure config files are world-readable (0o644).
+  // Workers drop privileges to workspace users (e.g. site-example-com) but
+  // the Claude CLI subprocess still reads CLAUDE_CONFIG_DIR. If these files
+  // are 0o600 (owner-only), the subprocess silently exits with 0 messages.
+  // See: docs/postmortems/2026-02-26-claude-code-settings-permissions.md
+  for (const configFile of ["settings.json", ".claude.json"]) {
+    const filePath = join(process.env.CLAUDE_CONFIG_DIR, configFile)
+    try {
+      if (existsSync(filePath)) {
+        const mode = statSync(filePath).mode & 0o777
+        if ((mode & 0o044) !== 0o044) {
+          console.error(`[worker] FIXING: ${configFile} has mode ${mode.toString(8)}, needs world-readable (644)`)
+          chmodSync(filePath, 0o644)
+        }
+      }
+    } catch (e) {
+      console.error(`[worker] Failed to check ${configFile} permissions: ${e.message}`)
+    }
   }
 
   // Self-healing: ensure projects/ dir exists with correct permissions on
