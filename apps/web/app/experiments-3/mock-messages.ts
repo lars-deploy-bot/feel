@@ -372,8 +372,7 @@ export const MOCK_MESSAGES: UIMessage[] = [
           {
             type: "tool_result",
             tool_use_id: "toolu_a_read3",
-            content:
-              "export function tabKey({ userId, workspace, tabGroupId, tabId }: TabKeyParams): string {\n  return `${userId}::${workspace}::${tabGroupId}::${tabId}`\n}",
+            content: `export function tabKey({ userId, workspace, tabGroupId, tabId }: TabKeyParams): string {\n  return \`\${userId}::\${workspace}::\${tabGroupId}::\${tabId}\`\n}`,
             tool_name: "Read",
             tool_input: {},
           },
