@@ -1,18 +1,13 @@
 "use client"
 
-import { Check, Search } from "lucide-react"
+import { Plus } from "lucide-react"
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
 const DROPDOWN =
-  "z-[9999] w-72 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl border border-black/[0.06] dark:border-white/[0.06] rounded-2xl shadow-[0_4px_16px_rgba(0,0,0,0.08)] overflow-hidden"
-
-const ITEM = "flex items-center gap-3 w-full px-2.5 py-1.5 rounded-lg text-left text-[13px] transition-all duration-150"
-
-const ITEM_HIGHLIGHT = "bg-black/[0.04] dark:bg-white/[0.06]"
-const ITEM_HOVER = "hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
+  "z-[9999] w-96 bg-white dark:bg-neutral-900 border border-black/[0.08] dark:border-white/[0.08] rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)] overflow-hidden"
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -25,6 +20,8 @@ interface SwitcherDropdownProps<T> {
   placeholder: string
   onSelect: (item: T) => void
   onClose: () => void
+  /** Footer action button (e.g. "Create Team") */
+  footerAction?: { label: string; description?: string; onClick: () => void }
 }
 
 export function SwitcherDropdown<T>({
@@ -36,9 +33,10 @@ export function SwitcherDropdown<T>({
   placeholder,
   onSelect,
   onClose,
+  footerAction,
 }: SwitcherDropdownProps<T>) {
   const [search, setSearch] = useState("")
-  const [highlight, setHighlight] = useState(0)
+  const [highlight, setHighlight] = useState(-1)
   const menuRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
@@ -92,7 +90,7 @@ export function SwitcherDropdown<T>({
   const activeKey = activeItem ? getKey(activeItem) : null
 
   // Reset highlight when search changes
-  useEffect(() => setHighlight(0), [search])
+  useEffect(() => setHighlight(-1), [search])
 
   // Scroll highlighted item into view
   useEffect(() => {
@@ -108,7 +106,7 @@ export function SwitcherDropdown<T>({
         case "ArrowDown":
           e.preventDefault()
           if (filtered.length === 0) break
-          setHighlight(i => Math.min(i + 1, filtered.length - 1))
+          setHighlight(i => (i < 0 ? 0 : Math.min(i + 1, filtered.length - 1)))
           break
         case "ArrowUp":
           e.preventDefault()
@@ -129,8 +127,8 @@ export function SwitcherDropdown<T>({
 
   return createPortal(
     <div role="listbox" ref={menuRef} style={{ position: "fixed" }} className={DROPDOWN} onKeyDown={handleKeyDown}>
-      <div className="flex items-center gap-2 px-3 border-b border-black/[0.06] dark:border-white/[0.06]">
-        <Search size={14} strokeWidth={2} className="text-black/25 dark:text-white/25 shrink-0" />
+      {/* Search bar */}
+      <label className="flex items-center gap-2.5 border-b border-black/[0.08] dark:border-white/[0.08]">
         <input
           ref={searchRef}
           type="text"
@@ -138,42 +136,71 @@ export function SwitcherDropdown<T>({
           onChange={e => setSearch(e.target.value)}
           placeholder={placeholder}
           aria-activedescendant={filtered[highlight] ? `switcher-item-${getKey(filtered[highlight])}` : undefined}
-          className="flex-1 h-9 bg-transparent text-[13px] text-black dark:text-white placeholder:text-black/25 dark:placeholder:text-white/25 outline-none border-none"
+          className="flex-1 h-10 bg-transparent text-sm text-black dark:text-white placeholder:text-black/30 dark:placeholder:text-white/30 outline-none border-none px-4"
         />
-      </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="grid w-10 h-10 place-content-center bg-transparent border-none cursor-pointer shrink-0"
+        >
+          <kbd className="text-[11px] text-black/30 dark:text-white/30 border border-black/[0.12] dark:border-white/[0.12] rounded px-1.5 py-0.5 font-mono">
+            Esc
+          </kbd>
+        </button>
+      </label>
 
-      <div ref={listRef} className="max-h-[240px] overflow-y-auto p-1 flex flex-col gap-0.5">
+      {/* Items list */}
+      <div ref={listRef} className="max-h-[332px] overflow-y-auto p-0.5">
         {filtered.length === 0 ? (
-          <div className="px-3 py-4 text-[13px] text-black/30 dark:text-white/30 text-center">Nothing found</div>
+          <div className="px-4 py-6 text-sm text-black/30 dark:text-white/30 text-center">Nothing found</div>
         ) : (
-          filtered.map((item, i) => {
-            const key = getKey(item)
-            const isActive = key === activeKey
-            return (
-              <button
-                key={key}
-                id={`switcher-item-${key}`}
-                role="option"
-                aria-selected={isActive}
-                type="button"
-                onClick={() => onSelect(item)}
-                className={`${ITEM} ${i === highlight ? ITEM_HIGHLIGHT : ITEM_HOVER}`}
-                style={i < 8 ? { animation: `fadeSlideIn 150ms ${i * 20}ms both` } : undefined}
-              >
-                <span
-                  className={`size-1.5 rounded-full shrink-0 ${isActive ? "bg-emerald-500" : "bg-black/10 dark:bg-white/10"}`}
-                />
-                <span
-                  className={`flex-1 truncate ${isActive ? "text-black dark:text-white font-medium" : "text-black/50 dark:text-white/50"}`}
+          <div className="relative flex flex-col p-1">
+            {filtered.map((item, i) => {
+              const key = getKey(item)
+              const isActive = key === activeKey
+              return (
+                <button
+                  key={key}
+                  id={`switcher-item-${key}`}
+                  role="option"
+                  aria-selected={isActive}
+                  type="button"
+                  onClick={() => onSelect(item)}
+                  className={`group/result flex items-center gap-3 w-full px-2 py-2.5 rounded text-left text-sm transition-colors duration-100 ${
+                    i === highlight
+                      ? "bg-black/[0.04] dark:bg-white/[0.06]"
+                      : "hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
+                  }`}
                 >
-                  {getLabel(item)}
-                </span>
-                {isActive && <Check size={14} strokeWidth={2} className="text-black/40 dark:text-white/40 shrink-0" />}
-              </button>
-            )
-          })
+                  <span className="grid size-5 place-content-center shrink-0">
+                    <span
+                      className={`size-2 rounded-full ${isActive ? "bg-emerald-500" : "bg-black/[0.12] dark:bg-white/[0.12]"}`}
+                    />
+                  </span>
+                  <span className="flex-1 truncate text-black/80 dark:text-white/80">{getLabel(item)}</span>
+                </button>
+              )
+            })}
+          </div>
         )}
       </div>
+
+      {/* Footer action */}
+      {footerAction && (
+        <div className="border-t border-black/[0.08] dark:border-white/[0.08] p-1.5">
+          <button
+            type="button"
+            onClick={footerAction.onClick}
+            className="flex items-center gap-3 w-full px-2 py-2.5 rounded bg-transparent cursor-pointer hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors duration-100"
+          >
+            <span className="grid size-5 place-content-center shrink-0">
+              <Plus size={16} strokeWidth={2} className="text-black/50 dark:text-white/50" />
+            </span>
+            <span className="text-sm text-black/80 dark:text-white/80">{footerAction.label}</span>
+          </button>
+        </div>
+      )}
     </div>,
     document.body,
   )

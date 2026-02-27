@@ -686,6 +686,7 @@ function ChatPageContent() {
           onPhotoMenuClose={modals.closePhotoMenu}
           photoButtonRef={photoButtonRef}
           chatInputRef={chatInputRef}
+          workspace={workspace}
           isSidebarOpen={isSidebarOpen}
           onToggleSidebar={toggleSidebar}
         />
