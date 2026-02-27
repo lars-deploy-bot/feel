@@ -143,8 +143,8 @@ export const EDGE_BELOW_THRESHOLD: UIMessage[] = [
     {
       toolUseId: "toolu_bt_r1",
       toolName: "Read",
-      // biome-ignore lint/suspicious/noTemplateCurlyInString: mock code content
       content:
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: mock code content
         "     1\timport { Hono } from 'hono'\n     2\timport { sendEmail } from './lib/email'\n     3\t\n     4\tconst app = new Hono()\n     5\t\n     6\tapp.post('/contact', async (c) => {\n     7\t  const { name, email, message } = await c.req.json()\n     8\t  await sendEmail({ to: 'old@example.com', subject: `Contact: ${name}`, body: message })\n     9\t  return c.json({ ok: true })\n    10\t})",
     },
   ]),

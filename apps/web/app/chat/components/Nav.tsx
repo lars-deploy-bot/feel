@@ -1,6 +1,6 @@
 "use client"
 
-import { Image, Layers, MessageCircle, PanelLeft, PanelLeftClose, Settings } from "lucide-react"
+import { Image, Layers, MessageCircle, PanelLeft, Settings } from "lucide-react"
 import type { RefObject } from "react"
 import { PhotoMenu } from "@/components/ui/PhotoMenu"
 import type { ChatInputHandle } from "@/features/chat/components/ChatInput/types"
@@ -22,7 +22,6 @@ interface NavProps {
   onPhotoMenuClose: () => void
   photoButtonRef: RefObject<HTMLButtonElement | null>
   chatInputRef: RefObject<ChatInputHandle | null>
-  workspace: string | null
   isSidebarOpen: boolean
   onToggleSidebar: () => void
 }
@@ -37,7 +36,6 @@ export function Nav({
   onPhotoMenuClose,
   photoButtonRef,
   chatInputRef,
-  workspace,
   isSidebarOpen,
   onToggleSidebar,
 }: NavProps) {
