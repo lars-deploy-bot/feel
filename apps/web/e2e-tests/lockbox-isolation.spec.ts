@@ -78,7 +78,7 @@ async function bootstrapSecondTenant(baseUrl: string, suffix: string): Promise<T
   }
 
   // Use a high worker index (within MAX_WORKERS) to avoid colliding with real workers
-  // Worker slots 0-5 are used by Playwright workers; we use slot 19 (last allowed)
+  // Worker slots 0-3 are used by Playwright workers (2 in CI, 4 local); we use slot 19 (last allowed)
   const workerIndex = TEST_CONFIG.MAX_WORKERS - 1
   const email = `e2e_lockbox_${suffix}@${TEST_CONFIG.EMAIL_DOMAIN}`
   const workspace = `e2e-lockbox-${suffix}.${TEST_CONFIG.EMAIL_DOMAIN}`

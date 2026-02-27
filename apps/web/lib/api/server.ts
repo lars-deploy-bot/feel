@@ -64,12 +64,18 @@ export async function handleBody<E extends Endpoint>(endpoint: E, req: NextReque
     const field = firstIssue?.path.join(".") || undefined
     const message = firstIssue?.message || "Request body failed validation"
 
+    const issues = result.error.issues.map(issue => ({
+      code: issue.code,
+      path: issue.path.join("."),
+      message: issue.message,
+    }))
+
     return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
       status: 400,
       details: {
         ...(field ? { field } : {}),
         message,
-        issues: result.error.issues,
+        issues,
       },
     })
   } catch (e) {
@@ -78,7 +84,7 @@ export async function handleBody<E extends Endpoint>(endpoint: E, req: NextReque
     return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, {
       status: 500,
       details: {
-        reason: e instanceof Error ? e.message : "Unknown error during body handling",
+        reason: "Internal error during body handling",
       },
     })
   }
