@@ -85,6 +85,12 @@ export const queryKeys = {
     list: () => [...queryKeys.envKeys.all, "list"] as const,
   },
 
+  // Auth sessions
+  authSessions: {
+    all: ["auth-sessions"] as const,
+    list: () => [...queryKeys.authSessions.all, "list"] as const,
+  },
+
   // Sites (for automations, etc.)
   sites: {
     all: ["sites"] as const,

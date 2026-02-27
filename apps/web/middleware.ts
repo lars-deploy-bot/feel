@@ -39,5 +39,11 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: "/api/:path*",
+  matcher: [
+    // Match all API routes EXCEPT upload endpoints.
+    // Next.js middleware buffers request bodies (default 10 MB limit),
+    // which truncates large file uploads and breaks multipart parsing.
+    // Upload routes don't need middleware — getRequestId() has a fallback.
+    "/api/((?!images/upload|files/upload|drive/upload).*)",
+  ],
 }

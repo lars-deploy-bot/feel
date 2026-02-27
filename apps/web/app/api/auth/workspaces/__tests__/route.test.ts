@@ -65,6 +65,13 @@ const REGULAR_USER = {
   enabledModels: [],
 }
 
+const SUPERADMIN_USER = {
+  ...REGULAR_USER,
+  id: "superadmin-1",
+  email: "admin@alive.best",
+  isSuperadmin: true,
+}
+
 function createMockRequest(orgId?: string): NextRequest {
   const url = orgId ? `http://localhost/api/auth/workspaces?org_id=${orgId}` : "http://localhost/api/auth/workspaces"
   return new NextRequest(url, {
@@ -84,6 +91,7 @@ function mockMemberships(memberships: { org_id: string }[] | null) {
 function mockDomains(domains: { hostname: string; is_test_env?: boolean }[] | null) {
   const selectResult = {
     in: vi.fn().mockResolvedValue({ data: domains, error: null }),
+    eq: vi.fn().mockResolvedValue({ data: domains, error: null }),
     // biome-ignore lint/suspicious/noThenProperty: Mocking Supabase thenable query builder
     then: (resolve: (value: { data: typeof domains; error: null }) => void) => resolve({ data: domains, error: null }),
   }
@@ -155,5 +163,33 @@ describe("GET /api/auth/workspaces", () => {
 
     expect(response.status).toBe(403)
     expect(data.error).toBe("ORG_ACCESS_DENIED")
+  })
+
+  it("superadmin without org filter sees all workspaces", async () => {
+    vi.mocked(getSessionUser).mockResolvedValue(SUPERADMIN_USER)
+    mockDomains([
+      { hostname: "site-1.com", is_test_env: false },
+      { hostname: "site-2.com", is_test_env: false },
+      { hostname: "other-org-site.com", is_test_env: false },
+    ])
+
+    const response = await GET(createMockRequest())
+    const data = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(data.workspaces).toEqual(["site-1.com", "site-2.com", "other-org-site.com"])
+  })
+
+  it("superadmin with org filter only sees that org's workspaces", async () => {
+    vi.mocked(getSessionUser).mockResolvedValue(SUPERADMIN_USER)
+    mockDomains([{ hostname: "org-site.com", is_test_env: false }])
+
+    const response = await GET(createMockRequest("org-1"))
+    const data = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(data.workspaces).toEqual(["org-site.com"])
+    // Verify .eq was called (org-scoped query, not unfiltered)
+    expect(mockAppFrom).toHaveBeenCalledWith("domains")
   })
 })

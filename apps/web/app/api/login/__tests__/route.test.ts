@@ -37,12 +37,18 @@ vi.mock("@/lib/domains", () => ({
   filterLocalDomains: vi.fn((hostnames: string[]) => hostnames),
 }))
 
+// Mock auth session creation (non-blocking, don't fail login)
+vi.mock("@/features/auth/sessions/session-service", () => ({
+  createAuthSession: vi.fn().mockResolvedValue(undefined),
+}))
+
 // Import after mocking
 const { POST } = await import("../route")
 const { createIamClient } = await import("@/lib/supabase/iam")
 const { createAppClient } = await import("@/lib/supabase/app")
 const { createSessionToken } = await import("@/features/auth/lib/jwt")
 const { verifyPassword } = await import("@/types/guards/api")
+const { createAuthSession } = await import("@/features/auth/sessions/session-service")
 
 // Mock user data
 const MOCK_USER: {
@@ -137,6 +143,8 @@ describe("POST /api/login", () => {
     vi.clearAllMocks()
     // Default: password verification succeeds
     vi.mocked(verifyPassword).mockResolvedValue(true)
+    // Default: auth session creation succeeds (non-blocking, fire-and-forget)
+    vi.mocked(createAuthSession).mockResolvedValue(undefined)
     // Default: mock supabase
     setupMockSupabase()
   })
@@ -152,7 +160,7 @@ describe("POST /api/login", () => {
       const data = await response.json()
 
       expect(response.status).toBe(400)
-      expect(data.error.code).toBe("VALIDATION_ERROR")
+      expect(data.error).toBe("INVALID_REQUEST")
     })
 
     it("should reject missing password", async () => {
@@ -161,7 +169,7 @@ describe("POST /api/login", () => {
       const data = await response.json()
 
       expect(response.status).toBe(400)
-      expect(data.error.code).toBe("VALIDATION_ERROR")
+      expect(data.error).toBe("INVALID_REQUEST")
     })
 
     it("should reject invalid email format", async () => {
@@ -170,7 +178,7 @@ describe("POST /api/login", () => {
       const data = await response.json()
 
       expect(response.status).toBe(400)
-      expect(data.error.code).toBe("VALIDATION_ERROR")
+      expect(data.error).toBe("INVALID_REQUEST")
     })
 
     it("should reject empty password", async () => {
@@ -179,7 +187,7 @@ describe("POST /api/login", () => {
       const data = await response.json()
 
       expect(response.status).toBe(400)
-      expect(data.error.code).toBe("VALIDATION_ERROR")
+      expect(data.error).toBe("INVALID_REQUEST")
     })
 
     it("should reject invalid JSON body", async () => {
@@ -303,6 +311,7 @@ describe("POST /api/login", () => {
         userId: MOCK_USER.user_id,
         email: MOCK_USER.email,
         name: MOCK_USER.display_name,
+        sid: expect.any(String),
         orgIds: ["org-1", "org-2"],
         orgRoles: {
           "org-1": "owner",
@@ -331,6 +340,7 @@ describe("POST /api/login", () => {
         userId: MOCK_USER.user_id,
         email: MOCK_USER.email,
         name: MOCK_USER.display_name,
+        sid: expect.any(String),
         orgIds: ["org-1", "org-3"],
         orgRoles: {
           "org-1": "owner",
@@ -365,6 +375,7 @@ describe("POST /api/login", () => {
         userId: MOCK_USER.user_id,
         email: MOCK_USER.email,
         name: MOCK_USER.display_name,
+        sid: expect.any(String),
         orgIds: [],
         orgRoles: {},
       })
@@ -400,6 +411,7 @@ describe("POST /api/login", () => {
           userId: SECURITY.LOCAL_TEST.SESSION_VALUE,
           email: SECURITY.LOCAL_TEST.EMAIL,
           name: "Test User",
+          sid: expect.any(String),
           orgIds: [],
           orgRoles: {},
         })

@@ -62,6 +62,12 @@ describe("API Schema Type System", () => {
         | "google/calendar/delete-event"
         | "google/calendar/update-event"
         | "rename-site"
+        | "user-env-keys"
+        | "user-env-keys/create"
+        | "user-env-keys/delete"
+        | "auth/sessions"
+        | "auth/sessions/revoke"
+        | "auth/sessions/revoke-others"
       >()
     })
 

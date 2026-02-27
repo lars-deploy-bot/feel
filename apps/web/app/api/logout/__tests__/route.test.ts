@@ -92,6 +92,14 @@ function createMockRequest(url: string, options?: RequestInit) {
   // NextRequest constructor doesn't accept all options we need, so we build from Request
   const req = new Request(url, options) as unknown as import("next/server").NextRequest
   ;(req as unknown as Record<string, unknown>).nextUrl = urlObj
+  // Add cookies property that NextRequest provides
+  ;(req as unknown as Record<string, unknown>).cookies = {
+    get: () => undefined,
+    getAll: () => [],
+    has: () => false,
+    set: () => {},
+    delete: () => {},
+  }
   const originalGet = req.headers.get.bind(req.headers)
   req.headers.get = (name: string) => {
     if (name === "origin") return DOMAINS.STREAM_PROD
@@ -99,6 +107,12 @@ function createMockRequest(url: string, options?: RequestInit) {
   }
   return req
 }
+
+// Mock session-service (logout revokes session server-side)
+vi.mock("@/features/auth/sessions/session-service", () => ({
+  revokeSession: vi.fn().mockResolvedValue(true),
+  createAuthSession: vi.fn().mockResolvedValue(undefined),
+}))
 
 // Mock Supabase authentication
 vi.mock("@/lib/supabase/iam", () => ({

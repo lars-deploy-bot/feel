@@ -10,83 +10,33 @@
  */
 
 import * as Sentry from "@sentry/nextjs"
-import { RESERVED_USER_ENV_KEYS } from "@webalive/shared"
-import { type NextRequest, NextResponse } from "next/server"
-import { z } from "zod"
+import type { NextRequest } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
+import { alrighty, handleBody, isHandleBodyError } from "@/lib/api/server"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getUserEnvKeysManager } from "@/lib/oauth/oauth-instances"
-
-const RESERVED_USER_ENV_KEY_SET = new Set<string>(RESERVED_USER_ENV_KEYS)
-
-/**
- * Schema for creating/updating an env key
- */
-const CreateEnvKeySchema = z.object({
-  keyName: z
-    .string()
-    .min(1, "Key name is required")
-    .max(100, "Key name too long")
-    .regex(
-      /^[A-Z][A-Z0-9_]*$/,
-      "Key name must be uppercase, start with a letter, and contain only letters, numbers, and underscores",
-    ),
-  keyValue: z.string().min(1, "Key value is required").max(10000, "Key value too long"),
-})
-
-/**
- * Schema for deleting an env key
- */
-const DeleteEnvKeySchema = z.object({
-  keyName: z.string().min(1, "Key name is required"),
-})
 
 /**
  * POST - Create or update an environment key
  */
 export async function POST(req: NextRequest) {
   try {
-    // 1. Authenticate user
     const user = await getSessionUser()
     if (!user) {
       return structuredErrorResponse(ErrorCodes.UNAUTHORIZED, { status: 401 })
     }
 
-    // 2. Parse and validate request body
-    const body = await req.json()
-    const parseResult = CreateEnvKeySchema.safeParse(body)
+    const parsed = await handleBody("user-env-keys/create", req)
+    if (isHandleBodyError(parsed)) return parsed
 
-    if (!parseResult.success) {
-      return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
-        status: 400,
-        details: {
-          field: parseResult.error.issues[0]?.path.join(".") || "unknown",
-          message: parseResult.error.issues[0]?.message,
-        },
-      })
-    }
+    const { keyName, keyValue } = parsed
 
-    const { keyName, keyValue } = parseResult.data
-
-    // 3. Check if this is a reserved key name
-    if (RESERVED_USER_ENV_KEY_SET.has(keyName)) {
-      return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
-        status: 400,
-        details: {
-          field: "keyName",
-          message: `${keyName} is a reserved key name and cannot be set by users`,
-        },
-      })
-    }
-
-    // 4. Save the key
     await getUserEnvKeysManager().setUserEnvKey(user.id, keyName, keyValue)
 
     console.log(`[User Env Keys] User ${user.id} set key: ${keyName}`)
 
-    return NextResponse.json({
-      ok: true,
+    return alrighty("user-env-keys/create", {
       message: `Environment key '${keyName}' saved successfully`,
       keyName,
     })
@@ -107,21 +57,17 @@ export async function POST(req: NextRequest) {
  */
 export async function GET() {
   try {
-    // 1. Authenticate user
     const user = await getSessionUser()
     if (!user) {
       return structuredErrorResponse(ErrorCodes.UNAUTHORIZED, { status: 401 })
     }
 
-    // 2. Get list of key names
     const keyNames = await getUserEnvKeysManager().listUserEnvKeyNames(user.id)
 
-    return NextResponse.json({
-      ok: true,
+    return alrighty("user-env-keys", {
       keys: keyNames.map(name => ({
         name,
-        // Indicate that we have a value but don't expose it
-        hasValue: true,
+        hasValue: true as const,
       })),
     })
   } catch (error) {
@@ -141,35 +87,21 @@ export async function GET() {
  */
 export async function DELETE(req: NextRequest) {
   try {
-    // 1. Authenticate user
     const user = await getSessionUser()
     if (!user) {
       return structuredErrorResponse(ErrorCodes.UNAUTHORIZED, { status: 401 })
     }
 
-    // 2. Parse and validate request body
-    const body = await req.json()
-    const parseResult = DeleteEnvKeySchema.safeParse(body)
+    const parsed = await handleBody("user-env-keys/delete", req)
+    if (isHandleBodyError(parsed)) return parsed
 
-    if (!parseResult.success) {
-      return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
-        status: 400,
-        details: {
-          field: parseResult.error.issues[0]?.path.join(".") || "unknown",
-          message: parseResult.error.issues[0]?.message,
-        },
-      })
-    }
+    const { keyName } = parsed
 
-    const { keyName } = parseResult.data
-
-    // 3. Delete the key
     await getUserEnvKeysManager().deleteUserEnvKey(user.id, keyName)
 
     console.log(`[User Env Keys] User ${user.id} deleted key: ${keyName}`)
 
-    return NextResponse.json({
-      ok: true,
+    return alrighty("user-env-keys/delete", {
       message: `Environment key '${keyName}' deleted successfully`,
       keyName,
     })

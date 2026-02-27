@@ -169,7 +169,7 @@ export function ConversationSidebar({
   onOpenInvite,
 }: ConversationSidebarProps) {
   const isOpen = useSidebarOpen()
-  const { closeSidebar, openSidebar } = useSidebarActions()
+  const { closeSidebar } = useSidebarActions()
   const session = useDexieSession()
   const allConversations = useDexieConversations(workspace || "", session)
   const conversations = workspace ? allConversations : []
@@ -179,14 +179,10 @@ export function ConversationSidebar({
   const [archivedExpanded, setArchivedExpanded] = useState(false)
   const didInitRef = useRef(false)
 
-  // On first client mount, open sidebar for desktop without causing SSR mismatch.
+  // Mark init on first mount (no longer auto-opens — sidebar starts closed)
   useEffect(() => {
-    if (didInitRef.current) return
     didInitRef.current = true
-    if (typeof window !== "undefined" && window.innerWidth >= 768) {
-      openSidebar()
-    }
-  }, [openSidebar])
+  }, [])
 
   // Track sidebar open/close
   useEffect(() => {

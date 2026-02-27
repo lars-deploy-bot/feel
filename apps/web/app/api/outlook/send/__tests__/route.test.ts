@@ -105,14 +105,14 @@ describe("POST /api/outlook/send", () => {
     const res = await POST(createRequest({ subject: "Hi", body: "hey" }))
     expect(res.status).toBe(400)
     const data = await res.json()
-    expect(data.error.code).toBe("VALIDATION_ERROR")
+    expect(data.error).toBe("INVALID_REQUEST")
   })
 
   it("returns 400 when 'to' is empty array", async () => {
     const res = await POST(createRequest({ to: [], subject: "Hi", body: "hey" }))
     expect(res.status).toBe(400)
     const data = await res.json()
-    expect(data.error.code).toBe("VALIDATION_ERROR")
+    expect(data.error).toBe("INVALID_REQUEST")
   })
 
   it("returns 400 when 'subject' is missing", async () => {

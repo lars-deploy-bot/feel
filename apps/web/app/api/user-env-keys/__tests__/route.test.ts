@@ -86,7 +86,7 @@ describe("POST /api/user-env-keys", () => {
     expect(response.status).toBe(400)
     expect(json.error).toBe(ErrorCodes.INVALID_REQUEST)
     expect(json.details.field).toBe("keyName")
-    expect(json.details.message).toContain(reservedKeyName)
+    expect(json.details.message).toContain("reserved")
     expect(setUserEnvKeyMock).not.toHaveBeenCalled()
   })
 

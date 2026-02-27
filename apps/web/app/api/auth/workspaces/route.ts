@@ -37,10 +37,14 @@ export async function GET(req: NextRequest) {
       return createCorsErrorResponse(origin, ErrorCodes.ORG_ACCESS_DENIED, 403, { requestId })
     }
 
-    // Superadmins see ALL workspaces on this server (for support/debugging)
+    // Superadmins: use service client (bypasses RLS) to see all or org-scoped workspaces
     if (user.isSuperadmin) {
       const app = await createAppClient("service")
-      const { data: allDomains } = await app.from("domains").select("hostname, is_test_env")
+      let query = app.from("domains").select("hostname, is_test_env")
+      if (orgId) {
+        query = query.eq("org_id", orgId)
+      }
+      const { data: allDomains } = await query
       const realDomains = allDomains?.filter(d => !d.is_test_env).map(d => d.hostname) || []
       const testDomains = allDomains?.filter(d => d.is_test_env).map(d => d.hostname) || []
       const workspaces = [...filterLocalDomains(realDomains), ...testDomains]

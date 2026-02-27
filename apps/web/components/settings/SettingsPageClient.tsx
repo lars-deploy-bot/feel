@@ -11,6 +11,7 @@ import {
   Link,
   LogOut,
   Menu,
+  Monitor,
   Settings,
   Shield,
   X,
@@ -58,9 +59,13 @@ const AutomationsSettings = lazy(() =>
 const BillingSettings = lazy(() =>
   import("@/components/settings/tabs/BillingSettings").then(m => ({ default: m.BillingSettings })),
 )
+const SessionsSettings = lazy(() =>
+  import("@/components/settings/tabs/SessionsSettings").then(m => ({ default: m.SessionsSettings })),
+)
 
 const SETTINGS_TABS = [
   "general",
+  "sessions",
   "billing",
   "skills",
   "organization",
@@ -85,6 +90,7 @@ interface TabDefinition {
 
 const allTabs: TabDefinition[] = [
   { id: "general", label: "General", icon: Settings },
+  { id: "sessions", label: "Sessions", icon: Monitor },
   { id: "billing", label: "Billing", icon: CreditCard },
   { id: "skills", label: "Skills", icon: ClipboardList },
   { id: "websites", label: "Websites", icon: Globe },
@@ -288,6 +294,7 @@ export function SettingsPageClient({ onClose, initialTab }: SettingsPageClientPr
             fallback={<div className="py-12 text-center text-zinc-400 dark:text-zinc-500 text-sm">Loading...</div>}
           >
             {activeTab === "general" && <GeneralSettings />}
+            {activeTab === "sessions" && <SessionsSettings />}
             {activeTab === "billing" && <BillingSettings />}
             {activeTab === "skills" && <SkillsSettings />}
             {activeTab === "organization" && <WorkspaceSettings />}

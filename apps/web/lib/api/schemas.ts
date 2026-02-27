@@ -1,5 +1,5 @@
 import type { Req as PkgReq, Res as PkgRes, ResPayload as PkgResPayload } from "@alive-brug/alrighty"
-import { CLAUDE_MODELS, ORG_ROLES } from "@webalive/shared"
+import { CLAUDE_MODELS, ORG_ROLES, RESERVED_USER_ENV_KEYS } from "@webalive/shared"
 import { z } from "zod"
 import { RESERVED_SLUGS } from "@/features/deployment/types/guards"
 import { OptionalWorktreeSchema, OptionalWorktreeSlugSchema } from "@/types/guards/worktree-schemas"
@@ -909,6 +909,74 @@ export const apiSchemas = {
   },
 
   // ============================================================================
+  // USER ENVIRONMENT KEYS (lockbox-backed)
+  // ============================================================================
+
+  /**
+   * GET /api/user-env-keys
+   * List env key names (values are NOT returned for security)
+   */
+  "user-env-keys": {
+    req: z.undefined().brand<"UserEnvKeysRequest">(),
+    res: z.object({
+      ok: z.literal(true),
+      keys: z.array(
+        z.object({
+          name: z.string(),
+          hasValue: z.literal(true),
+        }),
+      ),
+    }),
+  },
+
+  /**
+   * POST /api/user-env-keys
+   * Create or update an env key
+   */
+  "user-env-keys/create": {
+    path: "user-env-keys",
+    req: z
+      .object({
+        keyName: z
+          .string()
+          .min(1, "Key name is required")
+          .max(100, "Key name too long")
+          .regex(
+            /^[A-Z][A-Z0-9_]*$/,
+            "Key name must be uppercase, start with a letter, and contain only letters, numbers, and underscores",
+          )
+          .refine(name => !(RESERVED_USER_ENV_KEYS as readonly string[]).includes(name), {
+            message: "This is a reserved key name and cannot be set by users",
+          }),
+        keyValue: z.string().min(1, "Key value is required").max(10000, "Key value too long"),
+      })
+      .brand<"UserEnvKeysCreateRequest">(),
+    res: z.object({
+      ok: z.literal(true),
+      message: z.string(),
+      keyName: z.string(),
+    }),
+  },
+
+  /**
+   * DELETE /api/user-env-keys
+   * Remove an env key
+   */
+  "user-env-keys/delete": {
+    path: "user-env-keys",
+    req: z
+      .object({
+        keyName: z.string().min(1, "Key name is required"),
+      })
+      .brand<"UserEnvKeysDeleteRequest">(),
+    res: z.object({
+      ok: z.literal(true),
+      message: z.string(),
+      keyName: z.string(),
+    }),
+  },
+
+  // ============================================================================
   // INTEGRATIONS (used by TanStack Query)
   // ============================================================================
 
@@ -1257,6 +1325,60 @@ export const apiSchemas = {
       ok: z.literal(true),
       deleted: z.string(),
       type: z.enum(["file", "directory"]),
+    }),
+  },
+
+  // ============================================================================
+  // AUTH SESSIONS
+  // ============================================================================
+
+  /**
+   * GET /api/auth/sessions
+   * List active login sessions for the current user
+   */
+  "auth/sessions": {
+    req: z.undefined().brand<"AuthSessionsRequest">(),
+    res: z.object({
+      ok: z.literal(true),
+      sessions: z.array(
+        z.object({
+          sid: z.string(),
+          deviceLabel: z.string().nullable(),
+          ipAddress: z.string().nullable(),
+          createdAt: z.string(),
+          lastActiveAt: z.string(),
+          isCurrent: z.boolean(),
+        }),
+      ),
+      currentSid: z.string(),
+    }),
+  },
+
+  /**
+   * POST /api/auth/sessions/revoke
+   * Revoke a single session by sid
+   */
+  "auth/sessions/revoke": {
+    req: z
+      .object({
+        sid: z.string().uuid(),
+      })
+      .brand<"RevokeSessionRequest">(),
+    res: z.object({
+      ok: z.literal(true),
+      revoked: z.boolean(),
+    }),
+  },
+
+  /**
+   * POST /api/auth/sessions/revoke-others
+   * Revoke all sessions except the current one
+   */
+  "auth/sessions/revoke-others": {
+    req: z.undefined().brand<"RevokeOtherSessionsRequest">(),
+    res: z.object({
+      ok: z.literal(true),
+      revokedCount: z.number(),
     }),
   },
 } as const

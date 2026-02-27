@@ -26,7 +26,11 @@ async function request(path: string, init?: RequestInit): Promise<Response> {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: res.statusText }))
-    throw new ApiError(body.error ?? `Request failed: ${res.status}`, res.status, body.code)
+    // API returns { error: { code, message } } or { error: "string" }
+    const err = body.error
+    const message = typeof err === "string" ? err : (err?.message ?? `Request failed: ${res.status}`)
+    const code = typeof err === "string" ? body.code : err?.code
+    throw new ApiError(message, res.status, code)
   }
 
   return res

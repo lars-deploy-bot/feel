@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto"
 import { test as base, expect, type Response } from "@playwright/test"
 import { COOKIE_NAMES, createTestStorageState, DOMAINS, TEST_CONFIG } from "@webalive/shared"
 import jwt from "jsonwebtoken"
@@ -105,6 +106,7 @@ const test = base.extend<
         userId: workerStorageState.userId,
         email: workerStorageState.email,
         name: workerStorageState.orgName,
+        sid: randomUUID(),
         scopes: DEFAULT_USER_SCOPES,
         orgIds: [workerStorageState.orgId],
         orgRoles: { [workerStorageState.orgId]: "owner" as const },

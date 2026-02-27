@@ -196,9 +196,9 @@ describe("/api/worktrees", () => {
     const data = await res.json()
 
     expect(res.status).toBe(400)
-    // Schema validation returns VALIDATION_ERROR with details about the invalid slug
-    expect(data.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
-    expect(data.error.issues[0].path).toContain("slug")
+    // Schema validation returns INVALID_REQUEST via structuredErrorResponse
+    expect(data.error).toBe("INVALID_REQUEST")
+    expect(data.details.issues[0].path).toContain("slug")
   })
 
   it("POST returns 400 on invalid branch name", async () => {

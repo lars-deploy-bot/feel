@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { ApiError, api } from "@/lib/api"
+import { api } from "@/lib/api"
 
 export function useAuth() {
   const [authenticated, setAuthenticated] = useState(false)
@@ -7,13 +7,9 @@ export function useAuth() {
 
   useEffect(() => {
     api
-      .get<{ authenticated: boolean }>("/auth/me")
+      .get("/auth/me")
       .then(() => setAuthenticated(true))
-      .catch(err => {
-        if (err instanceof ApiError && err.status === 401) {
-          setAuthenticated(false)
-        }
-      })
+      .catch(() => setAuthenticated(false))
       .finally(() => setLoading(false))
   }, [])
 

@@ -111,11 +111,13 @@ export async function POST(req: NextRequest) {
     // Create JWT session token with scoped org access claims
     // New user starts with one default organization (owner role)
     // Use validated input values since we just created the user with these
+    const sid = crypto.randomUUID()
     const sessionToken = await createSessionToken(
       {
         userId: newUser.user_id,
         email: normalizedEmail, // Use validated input, not nullable DB field
         name: displayName, // Use validated input, not nullable DB field
+        sid,
         orgIds: [orgId],
         orgRoles: { [orgId]: "owner" },
       }, // No workspaces yet; org-scoped JWT claims

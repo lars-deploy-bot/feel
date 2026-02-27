@@ -67,6 +67,7 @@ type CreateSessionTokenInput = {
   userId: string
   email: string
   name: string | null
+  sid: string
   scopes: string[]
   orgIds: string[]
   orgRoles: Record<string, SessionOrgRole>
@@ -371,6 +372,7 @@ async function createFixture(config: SupabaseConfig, state: SmokeState): Promise
     userId: user1.user_id,
     email: user1Email,
     name: "RLS Smoke User 1",
+    sid: randomUUID(),
     scopes: [...DEFAULT_SCOPES],
     orgIds: [org1.org_id],
     orgRoles: { [org1.org_id]: "member" },
@@ -380,6 +382,7 @@ async function createFixture(config: SupabaseConfig, state: SmokeState): Promise
     userId: user2.user_id,
     email: user2Email,
     name: "RLS Smoke User 2",
+    sid: randomUUID(),
     scopes: [...DEFAULT_SCOPES],
     orgIds: [org2.org_id],
     orgRoles: { [org2.org_id]: "owner" },
@@ -390,6 +393,7 @@ async function createFixture(config: SupabaseConfig, state: SmokeState): Promise
     userId: user1.user_id,
     email: user1Email,
     name: "RLS Smoke User 1",
+    sid: randomUUID(),
     scopes: [...DEFAULT_SCOPES],
     orgIds: [org1.org_id, org2.org_id],
     orgRoles: { [org1.org_id]: "member", [org2.org_id]: "owner" },

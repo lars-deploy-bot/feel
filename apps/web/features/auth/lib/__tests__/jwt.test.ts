@@ -31,6 +31,7 @@ function buildTokenInput(userId: string) {
     userId,
     email: TEST_EMAIL,
     name: TEST_NAME,
+    sid: crypto.randomUUID(),
     scopes: [...TEST_SCOPES],
     orgIds: [...TEST_ORG_IDS],
     orgRoles: { ...TEST_ORG_ROLES },
@@ -60,6 +61,7 @@ describe("JWT Session Token v3 - Security & Behavior", () => {
         userId: "550e8400-e29b-41d4-a716-446655440000",
         email: TEST_EMAIL,
         name: TEST_NAME,
+        sid: crypto.randomUUID(),
         orgIds: [TEST_ORG_ID],
         orgRoles: { [TEST_ORG_ID]: "owner" },
       })
@@ -85,6 +87,7 @@ describe("JWT Session Token v3 - Security & Behavior", () => {
         userId: "550e8400-e29b-41d4-a716-446655440000",
         email: TEST_EMAIL,
         name: TEST_NAME,
+        sid: crypto.randomUUID(),
         scopes: [...TEST_SCOPES],
         orgIds: ["org_a", "org_b", "org_c"],
         orgRoles: {

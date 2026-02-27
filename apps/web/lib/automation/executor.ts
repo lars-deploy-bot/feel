@@ -310,6 +310,7 @@ export async function runAutomationJob(params: AutomationJobParams): Promise<Aut
             userId: params.userId,
             email: userProfile.email,
             name: userProfile.displayName,
+            sid: crypto.randomUUID(),
             orgIds,
             orgRoles,
           })

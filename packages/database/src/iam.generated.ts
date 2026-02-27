@@ -15,6 +15,56 @@ export type Database = {
   }
   iam: {
     Tables: {
+      auth_sessions: {
+        Row: {
+          auth_session_id: string
+          created_at: string
+          device_label: string | null
+          expires_at: string
+          ip_address: unknown
+          last_active_at: string
+          revoked_at: string | null
+          revoked_by: string | null
+          sid: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth_session_id?: string
+          created_at?: string
+          device_label?: string | null
+          expires_at: string
+          ip_address?: unknown
+          last_active_at?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          sid: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth_session_id?: string
+          created_at?: string
+          device_label?: string | null
+          expires_at?: string
+          ip_address?: unknown
+          last_active_at?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          sid?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auth_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       email_invites: {
         Row: {
           email: string
@@ -352,6 +402,7 @@ export type Database = {
         Args: { p_amount: number; p_org_id: string }
         Returns: number
       }
+      cleanup_expired_auth_sessions: { Args: never; Returns: number }
       current_clerk_id: { Args: never; Returns: string }
       deduct_credits: {
         Args: { p_amount: number; p_org_id: string }
@@ -364,7 +415,19 @@ export type Database = {
       }
       is_org_admin: { Args: { p_org_id: string }; Returns: boolean }
       is_org_member: { Args: { p_org_id: string }; Returns: boolean }
+      revoke_auth_session: {
+        Args: { p_revoked_by?: string; p_sid: string; p_user_id: string }
+        Returns: boolean
+      }
+      revoke_other_auth_sessions: {
+        Args: { p_current_sid: string; p_user_id: string }
+        Returns: number
+      }
       sub: { Args: never; Returns: string }
+      touch_auth_session: {
+        Args: { p_sid: string; p_user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       org_role: "owner" | "admin" | "member"
