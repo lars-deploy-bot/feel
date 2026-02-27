@@ -37,9 +37,9 @@ vi.mock("@/lib/domains", () => ({
   filterLocalDomains: vi.fn((hostnames: string[]) => hostnames),
 }))
 
-// Mock auth session creation (non-blocking, don't fail login)
+// Mock auth session tracking (non-blocking, don't fail login)
 vi.mock("@/features/auth/sessions/session-service", () => ({
-  createAuthSession: vi.fn().mockResolvedValue(undefined),
+  trackAuthSession: vi.fn(),
 }))
 
 // Import after mocking
@@ -48,7 +48,7 @@ const { createIamClient } = await import("@/lib/supabase/iam")
 const { createAppClient } = await import("@/lib/supabase/app")
 const { createSessionToken } = await import("@/features/auth/lib/jwt")
 const { verifyPassword } = await import("@/types/guards/api")
-const { createAuthSession } = await import("@/features/auth/sessions/session-service")
+const { trackAuthSession } = await import("@/features/auth/sessions/session-service")
 
 // Mock user data
 const MOCK_USER: {
@@ -143,8 +143,8 @@ describe("POST /api/login", () => {
     vi.clearAllMocks()
     // Default: password verification succeeds
     vi.mocked(verifyPassword).mockResolvedValue(true)
-    // Default: auth session creation succeeds (non-blocking, fire-and-forget)
-    vi.mocked(createAuthSession).mockResolvedValue(undefined)
+    // Default: auth session tracking is fire-and-forget
+    vi.mocked(trackAuthSession).mockReturnValue(undefined)
     // Default: mock supabase
     setupMockSupabase()
   })

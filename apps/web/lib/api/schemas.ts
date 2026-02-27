@@ -1,4 +1,4 @@
-import type { Req as PkgReq, Res as PkgRes, ResPayload as PkgResPayload } from "@alive-brug/alrighty"
+import type { EndpointSchema, Req as PkgReq, Res as PkgRes, ResPayload as PkgResPayload } from "@alive-brug/alrighty"
 import { CLAUDE_MODELS, ORG_ROLES, RESERVED_USER_ENV_KEYS } from "@webalive/shared"
 import { z } from "zod"
 import { RESERVED_SLUGS } from "@/features/deployment/types/guards"
@@ -1375,7 +1375,6 @@ export const apiSchemas = {
    * Revoke all sessions except the current one
    */
   "auth/sessions/revoke-others": {
-    req: z.undefined().brand<"RevokeOtherSessionsRequest">(),
     res: z.object({
       ok: z.literal(true),
       revokedCount: z.number(),
@@ -1417,6 +1416,7 @@ export type ResPayload<E extends Endpoint> = PkgResPayload<typeof apiSchemas, E>
  * @throws {ZodError} If validation fails (invalid email, password too short, etc.)
  */
 export function validateRequest<E extends Endpoint>(endpoint: E, data: unknown): Req<E> {
-  const schema = apiSchemas[endpoint].req
-  return schema.parse(data) as Req<E>
+  const entry: EndpointSchema = apiSchemas[endpoint]
+  if (!entry.req) throw new Error(`No request schema defined for ${String(endpoint)}`)
+  return entry.req.parse(data) as Req<E>
 }

@@ -67,10 +67,19 @@ import {
   EDGE_WRITE_BASH,
 } from "./edge-cases"
 import { MOCK_MESSAGES } from "./mock-messages"
+import planModeConversationRaw from "./plan-mode-conversation.json"
 import realConversationRaw from "./real-conversation.json"
 
 // Parse timestamps in real conversation data
 const realConversation: UIMessage[] = (realConversationRaw as Array<Record<string, unknown>>).map(
+  m =>
+    ({
+      ...m,
+      timestamp: new Date(m.timestamp as string),
+    }) as unknown as UIMessage,
+)
+
+const planModeConversation: UIMessage[] = (planModeConversationRaw as Array<Record<string, unknown>>).map(
   m =>
     ({
       ...m,
@@ -117,6 +126,13 @@ const CONVERSATIONS: Conversation[] = [
     description: "26 messages — two parallel Task subagents with interleaved messages",
     category: "full",
     messages: MOCK_MESSAGES,
+  },
+  {
+    id: "plan-mode",
+    label: "Plan mode",
+    description: "64 messages — pipeline item + dev mode + EnterPlanMode → Task subagent → Write plan → ExitPlanMode",
+    category: "full",
+    messages: planModeConversation,
   },
   // Grouping edge cases
   {

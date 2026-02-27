@@ -1,4 +1,5 @@
 import { tool } from "@anthropic-ai/claude-agent-sdk"
+import { LOGS_DEBUG_DEFAULT_LINES, LOGS_MAX_LINES } from "@webalive/shared"
 import { z } from "zod"
 import type { ToolResult } from "../../lib/api-client.js"
 import { readServerLogs } from "../debug/read-server-logs.js"
@@ -13,7 +14,14 @@ export const debugWorkspaceParamsSchema = {
     .min(1)
     .regex(/^[a-z0-9.-]+$/i)
     .describe("Workspace domain (e.g., 'two.sonno.tech')"),
-  lines: z.number().int().min(1).max(1000).optional().default(200).describe("Log lines to analyze (default: 200)"),
+  lines: z
+    .number()
+    .int()
+    .min(1)
+    .max(LOGS_MAX_LINES)
+    .optional()
+    .default(LOGS_DEBUG_DEFAULT_LINES)
+    .describe(`Log lines to analyze (default: ${LOGS_DEBUG_DEFAULT_LINES})`),
   since: z.string().optional().describe('Time range (e.g., "5 minutes ago", "1 hour ago")'),
 }
 
@@ -26,7 +34,7 @@ export type DebugWorkspaceParams = {
 export type DebugWorkspaceResult = ToolResult
 
 export async function debugWorkspace(params: DebugWorkspaceParams): Promise<DebugWorkspaceResult> {
-  const { workspace, lines = 200, since } = params
+  const { workspace, lines = LOGS_DEBUG_DEFAULT_LINES, since } = params
 
   // Just read the logs with sensible defaults
   return readServerLogs({

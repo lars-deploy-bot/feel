@@ -111,7 +111,7 @@ function createMockRequest(url: string, options?: RequestInit) {
 // Mock session-service (logout revokes session server-side)
 vi.mock("@/features/auth/sessions/session-service", () => ({
   revokeSession: vi.fn().mockResolvedValue(true),
-  createAuthSession: vi.fn().mockResolvedValue(undefined),
+  trackAuthSession: vi.fn(),
 }))
 
 // Mock Supabase authentication

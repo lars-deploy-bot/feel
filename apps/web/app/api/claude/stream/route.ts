@@ -4,7 +4,12 @@ import { DEFAULTS, SUPERADMIN, WORKER_POOL } from "@webalive/shared"
 import { getWorkerPool, type WorkerToParentMessage } from "@webalive/worker-pool"
 import { cookies, headers } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
-import { getSafeSessionCookie, requireSessionUser, verifyWorkspaceAccess } from "@/features/auth/lib/auth"
+import {
+  AuthenticationError,
+  getSafeSessionCookie,
+  requireSessionUser,
+  verifyWorkspaceAccess,
+} from "@/features/auth/lib/auth"
 import {
   sessionStore,
   type TabSessionKey,
@@ -899,6 +904,17 @@ export async function POST(req: NextRequest) {
     logger.log("Stream response ready, cancellation registered")
     return response
   } catch (outerError) {
+    // Revoked session → 401 (not a 500)
+    if (outerError instanceof AuthenticationError) {
+      const origin = req.headers.get("origin")
+      const authRes = structuredErrorResponse(ErrorCodes.NO_SESSION, {
+        status: 401,
+        details: { message: "Authentication required", requestId },
+      })
+      addCorsHeaders(authRes, origin)
+      return authRes
+    }
+
     logger.error("Outer catch - request processing failed:", outerError)
     Sentry.captureException(outerError)
 

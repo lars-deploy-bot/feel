@@ -3,6 +3,7 @@
  */
 
 import * as Sentry from "@sentry/nextjs"
+import { SESSION_MAX_AGE } from "@webalive/shared"
 import { parseDeviceLabel } from "./device-label"
 import { isRevoked, markRevoked } from "./session-cache"
 import {
@@ -13,6 +14,22 @@ import {
   touchAuthSessionRow,
 } from "./session-repository"
 import type { AuthSessionListItem } from "./types"
+
+/**
+ * Extract client info from a request and create an auth session row.
+ * Fire-and-forget: errors are captured by Sentry but never thrown.
+ */
+export function trackAuthSession(req: Request, params: { sid: string; userId: string }): void {
+  const userAgent = req.headers.get("user-agent")
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip")
+  createAuthSession({
+    sid: params.sid,
+    userId: params.userId,
+    userAgent,
+    ip,
+    expiresAt: new Date(Date.now() + SESSION_MAX_AGE * 1000),
+  }).catch(err => Sentry.captureException(err))
+}
 
 /**
  * Check if a session has been revoked.
@@ -64,14 +81,26 @@ export async function revokeSession(userId: string, sid: string): Promise<boolea
 
 /**
  * Revoke all sessions except the current one.
+ * Lists active sessions first so we can immediately mark them in the local cache.
  */
 export async function revokeOtherSessions(userId: string, currentSid: string): Promise<number> {
-  return revokeOtherAuthSessionRows(userId, currentSid)
+  // Collect sids before revocation for immediate cache invalidation
+  const activeSessions = await listActiveSessionRows(userId, currentSid)
+  const otherSids = activeSessions.filter(s => !s.isCurrent).map(s => s.sid)
+
+  const count = await revokeOtherAuthSessionRows(userId, currentSid)
+
+  for (const sid of otherSids) {
+    markRevoked(sid)
+  }
+
+  return count
 }
 
 // Throttle map: sid -> last touch timestamp
 const touchThrottle = new Map<string, number>()
 const TOUCH_INTERVAL_MS = 5 * 60 * 1000 // 5 minutes
+const THROTTLE_CLEANUP_INTERVAL_MS = 10 * 60 * 1000
 
 /**
  * Update last_active_at for a session. Throttled to once per 5 minutes per sid.
@@ -89,4 +118,20 @@ export async function touchLastActive(sid: string, userId: string): Promise<void
   } catch (err) {
     Sentry.captureException(err)
   }
+}
+
+// Periodic cleanup: evict throttle entries older than 30 days (JWT max age)
+const JWT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
+
+function cleanupThrottleMap(): void {
+  const now = Date.now()
+  for (const [sid, ts] of touchThrottle.entries()) {
+    if (now - ts > JWT_MAX_AGE_MS) {
+      touchThrottle.delete(sid)
+    }
+  }
+}
+
+if (typeof setInterval !== "undefined" && typeof process !== "undefined" && !process.env.VITEST) {
+  setInterval(cleanupThrottleMap, THROTTLE_CLEANUP_INTERVAL_MS)
 }

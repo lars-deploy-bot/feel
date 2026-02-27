@@ -37,6 +37,7 @@ export const ErrorCodes = {
   INVALID_SIGNATURE: "INVALID_SIGNATURE",
   SESSION_NOT_FOUND: "SESSION_NOT_FOUND",
   SESSION_REVOKED: "SESSION_REVOKED",
+  CANNOT_REVOKE_CURRENT_SESSION: "CANNOT_REVOKE_CURRENT_SESSION",
   INSUFFICIENT_TOKENS: "INSUFFICIENT_TOKENS",
   INSUFFICIENT_CREDITS: "INSUFFICIENT_CREDITS",
   OAUTH_EXPIRED: "OAUTH_EXPIRED",
@@ -271,6 +272,9 @@ export function getErrorMessage(code: ErrorCode, details?: Record<string, any>):
 
     case ErrorCodes.SESSION_REVOKED:
       return "Your session has been revoked. Please log in again."
+
+    case ErrorCodes.CANNOT_REVOKE_CURRENT_SESSION:
+      return "You cannot revoke the session you are currently using. Use 'Sign out' instead."
 
     case ErrorCodes.INVALID_SIGNATURE:
       return "Invalid webhook signature. The request could not be verified."

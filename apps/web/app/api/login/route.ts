@@ -1,9 +1,8 @@
-import * as Sentry from "@sentry/nextjs"
 import { env } from "@webalive/env/server"
-import { buildSessionOrgClaims, SECURITY, SESSION_MAX_AGE, STANDALONE } from "@webalive/shared"
+import { buildSessionOrgClaims, SECURITY, STANDALONE } from "@webalive/shared"
 import { type NextRequest, NextResponse } from "next/server"
 import { createSessionToken } from "@/features/auth/lib/jwt"
-import { createAuthSession } from "@/features/auth/sessions/session-service"
+import { trackAuthSession } from "@/features/auth/sessions/session-service"
 import { createCorsResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { handleBody, isHandleBodyError } from "@/lib/api/server"
 import { COOKIE_NAMES, getSessionCookieOptions } from "@/lib/auth/cookies"
@@ -156,15 +155,7 @@ export async function POST(req: NextRequest) {
   })
 
   // Non-blocking: don't fail login if session tracking fails
-  const userAgent = req.headers.get("user-agent")
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip")
-  createAuthSession({
-    sid,
-    userId: user.user_id,
-    userAgent,
-    ip,
-    expiresAt: new Date(Date.now() + SESSION_MAX_AGE * 1000),
-  }).catch(err => Sentry.captureException(err))
+  trackAuthSession(req, { sid, userId: user.user_id })
 
   console.log(`[Login] Successfully authenticated: ${user.email} (${workspaces.length} workspaces)`)
 

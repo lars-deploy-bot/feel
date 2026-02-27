@@ -1,4 +1,4 @@
-import { AuthenticationError, getSessionPayloadFromCookie, requireSessionUser } from "@/features/auth/lib/auth"
+import { AuthenticationError, requireAuthSession } from "@/features/auth/lib/auth"
 import { listActiveSessions } from "@/features/auth/sessions/session-service"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { alrighty } from "@/lib/api/server"
@@ -6,12 +6,7 @@ import { ErrorCodes } from "@/lib/error-codes"
 
 export async function GET() {
   try {
-    const user = await requireSessionUser()
-    const payload = await getSessionPayloadFromCookie()
-
-    if (!payload?.sid) {
-      return structuredErrorResponse(ErrorCodes.NO_SESSION, { status: 401 })
-    }
+    const { user, payload } = await requireAuthSession()
 
     const sessions = await listActiveSessions(user.id, payload.sid)
 
