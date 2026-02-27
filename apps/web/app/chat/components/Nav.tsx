@@ -13,7 +13,6 @@ import {
 } from "@/lib/analytics/events"
 
 interface NavProps {
-  isSuperadminWorkspace: boolean
   onFeedbackClick: () => void
   onTemplatesClick: () => void
   isSettingsOpen: boolean
@@ -29,7 +28,6 @@ interface NavProps {
 }
 
 export function Nav({
-  isSuperadminWorkspace,
   onFeedbackClick,
   onTemplatesClick,
   isSettingsOpen,
