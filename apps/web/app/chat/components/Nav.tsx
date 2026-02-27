@@ -3,8 +3,6 @@
 import { Image, Layers, MessageCircle, PanelLeft, PanelLeftClose, Settings } from "lucide-react"
 import type { RefObject } from "react"
 import { PhotoMenu } from "@/components/ui/PhotoMenu"
-import { OrganizationWorkspaceSwitcher } from "@/components/workspace/OrganizationWorkspaceSwitcher"
-import { WorktreeSwitcher } from "@/components/workspace/WorktreeSwitcher"
 import type { ChatInputHandle } from "@/features/chat/components/ChatInput/types"
 import {
   trackComponentsClicked,
@@ -13,7 +11,6 @@ import {
   trackPhotosClicked,
   trackSettingsClicked,
 } from "@/lib/analytics/events"
-import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
 
 interface NavProps {
   isSuperadminWorkspace: boolean
@@ -27,12 +24,8 @@ interface NavProps {
   photoButtonRef: RefObject<HTMLButtonElement | null>
   chatInputRef: RefObject<ChatInputHandle | null>
   workspace: string | null
-  worktree: string | null
   isSidebarOpen: boolean
   onToggleSidebar: () => void
-  onSelectWorktree: (worktree: string | null) => void
-  worktreeModalOpen?: boolean
-  onWorktreeModalOpenChange?: (open: boolean) => void
 }
 
 export function Nav({
@@ -47,15 +40,9 @@ export function Nav({
   photoButtonRef,
   chatInputRef,
   workspace,
-  worktree,
   isSidebarOpen,
   onToggleSidebar,
-  onSelectWorktree,
-  worktreeModalOpen,
-  onWorktreeModalOpenChange,
 }: NavProps) {
-  const worktreesEnabled = useFeatureFlag("WORKTREES")
-
   // Shared base styles
   const buttonBase =
     "inline-flex items-center justify-center h-8 rounded-lg active:scale-95 transition-all duration-150 ease-out"
@@ -65,13 +52,13 @@ export function Nav({
 
   return (
     <div className="h-12 flex-shrink-0 border-b border-black/[0.04] dark:border-white/[0.04]">
-      <div className="h-full flex items-center px-2">
-        {/* Left side: sidebar toggle + breadcrumb + worktree */}
-        <div className="flex items-center gap-4 min-w-0">
+      <div className="h-full flex items-center justify-between px-2">
+        {/* Left side: sidebar toggle (mobile only, since sidebar handles its own visibility on desktop) */}
+        <div className="flex items-center gap-2 min-w-0">
           <button
             type="button"
             onClick={onToggleSidebar}
-            className={`${iconButtonStyle} shrink-0`}
+            className={`${iconButtonStyle} shrink-0 md:hidden`}
             aria-label={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
           >
             {isSidebarOpen ? (
@@ -80,20 +67,18 @@ export function Nav({
               <PanelLeft size={16} strokeWidth={1.75} />
             )}
           </button>
-          <OrganizationWorkspaceSwitcher workspace={workspace} />
-          {worktreesEnabled && !isSuperadminWorkspace && (
-            <WorktreeSwitcher
-              workspace={workspace}
-              currentWorktree={worktree}
-              onChange={onSelectWorktree}
-              isOpen={worktreeModalOpen}
-              onOpenChange={onWorktreeModalOpenChange}
-            />
+
+          {/* Show workspace name in nav on mobile when sidebar is closed */}
+          {workspace && !isSidebarOpen && (
+            <button
+              type="button"
+              onClick={onToggleSidebar}
+              className="md:hidden text-sm font-medium text-black/60 dark:text-white/60 truncate max-w-[200px]"
+            >
+              {workspace}
+            </button>
           )}
         </div>
-
-        {/* Separator between nav and actions */}
-        <div className="w-px h-4 bg-black/[0.08] dark:bg-white/[0.08] mx-2 shrink-0" />
 
         {/* Action buttons */}
         <div className="flex items-center gap-1">

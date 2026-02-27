@@ -10,11 +10,14 @@ import {
   GitBranch,
   Heart,
   MessageSquare,
+  PanelLeftClose,
   Pencil,
   Settings2,
   X,
 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { OrganizationWorkspaceSwitcher } from "@/components/workspace/OrganizationWorkspaceSwitcher"
+import { WorktreeSwitcher } from "@/components/workspace/WorktreeSwitcher"
 import { trackSidebarClosed, trackSidebarOpened } from "@/lib/analytics/events"
 import { useDexieArchivedConversations, useDexieConversations, useDexieSession } from "@/lib/db/dexieMessageStore"
 import type { DbConversation } from "@/lib/db/messageDb"
@@ -145,6 +148,8 @@ function NewChatDropdown({
 
 interface ConversationSidebarProps {
   workspace: string | null
+  worktree: string | null
+  isSuperadminWorkspace: boolean
   activeTabGroupId: string | null
   onTabGroupSelect: (tabGroupId: string) => void
   onArchiveTabGroup: (tabGroupId: string) => void
@@ -152,12 +157,17 @@ interface ConversationSidebarProps {
   onRenameTabGroup: (tabGroupId: string, title: string) => void
   onNewConversation: () => void
   onNewWorktree: () => void
+  onSelectWorktree: (worktree: string | null) => void
+  worktreeModalOpen?: boolean
+  onWorktreeModalOpenChange?: (open: boolean) => void
   onOpenSettings: () => void
   onOpenInvite: () => void
 }
 
 export function ConversationSidebar({
   workspace,
+  worktree,
+  isSuperadminWorkspace,
   activeTabGroupId,
   onTabGroupSelect,
   onArchiveTabGroup,
@@ -165,6 +175,9 @@ export function ConversationSidebar({
   onRenameTabGroup,
   onNewConversation,
   onNewWorktree,
+  onSelectWorktree,
+  worktreeModalOpen,
+  onWorktreeModalOpenChange,
   onOpenSettings,
   onOpenInvite,
 }: ConversationSidebarProps) {
@@ -267,6 +280,32 @@ export function ConversationSidebar({
   // Shared sidebar content - rendered in both desktop and mobile
   const renderContent = (isMobile: boolean) => (
     <div className={`flex flex-col h-full ${isMobile ? "w-screen" : "w-[280px]"}`}>
+      {/* Header: Org/Workspace switcher + close button */}
+      <div className={`h-12 flex items-center justify-between px-3 shrink-0 border-b ${styles.borderSubtle}`}>
+        <OrganizationWorkspaceSwitcher workspace={workspace} compact />
+        <button
+          type="button"
+          onClick={closeSidebar}
+          className={`${styles.iconButton} shrink-0 ${styles.transitionAll}`}
+          aria-label="Close sidebar"
+        >
+          <PanelLeftClose size={16} strokeWidth={1.75} />
+        </button>
+      </div>
+
+      {/* Worktree switcher - shown below header when enabled */}
+      {worktreeEnabled && !isSuperadminWorkspace && (
+        <div className={`px-3 py-2 shrink-0 border-b ${styles.borderSubtle}`}>
+          <WorktreeSwitcher
+            workspace={workspace}
+            currentWorktree={worktree}
+            onChange={onSelectWorktree}
+            isOpen={worktreeModalOpen}
+            onOpenChange={onWorktreeModalOpenChange}
+          />
+        </div>
+      )}
+
       {/* Conversation list */}
       <div className="flex-1 overflow-y-auto flex flex-col">
         {conversations.length === 0 && archivedConversations.length === 0 ? (
@@ -365,16 +404,16 @@ export function ConversationSidebar({
         {renderContent(false)}
       </aside>
 
-      {/* Mobile sidebar - overlay, starts below top bar (h-14 = 3.5rem) */}
+      {/* Mobile sidebar - overlay, full height */}
       {isOpen && (
         <>
           <div
-            className={`md:hidden fixed top-14 inset-x-0 bottom-0 ${styles.backdrop} z-50`}
+            className={`md:hidden fixed inset-0 ${styles.backdrop} z-50`}
             onClick={closeSidebar}
             aria-hidden="true"
           />
           <aside
-            className={`md:hidden fixed top-14 left-0 bottom-0 ${styles.panel} z-50 flex flex-col shadow-xl`}
+            className={`md:hidden fixed inset-y-0 left-0 ${styles.panel} z-50 flex flex-col shadow-xl`}
             aria-label="Conversation history"
           >
             {renderContent(true)}

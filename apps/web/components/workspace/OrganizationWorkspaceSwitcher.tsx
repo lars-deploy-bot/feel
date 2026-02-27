@@ -20,9 +20,11 @@ const getWsLabel = (ws: string) => ws
 
 interface OrganizationWorkspaceSwitcherProps {
   workspace: string | null
+  /** Compact mode for sidebar: stacks org above workspace */
+  compact?: boolean
 }
 
-export function OrganizationWorkspaceSwitcher({ workspace }: OrganizationWorkspaceSwitcherProps) {
+export function OrganizationWorkspaceSwitcher({ workspace, compact }: OrganizationWorkspaceSwitcherProps) {
   const { organizations } = useOrganizations()
   const selectedOrgId = useSelectedOrgId()
   const { setCurrentWorkspace, setSelectedOrg } = useWorkspaceActions()
@@ -74,6 +76,80 @@ export function OrganizationWorkspaceSwitcher({ workspace }: OrganizationWorkspa
   const showOrgChevron = organizations.length > 1
   const showWsChevron = !workspace || workspaces.length > 1
 
+  // Compact layout for sidebar
+  if (compact) {
+    return (
+      <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+        {/* Org trigger - small label */}
+        <button
+          ref={orgTriggerRef}
+          type="button"
+          onClick={() => {
+            setOrgOpen(prev => !prev)
+            setWsOpen(false)
+          }}
+          className="flex items-center gap-1 text-[11px] text-black/35 dark:text-white/35 hover:text-black/55 dark:hover:text-white/55 transition-colors truncate"
+        >
+          <span className="truncate">{org.name}</span>
+          {showOrgChevron && <ChevronDown size={10} strokeWidth={2} className="shrink-0 opacity-50" />}
+        </button>
+
+        {/* Workspace trigger - main label */}
+        <button
+          ref={wsTriggerRef}
+          type="button"
+          onClick={() => {
+            setWsOpen(prev => !prev)
+            setOrgOpen(false)
+          }}
+          className="flex items-center gap-1.5 hover:opacity-80 transition-opacity truncate"
+        >
+          <span
+            className={`size-1.5 rounded-full shrink-0 ${workspace ? "bg-emerald-500" : "bg-black/10 dark:bg-white/10"}`}
+          />
+          <span
+            className={`text-sm truncate ${
+              workspace ? "text-black/80 dark:text-white/80 font-medium" : "text-black/25 dark:text-white/25"
+            }`}
+          >
+            {workspace ?? "Pick a workspace"}
+          </span>
+          {showWsChevron && (
+            <ChevronDown size={10} strokeWidth={2} className="text-black/20 dark:text-white/20 shrink-0" />
+          )}
+        </button>
+
+        {/* Dropdowns */}
+        {orgOpen && showOrgChevron && (
+          <SwitcherDropdown
+            triggerRef={orgTriggerRef}
+            items={organizations}
+            activeItem={org}
+            getKey={getOrgKey}
+            getLabel={getOrgLabel}
+            placeholder="Find organization..."
+            onSelect={handleOrgSelect}
+            onClose={closeOrg}
+          />
+        )}
+
+        {wsOpen && workspaces.length > 0 && (
+          <SwitcherDropdown
+            triggerRef={wsTriggerRef}
+            items={workspaces}
+            activeItem={workspace}
+            getKey={getWsKey}
+            getLabel={getWsLabel}
+            placeholder="Find workspace..."
+            onSelect={handleWsSelect}
+            onClose={closeWs}
+          />
+        )}
+      </div>
+    )
+  }
+
+  // Default horizontal layout (for top bar usage)
   return (
     <div className="flex items-center text-sm">
       {/* Org trigger */}
