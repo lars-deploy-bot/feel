@@ -677,7 +677,6 @@ function ChatPageContent() {
       {/* Main content column: nav + chat + workbench */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <Nav
-          isSuperadminWorkspace={isSuperadminWorkspace}
           onFeedbackClick={modals.openFeedback}
           onTemplatesClick={modals.openTemplates}
           isSettingsOpen={!!modals.settings}
