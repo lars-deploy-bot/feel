@@ -179,6 +179,18 @@ export function trackDebugViewToggled(isDebug: boolean) {
   capture("debug_view_toggled", { is_debug: isDebug })
 }
 
+// ─── Team & Project ─────────────────────────────────────────────────────────
+
+/** User clicks "Create Team" in team switcher */
+export function trackCreateTeamClicked() {
+  capture("create_team_clicked")
+}
+
+/** User clicks "Create Project" in project switcher */
+export function trackCreateProjectClicked() {
+  capture("create_project_clicked")
+}
+
 // ─── Templates / Components ─────────────────────────────────────────────────
 
 /** Templates modal opened */

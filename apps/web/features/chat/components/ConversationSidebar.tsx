@@ -10,7 +10,6 @@ import {
   GitBranch,
   Heart,
   MessageSquare,
-  PanelLeftClose,
   Pencil,
   Settings2,
   X,
@@ -47,7 +46,7 @@ const styles = {
     "inline-flex items-center justify-center size-8 rounded-lg text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 bg-black/[0.02] dark:bg-white/[0.02] hover:bg-black/[0.07] dark:hover:bg-white/[0.08] active:bg-black/[0.12] dark:active:bg-white/[0.12] active:scale-95",
   // Transitions
   transition: "transition-colors duration-150 ease-in-out",
-  transitionAll: "transition-all duration-150 ease-in-out",
+  transitionAll: "transition-all duration-200 ease-in-out",
 } as const
 
 // New Chat button — shows dropdown with Worktree option only when WORKTREES flag is enabled
@@ -282,14 +281,26 @@ export function ConversationSidebar({
     <div className={`flex flex-col h-full ${isMobile ? "w-screen" : "w-[280px]"}`}>
       {/* Header: Org/Workspace switcher + close button */}
       <div className={`h-12 flex items-center justify-between px-3 shrink-0 border-b ${styles.borderSubtle}`}>
-        <OrganizationWorkspaceSwitcher workspace={workspace} compact />
+        <OrganizationWorkspaceSwitcher workspace={workspace} compact orgOnly />
         <button
           type="button"
           onClick={closeSidebar}
-          className={`${styles.iconButton} shrink-0 ${styles.transitionAll}`}
+          className="inline-flex items-center justify-center size-8 rounded-lg shrink-0 text-black/35 dark:text-white/35 hover:text-black/55 dark:hover:text-white/55 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] active:scale-95 transition-all duration-150 ease-out"
           aria-label="Close sidebar"
         >
-          <PanelLeftClose size={16} strokeWidth={1.75} />
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.25"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="1.5" y="2.5" width="13" height="11" rx="2" />
+            <line x1="5.5" y1="2.5" x2="5.5" y2="13.5" />
+          </svg>
         </button>
       </div>
 
