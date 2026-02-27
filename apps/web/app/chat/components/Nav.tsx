@@ -51,29 +51,16 @@ export function Nav({
   return (
     <div className="h-12 flex-shrink-0 border-b border-black/[0.04] dark:border-white/[0.04]">
       <div className="h-full flex items-center justify-between px-2">
-        {/* Left side: sidebar toggle (mobile only, since sidebar handles its own visibility on desktop) */}
+        {/* Left side: sidebar toggle */}
         <div className="flex items-center gap-2 min-w-0">
-          <button
-            type="button"
-            onClick={onToggleSidebar}
-            className={`${iconButtonStyle} shrink-0 md:hidden`}
-            aria-label={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
-          >
-            {isSidebarOpen ? (
-              <PanelLeftClose size={16} strokeWidth={1.75} />
-            ) : (
-              <PanelLeft size={16} strokeWidth={1.75} />
-            )}
-          </button>
-
-          {/* Show workspace name in nav on mobile when sidebar is closed */}
-          {workspace && !isSidebarOpen && (
+          {!isSidebarOpen && (
             <button
               type="button"
               onClick={onToggleSidebar}
-              className="md:hidden text-sm font-medium text-black/60 dark:text-white/60 truncate max-w-[200px]"
+              className={`${iconButtonStyle} shrink-0`}
+              aria-label="Open sidebar"
             >
-              {workspace}
+              <PanelLeft size={16} strokeWidth={1.75} />
             </button>
           )}
         </div>
