@@ -57,6 +57,13 @@ describe("POST /api/auth/sessions/revoke-others", () => {
     expect(res.status).toBe(401)
   })
 
+  it("returns 401 when session payload has no sid", async () => {
+    vi.mocked(requireAuthSession).mockRejectedValue(new (AuthenticationError as ErrorConstructor)("Missing session id"))
+
+    const res = await POST()
+    expect(res.status).toBe(401)
+  })
+
   it("revokes all other sessions and returns count", async () => {
     vi.mocked(requireAuthSession).mockResolvedValue(MOCK_AUTH_SESSION)
     vi.mocked(revokeOtherSessions).mockResolvedValue(3)

@@ -189,7 +189,10 @@ describe("GET /api/auth/workspaces", () => {
 
     expect(response.status).toBe(200)
     expect(data.workspaces).toEqual(["org-site.com"])
-    // Verify .eq was called (org-scoped query, not unfiltered)
+    // Verify org-scoped query: .from("domains").select(...).eq("org_id", "org-1")
     expect(mockAppFrom).toHaveBeenCalledWith("domains")
+    const selectMock = mockAppFrom.mock.results[0].value.select
+    const eqMock = selectMock.mock.results[0].value.eq
+    expect(eqMock).toHaveBeenCalledWith("org_id", "org-1")
   })
 })
