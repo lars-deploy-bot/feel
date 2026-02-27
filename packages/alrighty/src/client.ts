@@ -182,15 +182,56 @@ export function createClient<T extends SchemaRegistry>(schemas: T, options: Clie
     )
   }
 
+  function postty<E extends Endpoint<T>>(
+    endpoint: E,
+    init?: Omit<RequestInit, "body" | "method">,
+    pathOverride?: string,
+  ): Promise<Res<T, E>>
+  function postty<E extends Endpoint<T>>(
+    endpoint: E,
+    body: Req<T, E>,
+    init?: Omit<RequestInit, "body" | "method">,
+    pathOverride?: string,
+  ): Promise<Res<T, E>>
+  function postty<E extends Endpoint<T>>(
+    endpoint: E,
+    bodyOrInit?: Req<T, E> | Omit<RequestInit, "body" | "method">,
+    initOrPath?: Omit<RequestInit, "body" | "method"> | string,
+    pathOverrideMaybe?: string,
+  ): Promise<Res<T, E>> {
+    let body: unknown
+    let init: Omit<RequestInit, "body" | "method"> | undefined
+    let pathOverrideResolved: string | undefined
+
+    if (typeof pathOverrideMaybe === "string") {
+      body = bodyOrInit
+      init = initOrPath as Omit<RequestInit, "body" | "method"> | undefined
+      pathOverrideResolved = pathOverrideMaybe
+    } else if (typeof initOrPath === "string") {
+      if (schemas[endpoint].req) {
+        body = bodyOrInit
+      } else {
+        init = bodyOrInit as Omit<RequestInit, "body" | "method"> | undefined
+      }
+      pathOverrideResolved = initOrPath
+    } else if (initOrPath !== undefined) {
+      body = bodyOrInit
+      init = initOrPath as Omit<RequestInit, "body" | "method"> | undefined
+    } else if (bodyOrInit === undefined) {
+      init = undefined
+    } else if (schemas[endpoint].req) {
+      body = bodyOrInit
+    } else {
+      init = bodyOrInit as Omit<RequestInit, "body" | "method">
+    }
+
+    return api(endpoint, "POST", body, init, pathOverrideResolved)
+  }
+
   return {
     getty: <E extends Endpoint<T>>(endpoint: E, init?: Omit<RequestInit, "body" | "method">, pathOverride?: string) =>
       api(endpoint, "GET", undefined, init, pathOverride),
-    postty: <E extends Endpoint<T>>(
-      endpoint: E,
-      body: Req<T, E>,
-      init?: Omit<RequestInit, "body" | "method">,
-      pathOverride?: string,
-    ) => api(endpoint, "POST", body, init, pathOverride),
+    postty,
     putty: <E extends Endpoint<T>>(
       endpoint: E,
       body: Req<T, E>,

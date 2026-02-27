@@ -33,6 +33,10 @@ const schemas = {
     req: z.object({ name: z.string().optional() }),
     res: z.object({ ok: z.boolean() }),
   },
+  // POST endpoint without body (action/trigger)
+  "session/revoke-others": {
+    res: z.object({ ok: z.boolean(), count: z.number() }),
+  },
   // DELETE endpoint (no req, can use deletty)
   "user/delete": {
     res: z.object({ ok: z.boolean() }),
@@ -187,6 +191,32 @@ describe("createClient", () => {
       await expect(postty("login", { email: "test@example.com", password: "" })).rejects.toMatchObject({
         code: "REQUEST_VALIDATION_ERROR",
       })
+    })
+
+    it("makes POST request without body for bodyless endpoints", async () => {
+      mockFetch.mockReturnValue(mockResponse({ ok: true, count: 2 }))
+
+      const { postty } = createClient(schemas)
+      await postty("session/revoke-others")
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        "/api/session/revoke-others",
+        expect.objectContaining({
+          method: "POST",
+        }),
+      )
+
+      const call = mockFetch.mock.calls[0]
+      expect(call[1].body).toBeUndefined()
+    })
+
+    it("supports pathOverride for bodyless POST", async () => {
+      mockFetch.mockReturnValue(mockResponse({ ok: true, count: 3 }))
+
+      const { postty } = createClient(schemas)
+      await postty("session/revoke-others", undefined, "/api/auth/sessions/revoke-others")
+
+      expect(mockFetch).toHaveBeenCalledWith("/api/auth/sessions/revoke-others", expect.anything())
     })
 
     it("uses schema path override when endpoint key differs from route path", async () => {

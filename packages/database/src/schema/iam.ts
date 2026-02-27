@@ -13,6 +13,7 @@ import {
   check,
   foreignKey,
   index,
+  inet,
   jsonb,
   numeric,
   pgSchema,
@@ -153,6 +154,37 @@ export const sessions = iamSchema.table(
     }).onDelete("cascade"),
     // Note: domain_id FK is added via separate migration due to cross-schema dependency
     unique("sessions_user_id_domain_id_tab_id_key").on(table.userId, table.domainId, table.tabId),
+  ],
+)
+
+/**
+ * Auth Sessions table - Server-side login session tracking for listing and remote revocation.
+ * Separate from SDK conversation sessions (iam.sessions).
+ */
+export const authSessions = iamSchema.table(
+  "auth_sessions",
+  {
+    authSessionId: uuid("auth_session_id").defaultRandom().primaryKey().notNull(),
+    sid: text("sid").notNull().unique(),
+    userId: text("user_id").notNull(),
+    userAgent: text("user_agent"),
+    ipAddress: inet("ip_address"),
+    deviceLabel: text("device_label"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).defaultNow().notNull(),
+    lastActiveAt: timestamp("last_active_at", { withTimezone: true, mode: "string" }).defaultNow().notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true, mode: "string" }).notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true, mode: "string" }),
+    revokedBy: text("revoked_by"),
+  },
+  table => [
+    index("idx_auth_sessions_user_active").on(table.userId).where(sql`revoked_at IS NULL`),
+    index("idx_auth_sessions_expires").on(table.expiresAt),
+    index("idx_auth_sessions_sid").on(table.sid),
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [users.userId],
+      name: "auth_sessions_user_id_fkey",
+    }).onDelete("cascade"),
   ],
 )
 

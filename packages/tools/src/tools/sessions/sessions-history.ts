@@ -5,6 +5,7 @@
  * Useful for understanding context before sending a message.
  */
 
+import { SESSIONS_HISTORY_DEFAULT_LIMIT, SESSIONS_HISTORY_MAX_LIMIT } from "@webalive/shared"
 import { z } from "zod"
 import type { AgentToAgentPolicy, SessionMessage } from "./types.js"
 import { isA2AAllowed } from "./types.js"
@@ -13,7 +14,7 @@ export const sessionsHistorySchema = z.object({
   /** Target session key */
   sessionKey: z.string(),
   /** Maximum messages to return */
-  limit: z.number().min(1).max(100).optional(),
+  limit: z.number().min(1).max(SESSIONS_HISTORY_MAX_LIMIT).optional(),
   /** Include tool use/result messages */
   includeTools: z.boolean().optional(),
   /** Only messages after this timestamp (ISO) */
@@ -48,7 +49,7 @@ export async function executeSessionsHistory(
   params: SessionsHistoryParams,
   ctx: SessionsHistoryContext,
 ): Promise<SessionsHistoryResult> {
-  const { sessionKey, limit = 50, includeTools = false, after } = params
+  const { sessionKey, limit = SESSIONS_HISTORY_DEFAULT_LIMIT, includeTools = false, after } = params
 
   // Resolve session
   const session = await ctx.resolveSession(sessionKey)
@@ -107,7 +108,7 @@ Set includeTools: true to see the full conversation including tool calls.`,
       },
       limit: {
         type: "number",
-        description: "Maximum messages to return (default: 50, max: 100)",
+        description: `Maximum messages to return (default: ${SESSIONS_HISTORY_DEFAULT_LIMIT}, max: ${SESSIONS_HISTORY_MAX_LIMIT})`,
       },
       includeTools: {
         type: "boolean",

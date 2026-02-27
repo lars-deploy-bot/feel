@@ -9,6 +9,7 @@
  */
 
 import { tool } from "@anthropic-ai/claude-agent-sdk"
+import { CLARIFICATION_MAX_QUESTIONS, CLARIFICATION_OPTIONS_PER_QUESTION } from "@webalive/shared"
 import { z } from "zod"
 
 /**
@@ -27,14 +28,18 @@ const clarificationQuestionSchema = z.object({
   question: z.string().describe("The question to ask the user"),
   options: z
     .array(questionOptionSchema)
-    .length(3)
+    .length(CLARIFICATION_OPTIONS_PER_QUESTION)
     .describe(
-      "Exactly 3 options for the user to choose from. A 4th 'Other' option with custom input is added automatically.",
+      `Exactly ${CLARIFICATION_OPTIONS_PER_QUESTION} options for the user to choose from. A 4th 'Other' option with custom input is added automatically.`,
     ),
 })
 
 export const askClarificationParamsSchema = {
-  questions: z.array(clarificationQuestionSchema).min(1).max(3).describe("1-3 clarification questions to ask the user"),
+  questions: z
+    .array(clarificationQuestionSchema)
+    .min(1)
+    .max(CLARIFICATION_MAX_QUESTIONS)
+    .describe(`1-${CLARIFICATION_MAX_QUESTIONS} clarification questions to ask the user`),
   context: z.string().optional().describe("Optional context about why these questions are being asked"),
 }
 
@@ -70,21 +75,21 @@ export async function askClarification(params: AskClarificationParams): Promise<
       }
     }
 
-    if (questions.length > 3) {
+    if (questions.length > CLARIFICATION_MAX_QUESTIONS) {
       return {
-        content: [{ type: "text", text: "Error: Maximum 3 questions allowed" }],
+        content: [{ type: "text", text: `Error: Maximum ${CLARIFICATION_MAX_QUESTIONS} questions allowed` }],
         isError: true,
       }
     }
 
-    // Validate each question has exactly 3 options
+    // Validate each question has the required number of options
     for (const q of questions) {
-      if (q.options.length !== 3) {
+      if (q.options.length !== CLARIFICATION_OPTIONS_PER_QUESTION) {
         return {
           content: [
             {
               type: "text",
-              text: `Error: Question "${q.id}" must have exactly 3 options (got ${q.options.length})`,
+              text: `Error: Question "${q.id}" must have exactly ${CLARIFICATION_OPTIONS_PER_QUESTION} options (got ${q.options.length})`,
             },
           ],
           isError: true,
@@ -140,7 +145,7 @@ Use this tool when:
 - Planning a complex task that has multiple valid approaches
 - The user asks for something that requires choosing between options
 
-The tool presents 1-3 multiple choice questions, each with 3 preset options plus a custom "Other" input.
+The tool presents 1-${CLARIFICATION_MAX_QUESTIONS} multiple choice questions, each with ${CLARIFICATION_OPTIONS_PER_QUESTION} preset options plus a custom "Other" input.
 After the user answers, their responses will be sent back to you to continue the conversation.
 
 Example use cases:

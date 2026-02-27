@@ -456,6 +456,23 @@ export async function requireSessionUser(): Promise<SessionUser> {
 }
 
 /**
+ * Authenticate the user and extract their session payload with `sid`.
+ * Throws AuthenticationError if no session exists.
+ * Returns the user + payload (with guaranteed `sid`).
+ */
+export async function requireAuthSession(): Promise<{
+  user: SessionUser
+  payload: SessionPayloadV3 & { sid: string }
+}> {
+  const user = await requireSessionUser()
+  const payload = await getSessionPayloadFromCookie()
+  if (!payload?.sid) {
+    throw new AuthenticationError("Missing session id")
+  }
+  return { user, payload: payload as SessionPayloadV3 & { sid: string } }
+}
+
+/**
  * Check if the manager workspace is authenticated
  * Special workspace for system administration
  * Uses separate manager_session cookie with JWT

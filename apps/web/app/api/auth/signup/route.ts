@@ -1,6 +1,7 @@
 import * as Sentry from "@sentry/nextjs"
 import { type NextRequest, NextResponse } from "next/server"
 import { createSessionToken } from "@/features/auth/lib/jwt"
+import { trackAuthSession } from "@/features/auth/sessions/session-service"
 import { createCorsResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { handleBody, isHandleBodyError } from "@/lib/api/server"
 import { COOKIE_NAMES, getSessionCookieOptions } from "@/lib/auth/cookies"
@@ -124,6 +125,9 @@ export async function POST(req: NextRequest) {
     )
 
     console.log(`[Signup] Created account for ${normalizedEmail} (org: ${orgId})`)
+
+    // Non-blocking: don't fail signup if session tracking fails
+    trackAuthSession(req, { sid, userId: newUser.user_id })
 
     const res = createCorsSuccessResponse(origin, {
       userId: newUser.user_id,

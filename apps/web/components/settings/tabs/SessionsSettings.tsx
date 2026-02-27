@@ -12,7 +12,7 @@ function maskIp(ip: string | null): string {
   const parts = ip.split(".")
   if (parts.length === 4) return `${parts[0]}.*.*.*`
   // IPv6 or other — just show first segment
-  return ip.split(":")[0] + ":***"
+  return `${ip.split(":")[0]}:***`
 }
 
 function relativeTime(dateStr: string): string {

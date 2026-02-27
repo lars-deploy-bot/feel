@@ -5,6 +5,11 @@
  * Filters based on A2A policy and session visibility.
  */
 
+import {
+  SESSIONS_LIST_DEFAULT_LIMIT,
+  SESSIONS_LIST_MAX_LIMIT,
+  SESSIONS_LIST_MAX_MESSAGE_PREVIEW,
+} from "@webalive/shared"
 import { z } from "zod"
 import type { AgentToAgentPolicy, SessionInfo } from "./types.js"
 import { isA2AAllowed } from "./types.js"
@@ -17,9 +22,9 @@ export const sessionsListSchema = z.object({
   /** Only show active (locked) sessions */
   activeOnly: z.boolean().optional(),
   /** Include message preview (last N messages) */
-  messageLimit: z.number().min(0).max(20).optional(),
+  messageLimit: z.number().min(0).max(SESSIONS_LIST_MAX_MESSAGE_PREVIEW).optional(),
   /** Maximum sessions to return */
-  limit: z.number().min(1).max(100).optional(),
+  limit: z.number().min(1).max(SESSIONS_LIST_MAX_LIMIT).optional(),
   /** Only sessions active in last N minutes */
   activeMinutes: z.number().min(1).optional(),
 })
@@ -59,7 +64,7 @@ export async function executeSessionsList(
   params: SessionsListParams,
   ctx: SessionsListContext,
 ): Promise<SessionsListResult> {
-  const { workspace, userId, activeOnly, messageLimit, limit = 50, activeMinutes } = params
+  const { workspace, userId, activeOnly, messageLimit, limit = SESSIONS_LIST_DEFAULT_LIMIT, activeMinutes } = params
 
   // Fetch sessions with filters
   const allSessions = await ctx.fetchSessions({
@@ -142,11 +147,11 @@ Use sessions_send to message a session, or sessions_history to read its conversa
       },
       messageLimit: {
         type: "number",
-        description: "Include last N messages from each session (0-20)",
+        description: `Include last N messages from each session (0-${SESSIONS_LIST_MAX_MESSAGE_PREVIEW})`,
       },
       limit: {
         type: "number",
-        description: "Maximum sessions to return (default: 50, max: 100)",
+        description: `Maximum sessions to return (default: ${SESSIONS_LIST_DEFAULT_LIMIT}, max: ${SESSIONS_LIST_MAX_LIMIT})`,
       },
       activeMinutes: {
         type: "number",

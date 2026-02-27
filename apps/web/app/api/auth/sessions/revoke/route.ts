@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server"
-import { AuthenticationError, getSessionPayloadFromCookie, requireSessionUser } from "@/features/auth/lib/auth"
+import { AuthenticationError, requireAuthSession } from "@/features/auth/lib/auth"
 import { revokeSession } from "@/features/auth/sessions/session-service"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { alrighty, handleBody, isHandleBodyError } from "@/lib/api/server"
@@ -7,17 +7,16 @@ import { ErrorCodes } from "@/lib/error-codes"
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await requireSessionUser()
-    const payload = await getSessionPayloadFromCookie()
-
-    if (!payload?.sid) {
-      return structuredErrorResponse(ErrorCodes.NO_SESSION, { status: 401 })
-    }
+    const { user, payload } = await requireAuthSession()
 
     const parsed = await handleBody("auth/sessions/revoke", req)
     if (isHandleBodyError(parsed)) return parsed
 
     const { sid } = parsed
+
+    if (sid === payload.sid) {
+      return structuredErrorResponse(ErrorCodes.CANNOT_REVOKE_CURRENT_SESSION, { status: 400 })
+    }
 
     const revoked = await revokeSession(user.id, sid)
 

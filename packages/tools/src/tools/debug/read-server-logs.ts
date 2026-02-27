@@ -1,5 +1,5 @@
 import { tool } from "@anthropic-ai/claude-agent-sdk"
-import { truncateOutput } from "@webalive/shared"
+import { LOGS_DEFAULT_LINES, LOGS_MAX_LINES, truncateOutput } from "@webalive/shared"
 import { z } from "zod"
 import { callApi, type ToolResult } from "../../lib/api-client.js"
 
@@ -20,10 +20,10 @@ export const readServerLogsParamsSchema = {
     .number()
     .int()
     .min(1)
-    .max(1000)
+    .max(LOGS_MAX_LINES)
     .optional()
-    .default(100)
-    .describe("Number of log lines to retrieve (default: 100, max: 1000)"),
+    .default(LOGS_DEFAULT_LINES)
+    .describe(`Number of log lines to retrieve (default: ${LOGS_DEFAULT_LINES}, max: ${LOGS_MAX_LINES})`),
   since: z.string().optional().describe('Time range (e.g., "5 minutes ago", "1 hour ago", "today")'),
 }
 
@@ -42,7 +42,7 @@ function sanitizeSearchTerm(search: string): string {
 }
 
 export async function readServerLogs(params: ReadServerLogsParams): Promise<ReadServerLogsResult> {
-  const { workspace, search, search_regex, lines = 100, since } = params
+  const { workspace, search, search_regex, lines = LOGS_DEFAULT_LINES, since } = params
 
   try {
     // Call API to read logs (runs as root with proper privileges)

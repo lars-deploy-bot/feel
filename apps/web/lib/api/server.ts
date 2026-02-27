@@ -1,3 +1,4 @@
+import type { EndpointSchema } from "@alive-brug/alrighty"
 import * as Sentry from "@sentry/nextjs"
 import { type NextRequest, NextResponse } from "next/server"
 import type { z } from "zod"
@@ -50,7 +51,8 @@ export async function handleBody<E extends Endpoint>(endpoint: E, req: NextReque
     }
 
     // No req schema defined: treat as no body
-    const reqSchema = apiSchemas[endpoint]?.req as z.ZodTypeAny | undefined
+    const entry: EndpointSchema = apiSchemas[endpoint]
+    const reqSchema = entry.req
     if (!reqSchema) {
       return NextResponse.json({ error: `No request schema defined for ${String(endpoint)}` }, { status: 500 })
     }

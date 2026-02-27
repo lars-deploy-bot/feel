@@ -5,6 +5,7 @@
  * Can wait for response or fire-and-forget.
  */
 
+import { SESSIONS_SEND_DEFAULT_TIMEOUT_SECONDS, SESSIONS_SEND_MAX_TIMEOUT_SECONDS } from "@webalive/shared"
 import { z } from "zod"
 import type { AgentToAgentPolicy, SessionSendResult } from "./types.js"
 import { isA2AAllowed } from "./types.js"
@@ -15,7 +16,7 @@ export const sessionsSendSchema = z.object({
   /** Message to send */
   message: z.string().min(1),
   /** Timeout in seconds (0 = fire-and-forget) */
-  timeoutSeconds: z.number().min(0).max(300).optional(),
+  timeoutSeconds: z.number().min(0).max(SESSIONS_SEND_MAX_TIMEOUT_SECONDS).optional(),
   /** Whether to wait for and return the response */
   waitForReply: z.boolean().optional(),
 })
@@ -50,7 +51,7 @@ export async function executeSessionsSend(
   params: SessionsSendParams,
   ctx: SessionsSendContext,
 ): Promise<SessionSendResult> {
-  const { sessionKey, message, timeoutSeconds = 30, waitForReply = true } = params
+  const { sessionKey, message, timeoutSeconds = SESSIONS_SEND_DEFAULT_TIMEOUT_SECONDS, waitForReply = true } = params
   const runId = crypto.randomUUID()
 
   // Resolve target user ID
@@ -127,7 +128,7 @@ Use cases:
 - Request information from another workspace
 - Coordinate between multiple agents
 
-By default, waits up to 30 seconds for a response.
+By default, waits up to ${SESSIONS_SEND_DEFAULT_TIMEOUT_SECONDS} seconds for a response.
 Set timeoutSeconds: 0 for fire-and-forget (async) messaging.`,
   input_schema: {
     type: "object" as const,
@@ -142,7 +143,7 @@ Set timeoutSeconds: 0 for fire-and-forget (async) messaging.`,
       },
       timeoutSeconds: {
         type: "number",
-        description: "How long to wait for response (0 = fire-and-forget, default: 30, max: 300)",
+        description: `How long to wait for response (0 = fire-and-forget, default: ${SESSIONS_SEND_DEFAULT_TIMEOUT_SECONDS}, max: ${SESSIONS_SEND_MAX_TIMEOUT_SECONDS})`,
       },
       waitForReply: {
         type: "boolean",

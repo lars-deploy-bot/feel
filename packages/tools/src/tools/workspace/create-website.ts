@@ -1,5 +1,12 @@
 import { tool } from "@anthropic-ai/claude-agent-sdk"
-import { DEFAULTS, getTemplateIdsInline, getTemplateListForDocs } from "@webalive/shared"
+import {
+  DEFAULTS,
+  getTemplateIdsInline,
+  getTemplateListForDocs,
+  WEBSITE_SITE_IDEAS_MAX_CHARS,
+  WEBSITE_SLUG_MAX_LENGTH,
+  WEBSITE_SLUG_MIN_LENGTH,
+} from "@webalive/shared"
 import { z } from "zod"
 import { callApi, errorResult, type ToolResult } from "../../lib/api-client.js"
 
@@ -46,8 +53,8 @@ const RESERVED_SLUGS = [
 export const createWebsiteParamsSchema = {
   slug: z
     .string()
-    .min(3, "Slug must be at least 3 characters")
-    .max(16, "Slug must be no more than 16 characters")
+    .min(WEBSITE_SLUG_MIN_LENGTH, `Slug must be at least ${WEBSITE_SLUG_MIN_LENGTH} characters`)
+    .max(WEBSITE_SLUG_MAX_LENGTH, `Slug must be no more than ${WEBSITE_SLUG_MAX_LENGTH} characters`)
     .regex(
       /^[a-z0-9]([a-z0-9-]{1,14}[a-z0-9])?$/,
       "Slug must start and end with a letter or number, and contain only lowercase letters, numbers, and hyphens",
@@ -56,11 +63,11 @@ export const createWebsiteParamsSchema = {
       message: "This slug is reserved. Please choose a different name.",
     })
     .describe(
-      `The subdomain name for the website (e.g., 'my-bakery' creates my-bakery.${DEFAULTS.WILDCARD_DOMAIN}). Must be 3-16 characters, lowercase letters, numbers, and hyphens only.`,
+      `The subdomain name for the website (e.g., 'my-bakery' creates my-bakery.${DEFAULTS.WILDCARD_DOMAIN}). Must be ${WEBSITE_SLUG_MIN_LENGTH}-${WEBSITE_SLUG_MAX_LENGTH} characters, lowercase letters, numbers, and hyphens only.`,
     ),
   siteIdeas: z
     .string()
-    .max(5000, "Site ideas must be less than 5000 characters")
+    .max(WEBSITE_SITE_IDEAS_MAX_CHARS, `Site ideas must be less than ${WEBSITE_SITE_IDEAS_MAX_CHARS} characters`)
     .optional()
     .describe(
       "Optional description of what the website should be about. This helps guide the initial design and content.",
@@ -156,7 +163,7 @@ Creates a fully configured website with:
 - Production build capability
 
 **Usage:**
-- Provide a unique slug (3-16 chars, lowercase, letters/numbers/hyphens)
+- Provide a unique slug (${WEBSITE_SLUG_MIN_LENGTH}-${WEBSITE_SLUG_MAX_LENGTH} chars, lowercase, letters/numbers/hyphens)
 - Optionally describe what the site should be about
 - Optionally specify a template
 

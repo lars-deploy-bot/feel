@@ -26,6 +26,10 @@ const schemas = {
     req: z.object({ name: z.string() }),
     res: z.object({ ok: z.boolean() }),
   },
+  // POST - no req (bodyless action/trigger)
+  trigger: {
+    res: z.object({ ok: z.boolean(), count: z.number() }),
+  },
 } satisfies SchemaRegistry
 
 type TestSchemas = typeof schemas
@@ -33,7 +37,7 @@ type TestSchemas = typeof schemas
 describe("Type Tests", () => {
   describe("Endpoint type", () => {
     it("extracts endpoint names as string union", () => {
-      expectTypeOf<Endpoint<TestSchemas>>().toEqualTypeOf<"user" | "login" | "update">()
+      expectTypeOf<Endpoint<TestSchemas>>().toEqualTypeOf<"user" | "login" | "update" | "trigger">()
     })
   })
 
@@ -45,7 +49,7 @@ describe("Type Tests", () => {
 
   describe("ReadEndpoint type", () => {
     it("extracts only endpoints without req schema", () => {
-      expectTypeOf<ReadEndpoint<TestSchemas>>().toEqualTypeOf<"user">()
+      expectTypeOf<ReadEndpoint<TestSchemas>>().toEqualTypeOf<"user" | "trigger">()
     })
   })
 
@@ -91,9 +95,12 @@ describe("Type Tests", () => {
       expectTypeOf(result).toEqualTypeOf<{ ok: boolean; token?: string }>()
     })
 
-    it("postty rejects GET-only endpoints", () => {
-      // @ts-expect-error - user is GET only, has no req schema
-      postty("user", undefined)
+    it("postty supports bodyless POST for endpoints without req", () => {
+      assertType<Promise<{ ok: boolean; count: number }>>(postty("trigger"))
+    })
+
+    it("postty supports bodyless POST with pathOverride", () => {
+      assertType<Promise<{ ok: boolean; count: number }>>(postty("trigger", undefined, "/api/custom"))
     })
 
     it("postty rejects wrong body type", () => {
