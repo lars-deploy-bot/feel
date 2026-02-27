@@ -18,7 +18,7 @@ import { handleSnapshot } from "./routes/snapshot.js"
 import { handleStatus } from "./routes/status.js"
 
 const PORT = 5061
-const HOST = "127.0.0.1"
+const HOST = "0.0.0.0"
 
 // Auth secret — must match INTERNAL_TOOLS_SECRET in the worker environment
 const INTERNAL_SECRET = process.env.INTERNAL_TOOLS_SECRET
