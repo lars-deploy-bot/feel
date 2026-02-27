@@ -372,7 +372,9 @@ export const MOCK_MESSAGES: UIMessage[] = [
           {
             type: "tool_result",
             tool_use_id: "toolu_a_read3",
-            content: `export function tabKey({ userId, workspace, tabGroupId, tabId }: TabKeyParams): string {\n  return \`\${userId}::\${workspace}::\${tabGroupId}::\${tabId}\`\n}`,
+            content:
+              // biome-ignore lint/suspicious/noTemplateCurlyInString: mock code content with template literal syntax
+              "export function tabKey({ userId, workspace, tabGroupId, tabId }: TabKeyParams): string {\n  return `${userId}::${workspace}::${tabGroupId}::${tabId}`\n}",
             tool_name: "Read",
             tool_input: {},
           },
