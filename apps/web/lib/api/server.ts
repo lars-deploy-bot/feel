@@ -1,7 +1,6 @@
 import type { EndpointSchema } from "@alive-brug/alrighty"
 import * as Sentry from "@sentry/nextjs"
 import { type NextRequest, NextResponse } from "next/server"
-import type { z } from "zod"
 import { ErrorCodes } from "@/lib/error-codes"
 import { structuredErrorResponse } from "./responses"
 import { apiSchemas, type Endpoint, type Req, type ResPayload } from "./schemas"
