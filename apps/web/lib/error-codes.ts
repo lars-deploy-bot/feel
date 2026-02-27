@@ -35,6 +35,8 @@ export const ErrorCodes = {
   ORG_ACCESS_DENIED: "ORG_ACCESS_DENIED",
   INVALID_CREDENTIALS: "INVALID_CREDENTIALS",
   INVALID_SIGNATURE: "INVALID_SIGNATURE",
+  SESSION_NOT_FOUND: "SESSION_NOT_FOUND",
+  SESSION_REVOKED: "SESSION_REVOKED",
   INSUFFICIENT_TOKENS: "INSUFFICIENT_TOKENS",
   INSUFFICIENT_CREDITS: "INSUFFICIENT_CREDITS",
   OAUTH_EXPIRED: "OAUTH_EXPIRED",
@@ -263,6 +265,12 @@ export function getErrorMessage(code: ErrorCode, details?: Record<string, any>):
 
     case ErrorCodes.INVALID_CREDENTIALS:
       return "The passcode is incorrect. Please check your passcode and try again."
+
+    case ErrorCodes.SESSION_NOT_FOUND:
+      return "The session was not found or has already been revoked."
+
+    case ErrorCodes.SESSION_REVOKED:
+      return "Your session has been revoked. Please log in again."
 
     case ErrorCodes.INVALID_SIGNATURE:
       return "Invalid webhook signature. The request could not be verified."

@@ -38,6 +38,8 @@ authRoutes.post("/logout", c => {
 
 authRoutes.get("/me", c => {
   const cookieValue = getCookie(c, AUTH.COOKIE_NAME)
-  const authenticated = cookieValue ? verifyPasscode(cookieValue) : false
-  return c.json({ ok: true, authenticated })
+  if (!cookieValue || !verifyPasscode(cookieValue)) {
+    throw new UnauthorizedError()
+  }
+  return c.json({ ok: true })
 })

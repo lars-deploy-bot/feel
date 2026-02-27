@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto"
 import type { BrowserContext, Page, Response } from "@playwright/test"
 import { COOKIE_NAMES, createWorkspaceStorageValue, TEST_CONFIG, WORKSPACE_STORAGE } from "@webalive/shared"
 import jwt from "jsonwebtoken"
@@ -71,6 +72,7 @@ export async function setAuthCookie(user: TestUser, context: BrowserContext) {
     userId: user.userId,
     email: user.email,
     name: user.orgName, // Use org name as display name
+    sid: randomUUID(),
     scopes: DEFAULT_USER_SCOPES,
     orgIds: [user.orgId],
     orgRoles: { [user.orgId]: "owner" as const },

@@ -127,7 +127,7 @@ function hasScope(payload: SessionPayloadV3 | null, requiredScope: SessionScope)
   return Array.isArray(payload?.scopes) && payload.scopes.includes(requiredScope)
 }
 
-async function getSessionPayloadFromCookie(): Promise<SessionPayloadV3 | null> {
+export async function getSessionPayloadFromCookie(): Promise<SessionPayloadV3 | null> {
   const jar = await cookies()
   const sessionCookie = jar.get(COOKIE_NAMES.SESSION)
 
@@ -278,6 +278,17 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   if (!payload?.userId) {
     Sentry.setUser(null)
     return null
+  }
+
+  // Check server-side revocation and update last_active_at
+  if (payload.sid) {
+    const { checkRevocation, touchLastActive } = await import("@/features/auth/sessions/session-service")
+    if (await checkRevocation(payload.sid)) {
+      Sentry.setUser(null)
+      return null
+    }
+    // Fire-and-forget: update last_active_at (throttled internally)
+    void touchLastActive(payload.sid, payload.userId)
   }
 
   if (env.STREAM_ENV === "standalone" && payload.userId === STANDALONE.TEST_USER.ID) {

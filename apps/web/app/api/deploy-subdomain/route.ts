@@ -155,6 +155,7 @@ export async function POST(request: NextRequest) {
             userId: sessionUser.id,
             email: sessionUser.email,
             name: sessionUser.name,
+            sid: payload.sid,
             scopes: payload.scopes,
             orgIds: updatedOrgIds,
             orgRoles: updatedOrgRoles,

@@ -1,6 +1,8 @@
 import * as Sentry from "@sentry/nextjs"
 import { type NextRequest, NextResponse } from "next/server"
 import type { z } from "zod"
+import { ErrorCodes } from "@/lib/error-codes"
+import { structuredErrorResponse } from "./responses"
 import { apiSchemas, type Endpoint, type Req, type ResPayload } from "./schemas"
 
 /**
@@ -56,28 +58,27 @@ export async function handleBody<E extends Endpoint>(endpoint: E, req: NextReque
     const result = reqSchema.safeParse(raw)
     if (result.success) return result.data as Req<E>
 
-    return NextResponse.json(
-      {
-        error: {
-          code: "VALIDATION_ERROR",
-          message: "Request body failed validation",
-          issues: result.error.issues,
-        },
+    const firstIssue = result.error.issues[0]
+    const field = firstIssue?.path.join(".") || undefined
+    const message = firstIssue?.message || "Request body failed validation"
+
+    return structuredErrorResponse(ErrorCodes.INVALID_REQUEST, {
+      status: 400,
+      details: {
+        ...(field ? { field } : {}),
+        message,
+        issues: result.error.issues,
       },
-      { status: 400 },
-    )
+    })
   } catch (e) {
     console.error("handleBody error:", e)
     Sentry.captureException(e)
-    return NextResponse.json(
-      {
-        error: {
-          code: "HANDLE_BODY_ERROR",
-          message: e instanceof Error ? e.message : "Unknown error during body handling",
-        },
+    return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, {
+      status: 500,
+      details: {
+        reason: e instanceof Error ? e.message : "Unknown error during body handling",
       },
-      { status: 500 },
-    )
+    })
   }
 }
 

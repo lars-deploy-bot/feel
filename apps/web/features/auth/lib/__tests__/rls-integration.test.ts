@@ -31,6 +31,7 @@ async function createRlsToken(userId: string, orgId: string, role: SessionOrgRol
     userId,
     email: TEST_EMAIL,
     name: TEST_NAME,
+    sid: crypto.randomUUID(),
     orgIds: [orgId],
     orgRoles: { [orgId]: role },
   })

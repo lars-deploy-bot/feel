@@ -17,6 +17,25 @@ export type AutomationRun = Res<"automations/runs">["runs"][number]
 export type Site = Res<"sites">["sites"][number]
 
 // ============================================
+// Auth Sessions Queries
+// ============================================
+
+/**
+ * Fetch active login sessions for current user
+ *
+ * @example
+ * const { data } = useAuthSessionsQuery()
+ * // data?.sessions is AuthSessionListItem[]
+ */
+export function useAuthSessionsQuery() {
+  return useQuery<Res<"auth/sessions">, ApiError>({
+    queryKey: queryKeys.authSessions.list(),
+    queryFn: () => getty("auth/sessions"),
+    staleTime: 30_000, // 30 sec — sessions change infrequently but should be fresh
+  })
+}
+
+// ============================================
 // Organization Queries
 // ============================================
 

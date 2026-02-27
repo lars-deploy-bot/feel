@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto"
 import { type NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createSessionToken, SESSION_SCOPES } from "@/features/auth/lib/jwt"
@@ -75,6 +76,7 @@ export async function POST(req: NextRequest) {
       userId: "manager",
       email: "manager@system",
       name: "Manager",
+      sid: randomUUID(),
       scopes: [SESSION_SCOPES.MANAGER_ACCESS],
       orgIds: [],
       orgRoles: {},
@@ -107,6 +109,7 @@ export async function POST(req: NextRequest) {
     userId: "manager",
     email: "manager@system",
     name: "Manager",
+    sid: randomUUID(),
     scopes: [SESSION_SCOPES.MANAGER_ACCESS],
     orgIds: [],
     orgRoles: {},

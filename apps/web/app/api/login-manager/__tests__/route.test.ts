@@ -29,6 +29,12 @@ const envMock = {
 vi.mock("@/lib/env", () => envMock)
 vi.mock("@webalive/env/server", () => envMock)
 
+// Mock session-service (logout route imports it)
+vi.mock("@/features/auth/sessions/session-service", () => ({
+  revokeSession: vi.fn().mockResolvedValue(true),
+  createAuthSession: vi.fn().mockResolvedValue(undefined),
+}))
+
 // Import route handlers after mocking
 const { POST: loginManagerPOST, OPTIONS: loginManagerOPTIONS } = await import("../route")
 const { POST: logoutPOST } = await import("../../logout/route")
@@ -147,11 +153,20 @@ function splitSetCookieHeaders(setCookieHeader: string): string[] {
 // Helper to create mock NextRequest
 function createMockRequest(url: string, options?: RequestInit) {
   const urlObj = new URL(url)
-  const req = new Request(url, options) as any
-  req.nextUrl = urlObj
+  const req = new Request(url, options) as unknown as import("next/server").NextRequest
+  ;(req as unknown as Record<string, unknown>).nextUrl = urlObj
+  // Add cookies property that NextRequest provides (for logout route)
+  ;(req as unknown as Record<string, unknown>).cookies = {
+    get: () => undefined,
+    getAll: () => [],
+    has: () => false,
+    set: () => {},
+    delete: () => {},
+  }
+  const originalGet = req.headers.get.bind(req.headers)
   req.headers.get = (name: string) => {
     if (name === "origin") return DOMAINS.STREAM_PROD
-    return null
+    return originalGet(name)
   }
   return req
 }

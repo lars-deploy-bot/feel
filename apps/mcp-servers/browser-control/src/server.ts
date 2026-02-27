@@ -18,19 +18,17 @@ import { handleSnapshot } from "./routes/snapshot.js"
 import { handleStatus } from "./routes/status.js"
 
 const PORT = 5061
-const HOST = "127.0.0.1"
+const HOST = "0.0.0.0"
 
 // Auth secret — must match INTERNAL_TOOLS_SECRET in the worker environment
-const INTERNAL_SECRET = process.env.INTERNAL_TOOLS_SECRET ?? ""
+const INTERNAL_SECRET = process.env.INTERNAL_TOOLS_SECRET
 
 if (!INTERNAL_SECRET) {
-  console.warn("[browser-control] WARNING: INTERNAL_TOOLS_SECRET is not set. Auth is disabled.")
+  console.error("[browser-control] FATAL: INTERNAL_TOOLS_SECRET is not set. Refusing to start without auth.")
+  process.exit(1)
 }
 
 function isAuthorized(req: IncomingMessage): boolean {
-  // If no secret is configured, allow all (dev mode)
-  if (!INTERNAL_SECRET) return true
-
   const header = req.headers["x-internal-secret"]
   const token = Array.isArray(header) ? header[0] : header
   return token === INTERNAL_SECRET

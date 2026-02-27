@@ -80,6 +80,7 @@ describe("Manager Login Integration", () => {
       userId: "manager",
       email: "manager@system",
       name: "Manager",
+      sid: crypto.randomUUID(),
       scopes: [SESSION_SCOPES.MANAGER_ACCESS],
       orgIds: [],
       orgRoles: {},

@@ -11,6 +11,11 @@ vi.mock("@sentry/nextjs", () => ({
   })),
 }))
 
+vi.mock("@/features/auth/sessions/session-service", () => ({
+  checkRevocation: vi.fn().mockResolvedValue(false),
+  touchLastActive: vi.fn().mockResolvedValue(undefined),
+}))
+
 vi.mock("@/lib/supabase/iam", () => ({
   createIamClient: vi.fn(() =>
     Promise.resolve({
@@ -50,6 +55,7 @@ describe("Sentry user context in getSessionUser", () => {
       userId: "user-123",
       email: "alice@example.com",
       name: "Alice",
+      sid: crypto.randomUUID(),
       scopes: [SESSION_SCOPES.WORKSPACE_ACCESS],
       orgIds: [],
       orgRoles: {},
@@ -83,6 +89,7 @@ describe("Sentry user context in getSessionUser", () => {
       userId: "user-456",
       email: "bob@example.com",
       name: "Bob Smith",
+      sid: crypto.randomUUID(),
       scopes: [SESSION_SCOPES.WORKSPACE_ACCESS],
       orgIds: [],
       orgRoles: {},

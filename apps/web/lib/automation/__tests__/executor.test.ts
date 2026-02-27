@@ -305,6 +305,7 @@ describe("runAutomationJob", () => {
       userId: "u1",
       email: "user@example.com",
       name: "Test User",
+      sid: expect.any(String),
       orgIds: ["o1"],
       orgRoles: { o1: "owner" },
     })

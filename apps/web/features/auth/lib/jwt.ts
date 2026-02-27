@@ -156,6 +156,7 @@ export interface SessionPayloadV3 {
   userId: string // Legacy claim (backward compatibility)
   email: string // User email (eliminates iam.users query)
   name: string | null // Display name (eliminates iam.users query)
+  sid: string // Session ID for server-side session tracking (v4)
   scopes: SessionScope[]
   orgIds: string[]
   orgRoles: SessionOrgRoles
@@ -168,6 +169,7 @@ export interface CreateSessionTokenInput {
   userId: string
   email: string
   name: string | null
+  sid: string
   scopes?: SessionScope[]
   orgIds?: string[]
   orgRoles?: SessionOrgRoles
@@ -248,6 +250,7 @@ export async function createSessionToken(input: CreateSessionTokenInput): Promis
     userId: userId, // Legacy claim (backward compatibility)
     email: email,
     name: name,
+    sid: input.sid,
     scopes,
     orgIds,
     orgRoles,
@@ -334,9 +337,15 @@ export async function verifySessionToken(token: string): Promise<SessionPayloadV
     const role = decoded.role
     const email = decoded.email
     const name = decoded.name ?? null
+    const sid = decoded.sid
     const scopes = decoded.scopes
     const orgIds = decoded.orgIds
     const orgRoles = decoded.orgRoles
+
+    if (!isNonEmptyString(sid)) {
+      console.error("[JWT] Invalid token payload: sid missing or invalid")
+      return null
+    }
 
     if (role !== "authenticated") {
       console.error("[JWT] Invalid token payload: role must be 'authenticated'")
@@ -398,6 +407,7 @@ export async function verifySessionToken(token: string): Promise<SessionPayloadV
       userId,
       email: email,
       name: name,
+      sid,
       scopes: [...new Set(scopes)],
       orgIds: [...new Set(orgIds)],
       orgRoles: normalizedOrgRoles,

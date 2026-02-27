@@ -228,6 +228,7 @@ function createOptions(overrides?: Partial<UseChatMessagingOptions>) {
       current: {
         getAttachments,
         clearAllAttachments,
+        focus: vi.fn(),
       } as unknown as ChatInputHandle,
     } as React.RefObject<ChatInputHandle | null>,
     forceScrollToBottom,

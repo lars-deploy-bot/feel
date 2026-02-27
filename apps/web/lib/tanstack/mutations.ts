@@ -10,7 +10,7 @@
 
 import { type UseMutationOptions, useMutation, useQueryClient } from "@tanstack/react-query"
 import toast from "react-hot-toast"
-import { type ApiError, delly, patchy, postty } from "@/lib/api/api-client"
+import { ApiError, delly, patchy, postty } from "@/lib/api/api-client"
 import { type Res, validateRequest } from "@/lib/api/schemas"
 import { queryKeys } from "./queryKeys"
 
@@ -170,6 +170,56 @@ export function useUpdateUser(
       toast.error(error.message || "Failed to update profile")
     },
     ...options,
+  })
+}
+
+// ============================================
+// Auth Session Mutations
+// ============================================
+
+/**
+ * Revoke a single auth session
+ */
+export function useRevokeSession() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (sid: string) => {
+      const body = validateRequest("auth/sessions/revoke", { sid })
+      return postty("auth/sessions/revoke", body)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.authSessions.all })
+      toast.success("Session revoked")
+    },
+    onError: (error: ApiError) => {
+      toast.error(error.message || "Failed to revoke session")
+    },
+  })
+}
+
+/**
+ * Revoke all sessions except the current one
+ */
+export function useRevokeOtherSessions() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/auth/sessions/revoke-others", {
+        method: "POST",
+        credentials: "include",
+      })
+      if (!res.ok) throw new ApiError(await res.text(), res.status)
+      return res.json() as Promise<{ ok: true; revokedCount: number }>
+    },
+    onSuccess: data => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.authSessions.all })
+      toast.success(`${data.revokedCount} session${data.revokedCount === 1 ? "" : "s"} revoked`)
+    },
+    onError: (error: ApiError) => {
+      toast.error(error.message || "Failed to revoke sessions")
+    },
   })
 }
 

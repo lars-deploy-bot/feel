@@ -139,7 +139,7 @@ describe("POST /api/google/calendar/create-event", () => {
 
     expect(response.status).toBe(400)
     const data: Record<string, unknown> = await response.json()
-    expect((data.error as Record<string, unknown>).code).toBe("VALIDATION_ERROR")
+    expect(data.error).toBe("INVALID_REQUEST")
   })
 
   it("returns 400 when start is after end", async () => {
