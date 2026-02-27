@@ -2,10 +2,10 @@
 
 import { SUPERADMIN } from "@webalive/shared"
 import { ChevronDown } from "lucide-react"
-import toast from "react-hot-toast"
 import { useCallback, useMemo, useRef, useState } from "react"
-import type { Organization } from "@/lib/api/types"
+import toast from "react-hot-toast"
 import { trackCreateProjectClicked, trackCreateTeamClicked } from "@/lib/analytics/events"
+import type { Organization } from "@/lib/api/types"
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
 import { useWorkspacesQuery } from "@/lib/hooks/useSettingsQueries"
 import { useSelectedOrgId, useWorkspaceActions } from "@/lib/stores/workspaceStore"
