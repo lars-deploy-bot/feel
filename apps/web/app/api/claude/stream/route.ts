@@ -50,7 +50,7 @@ import { fetchOAuthTokens } from "@/lib/oauth/fetch-oauth-tokens"
 import { fetchUserEnvKeys } from "@/lib/oauth/fetch-user-env-keys"
 import { getRequestId } from "@/lib/request-id"
 import { createRequestLogger } from "@/lib/request-logger"
-import { consumeCancelIntent } from "@/lib/stream/cancel-intent-registry"
+import { consumeCancelIntent, consumeCancelIntentByRequestId } from "@/lib/stream/cancel-intent-registry"
 import { registerCancellation, startTTLCleanup, unregisterCancellation } from "@/lib/stream/cancellation-registry"
 import { type CancelState, createNDJSONStream } from "@/lib/stream/ndjson-stream-handler"
 import {
@@ -420,7 +420,9 @@ export async function POST(req: NextRequest) {
     // Super-early stop race fix:
     // If cancel endpoint was hit before registration, consume queued intent now
     // and short-circuit this request before any expensive setup starts.
-    if (consumeCancelIntent(sessionKey, user.id)) {
+    const consumedConversationIntent = await consumeCancelIntent(sessionKey, user.id)
+    const consumedRequestIntent = await consumeCancelIntentByRequestId(requestId, user.id)
+    if (consumedConversationIntent || consumedRequestIntent) {
       logger.log("Queued cancel intent detected immediately after registration, short-circuiting stream startup")
       unregisterCancellation(requestId)
       unlockConversation(sessionKey)
@@ -948,6 +950,13 @@ export async function POST(req: NextRequest) {
       tokenSource,
       model: effectiveModel, // For model-specific credit calculation
       cancelState, // Pass shared cancellation state
+      consumeCancelIntent: async () => {
+        const [consumedByConversation, consumedByRequest] = await Promise.all([
+          consumeCancelIntent(sessionKey!, user.id),
+          consumeCancelIntentByRequestId(requestId, user.id),
+        ])
+        return consumedByConversation || consumedByRequest
+      },
       oauthWarnings, // OAuth warnings to inject into stream
       onMessage: message => {
         // Buffer each message for reconnection support (non-blocking)

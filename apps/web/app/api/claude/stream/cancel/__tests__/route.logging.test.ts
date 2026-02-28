@@ -27,6 +27,11 @@ vi.mock("@/lib/stream/cancellation-registry", () => ({
 
 vi.mock("@/lib/stream/cancel-intent-registry", () => ({
   registerCancelIntent: vi.fn(),
+  registerCancelIntentByRequestId: vi.fn(),
+}))
+
+vi.mock("@/lib/stream/stream-buffer", () => ({
+  getStreamBuffer: vi.fn(async () => null),
 }))
 
 vi.mock("@/lib/stream/cancel-markers", () => ({

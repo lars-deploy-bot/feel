@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import * as auth from "@/features/auth/lib/auth"
 import { tabKey } from "@/features/auth/lib/sessionStore"
-import { clearAllCancelIntents, hasCancelIntent } from "@/lib/stream/cancel-intent-registry"
+import { clearAllCancelIntents, hasCancelIntent, hasCancelIntentByRequestId } from "@/lib/stream/cancel-intent-registry"
 import { PAGE_UNLOAD_BEACON_MARKER } from "@/lib/stream/cancel-markers"
 import { getRegistrySize, registerCancellation, unregisterCancellation } from "@/lib/stream/cancellation-registry"
 
@@ -25,6 +25,8 @@ interface CancelRequestBody {
   tabId?: string
   tabGroupId?: string
 }
+
+const getStreamBufferMock = vi.fn()
 
 vi.mock("@/features/auth/lib/auth", () => ({
   requireSessionUser: async (): Promise<MockUser> => ({
@@ -54,6 +56,11 @@ vi.mock("@/lib/api/responses", () => ({
   },
 }))
 
+vi.mock("@/lib/stream/stream-buffer", () => ({
+  getStreamBuffer: (...args: unknown[]) => getStreamBufferMock(...args),
+  completeStreamBuffer: vi.fn(async () => undefined),
+}))
+
 import { POST } from "../route"
 
 describe("POST /api/claude/stream/cancel", () => {
@@ -64,6 +71,8 @@ describe("POST /api/claude/stream/cancel", () => {
       console.warn(`Registry not clean before test: ${initialSize} entries`)
     }
     clearAllCancelIntents()
+    getStreamBufferMock.mockReset()
+    getStreamBufferMock.mockResolvedValue(null)
   })
 
   afterEach(() => {
@@ -394,7 +403,42 @@ describe("POST /api/claude/stream/cancel", () => {
     expect(response.status).toBe(200)
     expect(data.ok).toBe(true)
     expect(data.status).toBe("cancel_queued")
-    expect(hasCancelIntent(queuedKey, "test-user-123")).toBe(true)
+    await expect(hasCancelIntent(queuedKey, "test-user-123")).resolves.toBe(true)
+  })
+
+  it("should queue requestId intent when stream is active in shared buffer but registry miss occurs", async () => {
+    const requestId = "req-streaming-on-other-process"
+    const userId = "test-user-123"
+    const tabId = "tab-buffered-123"
+    const tabGroupId = "11111111-1111-1111-1111-111111111111"
+    const workspace = "test-workspace"
+    const bufferedTabKey = tabKey({ userId, workspace, tabGroupId, tabId })
+
+    getStreamBufferMock.mockResolvedValue({
+      requestId,
+      tabKey: bufferedTabKey,
+      userId,
+      state: "streaming",
+      messages: [],
+      startedAt: Date.now(),
+      lastMessageAt: Date.now(),
+      lastReadSeq: 0,
+    })
+
+    const req = new Request("http://localhost/api/claude/stream/cancel", {
+      method: "POST",
+      body: JSON.stringify({ requestId }),
+      headers: { "Content-Type": "application/json" },
+    })
+
+    const response = await POST(req as any)
+    const data = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(data.ok).toBe(true)
+    expect(data.status).toBe("cancel_queued")
+    await expect(hasCancelIntent(bufferedTabKey, userId)).resolves.toBe(true)
+    await expect(hasCancelIntentByRequestId(requestId, userId)).resolves.toBe(true)
   })
 
   it("should not find another user's stream when cancelling by tabId (security by isolation)", async () => {
