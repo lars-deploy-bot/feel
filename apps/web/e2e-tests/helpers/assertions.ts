@@ -62,6 +62,23 @@ interface WorkspaceNavigationContext {
   orgId?: string
 }
 
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null
+}
+
+function isWorkspaceStorageSnapshot(value: unknown): value is WorkspaceStorageSnapshot {
+  if (!isObjectRecord(value)) return false
+  const workspace = Reflect.get(value, "workspace")
+  const orgId = Reflect.get(value, "orgId")
+  const isNullableString = (entry: unknown): entry is string | null => entry === null || typeof entry === "string"
+  return isNullableString(workspace) && isNullableString(orgId)
+}
+
+function isE2EMetrics(value: unknown): value is E2EMetrics {
+  if (!isObjectRecord(value)) return false
+  return Reflect.has(value, "appReady") || Reflect.has(value, "chatReady") || Reflect.has(value, "stores")
+}
+
 /**
  * Wait for app hydration to complete.
  *
@@ -93,7 +110,7 @@ export async function waitForAppReady(page: Page) {
 
       const ready = await page
         .evaluate(() => {
-          return (window as any).__E2E_APP_READY__ === true || (window as any).__APP_HYDRATED__ === true
+          return Reflect.get(window, "__E2E_APP_READY__") === true || Reflect.get(window, "__APP_HYDRATED__") === true
         })
         .catch(() => false)
 
@@ -126,7 +143,8 @@ export async function waitForAppHydrated(page: Page) {
  */
 export async function getE2EMetrics(page: Page): Promise<E2EMetrics | null> {
   try {
-    return await page.evaluate(() => (window as any).__E2E__ || null)
+    const metrics = await page.evaluate(() => Reflect.get(window, "__E2E__") ?? null)
+    return isE2EMetrics(metrics) ? metrics : null
   } catch {
     return null
   }
@@ -198,21 +216,34 @@ async function ensureWorkspaceStorage(page: Page, workspace: string, orgId: stri
 }
 
 async function readWorkspaceStorage(page: Page): Promise<WorkspaceStorageSnapshot> {
-  return page.evaluate(key => {
+  const result = await page.evaluate(key => {
     const raw = localStorage.getItem(key)
-    if (!raw) return { workspace: null as string | null, orgId: null as string | null }
+    if (!raw) return { workspace: null, orgId: null }
+
+    const isStringOrNull = (value: unknown): value is string | null => value === null || typeof value === "string"
+    const readStateValue = (value: unknown, field: "currentWorkspace" | "selectedOrgId"): string | null => {
+      if (typeof value !== "object" || value === null) return null
+      const state = Reflect.get(value, "state")
+      if (typeof state !== "object" || state === null) return null
+      const fieldValue = Reflect.get(state, field)
+      return isStringOrNull(fieldValue) ? fieldValue : null
+    }
+
     try {
-      const parsed = JSON.parse(raw) as {
-        state?: { currentWorkspace?: string | null; selectedOrgId?: string | null }
-      }
       return {
-        workspace: parsed?.state?.currentWorkspace ?? null,
-        orgId: parsed?.state?.selectedOrgId ?? null,
+        workspace: readStateValue(JSON.parse(raw), "currentWorkspace"),
+        orgId: readStateValue(JSON.parse(raw), "selectedOrgId"),
       }
     } catch {
-      return { workspace: null as string | null, orgId: null as string | null }
+      return { workspace: null, orgId: null }
     }
   }, WORKSPACE_STORAGE.KEY)
+
+  if (!isWorkspaceStorageSnapshot(result)) {
+    return { workspace: null, orgId: null }
+  }
+
+  return result
 }
 
 async function ensureWorkspaceReady(page: Page, context: WorkspaceNavigationContext): Promise<void> {
@@ -321,13 +352,17 @@ export async function waitForAppReadyPromise(page: Page) {
   try {
     await page.waitForFunction(
       () => {
-        const e2e = (window as any).__E2E__
-        if (e2e?.appReady) {
-          // Promise-based: wait for it to resolve
-          return e2e.appReady.then(() => true).catch(() => false)
+        const e2e = Reflect.get(window, "__E2E__")
+        if (typeof e2e === "object" && e2e !== null) {
+          const appReady = Reflect.get(e2e, "appReady")
+          if (appReady && typeof appReady === "object" && "then" in appReady) {
+            return Promise.resolve(appReady)
+              .then(() => true)
+              .catch(() => false)
+          }
         }
         // Fallback to boolean flags
-        return (window as any).__E2E_APP_READY__ === true || (window as any).__APP_HYDRATED__ === true
+        return Reflect.get(window, "__E2E_APP_READY__") === true || Reflect.get(window, "__APP_HYDRATED__") === true
       },
       { timeout: TEST_TIMEOUTS.max },
     )
