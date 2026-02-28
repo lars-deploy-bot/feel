@@ -20,7 +20,16 @@ const server = Bun.serve({
       target.host = "localhost"
       target.port = "5080"
       target.pathname = pathname
-      return fetch(new Request(target, req))
+      const res = await fetch(new Request(target, req))
+      // Strip Transfer-Encoding to prevent double-chunked encoding
+      // (Next.js rewrite adds its own chunked encoding on top)
+      const headers = new Headers(res.headers)
+      headers.delete("Transfer-Encoding")
+      return new Response(res.body, {
+        status: res.status,
+        statusText: res.statusText,
+        headers,
+      })
     }
 
     // Try to serve the exact file from dist/

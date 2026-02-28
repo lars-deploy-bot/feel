@@ -121,7 +121,7 @@ export async function copySharedAsset(params: CopySharedAssetParams): Promise<To
     console.error(`[copy_shared_asset] SUCCESS: Copied ${copiedFiles.length} files to ${destDir}`)
 
     // Generate usage instructions based on actual destination
-    const usage = generateUsageInstructions(assetConfig.primaryFile, destDir)
+    const usage = generateUsageInstructions(assetConfig, destDir)
 
     const result = [`Copied ${copiedFiles.length} file(s) to ${destDir}/`, copiedFiles.map(f => `  - ${f}`).join("\n")]
 

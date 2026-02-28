@@ -377,6 +377,7 @@ export type Database = {
       feedback: {
         Row: {
           aware_email_sent: string | null
+          closed_at: string | null
           content: string
           context: Json | null
           created_at: string | null
@@ -388,6 +389,7 @@ export type Database = {
         }
         Insert: {
           aware_email_sent?: string | null
+          closed_at?: string | null
           content: string
           context?: Json | null
           created_at?: string | null
@@ -399,6 +401,7 @@ export type Database = {
         }
         Update: {
           aware_email_sent?: string | null
+          closed_at?: string | null
           content?: string
           context?: Json | null
           created_at?: string | null

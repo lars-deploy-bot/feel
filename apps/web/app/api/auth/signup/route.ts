@@ -12,19 +12,13 @@ import { getRequestId } from "@/lib/request-id"
 import { createIamClient } from "@/lib/supabase/iam"
 import { hashPassword } from "@/types/guards/api"
 
+const SIGNUP_ACCESS_CODE = "supersecret"
+
 /**
  * POST /api/auth/signup
  *
- * Create a new user account (separate from deployment).
- * Sets session cookie on success, allowing immediate use of the app.
- *
- * Flow:
- * 1. Validate email/password
- * 2. Check email doesn't exist
- * 3. Create user with hashed password
- * 4. Create default organization
- * 5. Set JWT session cookie
- * 6. Return success
+ * Create a new user account. Requires a valid access code.
+ * Contact agency@alive.best to receive the access code.
  */
 export async function POST(req: NextRequest) {
   const requestId = getRequestId(req)
@@ -37,9 +31,22 @@ export async function POST(req: NextRequest) {
     return parsed
   }
 
-  const { email, password, name } = parsed
+  const { email, password, name, accessCode } = parsed
   const normalizedEmail = email.toLowerCase().trim()
   const displayName = name?.trim() || null
+
+  if (accessCode !== SIGNUP_ACCESS_CODE) {
+    return createCorsResponse(
+      origin,
+      {
+        ok: false,
+        error: ErrorCodes.INVALID_ACCESS_CODE,
+        message: "Invalid access code. Contact agency@alive.best for access.",
+        requestId,
+      },
+      403,
+    )
+  }
 
   try {
     const iam = await createIamClient("service")
@@ -83,7 +90,7 @@ export async function POST(req: NextRequest) {
         status: "active",
         is_test_env: false,
         metadata: {},
-        email_verified: true, // Enable referral rewards immediately (MVP: skip email verification)
+        email_verified: true,
       })
       .select("user_id")
       .single()
@@ -110,19 +117,15 @@ export async function POST(req: NextRequest) {
     const orgId = await getUserDefaultOrgId(newUser.user_id, normalizedEmail)
 
     // Create JWT session token with scoped org access claims
-    // New user starts with one default organization (owner role)
-    // Use validated input values since we just created the user with these
     const sid = crypto.randomUUID()
-    const sessionToken = await createSessionToken(
-      {
-        userId: newUser.user_id,
-        email: normalizedEmail, // Use validated input, not nullable DB field
-        name: displayName, // Use validated input, not nullable DB field
-        sid,
-        orgIds: [orgId],
-        orgRoles: { [orgId]: "owner" },
-      }, // No workspaces yet; org-scoped JWT claims
-    )
+    const sessionToken = await createSessionToken({
+      userId: newUser.user_id,
+      email: normalizedEmail,
+      name: displayName,
+      sid,
+      orgIds: [orgId],
+      orgRoles: { [orgId]: "owner" },
+    })
 
     console.log(`[Signup] Created account for ${normalizedEmail} (org: ${orgId})`)
 

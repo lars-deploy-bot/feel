@@ -64,10 +64,12 @@ export const queryKeys = {
   // Automation queries
   automations: {
     all: ["automations"] as const,
-    list: (siteId?: string | null) =>
-      siteId
-        ? ([...queryKeys.automations.all, "list", siteId] as const)
-        : ([...queryKeys.automations.all, "list"] as const),
+    list: (filter?: { orgId?: string; siteId?: string }) =>
+      filter?.siteId
+        ? ([...queryKeys.automations.all, "list", "site", filter.siteId] as const)
+        : filter?.orgId
+          ? ([...queryKeys.automations.all, "list", "org", filter.orgId] as const)
+          : ([...queryKeys.automations.all, "list"] as const),
     detail: (automationId: string) => [...queryKeys.automations.all, automationId] as const,
     runs: (automationId: string) => [...queryKeys.automations.all, automationId, "runs"] as const,
   },

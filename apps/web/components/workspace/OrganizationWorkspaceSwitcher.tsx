@@ -96,8 +96,11 @@ export function OrganizationWorkspaceSwitcher({
   // No org = nothing to show (orgs still loading, or user has none)
   if (!org) return null
 
+  // If workspace doesn't belong to the selected org, treat as unselected
+  const wsInOrg = workspace && workspaces.includes(workspace) ? workspace : null
+
   const showOrgChevron = organizations.length > 1
-  const showWsChevron = !workspace || workspaces.length > 1
+  const showWsChevron = !wsInOrg || workspaces.length > 1
 
   // Compact layout for sidebar
   if (compact) {
@@ -131,14 +134,14 @@ export function OrganizationWorkspaceSwitcher({
             className="flex items-center gap-1.5 hover:opacity-80 transition-opacity truncate"
           >
             <span
-              className={`size-1.5 rounded-full shrink-0 ${workspace ? "bg-emerald-500" : "bg-black/10 dark:bg-white/10"}`}
+              className={`size-1.5 rounded-full shrink-0 ${wsInOrg ? "bg-emerald-500" : "bg-black/10 dark:bg-white/10"}`}
             />
             <span
               className={`text-sm truncate ${
-                workspace ? "text-black/80 dark:text-white/80 font-medium" : "text-black/25 dark:text-white/25"
+                wsInOrg ? "text-black/80 dark:text-white/80 font-medium" : "text-black/25 dark:text-white/25"
               }`}
             >
-              {workspace ?? "Pick a project"}
+              {wsInOrg ?? "Select project"}
             </span>
             {showWsChevron && (
               <ChevronDown size={10} strokeWidth={2} className="text-black/20 dark:text-white/20 shrink-0" />
@@ -165,7 +168,7 @@ export function OrganizationWorkspaceSwitcher({
           <SwitcherDropdown
             triggerRef={wsTriggerRef}
             items={workspaces}
-            activeItem={workspace}
+            activeItem={wsInOrg}
             getKey={getWsKey}
             getLabel={getWsLabel}
             placeholder="Find Project…"
@@ -211,16 +214,16 @@ export function OrganizationWorkspaceSwitcher({
           className="flex items-center gap-2 hover:opacity-80 transition-opacity"
         >
           <span
-            className={`size-1.5 rounded-full shrink-0 ${workspace ? "bg-emerald-500" : "bg-black/10 dark:bg-white/10"}`}
+            className={`size-1.5 rounded-full shrink-0 ${wsInOrg ? "bg-emerald-500" : "bg-black/10 dark:bg-white/10"}`}
           />
           <span
             className={
-              workspace
+              wsInOrg
                 ? "text-black/80 dark:text-white/80 font-medium truncate"
                 : "text-black/25 dark:text-white/25 truncate"
             }
           >
-            {workspace ?? "Pick a project"}
+            {wsInOrg ?? "Select project"}
           </span>
           {showWsChevron && (
             <ChevronDown size={11} strokeWidth={2} className="text-black/20 dark:text-white/20 shrink-0" />
@@ -247,7 +250,7 @@ export function OrganizationWorkspaceSwitcher({
         <SwitcherDropdown
           triggerRef={wsTriggerRef}
           items={workspaces}
-          activeItem={workspace}
+          activeItem={wsInOrg}
           getKey={getWsKey}
           getLabel={getWsLabel}
           placeholder="Find Project…"

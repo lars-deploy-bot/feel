@@ -1,7 +1,7 @@
 "use client"
 
 import { AnimatePresence, motion } from "framer-motion"
-import { ArrowLeft, Eye, EyeOff, Mail, User } from "lucide-react"
+import { ArrowLeft, Eye, EyeOff, KeyRound, Mail, User } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/primitives/Button"
 import { Input } from "@/components/ui/primitives/Input"
@@ -34,7 +34,7 @@ import { useCurrentWorkspace, useWorkspaceActions } from "@/lib/stores/workspace
  * 1. User enters email
  * 2. API checks if email exists
  * 3. If exists → login mode (password only)
- * 4. If new → signup mode (password + optional name)
+ * 4. If new → signup mode (password + name + access code)
  *
  * This component reads from authModalStore and can be opened from anywhere
  * using authModalStore.open() or useAuthModalActions().open()
@@ -55,6 +55,7 @@ export function AuthModal() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [name, setName] = useState("")
+  const [accessCode, setAccessCode] = useState("")
   const [showPassword, setShowPassword] = useState(false)
 
   // UI state
@@ -82,6 +83,7 @@ export function AuthModal() {
       }
       setPassword("")
       setName("")
+      setAccessCode("")
       setError("")
 
       // Focus appropriate input
@@ -144,6 +146,7 @@ export function AuthModal() {
       // Store email and transition to appropriate mode
       setStoredEmail(email.trim())
       trackAuthEmailChecked(data.exists)
+
       setMode(data.exists ? "login" : "signup")
 
       // Focus password input after mode change
@@ -215,6 +218,11 @@ export function AuthModal() {
       return
     }
 
+    if (!accessCode.trim()) {
+      setError("Access code is required. Contact agency@alive.best if you don't have one.")
+      return
+    }
+
     setLoading(true)
     setError("")
     trackSignupSubmitted()
@@ -227,6 +235,7 @@ export function AuthModal() {
           email: email.trim(),
           password,
           name: name.trim() || undefined,
+          accessCode,
         }),
         credentials: "include",
       })
@@ -252,7 +261,7 @@ export function AuthModal() {
     } finally {
       setLoading(false)
     }
-  }, [email, password, name, handleSuccess])
+  }, [email, password, name, accessCode, handleSuccess])
 
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
@@ -273,6 +282,7 @@ export function AuthModal() {
     setMode("initial")
     setPassword("")
     setName("")
+    setAccessCode("")
     setError("")
     setTimeout(() => emailInputRef.current?.focus(), 100)
   }, [setMode])
@@ -459,6 +469,34 @@ export function AuthModal() {
                   )}
                 </AnimatePresence>
 
+                {/* Access code field - shown in signup mode only */}
+                <AnimatePresence mode="wait">
+                  {mode === "signup" && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <Input
+                        id="auth-access-code"
+                        label="Access code"
+                        type="text"
+                        value={accessCode}
+                        onChange={e => {
+                          setAccessCode(e.target.value)
+                          if (error) setError("")
+                        }}
+                        placeholder="Enter your access code"
+                        disabled={loading}
+                        autoComplete="off"
+                        helperText="Contact agency@alive.best if you don't have one"
+                        suffix={<KeyRound size={18} className="text-black/30 dark:text-white/30" />}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 {/* Error message */}
                 <AnimatePresence mode="wait">
                   {error && (
@@ -478,7 +516,11 @@ export function AuthModal() {
                   type="submit"
                   fullWidth
                   loading={loading || checkingEmail}
-                  disabled={!email.trim() || (mode !== "initial" && !password.trim())}
+                  disabled={
+                    !email.trim() ||
+                    (mode !== "initial" && !password.trim()) ||
+                    (mode === "signup" && !accessCode.trim())
+                  }
                   className="!bg-black dark:!bg-white !text-white dark:!text-black hover:!bg-black/90 dark:hover:!bg-white/90 !border-0 !font-medium !text-base !py-3 !rounded-xl !transition-all !normal-case !tracking-normal"
                 >
                   {getButtonText()}

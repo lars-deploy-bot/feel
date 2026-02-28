@@ -5,6 +5,7 @@
   "globalEnv": ["CI", "NODE_ENV", "VERCEL", "VERCEL_ENV", "VERCEL_URL"],
   "tasks": {
     "dev": {
+      "dependsOn": ["^build"],
       "cache": false,
       "persistent": true,
       "env": ["ANTHROPIC_API_KEY", "ANTH_API_SECRET", "ALIVE_ENV", "LOCAL_TEMPLATE_PATH", "PLAYWRIGHT_TEST"]
@@ -106,6 +107,12 @@
       "cache": false,
       "persistent": true,
       "env": ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "JWT_SECRET", "WORKER_PORT"]
+    },
+    "@webalive/shell-server-go#build": {
+      "outputs": ["shell-server-go", "client/dist/**"]
+    },
+    "@webalive/site-controller#test": {
+      "env": ["SERVER_CONFIG_PATH"]
     }
   }
 }

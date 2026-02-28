@@ -1,6 +1,6 @@
 "use client"
 
-import { Image, Layers, MessageCircle, Settings } from "lucide-react"
+import { Image, Layers, MessageCircle } from "lucide-react"
 import type { RefObject } from "react"
 import { PhotoMenu } from "@/components/ui/PhotoMenu"
 import { OrganizationWorkspaceSwitcher } from "@/components/workspace/OrganizationWorkspaceSwitcher"
@@ -10,14 +10,11 @@ import {
   trackFeedbackClicked,
   trackPhotobookImageSelected,
   trackPhotosClicked,
-  trackSettingsClicked,
 } from "@/lib/analytics/events"
 
 interface NavProps {
   onFeedbackClick: () => void
   onTemplatesClick: () => void
-  isSettingsOpen: boolean
-  onSettingsClick: () => void
   showPhotoMenu: boolean
   onPhotoMenuToggle: () => void
   onPhotoMenuClose: () => void
@@ -31,8 +28,6 @@ interface NavProps {
 export function Nav({
   onFeedbackClick,
   onTemplatesClick,
-  isSettingsOpen,
-  onSettingsClick,
   showPhotoMenu,
   onPhotoMenuToggle,
   onPhotoMenuClose,
@@ -81,37 +76,37 @@ export function Nav({
           <OrganizationWorkspaceSwitcher workspace={workspace} wsOnly />
         </div>
 
-        {/* Action buttons */}
-        <div className="flex items-center gap-1">
-          {/* Feedback - hidden on mobile, available in settings */}
+        {/* Action buttons — desktop only. Mobile versions live in ConversationSidebar.tsx (search: "Mobile action buttons") */}
+        <div className="hidden md:flex items-center gap-1">
+          {/* Feedback */}
           <button
             type="button"
             onClick={() => {
               trackFeedbackClicked()
               onFeedbackClick()
             }}
-            className={`hidden md:inline-flex ${iconButtonStyle}`}
+            className={iconButtonStyle}
             aria-label="Send Feedback"
             title="Send Feedback"
           >
             <MessageCircle size={16} strokeWidth={1.5} />
           </button>
 
-          {/* Templates - always visible, important action */}
+          {/* Templates */}
           <button
             type="button"
             onClick={() => {
               trackComponentsClicked()
               onTemplatesClick()
             }}
-            className={`${iconButtonStyle} size-10 md:size-8`}
+            className={iconButtonStyle}
             aria-label="Components"
             title="Components"
           >
-            <Layers size={18} strokeWidth={1.5} className="md:size-4" />
+            <Layers size={16} strokeWidth={1.5} />
           </button>
 
-          {/* Photos - always visible */}
+          {/* Photos */}
           <div className="relative">
             <button
               ref={photoButtonRef}
@@ -120,11 +115,11 @@ export function Nav({
                 trackPhotosClicked()
                 onPhotoMenuToggle()
               }}
-              className={`${iconButtonStyle} size-10 md:size-8`}
+              className={iconButtonStyle}
               aria-label="Photos"
               title="Photos"
             >
-              <Image size={18} strokeWidth={1.5} className="md:size-4" />
+              <Image size={16} strokeWidth={1.5} />
             </button>
             <PhotoMenu
               isOpen={showPhotoMenu}
@@ -136,25 +131,6 @@ export function Nav({
               triggerRef={photoButtonRef}
             />
           </div>
-
-          {/* Settings toggle */}
-          <button
-            type="button"
-            onClick={() => {
-              trackSettingsClicked()
-              onSettingsClick()
-            }}
-            className={`size-10 md:size-8 [&>svg]:transition-transform [&>svg]:duration-200 [&>svg]:ease-out ${
-              isSettingsOpen
-                ? `${buttonBase} w-8 text-white dark:text-black bg-black dark:bg-white [&>svg]:rotate-90`
-                : `${iconButtonStyle} hover:[&>svg]:rotate-90`
-            }`}
-            aria-label={isSettingsOpen ? "Close settings" : "Open settings"}
-            aria-pressed={isSettingsOpen}
-            data-testid="settings-button"
-          >
-            <Settings size={18} strokeWidth={1.5} className="md:size-4" />
-          </button>
         </div>
       </div>
     </div>

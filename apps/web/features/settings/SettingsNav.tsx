@@ -1,8 +1,12 @@
 "use client"
 
-import { ChevronDown, ChevronRight } from "lucide-react"
+import { REFERRAL } from "@webalive/shared"
+import { ChevronDown, Heart, LogOut } from "lucide-react"
 import { useEffect, useState } from "react"
+import { Tooltip } from "@/components/ui/Tooltip"
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
+import { resetPostHogIdentity } from "@/lib/posthog"
+import { useEmail } from "@/lib/providers/UserStoreProvider"
 import { useSelectedOrgId } from "@/lib/stores/workspaceStore"
 import { useSettingsTabContext } from "./SettingsTabProvider"
 import type { SettingsTab, TabDefinition } from "./settings-tabs"
@@ -59,39 +63,18 @@ function CollapsibleSection({
 // ---------------------------------------------------------------------------
 
 interface SettingsNavProps {
-  onClose: () => void
+  onInvite?: () => void
 }
 
-export function SettingsNav({ onClose }: SettingsNavProps) {
+export function SettingsNav({ onInvite }: SettingsNavProps) {
   const { tabs, activeTab, handleTabChange } = useSettingsTabContext()
 
-  const primaryTabs = tabs.filter(t => !t.pinned && !t.advanced && !t.superadminOnly)
+  const primaryTabs = tabs.filter(t => !t.advanced && !t.superadminOnly)
   const advancedTabs = tabs.filter(t => t.advanced)
   const superadminTabs = tabs.filter(t => t.superadminOnly)
 
   return (
     <div className="flex flex-col h-full">
-      {/* Back to chat button */}
-      <button
-        type="button"
-        onClick={onClose}
-        className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-black/50 dark:text-white/50 hover:text-black/80 dark:hover:text-white/80 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors"
-      >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 16 16"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M10 12L6 8L10 4" />
-        </svg>
-        Back to chat
-      </button>
-
       {/* Tab navigation */}
       <nav className="p-2 space-y-1 overflow-y-auto flex-1">
         {primaryTabs.map(tab => (
@@ -101,9 +84,19 @@ export function SettingsNav({ onClose }: SettingsNavProps) {
         <CollapsibleSection label="Superadmin" tabs={superadminTabs} activeTab={activeTab} onSelect={handleTabChange} />
       </nav>
 
-      {/* Org card pinned at bottom */}
+      {/* Footer: invite + user card */}
       <div className="flex-shrink-0 border-t border-black/[0.06] dark:border-white/[0.06]">
-        <OrgCard isActive={activeTab === "organization"} onSelect={() => handleTabChange("organization")} />
+        {REFERRAL.ENABLED && onInvite && (
+          <button
+            type="button"
+            onClick={onInvite}
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-black/50 dark:text-white/50 hover:text-black/70 dark:hover:text-white/70 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors"
+          >
+            <Heart className="w-4 h-4 flex-shrink-0" />
+            Share Alive
+          </button>
+        )}
+        <UserCard />
       </div>
     </div>
   )
@@ -139,27 +132,50 @@ function NavTab({
   )
 }
 
-function OrgCard({ isActive, onSelect }: { isActive: boolean; onSelect: () => void }) {
-  const { organizations } = useOrganizations()
+function UserCard() {
+  const email = useEmail()
+  const { organizations, loading } = useOrganizations()
   const selectedOrgId = useSelectedOrgId()
-  const name = organizations.find(o => o.org_id === selectedOrgId)?.name ?? null
+  const [signingOut, setSigningOut] = useState(false)
+
+  const selectedOrg = selectedOrgId ? organizations.find(o => o.org_id === selectedOrgId) : undefined
+  // Still loading, or org list empty — don't show stale name
+  const orgName = loading ? null : (selectedOrg?.name ?? organizations[0]?.name ?? null)
+
+  const emailPrefix = email ? email.split("@")[0] : ""
+  const avatarLetter = (emailPrefix || "U")[0].toUpperCase()
+
+  async function handleSignOut() {
+    setSigningOut(true)
+    try {
+      await fetch("/api/logout", { method: "POST" })
+      resetPostHogIdentity()
+      window.location.href = "/"
+    } catch {
+      setSigningOut(false)
+    }
+  }
 
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={`w-full flex items-center gap-3 px-4 py-3 transition-colors ${
-        isActive ? "bg-black/[0.04] dark:bg-white/[0.04]" : "hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"
-      }`}
-    >
+    <div className="flex items-center gap-3 px-4 py-3">
       <div className="w-8 h-8 rounded-lg bg-black/[0.06] dark:bg-white/[0.06] flex items-center justify-center flex-shrink-0">
-        <span className="text-xs font-semibold text-black/60 dark:text-white/60">{(name || "O")[0].toUpperCase()}</span>
+        <span className="text-xs font-semibold text-black/60 dark:text-white/60">{avatarLetter}</span>
       </div>
-      <div className="flex-1 min-w-0 text-left">
-        <p className="text-sm font-medium text-black/90 dark:text-white/90 truncate">{name || "Organization"}</p>
-        <p className="text-xs text-black/40 dark:text-white/40">Manage</p>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-black/90 dark:text-white/90 truncate">{emailPrefix}</p>
+        {orgName && <p className="text-xs text-black/40 dark:text-white/40 truncate">{orgName}</p>}
       </div>
-      <ChevronRight className="w-4 h-4 text-black/20 dark:text-white/20 flex-shrink-0" />
-    </button>
+      <Tooltip content="Sign out">
+        <button
+          type="button"
+          data-testid="logout-button"
+          disabled={signingOut}
+          onClick={handleSignOut}
+          className="flex-shrink-0 p-1.5 rounded-md text-black/30 dark:text-white/30 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-20"
+        >
+          <LogOut className="w-4 h-4" />
+        </button>
+      </Tooltip>
+    </div>
   )
 }

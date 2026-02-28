@@ -100,7 +100,7 @@ function ChatPageContent() {
     },
     [dexieSession, ensureTabGroupWithTab],
   )
-  const { toggleSidebar, openSidebar } = useSidebarActions()
+  const { toggleSidebar } = useSidebarActions()
   const isSidebarOpen = useSidebarOpen()
   const isHydrated = useAppHydrated()
   const [subdomainInitialized, setSubdomainInitialized] = useState(false)
@@ -288,13 +288,6 @@ function ChatPageContent() {
 
   // Redeem referral code if stored (from invite link flow)
   useRedeemReferral()
-
-  // Auto-open sidebar when settings activates (settings nav lives in the sidebar)
-  useEffect(() => {
-    if (modals.settings) {
-      openSidebar()
-    }
-  }, [modals.settings, openSidebar])
 
   // Update page title with workspace name & track
   useEffect(() => {
@@ -680,9 +673,12 @@ function ChatPageContent() {
         onSelectWorktree={setWorktree}
         worktreeModalOpen={worktreeModalOpen}
         onWorktreeModalOpenChange={setWorktreeModalOpen}
-        onOpenInvite={modals.openInvite}
+        onInvite={modals.openInvite}
         settingsMode={!!modals.settings}
-        onCloseSettings={modals.closeSettings}
+        onToggleSettings={modals.toggleSettings}
+        onFeedbackClick={modals.openFeedback}
+        onTemplatesClick={modals.openTemplates}
+        onPhotosClick={modals.togglePhotoMenu}
       />
 
       {/* Main content column: nav + chat + workbench */}
@@ -690,8 +686,6 @@ function ChatPageContent() {
         <Nav
           onFeedbackClick={modals.openFeedback}
           onTemplatesClick={modals.openTemplates}
-          isSettingsOpen={!!modals.settings}
-          onSettingsClick={modals.toggleSettings}
           showPhotoMenu={modals.photoMenu}
           onPhotoMenuToggle={modals.togglePhotoMenu}
           onPhotoMenuClose={modals.closePhotoMenu}

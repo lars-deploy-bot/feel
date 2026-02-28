@@ -15,7 +15,7 @@ import { createRLSAppClient, createRLSIamClient } from "@/lib/supabase/server-rl
 /**
  * Batch endpoint to fetch all workspaces for all organizations in one request
  * This is much faster than fetching each org individually
- * Returns: { org_id -> [workspace1, workspace2, ...] }
+ * Returns: { org_id -> [{ hostname, createdAt }, ...] }
  */
 export async function GET(req: NextRequest) {
   const origin = req.headers.get("origin")
@@ -31,7 +31,10 @@ export async function GET(req: NextRequest) {
     if (env.STREAM_ENV === "local" && user.id === SECURITY.LOCAL_TEST.SESSION_VALUE) {
       return createCorsSuccessResponse(origin, {
         workspaces: {
-          "test-org": [`test.${TEST_CONFIG.EMAIL_DOMAIN}`, `demo.${TEST_CONFIG.EMAIL_DOMAIN}`],
+          "test-org": [
+            { hostname: `test.${TEST_CONFIG.EMAIL_DOMAIN}`, createdAt: new Date().toISOString() },
+            { hostname: `demo.${TEST_CONFIG.EMAIL_DOMAIN}`, createdAt: new Date().toISOString() },
+          ],
         },
       })
     }
@@ -43,8 +46,8 @@ export async function GET(req: NextRequest) {
     // Superadmins see ALL workspaces on this server (for support/debugging)
     if (user.isSuperadmin) {
       const app = await createAppClient("service")
-      const { data: allDomains } = await app.from("domains").select("hostname,org_id")
-      const workspacesByOrg: Record<string, string[]> = {}
+      const { data: allDomains } = await app.from("domains").select("hostname,org_id,created_at")
+      const workspacesByOrg: Record<string, Array<{ hostname: string; createdAt: string }>> = {}
 
       if (allDomains) {
         for (const domain of allDomains) {
@@ -57,7 +60,10 @@ export async function GET(req: NextRequest) {
           if (!workspacesByOrg[orgKey]) {
             workspacesByOrg[orgKey] = []
           }
-          workspacesByOrg[orgKey].push(domain.hostname)
+          workspacesByOrg[orgKey].push({
+            hostname: domain.hostname,
+            createdAt: domain.created_at,
+          })
         }
       }
 
@@ -81,10 +87,10 @@ export async function GET(req: NextRequest) {
     const orgIds = memberships.map(m => m.org_id)
 
     // Get all domains for these orgs
-    const { data: domains } = await app.from("domains").select("hostname,org_id").in("org_id", orgIds)
+    const { data: domains } = await app.from("domains").select("hostname,org_id,created_at").in("org_id", orgIds)
 
     // Group workspaces by org_id
-    const workspacesByOrg: Record<string, string[]> = {}
+    const workspacesByOrg: Record<string, Array<{ hostname: string; createdAt: string }>> = {}
     for (const org of orgIds) {
       workspacesByOrg[org] = []
     }
@@ -106,7 +112,10 @@ export async function GET(req: NextRequest) {
           if (!workspacesByOrg[domain.org_id]) {
             workspacesByOrg[domain.org_id] = []
           }
-          workspacesByOrg[domain.org_id].push(domain.hostname)
+          workspacesByOrg[domain.org_id].push({
+            hostname: domain.hostname,
+            createdAt: domain.created_at,
+          })
         }
       }
     }

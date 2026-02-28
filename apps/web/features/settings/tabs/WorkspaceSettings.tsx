@@ -4,7 +4,6 @@ import type { OrgRole } from "@webalive/shared"
 import { Building2, ChevronDown, UserMinus } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import toast from "react-hot-toast"
-import { AddWebsiteModal } from "@/components/modals/AddWebsiteModal"
 import { DeleteModal } from "@/components/modals/DeleteModal"
 import type { Organization } from "@/lib/api/types"
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
@@ -231,46 +230,6 @@ function useOrgLeave() {
   return { leavingOrg, orgToLeave, requestLeave, confirmLeave, cancelLeave }
 }
 
-// Cache for org sites (lives outside component for persistence)
-const orgSitesCache = new Map<string, string[]>()
-export { orgSitesCache }
-
-// Custom hook for fetching workspaces with caching
-function useOrgWorkspaces(orgId: string) {
-  const [workspaces, setWorkspaces] = useState<string[]>(() => orgSitesCache.get(orgId) || [])
-  const [loading, setLoading] = useState(!orgSitesCache.has(orgId))
-  const [error, setError] = useState<string | null>(null)
-
-  const fetchWorkspaces = useCallback(() => {
-    if (!orgSitesCache.has(orgId)) setLoading(true)
-    setError(null)
-
-    fetch(`/api/auth/workspaces?org_id=${orgId}`, { credentials: "include" })
-      .then(res => (res.ok ? res.json() : Promise.reject(new Error(`Failed to load sites (${res.status})`))))
-      .then(data => {
-        if (data.ok && data.workspaces) {
-          setWorkspaces(data.workspaces)
-          orgSitesCache.set(orgId, data.workspaces)
-          setError(null)
-        } else {
-          throw new Error(data.error || "Failed to load sites")
-        }
-      })
-      .catch(err => {
-        const errorMessage = err instanceof Error ? err.message : "Network error"
-        setError(errorMessage)
-        if (!orgSitesCache.has(orgId)) setWorkspaces([])
-      })
-      .finally(() => setLoading(false))
-  }, [orgId])
-
-  useEffect(() => {
-    fetchWorkspaces()
-  }, [fetchWorkspaces])
-
-  return { workspaces, loading, error, refetch: fetchWorkspaces }
-}
-
 // Custom hook for workspace switching
 // Uses the store as the single source of truth
 function useWorkspaceSwitch() {
@@ -298,127 +257,7 @@ function useWorkspaceSwitch() {
   }
 }
 
-export { useOrgWorkspaces, useWorkspaceSwitch }
-
-// Reusable workspaces grid component
-export function WorkspacesGrid({
-  workspaces,
-  currentWorkspace,
-  loading,
-  error,
-  onSwitch,
-  onRetry,
-}: {
-  workspaces: string[]
-  currentWorkspace: string | null
-  loading: boolean
-  error: string | null
-  onSwitch: (workspace: string) => void
-  onRetry?: () => void
-}) {
-  if (loading) {
-    return (
-      <div className="px-3 py-4 text-xs text-black/40 dark:text-white/40 text-center rounded-xl bg-black/[0.03] dark:bg-white/[0.03]">
-        Loading websites...
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="px-3 py-3 text-xs text-center rounded-xl bg-red-500/5 dark:bg-red-500/5 space-y-2">
-        <p className={text.error}>{error}</p>
-        {onRetry && (
-          <button type="button" onClick={onRetry} className={smallButton}>
-            Retry
-          </button>
-        )}
-      </div>
-    )
-  }
-
-  if (workspaces.length === 0) {
-    return (
-      <div className="px-3 py-4 text-xs text-black/40 dark:text-white/40 text-center rounded-xl bg-black/[0.03] dark:bg-white/[0.03]">
-        No websites yet
-      </div>
-    )
-  }
-
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-      {workspaces.map(workspace => {
-        const isCurrent = workspace === currentWorkspace
-        return (
-          <button
-            key={workspace}
-            type="button"
-            disabled={isCurrent}
-            className={`text-left px-3 py-3 sm:py-2.5 rounded-xl border transition-all duration-150 active:scale-[0.98] ${
-              isCurrent
-                ? "border-black/20 dark:border-white/20 bg-black/[0.04] dark:bg-white/[0.04]"
-                : "border-black/[0.08] dark:border-white/[0.08] hover:border-black/20 dark:hover:border-white/20 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] cursor-pointer"
-            }`}
-            onClick={() => onSwitch(workspace)}
-          >
-            <div className="flex items-center sm:flex-col sm:items-start justify-between sm:justify-start gap-2 sm:gap-1.5">
-              <span className="text-sm font-medium text-black/90 dark:text-white/90 truncate flex-1" title={workspace}>
-                {workspace}
-              </span>
-              {isCurrent ? (
-                <span className="text-xs px-2 py-0.5 bg-black dark:bg-white text-white dark:text-black rounded-lg flex-shrink-0">
-                  Current
-                </span>
-              ) : (
-                <span className={`${text.muted} flex-shrink-0`}>Tap to switch</span>
-              )}
-            </div>
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-function _OrgSitesSection({ orgId }: { orgId: string }) {
-  const { workspaces, loading, error, refetch } = useOrgWorkspaces(orgId)
-  const { currentWorkspace, switchWorkspace } = useWorkspaceSwitch()
-  const [showAddModal, setShowAddModal] = useState(false)
-
-  // Wrap switchWorkspace to include orgId
-  const handleSwitch = useCallback(
-    (workspace: string) => {
-      switchWorkspace(workspace, orgId)
-    },
-    [switchWorkspace, orgId],
-  )
-
-  return (
-    <div className="mb-4">
-      <div className="flex items-center justify-between mb-3">
-        <h5 className="text-sm font-medium text-black dark:text-white">Spaces</h5>
-        <button
-          type="button"
-          onClick={() => setShowAddModal(true)}
-          className="text-xs text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors"
-        >
-          + Add Space
-        </button>
-      </div>
-
-      <WorkspacesGrid
-        workspaces={workspaces}
-        currentWorkspace={currentWorkspace}
-        loading={loading}
-        error={error}
-        onSwitch={handleSwitch}
-        onRetry={refetch}
-      />
-
-      {showAddModal && <AddWebsiteModal onClose={() => setShowAddModal(false)} onSuccess={refetch} />}
-    </div>
-  )
-}
+export { useWorkspaceSwitch }
 
 export function WorkspaceSettings() {
   const { organizations, currentUserId, loading, error, refetch } = useOrganizations()
@@ -539,7 +378,7 @@ export function WorkspaceSettings() {
                     <span className="hidden sm:inline text-black/20 dark:text-white/20">•</span>
                     <span>
                       <strong className="text-black/90 dark:text-white/90">{selectedOrg.workspace_count || 0}</strong>{" "}
-                      websites
+                      projects
                     </span>
                     <span className="hidden sm:inline text-black/20 dark:text-white/20">•</span>
                     <span>

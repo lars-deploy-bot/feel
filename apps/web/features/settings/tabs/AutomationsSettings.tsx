@@ -1,20 +1,23 @@
 "use client"
 
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, Calendar, ChevronDown, Globe, Mail, Pause, Play, Plus, Trash2, Zap } from "lucide-react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { ArrowLeft, Calendar, Globe, Mail, Pause, Play, Plus, Trash2, Zap } from "lucide-react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { AutomationRunsView } from "@/components/automations/AutomationRunsView"
 import { type AutomationFormData, AutomationSidePanel } from "@/components/automations/AutomationSidePanel"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner"
 import { trackAutomationCreated, trackAutomationDeleted, trackAutomationsViewed } from "@/lib/analytics/events"
 import { delly, patchy, postty } from "@/lib/api/api-client"
-import { type Res, validateRequest } from "@/lib/api/schemas"
+import { type AutomationRunStatus, type Res, type TriggerType, validateRequest } from "@/lib/api/schemas"
 import { buildCreatePayload, buildUpdatePayload } from "@/lib/automation/build-payload"
 import { type AutomationJob, useAutomationsQuery, useSitesQuery } from "@/lib/hooks/useSettingsQueries"
-import { useCurrentWorkspace } from "@/lib/stores/workspaceStore"
+import { useCurrentWorkspace, useSelectedOrgId } from "@/lib/stores/workspaceStore"
 import { type ApiError, queryKeys } from "@/lib/tanstack"
+import { plural } from "../lib/format"
 import { SettingsTabLayout } from "./SettingsTabLayout"
+
+const DELETE_CONFIRM_TIMEOUT_MS = 3000
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
@@ -94,29 +97,33 @@ const DETAIL_TABS: { id: DetailTab; label: string }[] = [
 export function AutomationsSettings() {
   const queryClient = useQueryClient()
   const currentWorkspace = useCurrentWorkspace()
-  const { data: sitesData } = useSitesQuery()
-  const sites = sitesData ? sitesData.sites : []
+  const selectedOrgId = useSelectedOrgId()
+  const { data: sitesData, isLoading: sitesLoading } = useSitesQuery()
 
-  // Three-state siteId:
-  //   undefined = workspace set but sites still loading (query disabled)
-  //   null      = no workspace selected (show all)
-  //   string    = filter by this site
-  const currentSiteId: string | null | undefined = (() => {
-    if (!currentWorkspace) return null
-    if (!sitesData) return undefined
-    const match = sitesData.sites.find(s => s.hostname === currentWorkspace)
-    return match ? match.id : null
-  })()
+  const [projectOnly, setProjectOnly] = useState(false)
+
+  // Always fetch org-level — filter client-side for "Only this project"
+  const queryFilter = useMemo(
+    (): { orgId?: string } => (selectedOrgId ? { orgId: selectedOrgId } : {}),
+    [selectedOrgId],
+  )
 
   const {
-    data: automationsData,
+    data: rawAutomationsData,
     isLoading: automationsLoading,
     error: automationsError,
-  } = useAutomationsQuery(currentSiteId)
+  } = useAutomationsQuery(queryFilter)
 
-  const automations = automationsData ? automationsData.automations : []
-  const loading = automationsLoading || currentSiteId === undefined
-  const error = automationsError ? automationsError.message : null
+  // Client-side filter by hostname — instant, no extra API call
+  const automationsData = useMemo(() => {
+    if (!rawAutomationsData) return rawAutomationsData
+    if (!projectOnly || !currentWorkspace) return rawAutomationsData
+    return {
+      automations: rawAutomationsData.automations.filter(a => a.hostname === currentWorkspace),
+    }
+  }, [rawAutomationsData, projectOnly, currentWorkspace])
+
+  const loading = automationsLoading || sitesLoading
 
   useEffect(() => {
     trackAutomationsViewed()
@@ -128,7 +135,8 @@ export function AutomationsSettings() {
   const [detailTab, setDetailTab] = useState<DetailTab>("overview")
 
   // Derive selected job from query data — always fresh, auto-clears on deletion
-  const selectedJob = selectedJobId ? (automations.find(a => a.id === selectedJobId) ?? null) : null
+  const selectedJob =
+    selectedJobId && automationsData ? (automationsData.automations.find(a => a.id === selectedJobId) ?? null) : null
 
   // ─── Mutations ──────────────────────────────
 
@@ -143,7 +151,7 @@ export function AutomationsSettings() {
       return patchy("automations/update", body, undefined, `/api/automations/${id}`)
     },
     onMutate: async ({ id, active }) => {
-      const key = queryKeys.automations.list(currentSiteId)
+      const key = queryKeys.automations.list(queryFilter)
       await queryClient.cancelQueries({ queryKey: key })
       const previous = queryClient.getQueryData(key)
       queryClient.setQueryData<{ automations: AutomationJob[] }>(key, old =>
@@ -152,7 +160,7 @@ export function AutomationsSettings() {
       return { previous }
     },
     onError: (_err, _vars, context) => {
-      if (context?.previous) queryClient.setQueryData(queryKeys.automations.list(currentSiteId), context.previous)
+      if (context?.previous) queryClient.setQueryData(queryKeys.automations.list(queryFilter), context.previous)
     },
   })
 
@@ -182,7 +190,7 @@ export function AutomationsSettings() {
   const deleteMutation = useMutation<Res<"automations/delete">, ApiError, string, { previous: unknown }>({
     mutationFn: (id: string) => delly("automations/delete", undefined, `/api/automations/${id}`),
     onMutate: async id => {
-      const key = queryKeys.automations.list(currentSiteId)
+      const key = queryKeys.automations.list(queryFilter)
       await queryClient.cancelQueries({ queryKey: key })
       const previous = queryClient.getQueryData(key)
       queryClient.setQueryData<{ automations: AutomationJob[] }>(key, old =>
@@ -191,7 +199,7 @@ export function AutomationsSettings() {
       return { previous }
     },
     onError: (_err, _id, context) => {
-      if (context?.previous) queryClient.setQueryData(queryKeys.automations.list(currentSiteId), context.previous)
+      if (context?.previous) queryClient.setQueryData(queryKeys.automations.list(queryFilter), context.previous)
     },
     onSuccess: () => {
       trackAutomationDeleted()
@@ -251,23 +259,10 @@ export function AutomationsSettings() {
 
   useEffect(() => {
     if (deleteConfirm) {
-      const timeout = setTimeout(() => setDeleteConfirm(null), 3000)
+      const timeout = setTimeout(() => setDeleteConfirm(null), DELETE_CONFIRM_TIMEOUT_MS)
       return () => clearTimeout(timeout)
     }
   }, [deleteConfirm])
-
-  const activeCount = automations.filter(a => a.is_active).length
-
-  // Group active agents by hostname — recomputes when automations change (query refetch or optimistic update)
-  const sitesWithAgents = useMemo(() => {
-    const map = new Map<string, number>()
-    for (const job of automations) {
-      if (!job.is_active) continue
-      const host = job.hostname || "No website"
-      map.set(host, (map.get(host) || 0) + 1)
-    }
-    return [...map.entries()].sort((a, b) => b[1] - a[1])
-  }, [automations])
 
   // ─── Loading / Error ──────────────────────────────
 
@@ -279,13 +274,20 @@ export function AutomationsSettings() {
     )
   }
 
-  if (error) {
+  if (automationsError) {
+    console.error("[AutomationsSettings] Failed to load agents:", automationsError.message)
     return (
       <SettingsTabLayout title="Agents" description="Schedule recurring tasks">
-        <EmptyState icon={Zap} message={error} />
+        <EmptyState icon={Zap} message="Failed to load agents" />
       </SettingsTabLayout>
     )
   }
+
+  // After loading/error guards, data is guaranteed
+  if (!automationsData || !sitesData) return null
+  const { automations } = automationsData
+  const { sites } = sitesData
+  const activeCount = automations.filter(a => a.is_active).length
 
   // ─── Create view ──────────────────────────────
 
@@ -322,7 +324,7 @@ export function AutomationsSettings() {
     return (
       <SettingsTabLayout
         title="Agents"
-        description={`${activeCount} active agent${activeCount !== 1 ? "s" : ""}`}
+        description={`${activeCount} active agent${plural(activeCount)}`}
         className="h-full min-h-0 flex flex-col"
         contentClassName="flex-1 min-h-0 flex flex-col"
       >
@@ -430,9 +432,18 @@ export function AutomationsSettings() {
         description="Schedule recurring tasks for your websites"
         action={{ label: "Add Agent", icon: <Plus size={16} />, onClick: handleCreate }}
       >
+        <ProjectFilterToggle
+          show={!!currentWorkspace}
+          active={projectOnly}
+          onToggle={() => setProjectOnly(!projectOnly)}
+        />
         <EmptyState
           icon={Zap}
-          message="No agents yet. Agents let you schedule recurring tasks like syncing calendars or running AI prompts."
+          message={
+            projectOnly
+              ? "No agents for this project. Agents let you schedule recurring tasks like syncing calendars or running AI prompts."
+              : "No agents yet. Agents let you schedule recurring tasks like syncing calendars or running AI prompts."
+          }
           action={{ label: "Create Agent", onClick: handleCreate }}
         />
       </SettingsTabLayout>
@@ -442,11 +453,17 @@ export function AutomationsSettings() {
   return (
     <SettingsTabLayout
       title="Agents"
-      description={<AgentSitesDropdown activeCount={activeCount} sitesWithAgents={sitesWithAgents} />}
+      description={`${activeCount} active agent${plural(activeCount)}`}
       action={{ label: "Add Agent", icon: <Plus size={16} />, onClick: handleCreate }}
       className="h-full min-h-0 flex flex-col"
       contentClassName="flex-1 min-h-0"
     >
+      <ProjectFilterToggle
+        show={!!currentWorkspace}
+        active={projectOnly}
+        onToggle={() => setProjectOnly(!projectOnly)}
+      />
+
       {/* Table */}
       <div className="overflow-y-auto">
         <table className="w-full text-left text-sm">
@@ -524,7 +541,27 @@ export function AutomationsSettings() {
 
 // ─── Sub-components ──────────────────────────────────────────────────
 
-function TriggerIcon({ type }: { type: string }) {
+function ProjectFilterToggle({ show, active, onToggle }: { show: boolean; active: boolean; onToggle: () => void }) {
+  if (!show) return null
+  return (
+    <div className="mb-3">
+      <button
+        type="button"
+        onClick={onToggle}
+        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+          active
+            ? "bg-black/[0.08] dark:bg-white/[0.08] text-black dark:text-white"
+            : "text-black/40 dark:text-white/40 hover:text-black/60 dark:hover:text-white/60 hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
+        }`}
+      >
+        <Globe size={12} />
+        Only this project
+      </button>
+    </div>
+  )
+}
+
+function TriggerIcon({ type }: { type: TriggerType }) {
   switch (type) {
     case "email":
       return <Mail size={12} className="shrink-0 text-black/40 dark:text-white/40" />
@@ -535,7 +572,7 @@ function TriggerIcon({ type }: { type: string }) {
   }
 }
 
-const STATUS_STYLES: Record<string, string> = {
+const STATUS_STYLES: Record<AutomationRunStatus, string> = {
   success: "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400",
   failure: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400",
   running: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400",
@@ -543,70 +580,8 @@ const STATUS_STYLES: Record<string, string> = {
   skipped: "bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-400",
 }
 
-function RunStatusBadge({ status }: { status: string }) {
-  const style = STATUS_STYLES[status]
-  if (!style)
-    return (
-      <span className="px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
-        {status}
-      </span>
-    )
-  return <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded-full ${style}`}>{status}</span>
-}
-
-function AgentSitesDropdown({
-  activeCount,
-  sitesWithAgents,
-}: {
-  activeCount: number
-  sitesWithAgents: [string, number][]
-}) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    const handle = (e: MouseEvent) => {
-      const target = e.target
-      if (!(target instanceof Node)) return
-      if (ref.current && !ref.current.contains(target)) setOpen(false)
-    }
-    document.addEventListener("mousedown", handle)
-    return () => document.removeEventListener("mousedown", handle)
-  }, [open])
-
-  if (sitesWithAgents.length === 0) {
-    return <>{`${activeCount} active agent${activeCount !== 1 ? "s" : ""}`}</>
-  }
-
-  return (
-    <div className="relative inline-block" ref={ref}>
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="inline-flex items-center gap-1 hover:text-black/70 dark:hover:text-white/70 transition-colors"
-      >
-        {`${activeCount} active agent${activeCount !== 1 ? "s" : ""} across ${sitesWithAgents.length} site${sitesWithAgents.length !== 1 ? "s" : ""}`}
-        <ChevronDown size={12} className={`transition-transform ${open ? "rotate-180" : ""}`} />
-      </button>
-      {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 min-w-[200px] bg-white dark:bg-zinc-900 border border-black/10 dark:border-white/10 rounded-lg shadow-lg py-1">
-          {sitesWithAgents.map(([hostname, count]) => (
-            <div
-              key={hostname}
-              className="flex items-center gap-2 px-3 py-1.5 text-xs text-black/70 dark:text-white/70"
-            >
-              <Globe size={12} className="shrink-0 text-black/40 dark:text-white/40" />
-              <span className="truncate flex-1">{hostname}</span>
-              <span className="text-black/40 dark:text-white/40 shrink-0">
-                {count} agent{count !== 1 ? "s" : ""}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
+function RunStatusBadge({ status }: { status: AutomationRunStatus }) {
+  return <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded-full ${STATUS_STYLES[status]}`}>{status}</span>
 }
 
 function OverviewTab({ job }: { job: AutomationJob }) {

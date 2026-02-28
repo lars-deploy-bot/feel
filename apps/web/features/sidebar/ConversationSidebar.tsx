@@ -1,11 +1,11 @@
 "use client"
 
-import { ChevronRight } from "lucide-react"
+import { ChevronRight, Image, Layers, MessageCircle, Settings } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { OrganizationWorkspaceSwitcher } from "@/components/workspace/OrganizationWorkspaceSwitcher"
 import { WorktreeSwitcher } from "@/components/workspace/WorktreeSwitcher"
 import { SettingsNav } from "@/features/settings/SettingsNav"
-import { trackSidebarClosed, trackSidebarOpened } from "@/lib/analytics/events"
+import { trackSettingsClicked, trackSidebarClosed, trackSidebarOpened } from "@/lib/analytics/events"
 import { useDexieArchivedConversations, useDexieConversations, useDexieSession } from "@/lib/db/dexieMessageStore"
 import type { DbConversation } from "@/lib/db/messageDb"
 import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
@@ -14,7 +14,6 @@ import { useWorkspaceTabs } from "@/lib/stores/tabStore"
 import { ArchivedConversationItem } from "./components/ArchivedConversationItem"
 import { ConversationItem } from "./components/ConversationItem"
 import { EmptyState } from "./components/EmptyState"
-import { FooterActions } from "./components/FooterActions"
 import { NewChatDropdown } from "./components/NewChatDropdown"
 import { styles } from "./sidebar-styles"
 import { useSidebarActions, useSidebarOpen } from "./sidebarStore"
@@ -33,11 +32,15 @@ interface ConversationSidebarProps {
   onSelectWorktree: (worktree: string | null) => void
   worktreeModalOpen?: boolean
   onWorktreeModalOpenChange?: (open: boolean) => void
-  onOpenInvite: () => void
+  onInvite?: () => void
   /** When true, sidebar shows settings tabs instead of conversations */
   settingsMode?: boolean
-  /** Called to exit settings mode */
-  onCloseSettings?: () => void
+  /** Toggle settings mode on/off */
+  onToggleSettings: () => void
+  /** Mobile action button callbacks — desktop versions live in Nav.tsx (search: "desktop only") */
+  onFeedbackClick?: () => void
+  onTemplatesClick?: () => void
+  onPhotosClick?: () => void
 }
 
 export function ConversationSidebar({
@@ -54,9 +57,12 @@ export function ConversationSidebar({
   onSelectWorktree,
   worktreeModalOpen,
   onWorktreeModalOpenChange,
-  onOpenInvite,
+  onInvite,
   settingsMode,
-  onCloseSettings,
+  onToggleSettings,
+  onFeedbackClick,
+  onTemplatesClick,
+  onPhotosClick,
 }: ConversationSidebarProps) {
   const isOpen = useSidebarOpen()
   const { closeSidebar } = useSidebarActions()
@@ -135,15 +141,15 @@ export function ConversationSidebar({
     if (!isOpen) return
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return
-      if (settingsMode && onCloseSettings) {
-        onCloseSettings()
+      if (settingsMode) {
+        onToggleSettings()
       } else {
         closeSidebar()
       }
     }
     document.addEventListener("keydown", handleEscape)
     return () => document.removeEventListener("keydown", handleEscape)
-  }, [isOpen, closeSidebar, settingsMode, onCloseSettings])
+  }, [isOpen, closeSidebar, settingsMode, onToggleSettings])
 
   // Check if any tab in a conversation is streaming
   const isConversationStreaming = useCallback(
@@ -158,34 +164,53 @@ export function ConversationSidebar({
   // Shared sidebar content - rendered in both desktop and mobile
   const renderContent = (isMobile: boolean) => (
     <div className={`flex flex-col h-full ${isMobile ? "w-screen" : "w-[280px]"}`}>
-      {/* Header: Org/Workspace switcher + close button */}
+      {/* Header: Org/Workspace switcher + settings gear + close button */}
       <div className={`h-12 flex items-center justify-between px-3 shrink-0 border-b ${styles.borderSubtle}`}>
         <OrganizationWorkspaceSwitcher workspace={workspace} compact orgOnly />
-        <button
-          type="button"
-          onClick={closeSidebar}
-          className="inline-flex items-center justify-center size-8 rounded-lg shrink-0 text-black/35 dark:text-white/35 hover:text-black/55 dark:hover:text-white/55 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] active:scale-95 transition-all duration-150 ease-out"
-          aria-label="Close sidebar"
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.25"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+        <div className="flex items-center gap-0.5">
+          <button
+            type="button"
+            onClick={() => {
+              trackSettingsClicked()
+              onToggleSettings()
+            }}
+            className={`inline-flex items-center justify-center size-8 rounded-lg shrink-0 active:scale-95 transition-all duration-150 ease-out [&>svg]:transition-transform [&>svg]:duration-200 [&>svg]:ease-out ${
+              settingsMode
+                ? "text-white dark:text-black bg-black dark:bg-white [&>svg]:rotate-90"
+                : "text-black/35 dark:text-white/35 hover:text-black/55 dark:hover:text-white/55 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] hover:[&>svg]:rotate-90"
+            }`}
+            aria-label={settingsMode ? "Close settings" : "Open settings"}
+            aria-pressed={!!settingsMode}
+            data-testid="settings-button"
           >
-            <rect x="1.5" y="2.5" width="13" height="11" rx="2" />
-            <line x1="5.5" y1="2.5" x2="5.5" y2="13.5" />
-          </svg>
-        </button>
+            <Settings size={16} strokeWidth={1.5} />
+          </button>
+          <button
+            type="button"
+            onClick={closeSidebar}
+            className="inline-flex items-center justify-center size-8 rounded-lg shrink-0 text-black/35 dark:text-white/35 hover:text-black/55 dark:hover:text-white/55 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] active:scale-95 transition-all duration-150 ease-out"
+            aria-label="Close sidebar"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.25"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="1.5" y="2.5" width="13" height="11" rx="2" />
+              <line x1="5.5" y1="2.5" x2="5.5" y2="13.5" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Settings mode: replace conversation content with settings tabs */}
-      {settingsMode && onCloseSettings ? (
-        <SettingsNav onClose={onCloseSettings} />
+      {settingsMode ? (
+        <SettingsNav onInvite={onInvite} />
       ) : (
         <>
           {/* Worktree switcher - shown below header when enabled */}
@@ -279,8 +304,34 @@ export function ConversationSidebar({
             )}
           </div>
 
-          {/* Footer actions - with safe area padding for mobile home indicator */}
-          <FooterActions onOpenInvite={onOpenInvite} isMobile={isMobile} />
+          {/* Mobile action buttons — desktop versions live in Nav.tsx (search: "desktop only") */}
+          {isMobile && (
+            <div className={`flex items-center gap-1 px-3 py-2 shrink-0 border-t ${styles.borderSubtle}`}>
+              {(
+                [
+                  { icon: MessageCircle, label: "Feedback", action: onFeedbackClick },
+                  { icon: Layers, label: "Components", action: onTemplatesClick },
+                  { icon: Image, label: "Photos", action: onPhotosClick },
+                ] as const
+              ).map(({ icon: Icon, label, action }) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => {
+                    action?.()
+                    closeSidebar()
+                  }}
+                  className="inline-flex items-center gap-2 h-8 px-3 rounded-lg text-sm text-black/50 dark:text-white/50 hover:text-black/70 dark:hover:text-white/70 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] active:scale-95 transition-all duration-150 ease-out"
+                >
+                  <Icon size={16} strokeWidth={1.5} />
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* iOS 26 Liquid Glass: extend background into bottom safe area */}
+          {isMobile && <div className={styles.panel} style={{ height: "env(safe-area-inset-bottom, 0px)" }} />}
         </>
       )}
     </div>
