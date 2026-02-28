@@ -63,7 +63,8 @@ test("can open settings and see General tab", async ({ authenticatedPage, worker
 
   // General tab: model select in main content, logout button in sidebar settings nav
   await expect(authenticatedPage.locator("#claude-model")).toBeAttached({ timeout: TEST_TIMEOUTS.medium })
-  await expect(authenticatedPage.locator('[data-testid="logout-button"]')).toBeAttached({
+  // Both desktop and mobile sidebars render a logout button — scope to the desktop sidebar
+  await expect(desktopSidebar.locator('[data-testid="logout-button"]')).toBeAttached({
     timeout: TEST_TIMEOUTS.medium,
   })
 })
