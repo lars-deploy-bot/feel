@@ -11,6 +11,7 @@ import { InviteModal } from "@/components/modals/InviteModal"
 import { SessionExpiredModal } from "@/components/modals/SessionExpiredModal"
 import { SuperTemplatesModal } from "@/components/modals/SuperTemplatesModal"
 import { SettingsOverlay } from "@/components/settings/SettingsOverlay"
+import { SettingsTabProvider } from "@/components/settings/SettingsPageClient"
 import { ChatDropOverlay } from "@/features/chat/components/ChatDropOverlay"
 import { ChatInput } from "@/features/chat/components/ChatInput"
 import type { ChatInputHandle } from "@/features/chat/components/ChatInput/types"
@@ -649,7 +650,9 @@ function ChatPageContent() {
     [unarchiveConversation],
   )
 
-  return (
+  const settingsInitialTab = modals.settings?.initialTab
+
+  const layout = (
     <div
       className="h-[100dvh] flex flex-row overflow-hidden dark:bg-[#1a1a1a] dark:text-white"
       data-testid={mounted && workspace ? "workspace-ready" : "workspace-loading"}
@@ -672,6 +675,8 @@ function ChatPageContent() {
         onWorktreeModalOpenChange={setWorktreeModalOpen}
         onOpenSettings={modals.openSettings}
         onOpenInvite={modals.openInvite}
+        settingsMode={!!modals.settings}
+        onCloseSettings={modals.closeSettings}
       />
 
       {/* Main content column: nav + chat + workbench */}
@@ -691,10 +696,13 @@ function ChatPageContent() {
           onToggleSidebar={toggleSidebar}
         />
 
-        {/* Content area: chat + workbench side by side */}
+        {/* Content area: chat + workbench side by side (or settings content) */}
         <div className="flex-1 flex flex-row overflow-hidden min-h-0 relative">
+          {/* Settings content — shown when sidebar is in settings mode */}
+          {modals.settings && <SettingsOverlay />}
+
           <section
-            className="flex-1 flex flex-col overflow-hidden relative min-w-0"
+            className={`flex-1 flex flex-col overflow-hidden relative min-w-0 ${modals.settings ? "hidden" : ""}`}
             aria-label="Chat area"
             onDragEnter={handleChatDragEnter}
             onDragLeave={handleChatDragLeave}
@@ -890,19 +898,11 @@ function ChatPageContent() {
             </div>
           </section>
 
-          {/* Workbench - desktop only */}
-          {showWorkbench && (
+          {/* Workbench - desktop only, hidden when settings open */}
+          {showWorkbench && !modals.settings && (
             <div className="hidden md:flex h-full overflow-hidden">
               <Workbench />
             </div>
-          )}
-
-          {/* Settings overlay — covers content area, nav stays visible */}
-          {modals.settings && (
-            <SettingsOverlay
-              onClose={modals.closeSettings}
-              initialTab={modals.settings === "websites" ? "websites" : undefined}
-            />
           )}
         </div>
       </div>
@@ -967,6 +967,11 @@ function ChatPageContent() {
       {isSessionExpired && <SessionExpiredModal />}
     </div>
   )
+
+  // Always wrap with SettingsTabProvider so the React tree is stable.
+  // Toggling the provider conditionally would change the root element type,
+  // causing React to unmount/remount the entire layout on settings open/close.
+  return <SettingsTabProvider initialTab={settingsInitialTab}>{layout}</SettingsTabProvider>
 }
 
 function ChatPageWrapper() {

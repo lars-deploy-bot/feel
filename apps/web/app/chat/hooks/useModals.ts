@@ -1,13 +1,16 @@
 "use client"
 
 import { useCallback, useMemo, useState } from "react"
+import type { SettingsTab } from "@/components/settings/SettingsPageClient"
+import { trackSettingsOpened } from "@/lib/analytics/events"
 
-type SettingsReason = "manual" | "error" | "websites" | null
+/** Settings state: null = closed, object = open with optional initial tab */
+type SettingsState = { initialTab?: SettingsTab } | null
 
 interface ModalState {
   feedback: boolean
   invite: boolean
-  settings: SettingsReason
+  settings: SettingsState
   templates: boolean
   photoMenu: boolean
   mobilePreview: boolean
@@ -18,7 +21,7 @@ interface ModalActions {
   closeFeedback: () => void
   openInvite: () => void
   closeInvite: () => void
-  openSettings: (reason?: SettingsReason) => void
+  openSettings: (initialTab?: SettingsTab) => void
   closeSettings: () => void
   toggleSettings: () => void
   openTemplates: () => void
@@ -49,12 +52,18 @@ export function useModals(): ModalState & ModalActions {
   const openInvite = useCallback(() => setState(s => ({ ...s, invite: true })), [])
   const closeInvite = useCallback(() => setState(s => ({ ...s, invite: false })), [])
 
-  const openSettings = useCallback(
-    (reason: SettingsReason = "manual") => setState(s => ({ ...s, settings: reason })),
-    [],
-  )
+  const openSettings = useCallback((initialTab?: SettingsTab) => {
+    trackSettingsOpened(initialTab)
+    setState(s => ({ ...s, settings: { initialTab } }))
+  }, [])
   const closeSettings = useCallback(() => setState(s => ({ ...s, settings: null })), [])
-  const toggleSettings = useCallback(() => setState(s => ({ ...s, settings: s.settings ? null : "manual" })), [])
+  const toggleSettings = useCallback(() => {
+    setState(s => {
+      if (s.settings) return { ...s, settings: null }
+      trackSettingsOpened(undefined)
+      return { ...s, settings: {} }
+    })
+  }, [])
 
   const openTemplates = useCallback(() => setState(s => ({ ...s, templates: true })), [])
   const closeTemplates = useCallback(() => setState(s => ({ ...s, templates: false })), [])
