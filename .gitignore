@@ -189,6 +189,8 @@ pnpm-lock.yaml
 # Scraped/debug HTML dumps
 apps/mcp-servers/google-scraper/test-html/
 
+# Local settings (machine-specific)
+# settings.local.json - tracked in repo for shared Claude Code config
 
 # Cryptographic keys (NEVER COMMIT)
 *-private-key.json
