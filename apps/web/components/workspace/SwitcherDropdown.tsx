@@ -126,11 +126,14 @@ export function SwitcherDropdown<T>({
   // ─── Render ──────────────────────────────────────────────────────────────
 
   return createPortal(
-    <div role="listbox" ref={menuRef} style={{ position: "fixed" }} className={DROPDOWN} onKeyDown={handleKeyDown}>
+    <div ref={menuRef} style={{ position: "fixed" }} className={DROPDOWN} onKeyDown={handleKeyDown}>
       {/* Search bar */}
       <label className="flex items-center gap-2.5 border-b border-black/[0.08] dark:border-white/[0.08]">
         <input
           ref={searchRef}
+          role="combobox"
+          aria-controls="switcher-options"
+          aria-expanded="true"
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
@@ -151,7 +154,7 @@ export function SwitcherDropdown<T>({
       </label>
 
       {/* Items list */}
-      <div ref={listRef} className="max-h-[332px] overflow-y-auto p-0.5">
+      <div id="switcher-options" role="listbox" ref={listRef} className="max-h-[332px] overflow-y-auto p-0.5">
         {filtered.length === 0 ? (
           <div className="px-4 py-6 text-sm text-black/30 dark:text-white/30 text-center">Nothing found</div>
         ) : (
