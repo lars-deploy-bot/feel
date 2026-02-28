@@ -9,6 +9,7 @@
  */
 
 import * as Sentry from "@sentry/nextjs"
+import type { OnPersistMessage } from "@webalive/automation-engine"
 import {
   buildSessionOrgClaims,
   CLAUDE_MODELS,
@@ -50,6 +51,8 @@ export interface AutomationJobParams {
   responseToolName?: string
   /** Action type of the automation job (prompt, sync, publish) */
   actionType?: string
+  /** Optional callback to persist each SDK message into app.messages */
+  onPersistMessage?: OnPersistMessage
 }
 
 export interface AutomationJobResult {
@@ -162,16 +165,18 @@ interface ExecutionContext {
   enableSuperadminTools: boolean
   /** Session cookie for authenticating API callbacks (e.g. restart_dev_server) */
   sessionCookie?: string
+  /** Optional callback to persist each SDK message into app.messages */
+  onPersistMessage?: OnPersistMessage
 }
 
 async function executeWithWorkerPoolOnly(ctx: ExecutionContext): Promise<AttemptResult> {
-  const { requestId, workspace, userId, sessionCookie, ...sharedParams } = ctx
+  const { requestId, workspace, userId, sessionCookie, onPersistMessage, ...sharedParams } = ctx
 
   if (!WORKER_POOL.ENABLED) {
     throw new Error("Automation execution requires WORKER_POOL.ENABLED=true; no fallback execution path is allowed.")
   }
 
-  return tryWorkerPool({ ...sharedParams, requestId, workspace, userId, sessionCookie })
+  return tryWorkerPool({ ...sharedParams, requestId, workspace, userId, sessionCookie, onPersistMessage })
 }
 
 // =============================================================================
@@ -344,6 +349,7 @@ export async function runAutomationJob(params: AutomationJobParams): Promise<Aut
       responseToolName: params.responseToolName,
       enableSuperadminTools,
       sessionCookie,
+      onPersistMessage: params.onPersistMessage,
     })
 
     const durationMs = Date.now() - startTime

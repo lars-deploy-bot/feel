@@ -2,6 +2,14 @@
 export { bootstrapRunConversation } from "./conversation"
 // Engine: claim/finish lifecycle
 export { claimDueJobs, claimJob, extractSummary, finishJob, readMessagesFromUri } from "./engine"
+// Message persistence
+export {
+  type PersistableMessage,
+  type PersistMessageOptions,
+  persistRunMessage,
+  shouldPersist,
+  updateConversationMetadata,
+} from "./messages"
 // Run logs
 export {
   appendRunLog,
@@ -22,5 +30,7 @@ export type {
   CronServiceConfig,
   FinishHooks,
   FinishOptions,
+  MessageInsert,
+  OnPersistMessage,
   RunContext,
 } from "./types"

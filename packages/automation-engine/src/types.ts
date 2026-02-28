@@ -14,6 +14,20 @@ import type { AppDatabase, Json } from "@webalive/database"
 export type AppClient = SupabaseClient<AppDatabase, "app">
 export type AutomationJob = AppDatabase["app"]["Tables"]["automation_jobs"]["Row"]
 
+/** Insert shape for app.messages — derived from generated DB types */
+export type MessageInsert = AppDatabase["app"]["Tables"]["messages"]["Insert"]
+
+// =============================================================================
+// Message Persistence Types
+// =============================================================================
+
+/**
+ * Callback for persisting SDK messages during automation execution.
+ * Receives raw IPC messages — the handler is responsible for filtering
+ * (via shouldPersist) and unwrapping before storage.
+ */
+export type OnPersistMessage = (msg: Record<string, unknown>) => void
+
 // =============================================================================
 // Engine Types
 // =============================================================================

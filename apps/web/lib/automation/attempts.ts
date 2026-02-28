@@ -5,6 +5,8 @@
  */
 
 import { statSync } from "node:fs"
+import * as Sentry from "@sentry/nextjs"
+import type { OnPersistMessage } from "@webalive/automation-engine"
 import { DEFAULTS, WORKER_POOL } from "@webalive/shared"
 import {
   getAllowedTools,
@@ -147,6 +149,8 @@ export interface ExecutionParams {
   extraTools?: string[]
   /** Extract response from this tool's input.text */
   responseToolName?: string
+  /** Optional callback to persist each SDK message into app.messages */
+  onPersistMessage?: OnPersistMessage
 }
 
 interface WorkerPoolParams extends ExecutionParams {
@@ -173,6 +177,7 @@ export async function tryWorkerPool(params: WorkerPoolParams): Promise<AttemptRe
     responseToolName,
     oauthAccessToken,
     sessionCookie,
+    onPersistMessage,
   } = params
 
   const { getWorkerPool } = await import("@webalive/worker-pool")
@@ -231,6 +236,16 @@ export async function tryWorkerPool(params: WorkerPoolParams): Promise<AttemptRe
       onMessage: (msg: Record<string, unknown>) => {
         console.log(`[Automation ${requestId}] Message: type=${String(msg.type ?? "unknown")}`)
         collect(msg)
+        if (onPersistMessage) {
+          try {
+            onPersistMessage(msg)
+          } catch (error) {
+            Sentry.captureException(error, {
+              tags: { "automation.requestId": requestId },
+              extra: { msgType: String(msg.type ?? "unknown") },
+            })
+          }
+        }
       },
       signal: abort.signal,
     })
