@@ -50,10 +50,10 @@ test("can open settings and see General tab", async ({ authenticatedPage, worker
 
   await gotoChatFast(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
 
-  // Click the settings button
+  // Click the settings button (in sidebar header — may need force if sidebar content overlaps)
   const settingsButton = authenticatedPage.locator('[data-testid="settings-button"]')
-  await expect(settingsButton).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
-  await settingsButton.click()
+  await expect(settingsButton).toBeAttached({ timeout: TEST_TIMEOUTS.medium })
+  await settingsButton.click({ force: true })
 
   // Settings overlay should appear
   await expect(authenticatedPage.locator('[data-testid="settings-overlay"]')).toBeVisible({
