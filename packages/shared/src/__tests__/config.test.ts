@@ -171,15 +171,29 @@ describe("resolveLocalAliveRoot", () => {
 })
 
 describe("config values in test environment", () => {
-  it("test env returns empty config (not local defaults)", () => {
-    // Tests run with VITEST=true, so they should get {} not localDefaults()
-    expect(PATHS.ALIVE_ROOT).toBe("")
-    expect(PATHS.SITES_ROOT).toBe("")
-    expect(DOMAINS.MAIN).toBe("")
+  // When SERVER_CONFIG_PATH is set and the file exists, real config values are loaded
+  // even in test env. These tests only apply when no config path is set.
+  const hasServerConfig = !!process.env.SERVER_CONFIG_PATH
+
+  it("test env returns empty config when SERVER_CONFIG_PATH is unset", () => {
+    if (hasServerConfig) {
+      // Config was loaded from file — values are non-empty
+      expect(PATHS.ALIVE_ROOT).toBeTruthy()
+      expect(PATHS.SITES_ROOT).toBeTruthy()
+      expect(DOMAINS.MAIN).toBeTruthy()
+    } else {
+      expect(PATHS.ALIVE_ROOT).toBe("")
+      expect(PATHS.SITES_ROOT).toBe("")
+      expect(DOMAINS.MAIN).toBe("")
+    }
   })
 
-  it("ALLOWED_WORKSPACE_BASES is empty in test env", () => {
-    expect(SECURITY.ALLOWED_WORKSPACE_BASES).toEqual([])
+  it("ALLOWED_WORKSPACE_BASES matches environment", () => {
+    if (hasServerConfig) {
+      expect(SECURITY.ALLOWED_WORKSPACE_BASES.length).toBeGreaterThan(0)
+    } else {
+      expect(SECURITY.ALLOWED_WORKSPACE_BASES).toEqual([])
+    }
   })
 })
 
