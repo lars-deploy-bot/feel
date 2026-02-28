@@ -1,7 +1,7 @@
 /**
  * Simple wrapper for asking Claude a question using the Claude Agent SDK.
  *
- * Uses the Claude Code instance credentials - no API key needed.
+ * Uses the Anthropic OAuth credentials - no API key needed.
  *
  * @example
  * ```typescript
@@ -40,7 +40,7 @@ export interface AskAIOptions {
  * Ask Claude a question and get a text response.
  *
  * No tools are enabled by default - this is for simple text generation.
- * Uses Claude Code instance credentials (no API key needed).
+ * Uses Anthropic OAuth credentials (no API key needed).
  *
  * @param options - The question and optional configuration
  * @returns The text response from Claude

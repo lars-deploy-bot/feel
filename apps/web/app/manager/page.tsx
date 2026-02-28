@@ -1109,7 +1109,7 @@ export default function ManagerPage() {
                   Access Password
                 </label>
                 <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
-                  Used to authenticate workspace access in Claude Code. Leave blank to keep current password unchanged.
+                  Used to authenticate workspace access. Leave blank to keep current password unchanged.
                 </p>
                 <input
                   id="password-input"

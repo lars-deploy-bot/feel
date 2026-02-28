@@ -806,7 +806,7 @@ async function handleQuery(ipc, requestId, payload) {
 
     timing("before_sdk_query")
 
-    // Capture stderr from Claude Code subprocess for error debugging
+    // Capture stderr from agent subprocess for error debugging
     const stderrHandler = message => {
       stderrBuffer.push(message)
       // Keep only last 50 lines to avoid memory bloat
@@ -939,7 +939,7 @@ async function handleQuery(ipc, requestId, payload) {
     console.error(`[worker] Query ${status}: ${messageCount} messages (total: ${queriesProcessed})`)
   } catch (error) {
     // Check if we already received a successful result before the error
-    // The Claude Code CLI sometimes exits with code 1 AFTER yielding all messages including the result
+    // The agent SDK sometimes exits with code 1 AFTER yielding all messages including the result
     // In this case, treat it as success since we have the complete response
     if (queryResult && queryResult.subtype === "success") {
       console.error("[worker] Query completed with result before error - treating as success")

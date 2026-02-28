@@ -1,6 +1,6 @@
 [Unit]
 Description=OCR MCP Server (Docker)
-Documentation=https://github.com/anthropics/claude-code
+Documentation=https://github.com/eenlars/alive
 After=network.target docker.service
 Requires=docker.service
 

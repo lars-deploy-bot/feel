@@ -1,7 +1,7 @@
 # Codex Addition — Multi-Agent Provider Support for Alive
 
 ## Goal
-Add Codex (OpenAI) as a second coding agent provider alongside Claude Code. Users should be able to switch between Claude and Codex per workspace or per query.
+Add Codex (OpenAI) as a second coding agent provider alongside Claude. Users should be able to switch between Claude and Codex per workspace or per query.
 
 ## Status
 **Planning phase** — iterating every 4 hours until Thursday Feb 20.

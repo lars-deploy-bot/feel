@@ -195,7 +195,7 @@ const cleanup = initAliveTagger()
 | **Selection UI** | Built-in (Cmd+Click) | Built-in |
 | **Communication** | postMessage | HTTP localhost:4567 |
 | **Env requirement** | None (dev mode auto) | None |
-| **Designed for** | Alive iframe | Claude Code CLI |
+| **Designed for** | Alive iframe | Claude Agent SDK CLI |
 
 ## Integration with Alive
 

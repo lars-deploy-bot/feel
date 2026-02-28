@@ -1,7 +1,7 @@
 /**
  * Skill frontmatter parser for SKILL.md files.
  *
- * SKILL.md format (Claude Code standard):
+ * SKILL.md format (Claude Agent SDK standard):
  * ```
  * ---
  * name: skill-name

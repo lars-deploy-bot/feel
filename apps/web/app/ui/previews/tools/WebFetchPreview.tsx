@@ -20,7 +20,7 @@ export function WebFetchPreview() {
         <h3 className="text-sm font-medium text-black/60 dark:text-white/60 mb-4">Input - GitHub URL</h3>
         <div className="max-w-lg">
           <WebFetchInput
-            url="https://github.com/anthropics/claude-code/blob/main/README.md"
+            url="https://github.com/anthropics/anthropic-cookbook/blob/main/README.md"
             prompt="Get the installation instructions and key features from this README"
           />
         </div>
