@@ -198,21 +198,18 @@ done
 # $ALIVE_ROOT/templates/site-template at runtime (see packages/shared/src/config.ts PATHS.TEMPLATE_PATH)
 
 # =============================================================================
-# Phase 9: Copy Packages to node_modules (NO SYMLINKS)
+# Phase 9: Link Packages to node_modules (single copy, no duplicate I/O)
 # =============================================================================
-log_step "Copying packages to node_modules..."
+log_step "Linking packages into node_modules..."
 STANDALONE_NODE_MODULES="$STANDALONE_DIR/node_modules"
 mkdir -p "$STANDALONE_NODE_MODULES/@webalive"
 
-# Copy workspace packages to node_modules/@webalive (actual copies, not symlinks)
+# Link workspace packages to node_modules/@webalive.
+# Relative links keep everything self-contained within standalone/ after timestamped move.
 for pkg in "${STANDALONE_PACKAGES[@]}"; do
-    if [ -d "$STANDALONE_PACKAGES_DIR/$pkg" ]; then
-        cp -rL "$STANDALONE_PACKAGES_DIR/$pkg" "$STANDALONE_NODE_MODULES/@webalive/$pkg" 2>/dev/null || \
-        cp -r "$STANDALONE_PACKAGES_DIR/$pkg" "$STANDALONE_NODE_MODULES/@webalive/$pkg"
-    elif [ -d "packages/$pkg" ]; then
-        cp -rL "packages/$pkg" "$STANDALONE_NODE_MODULES/@webalive/$pkg" 2>/dev/null || \
-        cp -r "packages/$pkg" "$STANDALONE_NODE_MODULES/@webalive/$pkg"
-    fi
+    [ ! -d "$STANDALONE_PACKAGES_DIR/$pkg" ] && { log_error "Standalone package missing: $pkg"; exit 1; }
+    rm -rf "${STANDALONE_NODE_MODULES:?}/@webalive/$pkg" 2>/dev/null || true
+    ln -s "../../../../packages/$pkg" "$STANDALONE_NODE_MODULES/@webalive/$pkg"
 done
 
 # Copy worker-entry.mjs (it's in src/ not dist/)
@@ -221,13 +218,12 @@ if [ -f "packages/worker-pool/src/worker-entry.mjs" ]; then
     cp "packages/worker-pool/src/worker-entry.mjs" "${STANDALONE_NODE_MODULES:?}/@webalive/worker-pool/dist/"
 fi
 
-# Worker-entry.mjs imports @webalive/tools - add it to worker-pool's node_modules
-# Also need to add it to packages/worker-pool for the actual worker process
+# Worker-entry.mjs imports @webalive/tools - link it in worker-pool's local node_modules.
 WORKER_POOL_PKG="$STANDALONE_PACKAGES_DIR/worker-pool"
 if [ -d "$WORKER_POOL_PKG" ]; then
     mkdir -p "$WORKER_POOL_PKG/node_modules/@webalive"
-    cp -rL "$STANDALONE_PACKAGES_DIR/tools" "$WORKER_POOL_PKG/node_modules/@webalive/tools" 2>/dev/null || \
-    cp -r "$STANDALONE_PACKAGES_DIR/tools" "$WORKER_POOL_PKG/node_modules/@webalive/tools"
+    rm -rf "$WORKER_POOL_PKG/node_modules/@webalive/tools" 2>/dev/null || true
+    ln -s "../../../tools" "$WORKER_POOL_PKG/node_modules/@webalive/tools"
 fi
 
 # Copy zod dependency from the .bun cache (it's in the root standalone node_modules)

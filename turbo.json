@@ -108,9 +108,6 @@
       "persistent": true,
       "env": ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "JWT_SECRET", "WORKER_PORT"]
     },
-    "@webalive/shell-server-go#build": {
-      "outputs": ["shell-server-go", "client/dist/**"]
-    },
     "@webalive/site-controller#test": {
       "env": ["SERVER_CONFIG_PATH"]
     }

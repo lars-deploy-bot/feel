@@ -14,6 +14,11 @@ import { withSentryConfig } from "@sentry/nextjs"
  */
 
 const configDir = path.dirname(fileURLToPath(import.meta.url))
+const RIPGREP_TARGETS = ["arm64-darwin", "arm64-linux", "arm64-win32", "x64-darwin", "x64-linux", "x64-win32"]
+const ripgrepTarget = `${process.arch}-${process.platform}`
+const ripgrepExcludes = RIPGREP_TARGETS.filter(target => target !== ripgrepTarget).map(
+  target => `../../node_modules/@anthropic-ai/claude-agent-sdk/vendor/ripgrep/${target}/**/*`,
+)
 
 // Generate build info file at build time
 function writeBuildInfo() {
@@ -96,22 +101,46 @@ const nextConfig = {
   outputFileTracingRoot: path.join(configDir, "../../"),
   outputFileTracingIncludes: {
     "/api/claude/stream/route": [
-      "../../packages/tools/**/*",
-      "../../packages/images/**/*",
-      "../../packages/site-controller/**/*",
-      "../../packages/worker-pool/**/*",
-      "../../packages/shared/**/*",
-      "../../packages/database/**/*",
-      // packages/tools dependencies (used in child process, not auto-traced)
-      "../../node_modules/@anthropic-ai/**/*",
+      // Keep includes surgical. Broad package globs make standalone tracing slow.
+      "../../packages/tools/dist/**/*",
+      "../../packages/tools/package.json",
+      "../../packages/images/dist/**/*",
+      "../../packages/images/package.json",
+      "../../packages/site-controller/dist/**/*",
+      "../../packages/site-controller/scripts/**/*",
+      "../../packages/site-controller/package.json",
+      "../../packages/worker-pool/dist/**/*",
+      "../../packages/worker-pool/src/worker-entry.mjs",
+      "../../packages/worker-pool/package.json",
+      "../../packages/shared/dist/**/*",
+      "../../packages/shared/package.json",
+      "../../packages/shared/environments.json",
+      "../../packages/database/dist/**/*",
+      "../../packages/database/package.json",
+      // Child-process dependencies that are not reliably auto-traced
+      "../../node_modules/@anthropic-ai/claude-agent-sdk/**/*",
       "../../node_modules/groq-sdk/**/*",
       "../../node_modules/zod/**/*",
     ],
   },
   outputFileTracingExcludes: {
+    // TypeScript is pulled in by Next's server trace but is not required for runtime.
+    // Keep it out of standalone to shrink final artifact size.
+    "/*": ["../../node_modules/typescript/**"],
+
     // Exclude nested workspace node_modules symlinks from standalone tracing.
     // They can conflict with traced copies and break chunk loading at runtime.
-    "/api/claude/stream/route": ["../../packages/**/node_modules/**"],
+    "/api/claude/stream/route": [
+      "../../packages/**/node_modules/**",
+      "../../packages/**/.tmp/**",
+      "../../packages/**/.turbo/**",
+      "../../packages/**/test/**",
+      "../../packages/**/docs/**",
+      "../../packages/**/__tests__/**",
+      // Claude SDK bundles ripgrep binaries for all platforms.
+      // Only keep the current build target to reduce standalone size.
+      ...ripgrepExcludes,
+    ],
   },
   serverExternalPackages: ["@napi-rs/image", "@webalive/site-controller", "@webalive/oauth-core"],
   transpilePackages: [
