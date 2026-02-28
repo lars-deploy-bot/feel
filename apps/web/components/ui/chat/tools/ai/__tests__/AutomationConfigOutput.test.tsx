@@ -1,7 +1,33 @@
 // @vitest-environment happy-dom
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { AutomationConfigOutput } from "../AutomationConfigOutput"
+
+// Mock @webalive/shared to avoid node: builtins in happy-dom.
+// The barrel export pulls in invite-code.ts (node:crypto) and path-security.ts (node:path)
+// which crash in browser test environments.
+vi.mock("@webalive/shared", () => ({
+  CLAUDE_MODELS: {
+    SONNET: "claude-sonnet-4-6",
+    OPUS: "claude-opus-4-6",
+    HAIKU: "claude-haiku-4-5",
+  },
+  DEFAULTS: {
+    TEMPLATE_ID_PREFIX: "tmpl_",
+    WILDCARD_DOMAIN: "alive.best",
+    SERVER_IP: "0.0.0.0",
+  },
+  ORG_ROLES: { OWNER: "owner", ADMIN: "admin", MEMBER: "member" },
+  RESERVED_USER_ENV_KEYS: [],
+  getModelDisplayName: (id: string) => {
+    const names: Record<string, string> = {
+      "claude-sonnet-4-6": "Sonnet",
+      "claude-opus-4-6": "Opus",
+      "claude-haiku-4-5": "Haiku",
+    }
+    return names[id] ?? id
+  },
+  isValidClaudeModel: (id: string) => ["claude-sonnet-4-6", "claude-opus-4-6", "claude-haiku-4-5"].includes(id),
+}))
 
 vi.mock("@/lib/api/api-client", () => ({
   ApiError: class ApiError extends Error {},
@@ -9,6 +35,7 @@ vi.mock("@/lib/api/api-client", () => ({
 }))
 
 import { postty } from "@/lib/api/api-client"
+import { AutomationConfigOutput } from "../AutomationConfigOutput"
 
 const mockedPostty = vi.mocked(postty)
 

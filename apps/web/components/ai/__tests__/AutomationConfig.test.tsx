@@ -1,6 +1,27 @@
 // @vitest-environment happy-dom
 import { fireEvent, render, screen } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
+
+// Mock @webalive/shared to avoid node: builtins in happy-dom
+// The barrel export pulls in invite-code.ts (node:crypto) and path-security.ts (node:path)
+// which crash in browser test environments.
+vi.mock("@webalive/shared", () => ({
+  CLAUDE_MODELS: {
+    SONNET: "claude-sonnet-4-6",
+    OPUS: "claude-opus-4-6",
+    HAIKU: "claude-haiku-4-5",
+  },
+  getModelDisplayName: (id: string) => {
+    const names: Record<string, string> = {
+      "claude-sonnet-4-6": "Sonnet",
+      "claude-opus-4-6": "Opus",
+      "claude-haiku-4-5": "Haiku",
+    }
+    return names[id] ?? id
+  },
+  isValidClaudeModel: (id: string) => ["claude-sonnet-4-6", "claude-opus-4-6", "claude-haiku-4-5"].includes(id),
+}))
+
 import { AutomationConfig, type AutomationConfigData } from "../AutomationConfig"
 
 const baseData: AutomationConfigData = {
