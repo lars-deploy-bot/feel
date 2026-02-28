@@ -6,6 +6,8 @@ import { tabKey } from "@/features/auth/lib/sessionStore"
 import { normalizeWorktreeSlug, WORKTREE_SLUG_REGEX } from "@/features/workspace/lib/worktree-utils"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { ErrorCodes } from "@/lib/error-codes"
+import { registerCancelIntent } from "@/lib/stream/cancel-intent-registry"
+import { PAGE_UNLOAD_BEACON_MARKER } from "@/lib/stream/cancel-markers"
 import { cancelStream, cancelStreamByConversationKey } from "@/lib/stream/cancellation-registry"
 
 /**
@@ -48,7 +50,7 @@ interface CancelDebugEntry {
   contentType?: string
   origin?: string
   clientStack?: string
-  result: "cancelled" | "already_complete" | "error" | "unauthorized"
+  result: "cancelled" | "already_complete" | "cancel_queued" | "error" | "unauthorized" | "ignored"
   errorMessage?: string
 }
 
@@ -188,6 +190,20 @@ export async function POST(req: NextRequest) {
       result: "error", // Default, will be overwritten
     }
 
+    // Browser unload events (including page refresh) are not explicit stop actions.
+    // Ignore them so active streams can continue and reconnect after reload.
+    //
+    // Only ignore when the payload actually targets a stream; malformed payloads
+    // should still flow through normal validation/error responses.
+    const hasValidUnloadTarget = !!requestId || (!!tabId && !!tabGroupId && !!workspace)
+    if (clientStack?.includes(PAGE_UNLOAD_BEACON_MARKER) && hasValidUnloadTarget) {
+      console.log("[Cancel Stream] Ignoring unload beacon cancellation to preserve background streaming")
+      debugEntry.result = "ignored"
+      debugEntry.errorMessage = "ignored_unload_beacon"
+      logCancelDebug(debugEntry)
+      return NextResponse.json({ ok: true, status: "ignored_unload_beacon" })
+    }
+
     // Validate: must have either requestId OR (tabId + workspace)
     if (requestId) {
       // Primary path: Cancel by requestId
@@ -264,11 +280,14 @@ export async function POST(req: NextRequest) {
           logCancelDebug(debugEntry)
           return NextResponse.json({ ok: true, status: "cancelled", tabId })
         } else {
-          // Not found - likely already completed or never started
-          console.log(`[Cancel Stream] Tab not found (already complete): ${tabKeyValue}`)
-          debugEntry.result = "already_complete"
+          // Super-early stop race: stream may not be registered yet.
+          // Queue short-lived stop intent so the stream route can consume it
+          // immediately after lock acquisition and abort before work proceeds.
+          registerCancelIntent(tabKeyValue, user.id)
+          console.log(`[Cancel Stream] Tab not found yet, queued stop intent: ${tabKeyValue}`)
+          debugEntry.result = "cancel_queued"
           logCancelDebug(debugEntry)
-          return NextResponse.json({ ok: true, status: "already_complete", tabId })
+          return NextResponse.json({ ok: true, status: "cancel_queued", tabId })
         }
       } catch (error) {
         // Authorization error (trying to cancel another user's stream)

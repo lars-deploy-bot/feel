@@ -15,6 +15,7 @@ const createStreamBufferMock = vi.fn()
 const errorStreamBufferMock = vi.fn()
 const registerCancellationMock = vi.fn()
 const unregisterCancellationMock = vi.fn()
+const consumeCancelIntentMock = vi.fn()
 
 const fetchOAuthTokensMock = vi.fn()
 const fetchUserEnvKeysMock = vi.fn()
@@ -165,6 +166,10 @@ vi.mock("@/lib/stream/cancellation-registry", () => ({
   registerCancellation: (...args: unknown[]) => registerCancellationMock(...args),
   unregisterCancellation: (...args: unknown[]) => unregisterCancellationMock(...args),
   startTTLCleanup: vi.fn(),
+}))
+
+vi.mock("@/lib/stream/cancel-intent-registry", () => ({
+  consumeCancelIntent: (...args: unknown[]) => consumeCancelIntentMock(...args),
 }))
 
 vi.mock("@/lib/stream/ndjson-stream-handler", () => ({
@@ -330,6 +335,7 @@ describe("POST /api/claude/stream cleanup", () => {
 
     createStreamBufferMock.mockResolvedValue(undefined)
     errorStreamBufferMock.mockResolvedValue(undefined)
+    consumeCancelIntentMock.mockReturnValue(false)
 
     fetchOAuthTokensMock.mockResolvedValue({ tokens: {}, warnings: [] })
     fetchUserEnvKeysMock.mockResolvedValue({ envKeys: {} })
@@ -457,5 +463,31 @@ describe("POST /api/claude/stream cleanup", () => {
     expect(payload.error).toBe(ErrorCodes.NO_SESSION)
     expect(tryLockConversationMock).not.toHaveBeenCalled()
     expectNoLockedCleanup()
+  })
+
+  it("short-circuits immediately when a queued cancel intent exists", async () => {
+    consumeCancelIntentMock.mockReturnValueOnce(true)
+
+    const res = await POST(createRequest())
+    const rawBody = await res.text()
+    const lines = rawBody
+      .split("\n")
+      .map(line => line.trim())
+      .filter(Boolean)
+    const firstEvent = JSON.parse(lines[0] ?? "{}") as { type?: string; data?: { source?: string } }
+    const secondEvent = JSON.parse(lines[1] ?? "{}") as { type?: string }
+
+    expect(res.status).toBe(200)
+    expect(firstEvent.type).toBe("stream_interrupt")
+    expect(firstEvent.data?.source).toBe("stream_client_cancel")
+    expect(secondEvent.type).toBe("stream_done")
+
+    expect(registerCancellationMock).toHaveBeenCalledTimes(1)
+    expect(unregisterCancellationMock).toHaveBeenCalledWith("req-123")
+    expect(unlockConversationMock).toHaveBeenCalledWith(SESSION_KEY)
+
+    expect(createStreamBufferMock).not.toHaveBeenCalled()
+    expect(sessionStoreGetMock).not.toHaveBeenCalled()
+    expect(errorStreamBufferMock).not.toHaveBeenCalled()
   })
 })

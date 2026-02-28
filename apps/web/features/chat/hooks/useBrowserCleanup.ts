@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef } from "react"
+import { EXPLICIT_STOP_UNLOAD_BEACON_MARKER } from "@/lib/stream/cancel-markers"
 
 interface UseBrowserCleanupOptions {
   /** Current tab ID */
@@ -15,23 +16,22 @@ interface UseBrowserCleanupOptions {
   worktreesEnabled: boolean
   /** Last stream sequence seen by client (for cursor ack) */
   lastSeenStreamSeq: number | null
-  /** Ref to the current request ID */
-  currentRequestIdRef: React.MutableRefObject<string | null>
   /** Whether we're currently streaming */
   isStreaming: boolean
+  /** Whether an explicit stop is in progress */
+  isStopping: boolean
 }
 
 /**
- * Hook that sends cancel beacons when user closes/navigates away from the page
+ * Hook that sends unload-time stream cursor acknowledgements.
  *
  * Uses navigator.sendBeacon() which is the only reliable way to send requests
- * during page unload. This prevents orphaned agent processes on the server.
+ * during page unload.
  *
- * Why this is needed:
- * - When user closes tab or navigates away, the SSE connection just drops
- * - Server has no way to detect this (proxy layers don't propagate abort signals)
- * - Without cleanup, agent processes run until 10-minute TTL cleanup
- * - This can cause server overload with many orphaned processes
+ * Important behavior:
+ * - DO NOT cancel active streams on unload. Reloads trigger unload too, and
+ *   cancelling there breaks background processing + reconnect.
+ * - We only send a best-effort cursor acknowledgement to reduce replay bursts.
  */
 export function useBrowserCleanup({
   tabId,
@@ -40,23 +40,27 @@ export function useBrowserCleanup({
   worktree,
   worktreesEnabled,
   lastSeenStreamSeq,
-  currentRequestIdRef,
   isStreaming,
+  isStopping,
 }: UseBrowserCleanupOptions): void {
   // Track streaming state in ref so handler sees current value
   const isStreamingRef = useRef(isStreaming)
   isStreamingRef.current = isStreaming
+  const isStoppingRef = useRef(isStopping)
+  isStoppingRef.current = isStopping
   const lastSeenSeqRef = useRef(lastSeenStreamSeq)
   lastSeenSeqRef.current = lastSeenStreamSeq
   const requestWorktree = worktreesEnabled ? worktree || undefined : undefined
 
   useEffect(() => {
     const handleBeforeUnload = () => {
-      // Only send if we're actually streaming
-      if (!isStreamingRef.current) return
+      const shouldAckStreamCursor = isStreamingRef.current
+      const shouldSendExplicitStop = isStoppingRef.current
+      if (!shouldAckStreamCursor && !shouldSendExplicitStop) return
 
-      // Best-effort cursor ack to prevent replay bursts on reconnect
-      if (tabId && tabGroupId && workspace && typeof lastSeenSeqRef.current === "number") {
+      // Best-effort cursor ack to prevent replay bursts on reconnect.
+      // Intentionally no cancel beacon here: reload must keep stream alive.
+      if (shouldAckStreamCursor && tabId && tabGroupId && workspace && typeof lastSeenSeqRef.current === "number") {
         navigator.sendBeacon(
           "/api/claude/stream/reconnect",
           new Blob(
@@ -73,40 +77,28 @@ export function useBrowserCleanup({
             { type: "application/json" },
           ),
         )
+      } else if (shouldAckStreamCursor) {
+        console.warn("[useBrowserCleanup] Cannot send reconnect ack beacon - missing identifiers")
       }
 
-      const requestId = currentRequestIdRef.current
-
-      // Build cancel payload - prefer requestId, fallback to tabId
-      // Include clientStack marker so server can identify this as a page unload cancel
-      const clientStack = "PAGE_UNLOAD_BEACON: beforeunload event fired"
-
-      let payload: Record<string, string | undefined>
-      if (requestId) {
-        payload = { requestId, clientStack }
-      } else if (tabId && tabGroupId && workspace) {
-        payload = {
-          tabId,
-          tabGroupId,
-          workspace,
-          ...(requestWorktree ? { worktree: requestWorktree } : {}),
-          clientStack,
-        }
-      } else {
-        // Can't build valid cancel request
-        console.warn("[useBrowserCleanup] Cannot send cancel beacon - missing identifiers")
-        return
-      }
-
-      // Use sendBeacon - it's the only reliable way to send during unload
-      // The server endpoint must accept application/json
-      const success = navigator.sendBeacon(
-        "/api/claude/stream/cancel",
-        new Blob([JSON.stringify(payload)], { type: "application/json" }),
-      )
-
-      if (!success) {
-        console.warn("[useBrowserCleanup] Cancel beacon failed to send")
+      // If user already pressed Stop, preserve that explicit intent on unload.
+      // This is separate from generic unload behavior which should not cancel.
+      if (shouldSendExplicitStop && tabId && tabGroupId && workspace) {
+        navigator.sendBeacon(
+          "/api/claude/stream/cancel",
+          new Blob(
+            [
+              JSON.stringify({
+                tabId,
+                tabGroupId,
+                workspace,
+                ...(requestWorktree ? { worktree: requestWorktree } : {}),
+                clientStack: `${EXPLICIT_STOP_UNLOAD_BEACON_MARKER} beforeunload while stop is in progress`,
+              }),
+            ],
+            { type: "application/json" },
+          ),
+        )
       }
     }
 
@@ -116,5 +108,5 @@ export function useBrowserCleanup({
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload)
     }
-  }, [tabId, tabGroupId, workspace, requestWorktree, currentRequestIdRef])
+  }, [tabId, tabGroupId, workspace, requestWorktree])
 }

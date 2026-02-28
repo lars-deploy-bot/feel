@@ -410,8 +410,8 @@ function ChatPageContent() {
     mounted,
   })
 
-  // Browser cleanup - sends cancel beacon when user closes tab/navigates away
-  // Prevents orphaned agent processes on the server
+  // Browser cleanup - sends unload-time cursor ack for reconnect consistency
+  // (no cancel beacon on unload; reload should keep background stream running)
   useBrowserCleanup({
     tabId: sessionTabId,
     tabGroupId: sessionTabGroupId,
@@ -419,8 +419,8 @@ function ChatPageContent() {
     worktree: requestWorktree,
     worktreesEnabled,
     lastSeenStreamSeq,
-    currentRequestIdRef,
     isStreaming: busy,
+    isStopping,
   })
 
   // Register retry handler for error recovery
