@@ -9,6 +9,8 @@
  * External MCP entries are auto-generated from GLOBAL_MCP_PROVIDERS.
  */
 import {
+  CLARIFICATION_MAX_QUESTIONS,
+  CLARIFICATION_OPTIONS_PER_QUESTION,
   DEFAULTS,
   GLOBAL_MCP_PROVIDERS,
   getTemplateIdsInline,
@@ -383,7 +385,7 @@ const INTERNAL_TOOL_METADATA: Array<Omit<ToolMetadata, "enabled">> = [
         name: "questions",
         type: "array",
         required: true,
-        description: "1-3 clarification questions, each with id, question text, and exactly 3 options",
+        description: `1-${CLARIFICATION_MAX_QUESTIONS} clarification questions, each with id, question text, and exactly ${CLARIFICATION_OPTIONS_PER_QUESTION} options`,
       },
       {
         name: "context",

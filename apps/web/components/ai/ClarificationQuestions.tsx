@@ -2,13 +2,14 @@
  * Clarification Questions Component
  *
  * Shows multiple choice questions to clarify user intent before proceeding.
- * Each question has 3 preset options + 1 custom "Other" input.
- * Supports 1-3 questions with navigation between them.
+ * Each question has preset options + 1 custom "Other" input.
+ * Supports multiple questions with navigation between them.
  * Shows a summary before final submission.
  */
 
 "use client"
 
+import { CLARIFICATION_OPTIONS_PER_QUESTION } from "@webalive/shared"
 import { useCallback, useEffect, useRef, useState } from "react"
 
 export interface QuestionOption {
@@ -19,12 +20,12 @@ export interface QuestionOption {
 export interface ClarificationQuestion {
   id: string
   question: string
-  options: [QuestionOption, QuestionOption, QuestionOption] // Exactly 3 options
+  options: QuestionOption[]
 }
 
 export interface QuestionAnswer {
   questionId: string
-  selectedOption: number | null // 0-2 for preset options, 3 for custom
+  selectedOption: number | null // 0 to N-1 for preset options, N for custom "Other"
   customValue?: string
 }
 
@@ -34,9 +35,12 @@ interface ClarificationQuestionsProps {
   onSkipAll?: () => void
 }
 
+/** The "Other" option is always the index after the last preset option */
+const OTHER_OPTION_INDEX = CLARIFICATION_OPTIONS_PER_QUESTION
+
 function getAnswerLabel(answer: QuestionAnswer, question: ClarificationQuestion): string {
   if (answer.selectedOption === null) return "Not answered"
-  if (answer.selectedOption === 3) return answer.customValue || "Custom (empty)"
+  if (answer.selectedOption === OTHER_OPTION_INDEX) return answer.customValue || "Custom (empty)"
   return question.options[answer.selectedOption].label
 }
 
@@ -56,7 +60,7 @@ export function ClarificationQuestions({ questions, onComplete, onSkipAll }: Cla
 
   // Focus custom input when "Other" is selected
   useEffect(() => {
-    if (currentAnswer?.selectedOption === 3 && !showSummary) {
+    if (currentAnswer?.selectedOption === OTHER_OPTION_INDEX && !showSummary) {
       customInputRef.current?.focus()
     }
   }, [currentAnswer?.selectedOption, showSummary])
@@ -69,7 +73,7 @@ export function ClarificationQuestions({ questions, onComplete, onSkipAll }: Cla
             ? {
                 ...a,
                 selectedOption: optionIndex,
-                customValue: optionIndex === 3 ? customInputs[currentQuestion.id] || "" : undefined,
+                customValue: optionIndex === OTHER_OPTION_INDEX ? customInputs[currentQuestion.id] || "" : undefined,
               }
             : a,
         ),
@@ -81,7 +85,7 @@ export function ClarificationQuestions({ questions, onComplete, onSkipAll }: Cla
   const updateCustomInput = useCallback(
     (value: string) => {
       setCustomInputs(prev => ({ ...prev, [currentQuestion.id]: value }))
-      if (currentAnswer?.selectedOption === 3) {
+      if (currentAnswer?.selectedOption === OTHER_OPTION_INDEX) {
         setAnswers(prev => prev.map((a, i) => (i === currentIndex ? { ...a, customValue: value } : a)))
       }
     },
@@ -208,14 +212,18 @@ export function ClarificationQuestions({ questions, onComplete, onSkipAll }: Cla
                   <div className="flex flex-col">
                     <div
                       className={`group flex cursor-pointer items-start rounded-lg py-1 pl-2 transition-colors gap-1 ${
-                        currentAnswer?.selectedOption === 3 ? "bg-zinc-100 dark:bg-zinc-800" : ""
+                        currentAnswer?.selectedOption === OTHER_OPTION_INDEX ? "bg-zinc-100 dark:bg-zinc-800" : ""
                       }`}
                     >
                       <div className="flex items-center h-9">
-                        <button type="button" onClick={() => selectOption(3)} className="flex h-5 items-center">
+                        <button
+                          type="button"
+                          onClick={() => selectOption(OTHER_OPTION_INDEX)}
+                          className="flex h-5 items-center"
+                        >
                           <div
                             className={`size-2.5 border rounded-full transition-colors ${
-                              currentAnswer?.selectedOption === 3
+                              currentAnswer?.selectedOption === OTHER_OPTION_INDEX
                                 ? "border-zinc-900 dark:border-zinc-100 bg-zinc-900 dark:bg-zinc-100"
                                 : "border-zinc-400 dark:border-zinc-600 bg-white dark:bg-zinc-950"
                             }`}
@@ -229,7 +237,7 @@ export function ClarificationQuestions({ questions, onComplete, onSkipAll }: Cla
                           placeholder="Other"
                           value={customInputs[currentQuestion.id] || ""}
                           onChange={e => updateCustomInput(e.target.value)}
-                          onFocus={() => selectOption(3)}
+                          onFocus={() => selectOption(OTHER_OPTION_INDEX)}
                           className="flex w-full rounded-md border border-zinc-200 dark:border-zinc-700 bg-transparent px-3 py-1 text-sm transition-colors duration-150 ease-in-out placeholder:text-zinc-400 dark:placeholder:text-zinc-500 hover:border-zinc-300 dark:hover:border-zinc-600 focus-visible:border-zinc-400 dark:focus-visible:border-zinc-500 focus-visible:outline-none h-9 flex-1 text-zinc-900 dark:text-zinc-100"
                         />
                       </div>
