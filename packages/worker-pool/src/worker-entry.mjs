@@ -362,13 +362,60 @@ function dropPrivileges() {
     process.env.CLAUDE_CONFIG_DIR = defaultClaudeDir
   }
 
+  // Self-healing: ensure CLAUDE_CONFIG_DIR and its subdirectories have correct
+  // permissions on every worker init. Guards against permission drift.
+  //
+  // SECURITY: The config dir must NOT be group- or world-writable (max 755).
+  // If writable by non-root principals (via group membership or world bits),
+  // SDK subprocesses can overwrite .claude.json, hijacking ownership from root.
+  // See postmortem: 2026-02-26 settings permissions break.
+  const claudeConfigDir = process.env.CLAUDE_CONFIG_DIR
+  try {
+    if (existsSync(claudeConfigDir)) {
+      const configDirStat = statSync(claudeConfigDir)
+      const configDirMode = configDirStat.mode & 0o777
+      if (configDirMode & 0o022) {
+        // Group- or world-writable — fix it
+        chmodSync(claudeConfigDir, 0o755)
+        console.error(`[worker] Fixed config dir permissions: ${configDirMode.toString(8)} → 755`)
+      }
+    }
+  } catch (e) {
+    console.error(`[worker] Failed to check/fix config dir permissions: ${e.message}`)
+  }
+
+  // Ensure .claude.json stays root-owned with mode 644 (prevents workspace user hijacking)
+  const claudeJsonPath = join(claudeConfigDir, ".claude.json")
+  try {
+    if (existsSync(claudeJsonPath)) {
+      const jsonStat = statSync(claudeJsonPath)
+      const jsonMode = jsonStat.mode & 0o777
+      let repaired = false
+      if (jsonStat.uid !== 0 || jsonStat.gid !== 0) {
+        chownSync(claudeJsonPath, 0, 0)
+        repaired = true
+      }
+      if (jsonMode !== 0o644) {
+        chmodSync(claudeJsonPath, 0o644)
+        repaired = true
+      }
+      if (repaired) {
+        console.error(
+          `[worker] Fixed .claude.json: uid=${jsonStat.uid}, gid=${jsonStat.gid}, mode=${jsonMode.toString(8)} → root:root 644`,
+        )
+      }
+    }
+  } catch (e) {
+    console.error(`[worker] Failed to check/fix .claude.json: ${e.message}`)
+  }
+
   // Self-healing: ensure config files are world-readable (0o644).
   // Workers drop privileges to workspace users (e.g. site-example-com) but
   // the Claude CLI subprocess still reads CLAUDE_CONFIG_DIR. If these files
   // are 0o600 (owner-only), the subprocess silently exits with 0 messages.
   // See: docs/postmortems/2026-02-26-claude-code-settings-permissions.md
   for (const configFile of ["settings.json", ".claude.json"]) {
-    const filePath = join(process.env.CLAUDE_CONFIG_DIR, configFile)
+    const filePath = join(claudeConfigDir, configFile)
     try {
       if (existsSync(filePath)) {
         const mode = statSync(filePath).mode & 0o777
@@ -382,10 +429,9 @@ function dropPrivileges() {
     }
   }
 
-  // Self-healing: ensure projects/ dir exists with correct permissions on
-  // every worker init. This guards against permission drift (e.g. SDK
-  // recreating the dir with restrictive perms after an update).
-  const configProjectsDir = join(process.env.CLAUDE_CONFIG_DIR, "projects")
+  // Ensure projects/ dir exists with world-writable + sticky bit (like /tmp)
+  // so all workspace users can create session subdirectories.
+  const configProjectsDir = join(claudeConfigDir, "projects")
   try {
     if (!existsSync(configProjectsDir)) {
       mkdirSync(configProjectsDir, { recursive: true, mode: 0o1777 })

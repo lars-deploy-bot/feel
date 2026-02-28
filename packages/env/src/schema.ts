@@ -131,6 +131,11 @@ export const serverSchema = {
   // Node environment
   NODE_ENV: z.enum(["development", "test", "production"]).default("production"),
 
+  // Observability API tokens (self-hosted Sentry + PostHog)
+  // REQUIRED — build will fail if missing
+  SENTRY_AUTH_TOKEN: z.string().min(1),
+  POSTHOG_PERSONAL_API_KEY: z.string().min(1),
+
   // E2E Testing (optional - only needed for E2E tests)
   E2E_TEST_SECRET: z.string().optional(),
   E2E_RUN_ID: z.string().optional(),
@@ -208,6 +213,8 @@ export const runtimeEnv = {
   NODE_ENV: process.env.NODE_ENV,
   E2E_TEST_SECRET: process.env.E2E_TEST_SECRET,
   E2E_RUN_ID: process.env.E2E_RUN_ID,
+  SENTRY_AUTH_TOKEN: process.env.SENTRY_AUTH_TOKEN,
+  POSTHOG_PERSONAL_API_KEY: process.env.POSTHOG_PERSONAL_API_KEY,
 
   // Client
   NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
