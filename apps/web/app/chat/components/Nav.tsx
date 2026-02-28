@@ -144,10 +144,10 @@ export function Nav({
               trackSettingsClicked()
               onSettingsClick()
             }}
-            className={`size-10 md:size-8 ${
+            className={`size-10 md:size-8 [&>svg]:transition-transform [&>svg]:duration-200 [&>svg]:ease-out ${
               isSettingsOpen
-                ? `${buttonBase} w-8 text-white dark:text-black bg-black dark:bg-white`
-                : `${iconButtonStyle} [&>svg]:transition-transform [&>svg]:duration-200 [&>svg]:ease-out hover:[&>svg]:rotate-90`
+                ? `${buttonBase} w-8 text-white dark:text-black bg-black dark:bg-white [&>svg]:rotate-90`
+                : `${iconButtonStyle} hover:[&>svg]:rotate-90`
             }`}
             aria-label={isSettingsOpen ? "Close settings" : "Open settings"}
             aria-pressed={isSettingsOpen}
