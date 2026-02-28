@@ -6,6 +6,7 @@ import { SettingsPageClient } from "./SettingsPageClient"
 
 type SettingsTab =
   | "general"
+  | "sessions"
   | "billing"
   | "skills"
   | "organization"

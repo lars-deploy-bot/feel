@@ -86,17 +86,19 @@ interface TabDefinition {
   superadminOnly?: boolean
   /** Rendered at sidebar bottom as org card instead of in the nav list */
   pinned?: boolean
+  /** Grouped under collapsible "Advanced" section in sidebar */
+  advanced?: boolean
 }
 
 const allTabs: TabDefinition[] = [
   { id: "general", label: "General", icon: Settings },
-  { id: "sessions", label: "Sessions", icon: Monitor },
-  { id: "billing", label: "Billing", icon: CreditCard },
-  { id: "skills", label: "Skills", icon: ClipboardList },
   { id: "websites", label: "Websites", icon: Globe },
+  { id: "skills", label: "Skills", icon: ClipboardList },
   { id: "automations", label: "Agents", icon: Zap },
-  { id: "integrations", label: "Integrations", icon: Link },
-  { id: "keys", label: "API Keys", icon: Key },
+  { id: "billing", label: "Billing", icon: CreditCard, advanced: true },
+  { id: "sessions", label: "Sessions", icon: Monitor, advanced: true },
+  { id: "integrations", label: "Integrations", icon: Link, advanced: true },
+  { id: "keys", label: "API Keys", icon: Key, advanced: true },
   { id: "organization", label: "Organization", icon: Settings, pinned: true },
   { id: "flags", label: "Flags", icon: Flag, superadminOnly: true },
   { id: "admin", label: "Admin", icon: Shield, superadminOnly: true },
@@ -133,8 +135,10 @@ export function SettingsPageClient({ onClose, initialTab }: SettingsPageClientPr
 
   // All tabs visible to this user (org is in here — the tab system is complete)
   const tabs = hydrated && !loading ? allTabs.filter(tab => !tab.superadminOnly || !!user?.isSuperadmin) : allTabs
-  // Split for render: nav list vs. pinned bottom card
-  const navTabs = tabs.filter(t => !t.pinned)
+  // Split for render: primary nav, advanced collapsible, superadmin
+  const primaryTabs = tabs.filter(t => !t.pinned && !t.advanced && !t.superadminOnly)
+  const advancedTabs = tabs.filter(t => t.advanced)
+  const superadminTabs = tabs.filter(t => t.superadminOnly)
 
   const [activeTab, setActiveTab] = useQueryState(QUERY_KEYS.settingsTab, {
     defaultValue: initialTab || "general",
@@ -145,6 +149,19 @@ export function SettingsPageClient({ onClose, initialTab }: SettingsPageClientPr
     },
     serialize: (value: string) => value,
   })
+
+  // Auto-expand collapsible sections when one of their tabs is active
+  const isAdvancedTabActive = advancedTabs.some(t => t.id === activeTab)
+  const [advancedOpen, setAdvancedOpen] = useState(isAdvancedTabActive)
+  useEffect(() => {
+    if (isAdvancedTabActive) setAdvancedOpen(true)
+  }, [isAdvancedTabActive])
+
+  const isSuperadminTabActive = superadminTabs.some(t => t.id === activeTab)
+  const [superadminOpen, setSuperadminOpen] = useState(isSuperadminTabActive)
+  useEffect(() => {
+    if (isSuperadminTabActive) setSuperadminOpen(true)
+  }, [isSuperadminTabActive])
 
   const handleTabChange = (tabId: SettingsTab) => {
     trackSettingsTabChanged(tabId)
@@ -220,13 +237,7 @@ export function SettingsPageClient({ onClose, initialTab }: SettingsPageClientPr
           ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
         `}
       >
-        {/* Desktop header */}
-        <div className="hidden md:flex p-4 border-b border-zinc-200 dark:border-zinc-800 items-center">
-          <h1 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-            <Settings className="w-4 h-4 text-zinc-400" />
-            Settings
-          </h1>
-        </div>
+        {/* Desktop: no header — "Settings" is redundant when the overlay is open */}
 
         {/* Mobile close button area */}
         <div className="md:hidden p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between flex-shrink-0">
@@ -243,25 +254,55 @@ export function SettingsPageClient({ onClose, initialTab }: SettingsPageClientPr
 
         {/* Nav tabs */}
         <nav className="p-2 space-y-1 overflow-y-auto flex-1">
-          {navTabs.map(tab => {
-            const Icon = tab.icon
-            const isActive = activeTab === tab.id
-            return (
+          {primaryTabs.map(tab => (
+            <NavTab key={tab.id} tab={tab} isActive={activeTab === tab.id} onSelect={handleTabChange} />
+          ))}
+
+          {/* Advanced collapsible group */}
+          {advancedTabs.length > 0 && (
+            <div className="pt-1">
               <button
-                key={tab.id}
                 type="button"
-                onClick={() => handleTabChange(tab.id)}
-                className={`w-full flex items-center gap-3 px-3 py-3 md:py-2 rounded-lg md:rounded-md text-sm transition-colors ${
-                  isActive
-                    ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-medium"
-                    : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 active:bg-zinc-100 dark:active:bg-zinc-800"
-                }`}
+                onClick={() => setAdvancedOpen(prev => !prev)}
+                className="w-full flex items-center gap-3 px-3 py-3 md:py-2 rounded-lg md:rounded-md text-sm text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
               >
-                <Icon className="w-5 h-5 md:w-4 md:h-4 flex-shrink-0" />
-                {tab.label}
+                <ChevronDown
+                  className={`w-4 h-4 flex-shrink-0 transition-transform duration-200 ${advancedOpen ? "" : "-rotate-90"}`}
+                />
+                Advanced
               </button>
-            )
-          })}
+              {advancedOpen && (
+                <div className="ml-2 space-y-0.5 mt-0.5">
+                  {advancedTabs.map(tab => (
+                    <NavTab key={tab.id} tab={tab} isActive={activeTab === tab.id} onSelect={handleTabChange} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Superadmin collapsible group */}
+          {superadminTabs.length > 0 && (
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => setSuperadminOpen(prev => !prev)}
+                className="w-full flex items-center gap-3 px-3 py-3 md:py-2 rounded-lg md:rounded-md text-sm text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
+              >
+                <ChevronDown
+                  className={`w-4 h-4 flex-shrink-0 transition-transform duration-200 ${superadminOpen ? "" : "-rotate-90"}`}
+                />
+                Superadmin
+              </button>
+              {superadminOpen && (
+                <div className="ml-2 space-y-0.5 mt-0.5">
+                  {superadminTabs.map(tab => (
+                    <NavTab key={tab.id} tab={tab} isActive={activeTab === tab.id} onSelect={handleTabChange} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </nav>
 
         {/* Organization + Logout — pinned to bottom */}
@@ -308,6 +349,32 @@ export function SettingsPageClient({ onClose, initialTab }: SettingsPageClientPr
         </div>
       </main>
     </div>
+  )
+}
+
+function NavTab({
+  tab,
+  isActive,
+  onSelect,
+}: {
+  tab: TabDefinition
+  isActive: boolean
+  onSelect: (id: SettingsTab) => void
+}) {
+  const Icon = tab.icon
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(tab.id)}
+      className={`w-full flex items-center gap-3 px-3 py-3 md:py-2 rounded-lg md:rounded-md text-sm transition-colors ${
+        isActive
+          ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-medium"
+          : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 active:bg-zinc-100 dark:active:bg-zinc-800"
+      }`}
+    >
+      <Icon className="w-5 h-5 md:w-4 md:h-4 flex-shrink-0" />
+      {tab.label}
+    </button>
   )
 }
 
