@@ -57,9 +57,9 @@ func newWorkspaceWatcher(root string) (*WorkspaceWatcher, error) {
 	}
 
 	w := &WorkspaceWatcher{
-		root:        root,
-		watcher:     fsw,
-		subscribers: make(map[chan Event]struct{}),
+		root:          root,
+		watcher:       fsw,
+		subscribers:   make(map[chan Event]struct{}),
 		debounce:      make(map[string]*time.Timer),
 		debounceEvent: make(map[string]*Event),
 	}
