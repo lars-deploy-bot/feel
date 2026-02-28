@@ -2,6 +2,14 @@
 import "fake-indexeddb/auto"
 import { act, renderHook, waitFor } from "@testing-library/react"
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest"
+
+// Mock Sentry to avoid Next.js module resolution issues in test environment
+vi.mock("@sentry/nextjs", () => ({
+  captureException: vi.fn(),
+  captureMessage: vi.fn(),
+  withScope: vi.fn((cb: (scope: unknown) => void) => cb({ setExtra: vi.fn() })),
+}))
+
 import { useDexieMessageStore } from "../dexieMessageStore"
 import { type DbMessage, getMessageDb, resetMessageDb } from "../messageDb"
 import {

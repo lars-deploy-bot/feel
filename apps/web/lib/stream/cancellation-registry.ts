@@ -20,6 +20,8 @@ interface CancelEntry {
   createdAt: number
 }
 
+export type CancelStreamStatus = "cancelled" | "timed_out" | "not_found"
+
 /**
  * Global registry of active streams that can be cancelled
  * Key: requestId, Value: cancel callback + metadata
@@ -28,7 +30,7 @@ const registry = new Map<string, CancelEntry>()
 const CANCEL_WAIT_TIMEOUT_MS = Math.max(WORKER_POOL.CANCEL_TIMEOUT_MS * 4, 2_000)
 const CANCEL_TIMEOUT = Symbol("cancel-timeout")
 
-async function runCancelWithTimeout(entry: CancelEntry): Promise<void> {
+async function runCancelWithTimeout(entry: CancelEntry): Promise<Exclude<CancelStreamStatus, "not_found">> {
   let timeoutHandle: ReturnType<typeof setTimeout> | null = null
 
   const timeoutPromise = new Promise<typeof CANCEL_TIMEOUT>(resolve => {
@@ -50,10 +52,13 @@ async function runCancelWithTimeout(entry: CancelEntry): Promise<void> {
     // Fail-safe: release lock even if stream cleanup callback never resolves.
     unlockConversation(entry.conversationKey)
 
-    completeStreamBuffer(entry.requestId).catch(err => {
+    await completeStreamBuffer(entry.requestId).catch(err => {
       console.warn(`[CancellationRegistry] Failed to complete stream buffer after timeout for ${entry.requestId}:`, err)
     })
+    return "timed_out"
   }
+
+  return "cancelled"
 }
 
 /**
@@ -87,10 +92,18 @@ export function registerCancellation(
  * This allows the caller to wait for cleanup to complete before proceeding.
  */
 export async function cancelStream(requestId: string, userId: string): Promise<boolean> {
+  const result = await cancelStreamWithStatus(requestId, userId)
+  return result !== "not_found"
+}
+
+/**
+ * Detailed cancellation API with explicit timeout surfacing.
+ */
+export async function cancelStreamWithStatus(requestId: string, userId: string): Promise<CancelStreamStatus> {
   const entry = registry.get(requestId)
 
   if (!entry) {
-    return false // Already completed or never existed
+    return "not_found" // Already completed or never existed
   }
 
   // Security: only owner can cancel
@@ -100,12 +113,13 @@ export async function cancelStream(requestId: string, userId: string): Promise<b
 
   // Await the cancel callback (may return Promise for cleanup completion)
   // with timeout guard to prevent lock deadlocks when abort hangs silently.
+  let status: Exclude<CancelStreamStatus, "not_found">
   try {
-    await runCancelWithTimeout(entry)
+    status = await runCancelWithTimeout(entry)
   } finally {
     registry.delete(requestId) // Auto-cleanup after cancel
   }
-  return true
+  return status
 }
 
 /**
@@ -116,6 +130,17 @@ export async function cancelStream(requestId: string, userId: string): Promise<b
  * If the cancel callback returns a Promise, this function awaits it.
  */
 export async function cancelStreamByConversationKey(conversationKey: string, userId: string): Promise<boolean> {
+  const result = await cancelStreamByConversationKeyWithStatus(conversationKey, userId)
+  return result !== "not_found"
+}
+
+/**
+ * Detailed tab-key fallback cancellation API with explicit timeout surfacing.
+ */
+export async function cancelStreamByConversationKeyWithStatus(
+  conversationKey: string,
+  userId: string,
+): Promise<CancelStreamStatus> {
   console.log(`[CancellationRegistry] Looking for conversationKey: ${conversationKey}`)
   console.log(`[CancellationRegistry] Registry size: ${registry.size}`)
 
@@ -137,17 +162,18 @@ export async function cancelStreamByConversationKey(conversationKey: string, use
       console.log(`[CancellationRegistry] Found match! Cancelling requestId=${requestId}`)
       // Await the cancel callback (may return Promise for cleanup completion)
       // with timeout guard to prevent lock deadlocks when abort hangs silently.
+      let status: Exclude<CancelStreamStatus, "not_found">
       try {
-        await runCancelWithTimeout(entry)
+        status = await runCancelWithTimeout(entry)
       } finally {
         registry.delete(requestId) // Auto-cleanup after cancel
       }
-      return true
+      return status
     }
   }
 
   console.log(`[CancellationRegistry] No match found for conversationKey: ${conversationKey}`)
-  return false // No active stream found for this conversation
+  return "not_found" // No active stream found for this conversation
 }
 
 /**

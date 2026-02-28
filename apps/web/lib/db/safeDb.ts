@@ -7,6 +7,8 @@
  * ALWAYS use this instead of calling db methods directly.
  */
 
+import { logError } from "@/lib/client-error-logger"
+
 export interface DbError {
   type: "quota" | "blocked" | "version" | "unknown"
   message: string
@@ -30,12 +32,13 @@ export async function safeDb<T>(op: () => Promise<T>): Promise<T | null> {
     console.error("[dexie] operation failed", {
       errorType: error.type,
       errorMessage: error.message,
-      // Include stack for debugging
       stack: err instanceof Error ? err.stack : undefined,
     })
 
-    // TODO: Surface errors in a global toast store
-    // For now, just log and return null
+    logError("dexie", `Dexie ${error.type}: ${error.message}`, {
+      error: error.originalError instanceof Error ? error.originalError : undefined,
+      errorType: error.type,
+    })
 
     return null
   }

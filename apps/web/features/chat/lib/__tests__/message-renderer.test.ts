@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { UIMessage } from "../message-parser"
+import { COMPONENT_TYPE, getMessageComponentType } from "../message-parser"
 import { shouldRenderMessage } from "../message-renderer"
 
 // ---------------------------------------------------------------------------
@@ -125,6 +126,18 @@ function makeSystemMessage(id: string): UIMessage {
   }
 }
 
+function makePersistedInterruptSdkMessage(id: string): UIMessage {
+  return {
+    id,
+    type: "sdk_message",
+    content: {
+      message: "Response stopped.",
+      source: "stream_client_cancel",
+    },
+    timestamp: new Date(),
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -241,6 +254,12 @@ describe("shouldRenderMessage", () => {
 
     it("SYSTEM returns true in debug mode", () => {
       expect(shouldRenderMessage(makeSystemMessage("1"), true)).toBe(true)
+    })
+
+    it("classifies persisted interrupt-like sdk_message as INTERRUPT", () => {
+      const msg = makePersistedInterruptSdkMessage("interrupt-1")
+      expect(getMessageComponentType(msg)).toBe(COMPONENT_TYPE.INTERRUPT)
+      expect(shouldRenderMessage(msg, false)).toBe(true)
     })
   })
 })

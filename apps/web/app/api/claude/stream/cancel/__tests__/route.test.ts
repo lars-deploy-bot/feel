@@ -71,6 +71,7 @@ describe("POST /api/claude/stream/cancel", () => {
     unregisterCancellation("test-req-1")
     unregisterCancellation("test-req-2")
     unregisterCancellation("test-req-3")
+    unregisterCancellation("test-req-timeout-status")
     unregisterCancellation("test-req-unload-ignore")
     unregisterCancellation("test-req-unload-ignore-tab")
     clearAllCancelIntents()
@@ -144,6 +145,34 @@ describe("POST /api/claude/stream/cancel", () => {
     expect(response.status).toBe(200)
     expect(data.ok).toBe(true)
     expect(data.status).toBe("already_complete")
+  })
+
+  it("should return cancel_timed_out when cancel callback never confirms cleanup", async () => {
+    vi.useFakeTimers()
+    try {
+      const requestId = "test-req-timeout-status"
+      const userId = "test-user-123"
+      const conversationKey = makeConversationKey(userId, "timeout-status")
+
+      registerCancellation(requestId, userId, conversationKey, () => new Promise<void>(() => {}))
+
+      const req = new Request("http://localhost/api/claude/stream/cancel", {
+        method: "POST",
+        body: JSON.stringify({ requestId }),
+        headers: { "Content-Type": "application/json" },
+      })
+
+      const responsePromise = POST(req as any)
+      await vi.advanceTimersByTimeAsync(60_000)
+      const response = await responsePromise
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.ok).toBe(true)
+      expect(data.status).toBe("cancel_timed_out")
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it("should return 400 for missing both requestId and tabId", async () => {

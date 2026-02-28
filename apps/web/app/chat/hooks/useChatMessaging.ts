@@ -537,6 +537,13 @@ export function useChatMessaging({
 
             for (const line of lines) {
               if (!line.trim()) continue
+              // User explicitly stopped this request; do not process buffered
+              // lines that may still arrive while the transport is shutting down.
+              if (abortController.signal.aborted) {
+                shouldStopReading = true
+                reader.cancel()
+                break
+              }
 
               try {
                 const parsed: unknown = JSON.parse(line)
@@ -618,6 +625,11 @@ export function useChatMessaging({
 
                 const message = parseStreamEvent(eventData, targetTabId, streamingActions)
                 if (message) {
+                  if (abortController.signal.aborted) {
+                    shouldStopReading = true
+                    reader.cancel()
+                    break
+                  }
                   await addMessage(message, targetTabId)
                   if (
                     isCompleteEvent(eventData) ||

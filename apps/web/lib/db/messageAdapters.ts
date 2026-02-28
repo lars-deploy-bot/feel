@@ -2,6 +2,8 @@
 
 import type { Attachment } from "@/features/chat/components/ChatInput/types"
 import type { UIMessage } from "@/features/chat/lib/message-parser"
+import type { InterruptDetails, InterruptStatus } from "@/features/chat/lib/streaming/ndjson"
+import { BridgeInterruptSource } from "@/features/chat/lib/streaming/ndjson"
 import type { DbMessage, DbMessageContent, DbMessageStatus, DbMessageType } from "./messageDb"
 
 /**
@@ -187,6 +189,18 @@ function deserializeAttachments(serialized?: Record<string, unknown>[]): Attachm
   })
 }
 
+function isStoredInterruptContent(value: unknown): value is {
+  message: string
+  source: string
+  status?: InterruptStatus
+  details?: InterruptDetails
+} {
+  if (!value || typeof value !== "object") return false
+  const record = value as Record<string, unknown>
+  if (typeof record.message !== "string") return false
+  return record.source === BridgeInterruptSource.CLIENT_CANCEL || record.source === BridgeInterruptSource.HTTP_ABORT
+}
+
 /**
  * Convert DbMessage to UIMessage for display in React components.
  */
@@ -212,6 +226,17 @@ export function toUIMessage(dbMessage: DbMessage): UIMessage {
       }
 
     case "sdk_message":
+      // Backward compatibility: interrupt UI messages were historically persisted
+      // as sdk_message payloads without a top-level UI message type.
+      if (isStoredInterruptContent(content.data)) {
+        return {
+          id,
+          type: "interrupt",
+          content: content.data,
+          ...baseUIMessage,
+        }
+      }
+
       return {
         id,
         type: "sdk_message",

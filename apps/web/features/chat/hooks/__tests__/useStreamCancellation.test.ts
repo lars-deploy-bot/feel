@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { act, renderHook } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest"
-import { BridgeInterruptSource } from "@/features/chat/lib/streaming/ndjson"
+import { BridgeInterruptSource, InterruptStatus } from "@/features/chat/lib/streaming/ndjson"
 import { useStreamCancellation } from "../useStreamCancellation"
 
 type UseStreamCancellationOptions = Parameters<typeof useStreamCancellation>[0]
@@ -33,6 +33,19 @@ vi.mock("@/lib/stores/streamingStore", () => ({
   clearAbortController: (...args: unknown[]) => mockClearAbortController(...args),
 }))
 
+const mockUpdateMessageContent = vi.fn()
+const mockCaptureResumeSessionAt = vi.fn().mockResolvedValue(null)
+const mockClearResumeSessionAt = vi.fn()
+vi.mock("@/lib/db/dexieMessageStore", () => ({
+  useDexieMessageStore: {
+    getState: () => ({
+      updateMessageContent: mockUpdateMessageContent,
+      captureResumeSessionAtFromLatestAssistant: mockCaptureResumeSessionAt,
+      clearResumeSessionAt: mockClearResumeSessionAt,
+    }),
+  },
+}))
+
 describe("useStreamCancellation", () => {
   const createMockOptions = (): MockOptions => ({
     tabId: "test-conversation-123",
@@ -47,11 +60,30 @@ describe("useStreamCancellation", () => {
     isSubmittingByTabRef: { current: new Map([["test-conversation-123", true]]) },
   })
 
+  const getInterruptMessages = (addMessageMock: Mock) => {
+    return addMessageMock.mock.calls
+      .map(call => call[0])
+      .filter(message => (message as { type?: string }).type === "interrupt") as Array<{
+      type: string
+      content: Record<string, unknown>
+    }>
+  }
+
+  /** Get the content from the last resolveInterruptMessage call (Dexie update-in-place) */
+  const getResolvedContent = () => {
+    const calls = mockUpdateMessageContent.mock.calls
+    if (calls.length === 0) return undefined
+    const lastCall = calls[calls.length - 1]
+    return lastCall?.[1] as Record<string, unknown> | undefined
+  }
+
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
     vi.setSystemTime(new Date("2026-02-28T00:00:00Z"))
     mockGetAbortController.mockReturnValue(undefined)
+    mockUpdateMessageContent.mockResolvedValue(true)
+    mockCaptureResumeSessionAt.mockResolvedValue(null)
 
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -73,23 +105,34 @@ describe("useStreamCancellation", () => {
       result.current.stopStreaming()
     })
 
+    const immediateInterrupts = getInterruptMessages(options.addMessage)
+    expect(immediateInterrupts).toHaveLength(1)
+    expect(immediateInterrupts[0]?.content).toMatchObject({
+      message: "Stopping response...",
+      source: BridgeInterruptSource.CLIENT_CANCEL,
+      status: InterruptStatus.STOPPING,
+    })
+
     expect(postty).toHaveBeenCalledWith("claude/stream/cancel", expect.objectContaining({ requestId: "request-123" }))
+    expect(mockCaptureResumeSessionAt).toHaveBeenCalledWith("test-conversation-123")
 
     await act(async () => {
       await vi.runAllTimersAsync()
     })
 
     expect(result.current.isStopping).toBe(false)
-    expect(options.addMessage).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: "interrupt",
-        content: {
-          message: "Response stopped.",
-          source: BridgeInterruptSource.CLIENT_CANCEL,
-        },
-      }),
-      options.tabId,
-    )
+    // Resolution updates the existing message in place via Dexie, not via addMessage
+    expect(mockUpdateMessageContent).toHaveBeenCalledTimes(1)
+    expect(getResolvedContent()).toMatchObject({
+      message: "Response stopped.",
+      source: BridgeInterruptSource.CLIENT_CANCEL,
+      status: InterruptStatus.STOPPED,
+      details: {
+        cancelStatus: "cancelled",
+        verificationResult: "skipped",
+        verificationAttempts: 0,
+      },
+    })
   })
 
   it("falls back to tabId cancel when requestId is unavailable", async () => {
@@ -140,15 +183,16 @@ describe("useStreamCancellation", () => {
       result.current.stopStreaming()
     })
 
-    // Immediate phase: only one hidden complete marker should be added.
-    expect(options.addMessage).toHaveBeenCalledTimes(1)
+    // Immediate phase: one hidden complete marker + one visible "Stopping..." status.
+    expect(options.addMessage).toHaveBeenCalledTimes(2)
 
     await act(async () => {
       await vi.runAllTimersAsync()
     })
 
-    // Final phase: one interrupt message is added after resolution.
+    // Final phase: resolution updates in place via Dexie, not addMessage.
     expect(options.addMessage).toHaveBeenCalledTimes(2)
+    expect(mockUpdateMessageContent).toHaveBeenCalledTimes(1)
   })
 
   it("ends stream immediately on stop click", async () => {
@@ -213,23 +257,25 @@ describe("useStreamCancellation", () => {
     })
 
     expect(mockStartStream).toHaveBeenCalledWith("test-conversation-123")
+    expect(mockClearResumeSessionAt).toHaveBeenCalledWith("test-conversation-123")
     expect(options.currentRequestIdRef.current).toBe("request-reconnect-1")
-    expect(options.addMessage).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: "interrupt",
-        content: {
-          message: "Stop not confirmed. Response is still running. Press Stop again.",
-          source: BridgeInterruptSource.CLIENT_CANCEL,
-        },
-      }),
-      "test-conversation-123",
-    )
+    expect(mockUpdateMessageContent).toHaveBeenCalledTimes(1)
+    expect(getResolvedContent()).toMatchObject({
+      message: "Stop not confirmed. Response is still running. Press Stop again.",
+      source: BridgeInterruptSource.CLIENT_CANCEL,
+      status: InterruptStatus.STILL_RUNNING,
+      details: {
+        activeRequestId: "request-reconnect-1",
+        verificationResult: "still_streaming",
+        verificationAttempts: 6,
+      },
+    })
     expect(result.current.isStopping).toBe(false)
   })
 
   it("reports unknown state when reconnect verification is unavailable", async () => {
     const { postty } = await import("@/lib/api/api-client")
-    ;(postty as Mock).mockResolvedValue({ ok: true, status: "already_complete" })
+    ;(postty as Mock).mockResolvedValue({ ok: true, status: "cancel_queued" })
     global.fetch = vi.fn().mockRejectedValue(new Error("network down")) as unknown as typeof fetch
 
     const options = createMockOptions()
@@ -244,16 +290,95 @@ describe("useStreamCancellation", () => {
     })
 
     expect(mockStartStream).not.toHaveBeenCalled()
-    expect(options.addMessage).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: "interrupt",
-        content: {
-          message: "Could not confirm stop. Check whether the response is still updating.",
-          source: BridgeInterruptSource.CLIENT_CANCEL,
-        },
-      }),
-      "test-conversation-123",
-    )
+    expect(mockUpdateMessageContent).toHaveBeenCalledTimes(1)
+    expect(getResolvedContent()).toMatchObject({
+      message: "Could not confirm stop. Check whether the response is still updating.",
+      source: BridgeInterruptSource.CLIENT_CANCEL,
+      status: InterruptStatus.NOT_VERIFIED,
+      details: {
+        verificationResult: "unknown",
+        verificationAttempts: 6,
+      },
+    })
     expect(result.current.isStopping).toBe(false)
+  })
+
+  it("shows already-finished state when stop arrives after completion", async () => {
+    const { postty } = await import("@/lib/api/api-client")
+    ;(postty as Mock).mockResolvedValue({ ok: true, status: "already_complete" })
+
+    const options = createMockOptions()
+    const { result } = renderHook(() => useStreamCancellation(options))
+
+    act(() => {
+      result.current.stopStreaming()
+    })
+
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+
+    expect(mockUpdateMessageContent).toHaveBeenCalledTimes(1)
+    expect(getResolvedContent()).toMatchObject({
+      message: "Response already finished before stop.",
+      source: BridgeInterruptSource.CLIENT_CANCEL,
+      status: InterruptStatus.FINISHED,
+      details: {
+        cancelStatus: "already_complete",
+        verificationResult: "skipped",
+        verificationAttempts: 0,
+      },
+    })
+    expect(result.current.isStopping).toBe(false)
+  })
+
+  it("does not claim explicit stop when backend reports cancel timeout", async () => {
+    const { postty } = await import("@/lib/api/api-client")
+    ;(postty as Mock).mockResolvedValue({ ok: true, status: "cancel_timed_out" })
+
+    const options = createMockOptions()
+    const { result } = renderHook(() => useStreamCancellation(options))
+
+    act(() => {
+      result.current.stopStreaming()
+    })
+
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+
+    expect(getResolvedContent()).toMatchObject({
+      message: "Response is no longer running.",
+      source: BridgeInterruptSource.CLIENT_CANCEL,
+      status: InterruptStatus.FINISHED,
+      details: {
+        cancelStatus: "cancel_timed_out",
+        verificationResult: "confirmed",
+      },
+    })
+    expect(result.current.isStopping).toBe(false)
+  })
+
+  it("falls back to addMessage when interrupt update-in-place cannot be persisted", async () => {
+    const { postty } = await import("@/lib/api/api-client")
+    ;(postty as Mock).mockResolvedValue({ ok: true, status: "cancelled" })
+    const options = createMockOptions()
+    mockUpdateMessageContent.mockResolvedValueOnce(false)
+    const { result } = renderHook(() => useStreamCancellation(options))
+
+    act(() => {
+      result.current.stopStreaming()
+    })
+
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+
+    const interruptMessages = getInterruptMessages(options.addMessage)
+    expect(interruptMessages).toHaveLength(2)
+    expect(interruptMessages[1]?.content).toMatchObject({
+      message: "Response stopped.",
+      status: InterruptStatus.STOPPED,
+    })
   })
 })

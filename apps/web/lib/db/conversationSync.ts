@@ -15,6 +15,7 @@
  * - Cross-device sync: populates localStorage tabStore from Dexie on fetch
  */
 
+import { logError } from "@/lib/client-error-logger"
 import { type DbConversation, type DbMessage, type DbTab, getMessageDb } from "./messageDb"
 import { syncDexieTabsToLocalStorage } from "./tabSync"
 
@@ -296,6 +297,10 @@ async function syncBatch(
     }
 
     console.error("[sync] Batch sync failed", error)
+    logError("sync", "Batch sync failed", {
+      error: error instanceof Error ? error : undefined,
+      conversationIds: batch.map(b => b.conversationId),
+    })
   }
 }
 
@@ -362,6 +367,10 @@ async function syncSingle(
     console.error("[sync] Failed to sync conversation", {
       conversationId: item.conversationId,
       error,
+    })
+    logError("sync", "Single conversation sync failed", {
+      error: error instanceof Error ? error : undefined,
+      conversationId: item.conversationId,
     })
   }
 }
@@ -490,6 +499,10 @@ export async function fetchConversations(workspace: string, userId: string, _org
     syncDexieTabsToLocalStorage(workspace, allServerTabs, allConversations)
   } catch (error) {
     console.error("[sync] Failed to fetch conversations:", error)
+    logError("sync", "Failed to fetch conversations", {
+      error: error instanceof Error ? error : undefined,
+      workspace,
+    })
   }
 }
 
@@ -564,6 +577,10 @@ export async function fetchTabMessages(
     }
   } catch (error) {
     console.error("[sync] Failed to fetch messages:", error)
+    logError("sync", "Failed to fetch tab messages", {
+      error: error instanceof Error ? error : undefined,
+      tabId,
+    })
     return { messages: localMessages, hasMore: false }
   }
 }
