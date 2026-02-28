@@ -234,7 +234,7 @@ function createCommit(skippedSites: string[], failedSites: string[]): void {
   }
 
   if (failedSites.length > 0) {
-    commitMsg += `\n\nFailed to stage:`
+    commitMsg += "\n\nFailed to stage:"
     for (const site of failedSites) {
       commitMsg += `\n  - ${site}`
     }
