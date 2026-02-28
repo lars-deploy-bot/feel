@@ -3,11 +3,15 @@
  *
  * Keeping this in one shared module prevents matcher drift across critical and live E2E suites.
  */
-export const CLAUDE_STREAM_ENDPOINTS = {
+export const CLAUDE_STREAM_ENDPOINTS: Readonly<{
+  STREAM: "/api/claude/stream"
+  RECONNECT: "/api/claude/stream/reconnect"
+  CANCEL: "/api/claude/stream/cancel"
+}> = {
   STREAM: "/api/claude/stream",
   RECONNECT: "/api/claude/stream/reconnect",
   CANCEL: "/api/claude/stream/cancel",
-} as const
+}
 
 export type ClaudeStreamPathname = (typeof CLAUDE_STREAM_ENDPOINTS)["STREAM"]
 

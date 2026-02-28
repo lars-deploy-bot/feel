@@ -227,6 +227,7 @@ vi.mock("../retry-observability", () => ({
 
 const { POST } = await import("../route")
 const { AuthenticationError } = await import("@/features/auth/lib/auth")
+const SESSION_KEY = "user-1::demo.alive.best::tab-group-1::tab-1"
 
 function createRequest(message = "test message"): NextRequest {
   return new NextRequest("http://localhost/api/claude/stream", {
@@ -253,6 +254,58 @@ function createMockDomainClient() {
   }
 }
 
+async function readErrorPayload(response: Response): Promise<{
+  error: string | undefined
+  message: string | undefined
+}> {
+  const raw = await response.json()
+  if (!raw || typeof raw !== "object") {
+    return { error: undefined, message: undefined }
+  }
+
+  const errorValue = Reflect.get(raw, "error")
+  const messageValue = Reflect.get(raw, "message")
+
+  return {
+    error: typeof errorValue === "string" ? errorValue : undefined,
+    message: typeof messageValue === "string" ? messageValue : undefined,
+  }
+}
+
+function expectCancellationRegisteredOnce() {
+  expect(registerCancellationMock).toHaveBeenCalledTimes(1)
+  const firstCall = registerCancellationMock.mock.calls[0]
+  expect(firstCall?.[0]).toBe("req-123")
+  expect(firstCall?.[1]).toBe("user-1")
+  expect(firstCall?.[2]).toBe(SESSION_KEY)
+  expect(typeof firstCall?.[3]).toBe("function")
+}
+
+function expectCleanupCalledOnce(errorMessageMatcher: unknown) {
+  expect(unregisterCancellationMock).toHaveBeenCalledWith("req-123")
+  expect(unregisterCancellationMock).toHaveBeenCalledTimes(1)
+  expect(unlockConversationMock).toHaveBeenCalledWith(SESSION_KEY)
+  expect(unlockConversationMock).toHaveBeenCalledTimes(1)
+  expect(errorStreamBufferMock).toHaveBeenCalledWith("req-123", errorMessageMatcher)
+  expect(errorStreamBufferMock).toHaveBeenCalledTimes(1)
+}
+
+function expectCleanupOrder() {
+  const unregisterOrder = unregisterCancellationMock.mock.invocationCallOrder[0]
+  const unlockOrder = unlockConversationMock.mock.invocationCallOrder[0]
+  const errorBufferOrder = errorStreamBufferMock.mock.invocationCallOrder[0]
+
+  expect(unregisterOrder).toBeLessThan(unlockOrder)
+  expect(unlockOrder).toBeLessThan(errorBufferOrder)
+}
+
+function expectNoLockedCleanup() {
+  expect(registerCancellationMock).not.toHaveBeenCalled()
+  expect(unregisterCancellationMock).not.toHaveBeenCalled()
+  expect(unlockConversationMock).not.toHaveBeenCalled()
+  expect(errorStreamBufferMock).not.toHaveBeenCalled()
+}
+
 describe("POST /api/claude/stream cleanup", () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -268,7 +321,7 @@ describe("POST /api/claude/stream cleanup", () => {
     verifyWorkspaceAccessMock.mockResolvedValue("demo.alive.best")
     getSafeSessionCookieMock.mockResolvedValue("session-cookie")
 
-    tabKeyMock.mockReturnValue("user-1::demo.alive.best::tab-group-1::tab-1")
+    tabKeyMock.mockReturnValue(SESSION_KEY)
     tryLockConversationMock.mockReturnValue(true)
 
     resolveWorkspaceMock.mockResolvedValue({ success: true, workspace: "/tmp/demo-workspace" })
@@ -295,20 +348,14 @@ describe("POST /api/claude/stream cleanup", () => {
     sessionStoreGetMock.mockRejectedValueOnce(new Error("session store unavailable"))
 
     const res = await POST(createRequest())
-    const payload = (await res.json()) as { error: string; message?: string }
+    const payload = await readErrorPayload(res)
 
     expect(res.status).toBe(500)
     expect(payload.error).toBe(ErrorCodes.REQUEST_PROCESSING_FAILED)
     expect(tryLockConversationMock).toHaveBeenCalledOnce()
-    expect(registerCancellationMock).toHaveBeenCalledWith(
-      "req-123",
-      "user-1",
-      "user-1::demo.alive.best::tab-group-1::tab-1",
-      expect.any(Function),
-    )
-    expect(unregisterCancellationMock).toHaveBeenCalledWith("req-123")
-    expect(unlockConversationMock).toHaveBeenCalledWith("user-1::demo.alive.best::tab-group-1::tab-1")
-    expect(errorStreamBufferMock).toHaveBeenCalledWith("req-123", expect.stringContaining("[SESSION LOOKUP FAILED]"))
+    expectCancellationRegisteredOnce()
+    expectCleanupCalledOnce(expect.stringContaining("[SESSION LOOKUP FAILED]"))
+    expectCleanupOrder()
   })
 
   it("unregisters cancellation and unlocks when AuthenticationError happens after lock", async () => {
@@ -316,13 +363,99 @@ describe("POST /api/claude/stream cleanup", () => {
     fetchOAuthTokensMock.mockRejectedValueOnce(new AuthenticationError("Authentication required"))
 
     const res = await POST(createRequest())
-    const payload = (await res.json()) as { error: string }
+    const payload = await readErrorPayload(res)
 
     expect(res.status).toBe(401)
     expect(payload.error).toBe(ErrorCodes.NO_SESSION)
-    expect(unregisterCancellationMock).toHaveBeenCalledWith("req-123")
-    expect(unlockConversationMock).toHaveBeenCalledWith("user-1::demo.alive.best::tab-group-1::tab-1")
-    expect(errorStreamBufferMock).toHaveBeenCalledWith("req-123", "Authentication required")
+    expect(tryLockConversationMock).toHaveBeenCalledOnce()
+    expectCancellationRegisteredOnce()
+    expectCleanupCalledOnce("Authentication required")
+    expectCleanupOrder()
     expect(addCorsHeadersMock).toHaveBeenCalled()
+  })
+
+  it("continues cleanup when unregisterCancellation throws", async () => {
+    sessionStoreGetMock.mockRejectedValueOnce(new Error("session store unavailable"))
+    unregisterCancellationMock.mockImplementationOnce(() => {
+      throw new Error("cancellation registry unavailable")
+    })
+
+    const res = await POST(createRequest())
+    const payload = await readErrorPayload(res)
+
+    expect(res.status).toBe(500)
+    expect(payload.error).toBe(ErrorCodes.REQUEST_PROCESSING_FAILED)
+    expectCancellationRegisteredOnce()
+    expectCleanupCalledOnce(expect.stringContaining("[SESSION LOOKUP FAILED]"))
+    expectCleanupOrder()
+  })
+
+  it("continues cleanup when unlockConversation throws", async () => {
+    sessionStoreGetMock.mockRejectedValueOnce(new Error("session store unavailable"))
+    unlockConversationMock.mockImplementationOnce(() => {
+      throw new Error("lock store unavailable")
+    })
+
+    const res = await POST(createRequest())
+    const payload = await readErrorPayload(res)
+
+    expect(res.status).toBe(500)
+    expect(payload.error).toBe(ErrorCodes.REQUEST_PROCESSING_FAILED)
+    expectCancellationRegisteredOnce()
+    expectCleanupCalledOnce(expect.stringContaining("[SESSION LOOKUP FAILED]"))
+    expectCleanupOrder()
+  })
+
+  it("continues cleanup when errorStreamBuffer rejects", async () => {
+    sessionStoreGetMock.mockRejectedValueOnce(new Error("session store unavailable"))
+    errorStreamBufferMock.mockRejectedValueOnce(new Error("redis unavailable"))
+
+    const res = await POST(createRequest())
+    const payload = await readErrorPayload(res)
+
+    expect(res.status).toBe(500)
+    expect(payload.error).toBe(ErrorCodes.REQUEST_PROCESSING_FAILED)
+    expectCancellationRegisteredOnce()
+    expectCleanupCalledOnce(expect.stringContaining("[SESSION LOOKUP FAILED]"))
+    expectCleanupOrder()
+  })
+
+  it("uses Unknown error fallback for non-Error failures after lock", async () => {
+    sessionStoreGetMock.mockResolvedValueOnce(null)
+    fetchOAuthTokensMock.mockRejectedValueOnce("boom")
+
+    const res = await POST(createRequest())
+    const payload = await readErrorPayload(res)
+
+    expect(res.status).toBe(500)
+    expect(payload.error).toBe(ErrorCodes.REQUEST_PROCESSING_FAILED)
+    expect(payload.message).toBe("Unknown error")
+    expectCancellationRegisteredOnce()
+    expectCleanupCalledOnce("Unknown error")
+    expectCleanupOrder()
+  })
+
+  it("does not run locked cleanup when error happens before lock acquisition", async () => {
+    requireSessionUserMock.mockRejectedValueOnce(new Error("user lookup failed"))
+
+    const res = await POST(createRequest())
+    const payload = await readErrorPayload(res)
+
+    expect(res.status).toBe(500)
+    expect(payload.error).toBe(ErrorCodes.REQUEST_PROCESSING_FAILED)
+    expect(tryLockConversationMock).not.toHaveBeenCalled()
+    expectNoLockedCleanup()
+  })
+
+  it("does not run locked cleanup for AuthenticationError before lock acquisition", async () => {
+    requireSessionUserMock.mockRejectedValueOnce(new AuthenticationError("Authentication required"))
+
+    const res = await POST(createRequest())
+    const payload = await readErrorPayload(res)
+
+    expect(res.status).toBe(401)
+    expect(payload.error).toBe(ErrorCodes.NO_SESSION)
+    expect(tryLockConversationMock).not.toHaveBeenCalled()
+    expectNoLockedCleanup()
   })
 })

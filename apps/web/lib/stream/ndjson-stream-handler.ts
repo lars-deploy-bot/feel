@@ -21,8 +21,21 @@
 import * as Sentry from "@sentry/nextjs"
 import { type OAuthWarning, STREAMING } from "@webalive/shared"
 import { sessionStore, type TabSessionKey } from "@/features/auth/lib/sessionStore"
-import type { BridgeErrorMessage, StreamMessage } from "@/features/chat/lib/streaming/ndjson"
+import type {
+  BridgeCompleteMessage,
+  BridgeDoneMessage,
+  BridgeErrorMessage,
+  BridgeInterruptMessage,
+  BridgeMessageEvent,
+  BridgeMessageType,
+  BridgePingMessage,
+  BridgeSessionMessage,
+  BridgeStartMessage,
+  StreamMessage,
+} from "@/features/chat/lib/streaming/ndjson"
 import {
+  BridgeInterruptSource,
+  BridgeSyntheticMessageType,
   BridgeStreamType,
   createPingMessage,
   createWarningMessage,
@@ -49,8 +62,8 @@ interface ChildEvent {
 }
 
 interface AssistantMessageBlock {
-  type?: unknown
-  text?: unknown
+  type: "text"
+  text: string
 }
 
 interface AssistantMessageContent {
@@ -61,6 +74,49 @@ interface AssistantSDKErrorContent {
   type?: unknown
   error?: unknown
   message?: AssistantMessageContent
+}
+
+function getObjectProperty(value: unknown, key: string): unknown {
+  if (!value || typeof value !== "object") {
+    return undefined
+  }
+  return Reflect.get(value, key)
+}
+
+function isTextAssistantMessageBlock(block: unknown): block is AssistantMessageBlock {
+  return getObjectProperty(block, "type") === "text" && typeof getObjectProperty(block, "text") === "string"
+}
+
+function toAssistantSdkErrorContent(value: unknown): AssistantSDKErrorContent | null {
+  if (!value || typeof value !== "object") {
+    return null
+  }
+
+  const messageValue = getObjectProperty(value, "message")
+  const message: AssistantMessageContent | undefined =
+    messageValue && typeof messageValue === "object"
+      ? {
+          content: getObjectProperty(messageValue, "content"),
+        }
+      : undefined
+
+  return {
+    type: getObjectProperty(value, "type"),
+    error: getObjectProperty(value, "error"),
+    message,
+  }
+}
+
+function isBridgeMessageType(value: unknown): value is BridgeMessageType {
+  return typeof value === "string"
+}
+
+function isInterruptSource(value: unknown): value is BridgeInterruptMessage["data"]["source"] {
+  return value === BridgeInterruptSource.HTTP_ABORT || value === BridgeInterruptSource.CLIENT_CANCEL
+}
+
+function isSdkResultMessage(value: unknown): value is BridgeCompleteMessage["data"]["result"] {
+  return Boolean(value) && typeof value === "object" && getObjectProperty(value, "type") === "result"
 }
 
 /**
@@ -192,9 +248,9 @@ function extractAssistantTextPreview(content: AssistantSDKErrorContent): string 
     return null
   }
 
-  const previewParts = (blocks as AssistantMessageBlock[])
-    .filter(block => block.type === "text" && typeof block.text === "string")
-    .map(block => block.text as string)
+  const previewParts = blocks
+    .filter(isTextAssistantMessageBlock)
+    .map(block => block.text)
     .join("\n")
     .trim()
 
@@ -221,11 +277,10 @@ function captureAssistantSdkErrorTelemetry(
   if (childEvent.type !== BridgeStreamType.MESSAGE || childEvent.messageType !== "assistant") {
     return
   }
-  if (!childEvent.content || typeof childEvent.content !== "object") {
+  const assistantContent = toAssistantSdkErrorContent(childEvent.content)
+  if (!assistantContent) {
     return
   }
-
-  const assistantContent = childEvent.content as AssistantSDKErrorContent
   const sdkErrorType = typeof assistantContent.error === "string" ? assistantContent.error : null
   if (!sdkErrorType) {
     return
@@ -431,7 +486,7 @@ function buildStreamMessage(
   const messageId = buildMessageId(requestId, streamSeq)
 
   if (childEvent.type === "error") {
-    return {
+    const errorMessage: BridgeErrorMessage = {
       type: BridgeStreamType.ERROR,
       requestId,
       messageId,
@@ -444,27 +499,137 @@ function buildStreamMessage(
         message: getErrorMessage(ErrorCodes.STREAM_ERROR),
         details: { error: String(childEvent) },
       },
-    } as unknown as BridgeErrorMessage
+    }
+    return errorMessage
   }
 
-  return {
-    type: childEvent.type,
+  if (childEvent.type === BridgeStreamType.START) {
+    const message = typeof childEvent.content === "string" ? childEvent.content : ""
+    const startMessage: BridgeStartMessage = {
+      type: BridgeStreamType.START,
+      requestId,
+      messageId,
+      streamSeq,
+      tabId,
+      timestamp,
+      data: {
+        host: "",
+        cwd: "",
+        message,
+        messageLength: message.length,
+      },
+    }
+    return startMessage
+  }
+
+  if (childEvent.type === BridgeStreamType.SESSION && typeof childEvent.sessionId === "string") {
+    const sessionMessage: BridgeSessionMessage = {
+      type: BridgeStreamType.SESSION,
+      requestId,
+      messageId,
+      streamSeq,
+      tabId,
+      timestamp,
+      data: { sessionId: childEvent.sessionId },
+    }
+    return sessionMessage
+  }
+
+  if (childEvent.type === BridgeStreamType.MESSAGE) {
+    const messageType = isBridgeMessageType(childEvent.messageType)
+      ? childEvent.messageType
+      : BridgeSyntheticMessageType.WARNING
+    const messageEvent: BridgeMessageEvent = {
+      type: BridgeStreamType.MESSAGE,
+      requestId,
+      messageId,
+      streamSeq,
+      tabId,
+      timestamp,
+      data: {
+        messageCount: typeof childEvent.messageCount === "number" ? childEvent.messageCount : 0,
+        messageType,
+        content: stripSystemReminders(childEvent.content),
+      },
+    }
+    return messageEvent
+  }
+
+  if (childEvent.type === BridgeStreamType.COMPLETE) {
+    const sanitizedResult = stripSystemReminders(childEvent.result)
+    const completeMessage: BridgeCompleteMessage = {
+      type: BridgeStreamType.COMPLETE,
+      requestId,
+      messageId,
+      streamSeq,
+      tabId,
+      timestamp,
+      data: {
+        totalMessages: typeof childEvent.totalMessages === "number" ? childEvent.totalMessages : 0,
+        result: isSdkResultMessage(sanitizedResult) ? sanitizedResult : null,
+      },
+    }
+    return completeMessage
+  }
+
+  if (childEvent.type === BridgeStreamType.PING) {
+    const pingMessage: BridgePingMessage = {
+      type: BridgeStreamType.PING,
+      requestId,
+      messageId,
+      streamSeq,
+      tabId,
+      timestamp,
+      data: {},
+    }
+    return pingMessage
+  }
+
+  if (childEvent.type === BridgeStreamType.DONE) {
+    const doneMessage: BridgeDoneMessage = {
+      type: BridgeStreamType.DONE,
+      requestId,
+      messageId,
+      streamSeq,
+      tabId,
+      timestamp,
+      data: {},
+    }
+    return doneMessage
+  }
+
+  if (childEvent.type === BridgeStreamType.INTERRUPT) {
+    const source = isInterruptSource(childEvent.content) ? childEvent.content : BridgeInterruptSource.CLIENT_CANCEL
+    const interruptMessage: BridgeInterruptMessage = {
+      type: BridgeStreamType.INTERRUPT,
+      requestId,
+      messageId,
+      streamSeq,
+      tabId,
+      timestamp,
+      data: {
+        message: "Response interrupted by user",
+        source,
+      },
+    }
+    return interruptMessage
+  }
+
+  const fallbackError: BridgeErrorMessage = {
+    type: BridgeStreamType.ERROR,
     requestId,
     messageId,
     streamSeq,
     tabId,
     timestamp,
-    data:
-      childEvent.type === BridgeStreamType.MESSAGE
-        ? {
-            messageCount: childEvent.messageCount,
-            messageType: childEvent.messageType,
-            content: stripSystemReminders(childEvent.content),
-          }
-        : childEvent.type === BridgeStreamType.COMPLETE
-          ? { totalMessages: childEvent.totalMessages, result: stripSystemReminders(childEvent.result) }
-          : childEvent,
-  } as StreamMessage
+    data: {
+      error: ErrorCodes.STREAM_ERROR,
+      code: ErrorCodes.STREAM_ERROR,
+      message: getErrorMessage(ErrorCodes.STREAM_ERROR),
+      details: `Unexpected stream event type: ${childEvent.type}`,
+    },
+  }
+  return fallbackError
 }
 
 /**
