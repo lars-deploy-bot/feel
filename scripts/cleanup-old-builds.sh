@@ -11,7 +11,7 @@ for env_dir in "$BUILDS_DIR"/*/; do
 
     # Get the active build (symlink target)
     CURRENT=""
-    [ -L "${env_dir}current" ] && CURRENT=$(readlink "${env_dir}current")
+    [ -L "${env_dir}current" ] && CURRENT=$(basename "$(readlink "${env_dir}current")")
 
     # List builds sorted newest first, skip the active one, keep 1 extra (rollback)
     KEEP=1
