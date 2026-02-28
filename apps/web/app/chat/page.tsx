@@ -10,12 +10,12 @@ import { GithubImportModal } from "@/components/modals/GithubImportModal"
 import { InviteModal } from "@/components/modals/InviteModal"
 import { SessionExpiredModal } from "@/components/modals/SessionExpiredModal"
 import { SuperTemplatesModal } from "@/components/modals/SuperTemplatesModal"
-import { SettingsOverlay } from "@/components/settings/SettingsOverlay"
-import { SettingsTabProvider } from "@/components/settings/SettingsPageClient"
+import { SettingsContent } from "@/features/settings/SettingsContent"
+import { SettingsTabProvider } from "@/features/settings/SettingsTabProvider"
 import { ChatDropOverlay } from "@/features/chat/components/ChatDropOverlay"
 import { ChatInput } from "@/features/chat/components/ChatInput"
 import type { ChatInputHandle } from "@/features/chat/components/ChatInput/types"
-import { ConversationSidebar } from "@/features/chat/components/ConversationSidebar"
+import { ConversationSidebar } from "@/features/sidebar/ConversationSidebar"
 import { CollapsibleToolGroup } from "@/features/chat/components/message-renderers/CollapsibleToolGroup"
 import { MessageWrapper } from "@/features/chat/components/message-renderers/MessageWrapper"
 import { PendingToolsIndicator } from "@/features/chat/components/PendingToolsIndicator"
@@ -55,7 +55,7 @@ import {
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
 import { validateOAuthToastParams } from "@/lib/integrations/toast-validation"
 import { useIsSessionExpired } from "@/lib/stores/authStore"
-import { useSidebarActions, useSidebarOpen } from "@/lib/stores/conversationSidebarStore"
+import { useSidebarActions, useSidebarOpen } from "@/features/sidebar/sidebarStore"
 import { useDebugVisible, useWorkbench } from "@/lib/stores/debug-store"
 import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
 import { useAppHydrated } from "@/lib/stores/HydrationBoundary"
@@ -699,7 +699,17 @@ function ChatPageContent() {
         {/* Content area: chat + workbench side by side (or settings content) */}
         <div className="flex-1 flex flex-row overflow-hidden min-h-0 relative">
           {/* Settings content — shown when sidebar is in settings mode */}
-          {modals.settings && <SettingsOverlay />}
+          {modals.settings && (
+            <section
+              className="flex-1 min-w-0 h-full overflow-y-auto overscroll-contain bg-zinc-50 dark:bg-zinc-950"
+              aria-label="Settings"
+              data-testid="settings-overlay"
+            >
+              <Suspense fallback={null}>
+                <SettingsContent />
+              </Suspense>
+            </section>
+          )}
 
           <section
             className={`flex-1 flex flex-col overflow-hidden relative min-w-0 ${modals.settings ? "hidden" : ""}`}

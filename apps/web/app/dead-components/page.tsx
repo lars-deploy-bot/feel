@@ -42,7 +42,6 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 }
 
 // ---- Safe static imports ----
-import { SettingsDropdown } from "@/components/ui/SettingsDropdown"
 
 // ---- Static mocks for components that need network/auth ----
 const TerminalLazy = dynamic(
@@ -148,11 +147,7 @@ export default function DeadComponentsPage() {
   return (
     <div className="min-h-screen bg-white text-zinc-900 p-8 max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold mb-2">Dead Components — Need Review</h1>
-      <p className="text-zinc-500 mb-6 text-sm">6 components to decide on. The rest are confirmed dead.</p>
-
-      <Section title="SettingsDropdown — menu dropdown">
-        <SettingsDropdown onNewTabGroup={() => {}} onOpenSettings={() => {}} currentWorkspace="demo.alive.best" />
-      </Section>
+      <p className="text-zinc-500 mb-6 text-sm">5 components to decide on. The rest are confirmed dead.</p>
 
       <Section title="EmailField — email input (react-hook-form)">
         <EmailFieldDemo />

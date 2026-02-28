@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useMemo, useState } from "react"
-import type { SettingsTab } from "@/components/settings/SettingsPageClient"
+import type { SettingsTab } from "@/features/settings/settings-tabs"
 import { trackSettingsOpened } from "@/lib/analytics/events"
 
 /** Settings state: null = closed, object = open with optional initial tab */

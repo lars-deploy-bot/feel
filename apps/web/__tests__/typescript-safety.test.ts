@@ -59,7 +59,7 @@ export function TestComponent() {
 
   it("CRITICAL: WorkspaceSettings doesn't reference 'updateError'", () => {
     // Note: Error handling was moved from SettingsModal.tsx to WorkspaceSettings.tsx
-    const workspaceSettingsPath = join(process.cwd(), "components/settings/tabs/WorkspaceSettings.tsx")
+    const workspaceSettingsPath = join(process.cwd(), "features/settings/tabs/WorkspaceSettings.tsx")
     const content = readFileSync(workspaceSettingsPath, "utf-8")
 
     // Should NOT contain updateError
@@ -84,7 +84,7 @@ export function TestComponent() {
 
   it("CRITICAL: All hook return values are used correctly", () => {
     // Note: useOrgEditor was moved from SettingsModal.tsx to WorkspaceSettings.tsx
-    const workspaceSettingsPath = join(process.cwd(), "components/settings/tabs/WorkspaceSettings.tsx")
+    const workspaceSettingsPath = join(process.cwd(), "features/settings/tabs/WorkspaceSettings.tsx")
     const content = readFileSync(workspaceSettingsPath, "utf-8")
 
     // Check that useOrgEditor is destructured correctly
