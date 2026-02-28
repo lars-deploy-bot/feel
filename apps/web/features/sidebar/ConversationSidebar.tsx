@@ -2,9 +2,9 @@
 
 import { ChevronRight } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { SettingsNav } from "@/features/settings/SettingsNav"
 import { OrganizationWorkspaceSwitcher } from "@/components/workspace/OrganizationWorkspaceSwitcher"
 import { WorktreeSwitcher } from "@/components/workspace/WorktreeSwitcher"
+import { SettingsNav } from "@/features/settings/SettingsNav"
 import { trackSidebarClosed, trackSidebarOpened } from "@/lib/analytics/events"
 import { useDexieArchivedConversations, useDexieConversations, useDexieSession } from "@/lib/db/dexieMessageStore"
 import type { DbConversation } from "@/lib/db/messageDb"

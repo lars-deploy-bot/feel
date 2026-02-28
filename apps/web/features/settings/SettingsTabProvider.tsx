@@ -5,7 +5,7 @@ import { createContext, useContext, useEffect, useState } from "react"
 import { useAuth } from "@/features/deployment/hooks/useAuth"
 import { trackSettingsTabChanged } from "@/lib/analytics/events"
 import { QUERY_KEYS } from "@/lib/url/queryState"
-import { type SettingsTab, type TabDefinition, allTabs, isSettingsTab } from "./settings-tabs"
+import { allTabs, isSettingsTab, type SettingsTab, type TabDefinition } from "./settings-tabs"
 
 // ---------------------------------------------------------------------------
 // Settings tab context — single source of truth for active tab state

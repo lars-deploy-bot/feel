@@ -4,8 +4,8 @@ import { ChevronDown, ChevronRight } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useOrganizations } from "@/lib/hooks/useOrganizations"
 import { useSelectedOrgId } from "@/lib/stores/workspaceStore"
-import type { SettingsTab, TabDefinition } from "./settings-tabs"
 import { useSettingsTabContext } from "./SettingsTabProvider"
+import type { SettingsTab, TabDefinition } from "./settings-tabs"
 
 // ---------------------------------------------------------------------------
 // CollapsibleSection — reusable collapsible nav group
