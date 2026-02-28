@@ -10,7 +10,7 @@
 #
 # =============================================================================
 
-.PHONY: help ship ship-fast staging production deploy-status dev devchat static-check status logs-staging logs-production logs-dev rollback shell deploy-go preview-proxy
+.PHONY: help ship ship-fast staging staging-fast production deploy-status dev devchat static-check status logs-staging logs-production logs-dev rollback shell deploy-go preview-proxy
 
 # Load environment variables
 ifneq (,$(wildcard .env))
@@ -35,6 +35,7 @@ help:
 	@echo "  make ship            🚀 Full pipeline: staging → production"
 	@echo "  make ship-fast       Same as ship, skips E2E tests"
 	@echo "  make staging         Deploy staging only (port 8998)"
+	@echo "  make staging-fast    Deploy staging only, skip E2E tests"
 	@echo "  make production      Deploy production only (port 9000)"
 	@echo "  make deploy-status   Check if a deployment is running"
 	@echo ""
@@ -74,6 +75,10 @@ ship-fast:
 # Staging only
 staging:
 	@./scripts/deployment/ship.sh --staging
+
+# Staging only, skip E2E
+staging-fast:
+	@./scripts/deployment/ship.sh --staging --skip-e2e
 
 # Production only
 production:
