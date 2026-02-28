@@ -50,6 +50,8 @@ export const automationTriggerTypeEnum = appSchema.enum("automation_trigger_type
   "email",
 ])
 
+export const conversationSourceEnum = appSchema.enum("conversation_source", ["chat", "automation_run"])
+
 export const severityLevelEnum = appSchema.enum("severity_level", ["info", "warn", "error", "debug", "fatal"])
 
 // ============================================================================
@@ -134,12 +136,15 @@ export const conversations = appSchema.table(
     firstUserMessageId: text("first_user_message_id"),
     autoTitleSet: boolean("auto_title_set").default(false).notNull(),
     lastMessageAt: timestamp("last_message_at", { withTimezone: true, mode: "string" }),
+    source: conversationSourceEnum("source").default("chat").notNull(),
+    sourceMetadata: jsonb("source_metadata"),
     archivedAt: timestamp("archived_at", { withTimezone: true, mode: "string" }),
     deletedAt: timestamp("deleted_at", { withTimezone: true, mode: "string" }),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).defaultNow().notNull(),
   },
   table => [
+    index("idx_conversations_source").on(table.source).where(sql`(source <> 'chat'::app.conversation_source)`),
     index("idx_conversations_org_shared")
       .on(table.orgId, table.visibility, table.updatedAt)
       .where(sql`((deleted_at IS NULL) AND (visibility = 'shared'::text))`),
@@ -334,6 +339,10 @@ export const automationRuns = appSchema.table(
     changesMade: text("changes_made").array(),
     error: text("error"),
     durationMs: integer("duration_ms"),
+    messagesUri: text("messages_uri"),
+    chatConversationId: text("chat_conversation_id"),
+    chatTabId: text("chat_tab_id"),
+    chatRequestId: text("chat_request_id"),
     startedAt: timestamp("started_at", { withTimezone: true, mode: "string" }).defaultNow().notNull(),
     completedAt: timestamp("completed_at", { withTimezone: true, mode: "string" }),
   },
@@ -341,11 +350,24 @@ export const automationRuns = appSchema.table(
     index("idx_automation_runs_job_id").on(table.jobId),
     index("idx_automation_runs_started_at").on(table.startedAt),
     index("idx_automation_runs_status").on(table.status),
+    index("idx_automation_runs_chat_conversation")
+      .on(table.chatConversationId)
+      .where(sql`(chat_conversation_id IS NOT NULL)`),
     foreignKey({
       columns: [table.jobId],
       foreignColumns: [automationJobs.id],
       name: "automation_runs_job_id_fkey",
     }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.chatConversationId],
+      foreignColumns: [conversations.conversationId],
+      name: "automation_runs_chat_conversation_id_fkey",
+    }).onDelete("set null"),
+    foreignKey({
+      columns: [table.chatTabId],
+      foreignColumns: [conversationTabs.tabId],
+      name: "automation_runs_chat_tab_id_fkey",
+    }).onDelete("set null"),
   ],
 )
 
@@ -578,6 +600,14 @@ export const automationRunsRelations = relations(automationRuns, ({ one }) => ({
   job: one(automationJobs, {
     fields: [automationRuns.jobId],
     references: [automationJobs.id],
+  }),
+  chatConversation: one(conversations, {
+    fields: [automationRuns.chatConversationId],
+    references: [conversations.conversationId],
+  }),
+  chatTab: one(conversationTabs, {
+    fields: [automationRuns.chatTabId],
+    references: [conversationTabs.tabId],
   }),
 }))
 
