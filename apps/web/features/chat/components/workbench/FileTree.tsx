@@ -85,7 +85,8 @@ function TreeLevel({
     let mounted = true
 
     async function load() {
-      setLoading(true)
+      // Stale-while-revalidate: only show spinner on initial load, not revalidation
+      if (files.length === 0) setLoading(true)
       const result = await listFiles(workspace, path, worktree)
       if (!mounted) return
 
