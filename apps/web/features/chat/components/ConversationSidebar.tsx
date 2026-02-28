@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { SettingsNav } from "@/components/settings/SettingsPageClient"
 import { OrganizationWorkspaceSwitcher } from "@/components/workspace/OrganizationWorkspaceSwitcher"
 import { WorktreeSwitcher } from "@/components/workspace/WorktreeSwitcher"
 import { trackSidebarClosed, trackSidebarOpened } from "@/lib/analytics/events"
@@ -161,6 +162,10 @@ interface ConversationSidebarProps {
   onWorktreeModalOpenChange?: (open: boolean) => void
   onOpenSettings: () => void
   onOpenInvite: () => void
+  /** When true, sidebar shows settings tabs instead of conversations */
+  settingsMode?: boolean
+  /** Called to exit settings mode */
+  onCloseSettings?: () => void
 }
 
 export function ConversationSidebar({
@@ -179,6 +184,8 @@ export function ConversationSidebar({
   onWorktreeModalOpenChange,
   onOpenSettings,
   onOpenInvite,
+  settingsMode,
+  onCloseSettings,
 }: ConversationSidebarProps) {
   const isOpen = useSidebarOpen()
   const { closeSidebar } = useSidebarActions()
@@ -304,99 +311,106 @@ export function ConversationSidebar({
         </button>
       </div>
 
-      {/* Worktree switcher - shown below header when enabled */}
-      {worktreeEnabled && !isSuperadminWorkspace && (
-        <div className={`px-3 py-2 shrink-0 border-b ${styles.borderSubtle}`}>
-          <WorktreeSwitcher
-            workspace={workspace}
-            currentWorktree={worktree}
-            onChange={onSelectWorktree}
-            isOpen={worktreeModalOpen}
-            onOpenChange={onWorktreeModalOpenChange}
-          />
-        </div>
-      )}
-
-      {/* Conversation list */}
-      <div className="flex-1 overflow-y-auto flex flex-col">
-        {conversations.length === 0 && archivedConversations.length === 0 ? (
-          <EmptyState>No conversations yet</EmptyState>
-        ) : (
-          <>
-            {/* New Chat dropdown */}
-            <div className="px-2 py-3 shrink-0">
-              <NewChatDropdown
-                worktreeEnabled={worktreeEnabled}
-                onNewChat={() => {
-                  onNewConversation()
-                  if (isMobile) closeSidebar()
-                }}
-                onNewWorktree={() => {
-                  onNewWorktree()
-                  if (isMobile) closeSidebar()
-                }}
+      {/* Settings mode: replace conversation content with settings tabs */}
+      {settingsMode && onCloseSettings ? (
+        <SettingsNav onClose={onCloseSettings} />
+      ) : (
+        <>
+          {/* Worktree switcher - shown below header when enabled */}
+          {worktreeEnabled && !isSuperadminWorkspace && (
+            <div className={`px-3 py-2 shrink-0 border-b ${styles.borderSubtle}`}>
+              <WorktreeSwitcher
+                workspace={workspace}
+                currentWorktree={worktree}
+                onChange={onSelectWorktree}
+                isOpen={worktreeModalOpen}
+                onOpenChange={onWorktreeModalOpenChange}
               />
             </div>
+          )}
 
-            {/* Active conversations - grows to fill space */}
-            {conversations.length > 0 && (
-              <div className="flex-1 overflow-y-auto border-t border-black/[0.06] dark:border-white/[0.06]">
-                {conversations.map(conversation => (
-                  <ConversationItem
-                    key={conversation.id}
-                    conversation={conversation}
-                    isActive={conversation.id === activeTabGroupId}
-                    isStreaming={isConversationStreaming(conversation.id)}
-                    isConfirming={archiveConfirmingId === conversation.id}
-                    onClick={() => handleTabGroupClick(conversation.id)}
-                    onArchive={handleArchiveClick}
-                    onCancelArchive={handleCancelArchive}
-                    onRename={(id, title) => onRenameTabGroup(id, title)}
+          {/* Conversation list */}
+          <div className="flex-1 overflow-y-auto flex flex-col">
+            {conversations.length === 0 && archivedConversations.length === 0 ? (
+              <EmptyState>No conversations yet</EmptyState>
+            ) : (
+              <>
+                {/* New Chat dropdown */}
+                <div className="px-2 py-3 shrink-0">
+                  <NewChatDropdown
+                    worktreeEnabled={worktreeEnabled}
+                    onNewChat={() => {
+                      onNewConversation()
+                      if (isMobile) closeSidebar()
+                    }}
+                    onNewWorktree={() => {
+                      onNewWorktree()
+                      if (isMobile) closeSidebar()
+                    }}
                   />
-                ))}
-              </div>
-            )}
-            {conversations.length > 0 && (
-              <div className="border-b border-black/[0.06] dark:border-white/[0.06] shrink-0" />
-            )}
+                </div>
 
-            {/* Archived section - always at bottom */}
-            {archivedConversations.length > 0 && (
-              <div className="shrink-0 border-t border-black/[0.06] dark:border-white/[0.06]">
-                <button
-                  type="button"
-                  onClick={() => setArchivedExpanded(prev => !prev)}
-                  className={`w-full flex items-center gap-2 px-4 py-2.5 text-xs font-medium ${styles.textMuted} hover:text-black/60 dark:hover:text-white/60 ${styles.hoverFill} ${styles.transition}`}
-                >
-                  <ChevronRight
-                    size={14}
-                    className={`transition-transform duration-150 ${archivedExpanded ? "rotate-90" : ""}`}
-                  />
-                  <span>Archived ({archivedConversations.length})</span>
-                </button>
-                {archivedExpanded && (
-                  <div className="overflow-hidden animate-in fade-in duration-150">
-                    {archivedConversations.map(conversation => (
-                      <ArchivedConversationItem
+                {/* Active conversations - grows to fill space */}
+                {conversations.length > 0 && (
+                  <div className="flex-1 overflow-y-auto border-t border-black/[0.06] dark:border-white/[0.06]">
+                    {conversations.map(conversation => (
+                      <ConversationItem
                         key={conversation.id}
                         conversation={conversation}
-                        onOpen={() => {
-                          onUnarchiveTabGroup(conversation.id)
-                          handleTabGroupClick(conversation.id)
-                        }}
-                        onRestore={() => onUnarchiveTabGroup(conversation.id)}
+                        isActive={conversation.id === activeTabGroupId}
+                        isStreaming={isConversationStreaming(conversation.id)}
+                        isConfirming={archiveConfirmingId === conversation.id}
+                        onClick={() => handleTabGroupClick(conversation.id)}
+                        onArchive={handleArchiveClick}
+                        onCancelArchive={handleCancelArchive}
+                        onRename={(id, title) => onRenameTabGroup(id, title)}
                       />
                     ))}
                   </div>
                 )}
-              </div>
-            )}
-          </>
-        )}
-      </div>
+                {conversations.length > 0 && (
+                  <div className="border-b border-black/[0.06] dark:border-white/[0.06] shrink-0" />
+                )}
 
-      {/* Footer actions - with safe area padding for mobile home indicator */}
-      <FooterActions onOpenInvite={onOpenInvite} onOpenSettings={onOpenSettings} isMobile={isMobile} />
+                {/* Archived section - always at bottom */}
+                {archivedConversations.length > 0 && (
+                  <div className="shrink-0 border-t border-black/[0.06] dark:border-white/[0.06]">
+                    <button
+                      type="button"
+                      onClick={() => setArchivedExpanded(prev => !prev)}
+                      className={`w-full flex items-center gap-2 px-4 py-2.5 text-xs font-medium ${styles.textMuted} hover:text-black/60 dark:hover:text-white/60 ${styles.hoverFill} ${styles.transition}`}
+                    >
+                      <ChevronRight
+                        size={14}
+                        className={`transition-transform duration-150 ${archivedExpanded ? "rotate-90" : ""}`}
+                      />
+                      <span>Archived ({archivedConversations.length})</span>
+                    </button>
+                    {archivedExpanded && (
+                      <div className="overflow-hidden animate-in fade-in duration-150">
+                        {archivedConversations.map(conversation => (
+                          <ArchivedConversationItem
+                            key={conversation.id}
+                            conversation={conversation}
+                            onOpen={() => {
+                              onUnarchiveTabGroup(conversation.id)
+                              handleTabGroupClick(conversation.id)
+                            }}
+                            onRestore={() => onUnarchiveTabGroup(conversation.id)}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Footer actions - with safe area padding for mobile home indicator */}
+          <FooterActions onOpenInvite={onOpenInvite} onOpenSettings={onOpenSettings} isMobile={isMobile} />
+        </>
+      )}
     </div>
   )
 
