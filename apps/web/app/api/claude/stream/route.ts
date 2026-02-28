@@ -86,23 +86,35 @@ export async function POST(req: NextRequest) {
   let sessionKey: TabSessionKey | null = null // Tab session key: used for BOTH session persistence AND lock
 
   const cleanupLockedStreamAfterError = (context: string, errorMessage: string) => {
-    if (!lockAcquired || !sessionKey) {
+    const sessionKeyForCleanup = sessionKey
+    if (!lockAcquired || !sessionKeyForCleanup) {
       return
     }
 
-    try {
-      unregisterCancellation(requestId)
-      unlockConversation(sessionKey)
-      lockAcquired = false
-      logger.log(`Released lock and unregistered cancellation after ${context}`)
+    const runCleanupStep = (step: string, fn: () => void) => {
+      try {
+        fn()
+      } catch (cleanupError) {
+        logger.error(`Failed to ${step} after ${context}:`, cleanupError)
+      }
+    }
 
-      // Mark buffer as errored (non-blocking)
+    runCleanupStep("unregister cancellation", () => {
+      unregisterCancellation(requestId)
+    })
+
+    runCleanupStep("unlock conversation", () => {
+      unlockConversation(sessionKeyForCleanup)
+    })
+
+    runCleanupStep("mark stream buffer as errored", () => {
       errorStreamBuffer(requestId, errorMessage).catch(err => {
         logger.log("Failed to mark buffer as errored (non-fatal):", err)
       })
-    } catch (cleanupError) {
-      logger.error(`Failed to clean up locked stream after ${context}:`, cleanupError)
-    }
+    })
+
+    lockAcquired = false
+    logger.log(`Finished locked-stream cleanup after ${context}`)
   }
 
   try {
@@ -554,12 +566,20 @@ export async function POST(req: NextRequest) {
         logger.log(`Plan mode: ${allowedTools.length} tools available under registry policy`)
       }
 
+      const rawOauthMcpServers = getOAuthMcpServers(oauthTokens)
+      const oauthMcpServers: Record<string, unknown> = {}
+      if (rawOauthMcpServers && typeof rawOauthMcpServers === "object") {
+        for (const [providerKey, providerConfig] of Object.entries(rawOauthMcpServers)) {
+          oauthMcpServers[providerKey] = providerConfig
+        }
+      }
+
       const agentConfig = {
         allowedTools,
         disallowedTools,
         permissionMode: effectivePermissionMode,
         settingSources: SETTINGS_SOURCES,
-        oauthMcpServers: getOAuthMcpServers(oauthTokens) as Record<string, unknown>,
+        oauthMcpServers,
         streamTypes: STREAM_TYPES,
         isAdmin: user.isAdmin, // Pass to worker for permission checks
         isSuperadmin: user.isSuperadmin, // Superadmin gets elevated tool policy
@@ -625,25 +645,38 @@ export async function POST(req: NextRequest) {
             await runQuery(existingSessionId || undefined, resumeSessionAt || undefined)
             controller.close()
           } catch (err) {
+            const getObjectProperty = (value: unknown, key: string): unknown => {
+              if (!value || typeof value !== "object") {
+                return undefined
+              }
+              return Reflect.get(value, key)
+            }
+
             const buildCombinedErrorMessage = (error: unknown): string => {
               const baseMessage = error instanceof Error ? error.message : String(error)
-              const stderr = (error as { stderr?: string })?.stderr || ""
-              const diagnostics = (error as { diagnostics?: unknown })?.diagnostics
+              const stderrValue = getObjectProperty(error, "stderr")
+              const stderr = typeof stderrValue === "string" ? stderrValue : ""
+              const diagnostics = getObjectProperty(error, "diagnostics")
 
               const diagnosticHints: string[] = []
               if (diagnostics && typeof diagnostics === "object") {
-                const d = diagnostics as Record<string, unknown>
-                if (typeof d.surfacedErrorMessage === "string") {
-                  diagnosticHints.push(d.surfacedErrorMessage)
+                const surfacedErrorMessage = getObjectProperty(diagnostics, "surfacedErrorMessage")
+                if (typeof surfacedErrorMessage === "string") {
+                  diagnosticHints.push(surfacedErrorMessage)
                 }
-                if (typeof d.originalErrorMessage === "string") {
-                  diagnosticHints.push(d.originalErrorMessage)
+                const originalErrorMessage = getObjectProperty(diagnostics, "originalErrorMessage")
+                if (typeof originalErrorMessage === "string") {
+                  diagnosticHints.push(originalErrorMessage)
                 }
-                if (Array.isArray(d.queryResultErrors)) {
-                  for (const item of d.queryResultErrors) {
-                    if (typeof item === "string") {
-                      diagnosticHints.push(item)
-                    }
+                const queryResultErrors = getObjectProperty(diagnostics, "queryResultErrors")
+                if (Array.isArray(queryResultErrors)) {
+                  const stringErrors = queryResultErrors.filter((item): item is string => typeof item === "string")
+                  diagnosticHints.push(...stringErrors)
+                }
+              } else if (Array.isArray(diagnostics)) {
+                for (const item of diagnostics) {
+                  if (typeof item === "string") {
+                    diagnosticHints.push(item)
                   }
                 }
               }
@@ -654,7 +687,8 @@ export async function POST(req: NextRequest) {
             // Error recovery for stale session/message references
             // The error may come as "Claude Code process exited with code 1" with the actual
             // error message in stderr, so we check both
-            const stderrMessage = (err as { stderr?: string })?.stderr || ""
+            const stderrValue = getObjectProperty(err, "stderr")
+            const stderrMessage = typeof stderrValue === "string" ? stderrValue : ""
             const combinedMessage = buildCombinedErrorMessage(err)
 
             // NEW: Check for "message not found" error (stale resumeSessionAt)

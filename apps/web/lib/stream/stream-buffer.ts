@@ -68,6 +68,42 @@ const STALE_STREAM_THRESHOLD_MS = 5 * 60 * 1000
 let redisClient: ReturnType<typeof createRedisClient> | null = null
 let redisInitialized = false
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object"
+}
+
+function parseRedisJson(value: unknown): Record<string, unknown> | null {
+  if (typeof value !== "string") {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(value)
+    return isRecord(parsed) ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+function isStreamState(value: unknown): value is StreamBufferEntry["state"] {
+  return value === "streaming" || value === "complete" || value === "error"
+}
+
+function toStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+  return value.filter((item): item is string => typeof item === "string")
+}
+
+function toOptionalString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined
+}
+
+function toNumber(value: unknown, fallback: number): number {
+  return typeof value === "number" ? value : fallback
+}
+
 function getRedis() {
   if (!redisInitialized) {
     // getRedisUrl() returns null in standalone mode
@@ -369,7 +405,11 @@ export async function getUnreadMessages(
 
   if (!result) return null
 
-  const parsed = JSON.parse(result as string)
+  const parsed = parseRedisJson(result)
+  if (!parsed) {
+    console.warn(`[StreamBuffer] Failed to parse unread messages payload for ${requestId}`)
+    return null
+  }
 
   // Security: user verification failed
   if (parsed.unauthorized) {
@@ -377,11 +417,16 @@ export async function getUnreadMessages(
     return null
   }
 
+  if (!isStreamState(parsed.state)) {
+    console.warn(`[StreamBuffer] Invalid state in unread messages payload for ${requestId}`)
+    return null
+  }
+
   return {
-    messages: parsed.messages || [],
+    messages: toStringArray(parsed.messages),
     state: parsed.state,
-    error: parsed.error,
-    lastReadSeq: parsed.lastReadSeq ?? 0,
+    error: toOptionalString(parsed.error),
+    lastReadSeq: toNumber(parsed.lastReadSeq, 0),
   }
 }
 
@@ -430,13 +475,17 @@ export async function ackStreamCursor(
   const result = await redis.eval(ACK_SCRIPT, 1, key, userId, lastSeenSeq.toString())
   if (!result) return null
 
-  const parsed = JSON.parse(result as string)
+  const parsed = parseRedisJson(result)
+  if (!parsed) {
+    console.warn(`[StreamBuffer] Failed to parse ack payload for ${requestId}`)
+    return null
+  }
   if (parsed.unauthorized) {
     console.warn(`[StreamBuffer] User ${userId} attempted to ack buffer owned by another user`)
     return null
   }
 
-  return { lastReadSeq: parsed.lastReadSeq ?? 0 }
+  return { lastReadSeq: toNumber(parsed.lastReadSeq, 0) }
 }
 
 /**
