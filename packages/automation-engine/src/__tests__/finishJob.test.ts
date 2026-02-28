@@ -386,6 +386,36 @@ describe("finishJob", () => {
     expect(onJobDisabled).toHaveBeenCalledOnce()
   })
 
+  it("writes chat linkage fields to automation_runs insert", async () => {
+    const { finishJob } = await import("../engine")
+    const { ctx, insertData } = makeRunContext()
+    ctx.chatConversationId = "conv_abc"
+    ctx.chatTabId = "tab_xyz"
+    ctx.chatRequestId = "req_123"
+
+    await finishJob(ctx as never, { status: "success", durationMs: 100 })
+
+    expect(insertData[0]).toMatchObject({
+      chat_conversation_id: "conv_abc",
+      chat_tab_id: "tab_xyz",
+      chat_request_id: "req_123",
+    })
+  })
+
+  it("writes null chat linkage fields when no conversation was bootstrapped", async () => {
+    const { finishJob } = await import("../engine")
+    const { ctx, insertData } = makeRunContext()
+    // No chatConversationId/chatTabId/chatRequestId set
+
+    await finishJob(ctx as never, { status: "success", durationMs: 100 })
+
+    expect(insertData[0]).toMatchObject({
+      chat_conversation_id: null,
+      chat_tab_id: null,
+      chat_request_id: null,
+    })
+  })
+
   it("swallows errors from hooks without failing", async () => {
     const { finishJob } = await import("../engine")
     const { ctx } = makeRunContext({

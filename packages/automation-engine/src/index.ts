@@ -1,3 +1,5 @@
+// Conversation bootstrap
+export { bootstrapRunConversation } from "./conversation"
 // Engine: claim/finish lifecycle
 export { claimDueJobs, claimJob, extractSummary, finishJob, readMessagesFromUri } from "./engine"
 // Run logs

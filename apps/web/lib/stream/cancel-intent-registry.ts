@@ -19,10 +19,14 @@ interface CancelIntent {
   createdAt: number
 }
 
+function isCancelIntent(value: unknown): value is CancelIntent {
+  if (!value || typeof value !== "object") return false
+  return typeof Reflect.get(value, "userId") === "string" && typeof Reflect.get(value, "createdAt") === "number"
+}
+
 const INTENT_TTL_MS = 15_000
 const INTENT_TTL_SECONDS = Math.ceil(INTENT_TTL_MS / 1000)
 const INTENT_KEY_PREFIX = "stream-cancel-intent:"
-
 type IntentScope = "conversation" | "request"
 
 // In-memory fallback (used when Redis is unavailable, e.g. standalone/tests)
@@ -55,13 +59,6 @@ function pruneExpiredMemoryIntents(now: number): void {
   }
 }
 
-function isCancelIntent(value: unknown): value is CancelIntent {
-  if (typeof value !== "object" || value === null) return false
-  return (
-    "userId" in value && typeof value.userId === "string" && "createdAt" in value && typeof value.createdAt === "number"
-  )
-}
-
 type RedisClient = NonNullable<ReturnType<typeof getRedis>>
 
 async function withRedisFallback<T>(
@@ -83,7 +80,9 @@ async function registerIntent(scope: IntentScope, id: string, userId: string): P
   const payload: CancelIntent = { userId, createdAt: now }
 
   await withRedisFallback(
-    redis => redis.setex(key, INTENT_TTL_SECONDS, JSON.stringify(payload)).then(() => {}),
+    async redis => {
+      await redis.setex(key, INTENT_TTL_SECONDS, JSON.stringify(payload))
+    },
     () => {
       pruneExpiredMemoryIntents(now)
       memoryIntents.set(buildScopeKey(scope, id), { userId, createdAt: now })
@@ -151,7 +150,9 @@ async function clearIntent(scope: IntentScope, id: string): Promise<void> {
   const scopeKey = buildScopeKey(scope, id)
 
   await withRedisFallback(
-    redis => redis.del(buildRedisKey(scope, id)).then(() => {}),
+    async redis => {
+      await redis.del(buildRedisKey(scope, id))
+    },
     () => {
       memoryIntents.delete(scopeKey)
     },
