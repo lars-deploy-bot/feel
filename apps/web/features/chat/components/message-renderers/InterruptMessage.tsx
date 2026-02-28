@@ -21,7 +21,7 @@ export function InterruptMessage({ data }: InterruptMessageProps) {
   // Stopping / stopped / finished — minimal inline treatment
   // These share one DOM structure so CSS transitions work when Dexie updates in place
   if (isStopping || isStopped || isFinished) {
-    const label = isStopping ? "Stopping..." : "Stopped"
+    const label = isStopping ? "Stopping..." : isFinished ? "Already finished" : "Stopped"
     const dotClass = isStopping ? "bg-blue-500" : "bg-black/10 dark:bg-white/10"
     const textClass = isStopping ? "text-black/40 dark:text-white/40" : "text-black/30 dark:text-white/30"
 

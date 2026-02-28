@@ -214,6 +214,25 @@ function scheduleFlushStreamingSnapshot(messageId: string, userId: string, getTe
   }, FLUSH_DEBOUNCE_MS)
 }
 
+async function queueSyncForStreamTab(
+  db: ReturnType<typeof getMessageDb>,
+  userId: string,
+  tabId: string | undefined,
+  currentTabGroupId: string | null,
+) {
+  if (tabId) {
+    const streamTab = await db.tabs.get(tabId)
+    if (streamTab) {
+      queueSync(streamTab.conversationId, userId)
+      return
+    }
+  }
+
+  if (currentTabGroupId) {
+    queueSync(currentTabGroupId, userId)
+  }
+}
+
 // =============================================================================
 // Store
 // =============================================================================
@@ -898,12 +917,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
       }
     })
 
-    if (currentTabGroupId) {
-      queueSync(currentTabGroupId, session.userId)
-    } else if (tabId) {
-      const tab = await db.tabs.get(tabId)
-      if (tab) queueSync(tab.conversationId, session.userId)
-    }
+    await queueSyncForStreamTab(db, session.userId, tabId, currentTabGroupId)
     setTimeout(() => alreadyFinalized.delete(messageId), 60000)
   },
 
@@ -938,12 +952,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
       }
     })
 
-    if (currentTabGroupId) {
-      queueSync(currentTabGroupId, session.userId)
-    } else if (tabId) {
-      const tab = await db.tabs.get(tabId)
-      if (tab) queueSync(tab.conversationId, session.userId)
-    }
+    await queueSyncForStreamTab(db, session.userId, tabId, currentTabGroupId)
     setTimeout(() => alreadyFinalized.delete(messageId), 60000)
   },
 
@@ -978,12 +987,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
       }
     })
 
-    if (currentTabGroupId) {
-      queueSync(currentTabGroupId, session.userId)
-    } else if (tabId) {
-      const tab = await db.tabs.get(tabId)
-      if (tab) queueSync(tab.conversationId, session.userId)
-    }
+    await queueSyncForStreamTab(db, session.userId, tabId, currentTabGroupId)
     setTimeout(() => alreadyFinalized.delete(messageId), 60000)
   },
 
