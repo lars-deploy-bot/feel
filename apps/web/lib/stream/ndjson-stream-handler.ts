@@ -35,8 +35,8 @@ import type {
 } from "@/features/chat/lib/streaming/ndjson"
 import {
   BridgeInterruptSource,
-  BridgeSyntheticMessageType,
   BridgeStreamType,
+  BridgeSyntheticMessageType,
   createPingMessage,
   createWarningMessage,
   encodeNDJSON,
