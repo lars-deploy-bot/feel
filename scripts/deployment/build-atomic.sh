@@ -194,10 +194,8 @@ for pkg in "${STANDALONE_PACKAGES[@]}"; do
     cp -rL "packages/$pkg" "$STANDALONE_PACKAGES_DIR/$pkg" 2>/dev/null || cp -r "packages/$pkg" "$STANDALONE_PACKAGES_DIR/$pkg"
 done
 
-# Copy template
-[ ! -d "templates/site-template" ] && { log_error "Template not found"; exit 1; }
-rm -rf "${STANDALONE_PACKAGES_DIR:?}/template" 2>/dev/null || true
-cp -rL "templates/site-template" "$STANDALONE_PACKAGES_DIR/template" 2>/dev/null || cp -r "templates/site-template" "$STANDALONE_PACKAGES_DIR/template"
+# Template is NOT copied to standalone — site-controller reads it from
+# $ALIVE_ROOT/templates/site-template at runtime (see packages/shared/src/config.ts PATHS.TEMPLATE_PATH)
 
 # =============================================================================
 # Phase 9: Copy Packages to node_modules (NO SYMLINKS)
@@ -207,8 +205,7 @@ STANDALONE_NODE_MODULES="$STANDALONE_DIR/node_modules"
 mkdir -p "$STANDALONE_NODE_MODULES/@webalive"
 
 # Copy workspace packages to node_modules/@webalive (actual copies, not symlinks)
-# Include template which was copied separately
-for pkg in "${STANDALONE_PACKAGES[@]}" template; do
+for pkg in "${STANDALONE_PACKAGES[@]}"; do
     if [ -d "$STANDALONE_PACKAGES_DIR/$pkg" ]; then
         cp -rL "$STANDALONE_PACKAGES_DIR/$pkg" "$STANDALONE_NODE_MODULES/@webalive/$pkg" 2>/dev/null || \
         cp -r "$STANDALONE_PACKAGES_DIR/$pkg" "$STANDALONE_NODE_MODULES/@webalive/$pkg"
