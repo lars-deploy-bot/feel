@@ -155,35 +155,47 @@ else
     [ $BUN_EXIT -ne 0 ] && { phase_end error "bun install failed"; exit 1; }
     phase_end ok "Dependencies installed"
 
-    # Static analysis: type-check + lint
+    # Static analysis: type-check + lint (silent — output in /tmp/static-check-$ENV.log)
     phase_start "Type-checking & linting"
 
+    STATIC_LOG="/tmp/static-check-$ENV.log"
     set +e
-    (bun run validate:turbo-env && bun run check:workspace-contract && turbo run type-check && turbo run ci && bun run --cwd apps/web scripts/check-error-patterns.ts) 2>&1 | tee /tmp/static-check-$ENV.log
-    STATIC_EXIT=${PIPESTATUS[0]}
+    (bun run validate:turbo-env && bun run check:workspace-contract && turbo run type-check && turbo run ci && bun run --cwd apps/web scripts/check-error-patterns.ts) > "$STATIC_LOG" 2>&1
+    STATIC_EXIT=$?
     set -e
 
     if [ $STATIC_EXIT -ne 0 ]; then
         phase_end error "Static checks failed"
-        tail -30 /tmp/static-check-$ENV.log
+        echo ""
+        banner_error "STATIC CHECKS FAILED"
+        echo -e "  ${RED}Log: $STATIC_LOG${NC}"
+        echo ""
+        tail -30 "$STATIC_LOG"
+        echo ""
         exit 1
     fi
-    phase_end ok "Static checks passed"
+    phase_end ok "Static checks passed (log: $STATIC_LOG)"
 
-    # Unit tests
+    # Unit tests (silent — output in /tmp/test-core-$ENV.log)
     phase_start "Running unit tests"
 
+    TEST_LOG="/tmp/test-core-$ENV.log"
     set +e
-    bun run test:core 2>&1 | tee /tmp/test-core-$ENV.log
-    TEST_EXIT=${PIPESTATUS[0]}
+    bun run test:core > "$TEST_LOG" 2>&1
+    TEST_EXIT=$?
     set -e
 
     if [ $TEST_EXIT -ne 0 ]; then
         phase_end error "Unit tests failed"
-        tail -30 /tmp/test-core-$ENV.log
+        echo ""
+        banner_error "UNIT TESTS FAILED"
+        echo -e "  ${RED}Log: $TEST_LOG${NC}"
+        echo ""
+        tail -30 "$TEST_LOG"
+        echo ""
         exit 1
     fi
-    phase_end ok "Tests passed"
+    phase_end ok "Tests passed (log: $TEST_LOG)"
 fi
 
 # =============================================================================
@@ -271,21 +283,24 @@ if [ -n "$PROMOTE_FROM" ]; then
 else
     BUILD_LOG="/tmp/alive-build-${ENV}.log"
     set +e
-    "$SCRIPT_DIR/build-atomic.sh" "$ENV" 2>&1 | tee "$BUILD_LOG"
-    BUILD_EXIT=${PIPESTATUS[0]}
+    "$SCRIPT_DIR/build-atomic.sh" "$ENV" > "$BUILD_LOG" 2>&1
+    BUILD_EXIT=$?
     set -e
 
     if [ $BUILD_EXIT -ne 0 ]; then
         phase_end error "Build failed"
-        log_error "Full build log: $BUILD_LOG"
+        echo ""
+        banner_error "BUILD FAILED"
+        echo -e "  ${RED}Log: $BUILD_LOG${NC}"
         echo ""
         grep -E "Error:|error TS|error:|failed" "$BUILD_LOG" | head -30
+        echo ""
         exit 1
     fi
 
     NEW_BUILD=$(readlink "$BUILDS_DIR/current")
     log_step "New: $NEW_BUILD"
-    phase_end ok "Build complete"
+    phase_end ok "Build complete (log: $BUILD_LOG)"
 fi
 
 # =============================================================================
