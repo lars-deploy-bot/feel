@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type { TabSessionKey } from "@/features/auth/types/session"
+import { ErrorCodes } from "@/lib/error-codes"
 import { CLAUDE_MODELS } from "@/lib/models/claude-models"
 import { type CancelState, createNDJSONStream } from "../ndjson-stream-handler"
 
@@ -399,6 +400,39 @@ describe("NDJSON Stream Handler", () => {
       expect(firstCallError).toBeInstanceOf(Error)
       expect((firstCallError as Error).message).toContain("type=billing_error")
       expect((firstCallError as Error).message).toContain("source=assistant_message.error")
+    })
+
+    it("emits stream_error for unknown child event types", async () => {
+      const mockChildStream = new ReadableStream({
+        start(controller) {
+          const unknownEvent = JSON.stringify({
+            type: "stream_totally_unknown",
+            payload: "unexpected",
+          })
+          controller.enqueue(new TextEncoder().encode(`${unknownEvent}\n`))
+          controller.close()
+        },
+      })
+
+      const stream = createNDJSONStream({
+        childStream: mockChildStream,
+        conversationKey: "test-conv" as TabSessionKey,
+        requestId: "test-unknown-event",
+        conversationWorkspace: "test-workspace",
+        tokenSource: "user_provided",
+        model: TEST_MODEL,
+        cancelState: createCancelState(),
+      })
+
+      const reader = stream.getReader()
+      const firstChunk = await reader.read()
+      expect(firstChunk.done).toBe(false)
+
+      const decoded = new TextDecoder().decode(firstChunk.value)
+      const parsed = JSON.parse(decoded)
+      expect(parsed.type).toBe("stream_error")
+      expect(parsed.data.error).toBe(ErrorCodes.STREAM_ERROR)
+      expect(String(parsed.data.details)).toContain("stream_totally_unknown")
     })
   })
 
