@@ -48,18 +48,18 @@ import type { ClaudeModel } from "@/lib/models/claude-models"
 import { calculateCreditsToCharge } from "@/lib/models/model-pricing"
 import { chargeCreditsDirectly } from "@/lib/tokens"
 
-/**
- * Event types emitted by child process
- */
-interface ChildEvent {
-  type: string
-  messageCount?: number
-  messageType?: string
-  content?: unknown
-  totalMessages?: number
-  result?: unknown
-  sessionId?: string
-}
+type ParsedChildEvent =
+  | { kind: "stream_session"; sessionId: string }
+  | { kind: "stream_message"; messageCount: number; messageType: string; content: unknown }
+  | { kind: "stream_complete"; totalMessages: number; result: unknown }
+  | { kind: "stream_start"; host: string; cwd: string; message: string; messageLength: number; isResume?: boolean }
+  | { kind: "stream_error"; details: unknown }
+  | { kind: "stream_ping" }
+  | { kind: "stream_done" }
+  | { kind: "stream_interrupt"; source: unknown }
+  | { kind: "unknown"; rawType: string; raw: unknown }
+
+type ParsedMessageChildEvent = Extract<ParsedChildEvent, { kind: "stream_message" }>
 
 interface AssistantMessageBlock {
   type: "text"
@@ -81,6 +81,28 @@ function getObjectProperty(value: unknown, key: string): unknown {
     return undefined
   }
   return Reflect.get(value, key)
+}
+
+function toRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object") {
+    return null
+  }
+
+  const record: Record<string, unknown> = {}
+  for (const [key, entry] of Object.entries(value)) {
+    record[key] = entry
+  }
+  return record
+}
+
+function getStringProperty(value: unknown, key: string): string | undefined {
+  const property = getObjectProperty(value, key)
+  return typeof property === "string" ? property : undefined
+}
+
+function getNumberProperty(value: unknown, key: string): number | undefined {
+  const property = getObjectProperty(value, key)
+  return typeof property === "number" ? property : undefined
 }
 
 function isTextAssistantMessageBlock(block: unknown): block is AssistantMessageBlock {
@@ -117,6 +139,74 @@ function isInterruptSource(value: unknown): value is BridgeInterruptMessage["dat
 
 function isSdkResultMessage(value: unknown): value is BridgeCompleteMessage["data"]["result"] {
   return Boolean(value) && typeof value === "object" && getObjectProperty(value, "type") === "result"
+}
+
+function parseChildEvent(raw: unknown): ParsedChildEvent {
+  const record = toRecord(raw)
+  if (!record) {
+    return { kind: "unknown", rawType: "non-object", raw }
+  }
+
+  const type = getStringProperty(record, "type")
+  if (!type) {
+    return { kind: "unknown", rawType: "missing-type", raw }
+  }
+
+  switch (type) {
+    case BridgeStreamType.SESSION: {
+      const sessionId = getStringProperty(record, "sessionId")
+      if (!sessionId) {
+        return { kind: "unknown", rawType: "stream_session_missing_session_id", raw }
+      }
+      return { kind: "stream_session", sessionId }
+    }
+    case BridgeStreamType.MESSAGE:
+      return {
+        kind: "stream_message",
+        messageCount: getNumberProperty(record, "messageCount") ?? 0,
+        messageType: getStringProperty(record, "messageType") ?? "unknown",
+        content: getObjectProperty(record, "content"),
+      }
+    case BridgeStreamType.COMPLETE:
+      return {
+        kind: "stream_complete",
+        totalMessages: getNumberProperty(record, "totalMessages") ?? 0,
+        result: getObjectProperty(record, "result"),
+      }
+    case BridgeStreamType.START: {
+      const message = getStringProperty(record, "message") ?? ""
+      const messageLength = getNumberProperty(record, "messageLength") ?? message.length
+      const isResumeValue = getObjectProperty(record, "isResume")
+      const startEvent: ParsedChildEvent = {
+        kind: "stream_start",
+        host: getStringProperty(record, "host") ?? "",
+        cwd: getStringProperty(record, "cwd") ?? "",
+        message,
+        messageLength,
+      }
+      if (typeof isResumeValue === "boolean") {
+        startEvent.isResume = isResumeValue
+      }
+      return startEvent
+    }
+    case "error":
+      return { kind: "stream_error", details: raw }
+    case BridgeStreamType.PING:
+      return { kind: "stream_ping" }
+    case BridgeStreamType.DONE:
+      return { kind: "stream_done" }
+    case BridgeStreamType.INTERRUPT:
+      return {
+        kind: "stream_interrupt",
+        source: getObjectProperty(record, "source") ?? getObjectProperty(record, "content"),
+      }
+    default:
+      return { kind: "unknown", rawType: type, raw }
+  }
+}
+
+function assertNever(value: never, message: string): never {
+  throw new Error(`${message}: ${JSON.stringify(value)}`)
 }
 
 /**
@@ -267,14 +357,14 @@ function extractAssistantTextPreview(content: AssistantSDKErrorContent): string 
  * vs our own platform credit logic.
  */
 function captureAssistantSdkErrorTelemetry(
-  childEvent: ChildEvent,
+  childEvent: ParsedMessageChildEvent,
   requestId: string,
   workspace: string,
   model: ClaudeModel,
   tokenSource: "workspace" | "user_provided",
   capturedErrorTypes: Set<string>,
 ): void {
-  if (childEvent.type !== BridgeStreamType.MESSAGE || childEvent.messageType !== "assistant") {
+  if (childEvent.messageType !== "assistant") {
     return
   }
   const assistantContent = toAssistantSdkErrorContent(childEvent.content)
@@ -317,9 +407,9 @@ function captureAssistantSdkErrorTelemetry(
       model,
       tokenSource,
       source: "assistant_message.error",
-      childEventType: childEvent.type,
+      childEventType: childEvent.kind,
       messageType: childEvent.messageType,
-      messageCount: childEvent.messageCount ?? null,
+      messageCount: childEvent.messageCount,
       assistantTextPreview: assistantTextPreview ?? "",
       rawContentPreview,
     })
@@ -336,7 +426,7 @@ function captureAssistantSdkErrorTelemetry(
  * @returns Object indicating if this was a completion event (for early lock release)
  */
 async function processChildEvent(
-  childEvent: ChildEvent,
+  childEvent: ParsedChildEvent,
   requestId: string,
   tabId: string | undefined,
   conversationKey: TabSessionKey,
@@ -353,7 +443,7 @@ async function processChildEvent(
   // at CLAUDE_CONFIG_DIR/projects/<hash>/<session-id>.jsonl — both must
   // exist for resume to work. If the JSONL file is missing (e.g. due to
   // permissions), the session ID here becomes stale and route.ts clears it.
-  if (childEvent.type === "stream_session" && childEvent.sessionId) {
+  if (childEvent.kind === "stream_session") {
     console.log(
       `[NDJSON Stream ${requestId}] [SESSION DEBUG] Received stream_session event, sessionId: ${childEvent.sessionId}`,
     )
@@ -375,7 +465,28 @@ async function processChildEvent(
   }
 
   // Build message and send to client (includes tabId for routing)
-  captureAssistantSdkErrorTelemetry(childEvent, requestId, workspace, model, tokenSource, capturedAssistantErrorTypes)
+  switch (childEvent.kind) {
+    case "stream_message":
+      captureAssistantSdkErrorTelemetry(
+        childEvent,
+        requestId,
+        workspace,
+        model,
+        tokenSource,
+        capturedAssistantErrorTypes,
+      )
+      break
+    case "stream_complete":
+    case "stream_start":
+    case "stream_error":
+    case "stream_ping":
+    case "stream_done":
+    case "stream_interrupt":
+    case "unknown":
+      break
+    default:
+      assertNever(childEvent, "Unhandled parsed child event kind in processChildEvent")
+  }
 
   const message = buildStreamMessage(childEvent, requestId, tabId)
 
@@ -407,7 +518,7 @@ async function processChildEvent(
 
   // Signal completion when we receive stream_complete event
   // This allows early lock release before child process finishes SDK cleanup
-  const isComplete = childEvent.type === BridgeStreamType.COMPLETE
+  const isComplete = childEvent.kind === "stream_complete"
   return { isComplete }
 }
 
@@ -477,7 +588,7 @@ function stripSystemReminders(content: unknown): unknown {
  * Includes tabId for routing and messageId for idempotency
  */
 function buildStreamMessage(
-  childEvent: ChildEvent,
+  childEvent: ParsedChildEvent,
   requestId: string,
   tabId?: string,
 ): StreamMessage | BridgeErrorMessage {
@@ -485,151 +596,149 @@ function buildStreamMessage(
   const streamSeq = nextStreamSeq(requestId)
   const messageId = buildMessageId(requestId, streamSeq)
 
-  if (childEvent.type === "error") {
-    const errorMessage: BridgeErrorMessage = {
-      type: BridgeStreamType.ERROR,
-      requestId,
-      messageId,
-      streamSeq,
-      tabId,
-      timestamp,
-      data: {
-        error: ErrorCodes.STREAM_ERROR,
-        code: ErrorCodes.STREAM_ERROR,
-        message: getErrorMessage(ErrorCodes.STREAM_ERROR),
-        details: { error: String(childEvent) },
-      },
+  switch (childEvent.kind) {
+    case "stream_error": {
+      const errorMessage: BridgeErrorMessage = {
+        type: BridgeStreamType.ERROR,
+        requestId,
+        messageId,
+        streamSeq,
+        tabId,
+        timestamp,
+        data: {
+          error: ErrorCodes.STREAM_ERROR,
+          code: ErrorCodes.STREAM_ERROR,
+          message: getErrorMessage(ErrorCodes.STREAM_ERROR),
+          details: { error: String(childEvent.details) },
+        },
+      }
+      return errorMessage
     }
-    return errorMessage
-  }
-
-  if (childEvent.type === BridgeStreamType.START) {
-    const message = typeof childEvent.content === "string" ? childEvent.content : ""
-    const startMessage: BridgeStartMessage = {
-      type: BridgeStreamType.START,
-      requestId,
-      messageId,
-      streamSeq,
-      tabId,
-      timestamp,
-      data: {
-        host: "",
-        cwd: "",
-        message,
-        messageLength: message.length,
-      },
+    case "stream_start": {
+      const startMessage: BridgeStartMessage = {
+        type: BridgeStreamType.START,
+        requestId,
+        messageId,
+        streamSeq,
+        tabId,
+        timestamp,
+        data: {
+          host: childEvent.host,
+          cwd: childEvent.cwd,
+          message: childEvent.message,
+          messageLength: childEvent.messageLength,
+          isResume: childEvent.isResume,
+        },
+      }
+      return startMessage
     }
-    return startMessage
-  }
-
-  if (childEvent.type === BridgeStreamType.SESSION && typeof childEvent.sessionId === "string") {
-    const sessionMessage: BridgeSessionMessage = {
-      type: BridgeStreamType.SESSION,
-      requestId,
-      messageId,
-      streamSeq,
-      tabId,
-      timestamp,
-      data: { sessionId: childEvent.sessionId },
+    case "stream_session": {
+      const sessionMessage: BridgeSessionMessage = {
+        type: BridgeStreamType.SESSION,
+        requestId,
+        messageId,
+        streamSeq,
+        tabId,
+        timestamp,
+        data: { sessionId: childEvent.sessionId },
+      }
+      return sessionMessage
     }
-    return sessionMessage
-  }
-
-  if (childEvent.type === BridgeStreamType.MESSAGE) {
-    const messageType = isBridgeMessageType(childEvent.messageType)
-      ? childEvent.messageType
-      : BridgeSyntheticMessageType.WARNING
-    const messageEvent: BridgeMessageEvent = {
-      type: BridgeStreamType.MESSAGE,
-      requestId,
-      messageId,
-      streamSeq,
-      tabId,
-      timestamp,
-      data: {
-        messageCount: typeof childEvent.messageCount === "number" ? childEvent.messageCount : 0,
-        messageType,
-        content: stripSystemReminders(childEvent.content),
-      },
+    case "stream_message": {
+      const messageType = isBridgeMessageType(childEvent.messageType)
+        ? childEvent.messageType
+        : BridgeSyntheticMessageType.WARNING
+      const messageEvent: BridgeMessageEvent = {
+        type: BridgeStreamType.MESSAGE,
+        requestId,
+        messageId,
+        streamSeq,
+        tabId,
+        timestamp,
+        data: {
+          messageCount: childEvent.messageCount,
+          messageType,
+          content: stripSystemReminders(childEvent.content),
+        },
+      }
+      return messageEvent
     }
-    return messageEvent
-  }
-
-  if (childEvent.type === BridgeStreamType.COMPLETE) {
-    const sanitizedResult = stripSystemReminders(childEvent.result)
-    const completeMessage: BridgeCompleteMessage = {
-      type: BridgeStreamType.COMPLETE,
-      requestId,
-      messageId,
-      streamSeq,
-      tabId,
-      timestamp,
-      data: {
-        totalMessages: typeof childEvent.totalMessages === "number" ? childEvent.totalMessages : 0,
-        result: isSdkResultMessage(sanitizedResult) ? sanitizedResult : null,
-      },
+    case "stream_complete": {
+      const sanitizedResult = stripSystemReminders(childEvent.result)
+      const completeMessage: BridgeCompleteMessage = {
+        type: BridgeStreamType.COMPLETE,
+        requestId,
+        messageId,
+        streamSeq,
+        tabId,
+        timestamp,
+        data: {
+          totalMessages: childEvent.totalMessages,
+          result: isSdkResultMessage(sanitizedResult) ? sanitizedResult : null,
+        },
+      }
+      return completeMessage
     }
-    return completeMessage
-  }
-
-  if (childEvent.type === BridgeStreamType.PING) {
-    const pingMessage: BridgePingMessage = {
-      type: BridgeStreamType.PING,
-      requestId,
-      messageId,
-      streamSeq,
-      tabId,
-      timestamp,
-      data: {},
+    case "stream_ping": {
+      const pingMessage: BridgePingMessage = {
+        type: BridgeStreamType.PING,
+        requestId,
+        messageId,
+        streamSeq,
+        tabId,
+        timestamp,
+        data: {},
+      }
+      return pingMessage
     }
-    return pingMessage
-  }
-
-  if (childEvent.type === BridgeStreamType.DONE) {
-    const doneMessage: BridgeDoneMessage = {
-      type: BridgeStreamType.DONE,
-      requestId,
-      messageId,
-      streamSeq,
-      tabId,
-      timestamp,
-      data: {},
+    case "stream_done": {
+      const doneMessage: BridgeDoneMessage = {
+        type: BridgeStreamType.DONE,
+        requestId,
+        messageId,
+        streamSeq,
+        tabId,
+        timestamp,
+        data: {},
+      }
+      return doneMessage
     }
-    return doneMessage
-  }
-
-  if (childEvent.type === BridgeStreamType.INTERRUPT) {
-    const source = isInterruptSource(childEvent.content) ? childEvent.content : BridgeInterruptSource.CLIENT_CANCEL
-    const interruptMessage: BridgeInterruptMessage = {
-      type: BridgeStreamType.INTERRUPT,
-      requestId,
-      messageId,
-      streamSeq,
-      tabId,
-      timestamp,
-      data: {
-        message: "Response interrupted by user",
-        source,
-      },
+    case "stream_interrupt": {
+      const source = isInterruptSource(childEvent.source) ? childEvent.source : BridgeInterruptSource.CLIENT_CANCEL
+      const interruptMessage: BridgeInterruptMessage = {
+        type: BridgeStreamType.INTERRUPT,
+        requestId,
+        messageId,
+        streamSeq,
+        tabId,
+        timestamp,
+        data: {
+          message: "Response interrupted by user",
+          source,
+        },
+      }
+      return interruptMessage
     }
-    return interruptMessage
+    case "unknown": {
+      const fallbackError: BridgeErrorMessage = {
+        type: BridgeStreamType.ERROR,
+        requestId,
+        messageId,
+        streamSeq,
+        tabId,
+        timestamp,
+        data: {
+          error: ErrorCodes.STREAM_ERROR,
+          code: ErrorCodes.STREAM_ERROR,
+          message: getErrorMessage(ErrorCodes.STREAM_ERROR),
+          details: `Unexpected stream event type: ${childEvent.rawType}`,
+        },
+      }
+      return fallbackError
+    }
+    default:
+      return assertNever(childEvent, "Unhandled parsed child event kind in buildStreamMessage")
   }
-
-  const fallbackError: BridgeErrorMessage = {
-    type: BridgeStreamType.ERROR,
-    requestId,
-    messageId,
-    streamSeq,
-    tabId,
-    timestamp,
-    data: {
-      error: ErrorCodes.STREAM_ERROR,
-      code: ErrorCodes.STREAM_ERROR,
-      message: getErrorMessage(ErrorCodes.STREAM_ERROR),
-      details: `Unexpected stream event type: ${childEvent.type}`,
-    },
-  }
-  return fallbackError
 }
 
 /**
@@ -731,7 +840,7 @@ export function createNDJSONStream(config: StreamHandlerConfig): ReadableStream<
             if (!line.trim()) continue
 
             try {
-              const childEvent: ChildEvent = JSON.parse(line)
+              const childEvent = parseChildEvent(JSON.parse(line))
               const { isComplete } = await processChildEvent(
                 childEvent,
                 requestId,
@@ -770,7 +879,7 @@ export function createNDJSONStream(config: StreamHandlerConfig): ReadableStream<
         // Process final buffered content
         if (buffer.trim()) {
           try {
-            const childEvent: ChildEvent = JSON.parse(buffer)
+            const childEvent = parseChildEvent(JSON.parse(buffer))
             const { isComplete } = await processChildEvent(
               childEvent,
               requestId,
