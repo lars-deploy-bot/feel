@@ -7,6 +7,7 @@
 
 "use client"
 
+import { CLARIFICATION_MAX_QUESTIONS, CLARIFICATION_OPTIONS_PER_QUESTION } from "@webalive/shared"
 import { useCallback, useState } from "react"
 import {
   type ClarificationQuestion,
@@ -14,7 +15,6 @@ import {
   type QuestionAnswer,
 } from "@/components/ai/ClarificationQuestions"
 import type { ToolResultRendererProps } from "@/lib/tools/tool-registry"
-import { CLARIFICATION_MAX_QUESTIONS, CLARIFICATION_OPTIONS_PER_QUESTION } from "@webalive/shared"
 
 /**
  * Expected data format from the ask_clarification tool
