@@ -124,7 +124,7 @@ function mockMemberships(memberships: { org_id: string }[] | null) {
 
 // Helper to set up domains query mock
 // Supports both superadmin path (direct select) and regular user path (select + in)
-function mockDomains(domains: { hostname: string; org_id: string | null }[] | null) {
+function mockDomains(domains: { hostname: string; org_id: string | null; created_at?: string }[] | null) {
   const selectResult = {
     in: vi.fn().mockResolvedValue({ data: domains, error: null }),
     // Support direct await for superadmin path (intentionally Promise-like)
@@ -211,9 +211,9 @@ describe("GET /api/auth/all-workspaces", () => {
     it("should only return domains that exist on this server", async () => {
       mockMemberships([{ org_id: "org-1" }])
       mockDomains([
-        { hostname: "exists.example.com", org_id: "org-1" },
-        { hostname: "not-exists.example.com", org_id: "org-1" },
-        { hostname: "also-exists.example.com", org_id: "org-1" },
+        { hostname: "exists.example.com", org_id: "org-1", created_at: "2025-01-01T00:00:00Z" },
+        { hostname: "not-exists.example.com", org_id: "org-1", created_at: "2025-01-01T00:00:00Z" },
+        { hostname: "also-exists.example.com", org_id: "org-1", created_at: "2025-01-02T00:00:00Z" },
       ])
 
       // Only some domains exist on this server
@@ -226,8 +226,9 @@ describe("GET /api/auth/all-workspaces", () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(data.workspaces["org-1"]).toEqual(["exists.example.com", "also-exists.example.com"])
-      expect(data.workspaces["org-1"]).not.toContain("not-exists.example.com")
+      const hostnames = data.workspaces["org-1"].map((w: { hostname: string }) => w.hostname)
+      expect(hostnames).toEqual(["exists.example.com", "also-exists.example.com"])
+      expect(hostnames).not.toContain("not-exists.example.com")
     })
 
     it("should return empty array for org when no domains exist on this server", async () => {
@@ -251,9 +252,9 @@ describe("GET /api/auth/all-workspaces", () => {
     it("should handle multiple orgs with mixed domain availability", async () => {
       mockMemberships([{ org_id: "org-1" }, { org_id: "org-2" }])
       mockDomains([
-        { hostname: "local-1.com", org_id: "org-1" },
-        { hostname: "remote-1.com", org_id: "org-1" },
-        { hostname: "local-2.com", org_id: "org-2" },
+        { hostname: "local-1.com", org_id: "org-1", created_at: "2025-01-01T00:00:00Z" },
+        { hostname: "remote-1.com", org_id: "org-1", created_at: "2025-01-01T00:00:00Z" },
+        { hostname: "local-2.com", org_id: "org-2", created_at: "2025-01-01T00:00:00Z" },
       ])
 
       vi.mocked(domainExistsOnThisServer).mockImplementation((hostname: string) => {
@@ -265,8 +266,10 @@ describe("GET /api/auth/all-workspaces", () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(data.workspaces["org-1"]).toEqual(["local-1.com"])
-      expect(data.workspaces["org-2"]).toEqual(["local-2.com"])
+      const org1Hostnames = data.workspaces["org-1"].map((w: { hostname: string }) => w.hostname)
+      const org2Hostnames = data.workspaces["org-2"].map((w: { hostname: string }) => w.hostname)
+      expect(org1Hostnames).toEqual(["local-1.com"])
+      expect(org2Hostnames).toEqual(["local-2.com"])
     })
 
     it("should call domainExistsOnThisServer for each domain", async () => {
@@ -293,8 +296,8 @@ describe("GET /api/auth/all-workspaces", () => {
     it("should NOT include alive workspace for regular users", async () => {
       mockMemberships([{ org_id: "org-1" }])
       mockDomains([
-        { hostname: "normal-site.com", org_id: "org-1" },
-        { hostname: SUPERADMIN.WORKSPACE_NAME, org_id: "org-1" },
+        { hostname: "normal-site.com", org_id: "org-1", created_at: "2025-01-01T00:00:00Z" },
+        { hostname: SUPERADMIN.WORKSPACE_NAME, org_id: "org-1", created_at: "2025-01-01T00:00:00Z" },
       ])
 
       const req = createMockRequest()
@@ -302,16 +305,17 @@ describe("GET /api/auth/all-workspaces", () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(data.workspaces["org-1"]).toEqual(["normal-site.com"])
-      expect(data.workspaces["org-1"]).not.toContain(SUPERADMIN.WORKSPACE_NAME)
+      const hostnames = data.workspaces["org-1"].map((w: { hostname: string }) => w.hostname)
+      expect(hostnames).toEqual(["normal-site.com"])
+      expect(hostnames).not.toContain(SUPERADMIN.WORKSPACE_NAME)
     })
 
     it("should include alive workspace for superadmin users", async () => {
       vi.mocked(getSessionUser).mockResolvedValue(SUPERADMIN_USER)
       mockMemberships([{ org_id: "org-1" }])
       mockDomains([
-        { hostname: "normal-site.com", org_id: "org-1" },
-        { hostname: SUPERADMIN.WORKSPACE_NAME, org_id: "org-1" },
+        { hostname: "normal-site.com", org_id: "org-1", created_at: "2025-01-01T00:00:00Z" },
+        { hostname: SUPERADMIN.WORKSPACE_NAME, org_id: "org-1", created_at: "2025-01-01T00:00:00Z" },
       ])
 
       const req = createMockRequest()
@@ -319,8 +323,9 @@ describe("GET /api/auth/all-workspaces", () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(data.workspaces["org-1"]).toContain("normal-site.com")
-      expect(data.workspaces["org-1"]).toContain(SUPERADMIN.WORKSPACE_NAME)
+      const hostnames = data.workspaces["org-1"].map((w: { hostname: string }) => w.hostname)
+      expect(hostnames).toContain("normal-site.com")
+      expect(hostnames).toContain(SUPERADMIN.WORKSPACE_NAME)
     })
 
     it("should filter alive workspace before checking filesystem existence", async () => {
@@ -347,9 +352,8 @@ describe("GET /api/auth/all-workspaces", () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(data.workspaces).toEqual({
-        "test-org": [`test.${TEST_CONFIG.EMAIL_DOMAIN}`, `demo.${TEST_CONFIG.EMAIL_DOMAIN}`],
-      })
+      const hostnames = data.workspaces["test-org"].map((w: { hostname: string }) => w.hostname)
+      expect(hostnames).toEqual([`test.${TEST_CONFIG.EMAIL_DOMAIN}`, `demo.${TEST_CONFIG.EMAIL_DOMAIN}`])
     })
 
     it("should NOT use test mode for regular users even in local env", async () => {
@@ -364,7 +368,8 @@ describe("GET /api/auth/all-workspaces", () => {
       expect(response.status).toBe(200)
       // Should get real data, not test mock
       expect(data.workspaces["test-org"]).toBeUndefined()
-      expect(data.workspaces["real-org"]).toEqual(["real-site.com"])
+      const hostnames = data.workspaces["real-org"].map((w: { hostname: string }) => w.hostname)
+      expect(hostnames).toEqual(["real-site.com"])
     })
   })
 
@@ -381,7 +386,8 @@ describe("GET /api/auth/all-workspaces", () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(data.workspaces["org-1"]).toEqual(["valid.com"])
+      const hostnames = data.workspaces["org-1"].map((w: { hostname: string }) => w.hostname)
+      expect(hostnames).toEqual(["valid.com"])
     })
 
     it("should handle domains with null hostname", async () => {
@@ -396,7 +402,8 @@ describe("GET /api/auth/all-workspaces", () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(data.workspaces["org-1"]).toEqual(["valid.com"])
+      const hostnames = data.workspaces["org-1"].map((w: { hostname: string }) => w.hostname)
+      expect(hostnames).toEqual(["valid.com"])
     })
 
     it("should handle empty domains array", async () => {

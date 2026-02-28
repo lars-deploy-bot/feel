@@ -25,6 +25,14 @@ export type EventTriggerType = (typeof EVENT_TRIGGER_TYPES)[number]
 
 const TriggerTypeSchema = z.enum(ALL_TRIGGER_TYPES)
 
+/** Job-level status (is the job idle, currently running, etc.) */
+const AutomationJobStatusSchema = z.enum(["idle", "running", "paused", "disabled"])
+export type AutomationJobStatus = z.infer<typeof AutomationJobStatusSchema>
+
+/** Per-run status (did the run succeed, fail, etc.) */
+const AutomationRunStatusSchema = z.enum(["pending", "running", "success", "failure", "skipped"])
+export type AutomationRunStatus = z.infer<typeof AutomationRunStatusSchema>
+
 export function isScheduleTrigger(t: TriggerType): t is ScheduleTriggerType {
   return (SCHEDULE_TRIGGER_TYPES as readonly string[]).includes(t)
 }
@@ -387,7 +395,7 @@ export const apiSchemas = {
     req: z.undefined().brand<"AuthAllWorkspacesRequest">(),
     res: z.object({
       ok: z.literal(true),
-      workspaces: z.record(z.string(), z.array(z.string())),
+      workspaces: z.record(z.string(), z.array(z.object({ hostname: z.string(), createdAt: z.string() }))),
     }),
   },
 
@@ -515,6 +523,7 @@ export const apiSchemas = {
           .min(6, "Password must be at least 6 characters")
           .max(64, "Password must be at most 64 characters"),
         name: z.string().max(100).optional(),
+        accessCode: z.string().min(1, "Access code is required"),
       })
       .brand<"SignupRequest">(),
     res: z.object({
@@ -675,9 +684,9 @@ export const apiSchemas = {
           skills: z.array(z.string()).nullable(),
           email_address: z.string().nullable().optional(),
           is_active: z.boolean(),
-          status: z.enum(["idle", "running", "paused", "disabled"]).optional(),
+          status: AutomationJobStatusSchema.optional(),
           last_run_at: z.string().nullable(),
-          last_run_status: z.string().nullable(),
+          last_run_status: AutomationRunStatusSchema.nullable(),
           next_run_at: z.string().nullable(),
           created_at: z.string(),
           hostname: z.string().optional(),
@@ -733,7 +742,7 @@ export const apiSchemas = {
         action_model: ClaudeModelSchema.nullable().optional(),
         skills: z.array(z.string()).nullable(),
         is_active: z.boolean(),
-        status: z.enum(["idle", "running", "paused", "disabled"]).optional(),
+        status: AutomationJobStatusSchema.optional(),
         next_run_at: z.string().nullable(),
         created_at: z.string(),
       }),
@@ -889,7 +898,7 @@ export const apiSchemas = {
           started_at: z.string(),
           completed_at: z.string().nullable(),
           duration_ms: z.number().nullable(),
-          status: z.enum(["pending", "running", "success", "failure", "skipped"]),
+          status: AutomationRunStatusSchema,
           error: z.string().nullable(),
           triggered_by: z.string().nullable(),
           changes_made: z.array(z.string()).nullable(),

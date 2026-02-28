@@ -107,6 +107,7 @@ export const ErrorCodes = {
   SITE_NOT_FOUND: "SITE_NOT_FOUND",
   DEPLOYMENT_FAILED: "DEPLOYMENT_FAILED",
   EMAIL_ALREADY_REGISTERED: "EMAIL_ALREADY_REGISTERED",
+  INVALID_ACCESS_CODE: "INVALID_ACCESS_CODE",
   ORG_NOT_FOUND: "ORG_NOT_FOUND",
   SITE_LIMIT_EXCEEDED: "SITE_LIMIT_EXCEEDED",
   RENAME_FAILED: "RENAME_FAILED",
@@ -475,6 +476,9 @@ export function getErrorMessage(code: ErrorCode, details?: Record<string, any>):
       return details?.email
         ? `The email '${details.email}' is already registered in the system. Please use a different email or login with this existing account.`
         : "This email is already registered. Please use a different email or login with your existing account."
+
+    case ErrorCodes.INVALID_ACCESS_CODE:
+      return "Invalid access code. Contact agency@alive.best for access."
 
     case ErrorCodes.ORG_NOT_FOUND:
       return details?.orgId

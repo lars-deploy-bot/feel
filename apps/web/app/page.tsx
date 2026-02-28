@@ -63,17 +63,6 @@ function LoginPageContent() {
     }
   }
 
-  function handleCreateAccount() {
-    trackSignupStarted()
-    openAuthModal({
-      title: "Create your account",
-      description: "Enter your email to get started",
-      onSuccess: () => {
-        router.push("/chat")
-      },
-    })
-  }
-
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-[#05060f] flex items-center justify-center px-4 relative">
       <div className="absolute top-4 right-4 z-10">
@@ -175,7 +164,14 @@ function LoginPageContent() {
             Don&apos;t have an account?{" "}
             <button
               type="button"
-              onClick={handleCreateAccount}
+              onClick={() => {
+                trackSignupStarted()
+                openAuthModal({
+                  title: "Create your account",
+                  description: "Enter your email to get started",
+                  onSuccess: () => router.push("/chat"),
+                })
+              }}
               className="text-emerald-600 dark:text-emerald-400 font-medium hover:underline"
               data-testid="create-account-button"
             >

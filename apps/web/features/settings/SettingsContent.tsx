@@ -45,17 +45,16 @@ const SessionsSettings = lazy(() =>
 
 export function SettingsContent() {
   const { activeTab } = useSettingsTabContext()
-  const isWideTab = activeTab === "automations"
+  const isFixedTab = activeTab === "automations"
+  const isWideTab = activeTab === "websites"
 
   return (
     <div
       className={
-        isWideTab
-          ? "w-full h-full overflow-hidden px-4 md:px-8 py-2 md:py-6"
-          : "overflow-y-auto overscroll-contain px-4 md:px-8 py-2 md:py-6"
+        isFixedTab ? "w-full h-full overflow-hidden px-4 md:px-8 pt-4 md:pt-5 pb-2" : "px-4 md:px-8 pt-4 md:pt-5 pb-8"
       }
     >
-      <div className={isWideTab ? "w-full h-full" : "max-w-3xl"}>
+      <div className={isFixedTab ? "w-full h-full" : isWideTab ? "w-full" : "max-w-3xl"}>
         <Suspense
           fallback={<div className="py-12 text-center text-black/30 dark:text-white/30 text-sm">Loading...</div>}
         >

@@ -1,8 +1,34 @@
 {
   "fonts/satoshi": {
-    "description": "Satoshi - modern geometric sans-serif",
+    "description": "Satoshi - modern geometric sans-serif (headings, UI)",
     "files": ["Satoshi-Variable.woff2", "Satoshi-Bold.woff2"],
     "suggestedDest": "public/fonts",
-    "primaryFile": "Satoshi-Variable.woff2"
+    "primaryFile": "Satoshi-Variable.woff2",
+    "fontFamily": "Satoshi",
+    "type": "variable",
+    "weightRange": "300 900"
+  },
+  "fonts/abc-arizona-mix": {
+    "description": "ABC Arizona Mix - elegant serif (body text, editorial)",
+    "files": [
+      "normal.woff2",
+      "semibold.woff2",
+      "bold.woff2",
+      "italic.woff2",
+      "italic-semibold.woff2",
+      "italic-bold.woff2"
+    ],
+    "suggestedDest": "public/fonts",
+    "primaryFile": "normal.woff2",
+    "fontFamily": "ABC Arizona Mix",
+    "type": "static",
+    "variants": [
+      { "file": "normal.woff2", "weight": 400, "style": "normal" },
+      { "file": "semibold.woff2", "weight": 600, "style": "normal" },
+      { "file": "bold.woff2", "weight": 700, "style": "normal" },
+      { "file": "italic.woff2", "weight": 400, "style": "italic" },
+      { "file": "italic-semibold.woff2", "weight": 600, "style": "italic" },
+      { "file": "italic-bold.woff2", "weight": 700, "style": "italic" }
+    ]
   }
 }

@@ -86,7 +86,9 @@ export function useOrganizationsQuery() {
       if (!(typeof window !== "undefined" && window.PLAYWRIGHT_TEST === true)) {
         getty("auth/all-workspaces")
           .then(response => {
-            const allWorkspaces = Object.values(response.workspaces).flat()
+            const allWorkspaces = Object.values(response.workspaces)
+              .flat()
+              .map(w => w.hostname)
             validateWorkspaceAvailability(allWorkspaces)
           })
           .catch(err => {
@@ -119,6 +121,11 @@ export function useWorkspacesQuery(orgId: string) {
   })
 }
 
+export interface WorkspaceInfo {
+  hostname: string
+  createdAt: string
+}
+
 /**
  * Fetch ALL workspaces for ALL organizations in ONE request
  * Much faster than N individual requests
@@ -129,10 +136,10 @@ export function useWorkspacesQuery(orgId: string) {
  *
  * @example
  * const { data } = useAllWorkspacesQuery(organizations)
- * // data?.workspaces is Record<string, string[]>
+ * // data is Record<string, WorkspaceInfo[]>
  */
 export function useAllWorkspacesQuery(organizations: Organization[]) {
-  return useQuery<Record<string, string[]>, ApiError>({
+  return useQuery<Record<string, WorkspaceInfo[]>, ApiError>({
     queryKey: queryKeys.workspaces.allForUser(),
     queryFn: async () => {
       const response = await getty("auth/all-workspaces")
@@ -167,27 +174,26 @@ export function useOrgMembersQuery(orgId: string) {
 // ============================================
 
 /**
- * Fetch automations for current user
+ * Fetch automations, filtered by org or site.
  *
- * @example
- * const { data, isLoading, refetch } = useAutomationsQuery()
- * // data?.automations is AutomationJob[]
+ * @param filter
+ *   - `undefined` — not resolved yet, query disabled (waiting for data to load)
+ *   - `{ orgId }` — filter by organization (all agents in org)
+ *   - `{ siteId }` — filter by specific site/project
+ *   - `{}` — no filter (show all automations)
  */
-/**
- * Fetch automations, optionally filtered by site.
- *
- * @param siteId Three-state:
- *   - `undefined` — not resolved yet, query disabled (waiting for sites to load)
- *   - `null` — resolved, no filter (show all automations)
- *   - `string` — resolved, filter by this site_id
- */
-export function useAutomationsQuery(siteId: string | null | undefined) {
-  const resolved = siteId !== undefined
-  const path = siteId ? `/api/automations?site_id=${siteId}` : undefined
+export function useAutomationsQuery(filter: { orgId?: string; siteId?: string } | undefined) {
+  const resolved = filter !== undefined
+  const path = (() => {
+    if (!filter) return undefined
+    if (filter.siteId) return `/api/automations?site_id=${filter.siteId}`
+    if (filter.orgId) return `/api/automations?org_id=${filter.orgId}`
+    return undefined
+  })()
   return useQuery<Res<"automations">, ApiError>({
-    queryKey: queryKeys.automations.list(siteId),
+    queryKey: queryKeys.automations.list(filter),
     queryFn: () => getty("automations", undefined, path),
-    staleTime: 2 * 60 * 1000, // 2 min - automations can change
+    staleTime: 2 * 60 * 1000, // 2 min
     enabled: resolved,
   })
 }
