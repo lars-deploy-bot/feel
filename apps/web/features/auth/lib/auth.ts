@@ -469,7 +469,7 @@ export async function requireAuthSession(): Promise<{
   if (!payload?.sid) {
     throw new AuthenticationError("Missing session id")
   }
-  return { user, payload: payload as SessionPayloadV3 & { sid: string } }
+  return { user, payload }
 }
 
 /**

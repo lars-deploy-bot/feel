@@ -14,7 +14,7 @@ export const sessionsHistorySchema = z.object({
   /** Target session key */
   sessionKey: z.string(),
   /** Maximum messages to return */
-  limit: z.number().min(1).max(SESSIONS_HISTORY_MAX_LIMIT).optional(),
+  limit: z.number().int().min(1).max(SESSIONS_HISTORY_MAX_LIMIT).optional(),
   /** Include tool use/result messages */
   includeTools: z.boolean().optional(),
   /** Only messages after this timestamp (ISO) */

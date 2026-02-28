@@ -16,7 +16,7 @@ export const sessionsSendSchema = z.object({
   /** Message to send */
   message: z.string().min(1),
   /** Timeout in seconds (0 = fire-and-forget) */
-  timeoutSeconds: z.number().min(0).max(SESSIONS_SEND_MAX_TIMEOUT_SECONDS).optional(),
+  timeoutSeconds: z.number().int().min(0).max(SESSIONS_SEND_MAX_TIMEOUT_SECONDS).optional(),
   /** Whether to wait for and return the response */
   waitForReply: z.boolean().optional(),
 })
