@@ -9,6 +9,7 @@ vi.mock("@sentry/nextjs", () => ({
   captureMessage: vi.fn(),
   withScope: vi.fn((cb: (scope: unknown) => void) => cb({ setExtra: vi.fn() })),
 }))
+
 import { useDexieMessageStore } from "../dexieMessageStore"
 import { type DbMessage, getMessageDb, resetMessageDb } from "../messageDb"
 import {
