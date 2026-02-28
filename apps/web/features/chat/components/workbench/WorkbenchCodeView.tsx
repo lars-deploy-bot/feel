@@ -4,6 +4,7 @@ import { PanelLeftClose, PanelLeftOpen } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { CodeViewer } from "./CodeViewer"
 import { FileTree } from "./FileTree"
+import { useFileWatcher } from "./hooks/useFileWatcher"
 import { PanelBar } from "./ui"
 
 interface WorkbenchCodeViewProps {
@@ -38,6 +39,9 @@ export function WorkbenchCodeView({
 }: WorkbenchCodeViewProps) {
   const [isResizing, setIsResizing] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  // Live file watching — invalidates caches and triggers re-renders on file changes
+  useFileWatcher({ workspace, worktree })
 
   // Handle resize drag
   const handleMouseDown = useCallback((e: React.MouseEvent) => {

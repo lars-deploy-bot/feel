@@ -964,6 +964,9 @@ export async function POST(req: NextRequest) {
         ])
         const consumedByConversation = pollConsumeResults[0].status === "fulfilled" && pollConsumeResults[0].value
         const consumedByRequest = pollConsumeResults[1].status === "fulfilled" && pollConsumeResults[1].value
+        if (pollConsumeResults.some(result => result.status === "rejected")) {
+          logger.warn("Cancel-intent polling degraded; continuing with partial results")
+        }
         return consumedByConversation || consumedByRequest
       },
       oauthWarnings, // OAuth warnings to inject into stream

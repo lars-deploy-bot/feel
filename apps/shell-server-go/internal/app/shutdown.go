@@ -62,6 +62,9 @@ func (a *ServerApp) Run() error {
 	ctx, cancel := context.WithTimeout(context.Background(), ShutdownTimeout)
 	defer cancel()
 
+	a.Logger.Info("Closing file watchers...")
+	a.WatchManager.Shutdown()
+
 	a.Logger.Info("Closing WebSocket connections...")
 	a.WSHandler.Shutdown(ctx)
 
