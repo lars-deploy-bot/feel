@@ -83,9 +83,10 @@ const nextConfig = {
 
     return rewrites
   },
-  // Skip type checking during build (run separately with tsc)
+  // Skip Next's internal TS pass to remove duplicate work in `next build`.
+  // We run `tsgo --noEmit` via turbo as the single type-safety gate in CI/deploy.
   typescript: {
-    ignoreBuildErrors: process.env.SKIP_TYPE_CHECK === "true",
+    ignoreBuildErrors: true,
   },
   env: {
     NEXT_PUBLIC_SENTRY_RELEASE: sentryRelease,
