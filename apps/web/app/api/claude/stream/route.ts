@@ -50,7 +50,7 @@ import { fetchOAuthTokens } from "@/lib/oauth/fetch-oauth-tokens"
 import { fetchUserEnvKeys } from "@/lib/oauth/fetch-user-env-keys"
 import { getRequestId } from "@/lib/request-id"
 import { createRequestLogger } from "@/lib/request-logger"
-import { consumeCancelIntent } from "@/lib/stream/cancel-intent-registry"
+import { consumeCancelIntent, consumeCancelIntentByRequestId } from "@/lib/stream/cancel-intent-registry"
 import { registerCancellation, startTTLCleanup, unregisterCancellation } from "@/lib/stream/cancellation-registry"
 import { type CancelState, createNDJSONStream } from "@/lib/stream/ndjson-stream-handler"
 import {
@@ -420,7 +420,16 @@ export async function POST(req: NextRequest) {
     // Super-early stop race fix:
     // If cancel endpoint was hit before registration, consume queued intent now
     // and short-circuit this request before any expensive setup starts.
-    if (consumeCancelIntent(sessionKey, user.id)) {
+    const startupConsumeResults = await Promise.allSettled([
+      consumeCancelIntent(sessionKey, user.id),
+      consumeCancelIntentByRequestId(requestId, user.id),
+    ])
+    const consumedConversationIntent = startupConsumeResults[0].status === "fulfilled" && startupConsumeResults[0].value
+    const consumedRequestIntent = startupConsumeResults[1].status === "fulfilled" && startupConsumeResults[1].value
+    if (startupConsumeResults.some(r => r.status === "rejected")) {
+      logger.warn("Cancel-intent check degraded during startup; continuing with partial results")
+    }
+    if (consumedConversationIntent || consumedRequestIntent) {
       logger.log("Queued cancel intent detected immediately after registration, short-circuiting stream startup")
       unregisterCancellation(requestId)
       unlockConversation(sessionKey)
@@ -948,6 +957,15 @@ export async function POST(req: NextRequest) {
       tokenSource,
       model: effectiveModel, // For model-specific credit calculation
       cancelState, // Pass shared cancellation state
+      consumeCancelIntent: async () => {
+        const pollConsumeResults = await Promise.allSettled([
+          consumeCancelIntent(sessionKey!, user.id),
+          consumeCancelIntentByRequestId(requestId, user.id),
+        ])
+        const consumedByConversation = pollConsumeResults[0].status === "fulfilled" && pollConsumeResults[0].value
+        const consumedByRequest = pollConsumeResults[1].status === "fulfilled" && pollConsumeResults[1].value
+        return consumedByConversation || consumedByRequest
+      },
       oauthWarnings, // OAuth warnings to inject into stream
       onMessage: message => {
         // Buffer each message for reconnection support (non-blocking)

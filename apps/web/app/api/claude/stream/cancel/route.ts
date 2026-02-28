@@ -6,10 +6,11 @@ import { tabKey } from "@/features/auth/lib/sessionStore"
 import { normalizeWorktreeSlug, WORKTREE_SLUG_REGEX } from "@/features/workspace/lib/worktree-utils"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { ErrorCodes } from "@/lib/error-codes"
-import { registerCancelIntent } from "@/lib/stream/cancel-intent-registry"
+import { registerCancelIntent, registerCancelIntentByRequestId } from "@/lib/stream/cancel-intent-registry"
 import { PAGE_UNLOAD_BEACON_MARKER } from "@/lib/stream/cancel-markers"
 import { CANCEL_ENDPOINT_STATUS } from "@/lib/stream/cancel-status"
 import { cancelStreamByConversationKeyWithStatus, cancelStreamWithStatus } from "@/lib/stream/cancellation-registry"
+import { getStreamBuffer } from "@/lib/stream/stream-buffer"
 
 /**
  * Cancel Stream Endpoint
@@ -227,7 +228,23 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ ok: true, status: CANCEL_ENDPOINT_STATUS.CANCEL_TIMED_OUT, requestId })
         }
 
-        // Not found - likely already completed
+        // Request not found in this process registry.
+        // If buffer still says "streaming", this is likely a cross-process route split:
+        // queue shared cancel intents so the owning process can consume and abort.
+        const streamBuffer = await getStreamBuffer(requestId)
+        if (streamBuffer?.userId === user.id && streamBuffer.state === "streaming") {
+          await Promise.all([
+            registerCancelIntentByRequestId(requestId, user.id),
+            registerCancelIntent(streamBuffer.tabKey, user.id),
+          ])
+
+          console.log(`[Cancel Stream] Request active in shared buffer, queued cancel intent: ${requestId}`)
+          debugEntry.result = "cancel_queued"
+          logCancelDebug(debugEntry)
+          return NextResponse.json({ ok: true, status: CANCEL_ENDPOINT_STATUS.CANCEL_QUEUED, requestId })
+        }
+
+        // Truly not active anymore
         console.log(`[Cancel Stream] Request not found (already complete): ${requestId}`)
         debugEntry.result = "already_complete"
         logCancelDebug(debugEntry)
@@ -297,7 +314,7 @@ export async function POST(req: NextRequest) {
         // Super-early stop race: stream may not be registered yet.
         // Queue short-lived stop intent so the stream route can consume it
         // immediately after lock acquisition and abort before work proceeds.
-        registerCancelIntent(tabKeyValue, user.id)
+        await registerCancelIntent(tabKeyValue, user.id)
         console.log(`[Cancel Stream] Tab not found yet, queued stop intent: ${tabKeyValue}`)
         debugEntry.result = "cancel_queued"
         logCancelDebug(debugEntry)

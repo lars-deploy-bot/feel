@@ -265,6 +265,12 @@ interface StreamHandlerConfig {
    */
   cancelState: CancelState
   /**
+   * Optional process-safe cancel intent consumer.
+   * When provided, stream polls this callback to detect stop requests that were
+   * queued in shared storage by another server process.
+   */
+  consumeCancelIntent?: () => Promise<boolean>
+  /**
    * OAuth warnings to inject into stream at start
    * Shows user-facing warnings for expired/revoked tokens
    */
@@ -767,12 +773,14 @@ export function createNDJSONStream(config: StreamHandlerConfig): ReadableStream<
     onSessionIdReceived,
     onStreamComplete,
     cancelState,
+    consumeCancelIntent,
     oauthWarnings,
     onMessage,
   } = config
 
   const decoder = new TextDecoder()
   let cleanupCalled = false // Track if cleanup was already called (shared between start and cancel)
+  const CANCEL_INTENT_POLL_INTERVAL_MS = 250
 
   return new ReadableStream({
     async start(controller) {
@@ -809,7 +817,47 @@ export function createNDJSONStream(config: StreamHandlerConfig): ReadableStream<
         }
       }, STREAMING.HEARTBEAT_INTERVAL_MS)
 
+      let intentCheckInFlight = false
+      let sharedIntentPollErrorCaptured = false
+      const checkSharedCancelIntent = async () => {
+        if (!consumeCancelIntent || cancelState.requested || intentCheckInFlight) {
+          return
+        }
+
+        intentCheckInFlight = true
+        try {
+          const consumed = await consumeCancelIntent()
+          if (!consumed || cancelState.requested) {
+            return
+          }
+
+          console.log(`[NDJSON Stream ${requestId}] Shared cancel intent consumed; cancelling stream`)
+          cancelState.requested = true
+          cancelState.reader?.cancel().catch(error => {
+            console.error(`[NDJSON Stream ${requestId}] Failed to cancel reader from shared intent:`, error)
+            Sentry.captureException(error)
+          })
+        } catch (error) {
+          console.warn(`[NDJSON Stream ${requestId}] Shared cancel intent check failed:`, error)
+          if (!sharedIntentPollErrorCaptured) {
+            Sentry.captureException(error)
+            sharedIntentPollErrorCaptured = true
+          }
+        } finally {
+          intentCheckInFlight = false
+        }
+      }
+
+      const cancelIntentPollInterval = consumeCancelIntent
+        ? setInterval(() => {
+            void checkSharedCancelIntent()
+          }, CANCEL_INTENT_POLL_INTERVAL_MS)
+        : null
+
       try {
+        // Catch intents that may have been queued immediately before stream start.
+        await checkSharedCancelIntent()
+
         while (true) {
           // Check if explicitly cancelled via cancel endpoint or client abort
           // Just break - the finally block will release the lock after abort completes
@@ -927,6 +975,9 @@ export function createNDJSONStream(config: StreamHandlerConfig): ReadableStream<
         controller.enqueue(encodeNDJSON(errorMessage))
       } finally {
         clearInterval(heartbeatInterval)
+        if (cancelIntentPollInterval) {
+          clearInterval(cancelIntentPollInterval)
+        }
         // Guaranteed cleanup: runs on success, error, or cancellation
         // Close the stream so client knows we're done
         // NOTE: When stream is cancelled, controller may already be closed. Wrap in try-catch

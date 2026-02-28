@@ -16,6 +16,7 @@ const errorStreamBufferMock = vi.fn()
 const registerCancellationMock = vi.fn()
 const unregisterCancellationMock = vi.fn()
 const consumeCancelIntentMock = vi.fn()
+const consumeCancelIntentByRequestIdMock = vi.fn()
 
 const fetchOAuthTokensMock = vi.fn()
 const fetchUserEnvKeysMock = vi.fn()
@@ -170,6 +171,7 @@ vi.mock("@/lib/stream/cancellation-registry", () => ({
 
 vi.mock("@/lib/stream/cancel-intent-registry", () => ({
   consumeCancelIntent: (...args: unknown[]) => consumeCancelIntentMock(...args),
+  consumeCancelIntentByRequestId: (...args: unknown[]) => consumeCancelIntentByRequestIdMock(...args),
 }))
 
 vi.mock("@/lib/stream/ndjson-stream-handler", () => ({
@@ -336,6 +338,7 @@ describe("POST /api/claude/stream cleanup", () => {
     createStreamBufferMock.mockResolvedValue(undefined)
     errorStreamBufferMock.mockResolvedValue(undefined)
     consumeCancelIntentMock.mockReturnValue(false)
+    consumeCancelIntentByRequestIdMock.mockReturnValue(false)
 
     fetchOAuthTokensMock.mockResolvedValue({ tokens: {}, warnings: [] })
     fetchUserEnvKeysMock.mockResolvedValue({ envKeys: {} })
