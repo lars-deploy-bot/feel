@@ -205,6 +205,39 @@ var DefaultExcludedDirs = map[string]bool{
 	"__pycache__":  true,
 }
 
+// ShellWorkspace holds the resolved workspace identity for shell/watch connections.
+type ShellWorkspace struct {
+	Workspace  string // Canonical workspace identifier (e.g. "site:example.com" or "root")
+	Cwd        string // Absolute path to the workspace directory
+	RunAsOwner bool   // Whether to run as the workspace owner (site workspaces)
+}
+
+// ResolveShellWorkspace converts a workspace query string into a validated ShellWorkspace.
+// Used by both terminal and file-watcher WebSocket handlers.
+func ResolveShellWorkspace(resolver *Resolver, defaultCwd, sitesPath, workspaceQuery string) (ShellWorkspace, error) {
+	workspace := strings.TrimSpace(workspaceQuery)
+	if workspace == "" || workspace == "root" {
+		return ShellWorkspace{Workspace: "root", Cwd: defaultCwd, RunAsOwner: false}, nil
+	}
+
+	// Backward compatible input: "site:example.com" or "example.com"
+	siteWorkspace := workspace
+	if !strings.HasPrefix(siteWorkspace, "site:") {
+		siteWorkspace = "site:" + siteWorkspace
+	}
+
+	cwd, err := resolver.ResolveWorkspaceBase(siteWorkspace)
+	if err != nil {
+		return ShellWorkspace{}, err
+	}
+
+	if err := ValidateSiteWorkspaceBoundary(cwd, sitesPath); err != nil {
+		return ShellWorkspace{}, err
+	}
+
+	return ShellWorkspace{Workspace: siteWorkspace, Cwd: cwd, RunAsOwner: true}, nil
+}
+
 func HandlePathSecurityError(w http.ResponseWriter, err error) {
 	var pathErr *PathSecurityError
 	if errors.As(err, &pathErr) {

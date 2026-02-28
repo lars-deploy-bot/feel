@@ -4,6 +4,7 @@ import { ChevronRight, File, Folder } from "lucide-react"
 import { memo, useCallback, useEffect, useState } from "react"
 import { type FileInfo, listFiles } from "./lib/file-api"
 import { getFileColor } from "./lib/file-colors"
+import { useFileChangeVersion } from "./lib/file-events"
 
 interface FileTreeProps {
   workspace: string
@@ -71,6 +72,7 @@ function TreeLevel({
   const [files, setFiles] = useState<FileInfo[]>(() => fileCache.get(cacheKey) || [])
   const [loading, setLoading] = useState(!fileCache.has(cacheKey))
   const [error, setError] = useState<string | null>(null)
+  const changeVersion = useFileChangeVersion()
 
   useEffect(() => {
     // Already cached - no need to fetch
@@ -106,7 +108,7 @@ function TreeLevel({
     return () => {
       mounted = false
     }
-  }, [workspace, worktree, path, cacheKey])
+  }, [workspace, worktree, path, cacheKey, changeVersion])
 
   if (loading && depth === 0) {
     return <div className="px-3 py-2 text-neutral-400 dark:text-neutral-600">Loading...</div>

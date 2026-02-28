@@ -840,8 +840,8 @@ export function createNDJSONStream(config: StreamHandlerConfig): ReadableStream<
         } catch (error) {
           console.warn(`[NDJSON Stream ${requestId}] Shared cancel intent check failed:`, error)
           if (!sharedIntentPollErrorCaptured) {
-            Sentry.captureException(error)
             sharedIntentPollErrorCaptured = true
+            Sentry.captureException(error)
           }
         } finally {
           intentCheckInFlight = false

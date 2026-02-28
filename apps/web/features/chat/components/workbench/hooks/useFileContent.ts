@@ -5,6 +5,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { type FileContent, readFile } from "../lib/file-api"
+import { useFileChangeVersion } from "../lib/file-events"
 
 interface UseFileContentResult {
   file: FileContent | null
@@ -46,6 +47,7 @@ function setInCache(key: string, content: FileContent): void {
 export function useFileContent(workspace: string, path: string, worktree?: string | null): UseFileContentResult {
   const cacheKey = getCacheKey(workspace, worktree, path)
   const cached = getFromCache(cacheKey)
+  const changeVersion = useFileChangeVersion()
 
   const [file, setFile] = useState<FileContent | null>(cached)
   const [loading, setLoading] = useState(!cached)
@@ -81,9 +83,10 @@ export function useFileContent(workspace: string, path: string, worktree?: strin
     [workspace, path, worktree, cacheKey],
   )
 
+  // Re-run when file changes are notified (cache was invalidated by useFileWatcher)
   useEffect(() => {
     load()
-  }, [load])
+  }, [load, changeVersion])
 
   // Force reload bypasses cache
   const reload = useCallback(() => load(true), [load])

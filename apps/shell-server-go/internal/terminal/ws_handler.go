@@ -912,29 +912,11 @@ func extractBaseDomain(host string) string {
 }
 
 func (h *WSHandler) resolveShellWorkspace(workspaceQuery string) (workspace string, cwd string, runAsOwner bool, err error) {
-	workspace = strings.TrimSpace(workspaceQuery)
-	if workspace == "" || workspace == "root" {
-		return "root", h.config.ResolvedDefaultCwd, false, nil
-	}
-
-	// Backward compatible input:
-	// - site:example.com
-	// - example.com
-	siteWorkspace := workspace
-	if !strings.HasPrefix(siteWorkspace, "site:") {
-		siteWorkspace = "site:" + siteWorkspace
-	}
-
-	cwd, err = h.resolver.ResolveWorkspaceBase(siteWorkspace)
+	sw, err := workspacepkg.ResolveShellWorkspace(h.resolver, h.config.ResolvedDefaultCwd, h.config.ResolvedSitesPath, workspaceQuery)
 	if err != nil {
 		return "", "", false, err
 	}
-
-	if err := workspacepkg.ValidateSiteWorkspaceBoundary(cwd, h.config.ResolvedSitesPath); err != nil {
-		return "", "", false, err
-	}
-
-	return siteWorkspace, cwd, true, nil
+	return sw.Workspace, sw.Cwd, sw.RunAsOwner, nil
 }
 
 func (h *WSHandler) resolveWorkspaceCredential(cwd string, runAsOwner bool) (*syscall.Credential, error) {
