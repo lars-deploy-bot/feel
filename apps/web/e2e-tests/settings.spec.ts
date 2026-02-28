@@ -4,29 +4,24 @@ import { gotoChatFast } from "./helpers/assertions"
 import { buildJsonMockResponse } from "./lib/strict-api-guard"
 
 /**
- * Settings overlay E2E tests
+ * Settings E2E tests
  *
- * Verifies the settings screen opens and renders key sections.
- * Uses authenticatedPage fixture - no login flow, state pre-injected.
+ * Settings is inline in the sidebar: clicking the gear icon in the sidebar
+ * header toggles settings mode, which shows SettingsNav tabs in the sidebar
+ * and SettingsContent (General tab) in the main content area.
+ *
+ * Flow: open sidebar → click settings gear → verify settings content.
  *
  * IMPORTANT: The FlowgladProvider in the layout makes API calls to /api/flowglad
- * which can crash for E2E test users (no Flowglad customer record). Additionally,
- * if @tanstack/react-query is duplicated (Flowglad pins its own version), the
- * QueryClientProvider context breaks with "No QueryClient set". We mock all
+ * which can crash for E2E test users (no Flowglad customer record). We mock all
  * billing-related APIs to isolate the test from these issues.
  */
 
 test("can open settings and see General tab", async ({ authenticatedPage, workerTenant }) => {
-  // Mock Flowglad billing API to prevent crashes for test users.
-  // The FlowgladProvider calls /api/flowglad/GetCustomerBilling on mount.
-  // For E2E test users, the server throws "Test accounts are not eligible for billing".
-  // This mock returns an empty billing state so the provider initializes cleanly.
+  // Mock billing/user/token APIs to prevent crashes for test users
   await authenticatedPage.route("**/api/flowglad/**", route =>
     route.fulfill(buildJsonMockResponse({ data: null, error: null })),
   )
-
-  // Mock /api/user to return a valid user for the test account.
-  // This ensures useAuth() returns user data without hitting the real DB.
   await authenticatedPage.route("**/api/user**", route =>
     route.fulfill(
       buildJsonMockResponse({
@@ -42,25 +37,28 @@ test("can open settings and see General tab", async ({ authenticatedPage, worker
       }),
     ),
   )
-
-  // Mock /api/tokens to prevent credit-fetching errors
   await authenticatedPage.route("**/api/tokens**", route =>
     route.fulfill(buildJsonMockResponse({ ok: true, credits: 100, tokens: 100000 })),
   )
 
   await gotoChatFast(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
 
-  // Click the settings button (in sidebar header — may need force if sidebar content overlaps)
-  const settingsButton = authenticatedPage.locator('[data-testid="settings-button"]')
-  await expect(settingsButton).toBeAttached({ timeout: TEST_TIMEOUTS.medium })
-  await settingsButton.click({ force: true })
+  // Sidebar defaults to closed — open it first via the Nav toggle button
+  const openSidebarButton = authenticatedPage.locator('button[aria-label="Open sidebar"]')
+  await expect(openSidebarButton).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
+  await openSidebarButton.click()
 
-  // Settings overlay should appear
+  // Click the settings gear in the sidebar header
+  const settingsButton = authenticatedPage.locator('[data-testid="settings-button"]')
+  await expect(settingsButton).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
+  await settingsButton.click()
+
+  // Settings content should appear in the main area
   await expect(authenticatedPage.locator('[data-testid="settings-overlay"]')).toBeVisible({
     timeout: TEST_TIMEOUTS.max,
   })
 
-  // General tab content should be visible: model select, logout button
+  // General tab: model select in main content, logout button in sidebar settings nav
   await expect(authenticatedPage.locator("#claude-model")).toBeAttached({ timeout: TEST_TIMEOUTS.medium })
   await expect(authenticatedPage.locator('[data-testid="logout-button"]')).toBeAttached({
     timeout: TEST_TIMEOUTS.fast,
