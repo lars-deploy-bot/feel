@@ -8,7 +8,6 @@ This file contains web app-specific notes.
 
 - [Main CLAUDE.md](../../CLAUDE.md) - Primary AI guidelines
 - [Architecture](../../docs/architecture/README.md) - System design
-- [Security](../../docs/security/README.md) - Security patterns
 - [Testing](../../docs/testing/README.md) - Testing guide
 
 ## Web App Patterns
@@ -17,12 +16,15 @@ This file contains web app-specific notes.
 
 ```
 app/
-├── api/                    # API routes (Next.js route handlers)
-│   ├── claude/            # Claude SDK integration
+├── api/                    # API routes (50+ route directories)
+│   ├── claude/            # Claude SDK integration (stream/, cancel/, reconnect/)
 │   ├── files/             # File operations
-│   └── login/             # Authentication
+│   └── ...                # auth, automations, deploy, feedback, etc.
 ├── chat/                  # Chat UI
-└── workspace/             # Workspace selection
+└── globals.css            # Global styles
+features/                   # Feature modules (auth, chat, workspace, settings, ...)
+components/                 # Shared React components (ui/, workspace/, modals/, ...)
+lib/                        # Utilities (env, config, stream/, tools/, stores/, ...)
 ```
 
 ### State Management

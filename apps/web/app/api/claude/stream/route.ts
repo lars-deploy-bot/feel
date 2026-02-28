@@ -19,6 +19,12 @@ import {
 } from "@/features/auth/lib/sessionStore"
 import { hasSessionCookie } from "@/features/auth/types/guards"
 import { isInputSafeWithDebug } from "@/features/chat/lib/formatMessage"
+import {
+  BridgeInterruptSource,
+  createDoneMessage,
+  createInterruptMessage,
+  encodeNDJSON,
+} from "@/features/chat/lib/streaming/ndjson"
 import { getSystemPrompt } from "@/features/chat/lib/systemPrompt"
 import { ensureWorkspaceSchema } from "@/features/workspace/lib/ensure-workspace-schema"
 import { resolveWorkspace } from "@/features/workspace/lib/workspace-utils"
@@ -44,6 +50,7 @@ import { fetchOAuthTokens } from "@/lib/oauth/fetch-oauth-tokens"
 import { fetchUserEnvKeys } from "@/lib/oauth/fetch-user-env-keys"
 import { getRequestId } from "@/lib/request-id"
 import { createRequestLogger } from "@/lib/request-logger"
+import { consumeCancelIntent } from "@/lib/stream/cancel-intent-registry"
 import { registerCancellation, startTTLCleanup, unregisterCancellation } from "@/lib/stream/cancellation-registry"
 import { type CancelState, createNDJSONStream } from "@/lib/stream/ndjson-stream-handler"
 import {
@@ -65,6 +72,35 @@ export const runtime = "nodejs"
 
 // Start TTL cleanup on server start (once)
 startTTLCleanup()
+
+function createImmediateInterruptResponse(requestId: string, tabId?: string): Response {
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      const interrupt = createInterruptMessage(requestId, BridgeInterruptSource.CLIENT_CANCEL)
+      const done = createDoneMessage(requestId)
+
+      if (tabId) {
+        interrupt.tabId = tabId
+        done.tabId = tabId
+      }
+
+      controller.enqueue(encodeNDJSON(interrupt))
+      controller.enqueue(encodeNDJSON(done))
+      controller.close()
+    },
+  })
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "application/x-ndjson; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+      "X-Request-Id": requestId,
+      "Access-Control-Expose-Headers": "X-Request-Id",
+    },
+  })
+}
 
 export async function POST(req: NextRequest) {
   const requestId = getRequestId(req)
@@ -380,6 +416,17 @@ export async function POST(req: NextRequest) {
       })
     })
     logger.log("Cancellation registered for requestId:", requestId)
+
+    // Super-early stop race fix:
+    // If cancel endpoint was hit before registration, consume queued intent now
+    // and short-circuit this request before any expensive setup starts.
+    if (consumeCancelIntent(sessionKey, user.id)) {
+      logger.log("Queued cancel intent detected immediately after registration, short-circuiting stream startup")
+      unregisterCancellation(requestId)
+      unlockConversation(sessionKey)
+      lockAcquired = false
+      return createImmediateInterruptResponse(requestId, tabId)
+    }
 
     // Create stream buffer for reconnection support
     // Buffer persists to Redis so users can retrieve missed messages if they disconnect

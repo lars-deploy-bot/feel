@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import * as auth from "@/features/auth/lib/auth"
 import { tabKey } from "@/features/auth/lib/sessionStore"
+import { clearAllCancelIntents, hasCancelIntent } from "@/lib/stream/cancel-intent-registry"
+import { PAGE_UNLOAD_BEACON_MARKER } from "@/lib/stream/cancel-markers"
 import { getRegistrySize, registerCancellation, unregisterCancellation } from "@/lib/stream/cancellation-registry"
 
 const TEST_TAB_GROUP_ID = "00000000-0000-0000-0000-000000000000"
@@ -61,6 +63,7 @@ describe("POST /api/claude/stream/cancel", () => {
     if (initialSize > 0) {
       console.warn(`Registry not clean before test: ${initialSize} entries`)
     }
+    clearAllCancelIntents()
   })
 
   afterEach(() => {
@@ -68,6 +71,9 @@ describe("POST /api/claude/stream/cancel", () => {
     unregisterCancellation("test-req-1")
     unregisterCancellation("test-req-2")
     unregisterCancellation("test-req-3")
+    unregisterCancellation("test-req-unload-ignore")
+    unregisterCancellation("test-req-unload-ignore-tab")
+    clearAllCancelIntents()
   })
 
   it("should cancel an active stream", async () => {
@@ -97,6 +103,34 @@ describe("POST /api/claude/stream/cancel", () => {
     expect(cancelled).toBe(true)
   })
 
+  it("should ignore unload-beacon cancel by requestId to preserve background streaming", async () => {
+    let cancelled = false
+    const requestId = "test-req-unload-ignore"
+    const userId = "test-user-123"
+    const conversationKey = makeConversationKey(userId, "ignore-unload-by-request-id")
+
+    registerCancellation(requestId, userId, conversationKey, () => {
+      cancelled = true
+    })
+
+    const req = new Request("http://localhost/api/claude/stream/cancel", {
+      method: "POST",
+      body: JSON.stringify({
+        requestId,
+        clientStack: `${PAGE_UNLOAD_BEACON_MARKER} beforeunload event fired`,
+      }),
+      headers: { "Content-Type": "application/json" },
+    })
+
+    const response = await POST(req as any)
+    const data = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(data.ok).toBe(true)
+    expect(data.status).toBe("ignored_unload_beacon")
+    expect(cancelled).toBe(false)
+  })
+
   it("should return already_complete for non-existent stream", async () => {
     const req = new Request("http://localhost/api/claude/stream/cancel", {
       method: "POST",
@@ -116,6 +150,23 @@ describe("POST /api/claude/stream/cancel", () => {
     const req = new Request("http://localhost/api/claude/stream/cancel", {
       method: "POST",
       body: JSON.stringify({}),
+      headers: { "Content-Type": "application/json" },
+    })
+
+    const response = await POST(req as any)
+    const data = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(data.ok).toBe(false)
+    expect(data.message).toContain("Either requestId or tabId is required")
+  })
+
+  it("should still validate malformed unload-beacon payloads", async () => {
+    const req = new Request("http://localhost/api/claude/stream/cancel", {
+      method: "POST",
+      body: JSON.stringify({
+        clientStack: `${PAGE_UNLOAD_BEACON_MARKER} beforeunload event fired`,
+      }),
       headers: { "Content-Type": "application/json" },
     })
 
@@ -255,13 +306,26 @@ describe("POST /api/claude/stream/cancel", () => {
     expect(cancelled).toBe(true)
   })
 
-  it("should return already_complete for non-existent tabId", async () => {
+  it("should ignore unload-beacon cancel by tabId to preserve background streaming", async () => {
+    let cancelled = false
+    const requestId = "test-req-unload-ignore-tab"
+    const userId = "test-user-123"
+    const tabId = "tab-ignore-unload"
+    const tabGroupId = "11111111-1111-1111-1111-111111111111"
+    const workspace = "test-workspace"
+    const tabKeyValue = tabKey({ userId, workspace, tabGroupId, tabId })
+
+    registerCancellation(requestId, userId, tabKeyValue, () => {
+      cancelled = true
+    })
+
     const req = new Request("http://localhost/api/claude/stream/cancel", {
       method: "POST",
       body: JSON.stringify({
-        tabId: "non-existent",
-        tabGroupId: "11111111-1111-1111-1111-111111111111",
-        workspace: "test",
+        tabId,
+        tabGroupId,
+        workspace,
+        clientStack: `${PAGE_UNLOAD_BEACON_MARKER} beforeunload event fired`,
       }),
       headers: { "Content-Type": "application/json" },
     })
@@ -271,7 +335,37 @@ describe("POST /api/claude/stream/cancel", () => {
 
     expect(response.status).toBe(200)
     expect(data.ok).toBe(true)
-    expect(data.status).toBe("already_complete")
+    expect(data.status).toBe("ignored_unload_beacon")
+    expect(cancelled).toBe(false)
+  })
+
+  it("should queue stop intent for non-existent tabId (super-early stop race)", async () => {
+    const tabId = "non-existent"
+    const tabGroupId = "11111111-1111-1111-1111-111111111111"
+    const workspace = "test"
+    const req = new Request("http://localhost/api/claude/stream/cancel", {
+      method: "POST",
+      body: JSON.stringify({
+        tabId,
+        tabGroupId,
+        workspace,
+      }),
+      headers: { "Content-Type": "application/json" },
+    })
+
+    const response = await POST(req as any)
+    const data = await response.json()
+    const queuedKey = tabKey({
+      userId: "test-user-123",
+      workspace,
+      tabGroupId,
+      tabId,
+    })
+
+    expect(response.status).toBe(200)
+    expect(data.ok).toBe(true)
+    expect(data.status).toBe("cancel_queued")
+    expect(hasCancelIntent(queuedKey, "test-user-123")).toBe(true)
   })
 
   it("should not find another user's stream when cancelling by tabId (security by isolation)", async () => {
@@ -299,10 +393,10 @@ describe("POST /api/claude/stream/cancel", () => {
     const response = await POST(req as any)
     const data = await response.json()
 
-    // Should return "already_complete" (not found) - users are isolated by tabKey
+    // Should return "cancel_queued" for caller's own tabKey (still isolated by tabKey)
     expect(response.status).toBe(200)
     expect(data.ok).toBe(true)
-    expect(data.status).toBe("already_complete")
+    expect(data.status).toBe("cancel_queued")
     expect(cancelled).toBe(false) // Should NOT be cancelled - different user
 
     // Cleanup

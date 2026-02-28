@@ -176,7 +176,7 @@ export const apiSchemas = {
       .brand<"CancelStreamRequest">(),
     res: z.object({
       ok: z.boolean(),
-      status: z.enum(["cancelled", "already_complete"]),
+      status: z.enum(["cancelled", "already_complete", "ignored_unload_beacon", "cancel_queued"]),
       requestId: z.string().optional(),
       tabId: z.string().optional(),
     }),

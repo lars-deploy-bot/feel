@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from "react"
 import type { UIMessage } from "@/features/chat/lib/message-parser"
+import { BridgeInterruptSource } from "@/features/chat/lib/streaming/ndjson"
 import { trackStreamStopped } from "@/lib/analytics/events"
 import { postty } from "@/lib/api/api-client"
 import { validateRequest } from "@/lib/api/schemas"
@@ -42,6 +43,25 @@ interface UseStreamCancellationReturn {
   /** Whether currently in the process of stopping */
   isStopping: boolean
 }
+
+interface CancelApiResponse {
+  ok: boolean
+  status: "cancelled" | "already_complete" | "ignored_unload_beacon" | "cancel_queued"
+  requestId?: string
+  tabId?: string
+}
+
+interface ReconnectProbeResponse {
+  ok: boolean
+  hasStream: boolean
+  state?: "streaming" | "complete" | "error"
+  requestId?: string
+}
+
+type StopVerificationResult =
+  | { status: "confirmed" }
+  | { status: "still_streaming"; requestId?: string }
+  | { status: "unknown" }
 
 /**
  * Hook for managing stream cancellation with type-safe API calls
@@ -108,9 +128,7 @@ export function useStreamCancellation({
     // Capture requestId BEFORE nulling it
     const requestIdToCancel = currentRequestIdRef.current
 
-    // Helper to reset all states after cancellation completes
-    // No delay needed - cancel endpoint now waits for lock release before responding
-    // Note: busy state is derived from streamingStore.isStreamActive, no need to set it
+    // Helper to reset all states after cancellation handling completes.
     const finishCancellation = () => {
       if (tabId) isSubmittingByTabRef.current.set(tabId, false)
       isStoppingRef.current = false
@@ -118,40 +136,171 @@ export function useStreamCancellation({
       setShowCompletionDots(false)
     }
 
+    const addInterruptMessage = (message: string) => {
+      if (!tabId) return
+      const interruptMessage: UIMessage = {
+        id: crypto.randomUUID(),
+        type: "interrupt",
+        content: {
+          message,
+          source: BridgeInterruptSource.CLIENT_CANCEL,
+        },
+        timestamp: new Date(),
+      }
+      addMessage(interruptMessage, tabId)
+    }
+
     // Capture stack trace for debugging (helps identify where cancel originated)
     const clientStack = new Error().stack?.split("\n").slice(1, 6).join("\n") // First 5 frames
 
-    // Send cancel request and wait for confirmation
-    // Backend now waits for cleanup to complete before responding, so response = safe to send new message
-    const sendCancelRequest = async () => {
+    const sendCancelRequest = async (): Promise<CancelApiResponse | null> => {
+      // Send cancel request to backend and return typed status.
       try {
         if (requestIdToCancel) {
-          // Primary path: Cancel by requestId
           const validatedRequest = validateRequest("claude/stream/cancel", {
             requestId: requestIdToCancel,
-            clientStack, // Send stack for server-side debugging
+            clientStack,
           })
-          await postty("claude/stream/cancel", validatedRequest)
+          return (await postty("claude/stream/cancel", validatedRequest)) as CancelApiResponse
         } else if (tabId.length > 0 && tabGroupId && workspace) {
-          // Fallback path: Cancel by tabId (super-early Stop)
           const validatedRequest = validateRequest("claude/stream/cancel", {
             tabGroupId,
             tabId,
             workspace,
             ...(requestWorktree ? { worktree: requestWorktree } : {}),
-            clientStack, // Send stack for server-side debugging
+            clientStack,
           })
-          await postty("claude/stream/cancel", validatedRequest)
+          return (await postty("claude/stream/cancel", validatedRequest)) as CancelApiResponse
         } else {
           console.warn("[useStreamCancellation] No requestId or tabId available - relying on abort() only")
+          return null
         }
       } catch (error) {
         console.error("[useStreamCancellation] Cancel request failed:", error)
-        // Continue anyway - the abort() should have worked
+        return null
+      }
+    }
+
+    const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
+    const verifyStopState = async (): Promise<StopVerificationResult> => {
+      if (!tabId || !tabGroupId || !workspace) {
+        return { status: "unknown" }
       }
 
-      // Backend confirmed (or failed) - finish cancellation
-      finishCancellation()
+      const attempts = 6
+      const retryDelayMs = 300
+      let sawStreamingState = false
+      let activeRequestId: string | undefined
+
+      for (let attempt = 0; attempt < attempts; attempt++) {
+        try {
+          const response = await fetch("/api/claude/stream/reconnect", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({
+              tabGroupId,
+              tabId,
+              workspace,
+              ...(requestWorktree ? { worktree: requestWorktree } : {}),
+              acknowledge: false,
+            }),
+          })
+
+          if (response.ok) {
+            const probe = (await response.json()) as ReconnectProbeResponse
+
+            if (!probe.hasStream) {
+              return { status: "confirmed" }
+            }
+
+            if (probe.state === "complete" || probe.state === "error") {
+              return { status: "confirmed" }
+            }
+
+            if (probe.state === "streaming") {
+              sawStreamingState = true
+              activeRequestId = probe.requestId
+            }
+          }
+        } catch (error) {
+          console.warn("[useStreamCancellation] Reconnect verification failed:", error)
+        }
+
+        if (attempt < attempts - 1) {
+          await sleep(retryDelayMs)
+        }
+      }
+
+      if (sawStreamingState) {
+        return { status: "still_streaming", requestId: activeRequestId }
+      }
+
+      return { status: "unknown" }
+    }
+
+    const CANCEL_REQUEST_TIMEOUT_MS = 6000
+    const CANCEL_TIMEOUT = Symbol("cancel-timeout")
+    const sendCancelWithTimeout = async (): Promise<CancelApiResponse | null | typeof CANCEL_TIMEOUT> => {
+      let timeoutHandle: ReturnType<typeof setTimeout> | null = null
+      const timeoutPromise = new Promise<typeof CANCEL_TIMEOUT>(resolve => {
+        timeoutHandle = setTimeout(() => resolve(CANCEL_TIMEOUT), CANCEL_REQUEST_TIMEOUT_MS)
+      })
+
+      try {
+        return await Promise.race([sendCancelRequest(), timeoutPromise])
+      } finally {
+        if (timeoutHandle) {
+          clearTimeout(timeoutHandle)
+        }
+      }
+    }
+
+    const resolveStop = async () => {
+      try {
+        const cancelResponse = await sendCancelWithTimeout()
+
+        if (cancelResponse === CANCEL_TIMEOUT) {
+          console.warn(
+            `[useStreamCancellation] Cancel request timed out after ${CANCEL_REQUEST_TIMEOUT_MS}ms, verifying state`,
+          )
+        }
+
+        if (cancelResponse && cancelResponse !== CANCEL_TIMEOUT && cancelResponse.status === "cancelled") {
+          addInterruptMessage("Response stopped.")
+          finishCancellation()
+          return
+        }
+
+        const verification = await verifyStopState()
+
+        if (verification.status === "confirmed") {
+          addInterruptMessage("Response stopped.")
+          finishCancellation()
+          return
+        }
+
+        if (verification.status === "still_streaming") {
+          // Stream is still running on backend - reflect that truthfully in UI.
+          if (verification.requestId) {
+            currentRequestIdRef.current = verification.requestId
+          }
+          if (tabId) {
+            streamingActions.startStream(tabId)
+          }
+          addInterruptMessage("Stop not confirmed. Response is still running. Press Stop again.")
+          finishCancellation()
+          return
+        }
+
+        addInterruptMessage("Could not confirm stop. Check whether the response is still updating.")
+        finishCancellation()
+      } catch (error) {
+        console.error("[useStreamCancellation] Unexpected stop resolution error:", error)
+        addInterruptMessage("Could not confirm stop due to an internal error. Please try stopping again.")
+        finishCancellation()
+      }
     }
 
     // Immediately abort the client-side stream
@@ -187,16 +336,8 @@ export function useStreamCancellation({
     // Show completion dots while waiting for backend confirmation
     setShowCompletionDots(true)
 
-    // Send cancel request (async, but we don't await in the callback)
-    // Use timeout as fallback in case request hangs
-    const timeoutId = setTimeout(() => {
-      console.warn("[useStreamCancellation] Cancel request timed out after 5s, forcing finish")
-      finishCancellation()
-    }, 5000)
-
-    sendCancelRequest().finally(() => {
-      clearTimeout(timeoutId)
-    })
+    // Resolve stop status asynchronously; UI remains in "stopping" state until then.
+    void resolveStop()
   }, [
     tabId,
     tabGroupId,

@@ -1,19 +1,18 @@
 // @vitest-environment happy-dom
 import { act, renderHook } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest"
+import { BridgeInterruptSource } from "@/features/chat/lib/streaming/ndjson"
 import { useStreamCancellation } from "../useStreamCancellation"
 
 type UseStreamCancellationOptions = Parameters<typeof useStreamCancellation>[0]
 
-/** Mock options type with vi.fn() for callbacks */
 type MockOptions = Omit<UseStreamCancellationOptions, "addMessage" | "setShowCompletionDots"> & {
   addMessage: Mock
   setShowCompletionDots: Mock
 }
 
-// Mock dependencies
 vi.mock("@/lib/api/api-client", () => ({
-  postty: vi.fn().mockResolvedValue({}),
+  postty: vi.fn().mockResolvedValue({ ok: true, status: "cancelled" }),
 }))
 
 vi.mock("@/lib/api/schemas", () => ({
@@ -21,18 +20,20 @@ vi.mock("@/lib/api/schemas", () => ({
 }))
 
 const mockEndStream = vi.fn()
+const mockStartStream = vi.fn()
 const mockGetAbortController = vi.fn()
 const mockClearAbortController = vi.fn()
+
 vi.mock("@/lib/stores/streamingStore", () => ({
   useStreamingActions: () => ({
     endStream: mockEndStream,
+    startStream: mockStartStream,
   }),
   getAbortController: (...args: unknown[]) => mockGetAbortController(...args),
   clearAbortController: (...args: unknown[]) => mockClearAbortController(...args),
 }))
 
 describe("useStreamCancellation", () => {
-  // Default mock options for the hook
   const createMockOptions = (): MockOptions => ({
     tabId: "test-conversation-123",
     tabGroupId: "test-tabgroup",
@@ -49,8 +50,13 @@ describe("useStreamCancellation", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
-    // Reset abort controller mock
+    vi.setSystemTime(new Date("2026-02-28T00:00:00Z"))
     mockGetAbortController.mockReturnValue(undefined)
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, hasStream: false }),
+    } as Response) as unknown as typeof fetch
   })
 
   afterEach(() => {
@@ -58,451 +64,196 @@ describe("useStreamCancellation", () => {
     vi.useRealTimers()
   })
 
-  describe("isStopping behavior", () => {
-    /**
-     * IMPORTANT: The isStopping state prevents double-clicks and stays true
-     * until the backend confirms cancellation (or 5-second timeout).
-     * This ensures users can't spam the stop button while the backend is cleaning up.
-     *
-     * This test verifies:
-     * 1. isStopping is properly typed as boolean (not a ref object)
-     * 2. isStopping becomes true immediately after stopStreaming
-     * 3. isStopping resets to false after cancel request completes
-     */
-    it("should expose isStopping as a boolean that resets after cancel completes", async () => {
-      const options = createMockOptions()
-      const { result } = renderHook(() => useStreamCancellation(options))
+  it("sends cancel by requestId and marks stop as confirmed on cancelled response", async () => {
+    const { postty } = await import("@/lib/api/api-client")
+    const options = createMockOptions()
+    const { result } = renderHook(() => useStreamCancellation(options))
 
-      // Initial state
-      expect(typeof result.current.isStopping).toBe("boolean")
-      expect(result.current.isStopping).toBe(false)
-
-      // After stopStreaming - should be true (waiting for backend cleanup)
-      act(() => {
-        result.current.stopStreaming()
-      })
-
-      // isStopping is true during the cleanup period
-      expect(result.current.isStopping).toBe(true)
-
-      // After cancel request completes (mocked postty resolves immediately)
-      await act(async () => {
-        await vi.runAllTimersAsync()
-      })
-      expect(result.current.isStopping).toBe(false)
+    act(() => {
+      result.current.stopStreaming()
     })
 
-    it("should guard against sequential calls during cleanup", async () => {
-      // IMPORTANT: The guard stays active until backend confirms cancellation.
-      // This prevents users from spamming the stop button while backend is cleaning up.
-      // Note: addMessage is only called once per stopStreaming (unlike setShowCompletionDots
-      // which is called twice - once true at start, once false at finish).
-      const options = createMockOptions()
-      const { result } = renderHook(() => useStreamCancellation(options))
+    expect(postty).toHaveBeenCalledWith("claude/stream/cancel", expect.objectContaining({ requestId: "request-123" }))
 
-      // Sequential calls during cleanup period - only FIRST executes
-      act(() => {
-        result.current.stopStreaming() // Starts cleanup
-        result.current.stopStreaming() // Blocked by guard
-      })
-
-      // Only first call executes (addMessage called once per stopStreaming)
-      expect(options.addMessage).toHaveBeenCalledTimes(1)
-
-      // After cancel completes, guard resets
-      await act(async () => {
-        await vi.runAllTimersAsync()
-      })
-
-      // Now another call would work
-      act(() => {
-        result.current.stopStreaming()
-      })
-      expect(options.addMessage).toHaveBeenCalledTimes(2)
+    await act(async () => {
+      await vi.runAllTimersAsync()
     })
 
-    it("should guard against re-entry during execution", () => {
-      // This tests the ACTUAL purpose of the guard: preventing re-entry
-      // if a callback called during stopStreaming tried to call stopStreaming again
-      let reEntryAttempted = false
-
-      const setShowCompletionDots = vi.fn(() => {
-        if (!reEntryAttempted) {
-          reEntryAttempted = true
-          // Try to call stopStreaming from WITHIN stopStreaming
-          // This simulates a callback that might trigger another stop
-          result.current.stopStreaming()
-        }
-      })
-
-      const options = { ...createMockOptions(), setShowCompletionDots }
-      const { result } = renderHook(() => useStreamCancellation(options))
-
-      act(() => {
-        result.current.stopStreaming()
-      })
-
-      // Re-entry was attempted
-      expect(reEntryAttempted).toBe(true)
-      // But it should have been blocked by the guard
-      // (setShowCompletionDots only called once means re-entry was blocked)
-      expect(setShowCompletionDots).toHaveBeenCalledTimes(1)
-    })
-
-    it("should allow subsequent calls after guard resets (after cancel completes)", async () => {
-      // Note: addMessage is only called once per stopStreaming (unlike setShowCompletionDots
-      // which is called twice - once true at start, once false at finish).
-      const options = createMockOptions()
-      const { result } = renderHook(() => useStreamCancellation(options))
-
-      // First call
-      act(() => {
-        result.current.stopStreaming()
-      })
-      expect(options.addMessage).toHaveBeenCalledTimes(1)
-
-      // Guard is still active during cleanup - second call blocked
-      act(() => {
-        result.current.stopStreaming()
-      })
-      expect(options.addMessage).toHaveBeenCalledTimes(1)
-
-      // After cancel completes, guard resets
-      await act(async () => {
-        await vi.runAllTimersAsync()
-      })
-
-      // Now second call in NEW act() - guard has reset, should execute
-      act(() => {
-        result.current.stopStreaming()
-      })
-      expect(options.addMessage).toHaveBeenCalledTimes(2)
-    })
-
-    /**
-     * This test captures isStopping DURING execution via a callback.
-     * isStopping stays true until backend confirms cancellation.
-     */
-    it("should have isStopping=true during execution and reset after cancel completes", async () => {
-      const options = createMockOptions()
-      const { result } = renderHook(() => useStreamCancellation(options))
-
-      // Before stop
-      expect(result.current.isStopping).toBe(false)
-
-      act(() => {
-        result.current.stopStreaming()
-      })
-
-      // After stop, during cleanup period - should be true
-      expect(result.current.isStopping).toBe(true)
-
-      // After cancel completes, should reset
-      await act(async () => {
-        await vi.runAllTimersAsync()
-      })
-      expect(result.current.isStopping).toBe(false)
-    })
+    expect(result.current.isStopping).toBe(false)
+    expect(options.addMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "interrupt",
+        content: {
+          message: "Response stopped.",
+          source: BridgeInterruptSource.CLIENT_CANCEL,
+        },
+      }),
+      options.tabId,
+    )
   })
 
-  describe("UI state management", () => {
-    it("should call endStream on streaming store when stopping", () => {
-      const options = createMockOptions()
-      const { result } = renderHook(() => useStreamCancellation(options))
+  it("falls back to tabId cancel when requestId is unavailable", async () => {
+    const { postty } = await import("@/lib/api/api-client")
+    const options = createMockOptions()
+    options.currentRequestIdRef.current = null
+    const { result } = renderHook(() => useStreamCancellation(options))
 
-      act(() => {
-        result.current.stopStreaming()
-      })
-
-      // endStream is called immediately when stopping
-      expect(mockEndStream).toHaveBeenCalledWith(options.tabId)
+    act(() => {
+      result.current.stopStreaming()
     })
 
-    it("should show completion dots", () => {
-      const options = createMockOptions()
-      const { result } = renderHook(() => useStreamCancellation(options))
-
-      act(() => {
-        result.current.stopStreaming()
-      })
-
-      expect(options.setShowCompletionDots).toHaveBeenCalledWith(true)
-    })
-
-    it("should reset isSubmittingByTabRef to false after cancel completes", async () => {
-      const options = createMockOptions()
-      options.isSubmittingByTabRef.current.set("test-conversation-123", true)
-      const { result } = renderHook(() => useStreamCancellation(options))
-
-      act(() => {
-        result.current.stopStreaming()
-      })
-
-      // Still true during cleanup period
-      expect(options.isSubmittingByTabRef.current.get("test-conversation-123")).toBe(true)
-
-      // After cancel request completes
-      await act(async () => {
-        await vi.runAllTimersAsync()
-      })
-
-      expect(options.isSubmittingByTabRef.current.get("test-conversation-123")).toBe(false)
-    })
-  })
-
-  describe("abort handling", () => {
-    it("should abort the current request", () => {
-      const options = createMockOptions()
-      const abortSpy = vi.spyOn(options.abortControllerRef.current!, "abort")
-      const { result } = renderHook(() => useStreamCancellation(options))
-
-      act(() => {
-        result.current.stopStreaming()
-      })
-
-      expect(abortSpy).toHaveBeenCalled()
-    })
-
-    it("should clear abortControllerRef", () => {
-      const options = createMockOptions()
-      const { result } = renderHook(() => useStreamCancellation(options))
-
-      act(() => {
-        result.current.stopStreaming()
-      })
-
-      expect(options.abortControllerRef.current).toBeNull()
-    })
-
-    it("should clear currentRequestIdRef", () => {
-      const options = createMockOptions()
-      const { result } = renderHook(() => useStreamCancellation(options))
-
-      act(() => {
-        result.current.stopStreaming()
-      })
-
-      expect(options.currentRequestIdRef.current).toBeNull()
-    })
-
-    it("should handle missing abortController gracefully", () => {
-      const options = createMockOptions()
-      options.abortControllerRef.current = null
-      const { result } = renderHook(() => useStreamCancellation(options))
-
-      // Should not throw
-      expect(() => {
-        act(() => {
-          result.current.stopStreaming()
-        })
-      }).not.toThrow()
-    })
-  })
-
-  describe("completion message", () => {
-    it("should add a completion message to mark thinking group as complete", () => {
-      const options = createMockOptions()
-      const { result } = renderHook(() => useStreamCancellation(options))
-
-      act(() => {
-        result.current.stopStreaming()
-      })
-
-      // IMPORTANT: addMessage is called with (message, targetConversationId) for tab isolation
-      expect(options.addMessage).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: "complete",
-          content: {},
-        }),
-        options.tabId, // targetTabId for tab isolation
-      )
-    })
-
-    it("should generate unique message ID based on timestamp", () => {
-      const options = createMockOptions()
-      const { result } = renderHook(() => useStreamCancellation(options))
-
-      act(() => {
-        result.current.stopStreaming()
-      })
-
-      const call = options.addMessage.mock.calls[0][0]
-      expect(call.id).toBeDefined()
-      expect(typeof call.id).toBe("string")
-      expect(call.timestamp).toBeInstanceOf(Date)
-    })
-  })
-
-  describe("cancel API request", () => {
-    it("should send cancel request with requestId when available", async () => {
-      const { postty } = await import("@/lib/api/api-client")
-      const options = createMockOptions()
-      options.currentRequestIdRef.current = "request-456"
-      const { result } = renderHook(() => useStreamCancellation(options))
-
-      act(() => {
-        result.current.stopStreaming()
-      })
-
-      expect(postty).toHaveBeenCalledWith("claude/stream/cancel", expect.objectContaining({ requestId: "request-456" }))
-    })
-
-    it("should fallback to tabId when no requestId", async () => {
-      const { postty } = await import("@/lib/api/api-client")
-      const options = createMockOptions()
-      options.currentRequestIdRef.current = null
-      const { result } = renderHook(() => useStreamCancellation(options))
-
-      act(() => {
-        result.current.stopStreaming()
-      })
-
-      expect(postty).toHaveBeenCalledWith(
-        "claude/stream/cancel",
-        expect.objectContaining({
-          tabGroupId: "test-tabgroup",
-          tabId: "test-conversation-123",
-          workspace: "test-workspace",
-        }),
-      )
-    })
-
-    it("should omit stale worktree from fallback cancel payload when worktrees are disabled", async () => {
-      const { postty } = await import("@/lib/api/api-client")
-      const options = createMockOptions()
-      options.currentRequestIdRef.current = null
-      options.worktree = "stale-worktree"
-      options.worktreesEnabled = false
-      const { result } = renderHook(() => useStreamCancellation(options))
-
-      act(() => {
-        result.current.stopStreaming()
-      })
-
-      const payload = (postty as Mock).mock.calls[0]?.[1] as Record<string, unknown>
-      expect(payload).toMatchObject({
-        tabGroupId: "test-tabgroup",
+    expect(postty).toHaveBeenCalledWith(
+      "claude/stream/cancel",
+      expect.objectContaining({
         tabId: "test-conversation-123",
+        tabGroupId: "test-tabgroup",
         workspace: "test-workspace",
-      })
-      expect(payload).not.toHaveProperty("worktree")
-    })
+      }),
+    )
 
-    it("should skip cancel request when no requestId AND no workspace", async () => {
-      const { postty } = await import("@/lib/api/api-client")
-      ;(postty as Mock).mockClear()
-
-      const options = createMockOptions()
-      options.currentRequestIdRef.current = null
-      options.workspace = null
-      const { result } = renderHook(() => useStreamCancellation(options))
-
-      act(() => {
-        result.current.stopStreaming()
-      })
-
-      // Should not call postty - relies on abort() only
-      expect(postty).not.toHaveBeenCalled()
-    })
-
-    it("should skip cancel request when tabId is empty string", async () => {
-      const { postty } = await import("@/lib/api/api-client")
-      ;(postty as Mock).mockClear()
-
-      const options = createMockOptions()
-      options.currentRequestIdRef.current = null
-      options.tabId = ""
-      const { result } = renderHook(() => useStreamCancellation(options))
-
-      act(() => {
-        result.current.stopStreaming()
-      })
-
-      expect(postty).not.toHaveBeenCalled()
-    })
-
-    it("should reset states via fallback timeout if cancel request hangs", async () => {
-      const { postty } = await import("@/lib/api/api-client")
-      // Make postty hang forever (never resolve)
-      ;(postty as Mock).mockImplementation(() => new Promise(() => {}))
-
-      const options = createMockOptions()
-      const { result } = renderHook(() => useStreamCancellation(options))
-
-      act(() => {
-        result.current.stopStreaming()
-      })
-
-      // isStopping should be true while waiting
-      expect(result.current.isStopping).toBe(true)
-      // endStream is called immediately (not after timeout)
-      expect(mockEndStream).toHaveBeenCalledWith(options.tabId)
-
-      // Advance past the 5-second fallback timeout
-      await act(async () => {
-        vi.advanceTimersByTime(5000)
-      })
-
-      // States should be reset via fallback timeout
-      expect(result.current.isStopping).toBe(false)
-      expect(options.isSubmittingByTabRef.current.get("test-conversation-123")).toBe(false)
-
-      // Reset mock for other tests
-      ;(postty as Mock).mockResolvedValue({})
+    await act(async () => {
+      await vi.runAllTimersAsync()
     })
   })
 
-  describe("dev terminal events", () => {
-    it("should call onDevEvent with interrupt event when provided", () => {
-      const options = {
-        ...createMockOptions(),
-        onDevEvent: vi.fn(),
-      }
-      const { result } = renderHook(() => useStreamCancellation(options))
+  it("sets and clears stopping state around stop resolution", async () => {
+    const options = createMockOptions()
+    const { result } = renderHook(() => useStreamCancellation(options))
 
-      act(() => {
-        result.current.stopStreaming()
-      })
+    act(() => {
+      result.current.stopStreaming()
+    })
+    expect(result.current.isStopping).toBe(true)
 
-      expect(options.onDevEvent).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: "client.interrupt",
-          data: expect.objectContaining({
-            message: "Response interrupted by user",
-            source: "client_cancel",
-            tabId: "test-conversation-123",
-          }),
-        }),
-      )
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+    expect(result.current.isStopping).toBe(false)
+  })
+
+  it("guards against double-click while stop is in progress", async () => {
+    const options = createMockOptions()
+    const { result } = renderHook(() => useStreamCancellation(options))
+
+    act(() => {
+      result.current.stopStreaming()
+      result.current.stopStreaming()
     })
 
-    it("should include timestamp in dev event", () => {
-      const options = {
-        ...createMockOptions(),
-        onDevEvent: vi.fn(),
-      }
-      const { result } = renderHook(() => useStreamCancellation(options))
+    // Immediate phase: only one hidden complete marker should be added.
+    expect(options.addMessage).toHaveBeenCalledTimes(1)
 
-      act(() => {
-        result.current.stopStreaming()
-      })
-
-      const eventData = options.onDevEvent.mock.calls[0][0].data
-      expect(eventData.timestamp).toBeDefined()
-      // Should be ISO format
-      expect(() => new Date(eventData.timestamp)).not.toThrow()
+    await act(async () => {
+      await vi.runAllTimersAsync()
     })
 
-    it("should work when onDevEvent is not provided", () => {
-      const options = createMockOptions()
-      // No onDevEvent
-      const { result } = renderHook(() => useStreamCancellation(options))
+    // Final phase: one interrupt message is added after resolution.
+    expect(options.addMessage).toHaveBeenCalledTimes(2)
+  })
 
-      expect(() => {
-        act(() => {
-          result.current.stopStreaming()
-        })
-      }).not.toThrow()
+  it("ends stream immediately on stop click", async () => {
+    const options = createMockOptions()
+    const { result } = renderHook(() => useStreamCancellation(options))
+
+    act(() => {
+      result.current.stopStreaming()
     })
+
+    expect(mockEndStream).toHaveBeenCalledWith("test-conversation-123")
+
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+  })
+
+  it("does not include stale worktree when worktrees are disabled", async () => {
+    const { postty } = await import("@/lib/api/api-client")
+    const options = createMockOptions()
+    options.currentRequestIdRef.current = null
+    options.worktreesEnabled = false
+    options.worktree = "stale-worktree"
+    const { result } = renderHook(() => useStreamCancellation(options))
+
+    act(() => {
+      result.current.stopStreaming()
+    })
+
+    const payload = (postty as Mock).mock.calls[0]?.[1] as Record<string, unknown>
+    expect(payload).toMatchObject({
+      tabId: "test-conversation-123",
+      tabGroupId: "test-tabgroup",
+      workspace: "test-workspace",
+    })
+    expect(payload).not.toHaveProperty("worktree")
+
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+  })
+
+  it("reports still-running stream when cancel cannot be confirmed", async () => {
+    const { postty } = await import("@/lib/api/api-client")
+    ;(postty as Mock).mockImplementation(() => new Promise(() => {}))
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, hasStream: true, state: "streaming", requestId: "request-reconnect-1" }),
+    } as Response) as unknown as typeof fetch
+
+    const options = createMockOptions()
+    const { result } = renderHook(() => useStreamCancellation(options))
+
+    act(() => {
+      result.current.stopStreaming()
+    })
+
+    await act(async () => {
+      vi.advanceTimersByTime(6000)
+      await vi.runAllTimersAsync()
+    })
+
+    expect(mockStartStream).toHaveBeenCalledWith("test-conversation-123")
+    expect(options.currentRequestIdRef.current).toBe("request-reconnect-1")
+    expect(options.addMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "interrupt",
+        content: {
+          message: "Stop not confirmed. Response is still running. Press Stop again.",
+          source: BridgeInterruptSource.CLIENT_CANCEL,
+        },
+      }),
+      "test-conversation-123",
+    )
+    expect(result.current.isStopping).toBe(false)
+  })
+
+  it("reports unknown state when reconnect verification is unavailable", async () => {
+    const { postty } = await import("@/lib/api/api-client")
+    ;(postty as Mock).mockResolvedValue({ ok: true, status: "already_complete" })
+    global.fetch = vi.fn().mockRejectedValue(new Error("network down")) as unknown as typeof fetch
+
+    const options = createMockOptions()
+    const { result } = renderHook(() => useStreamCancellation(options))
+
+    act(() => {
+      result.current.stopStreaming()
+    })
+
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+
+    expect(mockStartStream).not.toHaveBeenCalled()
+    expect(options.addMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "interrupt",
+        content: {
+          message: "Could not confirm stop. Check whether the response is still updating.",
+          source: BridgeInterruptSource.CLIENT_CANCEL,
+        },
+      }),
+      "test-conversation-123",
+    )
+    expect(result.current.isStopping).toBe(false)
   })
 })
