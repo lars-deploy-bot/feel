@@ -51,14 +51,14 @@ beforeEach(() => {
 
 describe("POST /api/auth/sessions/revoke-others", () => {
   it("returns 401 when not authenticated", async () => {
-    vi.mocked(requireAuthSession).mockRejectedValue(new (AuthenticationError as ErrorConstructor)())
+    vi.mocked(requireAuthSession).mockRejectedValue(new AuthenticationError())
 
     const res = await POST()
     expect(res.status).toBe(401)
   })
 
   it("returns 401 when session payload has no sid", async () => {
-    vi.mocked(requireAuthSession).mockRejectedValue(new (AuthenticationError as ErrorConstructor)("Missing session id"))
+    vi.mocked(requireAuthSession).mockRejectedValue(new AuthenticationError("Missing session id"))
 
     const res = await POST()
     expect(res.status).toBe(401)

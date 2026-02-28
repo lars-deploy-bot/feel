@@ -22,11 +22,11 @@ export const sessionsListSchema = z.object({
   /** Only show active (locked) sessions */
   activeOnly: z.boolean().optional(),
   /** Include message preview (last N messages) */
-  messageLimit: z.number().min(0).max(SESSIONS_LIST_MAX_MESSAGE_PREVIEW).optional(),
+  messageLimit: z.number().int().min(0).max(SESSIONS_LIST_MAX_MESSAGE_PREVIEW).optional(),
   /** Maximum sessions to return */
-  limit: z.number().min(1).max(SESSIONS_LIST_MAX_LIMIT).optional(),
+  limit: z.number().int().min(1).max(SESSIONS_LIST_MAX_LIMIT).optional(),
   /** Only sessions active in last N minutes */
-  activeMinutes: z.number().min(1).optional(),
+  activeMinutes: z.number().int().min(1).optional(),
 })
 
 export type SessionsListParams = z.infer<typeof sessionsListSchema>

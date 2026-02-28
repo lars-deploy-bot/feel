@@ -906,6 +906,17 @@ export async function POST(req: NextRequest) {
   } catch (outerError) {
     // Revoked session → 401 (not a 500)
     if (outerError instanceof AuthenticationError) {
+      if (lockAcquired && sessionKey) {
+        try {
+          unregisterCancellation(requestId)
+          unlockConversation(sessionKey)
+          errorStreamBuffer(requestId, outerError.message).catch(err => {
+            logger.log("Failed to mark buffer as errored (non-fatal):", err)
+          })
+        } catch (unlockError) {
+          logger.error("Failed to unlock conversation in auth error handler:", unlockError)
+        }
+      }
       const origin = req.headers.get("origin")
       const authRes = structuredErrorResponse(ErrorCodes.NO_SESSION, {
         status: 401,
