@@ -5,8 +5,11 @@ import (
 	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -17,6 +20,9 @@ import (
 	"shell-server-go/internal/httpx/response"
 	workspacepkg "shell-server-go/internal/workspace"
 )
+
+// worktreeSlugRegex validates worktree slugs: lowercase alphanumeric + hyphens, 1-49 chars.
+var worktreeSlugRegex = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,48}$`)
 
 const (
 	watchLeaseTTL = 90 * time.Second
@@ -115,6 +121,7 @@ func (h *WatchHandler) CreateInternalLease(w http.ResponseWriter, r *http.Reques
 
 	var body struct {
 		Workspace string `json:"workspace"`
+		Worktree  string `json:"worktree,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		response.Error(w, http.StatusBadRequest, "Invalid JSON body")
@@ -133,8 +140,20 @@ func (h *WatchHandler) CreateInternalLease(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	// If worktree slug is provided, resolve to worktree directory instead.
+	watchCwd := sw.Cwd
+	if body.Worktree != "" {
+		resolved, resolveErr := resolveWorktreeCwd(sw.Cwd, body.Worktree, h.config.ResolvedSitesPath)
+		if resolveErr != nil {
+			log.Error("Failed to resolve worktree | workspace=%s worktree=%s err=%v", body.Workspace, body.Worktree, resolveErr)
+			response.Error(w, http.StatusBadRequest, "Invalid worktree")
+			return
+		}
+		watchCwd = resolved
+	}
+
 	// Validate directory exists
-	dirInfo, err := os.Stat(sw.Cwd)
+	dirInfo, err := os.Stat(watchCwd)
 	if err != nil || !dirInfo.IsDir() {
 		response.Error(w, http.StatusNotFound, "Workspace not found")
 		return
@@ -148,7 +167,7 @@ func (h *WatchHandler) CreateInternalLease(w http.ResponseWriter, r *http.Reques
 
 	lease := WatchLease{
 		Workspace: sw.Workspace,
-		Cwd:       sw.Cwd,
+		Cwd:       watchCwd,
 		ExpiresAt: time.Now().Add(watchLeaseTTL),
 	}
 
@@ -230,6 +249,7 @@ func (h *WatchHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	})
 
 	done := make(chan struct{})
+	writerDone := make(chan struct{})
 
 	// Reader goroutine: detect close + handle pongs
 	go func() {
@@ -244,13 +264,13 @@ func (h *WatchHandler) Handle(w http.ResponseWriter, r *http.Request) {
 
 	// Writer goroutine: batch events and send
 	go func() {
+		defer close(writerDone)
 		pingTicker := time.NewTicker(pingInterval)
 		batchTicker := time.NewTicker(batchInterval)
 		defer pingTicker.Stop()
 		defer batchTicker.Stop()
 
 		var batch []Event
-		writeMu := &sync.Mutex{}
 
 		for {
 			select {
@@ -266,23 +286,19 @@ func (h *WatchHandler) Handle(w http.ResponseWriter, r *http.Request) {
 				}
 				toSend := batch
 				batch = nil
-				writeMu.Lock()
 				conn.SetWriteDeadline(time.Now().Add(writeTimeout))
 				err := conn.WriteJSON(map[string]interface{}{
 					"type":   "fs_event",
 					"events": toSend,
 				})
-				writeMu.Unlock()
 				if err != nil {
 					log.Debug("Watch WebSocket write failed: %v", err)
 					return
 				}
 
 			case <-pingTicker.C:
-				writeMu.Lock()
 				conn.SetWriteDeadline(time.Now().Add(writeTimeout))
 				err := conn.WriteMessage(websocket.PingMessage, nil)
-				writeMu.Unlock()
 				if err != nil {
 					return
 				}
@@ -293,14 +309,51 @@ func (h *WatchHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	<-done
+	// Wait for either reader or writer to finish — whichever exits first triggers cleanup.
+	select {
+	case <-done:
+		// Reader exited (client disconnected or pong timeout)
+	case <-writerDone:
+		// Writer exited (write error) — close conn to unblock reader
+		conn.Close()
+		<-done
+	}
 
 	// Cleanup
 	watcher.Unsubscribe(ch)
 	h.manager.Release(lease.Cwd)
-	conn.Close()
+	conn.Close() // safe to call multiple times
 
 	log.Info("Watch connection closed | workspace=%s", lease.Workspace)
+}
+
+// resolveWorktreeCwd validates a worktree slug and returns its directory path.
+// baseCwd is the workspace user/ directory (e.g. /srv/webalive/sites/example.com/user/).
+// Worktrees live at <siteRoot>/worktrees/<slug>/ where siteRoot is the parent of baseCwd.
+func resolveWorktreeCwd(baseCwd, slug, sitesPath string) (string, error) {
+	if !worktreeSlugRegex.MatchString(slug) {
+		return "", fmt.Errorf("invalid worktree slug: %q", slug)
+	}
+	// Reserved slugs that would collide with existing directories
+	switch slug {
+	case "user", "worktrees":
+		return "", fmt.Errorf("reserved worktree slug: %q", slug)
+	}
+
+	siteRoot := filepath.Dir(baseCwd) // e.g. /srv/webalive/sites/example.com/
+	worktreePath := filepath.Join(siteRoot, "worktrees", slug)
+
+	// Resolve symlinks and validate path is within sites boundary
+	resolved, err := filepath.EvalSymlinks(worktreePath)
+	if err != nil {
+		return "", fmt.Errorf("worktree path does not exist: %w", err)
+	}
+
+	if err := workspacepkg.ValidateSiteWorkspaceBoundary(resolved, sitesPath); err != nil {
+		return "", fmt.Errorf("worktree path outside boundary: %w", err)
+	}
+
+	return resolved, nil
 }
 
 func (h *WatchHandler) consumeLease(token string) (WatchLease, bool) {

@@ -20,9 +20,10 @@ export async function POST(req: Request) {
 
   const result = await validateRequest(req, requestId)
   if ("error" in result) return result.error
-  const { workspace } = result.data
+  const { workspace, body } = result.data
 
   const shellWorkspace = workspace === SUPERADMIN.WORKSPACE_NAME ? "root" : workspace
+  const worktree = typeof body.worktree === "string" ? body.worktree : undefined
 
   const shellPassword = env.SHELL_PASSWORD
   if (!shellPassword) {
@@ -48,7 +49,7 @@ export async function POST(req: Request) {
         "Content-Type": "application/json",
         "X-Internal-Secret": shellPassword,
       },
-      body: JSON.stringify({ workspace: shellWorkspace }),
+      body: JSON.stringify({ workspace: shellWorkspace, worktree }),
       signal: controller.signal,
     })
 

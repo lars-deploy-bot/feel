@@ -48,7 +48,7 @@ export function useFileWatcher({ workspace, worktree }: UseFileWatcherOptions): 
         const res = await fetch("/api/watch/lease", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ workspace }),
+          body: JSON.stringify({ workspace, worktree: worktree || undefined }),
         })
 
         if (generation !== mountGenRef.current) return
