@@ -19,6 +19,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+export PATH="$PROJECT_ROOT/node_modules/.bin:$PATH"
 
 # Load shared libraries
 source "$SCRIPT_DIR/lib/common.sh"
@@ -154,20 +155,35 @@ else
     [ $BUN_EXIT -ne 0 ] && { phase_end error "bun install failed"; exit 1; }
     phase_end ok "Dependencies installed"
 
-    # Static analysis includes unit tests via `bun run static-check`
-    phase_start "Running static analysis"
+    # Static analysis: type-check + lint
+    phase_start "Type-checking & linting"
 
     set +e
-    STATIC_OUT=$(make static-check 2>&1)
-    STATIC_EXIT=$?
+    (bun run validate:turbo-env && bun run check:workspace-contract && turbo run type-check && turbo run ci && bun run --cwd apps/web scripts/check-error-patterns.ts) 2>&1 | tee /tmp/static-check-$ENV.log
+    STATIC_EXIT=${PIPESTATUS[0]}
     set -e
 
     if [ $STATIC_EXIT -ne 0 ]; then
         phase_end error "Static checks failed"
-        echo "$STATIC_OUT" | tail -30
+        tail -30 /tmp/static-check-$ENV.log
         exit 1
     fi
     phase_end ok "Static checks passed"
+
+    # Unit tests
+    phase_start "Running unit tests"
+
+    set +e
+    bun run test:core 2>&1 | tee /tmp/test-core-$ENV.log
+    TEST_EXIT=${PIPESTATUS[0]}
+    set -e
+
+    if [ $TEST_EXIT -ne 0 ]; then
+        phase_end error "Unit tests failed"
+        tail -30 /tmp/test-core-$ENV.log
+        exit 1
+    fi
+    phase_end ok "Tests passed"
 fi
 
 # =============================================================================

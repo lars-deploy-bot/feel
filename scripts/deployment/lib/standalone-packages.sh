@@ -9,8 +9,9 @@
 #     errors like "module not found" in production.
 #
 # These packages are copied to:
-#   - standalone/packages/           (for subprocess access)
-#   - standalone/node_modules/@webalive/  (for app imports)
+#   - standalone/packages/                         (single physical copy)
+# Then linked from:
+#   - standalone/apps/web/node_modules/@webalive/ (for app imports)
 #
 # Validation runs during build to catch missing packages.
 # =============================================================================
