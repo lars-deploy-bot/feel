@@ -17,6 +17,7 @@ import (
 	"shell-server-go/internal/session"
 	"shell-server-go/internal/templates"
 	"shell-server-go/internal/terminal"
+	"shell-server-go/internal/watcher"
 )
 
 // ServerApp holds all runtime dependencies for the shell server.
@@ -28,6 +29,8 @@ type ServerApp struct {
 	FileHandler     *files.Handler
 	EditorHandler   *editor.Handler
 	WSHandler       *terminal.WSHandler
+	WatchManager    *watcher.Manager
+	WatchHandler    *watcher.WatchHandler
 	TemplateHandler *templates.Handler
 	ClientFS        fs.FS
 	Logger          *logger.Logger
@@ -86,6 +89,8 @@ func New(clientFS fs.FS, configPath string) (*ServerApp, error) {
 	rateLimitFile := filepath.Join(cwd, ".rate-limit-state.json")
 	limiter := ratelimit.NewLimiter(rateLimitFile)
 
+	watchMgr := watcher.NewManager()
+
 	return &ServerApp{
 		Config:          cfg,
 		Sessions:        sessions,
@@ -94,6 +99,8 @@ func New(clientFS fs.FS, configPath string) (*ServerApp, error) {
 		FileHandler:     files.NewHandler(cfg, sessions),
 		EditorHandler:   editor.NewHandler(cfg, sessions),
 		WSHandler:       terminal.NewWSHandler(cfg, sessions),
+		WatchManager:    watchMgr,
+		WatchHandler:    watcher.NewWatchHandler(cfg, watchMgr),
 		TemplateHandler: templates.NewHandler(cfg, sessions),
 		ClientFS:        clientFS,
 		Logger:          log,
