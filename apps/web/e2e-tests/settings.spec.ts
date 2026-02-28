@@ -48,8 +48,11 @@ test("can open settings and see General tab", async ({ authenticatedPage, worker
   await expect(openSidebarButton).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
   await openSidebarButton.click()
 
-  // Click the settings gear in the sidebar header
-  const settingsButton = authenticatedPage.locator('[data-testid="settings-button"]')
+  // Click the settings gear in the desktop sidebar header.
+  // Both desktop and mobile sidebars render a settings button with the same testid,
+  // so we scope to the visible desktop aside to avoid strict mode violations.
+  const desktopSidebar = authenticatedPage.locator('aside[aria-label="Conversation history"]').first()
+  const settingsButton = desktopSidebar.locator('[data-testid="settings-button"]')
   await expect(settingsButton).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
   await settingsButton.click()
 

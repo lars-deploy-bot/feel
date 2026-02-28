@@ -32,21 +32,24 @@ interface ChatStreamRequestBody {
   model: string
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null
+}
+
 function parseChatStreamRequestBody(rawBody: string | null): ChatStreamRequestBody {
   if (!rawBody) {
     throw new Error("Missing /api/claude/stream request body")
   }
 
   const parsed: unknown = JSON.parse(rawBody)
-  if (typeof parsed !== "object" || parsed === null) {
+  if (!isRecord(parsed)) {
     throw new Error("Invalid /api/claude/stream request payload")
   }
 
-  const candidate = parsed as Record<string, unknown>
-  const message = candidate.message
-  const tabId = candidate.tabId
-  const tabGroupId = candidate.tabGroupId
-  const model = candidate.model
+  const message = parsed.message
+  const tabId = parsed.tabId
+  const tabGroupId = parsed.tabGroupId
+  const model = parsed.model
 
   if (typeof message !== "string" || message.length === 0) {
     throw new Error("Invalid /api/claude/stream payload: missing message")
@@ -275,11 +278,16 @@ test.describe("Critical Chat Path", () => {
     await chat.gotoFast(workerTenant.workspace, workerTenant.orgId)
     await expect(chat.messageInput).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
 
+    // Reconnect can be called by background stream-recovery hooks on mount.
+    // Capture baseline counts so this test only asserts the manual calls happened.
+    const reconnectCountBeforeManualCall = reconnectCallCount
+    const cancelCountBeforeManualCall = cancelCallCount
+
     const responsePromise = authenticatedPage.waitForResponse(isClaudeStreamPostResponse)
 
-    await authenticatedPage.evaluate(
+    const manualEndpointStatuses = await authenticatedPage.evaluate(
       async ({ cancelPath, reconnectPath }) => {
-        await Promise.all([
+        const [reconnectResponse, cancelResponse] = await Promise.all([
           fetch(reconnectPath, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -291,6 +299,11 @@ test.describe("Critical Chat Path", () => {
             body: JSON.stringify({ requestId: "test" }),
           }),
         ])
+
+        return {
+          cancelStatus: cancelResponse.status,
+          reconnectStatus: reconnectResponse.status,
+        }
       },
       {
         cancelPath: TEST_API.CLAUDE_STREAM_CANCEL,
@@ -298,8 +311,10 @@ test.describe("Critical Chat Path", () => {
       },
     )
 
-    expect(reconnectCallCount).toBe(1)
-    expect(cancelCallCount).toBe(1)
+    expect(manualEndpointStatuses.reconnectStatus).toBe(200)
+    expect(manualEndpointStatuses.cancelStatus).toBe(200)
+    expect(reconnectCallCount).toBeGreaterThanOrEqual(reconnectCountBeforeManualCall + 1)
+    expect(cancelCallCount).toBeGreaterThanOrEqual(cancelCountBeforeManualCall + 1)
 
     await chat.sendMessage(userMessage)
     const response = await responsePromise
