@@ -14,6 +14,7 @@ import {
   type QuestionAnswer,
 } from "@/components/ai/ClarificationQuestions"
 import type { ToolResultRendererProps } from "@/lib/tools/tool-registry"
+import { CLARIFICATION_MAX_QUESTIONS, CLARIFICATION_OPTIONS_PER_QUESTION } from "@webalive/shared"
 
 /**
  * Expected data format from the ask_clarification tool
@@ -40,14 +41,14 @@ export function validateClarificationQuestions(data: unknown): data is Clarifica
 
   if (d.type !== "clarification_questions") return false
   if (!Array.isArray(d.questions)) return false
-  if (d.questions.length === 0 || d.questions.length > 3) return false
+  if (d.questions.length === 0 || d.questions.length > CLARIFICATION_MAX_QUESTIONS) return false
 
   for (const q of d.questions) {
     if (typeof q !== "object" || !q) return false
     const question = q as Record<string, unknown>
     if (typeof question.id !== "string") return false
     if (typeof question.question !== "string") return false
-    if (!Array.isArray(question.options) || question.options.length !== 3) return false
+    if (!Array.isArray(question.options) || question.options.length !== CLARIFICATION_OPTIONS_PER_QUESTION) return false
 
     for (const opt of question.options) {
       if (typeof opt !== "object" || !opt) return false
@@ -75,7 +76,7 @@ function formatAnswersForSubmission(
     let answerText: string
     if (answer.selectedOption === null) {
       answerText = "(skipped)"
-    } else if (answer.selectedOption === 3) {
+    } else if (answer.selectedOption === CLARIFICATION_OPTIONS_PER_QUESTION) {
       answerText = answer.customValue || "(empty custom answer)"
     } else {
       answerText = question.options[answer.selectedOption].label
@@ -102,11 +103,7 @@ export function ClarificationQuestionsOutput({ data, onSubmitAnswer }: Clarifica
   const questions: ClarificationQuestion[] = data.questions.map(q => ({
     id: q.id,
     question: q.question,
-    options: q.options.slice(0, 3) as [
-      { label: string; description?: string },
-      { label: string; description?: string },
-      { label: string; description?: string },
-    ],
+    options: q.options.slice(0, CLARIFICATION_OPTIONS_PER_QUESTION),
   }))
 
   const handleComplete = useCallback(
@@ -140,7 +137,7 @@ export function ClarificationQuestionsOutput({ data, onSubmitAnswer }: Clarifica
               let answerText: string
               if (answer.selectedOption === null) {
                 answerText = "(skipped)"
-              } else if (answer.selectedOption === 3) {
+              } else if (answer.selectedOption === CLARIFICATION_OPTIONS_PER_QUESTION) {
                 answerText = answer.customValue || "(empty)"
               } else {
                 answerText = question.options[answer.selectedOption].label

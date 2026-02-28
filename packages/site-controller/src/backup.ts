@@ -17,22 +17,25 @@ import { DeploymentError } from "./errors.js"
 const REPO_DIR = PATHS.BACKUP_REPO
 const SSH_KEY = "/root/.ssh/id_lars_deploy_bot"
 const MAX_FILES_PER_SITE = 200
+const GIT_TIMEOUT_MS = 30_000 // 30s per git command
 
 interface BackupStats {
   stagedFiles: number
   includedSites: string[]
   skippedSites: string[]
+  failedSites: string[]
   timestamp: string
 }
 
 /**
  * Execute git command with SSH key configured
  */
-function gitExec(args: string[], cwd: string = REPO_DIR): string {
+function gitExec(args: string[], cwd: string = REPO_DIR, timeoutMs: number = GIT_TIMEOUT_MS): string {
   try {
     const result = spawnSync("git", args, {
       cwd,
       encoding: "utf-8",
+      timeout: timeoutMs,
       env: {
         ...process.env,
         GIT_SSH_COMMAND: `ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no`,
@@ -145,30 +148,41 @@ function analyzeSites(): {
 }
 
 /**
- * Stage files for commit, excluding build artifacts
+ * Stage files for commit, excluding build artifacts.
+ * Sites that fail to stage are skipped — one bad site never kills the whole backup.
  */
-function stageFiles(includedSites: string[]): number {
+function stageFiles(includedSites: string[]): { stagedFiles: number; failedSites: string[] } {
   console.log("[Backup] Staging files...")
+  const failedSites: string[] = []
 
-  // Stage files from included sites
   for (const site of includedSites) {
     try {
       gitExec(["add", "-A", `sites/${site}/`], REPO_DIR)
       // Remove build artifacts if accidentally added
-      gitExec(
-        [
-          "reset",
-          `sites/${site}/node_modules`,
-          `sites/${site}/**/.vite`,
-          `sites/${site}/**/dist`,
-          `sites/${site}/**/build`,
-          `sites/${site}/**/.bun`,
-        ],
-        REPO_DIR,
-      )
-    } catch (_error) {
-      // Don't fail if reset fails (patterns might not match)
-      console.log(`[Backup] Reset artifacts for ${site} (may not exist)`)
+      try {
+        gitExec(
+          [
+            "reset",
+            `sites/${site}/node_modules`,
+            `sites/${site}/**/.vite`,
+            `sites/${site}/**/dist`,
+            `sites/${site}/**/build`,
+            `sites/${site}/**/.bun`,
+          ],
+          REPO_DIR,
+        )
+      } catch {
+        // Reset patterns may not match — that's fine
+      }
+    } catch (error) {
+      console.log(`[Backup] ✗ Failed to stage sites/${site}/, skipping: ${error}`)
+      // Unstage anything partially added for this site
+      try {
+        gitExec(["reset", `sites/${site}/`], REPO_DIR)
+      } catch {
+        // Nothing to unstage
+      }
+      failedSites.push(site)
     }
   }
 
@@ -202,19 +216,26 @@ function stageFiles(includedSites: string[]): number {
     .filter(f => f.trim()).length
 
   console.log(`[Backup] Total files staged: ${stagedFiles}`)
-  return stagedFiles
+  return { stagedFiles, failedSites }
 }
 
 /**
  * Create commit with timestamp and site information
  */
-function createCommit(skippedSites: string[]): void {
+function createCommit(skippedSites: string[], failedSites: string[]): void {
   const timestamp = new Date().toISOString().split("T")[0]
   let commitMsg = `Backup: ${timestamp}\n\nAutomated backup of all websites from /srv/webalive`
 
   if (skippedSites.length > 0) {
     commitMsg += `\n\nSkipped sites with >${MAX_FILES_PER_SITE} files:`
     for (const site of skippedSites) {
+      commitMsg += `\n  - ${site}`
+    }
+  }
+
+  if (failedSites.length > 0) {
+    commitMsg += `\n\nFailed to stage:`
+    for (const site of failedSites) {
       commitMsg += `\n  - ${site}`
     }
   }
@@ -264,6 +285,7 @@ export async function backupWebsites(): Promise<BackupStats> {
         stagedFiles: 0,
         includedSites: [],
         skippedSites: [],
+        failedSites: [],
         timestamp,
       }
     }
@@ -271,8 +293,11 @@ export async function backupWebsites(): Promise<BackupStats> {
     // 4. Analyze sites and filter by file count
     const { includedSites, skippedSites } = analyzeSites()
 
-    // 5. Stage files
-    const stagedFiles = stageFiles(includedSites)
+    // 5. Stage files (per-site — failures skip that site, not the whole backup)
+    const { stagedFiles, failedSites } = stageFiles(includedSites)
+
+    // Remove failed sites from included list
+    const successSites = includedSites.filter(s => !failedSites.includes(s))
 
     // 6. If no files staged, return early (nothing to commit)
     if (stagedFiles === 0) {
@@ -281,12 +306,13 @@ export async function backupWebsites(): Promise<BackupStats> {
         stagedFiles: 0,
         includedSites: [],
         skippedSites,
+        failedSites,
         timestamp,
       }
     }
 
     // 7. Create commit
-    createCommit(skippedSites)
+    createCommit(skippedSites, failedSites)
 
     // 8. Push to GitHub
     pushToGitHub()
@@ -297,11 +323,15 @@ export async function backupWebsites(): Promise<BackupStats> {
     if (skippedSites.length > 0) {
       console.log(`[Backup] ⚠ ${skippedSites.length} site(s) skipped (too many files)`)
     }
+    if (failedSites.length > 0) {
+      console.log(`[Backup] ⚠ ${failedSites.length} site(s) failed to stage`)
+    }
 
     return {
       stagedFiles,
-      includedSites,
+      includedSites: successSites,
       skippedSites,
+      failedSites,
       timestamp,
     }
   } catch (error) {
