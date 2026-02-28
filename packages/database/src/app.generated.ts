@@ -143,6 +143,9 @@ export type Database = {
       automation_runs: {
         Row: {
           changes_made: string[] | null
+          chat_conversation_id: string | null
+          chat_request_id: string | null
+          chat_tab_id: string | null
           completed_at: string | null
           duration_ms: number | null
           error: string | null
@@ -158,6 +161,9 @@ export type Database = {
         }
         Insert: {
           changes_made?: string[] | null
+          chat_conversation_id?: string | null
+          chat_request_id?: string | null
+          chat_tab_id?: string | null
           completed_at?: string | null
           duration_ms?: number | null
           error?: string | null
@@ -173,6 +179,9 @@ export type Database = {
         }
         Update: {
           changes_made?: string[] | null
+          chat_conversation_id?: string | null
+          chat_request_id?: string | null
+          chat_tab_id?: string | null
           completed_at?: string | null
           duration_ms?: number | null
           error?: string | null
@@ -187,6 +196,20 @@ export type Database = {
           triggered_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "automation_runs_chat_conversation_id_fkey"
+            columns: ["chat_conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["conversation_id"]
+          },
+          {
+            foreignKeyName: "automation_runs_chat_tab_id_fkey"
+            columns: ["chat_tab_id"]
+            isOneToOne: false
+            referencedRelation: "conversation_tabs"
+            referencedColumns: ["tab_id"]
+          },
           {
             foreignKeyName: "automation_runs_job_id_fkey"
             columns: ["job_id"]
@@ -248,6 +271,8 @@ export type Database = {
           last_message_at: string | null
           message_count: number
           org_id: string
+          source: Database["app"]["Enums"]["conversation_source"]
+          source_metadata: Json | null
           title: string
           updated_at: string
           user_id: string
@@ -264,6 +289,8 @@ export type Database = {
           last_message_at?: string | null
           message_count?: number
           org_id: string
+          source?: Database["app"]["Enums"]["conversation_source"]
+          source_metadata?: Json | null
           title?: string
           updated_at?: string
           user_id: string
@@ -280,6 +307,8 @@ export type Database = {
           last_message_at?: string | null
           message_count?: number
           org_id?: string
+          source?: Database["app"]["Enums"]["conversation_source"]
+          source_metadata?: Json | null
           title?: string
           updated_at?: string
           user_id?: string
@@ -750,6 +779,7 @@ export type Database = {
       automation_job_status: "idle" | "running" | "paused" | "disabled"
       automation_run_status: "pending" | "running" | "success" | "failure" | "skipped"
       automation_trigger_type: "cron" | "webhook" | "one-time" | "email"
+      conversation_source: "chat" | "automation_run"
       severity_level: "info" | "warn" | "error" | "debug" | "fatal"
     }
     CompositeTypes: {
@@ -874,6 +904,7 @@ export const Constants = {
       automation_job_status: ["idle", "running", "paused", "disabled"],
       automation_run_status: ["pending", "running", "success", "failure", "skipped"],
       automation_trigger_type: ["cron", "webhook", "one-time", "email"],
+      conversation_source: ["chat", "automation_run"],
       severity_level: ["info", "warn", "error", "debug", "fatal"],
     },
   },
