@@ -3,7 +3,7 @@
  * Extracts async state management from CodeView
  */
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { type FileContent, readFile } from "../lib/file-api"
 import { useFileChangeVersion } from "../lib/file-events"
 
@@ -52,6 +52,12 @@ export function useFileContent(workspace: string, path: string, worktree?: strin
   const [file, setFile] = useState<FileContent | null>(cached)
   const [loading, setLoading] = useState(!cached)
   const [error, setError] = useState<string | null>(null)
+  const hasContentRef = useRef(!!cached)
+
+  // Track whether we have content to avoid flash on revalidation
+  useEffect(() => {
+    hasContentRef.current = file !== null
+  }, [file])
 
   const load = useCallback(
     async (skipCache = false) => {
@@ -66,7 +72,11 @@ export function useFileContent(workspace: string, path: string, worktree?: strin
         }
       }
 
-      setLoading(true)
+      // Stale-while-revalidate: only show loading spinner on initial load.
+      // If we already have content displayed, keep it visible during refetch.
+      if (!hasContentRef.current) {
+        setLoading(true)
+      }
       setError(null)
 
       const result = await readFile(workspace, path, worktree)
