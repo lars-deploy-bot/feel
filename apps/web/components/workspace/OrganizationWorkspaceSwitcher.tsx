@@ -104,18 +104,20 @@ export function OrganizationWorkspaceSwitcher({
     return (
       <div className="flex flex-col gap-0.5 min-w-0 flex-1">
         {/* Org trigger - small label */}
-        <button
-          ref={orgTriggerRef}
-          type="button"
-          onClick={() => {
-            setOrgOpen(prev => !prev)
-            setWsOpen(false)
-          }}
-          className="flex items-center gap-1 text-[11px] text-black/35 dark:text-white/35 hover:text-black/55 dark:hover:text-white/55 transition-colors truncate"
-        >
-          <span className="truncate">{org.name}</span>
-          {showOrgChevron && <ChevronDown size={10} strokeWidth={2} className="shrink-0 opacity-50" />}
-        </button>
+        {!wsOnly && (
+          <button
+            ref={orgTriggerRef}
+            type="button"
+            onClick={() => {
+              setOrgOpen(prev => !prev)
+              setWsOpen(false)
+            }}
+            className="flex items-center gap-1 text-[11px] text-black/35 dark:text-white/35 hover:text-black/55 dark:hover:text-white/55 transition-colors truncate"
+          >
+            <span className="truncate">{org.name}</span>
+            {showOrgChevron && <ChevronDown size={10} strokeWidth={2} className="shrink-0 opacity-50" />}
+          </button>
+        )}
 
         {/* Workspace trigger - main label */}
         {!orgOnly && (
@@ -145,7 +147,7 @@ export function OrganizationWorkspaceSwitcher({
         )}
 
         {/* Dropdowns */}
-        {orgOpen && showOrgChevron && (
+        {!wsOnly && orgOpen && showOrgChevron && (
           <SwitcherDropdown
             triggerRef={orgTriggerRef}
             items={organizations}

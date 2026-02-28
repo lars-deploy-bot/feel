@@ -85,6 +85,26 @@ export async function POST(req: NextRequest) {
   let lockAcquired = false
   let sessionKey: TabSessionKey | null = null // Tab session key: used for BOTH session persistence AND lock
 
+  const cleanupLockedStreamAfterError = (context: string, errorMessage: string) => {
+    if (!lockAcquired || !sessionKey) {
+      return
+    }
+
+    try {
+      unregisterCancellation(requestId)
+      unlockConversation(sessionKey)
+      lockAcquired = false
+      logger.log(`Released lock and unregistered cancellation after ${context}`)
+
+      // Mark buffer as errored (non-blocking)
+      errorStreamBuffer(requestId, errorMessage).catch(err => {
+        logger.log("Failed to mark buffer as errored (non-fatal):", err)
+      })
+    } catch (cleanupError) {
+      logger.error(`Failed to clean up locked stream after ${context}:`, cleanupError)
+    }
+  }
+
   try {
     const jar = await cookies()
     logger.log("Checking session cookie...")
@@ -906,17 +926,7 @@ export async function POST(req: NextRequest) {
   } catch (outerError) {
     // Revoked session → 401 (not a 500)
     if (outerError instanceof AuthenticationError) {
-      if (lockAcquired && sessionKey) {
-        try {
-          unregisterCancellation(requestId)
-          unlockConversation(sessionKey)
-          errorStreamBuffer(requestId, outerError.message).catch(err => {
-            logger.log("Failed to mark buffer as errored (non-fatal):", err)
-          })
-        } catch (unlockError) {
-          logger.error("Failed to unlock conversation in auth error handler:", unlockError)
-        }
-      }
+      cleanupLockedStreamAfterError("auth error", outerError.message)
       const origin = req.headers.get("origin")
       const authRes = structuredErrorResponse(ErrorCodes.NO_SESSION, {
         status: 401,
@@ -929,21 +939,8 @@ export async function POST(req: NextRequest) {
     logger.error("Outer catch - request processing failed:", outerError)
     Sentry.captureException(outerError)
 
-    // CRITICAL: Release lock if we acquired it before the error occurred
-    // This prevents deadlocks when errors happen during stream setup
-    if (lockAcquired) {
-      try {
-        unlockConversation(sessionKey!)
-        logger.log("Released lock after error")
-
-        // Mark buffer as errored (non-blocking)
-        errorStreamBuffer(requestId, outerError instanceof Error ? outerError.message : "Unknown error").catch(err => {
-          logger.log("Failed to mark buffer as errored (non-fatal):", err)
-        })
-      } catch (unlockError) {
-        logger.error("Failed to unlock conversation in error handler:", unlockError)
-      }
-    }
+    // CRITICAL: Ensure both lock and cancellation registry are cleaned up after any setup failure
+    cleanupLockedStreamAfterError("request error", outerError instanceof Error ? outerError.message : "Unknown error")
 
     const origin = req.headers.get("origin")
     const errorRes = structuredErrorResponse(ErrorCodes.REQUEST_PROCESSING_FAILED, {
