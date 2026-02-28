@@ -2,10 +2,10 @@
  * Full-Featured AI Query
  *
  * Supports two modes:
- * 1. **Full mode** (default): All Claude Code tools enabled
+ * 1. **Full mode** (default): All agent tools enabled
  * 2. **Workspace mode**: Site builder permissions with workspace isolation
  *
- * Uses the Claude Code instance credentials - no API key needed.
+ * Uses the Anthropic OAuth credentials - no API key needed.
  *
  * @example
  * ```typescript
@@ -139,7 +139,7 @@ export interface AskAIFullResult {
 /**
  * Ask Claude with configurable tool access.
  *
- * **Full Mode** (no workspace): All Claude Code tools
+ * **Full Mode** (no workspace): All agent tools
  * **Workspace Mode** (workspace provided): Site builder permissions
  */
 export async function askAIFull(options: AskAIFullOptions): Promise<AskAIFullResult> {
@@ -170,7 +170,7 @@ export async function askAIFull(options: AskAIFullOptions): Promise<AskAIFullRes
 
   if (isWorkspaceMode) {
     permissionMode = permissionMode ?? STREAM_PERMISSION_MODE
-    // Cast to SettingsSource[] - "managed" is valid for Claude Code but not in SDK types
+    // Cast to SettingsSource[] - "managed" is valid for the agent SDK but not in TS types
     settingSources = [...STREAM_SETTINGS_SOURCES] as SettingsSource[]
 
     connectedProviders = Object.keys(oauthTokens).filter(k => !!oauthTokens[k])
@@ -209,7 +209,7 @@ export async function askAIFull(options: AskAIFullOptions): Promise<AskAIFullRes
         maxTurns,
         permissionMode,
         ...(permissionMode === "bypassPermissions" ? { allowDangerouslySkipPermissions: true } : {}),
-        // Cast needed: "managed" is valid for Claude Code but not in SDK's SettingSource type
+        // Cast needed: "managed" is valid for the agent SDK but not in TS's SettingSource type
         settingSources: settingSources as ("project" | "user")[],
         systemPrompt,
         resume,

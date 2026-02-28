@@ -190,7 +190,7 @@ pnpm-lock.yaml
 apps/mcp-servers/google-scraper/test-html/
 
 # Local settings (machine-specific)
-# settings.local.json - tracked in repo for shared Claude Code config
+# settings.local.json - tracked in repo for shared agent config
 
 # Cryptographic keys (NEVER COMMIT)
 *-private-key.json

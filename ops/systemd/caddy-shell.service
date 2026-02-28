@@ -1,6 +1,6 @@
 # caddy-shell.service
 #
-# Dedicated Caddy instance for Go Shell (Claude Code SSE connections)
+# Dedicated Caddy instance for Go Shell (SSE connections)
 # This service is NEVER auto-reloaded during deployments to preserve
 # long-lived SSE connections.
 #

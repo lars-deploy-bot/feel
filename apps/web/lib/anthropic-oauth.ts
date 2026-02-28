@@ -4,7 +4,7 @@
  * READ FIRST: docs/knowledge/ANTHROPIC_OAUTH_DO_NOT_DELETE.md
  *
  * This file refreshes expired OAuth tokens for Claude Pro/Max subscriptions.
- * It coordinates with Claude Code CLI via a shared directory lock on ~/.claude.
+ * It coordinates with the Anthropic CLI via a shared directory lock on ~/.claude.
  * The lock target, retry parameters, and double-check pattern are all derived
  * from reverse-engineering the CLI binary — see the knowledge doc for details.
  *
@@ -20,7 +20,7 @@ import * as Sentry from "@sentry/nextjs"
 import { retryAsync } from "@webalive/shared"
 import lockfile, { type LockOptions } from "proper-lockfile"
 
-// Anthropic OAuth constants (same as Claude Code / OpenClaw)
+// Anthropic OAuth constants (same as Anthropic CLI / OpenClaw)
 const ANTHROPIC_TOKEN_URL = "https://console.anthropic.com/v1/oauth/token"
 const ANTHROPIC_CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
 
@@ -31,7 +31,7 @@ const PROACTIVE_REFRESH_MIN_VALIDITY_MS = 2 * 60 * 60 * 1000
 const PROACTIVE_REFRESH_CHECK_INTERVAL_MS = 15 * 60 * 1000
 const INVALID_GRANT_SUPPRESSION_LOG_INTERVAL_MS = 60 * 60 * 1000
 
-// Path to Claude Code credentials
+// Path to Anthropic CLI credentials
 const CLAUDE_DIR = path.join(os.homedir(), ".claude")
 const CLAUDE_CREDENTIALS_PATH = path.join(CLAUDE_DIR, ".credentials.json")
 const DEAD_REFRESH_TOKEN_MARKER_PATH = path.join(CLAUDE_DIR, ".oauth-refresh-dead.json")
@@ -42,7 +42,7 @@ const DEAD_REFRESH_TOKEN_MARKER_PATH = path.join(CLAUDE_DIR, ".oauth-refresh-dea
 const CLAUDE_DIR_MODE = 0o711
 
 // Lock the DIRECTORY (~/.claude), not the credentials file.
-// Claude Code CLI locks the same directory. See: docs/knowledge/ANTHROPIC_OAUTH_DO_NOT_DELETE.md § "The Lock Contract"
+// The Anthropic CLI locks the same directory. See: docs/knowledge/ANTHROPIC_OAUTH_DO_NOT_DELETE.md § "The Lock Contract"
 const LOCK_OPTIONS: LockOptions = {
   retries: {
     retries: 5,
@@ -447,7 +447,7 @@ async function refreshTokenWithLock(minimumValidityMs = TOKEN_EXPIRY_BUFFER_MS):
       }
 
       const marker = markRefreshTokenChainDead(credentials.refreshToken)
-      const guidance = "Run /login in Claude Code CLI to re-authenticate."
+      const guidance = "Re-authenticate via the Anthropic CLI (/login)."
       console.error(
         `[anthropic-oauth] CRITICAL: OAuth refresh returned invalid_grant (failure #${marker.failures}). ${guidance}`,
       )

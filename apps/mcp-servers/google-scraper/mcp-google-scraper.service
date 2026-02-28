@@ -1,6 +1,6 @@
 [Unit]
 Description=Google Scraper MCP Server (HTTP)
-Documentation=https://github.com/anthropics/claude-code
+Documentation=https://github.com/eenlars/alive
 After=network.target
 
 [Service]

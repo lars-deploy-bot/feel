@@ -35,7 +35,7 @@ export {
 } from "./display-config.js"
 // AI utilities
 export { type AskAIOptions, askAI, CLAUDE_MODELS, type ClaudeModel } from "./lib/ask-ai.js"
-// Full-featured AI (all Claude Code tools enabled)
+// Full-featured AI (all agent tools enabled)
 // Note: CLAUDE_MODELS is already exported from ask-ai.ts above
 export {
   type AskAIFullOptions,
