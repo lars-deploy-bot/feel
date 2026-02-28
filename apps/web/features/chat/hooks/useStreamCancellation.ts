@@ -7,8 +7,8 @@ import { trackStreamStopped } from "@/lib/analytics/events"
 import { postty } from "@/lib/api/api-client"
 import { validateRequest } from "@/lib/api/schemas"
 import { useDexieMessageStore } from "@/lib/db/dexieMessageStore"
-import { CANCEL_ENDPOINT_STATUS, type CancelEndpointStatus } from "@/lib/stream/cancel-status"
 import { clearAbortController, getAbortController, useStreamingActions } from "@/lib/stores/streamingStore"
+import { CANCEL_ENDPOINT_STATUS, type CancelEndpointStatus } from "@/lib/stream/cancel-status"
 
 interface UseStreamCancellationOptions {
   /** Current tab ID (session key for Claude SDK) */

@@ -5,9 +5,9 @@ import {
   type BridgeInterruptSource,
   type BridgeMessageEvent,
   type BridgeStartMessage,
+  BridgeStreamType,
   type InterruptDetails,
   type InterruptStatus,
-  BridgeStreamType,
 } from "@/features/chat/lib/streaming/ndjson"
 import type { SDKAssistantMessage, SDKMessage, SDKUserMessage } from "@/features/chat/types/sdk-types"
 import {

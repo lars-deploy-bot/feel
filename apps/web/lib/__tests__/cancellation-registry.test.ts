@@ -2,8 +2,8 @@ import { describe, expect, test, vi } from "vitest"
 import { isConversationLocked, tabKey, tryLockConversation, unlockConversation } from "@/features/auth/lib/sessionStore"
 import {
   cancelStream,
-  cancelStreamByConversationKeyWithStatus,
   cancelStreamByConversationKey,
+  cancelStreamByConversationKeyWithStatus,
   cancelStreamWithStatus,
   getRegistrySize,
   registerCancellation,
