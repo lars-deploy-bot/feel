@@ -33,7 +33,6 @@ interface ConversationSidebarProps {
   onSelectWorktree: (worktree: string | null) => void
   worktreeModalOpen?: boolean
   onWorktreeModalOpenChange?: (open: boolean) => void
-  onOpenSettings: () => void
   onOpenInvite: () => void
   /** When true, sidebar shows settings tabs instead of conversations */
   settingsMode?: boolean
@@ -55,7 +54,6 @@ export function ConversationSidebar({
   onSelectWorktree,
   worktreeModalOpen,
   onWorktreeModalOpenChange,
-  onOpenSettings,
   onOpenInvite,
   settingsMode,
   onCloseSettings,
@@ -282,7 +280,7 @@ export function ConversationSidebar({
           </div>
 
           {/* Footer actions - with safe area padding for mobile home indicator */}
-          <FooterActions onOpenInvite={onOpenInvite} onOpenSettings={onOpenSettings} isMobile={isMobile} />
+          <FooterActions onOpenInvite={onOpenInvite} isMobile={isMobile} />
         </>
       )}
     </div>

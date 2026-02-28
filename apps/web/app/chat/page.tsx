@@ -100,7 +100,7 @@ function ChatPageContent() {
     },
     [dexieSession, ensureTabGroupWithTab],
   )
-  const { toggleSidebar } = useSidebarActions()
+  const { toggleSidebar, openSidebar } = useSidebarActions()
   const isSidebarOpen = useSidebarOpen()
   const isHydrated = useAppHydrated()
   const [subdomainInitialized, setSubdomainInitialized] = useState(false)
@@ -288,6 +288,13 @@ function ChatPageContent() {
 
   // Redeem referral code if stored (from invite link flow)
   useRedeemReferral()
+
+  // Auto-open sidebar when settings activates (settings nav lives in the sidebar)
+  useEffect(() => {
+    if (modals.settings) {
+      openSidebar()
+    }
+  }, [modals.settings, openSidebar])
 
   // Update page title with workspace name & track
   useEffect(() => {
@@ -673,7 +680,6 @@ function ChatPageContent() {
         onSelectWorktree={setWorktree}
         worktreeModalOpen={worktreeModalOpen}
         onWorktreeModalOpenChange={setWorktreeModalOpen}
-        onOpenSettings={modals.openSettings}
         onOpenInvite={modals.openInvite}
         settingsMode={!!modals.settings}
         onCloseSettings={modals.closeSettings}
