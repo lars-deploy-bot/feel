@@ -10,6 +10,7 @@
 import type { SDKMessage, SDKResultMessage } from "@anthropic-ai/claude-agent-sdk"
 import type { OAuthWarningContent } from "@webalive/shared"
 import type { ErrorCode } from "@/lib/error-codes"
+import type { CancelResolutionStatus } from "@/lib/stream/cancel-status"
 
 /**
  * Bridge Stream Type Constants
@@ -59,6 +60,28 @@ export const BridgeInterruptSource = {
 export type BridgeInterruptSource = (typeof BridgeInterruptSource)[keyof typeof BridgeInterruptSource]
 
 export type InterruptSource = BridgeInterruptSource
+
+export const InterruptStatus = {
+  STOPPING: "stopping",
+  STOPPED: "stopped",
+  FINISHED: "finished",
+  STILL_RUNNING: "still_running",
+  NOT_VERIFIED: "not_verified",
+} as const
+
+export type InterruptStatus = (typeof InterruptStatus)[keyof typeof InterruptStatus]
+
+export interface InterruptDetails {
+  stopId?: string
+  startedAt?: string
+  resolvedAt?: string
+  stopRequestId?: string
+  activeRequestId?: string
+  cancelStatus?: CancelResolutionStatus
+  verificationResult?: "confirmed" | "still_streaming" | "unknown" | "skipped"
+  verificationAttempts?: number
+  reason?: string
+}
 
 // ============================================================================
 // Message Type Definitions
@@ -167,6 +190,8 @@ export interface BridgeInterruptMessage extends Omit<BridgeMessage, "type" | "da
   data: {
     message: string
     source: InterruptSource
+    status?: InterruptStatus
+    details?: InterruptDetails
   }
 }
 

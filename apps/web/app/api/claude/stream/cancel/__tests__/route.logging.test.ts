@@ -4,8 +4,8 @@ const mocks = vi.hoisted(() => ({
   requireSessionUser: vi.fn(),
   verifyWorkspaceAccess: vi.fn(),
   structuredErrorResponse: vi.fn(),
-  cancelStream: vi.fn(),
-  cancelStreamByConversationKey: vi.fn(),
+  cancelStreamWithStatus: vi.fn(),
+  cancelStreamByConversationKeyWithStatus: vi.fn(),
   appendFileSync: vi.fn(),
   mkdirSync: vi.fn(),
   captureException: vi.fn(),
@@ -21,8 +21,26 @@ vi.mock("@/lib/api/responses", () => ({
 }))
 
 vi.mock("@/lib/stream/cancellation-registry", () => ({
-  cancelStream: mocks.cancelStream,
-  cancelStreamByConversationKey: mocks.cancelStreamByConversationKey,
+  cancelStreamWithStatus: mocks.cancelStreamWithStatus,
+  cancelStreamByConversationKeyWithStatus: mocks.cancelStreamByConversationKeyWithStatus,
+}))
+
+vi.mock("@/lib/stream/cancel-intent-registry", () => ({
+  registerCancelIntent: vi.fn(),
+}))
+
+vi.mock("@/lib/stream/cancel-markers", () => ({
+  PAGE_UNLOAD_BEACON_MARKER: "__PAGE_UNLOAD__",
+}))
+
+vi.mock("@/lib/stream/cancel-status", () => ({
+  CANCEL_ENDPOINT_STATUS: {
+    CANCELLED: "cancelled",
+    CANCEL_TIMED_OUT: "cancel_timed_out",
+    ALREADY_COMPLETE: "already_complete",
+    CANCEL_QUEUED: "cancel_queued",
+    IGNORED_UNLOAD_BEACON: "ignored_unload_beacon",
+  },
 }))
 
 vi.mock("node:fs", () => ({
@@ -60,8 +78,8 @@ describe("POST /api/claude/stream/cancel logging resilience", () => {
       },
     )
 
-    mocks.cancelStream.mockResolvedValue(false)
-    mocks.cancelStreamByConversationKey.mockResolvedValue(false)
+    mocks.cancelStreamWithStatus.mockResolvedValue("already_complete")
+    mocks.cancelStreamByConversationKeyWithStatus.mockResolvedValue("already_complete")
     mocks.mkdirSync.mockImplementation(() => undefined)
     mocks.appendFileSync.mockImplementation(() => undefined)
     mocks.captureException.mockImplementation(() => undefined)

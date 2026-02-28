@@ -739,6 +739,59 @@ export const EDGE_OVERLOADED: UIMessage[] = [
   errorResult("ol-2", "HTTP 529: API is temporarily overloaded. Please try again in a moment."),
 ]
 
+// ---------------------------------------------------------------------------
+// Interrupt helper
+// ---------------------------------------------------------------------------
+function interruptMsg(id: string, message: string, source: string, status?: string): UIMessage {
+  return {
+    id,
+    type: "interrupt",
+    timestamp: new Date(ts()),
+    content: { message, source, ...(status ? { status } : {}) },
+  }
+}
+
+/** Stopping in progress — blue dot, minimal */
+export const EDGE_STOPPING: UIMessage[] = [
+  userMsg("stp-1", "refactor the entire auth system to use JWT tokens"),
+  assistantText(
+    "stp-2",
+    "I'll start by examining the current authentication setup to plan the migration. Let me check",
+  ),
+  interruptMsg("stp-3", "Stopping response...", "stream_client_cancel", "stopping"),
+]
+
+/** User stopped — gray dot, minimal */
+export const EDGE_STOPPED: UIMessage[] = [
+  userMsg("st-1", "refactor the entire auth system to use JWT tokens"),
+  assistantText("st-2", "I'll start by examining the current authentication setup to plan the migration. Let me check"),
+  interruptMsg("st-3", "Response stopped.", "stream_client_cancel", "stopped"),
+]
+
+/** Stop not confirmed — response is still running */
+export const EDGE_STILL_RUNNING: UIMessage[] = [
+  userMsg("sr-1", "run the full test suite and fix any failures"),
+  assistantText("sr-2", "Running the test suite now."),
+  interruptMsg(
+    "sr-3",
+    "Stop not confirmed. Response is still running. Press Stop again.",
+    "stream_client_cancel",
+    "still_running",
+  ),
+]
+
+/** Could not confirm stop */
+export const EDGE_STOP_NOT_VERIFIED: UIMessage[] = [
+  userMsg("snv-1", "deploy the latest changes to staging"),
+  assistantText("snv-2", "Starting the staging deployment."),
+  interruptMsg(
+    "snv-3",
+    "Could not confirm stop. Check whether the response is still updating.",
+    "stream_client_cancel",
+    "not_verified",
+  ),
+]
+
 // ===========================================================================
 // 14. Read — user asks to see a file
 // SDK Read returns: cat -n style string "     1\tcontent\n     2\t..." (plain string)

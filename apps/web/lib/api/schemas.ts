@@ -2,6 +2,7 @@ import type { EndpointSchema, Req as PkgReq, Res as PkgRes, ResPayload as PkgRes
 import { CLAUDE_MODELS, ORG_ROLES, RESERVED_USER_ENV_KEYS } from "@webalive/shared"
 import { z } from "zod"
 import { RESERVED_SLUGS } from "@/features/deployment/types/guards"
+import { CANCEL_ENDPOINT_STATUS_VALUES } from "@/lib/stream/cancel-status"
 import { OptionalWorktreeSchema, OptionalWorktreeSlugSchema } from "@/types/guards/worktree-schemas"
 
 /** Zod schema for valid Claude model IDs, derived from the shared CLAUDE_MODELS constant */
@@ -176,7 +177,7 @@ export const apiSchemas = {
       .brand<"CancelStreamRequest">(),
     res: z.object({
       ok: z.boolean(),
-      status: z.enum(["cancelled", "already_complete", "ignored_unload_beacon", "cancel_queued"]),
+      status: z.enum(CANCEL_ENDPOINT_STATUS_VALUES),
       requestId: z.string().optional(),
       tabId: z.string().optional(),
     }),

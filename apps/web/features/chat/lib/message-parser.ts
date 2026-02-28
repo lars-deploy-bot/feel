@@ -6,6 +6,8 @@ import {
   type BridgeMessageEvent,
   type BridgeStartMessage,
   BridgeStreamType,
+  type InterruptDetails,
+  type InterruptStatus,
 } from "@/features/chat/lib/streaming/ndjson"
 import type { SDKAssistantMessage, SDKMessage, SDKUserMessage } from "@/features/chat/types/sdk-types"
 import {
@@ -42,6 +44,18 @@ export type DoneEventData = Record<string, never>
 export interface InterruptEventData {
   message: string
   source: BridgeInterruptSource
+  status?: InterruptStatus
+  details?: InterruptDetails
+}
+
+const INTERRUPT_SOURCES = new Set<BridgeInterruptSource>(["stream_http_abort", "stream_client_cancel"])
+
+function isInterruptLikeContent(value: unknown): value is InterruptEventData {
+  if (!value || typeof value !== "object") return false
+  const record = value as Record<string, unknown>
+  if (typeof record.message !== "string") return false
+  if (typeof record.source !== "string") return false
+  return INTERRUPT_SOURCES.has(record.source as BridgeInterruptSource)
 }
 
 export interface StreamEvent {
@@ -412,6 +426,12 @@ export function getMessageComponentType(message: UIMessage): ComponentType {
   if (message.type === "agent_manager") return COMPONENT_TYPE.AGENT_MANAGER
 
   if (message.type === "sdk_message") {
+    // Backward compatibility for older persisted stop/interrupt payloads
+    // stored as plain sdk_message content in Dexie.
+    if (isInterruptLikeContent(message.content)) {
+      return COMPONENT_TYPE.INTERRUPT
+    }
+
     const sdkMsg = message.content as SDKMessage
 
     // Detect compacting messages reloaded from Dexie (stored as sdk_message)

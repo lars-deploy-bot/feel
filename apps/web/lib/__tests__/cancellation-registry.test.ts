@@ -3,6 +3,8 @@ import { isConversationLocked, tabKey, tryLockConversation, unlockConversation }
 import {
   cancelStream,
   cancelStreamByConversationKey,
+  cancelStreamByConversationKeyWithStatus,
+  cancelStreamWithStatus,
   getRegistrySize,
   registerCancellation,
   unregisterCancellation,
@@ -237,10 +239,10 @@ describe("Cancellation Registry", () => {
 
       registerCancellation(requestId, userId, convKey, () => new Promise<void>(() => {}))
 
-      const cancelPromise = cancelStream(requestId, userId)
+      const cancelPromise = cancelStreamWithStatus(requestId, userId)
       await vi.advanceTimersByTimeAsync(2_100)
 
-      await expect(cancelPromise).resolves.toBe(true)
+      await expect(cancelPromise).resolves.toBe("timed_out")
       expect(isConversationLocked(convKey)).toBe(false)
     } finally {
       vi.useRealTimers()
@@ -273,10 +275,10 @@ describe("Cancellation Registry", () => {
 
       registerCancellation(requestId, userId, convKey, () => new Promise<void>(() => {}))
 
-      const cancelPromise = cancelStreamByConversationKey(convKey, userId)
+      const cancelPromise = cancelStreamByConversationKeyWithStatus(convKey, userId)
       await vi.advanceTimersByTimeAsync(2_100)
 
-      await expect(cancelPromise).resolves.toBe(true)
+      await expect(cancelPromise).resolves.toBe("timed_out")
       expect(isConversationLocked(convKey)).toBe(false)
     } finally {
       vi.useRealTimers()
