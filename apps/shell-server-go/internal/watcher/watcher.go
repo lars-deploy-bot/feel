@@ -45,8 +45,9 @@ type WorkspaceWatcher struct {
 	closed      bool
 
 	// debounce: per-path timers that coalesce rapid events
-	debounceMu sync.Mutex
-	debounce   map[string]*time.Timer
+	debounceMu    sync.Mutex
+	debounce      map[string]*time.Timer
+	debounceEvent map[string]*Event
 }
 
 func newWorkspaceWatcher(root string) (*WorkspaceWatcher, error) {
@@ -59,7 +60,8 @@ func newWorkspaceWatcher(root string) (*WorkspaceWatcher, error) {
 		root:        root,
 		watcher:     fsw,
 		subscribers: make(map[chan Event]struct{}),
-		debounce:    make(map[string]*time.Timer),
+		debounce:      make(map[string]*time.Timer),
+		debounceEvent: make(map[string]*Event),
 	}
 
 	// Walk and add directories recursively (skip excluded)
@@ -134,17 +136,26 @@ func (w *WorkspaceWatcher) handleFSEvent(ev fsnotify.Event) {
 	// Normalize to forward slashes for consistent client-side handling
 	relPath = filepath.ToSlash(relPath)
 
-	// Debounce: coalesce rapid events on the same path
+	// Debounce: coalesce rapid events on the same path.
+	// Preserve the most significant op (create/remove/rename > modify)
+	// so that a Create+Write pair doesn't downgrade to just "modify".
 	w.debounceMu.Lock()
 	if t, exists := w.debounce[relPath]; exists {
 		t.Stop()
 	}
 	event := Event{Op: op, Path: relPath, IsDir: isDir}
+	if prev, exists := w.debounceEvent[relPath]; exists && op == "modify" && prev.Op != "modify" {
+		// Keep the more significant op (create, remove, rename) instead of modify
+		event.Op = prev.Op
+	}
+	w.debounceEvent[relPath] = &event
 	w.debounce[relPath] = time.AfterFunc(debounceDelay, func() {
 		w.debounceMu.Lock()
+		ev := w.debounceEvent[relPath]
 		delete(w.debounce, relPath)
+		delete(w.debounceEvent, relPath)
 		w.debounceMu.Unlock()
-		w.publish(event)
+		w.publish(*ev)
 	})
 	w.debounceMu.Unlock()
 }
