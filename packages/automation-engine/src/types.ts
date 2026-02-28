@@ -42,6 +42,12 @@ export interface RunContext {
   extraTools?: string[]
   /** Extract response from this tool's input.text instead of text messages */
   responseToolName?: string
+  /** Mirrored conversation ID for this run (created by bootstrapRunConversation) */
+  chatConversationId?: string
+  /** Mirrored tab ID for this run (created by bootstrapRunConversation) */
+  chatTabId?: string
+  /** Claude SDK request ID — set by executor when execution starts (#257) */
+  chatRequestId?: string
 }
 
 export interface ClaimOptions {

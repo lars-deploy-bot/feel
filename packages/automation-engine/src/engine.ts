@@ -18,6 +18,7 @@ import path from "node:path"
 import { computeNextRunAtMs } from "@webalive/automation"
 import type { Json } from "@webalive/database"
 import { getServerId } from "@webalive/shared"
+import { bootstrapRunConversation } from "./conversation"
 import { appendRunLog } from "./run-log"
 import type { AppClient, AutomationJob, ClaimOptions, FinishOptions, RunContext } from "./types"
 
@@ -116,6 +117,9 @@ export async function claimDueJobs(opts: {
       })
     }, HEARTBEAT_INTERVAL_MS)
 
+    // Bootstrap mirrored conversation for chat UI discovery
+    await attachConversation(ctx)
+
     contexts.push(ctx)
   }
 
@@ -203,6 +207,13 @@ export async function claimJob(job: AutomationJob, opts: ClaimOptions): Promise<
       console.warn(`[Engine] Heartbeat failed for "${job.name}" (${job.id}):`, err)
     })
   }, HEARTBEAT_INTERVAL_MS)
+
+  // Bootstrap mirrored conversation for chat UI discovery
+  const chat = await bootstrapRunConversation(ctx)
+  if (chat) {
+    ctx.chatConversationId = chat.conversationId
+    ctx.chatTabId = chat.tabId
+  }
 
   return ctx
 }
@@ -377,6 +388,9 @@ export async function finishJob(ctx: RunContext, result: FinishOptions): Promise
     messages_uri: messagesUri,
     triggered_by: ctx.triggeredBy,
     trigger_context: ctx.triggerContext ?? null,
+    chat_conversation_id: ctx.chatConversationId ?? null,
+    chat_tab_id: ctx.chatTabId ?? null,
+    chat_request_id: ctx.chatRequestId ?? null,
   })
 
   if (runInsertError) {
@@ -475,6 +489,15 @@ function isWithinDirectory(candidatePath: string, baseDir: string): boolean {
   const resolvedCandidate = path.resolve(candidatePath)
   const resolvedBaseDir = path.resolve(baseDir)
   return resolvedCandidate === resolvedBaseDir || resolvedCandidate.startsWith(`${resolvedBaseDir}${path.sep}`)
+}
+
+/** Attach a mirrored conversation + tab to the RunContext (best-effort) */
+async function attachConversation(ctx: RunContext): Promise<void> {
+  const chat = await bootstrapRunConversation(ctx)
+  if (chat) {
+    ctx.chatConversationId = chat.conversationId
+    ctx.chatTabId = chat.tabId
+  }
 }
 
 /** Extend the lease for a running job (heartbeat) */
