@@ -221,6 +221,15 @@ func (w *WorkspaceWatcher) Close() {
 	w.subscribers = make(map[chan Event]struct{})
 	w.mu.Unlock()
 
+	// Stop all pending debounce timers to prevent callbacks firing after Close.
+	w.debounceMu.Lock()
+	for _, t := range w.debounce {
+		t.Stop()
+	}
+	w.debounce = make(map[string]*time.Timer)
+	w.debounceEvent = make(map[string]*Event)
+	w.debounceMu.Unlock()
+
 	w.watcher.Close()
 	log.Info("Stopped watcher | root=%s", w.root)
 }

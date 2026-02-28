@@ -55,22 +55,40 @@ function pruneExpiredMemoryIntents(now: number): void {
   }
 }
 
-async function registerIntent(scope: IntentScope, id: string, userId: string): Promise<void> {
+function isCancelIntent(value: unknown): value is CancelIntent {
+  if (typeof value !== "object" || value === null) return false
+  return (
+    "userId" in value && typeof value.userId === "string" && "createdAt" in value && typeof value.createdAt === "number"
+  )
+}
+
+type RedisClient = NonNullable<ReturnType<typeof getRedis>>
+
+async function withRedisFallback<T>(
+  operation: (redis: RedisClient) => Promise<T>,
+  fallback: () => T | Promise<T>,
+): Promise<T> {
   const redis = getRedis()
-  const now = Date.now()
-
-  if (!redis) {
-    pruneExpiredMemoryIntents(now)
-    memoryIntents.set(buildScopeKey(scope, id), {
-      userId,
-      createdAt: now,
-    })
-    return
+  if (!redis) return fallback()
+  try {
+    return await operation(redis)
+  } catch {
+    return fallback()
   }
+}
 
+async function registerIntent(scope: IntentScope, id: string, userId: string): Promise<void> {
+  const now = Date.now()
   const key = buildRedisKey(scope, id)
   const payload: CancelIntent = { userId, createdAt: now }
-  await redis.setex(key, INTENT_TTL_SECONDS, JSON.stringify(payload))
+
+  await withRedisFallback(
+    redis => redis.setex(key, INTENT_TTL_SECONDS, JSON.stringify(payload)).then(() => {}),
+    () => {
+      pruneExpiredMemoryIntents(now)
+      memoryIntents.set(buildScopeKey(scope, id), { userId, createdAt: now })
+    },
+  )
 }
 
 const CONSUME_INTENT_SCRIPT = `
@@ -85,58 +103,59 @@ return 1
 `
 
 async function consumeIntent(scope: IntentScope, id: string, userId: string): Promise<boolean> {
-  const redis = getRedis()
   const now = Date.now()
   const scopeKey = buildScopeKey(scope, id)
-
-  if (!redis) {
-    pruneExpiredMemoryIntents(now)
-    const intent = memoryIntents.get(scopeKey)
-    if (!intent || intent.userId !== userId) {
-      return false
-    }
-    memoryIntents.delete(scopeKey)
-    return true
-  }
-
   const key = buildRedisKey(scope, id)
-  const result = await redis.eval(CONSUME_INTENT_SCRIPT, 1, key, userId)
-  return result === 1
+
+  return withRedisFallback(
+    async redis => {
+      const result = await redis.eval(CONSUME_INTENT_SCRIPT, 1, key, userId)
+      return result === 1
+    },
+    () => {
+      pruneExpiredMemoryIntents(now)
+      const intent = memoryIntents.get(scopeKey)
+      if (!intent || intent.userId !== userId) return false
+      memoryIntents.delete(scopeKey)
+      return true
+    },
+  )
 }
 
 async function hasIntent(scope: IntentScope, id: string, userId: string): Promise<boolean> {
-  const redis = getRedis()
   const now = Date.now()
   const scopeKey = buildScopeKey(scope, id)
-
-  if (!redis) {
-    pruneExpiredMemoryIntents(now)
-    const intent = memoryIntents.get(scopeKey)
-    return !!intent && intent.userId === userId
-  }
-
   const key = buildRedisKey(scope, id)
-  const raw = await redis.get(key)
-  if (!raw) return false
 
-  try {
-    const parsed = JSON.parse(raw) as Partial<CancelIntent>
-    return parsed.userId === userId
-  } catch {
-    return false
-  }
+  return withRedisFallback(
+    async redis => {
+      const raw = await redis.get(key)
+      if (!raw) return false
+      try {
+        const parsed: unknown = JSON.parse(raw)
+        if (!isCancelIntent(parsed)) return false
+        return parsed.userId === userId
+      } catch {
+        return false
+      }
+    },
+    () => {
+      pruneExpiredMemoryIntents(now)
+      const intent = memoryIntents.get(scopeKey)
+      return !!intent && intent.userId === userId
+    },
+  )
 }
 
 async function clearIntent(scope: IntentScope, id: string): Promise<void> {
-  const redis = getRedis()
   const scopeKey = buildScopeKey(scope, id)
 
-  if (!redis) {
-    memoryIntents.delete(scopeKey)
-    return
-  }
-
-  await redis.del(buildRedisKey(scope, id))
+  await withRedisFallback(
+    redis => redis.del(buildRedisKey(scope, id)).then(() => {}),
+    () => {
+      memoryIntents.delete(scopeKey)
+    },
+  )
 }
 
 /**
@@ -185,16 +204,18 @@ export async function clearCancelIntentByRequestId(requestId: string): Promise<v
 }
 
 export async function getCancelIntentCount(): Promise<number> {
-  const redis = getRedis()
   const now = Date.now()
 
-  if (!redis) {
-    pruneExpiredMemoryIntents(now)
-    return memoryIntents.size
-  }
-
-  const keys = await redis.keys(`${INTENT_KEY_PREFIX}*`)
-  return keys.length
+  return withRedisFallback(
+    async redis => {
+      const keys = await redis.keys(`${INTENT_KEY_PREFIX}*`)
+      return keys.length
+    },
+    () => {
+      pruneExpiredMemoryIntents(now)
+      return memoryIntents.size
+    },
+  )
 }
 
 /**

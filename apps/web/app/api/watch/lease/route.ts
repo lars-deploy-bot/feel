@@ -39,10 +39,9 @@ export async function POST(req: Request) {
     return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500, details: { requestId } })
   }
 
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 5000)
   try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 5000)
-
     const res = await fetch(`${SHELL_SERVER_URL}/internal/watch-lease`, {
       method: "POST",
       headers: {
@@ -52,8 +51,6 @@ export async function POST(req: Request) {
       body: JSON.stringify({ workspace: shellWorkspace, worktree }),
       signal: controller.signal,
     })
-
-    clearTimeout(timeout)
 
     if (!res.ok) {
       const text = await res.text()
@@ -81,5 +78,7 @@ export async function POST(req: Request) {
     console.error(`[Watch ${requestId}] Failed to reach shell server:`, err)
     Sentry.captureException(err)
     return structuredErrorResponse(ErrorCodes.SHELL_SERVER_UNAVAILABLE, { status: 502, details: { requestId } })
+  } finally {
+    clearTimeout(timeout)
   }
 }

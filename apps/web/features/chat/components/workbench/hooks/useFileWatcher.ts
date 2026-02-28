@@ -82,7 +82,14 @@ export function useFileWatcher({ workspace, worktree }: UseFileWatcherOptions): 
         ws.onmessage = event => {
           if (generation !== mountGenRef.current) return
 
-          const msg: WatchMessage = JSON.parse(event.data as string)
+          if (typeof event.data !== "string") return
+
+          let msg: WatchMessage
+          try {
+            msg = JSON.parse(event.data)
+          } catch {
+            return
+          }
 
           switch (msg.type) {
             case "connected":

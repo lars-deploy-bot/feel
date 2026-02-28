@@ -251,7 +251,9 @@ func (h *WatchHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	done := make(chan struct{})
 	writerDone := make(chan struct{})
 
-	// Reader goroutine: detect close + handle pongs
+	// Reader goroutine: detect close + handle pongs.
+	// Limit inbound frames to 4KB — watcher only processes pongs, no payload needed.
+	conn.SetReadLimit(4096)
 	go func() {
 		defer close(done)
 		for {
