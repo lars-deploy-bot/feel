@@ -1,8 +1,8 @@
 "use client"
 
 import { lazy, Suspense } from "react"
-import { SettingsTabLayout } from "./tabs/SettingsTabLayout"
 import { useSettingsTabContext } from "./SettingsTabProvider"
+import { SettingsTabLayout } from "./tabs/SettingsTabLayout"
 
 // Lazy load tab components
 const GeneralSettings = lazy(() =>
