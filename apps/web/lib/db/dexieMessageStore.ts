@@ -104,6 +104,11 @@ interface DexieMessageStoreActions {
   /** Clear the resumeSessionAt for a tab (after successful message send) */
   clearResumeSessionAt: (tabId: string) => void
   /**
+   * Capture resumeSessionAt from the latest visible assistant message.
+   * Used by explicit Stop so the next send resumes from what the user actually saw.
+   */
+  captureResumeSessionAtFromLatestAssistant: (tabId: string) => Promise<string | null>
+  /**
    * Update one tool_result block's content by tool_use_id.
    * Used by interactive cards (email send/save) to persist canonical UI state.
    */
@@ -112,6 +117,11 @@ interface DexieMessageStoreActions {
     toolUseId: string,
     updater: (content: unknown) => unknown,
   ) => Promise<boolean>
+  /**
+   * Update the content of an existing message by ID.
+   * Used by interrupt flow to transition "stopping" → "stopped" in place.
+   */
+  updateMessageContent: (messageId: string, content: unknown) => Promise<boolean>
 
   // Tab management
   addTab: (name?: string) => Promise<string>
@@ -286,6 +296,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
           to: tabGroupId,
         })
         await safeDb(() => db.tabs.update(tabId, { conversationId: tabGroupId, pendingSync: true }))
+        queueSync(tabGroupId, session.userId)
       }
       set({
         currentTabGroupId: tabGroupId,
@@ -593,6 +604,34 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
     })
   },
 
+  captureResumeSessionAtFromLatestAssistant: async tabId => {
+    const { session } = get()
+    if (!session) return null
+
+    const db = getMessageDb(session.userId)
+    const messages = await db.messages
+      .where("[tabId+seq]")
+      .between([tabId, Dexie.minKey], [tabId, Dexie.maxKey])
+      .reverse()
+      .toArray()
+
+    for (const message of messages) {
+      if (message.deletedAt) continue
+      if (message.content.kind !== "sdk_message") continue
+
+      const sdkData = message.content.data as { type?: string; uuid?: string } | undefined
+      if (sdkData?.type === "assistant" && typeof sdkData.uuid === "string" && sdkData.uuid.length > 0) {
+        const resumeUuid = sdkData.uuid
+        set(state => ({
+          resumeSessionAtByTab: { ...state.resumeSessionAtByTab, [tabId]: resumeUuid },
+        }))
+        return resumeUuid
+      }
+    }
+
+    return null
+  },
+
   updateToolResultContentByToolUseId: async (tabId, toolUseId, updater) => {
     const { session } = get()
     if (!session) return false
@@ -670,6 +709,34 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
     }
 
     return updated
+  },
+
+  updateMessageContent: async (messageId, content) => {
+    const { session } = get()
+    if (!session) return false
+
+    const db = getMessageDb(session.userId)
+    const existing = await db.messages.get(messageId)
+    if (!existing) return false
+
+    const updatedRows = await safeDb(() =>
+      db.messages.update(messageId, {
+        content: toDbMessageContent({ id: messageId, type: "interrupt", content, timestamp: new Date() }),
+        updatedAt: Date.now(),
+        pendingSync: true,
+      }),
+    )
+    if (updatedRows == null || updatedRows < 1) {
+      return false
+    }
+
+    // Sync to server — look up conversation via the message's tab
+    const tab = await db.tabs.get(existing.tabId)
+    if (tab) {
+      queueSync(tab.conversationId, session.userId)
+    }
+
+    return true
   },
 
   addTab: async (name = "new tab") => {
@@ -831,7 +898,12 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
       }
     })
 
-    if (currentTabGroupId) queueSync(currentTabGroupId, session.userId)
+    if (currentTabGroupId) {
+      queueSync(currentTabGroupId, session.userId)
+    } else if (tabId) {
+      const tab = await db.tabs.get(tabId)
+      if (tab) queueSync(tab.conversationId, session.userId)
+    }
     setTimeout(() => alreadyFinalized.delete(messageId), 60000)
   },
 
@@ -866,7 +938,12 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
       }
     })
 
-    if (currentTabGroupId) queueSync(currentTabGroupId, session.userId)
+    if (currentTabGroupId) {
+      queueSync(currentTabGroupId, session.userId)
+    } else if (tabId) {
+      const tab = await db.tabs.get(tabId)
+      if (tab) queueSync(tab.conversationId, session.userId)
+    }
     setTimeout(() => alreadyFinalized.delete(messageId), 60000)
   },
 
@@ -901,7 +978,12 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
       }
     })
 
-    if (currentTabGroupId) queueSync(currentTabGroupId, session.userId)
+    if (currentTabGroupId) {
+      queueSync(currentTabGroupId, session.userId)
+    } else if (tabId) {
+      const tab = await db.tabs.get(tabId)
+      if (tab) queueSync(tab.conversationId, session.userId)
+    }
     setTimeout(() => alreadyFinalized.delete(messageId), 60000)
   },
 
@@ -957,7 +1039,9 @@ export const useDexieMessageActions = () =>
     deleteMessagesAfter: state.deleteMessagesAfter,
     getResumeSessionAt: state.getResumeSessionAt,
     clearResumeSessionAt: state.clearResumeSessionAt,
+    captureResumeSessionAtFromLatestAssistant: state.captureResumeSessionAtFromLatestAssistant,
     updateToolResultContentByToolUseId: state.updateToolResultContentByToolUseId,
+    updateMessageContent: state.updateMessageContent,
   }))
 
 // =============================================================================

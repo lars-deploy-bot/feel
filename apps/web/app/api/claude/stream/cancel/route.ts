@@ -8,7 +8,8 @@ import { structuredErrorResponse } from "@/lib/api/responses"
 import { ErrorCodes } from "@/lib/error-codes"
 import { registerCancelIntent } from "@/lib/stream/cancel-intent-registry"
 import { PAGE_UNLOAD_BEACON_MARKER } from "@/lib/stream/cancel-markers"
-import { cancelStream, cancelStreamByConversationKey } from "@/lib/stream/cancellation-registry"
+import { cancelStreamByConversationKeyWithStatus, cancelStreamWithStatus } from "@/lib/stream/cancellation-registry"
+import { CANCEL_ENDPOINT_STATUS } from "@/lib/stream/cancel-status"
 
 /**
  * Cancel Stream Endpoint
@@ -50,7 +51,7 @@ interface CancelDebugEntry {
   contentType?: string
   origin?: string
   clientStack?: string
-  result: "cancelled" | "already_complete" | "cancel_queued" | "error" | "unauthorized" | "ignored"
+  result: "cancelled" | "timed_out" | "already_complete" | "cancel_queued" | "error" | "unauthorized" | "ignored"
   errorMessage?: string
 }
 
@@ -201,7 +202,7 @@ export async function POST(req: NextRequest) {
       debugEntry.result = "ignored"
       debugEntry.errorMessage = "ignored_unload_beacon"
       logCancelDebug(debugEntry)
-      return NextResponse.json({ ok: true, status: "ignored_unload_beacon" })
+      return NextResponse.json({ ok: true, status: CANCEL_ENDPOINT_STATUS.IGNORED_UNLOAD_BEACON })
     }
 
     // Validate: must have either requestId OR (tabId + workspace)
@@ -211,20 +212,26 @@ export async function POST(req: NextRequest) {
 
       try {
         // Await cancel - Promise resolves when cleanup is complete (lock released)
-        const cancelled = await cancelStream(requestId, user.id)
+        const cancelResult = await cancelStreamWithStatus(requestId, user.id)
 
-        if (cancelled) {
+        if (cancelResult === "cancelled") {
           console.log(`[Cancel Stream] Successfully cancelled and cleanup complete: ${requestId}`)
           debugEntry.result = "cancelled"
           logCancelDebug(debugEntry)
-          return NextResponse.json({ ok: true, status: "cancelled", requestId })
-        } else {
-          // Not found - likely already completed
-          console.log(`[Cancel Stream] Request not found (already complete): ${requestId}`)
-          debugEntry.result = "already_complete"
-          logCancelDebug(debugEntry)
-          return NextResponse.json({ ok: true, status: "already_complete", requestId })
+          return NextResponse.json({ ok: true, status: CANCEL_ENDPOINT_STATUS.CANCELLED, requestId })
         }
+        if (cancelResult === "timed_out") {
+          console.warn(`[Cancel Stream] Cancel callback timed out before cleanup confirmation: ${requestId}`)
+          debugEntry.result = "timed_out"
+          logCancelDebug(debugEntry)
+          return NextResponse.json({ ok: true, status: CANCEL_ENDPOINT_STATUS.CANCEL_TIMED_OUT, requestId })
+        }
+
+        // Not found - likely already completed
+        console.log(`[Cancel Stream] Request not found (already complete): ${requestId}`)
+        debugEntry.result = "already_complete"
+        logCancelDebug(debugEntry)
+        return NextResponse.json({ ok: true, status: CANCEL_ENDPOINT_STATUS.ALREADY_COMPLETE, requestId })
       } catch (error) {
         // Authorization error (trying to cancel another user's stream)
         if (error instanceof Error && error.message.includes("Unauthorized")) {
@@ -272,23 +279,29 @@ export async function POST(req: NextRequest) {
       try {
         // Await cancel - Promise resolves when cleanup is complete (lock released)
         // Note: cancelStreamByConversationKey name is legacy - it now searches by tabKey
-        const cancelled = await cancelStreamByConversationKey(tabKeyValue, user.id)
+        const cancelResult = await cancelStreamByConversationKeyWithStatus(tabKeyValue, user.id)
 
-        if (cancelled) {
+        if (cancelResult === "cancelled") {
           console.log(`[Cancel Stream] Successfully cancelled by tabKey and cleanup complete: ${tabKeyValue}`)
           debugEntry.result = "cancelled"
           logCancelDebug(debugEntry)
-          return NextResponse.json({ ok: true, status: "cancelled", tabId })
-        } else {
-          // Super-early stop race: stream may not be registered yet.
-          // Queue short-lived stop intent so the stream route can consume it
-          // immediately after lock acquisition and abort before work proceeds.
-          registerCancelIntent(tabKeyValue, user.id)
-          console.log(`[Cancel Stream] Tab not found yet, queued stop intent: ${tabKeyValue}`)
-          debugEntry.result = "cancel_queued"
-          logCancelDebug(debugEntry)
-          return NextResponse.json({ ok: true, status: "cancel_queued", tabId })
+          return NextResponse.json({ ok: true, status: CANCEL_ENDPOINT_STATUS.CANCELLED, tabId })
         }
+        if (cancelResult === "timed_out") {
+          console.warn(`[Cancel Stream] Tab-key cancel callback timed out before cleanup confirmation: ${tabKeyValue}`)
+          debugEntry.result = "timed_out"
+          logCancelDebug(debugEntry)
+          return NextResponse.json({ ok: true, status: CANCEL_ENDPOINT_STATUS.CANCEL_TIMED_OUT, tabId })
+        }
+
+        // Super-early stop race: stream may not be registered yet.
+        // Queue short-lived stop intent so the stream route can consume it
+        // immediately after lock acquisition and abort before work proceeds.
+        registerCancelIntent(tabKeyValue, user.id)
+        console.log(`[Cancel Stream] Tab not found yet, queued stop intent: ${tabKeyValue}`)
+        debugEntry.result = "cancel_queued"
+        logCancelDebug(debugEntry)
+        return NextResponse.json({ ok: true, status: CANCEL_ENDPOINT_STATUS.CANCEL_QUEUED, tabId })
       } catch (error) {
         // Authorization error (trying to cancel another user's stream)
         if (error instanceof Error && error.message.includes("Unauthorized")) {

@@ -8,31 +8,47 @@ interface InterruptMessageProps {
 
 export function InterruptMessage({ data }: InterruptMessageProps) {
   const showDebug = useDebugVisible()
+  const text = data.message || "Response interrupted."
+
+  const status = data.status
+  const isStopping = status === "stopping" || text.startsWith("Stopping")
+  const isStopped = status === "stopped" || text === "Response stopped." || text.includes("interrupted by user")
+  const isFinished =
+    status === "finished" || text.startsWith("Response already finished") || text === "Response is no longer running."
+  const isStillRunning = status === "still_running" || text.startsWith("Stop not confirmed")
+  const isNotVerified = status === "not_verified" || text.startsWith("Could not confirm stop")
+
+  // Stopping / stopped / finished — minimal inline treatment
+  // These share one DOM structure so CSS transitions work when Dexie updates in place
+  if (isStopping || isStopped || isFinished) {
+    const label = isStopping ? "Stopping..." : "Stopped"
+    const dotClass = isStopping ? "bg-blue-500" : "bg-black/10 dark:bg-white/10"
+    const textClass = isStopping ? "text-black/40 dark:text-white/40" : "text-black/30 dark:text-white/30"
+
+    return (
+      <div className="py-2">
+        <div className="flex items-center gap-2">
+          <span className={`size-1.5 rounded-full flex-shrink-0 transition-colors duration-300 ${dotClass}`} />
+          <p className={`text-[13px] transition-colors duration-300 ${textClass}`}>{label}</p>
+          {showDebug && <span className="text-[10px] font-mono text-black/15 dark:text-white/15">{data.source}</span>}
+        </div>
+      </div>
+    )
+  }
+
+  // Warning/error states — follow ErrorResultMessage card pattern
+  const dotColor = isStillRunning || isNotVerified ? "bg-amber-500" : "bg-red-500"
+  const title = isStillRunning ? "Still running" : isNotVerified ? "Stop not verified" : "Interrupted"
 
   return (
-    <div className="py-3 mb-4 flex items-center justify-center">
-      <div className="flex items-center gap-3 px-4 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+    <div className="py-2">
+      <div className="rounded-lg bg-black/[0.025] dark:bg-white/[0.04] px-4 py-3">
         <div className="flex items-center gap-2">
-          <svg
-            className="w-4 h-4 text-amber-600 dark:text-amber-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-          <div className="text-sm text-amber-800 dark:text-amber-200 font-medium">
-            {data.message}
-            {showDebug && (
-              <span className="ml-2 text-xs text-amber-700 dark:text-amber-300 opacity-70">[{data.source}]</span>
-            )}
-          </div>
+          <span className={`size-1.5 rounded-full ${dotColor} flex-shrink-0`} />
+          <p className="text-[13px] font-medium text-black/80 dark:text-white/80">{title}</p>
         </div>
+        <p className="text-[13px] text-black/45 dark:text-white/45 leading-relaxed mt-1">{text}</p>
+        {showDebug && <div className="mt-2 text-[10px] font-mono text-black/20 dark:text-white/20">{data.source}</div>}
       </div>
     </div>
   )

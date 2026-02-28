@@ -2,10 +2,12 @@
 
 import { useCallback, useRef, useState } from "react"
 import type { UIMessage } from "@/features/chat/lib/message-parser"
-import { BridgeInterruptSource } from "@/features/chat/lib/streaming/ndjson"
+import { BridgeInterruptSource, type InterruptDetails, InterruptStatus } from "@/features/chat/lib/streaming/ndjson"
 import { trackStreamStopped } from "@/lib/analytics/events"
 import { postty } from "@/lib/api/api-client"
 import { validateRequest } from "@/lib/api/schemas"
+import { useDexieMessageStore } from "@/lib/db/dexieMessageStore"
+import { CANCEL_ENDPOINT_STATUS, type CancelEndpointStatus } from "@/lib/stream/cancel-status"
 import { clearAbortController, getAbortController, useStreamingActions } from "@/lib/stores/streamingStore"
 
 interface UseStreamCancellationOptions {
@@ -46,7 +48,7 @@ interface UseStreamCancellationReturn {
 
 interface CancelApiResponse {
   ok: boolean
-  status: "cancelled" | "already_complete" | "ignored_unload_beacon" | "cancel_queued"
+  status: CancelEndpointStatus
   requestId?: string
   tabId?: string
 }
@@ -59,9 +61,9 @@ interface ReconnectProbeResponse {
 }
 
 type StopVerificationResult =
-  | { status: "confirmed" }
-  | { status: "still_streaming"; requestId?: string }
-  | { status: "unknown" }
+  | { status: "confirmed"; attempts: number }
+  | { status: "still_streaming"; requestId?: string; attempts: number }
+  | { status: "unknown"; attempts: number }
 
 /**
  * Hook for managing stream cancellation with type-safe API calls
@@ -127,6 +129,17 @@ export function useStreamCancellation({
 
     // Capture requestId BEFORE nulling it
     const requestIdToCancel = currentRequestIdRef.current
+    const stopId = crypto.randomUUID()
+    const startedAt = new Date().toISOString()
+
+    // Capture resume pin from last visible assistant state so next send
+    // resumes from what user saw before Stop.
+    void useDexieMessageStore
+      .getState()
+      .captureResumeSessionAtFromLatestAssistant(tabId)
+      .catch(error => {
+        console.warn("[useStreamCancellation] Failed to capture resume pin from latest assistant message:", error)
+      })
 
     // Helper to reset all states after cancellation handling completes.
     const finishCancellation = () => {
@@ -136,18 +149,52 @@ export function useStreamCancellation({
       setShowCompletionDots(false)
     }
 
-    const addInterruptMessage = (message: string) => {
+    const buildInterruptContent = (message: string, status: InterruptStatus, details: InterruptDetails = {}) => ({
+      message,
+      source: BridgeInterruptSource.CLIENT_CANCEL,
+      status,
+      details: {
+        stopId,
+        startedAt,
+        stopRequestId: requestIdToCancel || undefined,
+        ...details,
+      },
+    })
+
+    // Stable ID for the interrupt message — allows update-in-place
+    const interruptMessageId = `interrupt-${stopId}`
+
+    const addInterruptMessage = (message: string, status: InterruptStatus, details: InterruptDetails = {}) => {
       if (!tabId) return
       const interruptMessage: UIMessage = {
-        id: crypto.randomUUID(),
+        id: interruptMessageId,
         type: "interrupt",
-        content: {
-          message,
-          source: BridgeInterruptSource.CLIENT_CANCEL,
-        },
+        content: buildInterruptContent(message, status, details),
         timestamp: new Date(),
       }
       addMessage(interruptMessage, tabId)
+    }
+
+    /** Update the existing interrupt message in place (Dexie live query triggers re-render) */
+    const resolveInterruptMessage = async (
+      message: string,
+      status: InterruptStatus,
+      details: InterruptDetails = {},
+    ) => {
+      const nextContent = buildInterruptContent(message, status, details)
+      const updated = await useDexieMessageStore.getState().updateMessageContent(interruptMessageId, nextContent)
+      if (updated || !tabId) return
+
+      // Race fallback: if initial add wasn't persisted yet, insert final state directly.
+      addMessage(
+        {
+          id: interruptMessageId,
+          type: "interrupt",
+          content: nextContent,
+          timestamp: new Date(),
+        },
+        tabId,
+      )
     }
 
     // Capture stack trace for debugging (helps identify where cancel originated)
@@ -185,7 +232,7 @@ export function useStreamCancellation({
 
     const verifyStopState = async (): Promise<StopVerificationResult> => {
       if (!tabId || !tabGroupId || !workspace) {
-        return { status: "unknown" }
+        return { status: "unknown", attempts: 0 }
       }
 
       const attempts = 6
@@ -212,11 +259,11 @@ export function useStreamCancellation({
             const probe = (await response.json()) as ReconnectProbeResponse
 
             if (!probe.hasStream) {
-              return { status: "confirmed" }
+              return { status: "confirmed", attempts: attempt + 1 }
             }
 
             if (probe.state === "complete" || probe.state === "error") {
-              return { status: "confirmed" }
+              return { status: "confirmed", attempts: attempt + 1 }
             }
 
             if (probe.state === "streaming") {
@@ -234,10 +281,10 @@ export function useStreamCancellation({
       }
 
       if (sawStreamingState) {
-        return { status: "still_streaming", requestId: activeRequestId }
+        return { status: "still_streaming", requestId: activeRequestId, attempts }
       }
 
-      return { status: "unknown" }
+      return { status: "unknown", attempts }
     }
 
     const CANCEL_REQUEST_TIMEOUT_MS = 6000
@@ -267,8 +314,33 @@ export function useStreamCancellation({
           )
         }
 
-        if (cancelResponse && cancelResponse !== CANCEL_TIMEOUT && cancelResponse.status === "cancelled") {
-          addInterruptMessage("Response stopped.")
+        if (
+          cancelResponse &&
+          cancelResponse !== CANCEL_TIMEOUT &&
+          cancelResponse.status === CANCEL_ENDPOINT_STATUS.CANCELLED
+        ) {
+          await resolveInterruptMessage("Response stopped.", InterruptStatus.STOPPED, {
+            resolvedAt: new Date().toISOString(),
+            cancelStatus: CANCEL_ENDPOINT_STATUS.CANCELLED,
+            verificationResult: "skipped",
+            verificationAttempts: 0,
+          })
+          finishCancellation()
+          return
+        }
+
+        if (
+          cancelResponse &&
+          cancelResponse !== CANCEL_TIMEOUT &&
+          cancelResponse.status === CANCEL_ENDPOINT_STATUS.ALREADY_COMPLETE
+        ) {
+          await resolveInterruptMessage("Response already finished before stop.", InterruptStatus.FINISHED, {
+            resolvedAt: new Date().toISOString(),
+            cancelStatus: CANCEL_ENDPOINT_STATUS.ALREADY_COMPLETE,
+            verificationResult: "skipped",
+            verificationAttempts: 0,
+            reason: "Stop arrived after the response had already completed.",
+          })
           finishCancellation()
           return
         }
@@ -276,7 +348,13 @@ export function useStreamCancellation({
         const verification = await verifyStopState()
 
         if (verification.status === "confirmed") {
-          addInterruptMessage("Response stopped.")
+          await resolveInterruptMessage("Response is no longer running.", InterruptStatus.FINISHED, {
+            resolvedAt: new Date().toISOString(),
+            cancelStatus: cancelResponse === CANCEL_TIMEOUT ? "timeout" : (cancelResponse?.status ?? "failed"),
+            verificationResult: "confirmed",
+            verificationAttempts: verification.attempts,
+            reason: "The stream is no longer active, but stop cause could not be proven as explicit cancellation.",
+          })
           finishCancellation()
           return
         }
@@ -288,17 +366,48 @@ export function useStreamCancellation({
           }
           if (tabId) {
             streamingActions.startStream(tabId)
+            useDexieMessageStore.getState().clearResumeSessionAt(tabId)
           }
-          addInterruptMessage("Stop not confirmed. Response is still running. Press Stop again.")
+          await resolveInterruptMessage(
+            "Stop not confirmed. Response is still running. Press Stop again.",
+            InterruptStatus.STILL_RUNNING,
+            {
+              resolvedAt: new Date().toISOString(),
+              activeRequestId: verification.requestId,
+              cancelStatus: cancelResponse === CANCEL_TIMEOUT ? "timeout" : (cancelResponse?.status ?? "failed"),
+              verificationResult: "still_streaming",
+              verificationAttempts: verification.attempts,
+              reason: "Backend still reports this stream as active.",
+            },
+          )
           finishCancellation()
           return
         }
 
-        addInterruptMessage("Could not confirm stop. Check whether the response is still updating.")
+        await resolveInterruptMessage(
+          "Could not confirm stop. Check whether the response is still updating.",
+          InterruptStatus.NOT_VERIFIED,
+          {
+            resolvedAt: new Date().toISOString(),
+            cancelStatus: cancelResponse === CANCEL_TIMEOUT ? "timeout" : (cancelResponse?.status ?? "failed"),
+            verificationResult: "unknown",
+            verificationAttempts: verification.attempts,
+            reason: "Stop status could not be verified after retries.",
+          },
+        )
         finishCancellation()
       } catch (error) {
         console.error("[useStreamCancellation] Unexpected stop resolution error:", error)
-        addInterruptMessage("Could not confirm stop due to an internal error. Please try stopping again.")
+        await resolveInterruptMessage(
+          "Could not confirm stop due to an internal error. Please try stopping again.",
+          InterruptStatus.NOT_VERIFIED,
+          {
+            resolvedAt: new Date().toISOString(),
+            cancelStatus: "failed",
+            verificationResult: "unknown",
+            reason: error instanceof Error ? error.message : "Unexpected stop resolution failure",
+          },
+        )
         finishCancellation()
       }
     }
@@ -332,6 +441,10 @@ export function useStreamCancellation({
       timestamp: new Date(),
     }
     addMessage(interruptMessage, tabId)
+
+    addInterruptMessage("Stopping response...", InterruptStatus.STOPPING, {
+      reason: "User pressed Stop. Waiting for backend confirmation.",
+    })
 
     // Show completion dots while waiting for backend confirmation
     setShowCompletionDots(true)
