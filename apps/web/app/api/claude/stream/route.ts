@@ -420,8 +420,15 @@ export async function POST(req: NextRequest) {
     // Super-early stop race fix:
     // If cancel endpoint was hit before registration, consume queued intent now
     // and short-circuit this request before any expensive setup starts.
-    const consumedConversationIntent = await consumeCancelIntent(sessionKey, user.id)
-    const consumedRequestIntent = await consumeCancelIntentByRequestId(requestId, user.id)
+    const startupConsumeResults = await Promise.allSettled([
+      consumeCancelIntent(sessionKey, user.id),
+      consumeCancelIntentByRequestId(requestId, user.id),
+    ])
+    const consumedConversationIntent = startupConsumeResults[0].status === "fulfilled" && startupConsumeResults[0].value
+    const consumedRequestIntent = startupConsumeResults[1].status === "fulfilled" && startupConsumeResults[1].value
+    if (startupConsumeResults.some(r => r.status === "rejected")) {
+      logger.warn("Cancel-intent check degraded during startup; continuing with partial results")
+    }
     if (consumedConversationIntent || consumedRequestIntent) {
       logger.log("Queued cancel intent detected immediately after registration, short-circuiting stream startup")
       unregisterCancellation(requestId)
@@ -951,10 +958,12 @@ export async function POST(req: NextRequest) {
       model: effectiveModel, // For model-specific credit calculation
       cancelState, // Pass shared cancellation state
       consumeCancelIntent: async () => {
-        const [consumedByConversation, consumedByRequest] = await Promise.all([
+        const pollConsumeResults = await Promise.allSettled([
           consumeCancelIntent(sessionKey!, user.id),
           consumeCancelIntentByRequestId(requestId, user.id),
         ])
+        const consumedByConversation = pollConsumeResults[0].status === "fulfilled" && pollConsumeResults[0].value
+        const consumedByRequest = pollConsumeResults[1].status === "fulfilled" && pollConsumeResults[1].value
         return consumedByConversation || consumedByRequest
       },
       oauthWarnings, // OAuth warnings to inject into stream

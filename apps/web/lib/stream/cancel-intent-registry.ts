@@ -19,6 +19,11 @@ interface CancelIntent {
   createdAt: number
 }
 
+function isCancelIntent(value: unknown): value is CancelIntent {
+  if (!value || typeof value !== "object") return false
+  return typeof Reflect.get(value, "userId") === "string" && typeof Reflect.get(value, "createdAt") === "number"
+}
+
 const INTENT_TTL_MS = 15_000
 const INTENT_TTL_SECONDS = Math.ceil(INTENT_TTL_MS / 1000)
 const INTENT_KEY_PREFIX = "stream-cancel-intent:"
@@ -70,7 +75,13 @@ async function registerIntent(scope: IntentScope, id: string, userId: string): P
 
   const key = buildRedisKey(scope, id)
   const payload: CancelIntent = { userId, createdAt: now }
-  await redis.setex(key, INTENT_TTL_SECONDS, JSON.stringify(payload))
+  try {
+    await redis.setex(key, INTENT_TTL_SECONDS, JSON.stringify(payload))
+  } catch {
+    // Degrade to process-local fallback on transient Redis failures
+    pruneExpiredMemoryIntents(now)
+    memoryIntents.set(buildScopeKey(scope, id), { userId, createdAt: now })
+  }
 }
 
 const CONSUME_INTENT_SCRIPT = `
@@ -100,8 +111,17 @@ async function consumeIntent(scope: IntentScope, id: string, userId: string): Pr
   }
 
   const key = buildRedisKey(scope, id)
-  const result = await redis.eval(CONSUME_INTENT_SCRIPT, 1, key, userId)
-  return result === 1
+  try {
+    const result = await redis.eval(CONSUME_INTENT_SCRIPT, 1, key, userId)
+    return result === 1
+  } catch {
+    // Degrade to process-local fallback on transient Redis failures
+    pruneExpiredMemoryIntents(now)
+    const intent = memoryIntents.get(scopeKey)
+    if (!intent || intent.userId !== userId) return false
+    memoryIntents.delete(scopeKey)
+    return true
+  }
 }
 
 async function hasIntent(scope: IntentScope, id: string, userId: string): Promise<boolean> {
@@ -116,14 +136,21 @@ async function hasIntent(scope: IntentScope, id: string, userId: string): Promis
   }
 
   const key = buildRedisKey(scope, id)
-  const raw = await redis.get(key)
-  if (!raw) return false
-
   try {
-    const parsed = JSON.parse(raw) as Partial<CancelIntent>
-    return parsed.userId === userId
+    const raw = await redis.get(key)
+    if (!raw) return false
+
+    try {
+      const parsed: unknown = JSON.parse(raw)
+      return isCancelIntent(parsed) && parsed.userId === userId
+    } catch {
+      return false
+    }
   } catch {
-    return false
+    // Degrade to process-local fallback on transient Redis failures
+    pruneExpiredMemoryIntents(now)
+    const intent = memoryIntents.get(scopeKey)
+    return !!intent && intent.userId === userId
   }
 }
 
@@ -136,7 +163,12 @@ async function clearIntent(scope: IntentScope, id: string): Promise<void> {
     return
   }
 
-  await redis.del(buildRedisKey(scope, id))
+  try {
+    await redis.del(buildRedisKey(scope, id))
+  } catch {
+    // Best-effort cleanup; Redis TTL will expire the key anyway
+    memoryIntents.delete(scopeKey)
+  }
 }
 
 /**
@@ -193,8 +225,14 @@ export async function getCancelIntentCount(): Promise<number> {
     return memoryIntents.size
   }
 
-  const keys = await redis.keys(`${INTENT_KEY_PREFIX}*`)
-  return keys.length
+  try {
+    const keys = await redis.keys(`${INTENT_KEY_PREFIX}*`)
+    return keys.length
+  } catch {
+    // Degrade to process-local count on transient Redis failures
+    pruneExpiredMemoryIntents(now)
+    return memoryIntents.size
+  }
 }
 
 /**
