@@ -23,6 +23,7 @@ import Dexie from "dexie"
 import { create } from "zustand"
 import type { UIMessage } from "@/features/chat/lib/message-parser"
 import { useTabDataStore } from "@/lib/stores/tabDataStore"
+import { isRecord } from "@/lib/utils"
 import {
   fetchConversations,
   fetchTabMessages,
@@ -173,10 +174,6 @@ function enqueueTabWrite(tabId: string, fn: () => Promise<void>): Promise<void> 
   const next = prev.then(fn, fn) // run even if prev rejected
   tabWriteQueues.set(tabId, next)
   return next
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null
 }
 
 /**

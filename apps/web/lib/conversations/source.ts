@@ -5,6 +5,8 @@
  * agree on exactly when a conversation is an automation transcript.
  */
 
+import { isRecord } from "@/lib/utils"
+
 export const CONVERSATION_SOURCES = ["chat", "automation_run"] as const
 
 export type ConversationSource = (typeof CONVERSATION_SOURCES)[number]
@@ -14,10 +16,6 @@ export interface AutomationSourceMetadata {
   job_id: string
   claim_run_id: string
   triggered_by: string
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
 /** Narrow a raw source value to ConversationSource, defaulting to "chat". */

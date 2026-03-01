@@ -1,4 +1,5 @@
 import type { EmailDraft } from "@/components/email/types"
+import { isRecord } from "@/lib/utils"
 
 type PersistedEmailDraftStatus = Extract<EmailDraft["status"], "draft" | "saved" | "sent">
 
@@ -6,10 +7,6 @@ interface EmailDraftStatePatch {
   status: PersistedEmailDraftStatus
   id?: string
   threadId?: string
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
 function parseJsonRecord(value: string): Record<string, unknown> | null {

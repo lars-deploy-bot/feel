@@ -13,6 +13,7 @@
  */
 
 import { getRedisUrl } from "@webalive/env/server"
+import { isRecord } from "@/lib/utils"
 import { createRedisClient } from "@webalive/redis"
 
 // ============================================================================
@@ -67,10 +68,6 @@ const STALE_STREAM_THRESHOLD_MS = 5 * 60 * 1000
 // In standalone mode, this will be null (Redis not available)
 let redisClient: ReturnType<typeof createRedisClient> | null = null
 let redisInitialized = false
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === "object"
-}
 
 function parseRedisJson(value: unknown): Record<string, unknown> | null {
   if (typeof value !== "string") {

@@ -15,10 +15,7 @@ import {
   SETTINGS_SOURCES,
   STREAM_TYPES,
 } from "@/lib/claude/agent-constants.mjs"
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-}
+import { isRecord } from "@/lib/utils"
 
 // =============================================================================
 // Isolated Attempt Result
