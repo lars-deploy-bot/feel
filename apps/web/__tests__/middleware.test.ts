@@ -9,29 +9,34 @@ interface ResponseWithInjected extends Response {
 
 /**
  * Build a minimal NextRequest-like object for testing middleware.
+ * Adds nextUrl with pathname since middleware accesses request.nextUrl.pathname.
  */
 function buildRequest(url: string, headers?: Record<string, string>): NextRequest {
-  return new Request(url, { headers }) as unknown as NextRequest
+  const req = new Request(url, { headers })
+  const parsed = new URL(url)
+  Object.defineProperty(req, "nextUrl", { value: parsed, writable: false })
+  return req as unknown as NextRequest
 }
 
 // Capture what NextResponse.next() receives so we can inspect request header injection.
+// The mock must support both `new NextResponse(body, init)` (used for 404 blocks)
+// and `NextResponse.next()` (used for pass-through with injected headers).
 vi.mock("next/server", async () => {
   const actual = await vi.importActual<typeof import("next/server")>("next/server")
 
+  class MockNextResponse extends Response {
+    __injectedRequestHeaders?: Headers
+
+    static next(init?: { request?: { headers?: Headers } }) {
+      const res = new MockNextResponse(null, { status: 200 })
+      res.__injectedRequestHeaders = init?.request?.headers
+      return res as unknown as ReturnType<typeof actual.NextResponse.next>
+    }
+  }
+
   return {
     ...actual,
-    NextResponse: {
-      ...actual.NextResponse,
-      next(init?: { request?: { headers?: Headers } }) {
-        // Build a real Response so .headers works naturally.
-        const res: ResponseWithInjected = new Response(null, { status: 200 })
-
-        // Stash the injected request headers so tests can assert on them.
-        res.__injectedRequestHeaders = init?.request?.headers
-
-        return res as unknown as ReturnType<typeof actual.NextResponse.next>
-      },
-    },
+    NextResponse: MockNextResponse,
   }
 })
 
@@ -152,5 +157,44 @@ describe("security headers", () => {
     const res = middleware(req)
 
     expect(res.headers.get("content-security-policy-report-only")).toBeNull()
+  })
+})
+
+describe("internal API blocking (#310)", () => {
+  const internalPaths = [
+    "/api/internal/automation/trigger",
+    "/api/internal-tools/read-logs",
+    "/api/internal-tools/switch-serve-mode",
+  ]
+
+  for (const path of internalPaths) {
+    it(`blocks proxied request to ${path} with 404`, async () => {
+      // Simulate external request that went through Caddy (has X-Forwarded-For)
+      const req = buildRequest(`http://localhost${path}`, {
+        "x-forwarded-for": "203.0.113.42",
+      })
+      const res = middleware(req)
+
+      expect(res.status).toBe(404)
+      expect(await res.text()).toBe("Not Found")
+    })
+
+    it(`allows direct localhost request to ${path}`, () => {
+      // Simulate internal request from worker/MCP tools (no X-Forwarded-For)
+      const req = buildRequest(`http://localhost${path}`)
+      const res = middleware(req)
+
+      // Should pass through to route handler (200 from NextResponse.next())
+      expect(res.status).toBe(200)
+    })
+  }
+
+  it("does not block non-internal API routes with X-Forwarded-For", () => {
+    const req = buildRequest("http://localhost/api/templates", {
+      "x-forwarded-for": "203.0.113.42",
+    })
+    const res = middleware(req)
+
+    expect(res.status).toBe(200)
   })
 })

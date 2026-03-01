@@ -16,6 +16,46 @@ import { z } from "zod"
 const pathStr = z.string().min(1)
 const domainStr = z.string().regex(/^[a-z0-9.*-]+$/i)
 
+const sentrySchema = z
+  .object({
+    dsn: z.string().url(),
+    url: z.string().url().optional(),
+    projectId: z.string().min(1).optional(),
+    // Legacy fields still present in some deployed server-config.json files.
+    host: z.string().min(1).optional(),
+    org: z.string().min(1).optional(),
+    project: z.string().min(1).optional(),
+  })
+  .strict()
+  .transform((sentry, ctx) => {
+    const url = sentry.url ?? (sentry.host ? `https://${sentry.host}` : undefined)
+    const projectId = sentry.projectId ?? extractProjectIdFromDsn(sentry.dsn)
+
+    if (!url) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "sentry.url is required (or provide legacy sentry.host)",
+      })
+    }
+
+    if (!projectId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "sentry.projectId is required (or include it in sentry.dsn path)",
+      })
+    }
+
+    if (!url || !projectId) {
+      return z.NEVER
+    }
+
+    return {
+      dsn: sentry.dsn,
+      url,
+      projectId,
+    }
+  })
+
 // ---------------------------------------------------------------------------
 // Schema
 // ---------------------------------------------------------------------------
@@ -63,13 +103,7 @@ export const serverConfigSchema = z
       })
       .strict(),
 
-    sentry: z
-      .object({
-        dsn: z.string().url(),
-        url: z.string().url(),
-        projectId: z.string().min(1),
-      })
-      .strict(),
+    sentry: sentrySchema,
 
     contactEmail: z.string().email(),
 
@@ -152,5 +186,14 @@ function rejectRemovedKeys(obj: unknown): void {
         'Remove the "templates" object from server-config.json. ' +
         'Ensure "paths.templatesRoot" points to your templates directory (e.g. "/srv/webalive/templates").',
     )
+  }
+}
+
+function extractProjectIdFromDsn(dsn: string): string {
+  try {
+    const pathname = new URL(dsn).pathname.replace(/^\/+/, "").trim()
+    return pathname
+  } catch {
+    return ""
   }
 }
