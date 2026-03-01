@@ -3,7 +3,7 @@ import * as Sentry from "@sentry/nextjs"
 import { COOKIE_NAMES, PATHS } from "@webalive/shared"
 import { DeploymentError } from "@webalive/site-controller"
 import { cookies } from "next/headers"
-import { type NextRequest, NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 import { AuthenticationError, requireSessionUser } from "@/features/auth/lib/auth"
 import { createSessionToken, verifySessionToken } from "@/features/auth/lib/jwt"
 import { structuredErrorResponse } from "@/lib/api/responses"
@@ -218,19 +218,4 @@ export async function POST(request: NextRequest) {
           : undefined,
     })
   }
-}
-
-export async function GET() {
-  return NextResponse.json(
-    {
-      ok: true,
-      message: "Deploy Subdomain API is running",
-      usage: 'POST with { "slug": "mysite", "siteIdeas": "...", "templateId": "tmpl_blank", "orgId": "org-123" }',
-      endpoints: {
-        deploy: "POST /api/deploy-subdomain",
-        getMetadata: "GET /api/sites/metadata?slug=mysite",
-      },
-    },
-    { status: 200 },
-  )
 }

@@ -3,7 +3,7 @@ import * as Sentry from "@sentry/nextjs"
 import { COOKIE_NAMES, getOAuthKeyForProvider, PATHS } from "@webalive/shared"
 import { DeploymentError } from "@webalive/site-controller"
 import { cookies } from "next/headers"
-import { type NextRequest, NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { createSessionToken, verifySessionToken } from "@/features/auth/lib/jwt"
 import { structuredErrorResponse } from "@/lib/api/responses"
@@ -237,16 +237,4 @@ export async function POST(request: NextRequest) {
       }
     }
   }
-}
-
-export async function GET() {
-  return NextResponse.json(
-    {
-      ok: true,
-      message: "Import Repo API is running",
-      usage:
-        'POST with { "slug": "mysite", "repoUrl": "owner/repo" or "https://github.com/owner/repo", "branch": "main" (optional) }',
-    },
-    { status: 200 },
-  )
 }

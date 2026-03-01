@@ -94,6 +94,13 @@ vi.mock("next/headers", () => {
   }
 })
 
+// Mock Redis to prevent real connection attempts in tests.
+// Without this, STREAM_ENV=local causes ioredis to connect to 127.0.0.1:6379.
+// When no local Redis is running, retries hang — especially with fake timers.
+vi.mock("@webalive/redis", () => ({
+  createRedisClient: () => null,
+}))
+
 vi.mock("@anthropic-ai/claude-agent-sdk", () => ({
   query: vi.fn(() => {
     throw new Error(

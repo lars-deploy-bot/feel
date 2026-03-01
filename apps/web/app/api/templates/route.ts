@@ -58,11 +58,6 @@ export async function GET() {
     }
     console.error("[Templates API]", error)
     Sentry.captureException(error)
-    return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, {
-      status: 500,
-      details: {
-        exception: error instanceof Error ? error.message : String(error),
-      },
-    })
+    return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
   }
 }
