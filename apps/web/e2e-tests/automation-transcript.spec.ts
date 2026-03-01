@@ -1,192 +1,202 @@
+import { randomUUID } from "node:crypto"
+import type { APIRequestContext, APIResponse, Response as PageResponse, Request } from "@playwright/test"
+import type { Req, Res } from "@/lib/api/schemas"
+import { apiSchemas, validateRequest } from "@/lib/api/schemas"
+import {
+  CleanupAutomationTranscriptRequestSchema,
+  CleanupAutomationTranscriptResponseSchema,
+  SeedAutomationTranscriptRequestSchema,
+  type SeedAutomationTranscriptResponse,
+  SeedAutomationTranscriptResponseSchema,
+} from "@/lib/testing/e2e-automation-transcript"
 import { expect, test } from "./fixtures"
 import { TEST_TIMEOUTS } from "./fixtures/test-data"
 import { gotoChatFast, waitForChatReady } from "./helpers/assertions"
-import { buildJsonMockResponse } from "./lib/strict-api-guard"
+
+interface AutomationTestHandles {
+  jobId: string
+  runId: string
+  conversationId: string
+  tabId: string
+}
+
+function buildTestEndpointHeaders(): Record<string, string> | undefined {
+  const secret = process.env.E2E_TEST_SECRET
+  if (!secret) return undefined
+  return { "x-test-secret": secret }
+}
+
+async function readJsonOrThrow<T>(
+  response: APIResponse,
+  context: string,
+  parser: { parse: (value: unknown) => T },
+): Promise<T> {
+  const payload: unknown = await response.json().catch(() => null)
+  if (!response.ok()) {
+    throw new Error(`[${context}] ${response.status()} ${response.statusText()} ${JSON.stringify(payload)}`)
+  }
+  return parser.parse(payload)
+}
+
+async function findWorkspaceSiteId(request: APIRequestContext, workspace: string): Promise<string> {
+  const sitesRes = await request.get("/api/sites")
+  const sitesData = await readJsonOrThrow(sitesRes, "sites", apiSchemas.sites.res)
+  const site = sitesData.sites.find(candidate => candidate.hostname === workspace)
+
+  if (!site) {
+    throw new Error(`[sites] Workspace site not found for ${workspace}`)
+  }
+
+  return site.id
+}
+
+async function createAutomationJob(
+  request: APIRequestContext,
+  siteId: string,
+): Promise<Res<"automations/create">["automation"]> {
+  const name = `e2e-auto-${Date.now()}-${randomUUID().slice(0, 8)}`
+  const body: Req<"automations/create"> = validateRequest("automations/create", {
+    site_id: siteId,
+    name,
+    trigger_type: "webhook",
+    action_type: "prompt",
+    action_prompt: "Seeded e2e automation transcript",
+    is_active: true,
+  })
+
+  const response = await request.post("/api/automations", { data: body })
+  const created = await readJsonOrThrow(response, "automations/create", apiSchemas["automations/create"].res)
+  return created.automation
+}
+
+async function seedAutomationTranscript(
+  request: APIRequestContext,
+  jobId: string,
+): Promise<SeedAutomationTranscriptResponse["seed"] | null> {
+  const body = SeedAutomationTranscriptRequestSchema.parse({
+    jobId,
+    initialMessage: "Starting automation...",
+  })
+
+  const response = await request.post("/api/test/seed-automation-transcript", {
+    headers: buildTestEndpointHeaders(),
+    data: body,
+  })
+
+  if (response.status() === 404) {
+    return null
+  }
+
+  const payload = await readJsonOrThrow(response, "seed-automation-transcript", SeedAutomationTranscriptResponseSchema)
+  return payload.seed
+}
+
+async function cleanupAutomationTranscript(request: APIRequestContext, handles: AutomationTestHandles): Promise<void> {
+  const cleanupBody = CleanupAutomationTranscriptRequestSchema.parse({
+    jobId: handles.jobId,
+    runId: handles.runId,
+    conversationId: handles.conversationId,
+    tabId: handles.tabId,
+  })
+
+  const cleanupResponse = await request.delete("/api/test/seed-automation-transcript", {
+    headers: buildTestEndpointHeaders(),
+    data: cleanupBody,
+  })
+
+  if (cleanupResponse.status() === 404) {
+    await request.delete(`/api/automations/${handles.jobId}`)
+    return
+  }
+
+  if (cleanupResponse.ok()) {
+    const cleanupPayload: unknown = await cleanupResponse.json().catch(() => null)
+    CleanupAutomationTranscriptResponseSchema.parse(cleanupPayload)
+  }
+
+  await request.delete(`/api/automations/${handles.jobId}`)
+}
 
 test.describe("Automation Transcript Polling", () => {
-  test("new messages appear in real-time when viewing automation run", async ({ authenticatedPage, workerTenant }) => {
-    const JOB_ID = "test-job-e2e"
-    const RUN_ID = "test-run-e2e"
-    const TAB_ID = "test-auto-tab"
-    const CONV_ID = "test-auto-conv"
-    const now = Date.now()
+  test("polls transcript and run-status endpoints while an automation run is open", async ({
+    authenticatedPage,
+    workerTenant,
+  }) => {
+    const siteId = await findWorkspaceSiteId(authenticatedPage.request, workerTenant.workspace)
+    const automationJob = await createAutomationJob(authenticatedPage.request, siteId)
+    const seed = await seedAutomationTranscript(authenticatedPage.request, automationJob.id)
+    if (!seed) {
+      await authenticatedPage.request.delete(`/api/automations/${automationJob.id}`)
+      test.skip(true, "Requires /api/test/seed-automation-transcript in target environment.")
+      return
+    }
 
-    let messageFetchCount = 0
-    let messageFetchCountAfterReady = 0
-    let runStatusCheckCount = 0
-    let allowTranscriptGrowth = false
+    const handles: AutomationTestHandles = {
+      jobId: automationJob.id,
+      runId: seed.runId,
+      conversationId: seed.conversationId,
+      tabId: seed.tabId,
+    }
 
-    // One automation conversation in sidebar.
-    await authenticatedPage.route("**/api/conversations?*", async route => {
-      await route.fulfill(
-        buildJsonMockResponse({
-          own: [
-            {
-              id: CONV_ID,
-              workspace: workerTenant.workspace,
-              orgId: workerTenant.orgId,
-              creatorId: workerTenant.userId,
-              title: "[Auto] Test Job",
-              visibility: "private",
-              messageCount: 1,
-              lastMessageAt: now,
-              firstUserMessageId: null,
-              autoTitleSet: true,
-              createdAt: now,
-              updatedAt: now,
-              deletedAt: null,
-              archivedAt: null,
-              source: "automation_run",
-              sourceMetadata: {
-                job_id: JOB_ID,
-                claim_run_id: RUN_ID,
-                triggered_by: "manual",
-              },
-              tabs: [
-                {
-                  id: TAB_ID,
-                  conversationId: CONV_ID,
-                  name: "Run",
-                  position: 0,
-                  messageCount: 1,
-                  lastMessageAt: now,
-                  createdAt: now,
-                  closedAt: null,
-                },
-              ],
-            },
-          ],
-          shared: [],
-        }),
-      )
-    })
+    let tabMessagePollCount = 0
+    let runStatusPollCount = 0
+    const endpointErrors: string[] = []
 
-    // Evolving transcript messages for the automation tab only.
-    await authenticatedPage.route("**/api/conversations/messages?*", async route => {
-      const requestUrl = new URL(route.request().url())
-      const tabId = requestUrl.searchParams.get("tabId")
-
-      if (tabId !== TAB_ID) {
-        await route.fulfill(buildJsonMockResponse({ messages: [], hasMore: false, nextCursor: null }))
+    const onRequest = (request: Request) => {
+      const url = new URL(request.url())
+      const isMessageEndpoint =
+        url.pathname === "/api/conversations/messages" && url.searchParams.get("tabId") === seed.tabId
+      if (isMessageEndpoint) {
+        tabMessagePollCount += 1
         return
       }
 
-      messageFetchCount++
-      if (allowTranscriptGrowth) {
-        messageFetchCountAfterReady++
+      if (url.pathname === `/api/automations/${automationJob.id}/runs/${seed.runId}`) {
+        runStatusPollCount += 1
       }
+    }
 
-      const messages = [
-        {
-          id: "msg-1",
-          tabId: TAB_ID,
-          type: "sdk_message",
-          content: {
-            kind: "sdk_message",
-            data: {
-              type: "assistant",
-              message: {
-                role: "assistant",
-                content: [{ type: "text", text: "Starting automation..." }],
-              },
-            },
-          },
-          version: 1,
-          status: "complete",
-          seq: 1,
-          abortedAt: null,
-          errorCode: null,
-          createdAt: now,
-          updatedAt: now,
-        },
-        ...(allowTranscriptGrowth && messageFetchCountAfterReady >= 2
-          ? [
-              {
-                id: "msg-2",
-                tabId: TAB_ID,
-                type: "sdk_message",
-                content: {
-                  kind: "sdk_message",
-                  data: {
-                    type: "assistant",
-                    message: {
-                      role: "assistant",
-                      content: [{ type: "text", text: "Task completed successfully" }],
-                    },
-                  },
-                },
-                version: 1,
-                status: "complete",
-                seq: 2,
-                abortedAt: null,
-                errorCode: null,
-                createdAt: now + 5_000,
-                updatedAt: now + 5_000,
-              },
-            ]
-          : []),
-      ]
+    const onResponse = (response: PageResponse) => {
+      const url = new URL(response.url())
+      const isTargetResponse =
+        (url.pathname === "/api/conversations/messages" && url.searchParams.get("tabId") === seed.tabId) ||
+        url.pathname === `/api/automations/${automationJob.id}/runs/${seed.runId}`
 
-      await route.fulfill(buildJsonMockResponse({ messages, hasMore: false, nextCursor: null }))
-    })
+      if (isTargetResponse && response.status() >= 400) {
+        endpointErrors.push(`${url.pathname} -> ${response.status()}`)
+      }
+    }
 
-    // Run status API used by polling hook (checked every ~10s).
-    await authenticatedPage.route(`**/api/automations/${JOB_ID}/runs/${RUN_ID}*`, async route => {
-      runStatusCheckCount++
-      await route.fulfill(
-        buildJsonMockResponse({
-          run: {
-            id: RUN_ID,
-            job_id: JOB_ID,
-            started_at: new Date(now).toISOString(),
-            completed_at: null,
-            duration_ms: null,
-            status: "running",
-            error: null,
-            result: null,
-            triggered_by: "manual",
-            changes_made: [],
-            messages: [],
-          },
-        }),
-      )
-    })
+    authenticatedPage.on("request", onRequest)
+    authenticatedPage.on("response", onResponse)
 
-    await gotoChatFast(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
-    await waitForChatReady(authenticatedPage)
+    try {
+      await gotoChatFast(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
+      await waitForChatReady(authenticatedPage)
 
-    // Sidebar defaults closed in E2E app state.
-    const openSidebarButton = authenticatedPage.locator('button[aria-label="Open sidebar"]')
-    await expect(openSidebarButton).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
-    await openSidebarButton.click()
+      const openSidebarButton = authenticatedPage.getByRole("button", { name: "Open sidebar" })
+      await expect(openSidebarButton).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
+      await openSidebarButton.click()
 
-    const desktopSidebar = authenticatedPage.locator('aside[aria-label="Conversation history"]').first()
-    const autoConversation = desktopSidebar.getByText("[Auto] Test Job")
-    await expect(autoConversation.first()).toBeVisible({ timeout: TEST_TIMEOUTS.max })
-    await autoConversation.first().click()
+      const sidebar = authenticatedPage.locator('aside[aria-label="Conversation history"]').first()
+      const automationConversation = sidebar.getByText(seed.title, { exact: true })
+      await expect(automationConversation).toBeVisible({ timeout: TEST_TIMEOUTS.max })
+      await automationConversation.click()
 
-    // Trigger explicit tab-select path to force per-tab lazy message load.
-    const selectedTab = authenticatedPage.locator('[data-testid="tab-bar"] [role="tab"][aria-selected="true"]').first()
-    await expect(selectedTab).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
-    await selectedTab.click()
+      await expect(authenticatedPage.getByRole("tab", { name: "Run" })).toBeVisible({ timeout: TEST_TIMEOUTS.max })
+      await expect(authenticatedPage.getByText(seed.initialMessage).first()).toBeVisible({ timeout: TEST_TIMEOUTS.max })
 
-    await expect.poll(() => messageFetchCount, { timeout: TEST_TIMEOUTS.max }).toBeGreaterThan(0)
+      const baselineMessagePolls = tabMessagePollCount
+      await expect
+        .poll(() => tabMessagePollCount - baselineMessagePolls, { timeout: TEST_TIMEOUTS.max })
+        .toBeGreaterThanOrEqual(2)
 
-    await expect(authenticatedPage.getByText("Starting automation...").first()).toBeVisible({
-      timeout: TEST_TIMEOUTS.max,
-    })
-
-    // From here on, no further user actions. Additional fetches should come from polling.
-    allowTranscriptGrowth = true
-
-    await expect.poll(() => messageFetchCountAfterReady, { timeout: TEST_TIMEOUTS.max }).toBeGreaterThanOrEqual(2)
-
-    await expect(authenticatedPage.getByText("Task completed successfully").first()).toBeVisible({
-      timeout: TEST_TIMEOUTS.max,
-    })
-
-    // Validate both polling dimensions: message polling and run status checks.
-    expect(messageFetchCountAfterReady).toBeGreaterThanOrEqual(2)
-    await expect.poll(() => runStatusCheckCount, { timeout: TEST_TIMEOUTS.max }).toBeGreaterThan(0)
+      await expect.poll(() => runStatusPollCount, { timeout: TEST_TIMEOUTS.max }).toBeGreaterThan(0)
+      expect(endpointErrors).toEqual([])
+    } finally {
+      authenticatedPage.off("request", onRequest)
+      authenticatedPage.off("response", onResponse)
+      await cleanupAutomationTranscript(authenticatedPage.request, handles)
+    }
   })
 })

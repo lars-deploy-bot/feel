@@ -5,14 +5,12 @@
  */
 
 import * as Sentry from "@sentry/nextjs"
-import type { AppDatabase } from "@webalive/database"
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
+import { isRunStatus } from "@webalive/database"
 import { ErrorCodes } from "@/lib/error-codes"
 import { createRLSAppClient } from "@/lib/supabase/server-rls"
-
-type RunStatus = AppDatabase["app"]["Enums"]["automation_run_status"]
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -62,7 +60,6 @@ export async function GET(req: NextRequest, context: RouteContext) {
     const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "20", 10), 1), 100)
     const offset = Math.max(parseInt(searchParams.get("offset") || "0", 10), 0)
     const statusFilter = searchParams.get("status")
-    const validStatuses: readonly RunStatus[] = ["pending", "running", "success", "failure", "skipped"]
 
     // Build query
     let query = supabase
@@ -72,8 +69,8 @@ export async function GET(req: NextRequest, context: RouteContext) {
       .order("started_at", { ascending: false })
       .range(offset, offset + limit - 1)
 
-    if (statusFilter && validStatuses.includes(statusFilter as RunStatus)) {
-      query = query.eq("status", statusFilter as RunStatus)
+    if (statusFilter && isRunStatus(statusFilter)) {
+      query = query.eq("status", statusFilter)
     }
 
     const { data: runs, error, count } = await query

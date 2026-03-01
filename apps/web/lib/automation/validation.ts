@@ -5,6 +5,7 @@
  * All validators are defensive and won't throw.
  */
 
+import { isActionType, isTriggerType, TRIGGER_TYPES, ACTION_TYPES } from "@webalive/database"
 import { getWorkspacePath } from "@webalive/shared"
 import { Cron } from "croner"
 import { createServiceAppClient } from "@/lib/supabase/service"
@@ -203,10 +204,10 @@ export function validateTriggerType(
     return { valid: false, error: "trigger_type is required" }
   }
 
-  if (!["cron", "webhook", "one-time", "email"].includes(triggerType)) {
+  if (!isTriggerType(triggerType)) {
     return {
       valid: false,
-      error: `Invalid trigger_type: "${triggerType}". Must be one of: cron, webhook, one-time, email`,
+      error: `Invalid trigger_type: "${triggerType}". Must be one of: ${[...TRIGGER_TYPES].join(", ")}`,
     }
   }
 
@@ -236,8 +237,11 @@ export function validateActionType(actionType: string | undefined): {
     return { valid: false, error: "action_type is required" }
   }
 
-  if (!["prompt", "webhook", "integration"].includes(actionType)) {
-    return { valid: false, error: `Invalid action_type: "${actionType}". Must be one of: prompt, webhook, integration` }
+  if (!isActionType(actionType)) {
+    return {
+      valid: false,
+      error: `Invalid action_type: "${actionType}". Must be one of: ${[...ACTION_TYPES].join(", ")}`,
+    }
   }
 
   return { valid: true }

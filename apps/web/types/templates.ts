@@ -3,6 +3,7 @@
  * Types only - no runtime imports to avoid Node.js deps in client bundles
  */
 
+import { SUPER_TEMPLATE_CATEGORIES } from "@webalive/shared"
 import type { TemplateCategory, TemplateListItem } from "@webalive/tools"
 
 // Re-export types for component usage
@@ -16,25 +17,6 @@ export type Template = TemplateListItem
 
 /**
  * Template categories with display names (for UI)
- * Duplicated here to avoid importing from @webalive/tools which has Node.js deps
+ * @deprecated Import SUPER_TEMPLATE_CATEGORIES from @webalive/shared instead
  */
-export const TEMPLATE_CATEGORIES: Record<string, string> = {
-  "ui-components": "UI Components",
-  forms: "Forms",
-  "data-display": "Data Display",
-  navigation: "Navigation",
-  media: "Media",
-  layout: "Layout",
-  integrations: "Integrations",
-  animations: "Animations",
-  landing: "Landing",
-  maps: "Maps",
-  backend: "Backend",
-  setup: "Setup",
-  frontend: "Frontend",
-  "content-management": "Content Management",
-  "photo-sliders": "Photo Sliders",
-  components: "Components",
-  "forms-and-inputs": "Forms & Inputs",
-  other: "Other",
-}
+export const TEMPLATE_CATEGORIES = SUPER_TEMPLATE_CATEGORIES

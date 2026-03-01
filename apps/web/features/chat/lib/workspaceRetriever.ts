@@ -2,13 +2,12 @@ import { existsSync } from "node:fs"
 import path from "node:path"
 import * as Sentry from "@sentry/nextjs"
 import { env } from "@webalive/env/server"
-import { PATHS, SUPERADMIN, TEST_CONFIG } from "@webalive/shared"
+import { PATHS, resolveAndValidatePath, SUPERADMIN, TEST_CONFIG } from "@webalive/shared"
 import { NextResponse } from "next/server"
 import { domainToSlug, normalizeDomain } from "@/features/manager/lib/domain-utils"
 import { resolveWorktreePath, WorktreeError } from "@/features/worktrees/lib/worktrees"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { type ErrorCode, ErrorCodes } from "@/lib/error-codes"
-import { resolveAndValidatePath } from "@/lib/utils/path-security"
 
 export interface GetWorkspaceParams {
   host: string
