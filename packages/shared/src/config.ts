@@ -217,6 +217,19 @@ const COOKIE_DOMAIN = configValue("COOKIE_DOMAIN", serverConfig.domains?.cookieD
 // Server IP: from env var or server config (REQUIRED)
 const SERVER_IP = configValue("SERVER_IP", serverConfig.serverIp)
 
+// Sentry config (from server-config.json sentry section)
+// Empty in browser/test/local-dev — required in production (validated by schema)
+const SENTRY_DSN = serverConfig.sentry?.dsn ?? ""
+const SENTRY_URL = serverConfig.sentry?.url ?? ""
+const SENTRY_PROJECT_ID = serverConfig.sentry?.projectId ?? ""
+const SENTRY_HOST = SENTRY_DSN ? new URL(SENTRY_DSN).hostname : ""
+
+// Contact email (required in server-config.json, empty only in browser/test/local-dev)
+const CONTACT_EMAIL_RAW = serverConfig.contactEmail ?? ""
+
+// Whether this server is the primary automation executor (required in server-config.json)
+const IS_AUTOMATION_PRIMARY = serverConfig.automationPrimary ?? false
+
 // NOTE: Startup validation is now handled by Zod schema (parseServerConfig).
 // When config file is present, ALL required fields are validated at parse time.
 
@@ -339,6 +352,31 @@ export const DOMAINS = {
 } as const
 
 // =============================================================================
+// Sentry Configuration
+// =============================================================================
+
+export const SENTRY = {
+  /** Full DSN string for Sentry SDK initialization */
+  DSN: SENTRY_DSN,
+
+  /** Self-hosted Sentry base URL (for source map uploads, build config) */
+  URL: SENTRY_URL,
+
+  /** Sentry project ID */
+  PROJECT_ID: SENTRY_PROJECT_ID,
+
+  /** Sentry hostname extracted from DSN (for tunnel validation) */
+  HOST: SENTRY_HOST,
+} as const
+
+// =============================================================================
+// Contact Email
+// =============================================================================
+
+/** Contact email for user-facing messages (signup, error pages, etc.) */
+export const CONTACT_EMAIL = CONTACT_EMAIL_RAW
+
+// =============================================================================
 // Port Configuration
 // =============================================================================
 
@@ -436,6 +474,9 @@ export const DEFAULTS = {
 
   /** Automation worker HTTP port (standalone scheduler/executor process) */
   AUTOMATION_WORKER_PORT: 5070,
+
+  /** Whether this server is the primary automation executor (from server-config.json) */
+  IS_AUTOMATION_PRIMARY,
 } as const
 
 // =============================================================================

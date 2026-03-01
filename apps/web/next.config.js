@@ -54,6 +54,23 @@ try {
   // dev mode or build-info not yet written — falls back to "unknown"
 }
 
+// Read server-config.json for build-time values (avoids hardcoding domains).
+// next.config.js is pure JS and can't import @webalive/shared, so we read directly.
+// In production, SERVER_CONFIG_PATH is always set and the file always exists.
+// In local dev, these stay empty — Sentry won't init and contact email is blank.
+let sentryDsn = ""
+let sentryUrl = ""
+let contactEmail = ""
+{
+  const configPath = process.env.SERVER_CONFIG_PATH
+  if (configPath) {
+    const serverConfig = JSON.parse(fs.readFileSync(configPath, "utf-8"))
+    sentryDsn = serverConfig.sentry.dsn
+    sentryUrl = serverConfig.sentry.url
+    contactEmail = serverConfig.contactEmail
+  }
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Separate distDir for test server to avoid conflicts with dev server
@@ -86,6 +103,8 @@ const nextConfig = {
   },
   env: {
     NEXT_PUBLIC_SENTRY_RELEASE: sentryRelease,
+    NEXT_PUBLIC_SENTRY_DSN: sentryDsn,
+    NEXT_PUBLIC_CONTACT_EMAIL: contactEmail,
   },
   experimental: {
     serverActions: { bodySizeLimit: "2mb" },
@@ -163,6 +182,6 @@ export default withSentryConfig(nextConfig, {
   org: "sentry",
   project: "alive",
 
-  // Self-hosted Sentry URL
-  sentryUrl: "https://sentry.sonno.tech",
+  // Self-hosted Sentry URL (from server-config.json)
+  sentryUrl: sentryUrl || undefined,
 })

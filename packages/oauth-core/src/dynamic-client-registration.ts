@@ -7,6 +7,7 @@
  * https://www.rfc-editor.org/rfc/rfc7591.html
  */
 
+import { DOMAINS } from "@webalive/shared"
 import { z } from "zod"
 
 /**
@@ -105,7 +106,7 @@ export async function registerClient(
   const payload = {
     redirect_uris: options.redirect_uris,
     client_name: options.client_name || "WebAlive",
-    client_uri: options.client_uri || "https://sonno.tech/",
+    client_uri: options.client_uri || (DOMAINS.MAIN ? `https://${DOMAINS.MAIN}/` : undefined),
     scope: options.scope,
     grant_types: options.grant_types || ["authorization_code", "refresh_token"],
     response_types: options.response_types || ["code"],

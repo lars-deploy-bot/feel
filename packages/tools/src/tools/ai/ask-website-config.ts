@@ -13,7 +13,7 @@
  */
 
 import { tool } from "@anthropic-ai/claude-agent-sdk"
-import { TEMPLATES } from "@webalive/shared"
+import { DOMAINS, TEMPLATES } from "@webalive/shared"
 import { z } from "zod"
 
 export const askWebsiteConfigParamsSchema = {
@@ -73,6 +73,8 @@ export async function askWebsiteConfig(params: AskWebsiteConfigParams): Promise<
   }
 }
 
+const exampleDomain = DOMAINS.WILDCARD
+
 export const askWebsiteConfigTool = tool(
   "ask_website_config",
   `Show an interactive form for the user to configure a new website.
@@ -83,7 +85,7 @@ Use this tool when:
 - The user says something like "create a website", "make me a site", "deploy a new site"
 
 The form collects:
-1. **Subdomain slug** - The URL for the site (e.g., "my-bakery" → my-bakery.sonno.tech)
+1. **Subdomain slug** - The URL for the site (e.g., "my-bakery" → my-bakery.${exampleDomain})
 2. **Template** - Starting point (blank, gallery, event, saas, business)
 3. **Description** - Optional info about what the site is for
 
@@ -93,7 +95,7 @@ Then use the create_website tool to actually deploy the site with their choices.
 Example flow:
 1. User: "I want to create a website"
 2. You: Call ask_website_config to show the form
-3. User submits: "Domain: my-bakery.sonno.tech, Template: tmpl_business, Description: A local bakery..."
+3. User submits: "Domain: my-bakery.${exampleDomain}, Template: tmpl_business, Description: A local bakery..."
 4. You: Call create_website({ slug: "my-bakery", templateId: "tmpl_business", siteIdeas: "A local bakery..." })`,
   askWebsiteConfigParamsSchema,
   async args => {

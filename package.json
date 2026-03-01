@@ -55,7 +55,6 @@
     "deploy-site": "bun scripts/deploy-site.ts",
     "sync:skills": "bun scripts/sync-claude-skills.ts",
     "setup-webhook": "./scripts/maintenance/setup-webhook.sh",
-    "update-cors": "./scripts/maintenance/update-cors-domains.sh",
     "widget": "cd apps/widget-server && ./build.sh && go run main.go",
     "redis:setup": "bun --filter @webalive/redis setup",
     "redis:start": "bun --filter @webalive/redis start",

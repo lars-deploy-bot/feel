@@ -1,6 +1,9 @@
 const Index = () => {
   const currentDomain = window.location.hostname
-  const terminalUrl = `https://sonno.tech?domain=${currentDomain}`
+  // Derive platform URL from the current domain's parent (e.g., foo.alive.best → alive.best)
+  const domainParts = currentDomain.split(".")
+  const platformDomain = domainParts.length > 2 ? domainParts.slice(1).join(".") : currentDomain
+  const terminalUrl = `https://${platformDomain}?domain=${currentDomain}`
 
   return (
     <div className="min-h-screen bg-white">

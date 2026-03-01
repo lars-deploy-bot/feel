@@ -1,5 +1,6 @@
 "use client"
 
+import { env } from "@webalive/env/client"
 import { AnimatePresence, motion } from "framer-motion"
 import { ArrowLeft, Eye, EyeOff, KeyRound, Mail, User } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -219,7 +220,7 @@ export function AuthModal() {
     }
 
     if (!accessCode.trim()) {
-      setError("Access code is required. Contact agency@alive.best if you don't have one.")
+      setError(`Access code is required. Contact ${env.NEXT_PUBLIC_CONTACT_EMAIL} if you don't have one.`)
       return
     }
 
@@ -490,7 +491,7 @@ export function AuthModal() {
                         placeholder="Enter your access code"
                         disabled={loading}
                         autoComplete="off"
-                        helperText="Contact agency@alive.best if you don't have one"
+                        helperText={`Contact ${env.NEXT_PUBLIC_CONTACT_EMAIL} if you don't have one`}
                         suffix={<KeyRound size={18} className="text-black/30 dark:text-white/30" />}
                       />
                     </motion.div>

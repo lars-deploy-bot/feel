@@ -1,6 +1,7 @@
 /**
  * Centralized error codes for consistent error handling across frontend and backend
  */
+import { env } from "@webalive/env/client"
 
 export const ErrorCodes = {
   // Workspace errors (1xxx)
@@ -479,7 +480,7 @@ export function getErrorMessage(code: ErrorCode, details?: Record<string, any>):
         : "This email is already registered. Please use a different email or login with your existing account."
 
     case ErrorCodes.INVALID_ACCESS_CODE:
-      return "Invalid access code. Contact agency@alive.best for access."
+      return `Invalid access code. Contact ${env.NEXT_PUBLIC_CONTACT_EMAIL} for access.`
 
     case ErrorCodes.ORG_NOT_FOUND:
       return details?.orgId

@@ -7,8 +7,7 @@
 
 import { execSync } from "node:child_process"
 import * as Sentry from "@sentry/node"
-
-const SENTRY_DSN = "https://84e50be97b3c02134ee7c1e4d60cf8c9@sentry.sonno.tech/2"
+import { SENTRY as SENTRY_CONFIG } from "@webalive/shared"
 
 let release = "unknown"
 try {
@@ -17,21 +16,23 @@ try {
   // Not in a git repo or git not available — fall back to "unknown"
 }
 
-Sentry.init({
-  dsn: SENTRY_DSN,
-  release,
-  environment: process.env.STREAM_ENV ?? process.env.NODE_ENV ?? "unknown",
-  serverName: "automation-worker",
-  sampleRate: 1.0,
-  tracesSampleRate: 0.1,
-  sendDefaultPii: false,
+if (SENTRY_CONFIG.DSN) {
+  Sentry.init({
+    dsn: SENTRY_CONFIG.DSN,
+    release,
+    environment: process.env.STREAM_ENV ?? process.env.NODE_ENV ?? "unknown",
+    serverName: "automation-worker",
+    sampleRate: 1.0,
+    tracesSampleRate: 0.1,
+    sendDefaultPii: false,
 
-  beforeSend(event) {
-    if (event.environment === "local") {
-      return null
-    }
-    return event
-  },
-})
+    beforeSend(event) {
+      if (event.environment === "local") {
+        return null
+      }
+      return event
+    },
+  })
+}
 
 export { Sentry }

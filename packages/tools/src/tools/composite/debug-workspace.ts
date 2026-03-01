@@ -1,5 +1,5 @@
 import { tool } from "@anthropic-ai/claude-agent-sdk"
-import { LOGS_DEBUG_DEFAULT_LINES, LOGS_MAX_LINES } from "@webalive/shared"
+import { DOMAINS, LOGS_DEBUG_DEFAULT_LINES, LOGS_MAX_LINES } from "@webalive/shared"
 import { z } from "zod"
 import type { ToolResult } from "../../lib/api-client.js"
 import { readServerLogs } from "../debug/read-server-logs.js"
@@ -8,12 +8,15 @@ import { readServerLogs } from "../debug/read-server-logs.js"
  * Composite tool: Reads logs with sensible defaults for debugging
  */
 
+const exampleDomain = `two.${DOMAINS.WILDCARD}`
+const demoDomain = `demo.${DOMAINS.WILDCARD}`
+
 export const debugWorkspaceParamsSchema = {
   workspace: z
     .string()
     .min(1)
     .regex(/^[a-z0-9.-]+$/i)
-    .describe("Workspace domain (e.g., 'two.sonno.tech')"),
+    .describe(`Workspace domain (e.g., '${exampleDomain}')`),
   lines: z
     .number()
     .int()
@@ -51,8 +54,8 @@ export const debugWorkspaceTool = tool(
 Use this FIRST when troubleshooting workspace issues. Returns raw logs for you to analyze.
 
 Examples:
-- debug_workspace({ workspace: "two.sonno.tech" })
-- debug_workspace({ workspace: "demo.sonno.tech", since: "5 minutes ago" })`,
+- debug_workspace({ workspace: "${exampleDomain}" })
+- debug_workspace({ workspace: "${demoDomain}", since: "5 minutes ago" })`,
   debugWorkspaceParamsSchema,
   async args => {
     return debugWorkspace(args)

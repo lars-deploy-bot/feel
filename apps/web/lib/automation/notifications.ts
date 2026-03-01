@@ -10,20 +10,23 @@ import { DOMAINS, STREAM_ENV } from "@webalive/shared"
 import nodemailer from "nodemailer"
 import { createServiceIamClient } from "@/lib/supabase/service"
 
-const FROM_ADDRESS = "noreply@alive.best"
+const FROM_ADDRESS = `noreply@${DOMAINS.MAIN}`
 
 function getAppBaseUrl(): string {
   const streamEnv = process.env.STREAM_ENV
 
   if (streamEnv === STREAM_ENV.STAGING) {
-    return (DOMAINS.STREAM_STAGING || DOMAINS.STREAM_PROD || "https://app.alive.best").replace(/\/+$/, "")
+    if (!DOMAINS.STREAM_STAGING) throw new Error("DOMAINS.STREAM_STAGING is not configured")
+    return DOMAINS.STREAM_STAGING.replace(/\/+$/, "")
   }
 
   if (streamEnv === STREAM_ENV.DEV || streamEnv === STREAM_ENV.LOCAL || streamEnv === STREAM_ENV.STANDALONE) {
-    return (DOMAINS.STREAM_DEV || DOMAINS.STREAM_PROD || "https://app.alive.best").replace(/\/+$/, "")
+    if (!DOMAINS.STREAM_DEV) throw new Error("DOMAINS.STREAM_DEV is not configured")
+    return DOMAINS.STREAM_DEV.replace(/\/+$/, "")
   }
 
-  return (DOMAINS.STREAM_PROD || "https://app.alive.best").replace(/\/+$/, "")
+  if (!DOMAINS.STREAM_PROD) throw new Error("DOMAINS.STREAM_PROD is not configured")
+  return DOMAINS.STREAM_PROD.replace(/\/+$/, "")
 }
 
 /** Lazy-initialized SMTP transporter — localhost Mailcow relay on port 587 */

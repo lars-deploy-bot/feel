@@ -22,6 +22,7 @@ export {
 export {
   assertValidServerId,
   CONFIG_PATH,
+  CONTACT_EMAIL,
   DEFAULTS,
   DOMAINS,
   getEnvFilePath,
@@ -35,6 +36,7 @@ export {
   requireEnv,
   resolveTemplatePath,
   SECURITY,
+  SENTRY,
   STANDALONE,
   STREAM_ENV,
   type StreamEnv,
@@ -74,6 +76,13 @@ export {
   type WorkspaceStorageState,
   type WorkspaceStorageValue,
 } from "./constants.js"
+export {
+  type CorsDomainsConfig,
+  checkGetAllowedOrigin,
+  checkOriginAllowed,
+  getAllowedOrigin,
+  isAllowedOrigin,
+} from "./cors.js"
 export {
   // Deduplication cache
   createDedupeCache,
