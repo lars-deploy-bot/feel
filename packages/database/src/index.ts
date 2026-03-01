@@ -14,14 +14,14 @@ export { Constants as AppConstants } from "./app.generated"
 
 // Export automation enum types, guards, and runtime sets
 export {
-  type ActionType,
   ACTION_TYPES,
+  type ActionType,
   isActionType,
   isJobStatus,
   isRunStatus,
   isTriggerType,
-  type JobStatus,
   JOB_STATUSES,
+  type JobStatus,
   RUN_STATUSES,
   type RunStatus,
   type TerminalRunStatus,

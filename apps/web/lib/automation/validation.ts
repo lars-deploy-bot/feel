@@ -5,7 +5,7 @@
  * All validators are defensive and won't throw.
  */
 
-import { isActionType, isTriggerType, TRIGGER_TYPES, ACTION_TYPES } from "@webalive/database"
+import { ACTION_TYPES, isActionType, isTriggerType, TRIGGER_TYPES } from "@webalive/database"
 import { getWorkspacePath } from "@webalive/shared"
 import { Cron } from "croner"
 import { createServiceAppClient } from "@/lib/supabase/service"

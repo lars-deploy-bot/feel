@@ -5,10 +5,10 @@
  */
 
 import * as Sentry from "@sentry/nextjs"
+import { isRunStatus } from "@webalive/database"
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
-import { isRunStatus } from "@webalive/database"
 import { ErrorCodes } from "@/lib/error-codes"
 import { createRLSAppClient } from "@/lib/supabase/server-rls"
 
