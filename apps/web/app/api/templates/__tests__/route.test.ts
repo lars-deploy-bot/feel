@@ -16,7 +16,18 @@ const mockTemplates = [
   },
 ]
 
-let queryResult: { data: typeof mockTemplates | null; error: { message: string; code: string } | null }
+interface MockTemplate {
+  template_id: string
+  name: string
+  description: string | null
+  ai_description: string | null
+  preview_url: string | null
+  image_url: string | null
+  is_active: boolean
+  deploy_count: number
+}
+
+let queryResult: { data: MockTemplate[] | null; error: { message: string; code: string } | null }
 
 vi.mock("@/features/auth/lib/auth", () => {
   class AuthenticationError extends Error {
@@ -93,5 +104,44 @@ describe("GET /api/templates", () => {
     expect(response.status).toBe(500)
     const payload = (await response.json()) as { error: string }
     expect(payload.error).toBe(ErrorCodes.INTERNAL_ERROR)
+  })
+
+  it("does not leak template IDs in error responses", async () => {
+    queryResult = {
+      data: [
+        {
+          template_id: "tmpl_blank",
+          name: "Blank",
+          description: null,
+          ai_description: null,
+          preview_url: null,
+          image_url: null,
+          is_active: true,
+          deploy_count: 5,
+        },
+        {
+          template_id: "tmpl_secret",
+          name: "Secret",
+          description: null,
+          ai_description: null,
+          preview_url: null,
+          image_url: null,
+          is_active: true,
+          deploy_count: 3,
+        },
+      ],
+      error: null,
+    }
+
+    const response = await GET()
+    const body = await response.text()
+
+    expect(response.status).toBe(500)
+    expect(body).not.toContain("tmpl_blank")
+    expect(body).not.toContain("tmpl_secret")
+
+    const json = JSON.parse(body) as { ok: boolean; error: string }
+    expect(json.ok).toBe(false)
+    expect(json.error).toBe(ErrorCodes.INTERNAL_ERROR)
   })
 })

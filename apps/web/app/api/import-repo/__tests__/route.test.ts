@@ -114,6 +114,13 @@ function createRequest(body: Record<string, unknown>): NextRequest {
   })
 }
 
+describe("/api/import-repo", () => {
+  it("does not export a GET handler", async () => {
+    const routeModule = await import("../route")
+    expect(routeModule).not.toHaveProperty("GET")
+  })
+})
+
 describe("POST /api/import-repo", () => {
   beforeEach(() => {
     vi.clearAllMocks()

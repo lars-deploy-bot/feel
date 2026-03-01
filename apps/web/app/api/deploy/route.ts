@@ -1,5 +1,5 @@
 import * as Sentry from "@sentry/nextjs"
-import { DEFAULTS, DOMAINS, PATHS } from "@webalive/shared"
+import { DEFAULTS, DOMAINS } from "@webalive/shared"
 import { DeploymentError } from "@webalive/site-controller"
 import { type NextRequest, NextResponse } from "next/server"
 import { AuthenticationError, requireSessionUser } from "@/features/auth/lib/auth"
@@ -168,18 +168,4 @@ export async function POST(request: NextRequest) {
       },
     })
   }
-}
-
-export async function GET() {
-  return NextResponse.json({
-    message: "Deploy API is running",
-    usage: 'POST with { "domain": "example.com" }',
-    endpoints: {
-      deploy: "POST /api/deploy",
-    },
-    documentation: {
-      manual_guide: `${PATHS.TEMPLATE_PATH}/DEPLOYMENT.md`,
-      web_interface: `${DOMAINS.STREAM_PROD}/deploy`,
-    },
-  })
 }
