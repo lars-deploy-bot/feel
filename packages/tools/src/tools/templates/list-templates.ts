@@ -5,6 +5,7 @@
 import { readdir, readFile } from "node:fs/promises"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { SUPER_TEMPLATE_CATEGORIES } from "@webalive/shared"
 import {
   type PartialTemplateFrontmatter,
   parseFrontmatter,
@@ -19,27 +20,9 @@ export type { TemplateCategory }
 
 /**
  * Template categories with display names (for UI)
+ * @deprecated Import SUPER_TEMPLATE_CATEGORIES from @webalive/shared instead
  */
-export const TEMPLATE_CATEGORIES: Record<string, string> = {
-  "ui-components": "UI Components",
-  forms: "Forms",
-  "data-display": "Data Display",
-  navigation: "Navigation",
-  media: "Media",
-  layout: "Layout",
-  integrations: "Integrations",
-  animations: "Animations",
-  landing: "Landing",
-  maps: "Maps",
-  backend: "Backend",
-  setup: "Setup",
-  frontend: "Frontend",
-  "content-management": "Content Management",
-  "photo-sliders": "Photo Sliders",
-  components: "Components",
-  "forms-and-inputs": "Forms & Inputs",
-  other: "Other",
-}
+export const TEMPLATE_CATEGORIES = SUPER_TEMPLATE_CATEGORIES
 
 /**
  * Template list item structure for UI consumption.

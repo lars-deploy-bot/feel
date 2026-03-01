@@ -64,6 +64,24 @@ export function useTabsManagement({
   const notifyTabLimit = useCallback(() => {
     toast.error("Tab limit reached. Close a tab to open a new one.", { id: "tab-limit" })
   }, [])
+  const notifyTabOpenFailed = useCallback(() => {
+    toast.error("Failed to open tab. Please try again.", { id: "tab-open-failed" })
+  }, [])
+
+  const initializeAndSwitchTab = useCallback(
+    (tab: { id?: string; tabGroupId?: string } | null | undefined, fallbackTabGroupId: string): string | null => {
+      if (!workspace || !tab?.id) {
+        notifyTabOpenFailed()
+        return null
+      }
+
+      const effectiveTabGroupId = tab.tabGroupId ?? fallbackTabGroupId
+      onInitializeTab(tab.id, effectiveTabGroupId, workspace)
+      onSwitchTab(tab.id)
+      return tab.id
+    },
+    [workspace, notifyTabOpenFailed, onInitializeTab, onSwitchTab],
+  )
 
   // Workspace-scoped action wrapper
   const withWorkspace = useCallback(
@@ -87,13 +105,11 @@ export function useTabsManagement({
       notifyTabLimit()
       return
     }
-    if (tab) {
-      onInitializeTab(tab.id, tabGroupId, workspace)
-      onSwitchTab(tab.id)
-      // Clear input for new tab
-      if (onInputRestore) {
-        onInputRestore("")
-      }
+    const tabId = initializeAndSwitchTab(tab, tabGroupId)
+    if (!tabId) return
+    // Clear input for new tab
+    if (onInputRestore) {
+      onInputRestore("")
     }
   }, [
     workspace,
@@ -105,6 +121,8 @@ export function useTabsManagement({
     onSwitchTab,
     setTabInputDraft,
     onInputRestore,
+    notifyTabLimit,
+    initializeAndSwitchTab,
   ])
 
   const handleTabSelect = useCallback(
@@ -118,6 +136,8 @@ export function useTabsManagement({
 
         setActiveTab(workspace, tabId)
         onSwitchTab(tab.id)
+        // Lazy-load messages from server if not already present locally
+        void loadTabMessages(tab.id)
 
         // Restore input from the new tab's draft
         if (onInputRestore) {
@@ -125,7 +145,17 @@ export function useTabsManagement({
         }
       }
     },
-    [tabs, workspace, activeTabInGroup, currentInput, setActiveTab, onSwitchTab, setTabInputDraft, onInputRestore],
+    [
+      tabs,
+      workspace,
+      activeTabInGroup,
+      currentInput,
+      setActiveTab,
+      onSwitchTab,
+      loadTabMessages,
+      setTabInputDraft,
+      onInputRestore,
+    ],
   )
 
   const handleTabClose = useCallback(
@@ -188,10 +218,10 @@ export function useTabsManagement({
       // Find the tab and switch to it - tab.id IS the conversation key
       const tab = closedTabs.find(t => t.id === tabId)
       if (tab) {
-        onSwitchTab(tab.id)
-        onInitializeTab(tab.id, tab.tabGroupId, workspace)
+        const reopenedTabId = initializeAndSwitchTab(tab, tab.tabGroupId)
+        if (!reopenedTabId) return
         // loadTabMessages expects the tab ID (which is the conversation key)
-        void loadTabMessages(tab.id)
+        void loadTabMessages(reopenedTabId)
         if (onInputRestore) {
           onInputRestore(tab.inputDraft ?? "")
         }
@@ -205,9 +235,8 @@ export function useTabsManagement({
       dexieReopenTab,
       loadTabMessages,
       toggleTabsExpanded,
-      onSwitchTab,
-      onInitializeTab,
       onInputRestore,
+      initializeAndSwitchTab,
     ],
   )
 
@@ -221,17 +250,18 @@ export function useTabsManagement({
       }
 
       const tab = openTabGroupInTab(workspace, targetTabGroupId, name)
-      if (!tab) {
+      if (!tab?.id) {
         notifyTabLimit()
         return
       }
-      if (tab) {
-        onInitializeTab(tab.id, tab.tabGroupId, workspace)
-        onSwitchTab(tab.id)
-        // Restore input from the tab's draft (empty for new tabs)
-        if (onInputRestore) {
-          onInputRestore(tab.inputDraft ?? "")
-        }
+      const tabId = initializeAndSwitchTab(tab, targetTabGroupId)
+      if (!tabId) return
+      // Lazy-load messages from server (critical for cross-device sync:
+      // syncFromServer fetches metadata only, messages must be fetched per-tab)
+      void loadTabMessages(tabId)
+      // Restore input from the tab's draft (empty for new tabs)
+      if (onInputRestore) {
+        onInputRestore(tab.inputDraft ?? "")
       }
     },
     [
@@ -241,12 +271,15 @@ export function useTabsManagement({
       openTabGroupInTab,
       onSwitchTab,
       onInitializeTab,
+      loadTabMessages,
       setTabInputDraft,
       onInputRestore,
+      notifyTabLimit,
+      initializeAndSwitchTab,
     ],
   )
 
-  // Sync when active tab changes (e.g., after tab close)
+  // Sync when active tab changes (e.g., after tab close triggers fallback)
   const prevActiveTabRef = useRef<typeof activeTab>(null)
   useEffect(() => {
     const prevActiveTab = prevActiveTabRef.current
@@ -255,12 +288,14 @@ export function useTabsManagement({
     // Only sync if the activeTab itself changed
     if (activeTabInGroup && prevActiveTab?.id !== activeTabInGroup.id && activeTabInGroup.id !== activeTabId) {
       onSwitchTab(activeTabInGroup.id)
+      // Load messages for the fallback tab (may not be in local Dexie on new device)
+      void loadTabMessages(activeTabInGroup.id)
       // Restore input from the new active tab
       if (onInputRestore) {
         onInputRestore(activeTabInGroup.inputDraft ?? "")
       }
     }
-  }, [activeTabInGroup, activeTabId, onSwitchTab, onInputRestore])
+  }, [activeTabInGroup, activeTabId, onSwitchTab, loadTabMessages, onInputRestore])
 
   // Auto-create first tab when tabs expanded but empty
   useEffect(() => {

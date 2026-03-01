@@ -1,3 +1,4 @@
+import type { TriggerType } from "@webalive/database"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 // =============================================================================
@@ -34,7 +35,7 @@ vi.mock("@webalive/automation", () => ({
 // =============================================================================
 
 interface MockCtxOpts {
-  triggerType?: "cron" | "one-time" | "webhook" | "email"
+  triggerType?: TriggerType
   cronSchedule?: string | null
   consecutiveFailures?: number
 }

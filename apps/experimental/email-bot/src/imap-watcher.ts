@@ -1,11 +1,11 @@
 import { ImapFlow } from "imapflow"
+import { AUTOMATION } from "./constants.js"
+import { getThreadDepth, getThreadHistory, resolveThreadId, storeMessage } from "./conversation.js"
 import { parseEmail } from "./email-parser.js"
 import { checkLoopGuard, recordReply } from "./loop-guard.js"
-import { resolveThreadId, getThreadHistory, getThreadDepth, storeMessage } from "./conversation.js"
-import { triggerAutomation } from "./trigger.js"
 import { sendReply } from "./smtp-sender.js"
-import { AUTOMATION } from "./constants.js"
-import type { EmailJob, ConversationMessage } from "./types.js"
+import { triggerAutomation } from "./trigger.js"
+import type { ConversationMessage, EmailJob } from "./types.js"
 
 // Read env lazily — dotenv loads after static imports resolve
 function getImapHost(): string {

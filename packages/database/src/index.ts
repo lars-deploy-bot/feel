@@ -9,6 +9,26 @@ import type { Database as IntegrationsDatabase } from "./integrations.generated"
 import type { Database as LockboxDatabase } from "./lockbox.generated"
 import type { Database as PublicDatabase } from "./public.generated"
 
+// Export generated constants (runtime enum values derived from DB)
+export { Constants as AppConstants } from "./app.generated"
+
+// Export automation enum types, guards, and runtime sets
+export {
+  ACTION_TYPES,
+  type ActionType,
+  isActionType,
+  isJobStatus,
+  isRunStatus,
+  isTriggerType,
+  JOB_STATUSES,
+  type JobStatus,
+  RUN_STATUSES,
+  type RunStatus,
+  type TerminalRunStatus,
+  TRIGGER_TYPES,
+  type TriggerType,
+} from "./automation-enums"
+
 // Export common types from public schema (if available) or lockbox as fallback
 export {
   CompositeTypes,

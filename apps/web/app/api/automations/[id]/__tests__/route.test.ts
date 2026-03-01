@@ -1,3 +1,4 @@
+import type { TriggerType } from "@webalive/database"
 import { NextRequest } from "next/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { ErrorCodes } from "@/lib/error-codes"
@@ -45,7 +46,7 @@ const { PATCH } = await import("../route")
 
 type OwnershipRow = {
   user_id: string
-  trigger_type: "cron" | "one-time" | "email" | "webhook"
+  trigger_type: TriggerType
   cron_schedule: string | null
   cron_timezone: string | null
   action_type: string | null

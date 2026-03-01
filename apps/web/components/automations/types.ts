@@ -1,5 +1,5 @@
+import type { ActionType, TriggerType } from "@webalive/database"
 import type { ClaudeModel } from "@webalive/shared"
-import type { TriggerType } from "@/lib/api/schemas"
 
 export type AutomationFormData = {
   site_id: string
@@ -12,7 +12,7 @@ export type AutomationFormData = {
   cron_timezone: string
   /** Only set when trigger_type is "one-time" */
   run_at: string
-  action_type: "prompt" | "sync" | "publish"
+  action_type: ActionType
   action_prompt: string
   action_source: string
   action_target_page: string

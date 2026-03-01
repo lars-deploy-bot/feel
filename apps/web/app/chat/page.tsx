@@ -20,6 +20,7 @@ import { SubdomainInitializer } from "@/features/chat/components/SubdomainInitia
 import { Workbench } from "@/features/chat/components/workbench/Workbench"
 import { WorkbenchMobile } from "@/features/chat/components/workbench/WorkbenchMobile"
 // useTabSession removed - now using useActiveSession via useTabIsolatedMessages
+import { useAutomationTranscriptPoll } from "@/features/chat/hooks/useAutomationTranscriptPoll"
 import { useBrowserCleanup } from "@/features/chat/hooks/useBrowserCleanup"
 import { useImageUpload } from "@/features/chat/hooks/useImageUpload"
 import { useStreamCancellation } from "@/features/chat/hooks/useStreamCancellation"
@@ -140,7 +141,21 @@ function ChatPageContent() {
     activeTab,
     workspaceTabs,
     actions: sessionActions,
+    conversation,
+    userId: dexieUserId,
   } = useTabIsolatedMessages({ workspace: tabWorkspace })
+
+  // Automation transcript polling — automation runs write to app.messages directly
+  // (not via Redis stream buffer), so we poll fetchTabMessages() instead.
+  const isAutomationRun = conversation?.source === "automation_run"
+  const automationMeta = isAutomationRun ? conversation?.sourceMetadata : undefined
+  useAutomationTranscriptPoll({
+    isAutomationRun,
+    tabId: sessionTabId,
+    userId: dexieUserId,
+    jobId: automationMeta?.job_id ?? null,
+    claimRunId: automationMeta?.claim_run_id ?? null,
+  })
 
   // Handle ?wk= URL parameter to pre-select workspace (e.g., from widget "Edit me" button)
   const [wkParam] = useQueryState(QUERY_KEYS.workspace)

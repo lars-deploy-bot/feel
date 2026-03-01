@@ -1,7 +1,7 @@
 "use client"
 
 import { useActiveSession } from "@/features/chat/hooks/useActiveSession"
-import { useDexieSession } from "@/lib/db/dexieMessageStore"
+import { useDexieConversation, useDexieSession } from "@/lib/db/dexieMessageStore"
 import { useTabMessages } from "@/lib/db/useTabMessages"
 
 interface UseTabIsolatedMessagesOptions {
@@ -18,15 +18,22 @@ interface UseTabIsolatedMessagesOptions {
  *
  * INVARIANT: Messages returned MUST belong to session.tabId.
  * Any violation indicates a cross-tab contamination bug.
+ *
+ * Transport concerns (automation polling, stream reconnect) are handled
+ * at the page composition layer, not here.
  */
 export function useTabIsolatedMessages({ workspace }: UseTabIsolatedMessagesOptions) {
   // Single source of truth for active session
   const session = useActiveSession(workspace)
   const dexieSession = useDexieSession()
+  const userId = dexieSession?.userId ?? null
 
   // Messages are fetched for the active session's tabId
   // If no active session, no messages are shown
-  const messages = useTabMessages(session.tabId, dexieSession?.userId ?? null)
+  const messages = useTabMessages(session.tabId, userId)
+
+  // Look up the current conversation for source detection
+  const conversation = useDexieConversation(session.tabGroupId, userId)
 
   return {
     messages,
@@ -37,5 +44,7 @@ export function useTabIsolatedMessages({ workspace }: UseTabIsolatedMessagesOpti
     activeTab: session.activeTab,
     workspaceTabs: session.workspaceTabs,
     actions: session.actions,
+    conversation,
+    userId,
   }
 }
