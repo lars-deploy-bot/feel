@@ -41,6 +41,19 @@ function buildCspDirectives(): string {
 }
 
 export function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname
+
+  // Defense-in-depth: block /api/internal* from external access (#310).
+  // Primary block is at Caddy (responds 404 before reverse_proxy).
+  // This catches the case where Caddy's rule is accidentally removed.
+  //
+  // Detection: Caddy adds X-Forwarded-For to proxied requests.
+  // Direct localhost calls (from worker/MCP tools) skip Caddy entirely
+  // and won't have this header, so they pass through to route-level auth.
+  if (pathname.startsWith("/api/internal") && request.headers.get("x-forwarded-for")) {
+    return new NextResponse("Not Found", { status: 404 })
+  }
+
   const requestId = request.headers.get(REQUEST_ID_HEADER) || generateRequestId()
 
   // Forward the ID to route handlers via a modified request header.
@@ -55,7 +68,6 @@ export function middleware(request: NextRequest) {
   response.headers.set(REQUEST_ID_HEADER, requestId)
 
   // CSP Report-Only on page routes only — meaningless on API JSON responses.
-  const pathname = new URL(request.url).pathname
   if (!pathname.startsWith("/api/")) {
     response.headers.set("Content-Security-Policy-Report-Only", buildCspDirectives())
   }
