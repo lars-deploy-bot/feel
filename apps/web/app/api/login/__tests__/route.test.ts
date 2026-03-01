@@ -42,6 +42,26 @@ vi.mock("@/features/auth/sessions/session-service", () => ({
   trackAuthSession: vi.fn(),
 }))
 
+// Helper to create a mock rate limiter instance (avoids duplicating mock shape)
+function createMockRateLimiter() {
+  return {
+    isRateLimited: vi.fn().mockReturnValue(false),
+    getBlockedTimeRemaining: vi.fn().mockReturnValue(0),
+    recordFailedAttempt: vi.fn(),
+    reset: vi.fn(),
+  }
+}
+
+// Mock rate limiter
+vi.mock("@/lib/auth/rate-limiter", () => ({
+  loginRateLimiter: createMockRateLimiter(),
+}))
+
+// Mock client identifier
+vi.mock("@/lib/auth/client-identifier", () => ({
+  getClientIdentifier: vi.fn().mockReturnValue("login:ip:127.0.0.1"),
+}))
+
 // Import after mocking
 const { POST } = await import("../route")
 const { createIamClient } = await import("@/lib/supabase/iam")
@@ -49,6 +69,8 @@ const { createAppClient } = await import("@/lib/supabase/app")
 const { createSessionToken } = await import("@/features/auth/lib/jwt")
 const { verifyPassword } = await import("@/types/guards/api")
 const { trackAuthSession } = await import("@/features/auth/sessions/session-service")
+const { loginRateLimiter } = await import("@/lib/auth/rate-limiter")
+const { getClientIdentifier } = await import("@/lib/auth/client-identifier")
 
 // Mock user data
 const MOCK_USER: {
@@ -145,6 +167,11 @@ describe("POST /api/login", () => {
     vi.mocked(verifyPassword).mockResolvedValue(true)
     // Default: auth session tracking is fire-and-forget
     vi.mocked(trackAuthSession).mockReturnValue(undefined)
+    // Default: rate limiter allows requests
+    vi.mocked(loginRateLimiter.isRateLimited).mockReturnValue(false)
+    vi.mocked(loginRateLimiter.getBlockedTimeRemaining).mockReturnValue(0)
+    // Default: client identifier returns IP-based key
+    vi.mocked(getClientIdentifier).mockReturnValue("login:ip:127.0.0.1")
     // Default: mock supabase
     setupMockSupabase()
   })
@@ -477,27 +504,27 @@ describe("POST /api/login", () => {
   })
 
   describe("Edge Cases", () => {
-    it("should handle email with uppercase", async () => {
+    it("should normalize uppercase email via schema", async () => {
       const req = createMockRequest({
         email: "TEST@EXAMPLE.COM",
         password: "correct-password",
       })
-      const _response = await POST(req)
+      const response = await POST(req)
 
-      // Should still query the database (case handling is at DB level)
+      expect(response.status).toBe(200)
+      // Schema lowercases email, so DB query and rate limit key both use lowercase
       expect(createIamClient).toHaveBeenCalled()
     })
 
-    it("should handle email with leading/trailing spaces", async () => {
+    it("should trim whitespace from email via schema", async () => {
       const req = createMockRequest({
         email: "  test@example.com  ",
         password: "correct-password",
       })
       const response = await POST(req)
-      const _data = await response.json()
 
-      // Zod's email validation might reject or accept depending on trim
-      expect([200, 400]).toContain(response.status)
+      // Schema trims and lowercases, so this should succeed
+      expect(response.status).toBe(200)
     })
 
     it("should handle very long password", async () => {
@@ -509,6 +536,151 @@ describe("POST /api/login", () => {
 
       // Should process without crashing
       expect([200, 401]).toContain(response.status)
+    })
+  })
+
+  describe("Rate Limiting", () => {
+    it("should return 429 with retryAfter when IP is rate-limited", async () => {
+      vi.mocked(loginRateLimiter.isRateLimited).mockImplementation((id: string) => id.startsWith("login:ip:"))
+      vi.mocked(loginRateLimiter.getBlockedTimeRemaining).mockReturnValue(10 * 60 * 1000) // 10 minutes
+
+      const req = createMockRequest({
+        email: "test@example.com",
+        password: "correct-password",
+      })
+      const response = await POST(req)
+      const data = await response.json()
+
+      expect(response.status).toBe(429)
+      expect(data.ok).toBe(false)
+      expect(data.error).toBe("TOO_MANY_REQUESTS")
+      expect(data.details.retryAfter).toBe("10 minutes")
+      expect(createIamClient).not.toHaveBeenCalled()
+    })
+
+    it("should return 429 when email is rate-limited", async () => {
+      vi.mocked(loginRateLimiter.isRateLimited).mockImplementation((id: string) => id.startsWith("login:email:"))
+      vi.mocked(loginRateLimiter.getBlockedTimeRemaining).mockReturnValue(60 * 1000) // 1 minute
+
+      const req = createMockRequest({
+        email: "test@example.com",
+        password: "correct-password",
+      })
+      const response = await POST(req)
+      const data = await response.json()
+
+      expect(response.status).toBe(429)
+      expect(data.ok).toBe(false)
+      expect(data.error).toBe("TOO_MANY_REQUESTS")
+      expect(data.details.retryAfter).toBe("1 minute")
+      expect(createIamClient).not.toHaveBeenCalled()
+    })
+
+    it("should return 429 when both IP and email are rate-limited", async () => {
+      vi.mocked(loginRateLimiter.isRateLimited).mockReturnValue(true)
+      vi.mocked(loginRateLimiter.getBlockedTimeRemaining).mockReturnValue(5 * 60 * 1000)
+
+      const req = createMockRequest({
+        email: "test@example.com",
+        password: "correct-password",
+      })
+      const response = await POST(req)
+      const data = await response.json()
+
+      expect(response.status).toBe(429)
+      expect(data.error).toBe("TOO_MANY_REQUESTS")
+      expect(createIamClient).not.toHaveBeenCalled()
+    })
+
+    it("should record failed attempt on both IP and email keys on wrong password", async () => {
+      vi.mocked(verifyPassword).mockResolvedValue(false)
+
+      const req = createMockRequest({
+        email: "test@example.com",
+        password: "wrong-password",
+      })
+      await POST(req)
+
+      expect(loginRateLimiter.recordFailedAttempt).toHaveBeenCalledWith("login:ip:127.0.0.1")
+      expect(loginRateLimiter.recordFailedAttempt).toHaveBeenCalledWith("login:email:test@example.com")
+    })
+
+    it("should record failed attempt on both keys when user not found", async () => {
+      setupMockSupabase({ user: null })
+
+      const req = createMockRequest({
+        email: "nonexistent@example.com",
+        password: "test123",
+      })
+      await POST(req)
+
+      expect(loginRateLimiter.recordFailedAttempt).toHaveBeenCalledWith("login:ip:127.0.0.1")
+      expect(loginRateLimiter.recordFailedAttempt).toHaveBeenCalledWith("login:email:nonexistent@example.com")
+    })
+
+    it("should record failed attempt on both keys when user has no password_hash", async () => {
+      setupMockSupabase({
+        user: { ...MOCK_USER, password_hash: null as string | null },
+      })
+
+      const req = createMockRequest({
+        email: "test@example.com",
+        password: "test123",
+      })
+      await POST(req)
+
+      expect(loginRateLimiter.recordFailedAttempt).toHaveBeenCalledWith("login:ip:127.0.0.1")
+      expect(loginRateLimiter.recordFailedAttempt).toHaveBeenCalledWith("login:email:test@example.com")
+    })
+
+    it("should reset both keys after successful login", async () => {
+      const req = createMockRequest({
+        email: "test@example.com",
+        password: "correct-password",
+      })
+      const response = await POST(req)
+
+      expect(response.status).toBe(200)
+      expect(loginRateLimiter.reset).toHaveBeenCalledWith("login:ip:127.0.0.1")
+      expect(loginRateLimiter.reset).toHaveBeenCalledWith("login:email:test@example.com")
+    })
+
+    it("should NOT call rate limiter methods in standalone mode", async () => {
+      const previousStreamEnv = process.env.STREAM_ENV
+      process.env.STREAM_ENV = "standalone"
+
+      try {
+        const req = createMockRequest({
+          email: "any@example.com",
+          password: "any",
+        })
+        const response = await POST(req)
+
+        expect(response.status).toBe(200)
+        expect(loginRateLimiter.isRateLimited).not.toHaveBeenCalled()
+        expect(loginRateLimiter.recordFailedAttempt).not.toHaveBeenCalled()
+      } finally {
+        process.env.STREAM_ENV = previousStreamEnv
+      }
+    })
+
+    it("should NOT call rate limiter methods in local test mode", async () => {
+      const previousStreamEnv = process.env.STREAM_ENV
+      process.env.STREAM_ENV = "local"
+
+      try {
+        const req = createMockRequest({
+          email: SECURITY.LOCAL_TEST.EMAIL,
+          password: SECURITY.LOCAL_TEST.PASSWORD,
+        })
+        const response = await POST(req)
+
+        expect(response.status).toBe(200)
+        expect(loginRateLimiter.isRateLimited).not.toHaveBeenCalled()
+        expect(loginRateLimiter.recordFailedAttempt).not.toHaveBeenCalled()
+      } finally {
+        process.env.STREAM_ENV = previousStreamEnv
+      }
     })
   })
 })

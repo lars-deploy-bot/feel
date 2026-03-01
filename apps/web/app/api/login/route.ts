@@ -3,12 +3,14 @@ import { buildSessionOrgClaims, SECURITY, STANDALONE } from "@webalive/shared"
 import { type NextRequest, NextResponse } from "next/server"
 import { createSessionToken } from "@/features/auth/lib/jwt"
 import { trackAuthSession } from "@/features/auth/sessions/session-service"
-import { createCorsResponse, createCorsSuccessResponse } from "@/lib/api/responses"
+import { createCorsErrorResponse, createCorsSuccessResponse } from "@/lib/api/responses"
 import { handleBody, isHandleBodyError } from "@/lib/api/server"
+import { getClientIdentifier } from "@/lib/auth/client-identifier"
 import { COOKIE_NAMES, getSessionCookieOptions } from "@/lib/auth/cookies"
+import { loginRateLimiter } from "@/lib/auth/rate-limiter"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { filterLocalDomains } from "@/lib/domains"
-import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
+import { ErrorCodes } from "@/lib/error-codes"
 import { getRequestId } from "@/lib/request-id"
 import { createAppClient } from "@/lib/supabase/app"
 import { createIamClient } from "@/lib/supabase/iam"
@@ -72,6 +74,31 @@ export async function POST(req: NextRequest) {
     return res
   }
 
+  // Rate limit check (after standalone/test mode short-circuits, before any DB work)
+  const clientIpId = getClientIdentifier(req, "login:ip")
+  const emailId = `login:email:${email}`
+
+  if (loginRateLimiter.isRateLimited(clientIpId) || loginRateLimiter.isRateLimited(emailId)) {
+    const blockedTime = Math.max(
+      loginRateLimiter.getBlockedTimeRemaining(clientIpId),
+      loginRateLimiter.getBlockedTimeRemaining(emailId),
+    )
+    const minutesRemaining = Math.max(1, Math.ceil(blockedTime / 1000 / 60))
+    return createCorsErrorResponse(origin, ErrorCodes.TOO_MANY_REQUESTS, 429, {
+      requestId,
+      details: {
+        retryAfter: `${minutesRemaining} minute${minutesRemaining !== 1 ? "s" : ""}`,
+      },
+    })
+  }
+
+  function failLogin(reason: string) {
+    console.error(`[Login] ${reason}:`, email)
+    loginRateLimiter.recordFailedAttempt(clientIpId)
+    loginRateLimiter.recordFailedAttempt(emailId)
+    return createCorsErrorResponse(origin, ErrorCodes.INVALID_CREDENTIALS, 401, { requestId })
+  }
+
   // Query user from iam.users
   const iam = await createIamClient("service")
   const { data: user, error: userError } = await iam
@@ -81,47 +108,16 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (userError || !user) {
-    console.error("[Login] User not found:", email)
-    return createCorsResponse(
-      origin,
-      {
-        ok: false,
-        error: ErrorCodes.INVALID_CREDENTIALS,
-        message: getErrorMessage(ErrorCodes.INVALID_CREDENTIALS),
-        requestId,
-      },
-      401,
-    )
+    return failLogin("User not found")
   }
 
-  // Verify password
   if (!user.password_hash) {
-    console.error("[Login] User has no password_hash:", email)
-    return createCorsResponse(
-      origin,
-      {
-        ok: false,
-        error: ErrorCodes.INVALID_CREDENTIALS,
-        message: getErrorMessage(ErrorCodes.INVALID_CREDENTIALS),
-        requestId,
-      },
-      401,
-    )
+    return failLogin("User has no password_hash")
   }
 
   const isValid = await verifyPassword(password, user.password_hash)
   if (!isValid) {
-    console.error("[Login] Invalid password for:", email)
-    return createCorsResponse(
-      origin,
-      {
-        ok: false,
-        error: ErrorCodes.INVALID_CREDENTIALS,
-        message: getErrorMessage(ErrorCodes.INVALID_CREDENTIALS),
-        requestId,
-      },
-      401,
-    )
+    return failLogin("Invalid password")
   }
 
   // Query memberships and workspaces for login response payload.
@@ -153,6 +149,10 @@ export async function POST(req: NextRequest) {
     orgIds,
     orgRoles,
   })
+
+  // Reset rate limiter on successful login
+  loginRateLimiter.reset(clientIpId)
+  loginRateLimiter.reset(emailId)
 
   // Non-blocking: don't fail login if session tracking fails
   trackAuthSession(req, { sid, userId: user.user_id })
