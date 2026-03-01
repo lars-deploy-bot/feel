@@ -32,27 +32,33 @@ const mockMessagesGet = vi.fn()
 const mockMessagesPut = vi.fn()
 
 vi.mock("../messageDb", () => ({
-  getMessageDb: vi.fn(() => ({
-    conversations: {
-      get: mockConversationsGet,
-      update: mockConversationsUpdate,
-      put: mockConversationsPut,
-      where: mockConversationsWhere,
-    },
-    tabs: {
-      get: mockTabsGet,
-      where: mockTabsWhere,
-      bulkPut: mockTabsBulkPut,
-      put: mockTabsPut,
-      count: vi.fn().mockResolvedValue(5),
-    },
-    messages: {
-      where: mockMessagesWhere,
-      bulkPut: mockMessagesBulkPut,
-      get: mockMessagesGet,
-      put: mockMessagesPut,
-    },
-  })),
+  getMessageDb: vi.fn(() => {
+    const db = {
+      conversations: {
+        get: mockConversationsGet,
+        update: mockConversationsUpdate,
+        put: mockConversationsPut,
+        where: mockConversationsWhere,
+      },
+      tabs: {
+        get: mockTabsGet,
+        where: mockTabsWhere,
+        bulkPut: mockTabsBulkPut,
+        put: mockTabsPut,
+        update: vi.fn().mockResolvedValue(1),
+        count: vi.fn().mockResolvedValue(5),
+      },
+      messages: {
+        where: mockMessagesWhere,
+        bulkPut: mockMessagesBulkPut,
+        get: mockMessagesGet,
+        put: mockMessagesPut,
+      },
+      // Fake Dexie transaction: just run the callback with the same table refs
+      transaction: vi.fn(async (_mode: string, _tables: unknown[], fn: () => Promise<void>) => fn()),
+    }
+    return db
+  }),
 }))
 
 // Mock fetch
@@ -459,7 +465,7 @@ describe("Conversation Sync Service", () => {
 
       const result = await fetchTabMessages("tab-123", TEST_USER_ID)
 
-      expect(mockMessagesPut).toHaveBeenCalled()
+      expect(mockMessagesBulkPut).toHaveBeenCalled()
       expect(result.hasMore).toBe(false)
     })
 
@@ -478,8 +484,11 @@ describe("Conversation Sync Service", () => {
 
       await fetchTabMessages("tab-123", TEST_USER_ID)
 
-      // Should NOT call put for pending message
-      expect(mockMessagesPut).not.toHaveBeenCalled()
+      // bulkPut should be called with empty array (all messages filtered out as pending)
+      // or not called at all (the code skips bulkPut when array is empty)
+      if (mockMessagesBulkPut.mock.calls.length > 0) {
+        expect(mockMessagesBulkPut).toHaveBeenCalledWith([])
+      }
     })
   })
 
@@ -534,6 +543,156 @@ describe("Conversation Sync Service", () => {
           pendingSync: true,
         })
       })
+    })
+  })
+
+  describe("Source and SourceMetadata Persistence", () => {
+    it("should persist source and sourceMetadata from server to Dexie", async () => {
+      const metadata = { job_id: "job_123", claim_run_id: "run_456", triggered_by: "cron" }
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            own: [
+              {
+                ...TEST_CONVERSATION,
+                source: "automation_run",
+                sourceMetadata: metadata,
+                tabs: [],
+                pendingSync: false,
+              },
+            ],
+            shared: [],
+          }),
+      })
+
+      mockConversationsGet.mockResolvedValue(null) // No local version
+
+      await fetchConversations(TEST_WORKSPACE, TEST_USER_ID, TEST_ORG_ID)
+
+      expect(mockConversationsPut).toHaveBeenCalledWith(
+        expect.objectContaining({
+          source: "automation_run",
+          sourceMetadata: metadata,
+        }),
+      )
+    })
+
+    it("should default source to 'chat' when server returns no source", async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            own: [
+              {
+                ...TEST_CONVERSATION,
+                source: undefined,
+                sourceMetadata: undefined,
+                tabs: [],
+                pendingSync: false,
+              },
+            ],
+            shared: [],
+          }),
+      })
+
+      mockConversationsGet.mockResolvedValue(null)
+
+      await fetchConversations(TEST_WORKSPACE, TEST_USER_ID, TEST_ORG_ID)
+
+      expect(mockConversationsPut).toHaveBeenCalledWith(
+        expect.objectContaining({
+          source: "chat",
+        }),
+      )
+    })
+
+    it("should reject invalid source values and default to 'chat'", async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            own: [
+              {
+                ...TEST_CONVERSATION,
+                source: "invalid_source",
+                sourceMetadata: null,
+                tabs: [],
+                pendingSync: false,
+              },
+            ],
+            shared: [],
+          }),
+      })
+
+      mockConversationsGet.mockResolvedValue(null)
+
+      await fetchConversations(TEST_WORKSPACE, TEST_USER_ID, TEST_ORG_ID)
+
+      expect(mockConversationsPut).toHaveBeenCalledWith(
+        expect.objectContaining({
+          source: "chat",
+        }),
+      )
+    })
+
+    it("should reject malformed sourceMetadata (array, missing fields)", async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            own: [
+              {
+                ...TEST_CONVERSATION,
+                source: "automation_run",
+                sourceMetadata: [1, 2, 3], // array, not object
+                tabs: [],
+                pendingSync: false,
+              },
+            ],
+            shared: [],
+          }),
+      })
+
+      mockConversationsGet.mockResolvedValue(null)
+
+      await fetchConversations(TEST_WORKSPACE, TEST_USER_ID, TEST_ORG_ID)
+
+      expect(mockConversationsPut).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sourceMetadata: undefined,
+        }),
+      )
+    })
+
+    it("should default sourceMetadata to undefined when null", async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            own: [
+              {
+                ...TEST_CONVERSATION,
+                source: "chat",
+                sourceMetadata: null,
+                tabs: [],
+                pendingSync: false,
+              },
+            ],
+            shared: [],
+          }),
+      })
+
+      mockConversationsGet.mockResolvedValue(null)
+
+      await fetchConversations(TEST_WORKSPACE, TEST_USER_ID, TEST_ORG_ID)
+
+      expect(mockConversationsPut).toHaveBeenCalledWith(
+        expect.objectContaining({
+          source: "chat",
+          sourceMetadata: undefined,
+        }),
+      )
     })
   })
 

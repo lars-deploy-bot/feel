@@ -316,6 +316,67 @@ describe("GET /api/conversations", () => {
     })
   })
 
+  describe("Source and SourceMetadata Mapping", () => {
+    it("should default source to 'chat' when null", async () => {
+      mockOrder.mockReturnValueOnce({
+        data: [{ ...TEST_CONVERSATION_DB, source: null, source_metadata: null }],
+        error: null,
+      })
+
+      const req = createMockRequest({ workspace: TEST_WORKSPACE })
+      const response = await GET(req)
+      const data = await response.json()
+
+      expect(data.own[0].source).toBe("chat")
+      expect(data.own[0].sourceMetadata).toBeNull()
+    })
+
+    it("should pass through source when set to 'automation_run'", async () => {
+      const metadata = { job_id: "job_123", claim_run_id: "run_456", triggered_by: "cron" }
+      mockOrder.mockReturnValueOnce({
+        data: [{ ...TEST_CONVERSATION_DB, source: "automation_run", source_metadata: metadata }],
+        error: null,
+      })
+
+      const req = createMockRequest({ workspace: TEST_WORKSPACE })
+      const response = await GET(req)
+      const data = await response.json()
+
+      expect(data.own[0].source).toBe("automation_run")
+      expect(data.own[0].sourceMetadata).toEqual(metadata)
+    })
+
+    it("should preserve sourceMetadata shape with job_id, claim_run_id, and triggered_by", async () => {
+      const metadata = { job_id: "job_abc", claim_run_id: "run_xyz", triggered_by: "manual" }
+      mockOrder.mockReturnValueOnce({
+        data: [{ ...TEST_CONVERSATION_DB, source: "automation_run", source_metadata: metadata }],
+        error: null,
+      })
+
+      const req = createMockRequest({ workspace: TEST_WORKSPACE })
+      const response = await GET(req)
+      const data = await response.json()
+
+      expect(data.own[0].sourceMetadata).toHaveProperty("job_id", "job_abc")
+      expect(data.own[0].sourceMetadata).toHaveProperty("claim_run_id", "run_xyz")
+      expect(data.own[0].sourceMetadata).toHaveProperty("triggered_by", "manual")
+    })
+
+    it("should return null sourceMetadata when automation metadata is malformed", async () => {
+      mockOrder.mockReturnValueOnce({
+        data: [{ ...TEST_CONVERSATION_DB, source: "automation_run", source_metadata: { job_id: "job_only" } }],
+        error: null,
+      })
+
+      const req = createMockRequest({ workspace: TEST_WORKSPACE })
+      const response = await GET(req)
+      const data = await response.json()
+
+      expect(data.own[0].source).toBe("automation_run")
+      expect(data.own[0].sourceMetadata).toBeNull()
+    })
+  })
+
   describe("Null Timestamp Handling", () => {
     it("should handle null last_message_at", async () => {
       const convWithNullTimestamp = {

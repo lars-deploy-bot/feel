@@ -1,6 +1,11 @@
 "use client"
 
 import Dexie, { type Table } from "dexie"
+import {
+  type AutomationSourceMetadata,
+  type ConversationSource,
+  normalizeConversationSourcePayload,
+} from "@/lib/conversations/source"
 
 /**
  * Dexie.js IndexedDB Schema for Message Storage
@@ -30,6 +35,9 @@ export type DbMessageType = "user" | "assistant" | "tool_use" | "tool_result" | 
 export type DbMessageStatus = "streaming" | "complete" | "interrupted" | "error"
 export type DbMessageOrigin = "local" | "remote" | "migration"
 
+/** Allowed conversation sources */
+export type { AutomationSourceMetadata, ConversationSource } from "@/lib/conversations/source"
+
 /**
  * Discriminated union for type-safe content storage.
  * Include future types now to prevent breaking migrations later.
@@ -58,9 +66,9 @@ export interface DbConversation {
   lastMessageAt?: number
   firstUserMessageId?: string
   autoTitleSet?: boolean
-  // Conversation source (chat vs automation_run)
-  source?: "chat" | "automation_run"
-  sourceMetadata?: Record<string, unknown>
+  // Conversation source — required, normalized to "chat" at ingress
+  source: ConversationSource
+  sourceMetadata?: AutomationSourceMetadata
   // Soft delete (NEVER hard delete - causes multi-device desync)
   deletedAt?: number
   archivedAt?: number
@@ -127,8 +135,7 @@ class MessageDatabase extends Dexie {
   constructor(userId: string) {
     super(getMessageDbName(userId))
 
-    // Version 1: Initial schema
-    this.version(1).stores({
+    const stores = {
       // Composite indexes for efficient queries
       // Index for "all conversations for this user across workspaces"
       conversations:
@@ -137,7 +144,33 @@ class MessageDatabase extends Dexie {
       // Use [tabId+seq] for reliable ordering (sequence > timestamp for concurrent messages)
       messages: "id, [tabId+seq], [tabId+createdAt], tabId, pendingSync",
       tabs: "id, [conversationId+position], pendingSync",
+    } as const
+
+    // Version 1: Initial schema
+    this.version(1).stores({
+      ...stores,
     })
+
+    // Version 2: Backfill/normalize conversation source metadata for legacy rows.
+    this.version(2)
+      .stores({
+        ...stores,
+      })
+      .upgrade(tx => {
+        type MutableConversation = Omit<DbConversation, "source" | "sourceMetadata"> & {
+          source?: unknown
+          sourceMetadata?: unknown
+        }
+
+        return tx
+          .table<MutableConversation>("conversations")
+          .toCollection()
+          .modify(conversation => {
+            const normalized = normalizeConversationSourcePayload(conversation.source, conversation.sourceMetadata)
+            conversation.source = normalized.source
+            conversation.sourceMetadata = normalized.sourceMetadata ?? undefined
+          })
+      })
 
     // Handle blocked events during schema upgrades
     this.on("blocked", () => {

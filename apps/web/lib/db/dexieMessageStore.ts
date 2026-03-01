@@ -60,7 +60,10 @@ interface DexieMessageStoreState {
   currentTabGroupId: string | null
   currentTabId: string | null
   currentWorkspace: string | null
+  /** @deprecated Unused — per-tab loading is tracked via loadingTabs instead */
   isLoading: boolean
+  /** Tabs currently fetching messages from server (deduplication guard) */
+  loadingTabs: ReadonlySet<string>
   isSyncing: boolean
 
   // Streaming state (per-tab, in-memory only - NOT persisted)
@@ -243,6 +246,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
   currentTabId: null,
   currentWorkspace: null,
   isLoading: false,
+  loadingTabs: new Set<string>(),
   isSyncing: false,
   activeStreamByTab: {},
   streamingBuffers: {},
@@ -269,6 +273,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
       updatedAt: now,
       messageCount: 0,
       autoTitleSet: false,
+      source: "chat",
       pendingSync: true,
     }
 
@@ -343,6 +348,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
             updatedAt: now,
             messageCount: 0,
             autoTitleSet: false,
+            source: "chat",
             pendingSync: true,
           }
           await db.conversations.add(newConvo)
@@ -829,14 +835,20 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
   },
 
   loadTabMessages: async tabId => {
-    const { session } = get()
+    const { session, loadingTabs } = get()
     if (!session) return
 
-    set({ isLoading: true })
+    // Already loading this tab — fetchTabMessages deduplicates at the network
+    // level too, but skipping here avoids unnecessary state churn.
+    if (loadingTabs.has(tabId)) return
+
+    set({ loadingTabs: new Set([...loadingTabs, tabId]), isLoading: true })
     try {
       await fetchTabMessages(tabId, session.userId)
     } finally {
-      set({ isLoading: false })
+      const updated = new Set(get().loadingTabs)
+      updated.delete(tabId)
+      set({ loadingTabs: updated, isLoading: updated.size > 0 })
     }
   },
 

@@ -8,6 +8,7 @@ import * as Sentry from "@sentry/nextjs"
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
+import { normalizeConversationSourcePayload } from "@/lib/conversations/source"
 import { ErrorCodes } from "@/lib/error-codes"
 import { createRLSAppClient } from "@/lib/supabase/server-rls"
 
@@ -75,45 +76,49 @@ export async function GET(request: NextRequest) {
     }
 
     // Transform to client format
-    const transform = (c: NonNullable<typeof conversations>[number], isOwn: boolean) => ({
-      id: c.conversation_id,
-      workspace: c.workspace,
-      orgId: c.org_id,
-      creatorId: isOwn ? userId : (c as { user_id?: string }).user_id,
-      title: c.title,
-      visibility: c.visibility,
-      messageCount: c.message_count,
-      lastMessageAt: c.last_message_at ? new Date(c.last_message_at).getTime() : null,
-      firstUserMessageId: c.first_user_message_id,
-      autoTitleSet: c.auto_title_set,
-      createdAt: new Date(c.created_at).getTime(),
-      updatedAt: new Date(c.updated_at).getTime(),
-      deletedAt: c.deleted_at ? new Date(c.deleted_at).getTime() : null,
-      archivedAt: c.archived_at ? new Date(c.archived_at).getTime() : null,
-      source: c.source ?? "chat",
-      sourceMetadata: c.source_metadata ?? null,
-      tabs: (c.conversation_tabs || []).map(
-        (t: {
-          tab_id: string
-          conversation_id: string
-          name: string
-          position: number
-          message_count: number
-          last_message_at: string | null
-          created_at: string
-          closed_at: string | null
-        }) => ({
-          id: t.tab_id,
-          conversationId: t.conversation_id,
-          name: t.name,
-          position: t.position,
-          messageCount: t.message_count,
-          lastMessageAt: t.last_message_at ? new Date(t.last_message_at).getTime() : null,
-          createdAt: new Date(t.created_at).getTime(),
-          closedAt: t.closed_at ? new Date(t.closed_at).getTime() : null,
-        }),
-      ),
-    })
+    const transform = (c: NonNullable<typeof conversations>[number], isOwn: boolean) => {
+      const normalizedSource = normalizeConversationSourcePayload(c.source, c.source_metadata)
+
+      return {
+        id: c.conversation_id,
+        workspace: c.workspace,
+        orgId: c.org_id,
+        creatorId: isOwn ? userId : (c as { user_id?: string }).user_id,
+        title: c.title,
+        visibility: c.visibility,
+        messageCount: c.message_count,
+        lastMessageAt: c.last_message_at ? new Date(c.last_message_at).getTime() : null,
+        firstUserMessageId: c.first_user_message_id,
+        autoTitleSet: c.auto_title_set,
+        createdAt: new Date(c.created_at).getTime(),
+        updatedAt: new Date(c.updated_at).getTime(),
+        deletedAt: c.deleted_at ? new Date(c.deleted_at).getTime() : null,
+        archivedAt: c.archived_at ? new Date(c.archived_at).getTime() : null,
+        source: normalizedSource.source,
+        sourceMetadata: normalizedSource.sourceMetadata,
+        tabs: (c.conversation_tabs || []).map(
+          (t: {
+            tab_id: string
+            conversation_id: string
+            name: string
+            position: number
+            message_count: number
+            last_message_at: string | null
+            created_at: string
+            closed_at: string | null
+          }) => ({
+            id: t.tab_id,
+            conversationId: t.conversation_id,
+            name: t.name,
+            position: t.position,
+            messageCount: t.message_count,
+            lastMessageAt: t.last_message_at ? new Date(t.last_message_at).getTime() : null,
+            createdAt: new Date(t.created_at).getTime(),
+            closedAt: t.closed_at ? new Date(t.closed_at).getTime() : null,
+          }),
+        ),
+      }
+    }
 
     const own = (conversations || []).filter(c => c.user_id === userId)
     const shared = (conversations || []).filter(c => c.user_id !== userId)

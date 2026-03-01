@@ -16,6 +16,7 @@
  */
 
 import { logError } from "@/lib/client-error-logger"
+import { normalizeConversationSourcePayload } from "@/lib/conversations/source"
 import { type DbConversation, type DbMessage, type DbTab, getMessageDb } from "./messageDb"
 import { syncDexieTabsToLocalStorage } from "./tabSync"
 
@@ -27,6 +28,99 @@ const SYNC_DEBOUNCE_MS = 2000
 const INITIAL_RETRY_MS = 5000
 const MAX_RETRY_MS = 60000
 const BATCH_SIZE = 10 // Max conversations per batch request
+
+// =============================================================================
+// API Response Types (boundary validation)
+// =============================================================================
+
+/** Tab shape returned by GET /api/conversations */
+interface ServerTab {
+  id: string
+  conversationId: string
+  name: string
+  position: number
+  messageCount: number
+  lastMessageAt: number | null
+  createdAt: number
+  closedAt: number | null
+}
+
+/** Conversation shape returned by GET /api/conversations */
+interface ServerConversation {
+  id: string
+  workspace: string
+  orgId: string
+  creatorId: string
+  title: string
+  visibility: "private" | "shared"
+  messageCount: number
+  lastMessageAt: number | null
+  firstUserMessageId: string | null
+  autoTitleSet: boolean
+  createdAt: number
+  updatedAt: number
+  deletedAt: number | null
+  archivedAt: number | null
+  source: unknown
+  sourceMetadata: unknown
+  tabs: ServerTab[]
+}
+
+/** Response shape from GET /api/conversations */
+interface ConversationsResponse {
+  own: ServerConversation[]
+  shared: ServerConversation[]
+}
+
+/** Message shape returned by GET /api/conversations/messages */
+interface ServerMessage {
+  id: string
+  tabId: string
+  type: string
+  content: DbMessage["content"]
+  version: number
+  status: string
+  seq: number
+  abortedAt: number | null
+  errorCode: string | null
+  createdAt: number
+  updatedAt: number
+}
+
+/** Response shape from GET /api/conversations/messages */
+interface MessagesResponse {
+  messages: ServerMessage[]
+  hasMore: boolean
+  nextCursor: string | null
+}
+
+// =============================================================================
+// Runtime Narrowing
+// =============================================================================
+
+const VALID_MESSAGE_TYPES: ReadonlySet<string> = new Set([
+  "user",
+  "assistant",
+  "tool_use",
+  "tool_result",
+  "thinking",
+  "system",
+  "sdk_message",
+])
+
+/** Narrow a raw message type string to DbMessageType, defaulting to "system" */
+function normalizeMessageType(raw: string): DbMessage["type"] {
+  if (VALID_MESSAGE_TYPES.has(raw)) return raw as DbMessage["type"]
+  return "system"
+}
+
+const VALID_MESSAGE_STATUSES: ReadonlySet<string> = new Set(["streaming", "complete", "interrupted", "error"])
+
+/** Narrow a raw message status string to DbMessageStatus, defaulting to "complete" */
+function normalizeMessageStatus(raw: string): DbMessage["status"] {
+  if (VALID_MESSAGE_STATUSES.has(raw)) return raw as DbMessage["status"]
+  return "complete"
+}
 
 // =============================================================================
 // Types
@@ -380,6 +474,13 @@ async function syncSingle(
 // =============================================================================
 
 /**
+ * In-flight deduplication for fetchTabMessages.
+ * Prevents duplicate network requests when the same tab is loaded concurrently
+ * (e.g., rapid tab switches, effect + click racing).
+ */
+const tabMessageFetches = new Map<string, Promise<{ messages: DbMessage[]; hasMore: boolean }>>()
+
+/**
  * Sync from server: Fetch all conversations for a workspace.
  * Call this when entering a workspace to get the latest data.
  *
@@ -423,10 +524,11 @@ export async function fetchConversations(workspace: string, userId: string, _org
 
     if (!response.ok) {
       console.error("[sync] Failed to fetch conversations:", response.status)
+      logError("sync", "Fetch conversations returned non-OK", { status: response.status, workspace })
       return
     }
 
-    const { own, shared } = await response.json()
+    const { own, shared }: ConversationsResponse = await response.json()
     const db = getMessageDb(userId)
 
     // Merge server data with local data
@@ -447,6 +549,7 @@ export async function fetchConversations(workspace: string, userId: string, _org
 
       // Track conversation for tab sync
       allConversations.push({ id: convo.id, title: convo.title })
+      const normalizedSource = normalizeConversationSourcePayload(convo.source, convo.sourceMetadata)
 
       // Upsert conversation from server
       const dbConvo: DbConversation = {
@@ -459,13 +562,13 @@ export async function fetchConversations(workspace: string, userId: string, _org
         createdAt: convo.createdAt,
         updatedAt: convo.updatedAt,
         messageCount: convo.messageCount,
-        lastMessageAt: convo.lastMessageAt,
-        firstUserMessageId: convo.firstUserMessageId,
+        lastMessageAt: convo.lastMessageAt ?? undefined,
+        firstUserMessageId: convo.firstUserMessageId ?? undefined,
         autoTitleSet: convo.autoTitleSet,
-        source: convo.source ?? "chat",
-        sourceMetadata: convo.sourceMetadata ?? undefined,
-        deletedAt: convo.deletedAt,
-        archivedAt: convo.archivedAt,
+        source: normalizedSource.source,
+        sourceMetadata: normalizedSource.sourceMetadata ?? undefined,
+        deletedAt: convo.deletedAt ?? undefined,
+        archivedAt: convo.archivedAt ?? undefined,
         syncedAt: Date.now(),
         remoteUpdatedAt: convo.updatedAt,
         pendingSync: false,
@@ -485,8 +588,8 @@ export async function fetchConversations(workspace: string, userId: string, _org
           position: tab.position,
           createdAt: tab.createdAt,
           messageCount: tab.messageCount,
-          lastMessageAt: tab.lastMessageAt,
-          closedAt: tab.closedAt,
+          lastMessageAt: tab.lastMessageAt ?? undefined,
+          closedAt: tab.closedAt ?? undefined,
           syncedAt: Date.now(),
           pendingSync: false,
         }
@@ -511,18 +614,37 @@ export async function fetchConversations(workspace: string, userId: string, _org
 /**
  * Fetch messages for a specific tab (lazy loading).
  * Call this when user opens a conversation/tab.
+ *
+ * Deduplicates concurrent calls for the same tab — if a fetch is already
+ * in flight, callers join the existing promise instead of firing another request.
  */
-export async function fetchTabMessages(
+export function fetchTabMessages(
   tabId: string,
   userId: string,
   cursor?: string, // ISO timestamp for pagination
 ): Promise<{ messages: DbMessage[]; hasMore: boolean }> {
+  // Deduplicate: if a fetch for this tab is already in flight, return the same promise.
+  // Keyed by tabId+cursor so paginated requests aren't blocked.
+  const dedupeKey = cursor ? `${tabId}:${cursor}` : tabId
+  const inflight = tabMessageFetches.get(dedupeKey)
+  if (inflight) return inflight
+
+  const promise = fetchTabMessagesImpl(tabId, userId, cursor).finally(() => {
+    tabMessageFetches.delete(dedupeKey)
+  })
+  tabMessageFetches.set(dedupeKey, promise)
+  return promise
+}
+
+async function fetchTabMessagesImpl(
+  tabId: string,
+  userId: string,
+  cursor?: string,
+): Promise<{ messages: DbMessage[]; hasMore: boolean }> {
   const db = getMessageDb(userId)
 
-  // First return local messages
   const localMessages = await db.messages.where("[tabId+seq]").between([tabId, -Infinity], [tabId, Infinity]).toArray()
 
-  // Skip server fetch if offline
   if (typeof navigator !== "undefined" && !navigator.onLine) {
     return { messages: localMessages, hasMore: false }
   }
@@ -536,47 +658,70 @@ export async function fetchTabMessages(
 
     if (!response.ok) {
       console.error("[sync] Failed to fetch messages:", response.status)
+      logError("sync", "Fetch tab messages returned non-OK", { status: response.status, tabId })
       return { messages: localMessages, hasMore: false }
     }
 
-    const { messages: serverMessages, hasMore, nextCursor: _nextCursor } = await response.json()
+    const { messages: serverMessages, hasMore }: MessagesResponse = await response.json()
 
-    // Merge server messages with local
-    // Local pending messages take precedence
-    for (const msg of serverMessages) {
-      const local = await db.messages.get(msg.id)
-      if (local?.pendingSync) continue
-
-      const dbMessage: DbMessage = {
-        id: msg.id,
-        tabId: msg.tabId,
-        type: msg.type,
-        content: msg.content,
-        createdAt: msg.createdAt,
-        updatedAt: msg.updatedAt,
-        version: msg.version,
-        status: msg.status,
-        origin: "remote",
-        seq: msg.seq,
-        abortedAt: msg.abortedAt,
-        errorCode: msg.errorCode,
-        syncedAt: Date.now(),
-        pendingSync: false,
+    // Merge server messages with local in a single transaction.
+    // Batching avoids N intermediate useLiveQuery re-renders (one per put).
+    const now = Date.now()
+    await db.transaction("rw", [db.messages, db.tabs], async () => {
+      // Identify local pending messages to skip (they take precedence)
+      const pendingIds = new Set<string>()
+      for (const msg of serverMessages) {
+        const local = await db.messages.get(msg.id)
+        if (local?.pendingSync) pendingIds.add(msg.id)
       }
 
-      await db.messages.put(dbMessage)
-    }
+      const messagesToPut: DbMessage[] = serverMessages
+        .filter(msg => !pendingIds.has(msg.id))
+        .map(msg => ({
+          id: msg.id,
+          tabId: msg.tabId,
+          type: normalizeMessageType(msg.type),
+          content: msg.content,
+          createdAt: msg.createdAt,
+          updatedAt: msg.updatedAt,
+          version: msg.version,
+          status: normalizeMessageStatus(msg.status),
+          origin: "remote" as const,
+          seq: msg.seq,
+          abortedAt: msg.abortedAt ?? undefined,
+          errorCode: msg.errorCode ?? undefined,
+          syncedAt: now,
+          pendingSync: false,
+        }))
 
-    // Get updated local messages
+      if (messagesToPut.length > 0) {
+        await db.messages.bulkPut(messagesToPut)
+      }
+
+      // Update local tab messageCount from merged state so counts stay accurate.
+      // Don't rely on counts as "fully synced" signal, but keep them honest.
+      const mergedMessages = await db.messages
+        .where("[tabId+seq]")
+        .between([tabId, -Infinity], [tabId, Infinity])
+        .toArray()
+
+      const lastMsg =
+        mergedMessages.length > 0
+          ? mergedMessages.reduce((latest, m) => (m.createdAt > latest.createdAt ? m : latest), mergedMessages[0])
+          : null
+
+      await db.tabs.update(tabId, {
+        messageCount: mergedMessages.length,
+        lastMessageAt: lastMsg?.createdAt,
+      })
+    })
+
     const updatedMessages = await db.messages
       .where("[tabId+seq]")
       .between([tabId, -Infinity], [tabId, Infinity])
       .toArray()
 
-    return {
-      messages: updatedMessages,
-      hasMore,
-    }
+    return { messages: updatedMessages, hasMore }
   } catch (error) {
     console.error("[sync] Failed to fetch messages:", error)
     logError("sync", "Failed to fetch tab messages", {

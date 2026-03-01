@@ -268,6 +268,7 @@ async function migrateConversation(
     messageCount: convo.messages?.length ?? 0,
     lastMessageAt: convo.lastActivity ?? baseTime,
     autoTitleSet: true, // Don't overwrite migrated titles
+    source: "chat",
     // Sync
     pendingSync: true,
   })
