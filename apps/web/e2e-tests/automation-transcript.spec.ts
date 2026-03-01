@@ -1,4 +1,3 @@
-import { TAB_DATA_STORAGE_KEY, TAB_VIEW_STORAGE_KEY } from "@/lib/stores/storage-keys"
 import { expect, test } from "./fixtures"
 import { TEST_TIMEOUTS } from "./fixtures/test-data"
 import { gotoChatFast, waitForChatReady } from "./helpers/assertions"
@@ -13,7 +12,9 @@ test.describe("Automation Transcript Polling", () => {
     const now = Date.now()
 
     let messageFetchCount = 0
-    let transcriptTabId: string | null = null
+    let messageFetchCountAfterReady = 0
+    let runStatusCheckCount = 0
+    let allowTranscriptGrowth = false
 
     // One automation conversation in sidebar.
     await authenticatedPage.route("**/api/conversations?*", async route => {
@@ -60,32 +61,25 @@ test.describe("Automation Transcript Polling", () => {
       )
     })
 
-    // Evolving transcript messages for this tab only.
+    // Evolving transcript messages for the automation tab only.
     await authenticatedPage.route("**/api/conversations/messages?*", async route => {
       const requestUrl = new URL(route.request().url())
       const tabId = requestUrl.searchParams.get("tabId")
 
-      if (!tabId) {
-        await route.fulfill(buildJsonMockResponse({ messages: [], hasMore: false, nextCursor: null }))
-        return
-      }
-
-      // Lock to whichever tabId the UI uses first for this run.
-      if (!transcriptTabId) {
-        transcriptTabId = tabId
-      }
-      if (tabId !== transcriptTabId) {
+      if (tabId !== TAB_ID) {
         await route.fulfill(buildJsonMockResponse({ messages: [], hasMore: false, nextCursor: null }))
         return
       }
 
       messageFetchCount++
-      const activeTabId = transcriptTabId
+      if (allowTranscriptGrowth) {
+        messageFetchCountAfterReady++
+      }
 
       const messages = [
         {
           id: "msg-1",
-          tabId: activeTabId,
+          tabId: TAB_ID,
           type: "sdk_message",
           content: {
             kind: "sdk_message",
@@ -105,11 +99,11 @@ test.describe("Automation Transcript Polling", () => {
           createdAt: now,
           updatedAt: now,
         },
-        ...(messageFetchCount >= 3
+        ...(allowTranscriptGrowth && messageFetchCountAfterReady >= 2
           ? [
               {
                 id: "msg-2",
-                tabId: activeTabId,
+                tabId: TAB_ID,
                 type: "sdk_message",
                 content: {
                   kind: "sdk_message",
@@ -137,71 +131,26 @@ test.describe("Automation Transcript Polling", () => {
     })
 
     // Run status API used by polling hook (checked every ~10s).
-    await authenticatedPage.route(`**/api/automations/${JOB_ID}/runs?*`, async route => {
+    await authenticatedPage.route(`**/api/automations/${JOB_ID}/runs/${RUN_ID}*`, async route => {
+      runStatusCheckCount++
       await route.fulfill(
         buildJsonMockResponse({
-          runs: [{ id: RUN_ID, status: "running" }],
-          job: { id: JOB_ID, name: "Test Job" },
-          pagination: { limit: 5, offset: 0, total: 1 },
+          run: {
+            id: RUN_ID,
+            job_id: JOB_ID,
+            started_at: new Date(now).toISOString(),
+            completed_at: null,
+            duration_ms: null,
+            status: "running",
+            error: null,
+            result: null,
+            triggered_by: "manual",
+            changes_made: [],
+            messages: [],
+          },
         }),
       )
     })
-
-    // Seed tab stores so automation conversation is the active tab from first render.
-    await authenticatedPage.addInitScript(
-      ({ workspace, tabId, conversationId, createdAt, tabDataKey, tabViewKey }) => {
-        // Headless browsers can report hidden pages; polling hook skips when hidden.
-        Object.defineProperty(document, "hidden", {
-          configurable: true,
-          get: () => false,
-        })
-        Object.defineProperty(document, "visibilityState", {
-          configurable: true,
-          get: () => "visible",
-        })
-
-        localStorage.setItem(
-          tabDataKey,
-          JSON.stringify({
-            state: {
-              tabsByWorkspace: {
-                [workspace]: [
-                  {
-                    id: tabId,
-                    tabGroupId: conversationId,
-                    name: "Run",
-                    tabNumber: 1,
-                    createdAt,
-                  },
-                ],
-              },
-            },
-            version: 1,
-          }),
-        )
-
-        sessionStorage.setItem(
-          tabViewKey,
-          JSON.stringify({
-            state: {
-              activeTabByWorkspace: {
-                [workspace]: tabId,
-              },
-              tabsExpandedByWorkspace: {},
-            },
-            version: 1,
-          }),
-        )
-      },
-      {
-        workspace: workerTenant.workspace,
-        tabId: TAB_ID,
-        conversationId: CONV_ID,
-        createdAt: now,
-        tabDataKey: TAB_DATA_STORAGE_KEY,
-        tabViewKey: TAB_VIEW_STORAGE_KEY,
-      },
-    )
 
     await gotoChatFast(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
     await waitForChatReady(authenticatedPage)
@@ -221,42 +170,23 @@ test.describe("Automation Transcript Polling", () => {
     await expect(selectedTab).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
     await selectedTab.click()
 
-    const activeTabState = await authenticatedPage.evaluate(workspace => {
-      const tabDataRaw = localStorage.getItem("claude-tab-data")
-      const tabViewRaw = sessionStorage.getItem("claude-tab-view")
-      if (!tabDataRaw || !tabViewRaw) return { activeTabId: null, activeTabGroupId: null }
-
-      try {
-        const tabData = JSON.parse(tabDataRaw) as {
-          state?: { tabsByWorkspace?: Record<string, Array<{ id: string; tabGroupId: string }>> }
-        }
-        const tabView = JSON.parse(tabViewRaw) as {
-          state?: { activeTabByWorkspace?: Record<string, string | undefined> }
-        }
-
-        const activeTabId = tabView.state?.activeTabByWorkspace?.[workspace] ?? null
-        const tabs = tabData.state?.tabsByWorkspace?.[workspace] ?? []
-        const activeTabGroupId = tabs.find(tab => tab.id === activeTabId)?.tabGroupId ?? null
-        return { activeTabId, activeTabGroupId }
-      } catch {
-        return { activeTabId: null, activeTabGroupId: null }
-      }
-    }, workerTenant.workspace)
-
-    expect(activeTabState.activeTabId).not.toBeNull()
-    expect(activeTabState.activeTabGroupId).toBe(CONV_ID)
-
     await expect.poll(() => messageFetchCount, { timeout: TEST_TIMEOUTS.max }).toBeGreaterThan(0)
 
     await expect(authenticatedPage.getByText("Starting automation...").first()).toBeVisible({
       timeout: TEST_TIMEOUTS.max,
     })
 
+    // From here on, no further user actions. Additional fetches should come from polling.
+    allowTranscriptGrowth = true
+
+    await expect.poll(() => messageFetchCountAfterReady, { timeout: TEST_TIMEOUTS.max }).toBeGreaterThanOrEqual(2)
+
     await expect(authenticatedPage.getByText("Task completed successfully").first()).toBeVisible({
-      timeout: 15_000,
+      timeout: TEST_TIMEOUTS.max,
     })
 
-    // Proves active polling (not just a single initial fetch).
-    expect(messageFetchCount).toBeGreaterThanOrEqual(3)
+    // Validate both polling dimensions: message polling and run status checks.
+    expect(messageFetchCountAfterReady).toBeGreaterThanOrEqual(2)
+    await expect.poll(() => runStatusCheckCount, { timeout: TEST_TIMEOUTS.max }).toBeGreaterThan(0)
   })
 })

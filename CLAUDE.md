@@ -590,6 +590,7 @@ For troubleshooting, inspecting production, and dev/staging work, see `docs/depl
 make ship        # Full pipeline: staging → production
 make ship-fast   # Same as ship, skips E2E tests
 make staging     # Deploy staging only (port 8998)
+make staging-fast # Deploy staging only, skip E2E tests
 make production  # Deploy production only (port 9000)
 make dev         # Rebuild tools + restart dev server (port 8997)
 make devchat     # Restart dev server via systemctl (safe from chat)

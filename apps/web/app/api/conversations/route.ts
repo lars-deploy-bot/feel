@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
         id: c.conversation_id,
         workspace: c.workspace,
         orgId: c.org_id,
-        creatorId: isOwn ? userId : (c as { user_id?: string }).user_id,
+        creatorId: isOwn ? userId : c.user_id,
         title: c.title,
         visibility: c.visibility,
         messageCount: c.message_count,
