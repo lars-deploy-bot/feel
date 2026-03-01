@@ -12,12 +12,12 @@ import { useEffect } from "react"
 import { logError } from "@/lib/client-error-logger"
 import { fetchTabMessages } from "@/lib/db/conversationSync"
 import {
+  checkRunActivity,
+  getNextPollDelay,
   MAX_POLL_DURATION_FALLBACK_MS,
   MAX_POLL_DURATION_WITH_STATUS_MS,
   STATUS_CHECK_INTERVAL_MS,
   STATUS_ERROR_CIRCUIT_BREAKER_THRESHOLD,
-  checkRunActivity,
-  getNextPollDelay,
 } from "./automationTranscriptPollUtils"
 
 interface AutomationTranscriptPollOpts {

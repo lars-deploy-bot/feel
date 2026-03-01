@@ -150,6 +150,16 @@ test.describe("Automation Transcript Polling", () => {
     // Seed tab stores so automation conversation is the active tab from first render.
     await authenticatedPage.addInitScript(
       ({ workspace, tabId, conversationId, createdAt, tabDataKey, tabViewKey }) => {
+        // Headless browsers can report hidden pages; polling hook skips when hidden.
+        Object.defineProperty(document, "hidden", {
+          configurable: true,
+          get: () => false,
+        })
+        Object.defineProperty(document, "visibilityState", {
+          configurable: true,
+          get: () => "visible",
+        })
+
         localStorage.setItem(
           tabDataKey,
           JSON.stringify({
