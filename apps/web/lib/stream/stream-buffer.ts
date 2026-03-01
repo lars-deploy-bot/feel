@@ -107,6 +107,11 @@ function getRedis() {
     redisClient = createRedisClient(getRedisUrl())
     redisInitialized = true
   }
+  // ioredis with maxRetriesPerRequest:null queues commands forever while connecting.
+  // Return null when not ready so callers skip Redis gracefully.
+  if (redisClient && redisClient.status !== "ready") {
+    return null
+  }
   return redisClient
 }
 

@@ -44,10 +44,10 @@ async function tryFetch(url: string, headers?: Record<string, string>) {
 }
 
 test.describe("Template Sites Health", () => {
-  test("all active templates are accessible", async ({ baseURL, page }) => {
-    // Fetch templates from the API
+  test("all active templates are accessible", async ({ baseURL, page, authenticatedPage }) => {
+    // Use authenticatedPage.request to send session cookie
     const apiUrl = baseURL || "http://localhost:8997"
-    const response = await fetch(`${apiUrl}/api/templates`)
+    const response = await authenticatedPage.request.get(`${apiUrl}/api/templates`)
 
     expect(response.ok).toBe(true)
 
@@ -119,9 +119,9 @@ test.describe("Template Sites Health", () => {
     expect(failedTemplates).toHaveLength(0)
   })
 
-  test("templates API returns expected fields", async ({ baseURL }) => {
+  test("templates API returns expected fields", async ({ baseURL, authenticatedPage }) => {
     const apiUrl = baseURL || "http://localhost:8997"
-    const response = await fetch(`${apiUrl}/api/templates`)
+    const response = await authenticatedPage.request.get(`${apiUrl}/api/templates`)
 
     expect(response.ok).toBe(true)
 
