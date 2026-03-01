@@ -7,15 +7,20 @@
  */
 
 import * as Sentry from "@sentry/nextjs"
+import { AuthenticationError, requireSessionUser } from "@/features/auth/lib/auth"
+import { structuredErrorResponse } from "@/lib/api/responses"
 import { alrighty } from "@/lib/api/server"
+import { ErrorCodes } from "@/lib/error-codes"
 import { createAppClient } from "@/lib/supabase/app"
 
 /**
  * GET - Get all active templates
- * Public endpoint - no authentication required
+ * Requires authentication — only served to logged-in users.
  */
 export async function GET() {
   try {
+    await requireSessionUser()
+
     const supabase = await createAppClient("service")
 
     const { data: templates, error } = await supabase
@@ -43,13 +48,21 @@ export async function GET() {
       { templates },
       {
         headers: {
-          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+          "Cache-Control": "private, max-age=300, stale-while-revalidate=600",
         },
       },
     )
   } catch (error) {
+    if (error instanceof AuthenticationError) {
+      return structuredErrorResponse(ErrorCodes.UNAUTHORIZED, { status: 401 })
+    }
     console.error("[Templates API]", error)
     Sentry.captureException(error)
-    return Response.json({ error: error instanceof Error ? error.message : "Internal server error" }, { status: 500 })
+    return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, {
+      status: 500,
+      details: {
+        exception: error instanceof Error ? error.message : String(error),
+      },
+    })
   }
 }
