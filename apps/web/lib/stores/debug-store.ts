@@ -1,6 +1,6 @@
 "use client"
 
-import { DOMAINS, SUPERADMIN } from "@webalive/shared"
+import { SUPERADMIN_WORKSPACE_NAME } from "@webalive/shared/constants"
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import { useCurrentWorkspace } from "@/lib/stores/workspaceStore"
@@ -12,15 +12,9 @@ function isDevOrStaging(): boolean {
   if (typeof window === "undefined") return false
   const hostname = window.location.hostname
   return (
-    // Staging environments
-    hostname === DOMAINS.STREAM_STAGING_HOST ||
-    hostname.endsWith(DOMAINS.STAGING_SUFFIX) ||
+    hostname.startsWith("staging.") ||
     hostname.includes(".staging.") ||
-    // Dev environments
-    hostname === DOMAINS.STREAM_DEV_HOST ||
-    hostname.endsWith(DOMAINS.DEV_SUFFIX) ||
     hostname.startsWith("dev.") ||
-    // Localhost
     hostname === "localhost"
   )
 }
@@ -127,7 +121,7 @@ export function isDevelopment(): boolean {
 export function useDebugVisible(): boolean {
   const debugView = useDebugView()
   const workspace = useCurrentWorkspace()
-  const isSuperadminWorkspace = workspace === SUPERADMIN.WORKSPACE_NAME
+  const isSuperadminWorkspace = workspace === SUPERADMIN_WORKSPACE_NAME
   const isLocalDev = typeof window !== "undefined" && window.location.hostname === "localhost"
 
   // Only show if user enabled it AND (localhost OR superadmin)

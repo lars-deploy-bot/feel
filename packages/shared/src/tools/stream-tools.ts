@@ -18,7 +18,6 @@
  * - worker-pool tool permission enforcement
  */
 
-import { PATHS, SUPERADMIN } from "../config.js"
 import { GLOBAL_MCP_PROVIDERS, getGlobalMcpToolNames, isOAuthMcpTool, OAUTH_MCP_PROVIDERS } from "../mcp-providers.js"
 import {
   INTERNAL_TOOL_DESCRIPTORS,
@@ -593,15 +592,4 @@ export function getStreamMcpServers<T>(
   }
 
   return servers
-}
-
-/**
- * Get workspace path for a domain.
- * For the "alive" workspace, returns the platform root instead of a site directory.
- */
-export function getWorkspacePath(domain: string): string {
-  if (domain === SUPERADMIN.WORKSPACE_NAME) {
-    return SUPERADMIN.WORKSPACE_PATH
-  }
-  return `${PATHS.SITES_ROOT}/${domain}/user`
 }

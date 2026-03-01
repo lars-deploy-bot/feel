@@ -35,6 +35,11 @@ const WORKSPACE = "demo.alive.best"
 const TAB_GROUP_ID = "tab-group-1"
 const TAB_ID = "tab-1"
 
+// Force cancel-intent-registry to use in-memory fallback (no Redis in tests)
+vi.mock("@webalive/env/server", () => ({
+  getRedisUrl: () => null,
+}))
+
 vi.mock("@sentry/nextjs", () => ({
   captureException: vi.fn(),
 }))

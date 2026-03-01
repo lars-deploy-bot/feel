@@ -17,6 +17,14 @@
       "import": "./dist/environments.js",
       "types": "./dist/environments.d.ts"
     },
+    "./models": {
+      "import": "./dist/models.js",
+      "types": "./dist/models.d.ts"
+    },
+    "./tools": {
+      "import": "./dist/tools/stream-tools.js",
+      "types": "./dist/tools/stream-tools.d.ts"
+    },
     "./database": {
       "import": "./dist/database/index.js",
       "types": "./dist/database/index.d.ts"

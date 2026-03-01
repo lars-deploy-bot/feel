@@ -5,6 +5,34 @@
  * DO NOT duplicate these values anywhere else.
  */
 
+// =============================================================================
+// Client-Safe Platform Constants
+// =============================================================================
+// These values are safe for client-side bundles. They contain no filesystem
+// paths, secrets, or infrastructure details. For server-only config (paths,
+// ports, credentials), import from "@webalive/shared" (barrel) on the server.
+
+/** Superadmin workspace identifier (client-safe — just the string "alive") */
+export const SUPERADMIN_WORKSPACE_NAME = "alive"
+
+/** Check if a hostname refers to the Alive platform workspace */
+export function isAliveWorkspace(hostname: string): boolean {
+  return hostname === SUPERADMIN_WORKSPACE_NAME
+}
+
+/** Template ID prefix — all template IDs must start with this */
+export const TEMPLATE_ID_PREFIX = "tmpl_"
+
+/** Default template for new site deployments */
+export const DEFAULT_TEMPLATE_ID = "tmpl_blank"
+
+/** Preview subdomain prefix (e.g. preview--label.domain) */
+export const PREVIEW_PREFIX = "preview--"
+
+// =============================================================================
+// Cookie & Session
+// =============================================================================
+
 /**
  * Cookie Names
  *

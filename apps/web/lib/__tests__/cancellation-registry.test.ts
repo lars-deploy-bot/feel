@@ -11,6 +11,12 @@ vi.mock("@/lib/stream/stream-buffer", () => ({
 }))
 
 import { isConversationLocked, tabKey, tryLockConversation, unlockConversation } from "@/features/auth/lib/sessionStore"
+
+// Mock stream-buffer to prevent Redis calls during timeout path
+vi.mock("@/lib/stream/stream-buffer", () => ({
+  completeStreamBuffer: vi.fn(async () => undefined),
+}))
+
 import {
   cancelStream,
   cancelStreamByConversationKey,

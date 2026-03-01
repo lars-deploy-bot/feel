@@ -17,7 +17,7 @@
  */
 
 import type { SDKAssistantMessage } from "@anthropic-ai/claude-agent-sdk"
-import { isStreamClientVisibleTool } from "@webalive/shared"
+import { isStreamClientVisibleTool } from "@webalive/shared/tools"
 import { ChevronRight } from "lucide-react"
 import { useState } from "react"
 import { OAuthErrorMessage } from "@/components/ui/chat/errors/OAuthErrorMessage"

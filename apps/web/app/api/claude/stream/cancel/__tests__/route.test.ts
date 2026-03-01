@@ -7,6 +7,12 @@ vi.mock("@webalive/env/server", () => ({
 
 import * as auth from "@/features/auth/lib/auth"
 import { tabKey } from "@/features/auth/lib/sessionStore"
+
+// Force cancel-intent-registry to use in-memory fallback (no Redis in tests)
+vi.mock("@webalive/env/server", () => ({
+  getRedisUrl: () => null,
+}))
+
 import { clearAllCancelIntents, hasCancelIntent, hasCancelIntentByRequestId } from "@/lib/stream/cancel-intent-registry"
 import { PAGE_UNLOAD_BEACON_MARKER } from "@/lib/stream/cancel-markers"
 import { getRegistrySize, registerCancellation, unregisterCancellation } from "@/lib/stream/cancellation-registry"
