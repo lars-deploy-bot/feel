@@ -1,5 +1,10 @@
 import { describe, expect, test, vi } from "vitest"
 
+// Force in-memory fallback so tests don't hang waiting for Redis
+vi.mock("@webalive/env/server", () => ({
+  getRedisUrl: () => null,
+}))
+
 // Mock stream-buffer to prevent Redis connection during completeStreamBuffer calls
 vi.mock("@/lib/stream/stream-buffer", () => ({
   completeStreamBuffer: vi.fn(async () => undefined),

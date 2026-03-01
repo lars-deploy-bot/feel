@@ -67,6 +67,11 @@ vi.mock("@/lib/stream/stream-buffer", () => ({
   completeStreamBuffer: vi.fn(async () => undefined),
 }))
 
+// Force in-memory fallback so tests don't hang waiting for Redis
+vi.mock("@webalive/env/server", () => ({
+  getRedisUrl: () => null,
+}))
+
 import { POST } from "../route"
 
 describe("POST /api/claude/stream/cancel", () => {

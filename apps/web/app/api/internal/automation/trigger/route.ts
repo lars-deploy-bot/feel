@@ -14,6 +14,7 @@ import { AutomationTriggerRequestSchema, type AutomationTriggerResponse, getServ
 import { type NextRequest, NextResponse } from "next/server"
 import { broadcastAutomationEvent } from "@/app/api/automations/events/route"
 import { structuredErrorResponse } from "@/lib/api/responses"
+import { verifyInternalSecret } from "@/lib/auth/timing-safe"
 import { pokeCronService } from "@/lib/automation/cron-service"
 import { executeJob } from "@/lib/automation/execute"
 import { getAutomationExecutionGate } from "@/lib/automation/execution-guard"
@@ -29,18 +30,8 @@ function triggerResponse(data: AutomationTriggerResponse, status = 200): NextRes
 
 export async function POST(req: NextRequest) {
   // Validate internal secret
-  const secret = req.headers.get("X-Internal-Secret")
-  const expectedSecret = process.env.JWT_SECRET
-
-  if (!expectedSecret) {
-    console.error("[internal/automation/trigger] JWT_SECRET not configured")
-    Sentry.captureMessage("[internal/automation/trigger] JWT_SECRET not configured", "error")
-    return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
-  }
-
-  if (!secret || secret !== expectedSecret) {
-    return structuredErrorResponse(ErrorCodes.UNAUTHORIZED, { status: 401 })
-  }
+  const secretError = verifyInternalSecret(req, "JWT_SECRET", "X-Internal-Secret")
+  if (secretError) return secretError
 
   const executionGate = getAutomationExecutionGate()
   if (!executionGate.allowed) {

@@ -74,6 +74,27 @@ caddy validate --config /etc/caddy/Caddyfile && systemctl reload caddy
 | caddy (main) | 8081 | 8444 | All domains except shell |
 | caddy-shell | - | 8443 | Shell domains only |
 
+## CRITICAL: `import block_internal_api` on all app-facing site blocks
+
+Every site block that reverse-proxies to the Next.js app (ports 8997/8998/9000) **MUST** include `import block_internal_api`. This blocks external access to `/api/internal/*` and `/api/internal-tools/*` at the network level.
+
+```caddy
+# WRONG — internal APIs exposed to the internet
+app.example.com {
+    reverse_proxy localhost:9000
+}
+
+# CORRECT
+app.example.com {
+    import block_internal_api
+    reverse_proxy localhost:9000
+}
+```
+
+**Where to add it**: `/etc/caddy/Caddyfile.prod`, `/etc/caddy/Caddyfile.staging`, and any manually-created site blocks. See `etc/Caddyfile.prod.example` and `etc/Caddyfile.staging.example` for reference.
+
+Generated site routing (`Caddyfile.sites`) does NOT need it — generated sites proxy to individual workspace ports, not the Next.js app.
+
 ## CRITICAL: `tls force_automate` on explicit domains
 
 **Bug**: Caddy v2.10.x has a bug ([#6996](https://github.com/caddyserver/caddy/issues/6996)) where the `on_demand_tls { ask ... }` global block + a wildcard `*.sonno.tech` with `tls { on_demand }` prevents cert management for explicit domains that match the wildcard (e.g., `dev.sonno.tech`, `staging.sonno.tech`).

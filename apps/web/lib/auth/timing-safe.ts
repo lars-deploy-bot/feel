@@ -1,50 +1,61 @@
 /**
- * Timing-Safe String Comparison
+ * Timing-Safe String Comparison & Internal Secret Verification
  *
- * Prevents timing attacks by ensuring comparison takes constant time
- * regardless of how many characters match
+ * SECURITY: Standard === comparison is vulnerable to timing attacks.
+ * Attacker can measure response time to deduce characters one by one.
  *
- * SECURITY: Standard === comparison is vulnerable to timing attacks
- * Attacker can measure response time to deduce characters one by one
+ * Uses HMAC to normalize both inputs to fixed-length digests before
+ * comparing, so neither content nor length leaks via timing.
  */
 
-import { timingSafeEqual } from "node:crypto"
+import { createHmac, timingSafeEqual } from "node:crypto"
+
+import { structuredErrorResponse } from "@/lib/api/responses"
+import { ErrorCodes } from "@/lib/error-codes"
 
 /**
- * Compare two strings in constant time
- * @param a First string
- * @param b Second string
- * @returns true if strings match, false otherwise
+ * Compare two strings in constant time.
+ * Uses HMAC-SHA256 to normalize both inputs to 32-byte digests,
+ * preventing length-based timing leaks.
  */
 export function timingSafeCompare(a: string, b: string): boolean {
-  // Ensure both strings are defined
   if (typeof a !== "string" || typeof b !== "string") {
     return false
   }
 
-  // timingSafeEqual requires buffers of same length
-  // If lengths differ, we still need constant-time comparison
-  // to avoid leaking length information
+  // HMAC both inputs with a fixed key so the digests are always 32 bytes,
+  // regardless of input length. This avoids the timingSafeEqual same-length
+  // requirement without leaking length information.
+  const key = "timing-safe-compare"
+  const digestA = createHmac("sha256", key).update(a).digest()
+  const digestB = createHmac("sha256", key).update(b).digest()
 
-  // Convert to buffers
-  const bufferA = Buffer.from(a, "utf8")
-  const bufferB = Buffer.from(b, "utf8")
+  return timingSafeEqual(digestA, digestB)
+}
 
-  // If lengths are different, compare against a dummy buffer
-  // to maintain constant time
-  if (bufferA.length !== bufferB.length) {
-    // Create dummy buffer of same length as bufferA
-    const dummy = Buffer.alloc(bufferA.length)
-    // Do the comparison anyway (will always be false)
-    timingSafeEqual(bufferA, dummy)
-    return false
+/**
+ * Verify an internal secret header against an environment variable.
+ * Returns null on success, or a 401/500 Response on failure.
+ *
+ * Usage:
+ *   const error = verifyInternalSecret(req, "INTERNAL_TOOLS_SECRET", "x-internal-tools-secret")
+ *   if (error) return error
+ */
+export function verifyInternalSecret(req: Request, envVar: string, headerName: string): Response | null {
+  const expected = process.env[envVar]
+  const provided = req.headers.get(headerName)
+
+  if (!expected) {
+    console.error(`[verifyInternalSecret] ${envVar} not configured`)
+    return structuredErrorResponse(ErrorCodes.INTERNAL_ERROR, { status: 500 })
   }
 
-  // Lengths match, do timing-safe comparison
-  try {
-    return timingSafeEqual(bufferA, bufferB)
-  } catch {
-    // In case of any error, return false
-    return false
+  if (!provided || !timingSafeCompare(provided, expected)) {
+    return structuredErrorResponse(ErrorCodes.UNAUTHORIZED, {
+      status: 401,
+      details: { requestId: crypto.randomUUID() },
+    })
   }
+
+  return null
 }

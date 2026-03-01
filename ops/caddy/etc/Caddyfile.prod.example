@@ -1,0 +1,22 @@
+# /etc/caddy/Caddyfile.prod - Production Domains
+#
+# Manually-managed site blocks for production domains.
+# Imported by /etc/caddy/Caddyfile via: import /etc/caddy/Caddyfile.prod
+#
+# IMPORTANT: Every site block that proxies to the Next.js app (localhost:9000)
+# MUST include `import block_internal_api` to block external access to
+# /api/internal/* and /api/internal-tools/* routes.
+
+# Main production app
+app.example.com {
+    tls force_automate
+    import common_headers
+    import block_internal_api
+
+    reverse_proxy localhost:9000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}

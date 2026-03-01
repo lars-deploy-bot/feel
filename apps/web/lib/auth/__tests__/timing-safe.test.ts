@@ -1,17 +1,18 @@
 /**
- * Tests for Timing-Safe String Comparison
+ * Tests for Timing-Safe String Comparison & Internal Secret Verification
  *
  * Security-critical tests:
  * - Correct comparison results
  * - Handles edge cases safely
  * - Type validation
+ * - verifyInternalSecret returns correct responses
  *
  * Note: We cannot directly test timing characteristics in unit tests,
  * but we verify the implementation uses crypto.timingSafeEqual correctly.
  */
 
-import { describe, expect, it } from "vitest"
-import { timingSafeCompare } from "../timing-safe"
+import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { timingSafeCompare, verifyInternalSecret } from "../timing-safe"
 
 describe("timingSafeCompare", () => {
   describe("Correct Comparison Results", () => {
@@ -173,5 +174,56 @@ describe("timingSafeCompare", () => {
       const hash2 = "$2b$10$abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMO" // Last char different
       expect(timingSafeCompare(hash1, hash2)).toBe(false)
     })
+  })
+})
+
+describe("verifyInternalSecret", () => {
+  const originalEnv = { ...process.env }
+
+  beforeEach(() => {
+    process.env.TEST_SECRET = "my-secret-value"
+  })
+
+  afterEach(() => {
+    process.env = { ...originalEnv }
+  })
+
+  function makeRequest(headers: Record<string, string> = {}): Request {
+    return new Request("http://localhost/test", { headers })
+  }
+
+  it("returns null when secret matches", () => {
+    const req = makeRequest({ "x-test-header": "my-secret-value" })
+    const result = verifyInternalSecret(req, "TEST_SECRET", "x-test-header")
+    expect(result).toBeNull()
+  })
+
+  it("returns 401 when header is missing", async () => {
+    const req = makeRequest({})
+    const result = verifyInternalSecret(req, "TEST_SECRET", "x-test-header")
+    expect(result).not.toBeNull()
+    expect(result!.status).toBe(401)
+  })
+
+  it("returns 401 when secret is wrong", async () => {
+    const req = makeRequest({ "x-test-header": "wrong-value" })
+    const result = verifyInternalSecret(req, "TEST_SECRET", "x-test-header")
+    expect(result).not.toBeNull()
+    expect(result!.status).toBe(401)
+  })
+
+  it("returns 500 when env var is not set", async () => {
+    delete process.env.TEST_SECRET
+    const req = makeRequest({ "x-test-header": "any-value" })
+    const result = verifyInternalSecret(req, "TEST_SECRET", "x-test-header")
+    expect(result).not.toBeNull()
+    expect(result!.status).toBe(500)
+  })
+
+  it("is case-sensitive on header values", () => {
+    const req = makeRequest({ "x-test-header": "My-Secret-Value" })
+    const result = verifyInternalSecret(req, "TEST_SECRET", "x-test-header")
+    expect(result).not.toBeNull()
+    expect(result!.status).toBe(401)
   })
 })

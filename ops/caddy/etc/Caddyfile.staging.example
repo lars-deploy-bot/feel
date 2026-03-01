@@ -1,0 +1,36 @@
+# /etc/caddy/Caddyfile.staging - Staging & Dev Domains
+#
+# Manually-managed site blocks for staging/dev environments.
+# Imported by /etc/caddy/Caddyfile via: import /etc/caddy/Caddyfile.staging
+#
+# IMPORTANT: Every site block that proxies to the Next.js app
+# MUST include `import block_internal_api` to block external access to
+# /api/internal/* and /api/internal-tools/* routes.
+
+# Staging
+staging.example.com {
+    tls force_automate
+    import common_headers
+    import block_internal_api
+
+    reverse_proxy localhost:8998 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+# Dev
+dev.example.com {
+    tls force_automate
+    import common_headers
+    import block_internal_api
+
+    reverse_proxy localhost:8997 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
