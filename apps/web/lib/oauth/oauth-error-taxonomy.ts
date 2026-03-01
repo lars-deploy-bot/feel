@@ -20,6 +20,7 @@ const OAUTH_ERROR_ACTIONS: Partial<Record<ErrorCode, OAuthErrorAction>> = {
   [ErrorCodes.OAUTH_ACCESS_DENIED]: "retry",
   [ErrorCodes.OAUTH_MISSING_REQUIRED_SCOPES]: "reconnect",
   [ErrorCodes.OAUTH_PROVIDER_ERROR]: "retry",
+  [ErrorCodes.OAUTH_ACCOUNT_CONFLICT]: "switch_context",
   [ErrorCodes.OAUTH_CONFIG_ERROR]: "contact_admin",
   [ErrorCodes.TOO_MANY_REQUESTS]: "retry",
   [ErrorCodes.FORBIDDEN]: "contact_admin",

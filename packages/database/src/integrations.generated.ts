@@ -44,6 +44,66 @@ export type Database = {
           },
         ]
       }
+      oauth_external_identities: {
+        Row: {
+          first_connected_at: string
+          identity_id: string
+          last_connected_at: string
+          provider: string
+          provider_email: string | null
+          provider_user_id: string
+          user_id: string
+        }
+        Insert: {
+          first_connected_at?: string
+          identity_id?: string
+          last_connected_at?: string
+          provider: string
+          provider_email?: string | null
+          provider_user_id: string
+          user_id: string
+        }
+        Update: {
+          first_connected_at?: string
+          identity_id?: string
+          last_connected_at?: string
+          provider?: string
+          provider_email?: string | null
+          provider_user_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      oauth_states: {
+        Row: {
+          consumed_at: string | null
+          created_at: string
+          expires_at: string
+          provider: string
+          state_hash: string
+          state_id: string
+          user_id: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          created_at?: string
+          expires_at: string
+          provider: string
+          state_hash: string
+          state_id?: string
+          user_id: string
+        }
+        Update: {
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          provider?: string
+          state_hash?: string
+          state_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       providers: {
         Row: {
           created_at: string | null

@@ -397,12 +397,14 @@ export function isValidOAuthMcpProviderKey(key: string): key is OAuthMcpProvider
  * @param providerKey - The MCP provider key (e.g., "gmail", "stripe")
  * @returns The OAuth key to use (e.g., "google", "stripe")
  */
+export function getOAuthKeyForProvider(providerKey: AllOAuthProviderKey): AllOAuthProviderKey
+export function getOAuthKeyForProvider(providerKey: string): string
 export function getOAuthKeyForProvider(providerKey: string): string {
   if (providerKey in OAUTH_MCP_PROVIDERS) {
     const config = OAUTH_MCP_PROVIDERS[providerKey as OAuthMcpProviderKey]
     return config.oauthKey
   }
-  // For non-MCP providers, use the key as-is
+  // For non-MCP providers (e.g., OAuth-only "google"), use the key as-is
   return providerKey
 }
 

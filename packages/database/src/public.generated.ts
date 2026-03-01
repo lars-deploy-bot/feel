@@ -762,6 +762,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      consume_oauth_state: {
+        Args: { p_state_hash: string }
+        Returns: {
+          failure_reason: string
+          found: boolean
+          provider: string
+          user_id: string
+          valid: boolean
+        }[]
+      }
+      create_oauth_state: {
+        Args: {
+          p_expires_at: string
+          p_provider: string
+          p_state_hash: string
+          p_user_id: string
+        }
+        Returns: string
+      }
       current_clerk_id: { Args: never; Returns: string }
       gen_prefixed_id: { Args: { p_prefix: string }; Returns: string }
       gen_short_id: { Args: never; Returns: string }
@@ -843,6 +862,19 @@ export type Database = {
       }
       require_authenticated: { Args: never; Returns: undefined }
       sub: { Args: never; Returns: string }
+      upsert_oauth_identity: {
+        Args: {
+          p_provider: string
+          p_provider_email?: string
+          p_provider_user_id: string
+          p_user_id: string
+        }
+        Returns: {
+          conflict: boolean
+          existing_user_id: string
+          success: boolean
+        }[]
+      }
     }
     Enums: {
       EvolutionRunStatus: "running" | "completed" | "failed" | "interrupted"

@@ -47,7 +47,7 @@ async function validateIntegrationRequest(
     }
   }
 
-  const provider = validation.provider!
+  const provider = validation.provider
 
   // 2. Authenticate user
   const user = await getSessionUser()

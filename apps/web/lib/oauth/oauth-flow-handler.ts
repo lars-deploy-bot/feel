@@ -5,9 +5,13 @@
  * Handles both initiation and callback phases of OAuth 2.0 authorization code flow.
  */
 
-import crypto from "node:crypto"
 import { env } from "@webalive/env/server"
-import { GoogleProvider, getProvider, OAuthMissingRequiredScopesError } from "@webalive/oauth-core"
+import {
+  GoogleProvider,
+  getProvider,
+  isExternalIdentityProvider,
+  OAuthMissingRequiredScopesError,
+} from "@webalive/oauth-core"
 import { getOAuthKeyForProvider } from "@webalive/shared"
 import { cookies } from "next/headers"
 import type { NextRequest } from "next/server"
@@ -23,12 +27,17 @@ import {
   createOAuthSuccessPayload,
   mapProviderErrorToOAuthCode,
 } from "@/lib/oauth/oauth-error-taxonomy"
+import { OAuthIdentityStore } from "@/lib/oauth/oauth-identity-store"
 import { getOAuthInstance } from "@/lib/oauth/oauth-instances"
+import { OAuthStateStore, STATE_TTL_SECONDS } from "@/lib/oauth/oauth-state-store"
 import { buildOAuthRedirectUri, isOAuthProviderSupported, OAUTH_PROVIDER_CONFIG, type OAuthProvider } from "./providers"
 
 const OAUTH_STATE_COOKIE_PREFIX = "oauth_state_"
-const STATE_COOKIE_MAX_AGE = 600 // 10 minutes
-const STATE_TOKEN_BYTES = 32
+
+/** Result from server-side state validation (discriminated union) */
+export type StateValidationResult =
+  | { valid: true; userId: string; provider: string }
+  | { valid: false; userId?: string; provider?: string; failureReason: string }
 
 /**
  * Normalize a scope string into a deduplicated sorted array.
@@ -158,38 +167,41 @@ export function resetRateLimit(req: NextRequest, provider: string) {
 
 /**
  * OAuth State Management
+ *
+ * Source of truth: DB-backed state records via OAuthStateStore.
+ * Cookie is defense-in-depth only (cleared on validate, but not authoritative).
  */
 export class OAuthStateManager {
   /**
-   * Generate and store CSRF state token
+   * Generate and store CSRF state token.
+   * DB is source of truth; cookie is set as defense-in-depth.
    */
-  static async createState(provider: string): Promise<string> {
-    const state = crypto.randomBytes(STATE_TOKEN_BYTES).toString("hex")
+  static async createState(provider: string, userId: string): Promise<string> {
+    // DB is the source of truth for state lifecycle
+    const state = await OAuthStateStore.createState(provider, userId)
+
+    // Also set cookie as defense-in-depth layer
     const cookieStore = await cookies()
     const cookieName = `${OAUTH_STATE_COOKIE_PREFIX}${provider}`
-
     cookieStore.set(cookieName, state, {
       httpOnly: true,
       secure: env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: STATE_COOKIE_MAX_AGE,
+      maxAge: STATE_TTL_SECONDS,
     })
 
     return state
   }
 
   /**
-   * Validate and clear CSRF state token
+   * Validate and clear CSRF state token.
+   * DB consume is authoritative — returns typed result with failure reason.
    */
-  static async validateState(provider: string, receivedState: string | null): Promise<boolean> {
-    if (!receivedState) return false
-
+  static async validateState(provider: string, receivedState: string | null): Promise<StateValidationResult> {
+    // Always clear cookie (defense-in-depth cleanup)
     const cookieStore = await cookies()
     const cookieName = `${OAUTH_STATE_COOKIE_PREFIX}${provider}`
-    const savedState = cookieStore.get(cookieName)?.value
-
-    // Clear cookie immediately (prevent replay attacks)
     cookieStore.set(cookieName, "", {
       httpOnly: true,
       secure: env.NODE_ENV === "production",
@@ -198,15 +210,22 @@ export class OAuthStateManager {
       expires: new Date(0),
     })
 
-    if (!savedState || savedState !== receivedState) {
-      console.error(`[${provider} OAuth] State mismatch:`, {
-        savedState: savedState ? "present" : "missing",
-        receivedState: receivedState ? "present" : "missing",
-      })
-      return false
+    if (!receivedState) {
+      return { valid: false, failureReason: "state_missing" }
     }
 
-    return true
+    // DB is the source of truth — atomic consume with replay/expiry detection
+    const result = await OAuthStateStore.consumeState(receivedState)
+
+    if (!result.valid) {
+      console.error(`[${provider} OAuth] State validation failed:`, {
+        failureReason: result.failureReason,
+        hasUserId: !!result.userId,
+      })
+      return result
+    }
+
+    return result
   }
 }
 
@@ -230,8 +249,8 @@ export async function initiateOAuthFlow(context: OAuthContext, config: OAuthConf
     }
   }
 
-  // Generate CSRF state
-  const state = await OAuthStateManager.createState(provider)
+  // Generate CSRF state (DB-backed, with user binding)
+  const state = await OAuthStateManager.createState(provider, user.id)
 
   // Build authorization URL
   // Use oauthKey to get the actual OAuth provider (e.g., 'gmail' -> 'google')
@@ -285,9 +304,41 @@ export async function handleOAuthCallback(
 ): Promise<OAuthFlowResult> {
   const { provider, user, baseUrl } = context
 
-  // Validate CSRF state
-  const isValidState = await OAuthStateManager.validateState(provider, state)
-  if (!isValidState) {
+  // Validate CSRF state (DB-backed, with replay/expiry detection)
+  const oauthKey = getOAuthKeyForProvider(provider)
+  const stateResult = await OAuthStateManager.validateState(provider, state)
+  if (!stateResult.valid) {
+    // Log the specific failure reason for observability, but return generic error to user
+    errorLogger.oauth(`OAuth state validation failed for ${provider}`, {
+      provider,
+      failureReason: stateResult.failureReason,
+      userId: user.id,
+    })
+    recordFailedAttempt(req, provider)
+    return {
+      type: "redirect",
+      url: buildOAuthCallbackRedirectUrl(
+        baseUrl,
+        createOAuthErrorPayload({
+          integration: provider,
+          errorCode: ErrorCodes.OAUTH_STATE_MISMATCH,
+        }),
+      ),
+    }
+  }
+
+  // SECURITY: Verify the consumed state belongs to the authenticated user and expected provider.
+  // Without this, an attacker could initiate an OAuth flow as user A, then have user B's
+  // browser complete the callback — binding attacker's provider account to victim's session.
+  // Note: state stores the MCP provider key (e.g., "gmail"), not the OAuth key (e.g., "google").
+  if (stateResult.userId !== user.id || stateResult.provider !== provider) {
+    errorLogger.oauth(`OAuth state user/provider mismatch for ${provider}`, {
+      provider,
+      expectedUserId: user.id,
+      stateUserId: stateResult.userId,
+      expectedProvider: provider,
+      stateProvider: stateResult.provider,
+    })
     recordFailedAttempt(req, provider)
     return {
       type: "redirect",
@@ -337,8 +388,7 @@ export async function handleOAuthCallback(
 
   try {
     // Exchange code for tokens
-    // Use oauthKey to get the actual OAuth provider (e.g., 'gmail' -> 'google')
-    const oauthKey = getOAuthKeyForProvider(provider)
+    // oauthKey already resolved above (before state binding check)
     const oauthManager = getOAuthInstance(oauthKey)
 
     await oauthManager.handleCallback(
@@ -350,6 +400,56 @@ export async function handleOAuthCallback(
       undefined, // codeVerifier (PKCE not used)
       requiredScopes,
     )
+
+    // --- External identity conflict detection (fail-closed) ---
+    // If the provider supports getUserInfo, we MUST verify the identity before
+    // allowing the connection. Any failure here disconnects the tokens.
+    const oauthProvider = getProvider(oauthKey)
+    if (isExternalIdentityProvider(oauthProvider)) {
+      const accessToken = await oauthManager.getAccessToken(user.id, oauthKey)
+      const userInfo = await oauthProvider.getUserInfo(accessToken)
+
+      if (!userInfo.id) {
+        throw new Error(`[${provider} OAuth] Provider returned empty/missing user identity`)
+      }
+
+      const email = userInfo.email ?? userInfo.mail ?? undefined
+      const identityResult = await OAuthIdentityStore.upsert(user.id, oauthKey, userInfo.id, email)
+
+      if (identityResult.conflict) {
+        // Conflict: this provider account belongs to a different user.
+        // Disconnect the tokens we just stored — best-effort, but the conflict
+        // error is returned regardless of whether disconnect succeeds.
+        console.error(`[${provider} OAuth] Account conflict for user ${user.id}`, {
+          provider: oauthKey,
+          conflictingUserId: identityResult.existingUserId,
+        })
+
+        try {
+          await oauthManager.disconnect(user.id, oauthKey)
+        } catch (disconnectError) {
+          // Log but still return conflict error — never swallow the conflict
+          errorLogger.oauth(`Failed to disconnect conflicting tokens for ${provider}`, {
+            provider: oauthKey,
+            userId: user.id,
+            error: disconnectError instanceof Error ? disconnectError.message : String(disconnectError),
+          })
+        }
+
+        return {
+          type: "redirect",
+          url: buildOAuthCallbackRedirectUrl(
+            baseUrl,
+            createOAuthErrorPayload({
+              integration: provider,
+              errorCode: ErrorCodes.OAUTH_ACCOUNT_CONFLICT,
+              message: `This ${provider} account is already connected to a different user.`,
+              provider,
+            }),
+          ),
+        }
+      }
+    }
 
     console.log(`[${provider} OAuth] Successfully connected user ${user.id}`)
     resetRateLimit(req, provider)

@@ -5,7 +5,7 @@
  */
 
 import { oauthAudit } from "./audit"
-import { isRefreshable, isRevocable, isUserInfoProvider } from "./providers/base"
+import { isExternalIdentityProvider, isRefreshable, isRevocable, isUserInfoProvider } from "./providers/base"
 import { getProvider } from "./providers/index"
 import { createRefreshLockManager, type IRefreshLockManager } from "./refresh-lock"
 import { LockboxAdapter, type LockboxAdapterConfig } from "./storage"
@@ -839,6 +839,7 @@ export {
 export { generatePKCEChallenge, type PKCEChallenge, verifyPKCEChallenge } from "./pkce"
 // Extended provider options
 export type {
+  ExternalIdentityProvider,
   OAuthProvider,
   OAuthProviderCore,
   OAuthRefreshable,
@@ -846,7 +847,13 @@ export type {
   PKCEOptions,
   TokenExchangeOptions,
 } from "./providers/base"
-export { isRefreshable, isRevocable, isUserInfoProvider, type UserInfoProvider } from "./providers/base"
+export {
+  isExternalIdentityProvider,
+  isRefreshable,
+  isRevocable,
+  isUserInfoProvider,
+  type UserInfoProvider,
+} from "./providers/base"
 export { GitHubProvider } from "./providers/github"
 export { type GoogleAuthOptions, GoogleProvider, type GoogleUserInfo } from "./providers/google"
 export { getProvider, hasProvider, listProviders, registerProvider } from "./providers/index"
