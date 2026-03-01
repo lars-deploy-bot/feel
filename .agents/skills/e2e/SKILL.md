@@ -18,7 +18,7 @@ If a test can pass with fake behavior, it is not E2E.
 1. **No endpoint mocks in E2E specs.**
 2. **No `page.route`/`route.fulfill` for product APIs.**
 3. **No hand-written response shapes when production contracts exist.**
-4. **No `as any`, no contract casts, no test-local duplicate API interfaces.**
+4. **No `as any`, no contract casts, no test-local duplicate API contracts.**
 5. **No internal-state assertions (localStorage/sessionStorage/Zustand) unless persistence itself is the feature under test.**
 6. **No `waitForTimeout` as readiness synchronization.**
 

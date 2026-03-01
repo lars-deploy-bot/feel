@@ -20,7 +20,7 @@ Use this before opening a PR.
 
 - [ ] Requests use `validateRequest` + `Req<...>` where applicable.
 - [ ] Responses are parsed with shared schema/type (`apiSchemas...res.parse` or shared zod schema).
-- [ ] No `as any`, no contract casts, no duplicate API interfaces.
+- [ ] No `as any`, no contract casts, no duplicate API contracts.
 
 ## Assertions
 
