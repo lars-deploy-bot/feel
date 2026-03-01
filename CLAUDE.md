@@ -8,7 +8,7 @@ This repo is deployed on two servers. Check which one you're on:
 
 | | **Server 1 (alive.best)** | **Server 2 (sonno.tech)** |
 |---|---|---|
-| **IP** | 65.109.137.38 | 95.217.89.48 |
+| **IP** | 138.201.56.93 | 95.217.89.48 |
 | **Domains** | `alive.best`, `*.alive.best` | `sonno.tech`, `*.sonno.tech` |
 | **Production** | `app.alive.best` (port 9000) | `sonno.tech` (port 9000) |
 | **Staging** | `staging.alive.best` (port 8998) | `staging.sonno.tech` (port 8998) |
