@@ -11,7 +11,10 @@
 import net from "node:net"
 import { getRedisUrl } from "@webalive/env/server"
 import { createRedisClient } from "@webalive/redis"
-import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
+
+// Undo the global mock from tests/setup.ts — this test needs real Redis
+vi.unmock("@webalive/redis")
 
 // Skip these tests when Redis is not available (CI or local without Redis)
 const isCI = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true"
