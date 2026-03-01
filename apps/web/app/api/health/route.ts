@@ -1,19 +1,15 @@
 /**
  * Health Check Endpoint
  *
- * Provides comprehensive health status for monitoring and alerting.
- * Checks connectivity to all critical dependencies.
+ * Two-tier health check: public (shallow) and authenticated (deep).
  *
- * GET /api/health - Returns health status of all services
+ * GET /api/health
  *
- * Response format:
- * {
- *   status: "healthy" | "degraded" | "unhealthy",
- *   services: { redis: {...}, database: {...} },
- *   system: { uptime: number, memory: {...} },
- *   timestamp: string,
- *   responseTimeMs: number
- * }
+ * Public response (unauthenticated):
+ *   { status, timestamp, responseTimeMs }
+ *
+ * Deep response (superadmin session or X-Internal-Secret header):
+ *   { status, build, services, system, timestamp, responseTimeMs }
  */
 
 import { existsSync, readFileSync } from "node:fs"
@@ -22,6 +18,8 @@ import * as Sentry from "@sentry/nextjs"
 import { env, getRedisUrl } from "@webalive/env/server"
 import { createRedisClient } from "@webalive/redis"
 import { PATHS } from "@webalive/shared"
+import { getSessionUser } from "@/features/auth/lib/auth"
+import { timingSafeCompare } from "@/lib/auth/timing-safe"
 import { getSupabaseCredentials } from "@/lib/env/server"
 
 // Read build info at startup (file is generated at build time)
@@ -61,8 +59,13 @@ interface ServiceHealth {
   details?: Record<string, unknown>
 }
 
-interface HealthResponse {
+interface PublicHealthResponse {
   status: OverallStatus
+  timestamp: string
+  responseTimeMs: number
+}
+
+interface DeepHealthResponse extends PublicHealthResponse {
   build: {
     commit: string
     time: string
@@ -80,8 +83,33 @@ interface HealthResponse {
     }
     nodeVersion: string
   }
-  timestamp: string
-  responseTimeMs: number
+}
+
+type HealthResponse = PublicHealthResponse | DeepHealthResponse
+
+/**
+ * Check if the caller is authorized for the deep health response.
+ * Superadmin session or valid X-Internal-Secret header.
+ */
+async function isAuthorizedForDeepHealth(req: Request): Promise<boolean> {
+  // Check X-Internal-Secret header first (cheaper, no DB/cookie parsing)
+  const secret = req.headers.get("X-Internal-Secret")
+  const expectedSecret = process.env.JWT_SECRET
+  if (secret && expectedSecret && timingSafeCompare(secret, expectedSecret)) {
+    return true
+  }
+
+  // Check superadmin session
+  try {
+    const user = await getSessionUser()
+    if (user?.isSuperadmin) {
+      return true
+    }
+  } catch (_err) {
+    // Auth failure = not authorized for deep health, but endpoint still works
+  }
+
+  return false
 }
 
 // Singleton Redis client for health checks (reuse connection)
@@ -256,7 +284,7 @@ function determineOverallStatus(redis: ServiceHealth, database: ServiceHealth): 
   return "degraded"
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   const start = performance.now()
 
   // Check all services in parallel
@@ -264,24 +292,24 @@ export async function GET() {
 
   const responseTimeMs = Math.round(performance.now() - start)
   const status = determineOverallStatus(redis, database)
-
-  const response: HealthResponse = {
-    status,
-    build: {
-      commit: buildInfo.commit,
-      time: buildInfo.buildTime,
-    },
-    services: {
-      redis,
-      database,
-    },
-    system: getSystemInfo(),
-    timestamp: new Date().toISOString(),
-    responseTimeMs,
-  }
-
-  // Return 503 if unhealthy (useful for load balancers)
   const httpStatus = status === "unhealthy" ? 503 : 200
+
+  const isDeep = await isAuthorizedForDeepHealth(req)
+
+  const response: HealthResponse = isDeep
+    ? {
+        status,
+        build: { commit: buildInfo.commit, time: buildInfo.buildTime },
+        services: { redis, database },
+        system: getSystemInfo(),
+        timestamp: new Date().toISOString(),
+        responseTimeMs,
+      }
+    : {
+        status,
+        timestamp: new Date().toISOString(),
+        responseTimeMs,
+      }
 
   return Response.json(response, {
     status: httpStatus,

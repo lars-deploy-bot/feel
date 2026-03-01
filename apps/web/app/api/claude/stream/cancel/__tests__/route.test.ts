@@ -1,4 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+// Mock Redis-related modules so cancel-intent-registry uses in-memory fallback
+vi.mock("@webalive/env/server", () => ({
+  getRedisUrl: () => null,
+}))
+
 import * as auth from "@/features/auth/lib/auth"
 import { tabKey } from "@/features/auth/lib/sessionStore"
 import { clearAllCancelIntents, hasCancelIntent, hasCancelIntentByRequestId } from "@/lib/stream/cancel-intent-registry"

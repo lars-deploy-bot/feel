@@ -1,4 +1,10 @@
 import { describe, expect, test, vi } from "vitest"
+
+// Mock stream-buffer to prevent Redis connection during completeStreamBuffer calls
+vi.mock("@/lib/stream/stream-buffer", () => ({
+  completeStreamBuffer: vi.fn(async () => undefined),
+}))
+
 import { isConversationLocked, tabKey, tryLockConversation, unlockConversation } from "@/features/auth/lib/sessionStore"
 import {
   cancelStream,
