@@ -1,15 +1,15 @@
+import path from "node:path"
 import { serve } from "@hono/node-server"
 import { createClient } from "@supabase/supabase-js"
-import { Hono } from "hono"
 import { config } from "dotenv"
-import path from "node:path"
+import { Hono } from "hono"
 
 // Load .env from the email-bot directory (suppress dotenv debug output)
 config({ path: path.join(import.meta.dirname, "..", ".env"), debug: false })
 
-import { registerOwnAddress } from "./loop-guard.js"
-import { startWatcher, stopAllWatchers, watcherStatus } from "./imap-watcher.js"
 import { closeDb } from "./conversation.js"
+import { startWatcher, stopAllWatchers, watcherStatus } from "./imap-watcher.js"
+import { registerOwnAddress } from "./loop-guard.js"
 import type { EmailJob } from "./types.js"
 
 const HEALTH_PORT = Number(process.env.HEALTH_PORT ?? "5071")

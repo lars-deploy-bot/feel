@@ -16,6 +16,7 @@
 
 import fs from "node:fs/promises"
 import path from "node:path"
+import type { TerminalRunStatus } from "./types"
 
 // ============================================
 // Types
@@ -29,7 +30,7 @@ export type RunLogEntry = {
   /** Action type */
   action: "started" | "finished"
   /** Status (only for finished) */
-  status?: "success" | "failure" | "skipped"
+  status?: TerminalRunStatus
   /** Error message (only for failure) */
   error?: string
   /** Summary of what was done */
@@ -129,7 +130,7 @@ export async function readRunLog(
     /** Filter by action type */
     action?: "started" | "finished"
     /** Filter by status */
-    status?: "success" | "failure" | "skipped"
+    status?: TerminalRunStatus
   },
   config?: RunLogConfig,
 ): Promise<RunLogEntry[]> {

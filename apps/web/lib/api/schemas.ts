@@ -1,42 +1,48 @@
 import type { EndpointSchema, Req as PkgReq, Res as PkgRes, ResPayload as PkgResPayload } from "@alive-brug/alrighty"
+import { AppConstants, type TriggerType } from "@webalive/database"
 import { CLAUDE_MODELS, ORG_ROLES, RESERVED_USER_ENV_KEYS } from "@webalive/shared"
 import { z } from "zod"
 import { RESERVED_SLUGS } from "@/features/deployment/types/guards"
 import { CANCEL_ENDPOINT_STATUS_VALUES } from "@/lib/stream/cancel-status"
 import { OptionalWorktreeSchema, OptionalWorktreeSlugSchema } from "@/types/guards/worktree-schemas"
 
+// Re-export enum types so existing importers don't break
+export type { ActionType, TriggerType } from "@webalive/database"
+
 /** Zod schema for valid Claude model IDs, derived from the shared CLAUDE_MODELS constant */
 const ClaudeModelSchema = z.enum(Object.values(CLAUDE_MODELS) as [string, ...string[]])
 
 /**
- * Automation trigger types — single source of truth.
+ * Automation Zod schemas — all derived from DB-generated constants.
  *
- * Schedule triggers: "cron" (recurring) | "one-time" (run once at a specific time)
- * Event triggers:    "email" (incoming email) | "webhook" (HTTP call)
- *
- * A job is either schedule-based or event-based, never both.
+ * Trigger categorization (schedule vs event) is business logic maintained here,
+ * but validated against the DB enum via `satisfies`.
  */
-const SCHEDULE_TRIGGER_TYPES = ["cron", "one-time"] as const
-const EVENT_TRIGGER_TYPES = ["email", "webhook"] as const
-const ALL_TRIGGER_TYPES = [...SCHEDULE_TRIGGER_TYPES, ...EVENT_TRIGGER_TYPES] as const
+const TriggerTypeSchema = z.enum(AppConstants.app.Enums.automation_trigger_type)
 
-export type TriggerType = (typeof ALL_TRIGGER_TYPES)[number]
+/** Schedule triggers: "cron" (recurring) | "one-time" (run once at a specific time) */
+const SCHEDULE_TRIGGER_TYPES = ["cron", "one-time"] as const satisfies readonly TriggerType[]
 export type ScheduleTriggerType = (typeof SCHEDULE_TRIGGER_TYPES)[number]
+const SCHEDULE_TRIGGER_TYPE_SET: ReadonlySet<TriggerType> = new Set(SCHEDULE_TRIGGER_TYPES)
+
+/** Event triggers: "email" (incoming email) | "webhook" (HTTP call) */
+const EVENT_TRIGGER_TYPES = ["email", "webhook"] as const satisfies readonly TriggerType[]
 export type EventTriggerType = (typeof EVENT_TRIGGER_TYPES)[number]
 
-const TriggerTypeSchema = z.enum(ALL_TRIGGER_TYPES)
+export function isScheduleTrigger(t: TriggerType): t is ScheduleTriggerType {
+  return SCHEDULE_TRIGGER_TYPE_SET.has(t)
+}
+
+/** Action types (prompt, sync, publish) — derived from DB enum */
+const ActionTypeSchema = z.enum(AppConstants.app.Enums.automation_action_type)
 
 /** Job-level status (is the job idle, currently running, etc.) */
-const AutomationJobStatusSchema = z.enum(["idle", "running", "paused", "disabled"])
+const AutomationJobStatusSchema = z.enum(AppConstants.app.Enums.automation_job_status)
 export type AutomationJobStatus = z.infer<typeof AutomationJobStatusSchema>
 
 /** Per-run status (did the run succeed, fail, etc.) */
-const AutomationRunStatusSchema = z.enum(["pending", "running", "success", "failure", "skipped"])
+const AutomationRunStatusSchema = z.enum(AppConstants.app.Enums.automation_run_status)
 export type AutomationRunStatus = z.infer<typeof AutomationRunStatusSchema>
-
-export function isScheduleTrigger(t: TriggerType): t is ScheduleTriggerType {
-  return (SCHEDULE_TRIGGER_TYPES as readonly string[]).includes(t)
-}
 
 // ============================================================================
 // STANDARDIZED RESPONSE ENVELOPES
@@ -676,7 +682,7 @@ export const apiSchemas = {
           cron_schedule: z.string().nullable(),
           cron_timezone: z.string().nullable(),
           run_at: z.string().nullable(),
-          action_type: z.enum(["prompt", "sync", "publish"]),
+          action_type: ActionTypeSchema,
           action_prompt: z.string().nullable(),
           action_source: z.string().nullable(),
           action_target_page: z.string().nullable(),
@@ -709,7 +715,7 @@ export const apiSchemas = {
         site_id: z.string().min(1),
         name: z.string().min(1),
         trigger_type: TriggerTypeSchema,
-        action_type: z.enum(["prompt", "sync", "publish"]),
+        action_type: ActionTypeSchema,
         description: z.string().nullable().optional(),
         cron_schedule: z.string().nullable().optional(),
         cron_timezone: z.string().nullable().optional(),
@@ -735,7 +741,7 @@ export const apiSchemas = {
         cron_schedule: z.string().nullable(),
         cron_timezone: z.string().nullable(),
         run_at: z.string().nullable(),
-        action_type: z.enum(["prompt", "sync", "publish"]),
+        action_type: ActionTypeSchema,
         action_prompt: z.string().nullable(),
         action_source: z.string().nullable(),
         action_target_page: z.string().nullable(),

@@ -24,7 +24,7 @@ interface JobOwnershipRow {
 /**
  * GET /api/automations/[id]/runs/[runId] - Get a specific run with full conversation log
  */
-export async function GET(_req: NextRequest, context: RouteContext) {
+export async function GET(req: NextRequest, context: RouteContext) {
   try {
     const user = await getSessionUser()
     if (!user) {
@@ -63,12 +63,17 @@ export async function GET(_req: NextRequest, context: RouteContext) {
       })
     }
 
-    // Load messages from file storage if available, fall back to inline DB blob
+    const includeMessages = req.nextUrl.searchParams.get("includeMessages") !== "false"
+
+    // Load messages from file storage if available, fall back to inline DB blob.
+    // Polling calls this endpoint with includeMessages=false to avoid large payloads.
     let messages: unknown[] = []
-    if (run.messages_uri) {
-      messages = (await readMessagesFromUri(run.messages_uri)) ?? []
-    } else if (Array.isArray(run.messages)) {
-      messages = run.messages
+    if (includeMessages) {
+      if (run.messages_uri) {
+        messages = (await readMessagesFromUri(run.messages_uri)) ?? []
+      } else if (Array.isArray(run.messages)) {
+        messages = run.messages
+      }
     }
 
     return NextResponse.json({

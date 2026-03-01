@@ -3,6 +3,7 @@ import { isOrgRole, ORG_ROLES, type OrgRole, type OrgRoleMap } from "@webalive/s
 import { importJWK, jwtVerify, SignJWT } from "jose"
 import type { Secret } from "jsonwebtoken"
 import jwt from "jsonwebtoken"
+import { isRecord } from "@/lib/utils"
 
 const { JsonWebTokenError, TokenExpiredError, sign: signHS256, verify: verifyHS256 } = jwt
 
@@ -139,10 +140,6 @@ export function isSessionOrgRole(role: unknown): role is SessionOrgRole {
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim() !== ""
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
 function normalizeScopes(scopes: SessionScope[] | undefined): SessionScope[] {

@@ -1,5 +1,5 @@
-import nodemailer from "nodemailer"
 import { randomUUID } from "node:crypto"
+import nodemailer from "nodemailer"
 
 // Read env lazily — dotenv loads after static imports resolve
 function getSmtpHost(): string {

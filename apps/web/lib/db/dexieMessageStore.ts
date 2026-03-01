@@ -23,6 +23,7 @@ import Dexie from "dexie"
 import { create } from "zustand"
 import type { UIMessage } from "@/features/chat/lib/message-parser"
 import { useTabDataStore } from "@/lib/stores/tabDataStore"
+import { isRecord } from "@/lib/utils"
 import {
   fetchConversations,
   fetchTabMessages,
@@ -60,7 +61,10 @@ interface DexieMessageStoreState {
   currentTabGroupId: string | null
   currentTabId: string | null
   currentWorkspace: string | null
+  /** @deprecated Unused — per-tab loading is tracked via loadingTabs instead */
   isLoading: boolean
+  /** Tabs currently fetching messages from server (deduplication guard) */
+  loadingTabs: ReadonlySet<string>
   isSyncing: boolean
 
   // Streaming state (per-tab, in-memory only - NOT persisted)
@@ -172,10 +176,6 @@ function enqueueTabWrite(tabId: string, fn: () => Promise<void>): Promise<void> 
   return next
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null
-}
-
 /**
  * Get the next sequence number for a tab.
  * Messages are ordered by seq, not timestamp, for reliable ordering.
@@ -243,6 +243,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
   currentTabId: null,
   currentWorkspace: null,
   isLoading: false,
+  loadingTabs: new Set<string>(),
   isSyncing: false,
   activeStreamByTab: {},
   streamingBuffers: {},
@@ -269,6 +270,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
       updatedAt: now,
       messageCount: 0,
       autoTitleSet: false,
+      source: "chat",
       pendingSync: true,
     }
 
@@ -343,6 +345,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
             updatedAt: now,
             messageCount: 0,
             autoTitleSet: false,
+            source: "chat",
             pendingSync: true,
           }
           await db.conversations.add(newConvo)
@@ -829,14 +832,20 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
   },
 
   loadTabMessages: async tabId => {
-    const { session } = get()
+    const { session, loadingTabs } = get()
     if (!session) return
 
-    set({ isLoading: true })
+    // Already loading this tab — fetchTabMessages deduplicates at the network
+    // level too, but skipping here avoids unnecessary state churn.
+    if (loadingTabs.has(tabId)) return
+
+    set({ loadingTabs: new Set([...loadingTabs, tabId]), isLoading: true })
     try {
       await fetchTabMessages(tabId, session.userId)
     } finally {
-      set({ isLoading: false })
+      const updated = new Set(get().loadingTabs)
+      updated.delete(tabId)
+      set({ loadingTabs: updated, isLoading: updated.size > 0 })
     }
   },
 

@@ -101,6 +101,7 @@ export {
   isRetryableNetworkError,
   isTransientNetworkError,
 } from "./errors.js"
+export { type AutomationExecutionGate, getAutomationExecutionGate } from "./execution-guard.js"
 export {
   buildSafeExternalPrompt,
   // External content security (prompt injection protection)
@@ -232,6 +233,7 @@ export {
   type TokenRequest,
   type TokenResponse,
 } from "./stream-tokens.js"
+export { SUPER_TEMPLATE_CATEGORIES } from "./super-template-categories.js"
 export {
   getTemplateById,
   getTemplateIdsInline,

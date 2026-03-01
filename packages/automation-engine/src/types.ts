@@ -5,7 +5,9 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js"
-import type { AppDatabase, Json } from "@webalive/database"
+import type { AppDatabase, Json, TerminalRunStatus } from "@webalive/database"
+
+export type { TerminalRunStatus }
 
 // =============================================================================
 // Database Types
@@ -16,6 +18,9 @@ export type AutomationJob = AppDatabase["app"]["Tables"]["automation_jobs"]["Row
 
 /** Insert shape for app.messages — derived from generated DB types */
 export type MessageInsert = AppDatabase["app"]["Tables"]["messages"]["Insert"]
+
+/** Who triggered a run — scheduler (cron), manual (user), or internal (system). */
+export type TriggeredBy = "scheduler" | "manual" | "internal"
 
 // =============================================================================
 // Message Persistence Types
@@ -43,7 +48,7 @@ export interface RunContext {
   /** Timeout in seconds from job config */
   timeoutSeconds: number
   /** Who triggered this run */
-  triggeredBy: "scheduler" | "manual" | "internal"
+  triggeredBy: TriggeredBy
   /** Heartbeat interval handle (cleared on finish) */
   heartbeatInterval: ReturnType<typeof setInterval> | null
   /** Full prompt override (e.g. email content with conversation history) */
@@ -66,7 +71,7 @@ export interface RunContext {
 
 export interface ClaimOptions {
   supabase: AppClient
-  triggeredBy: "scheduler" | "manual" | "internal"
+  triggeredBy: TriggeredBy
   serverId?: string
   /** Default lease duration in seconds (default: job timeout + 120s buffer) */
   leaseDurationSeconds?: number
@@ -76,11 +81,11 @@ export interface FinishHooks {
   /** Called when a job gets permanently disabled (max retries exceeded for non-cron, or cron with no next run) */
   onJobDisabled?: (ctx: RunContext, error?: string) => Promise<void> | void
   /** Called after every finish (for SSE broadcasts, logging, etc.) */
-  onJobFinished?: (ctx: RunContext, status: "success" | "failure" | "skipped", summary?: string) => Promise<void> | void
+  onJobFinished?: (ctx: RunContext, status: TerminalRunStatus, summary?: string) => Promise<void> | void
 }
 
 export interface FinishOptions {
-  status: "success" | "failure" | "skipped"
+  status: TerminalRunStatus
   durationMs: number
   error?: string
   summary?: string
@@ -104,7 +109,7 @@ export type CronEvent = {
   action: "started" | "finished" | "error" | "scheduled"
   runAtMs?: number
   durationMs?: number
-  status?: "success" | "failure" | "skipped"
+  status?: TerminalRunStatus
   error?: string
   summary?: string
   nextRunAtMs?: number
