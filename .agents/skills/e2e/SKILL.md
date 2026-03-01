@@ -1,6 +1,6 @@
 ---
 name: e2e
-description: Write strict zero-mock E2E tests: real backend flows only, shared type reuse only, and no hand-written mock payloads.
+description: "Write strict zero-mock E2E tests: real backend flows only, shared type reuse only, and no hand-written mock payloads."
 ---
 
 # E2E (Zero-Mock, Zero-Drift Protocol)
