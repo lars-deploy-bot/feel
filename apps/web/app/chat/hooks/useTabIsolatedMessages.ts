@@ -1,7 +1,8 @@
 "use client"
 
 import { useActiveSession } from "@/features/chat/hooks/useActiveSession"
-import { useDexieSession } from "@/lib/db/dexieMessageStore"
+import { useAutomationTranscriptPoll } from "@/features/chat/hooks/useAutomationTranscriptPoll"
+import { useDexieConversation, useDexieSession } from "@/lib/db/dexieMessageStore"
 import { useTabMessages } from "@/lib/db/useTabMessages"
 
 interface UseTabIsolatedMessagesOptions {
@@ -23,10 +24,23 @@ export function useTabIsolatedMessages({ workspace }: UseTabIsolatedMessagesOpti
   // Single source of truth for active session
   const session = useActiveSession(workspace)
   const dexieSession = useDexieSession()
+  const userId = dexieSession?.userId ?? null
 
   // Messages are fetched for the active session's tabId
   // If no active session, no messages are shown
-  const messages = useTabMessages(session.tabId, dexieSession?.userId ?? null)
+  const messages = useTabMessages(session.tabId, userId)
+
+  // Look up the current conversation to check its source
+  const conversation = useDexieConversation(session.tabGroupId, userId)
+
+  // Poll for new messages when viewing an automation run transcript.
+  // Automation runs write to app.messages directly (not via Redis stream buffer),
+  // so useStreamReconnect doesn't apply — we poll fetchTabMessages() instead.
+  useAutomationTranscriptPoll({
+    isAutomationRun: conversation?.source === "automation_run",
+    tabId: session.tabId,
+    userId,
+  })
 
   return {
     messages,

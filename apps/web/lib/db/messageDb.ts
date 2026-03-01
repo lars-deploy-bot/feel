@@ -58,6 +58,9 @@ export interface DbConversation {
   lastMessageAt?: number
   firstUserMessageId?: string
   autoTitleSet?: boolean
+  // Conversation source (chat vs automation_run)
+  source?: "chat" | "automation_run"
+  sourceMetadata?: Record<string, unknown>
   // Soft delete (NEVER hard delete - causes multi-device desync)
   deletedAt?: number
   archivedAt?: number

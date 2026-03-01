@@ -51,6 +51,8 @@ export async function GET(request: NextRequest) {
         updated_at,
         deleted_at,
         archived_at,
+        source,
+        source_metadata,
         conversation_tabs (
           tab_id,
           conversation_id,
@@ -88,6 +90,8 @@ export async function GET(request: NextRequest) {
       updatedAt: new Date(c.updated_at).getTime(),
       deletedAt: c.deleted_at ? new Date(c.deleted_at).getTime() : null,
       archivedAt: c.archived_at ? new Date(c.archived_at).getTime() : null,
+      source: c.source ?? "chat",
+      sourceMetadata: c.source_metadata ?? null,
       tabs: (c.conversation_tabs || []).map(
         (t: {
           tab_id: string

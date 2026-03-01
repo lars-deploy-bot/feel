@@ -462,6 +462,8 @@ export async function fetchConversations(workspace: string, userId: string, _org
         lastMessageAt: convo.lastMessageAt,
         firstUserMessageId: convo.firstUserMessageId,
         autoTitleSet: convo.autoTitleSet,
+        source: convo.source ?? "chat",
+        sourceMetadata: convo.sourceMetadata ?? undefined,
         deletedAt: convo.deletedAt,
         archivedAt: convo.archivedAt,
         syncedAt: Date.now(),
