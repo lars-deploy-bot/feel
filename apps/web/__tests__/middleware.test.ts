@@ -90,3 +90,67 @@ describe("request-id middleware", () => {
     expect(injected!.get(REQUEST_ID_HEADER)).toBe(responseId)
   })
 })
+
+describe("security headers", () => {
+  it("sets Content-Security-Policy-Report-Only on responses", () => {
+    const req = buildRequest("http://localhost/chat")
+    const res = middleware(req)
+
+    const csp = res.headers.get("content-security-policy-report-only")
+    expect(csp).toBeTruthy()
+    expect(csp).toContain("default-src 'self'")
+    expect(csp).toContain("script-src 'self' 'unsafe-inline'")
+    expect(csp).toContain("style-src 'self' 'unsafe-inline'")
+    expect(csp).toContain("frame-ancestors 'none'")
+  })
+
+  it("includes connect-src with wss: for streaming", () => {
+    const req = buildRequest("http://localhost/chat")
+    const res = middleware(req)
+
+    const csp = res.headers.get("content-security-policy-report-only")
+    expect(csp).toContain("connect-src 'self' wss: https:")
+  })
+
+  it("derives frame-src from NEXT_PUBLIC_PREVIEW_BASE", () => {
+    const originalEnv = process.env.NEXT_PUBLIC_PREVIEW_BASE
+    process.env.NEXT_PUBLIC_PREVIEW_BASE = "example.com"
+    try {
+      const req = buildRequest("http://localhost/chat")
+      const res = middleware(req)
+
+      const csp = res.headers.get("content-security-policy-report-only")
+      expect(csp).toContain("frame-src 'self' *.example.com")
+    } finally {
+      if (originalEnv !== undefined) {
+        process.env.NEXT_PUBLIC_PREVIEW_BASE = originalEnv
+      } else {
+        delete process.env.NEXT_PUBLIC_PREVIEW_BASE
+      }
+    }
+  })
+
+  it("falls back to self-only frame-src when NEXT_PUBLIC_PREVIEW_BASE is unset", () => {
+    const originalEnv = process.env.NEXT_PUBLIC_PREVIEW_BASE
+    delete process.env.NEXT_PUBLIC_PREVIEW_BASE
+    try {
+      const req = buildRequest("http://localhost/chat")
+      const res = middleware(req)
+
+      const csp = res.headers.get("content-security-policy-report-only")
+      expect(csp).toContain("frame-src 'self'")
+      expect(csp).not.toContain("frame-src 'self' *.")
+    } finally {
+      if (originalEnv !== undefined) {
+        process.env.NEXT_PUBLIC_PREVIEW_BASE = originalEnv
+      }
+    }
+  })
+
+  it("does not set CSP on API routes", () => {
+    const req = buildRequest("http://localhost/api/user")
+    const res = middleware(req)
+
+    expect(res.headers.get("content-security-policy-report-only")).toBeNull()
+  })
+})

@@ -1,14 +1,44 @@
 /**
- * Next.js Middleware — Request ID tracing for /api/*
+ * Next.js Middleware — Security headers + Request ID tracing
  *
- * Guarantees every API response carries X-Request-Id.
- * - Preserves an incoming X-Request-Id if the caller supplies one.
- * - Generates a new UUIDv4 otherwise.
- * - Exposes the header to browser JS via Access-Control-Expose-Headers.
+ * 1. Request ID: Guarantees every response carries X-Request-Id.
+ *    - Preserves an incoming X-Request-Id if the caller supplies one.
+ *    - Generates a new UUIDv4 otherwise.
+ *    - Exposes the header to browser JS via Access-Control-Expose-Headers.
+ *
+ * 2. CSP (Report-Only): Sets Content-Security-Policy-Report-Only on page
+ *    responses to baseline what the app needs before enforcing.
+ *    Only applied to document routes — CSP is meaningless on API JSON.
  */
 
 import { type NextRequest, NextResponse } from "next/server"
 import { generateRequestId, REQUEST_ID_HEADER } from "@/lib/request-id"
+
+/**
+ * Build Content-Security-Policy-Report-Only directives.
+ *
+ * Phase 1: permissive policy with 'unsafe-inline' for scripts/styles.
+ * Next.js RSC hydration injects inline scripts (self.__next_f.push(...))
+ * and next-themes uses inline style attributes, so strict CSP requires
+ * nonce support (Phase 2, separate issue).
+ *
+ * frame-src is derived from NEXT_PUBLIC_PREVIEW_BASE to avoid hardcoding domains.
+ */
+function buildCspDirectives(): string {
+  const previewBase = process.env.NEXT_PUBLIC_PREVIEW_BASE
+  const frameSrc = previewBase ? `'self' *.${previewBase}` : "'self'"
+
+  return [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "connect-src 'self' wss: https:",
+    "font-src 'self'",
+    `frame-src ${frameSrc}`,
+    "frame-ancestors 'none'",
+  ].join("; ")
+}
 
 export function middleware(request: NextRequest) {
   const requestId = request.headers.get(REQUEST_ID_HEADER) || generateRequestId()
@@ -23,6 +53,12 @@ export function middleware(request: NextRequest) {
 
   // Attach to the outgoing response so clients can correlate.
   response.headers.set(REQUEST_ID_HEADER, requestId)
+
+  // CSP Report-Only on page routes only — meaningless on API JSON responses.
+  const pathname = new URL(request.url).pathname
+  if (!pathname.startsWith("/api/")) {
+    response.headers.set("Content-Security-Policy-Report-Only", buildCspDirectives())
+  }
 
   // Merge with any existing expose list so we don't clobber other headers.
   const existing = response.headers.get("access-control-expose-headers")
@@ -40,10 +76,11 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Match all API routes EXCEPT upload endpoints.
-    // Next.js middleware buffers request bodies (default 10 MB limit),
-    // which truncates large file uploads and breaks multipart parsing.
-    // Upload routes don't need middleware — getRequestId() has a fallback.
+    // API routes — request-id tracing. Excludes upload endpoints because
+    // middleware buffers request bodies (default 10 MB limit), which
+    // truncates large uploads and breaks multipart parsing.
     "/api/((?!images/upload|files/upload|drive/upload).*)",
+    // Page routes — CSP + request-id. Excludes Next.js internals and static files.
+    "/((?!_next|api|favicon\\.ico).*)",
   ],
 }

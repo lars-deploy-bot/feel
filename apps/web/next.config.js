@@ -77,6 +77,7 @@ const nextConfig = {
   // Tests use ".next-test", dev/prod use ".next"
   distDir: process.env.PLAYWRIGHT_TEST ? ".next-test" : ".next",
   output: "standalone",
+  poweredByHeader: false,
   devIndicators: false,
   // Required for PostHog proxy rewrites to work correctly
   skipTrailingSlashRedirect: true,
