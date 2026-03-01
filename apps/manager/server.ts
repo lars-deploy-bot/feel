@@ -8,7 +8,7 @@ const server = Bun.serve({
   async fetch(req) {
     const url = new URL(req.url)
 
-    // Strip /manager-2 prefix if present (when accessed via Next.js rewrite)
+    // Caddy handle_path strips /manager-2 prefix, but handle direct access too
     let pathname = url.pathname
     if (pathname.startsWith("/manager-2")) {
       pathname = pathname.slice("/manager-2".length) || "/"
@@ -20,16 +20,7 @@ const server = Bun.serve({
       target.host = "localhost"
       target.port = "5080"
       target.pathname = pathname
-      const res = await fetch(new Request(target, req))
-      // Strip Transfer-Encoding to prevent double-chunked encoding
-      // (Next.js rewrite adds its own chunked encoding on top)
-      const headers = new Headers(res.headers)
-      headers.delete("Transfer-Encoding")
-      return new Response(res.body, {
-        status: res.status,
-        statusText: res.statusText,
-        headers,
-      })
+      return fetch(new Request(target, req))
     }
 
     // Try to serve the exact file from dist/

@@ -159,7 +159,7 @@ We're slowly decoupling from the Next.js monolith (`apps/web`) into a standalone
 
 **Dev / prod environments:**
 - **Dev**: `api` runs `bun --watch` on port 5080, `manager` runs Vite dev on 5090 (proxies `/api` → 5080). Start both separately.
-- **Prod**: `manager` builds to static files, `api` serves them + the API on port 5080 (single process). Caddy routes to it.
+- **Prod**: `manager` builds to static files served by `bun server.ts` on port 5090 (systemd: `alive-manager.service`), which proxies `/api` → `api` on port 5080. Caddy routes `app.alive.best/manager-2/*` directly to port 5090 (not through Next.js).
 
 ### Packages (Shared Libraries)
 
