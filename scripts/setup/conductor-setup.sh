@@ -76,6 +76,8 @@ ensure_env_var "NEXT_PUBLIC_SUPABASE_URL" "https://placeholder.supabase.co"
 ensure_env_var "NEXT_PUBLIC_SUPABASE_ANON_KEY" "eyJ.placeholder"
 ensure_env_var "JWT_SECRET" "local-dev-jwt-secret-change-me"
 ensure_env_var "LOCKBOX_MASTER_KEY" "0000000000000000000000000000000000000000000000000000000000000000"
+ensure_env_var "SENTRY_AUTH_TOKEN" "placeholder-local-dev"
+ensure_env_var "POSTHOG_PERSONAL_API_KEY" "placeholder-local-dev"
 
 cat <<EOF
 
