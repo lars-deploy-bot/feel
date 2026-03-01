@@ -203,7 +203,7 @@ describe("API Schema Type System", () => {
     it("should handle nullable response fields correctly", () => {
       type UserRes = Res<"user">
 
-      // User can be null
+      // User is non-nullable (401 returned for unauthenticated requests)
       expectTypeOf<UserRes>().toEqualTypeOf<{
         user: {
           id: string
@@ -213,7 +213,7 @@ describe("API Schema Type System", () => {
           isAdmin: boolean
           isSuperadmin: boolean
           enabledModels: string[]
-        } | null
+        }
       }>()
     })
   })
