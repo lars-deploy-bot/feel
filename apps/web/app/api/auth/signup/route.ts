@@ -7,12 +7,11 @@ import { handleBody, isHandleBodyError } from "@/lib/api/server"
 import { COOKIE_NAMES, getSessionCookieOptions } from "@/lib/auth/cookies"
 import { addCorsHeaders } from "@/lib/cors-utils"
 import { getUserDefaultOrgId } from "@/lib/deployment/org-resolver"
+import { env } from "@/lib/env"
 import { ErrorCodes } from "@/lib/error-codes"
 import { getRequestId } from "@/lib/request-id"
 import { createIamClient } from "@/lib/supabase/iam"
 import { hashPassword } from "@/types/guards/api"
-
-const SIGNUP_ACCESS_CODE = "supersecret"
 
 /**
  * POST /api/auth/signup
@@ -35,7 +34,7 @@ export async function POST(req: NextRequest) {
   const normalizedEmail = email.toLowerCase().trim()
   const displayName = name?.trim() || null
 
-  if (accessCode !== SIGNUP_ACCESS_CODE) {
+  if (accessCode !== env.SIGNUP_ACCESS_CODE) {
     return createCorsResponse(
       origin,
       {

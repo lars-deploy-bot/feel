@@ -15,6 +15,7 @@ process.env.SKIP_ENV_VALIDATION = "1" // Skip @t3-oss/env validation in tests
 // Mock security credentials for tests
 process.env.JWT_SECRET = process.env.JWT_SECRET || "test-jwt-secret-for-unit-tests-only-32chars"
 process.env.ALIVE_PASSCODE = process.env.ALIVE_PASSCODE || "test-passcode"
+process.env.SIGNUP_ACCESS_CODE = process.env.SIGNUP_ACCESS_CODE || "test-access-code"
 
 // Mock Supabase credentials for tests (server-side)
 process.env.SUPABASE_URL = process.env.SUPABASE_URL || "https://test.supabase.co"
