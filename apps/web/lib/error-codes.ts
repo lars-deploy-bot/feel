@@ -134,6 +134,7 @@ export const ErrorCodes = {
   OAUTH_ACCESS_DENIED: "OAUTH_ACCESS_DENIED",
   OAUTH_MISSING_REQUIRED_SCOPES: "OAUTH_MISSING_REQUIRED_SCOPES",
   OAUTH_PROVIDER_ERROR: "OAUTH_PROVIDER_ERROR",
+  OAUTH_ACCOUNT_CONFLICT: "OAUTH_ACCOUNT_CONFLICT",
   INTEGRATION_ERROR: "INTEGRATION_ERROR",
   INTEGRATION_NOT_CONNECTED: "INTEGRATION_NOT_CONNECTED",
   INTEGRATION_NOT_CONFIGURED: "INTEGRATION_NOT_CONFIGURED",
@@ -554,6 +555,11 @@ export function getErrorMessage(code: ErrorCode, details?: Record<string, any>):
       return details?.provider
         ? `${details.provider} returned an authorization error. Please try again.`
         : "The OAuth provider returned an authorization error. Please try again."
+
+    case ErrorCodes.OAUTH_ACCOUNT_CONFLICT:
+      return details?.provider
+        ? `This ${details.provider} account is already connected to a different user.`
+        : "This account is already connected to a different user."
 
     case ErrorCodes.INTEGRATION_ERROR:
       return details?.provider

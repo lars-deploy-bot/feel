@@ -60,7 +60,7 @@ async function parseOAuthRequest(req: NextRequest, params: Promise<{ provider: s
   }
 
   return {
-    provider: validation.provider!,
+    provider: validation.provider,
     code: searchParams.get("code"),
     state: searchParams.get("state"),
     error: searchParams.get("error"),

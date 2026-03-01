@@ -11,11 +11,9 @@ function isSupportedProvider(value: string): value is SupportedProvider {
   return false
 }
 
-export function validateProviderName(provider: unknown): {
-  valid: boolean
-  provider?: string
-  error?: string
-} {
+export type ProviderValidationResult = { valid: true; provider: string } | { valid: false; error: string }
+
+export function validateProviderName(provider: unknown): ProviderValidationResult {
   if (typeof provider !== "string") {
     return { valid: false, error: "Provider must be a string" }
   }

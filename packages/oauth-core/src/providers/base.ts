@@ -127,3 +127,23 @@ export interface UserInfoProvider {
 export function isUserInfoProvider(provider: OAuthProviderCore): provider is OAuthProviderCore & UserInfoProvider {
   return "getUserInfo" in provider && typeof provider.getUserInfo === "function"
 }
+
+/**
+ * External identity provider — can fetch the authenticated user's identity
+ * (provider user ID + email) for conflict detection.
+ *
+ * Implemented by Google and Linear. GitHub/Stripe don't expose getUserInfo
+ * and will naturally fail the type guard.
+ */
+export interface ExternalIdentityProvider {
+  getUserInfo(accessToken: string): Promise<{ id: string; email?: string | null; mail?: string | null }>
+}
+
+/**
+ * Type guard for providers that expose getUserInfo (external identity)
+ */
+export function isExternalIdentityProvider(
+  provider: OAuthProviderCore,
+): provider is OAuthProviderCore & ExternalIdentityProvider {
+  return "getUserInfo" in provider && typeof provider.getUserInfo === "function"
+}

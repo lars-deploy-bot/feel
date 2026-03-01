@@ -15,7 +15,7 @@ if (typeof window !== "undefined") {
 }
 
 import { createClient } from "@supabase/supabase-js"
-import type { AppDatabase, IamDatabase } from "@webalive/database"
+import type { AppDatabase, IamDatabase, PublicDatabase } from "@webalive/database"
 import { getSupabaseCredentials } from "@/lib/env/server"
 
 /**
@@ -37,5 +37,18 @@ export function createServiceIamClient() {
   const { url, key } = getSupabaseCredentials("service")
   return createClient<IamDatabase, "iam">(url, key, {
     db: { schema: "iam" },
+  })
+}
+
+/**
+ * Create a service-role Supabase client for the public schema.
+ * Used by OAuth stores (state lifecycle, identity conflict detection).
+ * No cookies, no RLS — for background tasks only.
+ */
+export function createServicePublicClient() {
+  const { url, key } = getSupabaseCredentials("service")
+  return createClient<PublicDatabase, "public">(url, key, {
+    auth: { autoRefreshToken: false, persistSession: false },
+    db: { schema: "public" },
   })
 }

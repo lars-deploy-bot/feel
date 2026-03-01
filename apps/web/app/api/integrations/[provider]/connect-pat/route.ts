@@ -87,7 +87,7 @@ export async function POST(
       })
     }
 
-    const provider = validation.provider!
+    const provider = validation.provider
 
     // 2. Check if provider supports PAT
     if (!providerSupportsPat(provider)) {
