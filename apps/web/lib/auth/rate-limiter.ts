@@ -5,6 +5,9 @@
  * Uses in-memory storage (should be Redis in production for multi-instance deployments)
  */
 
+const DEFAULT_WINDOW_MS = 15 * 60 * 1000 // 15 minutes
+const DEFAULT_BLOCK_MS = 15 * 60 * 1000 // 15 minutes
+
 interface RateLimitEntry {
   attempts: number
   firstAttempt: number
@@ -12,7 +15,7 @@ interface RateLimitEntry {
   blockedUntil?: number
 }
 
-class RateLimiter {
+export class RateLimiter {
   private attempts = new Map<string, RateLimitEntry>()
   private readonly maxAttempts: number
   private readonly windowMs: number
@@ -20,8 +23,8 @@ class RateLimiter {
 
   constructor(options: { maxAttempts?: number; windowMs?: number; blockDurationMs?: number } = {}) {
     this.maxAttempts = options.maxAttempts ?? 5
-    this.windowMs = options.windowMs ?? 15 * 60 * 1000 // 15 minutes
-    this.blockDurationMs = options.blockDurationMs ?? 15 * 60 * 1000 // 15 minutes
+    this.windowMs = options.windowMs ?? DEFAULT_WINDOW_MS
+    this.blockDurationMs = options.blockDurationMs ?? DEFAULT_BLOCK_MS
   }
 
   /**
@@ -111,42 +114,46 @@ class RateLimiter {
   }
 }
 
-// Singleton instance for manager login
-export const managerLoginRateLimiter = new RateLimiter({
+// Shared limiter for login endpoints (user login + manager login).
+// Keys are already namespaced (login:ip:…, login:email:…, manager-login:…)
+// so one instance with identical config is sufficient.
+export const loginRateLimiter = new RateLimiter({
   maxAttempts: 5,
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  blockDurationMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: DEFAULT_WINDOW_MS,
+  blockDurationMs: DEFAULT_BLOCK_MS,
 })
+
+/** @deprecated Use `loginRateLimiter` — same instance, keys are already namespaced. */
+export const managerLoginRateLimiter = loginRateLimiter
 
 // Singleton instance for OAuth initiation (looser - users may retry)
 export const oauthInitiationRateLimiter = new RateLimiter({
   maxAttempts: 20,
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  blockDurationMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: DEFAULT_WINDOW_MS,
+  blockDurationMs: DEFAULT_BLOCK_MS,
 })
 
-// Singleton instance for OAuth callbacks and disconnects (stricter - should succeed once)
+// Singleton instance for OAuth callbacks and disconnects
 export const oauthOperationRateLimiter = new RateLimiter({
   maxAttempts: 10,
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  blockDurationMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: DEFAULT_WINDOW_MS,
+  blockDurationMs: DEFAULT_BLOCK_MS,
 })
 
 // Singleton instance for email check endpoint (prevent email enumeration)
 export const emailCheckRateLimiter = new RateLimiter({
   maxAttempts: 15,
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  blockDurationMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: DEFAULT_WINDOW_MS,
+  blockDurationMs: DEFAULT_BLOCK_MS,
 })
+
+const ALL_LIMITERS = [loginRateLimiter, oauthInitiationRateLimiter, oauthOperationRateLimiter, emailCheckRateLimiter]
 
 // Cleanup old entries every 5 minutes
 if (typeof setInterval !== "undefined") {
   setInterval(
     () => {
-      managerLoginRateLimiter.cleanup()
-      oauthInitiationRateLimiter.cleanup()
-      oauthOperationRateLimiter.cleanup()
-      emailCheckRateLimiter.cleanup()
+      for (const limiter of ALL_LIMITERS) limiter.cleanup()
     },
     5 * 60 * 1000,
   )

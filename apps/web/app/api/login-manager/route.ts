@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createSessionToken, SESSION_SCOPES } from "@/features/auth/lib/jwt"
 import { createCorsErrorResponse, createCorsSuccessResponse } from "@/lib/api/responses"
+import { getClientIdentifier } from "@/lib/auth/client-identifier"
 import { COOKIE_NAMES, getSessionCookieOptions } from "@/lib/auth/cookies"
 import { managerLoginRateLimiter } from "@/lib/auth/rate-limiter"
 import { timingSafeCompare } from "@/lib/auth/timing-safe"
@@ -15,29 +16,16 @@ const ManagerLoginSchema = z.object({
   passcode: z.string().min(1).max(1000), // Max length to prevent DOS
 })
 
-/**
- * Get client identifier for rate limiting
- * Uses IP address or a fallback identifier
- */
-function getClientIdentifier(req: NextRequest): string {
-  // Try to get real IP from headers (considering proxies/CDN)
-  const forwardedFor = req.headers.get("x-forwarded-for")
-  const realIp = req.headers.get("x-real-ip")
-  const ip = forwardedFor?.split(",")[0] || realIp || req.headers.get("host") || "unknown"
-
-  return `manager-login:${ip}`
-}
-
 export async function POST(req: NextRequest) {
   const requestId = getRequestId(req)
   const origin = req.headers.get("origin")
   const host = req.headers.get("host") || undefined
-  const clientId = getClientIdentifier(req)
+  const clientId = getClientIdentifier(req, "manager-login")
 
   // Rate limiting check
   if (managerLoginRateLimiter.isRateLimited(clientId)) {
     const blockedTime = managerLoginRateLimiter.getBlockedTimeRemaining(clientId)
-    const minutesRemaining = Math.ceil(blockedTime / 1000 / 60)
+    const minutesRemaining = Math.max(1, Math.ceil(blockedTime / 1000 / 60))
 
     console.warn(`[Manager Login] Rate limited: ${clientId}`)
 

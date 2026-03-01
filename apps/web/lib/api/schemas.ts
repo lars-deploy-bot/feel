@@ -97,7 +97,7 @@ export const apiSchemas = {
   login: {
     req: z
       .object({
-        email: z.string().email(),
+        email: z.string().trim().toLowerCase().email(),
         password: z.string().min(1),
       })
       .brand<"LoginRequest">(),
