@@ -13,8 +13,8 @@
  */
 
 import { getRedisUrl } from "@webalive/env/server"
-import { isRecord } from "@/lib/utils"
 import { createRedisClient } from "@webalive/redis"
+import { isRecord } from "@/lib/utils"
 
 // ============================================================================
 // Types

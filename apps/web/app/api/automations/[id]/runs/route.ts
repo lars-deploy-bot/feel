@@ -5,11 +5,14 @@
  */
 
 import * as Sentry from "@sentry/nextjs"
+import type { AppDatabase } from "@webalive/database"
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { ErrorCodes } from "@/lib/error-codes"
 import { createRLSAppClient } from "@/lib/supabase/server-rls"
+
+type RunStatus = AppDatabase["app"]["Enums"]["automation_run_status"]
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -59,8 +62,7 @@ export async function GET(req: NextRequest, context: RouteContext) {
     const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "20", 10), 1), 100)
     const offset = Math.max(parseInt(searchParams.get("offset") || "0", 10), 0)
     const statusFilter = searchParams.get("status")
-    const validStatuses = ["pending", "running", "success", "failure", "skipped"] as const
-    type RunStatus = (typeof validStatuses)[number]
+    const validStatuses: readonly RunStatus[] = ["pending", "running", "success", "failure", "skipped"]
 
     // Build query
     let query = supabase

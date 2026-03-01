@@ -1,3 +1,4 @@
+import type { AppDatabase } from "@webalive/database"
 import { logError } from "@/lib/client-error-logger"
 
 export const POLL_INTERVAL_MS = 3_000
@@ -16,13 +17,21 @@ export const EMPTY_POLL_BACKOFF_THRESHOLD = 10
 /** Stop polling if run-status checks keep failing; prevents endless 3s loops. */
 export const STATUS_ERROR_CIRCUIT_BREAKER_THRESHOLD = 6
 
-type RunStatus = "pending" | "running" | "success" | "failure" | "skipped"
+type RunStatus = AppDatabase["app"]["Enums"]["automation_run_status"]
 export type RunActivity = "active" | "inactive" | "unknown"
 
 const ACTIVE_STATUSES: ReadonlySet<RunStatus> = new Set(["pending", "running"])
 
+const VALID_RUN_STATUSES: ReadonlySet<string> = new Set<RunStatus>([
+  "pending",
+  "running",
+  "success",
+  "failure",
+  "skipped",
+])
+
 function isRunStatus(value: unknown): value is RunStatus {
-  return value === "pending" || value === "running" || value === "success" || value === "failure" || value === "skipped"
+  return typeof value === "string" && VALID_RUN_STATUSES.has(value)
 }
 
 interface RunDetailsResponse {
