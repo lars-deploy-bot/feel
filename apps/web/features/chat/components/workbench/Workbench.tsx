@@ -1,5 +1,5 @@
 "use client"
-import { SUPERADMIN } from "@webalive/shared"
+import { SUPERADMIN_WORKSPACE_NAME } from "@webalive/shared/constants"
 import { Activity, Code, ExternalLink, Globe, RotateCw, Terminal, X } from "lucide-react"
 import { useCallback, useEffect, useRef } from "react"
 import { useWorkbenchContext, type WorkbenchView } from "@/features/chat/lib/workbench-context"
@@ -19,7 +19,7 @@ import { WorkbenchTerminal } from "./WorkbenchTerminal"
 
 export function Workbench() {
   const { workspace, worktree } = useWorkspace({ allowEmpty: true })
-  const isSuperadminWorkspace = workspace === SUPERADMIN.WORKSPACE_NAME
+  const isSuperadminWorkspace = workspace === SUPERADMIN_WORKSPACE_NAME
   const { workbench, setView, openFile, closeFile, toggleFolder, setTreeWidth, toggleTreeCollapsed } =
     useWorkbenchContext()
   const savedWidth = useWorkbenchWidth()

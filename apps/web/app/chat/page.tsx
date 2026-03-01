@@ -1,5 +1,5 @@
 "use client"
-import { SUPERADMIN } from "@webalive/shared"
+import { SUPERADMIN_WORKSPACE_NAME } from "@webalive/shared/constants"
 import { AnimatePresence, motion } from "framer-motion"
 
 import { useQueryState } from "nuqs"
@@ -263,7 +263,7 @@ function ChatPageContent() {
   }, [mounted, sessionTabId, tabParam, setTabParam])
 
   // Superadmin workspace (alive) shows terminal & code views only
-  const isSuperadminWorkspace = workspace === SUPERADMIN.WORKSPACE_NAME
+  const isSuperadminWorkspace = workspace === SUPERADMIN_WORKSPACE_NAME
   const showWorkbench = showWorkbenchRaw // Show for all workspaces
 
   const streamingActions = useStreamingActions()

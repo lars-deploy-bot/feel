@@ -7,7 +7,7 @@
  * - Custom renderers for rich UI
  */
 
-import { isStreamClientVisibleTool } from "@webalive/shared"
+import { isStreamClientVisibleTool } from "@webalive/shared/tools"
 import { useState } from "react"
 import { ToolOutputRouter } from "@/components/ui/chat/tools/ToolOutputRouter"
 import type { SDKUserMessage } from "@/features/chat/types/sdk-types"

@@ -47,6 +47,7 @@ export {
   COOKIE_NAMES,
   createTestStorageState,
   createWorkspaceStorageValue,
+  DEFAULT_TEMPLATE_ID,
   dollarsToTokens,
   ENV_VARS,
   FEATURE_FLAGS,
@@ -56,6 +57,7 @@ export {
   formatTokensAsDollars,
   LIMITS,
   PREVIEW_MESSAGES,
+  PREVIEW_PREFIX,
   REFERRAL,
   RESERVED_USER_ENV_KEYS,
   SESSION_MAX_AGE,
@@ -66,6 +68,8 @@ export {
   STREAMING,
   type StorageEntry,
   type StreamType,
+  SUPERADMIN_WORKSPACE_NAME,
+  TEMPLATE_ID_PREFIX,
   TEST_CONFIG,
   type TestStorageStateOptions,
   TOKENS_PER_DOLLAR,
@@ -299,7 +303,6 @@ export {
   getStreamToolDecision,
   getStreamToolRole,
   getStreamWorkspaceKind,
-  getWorkspacePath,
   isHeavyBashCommand,
   isStreamClientVisibleTool,
   isStreamPolicyTool,
@@ -321,6 +324,7 @@ export {
   type StreamToolVisibility,
   type StreamWorkspaceKind,
 } from "./tools/stream-tools.js"
+export { getWorkspacePath } from "./tools/stream-tools-server.js"
 export {
   getRequiredDirectories,
   WORKSPACE_DIRS,

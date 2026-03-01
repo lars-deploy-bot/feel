@@ -18,6 +18,13 @@
  * - SECURITY: Security-related constants
  */
 
+import {
+  DEFAULT_TEMPLATE_ID,
+  isAliveWorkspace,
+  PREVIEW_PREFIX,
+  SUPERADMIN_WORKSPACE_NAME,
+  TEMPLATE_ID_PREFIX,
+} from "./constants.js"
 import { parseServerConfig, type ServerConfig } from "./server-config-schema.js"
 
 // =============================================================================
@@ -336,7 +343,7 @@ export const DOMAINS = {
    * preview--{label}.{WILDCARD_DOMAIN} (e.g., preview--protino-sonno-tech.sonno.tech)
    * Single-level keeps them under *.WILDCARD which Cloudflare Universal SSL covers.
    */
-  PREVIEW_PREFIX: "preview--",
+  PREVIEW_PREFIX,
 
   /** Preview subdomain base (kept for backwards compatibility, equals WILDCARD) */
   PREVIEW_BASE,
@@ -467,10 +474,10 @@ export const DEFAULTS = {
   FALLBACK_ORIGIN: `https://app.${WILDCARD_DOMAIN}`,
 
   /** Template ID prefix - all template IDs must start with this */
-  TEMPLATE_ID_PREFIX: "tmpl_",
+  TEMPLATE_ID_PREFIX,
 
   /** Default template ID for new site deployments */
-  DEFAULT_TEMPLATE_ID: "tmpl_blank",
+  DEFAULT_TEMPLATE_ID,
 
   /** Automation worker HTTP port (standalone scheduler/executor process) */
   AUTOMATION_WORKER_PORT: 5070,
@@ -501,18 +508,14 @@ export const SUPERADMIN = {
   EMAILS: SUPERADMIN_EMAIL_LIST,
 
   /** Special workspace name for Stream editing */
-  WORKSPACE_NAME: "alive",
+  WORKSPACE_NAME: SUPERADMIN_WORKSPACE_NAME,
 
   /** Path to Stream repository */
   WORKSPACE_PATH: ALIVE_ROOT,
 } as const
 
-/**
- * Check if a hostname refers to the Alive platform workspace (superadmin-only).
- */
-export function isAliveWorkspace(hostname: string): boolean {
-  return hostname === SUPERADMIN.WORKSPACE_NAME
-}
+// Re-export from constants.ts (single source of truth for client-safe values)
+export { isAliveWorkspace }
 
 // =============================================================================
 // Security Configuration

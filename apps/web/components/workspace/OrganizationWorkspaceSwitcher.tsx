@@ -1,6 +1,6 @@
 "use client"
 
-import { SUPERADMIN } from "@webalive/shared"
+import { SUPERADMIN_WORKSPACE_NAME } from "@webalive/shared/constants"
 import { ChevronDown } from "lucide-react"
 import { useCallback, useMemo, useRef, useState } from "react"
 import toast from "react-hot-toast"
@@ -47,8 +47,8 @@ export function OrganizationWorkspaceSwitcher({
   const workspaces = useMemo(() => {
     const ws = workspacesData?.workspaces ?? []
     return ws.toSorted((a, b) => {
-      if (a === SUPERADMIN.WORKSPACE_NAME) return -1
-      if (b === SUPERADMIN.WORKSPACE_NAME) return 1
+      if (a === SUPERADMIN_WORKSPACE_NAME) return -1
+      if (b === SUPERADMIN_WORKSPACE_NAME) return 1
       return 0
     })
   }, [workspacesData?.workspaces])

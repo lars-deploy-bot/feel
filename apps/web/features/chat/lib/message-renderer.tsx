@@ -1,4 +1,4 @@
-import { isStreamClientVisibleTool } from "@webalive/shared"
+import { isStreamClientVisibleTool } from "@webalive/shared/tools"
 import { MessageErrorBoundary } from "@/features/chat/components/MessageErrorBoundary"
 import { AgentManagerMessage } from "@/features/chat/components/message-renderers/AgentManagerMessage"
 import { AssistantMessage } from "@/features/chat/components/message-renderers/AssistantMessage"

@@ -1,5 +1,5 @@
-import type { ClaudeModel } from "@webalive/shared"
-import { isAliveWorkspace, isValidClaudeModel } from "@webalive/shared"
+import { isAliveWorkspace } from "@webalive/shared/constants"
+import { type ClaudeModel, isValidClaudeModel } from "@webalive/shared/models"
 import { SiteCombobox } from "@/components/automations/SiteCombobox"
 import { MODEL_OPTIONS } from "@/lib/automation/form-options"
 import type { Site } from "@/lib/hooks/useSettingsQueries"

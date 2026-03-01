@@ -1,14 +1,11 @@
 "use client"
 
 import type { AppDatabase } from "@webalive/database"
-import { DEFAULTS, PATHS } from "@webalive/shared"
+import { TEMPLATE_ID_PREFIX } from "@webalive/shared/constants"
 import { useState } from "react"
 import { useDomainConfig } from "@/lib/providers/DomainConfigProvider"
 
 type Template = AppDatabase["app"]["Tables"]["templates"]["Row"]
-
-const TEMPLATE_PREFIX = DEFAULTS.TEMPLATE_ID_PREFIX
-const TEMPLATES_ROOT_PATH = `${PATHS.TEMPLATES_ROOT}/`
 
 const INPUT_BASE_CLASSES =
   "w-full px-3 py-2 text-sm border border-slate-300 dark:border-white/10 bg-white dark:bg-[#1a1a1a] text-slate-900 dark:text-white rounded focus:outline-none focus:ring-2"
@@ -42,11 +39,11 @@ export function TemplatesList({
   const [editForm, setEditForm] = useState<Partial<Template>>({})
   const [showAddForm, setShowAddForm] = useState(false)
   const [addForm, setAddForm] = useState<Partial<Template>>({
-    template_id: TEMPLATE_PREFIX,
+    template_id: TEMPLATE_ID_PREFIX,
     name: "",
     description: "",
     ai_description: "",
-    source_path: TEMPLATES_ROOT_PATH,
+    source_path: "",
     preview_url: "",
     image_url: "",
     is_active: true,
@@ -75,14 +72,14 @@ export function TemplatesList({
     setAddError(null)
 
     // Validate template_id prefix
-    if (addForm.template_id && !addForm.template_id.startsWith(TEMPLATE_PREFIX)) {
-      setAddError(`Template ID must start with '${TEMPLATE_PREFIX}'`)
+    if (addForm.template_id && !addForm.template_id.startsWith(TEMPLATE_ID_PREFIX)) {
+      setAddError(`Template ID must start with '${TEMPLATE_ID_PREFIX}'`)
       return
     }
 
     // Validate template_id has content after prefix
-    if (!addForm.template_id || addForm.template_id === TEMPLATE_PREFIX) {
-      setAddError(`Template ID is required (e.g., ${TEMPLATE_PREFIX}gallery)`)
+    if (!addForm.template_id || addForm.template_id === TEMPLATE_ID_PREFIX) {
+      setAddError(`Template ID is required (e.g., ${TEMPLATE_ID_PREFIX}gallery)`)
       return
     }
 
@@ -104,11 +101,11 @@ export function TemplatesList({
     })
     setShowAddForm(false)
     setAddForm({
-      template_id: TEMPLATE_PREFIX,
+      template_id: TEMPLATE_ID_PREFIX,
       name: "",
       description: "",
       ai_description: "",
-      source_path: TEMPLATES_ROOT_PATH,
+      source_path: "",
       preview_url: "",
       image_url: "",
       is_active: true,
@@ -150,13 +147,13 @@ export function TemplatesList({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
             <label className="block">
               <span className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                Template ID (e.g. {TEMPLATE_PREFIX}gallery)
+                Template ID (e.g. {TEMPLATE_ID_PREFIX}gallery)
               </span>
               <input
                 type="text"
                 value={addForm.template_id ?? ""}
                 onChange={e => setAddForm(prev => ({ ...prev, template_id: e.target.value }))}
-                placeholder={`${TEMPLATE_PREFIX}example`}
+                placeholder={`${TEMPLATE_ID_PREFIX}example`}
                 className={ADD_INPUT_CLASSES}
               />
             </label>
@@ -186,10 +183,7 @@ export function TemplatesList({
                     <p className="font-medium mb-1">How to add a template:</p>
                     <ol className="list-decimal list-inside space-y-0.5">
                       <li>Deploy a site with the desired template design</li>
-                      <li>
-                        Copy the site path (e.g., {TEMPLATES_ROOT_PATH}
-                        {EXAMPLE_DOMAIN})
-                      </li>
+                      <li>Copy the site&apos;s source path (e.g., {EXAMPLE_DOMAIN})</li>
                       <li>Paste it here as the source path</li>
                     </ol>
                   </div>
@@ -200,7 +194,7 @@ export function TemplatesList({
                 type="text"
                 value={addForm.source_path ?? ""}
                 onChange={e => setAddForm(prev => ({ ...prev, source_path: e.target.value }))}
-                placeholder={`${TEMPLATES_ROOT_PATH}example.${wildcard}`}
+                placeholder={`example.${wildcard}`}
                 className={ADD_INPUT_CLASSES}
               />
             </div>

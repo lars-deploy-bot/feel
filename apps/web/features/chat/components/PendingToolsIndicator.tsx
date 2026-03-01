@@ -13,7 +13,7 @@
  * Updates in real-time as tool_progress events arrive.
  */
 
-import { isStreamClientVisibleTool } from "@webalive/shared"
+import { isStreamClientVisibleTool } from "@webalive/shared/tools"
 import { useEffect, useState } from "react"
 import { type PendingTool, useIsStreamActive, usePendingTools } from "@/lib/stores/streamingStore"
 import { cn } from "@/lib/utils"

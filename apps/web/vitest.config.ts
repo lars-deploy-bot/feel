@@ -52,6 +52,8 @@ export const sharedConfig = {
       // Point workspace packages to source so tests don't depend on stale dist/
       "@webalive/shared/constants": join(process.cwd(), "../../packages/shared/src/constants.ts"),
       "@webalive/shared/environments": join(process.cwd(), "../../packages/shared/src/environments.ts"),
+      "@webalive/shared/models": join(process.cwd(), "../../packages/shared/src/models.ts"),
+      "@webalive/shared/tools": join(process.cwd(), "../../packages/shared/src/tools/stream-tools.ts"),
       "@webalive/shared/database": join(process.cwd(), "../../packages/shared/src/database/index.ts"),
       "@webalive/shared": join(process.cwd(), "../../packages/shared/src/index.ts"),
       "@webalive/tools/display": join(process.cwd(), "../../packages/tools/src/display.ts"),
