@@ -155,6 +155,8 @@ export const clientSchema = {
   NEXT_PUBLIC_PREVIEW_BASE: z.string().optional().default(""),
   NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
   NEXT_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
+  NEXT_PUBLIC_CONTACT_EMAIL: z.string().email(),
+  NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
 } as const
 
 /**
@@ -227,6 +229,8 @@ export const runtimeEnv = {
   NEXT_PUBLIC_PREVIEW_BASE: process.env.NEXT_PUBLIC_PREVIEW_BASE,
   NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
   NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+  NEXT_PUBLIC_CONTACT_EMAIL: process.env.NEXT_PUBLIC_CONTACT_EMAIL,
+  NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
 } as const
 
 /**

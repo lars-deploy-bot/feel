@@ -6,8 +6,7 @@
  * and forwards the envelope to the self-hosted Sentry instance.
  */
 
-const SENTRY_HOST = "sentry.sonno.tech"
-const SENTRY_PROJECT_ID = "2"
+import { SENTRY as SENTRY_CONFIG } from "@webalive/shared"
 
 export async function POST(request: Request) {
   const envelope = await request.text()
@@ -23,16 +22,16 @@ export async function POST(request: Request) {
   }
 
   // Only forward envelopes destined for our Sentry project
-  if (dsn.hostname !== SENTRY_HOST) {
+  if (dsn.hostname !== SENTRY_CONFIG.HOST) {
     return new Response("Invalid DSN host", { status: 403 })
   }
 
   const projectId = dsn.pathname.replace("/", "")
-  if (projectId !== SENTRY_PROJECT_ID) {
+  if (projectId !== SENTRY_CONFIG.PROJECT_ID) {
     return new Response("Invalid project", { status: 403 })
   }
 
-  const upstreamUrl = `https://${SENTRY_HOST}/api/${projectId}/envelope/`
+  const upstreamUrl = `https://${SENTRY_CONFIG.HOST}/api/${projectId}/envelope/`
 
   try {
     const response = await fetch(upstreamUrl, {

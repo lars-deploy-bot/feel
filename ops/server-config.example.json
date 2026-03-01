@@ -1,6 +1,7 @@
 {
   "serverId": "srv_CHANGEME",
   "serverIp": "0.0.0.0",
+  "automationPrimary": true,
   "paths": {
     "aliveRoot": "/path/to/alive",
     "sitesRoot": "/srv/webalive/sites",
@@ -18,6 +19,12 @@
       "https://staging.sonno.tech"
     ]
   },
+  "sentry": {
+    "dsn": "https://YOUR_KEY@sentry.example.com/2",
+    "url": "https://sentry.example.com",
+    "projectId": "2"
+  },
+  "contactEmail": "agency@example.com",
   "shell": {
     "domains": ["go.sonno.tech"],
     "listen": ":8443",

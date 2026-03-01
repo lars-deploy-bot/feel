@@ -1,11 +1,13 @@
 import * as Sentry from "@sentry/nextjs"
+import { env } from "@webalive/env/client"
 import { serverBeforeSend } from "./lib/sentry/server-before-send"
 
-const SENTRY_DSN = "https://84e50be97b3c02134ee7c1e4d60cf8c9@sentry.sonno.tech/2"
+// DSN injected at build time via next.config.js from server-config.json
+const sentryDsn = env.NEXT_PUBLIC_SENTRY_DSN
 
-if (process.env.PLAYWRIGHT_TEST !== "true") {
+if (process.env.PLAYWRIGHT_TEST !== "true" && sentryDsn) {
   Sentry.init({
-    dsn: SENTRY_DSN,
+    dsn: sentryDsn,
     release: process.env.NEXT_PUBLIC_SENTRY_RELEASE ?? "unknown",
     environment: process.env.STREAM_ENV ?? process.env.NODE_ENV ?? "unknown",
     sampleRate: 1.0,

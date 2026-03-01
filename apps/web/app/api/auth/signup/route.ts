@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/nextjs"
+import { CONTACT_EMAIL } from "@webalive/shared"
 import { type NextRequest, NextResponse } from "next/server"
 import { createSessionToken } from "@/features/auth/lib/jwt"
 import { trackAuthSession } from "@/features/auth/sessions/session-service"
@@ -17,7 +18,6 @@ import { hashPassword } from "@/types/guards/api"
  * POST /api/auth/signup
  *
  * Create a new user account. Requires a valid access code.
- * Contact agency@alive.best to receive the access code.
  */
 export async function POST(req: NextRequest) {
   const requestId = getRequestId(req)
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
       {
         ok: false,
         error: ErrorCodes.INVALID_ACCESS_CODE,
-        message: "Invalid access code. Contact agency@alive.best for access.",
+        message: `Invalid access code. Contact ${CONTACT_EMAIL} for access.`,
         requestId,
       },
       403,

@@ -3,12 +3,10 @@
  *
  * Operational safety rail:
  * - automations execute only in STREAM_ENV=production
- * - and only on the primary alive.best server (not the sonno replica)
+ * - and only on the primary server (automationPrimary: true in server-config.json)
  */
 
-import { DOMAINS, STREAM_ENV } from "./config.js"
-
-const AUTOMATION_PRIMARY_MAIN_DOMAIN = "alive.best"
+import { DEFAULTS, STREAM_ENV } from "./config.js"
 
 export interface AutomationExecutionGate {
   allowed: boolean
@@ -17,10 +15,10 @@ export interface AutomationExecutionGate {
 
 export function getAutomationExecutionGate(input?: {
   streamEnv?: string
-  mainDomain?: string
+  isAutomationPrimary?: boolean
 }): AutomationExecutionGate {
   const streamEnv = input?.streamEnv ?? process.env.STREAM_ENV
-  const mainDomain = input?.mainDomain ?? DOMAINS.MAIN
+  const isAutomationPrimary = input?.isAutomationPrimary ?? DEFAULTS.IS_AUTOMATION_PRIMARY
 
   if (streamEnv !== STREAM_ENV.PRODUCTION) {
     return {
@@ -29,14 +27,10 @@ export function getAutomationExecutionGate(input?: {
     }
   }
 
-  if (!mainDomain) {
-    return { allowed: false, reason: "Main domain is not configured" }
-  }
-
-  if (mainDomain !== AUTOMATION_PRIMARY_MAIN_DOMAIN) {
+  if (!isAutomationPrimary) {
     return {
       allowed: false,
-      reason: `Automations are disabled on main domain ${mainDomain}`,
+      reason: "Automations are disabled on this server (automationPrimary is not set)",
     }
   }
 

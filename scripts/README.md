@@ -88,7 +88,6 @@ Scripts for system setup, backups, and periodic maintenance tasks.
 - `setup-webhook.sh` - Configure GitHub webhooks
 - `backup-current-state.sh` - Backup current deployment state
 - `backfill-created-dates.sh` - Backfill creation dates
-- `update-cors-domains.sh` - Update CORS configuration
 
 **Usage:**
 ```bash

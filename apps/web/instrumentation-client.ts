@@ -1,8 +1,10 @@
 import * as Sentry from "@sentry/nextjs"
+import { env } from "@webalive/env/client"
 
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart
 
-const SENTRY_DSN = "https://84e50be97b3c02134ee7c1e4d60cf8c9@sentry.sonno.tech/2"
+// DSN injected at build time via next.config.js from server-config.json
+const sentryDsn = env.NEXT_PUBLIC_SENTRY_DSN
 
 declare global {
   interface Window {
@@ -25,9 +27,9 @@ function getEnvironment(): string {
 
 const isPlaywrightTest = typeof window !== "undefined" && window.PLAYWRIGHT_TEST === true
 
-if (!isPlaywrightTest) {
+if (!isPlaywrightTest && sentryDsn) {
   Sentry.init({
-    dsn: SENTRY_DSN,
+    dsn: sentryDsn,
     tunnel: "/api/monitoring",
     release: process.env.NEXT_PUBLIC_SENTRY_RELEASE ?? "unknown",
     environment: getEnvironment(),

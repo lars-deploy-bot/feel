@@ -25,6 +25,7 @@ export const serverConfigSchema = z
     serverId: z.string().regex(/^srv_.{6,}$/),
     serverIp: z.string().regex(/^(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)$/),
     serverIpv6: z.string().optional(),
+    automationPrimary: z.boolean(),
 
     paths: z
       .object({
@@ -61,6 +62,16 @@ export const serverConfigSchema = z
         upstream: z.string().min(1),
       })
       .strict(),
+
+    sentry: z
+      .object({
+        dsn: z.string().url(),
+        url: z.string().url(),
+        projectId: z.string().min(1),
+      })
+      .strict(),
+
+    contactEmail: z.string().email(),
 
     previewProxy: z
       .object({

@@ -1,14 +1,16 @@
 import { tool } from "@anthropic-ai/claude-agent-sdk"
-import { LOGS_DEFAULT_LINES, LOGS_MAX_LINES, truncateOutput } from "@webalive/shared"
+import { DOMAINS, LOGS_DEFAULT_LINES, LOGS_MAX_LINES, truncateOutput } from "@webalive/shared"
 import { z } from "zod"
 import { callApi, type ToolResult } from "../../lib/api-client.js"
+
+const exampleDomain = `two.${DOMAINS.WILDCARD}`
 
 export const readServerLogsParamsSchema = {
   workspace: z
     .string()
     .min(1)
-    .regex(/^[a-z0-9.-]+$/i, "Workspace must be a valid domain (e.g., two.sonno.tech)")
-    .describe("Workspace domain (e.g., 'two.sonno.tech')"),
+    .regex(/^[a-z0-9.-]+$/i, `Workspace must be a valid domain (e.g., ${exampleDomain})`)
+    .describe(`Workspace domain (e.g., '${exampleDomain}')`),
   search: z.string().optional().describe('Filter logs by search term (e.g., "error", "warning", "vite")'),
   search_regex: z
     .string()
@@ -172,8 +174,8 @@ export const readServerLogsTool = tool(
 Use this FIRST when debugging to see actual dev server errors.
 
 Examples:
-- read_server_logs({ workspace: "two.sonno.tech" })
-- read_server_logs({ workspace: "demo.sonno.tech", search: "error" })
+- read_server_logs({ workspace: "${exampleDomain}" })
+- read_server_logs({ workspace: "${exampleDomain}", search: "error" })
 - read_server_logs({ workspace: "mysite.com", search_regex: "error|fail|exception" })
 - read_server_logs({ workspace: "site.com", lines: 200, since: "1 hour ago" })`,
   readServerLogsParamsSchema,

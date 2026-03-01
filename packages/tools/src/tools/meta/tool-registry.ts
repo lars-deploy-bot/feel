@@ -12,6 +12,7 @@ import {
   CLARIFICATION_MAX_QUESTIONS,
   CLARIFICATION_OPTIONS_PER_QUESTION,
   DEFAULTS,
+  DOMAINS,
   GLOBAL_MCP_PROVIDERS,
   getTemplateIdsInline,
   INTERNAL_TOOL_DESCRIPTORS,
@@ -338,7 +339,7 @@ const INTERNAL_TOOL_METADATA: Array<Omit<ToolMetadata, "enabled">> = [
         name: "workspace",
         type: "string",
         required: true,
-        description: "Workspace domain (e.g., 'two.sonno.tech')",
+        description: `Workspace domain (e.g., 'two.${DOMAINS.WILDCARD}')`,
       },
       {
         name: "search",
