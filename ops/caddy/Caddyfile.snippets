@@ -15,20 +15,8 @@
     respond @internal_api "Not Found" 404
 }
 
-# Security headers applied to all responses
-(common_headers) {
-    header {
-        # Security Headers
-        X-Content-Type-Options nosniff
-        X-Frame-Options DENY
-        X-XSS-Protection "1; mode=block"
-        Referrer-Policy strict-origin-when-cross-origin
-
-        # Remove server identification
-        -Server
-        -X-Powered-By
-    }
-}
+# Security headers — single source of truth in snippets/common_headers.caddy
+import snippets/common_headers.caddy
 
 # Image serving from storage directory
 # NOTE: Update the root path to match your IMAGES_STORAGE config
