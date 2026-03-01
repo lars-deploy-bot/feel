@@ -6,6 +6,7 @@
  */
 
 import { expect, test } from "./fixtures"
+import { apiGet } from "./lib/api-helpers"
 
 interface Template {
   template_id: string
@@ -45,13 +46,10 @@ async function tryFetch(url: string, headers?: Record<string, string>) {
 
 test.describe("Template Sites Health", () => {
   test("all active templates are accessible", async ({ baseURL, page, authenticatedPage }) => {
-    // Use authenticatedPage.request to send session cookie
     const apiUrl = baseURL || "http://localhost:8997"
-    const response = await authenticatedPage.request.get(`${apiUrl}/api/templates`)
+    const { ok, data } = await apiGet<TemplatesResponse>(authenticatedPage.request, `${apiUrl}/api/templates`)
 
-    expect(response.ok).toBe(true)
-
-    const data: TemplatesResponse = await response.json()
+    expect(ok).toBe(true)
     expect(data.templates).toBeDefined()
     expect(Array.isArray(data.templates)).toBe(true)
     expect(data.templates.length).toBeGreaterThan(0)
@@ -121,11 +119,9 @@ test.describe("Template Sites Health", () => {
 
   test("templates API returns expected fields", async ({ baseURL, authenticatedPage }) => {
     const apiUrl = baseURL || "http://localhost:8997"
-    const response = await authenticatedPage.request.get(`${apiUrl}/api/templates`)
+    const { ok, data } = await apiGet<TemplatesResponse>(authenticatedPage.request, `${apiUrl}/api/templates`)
 
-    expect(response.ok).toBe(true)
-
-    const data: TemplatesResponse = await response.json()
+    expect(ok).toBe(true)
 
     // Verify each template has required fields
     for (const template of data.templates) {

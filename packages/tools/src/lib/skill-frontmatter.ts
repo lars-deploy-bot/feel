@@ -39,6 +39,23 @@ export interface ParsedSkill {
   body: string
 }
 
+interface SkillParseError {
+  error: string
+}
+
+interface SkillFrontmatterSection {
+  body: string
+  lines: string[]
+}
+
+interface SkillParseSuccess {
+  parsed: ParsedSkill
+}
+
+interface FrontmatterParseSuccess {
+  frontmatter: PartialSkillFrontmatter
+}
+
 /**
  * Parse YAML frontmatter and body from a SKILL.md file.
  * Returns null if no valid frontmatter found or required fields missing.
@@ -47,50 +64,122 @@ export interface ParsedSkill {
  * @returns Parsed skill with frontmatter and body, or null if invalid
  */
 export function parseSkillContent(content: string): ParsedSkill | null {
-  if (!content.startsWith("---")) {
+  const result = parseSkillContentInternal(content)
+  if ("error" in result) {
     return null
   }
+  return result.parsed
+}
 
-  const endIndex = content.indexOf("---", 3)
-  if (endIndex === -1) {
-    return null
+/**
+ * Validate SKILL.md content and return user-friendly error text for invalid frontmatter.
+ *
+ * @param content - Raw markdown content with YAML frontmatter
+ * @returns Null when valid, otherwise a descriptive error
+ */
+export function validateSkillContent(content: string): string | null {
+  const result = parseSkillContentInternal(content)
+  return "error" in result ? result.error : null
+}
+
+function parseSkillContentInternal(content: string): SkillParseSuccess | SkillParseError {
+  const section = extractFrontmatterSection(content)
+  if ("error" in section) {
+    return section
   }
 
-  const frontmatterRaw = content.slice(3, endIndex).trim()
-  const body = content.slice(endIndex + 3).trim()
+  const frontmatterResult = parseFrontmatter(section.lines)
+  if ("error" in frontmatterResult) {
+    return frontmatterResult
+  }
+  const frontmatter = frontmatterResult.frontmatter
 
-  const frontmatter = parseFrontmatter(frontmatterRaw)
+  if (!frontmatter.name) {
+    return { error: 'missing required field "name" in frontmatter' }
+  }
 
-  // Validate required fields
-  if (!frontmatter.name || !frontmatter.description) {
-    return null
+  // Name must be lowercase a-z/0-9 with optional hyphens between, no spaces or uppercase
+  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(frontmatter.name)) {
+    return {
+      error: `invalid name "${frontmatter.name}" — must be lowercase, no spaces, only a-z, 0-9, and hyphens (e.g. "my-skill")`,
+    }
+  }
+
+  if (!frontmatter.description) {
+    return { error: 'missing required field "description" in frontmatter' }
   }
 
   return {
-    frontmatter: {
-      name: frontmatter.name,
-      description: frontmatter.description,
+    parsed: {
+      frontmatter: {
+        name: frontmatter.name,
+        description: frontmatter.description,
+      },
+      body: section.body,
     },
-    body,
   }
 }
 
 /**
- * Parse YAML frontmatter string into key-value pairs.
- * Simple parser for our known fields (name, description).
+ * Extract frontmatter lines and markdown body from SKILL.md content.
+ */
+function extractFrontmatterSection(content: string): SkillFrontmatterSection | SkillParseError {
+  const lines = content.split(/\r?\n/)
+  if (lines[0]?.trim() !== "---") {
+    return { error: "missing YAML frontmatter (must start with ---)" }
+  }
+
+  let closingIndex = -1
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i]?.trim() === "---") {
+      closingIndex = i
+      break
+    }
+  }
+
+  if (closingIndex === -1) {
+    return { error: "missing closing --- for YAML frontmatter" }
+  }
+
+  return {
+    lines: lines.slice(1, closingIndex),
+    body: lines
+      .slice(closingIndex + 1)
+      .join("\n")
+      .trim(),
+  }
+}
+
+/**
+ * Parse frontmatter lines into key-value pairs.
  *
- * @param frontmatterRaw - Raw YAML string (without --- delimiters)
+ * @param frontmatterLines - YAML lines without --- delimiters
  * @returns Partial frontmatter object
  */
-function parseFrontmatter(frontmatterRaw: string): PartialSkillFrontmatter {
+function parseFrontmatter(frontmatterLines: string[]): FrontmatterParseSuccess | SkillParseError {
   const result: PartialSkillFrontmatter = {}
 
-  for (const line of frontmatterRaw.split("\n")) {
+  for (const [index, line] of frontmatterLines.entries()) {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith("#")) {
+      continue
+    }
+
     const colonIndex = line.indexOf(":")
-    if (colonIndex === -1) continue
+    if (colonIndex === -1) {
+      continue
+    }
 
     const key = line.slice(0, colonIndex).trim()
-    const value = line.slice(colonIndex + 1).trim()
+    const rawValue = line.slice(colonIndex + 1).trim()
+    const parsedValue = parseYamlScalar(rawValue, line, colonIndex, index + 1)
+    if (!parsedValue) {
+      continue
+    }
+    if (typeof parsedValue === "object" && "error" in parsedValue) {
+      return parsedValue
+    }
+    const value = parsedValue
 
     switch (key) {
       case "name":
@@ -100,7 +189,38 @@ function parseFrontmatter(frontmatterRaw: string): PartialSkillFrontmatter {
     }
   }
 
-  return result
+  return { frontmatter: result }
+}
+
+function parseYamlScalar(
+  rawValue: string,
+  fullLine: string,
+  keyColonIndex: number,
+  lineNumber: number,
+): string | SkillParseError | null {
+  if (!rawValue) {
+    return null
+  }
+
+  const quote = rawValue[0]
+  if (quote === `"` || quote === `'`) {
+    if (!rawValue.endsWith(quote) || rawValue.length < 2) {
+      return null
+    }
+    return rawValue.slice(1, -1)
+  }
+
+  // In plain scalars, ": " indicates a nested mapping and must be quoted for our single-line fields.
+  const nestedColonMatch = /:\s/.exec(rawValue)
+  if (nestedColonMatch?.index !== undefined) {
+    const valueStart = fullLine.indexOf(rawValue, keyColonIndex + 1)
+    const column = valueStart + nestedColonMatch.index + 1
+    return {
+      error: `invalid YAML: unquoted ":" in value at line ${lineNumber} column ${column} (wrap the value in quotes)`,
+    }
+  }
+
+  return rawValue
 }
 
 /**

@@ -53,6 +53,7 @@ export {
   parseSkillContent,
   type SkillFrontmatter,
   skillIdToDisplayName,
+  validateSkillContent,
 } from "./lib/skill-frontmatter.js"
 export {
   isTemplateEnabled,
