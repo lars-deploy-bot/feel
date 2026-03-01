@@ -2,7 +2,8 @@
  * Tests for GET/PATCH /api/user endpoint
  *
  * Test cases:
- * - GET: returns user when authenticated, null when not
+ * - GET: returns user when authenticated
+ * - GET: returns 401 when not authenticated
  * - PATCH: 401 without session
  * - PATCH: successful name update
  * - PATCH: successful email update
@@ -15,7 +16,7 @@ import { NextRequest } from "next/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { ErrorCodes } from "@/lib/error-codes"
 
-// Mock auth - pass through createErrorResponse
+// Mock auth
 vi.mock("@/features/auth/lib/auth", async () => {
   const actual = await vi.importActual("@/features/auth/lib/auth")
   return {
@@ -32,7 +33,24 @@ vi.mock("@/lib/supabase/iam", () => ({
 // Mock Sentry
 vi.mock("@sentry/nextjs", () => ({
   captureException: vi.fn(),
+  getCurrentScope: vi.fn(() => ({ setTag: vi.fn() })),
 }))
+
+// Mock api/server to avoid @webalive/database resolution
+vi.mock("@/lib/api/server", () => {
+  const { NextResponse } = require("next/server")
+  return {
+    handleBody: vi.fn(async (_endpoint: string, req: Request) => {
+      const body = await req.json()
+      // Validate email format like the real handleBody does via Zod
+      if (body.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
+        return NextResponse.json({ error: "INVALID_REQUEST" }, { status: 400 })
+      }
+      return body
+    }),
+    isHandleBodyError: (x: unknown) => x instanceof NextResponse,
+  }
+})
 
 // Import after mocking
 const { GET, PATCH } = await import("../route")
@@ -73,25 +91,29 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
+function createGetRequest() {
+  return new NextRequest("http://localhost/api/user", { method: "GET" })
+}
+
 describe("GET /api/user", () => {
   it("should return user when authenticated", async () => {
     vi.mocked(getSessionUser).mockResolvedValue(MOCK_USER)
 
-    const response = await GET()
+    const response = await GET(createGetRequest())
     const data = await response.json()
 
     expect(response.status).toBe(200)
     expect(data.user).toEqual(MOCK_USER)
   })
 
-  it("should return null user when not authenticated", async () => {
+  it("should return 401 when not authenticated", async () => {
     vi.mocked(getSessionUser).mockResolvedValue(null)
 
-    const response = await GET()
+    const response = await GET(createGetRequest())
     const data = await response.json()
 
-    expect(response.status).toBe(200)
-    expect(data.user).toBeNull()
+    expect(response.status).toBe(401)
+    expect(data.error).toBe(ErrorCodes.UNAUTHORIZED)
   })
 })
 

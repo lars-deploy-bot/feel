@@ -1,6 +1,7 @@
 import * as Sentry from "@sentry/nextjs"
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
+import { protectedRoute } from "@/features/auth/lib/protectedRoute"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { handleBody, isHandleBodyError } from "@/lib/api/server"
 import { ErrorCodes } from "@/lib/error-codes"
@@ -10,15 +11,9 @@ import { createIamClient } from "@/lib/supabase/iam"
  * GET /api/user
  * Returns current user info from session
  */
-export async function GET() {
-  const user = await getSessionUser()
-
-  if (!user) {
-    return NextResponse.json({ user: null }, { status: 200 })
-  }
-
+export const GET = protectedRoute(async ({ user }) => {
   return NextResponse.json({ user }, { status: 200 })
-}
+})
 
 /**
  * PATCH /api/user

@@ -119,17 +119,15 @@ export const apiSchemas = {
   user: {
     req: z.undefined().brand<"UserRequest">(), // GET has no body
     res: z.object({
-      user: z
-        .object({
-          id: z.string(),
-          email: z.string().email(),
-          name: z.string().nullable(),
-          canSelectAnyModel: z.boolean(),
-          isAdmin: z.boolean(),
-          isSuperadmin: z.boolean(),
-          enabledModels: z.array(z.string()),
-        })
-        .nullable(),
+      user: z.object({
+        id: z.string(),
+        email: z.string().email(),
+        name: z.string().nullable(),
+        canSelectAnyModel: z.boolean(),
+        isAdmin: z.boolean(),
+        isSuperadmin: z.boolean(),
+        enabledModels: z.array(z.string()),
+      }),
     }),
   },
 
