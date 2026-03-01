@@ -419,9 +419,6 @@ export const DEFAULTS = {
   /** Flock timeout in seconds (alias for TIMEOUTS.FLOCK) */
   FLOCK_TIMEOUT: 30,
 
-  /** Default password for new deployments (development only) */
-  PASSWORD: "supersecret",
-
   /** Default Claude model - uses short name from models.ts */
   CLAUDE_MODEL: "claude-sonnet-4-6" as const,
 

@@ -66,6 +66,7 @@ export const serverSchema = {
   // Stream configuration
   WORKSPACE_BASE: z.string().default("/srv/webalive/sites"),
   ALIVE_PASSCODE: z.string().optional(),
+  SIGNUP_ACCESS_CODE: z.string().min(1),
   STREAM_ENV: z.enum(["local", "dev", "staging", "production", "standalone"]).optional(),
   LOCAL_TEMPLATE_PATH: z.string().optional(),
   SHELL_PASSWORD: z.string().optional(),
@@ -176,6 +177,7 @@ export const runtimeEnv = {
   STREAM_DEV_URL: process.env.STREAM_DEV_URL,
   WORKSPACE_BASE: process.env.WORKSPACE_BASE,
   ALIVE_PASSCODE: process.env.ALIVE_PASSCODE,
+  SIGNUP_ACCESS_CODE: process.env.SIGNUP_ACCESS_CODE,
   STREAM_ENV: process.env.STREAM_ENV,
 
   LOCAL_TEMPLATE_PATH: process.env.LOCAL_TEMPLATE_PATH,

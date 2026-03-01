@@ -41,6 +41,7 @@
         "CLAUDE_MODEL",
         "WORKSPACE_BASE",
         "ALIVE_PASSCODE",
+        "SIGNUP_ACCESS_CODE",
         "ALIVE_ENV",
         "GROQ_API_SECRET",
         "GITHUB_WEBHOOK_SECRET",
