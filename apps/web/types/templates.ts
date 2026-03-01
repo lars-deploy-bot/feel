@@ -1,6 +1,5 @@
 /**
- * Template types for Super Templates UI
- * Types only - no runtime imports to avoid Node.js deps in client bundles
+ * Template types and constants for Super Templates UI
  */
 
 import { SUPER_TEMPLATE_CATEGORIES } from "@webalive/shared"

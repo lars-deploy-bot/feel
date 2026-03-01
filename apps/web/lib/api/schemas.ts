@@ -23,13 +23,14 @@ const TriggerTypeSchema = z.enum(AppConstants.app.Enums.automation_trigger_type)
 /** Schedule triggers: "cron" (recurring) | "one-time" (run once at a specific time) */
 const SCHEDULE_TRIGGER_TYPES = ["cron", "one-time"] as const satisfies readonly TriggerType[]
 export type ScheduleTriggerType = (typeof SCHEDULE_TRIGGER_TYPES)[number]
+const SCHEDULE_TRIGGER_TYPE_SET: ReadonlySet<TriggerType> = new Set(SCHEDULE_TRIGGER_TYPES)
 
 /** Event triggers: "email" (incoming email) | "webhook" (HTTP call) */
 const EVENT_TRIGGER_TYPES = ["email", "webhook"] as const satisfies readonly TriggerType[]
 export type EventTriggerType = (typeof EVENT_TRIGGER_TYPES)[number]
 
 export function isScheduleTrigger(t: TriggerType): t is ScheduleTriggerType {
-  return (SCHEDULE_TRIGGER_TYPES as readonly string[]).includes(t)
+  return SCHEDULE_TRIGGER_TYPE_SET.has(t)
 }
 
 /** Action types (prompt, sync, publish) — derived from DB enum */
