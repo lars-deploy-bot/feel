@@ -195,8 +195,14 @@ async function checkApiHealth(env: Environment, timeoutMs: number): Promise<Chec
   const port = ENV_PORTS[env]
   const url = `http://127.0.0.1:${port}/api/health`
 
+  const headers: Record<string, string> = {}
+  const jwtSecret = process.env.JWT_SECRET
+  if (jwtSecret) {
+    headers["X-Internal-Secret"] = jwtSecret
+  }
+
   try {
-    const response = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) })
+    const response = await fetch(url, { headers, signal: AbortSignal.timeout(timeoutMs) })
 
     if (!response.ok) {
       return {

@@ -66,7 +66,6 @@ export const serverSchema = {
   // Stream configuration
   WORKSPACE_BASE: z.string().default("/srv/webalive/sites"),
   ALIVE_PASSCODE: z.string().optional(),
-  SIGNUP_ACCESS_CODE: z.string().min(1),
   STREAM_ENV: z.enum(["local", "dev", "staging", "production", "standalone"]).optional(),
   LOCAL_TEMPLATE_PATH: z.string().optional(),
   SHELL_PASSWORD: z.string().optional(),
@@ -137,6 +136,9 @@ export const serverSchema = {
   SENTRY_AUTH_TOKEN: z.string().min(1),
   POSTHOG_PERSONAL_API_KEY: z.string().min(1),
 
+  // Signup access code (required to create new accounts)
+  SIGNUP_ACCESS_CODE: z.string().min(1),
+
   // E2E Testing (optional - only needed for E2E tests)
   E2E_TEST_SECRET: z.string().optional(),
   E2E_RUN_ID: z.string().optional(),
@@ -177,7 +179,6 @@ export const runtimeEnv = {
   STREAM_DEV_URL: process.env.STREAM_DEV_URL,
   WORKSPACE_BASE: process.env.WORKSPACE_BASE,
   ALIVE_PASSCODE: process.env.ALIVE_PASSCODE,
-  SIGNUP_ACCESS_CODE: process.env.SIGNUP_ACCESS_CODE,
   STREAM_ENV: process.env.STREAM_ENV,
 
   LOCAL_TEMPLATE_PATH: process.env.LOCAL_TEMPLATE_PATH,
@@ -213,6 +214,7 @@ export const runtimeEnv = {
   SUPERADMIN_EMAILS: process.env.SUPERADMIN_EMAILS,
   REDIS_URL: process.env.REDIS_URL,
   NODE_ENV: process.env.NODE_ENV,
+  SIGNUP_ACCESS_CODE: process.env.SIGNUP_ACCESS_CODE,
   E2E_TEST_SECRET: process.env.E2E_TEST_SECRET,
   E2E_RUN_ID: process.env.E2E_RUN_ID,
   SENTRY_AUTH_TOKEN: process.env.SENTRY_AUTH_TOKEN,

@@ -1,5 +1,11 @@
 import { NextRequest } from "next/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+// Mock Redis-related modules so cancel-intent-registry uses in-memory fallback
+vi.mock("@webalive/env/server", () => ({
+  getRedisUrl: () => null,
+}))
+
 import { ErrorCodes } from "@/lib/error-codes"
 
 const requireSessionUserMock = vi.fn()
