@@ -90,12 +90,30 @@ describe("POST /api/internal/automation/trigger", () => {
     delete process.env.JWT_SECRET
   })
 
+  it("returns 401 when no secret is provided", async () => {
+    const response = await POST(makeRequest())
+
+    expect(response.status).toBe(401)
+    const payload = await response.json()
+    expect(payload.error).toBe(ErrorCodes.UNAUTHORIZED)
+  })
+
   it("returns 401 for invalid internal secret", async () => {
     const response = await POST(makeRequest("wrong-secret"))
 
     expect(response.status).toBe(401)
     const payload = await response.json()
     expect(payload.error).toBe(ErrorCodes.UNAUTHORIZED)
+  })
+
+  it("returns 500 when JWT_SECRET env var is not configured", async () => {
+    delete process.env.JWT_SECRET
+
+    const response = await POST(makeRequest("any-secret"))
+
+    expect(response.status).toBe(500)
+    const payload = await response.json()
+    expect(payload.error).toBe(ErrorCodes.INTERNAL_ERROR)
   })
 
   it("returns 403 when automation execution is disabled on this environment/server", async () => {

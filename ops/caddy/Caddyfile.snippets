@@ -7,6 +7,14 @@
 # - Generated site configs (/var/lib/alive/generated/Caddyfile.sites)
 # - Manual production configs (/etc/caddy/Caddyfile.prod)
 
+# Block internal-only API routes from external access.
+# These endpoints are only called via localhost (worker, MCP tools).
+# Usage: import block_internal_api
+(block_internal_api) {
+    @internal_api path /api/internal/* /api/internal-tools/*
+    respond @internal_api "Not Found" 404
+}
+
 # Security headers applied to all responses
 (common_headers) {
     header {

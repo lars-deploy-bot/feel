@@ -1,21 +1,15 @@
 # Legacy example Caddyfile for Alive
 # Prefer generated routing via /var/lib/alive/generated/Caddyfile.sites
 # See: ops/caddy/etc/Caddyfile.example
-
-(common_headers) {
-    header {
-        X-Content-Type-Options nosniff
-        X-Frame-Options DENY
-        X-XSS-Protection "1; mode=block"
-        Referrer-Policy strict-origin-when-cross-origin
-        -Server
-        -X-Powered-By
-    }
-}
+#
+# Requires: import /path/to/ops/caddy/Caddyfile.snippets
+# (provides common_headers, block_internal_api, image_serving, preview_auth)
 
 # Main app
 bridge.example.com {
     import common_headers
+    import block_internal_api
+
     reverse_proxy localhost:9000 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
@@ -27,6 +21,7 @@ bridge.example.com {
 # Preview subdomains (optional)
 *.preview.example.com {
     import common_headers
+    import block_internal_api
     reverse_proxy localhost:9000 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}

@@ -3,6 +3,7 @@ import * as Sentry from "@sentry/nextjs"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { structuredErrorResponse } from "@/lib/api/responses"
+import { verifyInternalSecret } from "@/lib/auth/timing-safe"
 import { ErrorCodes } from "@/lib/error-codes"
 import { handleWorkspaceApi } from "@/lib/workspace-api-handler"
 
@@ -33,16 +34,8 @@ const ReadLogsSchema = z.object({
  */
 export async function POST(req: Request) {
   // Security: Verify internal tools secret
-  const internalSecret = process.env.INTERNAL_TOOLS_SECRET
-  const providedSecret = req.headers.get("x-internal-tools-secret")
-
-  if (!internalSecret || providedSecret !== internalSecret) {
-    console.error("[read-logs] Unauthorized: Invalid or missing internal tools secret")
-    return structuredErrorResponse(ErrorCodes.UNAUTHORIZED, {
-      status: 401,
-      details: { requestId: crypto.randomUUID() },
-    })
-  }
+  const secretError = verifyInternalSecret(req, "INTERNAL_TOOLS_SECRET", "x-internal-tools-secret")
+  if (secretError) return secretError
   return handleWorkspaceApi(req, {
     schema: ReadLogsSchema,
     handler: async ({ data, requestId }) => {

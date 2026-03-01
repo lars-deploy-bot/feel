@@ -8,6 +8,11 @@ vi.mock("@webalive/env/server", () => ({
 
 import { ErrorCodes } from "@/lib/error-codes"
 
+// Force in-memory fallback so tests don't hang waiting for Redis
+vi.mock("@webalive/env/server", () => ({
+  getRedisUrl: () => null,
+}))
+
 const requireSessionUserMock = vi.fn()
 const verifyWorkspaceAccessMock = vi.fn()
 const getSafeSessionCookieMock = vi.fn()
