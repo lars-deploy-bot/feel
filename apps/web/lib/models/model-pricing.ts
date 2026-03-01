@@ -122,10 +122,13 @@ function calculateUSDCostWithPricing(
  * 1 USD = 10 credits
  *
  * @param usdCost - Cost in USD
- * @returns Credits to charge (rounded to 2 decimal places)
+ * @returns Credits to charge (ceiled to 2 decimal places — billing rounds up)
  */
 export function usdToCredits(usdCost: number): number {
-  return Math.round(usdCost * CREDITS_PER_USD * 100) / 100
+  if (usdCost <= 0) return 0
+  // Subtract epsilon to cancel IEEE 754 noise before ceiling.
+  // Without this, 0.018 * 10 * 100 = 18.000000000000004 → ceil → 19 (wrong).
+  return Math.ceil(usdCost * CREDITS_PER_USD * 100 - 1e-9) / 100
 }
 
 /**

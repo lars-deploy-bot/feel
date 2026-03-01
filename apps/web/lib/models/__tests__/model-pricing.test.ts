@@ -69,12 +69,22 @@ describe("usdToCredits()", () => {
     expect(usdToCredits(0.001)).toBe(0.01)
   })
 
-  test("should round to 2 decimal places", () => {
-    expect(usdToCredits(0.12345)).toBe(1.23)
+  test("should ceil to 2 decimal places (billing rounds up)", () => {
+    // $0.12345 * 10 = 1.2345 → ceil(123.45) / 100 = 1.24
+    expect(usdToCredits(0.12345)).toBe(1.24)
   })
 
   test("should handle zero", () => {
     expect(usdToCredits(0)).toBe(0)
+  })
+
+  test("should never return 0 for non-zero cost (#282)", () => {
+    expect(usdToCredits(0.000001)).toBe(0.01)
+    expect(usdToCredits(0.0001)).toBe(0.01)
+  })
+
+  test("should return 0 for negative cost", () => {
+    expect(usdToCredits(-1)).toBe(0)
   })
 })
 
