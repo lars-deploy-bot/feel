@@ -1,5 +1,5 @@
-// In dev with Vite proxy, BASE_URL is "/manager-2/" so API calls go to "/manager-2/api/..."
-// In production (standalone), BASE_URL is "/" so API calls go to "/api/..."
+// BASE_URL is "/manager-2/" (from vite.config.ts base).
+// Caddy strips /manager-2 prefix, so server.ts receives /api/... directly.
 const BASE = `${import.meta.env.BASE_URL}api`.replace(/\/\//g, "/")
 
 class ApiError extends Error {
