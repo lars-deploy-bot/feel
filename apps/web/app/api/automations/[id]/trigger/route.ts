@@ -12,7 +12,6 @@ import { claimJob, extractSummary, type FinishHooks, finishJob } from "@webalive
 import type { AppDatabase } from "@webalive/database"
 import { getServerId, isAliveWorkspace } from "@webalive/shared"
 import type { NextRequest } from "next/server"
-import { broadcastAutomationEvent } from "@/app/api/automations/events/route"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { alrighty } from "@/lib/api/server"
@@ -133,15 +132,6 @@ export async function POST(_req: NextRequest, context: RouteContext) {
 
     const hooks: FinishHooks = {
       onJobDisabled: (hookCtx, hookError) => notifyJobDisabled(hookCtx, hookError),
-      onJobFinished: (hookCtx, status, summary) => {
-        broadcastAutomationEvent(hookCtx.job.user_id, {
-          type: "finished",
-          jobId: hookCtx.job.id,
-          jobName: hookCtx.job.name,
-          status,
-          summary,
-        })
-      },
     }
 
     // Fire-and-forget: run the job and update DB state after completion.
