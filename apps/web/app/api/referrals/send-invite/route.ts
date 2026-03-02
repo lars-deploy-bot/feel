@@ -14,7 +14,7 @@
  */
 
 import * as Sentry from "@sentry/nextjs"
-import { REFERRAL } from "@webalive/shared"
+import { DOMAINS, REFERRAL } from "@webalive/shared"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { getSessionUser } from "@/features/auth/lib/auth"
@@ -92,7 +92,7 @@ export async function POST(req: Request) {
     await sendReferralInvite({
       to: validEmail,
       senderName: sender.display_name || "Someone",
-      inviteLink: buildInviteLink(sender.invite_code),
+      inviteLink: buildInviteLink(sender.invite_code, DOMAINS.STREAM_PROD),
     })
   } catch (error) {
     console.error("Failed to send invite email:", error)

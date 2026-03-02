@@ -1,13 +1,13 @@
 import { realpathSync } from "node:fs"
 import * as Sentry from "@sentry/nextjs"
-import { PATHS } from "@webalive/shared"
+import { env } from "@webalive/env/server"
 import { NextResponse } from "next/server"
 import type { ZodSchema, z } from "zod"
 import { isWorkspaceAuthenticated, requireSessionUser } from "@/features/auth/lib/auth"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 
-// Workspace base directory (from env or default)
-const WORKSPACE_BASE = process.env.WORKSPACE_BASE ?? PATHS.SITES_ROOT
+// Workspace base directory — validated by @webalive/env schema (has default: /srv/webalive/sites)
+const WORKSPACE_BASE = env.WORKSPACE_BASE
 
 interface WorkspaceApiConfig<_T extends z.ZodRawShape> {
   schema: ZodSchema<any>

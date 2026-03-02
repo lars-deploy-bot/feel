@@ -15,7 +15,7 @@
  */
 
 import * as Sentry from "@sentry/nextjs"
-import { generateInviteCode } from "@webalive/shared"
+import { DOMAINS, generateInviteCode } from "@webalive/shared"
 import { NextResponse } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
@@ -80,7 +80,7 @@ export async function GET() {
     ok: true,
     data: {
       inviteCode: String(inviteCode),
-      inviteLink: buildInviteLink(String(inviteCode)),
+      inviteLink: buildInviteLink(String(inviteCode), DOMAINS.STREAM_PROD),
       stats: {
         totalReferrals: totalReferrals ?? 0,
         creditsEarned,
