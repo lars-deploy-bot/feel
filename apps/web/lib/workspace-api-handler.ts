@@ -98,10 +98,12 @@ export async function handleWorkspaceApi<T extends z.ZodRawShape>(
       }
 
       // Second: check user has access to this specific workspace
-      // CRITICAL: Extract workspace name from RESOLVED path (not original)
-      const pathParts = containmentResult.resolvedPath!.split("/")
-      const sitesIndex = pathParts.indexOf("sites")
-      const workspaceName = sitesIndex >= 0 && pathParts[sitesIndex + 1] ? pathParts[sitesIndex + 1] : null
+      // CRITICAL: Extract workspace name from RESOLVED path relative to WORKSPACE_BASE (not hardcoded "sites")
+      const realBaseRoot = realpathSync(WORKSPACE_BASE)
+      const relativePath = containmentResult.resolvedPath!.startsWith(`${realBaseRoot}/`)
+        ? containmentResult.resolvedPath!.slice(realBaseRoot.length + 1)
+        : ""
+      const workspaceName = relativePath.split("/")[0] || null
 
       if (!workspaceName) {
         console.error(`[workspace-api ${requestId}] Authorization failed: could not extract workspace name from path`)
