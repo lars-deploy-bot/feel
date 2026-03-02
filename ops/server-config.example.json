@@ -20,9 +20,11 @@
     ]
   },
   "sentry": {
-    "dsn": "https://YOUR_KEY@sentry.example.com/2",
-    "url": "https://sentry.example.com",
-    "projectId": "2"
+    "dsn": "https://your-key@sentry.example.com/1",
+    "host": "sentry.example.com",
+    "projectId": "1",
+    "org": "sentry",
+    "project": "alive"
   },
   "contactEmail": "agency@example.com",
   "shell": {

@@ -5,7 +5,7 @@
  */
 
 import { oauthAudit } from "./audit"
-import { isExternalIdentityProvider, isRefreshable, isRevocable, isUserInfoProvider } from "./providers/base"
+import { isRefreshable, isRevocable, isUserInfoProvider } from "./providers/base"
 import { getProvider } from "./providers/index"
 import { createRefreshLockManager, type IRefreshLockManager } from "./refresh-lock"
 import { LockboxAdapter, type LockboxAdapterConfig } from "./storage"

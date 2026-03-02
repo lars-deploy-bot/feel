@@ -15,6 +15,12 @@ import { z } from "zod"
 
 const pathStr = z.string().min(1)
 const domainStr = z.string().regex(/^[a-z0-9.*-]+$/i)
+const hostnameStr = z
+  .string()
+  .regex(
+    /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/i,
+    "sentry.host must be a bare hostname (e.g. sentry.example.com)",
+  )
 
 const sentrySchema = z
   .object({
@@ -22,7 +28,7 @@ const sentrySchema = z
     url: z.string().url().optional(),
     projectId: z.string().min(1).optional(),
     // Legacy fields still present in some deployed server-config.json files.
-    host: z.string().min(1).optional(),
+    host: hostnameStr.optional(),
     org: z.string().min(1).optional(),
     project: z.string().min(1).optional(),
   })
@@ -53,6 +59,8 @@ const sentrySchema = z
       dsn: sentry.dsn,
       url,
       projectId,
+      org: sentry.org,
+      project: sentry.project,
     }
   })
 

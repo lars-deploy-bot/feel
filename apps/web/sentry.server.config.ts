@@ -1,10 +1,10 @@
 import * as Sentry from "@sentry/nextjs"
-import { SENTRY as SENTRY_CONFIG } from "@webalive/shared"
+import { SENTRY } from "@webalive/shared"
 import { serverBeforeSend } from "./lib/sentry/server-before-send"
 
-if (process.env.PLAYWRIGHT_TEST !== "true" && SENTRY_CONFIG.DSN) {
+if (process.env.PLAYWRIGHT_TEST !== "true" && SENTRY.DSN) {
   Sentry.init({
-    dsn: SENTRY_CONFIG.DSN,
+    dsn: SENTRY.DSN,
     release: process.env.NEXT_PUBLIC_SENTRY_RELEASE ?? "unknown",
     environment: process.env.STREAM_ENV ?? process.env.NODE_ENV ?? "unknown",
     serverName: process.env.MAIN_DOMAIN ?? "unknown",

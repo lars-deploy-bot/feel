@@ -64,6 +64,8 @@ describe("parseServerConfig sentry compatibility", () => {
     const parsed = parseServerConfig(raw)
     expect(parsed.sentry.url).toBe("https://sentry.example.com")
     expect(parsed.sentry.projectId).toBe("2")
+    expect(parsed.sentry.org).toBe("sentry")
+    expect(parsed.sentry.project).toBe("alive")
   })
 
   it("derives projectId from dsn when missing", () => {
@@ -81,6 +83,22 @@ describe("parseServerConfig sentry compatibility", () => {
     const parsed = parseServerConfig(raw)
     expect(parsed.sentry.projectId).toBe("42")
     expect(parsed.sentry.url).toBe("https://sentry.example.com")
+    expect(parsed.sentry.org).toBe("sentry")
+    expect(parsed.sentry.project).toBe("alive")
+  })
+
+  it("rejects legacy sentry.host values that are not bare hostnames", () => {
+    const raw = JSON.stringify(
+      buildBaseConfig({
+        sentry: {
+          dsn: "https://abc123@sentry.example.com/2",
+          host: "https://sentry.example.com/path",
+          projectId: "2",
+        },
+      }),
+    )
+
+    expect(() => parseServerConfig(raw)).toThrow(/bare hostname/)
   })
 
   it("keeps sentry strict for unknown keys", () => {

@@ -133,8 +133,6 @@ function buildDefaultSystemPrompt(cwd: string, thinkingPrompt?: string): string 
   const now = new Date()
   let prompt = `Current time: ${now.toISOString()}. Workspace: ${cwd}.`
   prompt += " This is an automated task — no human is watching. Complete it efficiently and report what was done."
-  prompt +=
-    " Use Bash for shell commands (e.g. date, curl). Use Write/Edit for file changes. Use parallel tool calls when possible."
 
   if (thinkingPrompt) {
     prompt += `\n\nAgent guidance: ${thinkingPrompt}`

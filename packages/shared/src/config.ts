@@ -146,6 +146,9 @@ function localDefaults(): Partial<ServerConfig> {
  * - Dynamic require works in Bun ESM (production) and Node CJS (tests)
  * - Wrapped in try/catch for strict Node ESM (Playwright) where require is unavailable
  */
+/** True when config was actually loaded from disk (not just empty defaults) */
+let configActuallyLoaded = false
+
 function loadServerConfig(): Partial<ServerConfig> {
   // Browser can't read filesystem
   if (isBrowser) {
@@ -182,6 +185,7 @@ function loadServerConfig(): Partial<ServerConfig> {
 
   try {
     const raw = fs.readFileSync(CONFIG_PATH, "utf8")
+    configActuallyLoaded = true
     return parseServerConfig(raw)
   } catch (err) {
     throw new Error(`FATAL: Failed to parse ${CONFIG_PATH}: ${err instanceof Error ? err.message : err}`)
@@ -223,13 +227,6 @@ const COOKIE_DOMAIN = configValue("COOKIE_DOMAIN", serverConfig.domains?.cookieD
 
 // Server IP: from env var or server config (REQUIRED)
 const SERVER_IP = configValue("SERVER_IP", serverConfig.serverIp)
-
-// Sentry config (from server-config.json sentry section)
-// Empty in browser/test/local-dev — required in production (validated by schema)
-const SENTRY_DSN = serverConfig.sentry?.dsn ?? ""
-const SENTRY_URL = serverConfig.sentry?.url ?? ""
-const SENTRY_PROJECT_ID = serverConfig.sentry?.projectId ?? ""
-const SENTRY_HOST = SENTRY_DSN ? new URL(SENTRY_DSN).hostname : ""
 
 // Contact email (required in server-config.json, empty only in browser/test/local-dev)
 const CONTACT_EMAIL_RAW = serverConfig.contactEmail ?? ""
@@ -359,24 +356,6 @@ export const DOMAINS = {
 } as const
 
 // =============================================================================
-// Sentry Configuration
-// =============================================================================
-
-export const SENTRY = {
-  /** Full DSN string for Sentry SDK initialization */
-  DSN: SENTRY_DSN,
-
-  /** Self-hosted Sentry base URL (for source map uploads, build config) */
-  URL: SENTRY_URL,
-
-  /** Sentry project ID */
-  PROJECT_ID: SENTRY_PROJECT_ID,
-
-  /** Sentry hostname extracted from DSN (for tunnel validation) */
-  HOST: SENTRY_HOST,
-} as const
-
-// =============================================================================
 // Contact Email
 // =============================================================================
 
@@ -485,6 +464,49 @@ export const DEFAULTS = {
   /** Whether this server is the primary automation executor (from server-config.json) */
   IS_AUTOMATION_PRIMARY,
 } as const
+
+// =============================================================================
+// Sentry Configuration
+// =============================================================================
+
+function extractHostname(inputUrl: string): string {
+  try {
+    return new URL(inputUrl).hostname
+  } catch {
+    return ""
+  }
+}
+
+function requireSentry(): {
+  DSN: string
+  URL: string
+  HOST: string
+  PROJECT_ID: string
+  ORG: string
+  PROJECT: string
+} {
+  const s = serverConfig.sentry
+  if (!s) {
+    // Config wasn't loaded (browser, strict ESM like Playwright, test, no config path)
+    if (isBrowser || !configActuallyLoaded) {
+      return { DSN: "", URL: "", HOST: "", PROJECT_ID: "", ORG: "", PROJECT: "" }
+    }
+    throw new Error(
+      "FATAL: sentry config is missing from server-config.json. " +
+        "Sentry is required on all deployed servers. Add the sentry block to your config.",
+    )
+  }
+  return {
+    DSN: s.dsn,
+    URL: s.url,
+    HOST: extractHostname(s.url),
+    PROJECT_ID: s.projectId,
+    ORG: s.org ?? "",
+    PROJECT: s.project ?? "",
+  }
+}
+
+export const SENTRY = requireSentry()
 
 // =============================================================================
 // Superadmin Configuration
