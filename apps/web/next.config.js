@@ -114,24 +114,11 @@ const nextConfig = {
   output: "standalone",
   poweredByHeader: false,
   devIndicators: false,
-  // Required for PostHog proxy rewrites to work correctly
   skipTrailingSlashRedirect: true,
-  // Proxy analytics/monitoring through our domain to bypass ad blockers
-  async rewrites() {
-    const rewrites = []
-    const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST?.replace(/\/$/, "")
-    if (posthogHost) {
-      rewrites.push(
-        { source: "/ingest/static/:path*", destination: `${posthogHost}/static/:path*` },
-        { source: "/ingest/:path*", destination: `${posthogHost}/:path*` },
-      )
-    }
-    // Sentry uses a tunnel API route (not a rewrite) — see app/api/monitoring/route.ts
-
-    // Manager v2 is routed directly by Caddy → localhost:5090 (no Next.js rewrite needed)
-
-    return rewrites
-  },
+  // PostHog proxy: handled by app/ingest/[...path]/route.ts (not rewrites)
+  // so that X-Forwarded-For is preserved for accurate GeoIP.
+  // Sentry uses a tunnel API route — see app/api/monitoring/route.ts.
+  // Manager v2 is routed directly by Caddy → localhost:5090.
   // Skip Next's internal TS pass to remove duplicate work in `next build`.
   // We run `tsgo --noEmit` via turbo as the single type-safety gate in CI/deploy.
   typescript: {
