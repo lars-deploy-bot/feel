@@ -152,6 +152,30 @@ describe("tools-api", () => {
     expect(secondCookie).toBe(`${COOKIE_NAMES.SESSION}=session-b`)
   })
 
+  it("requires a `path` field on every schema key containing a slash", async () => {
+    // Guard against #234: schema keys with "/" get turned into URL paths by default,
+    // causing silent 405s. Every such key must have an explicit `path` override.
+    // Dynamic-route keys (caller always passes pathOverride) are exempt — add them
+    // here with a comment explaining why.
+    const dynamicRouteKeys = new Set([
+      "automations/trigger", // URL includes automation ID, always needs pathOverride
+    ])
+
+    const { toolsSchemas } = await import("../src/lib/tools-api.js")
+
+    const missingPath: string[] = []
+    for (const [key, schema] of Object.entries(toolsSchemas)) {
+      if (key.includes("/") && !schema.path && !dynamicRouteKeys.has(key)) {
+        missingPath.push(key)
+      }
+    }
+
+    expect(
+      missingPath,
+      `Schema keys with "/" must have a \`path\` field to prevent URL mismatch bugs (#234): ${missingPath.join(", ")}`,
+    ).toEqual([])
+  })
+
   it("drops the Cookie header when ALIVE_SESSION_COOKIE is removed", async () => {
     mockFetch.mockResolvedValue(jsonResponse({ ok: true, sites: [] }))
 
