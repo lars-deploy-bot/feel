@@ -8,6 +8,7 @@ import { statSync } from "node:fs"
 import * as Sentry from "@sentry/nextjs"
 import type { OnPersistMessage } from "@webalive/automation-engine"
 import { DEFAULTS, WORKER_POOL } from "@webalive/shared"
+import { isQueryResultCancelled, type QueryResult } from "@webalive/worker-pool"
 import {
   getAllowedTools,
   getDisallowedTools,
@@ -210,12 +211,21 @@ export async function tryWorkerPool(params: WorkerPoolParams): Promise<AttemptRe
 
   const pool = getWorkerPool()
   const abort = new AbortController()
-  const timeoutId = setTimeout(() => abort.abort(), timeoutSeconds * 1000)
+
+  // Arm the timeout on the first message — NOT before entering the queue.
+  // Jobs may wait in the pool queue (workspace/user slot limits) and the
+  // timeout should only cover actual execution time, not queue wait.
+  let timeoutId: ReturnType<typeof setTimeout> | undefined
+  const armTimeout = () => {
+    if (!timeoutId) {
+      timeoutId = setTimeout(() => abort.abort(), timeoutSeconds * 1000)
+    }
+  }
 
   const { state, collect } = createMessageCollector(responseToolName)
 
   try {
-    await pool.query(credentials, {
+    const result: QueryResult = await pool.query(credentials, {
       requestId,
       ownerKey: userId,
       workloadClass: "automation",
@@ -231,6 +241,7 @@ export async function tryWorkerPool(params: WorkerPoolParams): Promise<AttemptRe
         sessionCookie,
       },
       onMessage: (msg: Record<string, unknown>) => {
+        armTimeout()
         console.log(`[Automation ${requestId}] Message: type=${String(msg.type ?? "unknown")}`)
         collect(msg)
         if (onPersistMessage) {
@@ -246,9 +257,14 @@ export async function tryWorkerPool(params: WorkerPoolParams): Promise<AttemptRe
       },
       signal: abort.signal,
     })
+
+    if (isQueryResultCancelled(result)) {
+      throw new Error("Automation timed out during execution")
+    }
+
     return state
   } finally {
-    clearTimeout(timeoutId)
+    if (timeoutId) clearTimeout(timeoutId)
   }
 }
 
