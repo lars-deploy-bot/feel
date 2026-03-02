@@ -198,11 +198,13 @@ export function AutomationsSettings() {
       )
       return { previous }
     },
-    onError: (_err, _id, context) => {
+    onError: (err, _id, context) => {
       if (context?.previous) queryClient.setQueryData(queryKeys.automations.list(queryFilter), context.previous)
+      alert(err.message || "Failed to delete automation")
     },
     onSuccess: () => {
       trackAutomationDeleted()
+      queryClient.invalidateQueries({ queryKey: queryKeys.automations.all })
       setSelectedJobId(null)
     },
     onSettled: () => setDeleteConfirm(null),
