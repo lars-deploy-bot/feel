@@ -1,6 +1,6 @@
 "use client"
 
-import { Archive, Check, Pencil, X } from "lucide-react"
+import { Archive, Bot, Check, Pencil, X } from "lucide-react"
 import { useRef, useState } from "react"
 import type { DbConversation } from "@/lib/db/messageDb"
 import { styles } from "../sidebar-styles"
@@ -107,6 +107,9 @@ export function ConversationItem({
           ) : (
             <div className={`text-sm font-medium ${styles.textPrimary} line-clamp-2 flex items-center gap-2`}>
               {isStreaming && <StreamingDot />}
+              {conversation.source === "automation_run" && (
+                <Bot size={13} strokeWidth={1.75} className="shrink-0 text-black/30 dark:text-white/30" />
+              )}
               <span className="flex-1 min-w-0 truncate">{conversation.title}</span>
             </div>
           )}

@@ -54,13 +54,14 @@ describe.skipIf(!hasRedis)("Stream Buffer - Lua Script (GET_UNREAD_SCRIPT)", () 
   let redis!: NonNullable<ReturnType<typeof createRedisClient>>
 
   beforeAll(() => {
+    if (!hasRedis) return
     const client = createRedisClient(getRedisUrl())
     if (!client) throw new Error("Redis client required for stream-buffer tests")
     redis = client
   }, 15000)
 
   afterAll(async () => {
-    await redis.quit()
+    if (redis) await redis.quit()
   }, 15000)
 
   it("correctly retrieves unread messages on first read", async () => {

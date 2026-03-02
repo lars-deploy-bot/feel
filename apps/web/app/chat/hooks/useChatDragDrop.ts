@@ -3,6 +3,7 @@ import type { ChatInputHandle } from "@/features/chat/components/ChatInput/types
 
 interface UseChatDragDropOptions {
   chatInputRef: React.RefObject<ChatInputHandle | null>
+  disabled?: boolean
 }
 
 interface UseChatDragDropReturn {
@@ -16,39 +17,53 @@ interface UseChatDragDropReturn {
 /**
  * Handles drag & drop for the chat area.
  * Supports file drops and photobook image drops.
+ * When disabled, all handlers just preventDefault/stopPropagation.
  */
-export function useChatDragDrop({ chatInputRef }: UseChatDragDropOptions): UseChatDragDropReturn {
+export function useChatDragDrop({ chatInputRef, disabled }: UseChatDragDropOptions): UseChatDragDropReturn {
   const [isDragging, setIsDragging] = useState(false)
   const dragCounter = useRef(0)
 
-  const handleChatDragEnter = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    dragCounter.current++
-    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
-      setIsDragging(true)
-    }
-  }, [])
+  const handleChatDragEnter = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (disabled) return
+      dragCounter.current++
+      if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+        setIsDragging(true)
+      }
+    },
+    [disabled],
+  )
 
-  const handleChatDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    dragCounter.current--
-    if (dragCounter.current === 0) {
-      setIsDragging(false)
-    }
-  }, [])
+  const handleChatDragLeave = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (disabled) return
+      dragCounter.current--
+      if (dragCounter.current === 0) {
+        setIsDragging(false)
+      }
+    },
+    [disabled],
+  )
 
-  const handleChatDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    e.dataTransfer.dropEffect = "copy"
-  }, [])
+  const handleChatDragOver = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (disabled) return
+      e.dataTransfer.dropEffect = "copy"
+    },
+    [disabled],
+  )
 
   const handleChatDrop = useCallback(
     async (e: React.DragEvent) => {
       e.preventDefault()
       e.stopPropagation()
+      if (disabled) return
       dragCounter.current = 0
       setIsDragging(false)
 
@@ -67,7 +82,7 @@ export function useChatDragDrop({ chatInputRef }: UseChatDragDropOptions): UseCh
         chatInputRef.current?.addAttachment(file)
       }
     },
-    [chatInputRef],
+    [chatInputRef, disabled],
   )
 
   return {

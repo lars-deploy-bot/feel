@@ -72,14 +72,14 @@ export const serverConfigSchema = z
   .object({
     serverId: z.string().regex(/^srv_.{6,}$/),
     serverIp: z.string().regex(/^(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)$/),
-    serverIpv6: z.string().optional(),
+    serverIpv6: z.string().min(1),
     automationPrimary: z.boolean(),
 
     paths: z
       .object({
         aliveRoot: pathStr,
         sitesRoot: pathStr,
-        templatesRoot: pathStr.optional(),
+        templatesRoot: pathStr,
         imagesStorage: pathStr,
       })
       .strict(),
@@ -90,7 +90,7 @@ export const serverConfigSchema = z
         wildcard: domainStr,
         cookieDomain: z.string().min(1),
         previewBase: domainStr,
-        frameAncestors: z.array(z.string().min(1)).optional(),
+        frameAncestors: z.array(z.string().min(1)),
       })
       .strict(),
 
@@ -100,8 +100,7 @@ export const serverConfigSchema = z
         staging: z.string().url(),
         dev: z.string().url(),
       })
-      .strict()
-      .optional(),
+      .strict(),
 
     shell: z
       .object({
@@ -119,8 +118,7 @@ export const serverConfigSchema = z
       .object({
         port: z.number().int().min(1).max(65535),
       })
-      .strict()
-      .optional(),
+      .strict(),
 
     generated: z
       .object({
