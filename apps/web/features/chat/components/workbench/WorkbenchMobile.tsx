@@ -18,7 +18,7 @@ interface WorkbenchMobileProps {
 export function WorkbenchMobile({ onClose, children, busy, statusText, onStop }: WorkbenchMobileProps) {
   const { workspace } = useWorkspace({ allowEmpty: true })
 
-  const { setIframeRef, path, isLoading, previewToken, previewUrl, refresh } = usePreviewEngine({ workspace })
+  const { setIframeRef, path, isLoading, previewToken, refresh } = usePreviewEngine({ workspace })
 
   // Close on escape key
   useEffect(() => {
@@ -59,7 +59,6 @@ export function WorkbenchMobile({ onClose, children, busy, statusText, onStop }:
             {previewToken && (
               <iframe
                 ref={setIframeRef}
-                src={previewUrl}
                 className="w-full h-full border-0"
                 title={`Preview: ${workspace}`}
                 referrerPolicy="no-referrer-when-downgrade"

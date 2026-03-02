@@ -16,6 +16,8 @@ vi.mock("@webalive/env/client", () => ({
 import {
   domainToPreviewLabel,
   extractWorkspaceFromPreviewHost,
+  getPreviewUrl,
+  getSiteUrl,
   isPreviewHost,
   previewLabelToDomain,
 } from "../preview-utils"
@@ -82,6 +84,75 @@ describe("preview-utils", () => {
 
     it("handles label with multiple dashes (multi-level domain)", () => {
       expect(extractWorkspaceFromPreviewHost("preview--a-b-c-sonno-tech.sonno.tech")).toBe("a.b.c.sonno.tech")
+    })
+  })
+
+  describe("getPreviewUrl", () => {
+    it("generates basic preview URL", () => {
+      expect(getPreviewUrl("protino.sonno.tech")).toBe("https://preview--protino-sonno-tech.sonno.tech/")
+    })
+
+    it("includes path", () => {
+      expect(getPreviewUrl("protino.sonno.tech", { path: "/about" })).toBe(
+        "https://preview--protino-sonno-tech.sonno.tech/about",
+      )
+    })
+
+    it("appends token as query param", () => {
+      const url = getPreviewUrl("protino.sonno.tech", { path: "/", token: "abc123" })
+      const parsed = new URL(url)
+      expect(parsed.searchParams.get("preview_token")).toBe("abc123")
+      expect(parsed.pathname).toBe("/")
+    })
+
+    it("handles path with existing query params (no double ?)", () => {
+      const url = getPreviewUrl("protino.sonno.tech", { path: "/page?x=1&y=2", token: "tok" })
+      const parsed = new URL(url)
+      expect(parsed.searchParams.get("x")).toBe("1")
+      expect(parsed.searchParams.get("y")).toBe("2")
+      expect(parsed.searchParams.get("preview_token")).toBe("tok")
+      // No double "?" in the raw URL
+      expect(url.split("?").length).toBe(2)
+    })
+
+    it("handles path with hash — token placed before hash", () => {
+      const url = getPreviewUrl("protino.sonno.tech", { path: "/page#section", token: "tok" })
+      const parsed = new URL(url)
+      expect(parsed.searchParams.get("preview_token")).toBe("tok")
+      expect(parsed.hash).toBe("#section")
+      // Token must come before hash in the raw URL (otherwise server won't see it)
+      const tokenIdx = url.indexOf("preview_token")
+      const hashIdx = url.indexOf("#section")
+      expect(tokenIdx).toBeLessThan(hashIdx)
+    })
+
+    it("handles path with query and hash combined", () => {
+      const url = getPreviewUrl("protino.sonno.tech", { path: "/page?q=test#results", token: "tok" })
+      const parsed = new URL(url)
+      expect(parsed.searchParams.get("q")).toBe("test")
+      expect(parsed.searchParams.get("preview_token")).toBe("tok")
+      expect(parsed.hash).toBe("#results")
+    })
+
+    it("returns clean URL without token when token is undefined", () => {
+      const url = getPreviewUrl("protino.sonno.tech", { path: "/page?x=1#section" })
+      expect(url).toBe("https://preview--protino-sonno-tech.sonno.tech/page?x=1#section")
+    })
+
+    it("normalizes path without leading slash", () => {
+      expect(getPreviewUrl("protino.sonno.tech", { path: "about" })).toBe(
+        "https://preview--protino-sonno-tech.sonno.tech/about",
+      )
+    })
+  })
+
+  describe("getSiteUrl", () => {
+    it("generates basic site URL", () => {
+      expect(getSiteUrl("protino.sonno.tech")).toBe("https://protino.sonno.tech/")
+    })
+
+    it("includes path", () => {
+      expect(getSiteUrl("protino.sonno.tech", "/about")).toBe("https://protino.sonno.tech/about")
     })
   })
 

@@ -15,7 +15,10 @@ const navScript = `<script>
     window.parent.postMessage({ type: 'preview-navigation-start' }, '*');
   }
   function sendPath() {
-    window.parent.postMessage({ type: 'preview-navigation', path: location.pathname }, '*');
+    var p = new URLSearchParams(location.search);
+    p.delete('preview_token');
+    var qs = p.toString();
+    window.parent.postMessage({ type: 'preview-navigation', path: location.pathname + (qs ? '?' + qs : '') + location.hash }, '*');
   }
   sendPath();
   var origPush = history.pushState, origReplace = history.replaceState;
