@@ -133,6 +133,7 @@ jobs:
         with:
           filters: |
             run_e2e:
+              - 'apps/web/app/chat/**'
               - 'apps/web/app/api/claude/**'
               - 'apps/web/app/api/sessions/**'
               - 'apps/web/app/api/auth/**'
