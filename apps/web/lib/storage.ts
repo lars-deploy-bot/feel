@@ -3,6 +3,6 @@ import { FilesystemStorage } from "@webalive/images"
 import { PATHS } from "@webalive/shared"
 
 export const imageStorage = new FilesystemStorage({
-  basePath: env.IMAGES_STORAGE_PATH ?? PATHS.IMAGES_STORAGE,
+  basePath: PATHS.IMAGES_STORAGE,
   signatureSecret: env.IMAGES_SIGNATURE_SECRET,
 })
