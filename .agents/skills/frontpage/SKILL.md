@@ -1,44 +1,113 @@
 ---
 name: frontpage
-description: Deploy a scraped/exported website as a fully self-hosted static frontpage on an Alive site. Strip tracking, rewrite CDN URLs to local, serve via Hono. Multi-stage process.
+description: Deploy a scraped frontpage as a fully self-hosted static site on Alive. Strip tracking, rewrite CDN URLs to local, serve via Hono.
 ---
 
 # Frontpage Deployment
 
-Deploy an externally scraped or exported website as a fully self-hosted static frontpage on an Alive-managed site. **No external CDN dependencies** — the site must work in complete isolation.
+Deploy a scraped frontpage as a fully self-hosted static site. The scraper output follows a specific structure with assets on a CDN domain (e.g. `sitecdn.example.com`) and runtime code on a platform domain (e.g. `sitemaker.example.com`).
 
-This is a multi-stage process. Each stage has its own document:
+**No external CDN dependencies.** The site must work if every external server disappears.
 
-1. [Stage 1: Import & Strip](./stage-1-import-strip.md) — Copy files, delete tracking/analytics junk
-2. [Stage 2: Localize Assets](./stage-2-localize-assets.md) — Download missing assets, rewrite ALL URLs to local paths (HTML + JS)
-3. [Stage 3: Serve & Verify](./stage-3-serve-verify.md) — Set up Hono server, symlinks, systemd, verify isolation
-4. [Stage 4: Migrate to src/](./stage-4-migrate-src.md) — Reorganize into clean `src/` structure (future)
+Stages:
+1. **Import & Strip** (this file) — copy, delete junk, strip tracking
+2. [Localize & Serve](./localize.md) — rewrite URLs, download assets, serve locally, verify isolation
+3. [Rebuild as Components](./rebuild.md) — migrate to clean Vite + React project (future)
 
-## Critical Rule
+---
 
-**NEVER rely on external CDNs.** All assets (JS, CSS, images, fonts, videos) must be served locally. CDNs go down, change URLs, or get blocked. The site must work if the internet disappears.
+## Critical Rules
 
-## Key Lesson: JS Files Have CDN URLs Too
+1. **NEVER rely on external CDNs.** All assets served locally.
+2. **Rewrite URLs in JS too.** HTML is not enough — bundled `.mjs` files contain 1000+ hardcoded CDN URLs for dynamic `import()` calls, lazy-loaded images, and runtime font loading.
+3. **Block search engines.** These are reproductions. Always add `X-Robots-Tag: noindex, nofollow` and a blocking `robots.txt`.
+4. **Fix file ownership.** All files must be owned by the site user (`site-<slug>`).
+5. **Merge `https/` subdirectories.** Scrapers save dynamic imports under `sites/HASH/https/` mirroring the URL structure. These must be merged into the main asset directories or they 404.
 
-Scraped websites don't just reference CDN URLs in HTML. **The JS bundles contain hardcoded CDN URLs** for dynamic imports — modules, images, fonts loaded at runtime. You MUST rewrite URLs in ALL files:
+---
 
-- `index.html` — static `<script>`, `<link>`, `<img>` tags
-- `*.mjs` / `*.js` — bundled runtime code with dynamic `import()` calls
-- Nested `https/` directories — scrapers save dynamic imports here
+## Stage 1: Import & Strip
 
-If you only rewrite the HTML, the site loads but breaks at runtime when JS tries to fetch from dead CDN URLs.
+### 1.1 Copy source files
 
-## Quick Summary
+```bash
+cp -r /path/to/scraped-site /srv/webalive/sites/<domain>/user/<name>
+chown -R site-<slug>:site-<slug> /srv/webalive/sites/<domain>/user/<name>
+```
+
+### 1.2 Expected scraper directory structure
+
+The scraper organizes files by origin domain:
 
 ```
-1. Copy scraped dir → /user/<name>/
-2. Delete tracking dirs (analytics, GTM, recruitment, editor chrome)
-3. Strip tracking <script> tags from HTML
-4. Download fonts/videos that weren't scraped
-5. Rewrite ALL CDN URLs → /cdn/ paths (in HTML AND all JS files)
-6. Create cdn/ symlinks → asset directories
-7. Write minimal Hono server with serveStatic + MIME fix
-8. Slim package.json to just hono
-9. Switch systemd to preview mode
-10. Verify: zero external asset URLs remain
+<name>/
+├── www.example.com/              # Main HTML (index.html)
+├── sitecdn.example.com/          # Primary CDN — images, JS bundles, modules, assets
+│   ├── images/                   # Uploaded images (~40 files)
+│   ├── sites/HASH/               # JS bundle (react, motion, page components, ~163 .mjs files)
+│   │   └── https/                # Dynamic imports captured by scraper (see 1.3)
+│   ├── modules/                  # ES module packages (icon libs, utils)
+│   └── assets/                   # Font files (.woff2)
+├── sitemaker.example.com/        # Runtime bootstrap + icon packages
+│   └── m/                        # Icon packages, module components
+├── fonts.gstatic.com/            # Google Fonts (sometimes missed by scraper)
+├── _DataURI/                     # Base64-encoded inline assets (usually not needed)
+├── www.googletagmanager.com/     # GTM (junk — delete)
+├── events.example.com/           # Analytics (junk — delete)
+└── other-tracking-domains/       # Various trackers (junk — delete)
+```
+
+### 1.3 The `https/` subdirectory problem
+
+Scrapers capture dynamically-imported modules at runtime and save them mirroring the URL path:
+
+```
+sitecdn.example.com/sites/HASH/https/
+├── sitecdn.example.com/
+│   └── modules/                  # Dynamic module imports (icon libs, utils)
+│       ├── icon-lib@0.0.57/      # Note: @ in directory names
+│       └── other-lib/
+└── sitemaker.example.com/
+    └── m/                        # Icon component packages
+        ├── phosphor-icons/
+        └── other-icons/
+```
+
+These MUST be merged into the main directories (Stage 2, step 2.4) or dynamic imports will 404.
+
+### 1.4 Delete junk directories
+
+Delete on sight — these are never needed:
+
+| Directory pattern | What it is |
+|-------------------|-----------|
+| `www.googletagmanager.com/` | Google Tag Manager |
+| `www.google-analytics.com/` | Google Analytics |
+| `events.*.com/` | Analytics event trackers |
+| `*.comeet.co/`, `*.lever.co/` | Recruitment widgets |
+| `*.hotjar.com/`, `*.intercom.io/` | Support/heatmap widgets |
+| `*.sentry.io/` | Error tracking |
+| `_DataURI/` | Base64-encoded inline assets (not referenced by served HTML) |
+| `www.<domain>/` | Original unrewritten HTML source (keep only the rewritten copy) |
+| `sitemaker.example.com/edit/` | CMS editor runtime (not needed for static serving) |
+
+### 1.5 Strip tracking from HTML
+
+The main HTML file (typically 10,000–15,000 lines) contains inline tracking. Remove:
+
+- **Google Tag Manager**: `<script>` loader + `<noscript>` iframe
+- **Google Analytics**: `gtag.js` async script + config block
+- **Event trackers**: `<script>` tags referencing analytics domains
+- **Recruitment APIs**: career widget scripts (comeet, lever)
+- **Preconnect hints**: `<link rel="preconnect">` to external domains (useless when self-hosting)
+- **Comment wrappers**: headStart/bodyStart/snippet wrapper comments
+
+### 1.6 Remove old template files
+
+If the site slot previously had a Vite/React template:
+
+```bash
+rm -rf src/ dist/ hooks/ components.json eslint.config.js postcss.config.js \
+  tailwind.config.ts tsconfig*.json vite.config.ts vite-env.d.ts CLAUDE.md \
+  GALLERY-SHOWCASE-README.md .git .gitignore
 ```

@@ -36,79 +36,33 @@ fi
 
 # Get stream root from env or derive from script location
 STREAM_ROOT="${STREAM_ROOT:-$(cd "$(dirname "$0")/../../.." && pwd)}"
+
+# SERVER_CONFIG_PATH is required — no hardcoded domain fallbacks
 SERVER_CONFIG="${SERVER_CONFIG_PATH:-}"
+if [[ -z "$SERVER_CONFIG" ]]; then
+    die "SERVER_CONFIG_PATH is required. Set it to the path of server-config.json"
+fi
+if [[ ! -f "$SERVER_CONFIG" ]]; then
+    die "server-config.json not found at $SERVER_CONFIG"
+fi
 
-if [[ -f "$SERVER_CONFIG" ]]; then
-    # =========================================================================
-    # Generator mode: Regenerate Caddyfile from database
-    # =========================================================================
-    # The domain should already be deleted from DB before this script runs.
-    # Regenerating will produce a Caddyfile without the deleted domain.
-    log_info "Using generator mode for Caddy configuration..."
+# Generator mode: Regenerate Caddyfile from database
+# The domain should already be deleted from DB before this script runs.
+# Regenerating will produce a Caddyfile without the deleted domain.
+log_info "Using generator mode for Caddy configuration..."
 
-    cd "$STREAM_ROOT"
-    if bun run --cwd packages/site-controller routing:generate; then
-        log_info "Validating Caddy configuration..."
-        if caddy validate --config /etc/caddy/Caddyfile 2>/dev/null; then
-            log_info "Reloading Caddy..."
-            systemctl reload caddy || log_warn "Failed to reload Caddy"
-            log_success "Caddy configuration regenerated"
-        else
-            log_warn "Caddy configuration validation failed"
-        fi
-    else
-        log_warn "Failed to regenerate Caddy configuration"
-    fi
-
-elif [[ -n "${CADDYFILE_PATH:-}" ]] && [[ -f "$CADDYFILE_PATH" ]]; then
-    # =========================================================================
-    # Legacy mode: Direct Caddyfile editing
-    # =========================================================================
-    log_info "Using legacy mode for Caddy configuration..."
-
-    # Acquire lock
-    CADDY_LOCK_PATH=${CADDY_LOCK_PATH:-/tmp/caddyfile.lock}
-    exec 200>"$CADDY_LOCK_PATH"
-    flock -w 30 200 || log_warn "Failed to acquire Caddyfile lock"
-
-    # Escape dots in domain for regex matching
-    ESCAPED_DOMAIN=$(echo "$SITE_DOMAIN" | sed 's/\./\\./g')
-
-    # Generate preview subdomain
-    PREVIEW_LABEL=$(echo "$SITE_DOMAIN" | tr '.' '-')
-    PREVIEW_BASE="${PREVIEW_BASE:-preview.sonno.tech}"
-    PREVIEW_DOMAIN="${PREVIEW_LABEL}.${PREVIEW_BASE}"
-    ESCAPED_PREVIEW=$(echo "$PREVIEW_DOMAIN" | sed 's/\./\\./g')
-
-    CADDY_CHANGED=false
-
-    # Remove main domain block
-    if grep -q "^${SITE_DOMAIN} {" "$CADDYFILE_PATH"; then
-        sed -i "/^${ESCAPED_DOMAIN} {/,/^}/d" "$CADDYFILE_PATH"
-        log_success "Removed main domain from Caddyfile"
-        CADDY_CHANGED=true
-    else
-        log_info "Main domain not found in Caddyfile"
-    fi
-
-    # Remove preview subdomain block
-    if grep -q "^${PREVIEW_DOMAIN} {" "$CADDYFILE_PATH"; then
-        sed -i "/^${ESCAPED_PREVIEW} {/,/^}/d" "$CADDYFILE_PATH"
-        log_success "Removed preview subdomain from Caddyfile"
-        CADDY_CHANGED=true
-    else
-        log_info "Preview subdomain not found in Caddyfile"
-    fi
-
-    # Remove any empty lines left behind
-    sed -i '/^$/N;/^\n$/d' "$CADDYFILE_PATH"
-
-    # Reload Caddy if changes were made
-    if [[ "$CADDY_CHANGED" == "true" ]]; then
+cd "$STREAM_ROOT"
+if bun run --cwd packages/site-controller routing:generate; then
+    log_info "Validating Caddy configuration..."
+    if caddy validate --config /etc/caddy/Caddyfile 2>/dev/null; then
+        log_info "Reloading Caddy..."
         systemctl reload caddy || log_warn "Failed to reload Caddy"
+        log_success "Caddy configuration regenerated"
+    else
+        log_warn "Caddy configuration validation failed"
     fi
-
-    flock -u 200
+else
+    log_warn "Failed to regenerate Caddy configuration"
 fi
 
 # =============================================================================
