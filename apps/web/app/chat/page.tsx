@@ -158,16 +158,22 @@ function ChatPageContent() {
   })
 
   // Handle ?wk= URL parameter to pre-select workspace (e.g., from widget "Edit me" button)
-  const [wkParam] = useQueryState(QUERY_KEYS.workspace)
+  // This is a one-time deep-link intent: consume the param, set the workspace, then clear it
+  // so it doesn't fight back when the user switches org/project later.
+  const [wkParam, setWkParam] = useQueryState(QUERY_KEYS.workspace)
   const [wtParam, setWtParam] = useQueryState(QUERY_KEYS.worktree)
   const worktreesEnabled = useFeatureFlag("WORKTREES")
   const requestWorktree = worktreesEnabled ? worktree : null
+  const wkConsumedRef = useRef(false)
   useEffect(() => {
-    if (mounted && wkParam && wkParam !== workspace) {
+    if (!mounted || !wkParam || wkConsumedRef.current) return
+    wkConsumedRef.current = true
+    if (wkParam !== workspace) {
       console.log("[ChatPage] Setting workspace from URL param:", wkParam)
       setWorkspace(wkParam)
     }
-  }, [mounted, wkParam, workspace, setWorkspace])
+    void setWkParam(null, { shallow: true })
+  }, [mounted, wkParam, workspace, setWorkspace, setWkParam])
 
   // Bidirectional sync between ?wt= URL param and worktree store.
   // Refs track previous values so each effect only reacts to its own source changing,
