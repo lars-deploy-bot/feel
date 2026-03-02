@@ -41,6 +41,8 @@ export {
   isErrorResultMessage,
   isSDKAssistantMessage,
   isSDKResultMessage,
+  isSDKStatusMessage,
   isSDKSystemMessage,
+  isSDKTaskNotification,
   isSDKUserMessage,
 } from "@/features/chat/types/sdk"

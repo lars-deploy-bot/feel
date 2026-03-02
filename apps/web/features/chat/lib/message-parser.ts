@@ -14,7 +14,9 @@ import {
   isErrorResultMessage,
   isSDKAssistantMessage,
   isSDKResultMessage,
+  isSDKStatusMessage,
   isSDKSystemMessage,
+  isSDKTaskNotification,
   isSDKUserMessage,
 } from "@/features/chat/types/sdk-types"
 import {
@@ -435,8 +437,13 @@ export function getMessageComponentType(message: UIMessage): ComponentType {
     const sdkMsg = message.content as SDKMessage
 
     // Detect compacting messages reloaded from Dexie (stored as sdk_message)
-    if (sdkMsg.type === "system" && (sdkMsg as any).subtype === "status" && (sdkMsg as any).status === "compacting") {
+    if (isSDKStatusMessage(sdkMsg) && sdkMsg.status === "compacting") {
       return COMPONENT_TYPE.COMPACTING
+    }
+
+    // Detect task_notification messages reloaded from Dexie (stored as sdk_message)
+    if (isSDKTaskNotification(sdkMsg)) {
+      return COMPONENT_TYPE.TASK_NOTIFICATION
     }
 
     if (isSDKSystemMessage(sdkMsg)) return COMPONENT_TYPE.SYSTEM

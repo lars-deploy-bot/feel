@@ -98,6 +98,7 @@ export function toDbMessageContent(message: UIMessage): DbMessageContent {
     case "compacting":
     case "tool_progress":
     case "auth_status":
+    case "task_notification":
     case "interrupt":
     case "agent_manager":
       // Store these as SDK messages (they have structured data)
@@ -125,6 +126,7 @@ export function toDbMessageType(uiType: UIMessage["type"]): DbMessageType {
     case "compacting":
     case "tool_progress":
     case "auth_status":
+    case "task_notification":
     case "interrupt":
     case "agent_manager":
       return "system"

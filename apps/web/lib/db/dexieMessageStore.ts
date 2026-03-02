@@ -35,7 +35,7 @@ import {
   unarchiveConversation as syncUnarchiveConversation,
   unshareConversation as syncUnshareConversation,
 } from "./conversationSync"
-import { extractTitle, toDbMessageContent } from "./messageAdapters"
+import { extractTitle, toDbMessageContent, toDbMessageType } from "./messageAdapters"
 import { CURRENT_MESSAGE_VERSION, type DbConversation, type DbMessage, type DbTab, getMessageDb } from "./messageDb"
 import { safeDb } from "./safeDb"
 
@@ -437,7 +437,14 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
   addMessage: async (message, targetTabId) => {
     // Skip transient stream lifecycle messages that don't make sense when reloaded
     // These are ephemeral UI events (stream start/complete, progress indicators, etc.)
-    const TRANSIENT_TYPES = new Set(["start", "complete", "compact_boundary", "tool_progress", "auth_status"])
+    const TRANSIENT_TYPES = new Set([
+      "start",
+      "complete",
+      "compact_boundary",
+      "tool_progress",
+      "auth_status",
+      "task_notification",
+    ])
     if (TRANSIENT_TYPES.has(message.type)) {
       return
     }
@@ -507,7 +514,7 @@ export const useDexieMessageStore = create<DexieMessageStore>((set, get) => ({
       const dbMessage: DbMessage = {
         id: message.id,
         tabId: targetTabId,
-        type: message.type === "user" ? "user" : message.type === "sdk_message" ? "sdk_message" : "system",
+        type: toDbMessageType(message.type),
         content: toDbMessageContent(message),
         createdAt: now,
         updatedAt: now,

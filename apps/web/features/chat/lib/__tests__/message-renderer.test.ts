@@ -262,4 +262,45 @@ describe("shouldRenderMessage", () => {
       expect(shouldRenderMessage(msg, false)).toBe(true)
     })
   })
+
+  describe("task_notification (#244)", () => {
+    function makeTaskNotificationContent(overrides?: Record<string, unknown>) {
+      return {
+        type: "system",
+        subtype: "task_notification",
+        task_id: "b0d0e6d",
+        status: "failed",
+        output_file: "/tmp/claude-0/tasks/b0d0e6d.output",
+        summary: 'Background command "Push branch" failed with exit code 1',
+        uuid: "uuid-1",
+        session_id: "sess-1",
+        ...overrides,
+      }
+    }
+
+    it("TASK_NOTIFICATION always returns false (not rendered)", () => {
+      const msg: UIMessage = {
+        id: "task-1",
+        type: "task_notification",
+        content: makeTaskNotificationContent(),
+        timestamp: new Date(),
+      }
+      expect(getMessageComponentType(msg)).toBe(COMPONENT_TYPE.TASK_NOTIFICATION)
+      expect(shouldRenderMessage(msg, false)).toBe(false)
+      expect(shouldRenderMessage(msg, true)).toBe(false)
+    })
+
+    it("classifies persisted task_notification reloaded from Dexie as TASK_NOTIFICATION, not UNKNOWN", () => {
+      // When a task_notification is reloaded from Dexie, it comes back as sdk_message
+      // with the original SDK content. Before the fix, this fell through to UNKNOWN.
+      const msg: UIMessage = {
+        id: "task-dexie-1",
+        type: "sdk_message",
+        content: makeTaskNotificationContent({ status: "completed", summary: "Task completed successfully" }),
+        timestamp: new Date(),
+      }
+      expect(getMessageComponentType(msg)).toBe(COMPONENT_TYPE.TASK_NOTIFICATION)
+      expect(shouldRenderMessage(msg, false)).toBe(false)
+    })
+  })
 })

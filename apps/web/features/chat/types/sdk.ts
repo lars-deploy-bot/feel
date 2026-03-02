@@ -2,7 +2,9 @@ import type {
   SDKAssistantMessage,
   SDKMessage,
   SDKResultMessage,
+  SDKStatusMessage,
   SDKSystemMessage,
+  SDKTaskNotificationMessage,
   SDKUserMessage,
 } from "@anthropic-ai/claude-agent-sdk"
 
@@ -14,6 +16,28 @@ export function isSDKSystemMessage(msg: SDKMessage): msg is SDKSystemMessage {
     (msg as SDKSystemMessage).subtype === "init" &&
     "session_id" in msg &&
     "uuid" in msg
+  )
+}
+
+export function isSDKTaskNotification(msg: unknown): msg is SDKTaskNotificationMessage {
+  return (
+    !!msg &&
+    typeof msg === "object" &&
+    "type" in msg &&
+    msg.type === "system" &&
+    "subtype" in msg &&
+    msg.subtype === "task_notification"
+  )
+}
+
+export function isSDKStatusMessage(msg: unknown): msg is SDKStatusMessage {
+  return (
+    !!msg &&
+    typeof msg === "object" &&
+    "type" in msg &&
+    msg.type === "system" &&
+    "subtype" in msg &&
+    msg.subtype === "status"
   )
 }
 
