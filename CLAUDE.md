@@ -775,7 +775,6 @@ Jobs are stored in Supabase `app.automation_jobs` and executed by a standalone w
 - `GET/POST /api/automations` - List/create automations
 - `POST /api/automations/[id]/trigger` - Manually trigger a job
 - `GET /api/automations/[id]/runs` - Get run history
-- `GET /api/automations/events` - SSE stream for real-time status
 
 **Debugging:**
 ```bash

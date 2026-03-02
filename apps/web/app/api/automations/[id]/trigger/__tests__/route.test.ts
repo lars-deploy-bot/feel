@@ -34,10 +34,6 @@ vi.mock("@/lib/automation/cron-service", () => ({
   pokeCronService: vi.fn(),
 }))
 
-vi.mock("@/app/api/automations/events/route", () => ({
-  broadcastAutomationEvent: vi.fn(),
-}))
-
 vi.mock("@/lib/automation/notifications", () => ({
   notifyJobDisabled: vi.fn(),
 }))
