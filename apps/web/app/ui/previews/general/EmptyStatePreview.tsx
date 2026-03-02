@@ -23,7 +23,7 @@ export function EmptyStatePreview() {
             message="No documents found"
             action={{
               label: "Create Document",
-              onClick: () => alert("Create clicked!"),
+              onClick: () => console.log("Create clicked!"),
             }}
           />
         </div>
@@ -38,7 +38,7 @@ export function EmptyStatePreview() {
             message="No results match your search"
             action={{
               label: "Clear Filters",
-              onClick: () => alert("Clear clicked!"),
+              onClick: () => console.log("Clear clicked!"),
             }}
           />
         </div>
@@ -53,7 +53,7 @@ export function EmptyStatePreview() {
             message="No images uploaded"
             action={{
               label: "Upload Image",
-              onClick: () => alert("Upload clicked!"),
+              onClick: () => console.log("Upload clicked!"),
             }}
           />
         </div>

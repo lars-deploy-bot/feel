@@ -2,6 +2,7 @@
 
 import { ChevronDown, RefreshCcw } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { ConfirmModal } from "@/components/modals/ConfirmModal"
 import { Modal } from "@/components/ui/Modal"
 import { buildWorkspaceKey, validateWorktreeSlug } from "@/features/workspace/lib/worktree-utils"
 import { trackWorktreeCreated, trackWorktreeSwitched } from "@/lib/analytics/events"
@@ -37,6 +38,7 @@ export function WorktreeSwitcher({
   const [removeError, setRemoveError] = useState<string | null>(null)
   const [removingSlug, setRemovingSlug] = useState<string | null>(null)
 
+  const [pendingRemove, setPendingRemove] = useState<string | null>(null)
   const [slug, setSlug] = useState("")
   const [branch, setBranch] = useState("")
   const [from, setFrom] = useState("")
@@ -91,9 +93,6 @@ export function WorktreeSwitcher({
 
   const handleRemove = async (target: string) => {
     if (!workspace) return
-    if (!confirm(`Remove worktree "${target}"? This keeps the branch by default.`)) {
-      return
-    }
 
     setRemoveError(null)
     setRemovingSlug(target)
@@ -247,7 +246,7 @@ export function WorktreeSwitcher({
                     </button>
                     <button
                       type="button"
-                      onClick={() => void handleRemove(item.slug)}
+                      onClick={() => setPendingRemove(item.slug)}
                       disabled={isRemoving}
                       className="px-2 rounded-lg border border-black/[0.08] dark:border-white/[0.08] text-[11px] text-red-500/80 hover:text-red-500 hover:border-red-400/50 transition-colors disabled:opacity-50"
                     >
@@ -298,6 +297,21 @@ export function WorktreeSwitcher({
           </div>
         </div>
       </Modal>
+
+      {pendingRemove && (
+        <ConfirmModal
+          title="Remove worktree"
+          message={`Remove worktree "${pendingRemove}"? This keeps the branch by default.`}
+          confirmText="Remove"
+          confirmStyle="danger"
+          onConfirm={() => {
+            const target = pendingRemove
+            setPendingRemove(null)
+            void handleRemove(target)
+          }}
+          onCancel={() => setPendingRemove(null)}
+        />
+      )}
     </>
   )
 }

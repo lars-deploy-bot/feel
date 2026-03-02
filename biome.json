@@ -34,7 +34,17 @@
         "noParameterAssign": "off",
         "noUnusedTemplateLiteral": "error",
         "useSelfClosingElements": "warn",
-        "useImportType": "warn"
+        "useImportType": "warn",
+        "noRestrictedGlobals": {
+          "level": "error",
+          "options": {
+            "deniedGlobals": {
+              "alert": "Never use alert(). Use toast.error() from react-hot-toast for user feedback and Sentry.captureException() for error tracking.",
+              "confirm": "Never use confirm(). Use a proper confirmation dialog component.",
+              "prompt": "Never use prompt(). Use a proper input dialog component."
+            }
+          }
+        }
       },
       "complexity": {
         "noForEach": "off",
