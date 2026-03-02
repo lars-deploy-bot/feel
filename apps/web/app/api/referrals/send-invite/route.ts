@@ -92,7 +92,7 @@ export async function POST(req: Request) {
     await sendReferralInvite({
       to: validEmail,
       senderName: sender.display_name || "Someone",
-      inviteLink: buildInviteLink(sender.invite_code),
+      inviteLink: buildInviteLink(sender.invite_code, new URL(req.url).origin),
     })
   } catch (error) {
     console.error("Failed to send invite email:", error)

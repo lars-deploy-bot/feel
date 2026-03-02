@@ -54,7 +54,7 @@ export interface SessionUser {
 /** Pre-computed lowercase Sets — parsed once at module load, O(1) lookup */
 const superadminEmails = new Set(SUPERADMIN.EMAILS.map((e: string) => e.toLowerCase()))
 const adminEmails = new Set(
-  (process.env.ADMIN_EMAILS || "")
+  (env.ADMIN_EMAILS ?? "")
     .split(",")
     .map(e => e.trim().toLowerCase())
     .filter(Boolean),

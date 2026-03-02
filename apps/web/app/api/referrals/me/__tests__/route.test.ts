@@ -28,12 +28,13 @@ vi.mock("@/lib/supabase/iam", () => ({
   createIamClient: vi.fn(),
 }))
 
-// Mock generateInviteCode - only mock the function we need, keep real exports
+// Mock generateInviteCode and DOMAINS.STREAM_PROD (empty in test env without server-config.json)
 vi.mock("@webalive/shared", async importOriginal => {
   const actual = await importOriginal<typeof import("@webalive/shared")>()
   return {
     ...actual,
     generateInviteCode: vi.fn(() => "TEST123ABC"),
+    DOMAINS: { ...actual.DOMAINS, STREAM_PROD: "https://app.example.test" },
   }
 })
 
@@ -52,8 +53,6 @@ const MOCK_USER = {
   isSuperadmin: false,
   enabledModels: [],
 }
-
-const ORIGINAL_NEXT_PUBLIC_APP_URL = process.env.NEXT_PUBLIC_APP_URL
 
 // Helper to create chainable mock that simulates Supabase query behavior (cast to unknown to satisfy SupabaseClient type)
 function createDetailedIamMock(options: {
@@ -88,16 +87,10 @@ function createDetailedIamMock(options: {
 describe("GET /api/referrals/me", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    process.env.NEXT_PUBLIC_APP_URL = "https://app.example.test"
   })
 
   afterEach(() => {
     vi.clearAllMocks()
-    if (ORIGINAL_NEXT_PUBLIC_APP_URL === undefined) {
-      delete process.env.NEXT_PUBLIC_APP_URL
-    } else {
-      process.env.NEXT_PUBLIC_APP_URL = ORIGINAL_NEXT_PUBLIC_APP_URL
-    }
   })
 
   describe("Authentication", () => {
