@@ -1,7 +1,6 @@
 "use client"
 import { SUPERADMIN_WORKSPACE_NAME } from "@webalive/shared/constants"
 import { AnimatePresence, motion } from "framer-motion"
-
 import { useQueryState } from "nuqs"
 import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
@@ -16,6 +15,7 @@ import type { ChatInputHandle } from "@/features/chat/components/ChatInput/types
 import { CollapsibleToolGroup } from "@/features/chat/components/message-renderers/CollapsibleToolGroup"
 import { MessageWrapper } from "@/features/chat/components/message-renderers/MessageWrapper"
 import { PendingToolsIndicator } from "@/features/chat/components/PendingToolsIndicator"
+import { ReadOnlyTranscriptBar } from "@/features/chat/components/ReadOnlyTranscriptBar"
 import { SubdomainInitializer } from "@/features/chat/components/SubdomainInitializer"
 import { Workbench } from "@/features/chat/components/workbench/Workbench"
 import { WorkbenchMobile } from "@/features/chat/components/workbench/WorkbenchMobile"
@@ -274,6 +274,7 @@ function ChatPageContent() {
   const statusText = useStatusText(busy, messages)
   const { isDragging, handleChatDragEnter, handleChatDragLeave, handleChatDragOver, handleChatDrop } = useChatDragDrop({
     chatInputRef,
+    disabled: isAutomationRun,
   })
 
   // Register element selection handler to insert selected element into chat input
@@ -438,9 +439,10 @@ function ChatPageContent() {
     isStopping,
   })
 
-  // Register retry handler for error recovery
+  // Register retry handler for error recovery (no-op for read-only automation transcripts)
   const { registerRetryHandler } = useRetry()
   useEffect(() => {
+    if (isAutomationRun) return
     registerRetryHandler(() => {
       // Find the last user message to retry
       const lastUserMessage = [...messages].reverse().find(m => m.type === "user")
@@ -449,7 +451,7 @@ function ChatPageContent() {
         sendMessage(lastUserMessage.content)
       }
     })
-  }, [messages, sendMessage, registerRetryHandler])
+  }, [messages, sendMessage, registerRetryHandler, isAutomationRun])
 
   // Tab management - combined switch handler for both conversation hooks
   const handleSwitchConversationForTabs = useCallback(
@@ -815,7 +817,9 @@ function ChatPageContent() {
                       // Determine if this message can be deleted:
                       // - Must have a previous assistant message with UUID to resume from
                       // - Only user messages and assistant messages with visible content can be deleted
+                      // - NEVER deletable in read-only automation transcripts
                       const canDelete =
+                        !isAutomationRun &&
                         sessionTabId != null &&
                         index > 0 &&
                         (message.type === "user" || message.type === "sdk_message") &&
@@ -854,17 +858,19 @@ function ChatPageContent() {
                     }
                   />
 
-                  <AgentManagerIndicator
-                    isEvaluating={isEvaluatingProgress}
-                    message={msg}
-                    workspace={workspace}
-                    agentManagerAbortRef={agentManagerAbortRef}
-                    agentManagerTimeoutRef={agentManagerTimeoutRef}
-                    onCancel={() => {
-                      if (msg.startsWith("agentmanager>")) setMsg("")
-                      // isEvaluatingProgress is managed by useChatMessaging hook
-                    }}
-                  />
+                  {!isAutomationRun && (
+                    <AgentManagerIndicator
+                      isEvaluating={isEvaluatingProgress}
+                      message={msg}
+                      workspace={workspace}
+                      agentManagerAbortRef={agentManagerAbortRef}
+                      agentManagerTimeoutRef={agentManagerTimeoutRef}
+                      onCancel={() => {
+                        if (msg.startsWith("agentmanager>")) setMsg("")
+                        // isEvaluatingProgress is managed by useChatMessaging hook
+                      }}
+                    />
+                  )}
 
                   {/* Scroll anchor - Intersection Observer watches this to detect if user is at bottom */}
                   <div ref={anchorRef} className="h-px" />
@@ -895,30 +901,34 @@ function ChatPageContent() {
                     )}
                   </AnimatePresence>
                 )}
-                <ChatInput
-                  ref={chatInputRef}
-                  message={msg}
-                  setMessage={setMsg}
-                  busy={busy}
-                  isReady={isChatReady && !!workspace}
-                  isStopping={isStopping}
-                  onSubmit={sendMessage}
-                  onStop={stopStreaming}
-                  onOpenTemplates={modals.openTemplates}
-                  config={{
-                    enableAttachments: true,
-                    enableCamera: true,
-                    maxAttachments: 5,
-                    maxFileSize: 20 * 1024 * 1024,
-                    workspace: workspace ?? undefined,
-                    worktree: requestWorktree,
-                    placeholder:
-                      !workspace && mounted && !organizationsLoading
-                        ? "Select a site to start chatting..."
-                        : "Tell me what to change...",
-                    onAttachmentUpload: handleAttachmentUpload,
-                  }}
-                />
+                {isAutomationRun ? (
+                  <ReadOnlyTranscriptBar />
+                ) : (
+                  <ChatInput
+                    ref={chatInputRef}
+                    message={msg}
+                    setMessage={setMsg}
+                    busy={busy}
+                    isReady={isChatReady && !!workspace}
+                    isStopping={isStopping}
+                    onSubmit={sendMessage}
+                    onStop={stopStreaming}
+                    onOpenTemplates={modals.openTemplates}
+                    config={{
+                      enableAttachments: true,
+                      enableCamera: true,
+                      maxAttachments: 5,
+                      maxFileSize: 20 * 1024 * 1024,
+                      workspace: workspace ?? undefined,
+                      worktree: requestWorktree,
+                      placeholder:
+                        !workspace && mounted && !organizationsLoading
+                          ? "Select a site to start chatting..."
+                          : "Tell me what to change...",
+                      onAttachmentUpload: handleAttachmentUpload,
+                    }}
+                  />
+                )}
               </div>
             </div>
           </section>
@@ -942,27 +952,31 @@ function ChatPageContent() {
               statusText={statusText}
               onStop={stopStreaming}
             >
-              <ChatInput
-                ref={chatInputRef}
-                message={msg}
-                setMessage={setMsg}
-                busy={busy}
-                isReady={isChatReady && !!workspace}
-                isStopping={isStopping}
-                onSubmit={sendMessage}
-                onStop={stopStreaming}
-                hideToolbar
-                config={{
-                  enableAttachments: true,
-                  enableCamera: false,
-                  maxAttachments: 5,
-                  maxFileSize: 20 * 1024 * 1024,
-                  workspace: workspace ?? undefined,
-                  worktree: requestWorktree,
-                  placeholder: "Tell me what to change...",
-                  onAttachmentUpload: handleAttachmentUpload,
-                }}
-              />
+              {isAutomationRun ? (
+                <ReadOnlyTranscriptBar />
+              ) : (
+                <ChatInput
+                  ref={chatInputRef}
+                  message={msg}
+                  setMessage={setMsg}
+                  busy={busy}
+                  isReady={isChatReady && !!workspace}
+                  isStopping={isStopping}
+                  onSubmit={sendMessage}
+                  onStop={stopStreaming}
+                  hideToolbar
+                  config={{
+                    enableAttachments: true,
+                    enableCamera: false,
+                    maxAttachments: 5,
+                    maxFileSize: 20 * 1024 * 1024,
+                    workspace: workspace ?? undefined,
+                    worktree: requestWorktree,
+                    placeholder: "Tell me what to change...",
+                    onAttachmentUpload: handleAttachmentUpload,
+                  }}
+                />
+              )}
             </WorkbenchMobile>
           )}
         </AnimatePresence>

@@ -117,6 +117,129 @@ async function cleanupAutomationTranscript(request: APIRequestContext, handles: 
   await request.delete(`/api/automations/${handles.jobId}`)
 }
 
+test.describe("Automation Transcript Read-Only UX", () => {
+  test("shows read-only bar and hides ChatInput for automation conversations", async ({
+    authenticatedPage,
+    workerTenant,
+  }) => {
+    const siteId = await findWorkspaceSiteId(authenticatedPage.request, workerTenant.workspace)
+    const automationJob = await createAutomationJob(authenticatedPage.request, siteId)
+    const seed = await seedAutomationTranscript(authenticatedPage.request, automationJob.id)
+    if (!seed) {
+      await authenticatedPage.request.delete(`/api/automations/${automationJob.id}`)
+      test.skip(true, "Requires /api/test/seed-automation-transcript in target environment.")
+      return
+    }
+
+    const handles: AutomationTestHandles = {
+      jobId: automationJob.id,
+      runId: seed.runId,
+      conversationId: seed.conversationId,
+      tabId: seed.tabId,
+    }
+
+    try {
+      await gotoChatFast(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
+      await waitForChatReady(authenticatedPage)
+
+      // Open sidebar and find the automation conversation
+      const openSidebarButton = authenticatedPage.getByRole("button", { name: "Open sidebar" })
+      await expect(openSidebarButton).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
+      await openSidebarButton.click()
+
+      const sidebar = authenticatedPage.locator('aside[aria-label="Conversation history"]').first()
+      const automationConversation = sidebar.getByText(seed.title, { exact: true })
+      await expect(automationConversation).toBeVisible({ timeout: TEST_TIMEOUTS.max })
+      await automationConversation.click()
+
+      // Wait for the automation tab to load
+      await expect(authenticatedPage.getByRole("tab", { name: "Run" })).toBeVisible({
+        timeout: TEST_TIMEOUTS.max,
+      })
+
+      // Assert: read-only bar is visible
+      const readonlyBar = authenticatedPage.locator('[data-testid="readonly-transcript-bar"]')
+      await expect(readonlyBar).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
+      await expect(readonlyBar).toContainText("Read-only automation transcript")
+
+      // Assert: ChatInput is NOT present
+      const messageInput = authenticatedPage.locator('[data-testid="message-input"]')
+      await expect(messageInput).not.toBeVisible()
+
+      // Assert: the seeded message is displayed
+      await expect(authenticatedPage.getByText(seed.initialMessage).first()).toBeVisible({
+        timeout: TEST_TIMEOUTS.medium,
+      })
+    } finally {
+      await cleanupAutomationTranscript(authenticatedPage.request, handles)
+    }
+  })
+
+  test("toggles between read-only and editable when switching conversations", async ({
+    authenticatedPage,
+    workerTenant,
+  }) => {
+    const siteId = await findWorkspaceSiteId(authenticatedPage.request, workerTenant.workspace)
+    const automationJob = await createAutomationJob(authenticatedPage.request, siteId)
+    const seed = await seedAutomationTranscript(authenticatedPage.request, automationJob.id)
+    if (!seed) {
+      await authenticatedPage.request.delete(`/api/automations/${automationJob.id}`)
+      test.skip(true, "Requires /api/test/seed-automation-transcript in target environment.")
+      return
+    }
+
+    const handles: AutomationTestHandles = {
+      jobId: automationJob.id,
+      runId: seed.runId,
+      conversationId: seed.conversationId,
+      tabId: seed.tabId,
+    }
+
+    try {
+      await gotoChatFast(authenticatedPage, workerTenant.workspace, workerTenant.orgId)
+      await waitForChatReady(authenticatedPage)
+
+      // The default landing is a fresh chat tab — should have ChatInput
+      const messageInput = authenticatedPage.locator('[data-testid="message-input"]')
+      const readonlyBar = authenticatedPage.locator('[data-testid="readonly-transcript-bar"]')
+
+      // On fresh chat, ChatInput should be present and read-only bar absent
+      await expect(messageInput).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
+      await expect(readonlyBar).not.toBeVisible()
+
+      // Switch to automation conversation via sidebar
+      const openSidebarButton = authenticatedPage.getByRole("button", { name: "Open sidebar" })
+      await expect(openSidebarButton).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
+      await openSidebarButton.click()
+
+      const sidebar = authenticatedPage.locator('aside[aria-label="Conversation history"]').first()
+      const automationConversation = sidebar.getByText(seed.title, { exact: true })
+      await expect(automationConversation).toBeVisible({ timeout: TEST_TIMEOUTS.max })
+      await automationConversation.click()
+
+      // Now in automation conversation — read-only bar visible, ChatInput hidden
+      await expect(readonlyBar).toBeVisible({ timeout: TEST_TIMEOUTS.max })
+      await expect(messageInput).not.toBeVisible()
+
+      // Switch back to a new regular conversation via "New Chat" in sidebar
+      // Re-open sidebar if it closed on mobile
+      const reopenSidebar = authenticatedPage.getByRole("button", { name: "Open sidebar" })
+      if (await reopenSidebar.isVisible()) {
+        await reopenSidebar.click()
+      }
+      const newChatButton = sidebar.getByRole("button", { name: "New Chat" })
+      await expect(newChatButton).toBeVisible({ timeout: TEST_TIMEOUTS.medium })
+      await newChatButton.click()
+
+      // Back in regular chat — ChatInput visible, read-only bar hidden
+      await expect(messageInput).toBeVisible({ timeout: TEST_TIMEOUTS.max })
+      await expect(readonlyBar).not.toBeVisible()
+    } finally {
+      await cleanupAutomationTranscript(authenticatedPage.request, handles)
+    }
+  })
+})
+
 test.describe("Automation Transcript Polling", () => {
   test("polls transcript and run-status endpoints while an automation run is open", async ({
     authenticatedPage,

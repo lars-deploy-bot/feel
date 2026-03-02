@@ -908,6 +908,8 @@ export const apiSchemas = {
           triggered_by: z.string().nullable(),
           changes_made: z.array(z.string()).nullable(),
           result: z.record(z.string(), z.unknown()).nullable(),
+          chat_conversation_id: z.string().nullable(),
+          chat_tab_id: z.string().nullable(),
         }),
       ),
       job: z.object({

@@ -1,6 +1,6 @@
 "use client"
 
-import { AlertCircle, CheckCircle2, Clock, History, RefreshCw, XCircle } from "lucide-react"
+import { AlertCircle, CheckCircle2, Clock, ExternalLink, History, RefreshCw, XCircle } from "lucide-react"
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner"
 import { type AutomationJob, useAutomationRunsQuery } from "@/lib/hooks/useSettingsQueries"
 
@@ -170,6 +170,16 @@ export function AutomationRunsView({ job }: AutomationRunsViewProps) {
                         ))}
                       </ul>
                     </div>
+                  )}
+
+                  {run.chat_tab_id && job.hostname && (
+                    <a
+                      href={`/chat?wk=${encodeURIComponent(job.hostname)}&tab=${encodeURIComponent(run.chat_tab_id)}`}
+                      className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-medium text-black/40 dark:text-white/40 hover:text-black/60 dark:hover:text-white/60 transition-colors"
+                    >
+                      <ExternalLink size={10} strokeWidth={2} />
+                      View transcript
+                    </a>
                   )}
                 </div>
               </div>

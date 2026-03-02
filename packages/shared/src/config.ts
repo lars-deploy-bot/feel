@@ -131,6 +131,7 @@ function localDefaults(): Partial<ServerConfig> {
       wildcard: "localhost",
       cookieDomain: "localhost",
       previewBase: "localhost",
+      frameAncestors: ["http://localhost:3000", "http://localhost:8997"],
     },
   }
 }
@@ -231,8 +232,10 @@ const SERVER_IP = configValue("SERVER_IP", serverConfig.serverIp)
 // Contact email (required in server-config.json, empty only in browser/test/local-dev)
 const CONTACT_EMAIL_RAW = serverConfig.contactEmail ?? ""
 
-// Whether this server is the primary automation executor (required in server-config.json)
-const IS_AUTOMATION_PRIMARY = serverConfig.automationPrimary ?? false
+// Whether this server is the primary automation executor.
+// Zod guarantees this is a boolean when config is loaded from disk.
+// When config is absent (browser, test, local-dev), default to false — automations must never run accidentally.
+const IS_AUTOMATION_PRIMARY: boolean = serverConfig.automationPrimary ?? false
 
 // NOTE: Startup validation is now handled by Zod schema (parseServerConfig).
 // When config file is present, ALL required fields are validated at parse time.

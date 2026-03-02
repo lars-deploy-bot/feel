@@ -5,6 +5,7 @@ function buildBaseConfig(overrides?: Record<string, unknown>): Record<string, un
   return {
     serverId: "srv_test_server_123456",
     serverIp: "127.0.0.1",
+    serverIpv6: "::1",
     automationPrimary: false,
     paths: {
       aliveRoot: "/root/alive",
@@ -17,6 +18,12 @@ function buildBaseConfig(overrides?: Record<string, unknown>): Record<string, un
       wildcard: "example.com",
       cookieDomain: ".example.com",
       previewBase: "preview.example.com",
+      frameAncestors: ["https://app.example.com"],
+    },
+    urls: {
+      prod: "https://app.example.com",
+      staging: "https://staging.example.com",
+      dev: "https://dev.example.com",
     },
     shell: {
       domains: ["go.example.com"],
@@ -29,6 +36,9 @@ function buildBaseConfig(overrides?: Record<string, unknown>): Record<string, un
       projectId: "2",
     },
     contactEmail: "ops@example.com",
+    previewProxy: {
+      port: 5055,
+    },
     generated: {
       dir: "/var/lib/alive/generated",
       caddySites: "/var/lib/alive/generated/Caddyfile.sites",
