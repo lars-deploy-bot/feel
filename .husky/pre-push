@@ -1,19 +1,25 @@
 #!/bin/sh
 # .husky/pre-push
 
+LOGFILE="/tmp/pre-push-$(date +%Y%m%d-%H%M%S).log"
+
 echo "🔍 Running static checks before push..."
+echo "   Log: $LOGFILE"
 
 # SECURITY: Check for .env files first (fast, critical)
-if ! ./scripts/validation/check-no-env-files.sh; then
+if ! ./scripts/validation/check-no-env-files.sh >> "$LOGFILE" 2>&1; then
     echo ""
     echo "❌ SECURITY: .env files detected. Remove them before pushing."
+    echo "   See full log: $LOGFILE"
     exit 1
 fi
+echo "✓ No .env files found in git"
 
 # Ensure repo skills mirror .claude skills before push.
-if ! bun run sync:skills; then
+if ! bun run sync:skills >> "$LOGFILE" 2>&1; then
     echo ""
     echo "❌ Failed to sync .claude/skills to .agents/skills."
+    echo "   See full log: $LOGFILE"
     exit 1
 fi
 
@@ -32,17 +38,27 @@ if [ -n "$(git ls-files --others --exclude-standard -- .agents/skills)" ]; then
     echo "   git add .agents/skills && git commit -m \"sync agents skills\""
     exit 1
 fi
+echo "✓ Skills synced"
 
 # Run comprehensive checks (no file rewrites):
 # - Type checking (Turbo cached)
 # - CI checks (Turbo cached): lint + format validation (no --write)
 # - Core unit tests (web + tools)
-if ! bun run static-check; then
+echo "⏳ Running static-check (this may take a minute)..."
+if ! bun run static-check >> "$LOGFILE" 2>&1; then
     echo ""
-    echo "❌ Pre-push check failed. Fix the issues above before pushing."
+    echo "❌ Pre-push check failed. See full output:"
+    echo "   $LOGFILE"
+    echo ""
+    # Show just the last 30 lines for quick context
+    echo "--- Last 30 lines ---"
+    tail -30 "$LOGFILE"
+    echo "--- End ---"
+    echo ""
     echo "   Run 'bun run static-check' locally to verify fixes."
     echo "   To skip this check (not recommended): git push --no-verify"
     exit 1
 fi
 
 echo "✅ All checks passed. Proceeding with push..."
+echo "   Full log: $LOGFILE"
