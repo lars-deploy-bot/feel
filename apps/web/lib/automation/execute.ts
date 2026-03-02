@@ -12,6 +12,7 @@ import {
   persistRunMessage,
   type RunContext,
   shouldPersist,
+  unwrapStreamEnvelope,
   updateConversationMetadata,
 } from "@webalive/automation-engine"
 
@@ -99,8 +100,9 @@ export async function executeJob(ctx: RunContext): Promise<{
             if (!shouldPersist(msg)) return
 
             // shouldPersist narrows msg to PersistableMessage (content: Json).
-            // Unwrap to the SDK message (msg.content) for storage.
-            const sdkMessage = msg.content
+            // Unwrap the NDJSON stream envelope to get the actual SDK message.
+            // Worker pool wraps as: { type: "stream_message", messageType: "assistant", content: <SDK msg> }
+            const sdkMessage = unwrapStreamEnvelope(msg.content)
             seq += 1
             pendingWrites.push(
               persistRunMessage({

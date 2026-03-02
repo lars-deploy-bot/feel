@@ -66,6 +66,32 @@ export function shouldPersist(msg: Record<string, unknown>): msg is PersistableM
   return false
 }
 
+/**
+ * Unwrap the NDJSON stream envelope from an IPC message's content.
+ *
+ * Worker pool sends:
+ *   { type: "stream_message", messageType: "assistant", content: <SDK msg> }
+ *
+ * Direct SDK sends the SDK message directly:
+ *   { role: "assistant", content: [...] }
+ *
+ * This function extracts the inner SDK message from the worker pool envelope,
+ * or returns the value as-is for the direct SDK path.
+ *
+ * Must be called AFTER shouldPersist() confirms the message is persistable.
+ */
+export function unwrapStreamEnvelope(ipcContent: Json): Json {
+  if (!isRecord(ipcContent)) return ipcContent
+
+  // Worker pool path: has messageType + nested content object
+  if (typeof ipcContent.messageType === "string" && ipcContent.content != null) {
+    return ipcContent.content as Json
+  }
+
+  // Direct SDK path: already the SDK message
+  return ipcContent
+}
+
 export interface PersistMessageOptions {
   supabase: AppClient
   tabId: string
