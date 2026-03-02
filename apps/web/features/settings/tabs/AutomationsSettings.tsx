@@ -1,8 +1,10 @@
 "use client"
 
+import * as Sentry from "@sentry/nextjs"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { ArrowLeft, Calendar, Globe, Mail, Pause, Play, Plus, Trash2, Zap } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
+import toast from "react-hot-toast"
 import { AutomationRunsView } from "@/components/automations/AutomationRunsView"
 import { type AutomationFormData, AutomationSidePanel } from "@/components/automations/AutomationSidePanel"
 import { EmptyState } from "@/components/ui/EmptyState"
@@ -183,7 +185,8 @@ export function AutomationsSettings() {
       setIsCreating(false)
     },
     onError: (err: ApiError) => {
-      alert(err.message)
+      toast.error(err.message || "Failed to save automation")
+      Sentry.captureException(err)
     },
   })
 
@@ -200,7 +203,8 @@ export function AutomationsSettings() {
     },
     onError: (err, _id, context) => {
       if (context?.previous) queryClient.setQueryData(queryKeys.automations.list(queryFilter), context.previous)
-      alert(err.message || "Failed to delete automation")
+      toast.error(err.message || "Failed to delete automation")
+      Sentry.captureException(err)
     },
     onSuccess: () => {
       trackAutomationDeleted()
@@ -219,7 +223,8 @@ export function AutomationsSettings() {
       queryClient.invalidateQueries({ queryKey: queryKeys.automations.all })
     },
     onError: (err: ApiError) => {
-      alert(err.message)
+      toast.error(err.message || "Failed to trigger automation")
+      Sentry.captureException(err)
     },
   })
 
