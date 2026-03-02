@@ -34,6 +34,8 @@
 import fs from "node:fs"
 import path from "node:path"
 import { ensurePathWithinWorkspace } from "@/features/workspace/lib/workspace-secure"
+import { parseGithubRepo } from "@/lib/deployment/github-import"
+import { getSiteMetadataByWorkspace } from "@/lib/siteMetadataStore"
 import { runAsWorkspaceUser } from "@/lib/workspace-execution/command-runner"
 
 const SLUG_REGEX = /^[a-z0-9][a-z0-9-]{0,48}$/
@@ -61,6 +63,7 @@ export type GitOperation =
   | "commit"
   | "fetch"
   | "init"
+  | "remote"
   | "remove"
   | "branch"
   | "status"
@@ -96,6 +99,8 @@ function sanitizeGitArgs(baseWorkspacePath: string, args: string[]): string[] {
 function classifyGitOperation(args: string[]): GitOperation {
   const subcommand = args.find(a => !a.startsWith("-") && a !== "-C")
   switch (subcommand) {
+    case "remote":
+      return "remote"
     case "fetch":
       return "fetch"
     case "init":
@@ -231,6 +236,28 @@ async function bootstrapBaseRepo(baseWorkspacePath: string) {
       await runGit(baseWorkspacePath, ["symbolic-ref", "HEAD", "refs/heads/main"], 15000)
     } catch {
       // Best-effort only; some repos may already have an initialized HEAD.
+    }
+  }
+
+  // Set origin from GitHub import metadata so #230 (push flow) has a remote.
+  const metadata = await getSiteMetadataByWorkspace(getSiteRoot(baseWorkspacePath))
+  if (!metadata) {
+    throw new Error(`Site metadata missing for ${baseWorkspacePath}`)
+  }
+  if (metadata.source === "github-import") {
+    if (!metadata.sourceRepo) {
+      throw new Error(`GitHub import metadata missing sourceRepo for ${baseWorkspacePath}`)
+    }
+    const { owner, repo } = parseGithubRepo(metadata.sourceRepo)
+    try {
+      await runGit(baseWorkspacePath, ["remote", "add", "origin", `https://github.com/${owner}/${repo}.git`], 15000)
+    } catch (error) {
+      const isAlreadyExists =
+        error instanceof WorktreeError &&
+        error.code === "WORKTREE_GIT_FAILED" &&
+        error.gitDiagnostics?.stderrTail.includes("remote origin already exists")
+      if (!isAlreadyExists) throw error
+      // Remote already exists from a prior bootstrap — safe to ignore.
     }
   }
 

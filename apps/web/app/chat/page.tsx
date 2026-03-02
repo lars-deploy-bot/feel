@@ -61,7 +61,7 @@ import { useDebugVisible, useWorkbench } from "@/lib/stores/debug-store"
 import { useFeatureFlag } from "@/lib/stores/featureFlagStore"
 import { useAppHydrated } from "@/lib/stores/HydrationBoundary"
 import { useLastSeenStreamSeq, useStreamingActions } from "@/lib/stores/streamingStore"
-import { useTabActions } from "@/lib/stores/tabStore"
+import { useTabActions, useTabDataStore } from "@/lib/stores/tabStore"
 import { useSelectedOrgId } from "@/lib/stores/workspaceStore"
 import { QUERY_KEYS } from "@/lib/url/queryState"
 // Local components
@@ -89,9 +89,10 @@ function ChatPageContent() {
     unarchiveConversation,
     renameConversation,
     setSession: setDexieSession,
+    reopenTab: dexieReopenTab,
   } = useDexieMessageActions()
   const dexieSession = useDexieSession()
-  const { createTabGroupWithTab, removeTabGroup, setActiveTab } = useTabActions()
+  const { createTabGroupWithTab, removeTabGroup, setActiveTab, reopenTab } = useTabActions()
 
   // Ensures Dexie has a tabgroup+tab for the session key (tabId)
   const initializeTab = useCallback(
@@ -239,6 +240,7 @@ function ChatPageContent() {
   }, [mounted, tabWorkspace, tabParam, setTabParam])
 
   // On mount: if URL has a tab param, restore it (ONCE only)
+  // Checks both open and closed tabs — reopens closed tabs so shared URLs always work.
   useEffect(() => {
     if (!mounted || !tabWorkspace || !dexieSession || initialTabRestored.current) return
     if (!tabParam) {
@@ -247,16 +249,40 @@ function ChatPageContent() {
       return
     }
 
-    // Check if the tab exists and switch to it
-    const allTabs = workspaceTabs
-    const targetTab = allTabs.find(t => t.id === tabParam && !t.closedAt)
-    if (targetTab && sessionTabId !== tabParam) {
+    // Check open tabs first
+    const openTab = workspaceTabs.find(t => t.id === tabParam)
+    if (openTab && sessionTabId !== tabParam) {
       console.log("[ChatPage] Restoring tab from URL param:", tabParam)
       setStoreActiveTab(tabWorkspace, tabParam)
+      initialTabRestored.current = true
+      return
     }
+
+    // Check closed tabs — reopen if found (shared URLs should always work)
+    if (!openTab) {
+      const allTabs = useTabDataStore.getState().tabsByWorkspace[tabWorkspace] ?? []
+      const closedTab = allTabs.find(t => t.id === tabParam && t.closedAt !== undefined)
+      if (closedTab) {
+        console.log("[ChatPage] Reopening closed tab from URL param:", tabParam)
+        reopenTab(tabWorkspace, tabParam)
+        void dexieReopenTab(tabParam)
+        setStoreActiveTab(tabWorkspace, tabParam)
+      }
+    }
+
     // Mark as restored whether we found the tab or not
     initialTabRestored.current = true
-  }, [mounted, tabWorkspace, dexieSession, tabParam, workspaceTabs, sessionTabId, setStoreActiveTab])
+  }, [
+    mounted,
+    tabWorkspace,
+    dexieSession,
+    tabParam,
+    workspaceTabs,
+    sessionTabId,
+    setStoreActiveTab,
+    reopenTab,
+    dexieReopenTab,
+  ])
 
   // When active tab changes, update URL (shallow, no navigation)
   useEffect(() => {

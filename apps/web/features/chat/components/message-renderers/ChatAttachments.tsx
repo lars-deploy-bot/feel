@@ -1,6 +1,7 @@
 import type { UIMessage } from "../../lib/message-parser"
 import type {
   LibraryImageAttachment,
+  SkillAttachment,
   SuperTemplateAttachment,
   UploadedFileAttachment,
   UserPromptAttachment,
@@ -20,6 +21,7 @@ export function ChatAttachments({ attachments }: ChatAttachmentsProps) {
   const images = attachments.filter((a): a is LibraryImageAttachment => a.kind === "library-image")
   const supertemplates = attachments.filter((a): a is SuperTemplateAttachment => a.kind === "supertemplate")
   const userPrompts = attachments.filter((a): a is UserPromptAttachment => a.kind === "user-prompt")
+  const skills = attachments.filter((a): a is SkillAttachment => a.kind === "skill")
   const uploadedFiles = attachments.filter((a): a is UploadedFileAttachment => a.kind === "uploaded-file")
 
   return (
@@ -54,6 +56,23 @@ export function ChatAttachments({ attachments }: ChatAttachmentsProps) {
             >
               <div className="font-medium text-black dark:text-white">{template.name || "Template"}</div>
               <div className="text-xs text-black/60 dark:text-white/60">{template.templateId}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Skill attachments */}
+      {skills.length > 0 && (
+        <div className="mb-3 flex flex-wrap gap-2 justify-end">
+          {skills.map((skill, index) => (
+            <div
+              key={skill.id || index}
+              className="px-3 py-2 rounded-lg border border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50/50 to-pink-50/50 dark:from-purple-950/20 dark:to-pink-950/20 text-sm flex items-center gap-2"
+            >
+              <span className="font-medium text-purple-900 dark:text-purple-100">{skill.displayName}</span>
+              <span className="text-xs text-purple-600/60 dark:text-purple-400/60">
+                {skill.source === "superadmin" ? "Skill" : "Custom Skill"}
+              </span>
             </div>
           ))}
         </div>

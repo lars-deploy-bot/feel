@@ -4,7 +4,13 @@ import type { Attachment } from "@/features/chat/components/ChatInput/types"
 import type { UIMessage } from "@/features/chat/lib/message-parser"
 import type { InterruptDetails, InterruptStatus } from "@/features/chat/lib/streaming/ndjson"
 import { BridgeInterruptSource } from "@/features/chat/lib/streaming/ndjson"
-import type { DbMessage, DbMessageContent, DbMessageStatus, DbMessageType } from "./messageDb"
+import {
+  CURRENT_MESSAGE_VERSION,
+  type DbMessage,
+  type DbMessageContent,
+  type DbMessageStatus,
+  type DbMessageType,
+} from "./messageDb"
 
 /**
  * Message Type Adapters
@@ -159,7 +165,7 @@ export function toDbMessage(
     content: toDbMessageContent(message),
     createdAt,
     updatedAt: now,
-    version: 1, // CURRENT_MESSAGE_VERSION
+    version: CURRENT_MESSAGE_VERSION,
     status: options.status ?? "complete",
     origin: options.origin ?? "local",
     seq,

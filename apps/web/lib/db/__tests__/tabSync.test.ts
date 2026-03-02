@@ -142,17 +142,21 @@ describe("syncDexieTabsToLocalStorage", () => {
     expect(tabs[1].id).toBe("tab-new")
   })
 
-  it("should skip closed Dexie tabs", () => {
+  it("should sync closed Dexie tabs so they appear in the reopen dropdown", () => {
+    const closedAt = Date.now()
     const dexieTabs: DbTab[] = [
       createDbTab({ id: "tab-open", conversationId: "conv-1", name: "Open tab" }),
-      createDbTab({ id: "tab-closed", conversationId: "conv-1", name: "Closed tab", closedAt: Date.now() }),
+      createDbTab({ id: "tab-closed", conversationId: "conv-1", name: "Closed tab", closedAt }),
     ]
 
     syncDexieTabsToLocalStorage(TEST_WORKSPACE, dexieTabs, [{ id: "conv-1", title: "Conv" }])
 
     const tabs = useTabDataStore.getState().tabsByWorkspace[TEST_WORKSPACE] ?? []
-    expect(tabs).toHaveLength(1)
+    expect(tabs).toHaveLength(2)
     expect(tabs[0].id).toBe("tab-open")
+    expect(tabs[0].closedAt).toBeUndefined()
+    expect(tabs[1].id).toBe("tab-closed")
+    expect(tabs[1].closedAt).toBe(closedAt)
   })
 
   it("should do nothing for empty Dexie tabs array", () => {
@@ -242,16 +246,16 @@ describe("syncDexieTabsToLocalStorage", () => {
     expect(tabs[0].name).toBe("current")
   })
 
-  it("should handle closedAt=0 (falsy but defined) as closed", () => {
+  it("should sync closedAt=0 (falsy but defined) preserving closedAt value", () => {
     const dexieTabs: DbTab[] = [
       createDbTab({ id: "tab-epoch", conversationId: "conv-1", name: "Epoch tab", closedAt: 0 }),
     ]
 
     syncDexieTabsToLocalStorage(TEST_WORKSPACE, dexieTabs, [{ id: "conv-1", title: "Conv" }])
 
-    // closedAt=0 means closed at epoch — should be treated as closed.
-    // The check uses `dexieTab.closedAt != null` so 0 is correctly treated as closed.
+    // closedAt=0 means closed at epoch — should be synced with closedAt preserved
     const tabs = useTabDataStore.getState().tabsByWorkspace[TEST_WORKSPACE] ?? []
-    expect(tabs).toHaveLength(0)
+    expect(tabs).toHaveLength(1)
+    expect(tabs[0].closedAt).toBe(0)
   })
 })
