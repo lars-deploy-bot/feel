@@ -2,6 +2,8 @@
 
 import { PanelLeftClose, PanelLeftOpen, RefreshCw } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
+import toast from "react-hot-toast"
+import { ConfirmModal } from "@/components/modals/ConfirmModal"
 import { trackDriveFileDeleted, trackDrivePanelOpened } from "@/lib/analytics/events"
 import { PanelBar } from "../ui"
 import { DrivePreview } from "./DrivePreview"
@@ -25,6 +27,7 @@ export function DrivePanel({ workspace, worktree }: DrivePanelProps) {
   const [treeCollapsed, setTreeCollapsed] = useState(false)
   const [isResizing, setIsResizing] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [pendingDelete, setPendingDelete] = useState<{ path: string; isDir: boolean } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -51,23 +54,25 @@ export function DrivePanel({ workspace, worktree }: DrivePanelProps) {
     setSelectedFile(null)
   }, [])
 
-  const handleDeleteFile = useCallback(
-    async (path: string, isDir: boolean) => {
-      const label = isDir ? "directory" : "file"
-      if (!confirm(`Delete ${label} "${path}"?`)) return
+  const handleDeleteFile = useCallback((path: string, isDir: boolean) => {
+    setPendingDelete({ path, isDir })
+  }, [])
 
-      try {
-        await deleteDriveItem(workspace, path, { worktree, recursive: isDir })
-        trackDriveFileDeleted()
-        if (selectedFile === path) setSelectedFile(null)
-        invalidateDriveCache(workspace, worktree)
-        setRefreshKey(k => k + 1)
-      } catch (err) {
-        alert(err instanceof Error ? err.message : "Delete failed")
-      }
-    },
-    [workspace, worktree, selectedFile],
-  )
+  const confirmDelete = useCallback(async () => {
+    if (!pendingDelete) return
+    const { path, isDir } = pendingDelete
+    setPendingDelete(null)
+
+    try {
+      await deleteDriveItem(workspace, path, { worktree, recursive: isDir })
+      trackDriveFileDeleted()
+      if (selectedFile === path) setSelectedFile(null)
+      invalidateDriveCache(workspace, worktree)
+      setRefreshKey(k => k + 1)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Delete failed")
+    }
+  }, [pendingDelete, workspace, worktree, selectedFile])
 
   const handleRefresh = useCallback(() => {
     invalidateDriveCache(workspace, worktree)
@@ -201,6 +206,17 @@ export function DrivePanel({ workspace, worktree }: DrivePanelProps) {
           </div>
         )}
       </div>
+
+      {pendingDelete && (
+        <ConfirmModal
+          title={`Delete ${pendingDelete.isDir ? "directory" : "file"}`}
+          message={`Are you sure you want to delete "${pendingDelete.path}"?`}
+          confirmText="Delete"
+          confirmStyle="danger"
+          onConfirm={confirmDelete}
+          onCancel={() => setPendingDelete(null)}
+        />
+      )}
     </div>
   )
 }

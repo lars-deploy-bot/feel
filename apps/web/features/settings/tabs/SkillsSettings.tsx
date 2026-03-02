@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { ConfirmModal } from "@/components/modals/ConfirmModal"
 import { PromptEditorModal } from "@/components/modals/PromptEditorModal"
 import { useSkillsActions, useSuperadminSkills, useUserSkills } from "@/lib/providers/SkillsStoreProvider"
 import { sectionDivider, smallButton, text } from "../styles"
@@ -10,6 +11,8 @@ export function SkillsSettings() {
   const superadminSkills = useSuperadminSkills()
   const userSkills = useUserSkills()
   const { addUserSkill, updateUserSkill, removeUserSkill } = useSkillsActions()
+
+  const [pendingDeleteSkill, setPendingDeleteSkill] = useState<{ id: string; name: string } | null>(null)
 
   const [editorState, setEditorState] = useState<{
     mode: "add" | "edit"
@@ -76,11 +79,7 @@ export function SkillsSettings() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        if (window.confirm(`Delete "${skill.displayName}"?`)) {
-                          removeUserSkill(skill.id)
-                        }
-                      }}
+                      onClick={() => setPendingDeleteSkill({ id: skill.id, name: skill.displayName })}
                       className="px-2.5 py-1 text-xs text-red-500/60 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-500/[0.06] dark:hover:bg-red-500/[0.06] rounded-lg transition-all"
                     >
                       Delete
@@ -125,6 +124,20 @@ export function SkillsSettings() {
             initialData={editorState.data}
             onSave={handleSaveSkill}
             onCancel={handleCloseEditor}
+          />
+        )}
+
+        {pendingDeleteSkill && (
+          <ConfirmModal
+            title="Delete skill"
+            message={`Delete "${pendingDeleteSkill.name}"?`}
+            confirmText="Delete"
+            confirmStyle="danger"
+            onConfirm={() => {
+              removeUserSkill(pendingDeleteSkill.id)
+              setPendingDeleteSkill(null)
+            }}
+            onCancel={() => setPendingDeleteSkill(null)}
           />
         )}
       </div>
