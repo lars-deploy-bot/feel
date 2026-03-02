@@ -187,7 +187,6 @@ export const runtimeEnv = {
   SHELL_PASSWORD: process.env.SHELL_PASSWORD,
   HOSTED_ENV: process.env.HOSTED_ENV,
   CLAUDE_MODEL: process.env.CLAUDE_MODEL,
-  CLAUDE_MAX_TURNS: process.env.CLAUDE_MAX_TURNS,
   GROQ_API_SECRET: process.env.GROQ_API_SECRET,
   GITHUB_WEBHOOK_SECRET: process.env.GITHUB_WEBHOOK_SECRET,
   DEPLOY_BRANCH: process.env.DEPLOY_BRANCH,

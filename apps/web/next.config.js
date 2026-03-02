@@ -126,6 +126,7 @@ const nextConfig = {
   },
   env: {
     NEXT_PUBLIC_SENTRY_RELEASE: sentryRelease,
+    NEXT_PUBLIC_STREAM_ENV: process.env.STREAM_ENV || "",
     ...(sentryConfig ? { NEXT_PUBLIC_SENTRY_DSN: sentryConfig.dsn } : {}),
     NEXT_PUBLIC_CONTACT_EMAIL: contactEmail,
   },
