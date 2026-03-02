@@ -39,10 +39,6 @@ vi.mock("@/lib/automation/execute", () => ({
   executeJob: (...args: unknown[]) => executeJobMock(...args),
 }))
 
-vi.mock("@/app/api/automations/events/route", () => ({
-  broadcastAutomationEvent: vi.fn(),
-}))
-
 vi.mock("@/lib/automation/notifications", () => ({
   notifyJobDisabled: vi.fn(),
 }))
@@ -185,7 +181,6 @@ describe("POST /api/internal/automation/trigger", () => {
         summary: "Done",
         hooks: expect.objectContaining({
           onJobDisabled: expect.any(Function),
-          onJobFinished: expect.any(Function),
         }),
       }),
     )

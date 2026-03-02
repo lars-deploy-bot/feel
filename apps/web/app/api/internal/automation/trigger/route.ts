@@ -12,7 +12,6 @@ import { claimJob, extractSummary, type FinishHooks, finishJob } from "@webalive
 import type { AppDatabase } from "@webalive/database"
 import { AutomationTriggerRequestSchema, type AutomationTriggerResponse, getServerId } from "@webalive/shared"
 import { type NextRequest, NextResponse } from "next/server"
-import { broadcastAutomationEvent } from "@/app/api/automations/events/route"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { verifyInternalSecret } from "@/lib/auth/timing-safe"
 import { pokeCronService } from "@/lib/automation/cron-service"
@@ -81,15 +80,6 @@ export async function POST(req: NextRequest) {
 
   const hooks: FinishHooks = {
     onJobDisabled: (hookCtx, hookError) => notifyJobDisabled(hookCtx, hookError),
-    onJobFinished: (hookCtx, status, summary) => {
-      broadcastAutomationEvent(hookCtx.job.user_id, {
-        type: "finished",
-        jobId: hookCtx.job.id,
-        jobName: hookCtx.job.name,
-        status,
-        summary,
-      })
-    },
   }
 
   // Synchronous execution — wait for completion
