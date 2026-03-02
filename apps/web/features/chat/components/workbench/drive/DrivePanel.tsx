@@ -2,6 +2,7 @@
 
 import { PanelLeftClose, PanelLeftOpen, RefreshCw } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
+import toast from "react-hot-toast"
 import { trackDriveFileDeleted, trackDrivePanelOpened } from "@/lib/analytics/events"
 import { PanelBar } from "../ui"
 import { DrivePreview } from "./DrivePreview"
@@ -63,7 +64,7 @@ export function DrivePanel({ workspace, worktree }: DrivePanelProps) {
         invalidateDriveCache(workspace, worktree)
         setRefreshKey(k => k + 1)
       } catch (err) {
-        alert(err instanceof Error ? err.message : "Delete failed")
+        toast.error(err instanceof Error ? err.message : "Delete failed")
       }
     },
     [workspace, worktree, selectedFile],
