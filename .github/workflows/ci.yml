@@ -175,16 +175,26 @@ jobs:
         working-directory: apps/web
         env:
           E2E_TEST_SECRET: ${{ secrets.E2E_TEST_SECRET }}
+          E2E_STAGING_URL: ${{ vars.E2E_STAGING_URL }}
+          E2E_PREVIEW_BASE: ${{ vars.E2E_PREVIEW_BASE }}
         run: |
           if [[ -z "${E2E_TEST_SECRET}" ]]; then
             echo "::error::Missing required secret for critical chat E2E: E2E_TEST_SECRET"
             exit 1
           fi
+          if [[ -z "${E2E_STAGING_URL}" ]]; then
+            echo "::error::Missing required variable: E2E_STAGING_URL (set in repo Settings > Variables)"
+            exit 1
+          fi
+          if [[ -z "${E2E_PREVIEW_BASE}" ]]; then
+            echo "::error::Missing required variable: E2E_PREVIEW_BASE (set in repo Settings > Variables)"
+            exit 1
+          fi
 
           {
             echo "TEST_ENV=staging"
-            echo "NEXT_PUBLIC_APP_URL=https://staging.sonno.tech"
-            echo "NEXT_PUBLIC_PREVIEW_BASE=sonno.tech"
+            printf 'NEXT_PUBLIC_APP_URL=%s\n' "${E2E_STAGING_URL}"
+            printf 'NEXT_PUBLIC_PREVIEW_BASE=%s\n' "${E2E_PREVIEW_BASE}"
             printf 'E2E_TEST_SECRET=%s\n' "${E2E_TEST_SECRET}"
           } > .env.staging
 

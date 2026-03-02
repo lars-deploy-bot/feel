@@ -9,15 +9,20 @@
     "imagesStorage": "/srv/webalive/storage"
   },
   "domains": {
-    "main": "sonno.tech",
-    "wildcard": "sonno.tech",
-    "cookieDomain": ".sonno.tech",
-    "previewBase": "sonno.tech",
+    "main": "example.com",
+    "wildcard": "example.com",
+    "cookieDomain": ".example.com",
+    "previewBase": "example.com",
     "frameAncestors": [
-      "https://app.sonno.tech",
-      "https://dev.sonno.tech",
-      "https://staging.sonno.tech"
+      "https://app.example.com",
+      "https://dev.example.com",
+      "https://staging.example.com"
     ]
+  },
+  "urls": {
+    "prod": "https://app.example.com",
+    "staging": "https://staging.example.com",
+    "dev": "https://dev.example.com"
   },
   "sentry": {
     "dsn": "https://your-key@sentry.example.com/1",
@@ -28,7 +33,7 @@
   },
   "contactEmail": "agency@example.com",
   "shell": {
-    "domains": ["go.sonno.tech"],
+    "domains": ["go.example.com"],
     "listen": ":8443",
     "upstream": "localhost:3888"
   },
