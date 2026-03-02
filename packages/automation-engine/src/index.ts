@@ -8,6 +8,7 @@ export {
   type PersistMessageOptions,
   persistRunMessage,
   shouldPersist,
+  unwrapStreamEnvelope,
   updateConversationMetadata,
 } from "./messages"
 // Run logs

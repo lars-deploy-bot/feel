@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
-import { persistRunMessage, shouldPersist, updateConversationMetadata } from "../messages"
+import { persistRunMessage, shouldPersist, unwrapStreamEnvelope, updateConversationMetadata } from "../messages"
 
 // =============================================================================
 // Helpers
@@ -90,6 +90,58 @@ describe("shouldPersist", () => {
 
   it("returns true for user role (direct SDK path)", () => {
     expect(shouldPersist({ type: "message", content: { role: "user", content: [] } })).toBe(true)
+  })
+})
+
+// =============================================================================
+// unwrapStreamEnvelope — extract SDK message from worker pool envelope
+// =============================================================================
+
+describe("unwrapStreamEnvelope", () => {
+  it("unwraps worker pool stream envelope to inner SDK message", () => {
+    const sdkMessage = { type: "assistant", uuid: "abc", message: { role: "assistant", content: [] } }
+    const envelope = {
+      type: "stream_message",
+      messageCount: 1,
+      messageType: "assistant",
+      content: sdkMessage,
+    }
+
+    expect(unwrapStreamEnvelope(envelope)).toEqual(sdkMessage)
+  })
+
+  it("unwraps user message envelope", () => {
+    const sdkMessage = { type: "user", uuid: "def", message: { role: "user", content: [] } }
+    const envelope = {
+      type: "stream_message",
+      messageCount: 2,
+      messageType: "user",
+      content: sdkMessage,
+    }
+
+    expect(unwrapStreamEnvelope(envelope)).toEqual(sdkMessage)
+  })
+
+  it("passes through direct SDK messages unchanged", () => {
+    const directSdkMessage = { role: "assistant", content: [{ type: "text", text: "hello" }] }
+
+    expect(unwrapStreamEnvelope(directSdkMessage)).toEqual(directSdkMessage)
+  })
+
+  it("passes through non-object values unchanged", () => {
+    expect(unwrapStreamEnvelope("string")).toBe("string")
+    expect(unwrapStreamEnvelope(42)).toBe(42)
+    expect(unwrapStreamEnvelope(null)).toBe(null)
+  })
+
+  it("passes through objects without messageType unchanged", () => {
+    const msg = { type: "assistant", message: { content: [] } }
+    expect(unwrapStreamEnvelope(msg)).toEqual(msg)
+  })
+
+  it("does not unwrap when content is null", () => {
+    const msg = { messageType: "assistant", content: null }
+    expect(unwrapStreamEnvelope(msg)).toEqual(msg)
   })
 })
 

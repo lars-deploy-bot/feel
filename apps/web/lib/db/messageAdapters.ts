@@ -225,7 +225,7 @@ export function toUIMessage(dbMessage: DbMessage): UIMessage {
         ...baseUIMessage,
       }
 
-    case "sdk_message":
+    case "sdk_message": {
       // Backward compatibility: interrupt UI messages were historically persisted
       // as sdk_message payloads without a top-level UI message type.
       if (isStoredInterruptContent(content.data)) {
@@ -237,12 +237,29 @@ export function toUIMessage(dbMessage: DbMessage): UIMessage {
         }
       }
 
+      // Backward compatibility: automation transcript messages persisted before
+      // the unwrap fix (#342) stored the full NDJSON stream envelope:
+      //   { type: "stream_message", messageType: "assistant", content: <SDK msg> }
+      // Unwrap to the inner SDK message so type guards (isSDKAssistantMessage etc.) work.
+      let sdkData = content.data
+      if (
+        sdkData &&
+        typeof sdkData === "object" &&
+        !Array.isArray(sdkData) &&
+        "messageType" in sdkData &&
+        "content" in sdkData &&
+        (sdkData as Record<string, unknown>).content != null
+      ) {
+        sdkData = (sdkData as Record<string, unknown>).content
+      }
+
       return {
         id,
         type: "sdk_message",
-        content: content.data,
+        content: sdkData,
         ...baseUIMessage,
       }
+    }
 
     case "tool_use":
       return {
