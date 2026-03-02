@@ -3,17 +3,18 @@ import crypto from "node:crypto"
 import fs from "node:fs"
 import path from "node:path"
 import * as Sentry from "@sentry/nextjs"
+import { env } from "@webalive/env/server"
 import { createDedupeCache } from "@webalive/shared"
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser } from "@/features/auth/lib/auth"
 import { structuredErrorResponse } from "@/lib/api/responses"
 import { ErrorCodes } from "@/lib/error-codes"
 
-// Configuration
-const WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET || ""
+// Configuration — no fallbacks, env schema validates these
+const WEBHOOK_SECRET = env.GITHUB_WEBHOOK_SECRET
 const DEPLOY_SCRIPT = path.join(process.cwd(), "../../scripts/deployment/build-and-serve.sh")
 const LOG_DIR = path.join(process.cwd(), "../../logs")
-const BRANCH = process.env.DEPLOY_BRANCH || "main" // Only deploy on this branch
+const BRANCH = env.DEPLOY_BRANCH
 
 // Dedupe cache: prevent duplicate deployments from rapid webhook retries
 // TTL of 5 minutes - same commit won't trigger multiple deploys
@@ -30,8 +31,9 @@ if (!fs.existsSync(LOG_DIR)) {
  */
 function verifySignature(payload: string, signature: string): boolean {
   if (!WEBHOOK_SECRET) {
-    console.warn("[WEBHOOK] No GITHUB_WEBHOOK_SECRET set, skipping verification")
-    return true // Allow in development
+    // No secret configured — reject all webhooks. Never silently allow unsigned requests.
+    console.error("[WEBHOOK] GITHUB_WEBHOOK_SECRET not configured, rejecting request")
+    return false
   }
 
   const hmac = crypto.createHmac("sha256", WEBHOOK_SECRET)

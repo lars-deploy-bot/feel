@@ -1,13 +1,13 @@
 import { realpathSync } from "node:fs"
 import * as Sentry from "@sentry/nextjs"
-import { PATHS } from "@webalive/shared"
+import { env } from "@webalive/env/server"
 import { NextResponse } from "next/server"
 import type { ZodSchema, z } from "zod"
 import { isWorkspaceAuthenticated, requireSessionUser } from "@/features/auth/lib/auth"
 import { ErrorCodes, getErrorMessage } from "@/lib/error-codes"
 
-// Workspace base directory (from env or default)
-const WORKSPACE_BASE = process.env.WORKSPACE_BASE ?? PATHS.SITES_ROOT
+// Workspace base directory — validated by @webalive/env schema (has default: /srv/webalive/sites)
+const WORKSPACE_BASE = env.WORKSPACE_BASE
 
 interface WorkspaceApiConfig<_T extends z.ZodRawShape> {
   schema: ZodSchema<any>
@@ -98,10 +98,12 @@ export async function handleWorkspaceApi<T extends z.ZodRawShape>(
       }
 
       // Second: check user has access to this specific workspace
-      // CRITICAL: Extract workspace name from RESOLVED path (not original)
-      const pathParts = containmentResult.resolvedPath!.split("/")
-      const sitesIndex = pathParts.indexOf("sites")
-      const workspaceName = sitesIndex >= 0 && pathParts[sitesIndex + 1] ? pathParts[sitesIndex + 1] : null
+      // CRITICAL: Extract workspace name from RESOLVED path relative to WORKSPACE_BASE (not hardcoded "sites")
+      const realBaseRoot = realpathSync(WORKSPACE_BASE)
+      const relativePath = containmentResult.resolvedPath!.startsWith(`${realBaseRoot}/`)
+        ? containmentResult.resolvedPath!.slice(realBaseRoot.length + 1)
+        : ""
+      const workspaceName = relativePath.split("/")[0] || null
 
       if (!workspaceName) {
         console.error(`[workspace-api ${requestId}] Authorization failed: could not extract workspace name from path`)

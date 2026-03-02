@@ -1,5 +1,6 @@
 "use client"
 
+import { STREAM_ENV } from "@webalive/shared"
 import Dexie, { type Table } from "dexie"
 import {
   type AutomationSourceMetadata,
@@ -17,10 +18,26 @@ import {
  * Never instantiate at module level.
  */
 
-const ENV = process.env.NEXT_PUBLIC_ENV ?? "local"
+function getMessageDbEnv(): string {
+  const rawEnv = process.env.NEXT_PUBLIC_STREAM_ENV || process.env.STREAM_ENV
+
+  switch (rawEnv) {
+    case STREAM_ENV.LOCAL:
+    case STREAM_ENV.DEV:
+    case STREAM_ENV.STAGING:
+    case STREAM_ENV.PRODUCTION:
+    case STREAM_ENV.STANDALONE:
+      return rawEnv
+    default:
+      throw new Error(
+        `Invalid message DB environment: ${String(rawEnv)}. ` +
+          "Expected one of: local, dev, staging, production, standalone.",
+      )
+  }
+}
 
 export function getMessageDbName(userId: string): string {
-  return `claude-messages-${ENV}-${userId}`
+  return `claude-messages-${getMessageDbEnv()}-${userId}`
 }
 
 // =============================================================================

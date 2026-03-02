@@ -1,13 +1,14 @@
-import { DOMAINS, REFERRAL } from "@webalive/shared"
+import { REFERRAL } from "@webalive/shared"
 
 const STORAGE_KEY = "alive_referral"
 
 /**
  * Build invite link from code (server-side only — called from API routes)
+ * @param code - The invite code
+ * @param baseUrl - The base URL (e.g. "https://app.alive.best")
  */
-export function buildInviteLink(code: string): string {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `https://${DOMAINS.WILDCARD}`
-  if (!baseUrl || baseUrl === "https://") throw new Error("[referral] Missing NEXT_PUBLIC_APP_URL and WILDCARD_DOMAIN")
+export function buildInviteLink(code: string, baseUrl: string): string {
+  if (!baseUrl) throw new Error("[referral] baseUrl is required for invite link generation")
   return `${baseUrl}/invite/${code}`
 }
 
