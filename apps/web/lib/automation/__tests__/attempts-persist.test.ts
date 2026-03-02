@@ -10,9 +10,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 // Mock worker pool before importing attempts
 const mockPoolQuery = vi.fn()
 
-vi.mock("@webalive/worker-pool", () => ({
-  getWorkerPool: () => ({ query: mockPoolQuery }),
-}))
+vi.mock("@webalive/worker-pool", async () => {
+  const actual = await vi.importActual<typeof import("@webalive/worker-pool")>("@webalive/worker-pool")
+  return {
+    ...actual,
+    getWorkerPool: () => ({ query: mockPoolQuery }),
+  }
+})
 
 vi.mock("node:fs", () => ({
   statSync: () => ({ uid: 1000, gid: 1000 }),
@@ -57,6 +61,7 @@ describe("tryWorkerPool onPersistMessage", () => {
         for (const msg of messages) {
           opts.onMessage(msg as Record<string, unknown>)
         }
+        return { success: true }
       },
     )
 
@@ -85,6 +90,7 @@ describe("tryWorkerPool onPersistMessage", () => {
     mockPoolQuery.mockImplementation(
       async (_creds: unknown, opts: { onMessage: (msg: Record<string, unknown>) => void }) => {
         opts.onMessage({ type: "message", content: { role: "assistant", content: [] } })
+        return { success: true }
       },
     )
 
@@ -102,5 +108,23 @@ describe("tryWorkerPool onPersistMessage", () => {
     })
 
     expect(result.allMessages).toHaveLength(1)
+  })
+
+  it("throws when pool.query returns cancelled result", async () => {
+    mockPoolQuery.mockResolvedValue({ success: true, cancelled: true })
+
+    await expect(
+      tryWorkerPool({
+        requestId: "req_cancelled",
+        cwd: "/tmp/test",
+        workspace: "test.alive.best",
+        userId: "user_1",
+        fullPrompt: "do stuff",
+        selectedModel: "claude-sonnet-4-20250514",
+        systemPrompt: "you are a bot",
+        timeoutSeconds: 60,
+        oauthAccessToken: "token",
+      }),
+    ).rejects.toThrow("Automation timed out during execution")
   })
 })
